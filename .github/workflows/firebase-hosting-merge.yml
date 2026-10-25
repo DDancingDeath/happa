@@ -1,5 +1,6 @@
-# Deploys Happa's production build on every push to main, to every hosting site
-# in firebase.json (happaapp.web.app, the app's address, and happa-bfc07.web.app).
+# Deploys Happa's production build on every push to main to the app's site,
+# myhappa.web.app. The other sites in firebase.json (happaapp, happa-bfc07) get no
+# app files, only a 301 of every path to myhappa (one origin, one offline store).
 # The project and sites come from happa.config.json; the guard refuses the
 # old app's project (aadhat-management), which is never deployed from here again.
 
@@ -31,18 +32,22 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
           channelId: live
           projectId: ${{ steps.project.outputs.project_id }}
-      - name: Check every site serves this build
+      - name: Check the app site serves this build and the others redirect
         env:
-          SITES: ${{ steps.project.outputs.sites }}
+          SITE: ${{ steps.project.outputs.site }}
+          REDIRECT_SITES: ${{ steps.project.outputs.redirect_sites }}
         run: |
           want=$(grep -oP "const BUILD_ID = '\K[^']+" www/js/main.js)
-          for s in ${SITES//,/ }; do
-            got=''
-            for i in 1 2 3 4 5 6; do
-              got=$(curl -fsS "https://$s.web.app/js/main.js?cb=$GITHUB_RUN_ID-$i" | grep -oP "const BUILD_ID = '\K[^']+" || true)
-              [ "$got" = "$want" ] && break
-              sleep 10
-            done
-            echo "$s.web.app serves $got (want $want)"
-            [ "$got" = "$want" ] || { echo "::error::$s.web.app does not serve $want"; exit 1; }
+          got=''
+          for i in 1 2 3 4 5 6; do
+            got=$(curl -fsS "https://$SITE.web.app/js/main.js?cb=$GITHUB_RUN_ID-$i" | grep -oP "const BUILD_ID = '\K[^']+" || true)
+            [ "$got" = "$want" ] && break
+            sleep 10
+          done
+          echo "$SITE.web.app serves $got (want $want)"
+          [ "$got" = "$want" ] || { echo "::error::$SITE.web.app does not serve $want"; exit 1; }
+          for s in ${REDIRECT_SITES//,/ }; do
+            res=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "https://$s.web.app/download?cb=$GITHUB_RUN_ID")
+            echo "$s.web.app/download -> $res"
+            case "$res" in "301 https://$SITE.web.app/download"*) ;; *) echo "::error::$s.web.app does not 301 to $SITE.web.app"; exit 1;; esac
           done

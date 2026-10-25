@@ -1,5 +1,5 @@
-# Deploys a Happa preview channel on PR (test data, see firebaseConfig.js), on every
-# hosting site in firebase.json (same build; the first site is the app's address).
+# Deploys a Happa preview channel on PR (test data, see firebaseConfig.js). The app
+# site (myhappa) gets www/; the redirect sites' previews only 301 to production myhappa.
 # Skipped until happa.config.json has the real project and the
 # FIREBASE_SERVICE_ACCOUNT_HAPPA secret exists; never targets aadhat-management.
 

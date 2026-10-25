@@ -3,7 +3,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { loadConfig, derive, configProblems, plan, check, guard } = require('../../../scripts/happa-config.js');
+const { loadConfig, derive, configProblems, hostingProblems, plan, check, guard } = require('../../../scripts/happa-config.js');
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 
@@ -12,7 +12,7 @@ const filled = () => {
     Object.assign(raw.firebase, {
         projectId: 'happa-shop',
         hostingSite: '',
-        alsoHostingSites: [],
+        redirectHostingSites: [],
         apiKey: 'AIzaTestKey',
         messagingSenderId: '123',
         appId: '1:123:web:abc'
@@ -68,17 +68,30 @@ describe('happa.config.json', () => {
         expect(files['android/app/build.gradle']).toMatch(/namespace "com\.happa"/);
     });
 
-    test('extra hosting sites get the same hosting settings; the first site is the app address', () => {
+    test('only the app site serves www/; redirect sites only 301 every path to it', () => {
         const raw = filled();
         raw.firebase.hostingSite = 'happa-app';
-        raw.firebase.alsoHostingSites = ['happa-shop'];
+        raw.firebase.redirectHostingSites = ['happa-shop'];
+        const d = derive(raw);
         const files = Object.fromEntries(plan(ROOT, raw).map((p) => [p.file, p.wanted]));
-        const hosting = JSON.parse(files['firebase.json']).hosting;
-        expect(hosting.map((h) => h.site)).toEqual(['happa-app', 'happa-shop']);
-        expect({ ...hosting[1], site: 'happa-app' }).toEqual(hosting[0]);
+        const json = JSON.parse(files['firebase.json']);
+        expect(json.hosting.map((h) => [h.site, h.public])).toEqual([['happa-app', 'www'], ['happa-shop', 'hosting-redirect']]);
+        expect(json.hosting[0].redirects).toBeUndefined();
+        expect(json.hosting[1]).toEqual({ site: 'happa-shop', public: 'hosting-redirect',
+            redirects: [{ source: '/:path*', destination: 'https://happa-app.web.app/:path', type: 301 }] });
+        expect(hostingProblems(json, d)).toEqual([]);
         expect(files['www/download.html']).toContain('href="https://happa-app.web.app"');
         expect(configProblems(raw)).toEqual([]);
-        raw.firebase.alsoHostingSites = ['aadhat-management'];
+
+        const appOnRedirectSite = JSON.parse(files['firebase.json']);
+        appOnRedirectSite.hosting[1] = { ...appOnRedirectSite.hosting[0], site: 'happa-shop' };
+        expect(hostingProblems(appOnRedirectSite, d).join('\n')).toMatch(/happa-shop must only 301/);
+        const redirectedApp = JSON.parse(files['firebase.json']);
+        redirectedApp.hosting[0].redirects = redirectedApp.hosting[1].redirects;
+        expect(hostingProblems(redirectedApp, d).join('\n')).toMatch(/happa-app must serve the app/);
+        expect(hostingProblems({ hosting: json.hosting[0] }, d).join('\n')).toMatch(/must be \[happa-app, happa-shop\]/);
+
+        raw.firebase.redirectHostingSites = ['aadhat-management'];
         expect(configProblems(raw).join('\n')).toMatch(/old app/);
     });
 });
@@ -90,6 +103,8 @@ describe('CI guard', () => {
         raw.firebase.projectId = projectId;
         fs.writeFileSync(path.join(dir, 'happa.config.json'), JSON.stringify(raw));
         fs.writeFileSync(path.join(dir, '.firebaserc'), JSON.stringify({ projects: { default: rc } }));
+        const hosting = plan(ROOT, raw).find((p) => p.file === 'firebase.json').wanted;
+        fs.writeFileSync(path.join(dir, 'firebase.json'), hosting);
     };
     const sa = (projectId) => JSON.stringify({ project_id: projectId });
 
@@ -108,6 +123,17 @@ describe('CI guard', () => {
         expect(guard(dir, { saJson: sa('happa-shop') }).ok).toBe(false);
         write('happa-shop');
         expect(guard(dir, { saJson: sa('aadhat-management') }).ok).toBe(false);
+    });
+
+    test('fails when firebase.json gives the app to a redirect site', () => {
+        write('happa-shop');
+        const json = JSON.parse(fs.readFileSync(path.join(dir, 'firebase.json'), 'utf8'));
+        json.hosting = [json.hosting, { ...json.hosting, site: 'happa-old' }];
+        const raw = JSON.parse(fs.readFileSync(path.join(dir, 'happa.config.json'), 'utf8'));
+        raw.firebase.redirectHostingSites = ['happa-old'];
+        fs.writeFileSync(path.join(dir, 'happa.config.json'), JSON.stringify(raw));
+        fs.writeFileSync(path.join(dir, 'firebase.json'), JSON.stringify(json));
+        expect(guard(dir, { saJson: sa('happa-shop') }).ok).toBe(false);
     });
 
     test('placeholder project: previews skip, deploys fail', () => {

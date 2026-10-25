@@ -34,9 +34,10 @@ function derive(raw) {
     const fb = raw.firebase || {};
     const projectId = fb.projectId;
     const hostingSite = fb.hostingSite || projectId;
-    // Every site gets the same build; the first one is the app's address.
-    const extraSites = Array.isArray(fb.alsoHostingSites) ? fb.alsoHostingSites : [];
-    const hostingSites = [...new Set([hostingSite, ...extraSites].filter(Boolean))];
+    // Only hostingSite serves the app (one origin = one offline store); these only 301 to it.
+    const redirectSites = [...new Set((Array.isArray(fb.redirectHostingSites) ? fb.redirectHostingSites : [])
+        .filter((s) => s && s !== hostingSite))];
+    const hostingSites = [hostingSite, ...redirectSites];
     const siteHost = `${hostingSite}.web.app`;
     const siteUrl = `https://${siteHost}`;
     const apkFile = `${raw.apkName}.apk`;
@@ -59,6 +60,7 @@ function derive(raw) {
         projectId,
         hostingSite,
         hostingSites,
+        redirectSites,
         siteHost,
         siteUrl,
         downloadPageUrl: `${siteUrl}/download`,
@@ -149,22 +151,74 @@ function identityModule(d) {
         `export const APP_IDENTITY = Object.freeze(${JSON.stringify(identity, null, 4)});\n`;
 }
 
+const APP_PUBLIC = 'www';
+const REDIRECT_PUBLIC = 'hosting-redirect';
+
+function redirectHosting(site, d) {
+    return {
+        site,
+        public: REDIRECT_PUBLIC,
+        redirects: [{ source: '/:path*', destination: `${d.siteUrl}/:path`, type: 301 }]
+    };
+}
+
+// Never served (the redirect wins); Hosting just needs a non-empty public folder.
+function redirectPage(d) {
+    const url = escapeHtml(d.siteUrl);
+    return '<!-- Generated from happa.config.json by `npm run apply:happa-config`. Do not edit by hand. -->\n' +
+        `<!DOCTYPE html>\n<meta charset="utf-8">\n<title>${escapeHtml(d.appName)}</title>\n` +
+        `<meta http-equiv="refresh" content="0; url=${url}">\n<p><a href="${url}">${url}</a></p>\n`;
+}
+
+/**
+ * The deploy contract for firebase.json: the app site serves www/ and every
+ * other site serves only a 301 to it. Returns a list of problems.
+ */
+function hostingProblems(json, d) {
+    const errors = [];
+    const entries = json && json.hosting ? (Array.isArray(json.hosting) ? json.hosting : [json.hosting]) : [];
+    const sites = entries.map((h) => h.site);
+    if (JSON.stringify(sites) !== JSON.stringify(d.hostingSites)) {
+        errors.push(`firebase.json hosting sites [${sites.join(', ')}] must be [${d.hostingSites.join(', ')}]`);
+    }
+    for (const h of entries) {
+        if (RETIRED_PROJECT_IDS.includes(h.site)) errors.push(`firebase.json deploys to "${h.site}", the old app's site`);
+        if (h.site === d.hostingSite) {
+            if (h.public !== APP_PUBLIC || h.redirects) errors.push(`${h.site} must serve the app (public "${APP_PUBLIC}", no redirects)`);
+        } else if (d.redirectSites.includes(h.site)) {
+            const want = redirectHosting(h.site, d);
+            if (JSON.stringify(h) !== JSON.stringify(want)) errors.push(`${h.site} must only 301 to ${d.siteUrl} (public "${REDIRECT_PUBLIC}", one redirect)`);
+        }
+    }
+    return errors;
+}
+
+function readFirebaseJson(root) {
+    try {
+        return JSON.parse(fs.readFileSync(path.join(root, 'firebase.json'), 'utf8'));
+    } catch (_) {
+        return null;
+    }
+}
+
 /** Every file that carries the app or project identity, and how to write it. */
 const TARGETS = [
     { file: '.firebaserc', write: (_, d) => JSON.stringify({ projects: { default: d.projectId } }, null, 2) + '\n' },
     {
         file: 'firebase.json',
-        // One hosting entry per site, all with the same settings, so one deploy serves every address.
+        // The app site gets www/; every redirect site gets only a 301 of every path to the app site.
         write: (t, d) => {
             const json = JSON.parse(t);
             if (!json.hosting) throw new Error('Could not find hosting block in firebase.json');
-            const settings = { ...(Array.isArray(json.hosting) ? json.hosting[0] : json.hosting) };
+            const entries = Array.isArray(json.hosting) ? json.hosting : [json.hosting];
+            const settings = { ...(entries.find((h) => h.public === APP_PUBLIC) || entries[0]) };
             delete settings.site;
-            const hosting = d.hostingSites.map((s) => ({ site: s, ...settings }));
+            const hosting = [{ site: d.hostingSite, ...settings }, ...d.redirectSites.map((s) => redirectHosting(s, d))];
             json.hosting = hosting.length === 1 ? hosting[0] : hosting;
             return JSON.stringify(json, null, 2) + '\n';
         }
     },
+    { file: `${REDIRECT_PUBLIC}/index.html`, write: (_, d) => redirectPage(d) },
     {
         file: 'capacitor.config.json',
         write: (t, d) => replaceOrThrow(
@@ -305,6 +359,7 @@ function check(root = DEFAULT_ROOT, { syncOnly = false } = {}) {
     if (syncOnly) return errors;
     errors.push(...configProblems(raw));
     const d = derive(raw);
+    errors.push(...hostingProblems(readFirebaseJson(root), d));
     if (qrUrl(root) !== d.downloadPageUrl) errors.push(`${QR_FILE} does not encode ${d.downloadPageUrl} (run npm run apply:happa-config)`);
     return errors;
 }
@@ -332,6 +387,7 @@ function guard(root, { requireReady = false, requireSa = false, saJson = '' } = 
     for (const id of [d.projectId, ...d.hostingSites, rc]) {
         if (RETIRED_PROJECT_IDS.includes(id)) fail(`Project/site resolves to "${id}", the old app's project. Happa must never deploy there.`);
     }
+    hostingProblems(readFirebaseJson(root), d).forEach((m) => fail(`${m} (run npm run apply:happa-config).`));
     if (PLACEHOLDER_RE.test(d.projectId || '') || !PROJECT_ID_RE.test(d.projectId || '')) {
         ready = false;
         if (requireReady) fail(`${CONFIG_FILE} has no real Firebase project yet ("${d.projectId}"). Fill it in first (docs/happa-go-live.md).`);
@@ -347,7 +403,7 @@ function guard(root, { requireReady = false, requireSa = false, saJson = '' } = 
         if (requireSa) fail('The Happa service account secret is not set (FIREBASE_SERVICE_ACCOUNT_HAPPA).');
         else messages.push('::notice::The Happa service account secret is not set; skipping.');
     }
-    return { ok, ready: ok && ready, projectId: d.projectId, site: d.hostingSite, sites: d.hostingSites, messages };
+    return { ok, ready: ok && ready, projectId: d.projectId, site: d.hostingSite, sites: d.hostingSites, redirectSites: d.redirectSites, messages };
 }
 
 function main(argv) {
@@ -381,16 +437,16 @@ function main(argv) {
         const r = guard(DEFAULT_ROOT, { requireReady: has('--require-ready'), requireSa: has('--require-sa'), saJson: saIdx >= 0 ? saJson : '' });
         r.messages.forEach((m) => console.log(m));
         if (process.env.GITHUB_OUTPUT) {
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `project_id=${r.projectId}\nsite=${r.site}\nsites=${r.sites.join(',')}\nready=${r.ready}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `project_id=${r.projectId}\nsite=${r.site}\nsites=${r.sites.join(',')}\nredirect_sites=${r.redirectSites.join(',')}\nready=${r.ready}\n`);
         }
-        console.log(`project=${r.projectId} site=${r.site} sites=${r.sites.join(',')} ready=${r.ready}`);
+        console.log(`project=${r.projectId} site=${r.site} redirects=${r.redirectSites.join(',')} ready=${r.ready}`);
         return r.ok ? 0 : 1;
     }
     console.error('Usage: node scripts/happa-config.js apply|check [--sync-only]|get <key>|guard [--require-ready] [--require-sa] [--sa-env NAME]');
     return 1;
 }
 
-module.exports = { loadConfig, derive, configProblems, plan, outOfSync, apply, check, guard, TARGETS, RETIRED_PROJECT_IDS, PLACEHOLDER_RE };
+module.exports = { loadConfig, derive, configProblems, hostingProblems, plan, outOfSync, apply, check, guard, TARGETS, RETIRED_PROJECT_IDS, PLACEHOLDER_RE };
 
 if (require.main === module) {
     process.exitCode = main(process.argv.slice(2));
