@@ -95,14 +95,9 @@ function refreshForLanguage(lang) {
         },
         'cash-management': () => CashManagementManager.refreshForLanguage(),
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
-<<<<<<< Q:\aadhat\rate-trends-items\..\mc-merge\o
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
-        finance: () => FinanceManager.renderDashboard()
-=======
-        settings: () => SettingsManager.loadSettings(),
         finance: () => FinanceManager.renderDashboard(),
         'rate-trends': () => RateTrendsManager.refreshForLanguage()
->>>>>>> Q:\aadhat\rate-trends-items\..\mc-merge\t
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
