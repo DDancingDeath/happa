@@ -85,3 +85,32 @@
 .remove-bill-item:active, .remove-sale-item:active {
   transform: scale(0.95);
 }
+
+/* Horizontal-scroll tables: fade on the right while columns are hidden (ui/scroll-cue.js) */
+.scroll-cue {
+  position: relative;
+}
+
+.scroll-cue-inner {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-cue.scroll-cue-more::after {
+  content: '\203A';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95) 70%);
+  border-radius: 0 12px 12px 0;
+  pointer-events: none;
+}

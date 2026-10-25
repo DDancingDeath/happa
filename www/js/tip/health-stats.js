@@ -92,12 +92,13 @@ export function aggregateHealth(docs, { reasonsByTest = {} } = {}) {
     (docs || []).forEach(doc => {
         if (!doc || !doc.v || typeof doc.v !== 'object') return;
         const dev = devices[doc.deviceId] = devices[doc.deviceId] || {
-            deviceId: doc.deviceId, platform: doc.platform || '', appVersion: doc.appVersion || '', lastDay: '', runs: 0, failed: 0
+            deviceId: doc.deviceId, uid: doc.uid || '', platform: doc.platform || '', appVersion: doc.appVersion || '', lastDay: '', runs: 0, failed: 0
         };
         if ((doc.day || '') >= dev.lastDay) {
             dev.lastDay = doc.day || '';
             dev.appVersion = doc.appVersion || dev.appVersion;
             dev.platform = doc.platform || dev.platform;
+            dev.uid = doc.uid || dev.uid;
         }
         for (const [ver, testsMap] of Object.entries(doc.v)) {
             for (const [test, c] of Object.entries(testsMap || {})) {

@@ -2,7 +2,7 @@
 
 import { UIManager } from './ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { canOpenTab } from '../utils/role-access.js';
+import { canOpenTab, roleMayOpenTab } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 
 const NavigationManager = {
@@ -112,9 +112,8 @@ const NavigationManager = {
             event.preventDefault();
         }
         if (!canOpenTab(tabId, AppState.userRole, AppState.settings?.roleAccess)) {
-            this.setMenuOpen(false);
-            this.showTab(tabId);
-            this.setActiveNavLink('billing');
+            UIManager.showToast(this.refusedMessage(tabId));
+            this.showTabFromNav(this.refusedTabFallback(tabId));
             return;
         }
         
@@ -233,12 +232,22 @@ const NavigationManager = {
         }
     },
 
+    // Owner/manager-only pages fall back to Today; pages switched off in Roles & access to Billing
+    refusedTabFallback(tabId) {
+        return roleMayOpenTab(tabId, AppState.userRole) ? 'billing' : 'day';
+    },
+
+    refusedMessage(tabId) {
+        return t(roleMayOpenTab(tabId, AppState.userRole) ? 'msg.roles.page_not_allowed' : 'msg.roles.page_role_only');
+    },
+
     // Show tab
     showTab(tabId, evt) {
-        // Pages switched off for this role in Roles & access (#84), also for direct navigation
+        // Refused for this role (#84, F23), also for direct navigation
         if (!canOpenTab(tabId, AppState.userRole, AppState.settings?.roleAccess)) {
-            UIManager.showToast(t('msg.roles.page_not_allowed'));
-            if (tabId !== 'billing') this.showTab('billing');
+            UIManager.showToast(this.refusedMessage(tabId));
+            const fallback = this.refusedTabFallback(tabId);
+            if (tabId !== fallback) this.showTab(fallback);
             return false;
         }
         const tabs = document.querySelectorAll('.tab');

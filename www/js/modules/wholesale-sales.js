@@ -748,7 +748,7 @@ export class WholesaleSalesManager {
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                                 <label style="font-weight: 500;">${L('ui.wholesale.payment_rs')}</label>
                                 <input type="number" inputmode="decimal" id="payment_${Helpers.escapeHtml(sale.id)}" placeholder="${L('ui.cash.enter_amount')}" style="flex: 1; padding: 6px; border: 1px solid #17a2b8; border-radius: 4px;" />
-                                <button data-record-payment onclick="window.app.wholesaleSales.recordPayment('${Helpers.escapeJsAttr(sale.id)}')" style="padding: 6px 12px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.record')}</button>
+                                <button data-record-payment onclick="window.app.wholesaleSales.recordPayment('${Helpers.escapeJsAttr(sale.id)}')" style="padding: 6px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.record')}</button>
                             </div>
                             <div style="display: flex; align-items: center;">
                                 <input type="checkbox" id="clear_${Helpers.escapeHtml(sale.id)}" onchange="window.app.wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />

@@ -12,7 +12,7 @@
 export const CONFIGURABLE_ROLES = ['manager', 'staff'];
 
 export const PAGE_PERMISSIONS = ['finance', 'reports', 'analytics', 'wholesale'];
-export const SECTION_PERMISSIONS = ['personalExpenses', 'profit', 'stockValue', 'oldCashSessions'];
+export const SECTION_PERMISSIONS = ['personalExpenses', 'profit', 'stockValue', 'oldCashSessions', 'purchaseRates'];
 export const SWITCH_PERMISSIONS = [...PAGE_PERMISSIONS, ...SECTION_PERMISSIONS];
 
 export const DEFAULT_EDIT_DAYS = 2;
@@ -24,12 +24,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const ROLE_ACCESS_DEFAULTS = Object.freeze({
     manager: Object.freeze({
         finance: true, reports: true, analytics: true, wholesale: true,
-        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
+        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true,
         historyDays: 0, editDays: DEFAULT_EDIT_DAYS
     }),
     staff: Object.freeze({
         finance: false, reports: false, analytics: false, wholesale: false,
-        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
+        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true,
         historyDays: 0, editDays: DEFAULT_EDIT_DAYS
     })
 });
@@ -89,11 +89,27 @@ export function can(role, permission, raw) {
     return accessFor(role, raw)[permission] === true;
 }
 
+/** Pages whose rules are fixed by role (not configurable in Roles & access). */
+export const TAB_ROLES = Object.freeze({
+    admin: Object.freeze(['owner']),
+    diagnostics: Object.freeze(['owner', 'manager']),
+    anomalies: Object.freeze(['owner', 'manager']),
+    'rate-trends': Object.freeze(['owner', 'manager']),
+    health: Object.freeze(['owner', 'manager'])
+});
+
+/** Whether the role's built-in level allows the page (TAB_ROLES). */
+export function roleMayOpenTab(tabId, role) {
+    const roles = TAB_ROLES[tabId];
+    return !roles || roles.includes(role);
+}
+
 /**
- * Whether the role may open a page. Pages not in TAB_PERMISSIONS are not
- * controlled here (their built-in role checks still apply).
+ * Whether the role may open a page: its built-in role level (TAB_ROLES) and
+ * its Roles & access switch (TAB_PERMISSIONS).
  */
 export function canOpenTab(tabId, role, raw) {
+    if (!roleMayOpenTab(tabId, role)) return false;
     const permission = TAB_PERMISSIONS[tabId];
     return !permission || can(role, permission, raw);
 }

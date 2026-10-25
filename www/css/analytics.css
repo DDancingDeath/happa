@@ -123,8 +123,9 @@
 
 /* Filter Buttons in Analytics */
 #analytics .filter-btn {
-    font-size: 11px;
-    padding: 6px 10px;
+    font-size: 13px;
+    padding: 8px 12px;
+    min-height: 40px;
 }
 
 /* Outstanding Dues Cards */

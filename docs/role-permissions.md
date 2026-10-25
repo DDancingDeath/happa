@@ -34,6 +34,7 @@ setting is missing or invalid.
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
 | `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client |
+| `purchaseRates` | See purchase rates | खरीद रेट देखें | on | on | client (Items page only) |
 | `historyDays` | History: days back (0 = all) | इतिहास: कितने दिन पीछे तक (0 = सभी) | 0 | 0 | client |
 | `editDays` | Edit/delete bills for (days) | बिल बदलने/हटाने के दिन | 2 | 2 | **client + rules** |
 
@@ -43,7 +44,12 @@ setting is missing or invalid.
 - `historyDays`: whole days, 0–3650; 0 = all bills.
 - Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, Rate trends,
   App health) and the stock adjustment / item edit actions are not in the list: their rules are
-  fixed and the setting could not open them.
+  fixed and the setting could not open them. `TAB_ROLES` in `role-access.js` lists them (Admin:
+  owner; the others: owner and manager); `canOpenTab()` refuses them for other roles, and
+  `NavigationManager` shows Today with a message instead.
+- `purchaseRates`: hides the Purchase rates column on the Items page and the purchase-rate
+  fields of the item form. Billing keeps showing purchase rates because members need them to
+  make purchase bills; they also stay readable in the data.
 - #154 asked for "narrow only". The owner's later decision is per-role control, so the owner can
   also turn a page *on* for members. Everything in the list is data members can already read
   (client-only gating), so turning it on grants nothing the rules would refuse.
@@ -56,10 +62,10 @@ setting is missing or invalid.
 roleAccess: {
   manager: { finance: true, reports: true, analytics: true, wholesale: true,
              personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
-             historyDays: 0, editDays: 2 },
+             purchaseRates: true, historyDays: 0, editDays: 2 },
   staff:   { finance: false, reports: false, analytics: false, wholesale: false,
              personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
-             historyDays: 0, editDays: 2 }
+             purchaseRates: true, historyDays: 0, editDays: 2 }
 },
 roleAccessUpdatedAt: <ms>, roleAccessUpdatedBy: <uid>
 ```

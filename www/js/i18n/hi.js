@@ -912,6 +912,7 @@ export default {
     'msg.roles.edit_window_closed': "बिल सहेजने के बाद सिर्फ {days} दिन तक बदले या हटाए जा सकते हैं। मालिक से पूछें।",
     'msg.roles.not_saved': "भूमिका और अनुमति सभी के लिए सहेजी नहीं गई — इंटरनेट देखकर फिर कोशिश करें",
     'msg.roles.owner_only': "भूमिका और अनुमति सिर्फ मालिक बदल सकता है",
+    'msg.roles.page_role_only': "यह पेज सिर्फ मालिक या मैनेजर के लिए है। आज का पेज दिखा रहे हैं।",
     'msg.roles.page_not_allowed': "यह पेज आपकी भूमिका के लिए बंद है। मालिक से पूछें।",
     'msg.roles.saved': "भूमिका और अनुमति सभी के लिए सहेजी गई",
     'msg.roles.section_not_allowed': "यह आपकी भूमिका के लिए बंद है। मालिक से पूछें।",
@@ -929,6 +930,7 @@ export default {
     'ui.roles.perm_history_days': "इतिहास: कितने दिन पीछे तक (0 = सभी)",
     'ui.roles.perm_old_cash_sessions': "पिछले दिनों का कैश",
     'ui.roles.perm_personal_expenses': "निजी खर्च",
+    'ui.roles.perm_purchase_rates': "खरीद रेट देखें",
     'ui.roles.perm_profit': "मुनाफा और औसत लागत",
     'ui.roles.perm_reports': "रिपोर्ट पेज",
     'ui.roles.perm_stock_value': "स्टॉक की ₹ कीमत",
@@ -1240,5 +1242,10 @@ export default {
     'ui.kbd.sidebar_link': "⌨ शॉर्टकट (?)",
     'ui.notif.loading': "लोड हो रहा है…",
     'ui.notif.none_yet': "अभी कोई सूचना नहीं",
-    'ui.quota.banner': "आज की मुफ़्त डेटा सीमा पूरी हो गई — लगभग दोपहर 12:30–1:30 बजे (IST) तक डेटा लोड या सेव नहीं हो सकता। अभी सेव किए गए बिल इसी डिवाइस में रखे गए हैं और बाद में अपने-आप सिंक हो जाएँगे।"
+    'ui.quota.banner': "आज की मुफ़्त डेटा सीमा पूरी हो गई — लगभग दोपहर 12:30–1:30 बजे (IST) तक डेटा लोड या सेव नहीं हो सकता। अभी सेव किए गए बिल इसी डिवाइस में रखे गए हैं और बाद में अपने-आप सिंक हो जाएँगे।",
+    'ui.diagnostics.subtitle_owner': "ऐप की गड़बड़ियाँ, ऑडिट लॉग और आँकड़ों की जाँच",
+    'ui.diagnostics.subtitle_manager': "इस फ़ोन पर लोड हुए डेटा के आँकड़ों की जाँच",
+    'ui.diagnostics.technical_details': "🔧 तकनीकी जानकारी",
+    'ui.health.role_owner': "मालिक",
+    'ui.health.unknown_user': "अनजान व्यक्ति"
 };

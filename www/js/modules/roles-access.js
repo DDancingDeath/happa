@@ -27,6 +27,7 @@ const PERMISSION_LABEL_KEYS = {
     profit: 'ui.roles.perm_profit',
     stockValue: 'ui.roles.perm_stock_value',
     oldCashSessions: 'ui.roles.perm_old_cash_sessions',
+    purchaseRates: 'ui.roles.perm_purchase_rates',
     historyDays: 'ui.roles.perm_history_days',
     editDays: 'ui.roles.perm_edit_days'
 };

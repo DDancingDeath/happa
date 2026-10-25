@@ -38,3 +38,18 @@
   border-radius: var(--radius-full);
   transition: all var(--transition);
 }
+
+/* Solid band behind the floating menu and bell buttons so scrolled content
+   never shows under them (F10). Desktop has no floating buttons. */
+@media (max-width: 1023px) {
+  .tab::before {
+    content: '';
+    display: block;
+    position: sticky;
+    top: -70px;
+    height: 70px;
+    margin: -70px -16px 0;
+    background: var(--light-bg);
+    z-index: 900;
+  }
+}

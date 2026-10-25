@@ -3,6 +3,7 @@
 import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
+import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { ItemsManager } from './modules/items.js';
@@ -45,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261025s-single-language';
+const BUILD_ID = '20261025u-ui-audit-d';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -102,7 +103,9 @@ function refreshForLanguage(lang) {
         'rate-trends': () => RateTrendsManager.refreshForLanguage(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
-        admin: () => AdminManager.renderContent()
+        admin: () => AdminManager.renderContent(),
+        diagnostics: () => DiagnosticsManager.renderTabs(),
+        health: () => { if (HealthManager.data) HealthManager.render(); }
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
@@ -144,6 +147,7 @@ window.addEventListener('unhandledrejection', function(event) {
 function setupEventListeners() {
     // Close the side menu on overlay tap / Esc / swipe-left
     NavigationManager.initMenuDismiss();
+    watchHeadingEmoji(document.body);
     
     // Modal buttons
     const modalCancel = document.getElementById('modalCancel');
