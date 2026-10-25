@@ -99,12 +99,20 @@ function refreshForLanguage(lang) {
         'cash-management': () => CashManagementManager.refreshForLanguage(),
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
-        finance: () => FinanceManager.renderDashboard(),
+        finance: () => { FinanceManager.renderDashboard(); FinanceManager.renderCustomAccounts(); FinanceManager.renderWithdrawalHistory(); },
+        reports: () => ReportsManager.renderReports(),
+        analytics: () => AnalyticsManager.renderTabContent(AnalyticsManager.currentTab),
+        expenses: () => ExpensesManager.renderexpensesHistory(),
+        items: () => ItemsManager.renderItemsTable(document.getElementById('itemsSearchInput')?.value || ''),
+        diagnostics: () => {
+            DiagnosticsManager.renderTabs();
+            const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks' }[DiagnosticsManager.activeTab];
+            if (view) DiagnosticsManager[view]();
+        },
         'rate-trends': () => RateTrendsManager.refreshForLanguage(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
-        admin: () => AdminManager.renderContent(),
-        diagnostics: () => DiagnosticsManager.renderTabs(),
+        admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
         health: () => { if (HealthManager.data) HealthManager.render(); }
     }[tabId];
     if (redraw) run(tabId, redraw);

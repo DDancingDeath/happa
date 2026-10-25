@@ -2,7 +2,7 @@
     <!-- Page Header -->
     <div class="reports-header">
         <div class="reports-title-row">
-            <h2>📊 Reports</h2>
+            <h2 data-i18n="ui.reports.reports">📊 Reports</h2>
             <div class="reports-export-btns">
                 <button class="export-btn csv" onclick="window.app.reports.exportCSV()">
                     <span>📥</span> CSV
@@ -18,43 +18,43 @@
     <div class="reports-tabs">
         <button class="reports-tab-btn active" onclick="window.app.reports.filterTab('overview', event)">
             <span class="tab-icon">📈</span>
-            <span class="tab-label">Overview</span>
+            <span class="tab-label" data-i18n="ui.analytics.overview">Overview</span>
         </button>
         <button class="reports-tab-btn" onclick="window.app.reports.filterTab('purchases', event)">
             <span class="tab-icon">🛒</span>
-            <span class="tab-label">Purchases</span>
+            <span class="tab-label" data-i18n="ui.common.purchases">Purchases</span>
         </button>
         <button class="reports-tab-btn" onclick="window.app.reports.filterTab('sales', event)">
             <span class="tab-icon">💰</span>
-            <span class="tab-label">Sales</span>
+            <span class="tab-label" data-i18n="ui.common.sales">Sales</span>
         </button>
         <button class="reports-tab-btn" onclick="window.app.reports.filterTab('compare', event)">
             <span class="tab-icon">⚖️</span>
-            <span class="tab-label">Compare</span>
+            <span class="tab-label" data-i18n="ui.reports.compare">Compare</span>
         </button>
     </div>
 
     <!-- Date Filter -->
     <div class="reports-date-filter">
         <div class="filter-buttons">
-            <button class="filter-btn" onclick="window.app.reports.setDateFilter('all', event)">All</button>
-            <button class="filter-btn" onclick="window.app.reports.setDateFilter('year', event)">Year</button>
-            <button class="filter-btn" onclick="window.app.reports.setDateFilter('month', event)">Month</button>
-            <button class="filter-btn active" onclick="window.app.reports.setDateFilter('week', event)">Week</button>
-            <button class="filter-btn" onclick="window.app.reports.setDateFilter('today', event)">Today</button>
-            <button class="filter-btn" onclick="window.app.reports.setDateFilter('custom', event)">Custom</button>
+            <button class="filter-btn" onclick="window.app.reports.setDateFilter('all', event)" data-i18n="ui.history.all">All</button>
+            <button class="filter-btn" onclick="window.app.reports.setDateFilter('year', event)" data-i18n="ui.finance.year">Year</button>
+            <button class="filter-btn" onclick="window.app.reports.setDateFilter('month', event)" data-i18n="ui.trends.month">Month</button>
+            <button class="filter-btn active" onclick="window.app.reports.setDateFilter('week', event)" data-i18n="ui.trends.th_week">Week</button>
+            <button class="filter-btn" onclick="window.app.reports.setDateFilter('today', event)" data-i18n="ui.history.today">Today</button>
+            <button class="filter-btn" onclick="window.app.reports.setDateFilter('custom', event)" data-i18n="ui.finance.period_custom">Custom</button>
         </div>
         <div id="reportsCustomDateRange" class="custom-date-range" style="display: none;">
             <div class="date-inputs">
                 <div class="date-input-group">
-                    <label>From:</label>
+                    <label data-i18n="ui.reports.from">From:</label>
                     <input type="date" id="reportsDateFrom" />
                 </div>
                 <div class="date-input-group">
-                    <label>To:</label>
+                    <label data-i18n="ui.reports.to">To:</label>
                     <input type="date" id="reportsDateTo" />
                 </div>
-                <button class="apply-date-btn" onclick="window.app.reports.applyCustomDateFilter()">Go</button>
+                <button class="apply-date-btn" onclick="window.app.reports.applyCustomDateFilter()" data-i18n="ui.finance.go">Go</button>
             </div>
         </div>
     </div>
@@ -66,7 +66,7 @@
             <div class="hero-stat">
                 <span class="hero-icon">💼</span>
                 <div class="hero-content">
-                    <span class="hero-label">Total Business Volume</span>
+                    <span class="hero-label" data-i18n="ui.reports.total_business_volume">Total Business Volume</span>
                     <span class="hero-value">₹<span id="reportsTotalVolume">0</span></span>
                 </div>
             </div>
@@ -77,17 +77,17 @@
             <div class="quick-stat purchase">
                 <span class="stat-icon">🛒</span>
                 <div class="stat-content">
-                    <span class="stat-label">Purchases</span>
+                    <span class="stat-label" data-i18n="ui.common.purchases">Purchases</span>
                     <span class="stat-value">₹<span id="reportsTotalPurchases">0</span></span>
-                    <span class="stat-count"><span id="reportsPurchaseCount">0</span> bills</span>
+                    <span class="stat-count"><span id="reportsPurchaseCount">0</span> <span data-i18n="ui.history.noun_all">bills</span></span>
                 </div>
             </div>
             <div class="quick-stat sale">
                 <span class="stat-icon">💰</span>
                 <div class="stat-content">
-                    <span class="stat-label">Sales</span>
+                    <span class="stat-label" data-i18n="ui.common.sales">Sales</span>
                     <span class="stat-value">₹<span id="reportsTotalSales">0</span></span>
-                    <span class="stat-count"><span id="reportsSaleCount">0</span> bills</span>
+                    <span class="stat-count"><span id="reportsSaleCount">0</span> <span data-i18n="ui.history.noun_all">bills</span></span>
                 </div>
             </div>
             <div class="quick-stat profit" data-perm="profit">
@@ -95,15 +95,15 @@
                 <div class="stat-content">
                     <span class="stat-label" data-i18n="ui.finance.profit_on_goods_sold">Profit on goods sold</span>
                     <span class="stat-value">₹<span id="reportsGrossProfit">0</span></span>
-                    <span class="stat-count"><span id="reportsProfitMargin">0</span>% margin</span>
+                    <span class="stat-count"><span id="reportsProfitMargin">0</span><span data-i18n="ui.reports.margin">% margin</span></span>
                 </div>
             </div>
             <div class="quick-stat labor">
                 <span class="stat-icon">👷</span>
                 <div class="stat-content">
-                    <span class="stat-label">Labor Cost</span>
+                    <span class="stat-label" data-i18n="ui.reports.labor_cost">Labor Cost</span>
                     <span class="stat-value">₹<span id="reportsTotalLabor">0</span></span>
-                    <span class="stat-count">All labor charges</span>
+                    <span class="stat-count" data-i18n="ui.reports.all_labor_charges">All labor charges</span>
                 </div>
             </div>
         </div>
@@ -111,27 +111,27 @@
         <!-- Payment Breakdown Card -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>💳 Payment Breakdown</h3>
+                <h3 data-i18n="ui.today.payment_breakdown">💳 Payment Breakdown</h3>
             </div>
             <div class="payment-breakdown-grid">
                 <div class="payment-stat cash">
                     <span class="payment-icon">💵</span>
-                    <span class="payment-label">Cash</span>
+                    <span class="payment-label" data-i18n="ui.reports.cash">Cash</span>
                     <span class="payment-value">₹<span id="reportsCashPayment">0</span></span>
                 </div>
                 <div class="payment-stat online">
                     <span class="payment-icon">📱</span>
-                    <span class="payment-label">Online</span>
+                    <span class="payment-label" data-i18n="ui.reports.online">Online</span>
                     <span class="payment-value">₹<span id="reportsOnlinePayment">0</span></span>
                 </div>
                 <div class="payment-stat due-pay">
                     <span class="payment-icon">📤</span>
-                    <span class="payment-label">Due to Pay</span>
+                    <span class="payment-label" data-i18n="ui.finance.due_to_pay">Due to Pay</span>
                     <span class="payment-value negative">₹<span id="reportsDueToPay">0</span></span>
                 </div>
                 <div class="payment-stat due-receive">
                     <span class="payment-icon">📥</span>
-                    <span class="payment-label">Due to Receive</span>
+                    <span class="payment-label" data-i18n="ui.finance.due_to_receive">Due to Receive</span>
                     <span class="payment-value positive">₹<span id="reportsDueToReceive">0</span></span>
                 </div>
             </div>
@@ -140,8 +140,8 @@
         <!-- Business Trends Chart -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>📈 Business Trends</h3>
-                <span id="reportsChartPeriod" class="chart-period">Last 7 days</span>
+                <h3 data-i18n="ui.reports.business_trends">📈 Business Trends</h3>
+                <span id="reportsChartPeriod" class="chart-period"><span data-i18n="ui.anom.p_7d">Last 7 days</span></span>
             </div>
             <div class="chart-container">
                 <canvas id="reportsTrendChart"></canvas>
@@ -151,10 +151,10 @@
         <!-- Top Items Summary -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>🏆 Top Items</h3>
+                <h3 data-i18n="ui.reports.top_items">🏆 Top Items</h3>
             </div>
             <div id="reportsTopItems" class="top-items-list">
-                <p class="no-data">No data available</p>
+                <p class="no-data" data-i18n="ui.reports.no_data_available">No data available</p>
             </div>
         </div>
     </div>
@@ -166,7 +166,7 @@
             <div class="hero-stat">
                 <span class="hero-icon">🛒</span>
                 <div class="hero-content">
-                    <span class="hero-label">Total Purchases</span>
+                    <span class="hero-label" data-i18n="ui.analytics.total_purchases">Total Purchases</span>
                     <span class="hero-value">₹<span id="purchaseHeroTotal">0</span></span>
                 </div>
             </div>
@@ -175,19 +175,19 @@
         <!-- Purchase Stats -->
         <div class="reports-stats-row">
             <div class="stat-box">
-                <span class="stat-label">Bills</span>
+                <span class="stat-label" data-i18n="ui.outstanding.bills_title">Bills</span>
                 <span class="stat-value"><span id="purchaseBillCount">0</span></span>
             </div>
             <div class="stat-box">
-                <span class="stat-label">Avg Bill</span>
+                <span class="stat-label" data-i18n="ui.reports.avg_bill">Avg Bill</span>
                 <span class="stat-value">₹<span id="purchaseAvgBill">0</span></span>
             </div>
             <div class="stat-box">
-                <span class="stat-label">Labor</span>
+                <span class="stat-label" data-i18n="ui.reports.labor">Labor</span>
                 <span class="stat-value">₹<span id="purchaseLaborTotal">0</span></span>
             </div>
             <div class="stat-box warning">
-                <span class="stat-label">Outstanding</span>
+                <span class="stat-label" data-i18n="ui.nav.outstanding">Outstanding</span>
                 <span class="stat-value">₹<span id="purchaseOutstandingTotal">0</span></span>
             </div>
         </div>
@@ -195,19 +195,19 @@
         <!-- Filters -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>🔍 Filters</h3>
+                <h3 data-i18n="ui.reports.filters">🔍 Filters</h3>
             </div>
             <div class="filters-grid">
                 <div class="filter-group">
-                    <label>Item:</label>
+                    <label data-i18n="ui.common.item">Item:</label>
                     <select id="purchaseItemFilter" onchange="window.app.reports.applyFilters()">
-                        <option value="all">All Items</option>
+                        <option value="all" data-i18n="ui.reports.all_items">All Items</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>Supplier:</label>
+                    <label data-i18n="ui.reports.supplier">Supplier:</label>
                     <select id="purchaseCustomerFilter" onchange="window.app.reports.applyFilters()">
-                        <option value="all">All Suppliers</option>
+                        <option value="all" data-i18n="ui.reports.all_suppliers">All Suppliers</option>
                     </select>
                 </div>
             </div>
@@ -216,29 +216,29 @@
         <!-- Purchase Items Breakdown -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>📦 Item-wise Purchases</h3>
+                <h3 data-i18n="ui.reports.item_wise_purchases">📦 Item-wise Purchases</h3>
             </div>
             <div id="purchaseItemsBreakdown" class="items-breakdown">
-                <p class="no-data">No data available</p>
+                <p class="no-data" data-i18n="ui.reports.no_data_available">No data available</p>
             </div>
         </div>
 
         <!-- Purchase Payment Summary -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>💳 Payment Summary</h3>
+                <h3 data-i18n="ui.reports.payment_summary">💳 Payment Summary</h3>
             </div>
             <div class="payment-summary">
                 <div class="payment-row">
-                    <span>Cash Paid</span>
+                    <span data-i18n="ui.reports.cash_paid">Cash Paid</span>
                     <span class="value">₹<span id="purchaseCashPaid">0</span></span>
                 </div>
                 <div class="payment-row">
-                    <span>Online Paid</span>
+                    <span data-i18n="ui.reports.online_paid">Online Paid</span>
                     <span class="value">₹<span id="purchaseOnlinePaid">0</span></span>
                 </div>
                 <div class="payment-row total">
-                    <span>Total Paid</span>
+                    <span data-i18n="ui.reports.total_paid">Total Paid</span>
                     <span class="value">₹<span id="purchaseTotalPaid">0</span></span>
                 </div>
             </div>
@@ -247,10 +247,10 @@
         <!-- Recent Purchases -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>🕐 Recent Purchases</h3>
+                <h3 data-i18n="ui.reports.recent_purchases">🕐 Recent Purchases</h3>
             </div>
             <div id="recentPurchasesList" class="recent-transactions-list">
-                <p class="no-data">No recent purchases</p>
+                <p class="no-data" data-i18n="ui.reports.no_recent_purchases">No recent purchases</p>
             </div>
         </div>
     </div>
@@ -262,7 +262,7 @@
             <div class="hero-stat">
                 <span class="hero-icon">💰</span>
                 <div class="hero-content">
-                    <span class="hero-label">Total Sales</span>
+                    <span class="hero-label" data-i18n="ui.reports.total_sales">Total Sales</span>
                     <span class="hero-value">₹<span id="salesHeroTotal">0</span></span>
                 </div>
             </div>
@@ -271,19 +271,19 @@
         <!-- Sales Stats -->
         <div class="reports-stats-row">
             <div class="stat-box">
-                <span class="stat-label">Bills</span>
+                <span class="stat-label" data-i18n="ui.outstanding.bills_title">Bills</span>
                 <span class="stat-value"><span id="salesBillCount">0</span></span>
             </div>
             <div class="stat-box">
-                <span class="stat-label">Avg Bill</span>
+                <span class="stat-label" data-i18n="ui.reports.avg_bill">Avg Bill</span>
                 <span class="stat-value">₹<span id="salesAvgBill">0</span></span>
             </div>
             <div class="stat-box">
-                <span class="stat-label">Labor</span>
+                <span class="stat-label" data-i18n="ui.reports.labor">Labor</span>
                 <span class="stat-value">₹<span id="salesLaborTotal">0</span></span>
             </div>
             <div class="stat-box success">
-                <span class="stat-label">To Receive</span>
+                <span class="stat-label" data-i18n="ui.reports.to_receive">To Receive</span>
                 <span class="stat-value">₹<span id="salesOutstandingTotal">0</span></span>
             </div>
         </div>
@@ -291,19 +291,19 @@
         <!-- Sales Filters -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>🔍 Filters</h3>
+                <h3 data-i18n="ui.reports.filters">🔍 Filters</h3>
             </div>
             <div class="filters-grid">
                 <div class="filter-group">
-                    <label>Item:</label>
+                    <label data-i18n="ui.common.item">Item:</label>
                     <select id="salesItemFilter" onchange="window.app.reports.applyFilters()">
-                        <option value="all">All Items</option>
+                        <option value="all" data-i18n="ui.reports.all_items">All Items</option>
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label>Customer:</label>
+                    <label data-i18n="ui.common.customer">Customer:</label>
                     <select id="salesCustomerFilter" onchange="window.app.reports.applyFilters()">
-                        <option value="all">All Customers</option>
+                        <option value="all" data-i18n="ui.reports.all_customers">All Customers</option>
                     </select>
                 </div>
             </div>
@@ -312,29 +312,29 @@
         <!-- Sales Items Breakdown -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>📦 Item-wise Sales</h3>
+                <h3 data-i18n="ui.reports.item_wise_sales">📦 Item-wise Sales</h3>
             </div>
             <div id="salesItemsBreakdown" class="items-breakdown">
-                <p class="no-data">No data available</p>
+                <p class="no-data" data-i18n="ui.reports.no_data_available">No data available</p>
             </div>
         </div>
 
         <!-- Sales Payment Summary -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>💳 Payment Summary</h3>
+                <h3 data-i18n="ui.reports.payment_summary">💳 Payment Summary</h3>
             </div>
             <div class="payment-summary">
                 <div class="payment-row">
-                    <span>Cash Received</span>
+                    <span data-i18n="ui.reports.cash_received">Cash Received</span>
                     <span class="value">₹<span id="salesCashReceived">0</span></span>
                 </div>
                 <div class="payment-row">
-                    <span>Online Received</span>
+                    <span data-i18n="ui.reports.online_received">Online Received</span>
                     <span class="value">₹<span id="salesOnlineReceived">0</span></span>
                 </div>
                 <div class="payment-row total">
-                    <span>Total Received</span>
+                    <span data-i18n="ui.reports.total_received">Total Received</span>
                     <span class="value">₹<span id="salesTotalReceived">0</span></span>
                 </div>
             </div>
@@ -343,10 +343,10 @@
         <!-- Recent Sales -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>🕐 Recent Sales</h3>
+                <h3 data-i18n="ui.reports.recent_sales">🕐 Recent Sales</h3>
             </div>
             <div id="recentSalesList" class="recent-transactions-list">
-                <p class="no-data">No recent sales</p>
+                <p class="no-data" data-i18n="ui.reports.no_recent_sales">No recent sales</p>
             </div>
         </div>
     </div>
@@ -357,20 +357,20 @@
         <div class="compare-summary-cards">
             <div class="compare-card purchase">
                 <span class="compare-icon">🛒</span>
-                <span class="compare-label">Purchases</span>
+                <span class="compare-label" data-i18n="ui.common.purchases">Purchases</span>
                 <span class="compare-value">₹<span id="comparePurchases">0</span></span>
             </div>
-            <div class="compare-vs">VS</div>
+            <div class="compare-vs" data-i18n="ui.reports.vs">VS</div>
             <div class="compare-card sale">
                 <span class="compare-icon">💰</span>
-                <span class="compare-label">Sales</span>
+                <span class="compare-label" data-i18n="ui.common.sales">Sales</span>
                 <span class="compare-value">₹<span id="compareSales">0</span></span>
             </div>
         </div>
 
         <!-- Net Result -->
         <div id="compareNetResult" class="compare-net-result">
-            <span class="net-label">Net Result</span>
+            <span class="net-label" data-i18n="ui.reports.net_result">Net Result</span>
             <span class="net-value positive">₹<span id="compareNetValue">0</span></span>
             <span class="net-status" data-i18n="ui.reports.sales_above_purchases">Sales above purchases</span>
         </div>
@@ -378,46 +378,46 @@
         <!-- Side by Side Stats -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>📊 Side by Side Comparison</h3>
+                <h3 data-i18n="ui.reports.side_by_side_comparison">📊 Side by Side Comparison</h3>
             </div>
             <div class="comparison-table">
                 <div class="comparison-row header">
-                    <span class="metric-name">Metric</span>
-                    <span class="purchase-col">Purchases</span>
-                    <span class="sales-col">Sales</span>
+                    <span class="metric-name" data-i18n="ui.reports.metric">Metric</span>
+                    <span class="purchase-col" data-i18n="ui.common.purchases">Purchases</span>
+                    <span class="sales-col" data-i18n="ui.common.sales">Sales</span>
                 </div>
                 <div class="comparison-row">
-                    <span class="metric-name">Bill Count</span>
+                    <span class="metric-name" data-i18n="ui.reports.bill_count">Bill Count</span>
                     <span class="purchase-col"><span id="compareBillsPurchase">0</span></span>
                     <span class="sales-col"><span id="compareBillsSale">0</span></span>
                 </div>
                 <div class="comparison-row">
-                    <span class="metric-name">Total Amount</span>
+                    <span class="metric-name" data-i18n="ui.reports.total_amount">Total Amount</span>
                     <span class="purchase-col">₹<span id="compareAmountPurchase">0</span></span>
                     <span class="sales-col">₹<span id="compareAmountSale">0</span></span>
                 </div>
                 <div class="comparison-row">
-                    <span class="metric-name">Avg Bill Value</span>
+                    <span class="metric-name" data-i18n="ui.reports.avg_bill_value">Avg Bill Value</span>
                     <span class="purchase-col">₹<span id="compareAvgPurchase">0</span></span>
                     <span class="sales-col">₹<span id="compareAvgSale">0</span></span>
                 </div>
                 <div class="comparison-row">
-                    <span class="metric-name">Labor Cost</span>
+                    <span class="metric-name" data-i18n="ui.reports.labor_cost">Labor Cost</span>
                     <span class="purchase-col">₹<span id="compareLaborPurchase">0</span></span>
                     <span class="sales-col">₹<span id="compareLaborSale">0</span></span>
                 </div>
                 <div class="comparison-row">
-                    <span class="metric-name">Cash Payment</span>
+                    <span class="metric-name" data-i18n="ui.reports.cash_payment">Cash Payment</span>
                     <span class="purchase-col">₹<span id="compareCashPurchase">0</span></span>
                     <span class="sales-col">₹<span id="compareCashSale">0</span></span>
                 </div>
                 <div class="comparison-row">
-                    <span class="metric-name">Online Payment</span>
+                    <span class="metric-name" data-i18n="ui.reports.online_payment">Online Payment</span>
                     <span class="purchase-col">₹<span id="compareOnlinePurchase">0</span></span>
                     <span class="sales-col">₹<span id="compareOnlineSale">0</span></span>
                 </div>
                 <div class="comparison-row">
-                    <span class="metric-name">Outstanding</span>
+                    <span class="metric-name" data-i18n="ui.nav.outstanding">Outstanding</span>
                     <span class="purchase-col negative">₹<span id="compareOutstandingPurchase">0</span></span>
                     <span class="sales-col positive">₹<span id="compareOutstandingSale">0</span></span>
                 </div>
@@ -427,7 +427,7 @@
         <!-- Comparison Chart -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>📈 Trend Comparison</h3>
+                <h3 data-i18n="ui.reports.trend_comparison">📈 Trend Comparison</h3>
             </div>
             <div class="chart-container">
                 <canvas id="reportsCompareChart"></canvas>
@@ -437,10 +437,10 @@
         <!-- Item Comparison -->
         <div class="reports-card">
             <div class="card-header">
-                <h3>📦 Item Comparison</h3>
+                <h3 data-i18n="ui.reports.item_comparison">📦 Item Comparison</h3>
             </div>
             <div id="itemComparisonList" class="item-comparison-list">
-                <p class="no-data">No data available</p>
+                <p class="no-data" data-i18n="ui.reports.no_data_available">No data available</p>
             </div>
         </div>
     </div>

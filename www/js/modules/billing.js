@@ -400,7 +400,7 @@ const BillingManager = {
         
         rateDatalist.innerHTML = '';
         rateInput.value = '';
-        rateInput.placeholder = 'Select or enter rate';
+        rateInput.placeholder = t('ui.billing.select_enter_rate');
         
         if (itemIndex !== undefined && itemIndex !== '') {
             const item = AppState.items[parseInt(itemIndex)];
@@ -426,7 +426,7 @@ const BillingManager = {
         
         rateDatalist.innerHTML = '';
         rateInput.value = '';
-        rateInput.placeholder = 'Select or enter rate';
+        rateInput.placeholder = t('ui.billing.select_enter_rate');
         
         if (itemIndex !== undefined && itemIndex !== '') {
             const item = AppState.items[parseInt(itemIndex)];

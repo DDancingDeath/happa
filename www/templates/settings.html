@@ -34,7 +34,7 @@
 
             <label data-i18n="ui.settings.labour_per_heavy_packet">Labour per heavy packet (₹):</label>
             <input type="number" inputmode="decimal" id="settingLaborRate" placeholder="6" value="6" onchange="window.app.settings.save()" />
-            <p class="setting-description" id="labourSettingsNote">Saved for everyone.</p>
+            <p class="setting-description" id="labourSettingsNote"><span data-i18n="ui.settings.saved_for_everyone">Saved for everyone.</span></p>
 
             <label class="checkbox-label">
                 <input type="checkbox" id="settingAutoLabor" checked onchange="window.app.settings.save()">
@@ -61,7 +61,7 @@
             
             <div id="bluetoothPrinterSection" style="display: none; margin-top: 16px;">
                 <div id="printerStatus" style="padding: 12px; background: #f5f5f5; border-radius: 8px; margin-bottom: 12px;">
-                    <strong data-i18n="ui.settings.status">Status:</strong> <span id="printerStatusText">Not connected</span>
+                    <strong data-i18n="ui.settings.status">Status:</strong> <span id="printerStatusText"><span data-i18n="ui.settings.printer_not_connected">Not connected</span></span>
                 </div>
                 
                 <button class="add-item-btn" onclick="window.app.settings.scanBluetoothDevices()" style="margin-bottom: 8px;" data-i18n="ui.settings.scan_printers">

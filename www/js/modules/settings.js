@@ -13,6 +13,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { normalizeLabourSettings } from '../utils/money.js';
 import { normalizeThresholds } from '../utils/bill-checks.js';
 import { t } from '../i18n/index.js';
+import { auditActionLabel } from '../i18n/localize.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 /** '1' = item names follow the app language, '0' = the user chose "Show item names in Hindi" (#143). */
@@ -429,7 +430,7 @@ export class SettingsManager {
         }
         
         if (filteredLogs.length === 0) {
-            container.innerHTML = '<p style="padding: 16px; text-align: center; color: #888;">No audit logs found</p>';
+            container.innerHTML = `<p style="padding: 16px; text-align: center; color: #888;">${Helpers.escapeHtml(t('ui.settings.no_audit_logs'))}</p>`;
             return;
         }
         
@@ -452,7 +453,7 @@ export class SettingsManager {
                     <span style="font-size: 20px;">${actionIcon}</span>
                     <div style="flex: 1;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-weight: 600; color: ${actionColor};">${Helpers.escapeHtml(log.action.replace(/_/g, ' '))}</span>
+                            <span style="font-weight: 600; color: ${actionColor};">${Helpers.escapeHtml(auditActionLabel(log.action))}</span>
                             <span style="font-size: 11px; color: #888;">${formattedDate}</span>
                         </div>
                         <div style="font-size: 12px; color: #666;">
@@ -492,13 +493,13 @@ export class SettingsManager {
         if (!details || typeof details !== 'object') return '';
         
         const parts = [];
-        if (details.billNumber) parts.push(`Bill: ${details.billNumber}`);
-        if (details.amount) parts.push(`Amount: ₹${details.amount}`);
-        if (details.customer) parts.push(`Customer: ${details.customer}`);
-        if (details.itemName) parts.push(`Item: ${details.itemName}`);
-        if (details.paymentAmount) parts.push(`Payment: ₹${details.paymentAmount}`);
-        if (details.collections) parts.push(`Collections: ${details.collections.join(', ')}`);
-        if (details.recordsDeleted) parts.push(`Records: ${details.recordsDeleted}`);
+        if (details.billNumber) parts.push(t('ui.settings.audit_bill', { value: details.billNumber }));
+        if (details.amount) parts.push(t('ui.settings.audit_amount', { value: details.amount }));
+        if (details.customer) parts.push(t('ui.settings.audit_customer', { value: details.customer }));
+        if (details.itemName) parts.push(t('ui.settings.audit_item', { value: details.itemName }));
+        if (details.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: details.paymentAmount }));
+        if (details.collections) parts.push(t('ui.settings.audit_collections', { value: details.collections.join(', ') }));
+        if (details.recordsDeleted) parts.push(t('ui.settings.audit_records', { value: details.recordsDeleted }));
         
         return parts.join(' • ');
     }

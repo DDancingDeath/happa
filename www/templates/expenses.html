@@ -1,15 +1,15 @@
 <div id="expenses" class="tab">
 
         <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn active" onclick="window.app.expenses.filterExpenseTab('business', event)">Business Expenses</button>
-            <button class="filter-btn" data-perm="personalExpenses" onclick="window.app.expenses.filterExpenseTab('personal', event)">Personal Expenses</button>
+            <button class="filter-btn active" onclick="window.app.expenses.filterExpenseTab('business', event)" data-i18n="ui.expenses.business_expenses">Business Expenses</button>
+            <button class="filter-btn" data-perm="personalExpenses" onclick="window.app.expenses.filterExpenseTab('personal', event)" data-i18n="ui.expenses.personal_expenses">Personal Expenses</button>
         </div>
 
         <!-- Business Expenses Section -->
         <div id="businessExpenseSection">
             <div class="form-row">
-                <label>Expense Type:</label>
-                <input type="text" id="businessExpenseType" list="businessExpenseTypeOptions" placeholder="Enter expense type" />
+                <label data-i18n="ui.expenses.expense_type">Expense Type:</label>
+                <input type="text" id="businessExpenseType" list="businessExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
                 <datalist id="businessExpenseTypeOptions">
                     <option value="Labor">
                     <option value="Salary">
@@ -22,37 +22,37 @@
             </div>
 
             <div class="form-row">
-                <label>Amount (₹):</label>
-                <input type="number" inputmode="decimal" id="businessExpenseAmount" placeholder="Enter amount" />
+                <label data-i18n="ui.expenses.amount">Amount (₹):</label>
+                <input type="number" inputmode="decimal" id="businessExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
             </div>
 
             <div class="form-row">
-                <label>Person Name (Optional):</label>
-                <input type="text" id="businessExpensePerson" list="businessExpensePersonOptions" placeholder="Enter name" />
+                <label data-i18n="ui.expenses.person_name_optional">Person Name (Optional):</label>
+                <input type="text" id="businessExpensePerson" list="businessExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
                 <datalist id="businessExpensePersonOptions"></datalist>
             </div>
 
             <div class="form-row">
-                <label>Remarks (Optional):</label>
-                <input type="text" id="businessExpenseRemarks" placeholder="Enter remarks" />
+                <label data-i18n="ui.expenses.remarks_optional">Remarks (Optional):</label>
+                <input type="text" id="businessExpenseRemarks" placeholder="Enter remarks" data-i18n-placeholder="ui.expenses.enter_remarks" />
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="save-btn" onclick="window.app.expenses.saveBusinessExpense()">Save Expense</button>
-                <button class="print-btn" onclick="window.app.expenses.saveAndPrintBusiness()">Print Expense</button>
+                <button class="save-btn" onclick="window.app.expenses.saveBusinessExpense()" data-i18n="ui.expenses.save_expense">Save Expense</button>
+                <button class="print-btn" onclick="window.app.expenses.saveAndPrintBusiness()" data-i18n="ui.expenses.print_expense">Print Expense</button>
             </div>
 
-            <h3>Business Expense History</h3>
+            <h3 data-i18n="ui.expenses.business_expense_history">Business Expense History</h3>
             <div id="businessExpenseHistoryList">
-                <p style="text-align: center; color: #888; margin-top: 40px;">No business expenses recorded yet</p>
+                <p style="text-align: center; color: #888; margin-top: 40px;" data-i18n="ui.expenses.no_business_expenses_recorded_yet">No business expenses recorded yet</p>
             </div>
         </div>
 
         <!-- Personal Expenses Section -->
         <div id="personalExpenseSection" data-perm="personalExpenses" style="display: none;">
             <div class="form-row">
-                <label>Expense Type:</label>
-                <input type="text" id="personalExpenseType" list="personalExpenseTypeOptions" placeholder="Enter expense type" />
+                <label data-i18n="ui.expenses.expense_type">Expense Type:</label>
+                <input type="text" id="personalExpenseType" list="personalExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
                 <datalist id="personalExpenseTypeOptions">
                     <option value="Newspaper">
                     <option value="Bike Servicing">
@@ -64,29 +64,29 @@
             </div>
 
             <div class="form-row">
-                <label>Amount (₹):</label>
-                <input type="number" inputmode="decimal" id="personalExpenseAmount" placeholder="Enter amount" />
+                <label data-i18n="ui.expenses.amount">Amount (₹):</label>
+                <input type="number" inputmode="decimal" id="personalExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
             </div>
 
             <div class="form-row">
-                <label>Person Name (Optional):</label>
-                <input type="text" id="personalExpensePerson" list="personalExpensePersonOptions" placeholder="Enter name" />
+                <label data-i18n="ui.expenses.person_name_optional">Person Name (Optional):</label>
+                <input type="text" id="personalExpensePerson" list="personalExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
                 <datalist id="personalExpensePersonOptions"></datalist>
             </div>
 
             <div class="form-row">
-                <label>Remarks (Optional):</label>
-                <input type="text" id="personalExpenseRemarks" placeholder="Enter remarks" />
+                <label data-i18n="ui.expenses.remarks_optional">Remarks (Optional):</label>
+                <input type="text" id="personalExpenseRemarks" placeholder="Enter remarks" data-i18n-placeholder="ui.expenses.enter_remarks" />
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="save-btn" onclick="window.app.expenses.savePersonalExpense()">Save Expense</button>
-                <button class="print-btn" onclick="window.app.expenses.saveAndPrintPersonal()">Print Expense</button>
+                <button class="save-btn" onclick="window.app.expenses.savePersonalExpense()" data-i18n="ui.expenses.save_expense">Save Expense</button>
+                <button class="print-btn" onclick="window.app.expenses.saveAndPrintPersonal()" data-i18n="ui.expenses.print_expense">Print Expense</button>
             </div>
 
-            <h3>Personal Expense History</h3>
+            <h3 data-i18n="ui.expenses.personal_expense_history">Personal Expense History</h3>
             <div id="personalExpenseHistoryList">
-                <p style="text-align: center; color: #888; margin-top: 40px;">No personal expenses recorded yet</p>
+                <p style="text-align: center; color: #888; margin-top: 40px;" data-i18n="ui.expenses.no_personal_expenses_recorded_yet">No personal expenses recorded yet</p>
             </div>
         </div>
 
@@ -97,9 +97,9 @@
                     <!-- Expense content will be inserted here -->
                 </div>
                 <div class="bill-details-footer">
-                    <button class="bill-action-btn btn-delete" id="expenseDeleteBtn" onclick="window.app.expenses.confirmDeleteExpense()">Delete</button>
-                    <button class="bill-action-btn btn-edit" id="expenseEditBtn" onclick="window.app.expenses.editExpenseFromModal()">Edit</button>
-                    <button class="bill-action-btn btn-close" onclick="window.app.expenses.closeExpenseDetails()">Close</button>
+                    <button class="bill-action-btn btn-delete" id="expenseDeleteBtn" onclick="window.app.expenses.confirmDeleteExpense()"><span data-i18n="ui.modals.delete">Delete</span></button>
+                    <button class="bill-action-btn btn-edit" id="expenseEditBtn" onclick="window.app.expenses.editExpenseFromModal()"><span data-i18n="ui.modals.edit">Edit</span></button>
+                    <button class="bill-action-btn btn-close" onclick="window.app.expenses.closeExpenseDetails()" data-i18n="ui.common.close">Close</button>
                 </div>
             </div>
         </div>

@@ -14,6 +14,8 @@ import { buildBackup, isDeleteConfirmed, DELETE_CONFIRM_WORD } from '../utils/da
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
 import { t } from '../i18n/index.js';
 
+const tx = (key, params) => Helpers.escapeHtml(t(key, params));
+
 /**
  * Admin Manager - Unified admin panel
  * @namespace AdminManager
@@ -66,15 +68,15 @@ const AdminManager = {
             <div class="filter-buttons" style="margin-bottom: 16px;">
                 <button class="filter-btn ${this.activeTab === 'configure' ? 'active' : ''}" 
                         onclick="window.app.admin.showTab('configure')">
-                    🔧 Configure
+                    🔧 ${tx('ui.admin.tab_configure')}
                 </button>
                 <button class="filter-btn ${this.activeTab === 'users' ? 'active' : ''}" 
                         onclick="window.app.admin.showTab('users')">
-                    👥 Users
+                    👥 ${tx('ui.admin.tab_users')}
                 </button>
                 <button class="filter-btn ${this.activeTab === 'data' ? 'active' : ''}" 
                         onclick="window.app.admin.showTab('data')">
-                    📊 Data
+                    📊 ${tx('ui.admin.tab_data')}
                 </button>
             </div>
         `;
@@ -179,18 +181,18 @@ const AdminManager = {
 
         container.innerHTML = `
             <div class="settings-card">
-                <h3>Pending Registrations</h3>
-                <p class="setting-description">Approve new users and assign their roles</p>
+                <h3>${tx('ui.users.pending_registrations')}</h3>
+                <p class="setting-description">${tx('ui.users.approve_new_users_and_assign')}</p>
                 <div id="adminPendingUsers">
-                    <p style="text-align: center; color: #888;">Loading...</p>
+                    <p style="text-align: center; color: #888;">${tx('ui.navigation.loading')}</p>
                 </div>
             </div>
             
             <div class="settings-card">
-                <h3>Active Users</h3>
-                <p class="setting-description">Manage existing user roles</p>
+                <h3>${tx('ui.users.active_users')}</h3>
+                <p class="setting-description">${tx('ui.users.manage_existing_user_roles')}</p>
                 <div id="adminActiveUsers">
-                    <p style="text-align: center; color: #888;">Loading...</p>
+                    <p style="text-align: center; color: #888;">${tx('ui.navigation.loading')}</p>
                 </div>
             </div>
         `;
@@ -237,7 +239,7 @@ const AdminManager = {
             container.innerHTML = `
                 <div class="admin-empty">
                     <span class="admin-empty-icon">✅</span>
-                    <p>No pending registrations</p>
+                    <p>${tx('ui.admin.no_pending')}</p>
                 </div>
             `;
             return;
@@ -247,21 +249,21 @@ const AdminManager = {
             <div class="pending-user-card">
                 <div class="user-card-header">
                     <div>
-                        <div class="user-name">${Helpers.escapeHtml(user.name || 'Unknown')}</div>
+                        <div class="user-name">${Helpers.escapeHtml(user.name || t('ui.reports.unknown'))}</div>
                         <div class="user-email">${Helpers.escapeHtml(user.email)}</div>
                     </div>
-                    <span class="user-role-badge pending">Pending</span>
+                    <span class="user-role-badge pending">${tx('ui.admin.pending')}</span>
                 </div>
                 <div class="user-actions">
                     <select id="role-${Helpers.escapeHtml(user.id)}">
-                        <option value="staff">Member</option>
-                        <option value="manager">Manager</option>
+                        <option value="staff">${Helpers.escapeHtml(Helpers.roleLabel('staff'))}</option>
+                        <option value="manager">${Helpers.escapeHtml(Helpers.roleLabel('manager'))}</option>
                     </select>
                     <button class="btn-approve" onclick="window.app.admin.approveUser('${Helpers.escapeJsAttr(user.id)}')">
-                        ✓ Approve
+                        ✓ ${tx('ui.admin.approve')}
                     </button>
                     <button class="btn-reject" onclick="window.app.admin.rejectUser('${Helpers.escapeJsAttr(user.id)}')">
-                        ✕ Reject
+                        ✕ ${tx('ui.admin.reject')}
                     </button>
                 </div>
             </div>
@@ -280,7 +282,7 @@ const AdminManager = {
             container.innerHTML = `
                 <div class="admin-empty">
                     <span class="admin-empty-icon">👤</span>
-                    <p>No active users</p>
+                    <p>${tx('ui.admin.no_active_users')}</p>
                 </div>
             `;
             return;
@@ -297,7 +299,7 @@ const AdminManager = {
             <div class="active-user-card">
                 <div class="user-card-header">
                     <div>
-                        <div class="user-name">${Helpers.escapeHtml(user.name || 'Unknown')} ${isCurrentUser ? '<span style="color: #999; font-size: 12px;">(You)</span>' : ''}</div>
+                        <div class="user-name">${Helpers.escapeHtml(user.name || t('ui.reports.unknown'))} ${isCurrentUser ? `<span style="color: #999; font-size: 12px;">${tx('ui.admin.you')}</span>` : ''}</div>
                         <div class="user-email">${Helpers.escapeHtml(user.email)}</div>
                     </div>
                     <span class="user-role-badge ${Helpers.escapeHtml(user.role)}">${Helpers.escapeHtml(Helpers.roleLabel(user.role))}</span>
@@ -305,13 +307,13 @@ const AdminManager = {
                 ${!isCurrentUser ? `
                 <div class="user-actions" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;">
                     <button onclick="window.app.admin.showChangeRole('${Helpers.escapeJsAttr(user.id)}', '${safeName}', '${Helpers.escapeJsAttr(user.role)}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #f7fafc; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 13px;">
-                        ✏️ Edit Role
+                        ✏️ ${tx('ui.admin.edit_role')}
                     </button>
                     <button onclick="window.app.admin.resetUserPassword('${Helpers.escapeJsAttr(user.id)}', '${safeEmail}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; cursor: pointer; font-size: 13px; color: #92400e;">
-                        🔑 Reset Password
+                        🔑 ${tx('ui.admin.reset_password')}
                     </button>
                     <button onclick="window.app.admin.deleteUser('${Helpers.escapeJsAttr(user.id)}', '${safeName}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 8px; cursor: pointer; font-size: 13px; color: #991b1b;">
-                        🗑️ Delete
+                        🗑️ ${tx('ui.modals.delete')}
                     </button>
                 </div>
                 ` : ''}
@@ -469,19 +471,19 @@ const AdminManager = {
 
         container.innerHTML = `
             <div class="settings-card">
-                <h3>📊 Storage Usage</h3>
-                <p class="setting-description">View database storage statistics</p>
+                <h3>📊 ${tx('ui.admin.storage_title')}</h3>
+                <p class="setting-description">${tx('ui.admin.storage_hint')}</p>
                 <button class="add-item-btn" onclick="window.app.admin.loadStorageStats()" style="padding: 8px 16px; margin-bottom: 12px;">
-                    🔄 Calculate Storage
+                    🔄 ${tx('ui.admin.storage_calc')}
                 </button>
                 <div id="adminStorageStats"></div>
             </div>
 
             <div class="settings-card danger-zone">
-                <h4>⚠️ Danger Zone</h4>
-                <p>Permanently delete all business data. This cannot be undone!</p>
+                <h4>⚠️ ${tx('ui.admin.danger_zone')}</h4>
+                <p>${tx('ui.admin.danger_hint')}</p>
                 <button class="danger-btn" onclick="window.app.admin.clearAllData()">
-                    🗑️ Clear All Data
+                    🗑️ ${tx('ui.admin.clear_all')}
                 </button>
             </div>
         `;
@@ -500,17 +502,17 @@ const AdminManager = {
             UIManager.showLoading();
             
             const collections = [
-                { name: 'items', label: 'Items', icon: '📦' },
-                { name: 'purchases', label: 'Purchases', icon: '📥' },
-                { name: 'retailSales', label: 'Retail Sales', icon: '🛒' },
-                { name: 'wholesaleSales', label: 'Wholesale Sales', icon: '📤' },
-                { name: 'expenses', label: 'Expenses', icon: '💳' },
-                { name: 'stockAdjustments', label: 'Stock Adjustments', icon: '📊' },
-                { name: 'withdrawals', label: 'Withdrawals', icon: '💸' },
-                { name: 'cashManagement', label: 'Cash Management', icon: '💰' },
-                { name: 'users', label: 'Users', icon: '👥' },
-                { name: 'auditLogs', label: 'Audit Logs', icon: '📋' },
-                { name: 'telemetry', label: 'Telemetry', icon: '🔬' }
+                { name: 'items', labelKey: 'ui.admin.col_items', icon: '📦' },
+                { name: 'purchases', labelKey: 'ui.admin.col_purchases', icon: '📥' },
+                { name: 'retailSales', labelKey: 'ui.admin.col_retail_sales', icon: '🛒' },
+                { name: 'wholesaleSales', labelKey: 'ui.admin.col_wholesale_sales', icon: '📤' },
+                { name: 'expenses', labelKey: 'ui.admin.col_expenses', icon: '💳' },
+                { name: 'stockAdjustments', labelKey: 'ui.admin.col_stock_adjustments', icon: '📊' },
+                { name: 'withdrawals', labelKey: 'ui.admin.col_withdrawals', icon: '💸' },
+                { name: 'cashManagement', labelKey: 'ui.admin.col_cash_management', icon: '💰' },
+                { name: 'users', labelKey: 'ui.admin.col_users', icon: '👥' },
+                { name: 'auditLogs', labelKey: 'ui.admin.col_audit_logs', icon: '📋' },
+                { name: 'telemetry', labelKey: 'ui.admin.col_telemetry', icon: '🔬' }
             ];
 
             let totalDocs = 0;
@@ -565,11 +567,11 @@ const AdminManager = {
             <div class="storage-grid">
                 <div class="storage-stat-card">
                     <div class="storage-stat-value">${Helpers.escapeHtml(stats.totalDocs)}</div>
-                    <div class="storage-stat-label">Total Documents</div>
+                    <div class="storage-stat-label">${tx('ui.admin.total_docs')}</div>
                 </div>
                 <div class="storage-stat-card">
                     <div class="storage-stat-value">${Helpers.escapeHtml(stats.estimatedSize)}</div>
-                    <div class="storage-stat-label">Estimated Size</div>
+                    <div class="storage-stat-label">${tx('ui.admin.est_size')}</div>
                 </div>
             </div>
             <div style="background: var(--light-bg, #f5f5f5); border-radius: 8px; padding: 12px;">
@@ -577,7 +579,7 @@ const AdminManager = {
                     <div class="collection-item">
                         <span class="collection-name">
                             <span>${Helpers.escapeHtml(col.icon)}</span>
-                            <span>${Helpers.escapeHtml(col.label)}</span>
+                            <span>${tx(col.labelKey)}</span>
                         </span>
                         <span class="collection-count">${Helpers.escapeHtml(col.count)}</span>
                     </div>
@@ -631,18 +633,18 @@ const AdminManager = {
         }
         // Show collection selection modal
         const collections = [
-            { id: 'purchases', name: 'Purchases' },
-            { id: 'retailSales', name: 'Retail Sales' },
-            { id: 'wholesaleSales', name: 'Wholesale Sales' },
-            { id: 'expenses', name: 'Expenses' },
-            { id: 'stockAdjustments', name: 'Stock Adj.' },
-            { id: 'withdrawals', name: 'Withdrawals' },
-            { id: 'cashManagement', name: 'Cash Mgmt' },
-            { id: 'autoSaves', name: 'Auto Saves' },
-            { id: 'drafts', name: 'Drafts' },
-            { id: 'itemFrequency', name: 'Item Freq.' },
-            { id: 'items', name: 'Items ⚠️' },
-            { id: 'users', name: 'Users ⚠️' }
+            { id: 'purchases', name: t('ui.admin.col_purchases') },
+            { id: 'retailSales', name: t('ui.admin.col_retail_sales') },
+            { id: 'wholesaleSales', name: t('ui.admin.col_wholesale_sales') },
+            { id: 'expenses', name: t('ui.admin.col_expenses') },
+            { id: 'stockAdjustments', name: t('ui.admin.col_stock_adjustments') },
+            { id: 'withdrawals', name: t('ui.admin.col_withdrawals') },
+            { id: 'cashManagement', name: t('ui.admin.col_cash_management') },
+            { id: 'autoSaves', name: t('ui.admin.col_auto_saves') },
+            { id: 'drafts', name: t('ui.admin.col_drafts') },
+            { id: 'itemFrequency', name: t('ui.admin.col_item_frequency') },
+            { id: 'items', name: t('ui.admin.col_items') + ' ⚠️' },
+            { id: 'users', name: t('ui.admin.col_users') + ' ⚠️' }
         ];
         const nameOf = (id) => collections.find(c => c.id === id)?.name || id;
         
@@ -651,18 +653,18 @@ const AdminManager = {
                 <p style="margin: 0 0 8px; font-size: 13px;">${Helpers.escapeHtml(t('ui.admin.choose_what_delete'))}:</p>
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: bold; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #ddd;">
                     <input type="checkbox" id="selectAllCollections" style="width: 16px; height: 16px;">
-                    <span style="font-size: 14px;">Select All</span>
+                    <span style="font-size: 14px;">${tx('ui.admin.select_all')}</span>
                 </label>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px;">
                     ${collections.map((col, i) => `
                         <label style="display: flex; align-items: center; gap: 6px; padding: 3px 0; cursor: pointer;">
                             <input type="checkbox" class="collection-checkbox" data-collection="${col.id}" style="width: 14px; height: 14px;">
-                            <span style="font-size: 13px; ${i >= 10 ? 'color: #e74c3c;' : ''}">${col.name}</span>
+                            <span style="font-size: 13px; ${i >= 10 ? 'color: #e74c3c;' : ''}">${Helpers.escapeHtml(col.name)}</span>
                         </label>
                     `).join('')}
                 </div>
             </div>
-            <p style="color: #e74c3c; margin-top: 10px; font-size: 12px; text-align: center;">⚠️ Cannot be undone! A backup file is saved first.</p>
+            <p style="color: #e74c3c; margin-top: 10px; font-size: 12px; text-align: center;">⚠️ ${tx('ui.admin.cannot_undo')}</p>
         `;
         
         // Setup select all handler after modal is shown
@@ -722,7 +724,7 @@ const AdminManager = {
                 <div style="text-align: left;">
                     <p style="margin: 0 0 6px;">${Helpers.escapeHtml(t('ui.admin.records_deleted_everyone'))}:</p>
                     <ul style="margin: 0 0 8px 16px; font-size: 13px;">${summary}</ul>
-                    <p style="margin: 0 0 6px; font-size: 13px;">Total: <strong>${Helpers.escapeHtml(total)}</strong>. A backup file (JSON) is saved on this device first.</p>
+                    <p style="margin: 0 0 6px; font-size: 13px;">${tx('ui.admin.total_label')} <strong>${Helpers.escapeHtml(total)}</strong>. ${tx('ui.admin.backup_note')}</p>
                     <label for="clearDataConfirmInput" style="font-size: 13px;">${t('ui.admin.type_word_to_confirm', { word: `<strong>${Helpers.escapeHtml(DELETE_CONFIRM_WORD)}</strong>` })}:</label>
                     <input id="clearDataConfirmInput" type="text" autocomplete="off" autocapitalize="characters" style="width: 100%; padding: 8px; margin-top: 4px; border: 2px solid #e74c3c; border-radius: 6px;">
                 </div>`, t('msg.admin.final_confirmation'), true).then((result) => {

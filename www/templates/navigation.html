@@ -6,7 +6,7 @@
     </button>
 
     <!-- Notifications bell + inbox (#12) -->
-    <button type="button" class="notif-bell" id="notifBell" style="display: none;" onclick="window.app.notifications.toggle()" aria-label="Notifications" title="Notifications" data-i18n-title="ui.common.notifications">
+    <button type="button" class="notif-bell" id="notifBell" style="display: none;" onclick="window.app.notifications.toggle()" aria-label="Notifications" data-i18n-aria-label="ui.common.notifications" title="Notifications" data-i18n-title="ui.common.notifications">
         <span class="notif-bell-icon" aria-hidden="true">🔔</span>
         <span class="notif-badge" id="notifBadge" hidden></span>
     </button>
@@ -28,7 +28,7 @@
         <div class="nav-header">
             <div>
                 <h2 data-i18n="ui.app.name">happa</h2>
-                <div id="currentUserName" style="font-size: 14px; color: rgba(255,255,255,0.9); margin-top: 6px;">Loading...</div>
+                <div id="currentUserName" style="font-size: 14px; color: rgba(255,255,255,0.9); margin-top: 6px;"><span data-i18n="ui.navigation.loading">Loading...</span></div>
             </div>
             <button class="close-btn" onclick="window.app.nav.toggleMenu()">×</button>
         </div>

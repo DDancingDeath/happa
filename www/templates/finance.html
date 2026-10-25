@@ -2,9 +2,9 @@
 <div id="finance" class="tab">
     <!-- Tab Navigation -->
     <div class="filter-buttons">
-        <button class="filter-btn active" onclick="window.app.finance.filterTab('dashboard', event)">Dashboard</button>
-        <button class="filter-btn" onclick="window.app.finance.filterTab('assets', event)">Assets</button>
-        <button class="filter-btn" onclick="window.app.finance.filterTab('withdrawals', event)">Withdrawals</button>
+        <button class="filter-btn active" onclick="window.app.finance.filterTab('dashboard', event)" data-i18n="ui.finance.dashboard">Dashboard</button>
+        <button class="filter-btn" onclick="window.app.finance.filterTab('assets', event)" data-i18n="ui.finance.assets">Assets</button>
+        <button class="filter-btn" onclick="window.app.finance.filterTab('withdrawals', event)" data-i18n="ui.finance.withdrawals">Withdrawals</button>
     </div>
 
     <!-- ==================== DASHBOARD SECTION ==================== -->
@@ -12,19 +12,19 @@
         <!-- Date Filter -->
         <div class="card">
             <div class="filter-buttons">
-                <button class="filter-btn active" onclick="window.app.finance.setDateFilter('all', event)">All</button>
-                <button class="filter-btn" onclick="window.app.finance.setDateFilter('year', event)">Year</button>
-                <button class="filter-btn" onclick="window.app.finance.setDateFilter('month', event)">Month</button>
-                <button class="filter-btn" onclick="window.app.finance.setDateFilter('week', event)">Week</button>
-                <button class="filter-btn" onclick="window.app.finance.setDateFilter('custom', event)">Custom</button>
+                <button class="filter-btn active" onclick="window.app.finance.setDateFilter('all', event)" data-i18n="ui.history.all">All</button>
+                <button class="filter-btn" onclick="window.app.finance.setDateFilter('year', event)" data-i18n="ui.finance.year">Year</button>
+                <button class="filter-btn" onclick="window.app.finance.setDateFilter('month', event)" data-i18n="ui.trends.month">Month</button>
+                <button class="filter-btn" onclick="window.app.finance.setDateFilter('week', event)" data-i18n="ui.trends.th_week">Week</button>
+                <button class="filter-btn" onclick="window.app.finance.setDateFilter('custom', event)" data-i18n="ui.finance.period_custom">Custom</button>
             </div>
             <!-- Custom Date Range (hidden by default) -->
             <div id="financeCustomDateRange" style="display: none; margin-top: 12px;">
                 <div style="display: flex; gap: 8px; align-items: center;">
                     <input type="date" id="financeStartDate" class="form-control" style="flex: 1;">
-                    <span>to</span>
+                    <span data-i18n="ui.finance.to">to</span>
                     <input type="date" id="financeEndDate" class="form-control" style="flex: 1;">
-                    <button class="btn btn-primary" onclick="window.app.finance.applyCustomDateFilter()" style="padding: 8px 16px;">Go</button>
+                    <button class="btn btn-primary" onclick="window.app.finance.applyCustomDateFilter()" style="padding: 8px 16px;" data-i18n="ui.finance.go">Go</button>
                 </div>
             </div>
         </div>
@@ -37,7 +37,7 @@
                 <span class="finance-hero-icon">📊</span>
                 <div>
                     <span class="finance-hero-label" data-i18n="ui.finance.profit_on_goods_sold">Profit on goods sold</span>
-                    <span class="finance-hero-period" id="financeProfitPeriod">All Time</span>
+                    <span class="finance-hero-period" id="financeProfitPeriod"><span data-i18n="ui.finance.period_all">All Time</span></span>
                 </div>
             </div>
             <div class="finance-hero-value" id="financeNetProfit">₹0</div>
@@ -51,7 +51,7 @@
                 <div class="finance-stat-icon">💰</div>
                 <div class="finance-stat-label" data-i18n="ui.finance.sales">Sales</div>
                 <div class="finance-stat-value" id="financeRevenue">₹0</div>
-                <div class="finance-stat-count" id="financeRevenueCount">0 sales</div>
+                <div class="finance-stat-count" id="financeRevenueCount"><span data-i18n="ui.finance.0_sales">0 sales</span></div>
             </div>
             <div class="finance-stat-card investment finance-tappable" data-perm="profit" data-finance-card="cogs" role="button" tabindex="0">
                 <div class="finance-stat-icon">📦</div>
@@ -63,7 +63,7 @@
                 <div class="finance-stat-icon">🏢</div>
                 <div class="finance-stat-label" data-i18n="ui.finance.business_expenses">Business expenses</div>
                 <div class="finance-stat-value" id="financeBusinessExp">₹0</div>
-                <div class="finance-stat-count" id="financeBusinessExpCount">0 entries</div>
+                <div class="finance-stat-count" id="financeBusinessExpCount"><span data-i18n="ui.day.0_entries">0 entries</span></div>
             </div>
             <div class="finance-stat-card personal finance-tappable" data-perm="stockValue" data-finance-card="stockNow" role="button" tabindex="0">
                 <div class="finance-stat-icon">🏬</div>
@@ -148,7 +148,7 @@
         <div class="finance-hero-card" data-perm="stockValue profit">
             <div class="finance-hero-header">
                 <span class="finance-hero-icon">💎</span>
-                <span class="finance-hero-label">Net Worth</span>
+                <span class="finance-hero-label" data-i18n="ui.finance.net_worth">Net Worth</span>
             </div>
             <div class="finance-hero-value" id="financeNetWorth">₹0</div>
         </div>
@@ -156,15 +156,15 @@
         <!-- Auto-Populated Business Assets -->
         <div class="card">
             <div class="card-header">
-                <h3>📊 Business Assets</h3>
+                <h3 data-i18n="ui.finance.business_assets">📊 Business Assets</h3>
             </div>
             <div class="asset-list">
                 <div class="asset-item" data-perm="stockValue">
                     <div class="asset-info">
                         <span class="asset-icon">📦</span>
                         <div>
-                            <div class="asset-name">Stock Value</div>
-                            <div class="asset-desc">Current inventory worth</div>
+                            <div class="asset-name" data-i18n="ui.finance.stock_value">Stock Value</div>
+                            <div class="asset-desc" data-i18n="ui.finance.current_inventory_worth">Current inventory worth</div>
                         </div>
                     </div>
                     <div class="asset-amount asset-positive" id="assetStockValue">₹0</div>
@@ -173,8 +173,8 @@
                     <div class="asset-info">
                         <span class="asset-icon">📥</span>
                         <div>
-                            <div class="asset-name">Due to Receive</div>
-                            <div class="asset-desc">Outstanding from customers</div>
+                            <div class="asset-name" data-i18n="ui.finance.due_to_receive">Due to Receive</div>
+                            <div class="asset-desc" data-i18n="ui.finance.outstanding_from_customers">Outstanding from customers</div>
                         </div>
                     </div>
                     <div class="asset-amount asset-positive" id="assetDueReceive">₹0</div>
@@ -183,8 +183,8 @@
                     <div class="asset-info">
                         <span class="asset-icon">📤</span>
                         <div>
-                            <div class="asset-name">Due to Pay</div>
-                            <div class="asset-desc">Outstanding to suppliers</div>
+                            <div class="asset-name" data-i18n="ui.finance.due_to_pay">Due to Pay</div>
+                            <div class="asset-desc" data-i18n="ui.finance.outstanding_to_suppliers">Outstanding to suppliers</div>
                         </div>
                     </div>
                     <div class="asset-amount asset-negative" id="assetDuePay">-₹0</div>
@@ -193,8 +193,8 @@
                     <div class="asset-info">
                         <span class="asset-icon">💵</span>
                         <div>
-                            <div class="asset-name">Business Balance</div>
-                            <div class="asset-desc">Profit minus withdrawals</div>
+                            <div class="asset-name" data-i18n="ui.finance.business_balance">Business Balance</div>
+                            <div class="asset-desc" data-i18n="ui.finance.profit_minus_withdrawals">Profit minus withdrawals</div>
                         </div>
                     </div>
                     <div class="asset-amount asset-positive" id="assetBusinessBalance">₹0</div>
@@ -205,7 +205,7 @@
         <!-- Custom Accounts (Bank, Lent, Brother, etc.) -->
         <div class="card">
             <div class="card-header">
-                <h3>💳 Custom Accounts</h3>
+                <h3 data-i18n="ui.finance.custom_accounts">💳 Custom Accounts</h3>
                 <button class="btn-icon" onclick="window.app.finance.showAddAccountModal()">➕</button>
             </div>
             <div id="customAccountsList" class="asset-list">
@@ -214,12 +214,12 @@
             
             <!-- Quick Add Buttons -->
             <div class="quick-add-section">
-                <p class="quick-add-label">Quick Add:</p>
+                <p class="quick-add-label" data-i18n="ui.finance.quick_add">Quick Add:</p>
                 <div class="quick-add-buttons">
-                    <button class="quick-add-btn" onclick="window.app.finance.quickAddAccount('Bank Account', '🏦')">🏦 Bank</button>
-                    <button class="quick-add-btn" onclick="window.app.finance.quickAddAccount('Cash in Hand', '💵')">💵 Cash</button>
-                    <button class="quick-add-btn" onclick="window.app.finance.quickAddAccount('Lent to Someone', '🤝')">🤝 Lent</button>
-                    <button class="quick-add-btn" onclick="window.app.finance.quickAddAccount('Savings', '🏧')">🏧 Savings</button>
+                    <button class="quick-add-btn" onclick="window.app.finance.quickAddAccount('Bank Account', '🏦')" data-i18n="ui.finance.bank">🏦 Bank</button>
+                    <button class="quick-add-btn" onclick="window.app.finance.quickAddAccount('Cash in Hand', '💵')" data-i18n="ui.finance.cash">💵 Cash</button>
+                    <button class="quick-add-btn" onclick="window.app.finance.quickAddAccount('Lent to Someone', '🤝')" data-i18n="ui.finance.lent">🤝 Lent</button>
+                    <button class="quick-add-btn" onclick="window.app.finance.quickAddAccount('Savings', '🏧')" data-i18n="ui.finance.savings">🏧 Savings</button>
                 </div>
             </div>
         </div>
@@ -230,11 +230,11 @@
         <!-- Withdrawal Summary Card -->
         <div class="card">
             <div class="summary-row">
-                <span>Total Withdrawn</span>
+                <span data-i18n="ui.finance.total_withdrawn">Total Withdrawn</span>
                 <span class="amount-negative" id="withdrawalTotal">₹0</span>
             </div>
             <div class="summary-row highlight">
-                <span>Available to Withdraw</span>
+                <span data-i18n="ui.finance.available_to_withdraw">Available to Withdraw</span>
                 <span class="amount-positive" id="withdrawalAvailable">₹0</span>
             </div>
         </div>
@@ -242,37 +242,37 @@
         <!-- Record Withdrawal Form -->
         <div class="card">
             <div class="card-header">
-                <h3>💸 Record Withdrawal</h3>
+                <h3 data-i18n="ui.finance.record_withdrawal">💸 Record Withdrawal</h3>
             </div>
             <div class="form-group">
-                <label>Amount</label>
-                <input type="number" id="withdrawalAmount" placeholder="Enter amount" class="form-control">
+                <label data-i18n="ui.outstanding.sort_amount">Amount</label>
+                <input type="number" id="withdrawalAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" class="form-control">
             </div>
             <div class="form-group">
-                <label>Who Withdrew?</label>
-                <input type="text" id="withdrawalPerson" list="withdrawalPersonOptions" placeholder="Name (e.g., Self, Brother)" class="form-control">
+                <label data-i18n="ui.finance.who_withdrew">Who Withdrew?</label>
+                <input type="text" id="withdrawalPerson" list="withdrawalPersonOptions" placeholder="Name (e.g., Self, Brother)" data-i18n-placeholder="ui.finance.name_e_g_self_brother" class="form-control">
                 <datalist id="withdrawalPersonOptions"></datalist>
             </div>
             <div class="form-group">
-                <label>Purpose</label>
+                <label data-i18n="ui.finance.purpose">Purpose</label>
                 <select id="withdrawalPurpose" class="form-control" onchange="window.app.finance.toggleOtherPurpose()">
-                    <option value="Personal Use">Personal Use</option>
-                    <option value="Salary">Salary</option>
-                    <option value="Investment">Investment</option>
-                    <option value="Loan Repayment">Loan Repayment</option>
-                    <option value="Family">Family</option>
-                    <option value="Other">Other</option>
+                    <option value="Personal Use" data-i18n="ui.finance.personal_use">Personal Use</option>
+                    <option value="Salary" data-i18n="ui.finance.salary">Salary</option>
+                    <option value="Investment" data-i18n="ui.finance.investment">Investment</option>
+                    <option value="Loan Repayment" data-i18n="ui.finance.loan_repayment">Loan Repayment</option>
+                    <option value="Family" data-i18n="ui.finance.family">Family</option>
+                    <option value="Other" data-i18n="ui.stock.reason_other">Other</option>
                 </select>
             </div>
             <div class="form-group" id="withdrawalOtherPurposeRow" style="display: none;">
-                <label>Specify Purpose</label>
-                <input type="text" id="withdrawalOtherPurpose" placeholder="Enter purpose" class="form-control">
+                <label data-i18n="ui.finance.specify_purpose">Specify Purpose</label>
+                <input type="text" id="withdrawalOtherPurpose" placeholder="Enter purpose" data-i18n-placeholder="ui.finance.enter_purpose" class="form-control">
             </div>
             <div class="form-group">
-                <label>Date</label>
+                <label data-i18n="ui.history.date">Date</label>
                 <input type="date" id="withdrawalDate" class="form-control">
             </div>
-            <button class="btn btn-primary btn-block" onclick="window.app.finance.recordWithdrawal()">
+            <button class="btn btn-primary btn-block" onclick="window.app.finance.recordWithdrawal()" data-i18n="ui.finance.record_withdrawal_2">
                 Record Withdrawal
             </button>
         </div>
@@ -280,7 +280,7 @@
         <!-- Withdrawal History -->
         <div class="card">
             <div class="card-header">
-                <h3>📜 Withdrawal History</h3>
+                <h3 data-i18n="ui.finance.withdrawal_history">📜 Withdrawal History</h3>
             </div>
             <div id="withdrawalHistoryList">
                 <!-- Populated by JS -->
@@ -293,27 +293,27 @@
 <div id="addAccountModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Add Custom Account</h3>
+            <h3 data-i18n="ui.finance.add_custom_account">Add Custom Account</h3>
             <button class="modal-close" onclick="window.app.finance.closeAccountModal()">✕</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label>Account Name</label>
-                <input type="text" id="newAccountName" placeholder="e.g., Bank Account, Brother, Lent to Raju" class="form-control">
+                <label data-i18n="ui.finance.account_name">Account Name</label>
+                <input type="text" id="newAccountName" placeholder="e.g., Bank Account, Brother, Lent to Raju" data-i18n-placeholder="ui.finance.e_g_bank_account_brother" class="form-control">
             </div>
             <div class="form-group">
-                <label>Current Balance</label>
+                <label data-i18n="ui.finance.current_balance">Current Balance</label>
                 <input type="number" id="newAccountBalance" placeholder="0" class="form-control">
             </div>
             <div class="form-group">
-                <label>Type</label>
+                <label data-i18n="ui.health.platform">Type</label>
                 <select id="newAccountType" class="form-control">
-                    <option value="asset">Asset (Money I Have / Lent)</option>
-                    <option value="liability">Liability (Money I Owe)</option>
+                    <option value="asset" data-i18n="ui.finance.asset_money_i_have_lent">Asset (Money I Have / Lent)</option>
+                    <option value="liability" data-i18n="ui.finance.liability_money_i_owe">Liability (Money I Owe)</option>
                 </select>
             </div>
             <div class="form-group">
-                <label>Icon</label>
+                <label data-i18n="ui.finance.icon">Icon</label>
                 <div id="accountIconPicker" class="icon-picker">
                     <button type="button" class="icon-option active" data-icon="💳">💳</button>
                     <button type="button" class="icon-option" data-icon="🏦">🏦</button>
@@ -329,8 +329,8 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="window.app.finance.closeAccountModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="window.app.finance.saveNewAccount()">Add Account</button>
+            <button class="btn btn-secondary" onclick="window.app.finance.closeAccountModal()" data-i18n="ui.modals.cancel">Cancel</button>
+            <button class="btn btn-primary" onclick="window.app.finance.saveNewAccount()" data-i18n="ui.finance.add_account">Add Account</button>
         </div>
     </div>
 </div>
@@ -339,23 +339,23 @@
 <div id="editAccountModal" class="modal" style="display: none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>Edit Account</h3>
+            <h3 data-i18n="ui.finance.edit_account">Edit Account</h3>
             <button class="modal-close" onclick="window.app.finance.closeEditAccountModal()">✕</button>
         </div>
         <div class="modal-body">
             <input type="hidden" id="editAccountId">
             <div class="form-group">
-                <label>Account Name</label>
+                <label data-i18n="ui.finance.account_name">Account Name</label>
                 <input type="text" id="editAccountName" class="form-control">
             </div>
             <div class="form-group">
-                <label>Current Balance</label>
+                <label data-i18n="ui.finance.current_balance">Current Balance</label>
                 <input type="number" id="editAccountBalance" class="form-control">
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-danger" onclick="window.app.finance.deleteAccount()">Delete</button>
-            <button class="btn btn-primary" onclick="window.app.finance.updateAccount()">Update</button>
+            <button class="btn btn-danger" onclick="window.app.finance.deleteAccount()" data-i18n="ui.modals.delete">Delete</button>
+            <button class="btn btn-primary" onclick="window.app.finance.updateAccount()" data-i18n="ui.finance.update_account">Update</button>
         </div>
     </div>
 </div>

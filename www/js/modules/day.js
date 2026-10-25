@@ -368,8 +368,8 @@ export const DayManager = {
             purchases.forEach(p => transactions.push({
                 type: 'purchase',
                 icon: '🛒',
-                label: 'Purchase',
-                party: p.seller || 'Unknown',
+                label: t('ui.reports.pdf_purchase'),
+                party: p.seller || t('ui.reports.unknown'),
                 amount: p.total || 0,
                 date: p.date,
                 color: '#059669',
@@ -381,8 +381,8 @@ export const DayManager = {
             wholesaleSales.forEach(s => transactions.push({
                 type: 'sale',
                 icon: '💰',
-                label: 'Wholesale Sale',
-                party: s.buyer || 'Unknown',
+                label: t('ui.finance.bill_wholesale'),
+                party: s.buyer || t('ui.reports.unknown'),
                 amount: s.total || 0,
                 date: s.date,
                 color: '#2563eb',
@@ -394,8 +394,8 @@ export const DayManager = {
             retailSales.forEach(s => transactions.push({
                 type: 'retail',
                 icon: '🛍️',
-                label: 'Retail Sale',
-                party: s.buyer || 'Walk-in',
+                label: t('ui.finance.bill_retail'),
+                party: s.buyer || t('ui.today.walk_in'),
                 amount: s.total || 0,
                 date: s.date,
                 color: '#7c3aed',
@@ -407,8 +407,8 @@ export const DayManager = {
             expenses.forEach(e => transactions.push({
                 type: 'expense',
                 icon: '💳',
-                label: e.type || 'Expense',
-                party: e.description || e.category || 'Misc',
+                label: e.type || t('ui.today.expense'),
+                party: e.description || (e.category === 'personal' ? t('ui.expenses.personal_expenses') : e.category === 'business' ? t('ui.expenses.business_expenses') : (e.category || t('ui.today.misc'))),
                 amount: e.amount || 0,
                 date: e.date,
                 color: '#d97706',
@@ -424,7 +424,7 @@ export const DayManager = {
         });
 
         if (transactions.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #9ca3af; padding: 20px;">No transactions for today</p>`;
+            container.innerHTML = `<p style="text-align: center; color: #9ca3af; padding: 20px;">${Helpers.escapeHtml(t('ui.today.no_transactions'))}</p>`;
             return;
         }
 

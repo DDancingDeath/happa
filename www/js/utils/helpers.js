@@ -19,8 +19,8 @@ export class Helpers {
      * @returns {string} Label to show in the UI
      */
     static roleLabel(role) {
-        const labels = { owner: 'Owner', manager: 'Manager', staff: 'Member' };
-        return labels[role] || String(role ?? '');
+        const keys = { owner: 'ui.roles.owner', manager: 'ui.roles.manager', staff: 'ui.roles.member' };
+        return keys[role] ? t(keys[role]) : String(role ?? '');
     }
     
     /**

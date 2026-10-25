@@ -563,7 +563,7 @@ const AuthManager = {
             if (!isOwner) {
                 btn.disabled = true;
                 btn.style.opacity = '0.5';
-                btn.title = 'Only owners can perform this action';
+                btn.title = t('ui.auth.owner_only');
             }
         });
         
@@ -573,7 +573,7 @@ const AuthManager = {
             if (!isOwnerOrManager) {
                 btn.disabled = true;
                 btn.style.opacity = '0.5';
-                btn.title = 'Only managers and owners can export data';
+                btn.title = t('ui.auth.manager_only_export');
             }
         });
     }

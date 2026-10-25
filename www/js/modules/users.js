@@ -11,6 +11,8 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t } from '../i18n/index.js';
 
+const tx = (key, params) => Helpers.escapeHtml(t(key, params));
+
 /**
  * Users Manager - Manages user operations
  * @class UsersManager
@@ -57,7 +59,7 @@ export class UsersManager {
         if (!container) return;
         
         if (users.length === 0) {
-            container.innerHTML = '<p style="color: #666; padding: 16px; text-align: center;">No pending registrations</p>';
+            container.innerHTML = `<p style="color: #666; padding: 16px; text-align: center;">${tx('ui.admin.no_pending')}</p>`;
             return;
         }
         
@@ -66,20 +68,20 @@ export class UsersManager {
                 <div style="margin-bottom: 12px;">
                     <strong style="font-size: 16px;">${Helpers.escapeHtml(user.name)}</strong>
                     <p style="color: #666; margin: 4px 0;">${Helpers.escapeHtml(user.email)}</p>
-                    <p style="color: #999; font-size: 12px;">Registered: ${user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'Recently'}</p>
+                    <p style="color: #999; font-size: 12px;">${tx('ui.users.registered', { date: user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString('en-IN') : t('ui.users.recently') })}</p>
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                     <button onclick="window.app.users.approveUser('${Helpers.escapeJsAttr(user.id)}', 'owner')" style="flex: 1; min-width: 100px; padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                        👑 Owner
+                        👑 ${Helpers.escapeHtml(Helpers.roleLabel('owner'))}
                     </button>
                     <button onclick="window.app.users.approveUser('${Helpers.escapeJsAttr(user.id)}', 'manager')" style="flex: 1; min-width: 100px; padding: 8px 16px; background: #764ba2; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                        👔 Manager
+                        👔 ${Helpers.escapeHtml(Helpers.roleLabel('manager'))}
                     </button>
                     <button onclick="window.app.users.approveUser('${Helpers.escapeJsAttr(user.id)}', 'staff')" style="flex: 1; min-width: 100px; padding: 8px 16px; background: #48bb78; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                        👤 Member
+                        👤 ${Helpers.escapeHtml(Helpers.roleLabel('staff'))}
                     </button>
                     <button onclick="window.app.users.rejectUser('${Helpers.escapeJsAttr(user.id)}')" style="flex: 1; min-width: 100px; padding: 8px 16px; background: #f56565; color: white; border: none; border-radius: 8px; cursor: pointer;">
-                        ❌ Reject
+                        ❌ ${tx('ui.admin.reject')}
                     </button>
                 </div>
             </div>
@@ -123,18 +125,18 @@ export class UsersManager {
                                 ${Helpers.escapeHtml(roleIcons[user.role])} ${Helpers.escapeHtml(Helpers.roleLabel(user.role).toUpperCase())}
                             </span>
                         </div>
-                        ${isCurrentUser ? '<span style="color: #999; font-size: 12px; padding: 8px;">(You)</span>' : ''}
+                        ${isCurrentUser ? `<span style="color: #999; font-size: 12px; padding: 8px;">${tx('ui.admin.you')}</span>` : ''}
                     </div>
                     ${!isCurrentUser ? `
                     <div style="display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px solid #eee; padding-top: 12px;">
                         <button onclick="window.app.users.showChangeRoleDialog('${safeId}', '${safeName}', '${Helpers.escapeJsAttr(user.role)}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #f7fafc; border: 1px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 13px;">
-                            ✏️ Edit Role
+                            ✏️ ${tx('ui.admin.edit_role')}
                         </button>
                         <button onclick="window.app.users.resetUserPassword('${safeId}', '${safeEmail}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; cursor: pointer; font-size: 13px; color: #92400e;">
-                            🔑 Reset Password
+                            🔑 ${tx('ui.admin.reset_password')}
                         </button>
                         <button onclick="window.app.users.deleteUser('${safeId}', '${safeName}')" style="flex: 1; min-width: 80px; padding: 8px 12px; background: #fee2e2; border: 1px solid #ef4444; border-radius: 8px; cursor: pointer; font-size: 13px; color: #991b1b;">
-                            🗑️ Delete
+                            🗑️ ${tx('ui.modals.delete')}
                         </button>
                     </div>
                     ` : ''}
@@ -184,7 +186,7 @@ export class UsersManager {
         
         const html = `
             <div style="text-align: left;">
-                <p style="margin-bottom: 16px;">Change role for <strong>${Helpers.escapeHtml(userName)}</strong></p>
+                <p style="margin-bottom: 16px;">${tx('ui.users.change_role_for')} <strong>${Helpers.escapeHtml(userName)}</strong></p>
                 <select id="newRoleSelect" style="width: 100%; padding: 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 16px;">
                     ${roleOptions}
                 </select>
@@ -192,8 +194,8 @@ export class UsersManager {
         `;
         
         const result = await this.showCustomModal(html, [
-            { text: 'Cancel', value: null },
-            { text: 'Change Role', value: 'change', primary: true }
+            { text: t('ui.modals.cancel'), value: null },
+            { text: t('msg.admin.change_role'), value: 'change', primary: true }
         ]);
         
         if (result && result.selectedRole) {

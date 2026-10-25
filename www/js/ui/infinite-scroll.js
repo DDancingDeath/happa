@@ -10,15 +10,22 @@
  */
 
 import { loadOlderHistory, historyReachedEnd } from '../utils/history-window.js';
+import { t } from '../i18n/index.js';
 
 const controllers = new WeakMap();
 
-const DEFAULT_LABELS = {
-    loading: 'Loading older records…',
-    end: 'No older records',
-    more: 'Load older records',
-    error: "Couldn't load older records."
-};
+const NOUNS = ['records', 'bills', 'withdrawals', 'expenses', 'adjustments', 'sales'];
+
+/** Labels for the list's rows in the app language; `noun` is one of NOUNS. */
+function olderLabels(noun = 'records') {
+    const what = t(`ui.scroll.noun_${NOUNS.includes(noun) ? noun : 'records'}`);
+    return {
+        loading: t('ui.scroll.loading', { what }),
+        end: t('ui.scroll.end', { what }),
+        more: t('ui.scroll.more', { what }),
+        error: t('ui.scroll.error', { what })
+    };
+}
 
 class InfiniteScrollController {
     constructor(listEl, opts) {
@@ -38,7 +45,7 @@ class InfiniteScrollController {
 
     setOptions(opts) {
         this.opts = { maxAutoLoads: 3, ...opts };
-        this.labels = { ...DEFAULT_LABELS, ...(opts.labels || {}) };
+        this.labels = { ...olderLabels(), ...(opts.labels || {}) };
     }
 
     ensureSentinel() {
@@ -229,11 +236,6 @@ export function attachOlderHistoryScroll(listEl, { noun = 'records', onLoaded, e
         // Each load reads a month of every history collection, so only auto-load
         // once per scroll-to-bottom; if the list didn't grow, ask the user.
         maxAutoLoads: 1,
-        labels: {
-            loading: `Loading older ${noun}…`,
-            end: `No older ${noun}`,
-            more: `Load older ${noun}`,
-            error: `Couldn't load older ${noun}.`
-        }
+        labels: olderLabels(noun)
     });
 }

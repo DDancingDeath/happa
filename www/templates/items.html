@@ -1,8 +1,8 @@
 <div id="items" class="tab">
         <div id="itemsActionButtons" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
-            <button class="quick-add-btn-inline" onclick="window.app.items.exportExcel()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;">📊 Export</button>
-            <button class="quick-add-btn-inline" onclick="document.getElementById('importItemsFile').click()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;">📥 Import</button>
-            <button class="quick-add-btn-inline" onclick="window.app.items.openAddModal()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600; background: #22c55e; border-color: #22c55e;">➕ Add Item</button>
+            <button class="quick-add-btn-inline" onclick="window.app.items.exportExcel()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.export">📊 Export</button>
+            <button class="quick-add-btn-inline" onclick="document.getElementById('importItemsFile').click()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.import">📥 Import</button>
+            <button class="quick-add-btn-inline" onclick="window.app.items.openAddModal()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600; background: #22c55e; border-color: #22c55e;" data-i18n="ui.items.add_item">➕ Add Item</button>
         </div>
         
         <input type="file" id="importItemsFile" accept=".xlsx,.xls,.csv" style="display: none;" onchange="window.app.items.importExcel(event)" />
@@ -10,7 +10,7 @@
         <div style="margin-bottom: 20px;">
             <input type="text" 
                    id="itemsSearchInput" 
-                   placeholder="🔍 Search items by name..."
+                   placeholder="🔍 Search items by name..." data-i18n-placeholder="ui.items.search_items_by_name"
                    style="width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s;"
                    oninput="window.app.items.search(this.value)"
                    onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
@@ -22,10 +22,10 @@
             <table id="itemsViewTable" style="width: 100%; border-collapse: collapse; background: white;">
                 <thead>
                     <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: 2px solid #5a67d8;">
-                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);">Item Name</th>
-                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-perm="purchaseRates">Purchase Rates</th>
-                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);">Retail Rates</th>
-                        <th class="wholesale-column" style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Wholesale Rates</th>
+                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-i18n="ui.items.item_name">Item Name</th>
+                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-perm="purchaseRates" data-i18n="ui.items.purchase_rates">Purchase Rates</th>
+                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-i18n="ui.items.retail_rates">Retail Rates</th>
+                        <th class="wholesale-column" style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;" data-i18n="ui.items.wholesale_rates">Wholesale Rates</th>
                     </tr>
                 </thead>
                 <tbody id="itemsViewTableBody">
