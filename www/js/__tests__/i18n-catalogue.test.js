@@ -116,8 +116,7 @@ describe('language preference', () => {
         document.body.innerHTML = `
             <span id="a" data-i18n="ui.nav.billing">Billing</span>
             <input id="b" data-i18n-placeholder="ui.billing.enter_weight" placeholder="Enter weight">
-            <button data-lang-option="en"></button><button data-lang-option="hi"></button>
-            <button id="navLangToggle"></button>`;
+            <button data-lang-option="en"></button><button data-lang-option="hi"></button>`;
         const onChange = jest.fn();
         window.addEventListener(LANG_CHANGE_EVENT, onChange);
         setLang('hi');
@@ -126,7 +125,6 @@ describe('language preference', () => {
         expect(document.getElementById('a').textContent).toBe(hi['ui.nav.billing']);
         expect(document.getElementById('b').placeholder).toBe(hi['ui.billing.enter_weight']);
         expect(document.querySelector('[data-lang-option="hi"]').getAttribute('aria-pressed')).toBe('true');
-        expect(document.getElementById('navLangToggle').textContent).toBe('English');
         expect(document.documentElement.lang).toBe('hi');
         expect(localStorage.getItem(LANG_STORAGE_KEY)).toBe('hi');
         expect(onChange).toHaveBeenCalledTimes(1);

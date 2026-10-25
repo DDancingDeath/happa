@@ -38,7 +38,7 @@ import { markStartup, noteStartup, logStartupTimings } from './utils/startup-tim
 import { TemplateLoader } from './utils/template-loader.js';
 import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
-import { t, getLang, setLang, toggleLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
+import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
 // Build stamp — bumped on every deploy that ships new JS so you can verify
 // in the browser console whether the latest code is actually running. If
@@ -84,6 +84,8 @@ function refreshForLanguage(lang) {
             if (item) opt.textContent = label(item);
         });
     });
+    // Signed out (login card links): nothing behind the login screen to redraw.
+    if (!AppState.currentUser) return;
     const tabId = document.querySelector('.tab.active')?.id;
     const redraw = {
         day: () => { DayManager.updateTodayHeader(); DayManager.loadTodayData(); },
@@ -745,10 +747,9 @@ window.app = {
         forgotPassword: () => AuthManager.handleForgotPassword()
     },
     
-    // App language (#143): Settings switch + side-menu toggle
+    // App language (#143): Settings switch + login card links
     i18n: {
         setLang: (lang) => setLang(lang),
-        toggle: () => toggleLang(),
         getLang: () => getLang()
     },
 

@@ -54,5 +54,11 @@
                 </form>
                 <p class="auth-link">Already have an account? <a href="#" onclick="window.app.auth.showTab('login'); return false;">Login</a></p>
             </div>
+
+            <div class="auth-lang-links" id="authLangLinks" role="group" aria-label="Language" data-i18n-aria-label="ui.settings.language">
+                <button type="button" class="auth-lang-link" data-lang-option="en" lang="en" aria-pressed="true" onclick="window.app.i18n.setLang('en')">English</button>
+                <span class="auth-lang-sep" aria-hidden="true">|</span>
+                <button type="button" class="auth-lang-link" data-lang-option="hi" lang="hi" aria-pressed="false" onclick="window.app.i18n.setLang('hi')">हिंदी</button>
+            </div>
         </div>
     </div>
