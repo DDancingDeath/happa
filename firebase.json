@@ -88,6 +88,11 @@
       "public": "hosting-redirect",
       "redirects": [
         {
+          "source": "/",
+          "destination": "https://myhappa.web.app/",
+          "type": 301
+        },
+        {
           "source": "/:path*",
           "destination": "https://myhappa.web.app/:path",
           "type": 301
@@ -98,6 +103,11 @@
       "site": "happa-bfc07",
       "public": "hosting-redirect",
       "redirects": [
+        {
+          "source": "/",
+          "destination": "https://myhappa.web.app/",
+          "type": 301
+        },
         {
           "source": "/:path*",
           "destination": "https://myhappa.web.app/:path",

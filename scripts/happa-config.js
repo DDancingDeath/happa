@@ -158,7 +158,11 @@ function redirectHosting(site, d) {
     return {
         site,
         public: REDIRECT_PUBLIC,
-        redirects: [{ source: '/:path*', destination: `${d.siteUrl}/:path`, type: 301 }]
+        // '/:path*' does not match the bare root, so '/' needs its own rule.
+        redirects: [
+            { source: '/', destination: `${d.siteUrl}/`, type: 301 },
+            { source: '/:path*', destination: `${d.siteUrl}/:path`, type: 301 }
+        ]
     };
 }
 

@@ -47,7 +47,9 @@ jobs:
           echo "$SITE.web.app serves $got (want $want)"
           [ "$got" = "$want" ] || { echo "::error::$SITE.web.app does not serve $want"; exit 1; }
           for s in ${REDIRECT_SITES//,/ }; do
-            res=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "https://$s.web.app/download?cb=$GITHUB_RUN_ID")
-            echo "$s.web.app/download -> $res"
-            case "$res" in "301 https://$SITE.web.app/download"*) ;; *) echo "::error::$s.web.app does not 301 to $SITE.web.app"; exit 1;; esac
+            for p in / /download; do
+              res=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' "https://$s.web.app$p")
+              echo "$s.web.app$p -> $res"
+              [ "$res" = "301 https://$SITE.web.app$p" ] || { echo "::error::$s.web.app$p does not 301 to $SITE.web.app$p"; exit 1; }
+            done
           done

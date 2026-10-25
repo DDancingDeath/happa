@@ -78,7 +78,10 @@ describe('happa.config.json', () => {
         expect(json.hosting.map((h) => [h.site, h.public])).toEqual([['happa-app', 'www'], ['happa-shop', 'hosting-redirect']]);
         expect(json.hosting[0].redirects).toBeUndefined();
         expect(json.hosting[1]).toEqual({ site: 'happa-shop', public: 'hosting-redirect',
-            redirects: [{ source: '/:path*', destination: 'https://happa-app.web.app/:path', type: 301 }] });
+            redirects: [
+                { source: '/', destination: 'https://happa-app.web.app/', type: 301 },
+                { source: '/:path*', destination: 'https://happa-app.web.app/:path', type: 301 }
+            ] });
         expect(hostingProblems(json, d)).toEqual([]);
         expect(files['www/download.html']).toContain('href="https://happa-app.web.app"');
         expect(configProblems(raw)).toEqual([]);
