@@ -22,7 +22,6 @@ import { AnalyticsManager } from './modules/analytics.js';
 import { CashManagementManager } from './modules/cash-management.js';
 import { DayManager } from './modules/day.js';
 import { AnomaliesManager } from './modules/anomalies.js';
-import { RateTrendsManager } from './modules/rate-trends.js';
 import { HealthManager } from './modules/health.js';
 import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
@@ -57,6 +56,18 @@ window.__AADHAT_BUILD__ = BUILD_ID;
 markStartup('sdk-and-modules-loaded');
 
 InstallManager.init();
+
+// Rate trends code (Rates › Trends / Product traffic) is imported only when needed
+let rateTrends = null;
+let rateTrendsLoading = null;
+function loadRateTrends() {
+    if (!rateTrendsLoading) {
+        rateTrendsLoading = import('./modules/rate-trends.js')
+            .then(m => (rateTrends = m.RateTrendsManager))
+            .catch(e => { rateTrendsLoading = null; throw e; });
+    }
+    return rateTrendsLoading;
+}
 
 // Load and inject HTML templates from separate .html files
 async function injectTemplates() {
@@ -109,7 +120,7 @@ function refreshForLanguage(lang) {
             const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks' }[DiagnosticsManager.activeTab];
             if (view) DiagnosticsManager[view]();
         },
-        'rate-trends': () => RateTrendsManager.refreshForLanguage(),
+        'rate-trends': () => rateTrends?.refreshForLanguage(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
@@ -409,7 +420,10 @@ async function initializeUserData() {
         AnomaliesManager.scheduleDailyScan();
 
         // Rate trends (#65): roll monthly rate stats forward from loaded bills (owner/manager)
-        RateTrendsManager.scheduleRollForward();
+        if (AppState.userRole === 'owner' || AppState.userRole === 'manager') {
+            setTimeout(() => loadRateTrends().then(m => m.scheduleRollForward(0))
+                .catch(e => console.warn('Rate trends roll-forward not started:', e?.message || e)), 20000);
+        }
         
     } catch (error) {
         console.error('Error initializing app:', error);
@@ -1127,21 +1141,13 @@ window.app = {
         savePolicies: () => HealthManager.savePolicies()
     },
 
+    // Rates › Trends / Product traffic: rate-trends.js is imported on first use
     rateTrends: {
-        init: () => RateTrendsManager.init(),
-        selectItem: (id) => RateTrendsManager.selectItem(id),
-        setRange: (v) => RateTrendsManager.setRange(v),
-        setPeriod: (v) => RateTrendsManager.setPeriod(v),
-        setView: (v) => RateTrendsManager.setView(v),
-        setWeeks: (v) => RateTrendsManager.setWeeks(v),
-        setCompareKind: (v) => RateTrendsManager.setCompareKind(v),
-        setBudget: (v) => RateTrendsManager.setBudget(v),
-        startBackfill: () => RateTrendsManager.startBackfill(),
-        continueBackfill: () => RateTrendsManager.continueBackfill(),
-        setSection: (v) => RateTrendsManager.setSection(v),
-        setTrafficMonth: (v) => RateTrendsManager.setTrafficMonth(v),
-        setTrafficItem: (v) => RateTrendsManager.setTrafficItem(v),
-        setTrafficWeeks: (v) => RateTrendsManager.setTrafficWeeks(v)
+        open: (section) => loadRateTrends().then(m => m.open(section))
+            .catch(e => console.warn('Rate trends not loaded:', e?.message || e)),
+        ...Object.fromEntries(['selectItem', 'setRange', 'setPeriod', 'setView', 'setWeeks', 'setCompareKind', 'setBudget',
+            'startBackfill', 'continueBackfill', 'setTrafficMonth', 'setTrafficItem', 'setTrafficWeeks']
+            .map(name => [name, (...args) => loadRateTrends().then(m => m[name](...args))]))
     },
 
     // Day (Today's Summary + Cash Management)

@@ -1,4 +1,9 @@
 <div id="items" class="tab">
+        <div class="rt-tabs rates-subtabs" role="tablist" style="display: none;">
+            <button type="button" class="rt-tab active" role="tab" data-route="rates" onclick="window.app.nav.showTab('rates', event)" data-i18n="ui.rates.tab_rates">🏷️ Rates</button>
+            <button type="button" class="rt-tab" role="tab" data-route="rates-trends" onclick="window.app.nav.showTab('rates-trends', event)" data-i18n="ui.rates.tab_trends">📈 Trends</button>
+            <button type="button" class="rt-tab" role="tab" data-route="rates-traffic" onclick="window.app.nav.showTab('rates-traffic', event)" data-i18n="ui.trends.tab_traffic">📦 Product traffic</button>
+        </div>
         <div id="itemsActionButtons" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
             <button class="quick-add-btn-inline" onclick="window.app.items.exportExcel()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.export">📊 Export</button>
             <button class="quick-add-btn-inline" onclick="document.getElementById('importItemsFile').click()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.import">📥 Import</button>

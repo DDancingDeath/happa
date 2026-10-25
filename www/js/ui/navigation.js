@@ -6,6 +6,23 @@ import { canOpenTab, roleMayOpenTab } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 
+// Rates page: Rates (the items list, page 'items') plus Trends and Product traffic (page 'rate-trends').
+// Old ids 'items' and 'rate-trends' still open Rates › Rates and Rates › Trends.
+const RATES_ROUTES = Object.freeze({
+    rates: { tab: 'items' },
+    items: { tab: 'items', id: 'rates' },
+    'rates-trends': { tab: 'rate-trends', section: 'rates' },
+    'rate-trends': { tab: 'rate-trends', section: 'rates', id: 'rates-trends' },
+    'rates-traffic': { tab: 'rate-trends', section: 'traffic' }
+});
+
+/** Route id -> { id (canonical), tab (page element id), section, nav (side-nav link id) }. */
+function resolveRoute(tabId) {
+    const r = RATES_ROUTES[tabId];
+    if (!r) return { id: tabId, tab: tabId, section: null, nav: tabId };
+    return { id: r.id || tabId, tab: r.tab, section: r.section || null, nav: 'rates' };
+}
+
 const NavigationManager = {
     // Reset filter buttons to default state for a given tab
     resetFilterButtons(tabId) {
@@ -95,7 +112,8 @@ const NavigationManager = {
     },
 
     // Highlight the side-nav link for tabId (also used on startup, which bypasses showTabFromNav)
-    setActiveNavLink(tabId) {
+    setActiveNavLink(routeId) {
+        const tabId = resolveRoute(routeId).nav;
         const links = document.querySelectorAll('.nav-menu a');
         links.forEach(link => {
             link.classList.remove('active');
@@ -112,7 +130,8 @@ const NavigationManager = {
         if (event) {
             event.preventDefault();
         }
-        if (!canOpenTab(tabId, AppState.userRole, AppState.settings?.roleAccess)) {
+        const route = resolveRoute(tabId);
+        if (!canOpenTab(route.tab, AppState.userRole, AppState.settings?.roleAccess)) {
             UIManager.showToast(this.refusedMessage(tabId));
             this.showTabFromNav(this.refusedTabFallback(tabId), null, opts);
             return;
@@ -138,8 +157,8 @@ const NavigationManager = {
             setTimeout(() => window.app.billing.switchMode('purchase', { currentTarget: document.getElementById('purchaseModeBtn') }), 100);
         }
         
-        // Render items table when Items tab is shown
-        if (tabId === 'items' && window.app?.items) {
+        // Rates › Rates: render the items table
+        if (route.tab === 'items' && window.app?.items) {
             setTimeout(() => window.app.items.renderTable(), 100);
         }
         
@@ -189,9 +208,9 @@ const NavigationManager = {
             setTimeout(() => window.app.anomalies.init(), 100);
         }
         
-        // Initialize Rate trends page (owner/manager, #65)
-        if (tabId === 'rate-trends' && window.app?.rateTrends) {
-            setTimeout(() => window.app.rateTrends.init(), 100);
+        // Rates › Trends / Product traffic (owner/manager, #65): its code and data load only here
+        if (route.tab === 'rate-trends' && window.app?.rateTrends) {
+            setTimeout(() => window.app.rateTrends.open(route.section), 100);
         }
 
         // Initialize App health page (owner/manager, #217)
@@ -233,32 +252,42 @@ const NavigationManager = {
         }
     },
 
-    // Owner/manager-only pages fall back to Today; pages switched off in Roles & access to Billing
+    // Owner/manager-only pages fall back to Today (Trends and Product traffic to Rates); pages switched off in Roles & access to Billing
     refusedTabFallback(tabId) {
-        return roleMayOpenTab(tabId, AppState.userRole) ? 'billing' : 'day';
+        const route = resolveRoute(tabId);
+        if (route.nav === 'rates' && route.tab !== 'items') return 'rates';
+        return roleMayOpenTab(route.tab, AppState.userRole) ? 'billing' : 'day';
     },
 
     refusedMessage(tabId) {
-        return t(roleMayOpenTab(tabId, AppState.userRole) ? 'msg.roles.page_not_allowed' : 'msg.roles.page_role_only');
+        const route = resolveRoute(tabId);
+        if (route.nav === 'rates' && route.tab !== 'items') return t('msg.roles.tab_role_only');
+        return t(roleMayOpenTab(route.tab, AppState.userRole) ? 'msg.roles.page_not_allowed' : 'msg.roles.page_role_only');
     },
 
     // Show tab
     showTab(tabId, evt, opts = {}) {
+        const route = resolveRoute(tabId);
         // Refused for this role (#84, F23), also for direct navigation
-        if (!canOpenTab(tabId, AppState.userRole, AppState.settings?.roleAccess)) {
+        if (!canOpenTab(route.tab, AppState.userRole, AppState.settings?.roleAccess)) {
             UIManager.showToast(this.refusedMessage(tabId));
             const fallback = this.refusedTabFallback(tabId);
             if (tabId !== fallback) this.showTab(fallback, undefined, opts);
             return false;
         }
-        this.recordTab(tabId, opts);
+        this.recordTab(route.id, opts);
         const tabs = document.querySelectorAll('.tab');
         tabs.forEach(tab => tab.classList.remove('active'));
         
-        const selectedTab = document.getElementById(tabId);
+        const selectedTab = document.getElementById(route.tab);
         if (selectedTab) {
             selectedTab.classList.add('active');
         }
+        document.querySelectorAll('.rates-subtabs [data-route]').forEach(btn => {
+            const on = btn.dataset.route === route.id;
+            btn.classList.toggle('active', on);
+            btn.setAttribute('aria-selected', String(on));
+        });
         
         if (evt) {
             const buttons = document.querySelectorAll('.tab-button');
@@ -267,7 +296,7 @@ const NavigationManager = {
         }
         
         // Lets data listeners refresh views that changed while this tab was hidden
-        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId } }));
+        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: route.tab } }));
     },
 
     currentTab: null,
@@ -328,4 +357,4 @@ const NavigationManager = {
 const HOME_TAB = 'billing';
 
 // Export NavigationManager
-export { NavigationManager };
+export { NavigationManager, resolveRoute };

@@ -1,13 +1,12 @@
 <div id="rate-trends" class="tab">
     <div class="rt-page">
-        <h2 class="rt-title" data-i18n="ui.trends.title">📈 Rate trends</h2>
+        <div class="rt-tabs rates-subtabs" role="tablist" style="display: none;">
+            <button type="button" class="rt-tab" role="tab" data-route="rates" onclick="window.app.nav.showTab('rates', event)" data-i18n="ui.rates.tab_rates">🏷️ Rates</button>
+            <button type="button" class="rt-tab" role="tab" data-route="rates-trends" onclick="window.app.nav.showTab('rates-trends', event)" data-i18n="ui.rates.tab_trends">📈 Trends</button>
+            <button type="button" class="rt-tab" role="tab" data-route="rates-traffic" onclick="window.app.nav.showTab('rates-traffic', event)" data-i18n="ui.trends.tab_traffic">📦 Product traffic</button>
+        </div>
         <div id="rtDenied" class="rt-empty" style="display: none;" data-i18n="ui.trends.denied">Only the owner or a manager can see this page.</div>
         <div id="rtBody">
-            <div class="rt-tabs" role="tablist">
-                <button type="button" id="rtTabRates" class="rt-tab active" role="tab" onclick="window.app.rateTrends.setSection('rates')" data-i18n="ui.trends.tab_rates">📈 Rates</button>
-                <button type="button" id="rtTabTraffic" class="rt-tab" role="tab" onclick="window.app.rateTrends.setSection('traffic')" data-i18n="ui.trends.tab_traffic">📦 Product traffic</button>
-            </div>
-
             <div id="rtRatesSection">
                 <div class="card rt-card" id="rtStatus"></div>
 

@@ -524,11 +524,6 @@ const AuthManager = {
                     item.style.display = isOwnerOrManager ? 'block' : 'none';
                 }
                 
-                // Rate trends (#65): owner/manager only (purchase and wholesale rates)
-                if (tabId === 'rate-trends') {
-                    item.style.display = isOwnerOrManager ? 'block' : 'none';
-                }
-
                 // App health / Test in Production (#217): owner/manager only
                 if (tabId === 'health') {
                     item.style.display = isOwnerOrManager ? 'block' : 'none';
@@ -549,6 +544,11 @@ const AuthManager = {
                     item.style.display = mayOpen('wholesale-sales') ? 'block' : 'none';
                 }
             }
+        });
+
+        // Rates page: the Trends and Product traffic tabs (#65) are owner/manager only, as Rate trends was
+        document.querySelectorAll('.rates-subtabs').forEach(bar => {
+            bar.style.display = mayOpen('rate-trends') ? '' : 'none';
         });
 
         // Sections marked data-perm="<permission>" (styles.css hides them via these body classes)

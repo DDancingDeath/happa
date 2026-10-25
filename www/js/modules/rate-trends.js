@@ -1,9 +1,9 @@
 // -------------------- RATE TRENDS MODULE (#65) --------------------
-// Owner/manager page. Rates: the past comes from a one-time owner-triggered
+// Rates page, Trends and Product traffic tabs (owner/manager). Trends: the past comes from a one-time owner-triggered
 // backfill over all bills (weekly and monthly kg-weighted rates in one
 // rateStats doc per item and year; resumable, read budget per day, stops on a
 // quota error); after that backfill (the cutoff, rateStats/_meta.backfillAt)
-// the rate line follows the rate set on the Items page, rebuilt from
+// the rate line follows the rate set on the Rates tab, rebuilt from
 // rateHistory. The bill roll-forward keeps running so kg, bills and amounts
 // stay current for every week and month. Product traffic: items moved per
 // month, one item week by week, and day by day from the bills already loaded. Math lives in utils/rate-trends.js,
@@ -211,6 +211,12 @@ export const RateTrendsManager = {
         return this.meta;
     },
 
+    /** Rates › Trends ('rates') or Rates › Product traffic ('traffic'). */
+    open(section) {
+        this.section = section === 'traffic' ? 'traffic' : 'rates';
+        return this.init();
+    },
+
     setSection(value) {
         this.section = value === 'traffic' ? 'traffic' : 'rates';
         this.showSection();
@@ -223,8 +229,6 @@ export const RateTrendsManager = {
         const traffic = document.getElementById('rtTrafficSection');
         if (rates) rates.style.display = this.section === 'rates' ? '' : 'none';
         if (traffic) traffic.style.display = this.section === 'traffic' ? '' : 'none';
-        document.getElementById('rtTabRates')?.classList.toggle('active', this.section === 'rates');
-        document.getElementById('rtTabTraffic')?.classList.toggle('active', this.section === 'traffic');
     },
 
     // ---------- backfill status card ----------
