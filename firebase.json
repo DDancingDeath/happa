@@ -5,7 +5,7 @@
   },
   "hosting": [
     {
-      "site": "happaapp",
+      "site": "myhappa",
       "public": "www",
       "ignore": [
         "firebase.json",
@@ -84,81 +84,34 @@
       ]
     },
     {
-      "site": "happa-bfc07",
-      "public": "www",
-      "ignore": [
-        "firebase.json",
-        "**/.*",
-        "**/node_modules/**"
-      ],
-      "rewrites": [
-        {
-          "source": "/download",
-          "destination": "/download.html"
-        },
-        {
-          "source": "**",
-          "destination": "/index.html"
-        }
-      ],
-      "headers": [
+      "site": "happaapp",
+      "public": "hosting-redirect",
+      "redirects": [
         {
           "source": "/",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-cache"
-            }
-          ]
+          "destination": "https://myhappa.web.app/",
+          "type": 301
         },
         {
-          "source": "/@(index.html|service-worker.js|download|download.html|changelog.json)",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-cache"
-            }
-          ]
+          "source": "/:path*",
+          "destination": "https://myhappa.web.app/:path",
+          "type": 301
+        }
+      ]
+    },
+    {
+      "site": "happa-bfc07",
+      "public": "hosting-redirect",
+      "redirects": [
+        {
+          "source": "/",
+          "destination": "https://myhappa.web.app/",
+          "type": 301
         },
         {
-          "source": "**/!(service-worker).@(js|css)",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "public, max-age=3600"
-            }
-          ]
-        },
-        {
-          "source": "/manifest.webmanifest",
-          "headers": [
-            {
-              "key": "Content-Type",
-              "value": "application/manifest+json"
-            },
-            {
-              "key": "Cache-Control",
-              "value": "public, max-age=3600"
-            }
-          ]
-        },
-        {
-          "source": "/icons/**",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "public, max-age=86400"
-            }
-          ]
-        },
-        {
-          "source": "/templates/**",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "public, max-age=3600"
-            }
-          ]
+          "source": "/:path*",
+          "destination": "https://myhappa.web.app/:path",
+          "type": 301
         }
       ]
     }

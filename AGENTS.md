@@ -19,9 +19,10 @@ and is wrapped in **Capacitor** for Android distribution.
   package, Firebase project and site all come from `happa.config.json`
   (`npm run apply:happa-config` writes them everywhere, `npm run check:happa-config`
   is the release gate; go-live steps in `docs/happa-go-live.md`).
-- **Live URL**: `https://happaapp.web.app` (hosting site `happaapp` in Firebase
-  project `happa-bfc07`, from `happa.config.json`). The same build is also served
-  at `https://happa-bfc07.web.app` (`alsoHostingSites`), so both addresses work.
+- **Live URL**: `https://myhappa.web.app` (hosting site `myhappa` in Firebase
+  project `happa-bfc07`, from `happa.config.json`). The only site that serves the
+  app. `happaapp.web.app` and `happa-bfc07.web.app` (`redirectHostingSites`) only
+  301 every path to it, so there is one origin (one offline store, one service worker).
 - **Old app (archived, never changed)**: Android `com.hitesh.aadhat`, Firebase
   project `aadhat-management`, site `aadhat-management.web.app`, last release
   v1.6.1. No workflow may deploy to it; the CI guard

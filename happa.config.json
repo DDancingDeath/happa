@@ -7,8 +7,8 @@
   "ownerConfirmed": true,
   "firebase": {
     "projectId": "happa-bfc07",
-    "hostingSite": "happaapp",
-    "alsoHostingSites": ["happa-bfc07"],
+    "hostingSite": "myhappa",
+    "redirectHostingSites": ["happaapp", "happa-bfc07"],
     "apiKey": "AIzaSyDRSZiNfMAwU9jDfFnHf3zldvT6lUZEUtg",
     "messagingSenderId": "516108799937",
     "appId": "1:516108799937:web:a4e3fdbff054b9cc07a940",
