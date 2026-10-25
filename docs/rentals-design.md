@@ -39,8 +39,14 @@ business of the same type. It is not built now.
 | Reports | Monthly expected vs collected, outstanding per tenant (aging), yearly income per property (ITR "house property"), occupancy, deposits held, CSV/Excel | 3 |
 | Audit | Every create/edit/delete of lease, payment, deposit | 1 (payments), 2 (rest) |
 
+**Who uses Rentals (owner, 2026-10-25):** only the shop's own people — the owner and
+helpers given a rentals role. Tenants never get accounts or logins and never use
+the app; they only receive WhatsApp reminders and receipts (and, in the follow-up
+PR, a read-only link to their own rent history — no login). The Access page lists
+only app users.
+
 Out of scope: online rent collection, e-stamp/agreement generation, GST invoices,
-tenant self-service login, photo upload (Storage needs Blaze on new projects).
+tenant accounts of any kind, photo upload (Storage needs Blaze on new projects).
 
 ### Reuse without coupling to the shop's money math
 
@@ -120,23 +126,28 @@ charges 4,000); a listener that comes back full shows a notice instead of
 silently hiding data.
 
 **Monthly charges, multi-device safe (AGENTS.md rule 6).** On entering Rentals, for
-each active lease whose `chargedThrough` is before the current month, one
-transaction reads the lease, and if `chargedThrough` is still behind, creates the
-missing `rent_charges/{leaseId}_{month}` docs (start month → current month) and
-moves `chargedThrough` forward. Two phones racing → one transaction retries, sees
-the new `chargedThrough`, and writes nothing. Deterministic ids make a duplicate
-impossible even if it didn't. Cost: 1 read + (months) writes per lease **once a month**.
+each active lease whose `chargedThrough` is before the current month, the app runs
+**one small transaction per missing month**, oldest first: it re-reads the lease,
+creates `rent_charges/{leaseId}_{month}` for the month after `chargedThrough` (or
+the start month) and moves `chargedThrough` to it. Two phones racing → one
+transaction retries, sees the new `chargedThrough`, and writes nothing. The rules
+only allow `chargedThrough` to move one month per write, so no month can be
+skipped (review of #10). A lease can start at most 24 months back; at most 24
+months are charged per visit. Cost: 1 read + 2 writes per lease per month.
 
 **Payments** run in a transaction on the charge: `paid = round2(paid + x)`,
-`payments` grows by one entry, `open = paid < amount`. Never read-modify-write
-outside a transaction. Overpaying is refused in phase 1 (advance carried forward is
+`payments` grows by one entry (at most 12 per month, so the rules can add them
+up), `open = paid < amount`. Never read-modify-write outside a transaction. Overpaying is refused in phase 1 (advance carried forward is
 phase 2).
 
-**Move-out** (one transaction, review of #10): the last month can't be in the
-future. Missing charges up to it are created, unpaid charges after it are deleted
-(refused if any later month has a payment), and the lease ends with
-`chargedThrough` = last month. So the WhatsApp reminder can never list a month
-after the tenant left (it also filters by the last month).
+**Move-out** (review of #10): the last month can't be in the future. Missing
+months up to it are charged first (as above); then one transaction ends the lease
+(`status` ended, `endMonth` = `chargedThrough` = last month — final, never changed
+again), frees the unit, and deletes unpaid months after the last month. Ending
+before the last charged month (a back-dated move-out that deletes months) is
+owner/manager only, and is refused if any later month has a payment. So the
+WhatsApp reminder can never list a month after the tenant left (it also filters by
+the last month).
 
 **Rent increase** (RENT-6): 12 months after `rentSince` (else `startMonth`) the Rent
 page shows "Rent increase due: p% → ₹X" with **Change rent**. Nothing changes until
@@ -144,9 +155,11 @@ someone saves; saving sets `rentSince` to this month and the new rent applies fr
 the next month's charge.
 
 **Electricity** (RENT-7): **Meter reading** on this month's charge: previous
-(prefilled from the unit), current, rate; a transaction sets `electricity`, makes
-`amount` = rent + electricity (never below what is already paid) and stores the
-reading and rate on the unit for next month.
+(the reading already on the charge, else the unit's last reading — fixed), current,
+rate (the unit's rate; owner/manager may change it); one transaction sets
+`electricity`, makes `amount` = rent + electricity (never below what is already
+paid) and stores the reading, rate and `meterCharge` on the unit for next month.
+Replacing a saved reading is owner/manager only.
 
 ### 3.2 Indexes
 
@@ -167,22 +180,35 @@ A separate `match /rent_…/{id}` block per collection (+ `dev_` mirror via a
   without `rentRole` is denied (tested).
 - **Properties, units, tenants, leases** create/update: any rentals role, with type
   checks (strings sized, numbers ≥ 0, `dueDay` 1–28, `increasePct` 0–100, months
-  `YYYY-MM`) and `updatedBy == auth.uid`. A new lease has no charges
-  (`chargedThrough == null`); `startMonth`, `unitId`, `tenantId` never change.
+  `YYYY-MM`) and `updatedBy == auth.uid`; `createdAt`/`createdBy` never change.
   **Delete:** owner only (the app archives instead).
-- **`chargedThrough`** may only move to a month whose charge exists after the write
-  (`existsAfter`) and that is not after this month (IST, from `request.time`); it
-  moves back only when the lease ends in the same write and the old last month's
-  charge is deleted.
-- **Charges** create: any rentals role, id = `leaseId_month`, written in the same
-  batch/transaction as the lease's `chargedThrough` (`getAfter(lease).chargedThrough
-  >= month`), `amount == rent == lease.rent`, unit/tenant/property/due day = the
-  lease's, `paid == 0`, `payments == []`, no electricity. Update: a payment (append
-  one entry with `amount > 0` and `by == auth.uid`; `paid` = old + entry ± 0.01,
-  never above `amount`), or a meter reading (units = current − previous, amount =
-  units × rate, charge = rent + electricity ± 0.01, rent unchanged, not below
-  `paid`). Owner/manager may also correct `amount`. Delete: owner, or move-out
-  removing an unpaid month after the lease's `endMonth` in the same write.
+- **Leases** (review of #10): created active with no charges and `endMonth` null,
+  together with their unit's `leaseId`. `startMonth`, `unitId`, `tenantId` never
+  change. While active, `chargedThrough` moves forward **exactly one month per
+  write** (start month first) to a month whose charge exists after the write and
+  that is not after this month (IST). Active → ended only in the move-out write
+  (`endMonth` = `chargedThrough`, start..this month, its charge exists, the unit's
+  `leaseId` cleared in the same write); ending before the last charged month needs
+  owner/manager and the old last month's charge deleted. **Ended is final.**
+- **Units:** `leaseId` changes only with the lease (set by a new active lease for
+  this unit; cleared when that lease ends in the same write). `lastReading` /
+  `meterRate` change only with a meter write on a charge of this unit
+  (`meterCharge`, checked with `getAfter`); owner/manager may set the rate alone.
+- **Charges** create: any rentals role, id = `leaseId_month`, only in the write
+  that moves the active lease's `chargedThrough` to exactly that month,
+  `amount == rent == lease.rent`, unit/tenant/property/due day = the lease's,
+  `paid == 0`, `payments == []`, no electricity. Updates:
+  - a **payment**: one new entry with `amount > 0`, `by == auth.uid`; `paid` = old +
+    entry ± 0.01, never above `amount`; at most 12 entries;
+  - a **meter reading**: previous = saved/last reading, rate = unit rate (members),
+    units = current − previous, amount = units × rate, charge = rent + electricity,
+    not below `paid`, the unit updated in the same write; re-entry owner/manager;
+  - an owner/manager **correction**: payments unchanged or one own entry added,
+    `paid` = Σ entries ≤ `amount`, electricity/rent/lease/month/creation unchanged.
+  Delete: owner, or owner/manager inside the move-out write (lease active before,
+  ended after) for an unpaid month after `endMonth`.
+- **Audit:** `auditLogs` also accepts `RENT_*` entries from users with a rentals
+  role (a rentals-only helper isn't approved for the shop).
 - **Profiles:** a user can't set their own `rentRole` (added to the self-update
   deny list) and can't register with one.
 - Rules tests run for prod and `dev_` (`defineSuite(prefix)`).
