@@ -368,7 +368,10 @@ function defineSuite(prefix) {
         await setClientGate(false);
         const coll = as('staff1').collection(`${prefix}purchases`);
         await assertSucceeds(coll.doc('legacyApp1').set({ total: 1, userId: 'staff1' }));
-        await assertSucceeds(coll.doc('legacyApp1').update({ total: 2 }));
+        // An old app's bill has no createdAt: outside the #87 edit window, so owner-only afterwards
+        await assertFails(coll.doc('legacyApp1').update({ total: 2 }));
+        await assertSucceeds(coll.doc('legacyApp2').set({ total: 1, userId: 'staff1', createdAt: serverTimestamp() }));
+        await assertSucceeds(coll.doc('legacyApp2').update({ total: 2 }));
     });
 
     t('stock records need clientVersion >= 3 once the gate is on (blocks outdated apps)', async () => {
@@ -390,7 +393,7 @@ function defineSuite(prefix) {
     t('payment updates on current bills pass; overwriting with an old-app full set() fails; deletes pass', async () => {
         await setClientGate(true);
         const coll = as('staff1').collection(purchases);
-        await assertSucceeds(coll.doc('pay1').set({ total: 100, payment: { due: 100 }, userId: 'staff1', clientVersion: 3 }));
+        await assertSucceeds(coll.doc('pay1').set({ total: 100, payment: { due: 100 }, userId: 'staff1', clientVersion: 3, createdAt: serverTimestamp() }));
         await assertSucceeds(coll.doc('pay1').update({ payment: { due: 0, cash: 100 }, payments: [{ amount: 100 }], openDue: false, clientVersion: 3 }));
         await assertSucceeds(coll.doc('pay1').update({ cleared: true, openDue: false }));
         await assertFails(coll.doc('pay1').set({ total: 100, payment: { due: 0 } }));
@@ -836,7 +839,7 @@ function defineSuite(prefix) {
 
     t('bill full edit: the creator cannot write text into money fields', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'b', { ...dueBill, userId: 'staff1' });
+            await seedBill(coll, 'b', { ...dueBill, userId: 'staff1', ...fresh() });
             await assertFails(as('staff1').collection(coll).doc('b').update({ total: 'free', clientVersion: 3 }));
             await assertSucceeds(as('staff1').collection(coll).doc('b').update({ total: 90, clientVersion: 3 }));
         }
