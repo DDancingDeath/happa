@@ -15,6 +15,7 @@ import {
 } from '../utils/money.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
+import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
 /** Name to show for a catalogue item or bill line in the chosen item-name language. */
@@ -722,24 +723,9 @@ const PurchaseManager = {
         
         const total = billItems.reduce((sum, item) => sum + item.total, 0);
         const laborCharges = Helpers.getInputInt('manualLaborCharges');
-        const grandTotal = total - laborCharges;
-        const customer = Helpers.getInputText('customerName') || 'Customer';
-        
-        let message = `*Purchase Bill*\n\n`;
-        message += `Customer: ${customer}\n`;
-        message += `Date: ${new Date().toLocaleDateString('en-IN')}\n\n`;
-        message += `*Items:*\n`;
-        
-        billItems.forEach(item => {
-            message += `${item.name}\n`;
-            message += `  Rate: ₹${item.rate.toFixed(2)} × ${item.qty.toFixed(2)}kg = ₹${item.total.toFixed(2)}\n`;
+        const message = buildDraftShareText({
+            kind: 'purchase', customer: Helpers.getInputText('customerName'), items: billItems, total, labour: laborCharges
         });
-        
-        message += `\n*Purchase Total: ₹${Math.round(total)}*\n`;
-        if (laborCharges > 0) {
-            message += `Labor Charges: ₹${Math.round(laborCharges)}\n`;
-            message += `*Total Payable: ₹${Math.round(grandTotal)}*`;
-        }
         
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');

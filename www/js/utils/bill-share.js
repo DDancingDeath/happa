@@ -127,3 +127,39 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
     if (p.payment.due > 0) lines.push(`${t('ui.bill.due')}: ${money(p.payment.due)}`);
     return lines.join('\n');
 }
+
+const fixed2 = (n) => (Number(n) || 0).toFixed(2);
+
+/**
+ * WhatsApp text for a bill still being entered (Billing / Sales "Share" before saving), in the app language.
+ * @param {Object} draft
+ * @param {'purchase'|'retail'|'wholesale'} draft.kind
+ * @param {string} [draft.customer]
+ * @param {Date} [draft.date]
+ * @param {string} [draft.note]
+ * @param {Array<{name: string, rate: number, qty: number, total: number}>} draft.items
+ * @param {number} draft.total
+ * @param {number} [draft.labour] - purchase only
+ * @param {number} [draft.expenses] - wholesale only
+ * @param {number} [draft.profit] - wholesale only
+ * @returns {string}
+ */
+export function buildDraftShareText({ kind, customer, date = new Date(), note, items = [], total, labour = 0, expenses = 0, profit = 0 }) {
+    const lines = [`*${t(TITLES[kind] || TITLES.retail)}*`, ''];
+    lines.push(`${t('ui.bill.customer')}: ${customer || t('ui.bill.customer_default')}`);
+    lines.push(`${t('ui.bill.date')}: ${date.toLocaleDateString('en-IN')}`);
+    if (note) lines.push(`${t('ui.bill.note')}: ${note}`);
+    lines.push('', `*${t('ui.bill.items')}:*`);
+    items.forEach(item => {
+        lines.push(item.name);
+        lines.push(`  ${t('ui.bill.rate')}: ₹${fixed2(item.rate)} × ${fixed2(item.qty)}kg = ₹${fixed2(item.total)}`);
+    });
+    lines.push('', `*${t('ui.bill.total')}: ${money(total)}*`);
+    if (kind === 'purchase' && labour > 0) {
+        lines.push(`${t('ui.bill.labour')}: ${money(labour)}`);
+        lines.push(`*${t('ui.bill.payable')}: ${money(total - labour)}*`);
+    }
+    if (kind === 'wholesale' && expenses > 0) lines.push(`${t('ui.bill.expenses')}: ${money(expenses)}`);
+    if (kind === 'wholesale' && profit !== 0) lines.push(`${t('ui.bill.profit')}: ${money(profit)}`);
+    return lines.join('\n');
+}

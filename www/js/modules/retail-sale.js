@@ -15,6 +15,7 @@ import {
 } from '../utils/money.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
+import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
 /** Name to show for a catalogue item or bill line in the chosen item-name language. */
@@ -653,19 +654,9 @@ const RetailSaleManager = {
         }
         
         const salesTotal = saleItems.reduce((sum, item) => sum + item.total, 0);
-        const customer = document.getElementById('saleCustomerName')?.value || 'Customer';
-        
-        let message = `*Sale Bill*\n\n`;
-        message += `Customer: ${customer}\n`;
-        message += `Date: ${new Date().toLocaleDateString('en-IN')}\n\n`;
-        message += `*Items:*\n`;
-        
-        saleItems.forEach(item => {
-            message += `${item.name}\n`;
-            message += `  Rate: ₹${item.rate.toFixed(2)} × ${item.qty.toFixed(2)}kg = ₹${item.total.toFixed(2)}\n`;
+        const message = buildDraftShareText({
+            kind: 'retail', customer: document.getElementById('saleCustomerName')?.value, items: saleItems, total: salesTotal
         });
-        
-        message += `\n*Total: ₹${Math.round(salesTotal)}*`;
         
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');

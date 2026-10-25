@@ -6,7 +6,10 @@
  * @module utils/dates
  */
 
-import { getLang } from '../i18n/index.js';
+import { getLang, t } from '../i18n/index.js';
+
+/** Locale for dates on screen: Hindi month and day names in Hindi mode (#143). */
+export const displayLocale = () => (getLang() === 'hi' ? 'hi-IN' : 'en-IN');
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -158,10 +161,10 @@ export function toJsDate(value) {
  * @param {string} [fallback='Unknown']
  * @returns {string}
  */
-export function formatDateTimeIN(value, options, fallback = 'Unknown') {
+export function formatDateTimeIN(value, options, fallback = t('ui.reports.unknown')) {
     const d = toJsDate(value);
     if (!d) return fallback;
-    return options ? d.toLocaleString('en-IN', options) : formatDayTime(d, { lang: getLang() });
+    return options ? d.toLocaleString(displayLocale(), options) : formatDayTime(d, { lang: getLang() });
 }
 
 const MONTHS = {

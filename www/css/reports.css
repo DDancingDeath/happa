@@ -24,6 +24,20 @@
     gap: 8px;
 }
 
+.csv-english-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 36px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.csv-english-toggle[hidden] {
+    display: none;
+}
+
 .export-btn {
     display: flex;
     align-items: center;

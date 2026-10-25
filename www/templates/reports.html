@@ -12,6 +12,10 @@
                 </button>
             </div>
         </div>
+        <label class="csv-english-toggle" id="csvEnglishToggle" hidden>
+            <input type="checkbox" id="csvEnglishHeaders" onchange="window.app.reports.setCsvEnglish(this.checked)">
+            <span data-i18n="ui.reports.csv_english">CSV in English (for the accountant)</span>
+        </label>
     </div>
 
     <!-- Tab Navigation -->

@@ -9,7 +9,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { todayLocalISO, parseLocalDate, parseAnyBillDate } from '../utils/dates.js';
+import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
 import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields } from '../utils/cash-session.js';
 import { round2, outstandingDue } from '../utils/money.js';
@@ -1055,7 +1055,7 @@ export class CashManagementManager {
         }
 
         const notCounted = sessions.filter(isNotCounted);
-        const dayLabel = (session) => (parseLocalDate(session.date) || new Date(session.date)).toLocaleDateString('en-IN', {
+        const dayLabel = (session) => (parseLocalDate(session.date) || new Date(session.date)).toLocaleDateString(displayLocale(), {
             weekday: 'short',
             day: 'numeric',
             month: 'short'
@@ -1131,7 +1131,7 @@ export class CashManagementManager {
                 return;
             }
 
-        const date = (parseLocalDate(session.date) || new Date(session.date)).toLocaleDateString('en-IN', { 
+        const date = (parseLocalDate(session.date) || new Date(session.date)).toLocaleDateString(displayLocale(), { 
             weekday: 'long', 
             day: 'numeric', 
             month: 'long',

@@ -5,7 +5,7 @@
  * @module utils/notification-format
  */
 
-import { toJsDate } from './dates.js';
+import { toJsDate, displayLocale } from './dates.js';
 import { getLang } from '../i18n/index.js';
 
 /** Unread notifications the live listener keeps (also the badge cap). */
@@ -153,7 +153,7 @@ export function notificationText(n, lang = getLang()) {
  */
 export function formatWhen(ms, now = Date.now()) {
     if (!ms) return { en: '', hi: '', abs: '' };
-    const abs = new Date(ms).toLocaleString('en-IN', {
+    const abs = new Date(ms).toLocaleString(displayLocale(), {
         timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit'
     });
     const diff = Math.max(0, now - ms);

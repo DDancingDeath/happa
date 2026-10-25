@@ -1082,6 +1082,7 @@ window.app = {
         renderReportsIfStale: () => ReportsManager.renderReportsIfStale(),
         applyFilters: () => ReportsManager.applyFilters(),
         exportCSV: () => ReportsManager.exportCSV(),
+        setCsvEnglish: (on) => ReportsManager.setCsvEnglish(on),
         exportPDF: () => ReportsManager.exportPDF()
     },
     
