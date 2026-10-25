@@ -11,7 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
 import { AnomaliesManager } from './anomalies.js';
 import { HealthManager } from './health.js';
-import { t } from '../i18n/index.js';
+import { t, tn } from '../i18n/index.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
@@ -217,16 +217,16 @@ export const DayManager = {
 
         // Update UI - Main Stats
         this.updateElement('todayTotalPurchases', formatCurrency(totalPurchases));
-        this.updateElement('todayPurchaseCount', t('ui.today.bills_count', { count: todayPurchases.length }));
+        this.updateElement('todayPurchaseCount', tn('ui.today.bills_count', todayPurchases.length));
         this.updateElement('todayTotalSales', formatCurrency(totalSales));
-        this.updateElement('todaySaleCount', t('ui.today.bills_count', { count: todayWholesaleSales.length + todayRetailSales.length }));
+        this.updateElement('todaySaleCount', tn('ui.today.bills_count', todayWholesaleSales.length + todayRetailSales.length));
         this.updateElement('todayLaborCost', formatCurrency(totalLaborCost));
         
         // Expenses breakdown
         this.updateElement('todayBusinessExpenses', formatCurrency(totalBusinessExpenses));
-        this.updateElement('todayBusinessExpenseCount', t('ui.today.entries_count', { count: businessExpenses.length }));
+        this.updateElement('todayBusinessExpenseCount', tn('ui.today.entries_count', businessExpenses.length));
         this.updateElement('todayPersonalExpenses', formatCurrency(totalPersonalExpenses));
-        this.updateElement('todayPersonalExpenseCount', t('ui.today.entries_count', { count: personalExpenses.length }));
+        this.updateElement('todayPersonalExpenseCount', tn('ui.today.entries_count', personalExpenses.length));
         
         // Total In and Total Out for hero card
         this.updateElement('todayTotalIn', formatCurrency(totalCashIn));

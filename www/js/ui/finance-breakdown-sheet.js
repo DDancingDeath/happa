@@ -7,7 +7,7 @@
  */
 
 import { Helpers } from '../utils/helpers.js';
-import { t, getLang } from '../i18n/index.js';
+import { t, getLang, tn } from '../i18n/index.js';
 import {
     CARDS, buildBreakdown, searchRows, sortRows, groupRows, groupOptions, sumRows, PAGE_SIZE
 } from '../utils/finance-breakdown.js';
@@ -283,7 +283,7 @@ export const FinanceBreakdownSheet = {
                     : '';
                 return `<div class="fin-group">
                     <button type="button" class="fin-group-head" data-action="open-group" data-key="${esc(g.key)}" aria-expanded="${open}">
-                        <span>${open ? '▾' : '▸'} ${esc(label)} <small>(${esc(t('ui.finance.entries_count', { count: g.count }))})</small></span>
+                        <span>${open ? '▾' : '▸'} ${esc(label)} <small>(${esc(tn('ui.finance.entries_count', g.count))})</small></span>
                         <strong class="${g.subtotal < 0 ? 'amount-negative' : 'amount-positive'}">${esc(rupees(g.subtotal))}</strong>
                     </button>${body}
                 </div>`;
@@ -292,6 +292,6 @@ export const FinanceBreakdownSheet = {
         const shownTotal = sumRows(rows);
         totalEl.innerHTML = this.state.query.trim()
             ? `<span>${esc(t('ui.finance.matching_total', { count: rows.length, total: rupees(b.total) }))}</span><strong>${esc(rupees(shownTotal))}</strong>`
-            : `<span>${esc(t('ui.finance.total_entries', { count: rows.length }))}</span><strong>${esc(rupees(b.total))}</strong>`;
+            : `<span>${esc(tn('ui.finance.total_entries', rows.length))}</span><strong>${esc(rupees(b.total))}</strong>`;
     }
 };

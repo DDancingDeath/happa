@@ -29,7 +29,7 @@ setting is missing or invalid.
 | `finance` | Finance page | हिसाब-किताब पेज | on | off | client |
 | `reports` | Reports page | रिपोर्ट पेज | on | off | client |
 | `analytics` | Analytics page | विश्लेषण पेज | on | off | client |
-| `wholesale` | Sales (wholesale) page | बिक्री (थोक) पेज | on | off | client |
+| `wholesale` | Wholesale page | थोक पेज | on | off | client |
 | `personalExpenses` | Personal expenses | निजी खर्च | on | on | client (rules: phase 2) |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |

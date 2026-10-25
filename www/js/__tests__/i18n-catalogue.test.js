@@ -8,7 +8,7 @@ const path = require('path');
 import en from '../i18n/en.js';
 import hi from '../i18n/hi.js';
 import {
-    t, formatMessage, loadLang, setLang, getLang, applyTranslations, resetLangForTests,
+    t, tn, formatMessage, loadLang, setLang, getLang, applyTranslations, resetLangForTests,
     LANG_STORAGE_KEY, LEGACY_WHATS_NEW_LANG_KEY, LANG_CHANGE_EVENT
 } from '../i18n/index.js';
 
@@ -131,5 +131,40 @@ describe('language preference', () => {
 
         applyTranslations(document);
         expect(document.getElementById('a').textContent).toBe(hi['ui.nav.billing']);
+    });
+});
+
+describe('counts use singular and plural (F32)', () => {
+    it('picks the _one text for 1 and the plain key otherwise, in both languages', () => {
+        expect(tn('ui.today.bills_count', 1, null, 'en')).toBe('1 bill');
+        expect(tn('ui.today.bills_count', 2, null, 'en')).toBe('2 bills');
+        expect(tn('ui.today.bills_count', 0, null, 'en')).toBe('0 bills');
+        expect(tn('ui.history.n_packets', 1, null, 'en')).toBe('1 packet');
+        expect(tn('ui.history.n_packets', 3, null, 'en')).toBe('3 packets');
+        expect(tn('ui.reports.n_transactions', 1, null, 'en')).toBe('1 transaction');
+        expect(tn('ui.print.packets_kg', 1, { kg: '20.0' }, 'en')).toBe('1 packet, 20.0 kg');
+        expect(tn('ui.history.n_packets', 1, null, 'hi')).toBe('1 बोरी');
+        expect(tn('ui.trends.n_bills', 4, null, 'hi')).toBe('4 बिल');
+    });
+
+    it('every _one key has its plural key in both catalogues', () => {
+        const ones = Object.keys(en).filter(k => k.endsWith('_one') && !/\.(bills|day)_one$/.test(k));
+        expect(ones.filter(k => !(k.slice(0, -4) in en) || !(k.slice(0, -4) in hi))).toEqual([]);
+    });
+
+    it('a bill aged 0 days reads "today"', () => {
+        expect(t('ui.outstanding.oldest', { age: t('ui.outstanding.today', null, 'en') }, 'en')).toBe('oldest today');
+    });
+});
+
+describe('Billing draft button (F02)', () => {
+    const html = fs.readFileSync(path.join(WWW, 'templates', 'billing.html'), 'utf8');
+
+    it('the top button saves a draft and says so; the bottom Save saves the bill', () => {
+        expect(html).toMatch(/onclick="window\.app\.billing\.saveDraft\(\)"[^>]*data-i18n="ui\.billing\.save_draft"/);
+        expect(html).not.toMatch(/saveDraft\(\)"[^>]*data-i18n="ui\.common\.save"/);
+        expect(html).toMatch(/id="saveBillBtn"[^>]*data-i18n="ui\.common\.save"/);
+        expect(en['ui.billing.save_draft']).toBe('Save draft');
+        expect(hi['ui.billing.save_draft']).toBe('ड्राफ़्ट सेव करें');
     });
 });

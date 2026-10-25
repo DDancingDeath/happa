@@ -109,7 +109,7 @@ describe('Day report card', () => {
         expect(card.querySelector('img')).toBeNull();
         expect(card.innerHTML).toContain('&lt;img');
         expect(card.textContent).not.toMatch(/staff/i);
-        expect(AnomaliesManager.dayReportText()).toContain('Sales: ₹400 (1 bills)');
+        expect(AnomaliesManager.dayReportText()).toContain('Sales: ₹400 (1 bill)');
     });
 
     test('hidden for other users', () => {

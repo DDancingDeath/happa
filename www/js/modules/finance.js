@@ -18,7 +18,7 @@ import {
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { createRenderMemo } from '../utils/render-memo.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
-import { t, getLang } from '../i18n/index.js';
+import { t, getLang, tn } from '../i18n/index.js';
 
 /** Placeholder for all-time figures until the full history is loaded. */
 const NOT_LOADED = '—';
@@ -388,11 +388,11 @@ export class FinanceManager {
 
         updateElement('financeRevenue', formatRupees(summary.sales.total));
         updateElement('financeRevenueCount', summary.sales.due > 0
-            ? `${t('ui.finance.sales_count', { count: summary.sales.count })} · ${t('ui.finance.still_due', { amount: Math.round(summary.sales.due).toLocaleString('en-IN') })}`
-            : t('ui.finance.sales_count', { count: summary.sales.count }));
+            ? `${tn('ui.finance.sales_count', summary.sales.count)} · ${t('ui.finance.still_due', { amount: Math.round(summary.sales.due).toLocaleString('en-IN') })}`
+            : tn('ui.finance.sales_count', summary.sales.count));
         updateElement('financeCogs', formatRupees(summary.cogs));
         updateElement('financeBusinessExp', formatRupees(summary.expenses.business));
-        updateElement('financeBusinessExpCount', t('ui.finance.entries_count', { count: summary.expenses.businessCount }));
+        updateElement('financeBusinessExpCount', tn('ui.finance.entries_count', summary.expenses.businessCount));
         updateElement('financeStockNow', formatRupees(summary.stock ? summary.stock.now : this.calculateStockValue()));
 
         updateElement('financePersonalExp', formatRupees(summary.expenses.personal));

@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261025u-ui-audit-d';
+const BUILD_ID = '20261025x-ux-batch-a';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -349,6 +349,7 @@ async function initializeUserData() {
         // Show the billing tab by default
         NavigationManager.showTab('billing');
         NavigationManager.setActiveNavLink('billing');
+        NavigationManager.initBackNavigation();
         
         // Initialize UI
         AuthManager.updateUserDisplay();
@@ -752,7 +753,8 @@ window.app = {
         login: () => AuthManager.handleLogin(),
         register: () => AuthManager.handleRegister(),
         logout: () => AuthManager.handleLogout(),
-        forgotPassword: () => AuthManager.handleForgotPassword()
+        forgotPassword: () => AuthManager.handleForgotPassword(),
+        sendPasswordReset: () => AuthManager.handleSendPasswordReset()
     },
     
     // App language (#143): Settings switch + login card links
@@ -1221,7 +1223,6 @@ window.app = {
     admin: {
         init: () => AdminManager.init(),
         showTab: (tab) => AdminManager.showTab(tab),
-        saveConfigure: () => AdminManager.saveConfigure(),
         saveCheckThresholds: () => AdminManager.saveCheckThresholds(),
         approveUser: (userId) => AdminManager.approveUser(userId),
         rejectUser: (userId) => AdminManager.rejectUser(userId),

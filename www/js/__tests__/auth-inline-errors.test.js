@@ -203,12 +203,40 @@ describe('register card', () => {
 });
 
 describe('reset password', () => {
+    const openReset = () => AuthManager.handleForgotPassword();
+
+    test('"Forgot password?" is a full-size button that opens an inline email field, never prompt()', () => {
+        window.prompt = jest.fn();
+        const toggle = $('resetToggle');
+        expect(toggle.tagName).toBe('BUTTON');
+        expect(toggle.classList.contains('auth-reset-toggle')).toBe(true);
+        expect($('resetForm').hidden).toBe(true);
+        openReset();
+        expect($('resetForm').hidden).toBe(false);
+        expect(toggle.getAttribute('aria-expanded')).toBe('true');
+        expect($('resetEmail').value).toBe('a@x.com');
+        expect(window.prompt).not.toHaveBeenCalled();
+        openReset();
+        expect($('resetForm').hidden).toBe(true);
+    });
+
+    test('an empty reset email is reported inline and nothing is sent', async () => {
+        $('loginEmail').value = '';
+        openReset();
+        await AuthManager.handleSendPasswordReset();
+        expect(auth.sendPasswordResetEmail).not.toHaveBeenCalled();
+        expect($('loginMessage').textContent).not.toBe('');
+        expect($('loginMessage').classList.contains('error')).toBe(true);
+    });
+
     test.each([
         ['en', 'Password reset email sent to a@x.com! Check your inbox and spam folder.'],
         ['hi', 'पासवर्ड बदलने का ईमेल a@x.com पर भेजा गया! इनबॉक्स और स्पैम देखें।']
     ])('(%s) success is shown on the Login card', async (lang, text) => {
         setLang(lang, { store: null });
-        await AuthManager.handleForgotPassword();
+        openReset();
+        await AuthManager.handleSendPasswordReset();
+        expect(auth.sendPasswordResetEmail).toHaveBeenCalledWith('a@x.com', expect.any(Object));
         expect($('loginMessage').textContent).toBe(`✅ ${text}`);
         expect($('loginMessage').classList.contains('success')).toBe(true);
         expect(toast).not.toHaveBeenCalled();
@@ -220,9 +248,11 @@ describe('reset password', () => {
     ])('(%s) %s is shown on the Login card', async (lang, code, text) => {
         setLang(lang, { store: null });
         auth.sendPasswordResetEmail.mockRejectedValue(authError(code));
-        await AuthManager.handleForgotPassword();
+        openReset();
+        await AuthManager.handleSendPasswordReset();
         expect($('loginMessage').textContent).toBe(text);
         expect($('loginMessage').classList.contains('error')).toBe(true);
         expect(loginBtn().disabled).toBe(false);
+        expect(document.querySelector('#resetForm button[type="submit"]').disabled).toBe(false);
     });
 });

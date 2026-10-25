@@ -2,13 +2,13 @@
 
         <div class="filter-buttons" style="margin-bottom: 20px;">
             <button class="filter-btn active" id="purchaseModeBtn" onclick="window.app.billing.switchMode('purchase', event)" data-i18n="ui.common.purchase">Purchase</button>
-            <button class="filter-btn" id="saleModeBtn" onclick="window.app.billing.switchMode('sale', event)" data-i18n="ui.billing.sale">Sale</button>
+            <button class="filter-btn" id="saleModeBtn" onclick="window.app.billing.switchMode('sale', event)" data-i18n="ui.billing.sale">Retail sale</button>
         </div>
         
         <!-- Draft Management -->
         <div style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
-            <button onclick="window.app.billing.saveDraft()" class="draft-btn" style="background: #2563eb !important; border-color: #2563eb !important; color: white !important; display: flex; align-items: center; justify-content: center; gap: 6px;" data-i18n="ui.common.save">
-                Save
+            <button type="button" id="saveDraftBtn" onclick="window.app.billing.saveDraft()" class="draft-btn draft-save-btn" style="background: #fff !important; border: 1px solid #2563eb !important; color: #1d4ed8 !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;" data-i18n="ui.billing.save_draft">
+                Save draft
             </button>
             <button onclick="window.app.billing.showDrafts()" class="draft-btn" style="background: #15803d !important; border-color: #15803d !important; color: white !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
                 <span data-i18n="ui.billing.drafts">Drafts</span> (<span id="draftCount">0</span>)
@@ -91,7 +91,7 @@
             <div class="labor-input-row">
                 <label class="checkbox-label" style="margin: 0;">
                     <input type="checkbox" id="autoLaborCharge" checked onchange="window.app.billing.updateTotals()">
-                    <span data-i18n="ui.billing.labor">Labor (₹):</span>
+                    <span data-i18n="ui.billing.labor">Labour (₹):</span>
                 </label>
                 <span id="laborCalculation" style="color: #666; font-size: 13px;">6 × 0</span>
                 <input type="number" inputmode="decimal" id="manualLaborCharges" value="0" 

@@ -304,3 +304,38 @@ describe('#129 approximate stock: adding a wholesale line warns instead of block
         expect(note.style.display).toBe('none');
     });
 });
+
+describe('wholesale item stats hide their placeholders until an item is picked (F31)', () => {
+    beforeEach(() => {
+        document.body.innerHTML = `
+          <select id="sellItem"><option value="">Select item</option><option value="Rice">Rice</option></select><input id="sellRate">
+          <div id="wholesaleItemStats" hidden>
+            <span id="availableStock">-</span><span id="availableStockUnit"> kg</span>
+            <span id="avgPurchaseRateRow">₹<span id="avgPurchaseRate">-</span>/kg</span>
+          </div>`;
+        AppState.items = [{ id: 'rice', name: 'Rice' }];
+        AppState.stock = { rice: { quantity: 20, rate: 30 } };
+        AppState.stockReady = true;
+        AppState.stockApprox = null;
+        AppState.settings = { showHindi: false };
+    });
+
+    test('no item: the stats box stays hidden; an item shows stock and rate with units', () => {
+        const box = document.getElementById('wholesaleItemStats');
+        WholesaleSalesManager.loadItemDetails();
+        expect(box.hidden).toBe(true);
+        document.getElementById('sellItem').value = 'Rice';
+        WholesaleSalesManager.loadItemDetails();
+        expect(box.hidden).toBe(false);
+        expect(document.getElementById('availableStock').textContent).toBe('20.00');
+        expect(document.getElementById('availableStockUnit').hidden).toBe(false);
+        expect(document.getElementById('avgPurchaseRateRow').hidden).toBe(false);
+    });
+
+    test('an item with no recorded stock hides the "₹-/kg" rate row', () => {
+        AppState.stock = {};
+        document.getElementById('sellItem').value = 'Rice';
+        WholesaleSalesManager.loadItemDetails();
+        expect(document.getElementById('avgPurchaseRateRow').hidden).toBe(true);
+    });
+});

@@ -26,7 +26,14 @@
                     <div id="loginMessage" class="auth-message" role="alert" aria-live="assertive" aria-atomic="true"></div>
                     <button type="submit" class="auth-btn">Login</button>
                 </form>
-                <p class="auth-link">Forgot password? <a href="#" onclick="window.app.auth.forgotPassword(); return false;">Reset it</a></p>
+                <button type="button" class="auth-reset-toggle" id="resetToggle" aria-expanded="false" aria-controls="resetForm" onclick="window.app.auth.forgotPassword(); return false;" data-i18n="ui.auth.forgot_password">Forgot password?</button>
+                <form id="resetForm" class="auth-reset-form" hidden onsubmit="window.app.auth.sendPasswordReset(); return false;">
+                    <div class="form-group">
+                        <label for="resetEmail" data-i18n="ui.auth.reset_email_label">Email for the reset link</label>
+                        <input type="email" id="resetEmail" autocomplete="email" required placeholder="Enter your email" data-i18n-placeholder="ui.auth.reset_email_placeholder">
+                    </div>
+                    <button type="submit" class="auth-btn auth-reset-send" data-i18n="ui.auth.send_reset_link">Send reset link</button>
+                </form>
             </div>
             
             <!-- Register Form -->

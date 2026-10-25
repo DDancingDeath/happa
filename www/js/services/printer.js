@@ -5,7 +5,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { DEFAULT_SETTINGS } from '../utils/constants.js';
 import { getAndroidMajorVersion } from '../utils/helpers.js';
 import { copyMark, receiptDateTime } from '../utils/bill-share.js';
-import { t } from '../i18n/index.js';
+import { t, tn } from '../i18n/index.js';
 
 /** Dots darker than this (average of R,G,B) print black */
 const RASTER_THRESHOLD = 128;
@@ -304,7 +304,7 @@ class BluetoothPrinterManager {
                 const itemObj = AppState.items.find(i => i.id === item.itemId || i.name === item.name);
                 const displayName = (itemObj && itemObj.hindiName) ? itemObj.hindiName : item.name;
                 
-                y = utils.drawLeft(`${displayName} (${t('ui.print.packets_kg', { n: item.weights.length, kg: item.qty.toFixed(1) })})`, y, { size: 18, weight: 'bold' });
+                y = utils.drawLeft(`${displayName} (${tn('ui.print.packets_kg', item.weights.length, { kg: item.qty.toFixed(1) })})`, y, { size: 18, weight: 'bold' });
                 
                 const weightsText = item.weights.map(w => parseFloat(w).toFixed(1)).join('  ');
                 const maxWidth = 380;

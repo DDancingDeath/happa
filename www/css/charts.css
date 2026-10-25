@@ -485,6 +485,30 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   background: #c82333;
 }
 
+.item-modal-danger {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.item-delete-btn {
+  min-height: 40px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.item-delete-btn:hover {
+  background: #fef2f2;
+}
+
 .bill-action-btn.btn-edit {
   background: var(--primary-color);
   color: white;

@@ -78,7 +78,7 @@
                 </div>
                 
                 <div style="margin-bottom: 20px;">
-                    <label style="font-size: 14px; font-weight: 600; color: #28a745; margin-bottom: 8px; display: block;" data-i18n="ui.modals.retail_sale_rates_kg">Retail Sale Rates (₹/kg)</label>
+                    <label style="font-size: 14px; font-weight: 600; color: #28a745; margin-bottom: 8px; display: block;" data-i18n="ui.modals.retail_sale_rates_kg">Retail Rates (₹/kg)</label>
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <div id="itemModalSaleRates" class="rates-container" style="flex: 1;"></div>
                         <button class="add-rate-plus sale" onclick="window.app.items.addModalRate('sale')">+</button>
@@ -97,9 +97,11 @@
                     <button type="button" id="itemModalHistoryBtn" class="filter-btn" onclick="window.app.items.loadModalHistory()" data-i18n="ui.modals.show_rate_name_changes">Show rate &amp; name changes</button>
                     <div id="itemModalHistoryList"></div>
                 </div>
+                <div class="item-modal-danger">
+                    <button type="button" class="item-delete-btn" id="itemModalDeleteBtn" onclick="window.app.items.deleteItemFromModal()" style="display: none;" data-i18n="ui.items.delete_item">Delete item</button>
+                </div>
             </div>
             <div class="bill-details-footer">
-                <button class="bill-action-btn btn-delete" id="itemModalDeleteBtn" onclick="window.app.items.deleteItemFromModal()" style="display: none;" data-i18n="ui.modals.delete">Delete</button>
                 <button class="bill-action-btn btn-edit" onclick="window.app.items.saveItemFromModal()" data-i18n="ui.common.save">Save</button>
                 <button class="bill-action-btn btn-close" onclick="window.app.items.closeItemModal()" data-i18n="ui.modals.cancel">Cancel</button>
             </div>
