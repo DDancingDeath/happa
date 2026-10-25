@@ -23,6 +23,7 @@
                         <label>Password</label>
                         <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password" required>
                     </div>
+                    <div id="loginMessage" class="auth-message" role="alert" aria-live="assertive" aria-atomic="true"></div>
                     <button type="submit" class="auth-btn">Login</button>
                 </form>
                 <p class="auth-link">Forgot password? <a href="#" onclick="window.app.auth.forgotPassword(); return false;">Reset it</a></p>
@@ -48,6 +49,7 @@
                         <label>Confirm Password</label>
                         <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" autocomplete="new-password" required minlength="6">
                     </div>
+                    <div id="registerMessage" class="auth-message" role="alert" aria-live="assertive" aria-atomic="true"></div>
                     <button type="submit" class="auth-btn">Create Account</button>
                 </form>
                 <p class="auth-link">Already have an account? <a href="#" onclick="window.app.auth.showTab('login'); return false;">Login</a></p>

@@ -3,7 +3,7 @@ const { test, expect, login } = require('./support/app');
 
 test('pending user is signed out with a message', async ({ page, problems }) => {
     await login(page, 'pending');
-    await expect(page.locator('#toast')).toHaveText(/pending approval/, { timeout: 30000 });
+    await expect(page.locator('#loginMessage')).toHaveText(/pending approval/, { timeout: 30000 });
     await expect(page.locator('#authScreen')).toBeVisible();
     await expect(page.locator('#appContent')).toHaveClass(/hidden/);
     expect(problems.pageErrors).toEqual([]);
