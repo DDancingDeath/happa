@@ -57,7 +57,7 @@
 
         <!-- Sign In/Out Section -->
         <div id="cashSignInSection" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.cash_sign_in">Cash Sign In</h3>
+            <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.cash_sign_in">Open cash</h3>
             <div class="form-row">
                 <label data-i18n="ui.cash.opening_cash_amount">Opening Cash Amount (₹):</label>
                 <input type="number" inputmode="decimal" min="0" id="cashSignInAmount" placeholder="Enter cash amount you have (0 if empty)" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.enter_cash_amount_you"/>
@@ -68,7 +68,7 @@
                 <input type="text" id="cashSignInNotes" maxlength="200" placeholder="e.g., Counted by Ramesh" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.counted_ramesh"/>
             </div>
             <button class="save-btn" onclick="window.app.cashManagement.signIn()" style="width: 100%; padding: 14px; margin-top: 10px; background: #15803d; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_in_today">
-                ✓ Sign In for Today
+                ✓ Open cash for today
             </button>
         </div>
 
@@ -113,7 +113,7 @@
         </div>
 
         <div id="cashSignOutSection" style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none;">
-            <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.cash_sign_out">Cash Sign Out</h3>
+            <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.cash_sign_out">Close cash</h3>
             
             <!-- Transaction Summary -->
             <div style="margin-bottom: 15px;">
@@ -191,7 +191,7 @@
             </div>
             
             <button class="save-btn" onclick="window.app.cashManagement.signOut()" style="width: 100%; padding: 14px; margin-top: 10px; background: #dc2626; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_out_close_day">
-                ✓ Sign Out & Close Day
+                ✓ Close cash & end day
             </button>
         </div>
 

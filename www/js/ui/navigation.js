@@ -4,6 +4,7 @@ import { UIManager } from './ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { canOpenTab, roleMayOpenTab } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
+import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 
 const NavigationManager = {
     // Reset filter buttons to default state for a given tab
@@ -107,13 +108,13 @@ const NavigationManager = {
     },
 
     // Show tab from navigation
-    showTabFromNav(tabId, event) {
+    showTabFromNav(tabId, event, opts = {}) {
         if (event) {
             event.preventDefault();
         }
         if (!canOpenTab(tabId, AppState.userRole, AppState.settings?.roleAccess)) {
             UIManager.showToast(this.refusedMessage(tabId));
-            this.showTabFromNav(this.refusedTabFallback(tabId));
+            this.showTabFromNav(this.refusedTabFallback(tabId), null, opts);
             return;
         }
         
@@ -123,7 +124,7 @@ const NavigationManager = {
         this.setMenuOpen(false);
         
         // Show tab (use tabId directly, not tabId + 'Tab')
-        this.showTab(tabId);
+        this.showTab(tabId, undefined, opts);
         UIManager.hapticFeedback('light');
         
         // Load users when Users tab is shown
@@ -242,14 +243,15 @@ const NavigationManager = {
     },
 
     // Show tab
-    showTab(tabId, evt) {
+    showTab(tabId, evt, opts = {}) {
         // Refused for this role (#84, F23), also for direct navigation
         if (!canOpenTab(tabId, AppState.userRole, AppState.settings?.roleAccess)) {
             UIManager.showToast(this.refusedMessage(tabId));
             const fallback = this.refusedTabFallback(tabId);
-            if (tabId !== fallback) this.showTab(fallback);
+            if (tabId !== fallback) this.showTab(fallback, undefined, opts);
             return false;
         }
+        this.recordTab(tabId, opts);
         const tabs = document.querySelectorAll('.tab');
         tabs.forEach(tab => tab.classList.remove('active'));
         
@@ -266,8 +268,64 @@ const NavigationManager = {
         
         // Lets data listeners refresh views that changed while this tab was hidden
         window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId } }));
+    },
+
+    currentTab: null,
+
+    // One history entry per tab change, so the phone's back button returns to the previous tab
+    recordTab(tabId, opts = {}) {
+        const prev = this.currentTab;
+        this.currentTab = tabId;
+        if (opts.fromHistory || typeof history === 'undefined' || !history.replaceState) return;
+        const state = { ...(history.state || {}), happaTab: tabId };
+        if (!history.state || !history.state.happaTab) history.replaceState(state, '');
+        else if (prev !== tabId) history.pushState(state, '');
+    },
+
+    // Closes the menu, the notifications panel or the top dialog; true when something was open
+    closeOverlay() {
+        if (this.isMenuOpen()) { this.setMenuOpen(false); return true; }
+        const notif = document.getElementById('notifPanel');
+        if (notif && !notif.hidden && window.app?.notifications?.close) {
+            window.app.notifications.close();
+            return true;
+        }
+        return closeTopDialog();
+    },
+
+    handlePopState(e) {
+        if (this.closeOverlay()) {
+            if (this.currentTab) history.pushState({ ...(history.state || {}), happaTab: this.currentTab }, '');
+            return;
+        }
+        const tab = e?.state?.happaTab || HOME_TAB;
+        if (tab === this.currentTab) return;
+        this.showTabFromNav(tab, null, { fromHistory: true });
+    },
+
+    // Android back button (APK): close what is open, else go back a tab, and leave the app only from home
+    handleBackButton(appPlugin) {
+        if (this.closeOverlay()) return;
+        if (this.currentTab && this.currentTab !== HOME_TAB) {
+            if (history.state?.happaTab && history.length > 1) history.back();
+            else this.showTabFromNav(HOME_TAB, null);
+            return;
+        }
+        appPlugin?.exitApp?.();
+    },
+
+    initBackNavigation() {
+        if (typeof window === 'undefined' || window.__happaBackNavBound) return;
+        window.__happaBackNavBound = true;
+        window.addEventListener('popstate', (e) => this.handlePopState(e));
+        const appPlugin = window.Capacitor?.isNativePlatform?.() ? window.Capacitor?.Plugins?.App : null;
+        if (appPlugin?.addListener) {
+            appPlugin.addListener('backButton', () => this.handleBackButton(appPlugin));
+        }
     }
 };
+
+const HOME_TAB = 'billing';
 
 // Export NavigationManager
 export { NavigationManager };

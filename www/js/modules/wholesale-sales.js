@@ -79,6 +79,25 @@ export class WholesaleSalesManager {
     }
 
     static loadItemDetails() {
+        this.fillItemDetails();
+        this.syncItemStats();
+    }
+
+    // Stock and average rate are shown only once an item is picked (no "₹-/kg" placeholders)
+    static syncItemStats() {
+        const box = document.getElementById('wholesaleItemStats');
+        const stock = document.getElementById('availableStock');
+        const avg = document.getElementById('avgPurchaseRate');
+        if (!box || !stock || !avg) return;
+        const unknown = (el) => el.textContent.trim() === '-';
+        box.hidden = !document.getElementById('sellItem')?.value || (unknown(stock) && unknown(avg));
+        const unit = document.getElementById('availableStockUnit');
+        if (unit) unit.hidden = !/^-?[\d.]+$/.test(stock.textContent.trim());
+        const avgRow = document.getElementById('avgPurchaseRateRow');
+        if (avgRow) avgRow.hidden = unknown(avg);
+    }
+
+    static fillItemDetails() {
         const itemName = document.getElementById("sellItem")?.value;
         const availableStockEl = document.getElementById("availableStock");
         const avgRateEl = document.getElementById("avgPurchaseRate");
@@ -475,6 +494,7 @@ export class WholesaleSalesManager {
             // Clear stock details
             document.getElementById('availableStock').textContent = '-';
             document.getElementById('avgPurchaseRate').textContent = '-';
+            this.syncItemStats();
             
             this.renderWholesaleBill();
             this.renderSalesHistory();

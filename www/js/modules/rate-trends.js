@@ -12,7 +12,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { t, getLang } from '../i18n/index.js';
+import { t, getLang, tn } from '../i18n/index.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { chartScaleMax } from './reports.js';
@@ -1101,7 +1101,7 @@ export const RateTrendsManager = {
             el.innerHTML = `<div class="rt-empty">${esc(t('ui.trends.traffic_empty', { month: monthLabel(tr.month, lang) }))}</div>`;
         } else {
             const { prev, lastYear } = comparisonMonths(tr.month);
-            const cell = (s) => `${kgText(s.kg)}<div class="rt-muted">${esc(t('ui.trends.n_bills', { n: s.bills }))}</div>`;
+            const cell = (s) => `${kgText(s.kg)}<div class="rt-muted">${esc(tn('ui.trends.n_bills', s.bills))}</div>`;
             const rows = tr.rows.map(r => `<tr class="rt-click${r.itemId === this.trafficItemId ? ' rt-selected' : ''}" data-item="${esc(r.itemId)}"
                 onclick="window.app.rateTrends.setTrafficItem('${Helpers.escapeJsAttr(r.itemId)}')">
                 <td>${esc(itemName(r.itemId))}</td><td><strong>${kgText(r.kg)}</strong></td>

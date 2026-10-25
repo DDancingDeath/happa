@@ -24,6 +24,7 @@ import { paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/paymen
 /** i18n key + params for a bill age in days (null = unknown). */
 function ageKey(days) {
     if (days === null) return ['ui.outstanding.date_unknown'];
+    if (days === 0) return ['ui.outstanding.today'];
     return [days === 1 ? 'ui.outstanding.day_one' : 'ui.outstanding.days_many', { count: days }];
 }
 import {

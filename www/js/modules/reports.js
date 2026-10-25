@@ -10,7 +10,7 @@ import {
     onDemandHistoryInfo, renderStaleHistoryHint
 } from '../utils/history-window.js';
 import { createRenderMemo } from '../utils/render-memo.js';
-import { t } from '../i18n/index.js';
+import { t, tn } from '../i18n/index.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 
@@ -585,7 +585,7 @@ export class ReportsManager {
                 <span class="top-item-rank">${index + 1}</span>
                 <div class="top-item-info">
                     <div class="top-item-name">${Helpers.escapeHtml(name)}</div>
-                    <div class="top-item-stats">${Helpers.escapeHtml(data.count)} transactions • ${data.qty.toFixed(1)} kg</div>
+                    <div class="top-item-stats">${Helpers.escapeHtml(tn('ui.reports.n_transactions', data.count))} • ${data.qty.toFixed(1)} kg</div>
                 </div>
                 <span class="top-item-value">₹${this.formatNumber(data.value)}</span>
             </div>
@@ -1015,7 +1015,7 @@ export class ReportsManager {
         document.body.removeChild(link);
 
         UIManager.hapticFeedback('medium');
-        UIManager.showToast(t('msg.reports.exported_transactions_csv', { value: filteredPurchases.length + filteredSales.length }));
+        UIManager.showToast(tn('msg.reports.exported_transactions_csv', filteredPurchases.length + filteredSales.length, { value: filteredPurchases.length + filteredSales.length }));
     }
 
     static async exportPDF() {

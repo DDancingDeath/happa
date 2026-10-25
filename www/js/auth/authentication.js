@@ -9,7 +9,7 @@ import { canOpenTab, hiddenPermissionClasses } from '../utils/role-access.js';
 
 const usersCollection = () => (window.getCollection ? window.getCollection('users') : 'users');
 
-const FORM_IDS = { login: 'loginForm', register: 'registerForm' };
+const FORM_IDS = { login: 'loginForm', register: 'registerForm', reset: 'resetForm' };
 
 const NETWORK = 'msg.auth.err_network';
 const NOT_ALLOWED = 'msg.auth.err_operation_not_allowed';
@@ -379,22 +379,27 @@ const AuthManager = {
         }
     },
 
-    // Handle forgot password (shown on the Login card)
-    async handleForgotPassword() {
+    // "Forgot password?" opens an email field on the Login card
+    handleForgotPassword() {
+        const form = document.getElementById('resetForm');
+        const toggle = document.getElementById('resetToggle');
+        if (!form) return;
+        const open = form.hidden;
+        form.hidden = !open;
+        toggle?.setAttribute('aria-expanded', String(open));
+        if (!open) return;
+        const resetEmail = document.getElementById('resetEmail');
+        const loginEmail = document.getElementById('loginEmail')?.value?.trim();
+        if (resetEmail && !resetEmail.value && loginEmail) resetEmail.value = loginEmail;
+        resetEmail?.focus();
+    },
+
+    // Sends the reset link; the result is shown in the Login card's message area
+    async handleSendPasswordReset() {
         if (this.busy.reset || this.busy.login) return;
         this.clearMessage('login');
 
-        const emailInput = document.getElementById('loginEmail');
-        let email = emailInput?.value?.trim();
-        
-        if (!email) {
-            email = prompt(t('msg.auth.enter_email_address_reset_password'));
-            if (!email) {
-                return;
-            }
-            email = email.trim();
-        }
-        
+        const email = document.getElementById('resetEmail')?.value?.trim();
         if (!email) {
             this.showMessage('login', t('msg.auth.enter_email_address'));
             return;

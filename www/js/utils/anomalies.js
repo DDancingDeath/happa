@@ -23,7 +23,7 @@ import { billTotal, readLineItem, readPayment, round2, toMoney } from './money.j
 import { parseAnyBillDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
-import { t } from '../i18n/index.js';
+import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 
 /** Business day boundaries are Indian Standard Time (UTC+5:30), whatever the device clock zone. */
@@ -585,8 +585,8 @@ export function buildDayReportText({ dayKey, today = [], yesterdayOpen = [], tot
     if (shop) lines.push(shop);
     if (totals) {
         lines.push('');
-        lines.push(t('ui.anom.report_sales', { amount: inr(totals.sales), count: Number(totals.saleCount) || 0 }));
-        lines.push(t('ui.anom.report_purchases', { amount: inr(totals.purchases), count: Number(totals.purchaseCount) || 0 }));
+        lines.push(tn('ui.anom.report_sales', Number(totals.saleCount) || 0, { amount: inr(totals.sales) }));
+        lines.push(tn('ui.anom.report_purchases', Number(totals.purchaseCount) || 0, { amount: inr(totals.purchases) }));
         lines.push(t('ui.anom.report_expenses', { amount: inr(totals.expenses) }));
         lines.push(t('ui.anom.report_money', { moneyIn: inr(totals.totalIn), moneyOut: inr(totals.totalOut) }));
         lines.push(t('ui.anom.report_due', { received: inr(totals.dueReceived), paid: inr(totals.duePaid) }));

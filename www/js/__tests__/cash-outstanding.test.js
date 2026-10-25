@@ -82,7 +82,7 @@ describe('#66 ₹0 opening/closing and session notes', () => {
         await CashManagementManager.signIn();
         expect(saved).toHaveLength(1);
         expect(saved[0]).toMatchObject({ openingBalance: 0, openingNotes: 'Drawer empty, counted by Ramesh', signedOut: false });
-        expect(toast).toHaveBeenCalledWith('✓ Cash signed in successfully!');
+        expect(toast).toHaveBeenCalledWith('✓ Cash opened for today');
     });
 
     test.each([[''], ['-1']])('opening amount %p is rejected', async (value) => {
@@ -196,7 +196,7 @@ describe('#101 forgotten sessions are closed as "not counted"', () => {
             CashManagementManager.cachedSessions = sessions;
             CashManagementManager.renderHistoryFromCache();
             const list = document.getElementById('cashHistoryList').textContent.replace(/\s+/g, ' ');
-            expect(list).toContain('1 day(s) closed without a cash count');
+            expect(list).toContain('1 day closed without a cash count');
             expect(list).toContain('Not counted');
             expect(list).not.toMatch(/-₹1500/);
         });

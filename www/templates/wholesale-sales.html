@@ -22,10 +22,10 @@
                     <select id="sellItem" onchange="window.app.wholesaleSales.loadItemDetails()"></select>
                 </div>
 
-                <div style="background: white; padding: 12px; border-radius: 8px; margin: 12px 0;">
+                <div id="wholesaleItemStats" hidden style="background: white; padding: 12px; border-radius: 8px; margin: 12px 0;">
                     <div style="font-size: 14px; color: #333;">
-                        <strong data-i18n="ui.wholesale.available_stock">Available Stock:</strong> <span id="availableStock">-</span> kg<br>
-                        <strong data-i18n="ui.wholesale.avg_purchase_rate">Avg Purchase Rate:</strong> ₹<span id="avgPurchaseRate">-</span>/kg
+                        <strong data-i18n="ui.wholesale.available_stock">Available Stock:</strong> <span id="availableStock">-</span><span id="availableStockUnit"> kg</span><br>
+                        <span id="avgPurchaseRateRow"><strong data-i18n="ui.wholesale.avg_purchase_rate">Avg Purchase Rate:</strong> ₹<span id="avgPurchaseRate">-</span>/kg</span>
                         <div id="availableStockApprox" style="display: none; margin-top: 6px; font-size: 12px; color: #8a6d00;"></div>
                     </div>
                 </div>

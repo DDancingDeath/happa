@@ -14,7 +14,7 @@ import {
     checkPaymentSplit, computePurchaseTotals, KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage, round2
 } from '../utils/money.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
-import { t } from '../i18n/index.js';
+import { t, tn } from '../i18n/index.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
 /** Name to show for a catalogue item or bill line in the chosen item-name language. */
@@ -263,7 +263,7 @@ const PurchaseManager = {
                     return `
                         <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #007bff;">
                             <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
-                                ${Helpers.escapeHtml(lineLabel(item))} (${item.weights.length} packets, ${item.qty.toFixed(1)} kg)
+                                ${Helpers.escapeHtml(lineLabel(item))} (${Helpers.escapeHtml(tn('ui.print.packets_kg', item.weights.length, { kg: item.qty.toFixed(1) }))})
                             </div>
                             <div style="font-family: monospace; font-size: 14px; line-height: 1.4; color: #555;">
                                 ${weightLines.join('<br>')}

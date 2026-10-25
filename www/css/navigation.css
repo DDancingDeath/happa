@@ -9,8 +9,9 @@
   box-shadow: var(--shadow-xl);
   transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1001;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .side-nav.active {
@@ -20,7 +21,8 @@
 .nav-header {
   background: var(--primary-gradient);
   color: white;
-  padding: 28px 20px;
+  padding: 18px 20px;
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -60,20 +62,32 @@
 }
 
 .nav-menu {
-  padding: 12px 0;
+  padding: 6px 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nav-menu.nav-menu-footer {
+  flex: 0 0 auto;
+  overflow: visible;
+  border-top: 1px solid var(--border-color);
 }
 
 .nav-menu a {
   display: flex;
   align-items: center;
-  padding: 14px 20px;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 8px 20px;
   color: var(--text-primary);
   text-decoration: none;
   transition: all var(--transition);
   font-size: 15px;
   font-weight: 500;
   border-left: 4px solid transparent;
-  margin: 2px 8px;
+  margin: 1px 8px;
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 

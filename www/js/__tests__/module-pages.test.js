@@ -292,7 +292,7 @@ describe('Today (day.js)', () => {
     test('headline numbers for the local day (ISO and DD/MM dates)', () => {
         DayManager.loadTodayData();
         expect(val('todayTotalPurchases')).toBe(money(2568));
-        expect(val('todayPurchaseCount')).toBe('1 bills');
+        expect(val('todayPurchaseCount')).toBe('1 bill');
         expect(val('todayTotalSales')).toBe(money(5795));
         expect(val('todaySaleCount')).toBe('2 bills');
         expect(val('todayLaborCost')).toBe(money(12));
@@ -407,20 +407,13 @@ describe('Admin → Users and Users manager', () => {
         expect(document.querySelector('#adminPendingUsers img')).toBeNull();
     });
 
-    test('Admin → Configure saves the shared labour rate that billing uses (#21)', async () => {
-        const shared = jest.spyOn(FirebaseService, 'saveSharedLabourSettings').mockResolvedValue(undefined);
-        localStorage.setItem('laborChargeRate', '9'); // orphan key from the old screen
+    test('Admin → Configure only links to Settings for labour (one place to set it)', () => {
         AdminManager.renderConfigure();
-        expect(document.getElementById('adminLaborRate').value).toBe('6');
-        document.getElementById('adminLaborRate').value = '8';
-        expect(await AdminManager.saveConfigure()).toBe(true);
-        expect(AppState.settings.laborRate).toBe(8);
-        expect(shared).toHaveBeenCalledWith({ laborRate: 8, heavyWeightThreshold: 30 });
-        expect(localStorage.getItem('laborChargeRate')).toBeNull();
-        // Re-opening Configure shows the same value Settings and billing use
-        AdminManager.renderConfigure();
-        expect(document.getElementById('adminLaborRate').value).toBe('8');
-        localStorage.clear();
+        expect(document.getElementById('adminLaborRate')).toBeNull();
+        expect(document.getElementById('adminHeavyWeight')).toBeNull();
+        const link = document.querySelector('.admin-open-settings');
+        expect(link.getAttribute('onclick')).toContain("showTab('settings'");
+        expect(document.getElementById('adminContainer').textContent).not.toMatch(/Labor\b/);
     });
 });
 

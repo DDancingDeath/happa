@@ -25,7 +25,7 @@ import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js'
 import { todayLocalISO } from '../utils/dates.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
-import { t } from '../i18n/index.js';
+import { t, tn } from '../i18n/index.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', retail: 'ui.history.noun_retail', wholesale: 'ui.history.noun_wholesale' };
@@ -401,7 +401,7 @@ export class HistoryManager {
             </div>
             <div class="history-date">${formattedDate}${bill.createdByName || bill.userName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(bill.createdByName || bill.userName)}</strong>` : ''}</div>
             <div class="history-summary">
-                ${Helpers.escapeHtml(bill.items.map(item => item.name).join(', '))} • ${Helpers.escapeHtml(totalPackets)} packets
+                ${Helpers.escapeHtml(bill.items.map(item => item.name).join(', '))} • ${Helpers.escapeHtml(tn('ui.history.n_packets', totalPackets))}
             </div>
             ${paymentHTML}
         `;
@@ -631,7 +631,7 @@ export class HistoryManager {
                 const weightsDisplay = item.weights.map(w => parseFloat(w).toFixed(1)).join('&nbsp;&nbsp;');
                 weightBreakdownHTML += `
                     <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid ${billColor};">
-                        <div style="font-weight: 600; color: #495057; margin-bottom: 6px;">${Helpers.escapeHtml(item.name)} (${L('ui.history.packets_kg', { packets: item.weights.length, kg: (item.qty || 0).toFixed(1) })})</div>
+                        <div style="font-weight: 600; color: #495057; margin-bottom: 6px;">${Helpers.escapeHtml(item.name)} (${Helpers.escapeHtml(tn('ui.history.packets_kg', item.weights.length, { packets: item.weights.length, kg: (item.qty || 0).toFixed(1) }))})</div>
                         <div style="color: #6c757d; font-size: 14px; white-space: pre;">${weightsDisplay}</div>
                     </div>
                 `;

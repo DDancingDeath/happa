@@ -349,6 +349,7 @@ async function initializeUserData() {
         // Show the billing tab by default
         NavigationManager.showTab('billing');
         NavigationManager.setActiveNavLink('billing');
+        NavigationManager.initBackNavigation();
         
         // Initialize UI
         AuthManager.updateUserDisplay();
@@ -752,7 +753,8 @@ window.app = {
         login: () => AuthManager.handleLogin(),
         register: () => AuthManager.handleRegister(),
         logout: () => AuthManager.handleLogout(),
-        forgotPassword: () => AuthManager.handleForgotPassword()
+        forgotPassword: () => AuthManager.handleForgotPassword(),
+        sendPasswordReset: () => AuthManager.handleSendPasswordReset()
     },
     
     // App language (#143): Settings switch + login card links
@@ -1221,7 +1223,6 @@ window.app = {
     admin: {
         init: () => AdminManager.init(),
         showTab: (tab) => AdminManager.showTab(tab),
-        saveConfigure: () => AdminManager.saveConfigure(),
         saveCheckThresholds: () => AdminManager.saveCheckThresholds(),
         approveUser: (userId) => AdminManager.approveUser(userId),
         rejectUser: (userId) => AdminManager.rejectUser(userId),

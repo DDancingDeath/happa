@@ -11,7 +11,7 @@ export const DESKTOP_QUERY = '(min-width: 1024px)';
 export const TAB_SHORTCUTS = [
     { tabId: 'day', en: 'Today', hi: 'आज' },
     { tabId: 'billing', en: 'Billing', hi: 'बिलिंग' },
-    { tabId: 'wholesale-sales', en: 'Sales', hi: 'बिक्री' },
+    { tabId: 'wholesale-sales', en: 'Wholesale', hi: 'थोक' },
     { tabId: 'expenses', en: 'Expenses', hi: 'खर्च' },
     { tabId: 'items', en: 'Items', hi: 'आइटम' },
     { tabId: 'history', en: 'History', hi: 'इतिहास' },
@@ -121,6 +121,14 @@ function findOpenModal() {
         return { closer: null };
     }
     return null;
+}
+
+/** Closes the topmost open dialog; true when one was closed. */
+export function closeTopDialog() {
+    const open = findOpenModal();
+    if (!open || !open.closer) return false;
+    open.closer();
+    return true;
 }
 
 const NON_DIALOG_IDS = new Set(['appContent', 'toast', 'loadingOverlay', 'overlay', 'modalOverlay', HELP_ID]);

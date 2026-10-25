@@ -203,6 +203,33 @@
   text-decoration: underline;
 }
 
+.auth-reset-toggle {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--primary-color);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-reset-toggle:hover {
+  background: var(--light-bg);
+}
+
+.auth-reset-form {
+  margin-top: 8px;
+}
+
+.auth-reset-form[hidden] {
+  display: none;
+}
+
 /* Language choice before signing in */
 .auth-lang-links {
   display: flex;

@@ -16,7 +16,7 @@ import { round2, outstandingDue } from '../utils/money.js';
 import { evaluateCashCount, toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
 import { dueEvents, sumDueEvents, saleTimePayment, normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
-import { t } from '../i18n/index.js';
+import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 import { tip } from '../tip/index.js';
@@ -1062,7 +1062,7 @@ export class CashManagementManager {
         });
         const review = notCounted.length > 0 ? `
             <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #9a3412;">
-                <strong>${L('ui.cash.days_not_counted', { count: notCounted.length })}</strong>
+                <strong>${Helpers.escapeHtml(tn('ui.cash.days_not_counted', notCounted.length))}</strong>
                 <div style="margin-top: 4px;">${L('ui.cash.tap_day_to_count')} ${notCounted.map(s => `<a href="#" onclick="window.app.cashManagement.showDetails('${Helpers.escapeJsAttr(s.date)}'); return false;" style="color: #9a3412; font-weight: 600;">${Helpers.escapeHtml(dayLabel(s))}</a>`).join(', ')}</div>
             </div>` : '';
 
@@ -1108,7 +1108,7 @@ export class CashManagementManager {
                     </div>
                     ${session.duePayments && session.duePayments.length > 0 ? `
                         <div style="margin-top: 8px; font-size: 13px; color: #6c757d;">
-                            ${L('ui.cash.due_payments_recorded', { count: session.duePayments.length })}
+                            ${Helpers.escapeHtml(tn('ui.cash.due_payments_recorded', session.duePayments.length))}
                         </div>
                     ` : ''}
                 </div>

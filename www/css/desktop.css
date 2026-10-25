@@ -71,6 +71,7 @@
   }
 
   .nav-menu a {
+    min-height: 40px;
     padding: 10px 14px;
     font-size: 14px;
     margin: 1px 8px;
@@ -116,6 +117,12 @@
   }
 
   /* ---------- Billing: entry left, sticky bill summary right ---------- */
+  #billRate,
+  #saleRate {
+    padding-right: 40px;
+    text-overflow: ellipsis;
+  }
+
   #purchaseSection:not([style*="none"]),
   #saleSection:not([style*="none"]),
   #salesEntrySection:not([style*="none"]) {

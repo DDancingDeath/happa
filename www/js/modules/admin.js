@@ -11,9 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { buildBackup, isDeleteConfirmed, DELETE_CONFIRM_WORD } from '../utils/data-export.js';
-import { normalizeLabourSettings } from '../utils/money.js';
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
-import { SettingsManager } from './settings.js';
 import { t } from '../i18n/index.js';
 
 /**
@@ -116,32 +114,12 @@ const AdminManager = {
         const container = document.getElementById('adminContainer');
         if (!container) return;
 
-        // Same shared values billing uses (#21): settings/app via AppState.settings
-        const { heavyWeightThreshold: heavyWeight, laborRate } = normalizeLabourSettings(AppState.settings);
-        const autoLabor = AppState.settings?.autoLaborEnabled !== false;
-
+        const e = Helpers.escapeHtml;
         container.innerHTML = `
             <div class="settings-card">
-                <h3>Labor Charges</h3>
-                
-                <label>Heavy Packet Weight Threshold (kg):</label>
-                <input type="number" inputmode="decimal" id="adminHeavyWeight" 
-                       placeholder="30" value="${Helpers.escapeHtml(heavyWeight)}" 
-                       onchange="window.app.admin.saveConfigure()" />
-                <p class="setting-description">Packets above this weight will incur labor charges</p>
-
-                <label>Labor Charge per Heavy Packet (₹):</label>
-                <input type="number" inputmode="decimal" id="adminLaborRate" 
-                       placeholder="6" value="${Helpers.escapeHtml(laborRate)}" 
-                       onchange="window.app.admin.saveConfigure()" />
-                <p class="setting-description">Amount charged for each heavy packet</p>
-
-                <label class="checkbox-label">
-                    <input type="checkbox" id="adminAutoLabor" 
-                           ${autoLabor ? 'checked' : ''} 
-                           onchange="window.app.admin.saveConfigure()">
-                    <span>Enable automatic labor charges by default</span>
-                </label>
+                <h3>${e(t('ui.settings.labour_charges'))}</h3>
+                <p class="setting-description">${e(t('ui.admin.labour_in_settings'))}</p>
+                <button type="button" class="filter-btn admin-open-settings" onclick="window.app.nav.showTab('settings', event)">${e(t('ui.admin.open_settings'))}</button>
             </div>
             ${this.renderCheckThresholds()}
         `;
@@ -190,33 +168,6 @@ const AdminManager = {
             UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
             return false;
         }
-    },
-
-    /**
-     * Save configure settings
-     */
-    async saveConfigure() {
-        const autoLabor = document.getElementById('adminAutoLabor');
-        if (autoLabor) {
-            AppState.settings.autoLaborEnabled = autoLabor.checked;
-            localStorage.setItem('settings', JSON.stringify(AppState.settings));
-            const settingAutoLabor = document.getElementById('settingAutoLabor');
-            if (settingAutoLabor) settingAutoLabor.checked = autoLabor.checked;
-        }
-
-        // Same save path as Settings: one shared value for billing on every device (#21)
-        const saved = await SettingsManager.saveLabourSettings({
-            laborRate: document.getElementById('adminLaborRate')?.value,
-            heavyWeightThreshold: document.getElementById('adminHeavyWeight')?.value
-        });
-        const { heavyWeightThreshold, laborRate } = normalizeLabourSettings(AppState.settings);
-        const heavyInput = document.getElementById('adminHeavyWeight');
-        const rateInput = document.getElementById('adminLaborRate');
-        if (heavyInput) heavyInput.value = heavyWeightThreshold;
-        if (rateInput) rateInput.value = laborRate;
-
-        if (saved) UIManager.showToast(t('msg.admin.settings_saved_everyone'));
-        return saved;
     },
 
     /**

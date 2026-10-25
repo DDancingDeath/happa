@@ -85,6 +85,21 @@ export function t(key, params, lang = getLang()) {
     return formatMessage(text, params);
 }
 
+/**
+ * Count text: uses `${key}_one` when count is 1 (if that key exists), else `key`.
+ * {count} and {n} are both filled with the count.
+ * @param {string} key
+ * @param {number} count
+ * @param {Object<string, *>} [params]
+ * @param {'en'|'hi'} [lang]
+ * @returns {string}
+ */
+export function tn(key, count, params, lang = getLang()) {
+    const one = `${key}_one`;
+    const useOne = Number(count) === 1 && (one in (CATALOGUES[lang] || {}) || one in en);
+    return t(useOne ? one : key, { count, n: count, ...params }, lang);
+}
+
 /** Fills every data-i18n element (and attribute) below `root`. */
 export function applyTranslations(root = typeof document !== 'undefined' ? document : null) {
     if (!root?.querySelectorAll) return;
