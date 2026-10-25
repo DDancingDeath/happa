@@ -10,7 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { readPayment, round2 } from '../utils/money.js';
+import { openingAmount, openingSourceNumbers, readPayment, round2 } from '../utils/money.js';
 import { parseAnyBillDate, todayLocalISO } from '../utils/dates.js';
 import { checkPaymentSplit, directionFor } from '../utils/due-payments.js';
 import { CashManagementManager } from './cash-management.js';
@@ -133,7 +133,7 @@ export class OutstandingManager {
                 const duePaid = pay.due;
                 
                 if (duePaid > 0 && !purchase.cleared) {
-                    const totalPayable = pay.total;
+                    const totalPayable = pay.total || openingAmount(purchase);
                     const onlinePaid = pay.online;
                     const cashPaid = pay.cash;
                     const totalPaid = pay.paid;
@@ -156,7 +156,7 @@ export class OutstandingManager {
                 const dueReceived = pay.due;
                 
                 if (dueReceived > 0 && !sale.cleared) {
-                    const totalReceivable = sale.total || 0;
+                    const totalReceivable = sale.total || openingAmount(sale);
                     const onlineReceived = pay.online;
                     const cashReceived = pay.cash;
                     const totalReceived = pay.paid;
@@ -224,6 +224,7 @@ export class OutstandingManager {
                     <span style="color: ${headerColor}; font-weight: 700;">${tt('ui.outstanding.due_amount', { amount: Math.round(transaction.outstanding) })}</span>
                 </div>
                 <div class="history-date">${Helpers.formatDate(transaction.date)}${transaction.createdByName ? ` • ${tt('ui.outstanding.by')} <strong>${Helpers.escapeHtml(transaction.createdByName)}</strong>` : ''} ${ageBadge}</div>
+                ${transaction.openingBalance ? `<div class="history-date">${tt('ui.outstanding.opening_balance', { bills: openingSourceNumbers(transaction) })}</div>` : ''}
                 <div style="background: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 12px; margin: 12px 0; border-radius: 4px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                         <span>${totalLabel}:</span>

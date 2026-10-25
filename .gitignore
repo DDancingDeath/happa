@@ -119,3 +119,6 @@ playwright-report/
 # Mutation testing (#216)
 reports/mutation/
 .stryker-tmp/
+
+# Migration bundles/cursors hold shop data (tools/migrate, #15)
+tools/migrate/out/

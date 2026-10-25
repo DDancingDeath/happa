@@ -17,7 +17,8 @@ import { lineItemIdentity } from '../utils/item-catalog.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
-    checkPaymentSplit, computeWholesaleTotals, KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, round2
+    checkPaymentSplit, computeWholesaleTotals, KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, round2,
+    openingAmount, openingSourceNumbers, wholesaleOutstanding
 } from '../utils/money.js';
 
 const PAYMENT_TOLERANCE = 0.01;
@@ -689,26 +690,17 @@ export class WholesaleSalesManager {
                 if (sale.source !== 'sales-tab') return false;
                 if (sale.cleared) return false;
                 if (party && normalizePartyName(sale.customerName) !== party.key) return false;
-                
-                const totalReceivable = sale.total || 0;
-                const onlineReceived = sale.payment ? (sale.payment.online || 0) : 0;
-                const cashReceived = sale.payment ? (sale.payment.cash || 0) : 0;
-                const totalReceived = onlineReceived + cashReceived;
-                const outstanding = sale.payment?.due || (totalReceivable - totalReceived);
-                
-                return outstanding > 0;
+                return wholesaleOutstanding(sale) > 0;
             })
             .map(sale => {
-                const totalReceivable = sale.total || 0;
                 const onlineReceived = sale.payment ? (sale.payment.online || 0) : 0;
                 const cashReceived = sale.payment ? (sale.payment.cash || 0) : 0;
                 const totalReceived = onlineReceived + cashReceived;
-                const outstanding = sale.payment?.due || (totalReceivable - totalReceived);
                 
                 return {
                     ...sale,
-                    outstanding: outstanding,
-                    totalAmount: totalReceivable,
+                    outstanding: wholesaleOutstanding(sale),
+                    totalAmount: sale.total || openingAmount(sale),
                     paidAmount: totalReceived
                 };
             })
@@ -738,6 +730,7 @@ export class WholesaleSalesManager {
                         <span style="color: #dc3545; font-weight: 700;">${L('ui.outstanding.due_amount', { amount: Math.round(sale.outstanding) })}</span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>
+                    ${sale.openingBalance ? `<div class="history-date">${L('ui.outstanding.opening_balance', { bills: openingSourceNumbers(sale) })}</div>` : ''}
                     <div style="background: #d1ecf1; border-left: 4px solid #22c55e; padding: 12px; margin: 12px 0; border-radius: 4px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                             <span>${L('ui.common.total_receivable')}</span>

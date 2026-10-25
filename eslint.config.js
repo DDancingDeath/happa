@@ -92,5 +92,15 @@ module.exports = [
             globals: { ...globals.node, ...globals.browser }
         },
         rules: { ...realErrors, 'no-control-regex': 'off' }
+    },
+    {
+        // tools/migrate is an ES module package (it imports the app's www/js utils).
+        files: ['tools/migrate/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: { ...globals.node }
+        },
+        rules: realErrors
     }
 ];

@@ -114,6 +114,52 @@ export function outstandingDue(bill) {
 }
 
 /**
+ * Opening balance carried from the old Firebase project (tools/migrate): one
+ * record per party with no lines and no bill total, so sales and profit are
+ * never counted twice; the carried amount is `openingBalance.amount`.
+ * @param {Object} bill
+ * @returns {boolean}
+ */
+export function isOpeningBalance(bill) {
+    return !!(bill && bill.openingBalance && typeof bill.openingBalance === 'object');
+}
+
+/**
+ * Carried amount of an opening-balance record (0 for ordinary bills).
+ * @param {Object} bill
+ * @returns {number}
+ */
+export function openingAmount(bill) {
+    return isOpeningBalance(bill) ? round2(toMoney(bill.openingBalance.amount) || 0) : 0;
+}
+
+/**
+ * Old bill numbers behind an opening-balance record, for display.
+ * @param {Object} bill
+ * @param {number} [max=10]
+ * @returns {string} '' for ordinary bills
+ */
+export function openingSourceNumbers(bill, max = 10) {
+    if (!isOpeningBalance(bill)) return '';
+    const src = Array.isArray(bill.openingBalance.sourceBills) ? bill.openingBalance.sourceBills : [];
+    const nums = src.map(s => String(s?.billNumber || '').trim()).filter(Boolean);
+    return nums.slice(0, max).map(n => `#${n}`).join(', ') + (nums.length > max ? ', …' : '');
+}
+
+/**
+ * Still due on a wholesale sale as the Wholesale page's Outstanding list
+ * computes it: payment.due, or total − received when payment.due is 0/absent.
+ * @param {Object} sale
+ * @returns {number}
+ */
+export function wholesaleOutstanding(sale) {
+    if (!sale || sale.cleared) return 0;
+    const p = sale.payment || {};
+    const received = (p.online || 0) + (p.cash || 0);
+    return p.due || ((sale.total || 0) - received);
+}
+
+/**
  * Normalised view of a bill line item across schemas: legacy bills (and some
  * wholesale lines) store `item`/`quantity`/`amount` instead of `name`/`qty`/`total`.
  * @param {Object} item
