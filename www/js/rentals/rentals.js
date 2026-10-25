@@ -74,7 +74,7 @@ function scheduleRender() {
 function onData(key, error) {
     state.loaded.add(key);
     if (error) state.errors.add(key); else state.errors.delete(key);
-    if (['leases', 'tenants', 'units'].includes(key)) maybeCharge();
+    if (['leases', 'tenants', 'units'].includes(key)) void maybeCharge();
     scheduleRender();
 }
 
@@ -307,7 +307,7 @@ async function addTenant() {
     const tn = { name: val('rentTenantName'), phone: val('rentTenantPhone'), notes: val('rentTenantNotes') };
     const err = tenantError(tn);
     if (err) return UIManager.showToast(t(err), 'error');
-    await save(() => store.addTenant(tn));
+    await saveRent(() => store.addTenant(tn));
 }
 
 async function editTenant(id) {
@@ -321,12 +321,12 @@ async function editTenant(id) {
     const next = { name: val('rentEditName'), phone: val('rentEditPhone'), notes: val('rentEditNotes') };
     const err = tenantError(next);
     if (err) return UIManager.showToast(t(err), 'error');
-    await save(() => store.updateTenant(id, next));
+    await saveRent(() => store.updateTenant(id, next));
 }
 
 async function archiveTenant(id) {
     if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true)) return;
-    await save(() => store.updateTenant(id, { archived: true }));
+    await saveRent(() => store.updateTenant(id, { archived: true }));
 }
 
 async function moveIn(tenantId) {
@@ -349,7 +349,7 @@ async function moveIn(tenantId) {
     };
     const err = !unit || unit.leaseId ? 'msg.rent.no_vacant_unit' : leaseError(lease);
     if (err) return UIManager.showToast(t(err), 'error');
-    await save(() => store.startLease({ unit, tenantId, ...lease }));
+    await saveRent(() => store.startLease({ unit, tenantId, ...lease }));
 }
 
 function fillRent(select) {
@@ -367,7 +367,7 @@ async function moveOut(leaseId) {
     if (!ok) return;
     const end = val('rentEndMonth');
     if (!isMonth(end) || end < lease.startMonth) return UIManager.showToast(t('msg.rent.bad_month'), 'error');
-    await save(() => store.endLease(lease, end));
+    await saveRent(() => store.endLease(lease, end));
 }
 
 // ---------- Properties ----------
@@ -415,7 +415,7 @@ async function addProperty() {
     const p = { name: val('rentPropName'), address: val('rentPropAddress'), kind: PROPERTY_KINDS.includes(kind) ? kind : 'other', notes: '' };
     const err = propertyError(p);
     if (err) return UIManager.showToast(t(err), 'error');
-    await save(() => store.addProperty(p));
+    await saveRent(() => store.addProperty(p));
 }
 
 async function editProperty(id) {
@@ -431,14 +431,14 @@ async function editProperty(id) {
     const next = { name: val('rentEditPropName'), address: val('rentEditPropAddress'), kind: PROPERTY_KINDS.includes(kind) ? kind : 'other' };
     const err = propertyError(next);
     if (err) return UIManager.showToast(t(err), 'error');
-    await save(() => store.updateProperty(id, next));
+    await saveRent(() => store.updateProperty(id, next));
 }
 
 async function archiveProperty(id) {
     if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true)) return;
     const units = store.snapshot().units.filter(u => u.propertyId === id);
     if (units.some(u => u.leaseId)) return UIManager.showToast(t('msg.rent.has_tenant'), 'error');
-    await save(async () => {
+    await saveRent(async () => {
         for (const u of units) await store.updateUnit(u.id, { archived: true });
         await store.updateProperty(id, { archived: true });
     });
@@ -457,19 +457,19 @@ async function unitDialog(title, unit) {
 
 async function addUnit(propertyId) {
     const u = await unitDialog(t('ui.rent.add_unit'));
-    if (u) await save(() => store.addUnit({ propertyId, ...u }));
+    if (u) await saveRent(() => store.addUnit({ propertyId, ...u }));
 }
 
 async function editUnit(id) {
     const unit = store.snapshot().units.find(x => x.id === id);
     if (!unit) return;
     const u = await unitDialog(t('ui.rent.edit'), unit);
-    if (u) await save(() => store.updateUnit(id, u));
+    if (u) await saveRent(() => store.updateUnit(id, u));
 }
 
 async function archiveUnit(id) {
     if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true)) return;
-    await save(() => store.updateUnit(id, { archived: true }));
+    await saveRent(() => store.updateUnit(id, { archived: true }));
 }
 
 // ---------- Access (owner) ----------
@@ -477,7 +477,7 @@ async function archiveUnit(id) {
 function renderAccess() {
     if (!isOwner()) return '';
     if (!state.users) {
-        loadUsers();
+        void loadUsers();
         return `<p class="rent-empty">${esc(t('ui.rent.loading'))}</p>`;
     }
     const roles = [['', 'ui.rent.access_none'], ['manager', 'ui.rent.access_manager'], ['member', 'ui.rent.access_member']];
@@ -540,7 +540,7 @@ function dialog(html) {
     });
 }
 
-async function save(fn) {
+async function saveRent(fn) {
     try {
         await fn();
         UIManager.showToast(t('msg.rent.saved'), 'success');
