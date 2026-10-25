@@ -14,7 +14,8 @@
     "lint": "eslint .",
     "test:e2e": "playwright test",
     "test:smoke": "playwright test -c playwright.prod.config.js",
-    "test:mutation": "stryker run"
+    "test:mutation": "stryker run",
+    "audit:numbers": "node tools/audit/real-data-audit.js"
   },
   "dependencies": {
     "@capacitor-community/bluetooth-le": "^7.2.0",

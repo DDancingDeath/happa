@@ -306,6 +306,19 @@ bugs in `money.js`, `stock-replay.js`, `bill-checks.js`, `dates.js` and
 `release-info.js` the tests catch. Owners and managers can run the same checks
 on real loaded data in Diagnostics → Number checks.
 
+To check a whole backup offline, run `npm run audit:numbers -- <backup.json>`
+(`tools/audit/`; optional `--bundle <migration bundle.json>` adds the migrated
+state, `--app <checkout>` audits another branch's `www/`). It computes every
+spec number for each of the last 60 days, the last 24 months and all time twice,
+with the oracle and with the app's own screen code in jsdom, plus AC1–AC8,
+cross-page agreement and the number checks, and writes `NUMBER-AUDIT.md` next to
+the backup (it refuses to write inside the repo). Takes about a minute for ~7k
+bills and reads only that file, no Firestore. Real data never goes into the repo,
+CI, an issue or a PR: turn each new mismatch class into an anonymised fixture in
+`tests/fixtures/calculations/` with an oracle test (`tests/oracle/real-shapes.test.js`),
+skipped with its issue while the bug is open, and give it a cause in
+`tools/audit/causes.js`.
+
 ### PR checklist
 
 - [ ] Tests, `npm run lint` (0 errors), `check:review`, `check:sw`, `check:release` pass.
