@@ -40,17 +40,28 @@ const seqOf = (e) => {
     return m ? Number(m[1]) : 0;
 };
 
-/** Reverses one history entry on a rate list (positions are not stored, so a removed rate goes back at the end). */
+/**
+ * Reverses one history entry on a rate list (blank slots are null). Uses the
+ * stored list position when it still holds the entry's new value; older
+ * entries without a position fall back to the first equal value, and a
+ * removed rate without a position goes back at the end.
+ */
 function undoEntry(list, entry) {
     const oldRate = rateOrNull(entry.old);
     const newRate = rateOrNull(entry.new);
+    const pos = Number.isInteger(entry.index) && entry.index >= 0 ? entry.index : -1;
     const out = list.slice();
-    const idx = newRate === null ? -1 : out.indexOf(newRate);
-    if (idx >= 0) {
-        if (oldRate !== null) out[idx] = oldRate;
-        else out.splice(idx, 1);
-    } else if (oldRate !== null) {
-        out.push(oldRate);
+    if (newRate !== null) {
+        const idx = pos >= 0 && out[pos] === newRate ? pos : out.indexOf(newRate);
+        if (idx >= 0) {
+            if (oldRate !== null) out[idx] = oldRate;
+            else out.splice(idx, 1);
+            return out;
+        }
+    }
+    if (oldRate !== null) {
+        if (pos >= 0) out.splice(Math.min(pos, out.length), 0, oldRate);
+        else out.push(oldRate);
     }
     return out;
 }
@@ -68,7 +79,7 @@ export function rateSteps(currentList, entries, kind) {
         .filter(e => e && e.field === kind && Number.isFinite(Number(e.at)))
         .slice()
         .sort((a, b) => (Number(b.at) - Number(a.at)) || (seqOf(b) - seqOf(a)));
-    let list = cleanList(currentList);
+    let list = (Array.isArray(currentList) ? currentList : []).map(rateOrNull);
     const back = [];
     own.forEach(e => {
         const at = Number(e.at);

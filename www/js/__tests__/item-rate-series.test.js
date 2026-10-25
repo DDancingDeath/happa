@@ -5,7 +5,7 @@ import {
 import { historyDocId } from '../utils/rate-history.js';
 
 const IST = (y, m, d, h = 0, min = 0) => Date.UTC(y, m - 1, d, h, min) - 330 * 60000;
-const entry = (field, old, nu, at, seq = 0, itemId = 'wheat') => ({ id: historyDocId(itemId, at, seq), field, old, new: nu, at });
+const entry = (field, old, nu, at, seq = 0, index) => ({ id: historyDocId('wheat', at, seq), field, old, new: nu, at, ...(index === undefined ? {} : { index }) });
 
 describe('base rate', () => {
     test('is the first valid rate in the list', () => {
@@ -33,12 +33,26 @@ describe('step series rebuilt from the current list and history entries', () => 
         expect(rateSteps([41], entries, 'retail')).toEqual([{ at: -Infinity, rate: 40 }, { at: T1, rate: 41 }]);
     });
 
-    test('a removed rate goes back at the end of the list (positions are not stored); changes to later rates make no step', () => {
-        // [20, 22] → (T1) remove 22 → [20] ; (T2) 25 added at the end → [20, 25]
-        const entries = [entry('wholesale', null, 25, T2), entry('wholesale', 22, null, T1)];
-        expect(rateSteps([20, 25], entries, 'wholesale')).toEqual([{ at: -Infinity, rate: 20 }]);
-        // removing the first rate cannot be told apart from removing another one
+    test('list positions: deleting the first rate makes the next one the base', () => {
+        // [20, 22] → (T1) delete 20 at 0 → [22] ; (T2) 25 added at 1 → [22, 25]
+        const entries = [entry('wholesale', null, 25, T2, 0, 1), entry('wholesale', 20, null, T1, 0, 0)];
+        expect(rateSteps([22, 25], entries, 'wholesale')).toEqual([{ at: -Infinity, rate: 20 }, { at: T1, rate: 22 }]);
+    });
+
+    test('list positions: a value that already exists elsewhere makes no fake step', () => {
+        // [10, 12] → (T1) second rate 12 → 10 → [10, 10]: base stays 10
+        expect(rateSteps([10, 10], [entry('purchase', 12, 10, T1, 0, 1)], 'purchase')).toEqual([{ at: -Infinity, rate: 10 }]);
+        // older entries without a position fall back to the first equal value
+        expect(rateSteps([10, 10], [entry('purchase', 12, 10, T1)], 'purchase')).toEqual([{ at: -Infinity, rate: 12 }, { at: T1, rate: 10 }]);
+    });
+
+    test('older entries without a position: a removed rate goes back at the end', () => {
         expect(rateSteps([22], [entry('wholesale', 20, null, T1)], 'wholesale')).toEqual([{ at: -Infinity, rate: 22 }]);
+    });
+
+    test('blank slots on the Items page keep inline positions aligned', () => {
+        // ['', 30] → (T1) blank slot 0 filled with 28 → [28, 30]
+        expect(rateSteps([28, 30], [entry('retail', null, 28, T1, 0, 0)], 'retail')).toEqual([{ at: -Infinity, rate: 30 }, { at: T1, rate: 28 }]);
     });
 
     test('no entries (history not readable): the current rate throughout', () => {

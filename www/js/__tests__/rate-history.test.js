@@ -15,16 +15,31 @@ describe('snapshotItem', () => {
 });
 
 describe('diffRateList', () => {
-    test('edited value pairs old → new; unchanged values ignored regardless of position', () => {
-        expect(diffRateList([40, 50], [50, 45])).toEqual([{ old: 40, new: 45 }]);
+    test('edits in order with their list position; kept values (in order) are unchanged', () => {
+        expect(diffRateList([40, 50], [40, 45])).toEqual([{ old: 50, new: 45, index: 1 }]);
+        // first rate deleted, a new one added at the end
+        expect(diffRateList([40, 50], [50, 45])).toEqual([{ old: 40, new: null, index: 0 }, { old: null, new: 45, index: 1 }]);
     });
     test('additions and removals', () => {
-        expect(diffRateList([], [30])).toEqual([{ old: null, new: 30 }]);
-        expect(diffRateList([30, 35], [35])).toEqual([{ old: 30, new: null }]);
+        expect(diffRateList([], [30])).toEqual([{ old: null, new: 30, index: 0 }]);
+        expect(diffRateList([30, 35], [35])).toEqual([{ old: 30, new: null, index: 0 }]);
         expect(diffRateList([30], [30])).toEqual([]);
     });
-    test('duplicate values count as a multiset', () => {
-        expect(diffRateList([30, 30], [30])).toEqual([{ old: 30, new: null }]);
+    test('duplicate values: the edit is at the right position', () => {
+        expect(diffRateList([30, 30], [30])).toEqual([{ old: 30, new: null, index: 1 }]);
+        expect(diffRateList([10, 12], [10, 10])).toEqual([{ old: 12, new: 10, index: 1 }]);
+    });
+    test('applying the edits in order turns the old list into the new one', () => {
+        const cases = [[[40, 50, 60], [45, 60, 70, 80]], [[10, 12, 10], [12]], [[], [1, 2]], [[5, 6, 7], [7, 6, 5]]];
+        cases.forEach(([from, to]) => {
+            const list = [...from];
+            diffRateList(from, to).forEach(e => {
+                if (e.old !== null && e.new !== null) list[e.index] = e.new;
+                else if (e.new !== null) list.splice(e.index, 0, e.new);
+                else list.splice(e.index, 1);
+            });
+            expect(list).toEqual(to);
+        });
     });
 });
 
@@ -34,13 +49,13 @@ describe('diffItemSnapshots', () => {
         const after = snapshotItem({ name: 'Wheat', hindiName: 'गेहूं', rates: [42], saleRates: [50], wholesaleRates: [] });
         expect(diffItemSnapshots(before, after)).toEqual([
             { field: 'name', old: 'Gehu', new: 'Wheat' },
-            { field: 'purchase', old: 40, new: 42 },
-            { field: 'wholesale', old: 45, new: null }
+            { field: 'purchase', old: 40, new: 42, index: 0 },
+            { field: 'wholesale', old: 45, new: null, index: 0 }
         ]);
     });
     test('new item: everything is an addition', () => {
         expect(diffItemSnapshots(snapshotItem(null), snapshotItem({ name: 'Chana', rates: [60] })))
-            .toEqual([{ field: 'name', old: null, new: 'Chana' }, { field: 'purchase', old: null, new: 60 }]);
+            .toEqual([{ field: 'name', old: null, new: 'Chana' }, { field: 'purchase', old: null, new: 60, index: 0 }]);
     });
 });
 
@@ -75,6 +90,17 @@ describe('buildHistoryEntries', () => {
         );
         expect(a).toEqual({ itemId: 'i1', itemName: 'Gehu', field: 'purchase', old: 40, new: 100, by: 'Ram', byUserId: 'u1', at: 1_000_000, source: 'modal', flags: ['out-of-band'] });
         expect(b.flags).toEqual(['quick-repeat']);
+    });
+    test('rate entries keep a list position 0-20; name entries and larger positions have none', () => {
+        const [a, b, c] = buildHistoryEntries([
+            { field: 'purchase', old: 40, new: 41, index: 3 },
+            { field: 'purchase', old: 40, new: 41, index: 21 },
+            { field: 'name', old: 'A', new: 'B', index: 0 }
+        ], { ...meta, source: 'import' });
+        expect(a.index).toBe(3);
+        expect(a.source).toBe('import');
+        expect('index' in b).toBe(false);
+        expect('index' in c).toBe(false);
     });
     test('a change 60 s or more after the previous one is not flagged', () => {
         const [a] = buildHistoryEntries([{ field: 'retail', old: 50, new: 52 }], { ...meta, lastChangeAt: { 'i1:retail': 1_000_000 - 60_000 } });

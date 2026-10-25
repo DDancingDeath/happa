@@ -285,12 +285,12 @@ const ItemsManager = {
      * value before the typing burst to the saved value.
      * @private
      */
-    recordInlineChange(key, item, field, newValue) {
+    recordInlineChange(key, item, field, newValue, index) {
         const oldValue = this.pendingOldValues[key];
         delete this.pendingOldValues[key];
         const norm = (v) => (v === '' || v === undefined || v === 0 ? null : v);
         if (norm(oldValue) === norm(newValue)) return;
-        this.recordHistory(item, [{ field, old: norm(oldValue), new: norm(newValue) }], 'inline');
+        this.recordHistory(item, [{ field, old: norm(oldValue), new: norm(newValue), index }], 'inline');
     },
 
     /** Only owner/manager may write (and read) the history (firestore.rules). */
@@ -303,8 +303,8 @@ const ItemsManager = {
      * like the audit log: the item is already saved, a failed history write
      * is only logged.
      * @param {Object} item saved item (with id)
-     * @param {Array<{field: string, old: *, new: *}>} changes
-     * @param {string} source 'modal' | 'inline'
+     * @param {Array<{field: string, old: *, new: *, index?: number}>} changes
+     * @param {string} source 'modal' | 'inline' | 'import'
      */
     recordHistory(item, changes, source) {
         if (!item?.id || !changes || changes.length === 0 || !this.canUseHistory()) return;
@@ -365,7 +365,7 @@ const ItemsManager = {
         const newRate = Number(value);
         item[field][rateIndex] = newRate;
         const historyField = kind === 'sale' ? 'retail' : kind;
-        this.scheduleSave(key, id, (saved) => this.recordInlineChange(key, saved, historyField, newRate));
+        this.scheduleSave(key, id, (saved) => this.recordInlineChange(key, saved, historyField, newRate, rateIndex));
     },
 
     /**
@@ -389,7 +389,7 @@ const ItemsManager = {
         const saved = await this._saveItemRates(item, () => item[field].splice(rateIndex, 0, removed));
         const historyField = Object.keys(RATE_FIELDS).find(k => RATE_FIELDS[k] === field);
         if (saved && Number(removed) > 0 && historyField) {
-            this.recordHistory(item, [{ field: historyField, old: Number(removed), new: null }], 'inline');
+            this.recordHistory(item, [{ field: historyField, old: Number(removed), new: null, index: rateIndex }], 'inline');
         }
     },
 
@@ -553,7 +553,11 @@ const ItemsManager = {
             const added = await FirebaseService.importItems(plan.updates, plan.adds);
             plan.updates.forEach(u => {
                 const idx = AppState.items.findIndex(i => i.id === u.id);
-                if (idx !== -1) AppState.items[idx] = { ...AppState.items[idx], ...u.fields };
+                if (idx === -1) return;
+                const before = AppState.items[idx];
+                const after = { ...before, ...u.fields };
+                AppState.items[idx] = after;
+                this.recordHistory(after, diffItemSnapshots(snapshotItem(before), snapshotItem(after)), 'import');
             });
             added.forEach(item => {
                 if (!AppState.items.some(i => i.id === item.id)) AppState.items.push(item);

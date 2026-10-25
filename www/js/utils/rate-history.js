@@ -55,27 +55,61 @@ export function snapshotItem(item) {
     };
 }
 
+/** Highest list position stored in a history entry (mirrored in firestore.rules). */
+export const MAX_HISTORY_INDEX = 20;
+
 /**
- * Changes between two rate lists. Values present in both are unchanged
- * (position doesn't matter); the rest are paired in order as old → new,
- * leftovers are removals (new = null) or additions (old = null).
+ * Changes between two rate lists as edits applied in order (so undoing them
+ * in reverse order rebuilds the old list exactly). Values kept in both lists
+ * (longest common run, in order) are unchanged; between them, removed and
+ * added values at the same place pair as old → new, leftovers are removals
+ * (new = null) or additions (old = null). `index` = list position of the edit
+ * at the moment it is applied.
  * @param {number[]} oldList
  * @param {number[]} newList
- * @returns {Array<{old: ?number, new: ?number}>}
+ * @returns {Array<{old: ?number, new: ?number, index: number}>}
  */
 export function diffRateList(oldList, newList) {
-    const removed = [...oldList];
-    const added = [];
-    newList.forEach(v => {
-        const i = removed.indexOf(v);
-        if (i !== -1) removed.splice(i, 1);
-        else added.push(v);
-    });
-    const out = [];
-    const n = Math.max(removed.length, added.length);
-    for (let i = 0; i < n; i++) {
-        out.push({ old: i < removed.length ? removed[i] : null, new: i < added.length ? added[i] : null });
+    const a = oldList || [];
+    const b = newList || [];
+    const lcs = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+    for (let i = a.length - 1; i >= 0; i--) {
+        for (let j = b.length - 1; j >= 0; j--) {
+            lcs[i][j] = a[i] === b[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+        }
     }
+    const out = [];
+    let pos = 0;
+    let removed = [];
+    let added = [];
+    const flush = () => {
+        const n = Math.max(removed.length, added.length);
+        for (let k = 0; k < n; k++) {
+            const old = k < removed.length ? removed[k] : null;
+            const nu = k < added.length ? added[k] : null;
+            out.push({ old, new: nu, index: pos });
+            if (nu !== null) pos += 1;
+        }
+        removed = [];
+        added = [];
+    };
+    let i = 0;
+    let j = 0;
+    while (i < a.length || j < b.length) {
+        if (i < a.length && j < b.length && a[i] === b[j]) {
+            flush();
+            pos += 1;
+            i += 1;
+            j += 1;
+        } else if (j >= b.length || (i < a.length && lcs[i + 1][j] >= lcs[i][j + 1])) {
+            removed.push(a[i]);
+            i += 1;
+        } else {
+            added.push(b[j]);
+            j += 1;
+        }
+    }
+    flush();
     return out;
 }
 
@@ -83,7 +117,7 @@ export function diffRateList(oldList, newList) {
  * Every tracked change between two snapshots.
  * @param {ReturnType<typeof snapshotItem>} before
  * @param {ReturnType<typeof snapshotItem>} after
- * @returns {Array<{field: string, old: *, new: *}>}
+ * @returns {Array<{field: string, old: *, new: *, index?: number}>}
  */
 export function diffItemSnapshots(before, after) {
     const changes = [];
@@ -91,7 +125,7 @@ export function diffItemSnapshots(before, after) {
         if (before[field] !== after[field]) changes.push({ field, old: before[field] || null, new: after[field] || null });
     });
     Object.keys(RATE_FIELDS).forEach(field => {
-        diffRateList(before[field], after[field]).forEach(c => changes.push({ field, old: c.old, new: c.new }));
+        diffRateList(before[field], after[field]).forEach(c => changes.push({ field, old: c.old, new: c.new, index: c.index }));
     });
     return changes;
 }
@@ -124,15 +158,16 @@ export function changeWarnings(changes, { isNew = false } = {}) {
 }
 
 /**
- * Append-only history entries for one save.
- * @param {Array<{field: string, old: *, new: *}>} changes
+ * Append-only history entries for one save. Rate entries keep the list
+ * position of the edit (`index`) when it is known and small enough.
+ * @param {Array<{field: string, old: *, new: *, index?: number}>} changes
  * @param {Object} meta
  * @param {string} meta.itemId
  * @param {string} meta.itemName
  * @param {string} meta.by display name
  * @param {string} meta.byUserId
  * @param {number} meta.at ms
- * @param {string} [meta.source] 'modal' | 'inline'
+ * @param {string} [meta.source] 'modal' | 'inline' | 'import'
  * @param {Object.<string, number>} [meta.lastChangeAt] `${itemId}:${field}` -> ms of the previous change
  * @returns {Array<Object>}
  */
@@ -142,7 +177,7 @@ export function buildHistoryEntries(changes, { itemId, itemName, by, byUserId, a
         if (RATE_FIELDS[c.field] && isRateOutOfBand(c.old, c.new)) flags.push('out-of-band');
         const prev = lastChangeAt[`${itemId}:${c.field}`];
         if (typeof prev === 'number' && at - prev >= 0 && at - prev < QUICK_REPEAT_MS) flags.push('quick-repeat');
-        return {
+        const entry = {
             itemId,
             itemName: itemName || '',
             field: c.field,
@@ -154,6 +189,8 @@ export function buildHistoryEntries(changes, { itemId, itemName, by, byUserId, a
             source,
             flags
         };
+        if (RATE_FIELDS[c.field] && Number.isInteger(c.index) && c.index >= 0 && c.index <= MAX_HISTORY_INDEX) entry.index = c.index;
+        return entry;
     });
 }
 

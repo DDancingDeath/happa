@@ -461,16 +461,19 @@ service cloud.firestore {
 
     // --- item rate/name history (rateHistory, #82 / #65 phase 1) ---
     // Append-only: owner/manager create entries for their own uid; nobody
-    // updates or deletes them.
+    // updates or deletes them. `index` = position in the rate list (#65);
+    // `source` = where the change was made (Items page row, edit dialog, Excel import).
     function validRateHistoryEntry(usersCol) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
-        && d.keys().hasOnly(['itemId', 'itemName', 'field', 'old', 'new', 'by', 'byUserId', 'at', 'source', 'flags'])
+        && d.keys().hasOnly(['itemId', 'itemName', 'field', 'old', 'new', 'by', 'byUserId', 'at', 'source', 'flags', 'index'])
         && d.keys().hasAll(['itemId', 'field', 'byUserId', 'at'])
         && d.itemId is string && d.itemId.size() > 0
         && d.field in ['purchase', 'wholesale', 'retail', 'name', 'hindiName']
         && d.byUserId == request.auth.uid
-        && d.at is number;
+        && d.at is number
+        && (!('source' in d) || d.source in ['modal', 'inline', 'import'])
+        && (!('index' in d) || (d.index is int && d.index >= 0 && d.index <= 20));
     }
 
     // --- user profile rules (shared by users and dev_users) ---

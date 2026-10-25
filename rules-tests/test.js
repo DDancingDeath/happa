@@ -670,6 +670,18 @@ function defineSuite(prefix) {
         await assertFails(as('manager1').collection(rateHistory).doc('d').set(entry('manager1', { at: 'yesterday' })));
     });
 
+    t('rateHistory: accepts Excel-import entries and list positions 0-20; rejects other sources and bad positions', async () => {
+        await assertSucceeds(as('manager1').collection(rateHistory).doc('i1_imp').set(entry('manager1', { source: 'import', index: 0 })));
+        await assertSucceeds(as('legacyOwner').collection(rateHistory).doc('i1_inl').set(entry('legacyOwner', { source: 'inline', index: 20 })));
+        await assertSucceeds(as('manager1').collection(rateHistory).doc('i1_old').set(entry('manager1')));
+        await assertFails(as('manager1').collection(rateHistory).doc('e').set(entry('manager1', { source: 'script' })));
+        await assertFails(as('manager1').collection(rateHistory).doc('f').set(entry('manager1', { index: 21 })));
+        await assertFails(as('manager1').collection(rateHistory).doc('g').set(entry('manager1', { index: -1 })));
+        await assertFails(as('manager1').collection(rateHistory).doc('h').set(entry('manager1', { index: 1.5 })));
+        await assertFails(as('manager1').collection(rateHistory).doc('i').set(entry('manager1', { index: '0' })));
+        await assertFails(as('staff1').collection(rateHistory).doc('j').set(entry('staff1', { source: 'import', index: 0 })));
+    });
+
     // ---- anomalies (#187 / #40): owner/manager only ----
 
     const anomalies = `${prefix}anomalies`;
