@@ -192,7 +192,8 @@ if (['localhost', '127.0.0.1'].includes(window.location.hostname) &&
   console.log('🧪 Using Firebase emulators (auth:9099, firestore:8181)');
 }
 
-// Enable offline persistence (Note: Using compat API for simplicity)
+// Enable offline persistence. The compat SDK (10.7.1) has no persistentLocalCache()
+// factory, so its deprecation warning stays until the SDK moves to the modular API.
 firestoreDb.enablePersistence({ synchronizeTabs: true })
   .catch((err) => {
     if (err.code === 'failed-precondition') {

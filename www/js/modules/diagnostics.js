@@ -72,6 +72,7 @@ const DiagnosticsManager = {
      * Render the tab buttons
      */
     renderTabs() {
+        this.renderSubtitle();
         const container = document.getElementById('diagnosticsTabsContainer');
         if (!container) return;
 
@@ -96,8 +97,30 @@ const DiagnosticsManager = {
                 </button>
                 ${numbersBtn}
             </div>
-            ${this.startupTimingsHtml()}
-            ${this.readStatsHtml()}
+            ${this.technicalDetailsHtml()}
+        `;
+    },
+
+    /** Subtitle i18n key: managers see only Number checks (F24). */
+    subtitleKey() {
+        return isOwner() ? 'ui.diagnostics.subtitle_owner' : 'ui.diagnostics.subtitle_manager';
+    },
+
+    renderSubtitle() {
+        const el = document.getElementById('diagnosticsSubtitle');
+        if (el) el.textContent = t(this.subtitleKey());
+    },
+
+    /** Developer timings and read counts, folded away for the owner (F24). */
+    technicalDetailsHtml() {
+        return `
+            <details class="diagnostics-technical" style="margin-bottom: 16px;">
+                <summary><strong>${Helpers.escapeHtml(t('ui.diagnostics.technical_details'))}</strong></summary>
+                <div style="margin-top: 8px;">
+                    ${this.startupTimingsHtml()}
+                    ${this.readStatsHtml()}
+                </div>
+            </details>
         `;
     },
 

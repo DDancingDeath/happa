@@ -20,6 +20,7 @@ import {
 import { createRateEditTracker, diffItemRates, diffItemFields } from '../utils/notification-format.js';
 import { canDeleteItem, ITEM_DELETE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
+import { attachScrollCue } from '../ui/scroll-cue.js';
 
 /**
  * Items Manager - Manages inventory items and rates
@@ -669,17 +670,15 @@ const ItemsManager = {
             const row = document.createElement('tr');
             row.style.borderBottom = '1px solid #e5e7eb';
             row.style.cursor = isStaff ? 'default' : 'pointer';
-            row.style.transition = 'all 0.2s';
+            row.style.transition = 'background 0.2s, box-shadow 0.2s';
             
             if (!isStaff) {
                 row.onmouseenter = () => {
                     row.style.background = '#f9fafb';
-                    row.style.transform = 'scale(1.01)';
                     row.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
                 };
                 row.onmouseleave = () => {
                     row.style.background = 'white';
-                    row.style.transform = 'scale(1)';
                     row.style.boxShadow = 'none';
                 };
                 row.onclick = () => this.openEditModal(item.id);
@@ -692,7 +691,7 @@ const ItemsManager = {
                     <td style="padding: 16px; font-weight: 600; color: #1f2937; font-size: 15px; border-right: 1px solid #f3f4f6;">
                         ${Helpers.escapeHtml(displayName || item.name || '-')}
                     </td>
-                    <td style="padding: 16px; color: #007bff; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
+                    <td data-perm="purchaseRates" style="padding: 16px; color: #007bff; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
                     <td style="padding: 16px; color: #28a745; font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(saleRates)}</td>
                 `;
             } else {
@@ -700,7 +699,7 @@ const ItemsManager = {
                     <td style="padding: 16px; font-weight: 600; color: #1f2937; font-size: 15px; border-right: 1px solid #f3f4f6;">
                         ${Helpers.escapeHtml(displayName || item.name || '-')}
                     </td>
-                    <td style="padding: 16px; color: #007bff; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
+                    <td data-perm="purchaseRates" style="padding: 16px; color: #007bff; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
                     <td style="padding: 16px; color: #28a745; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(saleRates)}</td>
                     <td class="wholesale-column" style="padding: 16px; color: #9333ea; font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(wholesaleRates)}</td>
                 `;
@@ -712,6 +711,7 @@ const ItemsManager = {
             const colspan = isStaff ? '3' : '4';
             tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 24px; text-align: center; color: #999;">No items found</td></tr>`;
         }
+        attachScrollCue(document.getElementById('itemsTableScroll'));
     },
     
     // Open modal to add new item

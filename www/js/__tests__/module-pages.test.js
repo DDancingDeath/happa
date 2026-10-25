@@ -600,6 +600,24 @@ describe('Diagnostics', () => {
         expect(DiagnosticsManager.activeTab).toBe('numbers');
     });
 
+    test('subtitle matches the role; owner timings sit behind Technical details (F24)', async () => {
+        document.body.insertAdjacentHTML('afterbegin', '<p id="diagnosticsSubtitle"></p>');
+        AppState.userRole = 'manager';
+        jest.spyOn(TelemetryService, 'getTelemetryData').mockResolvedValue([]);
+        await DiagnosticsManager.init();
+        expect(document.getElementById('diagnosticsSubtitle').textContent).toBe('Number checks on the data loaded on this phone');
+        expect(document.querySelector('.diagnostics-technical')).toBeNull();
+
+        AppState.userRole = 'owner';
+        DiagnosticsManager.activeTab = 'errors';
+        await DiagnosticsManager.init();
+        expect(document.getElementById('diagnosticsSubtitle').textContent).toBe('App errors, audit logs and number checks');
+        const technical = document.querySelector('details.diagnostics-technical');
+        expect(technical.querySelector('summary').textContent).toContain('Technical details');
+        expect(technical.open).toBe(false);
+        expect(technical.querySelector('.diagnostics-reads')).not.toBeNull();
+    });
+
     // #114: Firestore Timestamps render as a real date.
     test('Firestore Timestamp "last seen" renders as a date', () => {
         const ts = { seconds: 1792560000, nanoseconds: 0, toDate: () => new Date(1792560000000), toMillis: () => 1792560000000 };

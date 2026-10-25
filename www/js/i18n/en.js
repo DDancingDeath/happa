@@ -912,6 +912,7 @@ export default {
     'msg.roles.edit_window_closed': "Bills can be changed or deleted only for {days} days after saving. Ask the owner.",
     'msg.roles.not_saved': "Roles & access not saved for everyone — check the internet and try again",
     'msg.roles.owner_only': "Only the owner can change roles & access",
+    'msg.roles.page_role_only': "This page is only for the owner or manager. Showing Today.",
     'msg.roles.page_not_allowed': "This page is turned off for your role. Ask the owner.",
     'msg.roles.saved': "Roles & access saved for everyone",
     'msg.roles.section_not_allowed': "This is turned off for your role. Ask the owner.",
@@ -929,6 +930,7 @@ export default {
     'ui.roles.perm_history_days': "History: days back (0 = all)",
     'ui.roles.perm_old_cash_sessions': "Past cash days",
     'ui.roles.perm_personal_expenses': "Personal expenses",
+    'ui.roles.perm_purchase_rates': "See purchase rates",
     'ui.roles.perm_profit': "Profit and average cost",
     'ui.roles.perm_reports': "Reports page",
     'ui.roles.perm_stock_value': "Stock ₹ value",
@@ -1240,5 +1242,10 @@ export default {
     'ui.kbd.sidebar_link': "⌨ Shortcuts (?)",
     'ui.notif.loading': "Loading…",
     'ui.notif.none_yet': "No notifications yet",
-    'ui.quota.banner': "Daily free data limit reached — data may not load or save until about 12:30–13:30 IST. Bills saved now are kept on this device and will sync later."
+    'ui.quota.banner': "Daily free data limit reached — data may not load or save until about 12:30–13:30 IST. Bills saved now are kept on this device and will sync later.",
+    'ui.diagnostics.subtitle_owner': "App errors, audit logs and number checks",
+    'ui.diagnostics.subtitle_manager': "Number checks on the data loaded on this phone",
+    'ui.diagnostics.technical_details': "🔧 Technical details",
+    'ui.health.role_owner': "Owner",
+    'ui.health.unknown_user': "Unknown user"
 };

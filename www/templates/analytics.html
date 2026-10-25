@@ -29,15 +29,15 @@
             </div>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
                 <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px;">
-                    <div style="font-size: 10px; opacity: 0.85; margin-bottom: 4px;">Expected Purchases</div>
+                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;">Expected Purchases</div>
                     <div id="predictedPurchases" style="font-size: 18px; font-weight: 700;">₹0</div>
                 </div>
                 <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px;">
-                    <div style="font-size: 10px; opacity: 0.85; margin-bottom: 4px;">Expected Sales</div>
+                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;">Expected Sales</div>
                     <div id="predictedSales" style="font-size: 18px; font-weight: 700;">₹0</div>
                 </div>
                 <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px;">
-                    <div style="font-size: 10px; opacity: 0.85; margin-bottom: 4px;">Cash Needed</div>
+                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;">Cash Needed</div>
                     <div id="predictedCashNeed" style="font-size: 18px; font-weight: 700;">₹0</div>
                 </div>
             </div>
@@ -50,22 +50,22 @@
                 <div class="stat-card stat-card-success-light" style="text-align: center; padding: 12px;">
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Total Revenue</div>
                     <div id="monthRevenue" style="font-size: 20px; font-weight: 700; color: #16a34a;">₹0</div>
-                    <div id="monthRevenueGrowth" style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">vs last month</div>
+                    <div id="monthRevenueGrowth" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">vs last month</div>
                 </div>
                 <div class="stat-card stat-card-info-light" style="text-align: center; padding: 12px;">
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Total Purchases</div>
                     <div id="monthPurchases" style="font-size: 20px; font-weight: 700; color: #2563eb;">₹0</div>
-                    <div id="monthPurchasesGrowth" style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">vs last month</div>
+                    <div id="monthPurchasesGrowth" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">vs last month</div>
                 </div>
                 <div class="stat-card" data-perm="profit" style="text-align: center; background: #fef3c7; padding: 12px;">
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.finance.profit_on_goods_sold">Profit on goods sold</div>
                     <div id="monthProfit" style="font-size: 20px; font-weight: 700; color: #d97706;">₹0</div>
-                    <div id="monthProfitMargin" style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">-- margin</div>
+                    <div id="monthProfitMargin" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">-- margin</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #fee2e2; padding: 12px;">
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Expenses</div>
                     <div id="monthExpenses" style="font-size: 20px; font-weight: 700; color: #dc2626;">₹0</div>
-                    <div id="monthExpensesCount" style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">-- transactions</div>
+                    <div id="monthExpensesCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">-- transactions</div>
                 </div>
             </div>
         </div>
@@ -77,12 +77,12 @@
                 <div class="stat-card" style="text-align: center; background: #fee2e2; border-left: 4px solid #dc2626; padding: 12px;">
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">You Owe</div>
                     <div id="totalPayable" style="font-size: 18px; font-weight: 700; color: #dc2626;">₹0</div>
-                    <div id="payableCount" style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">-- bills</div>
+                    <div id="payableCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">-- bills</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #dcfce7; border-left: 4px solid #16a34a; padding: 12px;">
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">You'll Receive</div>
                     <div id="totalReceivable" style="font-size: 18px; font-weight: 700; color: #16a34a;">₹0</div>
-                    <div id="receivableCount" style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">-- bills</div>
+                    <div id="receivableCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">-- bills</div>
                 </div>
             </div>
         </div>
@@ -93,19 +93,19 @@
             <p style="margin: 0 0 12px 0; font-size: 11px; color: var(--text-secondary);">Based on current pace</p>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
                 <div class="stat-card" style="text-align: center; background: #f0fdf4; padding: 10px;">
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Projected Revenue</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Projected Revenue</div>
                     <div id="projectedRevenue" style="font-size: 18px; font-weight: 700; color: #16a34a;">₹0</div>
                 </div>
                 <div class="stat-card" data-perm="profit" style="text-align: center; background: #fef3c7; padding: 10px;">
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Projected Profit</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Projected Profit</div>
                     <div id="projectedProfit" style="font-size: 18px; font-weight: 700; color: #d97706;">₹0</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #eff6ff; padding: 10px;">
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Cash Required</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Cash Required</div>
                     <div id="projectedCashRequired" style="font-size: 18px; font-weight: 700; color: #2563eb;">₹0</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #fae8ff; padding: 10px;">
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Days Remaining</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Days Remaining</div>
                     <div id="daysRemaining" style="font-size: 18px; font-weight: 700; color: #a855f7;">0</div>
                 </div>
             </div>
@@ -187,15 +187,15 @@
             <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">👥 Customer Insights</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px;">
                 <div class="stat-card" style="text-align: center; background: #eff6ff; padding: 10px;">
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Active Buyers</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Active Buyers</div>
                     <div id="activeBuyers" style="font-size: 18px; font-weight: 700; color: #2563eb;">0</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #f0fdf4; padding: 10px;">
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Active Sellers</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Active Sellers</div>
                     <div id="activeSellers" style="font-size: 18px; font-weight: 700; color: #16a34a;">0</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #fef3c7; padding: 10px;">
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">Avg/Customer</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Avg/Customer</div>
                     <div id="avgPerCustomer" style="font-size: 18px; font-weight: 700; color: #d97706;">₹0</div>
                 </div>
             </div>

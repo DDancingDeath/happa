@@ -17,12 +17,13 @@
                    onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'">
         </div>
         
-        <div style="overflow-x: auto; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
+        <div class="scroll-cue">
+        <div id="itemsTableScroll" class="scroll-cue-inner" style="border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
             <table id="itemsViewTable" style="width: 100%; border-collapse: collapse; background: white;">
                 <thead>
                     <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: 2px solid #5a67d8;">
                         <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);">Item Name</th>
-                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);">Purchase Rates</th>
+                        <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-perm="purchaseRates">Purchase Rates</th>
                         <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);">Retail Rates</th>
                         <th class="wholesale-column" style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Wholesale Rates</th>
                     </tr>
@@ -30,5 +31,6 @@
                 <tbody id="itemsViewTableBody">
                 </tbody>
             </table>
+        </div>
         </div>
     </div>

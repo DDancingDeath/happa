@@ -83,7 +83,8 @@
 body.no-perm-personalExpenses [data-perm~="personalExpenses"],
 body.no-perm-profit [data-perm~="profit"],
 body.no-perm-stockValue [data-perm~="stockValue"],
-body.no-perm-oldCashSessions [data-perm~="oldCashSessions"] {
+body.no-perm-oldCashSessions [data-perm~="oldCashSessions"],
+body.no-perm-purchaseRates [data-perm~="purchaseRates"] {
   display: none !important;
 }
 

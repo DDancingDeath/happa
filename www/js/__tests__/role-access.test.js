@@ -108,3 +108,60 @@ describe('direct navigation to a page that is off for the role', () => {
         expect(document.getElementById('reports').classList.contains('active')).toBe(true);
     });
 });
+
+describe('owner/manager-only pages (F23)', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="day" class="tab"></div><div id="billing" class="tab"></div>' +
+            '<div id="admin" class="tab"></div><div id="diagnostics" class="tab"></div><nav class="nav-menu"></nav>';
+        jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        jest.spyOn(UIManager, 'hapticFeedback').mockImplementation(() => {});
+    });
+    afterEach(() => {
+        jest.restoreAllMocks();
+        AppState.userRole = 'staff';
+        delete AppState.settings.roleAccess;
+    });
+
+    test('canOpenTab follows the fixed role level, whatever Roles & access says', () => {
+        const allOn = { manager: { finance: true }, staff: { finance: true, reports: true } };
+        expect(canOpenTab('admin', 'owner', allOn)).toBe(true);
+        expect(canOpenTab('admin', 'manager', allOn)).toBe(false);
+        expect(canOpenTab('admin', 'staff', allOn)).toBe(false);
+        for (const tab of ['diagnostics', 'anomalies', 'rate-trends', 'health']) {
+            expect(canOpenTab(tab, 'manager', allOn)).toBe(true);
+            expect(canOpenTab(tab, 'staff', allOn)).toBe(false);
+            expect(canOpenTab(tab, undefined, allOn)).toBe(false);
+        }
+    });
+
+    test.each([['staff', 'admin'], ['manager', 'admin'], ['staff', 'diagnostics']])(
+        '%s opening %s directly gets Today and a message', (role, tab) => {
+            AppState.userRole = role;
+            NavigationManager.showTabFromNav(tab);
+            expect(document.getElementById(tab).classList.contains('active')).toBe(false);
+            expect(document.getElementById('day').classList.contains('active')).toBe(true);
+            expect(UIManager.showToast).toHaveBeenCalledWith('This page is only for the owner or manager. Showing Today.');
+        });
+
+    test('the owner opens Admin; a manager opens Diagnostics', () => {
+        AppState.userRole = 'owner';
+        NavigationManager.showTab('admin');
+        expect(document.getElementById('admin').classList.contains('active')).toBe(true);
+        AppState.userRole = 'manager';
+        NavigationManager.showTab('diagnostics');
+        expect(document.getElementById('diagnostics').classList.contains('active')).toBe(true);
+        expect(UIManager.showToast).not.toHaveBeenCalled();
+    });
+});
+
+describe('See purchase rates permission (F36)', () => {
+    test('on for both roles by default (today\'s behaviour); the owner can turn it off', () => {
+        expect(ROLE_ACCESS_DEFAULTS.manager.purchaseRates).toBe(true);
+        expect(ROLE_ACCESS_DEFAULTS.staff.purchaseRates).toBe(true);
+        expect(hiddenPermissionClasses('staff')).not.toContain('no-perm-purchaseRates');
+        const raw = { staff: { purchaseRates: false } };
+        expect(hiddenPermissionClasses('staff', raw)).toEqual(['no-perm-purchaseRates']);
+        expect(hiddenPermissionClasses('manager', raw)).toEqual([]);
+        expect(hiddenPermissionClasses('owner', { manager: { purchaseRates: false } })).toEqual([]);
+    });
+});

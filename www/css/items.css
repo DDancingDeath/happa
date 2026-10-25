@@ -123,7 +123,7 @@
 }
 
 .rates-container .delete-rate {
-  background: #ef4444;
+  background: #dc2626;
   color: var(--white);
   border: none;
   width: 28px;
@@ -169,4 +169,17 @@
 
 .add-item-btn:active {
   transform: scale(0.98);
+}
+
+/* Items page on a phone: action buttons fit the width (F28) */
+@media (max-width: 1023px) {
+  #itemsActionButtons {
+    flex-wrap: wrap;
+  }
+
+  #itemsActionButtons .quick-add-btn-inline {
+    min-width: 0;
+    padding: 12px 8px !important;
+    white-space: nowrap;
+  }
 }

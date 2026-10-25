@@ -16,7 +16,7 @@
 .health-ok { background: #d1fae5; color: #065f46; }
 .health-near { background: #fef3c7; color: #92400e; }
 .health-bad { background: #fee2e2; color: #991b1b; }
-.health-none { color: #9ca3af; }
+.health-none { color: #6b7280; }
 .health-row-bad td { color: #991b1b; }
 .health-list { margin: 0; padding-left: 20px; font-size: 14px; }
 .health-list li { margin: 3px 0; overflow-wrap: anywhere; }

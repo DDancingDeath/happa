@@ -15,6 +15,17 @@ import { t } from '../i18n/index.js';
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
 
 const PROFIT_PERIOD_DAYS = { '7days': 7, '30days': 30, '90days': 90 };
+
+/**
+ * Arrow and colour for a month-on-month change in %. 0% is neutral (F26);
+ * for purchases a fall is the good direction.
+ */
+export function growthMarker(pct, lowerIsBetter = false) {
+    const n = Number(pct);
+    if (!n) return { arrow: '→', color: '#4b5563' };
+    const good = lowerIsBetter ? n < 0 : n > 0;
+    return { arrow: n > 0 ? '↑' : '↓', color: good ? '#15803d' : '#dc2626' };
+}
 /** Skips recomputing the overview on a tab revisit when nothing changed (#24). */
 const overviewMemo = createRenderMemo();
 
@@ -300,15 +311,13 @@ export class AnalyticsManager {
 
         const revenueGrowthEl = document.getElementById('monthRevenueGrowth');
         if (revenueGrowthEl) {
-            const arrow = revenueGrowth >= 0 ? '↑' : '↓';
-            const color = revenueGrowth >= 0 ? '#16a34a' : '#dc2626';
+            const { arrow, color } = growthMarker(revenueGrowth, false);
             revenueGrowthEl.innerHTML = `<span style="color: ${color}">${arrow} ${Math.abs(revenueGrowth)}%</span> vs last month`;
         }
 
         const purchaseGrowthEl = document.getElementById('monthPurchasesGrowth');
         if (purchaseGrowthEl) {
-            const arrow = purchaseGrowth >= 0 ? '↑' : '↓';
-            const color = purchaseGrowth <= 0 ? '#16a34a' : '#dc2626'; // Lower is better for purchases
+            const { arrow, color } = growthMarker(purchaseGrowth, true);
             purchaseGrowthEl.innerHTML = `<span style="color: ${color}">${arrow} ${Math.abs(purchaseGrowth)}%</span> vs last month`;
         }
     }
@@ -414,7 +423,7 @@ export class AnalyticsManager {
                             </div>
                         `}
                     </div>
-                    <div style="font-size: 9px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap;">
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; white-space: nowrap;">
                         ${date.split('/')[0]}/${date.split('/')[1]}
                     </div>
                 </div>

@@ -16,6 +16,8 @@ import {
     aggregateHealth, belowTarget, countedRuns, lastDays, passRate, reasonName, DEFAULT_TARGET
 } from '../tip/health-stats.js';
 
+import { attachScrollCue } from '../ui/scroll-cue.js';
+
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const L = (key, params) => esc(t(key, params));
 const DAYS = 14;
@@ -56,6 +58,27 @@ function rateCell(n, test) {
     return `<td class="health-rate health-${cls}" title="${esc(countedRuns(n))}">${esc(rate)}%<small>${esc(countedRuns(n))}</small></td>`;
 }
 
+const ROLE_LABEL_KEYS = { owner: 'ui.health.role_owner', manager: 'ui.roles.manager', staff: 'ui.roles.member' };
+
+/**
+ * Who uses a device (profile name, else role) and a short device tag (F34).
+ * @returns {{who: string, tag: string}}
+ */
+export function deviceLabel(dev, usersById = {}) {
+    const user = dev?.uid ? usersById[dev.uid] : null;
+    const role = user?.role ? t(ROLE_LABEL_KEYS[user.role] || 'ui.roles.member') : '';
+    const name = String(user?.name || '').trim();
+    const id = String(dev?.deviceId || '');
+    const tag = `#${id.slice(-4)}`;
+    if (name) return { who: name, tag: role ? `${role} · ${tag}` : tag };
+    return { who: role || t('ui.health.unknown_user'), tag };
+}
+
+function deviceCellHtml(dev, usersById) {
+    const { who, tag } = deviceLabel(dev, usersById);
+    return `<strong>${esc(who)}</strong><div class="health-muted" title="${esc(dev.deviceId)}">${esc(tag)}</div>`;
+}
+
 export const HealthManager = {
     /** Page data: { docs, failures, at } */
     data: null,
@@ -87,14 +110,18 @@ export const HealthManager = {
         if (status) status.textContent = t('ui.health.loading');
         try {
             const today = dayKeyOf(Date.now());
-            const [docs, failures] = await Promise.all([
+            const [docs, failures, users] = await Promise.all([
                 FirebaseService.loadTipHealth({ sinceDay: lastDays(today, DAYS)[DAYS - 1], limit: HEALTH_LIMIT }),
                 FirebaseService.loadTipFailures({ limit: FAILURE_LIMIT }).catch(e => {
                     console.warn('TIP failures not loaded:', e?.code || e);
                     return [];
+                }),
+                FirebaseService.loadUsers().catch(e => {
+                    console.warn('Users for device names not loaded:', e?.code || e);
+                    return [];
                 })
             ]);
-            this.data = { docs, failures, at: Date.now() };
+            this.data = { docs, failures, users, at: Date.now() };
             this.banner = { day: today, docs: docs.filter(d => d.day === today), at: Date.now() };
             this.render();
         } catch (error) {
@@ -104,7 +131,8 @@ export const HealthManager = {
     },
 
     render() {
-        const { docs = [], failures = [], at } = this.data || {};
+        const { docs = [], failures = [], users = [], at } = this.data || {};
+        const usersById = Object.fromEntries((users || []).map(u => [u.id, u]));
         const agg = aggregateHealth(docs, { reasonsByTest: tipReasons() });
         const today = dayKeyOf(Date.now());
         const status = document.getElementById('healthStatus');
@@ -160,10 +188,11 @@ export const HealthManager = {
         set('healthDevices', `<table class="health-table"><thead><tr><th>${L('ui.health.device')}</th><th>${L('ui.health.platform')}</th>
             <th>${L('ui.health.version')}</th><th>${L('ui.health.last_seen')}</th><th>${L('ui.health.runs')}</th><th>${L('ui.health.failed')}</th></tr></thead>
             <tbody>${agg.devices.slice(0, 30).map(dev => `<tr class="${dev.failed ? 'health-row-bad' : ''}">
-                <td><code>${esc(dev.deviceId)}</code></td><td>${esc(dev.platform)}</td><td>${esc(dev.appVersion)}</td>
+                <td>${deviceCellHtml(dev, usersById)}</td><td>${esc(dev.platform)}</td><td>${esc(dev.appVersion)}</td>
                 <td>${esc(dev.lastDay ? dayLabel(dev.lastDay) : '')}</td><td>${esc(dev.runs)}</td><td>${esc(dev.failed)}</td></tr>`).join('')}</tbody></table>`);
 
         set('healthFailures', this.failuresHtml(failures) || `<div class="health-empty">${L('ui.health.no_failures')}</div>`);
+        document.querySelectorAll('#health .scroll-cue-inner').forEach(attachScrollCue);
     },
 
     failuresHtml(failures) {
