@@ -91,3 +91,22 @@ test('a retry after another device recorded a due payment keeps that payment', a
     expect(saved.payments).toHaveLength(1);
     expect(fake.raw('purchases').size).toBe(1);
 });
+
+describe('createdAt: server time of the first save (#87 edit window)', () => {
+    test('a new bill is written with createdAt; a retry and a later edit keep the stored value', async () => {
+        await FirebaseService.savePurchase(bill(), { retry: false });
+        const created = doc().createdAt;
+        expect(typeof created).toBe('number');
+        await FirebaseService.savePurchase(bill({ createdAt: created + 99999 }), { retry: true });
+        expect(doc().createdAt).toBe(created);
+        await FirebaseService.updatePurchase({ ...doc(), id: 'p1', comments: 'edited', createdAt: undefined });
+        expect(doc()).toMatchObject({ comments: 'edited', createdAt: created });
+    });
+
+    test('an edit of a bill saved before #87 does not add createdAt', async () => {
+        fake.raw('purchases').set('p1', { ...bill() });
+        await FirebaseService.updatePurchase({ ...bill(), comments: 'edited', createdAt: Date.now() });
+        expect(doc().comments).toBe('edited');
+        expect(doc().createdAt).toBeUndefined();
+    });
+});

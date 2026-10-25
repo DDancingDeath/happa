@@ -106,16 +106,35 @@ describe('canEditBill', () => {
         AppState.currentUser = null;
     });
 
-    it('allows owner/manager any bill, staff only bills they created', () => {
+    const HOUR = 3600000;
+    const saved = (msAgo) => ({ ...BILL, createdAt: { toMillis: () => Date.now() - msAgo } });
+
+    it('owner any bill; manager any bill and staff own bills within 2 days of saving (#87)', () => {
         AppState.currentUser = { uid: 'creator' };
         AppState.userRole = 'staff';
-        expect(canEditBill(BILL)).toBe(true);
-        expect(canEditBill({ ...BILL, userId: 'someone' })).toBe(false);
-        expect(canEditBill({ ...BILL, userId: undefined })).toBe(false);
+        expect(canEditBill(saved(47 * HOUR))).toBe(true);
+        expect(canEditBill(saved(49 * HOUR))).toBe(false);
+        expect(canEditBill(BILL)).toBe(false);
+        expect(canEditBill({ ...saved(HOUR), userId: 'someone' })).toBe(false);
+        expect(canEditBill({ ...saved(HOUR), userId: undefined })).toBe(false);
         AppState.userRole = 'manager';
-        expect(canEditBill({ ...BILL, userId: undefined })).toBe(true);
+        expect(canEditBill({ ...saved(HOUR), userId: undefined })).toBe(true);
+        expect(canEditBill({ ...saved(49 * HOUR), userId: 'someone' })).toBe(false);
         AppState.userRole = 'owner';
         expect(canEditBill({ ...BILL, userId: 'someone' })).toBe(true);
+    });
+
+    it('editBill on an own bill past the window explains the 2-day limit', async () => {
+        AppState.currentUser = { uid: 'creator' };
+        AppState.userRole = 'staff';
+        AppState.purchaseHistory = [saved(3 * 24 * HOUR)];
+        window.currentBillId = 'b1';
+        const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        BillingManager.editingBillIndex = undefined;
+        await BillingManager.editBill(0, 'purchase');
+        expect(toast).toHaveBeenCalledWith(t('msg.billing.edit_window_passed'));
+        expect(BillingManager.editingBillIndex).toBeUndefined();
+        toast.mockRestore();
     });
 
     it('editBill refuses with the policy message', async () => {

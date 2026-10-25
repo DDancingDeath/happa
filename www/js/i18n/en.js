@@ -79,6 +79,7 @@ export default {
     'msg.billing.draft_saved_cloud': "✓ Draft saved to cloud!",
     'msg.billing.edit_conflict': "This bill was changed on another device — reopen it and try again",
     'msg.billing.edit_not_allowed': "Only the person who created this bill, a manager or an owner can edit it",
+    'msg.billing.edit_window_passed': "Bills can be changed or deleted only for 2 days after saving. Ask the owner to change this bill.",
     'msg.billing.edit_offline': "Internet required to edit a bill",
     'msg.billing.edit_timeout': "Saving the edit is taking too long — check the internet connection and try again",
     'msg.billing.editing_bill_modify_save': "✏️ Editing bill - modify and save",

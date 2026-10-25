@@ -1,4 +1,7 @@
-import { canChangeExpense, canDeleteItem, isPermissionDenied, MEMBER_EDIT_WINDOW_MS } from '../utils/record-permissions.js';
+import {
+    canChangeExpense, canDeleteItem, isPermissionDenied, MEMBER_EDIT_WINDOW_MS,
+    billCreatedMs, canEditBillFor, canDeleteBillFor, BILL_EDIT_WINDOW_MS
+} from '../utils/record-permissions.js';
 import { buildTelemetryDoc, mergeTelemetryReports } from '../services/telemetry.js';
 
 const NOW = 1_800_000_000_000;
@@ -68,5 +71,44 @@ describe('telemetry reports are create-only documents (#122)', () => {
         expect(merged[0]).toMatchObject({ count: 5, firstSeen: 5, lastSeen: 30, message: 'new', docIds: ['a-2', 'a-1'] });
         expect(merged[0].occurrences.map(o => o.timestamp)).toEqual([10, 30]);
         expect(merged[1]).toMatchObject({ count: 7, docIds: ['legacyFp'] });
+    });
+});
+
+describe('bill edit window (mirrors firestore.rules, #87)', () => {
+    const at = (ms) => ({ toMillis: () => ms });
+    const own = { userId: 'u1', createdAt: at(NOW - BILL_EDIT_WINDOW_MS + 60000) };
+    const old = { userId: 'u1', createdAt: at(NOW - BILL_EDIT_WINDOW_MS - 1) };
+
+    test('billCreatedMs reads a Timestamp, {seconds}, a local estimate; null when missing', () => {
+        expect(billCreatedMs({ createdAt: at(5) })).toBe(5);
+        expect(billCreatedMs({ createdAt: { seconds: 2, nanoseconds: 5e6 } })).toBe(2005);
+        expect(billCreatedMs({ createdAt: 7 })).toBe(7);
+        expect(billCreatedMs({})).toBeNull();
+        expect(billCreatedMs({ createdAt: 'x' })).toBeNull();
+    });
+
+    test('owner: any bill, any age, legacy too', () => {
+        [own, old, { userId: 'u2' }, {}].forEach(b => {
+            expect(canEditBillFor(b, { uid: 'o', role: 'owner', now: NOW })).toBe(true);
+            expect(canDeleteBillFor(b, { uid: 'o', role: 'owner', now: NOW })).toBe(true);
+        });
+    });
+
+    test('creator: edit and delete only within 2 days; legacy (no createdAt) never', () => {
+        const u1 = { uid: 'u1', role: 'staff', now: NOW };
+        expect(canEditBillFor(own, u1)).toBe(true);
+        expect(canDeleteBillFor(own, u1)).toBe(true);
+        expect(canEditBillFor(old, u1)).toBe(false);
+        expect(canDeleteBillFor(old, u1)).toBe(false);
+        expect(canEditBillFor({ userId: 'u1' }, u1)).toBe(false);
+        expect(canEditBillFor(own, { ...u1, uid: 'u2' })).toBe(false);
+    });
+
+    test('manager: edits any bill within 2 days, deletes only own', () => {
+        const m = { uid: 'm', role: 'manager', now: NOW };
+        expect(canEditBillFor(own, m)).toBe(true);
+        expect(canEditBillFor(old, m)).toBe(false);
+        expect(canDeleteBillFor(own, m)).toBe(false);
+        expect(canDeleteBillFor({ ...own, userId: 'm' }, m)).toBe(true);
     });
 });

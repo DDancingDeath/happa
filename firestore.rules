@@ -62,11 +62,21 @@ service cloud.firestore {
       return ['purchases', 'retailSales', 'wholesaleSales'];
     }
 
+    // Everyone but the owner may change or delete a bill for 2 days after it was
+    // first saved (#87). `createdAt` is the server time of that first save
+    // (firestore-service.js saveBill). Bills saved before #87 have no createdAt
+    // and count as outside the window: owner only.
+    function withinBillWindow() {
+      let c = resource.data.get('createdAt', null);
+      return c is timestamp && request.time < c + duration.value(2, 'd');
+    }
+
     function canDeleteBill(usersCol) {
       // resource is null when deleting a doc that is already gone (no-op).
       return isOwnerIn(usersCol)
         || (isApprovedIn(usersCol)
-            && (resource == null || resource.data.get('userId', null) == request.auth.uid));
+            && (resource == null
+                || (resource.data.get('userId', null) == request.auth.uid && withinBillWindow())));
     }
 
     function keepsBillOwner(usersCol) {
@@ -75,11 +85,13 @@ service cloud.firestore {
     }
 
     // Full edits: owner/manager, or the bill's creator (legacy bills without
-    // userId: owner/manager only).
+    // userId: owner/manager only), within the 2-day window; createdAt never changes.
     function canFullyEditBill(usersCol) {
-      return isManagerIn(usersCol)
-        || (resource.data.get('userId', null) != null
-            && resource.data.get('userId', null) == request.auth.uid);
+      return (isManagerIn(usersCol)
+              || (resource.data.get('userId', null) != null
+                  && resource.data.get('userId', null) == request.auth.uid))
+        && withinBillWindow()
+        && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
     }
 
     // Everyone else may only touch payment/due bookkeeping written by the app:
@@ -169,10 +181,12 @@ service cloud.firestore {
             || (bookkeepingOnly(docId) && paymentEditOk()));
     }
 
-    // New bills: the creator's own uid (when set) and numeric money fields.
+    // New bills: the creator's own uid (when set), numeric money fields and, when
+    // sent, createdAt = the server time of this write (older apps don't send it).
     function validBillCreate() {
       return request.resource.data.get('userId', request.auth.uid) == request.auth.uid
-        && changedMoneyTypesOk(request.resource.data.keys());
+        && changedMoneyTypesOk(request.resource.data.keys())
+        && (!('createdAt' in request.resource.data) || request.resource.data.createdAt == request.time);
     }
 
     // ============================================

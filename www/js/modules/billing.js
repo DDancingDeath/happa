@@ -17,18 +17,26 @@ import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
 import { PurchaseManager } from './purchase.js';
 import { RetailSaleManager } from './retail-sale.js';
 import { t } from '../i18n/index.js';
+import { canEditBillFor, BILL_WINDOW_PASSED_KEY } from '../utils/record-permissions.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
 const EDIT_TIMEOUT_MS = 20000;
 
-/** Who may edit a bill (rules: owner, manager or the bill's creator; legacy bills without userId: owner/manager). */
+/**
+ * Who may edit a bill (firestore.rules canFullyEditBill): the owner always; a
+ * manager or the bill's creator for 2 days after it was saved (#87).
+ */
 export function canEditBill(bill) {
-    const role = AppState.userRole;
-    if (role === 'owner' || role === 'manager') return true;
-    const uid = AppState.currentUser?.uid;
-    return !!(uid && bill && bill.userId && bill.userId === uid);
+    return canEditBillFor(bill, { uid: AppState.currentUser?.uid, role: AppState.userRole });
 }
 export const EDIT_NOT_ALLOWED_KEY = 'msg.billing.edit_not_allowed';
+
+/** Message key explaining why canEditBill(bill) is false. */
+export function editBlockedKey(bill) {
+    const uid = AppState.currentUser?.uid;
+    const mayEditInWindow = AppState.userRole === 'manager' || !!(uid && bill?.userId && bill.userId === uid);
+    return mayEditInWindow ? BILL_WINDOW_PASSED_KEY : EDIT_NOT_ALLOWED_KEY;
+}
 
 /** Draft fields that make the bill checks treat the form as an edit of `bill` (#37). */
 const editCheckContext = (bill) => ({
@@ -936,7 +944,7 @@ const BillingManager = {
                 return;
             }
             if (!canEditBill(bill)) {
-                UIManager.showToast(t(EDIT_NOT_ALLOWED_KEY));
+                UIManager.showToast(t(editBlockedKey(bill)));
                 return;
             }
 

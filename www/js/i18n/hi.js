@@ -79,6 +79,7 @@ export default {
     'msg.billing.draft_saved_cloud': "✓ ड्राफ्ट सेव हो गया!",
     'msg.billing.edit_conflict': "यह बिल दूसरे फ़ोन पर बदला गया — फिर से खोलकर कोशिश करें",
     'msg.billing.edit_not_allowed': "यह बिल सिर्फ बनाने वाला, मैनेजर या मालिक बदल सकते हैं",
+    'msg.billing.edit_window_passed': "बिल सेव करने के 2 दिन तक ही बदला या हटाया जा सकता है। इस बिल को बदलने के लिए मालिक से कहें।",
     'msg.billing.edit_offline': "बिल बदलने के लिए इंटरनेट चाहिए",
     'msg.billing.edit_timeout': "बदलाव सेव होने में बहुत देर लग रही है — इंटरनेट देखकर फिर कोशिश करें",
     'msg.billing.editing_bill_modify_save': "✏️ बिल बदल रहे हैं — बदलकर सेव करें",

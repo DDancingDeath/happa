@@ -43,3 +43,55 @@ export function canDeleteItem(role) {
 export function isPermissionDenied(error) {
     return error?.code === 'permission-denied' || /PERMISSION_DENIED|insufficient permissions/i.test(String(error?.message || ''));
 }
+
+/** Everyone but the owner may edit or delete a bill for this long after it was first saved (#87). */
+export const BILL_EDIT_WINDOW_MS = 2 * 24 * 60 * 60 * 1000;
+export const BILL_WINDOW_PASSED_KEY = 'msg.billing.edit_window_passed';
+
+/**
+ * When the bill was first saved (ms): its server `createdAt` (Firestore
+ * Timestamp, or a local estimate right after saving). null for bills saved
+ * before #87 — those count as outside the window.
+ * @param {Object} bill
+ * @returns {?number}
+ */
+export function billCreatedMs(bill) {
+    const c = bill?.createdAt;
+    if (c === null || c === undefined) return null;
+    if (typeof c === 'number') return Number.isFinite(c) ? c : null;
+    if (typeof c.toMillis === 'function') return c.toMillis();
+    if (c instanceof Date) return Number.isFinite(c.getTime()) ? c.getTime() : null;
+    if (typeof c.seconds === 'number') return c.seconds * 1000 + Math.floor((c.nanoseconds || 0) / 1e6);
+    return null;
+}
+
+/** True while the bill is inside the 2-day window (firestore.rules withinBillWindow). */
+export function withinBillEditWindow(bill, now = Date.now()) {
+    const t = billCreatedMs(bill);
+    return t !== null && now < t + BILL_EDIT_WINDOW_MS;
+}
+
+/**
+ * Who may fully edit a bill (firestore.rules canFullyEditBill): the owner
+ * always; a manager or the bill's creator only within the window.
+ * @param {Object} bill
+ * @param {{uid?: string, role?: string, now?: number}} user
+ */
+export function canEditBillFor(bill, { uid, role, now = Date.now() } = {}) {
+    if (role === 'owner') return true;
+    if (!bill || !uid) return false;
+    const allowed = role === 'manager' || (!!bill.userId && bill.userId === uid);
+    return allowed && withinBillEditWindow(bill, now);
+}
+
+/**
+ * Who may delete a bill (firestore.rules canDeleteBill): the owner always;
+ * the bill's creator only within the window.
+ * @param {Object} bill
+ * @param {{uid?: string, role?: string, now?: number}} user
+ */
+export function canDeleteBillFor(bill, { uid, role, now = Date.now() } = {}) {
+    if (role === 'owner') return true;
+    if (!bill || !uid || !bill.userId || bill.userId !== uid) return false;
+    return withinBillEditWindow(bill, now);
+}
