@@ -12,7 +12,11 @@ import { cleanText, formatINR } from '../utils/due-reminder.js';
 export const MAX_BACKFILL_MONTHS = 24;
 export const PROPERTY_KINDS = ['house', 'shop', 'flat', 'plot', 'godown', 'other'];
 export const PAYMENT_MODES = ['cash', 'upi', 'bank', 'cheque'];
-export const DEFAULT_DUE_DAY = 5;
+export const DEFAULT_DUE_DAY = 10;
+/** Yearly rent increase the app reminds about (never applied automatically). */
+export const DEFAULT_INCREASE_PCT = 5;
+export const MAX_PROPERTIES = 100;
+export const MAX_UNITS_PER_PROPERTY = 20;
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -73,6 +77,8 @@ export function newCharge(lease, month, { tenantName = '', unitLabel = '', now =
         unitLabel: String(unitLabel).slice(0, 60),
         month,
         dueDay: lease.dueDay,
+        rent: amount,
+        electricity: null,
         amount,
         paid: 0,
         open: amount > 0,
@@ -142,6 +148,48 @@ export function leaseDues(charges, leaseId) {
     return { charges: open, total: round2(open.reduce((s, c) => s + chargeDue(c), 0)) };
 }
 
+/**
+ * Yearly rent-increase reminder (RENT-6): due once 12 months have passed since
+ * the rent was last set (rentSince, else the start month). Only a suggestion:
+ * the new rent is saved only when someone confirms it.
+ * @returns {{due: boolean, pct: number, newRent: number, from: string}}
+ */
+export function increaseDue(lease, month) {
+    const base = isMonth(lease?.rentSince) ? lease.rentSince : lease?.startMonth;
+    const pct = Number.isFinite(lease?.increasePct) ? lease.increasePct : DEFAULT_INCREASE_PCT;
+    const rent = Number(lease?.rent) || 0;
+    if (!isMonth(base) || !isMonth(month) || lease.status !== 'active') return { due: false, pct, newRent: rent, from: '' };
+    const from = addMonths(base, 12);
+    return { due: month >= from && pct > 0, pct, newRent: Math.round(rent * (1 + pct / 100)), from };
+}
+
+/**
+ * Electricity from a sub-meter reading (RENT-7): units = current − previous,
+ * amount = units × rate per unit.
+ * @throws {Error} 'reading' when a number is missing/negative or current < previous
+ */
+export function meterBill({ prev, curr, rate }) {
+    const p = Number(prev);
+    const c = Number(curr);
+    const r = Number(rate);
+    if (![p, c, r].every(Number.isFinite) || p < 0 || r < 0 || c < p) throw new Error('reading');
+    const units = round2(c - p);
+    return { prev: p, curr: c, rate: r, units, amount: round2(units * r) };
+}
+
+/**
+ * The month's charge with an electricity bill set (or replaced): amount = rent + electricity.
+ * @throws {Error} 'below_paid' when more than the new amount is already paid
+ */
+export function applyMeter(charge, meter) {
+    const rent = Number.isFinite(charge?.rent) ? charge.rent
+        : round2((Number(charge?.amount) || 0) - (Number(charge?.electricity?.amount) || 0));
+    const amount = round2(rent + meter.amount);
+    const paid = Number(charge?.paid) || 0;
+    if (paid > amount + 0.001) throw new Error('below_paid');
+    return { rent, amount, open: paid < amount - 0.001 };
+}
+
 /** Error key (msg.rent.*) for a property form, or ''. */
 export function propertyError(p) {
     if (!cleanText(p?.name)) return 'msg.rent.name_required';
@@ -169,32 +217,53 @@ export function leaseError(l) {
     if (!Number.isFinite(rent) || rent < 0 || !Number.isFinite(deposit) || deposit < 0) return 'msg.rent.bad_amount';
     if (!Number.isInteger(Number(l.dueDay)) || l.dueDay < 1 || l.dueDay > 28) return 'msg.rent.bad_due_day';
     if (!isMonth(l.startMonth)) return 'msg.rent.bad_month';
+    const pct = Number(l.increasePct ?? DEFAULT_INCREASE_PCT);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) return 'msg.rent.bad_percent';
     return '';
 }
 
+const REMINDER_TEXT = {
+    en: {
+        hello: (n) => (n ? `Namaste ${n} ji 🙏` : 'Namaste 🙏'),
+        intro: 'This is a gentle reminder about your rent.',
+        heading: '*Rent due:*',
+        total: (a) => `*Total due: ${a}*`,
+        pay: 'Please pay by cash or online (UPI) at your convenience.',
+        upi: 'UPI',
+        thanks: 'Thank you'
+    },
+    hi: {
+        hello: (n) => (n ? `नमस्ते ${n} जी 🙏` : 'नमस्ते 🙏'),
+        intro: 'आपका किराया बाकी है, कृपया ध्यान दें।',
+        heading: '*बकाया किराया:*',
+        total: (a) => `*कुल बकाया: ${a}*`,
+        pay: 'कृपया सुविधा अनुसार नकद या ऑनलाइन (यूपीआई) से भुगतान करें।',
+        upi: 'यूपीआई',
+        thanks: 'धन्यवाद'
+    }
+};
+
 /**
- * Bilingual WhatsApp rent reminder: the open months oldest first and the total.
- * @param {{tenantName: string, place?: string, charges: Array<{month: string, amount: number, paid: number}>, upiId?: string}} p
+ * WhatsApp rent reminder in one language (never English and Hindi mixed):
+ * the open months up to `lastMonth` (a tenant who moved out is never asked for
+ * later months), oldest first, and the total.
+ * @param {{tenantName: string, place?: string, charges: Array<{month: string, amount: number, paid: number}>,
+ *   lastMonth?: string, upiId?: string, lang?: 'en'|'hi'}} p
  * @returns {string}
  */
-export function buildRentReminderText({ tenantName, place = '', charges = [], upiId = '' }) {
-    const name = cleanText(tenantName);
-    const where = cleanText(place);
-    const rows = charges.filter(c => chargeDue(c) > 0);
+export function buildRentReminderText({ tenantName, place = '', charges = [], lastMonth = '', upiId = '', lang = 'en' }) {
+    const L = REMINDER_TEXT[lang === 'hi' ? 'hi' : 'en'];
+    const rows = charges.filter(c => chargeDue(c) > 0 && (!isMonth(lastMonth) || c.month <= lastMonth))
+        .sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
     const total = round2(rows.reduce((s, c) => s + chargeDue(c), 0));
-    const lines = [name ? `Namaste ${name} ji / नमस्ते ${name} जी 🙏` : 'Namaste / नमस्ते 🙏'];
-    lines.push('This is a gentle reminder about your rent.');
-    lines.push('आपका किराया बाकी है, कृपया ध्यान दें।');
+    const where = cleanText(place);
+    const lines = [L.hello(cleanText(tenantName)), L.intro];
     if (where) lines.push(`🏠 ${where}`);
-    lines.push('', '*Rent due / बकाया किराया:*');
-    rows.forEach((c, i) => {
-        lines.push(`${i + 1}. ${monthLabel(c.month)} / ${monthLabel(c.month, 'hi')} · ${formatINR(chargeDue(c))}`);
-    });
-    lines.push('', `*Total due / कुल बकाया: ${formatINR(total)}*`, '');
-    lines.push('Please pay by cash or online (UPI) at your convenience.');
-    lines.push('कृपया सुविधा अनुसार नकद या ऑनलाइन (UPI) से भुगतान करें।');
+    lines.push('', L.heading);
+    rows.forEach((c, i) => lines.push(`${i + 1}. ${monthLabel(c.month, lang)} · ${formatINR(chargeDue(c))}`));
+    lines.push('', L.total(formatINR(total)), '', L.pay);
     const upi = cleanText(upiId);
-    if (upi) lines.push(`UPI: ${upi}`);
-    lines.push('', 'Thank you / धन्यवाद');
+    if (upi) lines.push(`${L.upi}: ${upi}`);
+    lines.push('', L.thanks);
     return lines.join('\n');
 }

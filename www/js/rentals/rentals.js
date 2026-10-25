@@ -18,9 +18,9 @@ import { AuditService } from '../services/audit.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import * as store from './rent-store.js';
 import {
-    PROPERTY_KINDS, PAYMENT_MODES, DEFAULT_DUE_DAY, monthKey, monthLabel, monthsToCharge,
-    chargeStatus, chargeDue, monthSummary, leaseDues, buildRentReminderText,
-    propertyError, unitError, tenantError, leaseError, isMonth
+    PROPERTY_KINDS, PAYMENT_MODES, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY,
+    monthKey, monthLabel, monthsToCharge, chargeStatus, chargeDue, monthSummary, leaseDues, buildRentReminderText,
+    increaseDue, meterBill, propertyError, unitError, tenantError, leaseError, isMonth
 } from './rent-math.js';
 
 const PAGES = ['rent', 'tenants', 'properties', 'access'];
@@ -36,11 +36,13 @@ const state = {
     charging: false,
     charged: new Set(),
     users: null,
-    renderTimer: null
+    renderTimer: null,
+    entry: 0
 };
 let domReady = null;
 
-const canManage = () => ['owner', 'manager'].includes(rentalsRole());
+// Owner decision: anyone with a rentals role records payments and updates records.
+const canWrite = () => !!rentalsRole();
 const isOwner = () => rentalsRole() === 'owner';
 const val = (id) => (document.getElementById(id)?.value ?? '').trim();
 const isVisible = () => document.getElementById('rentals')?.classList.contains('active');
@@ -133,8 +135,9 @@ function render() {
     });
     const notice = document.getElementById('rentalsNotice');
     if (notice) {
-        notice.hidden = state.errors.size === 0;
-        notice.textContent = state.errors.size ? t('msg.rent.could_not_load') : '';
+        const limited = store.truncatedKeys().length > 0;
+        notice.hidden = state.errors.size === 0 && !limited;
+        notice.textContent = state.errors.size ? t('msg.rent.could_not_load') : limited ? t('msg.rent.limit_reached') : '';
     }
     if (state.page === 'access') { root.innerHTML = renderAccess(); return; }
     if (!['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges'].every(k => state.loaded.has(k))) {
@@ -175,13 +178,21 @@ function accounts(d, ix) {
     return list.sort((a, b) => (b.dues.total - a.dues.total) || a.name.localeCompare(b.name));
 }
 
-function statusBadge(charge) {
+const badge = (cls, key) => `<span class="rent-badge rent-badge-${cls}">${esc(t(key))}</span>`;
+
+/** Paid, or Due / Part paid plus Late after the lease's due day. */
+function statusBadges(charge) {
     if (!charge) return '';
     const s = chargeStatus(charge);
-    const key = s.status === 'paid' ? 'ui.rent.status_paid' : s.late ? 'ui.rent.status_late'
-        : s.status === 'partial' ? 'ui.rent.status_partial' : 'ui.rent.status_due';
-    const cls = s.status === 'paid' ? 'paid' : s.late ? 'late' : s.status;
-    return `<span class="rent-badge rent-badge-${cls}">${esc(t(key))}</span>`;
+    if (s.status === 'paid') return badge('paid', 'ui.rent.status_paid');
+    return badge(s.status, s.status === 'partial' ? 'ui.rent.status_partial' : 'ui.rent.status_due')
+        + (s.late ? ` ${badge('late', 'ui.rent.status_late')}` : '');
+}
+
+function monthLine(c, lang) {
+    const e = c.electricity;
+    const power = e ? ` <span class="rent-sub">${esc(t('ui.rent.incl_electricity', { amount: formatINR(e.amount), units: e.units }))}</span>` : '';
+    return `<li>${esc(monthLabel(c.month, lang))}: ${money(chargeDue(c))} ${statusBadges(c)}${power}</li>`;
 }
 
 function renderRent(d) {
@@ -196,21 +207,30 @@ function renderRent(d) {
     ].map(([k, v]) => `<div class="rent-card"><div class="rent-card-label">${esc(t(k))}</div><div class="rent-card-value">${money(v)}</div></div>`).join('');
     const list = accounts(d, ix);
     const rows = list.map(a => {
-        const months = a.dues.charges.map(c => `<li>${esc(monthLabel(c.month, lang))}: ${money(chargeDue(c))}${chargeStatus(c).late ? ` <span class="rent-badge rent-badge-late">${esc(t('ui.rent.status_late'))}</span>` : ''}</li>`).join('');
+        const months = a.dues.charges.map(c => monthLine(c, lang)).join('');
+        const inc = a.lease ? increaseDue(a.lease, state.month) : { due: false };
+        const increase = inc.due
+            ? `<div class="rent-increase">📈 ${esc(t('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) }))}
+                <button type="button" class="rent-btn rent-btn-small" onclick="window.app.rentals.editLease('${js(a.leaseId)}')">${esc(t('ui.rent.update_rent'))}</button></div>`
+            : '';
+        const power = a.current?.electricity && !a.dues.charges.some(c => c.id === a.current.id) ? monthLine(a.current, lang) : '';
         const terms = a.lease
             ? esc(t('ui.rent.rent_terms', { amount: formatINR(a.lease.rent), day: a.lease.dueDay }))
             : esc(t('ui.rent.moved_out'));
-        const actions = a.dues.total > 0
+        const actions = (a.dues.total > 0
             ? `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.pay('${js(a.leaseId)}')">${esc(t('ui.rent.record_payment'))}</button>
                <button type="button" class="rent-btn rent-btn-wa" onclick="window.app.rentals.remind('${js(a.leaseId)}')">${esc(t('ui.rent.whatsapp_reminder'))}</button>`
-            : '';
+            : '') + (a.lease && a.current
+            ? `<button type="button" class="rent-btn" onclick="window.app.rentals.meter('${js(a.leaseId)}')">⚡ ${esc(t('ui.rent.meter_reading'))}</button>`
+            : '');
         return `<div class="rent-row">
             <div class="rent-row-head">
                 <div><div class="rent-name">${esc(a.name || t('ui.rent.no_name'))}</div>
                 <div class="rent-sub">${esc(a.place)} · ${terms}</div></div>
-                <div class="rent-row-right">${statusBadge(a.current)}<div class="rent-due">${money(a.dues.total)}</div></div>
+                <div class="rent-row-right">${statusBadges(a.current)}<div class="rent-due">${money(a.dues.total)}</div></div>
             </div>
-            ${months ? `<ul class="rent-months">${months}</ul>` : ''}
+            ${months || power ? `<ul class="rent-months">${months}${power}</ul>` : ''}
+            ${increase}
             ${actions ? `<div class="rent-actions">${actions}</div>` : ''}
         </div>`;
     }).join('');
@@ -267,9 +287,70 @@ function remind(leaseId) {
     const ix = index(d);
     const a = accounts(d, ix).find(x => x.leaseId === leaseId);
     if (!a || a.dues.total <= 0) return;
-    const text = buildRentReminderText({ tenantName: a.name, place: a.place, charges: a.dues.charges });
+    const text = buildRentReminderText({
+        tenantName: a.name, place: a.place, charges: a.dues.charges,
+        lastMonth: a.lease?.endMonth || state.month, lang: getLang()
+    });
     if (!a.phone) UIManager.showToast(t('msg.rent.no_phone'), 'info');
     openExternal(whatsAppReminderUrl(text, a.phone));
+}
+
+/** Electricity from the unit's sub-meter, added to this month's charge. */
+async function meter(leaseId) {
+    const d = store.snapshot();
+    const lease = d.leases.find(l => l.id === leaseId);
+    const charge = d.charges.find(c => c.leaseId === leaseId && c.month === state.month);
+    if (!lease || !charge) return;
+    const unit = d.units.find(u => u.id === lease.unitId);
+    const e = charge.electricity;
+    const prev = e?.prev ?? unit?.lastReading ?? 0;
+    const ok = await dialog(`<h3>⚡ ${esc(t('ui.rent.meter_reading'))}: ${esc(monthLabel(state.month, getLang()))}</h3>
+        <label class="rent-label">${esc(t('ui.rent.meter_prev'))}<input id="rentMeterPrev" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(prev)}"></label>
+        <label class="rent-label">${esc(t('ui.rent.meter_curr'))}<input id="rentMeterCurr" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.curr ?? '')}"></label>
+        <label class="rent-label">${esc(t('ui.rent.meter_rate'))}<input id="rentMeterRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.rate ?? unit?.meterRate ?? '')}"></label>
+        <p class="rent-help">${esc(t('ui.rent.meter_help'))}</p>`);
+    if (!ok) return;
+    let bill;
+    try {
+        bill = meterBill({ prev: val('rentMeterPrev'), curr: val('rentMeterCurr'), rate: val('rentMeterRate') });
+    } catch (_) {
+        return UIManager.showToast(t('msg.rent.bad_reading'), 'error');
+    }
+    try {
+        await store.recordMeter(charge.id, unit?.id || null, bill);
+        UIManager.showToast(t('msg.rent.meter_saved', { amount: formatINR(bill.amount), units: bill.units }), 'success');
+        AuditService.log('RENT_METER', { chargeId: charge.id, units: bill.units, rate: bill.rate, amount: bill.amount }).catch(() => {});
+    } catch (err) {
+        UIManager.showToast(t(err?.message === 'below_paid' ? 'msg.rent.below_paid' : 'msg.rent.save_failed'), 'error');
+    }
+}
+
+/**
+ * Rent, due day and yearly increase % of a lease. The yearly increase is only a
+ * reminder: the new rent is saved here after it was agreed with the tenant.
+ */
+async function editLease(leaseId) {
+    const lease = store.snapshot().leases.find(l => l.id === leaseId);
+    if (!lease) return;
+    const inc = increaseDue(lease, state.month);
+    const ok = await dialog(`<h3>${esc(t('ui.rent.update_rent'))}</h3>
+        ${inc.due ? `<p class="rent-increase">📈 ${esc(t('ui.rent.increase_due', { pct: inc.pct, amount: formatINR(inc.newRent) }))}</p>` : ''}
+        <label class="rent-label">${esc(t('ui.rent.monthly_rent'))}<input id="rentEditRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(inc.due ? inc.newRent : lease.rent)}"></label>
+        <label class="rent-label">${esc(t('ui.rent.due_day'))}<input id="rentEditDay" type="number" min="1" max="28" step="1" value="${esc(lease.dueDay)}"></label>
+        <label class="rent-label">${esc(t('ui.rent.increase_pct'))}<input id="rentEditPct" type="number" min="0" max="100" step="0.5" value="${esc(inc.pct)}"></label>
+        <p class="rent-help">${esc(t('ui.rent.rent_change_note'))}</p>`);
+    if (!ok) return;
+    const next = {
+        rent: Number(val('rentEditRent')), dueDay: Number(val('rentEditDay')),
+        increasePct: Number(val('rentEditPct')), startMonth: lease.startMonth
+    };
+    const err = leaseError(next);
+    if (err) return UIManager.showToast(t(err), 'error');
+    const reviewed = next.rent !== lease.rent || inc.due;
+    const fields = { rent: next.rent, dueDay: next.dueDay, increasePct: next.increasePct };
+    if (reviewed) fields.rentSince = state.month;
+    await saveRent(() => store.updateLease(leaseId, fields));
+    if (next.rent !== lease.rent) AuditService.log('RENT_CHANGE', { leaseId, from: lease.rent, to: next.rent }).catch(() => {});
 }
 
 // ---------- Tenants ----------
@@ -277,7 +358,7 @@ function remind(leaseId) {
 function renderTenants(d) {
     const ix = index(d);
     const leaseByTenant = new Map(d.leases.map(l => [l.tenantId, l]));
-    const manage = canManage();
+    const manage = canWrite();
     const form = manage ? `<div class="rent-form">
             <h3>${esc(t('ui.rent.add_tenant'))}</h3>
             <input id="rentTenantName" type="text" maxlength="80" placeholder="${esc(t('ui.rent.tenant_name'))}">
@@ -291,7 +372,8 @@ function renderTenants(d) {
             : esc(t('ui.rent.no_unit'));
         const id = js(tn.id);
         const actions = !manage ? '' : `<div class="rent-actions">
-            ${lease ? `<button type="button" class="rent-btn" onclick="window.app.rentals.moveOut('${js(lease.id)}')">${esc(t('ui.rent.move_out'))}</button>`
+            ${lease ? `<button type="button" class="rent-btn" onclick="window.app.rentals.editLease('${js(lease.id)}')">${esc(t('ui.rent.update_rent'))}</button>
+                <button type="button" class="rent-btn" onclick="window.app.rentals.moveOut('${js(lease.id)}')">${esc(t('ui.rent.move_out'))}</button>`
                 : `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.moveIn('${id}')">${esc(t('ui.rent.move_in'))}</button>`}
             <button type="button" class="rent-btn" onclick="window.app.rentals.editTenant('${id}')">${esc(t('ui.rent.edit'))}</button>
             ${lease ? '' : `<button type="button" class="rent-btn" onclick="window.app.rentals.archiveTenant('${id}')">${esc(t('ui.rent.remove'))}</button>`}
@@ -340,16 +422,19 @@ async function moveIn(tenantId) {
         <label class="rent-label">${esc(t('ui.rent.monthly_rent'))}<input id="rentLeaseRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(vacant[0].rent || 0)}"></label>
         <label class="rent-label">${esc(t('ui.rent.due_day'))}<input id="rentLeaseDay" type="number" min="1" max="28" step="1" value="${DEFAULT_DUE_DAY}"></label>
         <label class="rent-label">${esc(t('ui.rent.start_month'))}<input id="rentLeaseStart" type="month" value="${esc(monthKey())}"></label>
+        <label class="rent-label">${esc(t('ui.rent.increase_pct'))}<input id="rentLeasePct" type="number" min="0" max="100" step="0.5" value="${DEFAULT_INCREASE_PCT}"></label>
         <label class="rent-label">${esc(t('ui.rent.deposit'))}<input id="rentLeaseDeposit" type="number" inputmode="decimal" min="0" step="1" value="0"></label>`);
     if (!ok) return;
     const unit = ix.units.get(val('rentLeaseUnit'));
     const lease = {
         rent: Number(val('rentLeaseRent')), dueDay: Number(val('rentLeaseDay')),
-        startMonth: val('rentLeaseStart'), deposit: Number(val('rentLeaseDeposit') || 0)
+        startMonth: val('rentLeaseStart'), deposit: Number(val('rentLeaseDeposit') || 0),
+        increasePct: Number(val('rentLeasePct') || 0)
     };
     const err = !unit || unit.leaseId ? 'msg.rent.no_vacant_unit' : leaseError(lease);
     if (err) return UIManager.showToast(t(err), 'error');
     await saveRent(() => store.startLease({ unit, tenantId, ...lease }));
+    AuditService.log('RENT_MOVE_IN', { tenantId, unitId: unit.id, rent: lease.rent }).catch(() => {});
 }
 
 function fillRent(select) {
@@ -358,23 +443,41 @@ function fillRent(select) {
     if (input && rent != null) input.value = rent;
 }
 
+/**
+ * Move out: the last month can't be in the future. Charges are settled in one
+ * transaction (rent-store endLease): missing months up to it are created and
+ * unpaid later months removed; a paid later month stops the move-out.
+ */
 async function moveOut(leaseId) {
-    const lease = store.snapshot().leases.find(l => l.id === leaseId);
+    const d = store.snapshot();
+    const lease = d.leases.find(l => l.id === leaseId);
     if (!lease) return;
     const ok = await dialog(`<h3>${esc(t('ui.rent.move_out'))}</h3>
         <p>${esc(t('msg.rent.move_out_note'))}</p>
-        <label class="rent-label">${esc(t('ui.rent.last_month'))}<input id="rentEndMonth" type="month" value="${esc(monthKey())}"></label>`);
+        <label class="rent-label">${esc(t('ui.rent.last_month'))}<input id="rentEndMonth" type="month" min="${esc(lease.startMonth)}" max="${esc(state.month)}" value="${esc(state.month)}"></label>`);
     if (!ok) return;
     const end = val('rentEndMonth');
-    if (!isMonth(end) || end < lease.startMonth) return UIManager.showToast(t('msg.rent.bad_month'), 'error');
-    await saveRent(() => store.endLease(lease, end));
+    if (!isMonth(end) || end < lease.startMonth || end > state.month) return UIManager.showToast(t('msg.rent.bad_end_month'), 'error');
+    const names = {
+        tenantName: d.tenants.find(x => x.id === lease.tenantId)?.name || '',
+        unitLabel: d.units.find(x => x.id === lease.unitId)?.label || ''
+    };
+    try {
+        await store.endLease(leaseId, end, state.month, names);
+        UIManager.showToast(t('msg.rent.saved'), 'success');
+        AuditService.log('RENT_MOVE_OUT', { leaseId, endMonth: end }).catch(() => {});
+    } catch (e) {
+        const key = e?.message === 'later_paid' ? 'msg.rent.later_paid'
+            : e?.message === 'bad_month' ? 'msg.rent.bad_end_month' : 'msg.rent.save_failed';
+        UIManager.showToast(t(key), 'error');
+    }
 }
 
 // ---------- Properties ----------
 
 function renderProperties(d) {
     const ix = index(d);
-    const manage = canManage();
+    const manage = canWrite();
     const kinds = PROPERTY_KINDS.map(k => `<option value="${k}">${esc(kindLabel(k))}</option>`).join('');
     const form = manage ? `<div class="rent-form">
             <h3>${esc(t('ui.rent.add_property'))}</h3>
@@ -415,6 +518,9 @@ async function addProperty() {
     const p = { name: val('rentPropName'), address: val('rentPropAddress'), kind: PROPERTY_KINDS.includes(kind) ? kind : 'other', notes: '' };
     const err = propertyError(p);
     if (err) return UIManager.showToast(t(err), 'error');
+    if (store.snapshot().properties.length >= MAX_PROPERTIES) {
+        return UIManager.showToast(t('msg.rent.max_properties', { max: MAX_PROPERTIES }), 'error');
+    }
     await saveRent(() => store.addProperty(p));
 }
 
@@ -456,6 +562,9 @@ async function unitDialog(title, unit) {
 }
 
 async function addUnit(propertyId) {
+    if (store.snapshot().units.filter(x => x.propertyId === propertyId).length >= MAX_UNITS_PER_PROPERTY) {
+        return UIManager.showToast(t('msg.rent.max_units', { max: MAX_UNITS_PER_PROPERTY }), 'error');
+    }
     const u = await unitDialog(t('ui.rent.add_unit'));
     if (u) await saveRent(() => store.addUnit({ propertyId, ...u }));
 }
@@ -554,7 +663,10 @@ export const RentalsModule = {
     /** Shows a Rentals page and starts the listeners if they aren't running. */
     async enter(page = 'rent') {
         if (!rentalsRole()) return;
+        // leave() (or another enter) while the page is loading wins: don't show or listen then.
+        const token = ++state.entry;
         await ensureDom();
+        if (token !== state.entry) return;
         state.page = PAGES.includes(page) && (page !== 'access' || isOwner()) ? page : 'rent';
         if (state.page === 'access') state.users = null;
         NavigationManager.showTab('rentals');
@@ -570,6 +682,7 @@ export const RentalsModule = {
 
     /** Stops the listeners (another page or business opened, or sign-out). */
     leave() {
+        state.entry++;
         clearTimeout(state.renderTimer);
         dialogResolve?.(false);
         store.detach();
@@ -578,7 +691,7 @@ export const RentalsModule = {
     api: {
         page: (p) => RentalsModule.enter(p),
         dialogClose: (v) => dialogResolve?.(v),
-        pay, fillDue, remind,
+        pay, fillDue, remind, meter, editLease,
         addTenant, editTenant, archiveTenant, moveIn, moveOut, fillRent,
         addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit,
         setRole

@@ -1311,20 +1311,32 @@ defineSuite('');
 defineSuite('dev_');
 
 // ---- Rentals (#170): rent_* collections, roles per business (#149) ----
+// Months relative to "now" in IST, as the rules compute them.
+const istMonth = (offset = 0) => {
+    const d = new Date(Date.now() + 330 * MIN);
+    const idx = d.getUTCFullYear() * 12 + d.getUTCMonth() + offset;
+    return `${Math.floor(idx / 12)}-${String((idx % 12) + 1).padStart(2, '0')}`;
+};
+
 function defineRentSuite(prefix) {
     const t = (name, fn) => test(`[${prefix || 'prod'} rentals] ${name}`, fn);
     const c = (name) => `${prefix}${name}`;
     const RENT = ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges'].map(c);
+    const CUR = istMonth(0);
+    const PREV = istMonth(-1);
     const seed = (coll, id, data) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(c(coll)).doc(id).set(data));
-    const meta = (uid) => ({ archived: false, createdAt: 1, createdBy: uid, updatedAt: 1 });
-    const lease = { unitId: 'U1', propertyId: 'P1', tenantId: 'T1', rent: 5000, dueDay: 5, startMonth: '2026-09', endMonth: null,
-        deposit: 10000, status: 'active', chargedThrough: null, createdAt: 1, createdBy: 'legacyOwner', updatedAt: 1 };
-    const charge = { leaseId: 'L1', unitId: 'U1', propertyId: 'P1', tenantId: 'T1', tenantName: 'Ram', unitLabel: 'G1',
-        month: '2026-10', dueDay: 5, amount: 5000, paid: 0, open: true, payments: [], createdAt: 1, updatedAt: 1 };
+    const meta = (uid) => ({ archived: false, createdAt: 1, createdBy: uid, updatedAt: 1, updatedBy: uid });
+    const lease = (over = {}) => ({ unitId: 'U1', propertyId: 'P1', tenantId: 'T1', rent: 5000, dueDay: 10, startMonth: PREV, endMonth: null,
+        deposit: 10000, status: 'active', chargedThrough: null, increasePct: 5, rentSince: PREV, ...meta('legacyOwner'), ...over });
+    const charge = (month, over = {}) => ({ leaseId: 'L1', unitId: 'U1', propertyId: 'P1', tenantId: 'T1', tenantName: 'Ram', unitLabel: 'G1',
+        month, dueDay: 10, rent: 5000, electricity: null, amount: 5000, paid: 0, open: true, payments: [], createdAt: 1, updatedAt: 1, updatedBy: 'x', ...over });
     const entry = (uid, amount) => ({ amount, mode: 'cash', ref: '', date: '2026-10-05', at: 2, by: uid, byName: 'x' });
-    const pay = (uid, amount, paid = amount) => ({
-        paid, open: paid < 5000, updatedAt: 2, payments: [entry(uid, amount)]
-    });
+    const pay = (uid, amount, paid = amount) => ({ paid, open: paid < 5000, updatedAt: 2, updatedBy: uid, payments: [entry(uid, amount)] });
+    const db = (uid) => as(uid);
+    const chargeOn = (f, month) => f.collection(c('rent_charges')).doc(`L1_${month}`);
+    const leaseOn = (f) => f.collection(c('rent_leases')).doc('L1');
+    const chargeRef = (uid, month) => chargeOn(db(uid), month);
+    const leaseRef = (uid) => leaseOn(db(uid));
 
     t('shop member and manager without a rentals role read nothing', async () => {
         for (const coll of RENT) {
@@ -1344,72 +1356,131 @@ function defineRentSuite(prefix) {
         await assertFails(as('rentOnly').collection(`${prefix}expenses`).get());
     });
 
-    t('owner and rentals manager add properties, units, tenants and leases; a member cannot', async () => {
-        const prop = { name: 'Gali 2', address: 'Main road', kind: 'house', notes: '', ...meta('rentManager') };
-        await assertSucceeds(as('rentManager').collection(c('rent_properties')).doc('P1').set(prop));
-        await assertSucceeds(as('legacyOwner').collection(c('rent_units')).doc('U1').set({ propertyId: 'P1', label: 'G1', rent: 5000, leaseId: null, ...meta('legacyOwner') }));
-        await assertSucceeds(as('rentManager').collection(c('rent_tenants')).doc('T1').set({ name: 'Ram', phone: '9876543210', notes: '', ...meta('rentManager') }));
-        await assertSucceeds(as('rentManager').collection(c('rent_leases')).doc('L1').set(lease));
-        await assertFails(as('rentMember').collection(c('rent_properties')).doc('P2').set(prop));
-        await assertFails(as('rentMember').collection(c('rent_leases')).doc('L2').set(lease));
-        await assertFails(as('staff1').collection(c('rent_tenants')).doc('T2').set({ name: 'X', phone: '', notes: '', ...meta('staff1') }));
+    t('any rentals role adds properties, units, tenants and leases (signed with their uid); shop-only users cannot', async () => {
+        const prop = { name: 'Gali 2', address: 'Main road', kind: 'house', notes: '', ...meta('rentMember') };
+        await assertSucceeds(db('rentMember').collection(c('rent_properties')).doc('P1').set(prop));
+        await assertSucceeds(db('rentOnly').collection(c('rent_units')).doc('U1').set({ propertyId: 'P1', label: 'G1', rent: 5000, leaseId: null, lastReading: null, meterRate: null, ...meta('rentOnly') }));
+        await assertSucceeds(db('rentManager').collection(c('rent_tenants')).doc('T1').set({ name: 'Ram', phone: '9876543210', notes: '', ...meta('rentManager') }));
+        await assertSucceeds(db('rentMember').collection(c('rent_leases')).doc('L1').set(lease(meta('rentMember'))));
+        await assertFails(db('rentMember').collection(c('rent_properties')).doc('P2').set({ ...prop, updatedBy: 'someoneElse' }));
+        await assertFails(db('staff1').collection(c('rent_tenants')).doc('T2').set({ name: 'X', phone: '', notes: '', ...meta('staff1') }));
     });
 
-    t('shape checks: bad kind, negative rent, due day 29, bad month, extra field', async () => {
-        await assertFails(as('rentManager').collection(c('rent_properties')).doc('P').set({ name: 'A', address: '', kind: 'castle', notes: '', ...meta('x') }));
-        await assertFails(as('rentManager').collection(c('rent_units')).doc('U').set({ propertyId: 'P1', label: 'G', rent: -1, leaseId: null, ...meta('x') }));
-        await assertFails(as('rentManager').collection(c('rent_leases')).doc('L').set({ ...lease, dueDay: 29 }));
-        await assertFails(as('rentManager').collection(c('rent_leases')).doc('L').set({ ...lease, startMonth: '2026-13' }));
-        await assertFails(as('rentManager').collection(c('rent_tenants')).doc('T').set({ name: 'A', phone: '', notes: '', hack: 1, ...meta('x') }));
-        await assertFails(as('rentManager').collection(c('rent_tenants')).doc('T').set({ name: '', phone: '', notes: '', ...meta('x') }));
+    t('shape checks: bad kind, negative rent, due day 29, bad month, bad %, extra field, lease born with charges', async () => {
+        const m = meta('rentManager');
+        await assertFails(db('rentManager').collection(c('rent_properties')).doc('P').set({ name: 'A', address: '', kind: 'castle', notes: '', ...m }));
+        await assertFails(db('rentManager').collection(c('rent_units')).doc('U').set({ propertyId: 'P1', label: 'G', rent: -1, leaseId: null, ...m }));
+        await assertFails(db('rentManager').collection(c('rent_leases')).doc('L').set(lease({ ...m, dueDay: 29 })));
+        await assertFails(db('rentManager').collection(c('rent_leases')).doc('L').set(lease({ ...m, startMonth: '2026-13' })));
+        await assertFails(db('rentManager').collection(c('rent_leases')).doc('L').set(lease({ ...m, increasePct: 150 })));
+        await assertFails(db('rentManager').collection(c('rent_leases')).doc('L').set(lease({ ...m, chargedThrough: '2099-01' })));
+        await assertFails(db('rentManager').collection(c('rent_tenants')).doc('T').set({ name: 'A', phone: '', notes: '', hack: 1, ...m }));
     });
 
-    t('member creates a month charge only with the fixed id and nothing paid', async () => {
-        await assertSucceeds(as('rentMember').collection(c('rent_charges')).doc('L1_2026-10').set(charge));
-        await assertFails(as('rentMember').collection(c('rent_charges')).doc('L1_2026-11').set(charge));
-        await assertFails(as('rentMember').collection(c('rent_charges')).doc('L1_2026-10x').set({ ...charge, month: '2026-10x' }));
-        await assertFails(as('rentMember').collection(c('rent_charges')).doc('L2_2026-10').set({ ...charge, leaseId: 'L2', paid: 100 }));
-        await assertFails(as('staff1').collection(c('rent_charges')).doc('L3_2026-10').set({ ...charge, leaseId: 'L3' }));
+    t('a charge is created only with its lease moving chargedThrough, at the lease rent', async () => {
+        await seed('rent_leases', 'L1', lease());
+        const batchOf = async (uid, ch, through) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.set(chargeOn(f, ch.month), ch);
+            b.update(leaseOn(f), { chargedThrough: through, updatedAt: 2, updatedBy: uid });
+            return b.commit();
+        };
+        await assertFails(chargeRef('rentMember', PREV).set(charge(PREV, { updatedBy: 'rentMember' })));
+        await assertFails(batchOf('rentMember', charge(PREV, { amount: 1, rent: 1, updatedBy: 'rentMember' }), PREV));
+        await assertFails(batchOf('rentMember', charge(PREV, { paid: 100, updatedBy: 'rentMember' }), PREV));
+        await assertFails(batchOf('staff1', charge(PREV, { updatedBy: 'staff1' }), PREV));
+        await assertSucceeds(batchOf('rentMember', charge(PREV, { updatedBy: 'rentMember' }), PREV));
+        await assertSucceeds(batchOf('rentOnly', charge(CUR, { updatedBy: 'rentOnly' }), CUR));
     });
 
-    t('member records a payment: append one own entry, paid grows by it, never above the rent', async () => {
-        await seed('rent_charges', 'L1_2026-10', charge);
-        const ref = (uid) => as(uid).collection(c('rent_charges')).doc('L1_2026-10');
+    t('a 24-month backfill (one batch, as chargeLease writes it) stays within the rules limits', async () => {
+        await seed('rent_leases', 'L1', lease({ startMonth: istMonth(-23), rentSince: istMonth(-23) }));
+        const f = db('rentMember');
+        const b = f.batch();
+        for (let i = -23; i <= 0; i++) b.set(chargeOn(f, istMonth(i)), charge(istMonth(i), { updatedBy: 'rentMember' }));
+        b.update(leaseOn(f), { chargedThrough: CUR, updatedAt: 2, updatedBy: 'rentMember' });
+        await assertSucceeds(b.commit());
+    });
+
+    t('chargedThrough cannot jump to a future month or to a month without a charge', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: PREV }));
+        const future = istMonth(2);
+        const f = db('rentMember');
+        const b = f.batch();
+        b.set(chargeOn(f, future), charge(future, { updatedBy: 'rentMember' }));
+        b.update(leaseOn(f), { chargedThrough: future, updatedAt: 2, updatedBy: 'rentMember' });
+        await assertFails(b.commit());
+        await assertFails(leaseRef('rentMember').update({ chargedThrough: '2099-01', updatedAt: 2, updatedBy: 'rentMember' }));
+        await assertFails(leaseRef('rentMember').update({ chargedThrough: CUR, updatedAt: 2, updatedBy: 'rentMember' }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV));
+        await assertFails(leaseRef('rentManager').update({ chargedThrough: istMonth(-3), updatedAt: 2, updatedBy: 'rentManager' }));
+        await assertSucceeds(leaseRef('rentMember').update({ rent: 5250, rentSince: CUR, updatedAt: 3, updatedBy: 'rentMember' }));
+    });
+
+    t('any rentals role records a payment: one own entry, paid grows by it, never above the amount', async () => {
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        const ref = (uid) => chargeRef(uid, CUR);
         await assertFails(ref('rentMember').update(pay('rentMember', 2000, 2500)));
         await assertFails(ref('rentMember').update(pay('someoneElse', 2000)));
         await assertFails(ref('rentMember').update(pay('rentMember', 6000)));
         await assertFails(ref('rentMember').update({ ...pay('rentMember', 2000), amount: 2000 }));
         await assertFails(ref('rentMember').update({ ...pay('rentMember', 2000), open: false }));
+        await assertFails(ref('rentMember').update({ ...pay('rentMember', 2000), updatedBy: 'someoneElse' }));
         await assertSucceeds(ref('rentMember').update(pay('rentMember', 2000)));
         await assertSucceeds(ref('rentOnly').update({
-            paid: 5000, open: false, updatedAt: 3, payments: [entry('rentMember', 2000), entry('rentOnly', 3000)]
+            paid: 5000, open: false, updatedAt: 3, updatedBy: 'rentOnly', payments: [entry('rentMember', 2000), entry('rentOnly', 3000)]
         }));
         await assertFails(ref('staff1').update({
-            paid: 5000, open: false, updatedAt: 4, payments: [entry('rentMember', 2000), entry('rentOnly', 3000), entry('staff1', 0.5)]
+            paid: 5000, open: false, updatedAt: 4, updatedBy: 'staff1', payments: [entry('rentMember', 2000), entry('rentOnly', 3000), entry('staff1', 0.5)]
         }));
+    });
+
+    t('electricity from a sub-meter: units × rate added to the rent, checked by the rules', async () => {
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 1000, payments: [entry('rentMember', 1000)] }));
+        const meter = (e, amount, uid = 'rentMember') => chargeRef(uid, CUR).update({ electricity: e, amount, open: true, updatedAt: 2, updatedBy: uid });
+        await assertFails(meter({ prev: 100, curr: 150, rate: 8, units: 50, amount: 400 }, 9999));
+        await assertFails(meter({ prev: 100, curr: 150, rate: 8, units: 50, amount: 1 }, 5001));
+        await assertFails(meter({ prev: 150, curr: 100, rate: 8, units: -50, amount: -400 }, 4600));
+        await assertFails(meter({ prev: 100, curr: 150, rate: 8, units: 50, amount: 400 }, 5400, 'staff1'));
+        await assertSucceeds(meter({ prev: 100, curr: 150, rate: 8, units: 50, amount: 400 }, 5400));
+        await assertSucceeds(meter({ prev: 100, curr: 160, rate: 8, units: 60, amount: 480 }, 5480, 'rentOnly'));
     });
 
     t('owner/manager may correct a charge amount; a member may not', async () => {
-        await seed('rent_charges', 'L1_2026-10', charge);
-        await assertFails(as('rentMember').collection(c('rent_charges')).doc('L1_2026-10').update({ amount: 4000 }));
-        await assertSucceeds(as('rentManager').collection(c('rent_charges')).doc('L1_2026-10').update({ amount: 4000 }));
-        await assertFails(as('rentManager').collection(c('rent_charges')).doc('L1_2026-10').update({ month: '2026-11' }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await assertFails(chargeRef('rentMember', CUR).update({ amount: 4000, updatedBy: 'rentMember' }));
+        await assertSucceeds(chargeRef('rentManager', CUR).update({ amount: 4000, updatedBy: 'rentManager' }));
+        await assertFails(chargeRef('rentManager', CUR).update({ month: istMonth(1), updatedBy: 'rentManager' }));
     });
 
-    t('member moves a lease chargedThrough forward only, and changes nothing else', async () => {
-        await seed('rent_leases', 'L1', { ...lease, chargedThrough: '2026-09' });
-        const ref = (uid) => as(uid).collection(c('rent_leases')).doc('L1');
-        await assertSucceeds(ref('rentMember').update({ chargedThrough: '2026-10', updatedAt: 2 }));
-        await assertFails(ref('rentMember').update({ chargedThrough: '2026-09', updatedAt: 3 }));
-        await assertFails(ref('rentMember').update({ rent: 1, updatedAt: 3 }));
-        await assertFails(ref('staff1').update({ chargedThrough: '2026-12', updatedAt: 3 }));
-        await assertSucceeds(ref('rentManager').update({ status: 'ended', endMonth: '2026-10', updatedAt: 4 }));
+    t('move-out: unpaid later months are deleted with the lease ending; a paid later month blocks it', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await assertFails(chargeRef('rentMember', CUR).delete());
+        const moveOut = (uid) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.delete(chargeOn(f, CUR));
+            b.update(leaseOn(f), { status: 'ended', endMonth: PREV, chargedThrough: PREV, updatedAt: 2, updatedBy: uid });
+            return b.commit();
+        };
+        const fm = db('rentMember');
+        const noDelete = fm.batch();
+        noDelete.update(leaseOn(fm), { status: 'ended', endMonth: PREV, chargedThrough: PREV, updatedAt: 2, updatedBy: 'rentMember' });
+        await assertFails(noDelete.commit());
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 100, payments: [entry('rentMember', 100)] }));
+        await assertFails(moveOut('rentMember'));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await assertSucceeds(moveOut('rentMember'));
+        await assertFails(chargeRef('rentMember', PREV).delete());
     });
 
-    t('only the owner deletes rentals docs', async () => {
+    t('only the owner deletes rentals records', async () => {
         await seed('rent_tenants', 'T1', { name: 'Ram', phone: '', notes: '', ...meta('x') });
-        await assertFails(as('rentManager').collection(c('rent_tenants')).doc('T1').delete());
-        await assertSucceeds(as('legacyOwner').collection(c('rent_tenants')).doc('T1').delete());
+        await assertFails(db('rentManager').collection(c('rent_tenants')).doc('T1').delete());
+        await assertSucceeds(db('legacyOwner').collection(c('rent_tenants')).doc('T1').delete());
     });
 
     t('nobody sets their own rentRole; registration cannot carry one; the owner can grant it', async () => {

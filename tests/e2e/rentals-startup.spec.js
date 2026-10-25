@@ -16,12 +16,14 @@ test('start-up loads no rentals code and reads no rent_* data; opening Rentals d
         const body = r.postData() || '';
         if (RENT_RE.test(decodeURIComponent(r.url())) || RENT_RE.test(safeDecode(body))) seen.rentRequests.push(r.url());
     });
-    await page.addInitScript(() => localStorage.setItem('happa.business', 'shop'));
+    // An old saved choice must not open Rentals: the app always starts on Shop.
+    await page.addInitScript(() => localStorage.setItem('happa.business', 'rentals'));
     await login(page, 'owner');
     await page.waitForTimeout(3000);
 
     expect(seen.files, 'no rentals file at start-up').toEqual([]);
     expect(seen.rentRequests, 'no rent_* request at start-up').toEqual([]);
+    await expect(page.locator('body')).not.toHaveClass(/biz-rentals/);
     const timings = await page.evaluate(() => performance.getEntriesByType('mark')
         .filter(m => m.name.startsWith('aadhat:')).map(m => ({ name: m.name, t: Math.round(m.startTime) })));
     console.log('startup timings', JSON.stringify(timings));
@@ -41,7 +43,7 @@ test('start-up loads no rentals code and reads no rent_* data; opening Rentals d
     expect(problems.pageErrors).toEqual([]);
 });
 
-test('owner adds a property, unit and tenant, moves them in, and records a part payment', async ({ page, problems }) => {
+test('owner adds a property, unit and tenant, moves them in, records a part payment and a meter reading, and moves them out', async ({ page, problems }) => {
     await login(page, 'owner');
     const stamp = String(Date.now()).slice(-6);
     await page.evaluate(() => window.app.rentals.open('properties'));
@@ -72,7 +74,21 @@ test('owner adds a property, unit and tenant, moves them in, and records a part 
     await page.fill('#rentPayAmount', '2000');
     await page.click('#rentDialog .rent-btn-primary');
     await expect(rent).toContainText('3,000');
-    await expect(rent).toContainText(/Part paid|Late/);
+    await expect(rent).toContainText('Part paid');
+
+    await rent.locator('button', { hasText: 'Meter reading' }).click();
+    await page.fill('#rentMeterPrev', '100');
+    await page.fill('#rentMeterCurr', '150');
+    await page.fill('#rentMeterRate', '8');
+    await page.click('#rentDialog .rent-btn-primary');
+    await expect(rent).toContainText('3,400');
+
+    await page.evaluate(() => window.app.rentals.page('tenants'));
+    await row.locator('button', { hasText: 'Move out' }).click();
+    await page.click('#rentDialog .rent-btn-primary');
+    await expect(row).toContainText('Not living in a unit');
+    await page.evaluate(() => window.app.rentals.page('rent'));
+    await expect(page.locator('.rent-row', { hasText: `Ram ${stamp}` })).toContainText('Moved out');
     expect(problems.pageErrors).toEqual([]);
     expect(problems.consoleErrors).toEqual([]);
 });

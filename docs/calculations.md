@@ -175,7 +175,9 @@ Owner/manager only. Pure code: `utils/rate-trends.js`, `utils/item-rate-series.j
 Rentals money is separate from the shop: none of these numbers feed Finance,
 Reports or the cash drawer. A **charge** is one month's rent of one lease
 (`rent_charges/{leaseId}_{YYYY-MM}`), created once per month from the lease's
-start month (at most 24 months back); its due = amount − paid (never below 0).
+start month (at most 24 months back); amount = the lease's rent + that month's
+electricity (RENT-7); its due = amount − paid (never below 0). Move-out keeps
+charges only up to the last month (never in the future).
 Oracle: `tests/oracle/rent.test.js`.
 
 | ID | On screen | Definition |
@@ -184,7 +186,9 @@ Oracle: `tests/oracle/rent.test.js`.
 | RENT-2 | Collected this month | Σ paid on this month's charges (payments for older months are not counted here). |
 | RENT-3 | Still due this month | RENT-1 − RENT-2. |
 | RENT-4 | Total due (all months) | Σ due of every charge up to this month, including tenants who moved out. |
-| RENT-5 | Per tenant | Σ due of that lease's charges, oldest month first; a month is *Late* after its due day, *Part paid* when 0 < paid < amount. |
+| RENT-5 | Per tenant | Σ due of that lease's charges, oldest month first; a month is *Late* after its due day (default the 10th, per lease), *Part paid* when 0 < paid < amount. |
+| RENT-6 | Rent increase due | Once 12 months have passed since the rent was last set (or the start month): "Rent increase due: p% → ₹X", X = round(rent × (1 + p/100)), p per lease (default 5). Only a reminder; the rent changes when someone saves the new rent, from the next month's charge. |
+| RENT-7 | Electricity | Per unit sub-meter: units = current − previous reading, amount = units × rate per unit (both rounded to paise), added to that month's charge; saving again replaces it. |
 
 ---
 

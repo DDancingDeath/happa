@@ -1,6 +1,6 @@
 /**
- * Business switcher (#149): shown only to people with rentals access, restores
- * the last choice per device, and never loads Rentals for shop-only users.
+ * Business switcher (#149): shown only to people with rentals access; the app
+ * always starts on Shop; Shop chosen while Rentals is loading wins.
  */
 jest.mock('../ui/ui-manager.js', () => ({ UIManager: { showToast: jest.fn(), hapticFeedback: jest.fn() } }));
 jest.mock('../rentals/rentals.js', () => ({
@@ -9,7 +9,7 @@ jest.mock('../rentals/rentals.js', () => ({
 
 import { AppState } from '../utils/state.js';
 import { NavigationManager } from '../ui/navigation.js';
-import { BusinessSwitcher, rentalsRole, savedBusiness, BUSINESS_KEY } from '../ui/business-switcher.js';
+import { BusinessSwitcher, rentalsRole } from '../ui/business-switcher.js';
 import { RentalsModule } from '../rentals/rentals.js';
 
 beforeEach(() => {
@@ -20,7 +20,6 @@ beforeEach(() => {
         </div>
         <div class="side-nav active"></div><div class="overlay active"></div>
         <div id="billing" class="tab"></div>`;
-    localStorage.clear();
     window.app = { rentals: {} };
     AppState.userRole = 'staff';
     AppState.rentRole = null;
@@ -34,34 +33,43 @@ test('rentalsRole: owner always, others only with a valid rentRole', () => {
     expect(rentalsRole({ userRole: 'staff', rentRole: 'owner' })).toBeNull();
 });
 
-test('shop-only user: switch hidden, Rentals never loaded even if the device remembers it', async () => {
-    localStorage.setItem(BUSINESS_KEY, 'rentals');
-    await BusinessSwitcher.init();
+test('switch hidden for shop-only users, shown for rentals roles; start is always Shop', () => {
+    BusinessSwitcher.init();
     expect(document.getElementById('bizSwitch').hidden).toBe(true);
+    AppState.rentRole = 'member';
+    BusinessSwitcher.init();
+    expect(document.getElementById('bizSwitch').hidden).toBe(false);
     expect(document.body.classList.contains('biz-rentals')).toBe(false);
     expect(RentalsModule.enter).not.toHaveBeenCalled();
 });
 
-test('owner: switch shown; remembered Rentals opens after start; Shop goes back to Billing', async () => {
+test('owner opens Rentals, then Shop goes back to Billing and leaves Rentals', async () => {
     AppState.userRole = 'owner';
-    localStorage.setItem(BUSINESS_KEY, 'rentals');
-    await BusinessSwitcher.init();
-    expect(document.getElementById('bizSwitch').hidden).toBe(false);
+    await BusinessSwitcher.openRentals('rent');
     expect(document.body.classList.contains('biz-rentals')).toBe(true);
     expect(RentalsModule.enter).toHaveBeenCalledWith('rent');
     expect(window.app.rentals.page).toBe(RentalsModule.api.page);
 
     await BusinessSwitcher.set('shop');
-    expect(savedBusiness()).toBe('shop');
     expect(document.body.classList.contains('biz-rentals')).toBe(false);
     expect(RentalsModule.leave).toHaveBeenCalled();
     expect(NavigationManager.showTabFromNav).toHaveBeenCalledWith('billing');
     expect(document.querySelector('[data-biz-btn="shop"]').getAttribute('aria-pressed')).toBe('true');
 });
 
+test('Shop chosen while Rentals is still loading: Rentals is not entered', async () => {
+    AppState.userRole = 'owner';
+    RentalsModule.enter.mockClear();
+    const opening = BusinessSwitcher.openRentals('tenants');
+    await BusinessSwitcher.set('shop');
+    await opening;
+    expect(RentalsModule.enter).not.toHaveBeenCalled();
+    expect(document.body.classList.contains('biz-rentals')).toBe(false);
+});
+
 test('opening a shop page leaves Rentals (listeners detached)', async () => {
-    AppState.userRole = 'staff';
     AppState.rentRole = 'member';
+    BusinessSwitcher.init();
     await BusinessSwitcher.openRentals('tenants');
     RentalsModule.leave.mockClear();
     window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'rentals' } }));

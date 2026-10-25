@@ -1,7 +1,7 @@
 import {
     monthKey, addMonths, monthRange, monthLabel, monthsToCharge, newCharge, chargeDue, chargeStatus,
     applyPayment, monthSummary, leaseDues, buildRentReminderText, leaseError, tenantError, unitError,
-    propertyError, MAX_BACKFILL_MONTHS
+    propertyError, increaseDue, meterBill, applyMeter, MAX_BACKFILL_MONTHS, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT
 } from '../rentals/rent-math.js';
 
 const lease = (over = {}) => ({
@@ -43,7 +43,7 @@ describe('monthsToCharge', () => {
 
     test('newCharge is open with nothing paid (a 0 rent month is closed)', () => {
         const c = newCharge(lease(), '2026-10', { tenantName: 'Ram', unitLabel: 'G1', now: 1 });
-        expect(c).toMatchObject({ leaseId: 'L1', month: '2026-10', amount: 5000, paid: 0, open: true, payments: [], tenantName: 'Ram' });
+        expect(c).toMatchObject({ leaseId: 'L1', month: '2026-10', rent: 5000, electricity: null, amount: 5000, paid: 0, open: true, payments: [], tenantName: 'Ram' });
         expect(newCharge(lease({ rent: 0 }), '2026-10').open).toBe(false);
     });
 });
@@ -95,16 +95,61 @@ describe('totals', () => {
 });
 
 describe('reminder text', () => {
-    test('bilingual, months and total, WhatsApp marks removed from names', () => {
-        const text = buildRentReminderText({
-            tenantName: '*Ram*\nKumar', place: 'Gali 2 · G1',
-            charges: [{ month: '2026-09', amount: 5000, paid: 1000 }, { month: '2026-10', amount: 5000, paid: 5000 }]
-        });
-        expect(text).toContain('Namaste Ram Kumar ji / नमस्ते Ram Kumar जी');
-        expect(text).toContain('1. Sep 2026 / सितंबर 2026 · ₹4,000');
-        expect(text).not.toContain('Oct 2026');
-        expect(text).toContain('*Total due / कुल बकाया: ₹4,000*');
-        expect(text).toContain('🏠 Gali 2 · G1');
+    const charges = [{ month: '2026-09', amount: 5000, paid: 1000 }, { month: '2026-10', amount: 5000, paid: 5000 }, { month: '2026-11', amount: 5000, paid: 0 }];
+    const latinAndDevanagari = (s) => s.split('\n').some(l => /[A-Za-z]{2,}/.test(l.replace(/Ram Kumar|Gali 2|G1/g, '')) && /[\u0900-\u097F]/.test(l));
+
+    test('English only: months up to the last month, total, WhatsApp marks removed from names', () => {
+        const text = buildRentReminderText({ tenantName: '*Ram*\nKumar', place: 'Gali 2 · G1', charges, lastMonth: '2026-10' });
+        expect(text).toContain('Namaste Ram Kumar ji');
+        expect(text).toContain('1. Sep 2026 · ₹4,000');
+        expect(text).not.toContain('Nov 2026');
+        expect(text).toContain('*Total due: ₹4,000*');
+        expect(text).not.toMatch(/[\u0900-\u097F]/);
+    });
+
+    test('Hindi only, never mixed with English', () => {
+        const text = buildRentReminderText({ tenantName: 'Ram Kumar', place: 'Gali 2 · G1', charges, lastMonth: '2026-11', lang: 'hi' });
+        expect(text).toContain('नमस्ते Ram Kumar जी');
+        expect(text).toContain('1. सितंबर 2026 · ₹4,000');
+        expect(text).toContain('2. नवंबर 2026 · ₹5,000');
+        expect(text).toContain('*कुल बकाया: ₹9,000*');
+        expect(latinAndDevanagari(text)).toBe(false);
+    });
+});
+
+describe('rent increase reminder (RENT-6)', () => {
+    const l = (over = {}) => ({ status: 'active', rent: 5000, startMonth: '2025-10', increasePct: 5, ...over });
+
+    test('defaults: due day 10, increase 5%', () => {
+        expect(DEFAULT_DUE_DAY).toBe(10);
+        expect(DEFAULT_INCREASE_PCT).toBe(5);
+        expect(increaseDue(l({ increasePct: undefined }), '2026-10')).toMatchObject({ due: true, pct: 5, newRent: 5250 });
+    });
+
+    test('due 12 months after the rent was last set; custom %; never for ended leases or 0%', () => {
+        expect(increaseDue(l(), '2026-09').due).toBe(false);
+        expect(increaseDue(l(), '2026-10')).toEqual({ due: true, pct: 5, newRent: 5250, from: '2026-10' });
+        expect(increaseDue(l({ rentSince: '2026-10' }), '2026-12').due).toBe(false);
+        expect(increaseDue(l({ increasePct: 10 }), '2027-01').newRent).toBe(5500);
+        expect(increaseDue(l({ status: 'ended' }), '2027-01').due).toBe(false);
+        expect(increaseDue(l({ increasePct: 0 }), '2027-01').due).toBe(false);
+    });
+});
+
+describe('electricity sub-meter (RENT-7)', () => {
+    test('units × rate; bad readings rejected', () => {
+        expect(meterBill({ prev: '100', curr: '150.5', rate: '8' })).toEqual({ prev: 100, curr: 150.5, rate: 8, units: 50.5, amount: 404 });
+        expect(() => meterBill({ prev: 150, curr: 100, rate: 8 })).toThrow('reading');
+        expect(() => meterBill({ prev: 0, curr: 10, rate: -1 })).toThrow('reading');
+        expect(() => meterBill({ prev: 'x', curr: 10, rate: 1 })).toThrow('reading');
+    });
+
+    test('charge = rent + electricity; replacing a reading keeps the rent; never below what is paid', () => {
+        const charge = { rent: 5000, amount: 5000, paid: 0 };
+        expect(applyMeter(charge, { amount: 400 })).toEqual({ rent: 5000, amount: 5400, open: true });
+        expect(applyMeter({ amount: 5400, electricity: { amount: 400 }, paid: 5400 }, { amount: 480 })).toEqual({ rent: 5000, amount: 5480, open: true });
+        expect(applyMeter({ rent: 5000, amount: 5400, paid: 5400 }, { amount: 400 }).open).toBe(false);
+        expect(() => applyMeter({ rent: 5000, amount: 5400, paid: 5300 }, { amount: 100 })).toThrow('below_paid');
     });
 });
 
@@ -117,5 +162,6 @@ describe('form checks', () => {
         expect(leaseError({ rent: 5000, dueDay: 29, startMonth: '2026-10' })).toBe('msg.rent.bad_due_day');
         expect(leaseError({ rent: 5000, dueDay: 5, startMonth: '2026-13' })).toBe('msg.rent.bad_month');
         expect(leaseError({ rent: 5000, dueDay: 5, startMonth: '2026-10', deposit: 10000 })).toBe('');
+        expect(leaseError({ rent: 5000, dueDay: 10, startMonth: '2026-10', increasePct: 101 })).toBe('msg.rent.bad_percent');
     });
 });

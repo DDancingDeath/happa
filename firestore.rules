@@ -575,8 +575,27 @@ service cloud.firestore {
         : '';
     }
 
+    // Owner decision (2026-10-25): anyone with a rentals role records payments
+    // and keeps the records up to date. Deletes and Access stay owner-only;
+    // correcting a charge's amount stays owner/manager.
+    function canWriteRent(usersCol) {
+      return rentRoleIn(usersCol) != '';
+    }
+
     function canManageRent(usersCol) {
       return rentRoleIn(usersCol) in ['owner', 'manager'];
+    }
+
+    function rentPrefix(usersCol) {
+      return usersCol == 'dev_users' ? 'dev_' : '';
+    }
+
+    function rentLeasePath(usersCol, leaseId) {
+      return /databases/$(database)/documents/$(rentPrefix(usersCol) + 'rent_leases')/$(leaseId);
+    }
+
+    function rentChargePath(usersCol, leaseId, month) {
+      return /databases/$(database)/documents/$(rentPrefix(usersCol) + 'rent_charges')/$(leaseId + '_' + month);
     }
 
     function rentStr(d, key, min, max) {
@@ -591,28 +610,49 @@ service cloud.firestore {
       return d.get(key, null) is number && d.get(key, 0) >= 0;
     }
 
-    function rentMeta() {
-      return ['archived', 'createdAt', 'createdBy', 'updatedAt'];
+    function rentNumOrNull(d, key) {
+      return d.get(key, null) == null || (d.get(key, null) is number && d.get(key, 0) >= 0);
     }
 
-    // Shape of properties, units, tenants and leases (owner/manager writes).
+    function pad2(n) {
+      return n < 10 ? '0' + string(n) : string(n);
+    }
+
+    // This month in India (IST = UTC+5:30), as 'YYYY-MM'.
+    function rentThisMonth() {
+      let ist = request.time + duration.value(330, 'm');
+      return string(ist.year()) + '-' + pad2(ist.month());
+    }
+
+    // Every rentals write names its writer (audit: who recorded what).
+    function rentWriterOk() {
+      return request.resource.data.get('updatedBy', null) == request.auth.uid;
+    }
+
+    function rentMeta() {
+      return ['archived', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'];
+    }
+
+    // Shape of properties, units, tenants and leases.
     function validRentDoc(base) {
       let d = request.resource.data;
       return d.get('archived', false) is bool
+        && rentWriterOk()
         && (base == 'rent_properties'
           ? d.keys().hasOnly(['name', 'address', 'kind', 'notes'].concat(rentMeta()))
             && rentStr(d, 'name', 1, 80) && rentStr(d, 'address', 0, 200) && rentStr(d, 'notes', 0, 500)
             && d.get('kind', 'other') in ['house', 'shop', 'flat', 'plot', 'godown', 'other']
           : base == 'rent_units'
-          ? d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId'].concat(rentMeta()))
+          ? d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId', 'lastReading', 'meterRate'].concat(rentMeta()))
             && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'label', 1, 60) && rentMoney(d, 'rent')
             && (d.get('leaseId', null) == null || rentStr(d, 'leaseId', 1, 64))
+            && rentNumOrNull(d, 'lastReading') && rentNumOrNull(d, 'meterRate')
           : base == 'rent_tenants'
           ? d.keys().hasOnly(['name', 'phone', 'notes'].concat(rentMeta()))
             && rentStr(d, 'name', 1, 80) && rentStr(d, 'phone', 0, 20) && rentStr(d, 'notes', 0, 500)
           : base == 'rent_leases'
           ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
-                              'deposit', 'status', 'chargedThrough'].concat(rentMeta()))
+                              'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince'].concat(rentMeta()))
             && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
             && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
             && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
@@ -620,42 +660,74 @@ service cloud.firestore {
             && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
             && d.get('status', '') in ['active', 'ended']
             && (d.get('chargedThrough', null) == null || rentMonth(d.chargedThrough))
+            && (!('increasePct' in d) || (d.increasePct is number && d.increasePct >= 0 && d.increasePct <= 100))
+            && (!('rentSince' in d) || rentMonth(d.rentSince))
           : false);
     }
 
-    // Monthly charge generation by any rentals role: chargedThrough only moves forward.
-    function rentChargedThroughOnly() {
+    // New leases start with no charges.
+    function rentLeaseCreateOk() {
+      return request.resource.data.get('chargedThrough', null) == null
+        && request.resource.data.get('status', '') == 'active';
+    }
+
+    // chargedThrough (the last month with a charge) may only move to a month
+    // whose charge exists after this write and that isn't after this month.
+    // It moves back only when the lease ends (move-out) and the old last
+    // month's charge is deleted in the same write.
+    function rentChargedThroughOk(usersCol, docId) {
       let d = request.resource.data;
       let before = resource.data.get('chargedThrough', null);
-      return d.diff(resource.data).affectedKeys().hasOnly(['chargedThrough', 'updatedAt'])
-        && rentMonth(d.get('chargedThrough', null))
-        && (before == null || d.chargedThrough > before);
+      let next = d.get('chargedThrough', null);
+      return next == before
+        || (next != null
+            && next <= rentThisMonth()
+            && existsAfter(rentChargePath(usersCol, docId, next))
+            && (before == null || next > before
+                || (d.status == 'ended' && resource.data.status == 'active'
+                    && !existsAfter(rentChargePath(usersCol, docId, before)))));
+    }
+
+    function rentLeaseUpdateOk(usersCol, docId) {
+      return validRentDoc('rent_leases') && rentChargedThroughOk(usersCol, docId)
+        && request.resource.data.startMonth == resource.data.startMonth
+        && request.resource.data.unitId == resource.data.unitId
+        && request.resource.data.tenantId == resource.data.tenantId;
     }
 
     function rentChargeFields() {
       return ['leaseId', 'unitId', 'propertyId', 'tenantId', 'tenantName', 'unitLabel', 'month', 'dueDay',
-              'amount', 'paid', 'open', 'payments', 'createdAt', 'updatedAt'];
+              'rent', 'electricity', 'amount', 'paid', 'open', 'payments', 'createdAt', 'updatedAt', 'updatedBy'];
     }
 
-    // rent_charges/{leaseId}_{YYYY-MM}: created with nothing paid.
-    function validRentChargeCreate(docId) {
+    // rent_charges/{leaseId}_{YYYY-MM}: written together with the lease's new
+    // chargedThrough; amount = the lease's rent; nothing paid, no electricity yet.
+    function validRentChargeCreate(usersCol, docId) {
       let d = request.resource.data;
+      let lease = getAfter(rentLeasePath(usersCol, d.get('leaseId', '-'))).data;
       return d.keys().hasOnly(rentChargeFields())
+        && rentWriterOk()
         && rentStr(d, 'leaseId', 1, 64) && rentMonth(d.get('month', null))
         && docId == d.leaseId + '_' + d.month
-        && rentMoney(d, 'amount')
+        && d.get('unitId', '') == lease.unitId && d.get('tenantId', '') == lease.tenantId
+        && d.get('propertyId', '') == lease.propertyId && d.get('dueDay', 0) == lease.dueDay
+        && d.month >= lease.startMonth
+        && lease.get('chargedThrough', null) != null && lease.chargedThrough >= d.month
+        && d.get('amount', null) == lease.rent && d.get('rent', null) == lease.rent
+        && d.get('electricity', null) == null
         && d.get('paid', null) == 0 && d.get('payments', null) == []
-        && d.get('open', null) == (d.amount > 0)
+        && d.get('open', null) == (lease.rent > 0)
         && rentStr(d, 'tenantName', 0, 80) && rentStr(d, 'unitLabel', 0, 60);
     }
 
     // A payment (rent-store.js recordPayment): one new entry by the caller,
-    // paid grows by exactly that amount and never above the rent.
+    // paid grows by exactly that amount and never above the amount due.
     function rentPaymentOk() {
       let d = request.resource.data;
       let r = resource.data;
       let n = r.get('payments', []).size();
-      return d.diff(r).affectedKeys().hasOnly(['payments', 'paid', 'open', 'updatedAt'])
+      return d.diff(r).affectedKeys().hasOnly(['payments', 'paid', 'open', 'updatedAt', 'updatedBy'])
+        && rentWriterOk()
         && appendsOneEntry('payments')
         && d.payments[n].keys().hasOnly(['amount', 'mode', 'ref', 'date', 'at', 'by', 'byName'])
         && d.payments[n].amount > 0
@@ -668,28 +740,65 @@ service cloud.firestore {
         && d.get('open', null) == (d.paid < r.amount - 0.001);
     }
 
+    // Electricity from a sub-meter (rent-store.js recordMeter): units = current −
+    // previous, amount = units × rate, charge = rent + electricity (rent unchanged).
+    function rentMeterOk() {
+      let d = request.resource.data;
+      let r = resource.data;
+      let e = d.get('electricity', null);
+      return d.diff(r).affectedKeys().hasOnly(['electricity', 'amount', 'open', 'rent', 'updatedAt', 'updatedBy'])
+        && rentWriterOk()
+        && d.get('rent', null) == r.get('rent', -1)
+        && e is map && e.keys().hasOnly(['prev', 'curr', 'rate', 'units', 'amount'])
+        && e.get('prev', null) is number && e.get('curr', null) is number && e.get('rate', null) is number
+        && e.get('units', null) is number && e.get('amount', null) is number
+        && e.prev >= 0 && e.curr >= e.prev && e.rate >= 0
+        && e.units >= e.curr - e.prev - 0.01 && e.units <= e.curr - e.prev + 0.01
+        && e.amount >= e.units * e.rate - 0.01 && e.amount <= e.units * e.rate + 0.01
+        && d.get('amount', null) is number
+        && d.amount >= r.rent + e.amount - 0.01 && d.amount <= r.rent + e.amount + 0.01
+        && d.amount >= r.paid - 0.01
+        && d.get('open', null) == (r.paid < d.amount - 0.001);
+    }
+
     // Owner/manager corrections (e.g. a waived month): same shape, same lease and month.
     function rentChargeEditOk() {
       let d = request.resource.data;
       return d.keys().hasOnly(rentChargeFields())
+        && rentWriterOk()
         && d.get('leaseId', null) == resource.data.leaseId && d.get('month', null) == resource.data.month
         && rentMoney(d, 'amount') && rentMoney(d, 'paid')
         && d.get('payments', null) is list
         && d.get('open', null) == (d.paid < d.amount - 0.001);
     }
 
-    function rentCreateOk(base, usersCol, docId) {
-      return base == 'rent_charges'
-        ? rentRoleIn(usersCol) != '' && validRentChargeCreate(docId)
-        : canManageRent(usersCol) && validRentDoc(base);
+    // Move-out deletes the unpaid months after the last month in the same write.
+    function rentChargeDeleteOk(usersCol) {
+      let lease = getAfter(rentLeasePath(usersCol, resource.data.leaseId)).data;
+      return canWriteRent(usersCol)
+        && resource.data.get('paid', 0) == 0 && resource.data.get('payments', []).size() == 0
+        && lease.status == 'ended' && lease.get('endMonth', null) != null
+        && resource.data.month > lease.endMonth;
     }
 
-    function rentUpdateOk(base, usersCol) {
+    function rentCreateOk(base, usersCol, docId) {
+      return canWriteRent(usersCol)
+        && (base == 'rent_charges' ? validRentChargeCreate(usersCol, docId)
+          : base == 'rent_leases' ? validRentDoc(base) && rentLeaseCreateOk()
+          : validRentDoc(base));
+    }
+
+    function rentUpdateOk(base, usersCol, docId) {
       return base == 'rent_charges'
-          ? (canManageRent(usersCol) && rentChargeEditOk()) || (rentRoleIn(usersCol) != '' && rentPaymentOk())
+          ? (canManageRent(usersCol) && rentChargeEditOk())
+            || (canWriteRent(usersCol) && (rentPaymentOk() || rentMeterOk()))
         : base == 'rent_leases'
-          ? (canManageRent(usersCol) && validRentDoc(base)) || (rentRoleIn(usersCol) != '' && rentChargedThroughOnly())
-        : canManageRent(usersCol) && validRentDoc(base);
+          ? canWriteRent(usersCol) && rentLeaseUpdateOk(usersCol, docId)
+        : canWriteRent(usersCol) && validRentDoc(base);
+    }
+
+    function rentDeleteOk(base, usersCol) {
+      return isOwnerIn(usersCol) || (base == 'rent_charges' && resource != null && rentChargeDeleteOk(usersCol));
     }
 
     // ============================================
@@ -908,67 +1017,77 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
     }
 
-    // Rentals (#170): helpers above. Deletes are owner-only; the app archives instead.
+    // Rentals (#170): helpers above. Deletes: owner, or move-out removing unpaid later months.
     match /rent_properties/{docId} {
       allow read: if rentRoleIn('users') != '';
       allow create: if rentCreateOk('rent_properties', 'users', docId);
-      allow update: if rentUpdateOk('rent_properties', 'users');
-      allow delete: if isOwnerIn('users');
+      allow update: if rentUpdateOk('rent_properties', 'users', docId);
+      allow delete: if rentDeleteOk('rent_properties', 'users');
     }
+
     match /rent_units/{docId} {
       allow read: if rentRoleIn('users') != '';
       allow create: if rentCreateOk('rent_units', 'users', docId);
-      allow update: if rentUpdateOk('rent_units', 'users');
-      allow delete: if isOwnerIn('users');
+      allow update: if rentUpdateOk('rent_units', 'users', docId);
+      allow delete: if rentDeleteOk('rent_units', 'users');
     }
+
     match /rent_tenants/{docId} {
       allow read: if rentRoleIn('users') != '';
       allow create: if rentCreateOk('rent_tenants', 'users', docId);
-      allow update: if rentUpdateOk('rent_tenants', 'users');
-      allow delete: if isOwnerIn('users');
+      allow update: if rentUpdateOk('rent_tenants', 'users', docId);
+      allow delete: if rentDeleteOk('rent_tenants', 'users');
     }
+
     match /rent_leases/{docId} {
       allow read: if rentRoleIn('users') != '';
       allow create: if rentCreateOk('rent_leases', 'users', docId);
-      allow update: if rentUpdateOk('rent_leases', 'users');
-      allow delete: if isOwnerIn('users');
+      allow update: if rentUpdateOk('rent_leases', 'users', docId);
+      allow delete: if rentDeleteOk('rent_leases', 'users');
     }
+
     match /rent_charges/{docId} {
       allow read: if rentRoleIn('users') != '';
       allow create: if rentCreateOk('rent_charges', 'users', docId);
-      allow update: if rentUpdateOk('rent_charges', 'users');
-      allow delete: if isOwnerIn('users');
+      allow update: if rentUpdateOk('rent_charges', 'users', docId);
+      allow delete: if rentDeleteOk('rent_charges', 'users');
     }
+
     match /dev_rent_properties/{docId} {
       allow read: if rentRoleIn('dev_users') != '';
       allow create: if rentCreateOk('rent_properties', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_properties', 'dev_users');
-      allow delete: if isOwnerIn('dev_users');
+      allow update: if rentUpdateOk('rent_properties', 'dev_users', docId);
+      allow delete: if rentDeleteOk('rent_properties', 'dev_users');
     }
+
     match /dev_rent_units/{docId} {
       allow read: if rentRoleIn('dev_users') != '';
       allow create: if rentCreateOk('rent_units', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_units', 'dev_users');
-      allow delete: if isOwnerIn('dev_users');
+      allow update: if rentUpdateOk('rent_units', 'dev_users', docId);
+      allow delete: if rentDeleteOk('rent_units', 'dev_users');
     }
+
     match /dev_rent_tenants/{docId} {
       allow read: if rentRoleIn('dev_users') != '';
       allow create: if rentCreateOk('rent_tenants', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_tenants', 'dev_users');
-      allow delete: if isOwnerIn('dev_users');
+      allow update: if rentUpdateOk('rent_tenants', 'dev_users', docId);
+      allow delete: if rentDeleteOk('rent_tenants', 'dev_users');
     }
+
     match /dev_rent_leases/{docId} {
       allow read: if rentRoleIn('dev_users') != '';
       allow create: if rentCreateOk('rent_leases', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_leases', 'dev_users');
-      allow delete: if isOwnerIn('dev_users');
+      allow update: if rentUpdateOk('rent_leases', 'dev_users', docId);
+      allow delete: if rentDeleteOk('rent_leases', 'dev_users');
     }
+
     match /dev_rent_charges/{docId} {
       allow read: if rentRoleIn('dev_users') != '';
       allow create: if rentCreateOk('rent_charges', 'dev_users', docId);
-      allow update: if rentUpdateOk('rent_charges', 'dev_users');
-      allow delete: if isOwnerIn('dev_users');
+      allow update: if rentUpdateOk('rent_charges', 'dev_users', docId);
+      allow delete: if rentDeleteOk('rent_charges', 'dev_users');
     }
+
     // ============================================
     // DEVELOPMENT ENVIRONMENT COLLECTIONS (dev_ prefix)
     // Same rules as production, with dev_users as the profile source.
