@@ -359,7 +359,11 @@ property."* Tenants still never log in or use the app; the link is a read-only p
 - **Kept current in the same write** as every charge creation, payment, meter
   reading, rent change and move-out (each of those transactions also reads the
   lease and, when it has a link, the snapshot: +1–2 reads per write only for
-  leases with a link). Making a link reads the lease's charges once (≤ 60).
+  leases with a link). Making a link reads the lease's **newest 36** charges once
+  (`leaseId ==` + `orderBy(month desc)` + `limit(36)`; composite index
+  `rent_charges (leaseId ASC, month DESC)` + `dev_`), commits, then rebuilds the
+  snapshot once in a transaction (catches a payment made in between). Renaming a
+  tenant, property or unit rewrites the names in that tenant's snapshot.
 - **Rules:** `allow get: if true`, `allow list: if false`. Create/update only by a
   rentals role, when `getAfter(lease).shareToken == token`, with a field allow-list,
   string sizes, ≤ 36 months, and `lid` fixed. Setting/clearing `shareToken` on a
@@ -370,8 +374,10 @@ property."* Tenants still never log in or use the app; the link is a read-only p
   `r.html` + `r/rent-history.js` + `.css` (≈ 14 KB, budget 30 KB, tested) read
   exactly **one** document over the Firestore REST API (project from
   `/__/firebase/init.json`): no Firebase SDK, no app code, no service worker, not
-  in the app precache. English or Hindi by the browser, with a toggle — one
-  language at a time. Mobile first, printable, read-only; unknown/turned-off links
+  in the app precache; the app's service worker skips `/r.html` and `/r/**`. English
+  or Hindi by the browser, with a toggle — one language at a time. Status (Paid /
+  Part paid / Due / Late) is worked out when the page opens from the month, due day
+  and due, so Late appears without any new write. Mobile first, printable, read-only; unknown/turned-off links
   show "This link is not available".
 - **WhatsApp:** the rent reminder ends with "See your rent history: <link>" when the
   link is on; **Send on WhatsApp** in the link dialog sends just the link. The

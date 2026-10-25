@@ -22,7 +22,8 @@ const SNAP = {
     lid: 'L1', v: 1, shop: 'Shop', tenant: 'Ram', place: 'Gali 2 · G1', rent: 5000, dueDay: 10, ended: true, endMonth: '2026-10',
     months: [
         { m: '2026-09', rent: 5000, elec: 400, units: 50, total: 5400, paid: 5400, due: 0, st: 'paid', pd: ['2026-09-08'] },
-        { m: '2026-10', rent: 5000, elec: 0, units: 0, total: 5000, paid: 2000, due: 3000, st: 'partial', pd: ['2026-10-05'] }
+        // Stored status is stale on purpose: the page works it out from month, due day and due.
+        { m: '2026-10', rent: 5000, elec: 0, units: 0, total: 5000, paid: 2000, due: 3000, dd: 10, st: 'paid', pd: ['2026-10-05'] }
     ],
     updatedAt: 1
 };
@@ -52,8 +53,8 @@ describe('page budget and isolation', () => {
     });
 
     test('the app never loads the page code, and the page is not in the app precache', () => {
-        const sw = read('service-worker.js');
-        expect(sw).not.toMatch(/rent-history|\/r\.html/);
+        const { readStaticAssets } = require('../../../scripts/check-sw-assets.js');
+        expect(readStaticAssets().filter(u => /rent-history|^\/r\.html$|^\/r\//.test(u))).toEqual([]);
         expect(read('index.html')).not.toMatch(/rent-history/);
     });
 });
@@ -73,7 +74,7 @@ describe('page behaviour (jsdom)', () => {
         window.__rentHistoryNoAutoStart = true;
         // eslint-disable-next-line no-new-func
         new Function(read('r/rent-history.js'))();
-        return { calls, done: window.RentHistory.start(window) };
+        return { calls, done: window.RentHistory.start(window, { today: new Date(2026, 9, 8) }) };
     }
 
     test('reads exactly one document and shows only that tenant, newest month first', async () => {
@@ -110,6 +111,16 @@ describe('page behaviour (jsdom)', () => {
         await r.done;
         expect(r.calls).toEqual([]);
         expect(document.getElementById('rh').textContent).toMatch(/not available/);
+    });
+
+    test('status is worked out when the page opens: Paid / Part paid / Due, Late after the due day', () => {
+        const { statusOf } = window.RentHistory;
+        const x = { m: '2026-10', paid: 2000, due: 3000, st: 'paid' };
+        expect(statusOf(x, 10, new Date(2026, 9, 10))).toBe('partial');
+        expect(statusOf(x, 10, new Date(2026, 9, 11))).toBe('late');
+        expect(statusOf({ ...x, dd: 5 }, 10, new Date(2026, 9, 6))).toBe('late');
+        expect(statusOf({ ...x, paid: 0 }, 10, new Date(2026, 9, 1))).toBe('due');
+        expect(statusOf({ ...x, due: 0, st: 'late' }, 10, new Date(2027, 0, 1))).toBe('paid');
     });
 
     test('dev data and the emulator', () => {

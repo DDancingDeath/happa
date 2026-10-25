@@ -249,6 +249,12 @@ self.addEventListener('activate', (event) => {
  */
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
+
+    // The tenant rent-history page (/r/<token>) is not part of the app: never
+    // serve it from (or store it in) the app cache, and never fall back to the app.
+    if (url.pathname === '/r.html' || url.pathname.startsWith('/r/')) {
+        return;
+    }
     
     // Skip non-GET requests
     if (event.request.method !== 'GET') {

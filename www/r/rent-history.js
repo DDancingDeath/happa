@@ -55,6 +55,23 @@
         return p ? `${p[3]}/${p[2]}/${p[1]}` : '';
     }
 
+    /**
+     * Status worked out when the page is opened (not the stored one, which is
+     * only as fresh as the last write): Paid, else Late after the due day, else
+     * Part paid / Due.
+     */
+    function statusOf(x, dueDay, today) {
+        if ((Number(x.due) || 0) <= 0.005) return 'paid';
+        const p = /^(\d{4})-(\d{2})$/.exec(String(x.m));
+        const day = Math.min(Math.max(Number(x.dd || dueDay) || 10, 1), 28);
+        if (p) {
+            const dueDate = new Date(Number(p[1]), Number(p[2]) - 1, day);
+            const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            if (start > dueDate) return 'late';
+        }
+        return (Number(x.paid) || 0) > 0 ? 'partial' : 'due';
+    }
+
     /** Firestore REST value -> plain JS. */
     function decode(v) {
         if (!v || typeof v !== 'object') return null;
@@ -106,13 +123,13 @@
         root.innerHTML = `<div class="rh-empty"><p>${esc(L[key])}</p></div>`;
     }
 
-    function render(root, data, lang, onToggle) {
+    function render(root, data, lang, onToggle, today = new Date()) {
         const L = TEXT[lang];
         const months = (Array.isArray(data.months) ? data.months : []).slice().sort((a, b) => (a.m < b.m ? 1 : -1));
         const totalDue = months.reduce((s, x) => s + (Number(x.due) || 0), 0);
         const totalPaid = months.reduce((s, x) => s + (Number(x.paid) || 0), 0);
         const rows = months.map(x => {
-            const st = L.st[x.st] ? x.st : 'due';
+            const st = statusOf(x, data.dueDay, today);
             const elec = Number(x.elec) > 0 ? `<div class="rh-row"><span>${esc(L.elec(x.units))}</span><span>${esc(inr(x.elec))}</span></div>` : '';
             const dates = Array.isArray(x.pd) && x.pd.length ? `<div class="rh-dates">${esc(L.paidOn)}: ${esc(x.pd.map(dateLabel).join(', '))}</div>` : '';
             return `<section class="rh-month">
@@ -143,7 +160,7 @@
         root.querySelector('#rhPrint').addEventListener('click', () => window.print());
     }
 
-    async function start(win = window) {
+    async function start(win = window, { today } = {}) {
         const doc = win.document;
         const root = doc.getElementById('rh');
         const store = (() => { try { return win.localStorage; } catch (_) { return null; } })();
@@ -167,11 +184,11 @@
             setLang(lang === 'hi' ? 'en' : 'hi');
             try { store && store.setItem(LANG_KEY, lang); } catch (_) { /* private mode */ }
             draw();
-        });
+        }, today || new Date());
         draw();
     }
 
-    const api = { start, decode, tokenFrom, docUrl, pickLang, monthLabel, TEXT };
+    const api = { start, decode, tokenFrom, docUrl, pickLang, monthLabel, statusOf, TEXT };
     if (typeof window !== 'undefined') {
         window.RentHistory = api;
         if (!window.__rentHistoryNoAutoStart) {

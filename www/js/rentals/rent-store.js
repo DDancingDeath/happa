@@ -11,7 +11,7 @@ import {
     applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange,
     MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
-import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth } from './rent-public.js';
+import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth, withNames, PUBLIC_MONTHS } from './rent-public.js';
 
 /**
  * Upper bound per rentals listener (design §3.4): sized for 100 properties with
@@ -146,14 +146,48 @@ export async function updateLease(id, fields) {
 export async function makeShareLink(lease, { tenantName, place, shopName }) {
     const db = FirebaseService.db;
     const token = newShareToken();
-    const charges = await coll('rent_charges').where('leaseId', '==', lease.id).limit(60).get();
-    const list = charges.docs.map(d => ({ id: d.id, ...d.data() }));
+    const names = { tenantName, place, shopName };
     const batch = db.batch();
-    batch.set(publicRef(token), buildPublicSnapshot({ lease, tenantName, place, shopName, charges: list }));
+    batch.set(publicRef(token), buildPublicSnapshot({ lease, ...names, charges: await latestCharges(lease.id) }));
     batch.update(coll('rent_leases').doc(lease.id), stamp({ shareToken: token }));
     if (isShareToken(lease.shareToken)) batch.delete(publicRef(lease.shareToken));
     await batch.commit();
+    // A payment or new month between the read above and the commit didn't see the
+    // link yet: rebuild once now (later writes keep it current themselves).
+    await rebuildShareSnapshot(lease.id, token, names);
     return token;
+}
+
+/** The newest PUBLIC_MONTHS charges of a lease (one bounded query; index leaseId + month desc). */
+async function latestCharges(leaseId) {
+    const snap = await coll('rent_charges').where('leaseId', '==', leaseId).orderBy('month', 'desc').limit(PUBLIC_MONTHS).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/** Rewrites a link snapshot from the lease and its charges, if the lease still points at `token`. */
+export async function rebuildShareSnapshot(leaseId, token, names) {
+    const db = FirebaseService.db;
+    const charges = await latestCharges(leaseId);
+    const leaseRef = coll('rent_leases').doc(leaseId);
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(leaseRef);
+        if (!snap.exists || snap.data().shareToken !== token) return false;
+        tx.set(publicRef(token), buildPublicSnapshot({ lease: { id: leaseId, ...snap.data() }, ...names, charges }));
+        return true;
+    });
+}
+
+/** After a tenant/property/unit rename: new display names in a lease's link snapshot. */
+export async function renameInLink(lease, { tenantName, place }) {
+    const db = FirebaseService.db;
+    const leaseRef = coll('rent_leases').doc(lease.id);
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(leaseRef);
+        const pub = snap.exists ? await readPublic(tx, snap.data()) : null;
+        if (!pub) return false;
+        tx.set(pub.ref, withNames(pub.data, { tenantName, place }));
+        return true;
+    });
 }
 
 /** Owner/manager: turn the link off (snapshot deleted, lease token cleared). */

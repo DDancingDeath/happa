@@ -41,6 +41,7 @@ export function publicMonth(charge, today = new Date()) {
         total,
         paid,
         due: chargeDue(charge),
+        dd: Number.isInteger(charge.dueDay) ? charge.dueDay : null,
         st: s.status === 'paid' ? 'paid' : s.late ? 'late' : s.status,
         pd: dates
     };
@@ -79,6 +80,17 @@ export function withMonth(snap, charge, now = Date.now()) {
     const month = publicMonth(charge, new Date(now));
     const months = (snap.months || []).filter(x => x.m !== month.m).concat(month).sort(byMonth).slice(-PUBLIC_MONTHS);
     return { ...snap, months, updatedAt: now };
+}
+
+/** Snapshot with new display names (tenant, property or unit renamed). */
+export function withNames(snap, { tenantName, place }, now = Date.now()) {
+    // A name that isn't known any more (archived record) keeps the old one.
+    return {
+        ...snap,
+        tenant: tenantName ? String(tenantName).slice(0, 80) : snap.tenant,
+        place: place ? String(place).slice(0, 150) : snap.place,
+        updatedAt: now
+    };
 }
 
 /** Snapshot after a lease change (rent, due day, move-out: later months dropped). */

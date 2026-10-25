@@ -101,6 +101,34 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "rent_charges",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "leaseId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "month",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "dev_rent_charges",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "leaseId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "month",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

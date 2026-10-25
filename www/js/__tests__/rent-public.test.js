@@ -24,7 +24,7 @@ test('a month as the tenant sees it (RENT-8): rent, electricity, total, paid, da
         payments: [{ amount: 1000, date: '2026-09-12', by: 'u1', byName: 'Asha' }, { amount: 1000, date: '2026-09-05', by: 'u2' }]
     });
     expect(publicMonth(c, new Date(2026, 9, 1))).toEqual({
-        m: '2026-09', rent: 5000, elec: 400, units: 50, total: 5400, paid: 2000, due: 3400, st: 'late', pd: ['2026-09-05', '2026-09-12']
+        m: '2026-09', rent: 5000, elec: 400, units: 50, total: 5400, paid: 2000, due: 3400, dd: 10, st: 'late', pd: ['2026-09-05', '2026-09-12']
     });
     expect(publicMonth(charge('2026-10', { paid: 5000 }), new Date(2026, 9, 20)).st).toBe('paid');
 });

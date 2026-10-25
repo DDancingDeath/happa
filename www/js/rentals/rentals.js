@@ -416,6 +416,16 @@ async function shareLink(leaseId) {
     await dialog(`<h3>🔗 ${esc(t('ui.rent.link_title'))}</h3>${body}`);
 }
 
+/** After a rename: linked tenants' pages show the new tenant / property / unit names. */
+function refreshLinkNames(affects) {
+    const d = store.snapshot();
+    const ix = index(d);
+    d.linked.filter(affects).forEach(l => {
+        store.renameInLink(l, { tenantName: ix.tenants.get(l.tenantId)?.name, place: placeOf(ix, l.unitId) })
+            .catch(e => console.warn('Tenant link names not updated:', e?.code || e));
+    });
+}
+
 async function linkAction(action, leaseId) {
     dialogResolve?.(false);
     const lease = findLease(leaseId);
@@ -514,6 +524,7 @@ async function editTenant(id) {
     const err = tenantError(next);
     if (err) return UIManager.showToast(t(err), 'error');
     await saveRent(() => store.updateTenant(id, next));
+    refreshLinkNames(l => l.tenantId === id);
 }
 
 async function archiveTenant(id) {
@@ -653,6 +664,7 @@ async function editProperty(id) {
     const err = propertyError(next);
     if (err) return UIManager.showToast(t(err), 'error');
     await saveRent(() => store.updateProperty(id, next));
+    refreshLinkNames(l => l.propertyId === id);
 }
 
 async function archiveProperty(id) {
@@ -688,7 +700,9 @@ async function editUnit(id) {
     const unit = store.snapshot().units.find(x => x.id === id);
     if (!unit) return;
     const u = await unitDialog(t('ui.rent.edit'), unit);
-    if (u) await saveRent(() => store.updateUnit(id, u));
+    if (!u) return;
+    await saveRent(() => store.updateUnit(id, u));
+    refreshLinkNames(l => l.unitId === id);
 }
 
 async function archiveUnit(id) {
