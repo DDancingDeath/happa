@@ -753,6 +753,8 @@ export default {
     'ui.outstanding.write_off_not_paid': "Write off — will not be paid",
     'ui.outstanding.write_off_not_received': "Write off — will not be received",
     'ui.outstanding.write_off_reason': "Reason / note (required for a write-off):",
+    'ui.reports.purchases_above_sales': "Purchases above sales",
+    'ui.reports.sales_above_purchases': "Sales above purchases",
     'ui.settings.about': "About",
     'ui.settings.account': "Account",
     'ui.settings.app': "App:",

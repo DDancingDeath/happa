@@ -340,8 +340,7 @@ test.skip('AC7 same month with DD/MM dates: Analytics sales == Reports (#49)', (
     fc.assert(fc.property(shopArb({ ddmmRate: 0.4, years: 1 }), ({ shop: s }) => sameMonth(s, ({ reports, analytics }) => analytics.sales === reports.sales)), FC);
 });
 
-// BUG: see #47 — Reports and Analytics purchases (before labour) and profit (sales − purchases) differ from Finance (#215)
-test.skip('AC7 same month: purchases and profit agree on Reports, Analytics and Finance (#47)', () => {
+test('AC7 same month: purchases and profit agree on Reports, Analytics and Finance (#36, #47)', () => {
     fc.assert(fc.property(shopArb({ ddmmRate: 0, years: 1 }), ({ shop: s }) => sameMonth(s, ({ reports, analytics, finance, want }) =>
         reports.purchases === Math.round(want.R1_purchases) && analytics.purchases === reports.purchases
         && reports.profit === finance.profit && analytics.profit === finance.profit)), FC);

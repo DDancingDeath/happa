@@ -12,7 +12,7 @@
  *    (canonical), else top-level `dueAmount`, else total − amount paid;
  *  - lines resolve to a catalogue item by itemId, else by trimmed,
  *    case-insensitive English or Hindi name.
- * Profit and "week" windows wait on decisions #36 / #43 and are not covered.
+ * Profit is covered in tests/oracle (decision #36); "week" waits on #43.
  */
 import fs from 'fs';
 import path from 'path';

@@ -35,12 +35,8 @@ const E = FIX.expected;
 const BUGS = {
     // BUG: see #219 — Today leaves out expenses that are neither 'business' nor 'personal'
     T4_businessExpenses: 219, T8_cashOut: 219, T11_totalOut: 219, T12_net: 219,
-    // BUG: see #47 — Reports purchases use the pre-labour total; profit is sales − purchases
-    R1_purchases: 47, R3_profit: 47,
     // BUG: see #49 — Analytics parses DD/MM/YYYY dates with new Date()
     A1_revenue: 49, A2_purchases: 49,
-    // BUG: see #47 — Analytics profit is sales − purchases − expenses (not cost of goods sold)
-    A4_profit: 47,
     // BUG: see #220 — Analytics outstanding ignores cleared bills and dueAmount-only bills
     A6_receivable: 220, A6_receivableCount: 220
 };

@@ -11,7 +11,7 @@
  *  - Cash flow = money received − money paid (bill-time payments, later due
  *    payments made in the period, all expenses).
  *  - Personal expenses are shown separately, not subtracted from business
- *    profit (#36 recommendation). Untagged expenses count as business.
+ *    profit (owner decision #36). Untagged expenses count as business.
  *
  * With `detail: true` every number also comes with the records it is made of
  * (see finance-breakdown.js), from the same pass, so they always add up.
@@ -262,6 +262,29 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
         };
     }
     return result;
+}
+
+/**
+ * Profit (F4) per day from a detailed summary: sales − cost of goods sold −
+ * business expenses − bad debts, each counted on its own day. The days add up
+ * to summary.profit.
+ * @param {Object} detail `detail` from computeFinanceSummary({detail: true})
+ * @param {(t: number) => string} dayKey
+ * @returns {Object<string, number>}
+ */
+export function profitByDay(detail, dayKey) {
+    const out = {};
+    const add = (rows, sign) => (rows || []).forEach(r => {
+        if (!Number.isFinite(r.t)) return;
+        const k = dayKey(r.t);
+        out[k] = (out[k] || 0) + sign * num(r.amount);
+    });
+    add(detail?.sales, 1);
+    add(detail?.stock?.cogs, -1);
+    add(detail?.business, -1);
+    add(detail?.badDebts, -1);
+    Object.keys(out).forEach(k => { out[k] = round2(out[k]); });
+    return out;
 }
 
 /**

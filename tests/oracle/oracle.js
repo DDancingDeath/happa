@@ -145,7 +145,7 @@ export function duePaymentsIn(bills, sessions, range) {
 }
 
 const expenseAmount = (e) => n(e.amount);
-/** EXP-KIND: 'personal' only when tagged personal; anything else (incl. untagged / legacy `type`) is business (#36 recommendation). */
+/** EXP-KIND: 'personal' only when tagged personal; anything else (incl. untagged / legacy `type`) is business (owner decision #36). */
 const isPersonal = (e) => String(e.category || e.type || '').toLowerCase() === 'personal';
 
 // ---------------------------------------------------------------- Today (T*)
@@ -256,7 +256,7 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
 // ---------------------------------------------------------------- Finance (F*), new definitions from #215
 
 /**
- * F1–F11 for [from, to). Personal expenses are not part of business profit (#36 recommendation).
+ * F1–F11 for [from, to). Personal expenses are not part of business profit (owner decision #36).
  * Bad debts = receivable dues written off in the period (by write-off date, #215).
  */
 export function finance(data, range = [-Infinity, Infinity]) {

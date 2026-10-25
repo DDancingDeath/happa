@@ -463,6 +463,17 @@ export class FinanceManager {
     }
 
     /**
+     * Business profit (F4: sales − cost of goods sold − business expenses − bad
+     * debts) for [from, to), the one profit Reports and Analytics show too (#36).
+     * No cash-session reads: those only affect cash flow.
+     * @param {{from: number, to: number, detail?: boolean}} range
+     * @returns {ReturnType<typeof computeFinanceSummary>} `.profit` is null when cost of goods sold isn't known
+     */
+    static profitSummary({ from, to, detail = false }) {
+        return this.computeSummary({ from, to, detail, cashSessions: { sessions: [], complete: true } });
+    }
+
+    /**
      * Cash sessions for [from, to): their due-payment legs count the final
      * payment on an old bill that is no longer in memory. Not needed once the
      * full history is loaded; read (small, cached) for periods up to
