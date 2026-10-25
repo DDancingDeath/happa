@@ -2,7 +2,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { readPayment, outstandingDue, readLineItem, perUnitRate, billTotal } from '../utils/money.js';
+import { activityBills, readPayment, outstandingDue, readLineItem, perUnitRate, billTotal } from '../utils/money.js';
 import { FinanceManager } from './finance.js';
 import { todayLocalISO, parseLocalDate, parseAnyBillDate } from '../utils/dates.js';
 import {
@@ -239,7 +239,7 @@ export class ReportsManager {
     static filterByDate(bills) {
         const now = new Date();
         
-        return bills.filter(bill => {
+        return activityBills(bills).filter(bill => {
             const billDate = parseAnyBillDate(bill.date) || new Date(NaN);
             
             switch(this.currentDateFilter) {

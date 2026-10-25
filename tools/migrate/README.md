@@ -81,6 +81,7 @@ One bill-shaped document **per old unpaid bill**, in the collection the due live
 
 - Outstanding, its age groups, the party due under the name field, WhatsApp reminders, statements, payments and write-offs already read `payment.due` / `dueAmount` and the bill number and date, so they show exactly what the old app showed. Bills are picked and grouped as the pages do (`buildAging`; Wholesale uses its own rule, `wholesaleOutstanding`).
 - `total` is 0 and there are no lines, so Finance, Reports and stock never count the old sales a second time. Money received later counts on the day it is received, as for any due.
+- The app leaves opening records out of every period and activity figure (Today, Reports, Finance, Analytics, bill counts, stock, rate trends, anomaly scans, Number checks) with one filter, `isOpeningRecord()` / `activityBills()` in `www/js/utils/money.js`, even when the old bill is dated today; they count only in the dues (`OPENING` in `docs/calculations.md`).
 - App change: Outstanding and Wholesale → Outstanding show the open amount as the bill total and a line "From the old app: bill total ₹…, paid before the move ₹…".
 
 `plan` cross-checks, re-reading the records with the app's own code: same total, same parties and per-party totals, same age groups as the old pages; monthly rate buckets = the app's own monthly aggregation (`rate-trends.js`); weekly kg = monthly kg.

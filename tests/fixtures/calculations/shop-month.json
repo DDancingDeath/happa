@@ -3,7 +3,8 @@
   "now": "2026-10-21T15:00:00",
   "notes": [
     "Every expected number below was worked out by hand from the records; the working is in docs/calculations.md (Worked example).",
-    "Mixes the shapes real data has: Hindi item name without itemId, odd-cased name, wholesale `quantity`, DD/MM dates (with and without time), amountPaid-only legacy bill, dueAmount + payment.*, later due payments in payments[] mirrored as cash-session legs, a cleared (written-off) bill, an untagged expense and a stock removal."
+    "Mixes the shapes real data has: Hindi item name without itemId, odd-cased name, wholesale `quantity`, DD/MM dates (with and without time), amountPaid-only legacy bill, dueAmount + payment.*, later due payments in payments[] mirrored as cash-session legs, a cleared (written-off) bill, an untagged expense and a stock removal.",
+    "Opening records carried from the old app (openingBalance, no lines, total 0) are balances only: they change the dues (F9, F10, R6, R7, A5, A6, O1-O4) and no other number. o-party-a is dated today, as in the live case (F06)."
   ],
   "items": [
     { "id": "i-rice", "name": "Rice", "hindiName": "चावल" },
@@ -22,12 +23,20 @@
     { "id": "p3", "date": "2026-10-21T09:00:00", "customerName": "Gupta Traders",
       "items": [{ "itemId": "i-rice", "name": "Rice", "qty": 40, "rate": 32, "total": 1280 }],
       "billTotal": 1280, "laborCharges": 6, "grandTotal": 1274,
-      "cashPayment": 0, "onlinePayment": 1274, "dueAmount": 0, "payment": { "cash": 0, "online": 1274, "due": 0, "total": 1274 } }
+      "cashPayment": 0, "onlinePayment": 1274, "dueAmount": 0, "payment": { "cash": 0, "online": 1274, "due": 0, "total": 1274 } },
+    { "id": "o-old-supplier", "billNumber": "O-OLD-SUPPLIER", "date": "2026-10-12T11:00:00", "customerName": "Old Supplier", "type": "purchase", "isPurchase": true,
+      "items": [], "total": 0, "cashPayment": 0, "onlinePayment": 0, "dueAmount": 5000, "payment": { "cash": 0, "online": 0, "due": 5000, "total": 0 },
+      "openDue": true, "cleared": false,
+      "openingBalance": { "migrated": true, "kind": "payable", "billType": "purchase", "amount": 5000, "billTotal": 5000, "paidBefore": 0, "asOf": 1792549800000, "fromProject": "aadhat-management", "sourceBillId": "o-old-supplier" } }
   ],
   "wholesaleSales": [
     { "id": "w1", "date": "2026-10-10T12:00:00", "customer": "Sharma Stores", "customerName": "Sharma Stores",
       "items": [{ "itemId": "i-rice", "name": "Rice", "quantity": 60, "rate": 36, "total": 2160 }],
-      "total": 2160, "payment": { "cash": 1160, "online": 0, "due": 1000, "total": 1160 } }
+      "total": 2160, "payment": { "cash": 1160, "online": 0, "due": 1000, "total": 1160 } },
+    { "id": "o-sharma", "billNumber": "O-SHARMA", "date": "2026-10-05T10:00:00", "customerName": "Sharma Stores", "type": "wholesale", "source": "sales-tab",
+      "items": [], "total": 0, "cashPayment": 0, "onlinePayment": 0, "dueAmount": 2000, "payment": { "cash": 0, "online": 0, "due": 2000, "total": 0 },
+      "openDue": true, "cleared": false,
+      "openingBalance": { "migrated": true, "kind": "receivable", "billType": "wholesale", "amount": 2000, "billTotal": 2000, "paidBefore": 0, "asOf": 1792549800000, "fromProject": "aadhat-management", "sourceBillId": "o-sharma" } }
   ],
   "retailSales": [
     { "id": "r1", "date": "2026-10-21T10:30:00", "customerName": "Sita",
@@ -43,7 +52,15 @@
       "payments": [{ "id": "pay-r3", "cash": 50, "online": 0, "date": "2026-10-21T13:00:00" }] },
     { "id": "r4", "date": "2026-09-30T18:00:00", "customerName": "Mohan",
       "items": [{ "itemId": "i-rice", "name": "Rice", "qty": 2, "rate": 40, "total": 80 }],
-      "total": 80, "cashPayment": 0, "dueAmount": 80, "payment": { "cash": 0, "online": 0, "due": 80, "total": 80 }, "cleared": true }
+      "total": 80, "cashPayment": 0, "dueAmount": 80, "payment": { "cash": 0, "online": 0, "due": 80, "total": 80 }, "cleared": true },
+    { "id": "o-party-a", "billNumber": "O-TEST-A", "date": "2026-10-21T09:15:00", "timestamp": 1792554300000, "customerName": "Test Party A", "type": "retail",
+      "items": [], "total": 0, "cashPayment": 0, "onlinePayment": 0, "dueAmount": 250000, "payment": { "cash": 0, "online": 0, "due": 250000, "total": 0 },
+      "openDue": true, "cleared": false,
+      "openingBalance": { "migrated": true, "kind": "receivable", "billType": "retail", "amount": 250000, "billTotal": 250000, "paidBefore": 0, "asOf": 1792549800000, "fromProject": "aadhat-management", "sourceBillId": "o-party-a" } },
+    { "id": "o-party-b", "billNumber": "O-TEST-B", "date": "22/01/2026, 9:45:00 am", "customerName": "Test Party B", "type": "retail",
+      "items": [], "total": 0, "cashPayment": 0, "onlinePayment": 0, "dueAmount": 100, "payment": { "cash": 0, "online": 0, "due": 100, "total": 0 },
+      "openDue": true, "cleared": false,
+      "openingBalance": { "migrated": true, "kind": "receivable", "billType": "retail", "amount": 100, "billTotal": 100, "paidBefore": 0, "asOf": 1792549800000, "fromProject": "aadhat-management", "sourceBillId": "o-party-b" } }
   ],
   "stockAdjustments": [
     { "id": "a1", "itemId": "i-wheat", "itemName": "Wheat", "adjustType": "remove", "quantity": 2, "rate": 0, "date": "2026-10-12T09:00:00", "reason": "spoiled" }
@@ -81,19 +98,19 @@
     "financeAll": {
       "F1_sales": 3290, "F1_saleCount": 5, "F2_cogs": 2710.96, "F3_businessExpenses": 670, "F4_badDebts": 0, "F4_profit": -90.96,
       "F5_personalExpenses": 1080, "F6_stockValue": 2817.04, "F7_cashFlow": -4902, "F7_moneyIn": 1810, "F7_moneyOut": 6712,
-      "F9_dueToReceive": 1400, "F10_dueToPay": 600, "F11_withdrawals": 2000
+      "F9_dueToReceive": 253500, "F10_dueToPay": 5600, "F11_withdrawals": 2000
     },
     "reportsMonth": {
       "R1_purchases": 2574, "R1_purchaseCount": 2, "R2_sales": 3210, "R2_saleCount": 4, "R3_profit": -110.96,
-      "R4_cash": 2410, "R5_online": 1374, "R6_dueToPay": 600, "R7_dueToReceive": 1400, "R8_labour": 6
+      "R4_cash": 2410, "R5_online": 1374, "R6_dueToPay": 5600, "R7_dueToReceive": 253500, "R8_labour": 6
     },
     "analyticsMonth": {
       "A1_revenue": 3210, "A2_purchases": 2574, "A3_expenses": 670, "A3_expenseCount": 3, "A4_profit": -110.96,
-      "A5_payable": 600, "A5_payableCount": 1, "A6_receivable": 1400, "A6_receivableCount": 3
+      "A5_payable": 5600, "A5_payableCount": 2, "A6_receivable": 253500, "A6_receivableCount": 6
     },
     "outstanding": {
-      "O1_payableByParty": { "Ram Lal": 600 }, "O2_receivableByParty": { "Sita": 250, "Kamla": 150 },
-      "O3_payableTotal": 600, "O4_receivableTotal": 400
+      "O1_payableByParty": { "Ram Lal": 600, "Old Supplier": 5000 }, "O2_receivableByParty": { "Sita": 250, "Kamla": 150, "Test Party A": 250000, "Test Party B": 100 },
+      "O3_payableTotal": 5600, "O4_receivableTotal": 250500
     },
     "drawer": {
       "C1_cashSales": 200, "C2_cashPurchases": 0, "C3_businessExpenses": 170, "C3_personalExpenses": 80,

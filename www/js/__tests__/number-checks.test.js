@@ -15,7 +15,7 @@ const status = (results) => Object.fromEntries(results.map(r => [r.id, r.status]
 
 describe('number checks on loaded data', () => {
     test('a clean generated history passes every check', () => {
-        const s = generateShop({ seed: 11, years: 1 });
+        const s = generateShop({ seed: 11, years: 1, openingRate: 1 });
         const results = runNumberChecks(s, { fullHistory: true });
         expect(status(results)).toEqual({ AC1: 'pass', AC8: 'pass', AC2: 'pass', AC3: 'pass', AC4: 'pass', AC5: 'pass', AC6: 'skip' });
     });

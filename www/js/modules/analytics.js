@@ -11,6 +11,7 @@ import { createRenderMemo } from '../utils/render-memo.js';
 import { FinanceManager } from './finance.js';
 import { profitByDay } from '../utils/finance-calc.js';
 import { t } from '../i18n/index.js';
+import { activityBills } from '../utils/money.js';
 
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -196,7 +197,7 @@ export class AnalyticsManager {
      * Filter transactions by date range
      */
     static filterByDateRange(transactions, startDate, endDate = new Date()) {
-        return (transactions || []).filter(t => {
+        return activityBills(transactions).filter(t => {
             const date = this.parseDate(t.date);
             return date >= startDate && date <= endDate;
         });

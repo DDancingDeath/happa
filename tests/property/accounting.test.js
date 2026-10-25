@@ -14,6 +14,7 @@ import * as O from '../oracle/oracle.js';
 import { readPayment, billTotal, outstandingDue } from '../../www/js/utils/money.js';
 import { saleTimePayment, entryParts } from '../../www/js/utils/due-payments.js';
 import { computeStock, buildCheckpointState } from '../../www/js/utils/stock-replay.js';
+import { buildAging } from '../../www/js/utils/aging.js';
 import { sessionTotals } from '../../www/js/utils/cash-session.js';
 import { computeFinanceSummary } from '../../www/js/utils/finance-calc.js';
 import { DayManager } from '../../www/js/modules/day.js';
@@ -46,6 +47,8 @@ const shopArb = (over = {}) => fc.record({
 
 const sources = (s) => ({ purchases: s.purchases, wholesaleSales: s.wholesaleSales, retailSales: s.retailSales, stockAdjustments: s.stockAdjustments });
 const allBills = (s) => [...s.purchases, ...s.wholesaleSales, ...s.retailSales];
+/** Bills that are activity: opening records carried from the old app are balances only. */
+const realBills = (s) => allBills(s).filter(b => !O.isOpening(b));
 const close = (a, b, tol = 0.01) => Math.abs(a - b) <= tol;
 const pad = (v) => String(v).padStart(2, '0');
 const isoDay = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
@@ -107,6 +110,9 @@ test('generator: multi-year, mixed shapes, never oversells', () => {
     expect(allBills(s).some(b => (b.payments || []).some(p => p.kind === 'writeOff'))).toBe(true);
     expect(s.truth.deleted).toBeGreaterThan(0);
     expect(Object.values(s.truth.finalQty).every(q => q >= 0)).toBe(true);
+    const o = generateShop({ seed: 7, years: 1, openingRate: 1 });
+    expect(o.truth.opening.length).toBeGreaterThan(0);
+    expect(allBills(o).filter(O.isOpening).every(b => b.total === 0 && b.items.length === 0 && b.openingBalance.amount > 0)).toBe(true);
 });
 
 // AC1 + AC8 -------------------------------------------------------------------
@@ -180,7 +186,7 @@ test.each(Object.entries(RETAIL_LINE_SHAPES))('AC1 a retail line with %s reduces
 // AC2 / AC3 -------------------------------------------------------------------
 
 test('AC2 bill total = cash + online + due (+ written off), within ₹1, and matches what happened', () => {
-    fc.assert(fc.property(shopArb(), ({ shop: s }) => allBills(s).every(b => {
+    fc.assert(fc.property(shopArb(), ({ shop: s }) => realBills(s).every(b => {
         const p = readPayment(b);
         const truth = s.truth.bills[b.id];
         const writtenOff = Number(b.payment?.writtenOff) || 0;
@@ -394,4 +400,116 @@ test('AC1/AC7 each month: Finance cost of goods sold, profit and cash flow == or
         return close(got.sales.total, want.F1_sales) && close(got.cogs, want.F2_cogs, 0.05) && close(got.profit, want.F4_profit, 0.05)
             && close(got.cash.net, want.F7_cashFlow, 0.05) && close(got.stock.gap, 0, 0.05);
     })), FC);
+});
+// Opening records (old-app dues, tools/migrate) ---------------------------------
+
+test('AC5 with opening records: Outstanding and Finance dues include them; aging uses the original bill date', () => {
+    fc.assert(fc.property(shopArb({ openingRate: 1 }), ({ shop: s }) => {
+        load(s);
+        const openDue = (pred) => Object.values(s.truth.bills).filter(pred).reduce((a, b) => a + b.due, 0);
+        document.body.innerHTML = '<div id="dueAging"></div><div id="dueList"></div>';
+        AppState.currentDueFilter = 'sale';
+        OutstandingManager.partyFilter = null;
+        OutstandingManager.agingBucket = null;
+        OutstandingManager.renderDue();
+        let screen = 0;
+        document.querySelectorAll('#dueList .history-item .history-header').forEach(h => {
+            screen += Number(h.textContent.match(/Due: ₹([\d,.]+)/)[1].replace(/,/g, ''));
+        });
+        const fin = FinanceManager.calculateOutstanding();
+        const openingRetailDue = allBills(s).filter(b => O.isOpening(b) && b.type === 'retail').reduce((a, b) => a + outstandingDue(b), 0);
+        const ages = buildAging(allBills(s).filter(b => O.isOpening(b) && outstandingDue(b) > 0), { today: new Date(s.truth.end) })
+            .parties.flatMap(p => p.bills);
+        return screen === openDue(b => b.kind === 'retail')
+            && close(fin.dueToReceive, openDue(b => b.kind !== 'purchase')) && close(fin.dueToPay, openDue(b => b.kind === 'purchase'))
+            && (openingRetailDue === 0 || screen >= openingRetailDue)
+            && ages.every(a => a.date && a.date.getTime() === s.truth.bills[a.id].t);
+    }), FC);
+});
+
+/** Every period / activity figure for a shop: Today on sampled days, Reports, Finance, Analytics, stock. */
+function periodFigures(s, days, months) {
+    load(s);
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
+    jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
+    const out = { today: {}, reports: {}, finance: {}, analytics: {} };
+    days.forEach(ms => {
+        out.today[ms] = todayScreen(s, ms);
+        out.today[ms].saleCount = shown('todaySaleCount');
+        out.today[ms].purchaseCount = shown('todayPurchaseCount');
+    });
+    const reportIds = ['reportsTotalVolume', 'reportsTotalPurchases', 'reportsTotalSales', 'reportsPurchaseCount', 'reportsSaleCount',
+        'reportsGrossProfit', 'reportsProfitMargin', 'reportsTotalLabor', 'reportsCashPayment', 'reportsOnlinePayment'];
+    const fin = (from, to) => {
+        const f = FinanceManager.computeSummary({ from, to, cashSessions: { sessions: [], complete: true } });
+        return { sales: f.sales.total, saleCount: f.sales.count, purchases: f.purchases.total, purchaseCount: f.purchases.count,
+            cogs: f.cogs, profit: f.profit, badDebts: f.badDebts, cash: f.cash.net, closing: f.stock?.closing ?? null };
+    };
+    jest.setSystemTime(new Date(s.truth.end + 3600000));
+    out.finance.all = fin(-Infinity, Infinity);
+    document.body.innerHTML = reportIds.map(id => `<span id="${id}"></span>`).join('');
+    ReportsManager.currentDateFilter = 'all';
+    ReportsManager.renderOverview();
+    out.reports.all = Object.fromEntries(reportIds.map(id => [id, document.getElementById(id).textContent]));
+    out.stock = computeStock(sources(s), s.items);
+    months.forEach(([y, m]) => {
+        const now = new Date(y, m + 1, 0, 23, 59, 0).getTime();
+        jest.setSystemTime(new Date(now));
+        document.body.innerHTML = [...reportIds, 'monthRevenue', 'monthPurchases', 'monthProfit', 'monthExpenses', 'monthProfitMargin', 'monthExpensesCount']
+            .map(id => `<span id="${id}"></span>`).join('');
+        ReportsManager.currentDateFilter = 'month';
+        ReportsManager.renderOverview();
+        AnalyticsManager.renderMonthSummary();
+        out.reports[`${y}-${m}`] = Object.fromEntries(reportIds.map(id => [id, document.getElementById(id).textContent]));
+        out.analytics[`${y}-${m}`] = ['monthRevenue', 'monthPurchases', 'monthProfit', 'monthProfitMargin'].map(id => document.getElementById(id).textContent);
+        out.finance[`${y}-${m}`] = fin(new Date(y, m, 1).getTime(), new Date(y, m + 1, 1).getTime());
+    });
+    return out;
+}
+
+test('no period or activity figure changes when opening records are added (Today, Reports, Finance, Analytics, stock)', () => {
+    fc.assert(fc.property(shopArb({ years: 1 }), ({ opts }) => {
+        const plain = generateShop({ ...opts, openingRate: 0 });
+        const migrated = generateShop({ ...opts, openingRate: 1, openingPayments: false });
+        const mig = migrated.truth.migrationDay;
+        const at7pm = (ms) => new Date(ms).setHours(19, 0, 0, 0);
+        const days = [...new Set([at7pm(mig), ...migrated.truth.opening.map(id => at7pm(migrated.truth.bills[id].t))])].slice(0, 4);
+        const d = new Date(mig);
+        const months = [[d.getFullYear(), d.getMonth()]];
+        const a = periodFigures(plain, days, months);
+        const b = periodFigures(migrated, days, months);
+        return JSON.stringify(a) === JSON.stringify(b);
+    }), { ...FC, numRuns: Math.max(2, Math.ceil(RUNS / 2)) });
+});
+
+test('AC7 Today due to receive / pay = Σ due of that day\'s real bills only, on the migration day', () => {
+    fc.assert(fc.property(shopArb({ years: 1, openingRate: 1 }), ({ shop: s }) => {
+        load(s);
+        jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+        const ms = new Date(s.truth.migrationDay).setHours(21, 0, 0, 0);
+        const t = todayScreen(s, ms);
+        const [from, to] = O.dayRange(ms);
+        const sameDay = (b) => { const x = O.timeOf(b.date); return x >= from && x < to; };
+        const due = (list) => Math.round(list.filter(b => !O.isOpening(b) && sameDay(b)).reduce((a, b) => a + outstandingDue(b), 0));
+        const count = (list) => list.filter(b => !O.isOpening(b) && sameDay(b)).length;
+        return t.T15_dueToReceive === due([...s.retailSales, ...s.wholesaleSales]) && t.T16_dueToPay === due(s.purchases)
+            && shown('todaySaleCount') === count([...s.retailSales, ...s.wholesaleSales]) && shown('todayPurchaseCount') === count(s.purchases);
+    }), FC);
+});
+
+test('AC4 with opening records: months add up to all time and opening records add nothing', () => {
+    fc.assert(fc.property(shopArb({ years: 1, openingRate: 1 }), ({ shop: s }) => {
+        const all = computeFinanceSummary({ sources: sources(s), items: s.items, base: { state: {}, from: -Infinity }, expenses: s.expenses, withdrawals: s.withdrawals });
+        let sales = 0;
+        let count = 0;
+        monthsOf(s).forEach(([y, m]) => {
+            const f = computeFinanceSummary({ sources: sources(s), items: s.items, base: { state: {}, from: -Infinity }, expenses: s.expenses,
+                withdrawals: s.withdrawals, from: new Date(y, m, 1).getTime(), to: new Date(y, m + 1, 1).getTime() });
+            sales += f.sales.total;
+            count += f.sales.count;
+        });
+        return close(sales, all.sales.total) && count === all.sales.count
+            && all.sales.count === [...s.retailSales, ...s.wholesaleSales].filter(b => !O.isOpening(b)).length;
+    }), FC);
 });

@@ -13,6 +13,7 @@
  */
 
 import { Helpers } from './helpers.js';
+import { isOpeningRecord } from './money.js';
 
 /** Bump when the replay rules or the checkpoint layout change. */
 export const STOCK_REPLAY_FORMAT = 3;
@@ -99,7 +100,7 @@ export function collectEvents(sources, { from = -Infinity, to = Infinity } = {})
     const events = [];
     const inRange = (t) => t >= from && t < to;
     const addBills = (bills, kind, source) => (bills || []).forEach(bill => {
-        if (!Array.isArray(bill.items)) return;
+        if (!Array.isArray(bill.items) || isOpeningRecord(bill)) return;
         const t = eventTime(bill);
         if (!inRange(t)) return;
         bill.items.forEach(item => events.push({ t, kind, item, bill, source }));

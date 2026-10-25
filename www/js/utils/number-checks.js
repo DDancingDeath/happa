@@ -6,7 +6,7 @@
  * @module utils/number-checks
  */
 
-import { readPayment, billTotal, round2 } from './money.js';
+import { readPayment, billTotal, round2, isOpeningRecord } from './money.js';
 import { saleTimePayment, entryParts } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayEvents } from './stock-replay.js';
 import { parseAnyBillDate } from './dates.js';
@@ -32,12 +32,14 @@ function result(id, key, rows, checked, extra = {}) {
 }
 
 const eachBill = (data, fn) => BILL_KINDS.forEach(([field, kind]) => (data[field] || []).forEach(b => fn(b, kind)));
+/** Bills that are activity: opening records (old-app dues, no total) are balances only. */
+const eachActivityBill = (data, fn) => eachBill(data, (b, kind) => { if (!isOpeningRecord(b)) fn(b, kind); });
 
 /** AC2: cash + online + due (+ written off) = bill total, within ₹1. */
 export function checkBillSplit(data) {
     const rows = [];
     let checked = 0;
-    eachBill(data, (bill, kind) => {
+    eachActivityBill(data, (bill, kind) => {
         checked++;
         const p = readPayment(bill);
         const total = billTotal(bill);
@@ -127,7 +129,7 @@ export function checkDates(data) {
     let checked = 0;
     let all = 0;
     let months = 0;
-    eachBill(data, (bill, kind) => {
+    eachActivityBill(data, (bill, kind) => {
         checked++;
         const total = billTotal(bill);
         all += total;

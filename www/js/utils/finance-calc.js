@@ -22,7 +22,7 @@ import {
     collectEvents, cloneState, createItemKeyResolver, replayEvents, replayWithValues,
     stateValue, eventTime
 } from './stock-replay.js';
-import { billTotal, outstandingDue, readLineItem, round2 } from './money.js';
+import { activityBills, billTotal, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { parseAnyBillDate } from './dates.js';
 
@@ -47,7 +47,7 @@ function recordInRange(rec, from, to) {
  * always land in the same period. Undated bills only count in open-ended periods.
  */
 export function billsInRange(bills, from, to) {
-    return (bills || []).filter(b => inRange(eventTime(b), from, to));
+    return activityBills(bills).filter(b => inRange(eventTime(b), from, to));
 }
 
 /**

@@ -57,7 +57,12 @@ export function monthRange(ms) {
 }
 
 const inRange = (t, [from, to]) => t >= from && t < to;
+/** OPENING: a due carried from the old app (`openingBalance` object). A balance only, never activity. */
+export const isOpening = (bill) => !!bill && typeof bill.openingBalance === 'object' && bill.openingBalance !== null;
+/** Bills that are activity in a period (opening records left out). */
+const activity = (list) => (list || []).filter(b => !isOpening(b));
 const dated = (list, range) => (list || []).filter(r => inRange(timeOf(r.date), range));
+const datedBills = (list, range) => dated(activity(list), range);
 
 // ---------------------------------------------------------------- one bill
 
@@ -127,7 +132,7 @@ export function duePaymentsIn(bills, sessions, range) {
             if (seen.has(id)) return;
             seen.add(id);
             add(type === 'purchase' ? 'paid' : 'received', x.cash, x.online);
-            if (type !== 'purchase') out.writtenOffReceivable += x.writeOff;
+            if (type !== 'purchase' && !isOpening(bill)) out.writtenOffReceivable += x.writeOff;
         });
     }));
     (sessions || []).forEach(s => (s.duePayments || []).forEach((leg, i) => {
@@ -153,8 +158,8 @@ const isPersonal = (e) => String(e.category || e.type || '').toLowerCase() === '
 /** T1–T16: every number on Today for the local day containing `nowMs`. */
 export function today(data, nowMs, session = null) {
     const range = dayRange(nowMs);
-    const purchases = dated(data.purchases, range);
-    const sales = [...dated(data.wholesaleSales, range), ...dated(data.retailSales, range)];
+    const purchases = datedBills(data.purchases, range);
+    const sales = [...datedBills(data.wholesaleSales, range), ...datedBills(data.retailSales, range)];
     const expenses = dated(data.expenses, range);
     const business = expenses.filter(e => !isPersonal(e));
     const personal = expenses.filter(isPersonal);
@@ -208,9 +213,9 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
     };
     const ev = [];
     const qtyOf = (l) => n(l.qty ?? l.quantity);
-    (data.purchases || []).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 0, k: keyOf(l), op: 'buy', q: qtyOf(l), rate: n(l.rate) })));
-    (data.wholesaleSales || []).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 1, k: keyOf(l), op: 'sell', q: qtyOf(l) })));
-    (data.retailSales || []).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 2, k: keyOf(l), op: 'sell', q: qtyOf(l) })));
+    activity(data.purchases).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 0, k: keyOf(l), op: 'buy', q: qtyOf(l), rate: n(l.rate) })));
+    activity(data.wholesaleSales).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 1, k: keyOf(l), op: 'sell', q: qtyOf(l) })));
+    activity(data.retailSales).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 2, k: keyOf(l), op: 'sell', q: qtyOf(l) })));
     (data.stockAdjustments || []).forEach(a => ev.push({ t: eventTimeOf(a), o: 3, k: keyOf({ itemId: a.itemId, name: a.itemName }), op: 'adj-' + a.adjustType, q: n(a.quantity), rate: n(a.rate) }));
     ev.sort((a, b) => a.t - b.t || a.o - b.o);
 
@@ -263,8 +268,8 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
 export function finance(data, range = [-Infinity, Infinity]) {
     const inR = (b) => inRange(eventTimeOf(b), range);
     const allSales = [...(data.wholesaleSales || []), ...(data.retailSales || [])];
-    const sales = allSales.filter(inR);
-    const purchases = (data.purchases || []).filter(inR);
+    const sales = activity(allSales).filter(inR);
+    const purchases = activity(data.purchases).filter(inR);
     const exp = (data.expenses || []).filter(e => inRange(timeOf(e.date), range));
     const business = sum(exp.filter(e => !isPersonal(e)), expenseAmount);
     const personal = sum(exp.filter(isPersonal), expenseAmount);
@@ -294,8 +299,8 @@ export function finance(data, range = [-Infinity, Infinity]) {
 
 /** R1–R8 for [from, to). Dues are all-time (not the period). */
 export function reports(data, range) {
-    const purchases = dated(data.purchases, range);
-    const sales = [...dated(data.retailSales, range), ...dated(data.wholesaleSales, range)];
+    const purchases = datedBills(data.purchases, range);
+    const sales = [...datedBills(data.retailSales, range), ...datedBills(data.wholesaleSales, range)];
     const pTotal = sum(purchases, billValue);
     const sTotal = sum(sales, billValue);
     return {
@@ -315,8 +320,8 @@ export function reports(data, range) {
 /** A1–A6: "This month" = calendar month up to now (#43 recommendation). */
 export function analyticsMonth(data, nowMs) {
     const range = [monthRange(nowMs)[0], nowMs + 1];
-    const sales = [...dated(data.wholesaleSales, range), ...dated(data.retailSales, range)];
-    const purchases = dated(data.purchases, range);
+    const sales = [...datedBills(data.wholesaleSales, range), ...datedBills(data.retailSales, range)];
+    const purchases = datedBills(data.purchases, range);
     const exp = dated(data.expenses, range).filter(e => !isPersonal(e));
     const allSales = [...(data.wholesaleSales || []), ...(data.retailSales || [])];
     return {
@@ -351,8 +356,8 @@ export function outstanding(data) {
 /** C1–C7 for a session's day: what the drawer should hold. Only cash counts. */
 export function drawer(data, session) {
     const range = dayRange(timeOf(session.date));
-    const sales = [...dated(data.wholesaleSales, range), ...dated(data.retailSales, range)];
-    const purchases = dated(data.purchases, range);
+    const sales = [...datedBills(data.wholesaleSales, range), ...datedBills(data.retailSales, range)];
+    const purchases = datedBills(data.purchases, range);
     const exp = dated(data.expenses, range);
     const dues = duePaymentsIn({ purchase: data.purchases, retail: data.retailSales, wholesale: data.wholesaleSales }, [session], range);
     const c = {

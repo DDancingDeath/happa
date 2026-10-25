@@ -19,7 +19,7 @@
  */
 
 import { evaluateBill, evaluateCashCount, evaluateStockAdjustment, isEntryIssue, normalizeThresholds } from './bill-checks.js';
-import { billTotal, readLineItem, readPayment, round2, toMoney } from './money.js';
+import { activityBills, billTotal, readLineItem, readPayment, round2, toMoney } from './money.js';
 import { parseAnyBillDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
@@ -306,7 +306,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     const lookbackMs = t.rateLookbackDays * DAY_MS;
 
     ['purchase', 'retail', 'wholesale'].forEach(kind => {
-        const sorted = (bills[kind] || []).filter(b => b && b.id != null)
+        const sorted = activityBills(bills[kind]).filter(b => b && b.id != null)
             .map(bill => ({ bill, ts: billTime(bill) }))
             .filter(x => Number.isFinite(x.ts))
             .sort((a, b) => a.ts - b.ts);

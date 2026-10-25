@@ -4,7 +4,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { outstandingDue, round2 } from '../utils/money.js';
+import { activityBills, outstandingDue, round2 } from '../utils/money.js';
 import { parseAnyBillDate, todayLocalISO } from '../utils/dates.js';
 import { dueEvents, sumDueEvents, saleTimePayment } from '../utils/due-payments.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -100,19 +100,19 @@ export const DayManager = {
         tomorrow.setDate(tomorrow.getDate() + 1);
 
         // Filter today's purchases
-        const todayPurchases = (AppState.purchaseHistory || []).filter(p => {
+        const todayPurchases = activityBills(AppState.purchaseHistory).filter(p => {
             const date = parseAnyBillDate(p.date);
             return date && date >= today && date < tomorrow;
         });
 
         // Filter today's wholesale sales
-        const todayWholesaleSales = (AppState.salesHistory || []).filter(s => {
+        const todayWholesaleSales = activityBills(AppState.salesHistory).filter(s => {
             const date = parseAnyBillDate(s.date);
             return date && date >= today && date < tomorrow;
         });
 
         // Filter today's retail sales
-        const todayRetailSales = (AppState.retailSalesHistory || []).filter(s => {
+        const todayRetailSales = activityBills(AppState.retailSalesHistory).filter(s => {
             const date = parseAnyBillDate(s.date);
             return date && date >= today && date < tomorrow;
         });
