@@ -46,7 +46,7 @@
   },
   "name": "aadhatmanagementapp",
   "version": "1.0.0",
-  "description": "Happa: billing, stock and accounts for a shop",
+  "description": "happa: Your business, in one place",
   "main": "www/js/main.js",
   "repository": {
     "type": "git",

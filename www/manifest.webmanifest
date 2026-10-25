@@ -2,7 +2,7 @@
     "id": "/",
     "name": "happa",
     "short_name": "happa",
-    "description": "Billing, stock and accounts for your shop.",
+    "description": "Your business, in one place",
     "lang": "en-IN",
     "dir": "ltr",
     "start_url": "/?source=pwa",

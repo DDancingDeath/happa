@@ -2,7 +2,7 @@
 
 Formerly AadhatManagementApp (old repo: https://github.com/DDancingDeath/AadhatManagementApp).
 
-A comprehensive business management application for wholesale/retail operations built with ES6 modules, Firebase, and Capacitor for Android deployment.
+**Your business, in one place** (आपका कारोबार, एक जगह). A business app for wholesale/retail shops built with ES6 modules, Firebase, and Capacitor for Android deployment.
 
 ## Features
 
@@ -181,7 +181,7 @@ The version lives in four places that must agree: `www/changelog.json` (top entr
    The web app still deploys on merge to `main` as before.
 
 Installed Android apps check `releases/latest` (at most every 12 h) and show an "Update available" banner;
-https://happa-bfc07.web.app/download (site from `happa.config.json`) always links to the latest APK. After updating, each user sees a one-time
+https://happaapp.web.app/download (site from `happa.config.json`; https://happa-bfc07.web.app serves the same build) always links to the latest APK. After updating, each user sees a one-time
 "What's new" sheet (Settings → App updates reopens it and has "Share on WhatsApp" for sending the download link).
 
 To re-publish an existing tag (e.g. after fixing a secret), run the workflow manually (Actions → Android release →

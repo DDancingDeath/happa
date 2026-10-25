@@ -40,19 +40,23 @@ runs fail instead of deploying. After rebasing on `main` they preview to happa.
 
 ## 1. Create the Firebase project (console, business account)
 
-1. Done: project **`happa-bfc07`** (console display name "Happa"); default site
-   `happa-bfc07` → https://happa-bfc07.web.app. Already set in `happa.config.json`.
+1. Done: project **`happa-bfc07`** (console display name "Happa"). The app's
+   address is the second site **`happaapp`** → https://happaapp.web.app; the default
+   site `happa-bfc07` → https://happa-bfc07.web.app serves the same build. Both are
+   set in `happa.config.json`.
 2. Firestore: **Create database → Production mode → location `asia-south1` (Mumbai)**.
    You cannot change the location later.
 3. Authentication: enable **Email/Password**. Phone sign-in stays enabled in the
-   console for a planned future feature; the app does not use it yet. Check that `happa-bfc07.web.app`
-   and `happa-bfc07.firebaseapp.com` are listed under *Authorized domains*.
-   Add `<hostingSite>.web.app` too if you use a different site name.
+   console for a planned future feature; the app does not use it yet. Check that `happaapp.web.app`,
+   `happa-bfc07.web.app` and `happa-bfc07.firebaseapp.com` are listed under
+   *Authorized domains* (done for all three).
 4. Done: the web app config is in `happa.config.json` (public client config, not a
    secret). `measurementId` is kept there, but the Analytics SDK is deliberately
    not loaded.
-5. Hosting: the default site is `happa-bfc07`. Leave `hostingSite` empty in the
-   config unless you create a site with another name.
+5. Hosting: `hostingSite` is `happaapp` (the address on the download page, QR,
+   update banner and share text); `alsoHostingSites` lists `happa-bfc07`.
+   `npm run apply:happa-config` writes one identical `firebase.json` hosting entry
+   per site, so every deploy updates both.
 
 ## 2. Fill in `happa.config.json`
 
@@ -63,7 +67,8 @@ runs fail instead of deploying. After rebasing on `main` they preview to happa.
 | `firebase.messagingSenderId` | ✅ filled |
 | `firebase.appId` | ✅ filled |
 | `firebase.measurementId` | ✅ filled (Analytics SDK not loaded) |
-| `firebase.hostingSite` | ✅ `""` (= `happa-bfc07`) |
+| `firebase.hostingSite` | ✅ `happaapp` (https://happaapp.web.app) |
+| `firebase.alsoHostingSites` | ✅ `["happa-bfc07"]` (same build, old default address keeps working) |
 | `androidPackage` | ✅ `com.happa` (owner confirmed; it can never change after phones install v1.0.0) |
 | `appName` / `appNameHi` | ✅ `happa`: all lowercase wherever it is shown, the same in English and Hindi |
 | `apkName` | ✅ `happa` → `happa.apk` / `happa-vX.Y.Z.apk`, release "happa vX.Y.Z" |
@@ -185,12 +190,12 @@ old-app APK. Those runs fail at the secret check.
 
 ## 8. Merge #231 (= deploy hosting)
 
-Merging this PR deploys `www/` to `https://happa-bfc07.web.app` (*Deploy to
+Merging this PR deploys `www/` to `https://happaapp.web.app` and `https://happa-bfc07.web.app` (*Deploy to
 Firebase Hosting on merge*), and, because `happa.config.json` changed, it also
 re-deploys rules and indexes to the new project. Check that:
 
 - both runs passed, and the guard step printed `project=happa-bfc07`;
-- `https://happa-bfc07.web.app` and `/download` open;
+- `https://happaapp.web.app` (and `https://happa-bfc07.web.app`) and `/download` open;
 - `https://aadhat-management.web.app` still shows the old app, unchanged.
 
 Do **not** revert the merge commit to roll back. That would bring back the
@@ -233,7 +238,7 @@ old app from the phones before that.
 
 ## 12. Install on the phones
 
-On each phone, open `https://happa-bfc07.web.app/download`, download `happa.apk`
+On each phone, open `https://happaapp.web.app/download`, download `happa.apk`
 and install it. It installs **next to** the old app; nothing is replaced. Sign in.
 Accounts and roles work as the migration README describes. Any user it did not
 carry over registers again, and the owner approves them in Admin.

@@ -652,6 +652,7 @@ export default {
     'ui.modals.show_rate_name_changes': "Show rate & name changes",
     'ui.modals.wholesale_rates_kg': "Wholesale Rates (₹/kg)",
     'ui.app.name': "happa",
+    'ui.app.tagline': "Your business, in one place",
     'ui.nav.admin': "Admin",
     'ui.nav.ai_assistant': "AI Assistant",
     'ui.nav.analytics': "Analytics",

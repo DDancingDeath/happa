@@ -11,6 +11,8 @@ const filled = () => {
     const raw = JSON.parse(JSON.stringify(loadConfig(ROOT)));
     Object.assign(raw.firebase, {
         projectId: 'happa-shop',
+        hostingSite: '',
+        alsoHostingSites: [],
         apiKey: 'AIzaTestKey',
         messagingSenderId: '123',
         appId: '1:123:web:abc'
@@ -64,6 +66,20 @@ describe('happa.config.json', () => {
         expect(files['www/download.html']).toContain('releases/latest/download/happa.apk');
         expect(files['android/app/build.gradle']).toMatch(/applicationId "com\.happa"/);
         expect(files['android/app/build.gradle']).toMatch(/namespace "com\.happa"/);
+    });
+
+    test('extra hosting sites get the same hosting settings; the first site is the app address', () => {
+        const raw = filled();
+        raw.firebase.hostingSite = 'happa-app';
+        raw.firebase.alsoHostingSites = ['happa-shop'];
+        const files = Object.fromEntries(plan(ROOT, raw).map((p) => [p.file, p.wanted]));
+        const hosting = JSON.parse(files['firebase.json']).hosting;
+        expect(hosting.map((h) => h.site)).toEqual(['happa-app', 'happa-shop']);
+        expect({ ...hosting[1], site: 'happa-app' }).toEqual(hosting[0]);
+        expect(files['www/download.html']).toContain('href="https://happa-app.web.app"');
+        expect(configProblems(raw)).toEqual([]);
+        raw.firebase.alsoHostingSites = ['aadhat-management'];
+        expect(configProblems(raw).join('\n')).toMatch(/old app/);
     });
 });
 

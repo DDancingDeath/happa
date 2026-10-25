@@ -34,6 +34,9 @@ function derive(raw) {
     const fb = raw.firebase || {};
     const projectId = fb.projectId;
     const hostingSite = fb.hostingSite || projectId;
+    // Every site gets the same build; the first one is the app's address.
+    const extraSites = Array.isArray(fb.alsoHostingSites) ? fb.alsoHostingSites : [];
+    const hostingSites = [...new Set([hostingSite, ...extraSites].filter(Boolean))];
     const siteHost = `${hostingSite}.web.app`;
     const siteUrl = `https://${siteHost}`;
     const apkFile = `${raw.apkName}.apk`;
@@ -55,6 +58,7 @@ function derive(raw) {
         githubRepo: raw.githubRepo,
         projectId,
         hostingSite,
+        hostingSites,
         siteHost,
         siteUrl,
         downloadPageUrl: `${siteUrl}/download`,
@@ -82,9 +86,11 @@ function configProblems(raw) {
     }
     if (!PLACEHOLDER_RE.test(d.projectId || '')) {
         if (!PROJECT_ID_RE.test(d.projectId || '')) errors.push(`firebase.projectId "${d.projectId}" is not a valid project id`);
-        if (!PROJECT_ID_RE.test(d.hostingSite || '')) errors.push(`firebase.hostingSite "${d.hostingSite}" is not a valid site id`);
+        for (const site of d.hostingSites) {
+            if (!PROJECT_ID_RE.test(site || '')) errors.push(`firebase hosting site "${site}" is not a valid site id`);
+        }
     }
-    if (RETIRED_PROJECT_IDS.includes(d.projectId) || RETIRED_PROJECT_IDS.includes(d.hostingSite)) {
+    if ([d.projectId, ...d.hostingSites].some((id) => RETIRED_PROJECT_IDS.includes(id))) {
         errors.push(`firebase project/site "${d.projectId}" belongs to the old app; Happa needs its own project`);
     }
     if (!PACKAGE_RE.test(d.androidPackage || '')) errors.push(`androidPackage "${d.androidPackage}" is not a valid Android package id`);
@@ -148,8 +154,16 @@ const TARGETS = [
     { file: '.firebaserc', write: (_, d) => JSON.stringify({ projects: { default: d.projectId } }, null, 2) + '\n' },
     {
         file: 'firebase.json',
-        write: (t, d) => replaceOrThrow(t, /("hosting"\s*:\s*\{\n)([ \t]*)(?:"site"\s*:\s*"[^"]*",\n[ \t]*)?/,
-            `$1$2"site": ${JSON.stringify(d.hostingSite)},\n$2`, 'hosting block in firebase.json')
+        // One hosting entry per site, all with the same settings, so one deploy serves every address.
+        write: (t, d) => {
+            const json = JSON.parse(t);
+            if (!json.hosting) throw new Error('Could not find hosting block in firebase.json');
+            const settings = { ...(Array.isArray(json.hosting) ? json.hosting[0] : json.hosting) };
+            delete settings.site;
+            const hosting = d.hostingSites.map((s) => ({ site: s, ...settings }));
+            json.hosting = hosting.length === 1 ? hosting[0] : hosting;
+            return JSON.stringify(json, null, 2) + '\n';
+        }
     },
     {
         file: 'capacitor.config.json',
@@ -315,7 +329,7 @@ function guard(root, { requireReady = false, requireSa = false, saJson = '' } = 
     const fail = (m) => { ok = false; messages.push(`::error::${m}`); };
     const rc = readFirebaserc(root);
     if (rc !== d.projectId) fail(`.firebaserc default "${rc}" differs from ${CONFIG_FILE} projectId "${d.projectId}" (run npm run apply:happa-config).`);
-    for (const id of [d.projectId, d.hostingSite, rc]) {
+    for (const id of [d.projectId, ...d.hostingSites, rc]) {
         if (RETIRED_PROJECT_IDS.includes(id)) fail(`Project/site resolves to "${id}", the old app's project. Happa must never deploy there.`);
     }
     if (PLACEHOLDER_RE.test(d.projectId || '') || !PROJECT_ID_RE.test(d.projectId || '')) {
@@ -333,7 +347,7 @@ function guard(root, { requireReady = false, requireSa = false, saJson = '' } = 
         if (requireSa) fail('The Happa service account secret is not set (FIREBASE_SERVICE_ACCOUNT_HAPPA).');
         else messages.push('::notice::The Happa service account secret is not set; skipping.');
     }
-    return { ok, ready: ok && ready, projectId: d.projectId, site: d.hostingSite, messages };
+    return { ok, ready: ok && ready, projectId: d.projectId, site: d.hostingSite, sites: d.hostingSites, messages };
 }
 
 function main(argv) {
@@ -367,9 +381,9 @@ function main(argv) {
         const r = guard(DEFAULT_ROOT, { requireReady: has('--require-ready'), requireSa: has('--require-sa'), saJson: saIdx >= 0 ? saJson : '' });
         r.messages.forEach((m) => console.log(m));
         if (process.env.GITHUB_OUTPUT) {
-            fs.appendFileSync(process.env.GITHUB_OUTPUT, `project_id=${r.projectId}\nsite=${r.site}\nready=${r.ready}\n`);
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `project_id=${r.projectId}\nsite=${r.site}\nsites=${r.sites.join(',')}\nready=${r.ready}\n`);
         }
-        console.log(`project=${r.projectId} site=${r.site} ready=${r.ready}`);
+        console.log(`project=${r.projectId} site=${r.site} sites=${r.sites.join(',')} ready=${r.ready}`);
         return r.ok ? 0 : 1;
     }
     console.error('Usage: node scripts/happa-config.js apply|check [--sync-only]|get <key>|guard [--require-ready] [--require-sa] [--sa-env NAME]');
