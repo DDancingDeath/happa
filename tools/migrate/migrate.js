@@ -53,7 +53,7 @@ async function plan() {
     const report = formatReport(summary);
     fs.writeFileSync(reportPath, report);
     console.log(report);
-    console.log(`Bundle: ${bundlePath} (${summary.writes.total} writes). It holds shop data: keep it private and delete it after cutover.`);
+    console.log(`Bundle: ${bundlePath} (${summary.writes.total} writes). It holds shop data: keep it in a private folder outside the repo (e.g. Q:\\aadhat-data) and delete it after cutover.`);
     console.log(`Report: ${reportPath}`);
 }
 

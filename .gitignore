@@ -120,5 +120,15 @@ playwright-report/
 reports/mutation/
 .stryker-tmp/
 
-# Migration bundles/cursors hold shop data (tools/migrate, #15)
+# Migration data and secrets never belong in this public repo (tools/migrate, #15)
 tools/migrate/out/
+tools/migrate/*.json
+!tools/migrate/package.json
+!tools/migrate/package-lock.json
+key*.json
+*service-account*.json
+users*.json
+backup*.json
+*.enc
+# synthetic test data (no real shop data)
+!tests/fixtures/migrate/*.json

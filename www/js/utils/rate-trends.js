@@ -336,6 +336,9 @@ export function planRollForward(computed, stored, { fromMonth, fromWeek, fromYea
 /** `_meta.by` of a history carried from the old project (tools/migrate, #15); its `backfillAt` is the backup time. */
 export const MIGRATION_META_BY = 'migration';
 
+/** True when the stored history was carried from the old project (it can't be rebuilt from this project's bills). */
+export const isCarriedHistory = (meta) => meta?.by === MIGRATION_META_BY;
+
 /**
  * A carried history holds the old app's bills up to the backup and this
  * project only has the bills after it, so a roll-forward must leave every
@@ -347,7 +350,7 @@ export const MIGRATION_META_BY = 'migration';
  */
 export function clampWindowToMigration(win, meta) {
     const at = Number(meta?.backfillAt);
-    if (meta?.by !== MIGRATION_META_BY || !(at > 0)) return win;
+    if (!isCarriedHistory(meta) || !(at > 0)) return win;
     let month = istMonthKey(at);
     if (istMonthStartMs(month) < at) month = addMonths(month, 1);
     let week = istWeekStart(at);
