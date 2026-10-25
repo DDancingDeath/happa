@@ -18,7 +18,7 @@ import { lineItemIdentity } from '../utils/item-catalog.js';
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
     checkPaymentSplit, computeWholesaleTotals, KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, round2,
-    openingAmount, openingSourceNumbers, wholesaleOutstanding
+    openingAmount, openingOldTotals, wholesaleOutstanding
 } from '../utils/money.js';
 
 const PAYMENT_TOLERANCE = 0.01;
@@ -730,7 +730,7 @@ export class WholesaleSalesManager {
                         <span style="color: #dc3545; font-weight: 700;">${L('ui.outstanding.due_amount', { amount: Math.round(sale.outstanding) })}</span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>
-                    ${sale.openingBalance ? `<div class="history-date">${L('ui.outstanding.opening_balance', { bills: openingSourceNumbers(sale) })}</div>` : ''}
+                    ${openingOldTotals(sale) ? `<div class="history-date">${L('ui.outstanding.opening_balance', { total: Math.round(openingOldTotals(sale).total), paid: Math.round(openingOldTotals(sale).paid) })}</div>` : ''}
                     <div style="background: #d1ecf1; border-left: 4px solid #22c55e; padding: 12px; margin: 12px 0; border-radius: 4px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                             <span>${L('ui.common.total_receivable')}</span>

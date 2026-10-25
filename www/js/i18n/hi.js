@@ -723,7 +723,7 @@ export default {
     'ui.outstanding.no_sale_due': "बिक्री का कोई बकाया नहीं",
     'ui.outstanding.nothing_for_party': "इस पार्टी का कोई बकाया नहीं",
     'ui.outstanding.oldest': "सबसे पुराना {age}",
-    'ui.outstanding.opening_balance': "पुराने ऐप से पिछला बकाया (बिल {bills})",
+    'ui.outstanding.opening_balance': "पुराने ऐप से: बिल ₹{total}, पहले जमा ₹{paid}",
     'ui.outstanding.one_age_group': "एक ही समय वाले दिख रहे हैं — सभी देखने के लिए फिर दबाएँ।",
     'ui.outstanding.online_amount': "ऑनलाइन रकम",
     'ui.outstanding.online_placeholder': "ऑनलाइन ₹",

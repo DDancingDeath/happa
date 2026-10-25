@@ -115,8 +115,8 @@ export function outstandingDue(bill) {
 
 /**
  * Opening balance carried from the old Firebase project (tools/migrate): one
- * record per party with no lines and no bill total, so sales and profit are
- * never counted twice; the carried amount is `openingBalance.amount`.
+ * record per old unpaid bill, with no lines and no bill total, so sales and
+ * profit are never counted twice; the open amount is `openingBalance.amount`.
  * @param {Object} bill
  * @returns {boolean}
  */
@@ -134,18 +134,15 @@ export function openingAmount(bill) {
 }
 
 /**
- * Old bill numbers behind an opening-balance record, for display.
+ * The old bill's total and what was paid on it before the move, for display.
  * @param {Object} bill
- * @param {number} [max=10]
- * @returns {string} '' for ordinary bills
+ * @returns {?{total: number, paid: number}} null for ordinary bills
  */
-export function openingSourceNumbers(bill, max = 10) {
-    if (!isOpeningBalance(bill)) return '';
-    const src = Array.isArray(bill.openingBalance.sourceBills) ? bill.openingBalance.sourceBills : [];
-    const nums = src.map(s => String(s?.billNumber || '').trim()).filter(Boolean);
-    return nums.slice(0, max).map(n => `#${n}`).join(', ') + (nums.length > max ? ', …' : '');
+export function openingOldTotals(bill) {
+    if (!isOpeningBalance(bill)) return null;
+    const o = bill.openingBalance;
+    return { total: round2(toMoney(o.billTotal) || 0), paid: round2(toMoney(o.paidBefore) || 0) };
 }
-
 /**
  * Still due on a wholesale sale as the Wholesale page's Outstanding list
  * computes it: payment.due, or total − received when payment.due is 0/absent.

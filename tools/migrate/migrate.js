@@ -3,7 +3,7 @@
  * Moves the shop's data to a new Firebase project. See tools/migrate/README.md.
  *
  *   node tools/migrate/migrate.js plan  --in backup.json [--out-dir tools/migrate/out]
- *        [--mode fresh|full] [--bill-numbers continue|restart] [--carry-payables]
+ *        [--mode fresh|full] [--bill-numbers continue|restart] [--carry-payables] [--include-hidden-wholesale-dues]
  *        [--no-settings] [--no-rate-stats] [--copy items,users,rateHistory,itemFrequency]
  *   node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project <newProjectId>
  *        [--key service-account.json] [--yes] [--budget 18000] [--cursor <file>] [--restart] [--dev]
@@ -13,6 +13,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+// The shop runs in IST: legacy DD/MM bill dates are read as IST local time, like on the phones.
+process.env.TZ = 'Asia/Kolkata';
 
 // Importing the app's www/js modules (ES modules without "type": "module") prints a harmless notice.
 process.removeAllListeners('warning');
@@ -37,6 +40,7 @@ async function plan() {
         mode: arg('--mode'),
         billNumbers: arg('--bill-numbers'),
         carryPayables: flag('--carry-payables') ? true : undefined,
+        includeHiddenWholesaleDues: flag('--include-hidden-wholesale-dues') ? true : undefined,
         settings: flag('--no-settings') ? false : undefined,
         rateStats: flag('--no-rate-stats') ? false : undefined,
         copy: arg('--copy') !== undefined ? arg('--copy').split(',') : undefined

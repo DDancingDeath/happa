@@ -1,7 +1,7 @@
 /**
  * @fileoverview Tests for money helpers / payment schema normalisation
  */
-import { round2, sumMoney, readPayment, billTotal, outstandingDue, computePurchaseTotals, computeWholesaleTotals, checkPaymentSplit, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingSourceNumbers, wholesaleOutstanding } from '../utils/money.js';
+import { round2, sumMoney, readPayment, billTotal, outstandingDue, computePurchaseTotals, computeWholesaleTotals, checkPaymentSplit, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingOldTotals, wholesaleOutstanding } from '../utils/money.js';
 
 describe('round2', () => {
     test('rounds half-paise correctly', () => {
@@ -142,7 +142,8 @@ describe('dueNeedsName (#68)', () => {
 describe('opening balances carried from the old project (#15)', () => {
     const opening = {
         items: [], total: 0, dueAmount: 340, payment: { cash: 0, online: 0, due: 340, total: 0 },
-        openingBalance: { amount: 340, sourceBills: [{ billNumber: 'S-OLD-7' }, { billNumber: 'S20260815-001' }, { billNumber: '' }] }
+        openingBalance: { amount: 340, billTotal: 500, paidBefore: 160 }
+
     };
 
     test('carried amount is shown as the total; the bill adds no sale', () => {
@@ -155,13 +156,11 @@ describe('opening balances carried from the old project (#15)', () => {
         expect(outstandingDue(opening)).toBe(340);
     });
 
-    test('lists the old bill numbers, capped', () => {
-        expect(openingSourceNumbers(opening)).toBe('#S-OLD-7, #S20260815-001');
-        expect(openingSourceNumbers(opening, 1)).toBe('#S-OLD-7, …');
-        expect(openingSourceNumbers({ total: 1 })).toBe('');
-        expect(openingSourceNumbers({ openingBalance: {} })).toBe('');
-    });
-});
+    test('old bill total and what was paid before the move', () => {
+        expect(openingOldTotals(opening)).toEqual({ total: 500, paid: 160 });
+        expect(openingOldTotals({ openingBalance: {} })).toEqual({ total: 0, paid: 0 });
+        expect(openingOldTotals({ total: 1 })).toBeNull();
+    });});
 
 describe('wholesaleOutstanding (Wholesale page rule)', () => {
     test('payment.due, else total minus received; cleared is 0', () => {

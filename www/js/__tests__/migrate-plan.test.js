@@ -24,34 +24,35 @@ const opening = (bundle, coll) => writesOf(bundle, 'opening').filter(w => w.coll
 
 describe('plan: receivables as Outstanding shows them', () => {
     const { bundle, summary } = plan();
+    const today = new Date(Date.parse('2026-10-25T08:30:00Z'));
 
-    test('one opening balance per party; totals equal the old Outstanding', () => {
+    test('one opening record per old unpaid bill: same number, date, name, phone and open amount', () => {
         const retail = opening(bundle, 'retailSales');
-        expect(retail).toHaveLength(4);
-        expect(summary.dues.retail).toMatchObject({ parties: 4, bills: 5, total: 740, openingTotal: 740, matches: true });
-        const byName = Object.fromEntries(retail.map(w => [w.data.customerName, w.data]));
-        // Hindi name with extra spaces is the same party; dueAmount-only (140) + payment.due (200)
-        expect(byName['रामू'].openingBalance.amount).toBe(340);
-        expect(byName['रामू'].customerPhone).toBe('9876500001');
-        // Legacy DD/MM bill is the oldest: 05/07/2026 is 5 July
-        expect(byName['रामू'].date).toBe('2026-07-05');
-        expect(byName['रामू'].openingBalance.sourceBills.map(s => s.billNumber)).toEqual(['S-OLD-7', 'S20260815-001']);
+        expect(retail).toHaveLength(5);
+        expect(summary.dues.retail).toMatchObject({ parties: 4, bills: 5, total: 740, records: 5, openingTotal: 740, matches: true });
+        const byNo = Object.fromEntries(retail.map(w => [w.data.billNumber, w]));
+        // dueAmount-only legacy bill with a DD/MM date and a Hindi name with extra spaces
+        expect(byNo['S-OLD-7'].id).toBe('opening-retail-r2');
+        expect(byNo['S-OLD-7'].data).toMatchObject({ customerName: 'रामू', customerPhone: '9876500001', date: '05/07/2026, 11:30:00 am', dueAmount: 140 });
+        expect(byNo['S-OLD-7'].data.timestamp).toBe(Date.UTC(2026, 6, 5, 6, 0));
+        expect(byNo['S20260815-001'].data).toMatchObject({ dueAmount: 200, openingBalance: { billTotal: 300, paidBefore: 100 } });
         // payment.due (300) wins over a drifted dueAmount (400); the written-off bill is not carried
-        expect(byName.Shyam.openingBalance.amount).toBe(300);
-        expect(byName.Shyam.openingBalance.sourceBills).toHaveLength(1);
+        expect(byNo['S20261020-001'].data.openingBalance).toMatchObject({ amount: 300, billTotal: 600, paidBefore: 300 });
+        expect(byNo['S20260901-002']).toBeUndefined();
         // legacy amountPaid only: due derived from the total
-        expect(byName.Geeta.openingBalance.amount).toBe(50);
-        expect(byName[''].openingBalance.amount).toBe(50);
+        expect(byNo['S-OLD-9'].data.openingBalance).toMatchObject({ amount: 50, billTotal: 90, paidBefore: 40 });
+        expect(byNo['S20261024-001'].data.customerName).toBe('');
     });
 
-    test('the new app reads the opening balances exactly like the old bills', () => {
+    test('the new app reads the records exactly like the old bills: totals, parties, age groups', () => {
         const old = load().collections.retailSales.map(d => ({ id: d.id, ...revive(d.data) }));
         const docs = opening(bundle, 'retailSales').map(w => ({ id: w.id, ...revive(w.data) }));
-        const today = new Date(Date.parse('2026-10-25T08:30:00Z'));
         const before = buildAging(old, { today });
         const after = buildAging(docs, { today });
         expect(after.total).toBe(before.total);
-        expect(after.parties.map(p => [p.key, p.total]).sort()).toEqual(before.parties.map(p => [p.key, p.total]).sort());
+        expect(after.buckets).toEqual(before.buckets);
+        const parties = (a) => a.parties.map(p => [p.key, p.total, p.oldestDays, p.phone, p.bills.map(b => [b.billNumber, b.due, b.days])]).sort();
+        expect(parties(after)).toEqual(parties(before));
         docs.forEach(d => {
             expect(readPayment(d).due).toBe(d.openingBalance.amount);
             expect(billTotal(d)).toBe(0);
@@ -61,7 +62,7 @@ describe('plan: receivables as Outstanding shows them', () => {
         });
     });
 
-    test('opening balances add no sales or profit to Finance', () => {
+    test('opening records add no sales or profit to Finance', () => {
         const docs = writesOf(bundle, 'opening').map(w => ({ id: w.id, ...revive(w.data) }));
         const s = computeFinanceSummary({
             sources: { retailSales: docs.filter(d => d.type === 'retail'), wholesaleSales: docs.filter(d => d.type === 'wholesale'), purchases: [], stockAdjustments: [] },
@@ -74,22 +75,33 @@ describe('plan: receivables as Outstanding shows them', () => {
 
     test('wholesale dues follow the Wholesale page rule (sales-tab bills only)', () => {
         const w = opening(bundle, 'wholesaleSales');
-        expect(w).toHaveLength(1);
-        expect(w[0].data.source).toBe('sales-tab');
-        // 2000 due + 1500 (payment.due 0, total − received) on the same party (case/space differ)
-        expect(w[0].data.openingBalance.amount).toBe(3500);
-        expect(wholesaleOutstanding(w[0].data)).toBe(3500);
-        expect(summary.dues.wholesale).toMatchObject({ total: 3500, matches: true });
-        expect(summary.warnings.some(x => /not made on the Wholesale page/.test(x))).toBe(true);
+        expect(w.map(x => [x.data.billNumber, x.data.openingBalance.amount])).toEqual([['W-OLD-3', 1500], ['W20261025-002', 2000]]);
+        w.forEach(x => {
+            expect(x.data.source).toBe('sales-tab');
+            expect(wholesaleOutstanding(x.data)).toBe(x.data.openingBalance.amount);
+            // phone from the party's other bill, so the reminder can open their chat
+            expect(x.data.customerPhone).toBe('9876500002');
+        });
+        expect(summary.dues.wholesale).toMatchObject({ total: 3500, records: 2, matches: true });
     });
 
-    test('ids and bill numbers are deterministic', () => {
+    test('wholesale dues no page shows: reported, carried only with the flag', () => {
+        expect(summary.hiddenWholesaleDues).toMatchObject({ carried: false, bills: 1, parties: 1, total: 300 });
+        expect(bundle.writes.some(w => w.id === 'opening-wholesale-w3')).toBe(false);
+        expect(formatReport(summary)).toMatch(/Not carried \(owner to decide\)\n- Wholesale bills not made on the Wholesale page.*1 bills, 1 parties, ₹300/);
+        const withHidden = plan({ includeHiddenWholesaleDues: true });
+        const rec = withHidden.bundle.writes.find(w => w.id === 'opening-wholesale-w3');
+        expect(rec.data).toMatchObject({ source: 'sales-tab', billNumber: 'W-OLD-4', dueAmount: 300 });
+        expect(withHidden.summary.hiddenWholesaleDues).toMatchObject({ carried: true, records: 1, matches: true });
+    });
+
+    test('ids are the old bill ids', () => {
         const again = plan().bundle;
-        expect(writesOf(again, 'opening').map(w => [w.id, w.data.billNumber])).toEqual(writesOf(bundle, 'opening').map(w => [w.id, w.data.billNumber]));
-        expect(writesOf(bundle, 'opening').map(w => w.data.billNumber)).toEqual(['OB-S-001', 'OB-S-002', 'OB-S-003', 'OB-S-004', 'OB-W-001']);
+        expect(writesOf(again, 'opening').map(w => w.id)).toEqual(writesOf(bundle, 'opening').map(w => w.id));
+        expect(writesOf(bundle, 'opening').map(w => w.id).sort()).toEqual(
+            ['opening-retail-r1', 'opening-retail-r2', 'opening-retail-r4', 'opening-retail-r5', 'opening-retail-r7', 'opening-wholesale-w1', 'opening-wholesale-w2']);
     });
 });
-
 describe('plan: payables', () => {
     test('none due: checked only, nothing carried', () => {
         const { bundle, summary } = plan();
@@ -108,7 +120,7 @@ describe('plan: payables', () => {
         const carried = plan({ carryPayables: true }, backup);
         const docs = opening(carried.bundle, 'purchases');
         expect(docs).toHaveLength(1);
-        expect(docs[0].data).toMatchObject({ customerName: 'सप्लायर बी', supplierName: 'सप्लायर बी', isPurchase: true, dueAmount: 1000, date: '2026-06-01' });
+        expect(docs[0].data).toMatchObject({ customerName: 'सप्लायर बी', billNumber: 'P-OLD-1', isPurchase: true, dueAmount: 1000, date: '01/06/2026' });
         expect(carried.summary.dues.purchase.matches).toBe(true);
     });
 });

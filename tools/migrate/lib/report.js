@@ -26,17 +26,25 @@ export function formatReport(summary, { budget = 18000 } = {}) {
     L.push(`- settings docs: ${s.settings}`);
     L.push(`- bill-number counters: ${s.counters}`);
     L.push('');
-    L.push('## Dues (opening balances)');
-    L.push('| Page | Parties | Old bills | Old total | Carried | Opening total | Same as old page |');
-    L.push('|---|---|---|---|---|---|---|');
+    L.push('## Dues (one opening record per old unpaid bill)');
+    L.push('| Page | Parties | Unpaid bills | Old total | Carried | Records | Records total | Same totals, parties and age groups |');
+    L.push('|---|---|---|---|---|---|---|---|');
     const label = { retail: 'Outstanding (retail sales)', wholesale: 'Wholesale → Outstanding', purchase: 'Outstanding (purchases, payable)' };
-    Object.entries(s.dues).forEach(([type, d]) => {
-        L.push(`| ${label[type]} | ${d.parties} | ${d.bills} | ${inr(d.total)} | ${d.carried ? 'yes' : 'no'} | ${d.carried ? inr(d.openingTotal) : '–'} | ${d.carried ? yes(d.matches) : '–'} |`);
-    });
+    const row = (name, d) => `| ${name} | ${d.parties} | ${d.bills} | ${inr(d.total)} | ${d.carried ? 'yes' : 'no'} | ${d.carried ? d.records : '–'} | ${d.carried ? inr(d.openingTotal) : '–'} | ${d.carried ? yes(d.matches) : '–'} |`;
+    Object.entries(s.dues).forEach(([type, d]) => L.push(row(label[type], d)));
+    const h = s.hiddenWholesaleDues;
+    if (h && h.carried) L.push(row('Wholesale bills no page shows (carried to Wholesale → Outstanding)', h));
     L.push('');
-    L.push('Old age buckets (receivables, retail): ' + s.dues.retail.buckets.map(b => `${b.key} days ${inr(b.total)} (${b.count})`).join(', '));
-    L.push('In the new app each party\'s opening balance is dated at its oldest unpaid bill, so the whole amount shows in that bill\'s age bucket.');
-    if (s.rateStats) {
+    L.push('Age groups (retail receivables): ' + s.dues.retail.buckets.map(b => `${b.key} days ${inr(b.total)} (${b.count})`).join(', '));
+    L.push('');
+    L.push('## Not carried (owner to decide)');
+    if (h && !h.carried && h.bills > 0) {
+        L.push(`- Wholesale bills not made on the Wholesale page, which no page shows: ${h.bills} bills, ${h.parties} parties, ${inr(h.total)}. Add \`--include-hidden-wholesale-dues\` to carry them to Wholesale → Outstanding.`);
+    }
+    if (!s.dues.purchase.carried && s.dues.purchase.bills > 0) {
+        L.push(`- Supplier payables: ${s.dues.purchase.bills} bills, ${inr(s.dues.purchase.total)}. Add \`--carry-payables\` to carry them.`);
+    }
+    if (!((h && !h.carried && h.bills > 0) || (!s.dues.purchase.carried && s.dues.purchase.bills > 0))) L.push('- nothing');    if (s.rateStats) {
         const r = s.rateStats;
         L.push('');
         L.push('## Buying and rate patterns (rateStats)');

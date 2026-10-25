@@ -723,7 +723,7 @@ export default {
     'ui.outstanding.no_sale_due': "No outstanding sale amounts",
     'ui.outstanding.nothing_for_party': "Nothing outstanding for this party",
     'ui.outstanding.oldest': "oldest {age}",
-    'ui.outstanding.opening_balance': "Opening balance from the old app (bills {bills})",
+    'ui.outstanding.opening_balance': "From the old app: bill total ₹{total}, paid before the move ₹{paid}",
     'ui.outstanding.one_age_group': "Showing one age group — tap it again to show all.",
     'ui.outstanding.online_amount': "Online amount",
     'ui.outstanding.online_placeholder': "Online ₹",

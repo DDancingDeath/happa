@@ -10,7 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { openingAmount, openingSourceNumbers, readPayment, round2 } from '../utils/money.js';
+import { openingAmount, openingOldTotals, readPayment, round2 } from '../utils/money.js';
 import { parseAnyBillDate, todayLocalISO } from '../utils/dates.js';
 import { checkPaymentSplit, directionFor } from '../utils/due-payments.js';
 import { CashManagementManager } from './cash-management.js';
@@ -224,7 +224,7 @@ export class OutstandingManager {
                     <span style="color: ${headerColor}; font-weight: 700;">${tt('ui.outstanding.due_amount', { amount: Math.round(transaction.outstanding) })}</span>
                 </div>
                 <div class="history-date">${Helpers.formatDate(transaction.date)}${transaction.createdByName ? ` • ${tt('ui.outstanding.by')} <strong>${Helpers.escapeHtml(transaction.createdByName)}</strong>` : ''} ${ageBadge}</div>
-                ${transaction.openingBalance ? `<div class="history-date">${tt('ui.outstanding.opening_balance', { bills: openingSourceNumbers(transaction) })}</div>` : ''}
+                ${openingOldTotals(transaction) ? `<div class="history-date">${tt('ui.outstanding.opening_balance', { total: Math.round(openingOldTotals(transaction).total), paid: Math.round(openingOldTotals(transaction).paid) })}</div>` : ''}
                 <div style="background: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 12px; margin: 12px 0; border-radius: 4px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                         <span>${totalLabel}:</span>

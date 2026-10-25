@@ -6,7 +6,6 @@
  * Money, dues, dates and rate lines are read with the app's own utils so the
  * numbers match what the Outstanding, Wholesale and Rate trends pages show.
  */
-import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
 import { readPayment, round2, wholesaleOutstanding } from '../../../www/js/utils/money.js';
 import { buildAging } from '../../../www/js/utils/aging.js';
@@ -23,6 +22,7 @@ export const DEFAULT_OPTIONS = Object.freeze({
     mode: 'fresh',
     billNumbers: 'continue',
     carryPayables: false,
+    includeHiddenWholesaleDues: false,
     settings: true,
     rateStats: true,
     copy: ['items', 'users', 'rateHistory', 'itemFrequency']
@@ -33,7 +33,6 @@ const FULL_MODE_SKIP = new Set(['stockCheckpoints', 'rateStats', 'telemetry', 't
 const SETTINGS_APP_STRIP = ['minClientVersion', 'enforceClientVersion'];
 const BILL_COLLS = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
 const BILL_PREFIX = { purchase: 'P', retail: 'S', wholesale: 'W' };
-const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
 
 const isPlainObject = (v) => v && typeof v === 'object' && !Array.isArray(v);
 
@@ -57,13 +56,7 @@ export function revive(value) {
     return out;
 }
 
-const hashId = (s) => createHash('sha1').update(String(s), 'utf8').digest('hex').slice(0, 16);
 const compactDay = (dayKey) => dayKey.replace(/-/g, '');
-/** IST noon of 'YYYY-MM-DD' as ms (a daytime timestamp for that calendar day). */
-const istNoonMs = (dayKey) => {
-    const [y, m, d] = dayKey.split('-').map(Number);
-    return Date.UTC(y, m - 1, d, 12) - IST_OFFSET_MS;
-};
 
 export function parseOptions(raw = {}) {
     const o = { ...DEFAULT_OPTIONS, ...Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) };
@@ -76,29 +69,26 @@ export function parseOptions(raw = {}) {
 }
 
 /**
- * One opening-balance bill per party. No lines and no bill total (so sales,
- * profit and stock are untouched); the due sits in payment.due / dueAmount,
- * where Outstanding, payments and write-offs already read it.
+ * One opening record per old unpaid bill: same bill number, date, party name
+ * and phone, with the open amount as its due. No lines and no bill total, so
+ * sales, profit and stock are untouched; the due sits in payment.due /
+ * dueAmount, where Outstanding, reminders, statements, payments and write-offs
+ * already read it.
  */
-function openingDoc({ billType, kind, party, index, cutoff, fromProject, byId }) {
-    const amount = round2(party.total);
-    const dated = party.bills.find(b => b.date);
-    const day = dated ? istDayKey(dated.date.getTime()) : istDayKey(cutoff);
-    const sourceBills = party.bills.map(b => {
-        const src = byId.get(String(b.id));
-        return {
-            id: String(b.id),
-            billNumber: String(b.billNumber || ''),
-            date: b.date ? istDayKey(b.date.getTime()) : null,
-            total: src ? readPayment(src).total : 0,
-            due: round2(b.due)
-        };
-    });
+function openingDoc({ billType, kind, entry, party, src, cutoff, fromProject, warnings }) {
+    const amount = round2(entry.due);
+    const pay = readPayment(src);
+    const total = billType === 'wholesale' ? round2(src.total || 0) : pay.total;
+    let timestamp = entry.date ? entry.date.getTime() : null;
+    if (timestamp === null) {
+        timestamp = cutoff;
+        warnings.push(`${billType}: a bill with ₹${amount} due has no usable date; its opening record is dated the cutoff`);
+    }
     const doc = {
-        billNumber: `OB-${BILL_PREFIX[billType]}-${String(index).padStart(3, '0')}`,
-        customerName: party.name,
-        date: day,
-        timestamp: istNoonMs(day),
+        billNumber: String(src.billNumber || entry.billNumber || ''),
+        customerName: String(src.customerName ?? '').trim().replace(/\s+/g, ' '),
+        date: src.date ?? istDayKey(timestamp),
+        timestamp,
         type: billType,
         isPurchase: billType === 'purchase',
         items: [],
@@ -110,36 +100,44 @@ function openingDoc({ billType, kind, party, index, cutoff, fromProject, byId })
         openDue: true,
         cleared: false,
         clientVersion: CLIENT_VERSION,
-        openingBalance: { migrated: true, kind, billType, amount, asOf: cutoff, fromProject, sourceBills }
+        openingBalance: {
+            migrated: true, kind, billType, amount, billTotal: total, paidBefore: round2(Math.max(0, total - amount)),
+            asOf: cutoff, fromProject, sourceBillId: src.__docId
+        }
     };
-    if (party.phone) doc.customerPhone = party.phone;
+    const phone = String(src.customerPhone || src.phone || src.mobile || party.phone || '').trim();
+    if (phone) doc.customerPhone = phone;
     if (billType === 'wholesale') doc.source = 'sales-tab';
-    if (billType === 'purchase') doc.supplierName = party.name;
-    return { coll: BILL_COLLS[billType], id: `opening-${billType}-${hashId(party.key)}`, data: doc };
+    if (billType === 'purchase' && src.supplierName) doc.supplierName = src.supplierName;
+    return { coll: BILL_COLLS[billType], id: `opening-${billType}-${src.__docId}`, data: doc };
 }
 
-/** Parties with dues, in a stable order (oldest due first, then name key). */
-function sortedParties(aging) {
-    const time = (p) => {
-        const d = p.bills.find(b => b.date);
-        return d ? d.date.getTime() : -Infinity;
-    };
-    return [...aging.parties].sort((a, b) => (time(a) - time(b)) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
-}
-
-function dueSet(billType, bills, today) {
+/** Open bills of one page, grouped and aged exactly as that page does. */
+function dueSet(billType, bills, today, { hidden = false } = {}) {
     let open;
-    if (billType === 'wholesale') {
+    if (billType === 'wholesale' && !hidden) {
         // Wholesale page rule (wholesale-sales.js renderSalesOutstanding): sales-tab bills only.
         open = bills.filter(b => b && b.source === 'sales-tab' && wholesaleOutstanding(b) > 0)
-            .map(b => ({ ...b, payment: { ...(b.payment || {}), due: round2(wholesaleOutstanding(b)) }, dueAmount: round2(wholesaleOutstanding(b)) }));
+            .map(b => withDue(b, wholesaleOutstanding(b)));
+    } else if (hidden) {
+        // Wholesale bills not made on the Wholesale page: no page lists them.
+        open = bills.filter(b => b && b.source !== 'sales-tab' && !b.cleared && readPayment(b).due > 0);
     } else {
         open = bills;
     }
     const aging = buildAging(open, { today });
-    return { aging, parties: sortedParties(aging), byId: new Map(bills.map(b => [String(b.id), b])) };
+    const byId = new Map(open.map(b => [String(b.id), b]));
+    const entries = [];
+    [...aging.parties].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
+        .forEach(party => party.bills.forEach(entry => entries.push({ party, entry, src: byId.get(String(entry.id)) })));
+    return { aging, entries };
 }
 
+function withDue(bill, due) {
+    const out = { ...bill, payment: { ...(bill.payment || {}), due: round2(due) }, dueAmount: round2(due) };
+    Object.defineProperty(out, '__docId', { value: bill.__docId, enumerable: false });
+    return out;
+}
 function countersToCarry(collections, bills, cutoff) {
     const day = compactDay(istDayKey(cutoff));
     const out = new Map();
@@ -228,7 +226,11 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
     const collections = {};
     allNames.filter(n => !n.startsWith('dev_')).forEach(n => { collections[n] = backup.collections[n] || []; });
 
-    const toRecords = (name) => (collections[name] || []).map(d => ({ id: d.id, ...revive(d.data) }));
+    const toRecords = (name) => (collections[name] || []).map(d => {
+        const rec = { id: d.id, ...revive(d.data) };
+        Object.defineProperty(rec, '__docId', { value: d.id, enumerable: false });
+        return rec;
+    });
     const bills = { purchase: toRecords('purchases'), retail: toRecords('retailSales'), wholesale: toRecords('wholesaleSales') };
     const items = toRecords('items');
     const today = new Date(cutoff);
@@ -276,44 +278,45 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
 
     const dues = {};
     const openingWrites = [];
-    const kinds = [['retail', 'receivable'], ['wholesale', 'receivable'], ['purchase', 'payable']];
-    kinds.forEach(([billType, kind]) => {
+    const sameBuckets = (a, b) => a.buckets.every((x, i) => x.total === b.buckets[i].total && x.count === b.buckets[i].count);
+    const summarize = (set, kind, carried) => ({
+        kind,
+        carried,
+        parties: set.aging.parties.length,
+        bills: set.aging.count,
+        total: set.aging.total,
+        buckets: set.aging.buckets.map(b => ({ key: b.key, total: b.total, count: b.count })),
+        noName: set.aging.parties.some(p => p.key === '')
+    });
+    const carryInto = (summary, set, billType, kind) => {
+        const docs = set.entries.map(e => openingDoc({ billType, kind, ...e, cutoff, fromProject, warnings }));
+        openingWrites.push(...docs);
+        const after = buildAging(docs.map(d => revive(d.data)), { today });
+        summary.records = docs.length;
+        summary.openingTotal = sumAmounts(docs);
+        summary.matches = after.total === set.aging.total && after.count === set.aging.count
+            && sameBuckets(after, set.aging)
+            && set.aging.parties.every(p => after.parties.find(q => q.key === p.key)?.total === p.total);
+        if (!summary.matches) warnings.push(`${billType}: opening records do not match the old page (totals, age groups or parties)`);
+    };
+    [['retail', 'receivable'], ['wholesale', 'receivable'], ['purchase', 'payable']].forEach(([billType, kind]) => {
         const set = dueSet(billType, bills[billType], today);
         const carry = options.mode === 'fresh' && (kind === 'receivable' || options.carryPayables);
-        const docs = set.parties.map((party, i) => openingDoc({ billType, kind, party, index: i + 1, cutoff, fromProject, byId: set.byId }));
-        const undated = set.parties.filter(p => !p.bills.some(b => b.date)).length;
-        if (undated) warnings.push(`${billType}: ${undated} parties have no dated bill; their opening balance is dated the cutoff day`);
-        dues[billType] = {
-            kind,
-            carried: carry,
-            parties: set.parties.length,
-            bills: set.aging.count,
-            total: set.aging.total,
-            buckets: set.aging.buckets.map(b => ({ key: b.key, total: b.total, count: b.count })),
-            noName: set.parties.some(p => p.key === '')
-        };
-        if (carry) {
-            openingWrites.push(...docs);
-            const after = buildAging(docs.map(d => revive(d.data)), { today });
-            dues[billType].openingTotal = sumAmounts(docs);
-            dues[billType].matches = after.total === set.aging.total && after.parties.length === set.parties.length
-                && set.parties.every(p => after.parties.find(q => q.key === p.key)?.total === p.total);
-            if (!dues[billType].matches) warnings.push(`${billType}: opening balances do not add up to the old Outstanding total`);
-        }
+        dues[billType] = summarize(set, kind, carry);
+        if (carry) carryInto(dues[billType], set, billType, kind);
     });
+    const hiddenSet = dueSet('wholesale', bills.wholesale, today, { hidden: true });
+    const carryHidden = options.mode === 'fresh' && options.includeHiddenWholesaleDues;
+    const hiddenDues = summarize(hiddenSet, 'receivable', carryHidden);
+    if (carryHidden) carryInto(hiddenDues, hiddenSet, 'wholesale', 'receivable');
     if (dues.purchase.total > 0) {
         warnings.push(`payables: ₹${dues.purchase.total} is still due to suppliers (${dues.purchase.bills} bills)`
-            + (options.carryPayables ? '; carried as opening balances' : '; NOT carried (the owner said none are due). Use --carry-payables to carry them'));
+            + (options.carryPayables ? '; carried as opening records' : '; NOT carried (the owner said none are due). Use --carry-payables to carry them'));
     }
     const retailOutstanding = round2(bills.retail.filter(b => !b.cleared && readPayment(b).due > 0).reduce((a, b) => a + readPayment(b).due, 0));
     if (Math.abs(retailOutstanding - dues.retail.total) > 0.01) {
         warnings.push(`retail: list total ₹${retailOutstanding} vs aging total ₹${dues.retail.total} (tiny dues below ₹0.005 are hidden by Outstanding)`);
-    }
-    const hidden = bills.wholesale.filter(b => b.source !== 'sales-tab' && !b.cleared && readPayment(b).due > 0);
-    if (hidden.length) {
-        warnings.push(`wholesale: ${hidden.length} bills not made on the Wholesale page have ₹${round2(hidden.reduce((a, b) => a + readPayment(b).due, 0))} due; no page shows them, so they are not carried`);
-    }
-    add('opening', openingWrites);
+    }    add('opening', openingWrites);
 
     if (rate) {
         const built = writes.filter(w => w.group === 'rateStats');
@@ -334,6 +337,7 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
         counters: counters.length,
         settings: writes.filter(w => w.group === 'settings').length,
         dues,
+        hiddenWholesaleDues: hiddenDues,
         rateStats: rate,
         writes: { total: writes.length, byCollection: byColl, daysAtSparkQuota: Math.max(1, Math.ceil(writes.length / SPARK_DAILY_WRITES)) },
         warnings
