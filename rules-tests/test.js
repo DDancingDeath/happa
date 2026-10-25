@@ -79,11 +79,14 @@ function defineSuite(prefix) {
     const seedBill = (coll, id, data) => env.withSecurityRulesDisabled((ctx) =>
         ctx.firestore().collection(coll).doc(id).set(data));
     const bills = ['purchases', 'retailSales', 'wholesaleSales'].map(c => `${prefix}${c}`);
+    // Server time of the bill's first save (#87): non-owners may change/delete it for 2 days.
+    const savedAgo = (ms) => Timestamp.fromMillis(Date.now() - ms);
+    const fresh = () => ({ createdAt: savedAgo(HOUR) });
 
     t('creator can delete own bill; other staff/manager cannot (all bill collections)', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'mine', { userId: 'staff1', total: 5 });
-            await seedBill(coll, 'theirs', { userId: 'staff1', total: 5 });
+            await seedBill(coll, 'mine', { userId: 'staff1', total: 5, ...fresh() });
+            await seedBill(coll, 'theirs', { userId: 'staff1', total: 5, ...fresh() });
             await assertFails(as('manager1').collection(coll).doc('theirs').delete());
             await assertSucceeds(as('staff1').collection(coll).doc('mine').delete());
         }
@@ -134,9 +137,10 @@ function defineSuite(prefix) {
         for (const coll of bills) {
             await seedBill(coll, 'legacy', { total: 5, clientVersion: 3 });
             await assertFails(as('staff1').collection(coll).doc('legacy').update({ userId: 'staff1', clientVersion: 3 }));
-            // full edits of a legacy bill (no userId) are owner/manager only
+            // full edits of a legacy bill (no userId, no createdAt) are owner only (#87)
             await assertFails(as('staff1').collection(coll).doc('legacy').set({ total: 6, clientVersion: 3 }));
-            await assertSucceeds(as('manager1').collection(coll).doc('legacy').set({ total: 6, clientVersion: 3 }));
+            await assertFails(as('manager1').collection(coll).doc('legacy').set({ total: 6, clientVersion: 3 }));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('legacy').set({ total: 6, clientVersion: 3 }));
         }
     });
 
@@ -205,12 +209,89 @@ function defineSuite(prefix) {
         }
     });
 
-    t('creator, manager and owner can fully edit a bill', async () => {
+    t('creator, manager and owner can fully edit a bill inside the 2-day window', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'b', { ...otherBill, userId: 'staff1' });
-            await assertSucceeds(as('staff1').collection(coll).doc('b').set({ ...otherBill, userId: 'staff1', total: 7, items: [] }));
+            const mine = { ...otherBill, userId: 'staff1', ...fresh() };
+            await seedBill(coll, 'b', mine);
+            await assertSucceeds(as('staff1').collection(coll).doc('b').set({ ...mine, total: 7, items: [] }));
             await assertSucceeds(as('manager1').collection(coll).doc('b').update({ total: 8, timestamp: 1, clientVersion: 3 }));
             await assertSucceeds(as('legacyOwner').collection(coll).doc('b').update({ items: [{ name: 'x' }], clientVersion: 3 }));
+        }
+    });
+
+    // ---- 2-day edit window for non-owners (#87) ----
+
+    t('edit window: creator may edit and delete own bill saved 47 hours ago', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'b', { ...otherBill, userId: 'staff1', createdAt: savedAgo(47 * HOUR) });
+            await assertSucceeds(as('staff1').collection(coll).doc('b').update({ total: 9, clientVersion: 3 }));
+            await assertSucceeds(as('staff1').collection(coll).doc('b').delete());
+        }
+    });
+
+    t('edit window: after 2 days creator and manager cannot edit or delete; owner can', async () => {
+        for (const coll of bills) {
+            const old = { ...otherBill, userId: 'staff1', createdAt: savedAgo(2 * DAY + MIN) };
+            await seedBill(coll, 'old', old);
+            const ref = (uid) => as(uid).collection(coll).doc('old');
+            await assertFails(ref('staff1').update({ total: 9, clientVersion: 3 }));
+            await assertFails(ref('staff1').set({ ...old, total: 9 }));
+            await assertFails(ref('staff1').delete());
+            await assertFails(ref('manager1').update({ total: 9, clientVersion: 3 }));
+            await assertFails(ref('manager1').delete());
+            await assertSucceeds(ref('legacyOwner').update({ total: 9, clientVersion: 3 }));
+            await assertSucceeds(ref('legacyOwner').delete());
+        }
+    });
+
+    t('edit window: payments can still be recorded on an old bill', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'old', { ...otherBill, userId: 'staff1', dueAmount: 100, createdAt: savedAgo(30 * DAY) });
+            await assertSucceeds(as('staff1').collection(coll).doc('old').update({
+                payment: { online: 0, cash: 40, due: 60, total: 40 }, payments: [{ amount: 40, recordedBy: 'S' }],
+                dueAmount: 60, openDue: true, clientVersion: 3
+            }));
+        }
+    });
+
+    t('edit window: own bill without createdAt (saved before #87) is owner-only', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'legacy', { ...otherBill, userId: 'staff1' });
+            await assertFails(as('staff1').collection(coll).doc('legacy').update({ total: 9, clientVersion: 3 }));
+            await assertFails(as('staff1').collection(coll).doc('legacy').delete());
+            await assertFails(as('manager1').collection(coll).doc('legacy').update({ total: 9, clientVersion: 3 }));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('legacy').update({ total: 9, clientVersion: 3 }));
+        }
+    });
+
+    t('edit window: another user\'s fresh bill stays off-limits to staff', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'b', { ...otherBill, ...fresh() });
+            await assertFails(as('staff1').collection(coll).doc('b').update({ total: 9, clientVersion: 3 }));
+            await assertFails(as('staff1').collection(coll).doc('b').delete());
+        }
+    });
+
+    t('edit window: non-owners cannot move or drop createdAt', async () => {
+        for (const coll of bills) {
+            const mine = { ...otherBill, userId: 'staff1', createdAt: savedAgo(3 * DAY) };
+            await seedBill(coll, 'b', mine);
+            const ref = as('staff1').collection(coll).doc('b');
+            await assertFails(ref.update({ createdAt: serverTimestamp(), clientVersion: 3 }));
+            await seedBill(coll, 'c', { ...mine, createdAt: savedAgo(HOUR) });
+            const noCreatedAt = { ...mine };
+            delete noCreatedAt.createdAt;
+            await assertFails(as('staff1').collection(coll).doc('c').set({ ...noCreatedAt, total: 9 }));
+            await assertFails(as('manager1').collection(coll).doc('c').update({ createdAt: savedAgo(0), clientVersion: 3 }));
+        }
+    });
+
+    t('edit window: new bills carry the server time; a made-up createdAt is refused', async () => {
+        for (const coll of bills) {
+            const db = as('staff1').collection(coll);
+            await assertSucceeds(db.doc('n1').set({ userId: 'staff1', total: 5, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertSucceeds(db.doc('n2').set({ userId: 'staff1', total: 5, clientVersion: 3 }));
+            await assertFails(db.doc('n3').set({ userId: 'staff1', total: 5, clientVersion: 3, createdAt: Timestamp.fromMillis(Date.now() + 30 * DAY) }));
         }
     });
 
@@ -287,7 +368,10 @@ function defineSuite(prefix) {
         await setClientGate(false);
         const coll = as('staff1').collection(`${prefix}purchases`);
         await assertSucceeds(coll.doc('legacyApp1').set({ total: 1, userId: 'staff1' }));
-        await assertSucceeds(coll.doc('legacyApp1').update({ total: 2 }));
+        // An old app's bill has no createdAt: outside the #87 edit window, so owner-only afterwards
+        await assertFails(coll.doc('legacyApp1').update({ total: 2 }));
+        await assertSucceeds(coll.doc('legacyApp2').set({ total: 1, userId: 'staff1', createdAt: serverTimestamp() }));
+        await assertSucceeds(coll.doc('legacyApp2').update({ total: 2 }));
     });
 
     t('stock records need clientVersion >= 3 once the gate is on (blocks outdated apps)', async () => {
@@ -309,7 +393,7 @@ function defineSuite(prefix) {
     t('payment updates on current bills pass; overwriting with an old-app full set() fails; deletes pass', async () => {
         await setClientGate(true);
         const coll = as('staff1').collection(purchases);
-        await assertSucceeds(coll.doc('pay1').set({ total: 100, payment: { due: 100 }, userId: 'staff1', clientVersion: 3 }));
+        await assertSucceeds(coll.doc('pay1').set({ total: 100, payment: { due: 100 }, userId: 'staff1', clientVersion: 3, createdAt: serverTimestamp() }));
         await assertSucceeds(coll.doc('pay1').update({ payment: { due: 0, cash: 100 }, payments: [{ amount: 100 }], openDue: false, clientVersion: 3 }));
         await assertSucceeds(coll.doc('pay1').update({ cleared: true, openDue: false }));
         await assertFails(coll.doc('pay1').set({ total: 100, payment: { due: 0 } }));
@@ -755,7 +839,7 @@ function defineSuite(prefix) {
 
     t('bill full edit: the creator cannot write text into money fields', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'b', { ...dueBill, userId: 'staff1' });
+            await seedBill(coll, 'b', { ...dueBill, userId: 'staff1', ...fresh() });
             await assertFails(as('staff1').collection(coll).doc('b').update({ total: 'free', clientVersion: 3 }));
             await assertSucceeds(as('staff1').collection(coll).doc('b').update({ total: 90, clientVersion: 3 }));
         }

@@ -334,7 +334,8 @@ const paymentSignature = (d) => {
 };
 
 const mapDoc = (doc) => {
-    const data = doc.data();
+    // 'estimate': a bill saved on this device still shows its createdAt (#87) until the server confirms it
+    const data = doc.data({ serverTimestamps: 'estimate' });
     const rec = { id: doc.id, ...data };
     docIds.set(rec, doc.id);
     rec[LOADED_PAYMENT] = paymentSignature(data);
@@ -676,10 +677,31 @@ function prepareStockRecord(collKey, record, isNew) {
 
 /** Bill fields that Outstanding / other devices change after a bill is created. */
 const BILL_MONEY_FIELDS = ['payment', 'payments', 'dueAmount', 'cashPayment', 'onlinePayment', 'openDue', 'cleared'];
+
+/**
+ * `createdAt` of a new bill as written: the server time (firestore.rules
+ * checks it for the 2-day edit window, #87); a plain time where the SDK has no
+ * FieldValue (tests).
+ */
+function serverCreatedAt() {
+    const fv = typeof firebase !== 'undefined' ? firebase.firestore?.FieldValue : null;
+    return typeof fv?.serverTimestamp === 'function' ? fv.serverTimestamp() : Date.now();
+}
+const withServerCreatedAt = (record) => ({ ...record, createdAt: serverCreatedAt() });
+
+/** Keeps the bill's stored `createdAt` on an overwrite (the rules refuse a change). */
+function keepStoredCreatedAt(record, stored) {
+    if (stored && stored.createdAt !== undefined && stored.createdAt !== null) record.createdAt = stored.createdAt;
+    else delete record.createdAt;
+}
 /** Payment signature of the last new-bill write this device sent, by `${collKey}/${id}` (#70). */
 const sentBillPaymentSigs = new Map();
 /** Bills whose retry kept the server's money fields (a payment was recorded meanwhile). */
 const keptServerPaymentBills = new WeakSet();
+/** `${collKey}/${id}` of new bills whose first set() hasn't settled yet. */
+const pendingFirstSaves = new Set();
+/** Of those, the ones a retry has saved meanwhile. */
+const retriedBillSaves = new Set();
 
 /**
  * Creates a bill (or overwrites by id) and keeps memory/checkpoint in step.
@@ -706,9 +728,30 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
         }
     }
     sentBillPaymentSigs.set(key, paymentSignature(record));
-    const write = docRef.set(record);
+    let payload = record;
+    if (previous) {
+        if (record.createdAt === undefined && previous.createdAt !== undefined) record.createdAt = previous.createdAt;
+    } else {
+        // Local estimate until the listener brings the server time
+        record.createdAt = Date.now();
+        payload = withServerCreatedAt(record);
+    }
+    pendingFirstSaves.add(key);
+    const sent = docRef.set(payload);
+    // A #70 retry may already have created this bill; this first attempt then arrives later as an
+    // update that changes createdAt, which the rules refuse for non-owners (#87). Nothing is lost.
+    const settled = () => {
+        pendingFirstSaves.delete(key);
+        retriedBillSaves.delete(key);
+    };
+    const write = Promise.resolve(sent).then(settled, (error) => {
+        const superseded = retriedBillSaves.has(key) && isPermissionDenied(error);
+        settled();
+        if (superseded) return { supersededByRetry: true };
+        throw error;
+    });
     // Server acknowledgement (may come after settleWrite released the UI)
-    Promise.resolve(write).then(() => run.complete(), (error) => run.completeAndFail('write_rejected', { code: String(error?.code || 'unknown').slice(0, 40) }));
+    write.then((r) => run.complete(r ? { supersededByRetry: true } : undefined), (error) => run.completeAndFail('write_rejected', { code: String(error?.code || 'unknown').slice(0, 40) }));
     noteStockWrite(collKey, previous, record);
     noteLocalRecordWrite(collKey, String(record.id), record);
     await settleWrite(write, label);
@@ -747,10 +790,12 @@ async function retryBillSave(collKey, record, ref, previous, key) {
         serverMoney = null;
         const snap = await tx.get(ref);
         if (!snap.exists) {
-            tx.set(ref, record);
+            if (record.createdAt === undefined) record.createdAt = Date.now();
+            tx.set(ref, withServerCreatedAt(record));
             return;
         }
         const server = snap.data() || {};
+        keepStoredCreatedAt(record, server);
         const serverPayments = Array.isArray(server.payments) ? server.payments : [];
         if (serverPayments.length > 0 || paymentSignature(server) !== sentSig) {
             const nonMoney = { ...record };
@@ -763,6 +808,7 @@ async function retryBillSave(collKey, record, ref, previous, key) {
         wrote = !Object.keys(record).every(k => stableJson(server[k]) === stableJson(record[k]));
         if (wrote) tx.set(ref, record);
     });
+    if (pendingFirstSaves.has(key)) retriedBillSaves.add(key);
     if (kept) {
         BILL_MONEY_FIELDS.forEach(k => {
             if (k in serverMoney) record[k] = serverMoney[k];
@@ -797,6 +843,7 @@ async function updateBillChecked(collKey, record) {
                 { code: 'conflict' }
             );
         }
+        if (snap.exists) keepStoredCreatedAt(record, snap.data());
         tx.set(ref, record);
     });
     // The server now holds exactly this record: later edits must compare against it.

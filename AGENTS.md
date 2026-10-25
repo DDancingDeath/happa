@@ -341,6 +341,15 @@ To run the whole app against local emulators:
 and open `http://localhost:<port>/?emulator=1` (uses `dev_` collections;
 seed a `dev_users/<uid>` profile with a role).
 
+**Bill edit window (#87).** Everyone except the owner may edit or delete a
+bill only for **2 days** after it was first saved (managers: any bill; others:
+their own; delete: own bill only). The clock is the bill's `createdAt`, the
+server time written by `saveBill()` on the first save; rules compare it with
+`request.time` and refuse any change to it. Bills saved before this (no
+`createdAt`) count as outside the window: only the owner can change or delete
+them. Recording payments / clearing dues is not limited. The client mirrors
+this in `utils/record-permissions.js` (`canEditBillFor` / `canDeleteBillFor`).
+
 ---
 
 ## 8. Common pitfalls

@@ -25,6 +25,7 @@ import { todayLocalISO } from '../utils/dates.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t } from '../i18n/index.js';
+import { canEditBillFor, canDeleteBillFor, withinBillEditWindow, BILL_WINDOW_PASSED_KEY } from '../utils/record-permissions.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', retail: 'ui.history.noun_retail', wholesale: 'ui.history.noun_wholesale' };
@@ -764,11 +765,18 @@ export class HistoryManager {
         
         document.getElementById('billDetailsContent').innerHTML = content;
         
-        // Show all buttons for both purchases and sales
+        // Edit/delete only when firestore.rules would allow it (2-day window for non-owners, #87)
+        const who = { uid: AppState.currentUser?.uid, role: AppState.userRole };
+        const mayEdit = canEditBillFor(bill, who);
+        const mayDelete = canDeleteBillFor(bill, who);
         const editBtn = document.getElementById('billEditBtn');
         const deleteBtn = document.getElementById('billDeleteBtn');
-        if (editBtn) editBtn.style.display = '';
-        if (deleteBtn) deleteBtn.style.display = '';
+        if (editBtn) editBtn.style.display = mayEdit ? '' : 'none';
+        if (deleteBtn) deleteBtn.style.display = mayDelete ? '' : 'none';
+        if (AppState.userRole !== 'owner' && !withinBillEditWindow(bill)) {
+            document.getElementById('billDetailsContent').insertAdjacentHTML('beforeend',
+                `<div class="bill-window-note" style="margin: 0 16px 16px; padding: 10px; background: #f8f9fa; border-radius: 8px; color: #6c757d; font-size: 13px;">🔒 ${L(BILL_WINDOW_PASSED_KEY)}</div>`);
+        }
         
         document.getElementById('billDetailsOverlay').classList.add('active');
     }
@@ -824,12 +832,12 @@ export class HistoryManager {
         }
 
         try {
-            // Only the bill's creator or an owner may delete it (enforced by firestore.rules;
-            // legacy bills without a userId are owner-only)
+            // Owner always; the bill's creator for 2 days after saving (firestore.rules canDeleteBill, #87)
             const uid = AppState.currentUser?.uid;
-            if (AppState.userRole !== 'owner' && (!bill.userId || bill.userId !== uid)) {
+            if (!canDeleteBillFor(bill, { uid, role: AppState.userRole })) {
+                const ownBill = !!(uid && bill.userId && bill.userId === uid);
                 this.closeBillDetails();
-                UIManager.showToast(t('msg.history.only_person_who_created_bill'));
+                UIManager.showToast(t(ownBill ? BILL_WINDOW_PASSED_KEY : 'msg.history.only_person_who_created_bill'));
                 return;
             }
 
