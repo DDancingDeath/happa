@@ -6,7 +6,7 @@
  *        [--mode fresh|full] [--bill-numbers continue|restart] [--carry-payables] [--include-hidden-wholesale-dues]
  *        [--no-settings] [--no-rate-stats] [--copy items,users,rateHistory,itemFrequency]
  *   node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project <newProjectId>
- *        [--key service-account.json] [--yes] [--budget 18000] [--cursor <file>] [--restart] [--dev]
+ *        [--key service-account.json] [--yes] [--budget 12000] [--cursor <file>] [--restart] [--dev]
  *
  * `plan` is offline. `apply` is a dry run unless --yes is given.
  */
@@ -64,7 +64,7 @@ async function apply() {
     const project = arg('--project');
     const dryRun = !flag('--yes') || flag('--dry-run');
     const budget = arg('--budget') !== undefined ? Number(arg('--budget')) : DEFAULT_BUDGET;
-    if (!Number.isInteger(budget) || budget < 1 || budget > 20000) throw new Error('--budget must be 1..20000 (Spark: 20,000 writes/day)');
+    if (!Number.isInteger(budget) || budget < 1 || budget > 20000) throw new Error('--budget must be 1..20000 (Spark: 20,000 writes/day; the default keeps 8,000 for the shop)');
     const dev = flag('--dev');
 
     const keyFile = arg('--key') || process.env.GOOGLE_APPLICATION_CREDENTIALS;

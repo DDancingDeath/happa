@@ -845,6 +845,31 @@ function defineSuite(prefix) {
         await assertSucceeds(as('legacyOwner').collection(rateStats).doc('wheat_2026').delete());
     });
 
+    // Documents written by tools/migrate (#15), as its plan builds them from the synthetic backup.
+    const migrated = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'tests', 'fixtures', 'migrate', 'migrated-docs.json'), 'utf8')).docs;
+    const migratedDoc = (coll, id) => migrated.find(d => d.coll === coll && d.id === id).data;
+
+    t('migration (#15): carried rate stats and _meta pass the rules; the app can roll them forward', async () => {
+        const doc = migratedDoc('rateStats', 'item-rice_2026');
+        const meta = migratedDoc('rateStats', '_meta');
+        await assertSucceeds(as('manager1').collection(rateStats).doc('item-rice_2026').set(doc));
+        await assertSucceeds(as('legacyOwner').collection(rateStats).doc('_meta').set(meta));
+        await assertSucceeds(as('manager1').collection(rateStats).doc('item-rice_2026').set({ ...doc, weeks: { ...doc.weeks, 'w2026-10-26': bucket() }, updatedAt: 1800000000000 }));
+        await assertSucceeds(as('manager1').collection(rateStats).doc('_meta').set({ startedAt: 1 }, { merge: true }));
+    });
+
+    t('migration (#15): a member records a payment on a carried opening record', async () => {
+        const col = `${prefix}retailSales`;
+        const rec = migratedDoc('retailSales', 'opening-retail-r4');
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(col).doc('opening-retail-r4').set(rec));
+        const due = rec.payment.due;
+        await assertSucceeds(as('staff1').collection(col).doc('opening-retail-r4').update({
+            payment: { ...rec.payment, cash: 100, due: due - 100, total: 100 },
+            payments: [{ id: 'm1', amount: 100, cash: 100, online: 0, at: 1 }],
+            dueAmount: due - 100, openDue: true, clientVersion: 3
+        }));
+        await assertFails(as('staff1').collection(col).doc('opening-retail-r4').update({ dueAmount: due + 1, payment: { ...rec.payment, due: due + 1 } }));
+    });
     // ---- bill payment edits (#19) ----
 
     const dueBill = { userId: 'manager1', total: 100, items: [{ name: 'Rice', qty: 10 }], timestamp: 1760000000000,

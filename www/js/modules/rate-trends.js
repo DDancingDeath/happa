@@ -19,7 +19,7 @@ import { chartScaleMax } from './reports.js';
 import { RATE_FIELDS, fieldLabel } from '../utils/rate-history.js';
 import {
     DEFAULT_DAILY_READ_BUDGET, DIRECTION_KEYS, CONFIDENCE_KEYS, READ_BUDGET_OPTIONS,
-    addMonths, addWeeks, aggregateBills, backfillDays, estimateBackfillReads, explainOutlook, finalizeStats,
+    addMonths, addWeeks, aggregateBills, backfillDays, clampWindowToMigration, estimateBackfillReads, explainOutlook, finalizeStats,
     istDayStartMs, istMonthKey, istMonthStartMs, istWeekStart, itemsByUsage, monthBuckets, monthLabel, monthSeries,
     newCursor, parseCursor, planRollForward, rollForwardWindow, runBackfillReads, seasonalOutlookCombined,
     trendRows, weekBuckets, yearOverlay
@@ -415,7 +415,7 @@ export const RateTrendsManager = {
                 if (this.metaError !== 'offline') markDone();
                 return this.metaError || 'no-backfill';
             }
-            const win = rollForwardWindow(Number(AppState.historyLoadedFrom) || 0, Date.now());
+            const win = clampWindowToMigration(rollForwardWindow(Number(AppState.historyLoadedFrom) || 0, Date.now()), meta);
             const fromMs = Math.min(istMonthStartMs(win.fromMonth), istDayStartMs(win.fromWeek));
             const computed = finalizeStats(aggregateBills(loadedBills(), AppState.items || [], { fromMs }));
             let server;

@@ -5,7 +5,7 @@
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 const yes = (b) => (b ? 'yes' : 'NO');
 
-export function formatReport(summary, { budget = 18000 } = {}) {
+export function formatReport(summary) {
     const s = summary;
     const L = [];
     L.push('# Migration plan');
@@ -47,22 +47,22 @@ export function formatReport(summary, { budget = 18000 } = {}) {
     if (!((h && !h.carried && h.bills > 0) || (!s.dues.purchase.carried && s.dues.purchase.bills > 0))) L.push('- nothing');    if (s.rateStats) {
         const r = s.rateStats;
         L.push('');
-        L.push('## Buying and rate patterns (rateStats)');
-        L.push(`- ${r.docs} item-year docs from ${r.bills} bills (${r.lines} lines; ${r.skippedLines} lines skipped: no kg/rate or not in the item list)`);
-        L.push(`- monthly buckets equal the app's monthly aggregation: ${yes(r.mismatches === 0)} (${r.monthsChecked} item-months)`);
-        L.push(`- weekly kg totals equal monthly kg totals: ${yes(r.weeksMatchMonths)}`);
+        L.push('## Buying and rate patterns (rateStats, Rate trends layout)');
+        L.push(`- ${r.docs} item-year docs (${r.weeks} weekly and ${r.months} monthly buckets) from ${r.bills} bills (${r.lines} lines; ${r.skippedLines} lines skipped: no kg/rate or not in the item list)`);
+        L.push(`- monthly kg equals the bill lines: ${yes(r.monthsMatchLines)}; weekly kg equals monthly kg: ${yes(r.weeksMatchMonths)}`);
         L.push(`- kg: purchase ${r.kgByKind.purchase || 0}, retail ${r.kgByKind.retail || 0}, wholesale ${r.kgByKind.wholesale || 0}`);
     }
+    const w = s.writes;
     L.push('');
     L.push('## Writes in the new project');
     L.push('| Collection | Writes |');
     L.push('|---|---|');
-    Object.entries(s.writes.byCollection).sort().forEach(([n, c]) => L.push(`| ${n} | ${c} |`));
-    L.push(`| **total** | **${s.writes.total}** |`);
+    Object.entries(w.byCollection).sort().forEach(([n, c]) => L.push(`| ${n} | ${c} |`));
+    L.push(`| **total** | **${w.total}** |`);
     L.push('');
-    L.push(`Spark allows 20,000 writes a day. At the default budget of ${budget} writes per run this needs ${Math.max(1, Math.ceil(s.writes.total / budget))} run(s) (one per day).`);
-    L.push('');
-    L.push('## Warnings');
+    L.push(`Order: settings, bill counters, users, opening records, items first (${w.essential} writes), then rate history, item order and rate patterns.`);
+    L.push(`Spark allows ${w.dailyQuota.toLocaleString('en-IN')} writes a day; ${w.shopReserve.toLocaleString('en-IN')} are kept for the shop, so \`apply\` writes up to ${w.perDay.toLocaleString('en-IN')} per run. This needs **${w.days} run(s)** (one per quota day); about **${w.leftForShopOnLastDay.toLocaleString('en-IN')}** writes are left for the shop on the ${w.days > 1 ? 'last ' : ''}migration day. The quota resets at 12:30 IST (13:30 IST from 1 Nov).`);
+    L.push('');    L.push('## Warnings');
     if (s.warnings.length) s.warnings.forEach(w => L.push(`- ${w}`));
     else L.push('- none');
     return L.join('\n') + '\n';

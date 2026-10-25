@@ -9,11 +9,13 @@
 import fs from 'fs';
 import path from 'path';
 import { buildPlan, parseOptions, revive, CLIENT_VERSION } from '../../../tools/migrate/lib/plan.js';
-import { istWeekStartKey } from '../../../tools/migrate/lib/rate-stats.js';
 import { formatReport } from '../../../tools/migrate/lib/report.js';
 import { buildAging } from '../utils/aging.js';
 import { billTotal, readPayment, wholesaleOutstanding } from '../utils/money.js';
 import { computeFinanceSummary } from '../utils/finance-calc.js';
+import {
+    aggregateBills, billsToYearDocs, clampWindowToMigration, finalizeStats, monthBuckets, planRollForward, rollForwardWindow, weekBuckets
+} from '../utils/rate-trends.js';
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const load = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'migrate', 'backup-synthetic.json'), 'utf8'));
@@ -176,40 +178,107 @@ describe('plan: copies, settings, counters, dev_', () => {
     });
 });
 
-describe('plan: buying and rate patterns (rateStats)', () => {
+describe('plan: buying and rate patterns (rateStats, #227 layout)', () => {
     const { bundle, summary } = plan();
-    const stats = Object.fromEntries(writesOf(bundle, 'rateStats').map(w => [w.id, w.data]));
+    const statWrites = writesOf(bundle, 'rateStats');
+    const stats = Object.fromEntries(statWrites.map(w => [w.id, w.data]));
+    const meta = bundle.writes[bundle.writes.length - 1];
+    const rules = fs.readFileSync(path.join(ROOT, 'firestore.rules'), 'utf8');
+    const ruleKeys = (re) => JSON.parse(re.exec(rules)[1].replace(/'/g, '"'));
 
-    test('one doc per item and year with weekly and monthly buckets', () => {
-        expect(Object.keys(stats).sort()).toEqual(['item-chana_2026', 'item-rice_2026', 'item-wheat_2026']);
-        const rice = stats['item-rice_2026'];
+    test('docs are exactly what the app builds (billsToYearDocs)', () => {
+        const backup = load();
+        const recs = (n) => backup.collections[n].map(d => ({ id: d.id, ...revive(d.data) }));
+        const expected = billsToYearDocs({ purchase: recs('purchases'), retail: recs('retailSales'), wholesale: recs('wholesaleSales') }, recs('items'));
+        expect(Object.keys(stats).sort()).toEqual(Object.keys(expected).sort());
+        Object.keys(expected).forEach(id => {
+            const { updatedAt, ...rest } = stats[id];
+            expect(rest).toEqual(expected[id]);
+            expect(typeof updatedAt).toBe('number');
+        });
+    });
+
+    test('the Rate trends reader sees the weekly and monthly patterns', () => {
+        const docs = statWrites.map(w => ({ id: w.id, ...w.data }));
+        const months = monthBuckets(docs);
+        const weeks = weekBuckets(docs);
+        const m = (itemId, month) => months.find(b => b.itemId === itemId && b.month === month);
+        const w = (itemId, week) => weeks.find(b => b.itemId === itemId && b.week === week);
         // wholesale `quantity` lines; 20/09/2026 is a Sunday -> week of Monday 14 Sep
-        expect(rice['m2026-09'].wholesale).toMatchObject({ kg: 50, amount: 2000, avg: 40, bills: 1 });
-        expect(rice['w2026-09-14'].wholesale.kg).toBe(50);
-        expect(rice['w2026-10-19']).toMatchObject({ bills: 3, retail: { kg: 13, avg: 50, bills: 2 }, wholesale: { kg: 100, avg: 42 } });
+        expect(m('item-rice', '2026-09').wholesale).toMatchObject({ kg: 50, amount: 2000, avg: 40, bills: 1 });
+        expect(w('item-rice', '2026-09-14').wholesale.kg).toBe(50);
+        expect(w('item-rice', '2026-10-19')).toMatchObject({ bills: 3, retail: { kg: 13, avg: 50, bills: 2 }, wholesale: { kg: 100, avg: 42 } });
         // name-only Hindi line (no itemId) on a DD/MM bill counts for wheat in July
-        expect(stats['item-wheat_2026']['m2026-07'].retail).toMatchObject({ kg: 5, avg: 28, bills: 1 });
+        expect(m('item-wheat', '2026-07').retail).toMatchObject({ kg: 5, avg: 28, bills: 1 });
+        expect(summary.rateStats).toMatchObject({ monthsMatchLines: true, weeksMatchMonths: true, bills: 12, docs: 3 });
     });
 
-    test('monthly buckets equal the app aggregation; weeks add up to months', () => {
-        expect(summary.rateStats).toMatchObject({ mismatches: 0, weeksMatchMonths: true, bills: 12 });
-        expect(summary.warnings.some(w => /rate stats/.test(w))).toBe(false);
+    test('docs and _meta use only the keys firestore.rules allows', () => {
+        const docKeys = ruleKeys(/d\.keys\(\)\.hasOnly\((\['itemId', 'year'[^\]]*\])\)/);
+        const metaKeys = ruleKeys(/docId == '_meta'\s*\?\s*d\.keys\(\)\.hasOnly\((\[[^\]]*\])\)/);
+        statWrites.forEach(({ id, data }) => {
+            Object.keys(data).forEach(k => expect(docKeys).toContain(k));
+            expect(id).toBe(`${data.itemId}_${data.year}`);
+            expect(data.year).toMatch(/^\d{4}$/);
+            expect(Object.keys(data.weeks).length).toBeLessThanOrEqual(54);
+            expect(Object.keys(data.months).length).toBeLessThanOrEqual(12);
+        });
+        expect(meta).toMatchObject({ coll: 'rateStats', id: '_meta' });
+        Object.keys(meta.data).forEach(k => expect(metaKeys).toContain(k));
+        expect(meta.data).toEqual({
+            backfillDone: true, backfillAt: Date.parse('2026-10-25T08:30:00Z'), bills: 12, reads: 0, months: 8, by: 'migration', byUserId: ''
+        });
     });
 
-    test('_meta marks the history built up to the cutoff, written last', () => {
-        const last = bundle.writes[bundle.writes.length - 1];
-        expect(last).toMatchObject({ coll: 'rateStats', id: '_meta' });
-        expect(last.data).toMatchObject({ backfillDone: true, bills: 12, cutoff: Date.parse('2026-10-25T08:30:00Z'), cutoffDay: '2026-10-25' });
-    });
-
-    test('IST weeks start on Monday', () => {
-        // 2026-10-25 23:30 IST is still Sunday in IST (18:00 UTC)
-        expect(istWeekStartKey(Date.UTC(2026, 9, 25, 18))).toBe('2026-10-19');
-        // 2026-10-26 00:30 IST is Monday (Sunday 19:00 UTC)
-        expect(istWeekStartKey(Date.UTC(2026, 9, 25, 19))).toBe('2026-10-26');
+    test('a roll-forward in the new project keeps the carried buckets and adds the new bills after the backup', () => {
+        const stored = statWrites.map(w => ({ id: w.id, ...w.data }));
+        const items = load().collections.items.map(d => ({ id: d.id, ...d.data }));
+        const now = Date.UTC(2026, 9, 28, 6);
+        const newBill = { id: 'n1', timestamp: Date.UTC(2026, 9, 27, 6), items: [{ itemId: 'item-rice', qty: 2, rate: 55, total: 110 }] };
+        const roll = (win) => {
+            const fromMs = Math.min(...[win.fromMonth, win.fromWeek].map(k => (k.length === 7 ? Date.UTC(+k.slice(0, 4), +k.slice(5) - 1, 1) : Date.UTC(+k.slice(0, 4), +k.slice(5, 7) - 1, +k.slice(8))) - 330 * 60000));
+            const computed = finalizeStats(aggregateBills({ retail: [newBill] }, items, { fromMs }));
+            return planRollForward(computed, stored, win);
+        };
+        const win = clampWindowToMigration(rollForwardWindow(0, now), meta.data);
+        expect(win).toMatchObject({ fromMonth: '2026-11', fromWeek: '2026-10-26' });
+        const writes = roll(win);
+        expect(writes.map(w => w.id)).toEqual(['item-rice_2026']);
+        const rice = writes[0].data;
+        expect(rice.months).toEqual(stats['item-rice_2026'].months);
+        expect(rice.weeks['w2026-10-19']).toEqual(stats['item-rice_2026'].weeks['w2026-10-19']);
+        expect(rice.weeks['w2026-10-26'].retail).toMatchObject({ kg: 2, avg: 55 });
+        // Without the clamp the carried October buckets would be rebuilt from the new bills alone.
+        const unclamped = roll(rollForwardWindow(0, now));
+        expect(unclamped.find(w => w.id === 'item-wheat_2026').data.months['m2026-10']).toBeUndefined();
+        expect(clampWindowToMigration(rollForwardWindow(0, now), { ...meta.data, by: 'Owner' })).toEqual(rollForwardWindow(0, now));
     });
 });
 
+test('tests/fixtures/migrate/migrated-docs.json (checked by the rules tests) matches the plan', () => {
+    const { bundle } = plan();
+    const snap = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests', 'fixtures', 'migrate', 'migrated-docs.json'), 'utf8'));
+    snap.docs.forEach(d => expect(bundle.writes.find(w => w.coll === d.coll && w.id === d.id).data).toEqual(d.data));
+});
+describe('plan: write order and budget', () => {
+    const { bundle, summary } = plan();
+
+    test('settings, counters, users, opening records and items first; bulk history last', () => {
+        const groups = [...new Set(bundle.writes.map(w => w.group))];
+        expect(groups).toEqual(['settings', 'counters', 'copy:users', 'opening', 'copy:items', 'copy:rateHistory', 'copy:itemFrequency', 'rateStats', 'rateStatsMeta']);
+        expect(summary.writes).toMatchObject({ total: bundle.writes.length, essential: 15, perDay: 12000, shopReserve: 8000, days: 1, leftForShopOnLastDay: 20000 - bundle.writes.length });
+    });
+
+    test('days and what is left for the shop scale with the write count', () => {
+        const backup = load();
+        const many = Array.from({ length: 13000 }, (_, i) => ({ id: `x${i}`, data: { itemId: 'item-wheat', rate: 25, at: i } }));
+        backup.collections.rateHistory = many;
+        const big = plan({}, backup).summary.writes;
+        expect(big.days).toBe(2);
+        expect(big.leftForShopOnLastDay).toBe(20000 - (big.total - 12000));
+        expect(formatReport(plan({}, backup).summary)).toMatch(/needs \*\*2 run\(s\)\*\*.*12:30 IST/);
+    });
+});
 describe('plan report', () => {
     test('counts and totals only: no party, item or user names', () => {
         const { summary } = plan();

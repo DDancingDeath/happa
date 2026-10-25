@@ -9,7 +9,7 @@
 import backupLib from '../../backup/backup-lib.js';
 import { readPayment, round2, wholesaleOutstanding } from '../../../www/js/utils/money.js';
 import { buildAging } from '../../../www/js/utils/aging.js';
-import { aggregateBills, finalizeStats, istDayKey, RATE_KINDS } from '../../../www/js/utils/rate-trends.js';
+import { addBillToAcc, createCatalogueResolver, istDayKey, lineKg, lineRate, RATE_KINDS } from '../../../www/js/utils/rate-trends.js';
 import { buildRateStatsDocs, rateStatsMeta } from './rate-stats.js';
 
 export const BUNDLE_FORMAT = 'aadhat-migration-bundle-v1';
@@ -17,6 +17,12 @@ export const OLD_PROJECT_ID = 'aadhat-management';
 /** Must equal CLIENT_VERSION in www/js/firebase/firestore-service.js (a test checks). */
 export const CLIENT_VERSION = 3;
 export const SPARK_DAILY_WRITES = 20000;
+/** Writes kept free for the shop's own first day in the new project. */
+export const SHOP_RESERVE_WRITES = 8000;
+export const MIGRATION_DAILY_WRITES = SPARK_DAILY_WRITES - SHOP_RESERVE_WRITES;
+/** Write order: what the shop needs to start first, bulk history last. */
+const GROUP_ORDER = ['settings', 'counters', 'copy:users', 'opening', 'copy:items'];
+const BULK_LAST = ['copy:rateHistory', 'copy:itemFrequency', 'rateStats', 'rateStatsMeta'];
 
 export const DEFAULT_OPTIONS = Object.freeze({
     mode: 'fresh',
@@ -178,33 +184,47 @@ function cleanSettings(docs, oldProject) {
     return { writes: out, stripped };
 }
 
-function sameSection(a, b) {
-    return ['kg', 'amount', 'min', 'max', 'avg', 'bills'].every(f => (a?.[f] ?? null) === (b?.[f] ?? null));
-}
-
-/** Monthly buckets must equal the app's own monthly aggregation (rate-trends.js). */
+/**
+ * Independent check of the year docs: kg per kind from the bill lines the
+ * app counts must equal the monthly and the weekly bucket totals.
+ */
 function crossCheckRateStats(docs, sources, items) {
-    const monthly = finalizeStats(aggregateBills(sources, items));
-    let mismatches = 0;
-    let checked = 0;
-    Object.values(monthly).forEach(m => {
-        const doc = docs[`${m.itemId}_${m.month.slice(0, 4)}`];
-        const b = doc?.[`m${m.month}`];
-        checked++;
-        if (!b || b.bills !== m.bills || !RATE_KINDS.every(k => sameSection(b[k], m[k]))) mismatches++;
-    });
-    const bucketCount = Object.values(docs).reduce((n, d) => n + Object.keys(d).filter(k => /^m/.test(k)).length, 0);
-    if (bucketCount !== checked) mismatches += Math.abs(bucketCount - checked);
-    const totals = { week: {}, month: {} };
-    Object.values(docs).forEach(d => Object.keys(d).forEach(k => {
-        const g = k[0] === 'w' ? 'week' : k[0] === 'm' ? 'month' : null;
-        if (!g || !/^[wm]\d{4}-/.test(k)) return;
-        RATE_KINDS.forEach(kind => { totals[g][kind] = round2((totals[g][kind] || 0) + (d[k][kind]?.kg || 0)); });
+    const resolve = createCatalogueResolver(items);
+    const lineKgByKind = {};
+    let lines = 0;
+    let skippedLines = 0;
+    let bills = 0;
+    RATE_KINDS.forEach(kind => (sources[kind] || []).forEach(bill => {
+        if (addBillToAcc({}, bill, kind, resolve)) bills++;
+        if (!bill || bill.deleted === true || bill.isDeleted === true || !Array.isArray(bill.items)) return;
+        bill.items.forEach(line => {
+            if (!line) return;
+            const kg = lineKg(line);
+            if (kg > 0 && lineRate(line, kg) > 0 && resolve(line)) {
+                lines++;
+                lineKgByKind[kind] = (lineKgByKind[kind] || 0) + kg;
+            } else {
+                skippedLines++;
+            }
+        });
     }));
-    const weeksMatchMonths = RATE_KINDS.every(k => Math.abs((totals.week[k] || 0) - (totals.month[k] || 0)) < 0.05);
-    return { monthsChecked: checked, mismatches, weeksMatchMonths, kgByKind: totals.month };
+    const sum = (group) => {
+        const out = {};
+        Object.values(docs).forEach(d => Object.values(d[group] || {}).forEach(b => RATE_KINDS.forEach(k => { out[k] = (out[k] || 0) + (b[k]?.kg || 0); })));
+        return out;
+    };
+    const months = sum('months');
+    const weeks = sum('weeks');
+    const near = (a, b) => Math.abs((a || 0) - (b || 0)) < 0.05;
+    return {
+        bills,
+        lines,
+        skippedLines,
+        monthsMatchLines: RATE_KINDS.every(k => near(months[k], lineKgByKind[k])),
+        weeksMatchMonths: RATE_KINDS.every(k => near(weeks[k], months[k])),
+        kgByKind: Object.fromEntries(RATE_KINDS.map(k => [k, round2(months[k] || 0)]))
+    };
 }
-
 const sumAmounts = (writes) => round2(writes.reduce((a, w) => a + w.data.openingBalance.amount, 0));
 
 /**
@@ -268,12 +288,12 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
 
     let rate = null;
     if (options.rateStats) {
-        const built = buildRateStatsDocs(bills, items);
-        const check = crossCheckRateStats(built.docs, bills, items);
-        if (check.mismatches) warnings.push(`rate stats: ${check.mismatches} monthly buckets differ from the app's monthly aggregation`);
+        const docs = buildRateStatsDocs(bills, items, now);
+        const check = crossCheckRateStats(docs, bills, items);
+        if (!check.monthsMatchLines) warnings.push('rate stats: monthly kg totals differ from the bill lines');
         if (!check.weeksMatchMonths) warnings.push('rate stats: weekly kg totals differ from monthly kg totals');
-        add('rateStats', Object.entries(built.docs).map(([id, data]) => ({ coll: 'rateStats', id, data })));
-        rate = { docs: Object.keys(built.docs).length, bills: built.bills, lines: built.lines, skippedLines: built.skippedLines, ...check };
+        add('rateStats', Object.entries(docs).map(([id, data]) => ({ coll: 'rateStats', id, data })));
+        rate = { docs: Object.keys(docs).length, months: Object.values(docs).reduce((n, d) => n + Object.keys(d.months).length, 0), weeks: Object.values(docs).reduce((n, d) => n + Object.keys(d.weeks).length, 0), ...check };
     }
 
     const dues = {};
@@ -316,16 +336,31 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
     const retailOutstanding = round2(bills.retail.filter(b => !b.cleared && readPayment(b).due > 0).reduce((a, b) => a + readPayment(b).due, 0));
     if (Math.abs(retailOutstanding - dues.retail.total) > 0.01) {
         warnings.push(`retail: list total ₹${retailOutstanding} vs aging total ₹${dues.retail.total} (tiny dues below ₹0.005 are hidden by Outstanding)`);
-    }    add('opening', openingWrites);
+    }
+    add('opening', openingWrites);
 
     if (rate) {
         const built = writes.filter(w => w.group === 'rateStats');
         const docs = Object.fromEntries(built.map(w => [w.id, w.data]));
-        add('rateStatsMeta', [{ coll: 'rateStats', id: '_meta', data: rateStatsMeta({ bills: rate.bills, docs, cutoff, now }) }]);
+        add('rateStatsMeta', [{ coll: 'rateStats', id: '_meta', data: rateStatsMeta({ bills: rate.bills, docs, cutoff }) }]);
     }
 
     const bad = writes.filter(w => w.coll.startsWith('dev_'));
     if (bad.length) throw new Error('internal: a dev_ collection reached the bundle');
+
+    const rank = (g) => {
+        const first = GROUP_ORDER.indexOf(g);
+        if (first !== -1) return first;
+        const last = BULK_LAST.indexOf(g);
+        return last !== -1 ? GROUP_ORDER.length + 1 + last : GROUP_ORDER.length;
+    };
+    const ordered = writes.map((w, i) => ({ w, i })).sort((a, b) => (rank(a.w.group) - rank(b.w.group)) || (a.i - b.i)).map(x => x.w);
+    writes.length = 0;
+    writes.push(...ordered);
+    const firstBulk = writes.findIndex(w => BULK_LAST.includes(w.group));
+    const essential = firstBulk === -1 ? writes.length : firstBulk;
+    const days = Math.max(1, Math.ceil(writes.length / MIGRATION_DAILY_WRITES));
+    const lastDay = writes.length - (days - 1) * MIGRATION_DAILY_WRITES;
 
     const byColl = {};
     writes.forEach(w => { byColl[w.coll] = (byColl[w.coll] || 0) + 1; });
@@ -339,7 +374,16 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
         dues,
         hiddenWholesaleDues: hiddenDues,
         rateStats: rate,
-        writes: { total: writes.length, byCollection: byColl, daysAtSparkQuota: Math.max(1, Math.ceil(writes.length / SPARK_DAILY_WRITES)) },
+        writes: {
+            total: writes.length,
+            essential,
+            byCollection: byColl,
+            dailyQuota: SPARK_DAILY_WRITES,
+            shopReserve: SHOP_RESERVE_WRITES,
+            perDay: MIGRATION_DAILY_WRITES,
+            days,
+            leftForShopOnLastDay: SPARK_DAILY_WRITES - lastDay
+        },
         warnings
     };
     const bundle = {

@@ -7,15 +7,16 @@
  *   same documents. Opening balances that already have payments recorded in
  *   the new app are never overwritten.
  * - Resumable: the cursor (index of the next write) is saved after every batch;
- *   a run stops at its write budget (Spark: 20,000 writes/day) and the next
- *   run continues from the cursor.
+ *   a run stops at its write budget (Spark: 20,000 writes/day, 8,000 of them
+ *   kept for the shop) and the next run continues from the cursor.
  * - dev_ collections are never written unless dev (then every write goes to dev_<name>).
  */
 import { createHash } from 'crypto';
 import backupLib from '../../backup/backup-lib.js';
-import { BUNDLE_FORMAT, OLD_PROJECT_ID } from './plan.js';
+import { BUNDLE_FORMAT, MIGRATION_DAILY_WRITES, OLD_PROJECT_ID, SPARK_DAILY_WRITES } from './plan.js';
 
-export const DEFAULT_BUDGET = 18000;
+/** 20,000 Spark writes a day minus 8,000 kept for the shop's own first day. */
+export const DEFAULT_BUDGET = MIGRATION_DAILY_WRITES;
 export const BATCH_SIZE = 400;
 export const CURSOR_VERSION = 1;
 const OPENING_COLLS = ['purchases', 'retailSales', 'wholesaleSales'];
@@ -125,7 +126,8 @@ export async function applyBundle({
     const run = planRun(bundle, cursor, budget);
     if (dryRun) {
         log(`Dry run: ${run.total} writes in the bundle; ${run.start} already done.`);
-        log(`This run would write ${run.count} (#${run.start}–#${run.end}); ${run.remainingAfter} left after it (${run.runsLeftAfter} more run(s)).`);
+        log(`This run would write ${run.count} (#${run.start + 1}–#${run.end}); ${run.remainingAfter} left after it (${run.runsLeftAfter} more run(s)).`);
+        log(`Spark allows ${SPARK_DAILY_WRITES} writes a day: about ${SPARK_DAILY_WRITES - run.count} would be left today for the shop.`);
         Object.entries(run.byColl).sort().forEach(([c, n]) => log(`  ${targetColl(c, dev)}: ${n}`));
         log('Nothing was written. Add --yes to write.');
         return { status: 'dry-run', run, cursor, writes: 0 };
@@ -137,6 +139,7 @@ export async function applyBundle({
     }
 
     let left = budget;
+    let deletedNow = 0;
     let keep = new Set();
     const firstOpening = bundle.writes.findIndex(w => w.group === 'opening');
     if (firstOpening !== -1 && firstOpening < run.end) {
@@ -149,6 +152,7 @@ export async function applyBundle({
             await batch.commit();
             left -= chunk.length;
             cursor.deleted += chunk.length;
+            deletedNow += chunk.length;
             log(`Removed ${chunk.length} opening balances that are no longer due.`);
         }
     }
@@ -181,6 +185,7 @@ export async function applyBundle({
     cursor.runs.push({ at: startedAt, writes: written, upTo: cursor.next });
     saveCursor(cursor);
     const status = cursor.next >= run.total ? 'done' : 'budget';
-    if (status === 'budget') log(`Stopped at the write budget. ${run.total - cursor.next} writes left: run again tomorrow (same command).`);
+    log(`About ${SPARK_DAILY_WRITES - written - deletedNow} of today's ${SPARK_DAILY_WRITES} writes are left for the shop (less if the app already wrote today).`);
+    if (status === 'budget') log(`Stopped at the write budget. ${run.total - cursor.next} writes left: run again after the quota resets (same command).`);
     return { status, run, cursor, writes: written };
 }
