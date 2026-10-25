@@ -6,7 +6,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { computeFinanceSummary, pickReplayBase, stockMovement } from '../utils/finance-calc.js';
+import { computeFinanceSummary, pickReplayBase, stockMovement, profitByDay } from '../utils/finance-calc.js';
 import {
     CARDS, buildBreakdown, cardRows, sumRows, groupRows, searchRows, sortRows, groupOptions
 } from '../utils/finance-breakdown.js';
@@ -66,6 +66,11 @@ describe.each(cases)('finance summary: %s', (_label, f, p) => {
 
     test('cash flow', () => {
         expect(s.cash).toEqual(e.cash);
+    });
+
+    test('profit per day (Analytics trend, #36) adds up to the period profit', () => {
+        const days = profitByDay(s.detail, (t) => new Date(t).toDateString());
+        expect(Object.values(days).reduce((x, v) => x + v, 0)).toBeCloseTo(s.profit, 2);
     });
 
     test.each(Object.keys(CARDS))('breakdown rows of "%s" add up to the card value', (cardId) => {

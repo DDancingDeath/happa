@@ -27,7 +27,7 @@ test in the same PR (see AGENTS.md → PR checklist).
 | BILL-AT-SAVE | Paid when the bill was saved | Cash / online on the bill minus every later due payment in `payments[]`. Later payments count on the day they were made, not on the bill's day. |
 | BILL-DUE | Still owed on a bill | BILL-PAY due, never below 0, and 0 when the bill is cleared or written off. |
 | DUE-PAY | Due payment | One entry in a bill's `payments[]` (cash and/or online; entries before #107 have only `amount`, which is cash), or the same payment as a leg in the cash session's `duePayments`. The same payment id is counted once. A write-off (`kind: 'writeOff'`) is never money. |
-| EXP-KIND | Business or personal expense | Personal only when the expense is tagged personal. Anything else — including old expenses with no tag — is business and should be shown as "uncategorised" (❓ open: #36, recommendation used). |
+| EXP-KIND | Business or personal expense | Personal only when the expense is tagged personal. Anything else — including old expenses with no tag — is business and should be shown as "uncategorised" (owner decision #36). |
 | DAY | A day | Local (IST) calendar day, midnight to midnight, using the bill's own date (❓ open: #99 asks whether "Today" should follow the open cash session instead). Dates may be ISO, `DD/MM/YYYY` or `DD/MM/YYYY, h:mm:ss am`; all mean local time. |
 | PERIOD | This week / month / year | Calendar period up to now: week from Monday, month from the 1st, year from 1 January (❓ open: #43, recommendation used). "Last 7 / 30 days" would be labelled so. |
 | AVG-COST | Average cost of an item | Weighted average: each purchase adds its quantity at the line rate; each sale removes quantity at the average cost of that moment; adjustments add (at their rate), remove (at average cost, never below zero) or set the quantity. Lines match a catalogue item by item id, else by English or Hindi name (trimmed, any case). Retail sales reduce stock like wholesale (❓ open: #33, current rule kept). |
@@ -74,8 +74,8 @@ same period.
 | F1 | Sales | Σ BILL-TOTAL of wholesale + retail sales in the period; count. Optionally "of which still due": Σ BILL-DUE of those bills. |
 | F2 | Cost of goods sold | Σ COGS of the period's sale lines. |
 | F3 | Business expenses | Σ business expenses (EXP-KIND) in the period. |
-| F4 | Profit on goods sold | F1 − F2 − F3 − bad debts. Bad debts = dues to receive written off in the period (counted on the write-off date; a legacy "mark as cleared" without a write-off entry is not counted). |
-| F5 | Personal expenses | Σ personal expenses in the period, shown separately and **not** taken off F4 (❓ open: #36, recommendation used); a separate "after personal expenses" line shows F4 − F5. |
+| F4 | Profit on goods sold | F1 − F2 − F3 − bad debts. This is **the** profit: Reports (R3) and Analytics (A4, the profit trend) show the same number (owner decision #36, 2026-10-25: "general profit should be profit − business expense"). Bad debts = dues to receive written off in the period (counted on the write-off date; a legacy "mark as cleared" without a write-off entry is not counted). |
+| F5 | Personal expenses | Σ personal expenses in the period, shown separately and **not** taken off F4 (owner decision #36); a separate "after personal expenses" line shows F4 − F5. |
 | F6 | Stock value now | Σ over items with quantity > 0 of quantity × AVG-COST, after every record. Same number as Finance → Assets "Stock value" and the Stock page total. |
 | F7 | Cash flow | Money in − money out in the period. In: BILL-AT-SAVE of the period's sales + DUE-PAYs received in the period. Out: BILL-AT-SAVE of the period's purchases + DUE-PAYs paid in the period + all expenses (business and personal). Withdrawals are not included. |
 | F8 | Check line | Opening stock value + purchases (at line rate) − F2 + adjustments = closing stock value, for the period. A gap means goods were sold before their purchase was recorded; show "numbers don't match" with the gap per item. |
@@ -90,9 +90,9 @@ For the selected PERIOD. Dues are all-time, not the period.
 
 | ID | On screen | Definition |
 |---|---|---|
-| R1 | Total purchases | Σ BILL-TOTAL of purchases in the period; count. ❌ app differs: uses the total before labour (#47). |
+| R1 | Total purchases | Σ BILL-TOTAL of purchases in the period (after labour); count. |
 | R2 | Total sales | Σ BILL-TOTAL of wholesale + retail sales in the period; count. |
-| R3 | Gross profit | Same as F4 for the same period (one profit everywhere, #47). ❌ app shows sales − purchases (#47). |
+| R3 | Profit on goods sold | Same as F4 for the same period (one profit everywhere, #36). "—" while the cost of goods sold can't be worked out yet (as on Finance). The CSV / PDF export use the same number. The Compare tab's "sales − purchases" is labelled as that, not as profit. |
 | R4 | Cash | Σ BILL-PAY cash over the period's purchases **and** sales (money moved in cash, both directions). |
 | R5 | Online | Same, online. |
 | R6 | Due to pay | = F10. |
@@ -106,12 +106,15 @@ For the selected PERIOD. Dues are all-time, not the period.
 | A1 | This month: revenue | Σ BILL-TOTAL of sales from the 1st of this month to now. ❌ app differs: `DD/MM/YYYY` bills are misread (#49). |
 | A2 | This month: purchases | Σ BILL-TOTAL of purchases, same range. ❌ (#49) |
 | A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. |
-| A4 | This month: profit | Same as F4 for the same range. ❌ app shows A1 − A2 − A3 (#47). |
+| A4 | This month: profit | Same as F4 for the same range (#36). |
+| A7 | Profit trend (per day) | F4 split by day: each day's sales − cost of goods sold − business expenses − bad debts; the days add up to F4 for the whole range. |
 | A5 | Total payable | = F10; count of bills with BILL-DUE > 0. |
 | A6 | Total receivable | = F9; count of bills with BILL-DUE > 0. ❌ app differs: counts cleared bills, misses `dueAmount`-only bills (#220). |
 
 Projections and predictions on Analytics are estimates and are not checked
-here (#144 plans to redo them).
+here (#144 plans to redo them). "Projected profit" and the smart-suggestion
+profit lines start from A4 (the month's profit so far, scaled to the whole
+month); the "in loss" suggestion only shows when the month has sales.
 
 ## Outstanding (`templates/outstanding.html`, `modules/outstanding.js`)
 
@@ -162,7 +165,7 @@ in Diagnostics → Number checks.
 | AC4 | Σ over months = all time (sales, purchases) on Reports and Finance. |
 | AC5 | Outstanding total = Σ BILL-DUE of open bills (Outstanding, Finance, Reports agree). |
 | AC6 | Drawer expected cash = opening + cash in − cash out for the day. |
-| AC7 | Same period, same number: Today, Reports, Analytics, Finance and the drawer agree on sales and cash; Finance profit, cost of goods sold and cash flow match the oracle every month. ❌ partly: #219 (untagged expenses), #49 (DD/MM dates on Analytics), #47 (Reports/Analytics purchases and profit). |
+| AC7 | Same period, same number: Today, Reports, Analytics, Finance and the drawer agree on sales and cash; Finance profit, cost of goods sold and cash flow match the oracle every month. ❌ partly: #219 (untagged expenses), #49 (DD/MM dates on Analytics). |
 | AC8 | No item's stock goes below zero unless a sale was saved past the oversell warning. |
 
 ---

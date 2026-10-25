@@ -2,7 +2,8 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { readPayment, outstandingDue, readLineItem, perUnitRate } from '../utils/money.js';
+import { readPayment, outstandingDue, readLineItem, perUnitRate, billTotal } from '../utils/money.js';
+import { FinanceManager } from './finance.js';
 import { todayLocalISO, parseLocalDate, parseAnyBillDate } from '../utils/dates.js';
 import {
     rangeStatus, retryRange, applyRangeState, needsHistoryFrom, ensureHistoryFrom,
@@ -176,6 +177,44 @@ export class ReportsManager {
             default:
                 return null;
         }
+    }
+
+    /**
+     * The selected period as [from, to) in ms, matching the bills filterByDate keeps.
+     * @returns {{from: number, to: number}}
+     */
+    static getRange() {
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        const at = (yy, mm, dd) => new Date(yy, mm, dd).getTime();
+        switch (this.currentDateFilter) {
+            case 'today':
+                return { from: at(y, m, now.getDate()), to: at(y, m, now.getDate() + 1) };
+            case 'week':
+                return { from: now.getTime() - 7 * 24 * 60 * 60 * 1000, to: Infinity };
+            case 'month':
+                return { from: at(y, m, 1), to: at(y, m + 1, 1) };
+            case 'year':
+                return { from: at(y, 0, 1), to: at(y + 1, 0, 1) };
+            case 'custom':
+                if (this.customStartDate && this.customEndDate) {
+                    return { from: this.customStartDate.getTime(), to: this.customEndDate.getTime() + 1 };
+                }
+                return { from: -Infinity, to: Infinity };
+            case 'all':
+            default:
+                return { from: -Infinity, to: Infinity };
+        }
+    }
+
+    /**
+     * Profit for the selected period: the same number as Finance (#36 — sales −
+     * cost of goods sold − business expenses − bad debts). null = cost not known yet.
+     * @returns {?number}
+     */
+    static periodProfit() {
+        return FinanceManager.profitSummary(this.getRange()).profit;
     }
 
     /**
@@ -394,11 +433,11 @@ export class ReportsManager {
         let filteredSales = this.filterByDate(allSalesHistory);
 
         // Calculate metrics - purchases use billTotal, sales use total
-        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + (p.billTotal || p.grandTotal || p.total || 0), 0);
+        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + billTotal(p), 0);
         const totalSales = filteredSales.reduce((sum, s) => sum + (s.total || s.grandTotal || 0), 0);
         const totalVolume = totalPurchases + totalSales;
-        const grossProfit = totalSales - totalPurchases;
-        const profitMargin = totalSales > 0 ? ((grossProfit / totalSales) * 100).toFixed(1) : 0;
+        const profit = this.periodProfit();
+        const profitMargin = profit === null ? '—' : totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0;
         const totalLabor = filteredPurchases.reduce((sum, p) => sum + (p.laborCharges || 0), 0) +
                           filteredSales.reduce((sum, s) => sum + (s.laborCharges || 0), 0);
 
@@ -429,7 +468,7 @@ export class ReportsManager {
         this.safeUpdateText('reportsTotalSales', this.formatNumber(totalSales));
         this.safeUpdateText('reportsPurchaseCount', filteredPurchases.length);
         this.safeUpdateText('reportsSaleCount', filteredSales.length);
-        this.safeUpdateText('reportsGrossProfit', this.formatNumber(grossProfit));
+        this.safeUpdateText('reportsGrossProfit', profit === null ? '—' : this.formatNumber(Math.round(profit)));
         this.safeUpdateText('reportsProfitMargin', profitMargin);
         this.safeUpdateText('reportsTotalLabor', this.formatNumber(totalLabor));
         this.safeUpdateText('reportsCashPayment', this.formatNumber(totalCash));
@@ -463,7 +502,7 @@ export class ReportsManager {
             if (!parsedDate) return;
             const date = parsedDate.toLocaleDateString('en-IN');
             if (!dailyData[date]) dailyData[date] = { purchases: 0, sales: 0 };
-            dailyData[date].purchases += p.billTotal || p.grandTotal || p.total || 0;
+            dailyData[date].purchases += billTotal(p);
         });
 
         sales.forEach(s => {
@@ -560,7 +599,7 @@ export class ReportsManager {
         filteredPurchases = this.filterPurchases(filteredPurchases);
 
         // Calculate metrics - purchases use billTotal
-        const totalAmount = filteredPurchases.reduce((sum, p) => sum + (p.billTotal || p.grandTotal || p.total || 0), 0);
+        const totalAmount = filteredPurchases.reduce((sum, p) => sum + billTotal(p), 0);
         const billCount = filteredPurchases.length;
         const avgBill = billCount > 0 ? totalAmount / billCount : 0;
         const totalLabor = filteredPurchases.reduce((sum, p) => sum + (p.laborCharges || 0), 0);
@@ -640,7 +679,7 @@ export class ReportsManager {
         const filteredSales = this.filterByDate(allSalesHistory);
 
         // Calculate metrics
-        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + (p.billTotal || p.grandTotal || p.total || 0), 0);
+        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + billTotal(p), 0);
         const totalSales = filteredSales.reduce((sum, s) => sum + (s.total || s.grandTotal || 0), 0);
         const netResult = totalSales - totalPurchases;
 
@@ -682,7 +721,7 @@ export class ReportsManager {
         if (netResultEl && netValueEl && netStatusEl) {
             netResultEl.className = 'compare-net-result ' + (netResult >= 0 ? 'profit' : 'loss');
             netValueEl.className = 'net-value ' + (netResult >= 0 ? 'positive' : 'negative');
-            netStatusEl.textContent = netResult >= 0 ? 'Profit' : 'Loss';
+            netStatusEl.textContent = netResult >= 0 ? t('ui.reports.sales_above_purchases') : t('ui.reports.purchases_above_sales');
         }
 
         // Comparison table values
@@ -726,7 +765,7 @@ export class ReportsManager {
             if (!parsedDate) return;
             const date = parsedDate.toLocaleDateString('en-IN');
             if (!dailyData[date]) dailyData[date] = { purchases: 0, sales: 0 };
-            dailyData[date].purchases += p.billTotal || p.grandTotal || p.total || 0;
+            dailyData[date].purchases += billTotal(p);
         });
 
         sales.forEach(s => {
@@ -941,12 +980,12 @@ export class ReportsManager {
             const dateStr = date.toLocaleDateString('en-IN');
             const timeStr = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
             const customer = bill.customerName || '-';
-            const billTotal = bill.billTotal || bill.grandTotal || bill.total || 0;
+            const shownTotal = bill.billTotal || bill.grandTotal || bill.total || 0;
             const pay = readPayment(bill);
 
             (bill.items || []).forEach(raw => {
                 const item = readLineItem(raw);
-                csv += `${bill.id},"${dateStr}","${timeStr}","${type}","${customer}","${item.name}",${item.qty},${item.rate},${item.total},${bill.laborCharges || 0},${billTotal},${pay.cash},${pay.online},${pay.due}\n`;
+                csv += `${bill.id},"${dateStr}","${timeStr}","${type}","${customer}","${item.name}",${item.qty},${item.rate},${item.total},${bill.laborCharges || 0},${shownTotal},${pay.cash},${pay.online},${pay.due}\n`;
             });
         };
 
@@ -954,13 +993,14 @@ export class ReportsManager {
         filteredSales.forEach(s => processTransaction(s, 'Sale'));
 
         // Summary
-        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + (p.billTotal || p.grandTotal || p.total || 0), 0);
+        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + billTotal(p), 0);
         const totalSales = filteredSales.reduce((sum, s) => sum + (s.total || s.grandTotal || 0), 0);
 
         csv += `\n"SUMMARY",,,,,,,,,,,,\n`;
         csv += `"Total Purchases:",₹${totalPurchases},,,,,,,,,,\n`;
         csv += `"Total Sales:",₹${totalSales},,,,,,,,,,\n`;
-        csv += `"Net Profit:",₹${totalSales - totalPurchases},,,,,,,,,,\n`;
+        const profit = this.periodProfit();
+        csv += `"Profit on goods sold:",${profit === null ? '—' : `₹${profit}`},,,,,,,,,,\n`;
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -994,9 +1034,9 @@ export class ReportsManager {
         }
 
         // Calculate summary data
-        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + (p.billTotal || p.grandTotal || p.total || 0), 0);
+        const totalPurchases = filteredPurchases.reduce((sum, p) => sum + billTotal(p), 0);
         const totalSales = filteredSales.reduce((sum, s) => sum + (s.total || s.grandTotal || 0), 0);
-        const netProfit = totalSales - totalPurchases;
+        const netProfit = this.periodProfit();
 
         const dateRange = this.getDateRangeText();
         const generatedAt = new Date().toLocaleString('en-IN');
@@ -1050,9 +1090,9 @@ export class ReportsManager {
             <h4>Total Sales</h4>
             <div class="value">₹${Helpers.escapeHtml(totalSales.toLocaleString('en-IN'))}</div>
         </div>
-        <div class="summary-card ${netProfit >= 0 ? 'success' : 'danger'}">
-            <h4>Net ${netProfit >= 0 ? 'Profit' : 'Loss'}</h4>
-            <div class="value ${netProfit >= 0 ? 'text-success' : 'text-danger'}">₹${Math.abs(netProfit).toLocaleString('en-IN')}</div>
+        <div class="summary-card ${netProfit === null || netProfit >= 0 ? 'success' : 'danger'}">
+            <h4>${netProfit === null || netProfit >= 0 ? 'Profit' : 'Loss'} on goods sold</h4>
+            <div class="value ${netProfit === null || netProfit >= 0 ? 'text-success' : 'text-danger'}">${netProfit === null ? '—' : `₹${Math.abs(netProfit).toLocaleString('en-IN')}`}</div>
         </div>
         <div class="summary-card">
             <h4>Total Transactions</h4>

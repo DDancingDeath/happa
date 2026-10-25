@@ -8,6 +8,9 @@ import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
 import { rangeStatus, retryRange, applyRangeState } from '../utils/history-window.js';
 import { createRenderMemo } from '../utils/render-memo.js';
+import { FinanceManager } from './finance.js';
+import { profitByDay } from '../utils/finance-calc.js';
+import { t } from '../i18n/index.js';
 
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
 
@@ -242,6 +245,15 @@ export class AnalyticsManager {
     }
 
     /**
+     * This month (1st to now): the Finance summary, so profit is the same number
+     * Finance shows (#36: sales − cost of goods sold − business expenses − bad debts).
+     */
+    static monthProfit() {
+        const { monthStart, now } = this.getDateHelpers();
+        return FinanceManager.profitSummary({ from: monthStart.getTime(), to: now.getTime() + 1 });
+    }
+
+    /**
      * Render This Month Summary
      */
     static renderMonthSummary() {
@@ -267,8 +279,9 @@ export class AnalyticsManager {
         const revenue = thisMonthSales.reduce((sum, s) => sum + this.getTotal(s), 0);
         const purchases = thisMonthPurchases.reduce((sum, p) => sum + this.getTotal(p), 0);
         const expenses = thisMonthExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-        const profit = revenue - purchases - expenses;
-        const profitMargin = revenue > 0 ? ((profit / revenue) * 100).toFixed(1) : 0;
+        const month = this.monthProfit();
+        const profit = month.profit;
+        const profitMargin = profit === null ? '—' : month.sales.total > 0 ? ((profit / month.sales.total) * 100).toFixed(1) : 0;
 
         // Last month totals
         const lastRevenue = lastMonthSales.reduce((sum, s) => sum + this.getTotal(s), 0);
@@ -280,7 +293,7 @@ export class AnalyticsManager {
 
         this.updateElement('monthRevenue', formatCurrency(revenue));
         this.updateElement('monthPurchases', formatCurrency(purchases));
-        this.updateElement('monthProfit', formatCurrency(profit));
+        this.updateElement('monthProfit', profit === null ? '—' : formatCurrency(profit));
         this.updateElement('monthExpenses', formatCurrency(expenses));
         this.updateElement('monthProfitMargin', `${profitMargin}% margin`);
         this.updateElement('monthExpensesCount', `${thisMonthExpenses.length} transactions`);
@@ -339,38 +352,26 @@ export class AnalyticsManager {
 
         // Group data by day
         const dailyData = {};
-        const purchases = this.filterByDateRange(AppState.purchaseHistory, startDate);
-        const sales = [
-            ...this.filterByDateRange(AppState.salesHistory, startDate),
-            ...this.filterByDateRange(AppState.retailSalesHistory, startDate)
-        ];
+        const dayStart = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+        const summary = FinanceManager.profitSummary({ from: dayStart.getTime(), to: Infinity, detail: true });
+        if (summary.profit === null) {
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 40px;">${Helpers.escapeHtml(t('ui.finance.needs_full_history'))}</p>`;
+            if (summaryContainer) summaryContainer.innerHTML = '';
+            return;
+        }
 
         // Initialize all days in range
         const currentDate = new Date(startDate);
         while (currentDate <= now) {
             const dateKey = currentDate.toLocaleDateString('en-IN');
-            dailyData[dateKey] = { revenue: 0, cost: 0, profit: 0 };
+            dailyData[dateKey] = { profit: 0 };
             currentDate.setDate(currentDate.getDate() + 1);
         }
 
-        // Fill in data
-        purchases.forEach(p => {
-            const date = this.parseDate(p.date).toLocaleDateString('en-IN');
-            if (dailyData[date]) {
-                dailyData[date].cost += this.getTotal(p);
-            }
-        });
-
-        sales.forEach(s => {
-            const date = this.parseDate(s.date).toLocaleDateString('en-IN');
-            if (dailyData[date]) {
-                dailyData[date].revenue += this.getTotal(s);
-            }
-        });
-
-        // Calculate profit for each day
-        Object.keys(dailyData).forEach(date => {
-            dailyData[date].profit = dailyData[date].revenue - dailyData[date].cost;
+        // Same profit as Finance, per day (#36)
+        const byDay = profitByDay(summary.detail, (ms) => new Date(ms).toLocaleDateString('en-IN'));
+        Object.entries(byDay).forEach(([date, profit]) => {
+            if (dailyData[date]) dailyData[date].profit = profit;
         });
 
         const sortedDates = Object.keys(dailyData).sort((a, b) => {
@@ -764,7 +765,6 @@ export class AnalyticsManager {
         const suggestions = [];
 
         // Get data
-        const purchases = this.filterByDateRange(AppState.purchaseHistory, monthStart);
         const sales = [
             ...this.filterByDateRange(AppState.salesHistory, monthStart),
             ...this.filterByDateRange(AppState.retailSalesHistory, monthStart)
@@ -773,9 +773,9 @@ export class AnalyticsManager {
             .filter(e => e.category !== 'personal');
 
         const totalRevenue = sales.reduce((sum, s) => sum + this.getTotal(s), 0);
-        const totalPurchases = purchases.reduce((sum, p) => sum + this.getTotal(p), 0);
         const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-        const profit = totalRevenue - totalPurchases - totalExpenses;
+        const month = this.monthProfit();
+        const profit = month.profit;
 
         // Outstanding analysis
         const purchaseDue = (AppState.purchaseHistory || [])
@@ -800,7 +800,7 @@ export class AnalyticsManager {
             });
         }
 
-        if (profit < 0) {
+        if (profit !== null && profit < 0 && month.sales.count > 0) {
             suggestions.push({
                 icon: '📉',
                 text: `This month is in loss by ${formatCurrency(Math.abs(profit))} - Review expenses and margins`
@@ -892,7 +892,6 @@ export class AnalyticsManager {
         const currentRevenue = sales.reduce((sum, s) => sum + this.getTotal(s), 0);
         const currentPurchases = purchases.reduce((sum, p) => sum + this.getTotal(p), 0);
         const currentExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-        const currentProfit = currentRevenue - currentPurchases - currentExpenses;
 
         // Project based on daily average
         const dailyAvgRevenue = dayOfMonth > 0 ? currentRevenue / dayOfMonth : 0;
@@ -900,15 +899,14 @@ export class AnalyticsManager {
         const dailyAvgExpenses = dayOfMonth > 0 ? currentExpenses / dayOfMonth : 0;
 
         const projectedRevenue = currentRevenue + (dailyAvgRevenue * daysRemaining);
-        const projectedPurchases = currentPurchases + (dailyAvgPurchases * daysRemaining);
-        const projectedExpenses = currentExpenses + (dailyAvgExpenses * daysRemaining);
-        const projectedProfit = projectedRevenue - projectedPurchases - projectedExpenses;
+        const monthProfit = this.monthProfit().profit;
+        const projectedProfit = monthProfit === null ? null : monthProfit + (dayOfMonth > 0 ? (monthProfit / dayOfMonth) * daysRemaining : 0);
 
         // Cash required = remaining purchases + expenses - expected cash from sales
         const projectedCashRequired = Math.max(0, (dailyAvgPurchases * daysRemaining) + (dailyAvgExpenses * daysRemaining));
 
         this.updateElement('projectedRevenue', formatCurrency(projectedRevenue));
-        this.updateElement('projectedProfit', formatCurrency(projectedProfit));
+        this.updateElement('projectedProfit', projectedProfit === null ? '—' : formatCurrency(projectedProfit));
         this.updateElement('projectedCashRequired', formatCurrency(projectedCashRequired));
         this.updateElement('daysRemaining', daysRemaining);
     }

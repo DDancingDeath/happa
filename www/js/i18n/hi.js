@@ -753,6 +753,8 @@ export default {
     'ui.outstanding.write_off_not_paid': "माफ़ करें — नहीं दिया जाएगा",
     'ui.outstanding.write_off_not_received': "माफ़ करें — नहीं मिलेगा",
     'ui.outstanding.write_off_reason': "कारण / नोट (माफ़ करने पर ज़रूरी):",
+    'ui.reports.purchases_above_sales': "बिक्री से ज़्यादा ख़रीद",
+    'ui.reports.sales_above_purchases': "ख़रीद से ज़्यादा बिक्री",
     'ui.settings.about': "ऐप के बारे में",
     'ui.settings.account': "खाता",
     'ui.settings.app': "ऐप:",
