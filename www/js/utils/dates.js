@@ -6,6 +6,8 @@
  * @module utils/dates
  */
 
+import { getLang } from '../i18n/index.js';
+
 const pad2 = (n) => String(n).padStart(2, '0');
 
 const ISO_DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -149,7 +151,8 @@ export function toJsDate(value) {
 }
 
 /**
- * en-IN date/time text for any timestamp shape, or `fallback` when unparseable.
+ * Date/time text for any timestamp shape (the app's formatDayTime unless Intl
+ * `options` are given), or `fallback` when unparseable.
  * @param {*} value
  * @param {Intl.DateTimeFormatOptions} [options]
  * @param {string} [fallback='Unknown']
@@ -157,5 +160,52 @@ export function toJsDate(value) {
  */
 export function formatDateTimeIN(value, options, fallback = 'Unknown') {
     const d = toJsDate(value);
-    return d ? d.toLocaleString('en-IN', options) : fallback;
+    if (!d) return fallback;
+    return options ? d.toLocaleString('en-IN', options) : formatDayTime(d, { lang: getLang() });
+}
+
+const MONTHS = {
+    en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+    hi: ['जन॰', 'फ़र॰', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुल॰', 'अग॰', 'सित॰', 'अक्तू॰', 'नव॰', 'दिस॰']
+};
+const DAY_HALF = { en: ['am', 'pm'], hi: ['पूर्वाह्न', 'अपराह्न'] };
+const langOf = (lang) => (lang === 'hi' ? 'hi' : 'en');
+
+/**
+ * The app's one date format: "25 Oct 2026" (Hindi month names in Hindi).
+ * @param {*} value anything toJsDate accepts
+ * @param {{lang?: string, year?: boolean}} [opts] year: false drops the year ("25 Oct")
+ * @returns {string} '' when there is no usable date
+ */
+export function formatDay(value, { lang = 'en', year = true } = {}) {
+    const d = toJsDate(value);
+    if (!d) return '';
+    const day = `${d.getDate()} ${MONTHS[langOf(lang)][d.getMonth()]}`;
+    return year ? `${day} ${d.getFullYear()}` : day;
+}
+
+/**
+ * Time of day: "8:59 pm" / "8:59 अपराह्न".
+ * @param {*} value
+ * @param {{lang?: string}} [opts]
+ * @returns {string}
+ */
+export function formatTimeOfDay(value, { lang = 'en' } = {}) {
+    const d = toJsDate(value);
+    if (!d) return '';
+    const h = d.getHours();
+    return `${h % 12 || 12}:${pad2(d.getMinutes())} ${DAY_HALF[langOf(lang)][h >= 12 ? 1 : 0]}`;
+}
+
+/**
+ * The app's one date-and-time format: "25 Oct, 8:59 pm" (the year is added
+ * when it is not the current year: "25 Oct 2025, 8:59 pm").
+ * @param {*} value
+ * @param {{lang?: string, now?: Date}} [opts]
+ * @returns {string}
+ */
+export function formatDayTime(value, { lang = 'en', now = new Date() } = {}) {
+    const d = toJsDate(value);
+    if (!d) return '';
+    return `${formatDay(d, { lang, year: d.getFullYear() !== now.getFullYear() })}, ${formatTimeOfDay(d, { lang })}`;
 }

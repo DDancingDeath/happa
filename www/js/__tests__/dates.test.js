@@ -113,7 +113,7 @@ describe('toJsDate / formatDateTimeIN (#114)', () => {
         expect(toJsDate('not a date')).toBeNull();
         expect(toJsDate('31-02-2026')).toBeNull();
         expect(formatDateTimeIN({ seconds: ms / 1000 })).not.toMatch(/Invalid/);
-        expect(formatDateTimeIN({ seconds: ms / 1000 })).toContain('2026');
+        expect(formatDateTimeIN({ seconds: ms / 1000 })).toMatch(/^21 Oct(?: 2026)?, \d{1,2}:\d{2} (am|pm)$/);
         expect(formatDateTimeIN(undefined)).toBe('Unknown');
         expect(formatDateTimeIN('garbage', undefined, '-')).toBe('-');
     });

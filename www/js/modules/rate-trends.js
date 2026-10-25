@@ -12,6 +12,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
+import { formatRupees } from '../utils/money.js';
 import { t, getLang, tn } from '../i18n/index.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
@@ -53,11 +54,12 @@ const STOP_KEYS = { quota: 'ui.trends.stop_quota', budget: 'ui.trends.stop_budge
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
 const isOwner = () => AppState.userRole === 'owner';
-const rupees = (n) => (n === null || n === undefined ? '—' : `₹${Number(n).toFixed(2)}`);
+const rupees = (n) => (n === null || n === undefined ? '—' : formatRupees(n, { decimals: 2 }));
+const wholeRupees = (n) => (n === null || n === undefined ? '—' : formatRupees(n));
 const num = (n) => Math.round(Number(n) || 0).toLocaleString('en-IN');
 const kgText = (n) => `${num(n)} kg`;
 const pctText = (p) => (p === null || p === undefined ? '—' : `${p > 0 ? '+' : ''}${Math.round(p)}%`);
-const dateText = (ms) => (Number(ms) > 0 ? new Date(Number(ms)).toLocaleDateString('en-IN') : '—');
+const dateText = (ms) => (Number(ms) > 0 ? Helpers.formatDate(Number(ms)) : '—');
 const isDenied = (e) => e?.code === 'permission-denied' || /permission/i.test(String(e?.message || ''));
 const KIND_KEYS = { purchase: 'ui.trends.purchase', wholesale: 'ui.trends.wholesale', retail: 'ui.trends.retail' };
 
@@ -1110,7 +1112,7 @@ export const RateTrendsManager = {
                 onclick="window.app.rateTrends.setTrafficItem('${Helpers.escapeJsAttr(r.itemId)}')">
                 <td>${esc(itemName(r.itemId))}</td><td><strong>${kgText(r.kg)}</strong></td>
                 ${TRAFFIC_KINDS.map(k => `<td>${cell(r[k])}</td>`).join('')}
-                <td>${r.bills}</td><td>${rupees(r.amount)}</td>
+                <td>${r.bills}</td><td>${esc(wholeRupees(r.amount))}</td>
                 <td class="${r.vsPrev < 0 ? 'rt-neg' : ''}">${pctText(r.vsPrev)}</td>
                 <td class="${r.vsLastYear < 0 ? 'rt-neg' : ''}">${pctText(r.vsLastYear)}</td></tr>`).join('');
             el.innerHTML = `<table class="rt-table"><thead><tr><th>${esc(t('ui.trends.th_item'))}</th><th>${esc(t('ui.trends.th_total_kg'))}</th>

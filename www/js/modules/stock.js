@@ -95,7 +95,7 @@ export class StockManager {
             }
 
             if (Object.keys(stock).length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${tx('ui.stock.no_stock_data_available')}</p>`;
+                container.innerHTML = this.emptyStockHtml();
                 return;
             }
 
@@ -205,7 +205,7 @@ export class StockManager {
             });
         
         if (stockWithDetails.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${tx('ui.stock.no_stock')}</p>`;
+            container.innerHTML = this.emptyStockHtml();
             return;
         }
         
@@ -276,6 +276,34 @@ export class StockManager {
             console.error('Error loading stock:', error);
             container.innerHTML = `<p style="text-align: center; color: #dc3545; margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
         }
+    }
+
+    /**
+     * Empty Stock list: says why (no stock set yet) and, for people who may
+     * adjust stock, offers "Set opening stock" (F15).
+     * @returns {string} HTML
+     */
+    static emptyStockHtml() {
+        const e = (v) => Helpers.escapeHtml(v);
+        const canAdjust = AppState.userRole !== 'staff';
+        return `<div class="stock-empty" style="text-align: center; color: #555; margin-top: 32px; padding: 0 12px;">
+            <p style="font-weight: 600; font-size: 16px; margin: 0 0 6px;">${e(t('ui.stock.empty_title'))}</p>
+            <p style="font-size: 13px; color: #666; margin: 0 0 14px;">${e(t(canAdjust ? 'ui.stock.empty_hint' : 'ui.stock.empty_hint_member'))}</p>
+            ${canAdjust ? `<button type="button" class="add-to-bill-btn" style="max-width: 280px;" onclick="window.app.stock.startOpeningStock()">${e(t('ui.stock.set_opening_stock'))}</button>` : ''}
+        </div>`;
+    }
+
+    /** "Set opening stock": the adjustment form, ready for one item's opening quantity and cost per kg. */
+    static startOpeningStock() {
+        this.filterStockTab('adjustment');
+        const type = document.getElementById('adjustType');
+        if (type) type.value = 'set';
+        const reason = document.getElementById('adjustReasonCode');
+        if (reason) reason.value = 'opening';
+        const rate = document.getElementById('adjustRate');
+        if (rate && rate.value === '0') rate.value = '';
+        this.updateAdjustmentPlaceholder();
+        document.getElementById('adjustItem')?.focus();
     }
 
     /**
@@ -600,7 +628,7 @@ export class StockManager {
         const itemName = item.name;
 
         const currentStock = AppState.stock[item.id]?.quantity || 0;
-        const plan = planStockAdjustment({ adjustType, quantity, currentStock, reasonCode, reasonNote });
+        const plan = planStockAdjustment({ adjustType, quantity, currentStock, reasonCode, reasonNote, rate });
         if (!plan.ok) {
             UIManager.showToast(plan.error);
             return;

@@ -6,8 +6,9 @@
 import { t } from '../i18n/index.js';
 import { splitBilingual } from '../i18n/localize.js';
 
-/** Reason picker options (catalogue keys); `other` needs a note. */
+/** Reason picker options (catalogue keys); `other` needs a note, `opening` a cost per kg. */
 export const ADJUST_REASONS = {
+    opening: 'ui.stock.reason_opening',
     count: 'ui.stock.reason_count',
     damage: 'ui.stock.reason_damage',
     theft: 'ui.stock.reason_theft',
@@ -40,12 +41,13 @@ const round3 = (n) => Math.round(n * 1000) / 1000;
  *  - add/remove need a quantity > 0; set accepts 0 ("set stock to 0").
  *  - remove is capped at the stock on hand (`capped` tells the UI to warn);
  *    `quantity` is the effective amount, `rawQuantity` what was typed.
- *  - a reason is required; `other` also needs a note.
- * @param {{adjustType: string, quantity: number, currentStock: number, reasonCode?: string, reasonNote?: string}} input
+ *  - a reason is required; `other` also needs a note; `opening` (opening stock)
+ *    needs the cost per kg, so the cost of goods sold can be worked out.
+ * @param {{adjustType: string, quantity: number, currentStock: number, reasonCode?: string, reasonNote?: string, rate?: number}} input
  * @returns {{ok: true, quantity: number, rawQuantity: number, newStock: number, capped: boolean, reason: string}
  *          | {ok: false, error: string}}
  */
-export function planStockAdjustment({ adjustType, quantity, currentStock, reasonCode, reasonNote }) {
+export function planStockAdjustment({ adjustType, quantity, currentStock, reasonCode, reasonNote, rate }) {
     const qty = Number(quantity);
     const stock = Number(currentStock) || 0;
     if (!['add', 'remove', 'set'].includes(adjustType)) {
@@ -60,6 +62,9 @@ export function planStockAdjustment({ adjustType, quantity, currentStock, reason
     }
     if (reasonCode === 'other' && !note) {
         return { ok: false, error: t('msg.stock.write_reason') };
+    }
+    if (reasonCode === 'opening' && adjustType !== 'remove' && qty > 0 && !(Number(rate) > 0)) {
+        return { ok: false, error: t('msg.stock.opening_needs_cost') };
     }
     const reason = note ? `${t(ADJUST_REASONS[reasonCode])}: ${note}` : t(ADJUST_REASONS[reasonCode]);
 

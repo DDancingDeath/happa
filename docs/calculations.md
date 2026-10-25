@@ -33,6 +33,10 @@ test in the same PR (see AGENTS.md → PR checklist).
 | AVG-COST | Average cost of an item | Weighted average: each purchase adds its quantity at the line rate; each sale removes quantity at the average cost of that moment; adjustments add (at their rate), remove (at average cost, never below zero) or set the quantity. Lines match a catalogue item by item id, else by English or Hindi name (trimmed, any case). Retail sales reduce stock like wholesale and are costed the same way (owner decision #33, 2026-10-25). |
 | COGS | Cost of goods sold | For every sale line: quantity × AVG-COST of that item at the moment of the sale. |
 | OPENING | Opening record (old-app due) | A bill-shaped record written by the move from the old app (`tools/migrate`): it has an `openingBalance` object, no lines and a total of ₹0, and is dated with the old bill's date (which can be today). It is a **balance only**: it counts in dues — Outstanding, aging (from its original date), reminders, statements, the all-time "due to receive / pay" totals (F9, F10, R6, R7, A5, A6) — and in **no** period or activity figure: not in Today (T1–T16), Reports R1–R5 and R8, Finance F1–F8, Analytics A1–A4, bill counts, stock, rate trends, item frequency, anomaly scans or Number checks AC2 / AC4. Money paid on it later is a normal DUE-PAY on the day it is paid (cash flow, drawer, T13 / T14); writing it off is not a bad debt (its sale was never a sale here). In code: `isOpeningRecord()` / `activityBills()` in `utils/money.js`, the one filter every period figure uses (review rule `period-aggregation-without-activity-filter`). |
+| BILL-COUNT | "N bills", "N sales", average bill | Number of bills in the period that are activity: OPENING records are never counted. Today (T1/T2), Reports (R1/R2, Purchases / Sales tabs, Compare), Finance (F1 count) and Analytics use this one rule, so they agree; History lists opening records too, marked "Old app". |
+| PARTY | One party | Bills belong to the same party when their names match with case, extra spaces and Unicode form ignored ("test party" = "Test Party"). The name shown is the spelling used most; on a tie the one with more capitalised words. Outstanding, aging, reminders, Reports' customer filters and Analytics' customers group this way. |
+| MONEY-TEXT | How ₹ is written | Indian grouping everywhere: whole rupees (₹2,50,000); rates per kg in paise (₹1,234.50). Amounts below ₹100 that are averages show paise (₹0.40, not ₹0). One formatter: `formatRupees()` in `utils/money.js` (`Helpers.formatCurrency`). |
+| DATE-TEXT | How dates are written | "25 Oct 2026" for a date; "25 Oct, 8:59 pm" for a date and time (the year is added when it is not this year); Hindi month names and पूर्वाह्न / अपराह्न in Hindi. One formatter: `formatDay()` / `formatDayTime()` in `utils/dates.js`. |
 
 Labour on purchases is taken off the supplier's bill, so the stock is valued at
 the line rate (before labour) while the purchase costs the shop the bill total
@@ -93,7 +97,7 @@ For the selected PERIOD. Dues are all-time, not the period.
 |---|---|---|
 | R1 | Total purchases | Σ BILL-TOTAL of purchases in the period (after labour); count. |
 | R2 | Total sales | Σ BILL-TOTAL of wholesale + retail sales in the period; count. |
-| R3 | Profit on goods sold | Same as F4 for the same period (one profit everywhere, #36). "—" while the cost of goods sold can't be worked out yet (as on Finance). The CSV / PDF export use the same number. The Compare tab's "sales − purchases" is labelled as that, not as profit. |
+| R3 | Profit on goods sold | Same as F4 for the same period (one profit everywhere, #36). "—" while the cost of goods sold can't be worked out yet (as on Finance). Its margin (R3 ÷ R2) carries the same "sold before its purchase was recorded" note as Finance when some goods had no known cost, because the margin is then too high (e.g. "100% margin"). The CSV / PDF export use the same number. The Compare tab's "sales − purchases" is labelled as that, not as profit. |
 | R4 | Cash | Σ BILL-PAY cash over the period's purchases **and** sales (money moved in cash, both directions). |
 | R5 | Online | Same, online. |
 | R6 | Due to pay | = F10. |
@@ -106,13 +110,15 @@ For the selected PERIOD. Dues are all-time, not the period.
 |---|---|---|
 | A1 | This month: revenue | Σ BILL-TOTAL of sales from the 1st of this month to now. ❌ app differs: `DD/MM/YYYY` bills are misread (#49). |
 | A2 | This month: purchases | Σ BILL-TOTAL of purchases, same range. ❌ (#49) |
-| A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. ❌ app differs: expenses dated `D/M/YYYY, h:mm:ss pm` (every expense the old app saved) are misread (#49). |
-| A4 | This month: profit | Same as F4 for the same range (#36). |
+| A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. |
+| A4 | This month: profit | Same as F4 for the same range (#36). Its margin carries the "cost not known" note, as R3. |
 | A7 | Profit trend (per day) | F4 split by day: each day's sales − cost of goods sold − business expenses − bad debts; the days add up to F4 for the whole range. |
 | A5 | Total payable | = F10; count of bills with BILL-DUE > 0. ❌ app differs: counts cleared bills that still carry their old due (#220). |
 | A6 | Total receivable | = F9; count of bills with BILL-DUE > 0. ❌ app differs: counts cleared bills, misses `dueAmount`-only bills (#220). |
 
-Projections and predictions on Analytics are estimates and are not checked
+Analytics' customers (active buyers, top customers) group bills by PARTY. The cash prediction hides its confidence when there is no same-weekday history (its ₹0 then means "no data"). Smart suggestions name items (English or Hindi name), never ids; "low stock" lists only items whose stock was set at some point (a purchase or an opening stock adjustment) and is now below 10 kg.
+
+
 here (#144 plans to redo them). "Projected profit" and the smart-suggestion
 profit lines start from A4 (the month's profit so far, scaled to the whole
 month); the "in loss" suggestion only shows when the month has sales.
@@ -130,7 +136,7 @@ month); the "in loss" suggestion only shows when the month has sales.
 
 | ID | On screen | Definition |
 |---|---|---|
-| S1 | Quantity | Replay of all purchases (+), sales (−) and adjustments in time order (AVG-COST rules). |
+| S1 | Quantity | Replay of all purchases (+), sales (−) and adjustments in time order (AVG-COST rules). Opening stock is a "set" adjustment with reason "Opening stock" and a cost per kg (required), so cost of goods sold works from the first sale. With no stock at all the page says so and offers "Set opening stock". |
 | S2 | Average rate | AVG-COST after the replay (0 when quantity ≤ 0). |
 | S3 | Value per item | S1 × S2 when quantity > 0. |
 | S4 | Total value | Σ S3 = F6. |

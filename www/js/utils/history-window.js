@@ -15,8 +15,7 @@
 
 import { AppState } from './state.js';
 import { t, getLang } from '../i18n/index.js';
-
-const dateLocale = () => (getLang() === 'hi' ? 'hi-IN' : 'en-IN');
+import { formatDay, formatTimeOfDay } from './dates.js';
 
 const service = () => (typeof window !== 'undefined' ? window.FirebaseService : null) || null;
 
@@ -209,7 +208,7 @@ export function monthStart(monthsBack = 0, now = new Date()) {
 /** Short human date for notices, e.g. "1 Sep 2026". */
 export function formatWindowDate(ms) {
     if (!ms) return '';
-    return new Date(ms).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
+    return formatDay(ms, { lang: getLang() });
 }
 
 /**
@@ -322,7 +321,7 @@ export function staleHistoryHintText(info, now = new Date()) {
     const date = formatWindowDate(info.liveFrom);
     if (!info.asOf) return t('ui.hist.stale', { date });
     const at = new Date(info.asOf);
-    const clock = at.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' });
+    const clock = formatTimeOfDay(at, { lang: getLang() });
     const time = at.toDateString() === now.toDateString() ? clock : `${formatWindowDate(info.asOf)} ${clock}`;
     return t('ui.hist.stale_at', { date, time });
 }

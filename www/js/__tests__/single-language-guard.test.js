@@ -183,6 +183,8 @@ describe('Anomalies page and Today day report render in one language', () => {
         AppState.salesHistory = [];
         AppState.stockAdjustments = [];
         AppState.items = [];
+        // The oversold item had stock set (an oversell of a never-stocked item is not shown, F15)
+        AppState.stock = { 'महुआ': { quantity: 0.5, rate: 30 } };
         AnomaliesManager.stored = null;
         AnomaliesManager.reportList = [];
         AnomaliesManager.refreshing = null;

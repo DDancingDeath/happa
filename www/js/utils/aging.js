@@ -55,6 +55,53 @@ export function normalizePartyName(name) {
     return String(name ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
+const capitals = (s) => (String(s).match(/(^|\s)\p{Lu}/gu) || []).length;
+
+/**
+ * The spelling to show for a party seen under several spellings ("test party",
+ * "Test Party"): the most used one; on a tie the one with more capitalised
+ * words, then the latest seen.
+ * @param {Map<string, {count: number, last: number}>} spellings raw name → use count and last time
+ * @returns {string}
+ */
+export function pickPartyName(spellings) {
+    let best = '';
+    let bestInfo = null;
+    (spellings || new Map()).forEach((info, name) => {
+        if (!name) return;
+        const better = !bestInfo || info.count > bestInfo.count
+            || (info.count === bestInfo.count && (capitals(name) > capitals(best)
+                || (capitals(name) === capitals(best) && info.last > bestInfo.last)));
+        if (better) { best = name; bestInfo = info; }
+    });
+    return best;
+}
+
+/**
+ * Groups raw party names by normalizePartyName and picks one display spelling
+ * per party (pickPartyName). Used wherever parties are listed or filtered.
+ * @param {Iterable<string>} names raw names, one per bill (repeats count)
+ * @returns {Map<string, string>} key → display name
+ */
+export function partyDisplayNames(names) {
+    const byKey = new Map();
+    let i = 0;
+    for (const raw of names || []) {
+        const name = String(raw ?? '').trim().replace(/\s+/g, ' ');
+        const key = normalizePartyName(name);
+        if (!key) continue;
+        if (!byKey.has(key)) byKey.set(key, new Map());
+        const spellings = byKey.get(key);
+        const info = spellings.get(name) || { count: 0, last: 0 };
+        info.count++;
+        info.last = ++i;
+        spellings.set(name, info);
+    }
+    const out = new Map();
+    byKey.forEach((spellings, key) => out.set(key, pickPartyName(spellings)));
+    return out;
+}
+
 /** Phone stored on a bill, if any. */
 function billPhone(bill) {
     const p = bill.customerPhone || bill.phone || bill.mobile || '';
@@ -96,14 +143,17 @@ export function buildAging(bills, { today = new Date() } = {}) {
         const key = normalizePartyName(rawName);
         let party = byKey.get(key);
         if (!party) {
-            party = { key, name: rawName, phone: '', total: 0, oldestDays: 0, bucket: 0, longOverdue: false, bills: [], _latest: -Infinity };
+            party = { key, name: rawName, phone: '', total: 0, oldestDays: 0, bucket: 0, longOverdue: false, bills: [], _latest: -Infinity, _names: new Map() };
             byKey.set(key, party);
         }
-        // Newest bill decides the display name and phone
+        // Most used spelling is the display name (pickPartyName); newest bill decides the phone
         const t = date ? date.getTime() : -Infinity;
+        if (rawName) {
+            const seen = party._names.get(rawName) || { count: 0, last: -Infinity };
+            party._names.set(rawName, { count: seen.count + 1, last: Math.max(seen.last, t) });
+        }
         if (t >= party._latest) {
             party._latest = t;
-            if (rawName) party.name = rawName;
             if (billPhone(bill)) party.phone = billPhone(bill);
         } else if (!party.phone && billPhone(bill)) {
             party.phone = billPhone(bill);
@@ -119,7 +169,9 @@ export function buildAging(bills, { today = new Date() } = {}) {
         p.oldestDays = oldest.days;
         p.bucket = oldest.bucket;
         p.longOverdue = oldest.days === null || oldest.days > LONG_OVERDUE_DAYS;
+        if (p._names.size) p.name = pickPartyName(p._names);
         delete p._latest;
+        delete p._names;
         return p;
     });
 

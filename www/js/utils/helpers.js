@@ -7,7 +7,9 @@
 /**
  * Static utility helper class
  */
-import { t } from '../i18n/index.js';
+import { t, getLang } from '../i18n/index.js';
+import { formatRupees } from './money.js';
+import { formatDay, formatDayTime, formatTimeOfDay } from './dates.js';
 
 export class Helpers {
     // -------------------- FORMATTING --------------------
@@ -66,40 +68,32 @@ export class Helpers {
     }
 
     /**
-     * Format date as DD MMM YYYY
-     * @param {Date|string} date - Date to format
-     * @returns {string} Formatted date string
+     * The app's date format, "25 Oct 2026" (utils/dates.js formatDay, in the app language).
+     * @param {*} date
+     * @returns {string} '' when there is no usable date
      */
     static formatDate(date) {
         if (!date) return '';
-        const d = new Date(date);
-        return d.toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        });
+        return formatDay(date, { lang: getLang() });
     }
 
     /**
-     * Format date with time as DD/MM/YYYY, HH:MM AM/PM
-     * @param {string} dateString - Date string to format
-     * @returns {string} Formatted date/time string
+     * The app's date-and-time format, "25 Oct, 8:59 pm" (utils/dates.js formatDayTime).
+     * @param {*} dateString
+     * @returns {string}
      */
     static formatDateTime(dateString) {
         if (!dateString) return '';
-        try {
-            const date = new Date(dateString);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            const hours = date.getHours();
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            const displayHours = hours % 12 || 12;
-            return `${day}/${month}/${year}, ${displayHours}:${minutes} ${ampm}`;
-        } catch (e) {
-            return dateString;
-        }
+        return formatDayTime(dateString, { lang: getLang() }) || String(dateString);
+    }
+
+    /**
+     * Time of day in the app's format, "8:59 pm".
+     * @param {*} value
+     * @returns {string}
+     */
+    static formatTime(value) {
+        return formatTimeOfDay(value, { lang: getLang() });
     }
 
     /**
@@ -154,13 +148,8 @@ export class Helpers {
      * @param {number} amount - Amount to format
      * @returns {string} Formatted currency string
      */
-    static formatCurrency(amount) {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0
-        }).format(Math.round(amount));
+    static formatCurrency(amount, opts) {
+        return formatRupees(amount, opts);
     }
 
     // -------------------- GENERATORS --------------------

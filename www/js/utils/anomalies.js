@@ -23,6 +23,7 @@ import { activityBills, billTotal, readLineItem, readPayment, round2, toMoney } 
 import { parseAnyBillDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
+import { firstStockTimes, stockKeyFor } from './stock-check.js';
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 
@@ -281,11 +282,12 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {Object[]} [input.auditLogs] - audit log entries (owner devices only)
  * @param {Object[]} [input.catalogue] - items
  * @param {Object} [input.thresholds] - settings/app checkThresholds (+ ANOMALY_DEFAULTS keys)
+ * @param {Object} [input.stock] - AppState.stock: stock on hand counts as stock set (purchase older than the loaded history)
  * @param {number} input.from - inclusive (ms)
  * @param {number} input.to - exclusive (ms)
  * @returns {Array<Object>} anomalies, one per id, high severity and newest first
  */
-export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], catalogue = [], thresholds = {}, from, to }) {
+export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], catalogue = [], thresholds = {}, stock = {}, from, to }) {
     const t = { ...ANOMALY_DEFAULTS, ...normalizeThresholds(thresholds) };
     Object.keys(ANOMALY_DEFAULTS).forEach(k => {
         const n = Number(thresholds?.[k]);
@@ -450,7 +452,8 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         }));
     });
 
-    return sortAnomalies([...out.values()]);
+    const stockFrom = firstStockTimes({ purchases: bills.purchase, stockAdjustments: adjustments }, catalogue);
+    return sortAnomalies(withoutUnstockedOversell([...out.values()], { stockFrom, catalogue, stock }));
 }
 
 const sevRank = (s) => {
@@ -526,6 +529,33 @@ export function mergeAnomalies(detected, stored) {
 }
 
 const splitItems = (item) => String(item || '').split(', ').map(s => s.trim()).filter(Boolean);
+
+/**
+ * Drops "Sold more than stock" for items whose stock had never been set (no
+ * purchase, no opening stock) by the time of the sale: before opening stock
+ * is entered every sale is "more than stock" and the alert is noise (F15).
+ * The flagged item is the one named at the start of the flag text, else any
+ * item on the bill. Stock on hand (or a cost) counts as stock set when the
+ * item's purchases are older than the loaded history.
+ * @param {Array<Object>} list anomalies
+ * @param {{stockFrom?: Map<string, number>, catalogue?: Array, stock?: Object}} ctx stockFrom from firstStockTimes()
+ * @returns {Array<Object>}
+ */
+export function withoutUnstockedOversell(list, { stockFrom = new Map(), catalogue = [], stock = {} } = {}) {
+    return (list || []).filter(a => {
+        if (!a || a.type !== 'oversell') return true;
+        const names = splitItems(a.item);
+        if (!names.length) return true;
+        const named = names.filter(n => String(a.en || '').startsWith(`${n}:`));
+        const at = Number(a.at);
+        return (named.length ? named : names).some(name => {
+            const key = stockKeyFor({ name }, catalogue);
+            if (stockFrom.has(key)) return !Number.isFinite(at) || stockFrom.get(key) <= at;
+            const s = (stock || {})[key];
+            return (Number(s?.quantity) || 0) > 0 || (Number(s?.rate) || 0) > 0;
+        });
+    });
+}
 
 function topCounts(list, keyFn, n) {
     const counts = new Map();

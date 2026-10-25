@@ -899,3 +899,12 @@
         font-size: 12px;
     }
 }
+
+/* "Cost not known" note under a margin (F14) */
+.margin-cost-note {
+    display: block;
+    font-size: 11px;
+    color: #b45309;
+    margin-top: 4px;
+    line-height: 1.3;
+}

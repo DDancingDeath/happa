@@ -19,7 +19,7 @@ import {
 } from './money.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
 import { t } from '../i18n/index.js';
-import { computeShortfallsFrom, stockKeyFor, approxStockNote } from './stock-check.js';
+import { computeShortfallsFrom, stockKeyFor, approxStockNote, stockedItemKeys } from './stock-check.js';
 
 /**
  * Defaults from the owner questionnaire (#106; blank answer = default).
@@ -183,7 +183,8 @@ function oversellIssues(items, ctx, extraLine) {
         { items: ctx.catalogue, stock: ctx.stock, stockReady: ctx.stockReady }, ctx.credit);
     // Approximate stock (#129) may be off by older edits: warn, never block.
     const approx = ctx.stockApproximate ? approxStockNote(ctx.stockApprox || {}) : null;
-    return shortfalls.map(s => {
+    // An item whose stock was never set (no purchase, no opening stock) can't be "more than stock" yet.
+    return shortfalls.filter(s => !ctx.stocked || ctx.stocked.has(s.key)).map(s => {
         const block = ctx.oversellCanBlock && !approx && s.shortfall > ctx.thresholds.oversellBlockKg + 1e-6;
         const avail = s.available <= 0 ? '0' : fmtKg(s.available);
         const indices = items.map((it, i) => (stockKeyFor(it, ctx.catalogue) === s.key ? i : -1)).filter(i => i !== -1);
@@ -406,7 +407,7 @@ export function stockCreditFor(state, kind, { editingBill = null, draftId = null
 
 /**
  * Build the rule context from app state (pure: pass AppState in).
- * @param {Object} state - AppState-like ({ items, stock, stockReady, purchaseHistory, retailSalesHistory, salesHistory, userRole, settings })
+ * @param {Object} state - AppState-like ({ items, stock, stockReady, purchaseHistory, retailSalesHistory, salesHistory, stockAdjustments, userRole, settings })
  * @param {'purchase'|'retail'|'wholesale'} kind
  * @param {{now?: number, editingBill?: Object|null, draftId?: string|null}} [opts]
  * @returns {Object}
@@ -424,6 +425,7 @@ export function buildCheckContext(state, kind, { now = Date.now(), editingBill =
         stockApproximate: !!s.stockApprox,
         stockApprox: s.stockApprox || null,
         credit: stockCreditFor(s, kind, { editingBill, draftId }),
+        stocked: kind === 'purchase' ? null : stockedItemKeys({ purchases: s.purchaseHistory, stockAdjustments: s.stockAdjustments }, s.items, s.stock),
         recentBills: Array.isArray(history) ? history : [],
         // #33 (should retail reduce stock?) is open: retail oversell only warns, as before.
         oversellCanBlock: kind === 'wholesale',

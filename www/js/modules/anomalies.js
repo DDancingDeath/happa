@@ -18,12 +18,20 @@ import { pickLang } from '../i18n/localize.js';
 import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
     addDaysToKey, anomalyPatterns, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
-    istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, summarizeAnomalies, summaryLine, typeLabel
+    istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, summarizeAnomalies, summaryLine, typeLabel,
+    withoutUnstockedOversell
 } from '../utils/anomalies.js';
+import { firstStockTimes } from '../utils/stock-check.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
 const DAY_MS = 86400000;
+
+/** Detected + stored anomalies as shown: oversells of items whose stock was never set are left out (F15). */
+function mergeVisible(detected, stored) {
+    const stockFrom = firstStockTimes({ purchases: AppState.purchaseHistory, stockAdjustments: AppState.stockAdjustments }, AppState.items);
+    return withoutUnstockedOversell(mergeAnomalies(detected, stored), { stockFrom, catalogue: AppState.items || [], stock: AppState.stock || {} });
+}
 const STORED_TTL_MS = 2 * 60 * 1000;
 /** Today card: server read at most every 30 min per user/device (persisted across reopens). */
 const REPORT_TTL_MS = 30 * 60 * 1000;
@@ -118,6 +126,7 @@ export const AnomaliesManager = {
             adjustments: AppState.stockAdjustments || [],
             auditLogs,
             catalogue: AppState.items || [],
+            stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
             from,
             to
@@ -170,7 +179,7 @@ export const AnomaliesManager = {
         this.stored = { key, docs: stored.filter(d => d.dayKey === yesterday || d.dayKey === today), at: Date.now() };
         this.markReportFresh(key);
         if (document.getElementById('dayReportCard')?.style.display === 'block') {
-            this.reportList = mergeAnomalies(this.detectLive(), this.stored.docs);
+            this.reportList = mergeVisible(this.detectLive(), this.stored.docs);
             this.drawDayReport();
         }
     },
@@ -213,6 +222,7 @@ export const AnomaliesManager = {
             sessions: session,
             adjustments: AppState.stockAdjustments || [],
             catalogue: AppState.items || [],
+            stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
             from: Math.max(istDayStartMs(yesterday), Number(AppState.historyLoadedFrom) || 0),
             to: istDayStartMs(today) + DAY_MS
@@ -241,7 +251,7 @@ export const AnomaliesManager = {
         const { yesterday, today } = this.reportKeys();
         const key = `${yesterday}|${today}`;
         const stored = this.stored && this.stored.key === key ? this.stored.docs : [];
-        this.reportList = mergeAnomalies(this.live, stored);
+        this.reportList = mergeVisible(this.live, stored);
         this.drawDayReport();
         if (!this.stored || this.stored.key !== key || Date.now() - this.stored.at > STORED_TTL_MS) {
             this.refreshDayReport().catch(e => console.warn('Day report refresh failed:', e));
@@ -276,7 +286,7 @@ export const AnomaliesManager = {
                 this.stored = { key, docs: stored || prev, at: Date.now() };
                 if (stored) this.markReportFresh(key);
             }
-            this.reportList = mergeAnomalies(this.detectLive(), this.stored.docs);
+            this.reportList = mergeVisible(this.detectLive(), this.stored.docs);
             this.drawDayReport();
         })().finally(() => { this.refreshing = null; });
         return this.refreshing;
@@ -430,7 +440,7 @@ export const AnomaliesManager = {
         const label = typeLabel(a.type);
         const status = a.status || 'open';
         const when = Number.isFinite(Number(a.at)) && Number(a.at) > 0
-            ? new Date(Number(a.at)).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+            ? Helpers.formatDateTime(Number(a.at))
             : formatDayKey(a.dayKey);
         const meta = [
             a.billNumber ? `#${esc(a.billNumber)}` : '',
@@ -565,7 +575,7 @@ export const AnomaliesManager = {
                 .then(() => {
                     const range = this.page.range;
                     if (!range) return;
-                    this.page.docs = mergeAnomalies(this.reportList.filter(a => a.dayKey >= range.from && a.dayKey <= range.to), this.page.docs);
+                    this.page.docs = mergeVisible(this.reportList.filter(a => a.dayKey >= range.from && a.dayKey <= range.to), this.page.docs);
                     this.renderPage();
                 })
                 .catch(e => console.warn('Anomaly refresh failed:', e));
@@ -644,7 +654,7 @@ export const AnomaliesManager = {
             const res = await FirebaseService.loadAnomalies(range.from, range.to, { limit: PAGE_SIZE, after: reset ? null : this.page.last });
             if (seq !== this.page.seq) return;
             const live = this.reportList.filter(a => a.dayKey >= range.from && a.dayKey <= range.to);
-            this.page.docs = mergeAnomalies(live, [...this.page.docs, ...res.docs]);
+            this.page.docs = mergeVisible(live, [...this.page.docs, ...res.docs]);
             this.page.last = res.last;
             this.page.more = res.more;
         } catch (e) {

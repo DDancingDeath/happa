@@ -13,6 +13,8 @@
  * individual line fits within stock but the sum does not.
  */
 import { AppState } from '../utils/state.js';
+import { formatDayTime } from './dates.js';
+import { eventTime } from './stock-replay.js';
 
 /**
  * "≈ approximate stock (updated <time>)" label (member device, stale stock
@@ -22,10 +24,8 @@ import { AppState } from '../utils/state.js';
  */
 export function approxStockNote(approx) {
     if (!approx) return null;
-    const when = approx.builtAt > 0
-        ? new Date(approx.builtAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-        : '—';
-    return { en: `≈ approximate stock (updated ${when})`, hi: `≈ अनुमानित स्टॉक (अपडेट ${when})` };
+    const when = (lang) => (approx.builtAt > 0 ? formatDayTime(approx.builtAt, { lang }) : '—');
+    return { en: `≈ approximate stock (updated ${when('en')})`, hi: `≈ अनुमानित स्टॉक (अपडेट ${when('hi')})` };
 }
 
 const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
@@ -193,4 +193,74 @@ export function formatShortfallMessage(shortfalls) {
         '\n\nSelling more than you have on record will push stock into negative ' +
         'and may distort future rate calculations. Continue anyway?'
     );
+}
+
+/**
+ * When each item first had stock: its first purchase line or add / set stock
+ * adjustment with a quantity > 0 (opening stock counts). An item that was only
+ * ever sold has never had its stock set, so "low stock" and "sold more than
+ * stock" mean nothing for it yet. Opening records (old-app dues) carry no goods.
+ * @param {{purchases?: Array, stockAdjustments?: Array}} sources
+ * @param {Array<Object>} [items] catalogue
+ * @returns {Map<string, number>} stock key → earliest time (ms)
+ */
+export function firstStockTimes({ purchases = [], stockAdjustments = [] } = {}, items = []) {
+    const catalogue = Array.isArray(items) ? items : [];
+    const out = new Map();
+    const note = (key, t) => {
+        const ms = Number.isFinite(t) ? t : -Infinity;
+        if (!out.has(key) || ms < out.get(key)) out.set(key, ms);
+    };
+    (purchases || []).forEach(bill => {
+        if (!bill || bill.openingBalance) return;
+        const t = eventTime(bill);
+        (Array.isArray(bill.items) ? bill.items : []).forEach(line => {
+            if (line && lineQty(line) > 0) note(resolveKey(line, catalogue), t);
+        });
+    });
+    (stockAdjustments || []).forEach(adj => {
+        if (!adj || !['add', 'set'].includes(adj.adjustType) || !(parseFloat(adj.quantity) > 0)) return;
+        note(resolveKey({ itemId: adj.itemId, name: adj.itemName }, catalogue), eventTime(adj));
+    });
+    return out;
+}
+
+/**
+ * Stock keys of items that have ever had stock (see firstStockTimes). Items with
+ * stock on hand or a cost in `stock` count too: their purchase may be older
+ * than the history loaded on this device.
+ * @param {{purchases?: Array, stockAdjustments?: Array}} sources
+ * @param {Array<Object>} [items]
+ * @param {Object} [stock] AppState.stock
+ * @returns {Set<string>}
+ */
+export function stockedItemKeys(sources, items = [], stock = {}) {
+    const keys = new Set(firstStockTimes(sources, items).keys());
+    Object.entries(stock || {}).forEach(([key, s]) => {
+        if ((Number(s?.quantity) || 0) > 0 || (Number(s?.rate) || 0) > 0) keys.add(key);
+    });
+    return keys;
+}
+/**
+ * Low-stock alert rows: catalogue items whose stock has been set at some
+ * point and is now below `threshold` kg, named in the app language. Stock
+ * buckets that match no catalogue item are left out (no raw ids on screen).
+ * @param {Object} stock AppState.stock ({ [key]: { quantity } })
+ * @param {Array<Object>} items catalogue
+ * @param {Set<string>} stocked from stockedItemKeys()
+ * @param {{lang?: string, threshold?: number}} [opts]
+ * @returns {Array<{key: string, name: string, quantity: number}>} lowest first
+ */
+export function lowStockItems(stock, items, stocked, { lang = 'en', threshold = 10 } = {}) {
+    const catalogue = Array.isArray(items) ? items : [];
+    const out = [];
+    Object.entries(stock || {}).forEach(([key, data]) => {
+        const item = catalogue.find(i => i.id === key)
+            || catalogue.find(i => normalize(i.name) === normalize(key) || normalize(i.hindiName) === normalize(key));
+        if (!item) return;
+        const q = Number(data?.quantity) || 0;
+        if (q >= threshold || !(stocked.has(item.id) || stocked.has(key))) return;
+        out.push({ key: item.id, name: (lang === 'hi' && item.hindiName) ? item.hindiName : item.name, quantity: q });
+    });
+    return out.sort((a, b) => a.quantity - b.quantity || a.name.localeCompare(b.name));
 }
