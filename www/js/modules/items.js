@@ -319,7 +319,8 @@ const ItemsManager = {
             lastChangeAt: this.lastChangeAt
         });
         entries.forEach(e => { this.lastChangeAt[`${e.itemId}:${e.field}`] = at; });
-        FirebaseService.addRateHistoryEntries(entries.map((data, i) => ({ id: historyDocId(item.id, at, i), data })))
+        Promise.resolve()
+            .then(() => FirebaseService.addRateHistoryEntries(entries.map((data, i) => ({ id: historyDocId(item.id, at, i), data }))))
             .catch(e => console.warn('Rate history not saved:', e));
     },
 

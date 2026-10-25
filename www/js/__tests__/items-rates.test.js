@@ -74,6 +74,7 @@ describe('rate history', () => {
 
         const input = { files: [{ arrayBuffer: async () => new ArrayBuffer(0) }], value: 'x' };
         await ItemsManager.importFromExcel({ target: input });
+        await new Promise(r => setTimeout(r, 0));
 
         expect(add).toHaveBeenCalledTimes(1);
         const [entries] = add.mock.calls[0];
@@ -88,10 +89,12 @@ describe('rate history', () => {
         jest.spyOn(FirebaseService, 'saveItem').mockResolvedValue(undefined);
         const add = jest.spyOn(FirebaseService, 'addRateHistoryEntries').mockResolvedValue(undefined);
         await ItemsManager.deleteRate('i1', 0);
+        await new Promise(r => setTimeout(r, 0));
         expect(add.mock.calls[0][0][0].data).toMatchObject({ field: 'purchase', old: 10, new: null, index: 0, source: 'inline' });
 
         ItemsManager.pendingOldValues = { k: 30 };
         ItemsManager.recordInlineChange('k', AppState.items[0], 'retail', 32, 0);
+        await new Promise(r => setTimeout(r, 0));
         expect(add.mock.calls[1][0][0].data).toMatchObject({ field: 'retail', old: 30, new: 32, index: 0 });
     });
 });
