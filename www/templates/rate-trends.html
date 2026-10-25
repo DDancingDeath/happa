@@ -1,82 +1,131 @@
 <div id="rate-trends" class="tab">
     <div class="rt-page">
-        <h2 class="rt-title">📈 Rate trends / रेट का रुझान</h2>
-        <div id="rtDenied" class="rt-empty" style="display: none;">Only the owner or a manager can see this page. / यह पेज सिर्फ़ मालिक या मैनेजर देख सकते हैं।</div>
+        <h2 class="rt-title" data-i18n="ui.trends.title">📈 Rate trends</h2>
+        <div id="rtDenied" class="rt-empty" style="display: none;" data-i18n="ui.trends.denied">Only the owner or a manager can see this page.</div>
         <div id="rtBody">
-            <div class="card rt-card" id="rtStatus"></div>
-
-            <div class="card rt-card">
-                <div class="rt-controls">
-                    <label>Item / आइटम
-                        <select id="rtItem" onchange="window.app.rateTrends.selectItem(this.value)"></select>
-                    </label>
-                    <label>Months / महीने
-                        <select id="rtRange" onchange="window.app.rateTrends.setRange(this.value)">
-                            <option value="12">Last 12 / पिछले 12</option>
-                            <option value="24" selected>Last 24 / पिछले 24</option>
-                            <option value="36">Last 36 / पिछले 36</option>
-                            <option value="all">All / सभी</option>
-                        </select>
-                    </label>
-                    <label>Show / दिखाएँ
-                        <select id="rtView" onchange="window.app.rateTrends.setView(this.value)">
-                            <option value="chart">Chart / चार्ट</option>
-                            <option value="table">Table / टेबल</option>
-                        </select>
-                    </label>
-                </div>
+            <div class="rt-tabs" role="tablist">
+                <button type="button" id="rtTabRates" class="rt-tab active" role="tab" onclick="window.app.rateTrends.setSection('rates')" data-i18n="ui.trends.tab_rates">📈 Rates</button>
+                <button type="button" id="rtTabTraffic" class="rt-tab" role="tab" onclick="window.app.rateTrends.setSection('traffic')" data-i18n="ui.trends.tab_traffic">📦 Product traffic</button>
             </div>
 
-            <div class="card rt-card" id="rtOutlookCard">
-                <div class="rt-card-head">
-                    <h3>🔮 Next weeks (estimate) / आने वाले हफ़्ते (अनुमान)</h3>
-                    <select id="rtWeeks" onchange="window.app.rateTrends.setWeeks(this.value)" aria-label="Weeks / हफ़्ते">
-                        <option value="4">4 weeks / हफ़्ते</option>
-                        <option value="6" selected>6 weeks / हफ़्ते</option>
-                        <option value="8">8 weeks / हफ़्ते</option>
-                    </select>
-                </div>
-                <div id="rtOutlook"></div>
-                <div class="rt-muted">Estimate from your own past bills — not a guarantee. / आपके अपने पुराने बिलों से अनुमान — पक्का नहीं।</div>
-            </div>
+            <div id="rtRatesSection">
+                <div class="card rt-card" id="rtStatus"></div>
 
-            <div id="rtChartView">
                 <div class="card rt-card">
-                    <h3>Average rate per kg by month / हर महीने का औसत रेट (₹/kg)</h3>
-                    <div class="rt-chart-wrap"><canvas id="rtRateChart"></canvas></div>
-                    <div class="rt-legend">
-                        <span><i style="background:#2563eb"></i>Purchase / खरीद</span>
-                        <span><i style="background:#059669"></i>Retail / खुदरा</span>
-                        <span><i style="background:#d97706"></i>Wholesale / थोक</span>
+                    <div class="rt-controls">
+                        <label><span data-i18n="ui.trends.item">Item</span>
+                            <select id="rtItem" onchange="window.app.rateTrends.selectItem(this.value)"></select>
+                        </label>
+                        <label><span data-i18n="ui.trends.months">Months</span>
+                            <select id="rtRange" onchange="window.app.rateTrends.setRange(this.value)">
+                                <option value="12" data-i18n="ui.trends.last_12">Last 12</option>
+                                <option value="24" selected data-i18n="ui.trends.last_24">Last 24</option>
+                                <option value="36" data-i18n="ui.trends.last_36">Last 36</option>
+                                <option value="all" data-i18n="ui.trends.all">All</option>
+                            </select>
+                        </label>
+                        <label><span data-i18n="ui.trends.period">Weekly / monthly</span>
+                            <select id="rtPeriod" onchange="window.app.rateTrends.setPeriod(this.value)">
+                                <option value="week" selected data-i18n="ui.trends.weekly">Weekly</option>
+                                <option value="month" data-i18n="ui.trends.monthly">Monthly</option>
+                            </select>
+                        </label>
+                        <label><span data-i18n="ui.trends.show">Show</span>
+                            <select id="rtView" onchange="window.app.rateTrends.setView(this.value)">
+                                <option value="chart" data-i18n="ui.trends.chart">Chart</option>
+                                <option value="table" data-i18n="ui.trends.table">Table</option>
+                            </select>
+                        </label>
                     </div>
-                    <h3 class="rt-sub">Kg per month / हर महीने कितने kg</h3>
-                    <div class="rt-chart-wrap"><canvas id="rtVolumeChart"></canvas></div>
-                    <div class="rt-legend">
-                        <span><i style="background:#93c5fd"></i>Bought / खरीदा</span>
-                        <span><i style="background:#6ee7b7"></i>Sold / बेचा</span>
+                    <div id="rtSourceNote" class="rt-muted"></div>
+                </div>
+
+                <div class="card rt-card" id="rtOutlookCard">
+                    <div class="rt-card-head">
+                        <h3 data-i18n="ui.trends.next_weeks">🔮 Next weeks (estimate)</h3>
+                        <select id="rtWeeks" onchange="window.app.rateTrends.setWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks">
+                            <option value="4" data-i18n="ui.trends.weeks_4">4 weeks</option>
+                            <option value="6" selected data-i18n="ui.trends.weeks_6">6 weeks</option>
+                            <option value="8" data-i18n="ui.trends.weeks_8">8 weeks</option>
+                        </select>
+                    </div>
+                    <div id="rtOutlook"></div>
+                    <div class="rt-muted" data-i18n="ui.trends.estimate_note">Estimate from your own past bills and Items-page rates — not a guarantee.</div>
+                </div>
+
+                <div id="rtChartView">
+                    <div class="card rt-card">
+                        <h3 data-i18n="ui.trends.avg_rate_title">Average rate per kg (₹/kg)</h3>
+                        <div class="rt-chart-wrap"><canvas id="rtRateChart"></canvas></div>
+                        <div class="rt-legend">
+                            <span><i style="background:#2563eb"></i><span data-i18n="ui.trends.purchase">Purchase</span></span>
+                            <span><i style="background:#059669"></i><span data-i18n="ui.trends.retail">Retail</span></span>
+                            <span><i style="background:#d97706"></i><span data-i18n="ui.trends.wholesale">Wholesale</span></span>
+                        </div>
+                        <div class="rt-legend">
+                            <span><b class="rt-line rt-line-solid"></b><span data-i18n="ui.trends.legend_items">Items page rate</span></span>
+                            <span><b class="rt-line rt-line-dashed"></b><span data-i18n="ui.trends.legend_bills">Estimated from bills</span></span>
+                        </div>
+                        <h3 class="rt-sub" data-i18n="ui.trends.kg_title">Kg bought and sold (from bills)</h3>
+                        <div class="rt-chart-wrap"><canvas id="rtVolumeChart"></canvas></div>
+                        <div class="rt-legend">
+                            <span><i style="background:#93c5fd"></i><span data-i18n="ui.trends.bought">Bought</span></span>
+                            <span><i style="background:#6ee7b7"></i><span data-i18n="ui.trends.sold">Sold</span></span>
+                        </div>
+                    </div>
+
+                    <div class="card rt-card">
+                        <div class="rt-card-head">
+                            <h3 data-i18n="ui.trends.same_months">Same months in earlier years (from bills)</h3>
+                            <select id="rtCompareKind" onchange="window.app.rateTrends.setCompareKind(this.value)" aria-label="Rate" data-i18n-aria-label="ui.trends.rate">
+                                <option value="purchase" data-i18n="ui.trends.purchase">Purchase</option>
+                                <option value="sale" data-i18n="ui.trends.sale">Sale</option>
+                            </select>
+                        </div>
+                        <div class="rt-chart-wrap"><canvas id="rtYearChart"></canvas></div>
+                        <div class="rt-legend" id="rtYearLegend"></div>
                     </div>
                 </div>
 
+                <div id="rtTableView" style="display: none;">
+                    <div class="card rt-card">
+                        <div class="rt-table-wrap" id="rtTable"></div>
+                    </div>
+                    <div class="card rt-card">
+                        <h3 data-i18n="ui.trends.items_changes">Rate changes on the Items page</h3>
+                        <div class="rt-table-wrap" id="rtSteps"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="rtTrafficSection" style="display: none;">
+                <div class="card rt-card">
+                    <div class="rt-controls">
+                        <label><span data-i18n="ui.trends.month">Month</span>
+                            <select id="rtTrafficMonth" onchange="window.app.rateTrends.setTrafficMonth(this.value)"></select>
+                        </label>
+                    </div>
+                    <h3 class="rt-sub" data-i18n="ui.trends.traffic_title">Items moved in the month</h3>
+                    <div class="rt-table-wrap" id="rtTrafficTable"></div>
+                    <div class="rt-muted" data-i18n="ui.trends.traffic_note">From bills: kg = purchase + wholesale + retail kg; amount = kg × bill rate. Tap an item for day-by-day detail.</div>
+                </div>
+                <div class="card rt-card">
+                    <h3 data-i18n="ui.trends.within_month">Day by day in the month</h3>
+                    <div class="rt-controls">
+                        <label><span data-i18n="ui.trends.item">Item</span>
+                            <select id="rtTrafficItem" onchange="window.app.rateTrends.setTrafficItem(this.value)"></select>
+                        </label>
+                    </div>
+                    <div class="rt-table-wrap" id="rtDaily"></div>
+                </div>
                 <div class="card rt-card">
                     <div class="rt-card-head">
-                        <h3>Same months in earlier years / पिछले सालों के यही महीने</h3>
-                        <select id="rtCompareKind" onchange="window.app.rateTrends.setCompareKind(this.value)" aria-label="Rate / रेट">
-                            <option value="purchase">Purchase / खरीद</option>
-                            <option value="sale">Sale / बिक्री</option>
-                        </select>
+                        <h3 data-i18n="ui.trends.weekly_title">Week by week</h3>
+                        <select id="rtTrafficWeeks" onchange="window.app.rateTrends.setTrafficWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks"></select>
                     </div>
-                    <div class="rt-chart-wrap"><canvas id="rtYearChart"></canvas></div>
-                    <div class="rt-legend" id="rtYearLegend"></div>
+                    <div class="rt-table-wrap" id="rtWeekly"></div>
+                    <div class="rt-muted" data-i18n="ui.trends.weekly_note">Weeks run Monday to Sunday. Each cell: kg (number of bills).</div>
                 </div>
-            </div>
-
-            <div id="rtTableView" class="card rt-card" style="display: none;">
-                <div class="rt-table-wrap" id="rtTable"></div>
-            </div>
-
-            <div class="card rt-card" id="rtDefaultRatesCard" style="display: none;">
-                <h3>Default rate changes / तय रेट में बदलाव</h3>
-                <div id="rtDefaultRates"></div>
             </div>
         </div>
     </div>

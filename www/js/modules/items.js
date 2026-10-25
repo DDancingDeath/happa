@@ -15,7 +15,7 @@ import { findItemById, findDuplicateItem, duplicateItemMessage, itemUsageFrequen
 import { todayLocalISO, formatDateTimeIN } from '../utils/dates.js';
 import {
     snapshotItem, diffItemSnapshots, changeWarnings, buildHistoryEntries, historyDocId,
-    formatHistoryValue, FIELD_LABELS, RATE_SANITY_FACTOR, RATE_FIELDS
+    formatHistoryValue, fieldLabel, RATE_SANITY_FACTOR, RATE_FIELDS
 } from '../utils/rate-history.js';
 import { createRateEditTracker, diffItemRates, diffItemFields } from '../utils/notification-format.js';
 import { canDeleteItem, ITEM_DELETE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
@@ -285,12 +285,12 @@ const ItemsManager = {
      * value before the typing burst to the saved value.
      * @private
      */
-    recordInlineChange(key, item, field, newValue) {
+    recordInlineChange(key, item, field, newValue, index) {
         const oldValue = this.pendingOldValues[key];
         delete this.pendingOldValues[key];
         const norm = (v) => (v === '' || v === undefined || v === 0 ? null : v);
         if (norm(oldValue) === norm(newValue)) return;
-        this.recordHistory(item, [{ field, old: norm(oldValue), new: norm(newValue) }], 'inline');
+        this.recordHistory(item, [{ field, old: norm(oldValue), new: norm(newValue), index }], 'inline');
     },
 
     /** Only owner/manager may write (and read) the history (firestore.rules). */
@@ -303,8 +303,8 @@ const ItemsManager = {
      * like the audit log: the item is already saved, a failed history write
      * is only logged.
      * @param {Object} item saved item (with id)
-     * @param {Array<{field: string, old: *, new: *}>} changes
-     * @param {string} source 'modal' | 'inline'
+     * @param {Array<{field: string, old: *, new: *, index?: number}>} changes
+     * @param {string} source 'modal' | 'inline' | 'import'
      */
     recordHistory(item, changes, source) {
         if (!item?.id || !changes || changes.length === 0 || !this.canUseHistory()) return;
@@ -319,7 +319,8 @@ const ItemsManager = {
             lastChangeAt: this.lastChangeAt
         });
         entries.forEach(e => { this.lastChangeAt[`${e.itemId}:${e.field}`] = at; });
-        FirebaseService.addRateHistoryEntries(entries.map((data, i) => ({ id: historyDocId(item.id, at, i), data })))
+        Promise.resolve()
+            .then(() => FirebaseService.addRateHistoryEntries(entries.map((data, i) => ({ id: historyDocId(item.id, at, i), data }))))
             .catch(e => console.warn('Rate history not saved:', e));
     },
 
@@ -365,7 +366,7 @@ const ItemsManager = {
         const newRate = Number(value);
         item[field][rateIndex] = newRate;
         const historyField = kind === 'sale' ? 'retail' : kind;
-        this.scheduleSave(key, id, (saved) => this.recordInlineChange(key, saved, historyField, newRate));
+        this.scheduleSave(key, id, (saved) => this.recordInlineChange(key, saved, historyField, newRate, rateIndex));
     },
 
     /**
@@ -389,7 +390,7 @@ const ItemsManager = {
         const saved = await this._saveItemRates(item, () => item[field].splice(rateIndex, 0, removed));
         const historyField = Object.keys(RATE_FIELDS).find(k => RATE_FIELDS[k] === field);
         if (saved && Number(removed) > 0 && historyField) {
-            this.recordHistory(item, [{ field: historyField, old: Number(removed), new: null }], 'inline');
+            this.recordHistory(item, [{ field: historyField, old: Number(removed), new: null, index: rateIndex }], 'inline');
         }
     },
 
@@ -553,7 +554,11 @@ const ItemsManager = {
             const added = await FirebaseService.importItems(plan.updates, plan.adds);
             plan.updates.forEach(u => {
                 const idx = AppState.items.findIndex(i => i.id === u.id);
-                if (idx !== -1) AppState.items[idx] = { ...AppState.items[idx], ...u.fields };
+                if (idx === -1) return;
+                const before = AppState.items[idx];
+                const after = { ...before, ...u.fields };
+                AppState.items[idx] = after;
+                this.recordHistory(after, diffItemSnapshots(snapshotItem(before), snapshotItem(after)), 'import');
             });
             added.forEach(item => {
                 if (!AppState.items.some(i => i.id === item.id)) AppState.items.push(item);
@@ -770,7 +775,7 @@ const ItemsManager = {
         const id = this.currentEditingItemId;
         const list = document.getElementById('itemModalHistoryList');
         if (!id || !list || !this.canUseHistory()) return;
-        list.innerHTML = '<p style="color:#888; font-size:13px;">Loading… / लोड हो रहा है…</p>';
+        list.innerHTML = `<p style="color:#888; font-size:13px;">${Helpers.escapeHtml(t('ui.rate_history.loading'))}</p>`;
         try {
             const entries = await FirebaseService.loadRateHistory(id);
             if (this.currentEditingItemId !== id) return;
@@ -779,7 +784,7 @@ const ItemsManager = {
             list.innerHTML = this.historyListHtml(entries);
         } catch (error) {
             console.error('Error loading rate history:', error);
-            list.innerHTML = '<p style="color:#b91c1c; font-size:13px;">Could not load history - check internet · इतिहास लोड नहीं हुआ</p>';
+            list.innerHTML = `<p style="color:#b91c1c; font-size:13px;">${Helpers.escapeHtml(t('ui.rate_history.load_failed'))}</p>`;
         }
     },
 
@@ -791,17 +796,17 @@ const ItemsManager = {
     historyListHtml(entries) {
         const e = (v) => Helpers.escapeHtml(v);
         if (!entries || entries.length === 0) {
-            return '<p style="color:#888; font-size:13px;">No changes recorded yet / अभी कोई बदलाव दर्ज नहीं</p>';
+            return `<p style="color:#888; font-size:13px;">${e(t('ui.rate_history.no_changes'))}</p>`;
         }
         return entries.map(h => {
             const flags = Array.isArray(h.flags) ? h.flags : [];
             const flagText = [
-                flags.includes('out-of-band') ? `⚠ more than ${RATE_SANITY_FACTOR}× change` : '',
-                flags.includes('quick-repeat') ? '⚠ changed twice within 60 s' : ''
+                flags.includes('out-of-band') ? t('ui.rate_history.flag_big', { factor: RATE_SANITY_FACTOR }) : '',
+                flags.includes('quick-repeat') ? t('ui.rate_history.flag_repeat') : ''
             ].filter(Boolean).join(' · ');
             return `
                 <div class="rate-history-row" style="padding:8px 0; border-bottom:1px solid #f1f1f1; font-size:13px;">
-                    <div><strong>${e(FIELD_LABELS[h.field] || h.field)}</strong>: ${e(formatHistoryValue(h.field, h.old))} → ${e(formatHistoryValue(h.field, h.new))}</div>
+                    <div><strong>${e(fieldLabel(h.field))}</strong>: ${e(formatHistoryValue(h.field, h.old))} → ${e(formatHistoryValue(h.field, h.new))}</div>
                     <div style="color:#666;">${e(formatDateTimeIN(h.at))}${h.by ? ` • ${e(h.by)}` : ''}</div>
                     ${flagText ? `<div style="color:#b45309;">${e(flagText)}</div>` : ''}
                 </div>`;
@@ -821,14 +826,14 @@ const ItemsManager = {
         const e = (v) => Helpers.escapeHtml(v);
         const parts = [];
         if (rename.length) {
-            parts.push(`<p><strong>Rename / नाम बदलना</strong></p><ul style="margin:4px 0 8px 16px">${rename.map(c =>
+            parts.push(`<p><strong>${e(t('ui.rate_history.rename'))}</strong></p><ul style="margin:4px 0 8px 16px">${rename.map(c =>
                 `<li>${e(c.old)} → ${e(c.new || '—')}</li>`).join('')}</ul>
-                <p style="font-size:13px; color:#555">Old bills keep the old name. Stock stays with this item.<br>पुराने बिलों में पुराना नाम ही रहेगा। स्टॉक इसी आइटम में रहेगा।</p>`);
+                <p style="font-size:13px; color:#555">${e(t('ui.rate_history.rename_note'))}</p>`);
         }
         if (outOfBand.length) {
-            parts.push(`<p><strong>Big rate change / रेट में बड़ा बदलाव</strong> (more than ${RATE_SANITY_FACTOR}×)</p><ul style="margin:4px 0 8px 16px">${outOfBand.map(c =>
-                `<li>${e(FIELD_LABELS[c.field])}: ₹${e(c.old)} → ₹${e(c.new)}</li>`).join('')}</ul>
-                <p style="font-size:13px; color:#555">Please check the rate is correct. / कृपया रेट जाँच लें।</p>`);
+            parts.push(`<p><strong>${e(t('ui.rate_history.big_change', { factor: RATE_SANITY_FACTOR }))}</strong></p><ul style="margin:4px 0 8px 16px">${outOfBand.map(c =>
+                `<li>${e(fieldLabel(c.field))}: ₹${e(c.old)} → ₹${e(c.new)}</li>`).join('')}</ul>
+                <p style="font-size:13px; color:#555">${e(t('ui.rate_history.check_rate'))}</p>`);
         }
         return UIManager.showModalWithHtml(`<div style="text-align:left">${parts.join('')}</div>`, t('msg.items.confirm_changes'), true);
     },

@@ -369,3 +369,105 @@ export function drawer(data, session) {
         - c.C2_cashPurchases - c.C5_duePaid - c.C3_businessExpenses - c.C3_personalExpenses);
     return c;
 }
+
+// ---------------------------------------------------------------- rate trends (RT*, PT*) — #65
+
+const norm = (s) => String(s ?? '').trim().toLowerCase();
+const pad = (x) => String(x).padStart(2, '0');
+const localDay = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+
+/** RT-WEEK: Monday (local IST date) of the week containing `ms`. */
+export function weekOf(ms) {
+    const d = new Date(ms);
+    const monday = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+    return localDay(monday.getTime());
+}
+
+/** RT-MONTH. */
+export const monthOf = (ms) => localDay(ms).slice(0, 7);
+
+/** RT-LINE: catalogue item of a line, its kg and rate, or null when the line isn't used. */
+function usedLine(line, items) {
+    if (!line) return null;
+    const kg = has(line.qty) ? n(line.qty) : n(line.quantity);
+    if (!(kg > 0)) return null;
+    const rate = n(line.rate) > 0 ? n(line.rate) : n(line.total) / kg;
+    if (!(rate > 0)) return null;
+    let item = items.find(i => i.id === line.itemId);
+    if (!item) item = items.find(i => norm(i.name) === norm(line.name) || (i.hindiName && norm(i.hindiName) === norm(line.name)));
+    return item ? { itemId: item.id, kg, rate } : null;
+}
+
+/**
+ * RT1 / RT4 / PT1 per item and period: { [itemId]: { [period]: { [kind]: { kg, amount, avg, bills } } } }.
+ * @param {{purchase?: Array, retail?: Array, wholesale?: Array}} sources
+ * @param {(ms: number) => string} periodOf weekOf or monthOf
+ */
+export function rateBuckets(sources, items, periodOf) {
+    const out = {};
+    for (const kind of ['purchase', 'retail', 'wholesale']) {
+        for (const bill of sources[kind] || []) {
+            if (bill.deleted) continue;
+            const t = eventTimeOf(bill);
+            if (!Number.isFinite(t)) continue;
+            const p = periodOf(t);
+            const counted = new Set();
+            for (const line of bill.items || []) {
+                const u = usedLine(line, items);
+                if (!u) continue;
+                const s = (((out[u.itemId] ||= {})[p] ||= {})[kind] ||= { kg: 0, amount: 0, bills: 0 });
+                s.kg += u.kg;
+                s.amount += u.kg * u.rate;
+                if (!counted.has(u.itemId)) { counted.add(u.itemId); s.bills += 1; }
+            }
+        }
+    }
+    for (const byP of Object.values(out)) {
+        for (const byK of Object.values(byP)) {
+            for (const s of Object.values(byK)) { s.avg = r2(s.amount / s.kg); s.kg = r2(s.kg); s.amount = r2(s.amount); }
+        }
+    }
+    return out;
+}
+
+/**
+ * RT2 for an item whose list only ever held one rate: changes [{at, old, new}].
+ * Average of the day rates (rate in effect at the end of each local day) per period,
+ * from the day of `fromMs` to the day of `toMs`.
+ */
+export function itemsPageRate(changes, current, fromMs, toMs, periodOf) {
+    const sorted = [...changes].sort((a, b) => a.at - b.at);
+    const rateAt = (ms) => {
+        const before = sorted.filter(c => c.at < ms);
+        if (before.length) return before[before.length - 1].new;
+        return sorted.length ? sorted[0].old : current;
+    };
+    const sums = {};
+    const first = new Date(fromMs);
+    for (let d = new Date(first.getFullYear(), first.getMonth(), first.getDate()); d.getTime() <= toMs; d.setDate(d.getDate() + 1)) {
+        const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+        const p = periodOf(d.getTime());
+        (sums[p] ||= []).push(rateAt(end));
+    }
+    const out = {};
+    for (const [p, list] of Object.entries(sums)) out[p] = r2(list.reduce((a, b) => a + b, 0) / list.length);
+    return out;
+}
+
+/** PT3: kg and bills per type per local day of one item in a month ('YYYY-MM'). */
+export function dailyKg(sources, items, itemId, month) {
+    const out = {};
+    for (const kind of ['purchase', 'retail', 'wholesale']) {
+        for (const bill of sources[kind] || []) {
+            if (bill.deleted) continue;
+            const t = eventTimeOf(bill);
+            if (!Number.isFinite(t) || monthOf(t) !== month) continue;
+            const kg = (bill.items || []).map(l => usedLine(l, items)).filter(u => u && u.itemId === itemId).reduce((a, u) => a + u.kg, 0);
+            if (!(kg > 0)) continue;
+            const s = ((out[localDay(t)] ||= {})[kind] ||= { kg: 0, bills: 0 });
+            s.kg = r2(s.kg + kg);
+            s.bills += 1;
+        }
+    }
+    return out;
+}

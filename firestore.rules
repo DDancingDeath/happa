@@ -461,16 +461,19 @@ service cloud.firestore {
 
     // --- item rate/name history (rateHistory, #82 / #65 phase 1) ---
     // Append-only: owner/manager create entries for their own uid; nobody
-    // updates or deletes them.
+    // updates or deletes them. `index` = position in the rate list (#65);
+    // `source` = where the change was made (Items page row, edit dialog, Excel import).
     function validRateHistoryEntry(usersCol) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
-        && d.keys().hasOnly(['itemId', 'itemName', 'field', 'old', 'new', 'by', 'byUserId', 'at', 'source', 'flags'])
+        && d.keys().hasOnly(['itemId', 'itemName', 'field', 'old', 'new', 'by', 'byUserId', 'at', 'source', 'flags', 'index'])
         && d.keys().hasAll(['itemId', 'field', 'byUserId', 'at'])
         && d.itemId is string && d.itemId.size() > 0
         && d.field in ['purchase', 'wholesale', 'retail', 'name', 'hindiName']
         && d.byUserId == request.auth.uid
-        && d.at is number;
+        && d.at is number
+        && (!('source' in d) || d.source in ['modal', 'inline', 'import'])
+        && (!('index' in d) || (d.index is int && d.index >= 0 && d.index <= 20));
     }
 
     // --- user profile rules (shared by users and dev_users) ---
@@ -633,27 +636,23 @@ service cloud.firestore {
       allow delete: if isOwnerIn('dev_users');
     }
 
-    // --- rate trends (#65): monthly per-item rate stats + backfill status ---
-    // rateStats/{itemId}_{YYYY-MM} and rateStats/_meta; owner/manager only.
-    function validRateSection(s) {
-      return s is map
-        && s.keys().hasOnly(['kg', 'amount', 'min', 'max', 'avg', 'bills'])
-        && s.kg is number && s.amount is number && s.avg is number && s.bills is int;
-    }
-
+    // --- rate trends (#65): per-item-year rate stats + backfill status ---
+    // rateStats/{itemId}_{YYYY} holds weekly (weeks: {'wYYYY-MM-DD': bucket})
+    // and monthly (months: {'mYYYY-MM': bucket}) buckets of one item and year;
+    // rateStats/_meta is the backfill status. Owner/manager only. Bucket maps
+    // are size-capped (rules can't check every bucket; the app writes them).
     function validRateStats(usersCol, docId) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
         && (docId == '_meta'
           ? d.keys().hasOnly(['backfillDone', 'backfillAt', 'bills', 'reads', 'months', 'by', 'byUserId', 'startedAt'])
-          : d.keys().hasOnly(['itemId', 'month', 'purchase', 'retail', 'wholesale', 'bills', 'updatedAt'])
-            && d.keys().hasAll(['itemId', 'month'])
-            && d.itemId is string && d.month is string
-            && d.month.matches('^[0-9]{4}-[0-9]{2}$')
-            && docId == d.itemId + '_' + d.month
-            && (!('purchase' in d) || validRateSection(d.purchase))
-            && (!('retail' in d) || validRateSection(d.retail))
-            && (!('wholesale' in d) || validRateSection(d.wholesale)));
+          : d.keys().hasOnly(['itemId', 'year', 'weeks', 'months', 'updatedAt'])
+            && d.keys().hasAll(['itemId', 'year', 'weeks', 'months'])
+            && d.itemId is string && d.itemId.size() > 0
+            && d.year is string && d.year.matches('^[0-9]{4}$')
+            && docId == d.itemId + '_' + d.year
+            && d.weeks is map && d.weeks.size() <= 54
+            && d.months is map && d.months.size() <= 12);
     }
 
     match /rateStats/{docId} {

@@ -45,7 +45,7 @@ import { t, getLang, setLang, toggleLang, applyTranslations, LANG_CHANGE_EVENT }
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261025k-profit-36';
+const BUILD_ID = '20261025l-rate-trends';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -96,7 +96,8 @@ function refreshForLanguage(lang) {
         'cash-management': () => CashManagementManager.refreshForLanguage(),
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
-        finance: () => FinanceManager.renderDashboard()
+        finance: () => FinanceManager.renderDashboard(),
+        'rate-trends': () => RateTrendsManager.refreshForLanguage()
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
@@ -1110,12 +1111,17 @@ window.app = {
         init: () => RateTrendsManager.init(),
         selectItem: (id) => RateTrendsManager.selectItem(id),
         setRange: (v) => RateTrendsManager.setRange(v),
+        setPeriod: (v) => RateTrendsManager.setPeriod(v),
         setView: (v) => RateTrendsManager.setView(v),
         setWeeks: (v) => RateTrendsManager.setWeeks(v),
         setCompareKind: (v) => RateTrendsManager.setCompareKind(v),
         setBudget: (v) => RateTrendsManager.setBudget(v),
         startBackfill: () => RateTrendsManager.startBackfill(),
-        continueBackfill: () => RateTrendsManager.continueBackfill()
+        continueBackfill: () => RateTrendsManager.continueBackfill(),
+        setSection: (v) => RateTrendsManager.setSection(v),
+        setTrafficMonth: (v) => RateTrendsManager.setTrafficMonth(v),
+        setTrafficItem: (v) => RateTrendsManager.setTrafficItem(v),
+        setTrafficWeeks: (v) => RateTrendsManager.setTrafficWeeks(v)
     },
 
     // Day (Today's Summary + Cash Management)

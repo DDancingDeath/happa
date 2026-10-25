@@ -48,3 +48,15 @@
 
 .rt-history { margin: 0; padding-left: 18px; font-size: 13px; }
 .rt-history li { margin: 3px 0; }
+
+.rt-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.rt-tab { flex: 1; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; font-size: 14px; font-weight: 600; color: #374151; cursor: pointer; }
+.rt-tab.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid #374151; margin-right: 4px; vertical-align: middle; }
+.rt-line-dashed { border-top-style: dashed; }
+.rt-warn-inline { color: #92400e; }
+.rt-src { font-size: 11px; color: #6b7280; text-align: left !important; }
+.rt-click { cursor: pointer; }
+.rt-selected td { background: #eff6ff; }
+.rt-week td { background: #f9fafb; font-weight: 600; }
+.rt-total td { font-weight: 700; border-top: 2px solid #9ca3af; }
