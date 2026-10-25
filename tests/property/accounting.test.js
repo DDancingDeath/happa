@@ -140,6 +140,19 @@ test('AC1 closing stock per item: app quantity and value == oracle; AC8 no negat
     }), FC);
 });
 
+test('AC1 retail sales reduce stock like wholesale, lines matched by item id or name (decision #33)', () => {
+    fc.assert(fc.property(shopArb(), ({ shop: s }) => {
+        // Only 'add' corrections, so quantity = purchases + adds − sales with no clamping.
+        const src = { ...sources(s), stockAdjustments: s.stockAdjustments.filter(a => a.adjustType === 'add') };
+        const withRetail = computeStock(src, s.items);
+        const withoutRetail = computeStock({ ...src, retailSales: [] }, s.items);
+        const retailOnly = O.stockReplay({ items: s.items, retailSales: s.retailSales }).perItem;
+        const nameOnly = s.retailSales.some(b => b.items.some(l => !l.itemId));
+        return nameOnly && Object.keys(retailOnly).length > 0 && Object.entries(retailOnly).every(([k, v]) =>
+            v.qty < 0 && close(withRetail[k]?.quantity ?? 0, (withoutRetail[k]?.quantity ?? 0) + v.qty, 1e-6));
+    }), FC);
+});
+
 // AC2 / AC3 -------------------------------------------------------------------
 
 test('AC2 bill total = cash + online + due (+ written off), within ₹1, and matches what happened', () => {

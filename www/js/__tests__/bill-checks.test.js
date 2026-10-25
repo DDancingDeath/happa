@@ -154,7 +154,7 @@ describe('oversell', () => {
         expect(block).toMatchObject({ severity: 'block', overridable: true });
     });
 
-    test('retail only warns however big the shortfall (decision #33 open)', () => {
+    test('retail only warns however big the shortfall (retail reduces stock, #33; no block limit)', () => {
         expect(find(evaluateBill(sale(500), ctx()), 'oversell').severity).toBe('warn');
     });
 

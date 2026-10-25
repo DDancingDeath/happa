@@ -6,8 +6,8 @@
  *
  * The oracle shares no code with the app (no money.js / stock-replay.js /
  * dates.js). It encodes the app's current rules:
- *  - stock: purchases add, wholesale AND retail sales subtract (decision #33
- *    may change the retail rule), adjustments add / remove / set, in date order;
+ *  - stock: purchases add, wholesale AND retail sales subtract (owner decision
+ *    #33), adjustments add / remove / set, in date order;
  *  - a bill's due: 0 if `cleared`; else nested `payment.due` when present
  *    (canonical), else top-level `dueAmount`, else total − amount paid;
  *  - lines resolve to a catalogue item by itemId, else by trimmed,
