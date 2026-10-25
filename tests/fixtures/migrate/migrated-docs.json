@@ -1,0 +1,176 @@
+{
+  "note": "Generated from backup-synthetic.json by tools/migrate plan; migrate-plan.test.js keeps it in sync, rules-tests/test.js checks it against firestore.rules.",
+  "docs": [
+    {
+      "coll": "rateStats",
+      "id": "item-rice_2026",
+      "data": {
+        "itemId": "item-rice",
+        "year": "2026",
+        "weeks": {
+          "w2026-09-14": {
+            "bills": 1,
+            "purchase": {
+              "kg": 0,
+              "amount": 0,
+              "min": null,
+              "max": null,
+              "avg": 0,
+              "bills": 0
+            },
+            "retail": {
+              "kg": 0,
+              "amount": 0,
+              "min": null,
+              "max": null,
+              "avg": 0,
+              "bills": 0
+            },
+            "wholesale": {
+              "kg": 50,
+              "amount": 2000,
+              "min": 40,
+              "max": 40,
+              "avg": 40,
+              "bills": 1
+            }
+          },
+          "w2026-10-19": {
+            "bills": 3,
+            "purchase": {
+              "kg": 0,
+              "amount": 0,
+              "min": null,
+              "max": null,
+              "avg": 0,
+              "bills": 0
+            },
+            "retail": {
+              "kg": 13,
+              "amount": 650,
+              "min": 50,
+              "max": 50,
+              "avg": 50,
+              "bills": 2
+            },
+            "wholesale": {
+              "kg": 100,
+              "amount": 4200,
+              "min": 42,
+              "max": 42,
+              "avg": 42,
+              "bills": 1
+            }
+          }
+        },
+        "months": {
+          "m2026-09": {
+            "bills": 1,
+            "purchase": {
+              "kg": 0,
+              "amount": 0,
+              "min": null,
+              "max": null,
+              "avg": 0,
+              "bills": 0
+            },
+            "retail": {
+              "kg": 0,
+              "amount": 0,
+              "min": null,
+              "max": null,
+              "avg": 0,
+              "bills": 0
+            },
+            "wholesale": {
+              "kg": 50,
+              "amount": 2000,
+              "min": 40,
+              "max": 40,
+              "avg": 40,
+              "bills": 1
+            }
+          },
+          "m2026-10": {
+            "bills": 3,
+            "purchase": {
+              "kg": 0,
+              "amount": 0,
+              "min": null,
+              "max": null,
+              "avg": 0,
+              "bills": 0
+            },
+            "retail": {
+              "kg": 13,
+              "amount": 650,
+              "min": 50,
+              "max": 50,
+              "avg": 50,
+              "bills": 2
+            },
+            "wholesale": {
+              "kg": 100,
+              "amount": 4200,
+              "min": 42,
+              "max": 42,
+              "avg": 42,
+              "bills": 1
+            }
+          }
+        },
+        "updatedAt": 1792918800000
+      }
+    },
+    {
+      "coll": "rateStats",
+      "id": "_meta",
+      "data": {
+        "backfillDone": true,
+        "backfillAt": 1792917000000,
+        "bills": 12,
+        "reads": 0,
+        "months": 8,
+        "by": "migration",
+        "byUserId": ""
+      }
+    },
+    {
+      "coll": "retailSales",
+      "id": "opening-retail-r4",
+      "data": {
+        "billNumber": "S20261020-001",
+        "customerName": "Shyam",
+        "date": "2026-10-20",
+        "timestamp": 1792492200000,
+        "type": "retail",
+        "isPurchase": false,
+        "items": [],
+        "total": 0,
+        "cashPayment": 0,
+        "onlinePayment": 0,
+        "dueAmount": 300,
+        "payment": {
+          "cash": 0,
+          "online": 0,
+          "due": 300,
+          "total": 0
+        },
+        "openDue": true,
+        "cleared": false,
+        "clientVersion": 3,
+        "openingBalance": {
+          "migrated": true,
+          "kind": "receivable",
+          "billType": "retail",
+          "amount": 300,
+          "billTotal": 600,
+          "paidBefore": 300,
+          "asOf": 1792917000000,
+          "fromProject": "aadhat-management",
+          "sourceBillId": "r4"
+        }
+      }
+    }
+  ]
+}

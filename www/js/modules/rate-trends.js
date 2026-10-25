@@ -19,7 +19,7 @@ import { chartScaleMax } from './reports.js';
 import { RATE_FIELDS, fieldLabel } from '../utils/rate-history.js';
 import {
     DEFAULT_DAILY_READ_BUDGET, DIRECTION_KEYS, CONFIDENCE_KEYS, READ_BUDGET_OPTIONS,
-    addMonths, addWeeks, aggregateBills, backfillDays, estimateBackfillReads, explainOutlook, finalizeStats,
+    addMonths, addWeeks, aggregateBills, backfillDays, clampWindowToMigration, isCarriedHistory, estimateBackfillReads, explainOutlook, finalizeStats,
     istDayStartMs, istMonthKey, istMonthStartMs, istWeekStart, itemsByUsage, monthBuckets, monthLabel, monthSeries,
     newCursor, parseCursor, planRollForward, rollForwardWindow, runBackfillReads, seasonalOutlookCombined,
     trendRows, weekBuckets, yearOverlay
@@ -250,7 +250,10 @@ export const RateTrendsManager = {
                 ${isOwner() ? `<div class="rt-actions"><button class="btn btn-primary" onclick="window.app.rateTrends.continueBackfill()">${esc(t('ui.trends.continue'))}</button></div>${budgetSelect}` : ''}`;
         } else if (this.meta?.backfillDone) {
             const stop = this.lastStop ? `<div class="rt-warn">${esc(t(STOP_KEYS[this.lastStop]))}</div>` : '';
-            html = `${stop}<div class="rt-ok">${esc(t('ui.trends.built', { bills: num(this.meta.bills), date: dateText(this.meta.backfillAt) }))}</div>
+            // A history carried from the old app can't be rebuilt from this project's bills (#15).
+            html = isCarriedHistory(this.meta)
+                ? `${stop}<div class="rt-ok">${esc(t('ui.trends.carried', { bills: num(this.meta.bills), date: dateText(this.meta.backfillAt) }))}</div>`
+                : `${stop}<div class="rt-ok">${esc(t('ui.trends.built', { bills: num(this.meta.bills), date: dateText(this.meta.backfillAt) }))}</div>
                 ${isOwner() ? `<div class="rt-actions"><button class="btn btn-secondary" onclick="window.app.rateTrends.startBackfill()">${esc(t('ui.trends.rebuild'))}</button></div>` : ''}`;
         } else if (isOwner()) {
             const est = this.estimate;
@@ -290,6 +293,11 @@ export const RateTrendsManager = {
 
     async startBackfill() {
         if (!isOwner() || this.running) return;
+        if (isCarriedHistory(await this.loadMeta(true))) {
+            UIManager.showToast(t('ui.trends.carried_no_rebuild'));
+            this.renderStatus();
+            return;
+        }
         let est = null;
         try { est = await this.loadEstimate(); } catch (e) { console.warn('Rate trends: estimate failed:', e?.code || e); }
         const budget = readBudget();
@@ -415,7 +423,7 @@ export const RateTrendsManager = {
                 if (this.metaError !== 'offline') markDone();
                 return this.metaError || 'no-backfill';
             }
-            const win = rollForwardWindow(Number(AppState.historyLoadedFrom) || 0, Date.now());
+            const win = clampWindowToMigration(rollForwardWindow(Number(AppState.historyLoadedFrom) || 0, Date.now()), meta);
             const fromMs = Math.min(istMonthStartMs(win.fromMonth), istDayStartMs(win.fromWeek));
             const computed = finalizeStats(aggregateBills(loadedBills(), AppState.items || [], { fromMs }));
             let server;

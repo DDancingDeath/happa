@@ -330,6 +330,37 @@ export function planRollForward(computed, stored, { fromMonth, fromWeek, fromYea
 }
 
 // ---------------------------------------------------------------------------
+// History carried from the old project (#15)
+// ---------------------------------------------------------------------------
+
+/** `_meta.by` of a history carried from the old project (tools/migrate, #15); its `backfillAt` is the backup time. */
+export const MIGRATION_META_BY = 'migration';
+
+/** True when the stored history was carried from the old project (it can't be rebuilt from this project's bills). */
+export const isCarriedHistory = (meta) => meta?.by === MIGRATION_META_BY;
+
+/**
+ * A carried history holds the old app's bills up to the backup and this
+ * project only has the bills after it, so a roll-forward must leave every
+ * bucket that started before the backup as stored (otherwise it would be
+ * rebuilt from the new bills alone).
+ * @param {{fromMonth: string, fromWeek: string, fromYear: string}} win rollForwardWindow()
+ * @param {?Object} meta rateStats/_meta
+ * @returns {{fromMonth: string, fromWeek: string, fromYear: string}}
+ */
+export function clampWindowToMigration(win, meta) {
+    const at = Number(meta?.backfillAt);
+    if (!isCarriedHistory(meta) || !(at > 0)) return win;
+    let month = istMonthKey(at);
+    if (istMonthStartMs(month) < at) month = addMonths(month, 1);
+    let week = istWeekStart(at);
+    if (istDayStartMs(week) < at) week = addWeeks(week, 1);
+    const fromMonth = win.fromMonth > month ? win.fromMonth : month;
+    const fromWeek = win.fromWeek > week ? win.fromWeek : week;
+    return { fromMonth, fromWeek, fromYear: [fromMonth.slice(0, 4), fromWeek.slice(0, 4)].sort()[0] };
+}
+
+// ---------------------------------------------------------------------------
 // Backfill (owner-triggered, resumable)
 // ---------------------------------------------------------------------------
 

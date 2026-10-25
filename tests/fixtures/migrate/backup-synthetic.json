@@ -1,0 +1,580 @@
+{
+  "format": "aadhat-backup-v1",
+  "exportedAt": "2026-10-25T08:30:00.000Z",
+  "env": "prod",
+  "project": "aadhat-management",
+  "collections": {
+    "items": [
+      {
+        "id": "item-wheat",
+        "data": {
+          "name": "Wheat",
+          "hindiName": "गेहूं",
+          "rates": [
+            30,
+            28
+          ],
+          "saleRates": [
+            32
+          ],
+          "createdAt": {
+            "__type": "timestamp",
+            "iso": "2025-01-02T04:30:00.000Z",
+            "millis": 1735792200000,
+            "seconds": 1735792200,
+            "nanoseconds": 0
+          }
+        }
+      },
+      {
+        "id": "item-rice",
+        "data": {
+          "name": "Rice",
+          "hindiName": "चावल",
+          "rates": [
+            40
+          ],
+          "createdAt": {
+            "__type": "timestamp",
+            "iso": "2025-01-02T04:30:00.000Z",
+            "millis": 1735792200000,
+            "seconds": 1735792200,
+            "nanoseconds": 0
+          }
+        }
+      },
+      {
+        "id": "item-chana",
+        "data": {
+          "name": "Chana",
+          "hindiName": "चना",
+          "rates": [
+            50
+          ]
+        }
+      }
+    ],
+    "users": [
+      {
+        "id": "uid-owner",
+        "data": {
+          "name": "Owner",
+          "email": "owner@example.test",
+          "role": "owner",
+          "status": "approved",
+          "createdAt": {
+            "__type": "timestamp",
+            "iso": "2025-01-01T03:30:00.000Z",
+            "millis": 1735702200000,
+            "seconds": 1735702200,
+            "nanoseconds": 0
+          }
+        }
+      },
+      {
+        "id": "uid-member",
+        "data": {
+          "name": "Member",
+          "email": "member@example.test",
+          "role": "manager",
+          "status": "approved"
+        }
+      }
+    ],
+    "retailSales": [
+      {
+        "id": "r1",
+        "data": {
+          "billNumber": "S20260815-001",
+          "type": "retail",
+          "date": "2026-08-15",
+          "timestamp": 1786768200000,
+          "customerName": "रामू",
+          "customerPhone": "9876500001",
+          "items": [
+            {
+              "itemId": "item-wheat",
+              "name": "Wheat",
+              "qty": 10,
+              "rate": 30,
+              "total": 300
+            }
+          ],
+          "total": 300,
+          "cashPayment": 100,
+          "onlinePayment": 0,
+          "dueAmount": 200,
+          "payment": {
+            "cash": 100,
+            "online": 0,
+            "due": 200,
+            "total": 300
+          },
+          "createdAt": {
+            "__type": "timestamp",
+            "iso": "2026-08-15T04:30:00.000Z",
+            "millis": 1786768200000,
+            "seconds": 1786768200,
+            "nanoseconds": 0
+          }
+        }
+      },
+      {
+        "id": "r2",
+        "data": {
+          "billNumber": "S-OLD-7",
+          "date": "05/07/2026, 11:30:00 am",
+          "customerName": " रामू  ",
+          "items": [
+            {
+              "name": "गेहूं",
+              "qty": 5,
+              "rate": 28
+            }
+          ],
+          "total": 140,
+          "dueAmount": 140
+        }
+      },
+      {
+        "id": "r3",
+        "data": {
+          "billNumber": "S20260901-002",
+          "type": "retail",
+          "date": "2026-09-01",
+          "timestamp": 1788240600000,
+          "customerName": "Shyam",
+          "items": [
+            {
+              "itemId": "item-chana",
+              "name": "Chana",
+              "qty": 10,
+              "rate": 50,
+              "total": 500
+            }
+          ],
+          "total": 500,
+          "payment": {
+            "cash": 200,
+            "online": 100,
+            "due": 0,
+            "total": 300,
+            "writtenOff": 200
+          },
+          "dueAmount": 0,
+          "cleared": true,
+          "payments": [
+            {
+              "id": "pay-1",
+              "amount": 100,
+              "cash": 0,
+              "online": 100,
+              "at": 1789021800000
+            },
+            {
+              "id": "pay-2",
+              "kind": "writeOff",
+              "amount": 200,
+              "reason": "gone",
+              "at": 1789885800000
+            }
+          ]
+        }
+      },
+      {
+        "id": "r4",
+        "data": {
+          "billNumber": "S20261020-001",
+          "type": "retail",
+          "date": "2026-10-20",
+          "timestamp": 1792492200000,
+          "customerName": "Shyam",
+          "items": [
+            {
+              "itemId": "item-rice",
+              "name": "Rice",
+              "qty": 12,
+              "rate": 50,
+              "total": 600
+            }
+          ],
+          "total": 600,
+          "payment": {
+            "cash": 300,
+            "online": 0,
+            "due": 300,
+            "total": 300
+          },
+          "dueAmount": 400,
+          "payments": [
+            {
+              "id": "pay-3",
+              "amount": 100,
+              "date": "21/10/2026, 10:00:00 am"
+            }
+          ]
+        }
+      },
+      {
+        "id": "r5",
+        "data": {
+          "billNumber": "S20261024-001",
+          "type": "retail",
+          "date": "2026-10-24",
+          "timestamp": 1792823400000,
+          "customerName": "",
+          "items": [
+            {
+              "itemId": "item-rice",
+              "name": "Rice",
+              "qty": 1,
+              "rate": 50,
+              "total": 50
+            }
+          ],
+          "total": 50,
+          "cashPayment": 0,
+          "onlinePayment": 0,
+          "dueAmount": 50
+        }
+      },
+      {
+        "id": "r6",
+        "data": {
+          "billNumber": "S20261024-002",
+          "type": "retail",
+          "date": "2026-10-24T09:00:00.000Z",
+          "customerName": "Mohan",
+          "items": [
+            {
+              "itemId": "item-wheat",
+              "name": "Wheat",
+              "qty": "5",
+              "rate": "40",
+              "total": 200
+            }
+          ],
+          "total": 200,
+          "payment": {
+            "cash": 200,
+            "online": 0,
+            "due": 0
+          }
+        }
+      },
+      {
+        "id": "r7",
+        "data": {
+          "billNumber": "S-OLD-9",
+          "date": "12/10/2026",
+          "customerName": "Geeta",
+          "items": [
+            {
+              "item": "Wheat",
+              "quantity": 3,
+              "rate": 30
+            }
+          ],
+          "total": 90,
+          "amountPaid": 40
+        }
+      }
+    ],
+    "wholesaleSales": [
+      {
+        "id": "w1",
+        "data": {
+          "billNumber": "W20261025-002",
+          "type": "wholesale",
+          "source": "sales-tab",
+          "date": "2026-10-25",
+          "timestamp": 1792906200000,
+          "customerName": "Kirana Store",
+          "customerPhone": "9876500002",
+          "items": [
+            {
+              "itemId": "item-rice",
+              "name": "Rice",
+              "quantity": 100,
+              "rate": 42,
+              "total": 4200
+            }
+          ],
+          "total": 4200,
+          "payment": {
+            "cash": 1000,
+            "online": 1200,
+            "due": 2000
+          }
+        }
+      },
+      {
+        "id": "w2",
+        "data": {
+          "billNumber": "W-OLD-3",
+          "type": "wholesale",
+          "source": "sales-tab",
+          "date": "20/09/2026",
+          "customerName": "kirana  store",
+          "items": [
+            {
+              "name": "Rice",
+              "quantity": 50,
+              "rate": 40
+            }
+          ],
+          "total": 2000,
+          "payment": {
+            "cash": 500,
+            "online": 0,
+            "due": 0
+          }
+        }
+      },
+      {
+        "id": "w3",
+        "data": {
+          "billNumber": "W-OLD-4",
+          "type": "wholesale",
+          "date": "2026-09-02",
+          "timestamp": 1788330600000,
+          "customerName": "Old Party",
+          "items": [
+            {
+              "itemId": "item-chana",
+              "quantity": 6,
+              "rate": 50,
+              "total": 300
+            }
+          ],
+          "total": 300,
+          "payment": {
+            "cash": 0,
+            "online": 0,
+            "due": 300
+          }
+        }
+      },
+      {
+        "id": "w4",
+        "data": {
+          "billNumber": "W20261023-001",
+          "type": "wholesale",
+          "source": "sales-tab",
+          "date": "2026-10-23",
+          "timestamp": 1792737000000,
+          "customerName": "Kirana Store",
+          "items": [
+            {
+              "itemId": "item-chana",
+              "name": "Chana",
+              "quantity": 20,
+              "rate": 55,
+              "total": 1100
+            }
+          ],
+          "total": 1100,
+          "payment": {
+            "cash": 1100,
+            "online": 0,
+            "due": 0
+          }
+        }
+      }
+    ],
+    "purchases": [
+      {
+        "id": "p1",
+        "data": {
+          "billNumber": "P20261025-003",
+          "type": "purchase",
+          "isPurchase": true,
+          "date": "2026-10-25",
+          "timestamp": 1792899000000,
+          "customerName": "Supplier A",
+          "items": [
+            {
+              "itemId": "item-wheat",
+              "name": "Wheat",
+              "qty": 200,
+              "rate": 25,
+              "total": 5000,
+              "weights": [
+                50,
+                50,
+                50,
+                50
+              ]
+            }
+          ],
+          "billTotal": 5000,
+          "laborCharges": 60,
+          "grandTotal": 4940,
+          "payment": {
+            "cash": 4940,
+            "online": 0,
+            "due": 0
+          }
+        }
+      },
+      {
+        "id": "p2",
+        "data": {
+          "billNumber": "P-OLD-1",
+          "date": "01/06/2026",
+          "customerName": "सप्लायर बी",
+          "items": [
+            {
+              "name": "Chana",
+              "qty": 60,
+              "rate": 50,
+              "total": 3000
+            }
+          ],
+          "grandTotal": 3000,
+          "payment": {
+            "cash": 3000,
+            "online": 0,
+            "due": 0
+          }
+        }
+      }
+    ],
+    "stockAdjustments": [
+      {
+        "id": "adj1",
+        "data": {
+          "itemId": "item-wheat",
+          "adjustType": "add",
+          "quantity": 10,
+          "timestamp": 1790836200000
+        }
+      }
+    ],
+    "expenses": [
+      {
+        "id": "e1",
+        "data": {
+          "amount": 100,
+          "date": "2026-10-01",
+          "category": "business"
+        }
+      }
+    ],
+    "cashManagement": [
+      {
+        "id": "cs1",
+        "data": {
+          "date": "2026-10-24",
+          "openingBalance": 500,
+          "closingBalance": 800,
+          "signedOut": true
+        }
+      }
+    ],
+    "settings": [
+      {
+        "id": "app",
+        "data": {
+          "laborRate": 6,
+          "heavyWeightThreshold": 30,
+          "checkThresholds": {
+            "maxBillAmount": 100000
+          },
+          "minClientVersion": 3,
+          "enforceClientVersion": true,
+          "downloadUrl": "https://aadhat-management.web.app/download"
+        }
+      }
+    ],
+    "counters": [
+      {
+        "id": "P20261025",
+        "data": {
+          "next": 3,
+          "initialized": true,
+          "prefix": "P",
+          "date": "20261025",
+          "updatedAt": 1792899000000
+        }
+      },
+      {
+        "id": "S20261024",
+        "data": {
+          "next": 2,
+          "initialized": true,
+          "prefix": "S",
+          "date": "20261024"
+        }
+      },
+      {
+        "id": "W20261025",
+        "data": {
+          "next": 1,
+          "initialized": true,
+          "prefix": "W",
+          "date": "20261025"
+        }
+      }
+    ],
+    "rateHistory": [
+      {
+        "id": "item-wheat_1760000000000",
+        "data": {
+          "itemId": "item-wheat",
+          "kind": "purchase",
+          "rate": 25,
+          "at": 1760000000000
+        }
+      }
+    ],
+    "itemFrequency": [
+      {
+        "id": "global",
+        "data": {
+          "item-wheat": 5,
+          "item-rice": 2
+        }
+      }
+    ],
+    "stockCheckpoints": [
+      {
+        "id": "current",
+        "data": {
+          "asOf": 1790836200000,
+          "state": {}
+        }
+      }
+    ],
+    "telemetry": [
+      {
+        "id": "t1",
+        "data": {
+          "kind": "startup"
+        }
+      }
+    ],
+    "dev_retailSales": [
+      {
+        "id": "dev1",
+        "data": {
+          "billNumber": "DEV-1",
+          "customerName": "Test",
+          "total": 999,
+          "dueAmount": 999,
+          "payment": {
+            "due": 999
+          }
+        }
+      }
+    ],
+    "dev_users": [
+      {
+        "id": "uid-dev",
+        "data": {
+          "role": "owner"
+        }
+      }
+    ]
+  }
+}

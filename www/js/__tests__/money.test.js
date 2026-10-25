@@ -1,7 +1,7 @@
 /**
  * @fileoverview Tests for money helpers / payment schema normalisation
  */
-import { round2, sumMoney, readPayment, billTotal, outstandingDue, computePurchaseTotals, computeWholesaleTotals, checkPaymentSplit, paymentSplitMessage, dueNeedsName } from '../utils/money.js';
+import { round2, sumMoney, readPayment, billTotal, outstandingDue, computePurchaseTotals, computeWholesaleTotals, checkPaymentSplit, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingOldTotals, wholesaleOutstanding } from '../utils/money.js';
 
 describe('round2', () => {
     test('rounds half-paise correctly', () => {
@@ -136,5 +136,38 @@ describe('dueNeedsName (#68)', () => {
         expect(dueNeedsName(10, 'Sita')).toBe(false);
         expect(dueNeedsName(0, '')).toBe(false);
         expect(dueNeedsName(0.001, '')).toBe(false);
+    });
+});
+
+describe('opening balances carried from the old project (#15)', () => {
+    const opening = {
+        items: [], total: 0, dueAmount: 340, payment: { cash: 0, online: 0, due: 340, total: 0 },
+        openingBalance: { amount: 340, billTotal: 500, paidBefore: 160 }
+
+    };
+
+    test('carried amount is shown as the total; the bill adds no sale', () => {
+        expect(isOpeningBalance(opening)).toBe(true);
+        expect(isOpeningBalance({ total: 5 })).toBe(false);
+        expect(openingAmount(opening)).toBe(340);
+        expect(openingAmount({ total: 5 })).toBe(0);
+        expect(billTotal(opening)).toBe(0);
+        expect(readPayment(opening).due).toBe(340);
+        expect(outstandingDue(opening)).toBe(340);
+    });
+
+    test('old bill total and what was paid before the move', () => {
+        expect(openingOldTotals(opening)).toEqual({ total: 500, paid: 160 });
+        expect(openingOldTotals({ openingBalance: {} })).toEqual({ total: 0, paid: 0 });
+        expect(openingOldTotals({ total: 1 })).toBeNull();
+    });});
+
+describe('wholesaleOutstanding (Wholesale page rule)', () => {
+    test('payment.due, else total minus received; cleared is 0', () => {
+        expect(wholesaleOutstanding({ total: 4200, payment: { cash: 1000, online: 1200, due: 2000 } })).toBe(2000);
+        expect(wholesaleOutstanding({ total: 2000, payment: { cash: 500, online: 0, due: 0 } })).toBe(1500);
+        expect(wholesaleOutstanding({ total: 300 })).toBe(300);
+        expect(wholesaleOutstanding({ total: 300, cleared: true })).toBe(0);
+        expect(wholesaleOutstanding(null)).toBe(0);
     });
 });

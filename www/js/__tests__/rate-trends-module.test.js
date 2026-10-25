@@ -8,7 +8,8 @@ jest.mock('../firebase/firestore-service.js', () => ({
         historyServerSynced: jest.fn(() => true),
         loadRateStatsMeta: jest.fn(async () => ({ backfillDone: true })),
         loadServerRateStatsFromYear: jest.fn(async () => ({ docs: [], more: false })),
-        saveRateStats: jest.fn(async () => {})
+        saveRateStats: jest.fn(async () => {}),
+        saveRateStatsMeta: jest.fn(async () => {})
     }
 }));
 jest.mock('../modules/reports.js', () => ({ chartScaleMax: (v) => Math.max(1, ...v) }));
@@ -82,4 +83,35 @@ test('never writes when the server copy cannot be read', async () => {
     await expect(RateTrendsManager.rollForward()).resolves.toBe('server-unreadable');
     expect(FirebaseService.saveRateStats).not.toHaveBeenCalled();
     expect(localStorage.getItem('aadhatRateStatsRoll')).toBeNull();
+});
+
+describe('history carried from the old app (#15)', () => {
+    const carried = { backfillDone: true, backfillAt: Date.UTC(2026, 9, 26, 9, 30), bills: 1200, reads: 0, months: 30, by: 'migration', byUserId: '' };
+
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="rtStatus"></div>';
+        FirebaseService.loadRateStatsMeta.mockResolvedValue(carried);
+    });
+
+    test('shows a note instead of Rebuild', async () => {
+        await RateTrendsManager.loadMeta(true);
+        RateTrendsManager.renderStatus();
+        const html = document.getElementById('rtStatus').innerHTML;
+        expect(html).not.toContain('startBackfill');
+        expect(html).toMatch(/carried from the old app|पुराने ऐप से/);
+    });
+
+    test('Rebuild never runs: _meta.by and backfillAt stay, nothing is written', async () => {
+        await RateTrendsManager.startBackfill();
+        expect(FirebaseService.saveRateStatsMeta).not.toHaveBeenCalled();
+        expect(FirebaseService.saveRateStats).not.toHaveBeenCalled();
+        expect(localStorage.getItem('aadhatRateStatsBackfill')).toBeNull();
+    });
+
+    test('an ordinary history still offers Rebuild', async () => {
+        FirebaseService.loadRateStatsMeta.mockResolvedValue({ ...carried, by: 'Owner' });
+        await RateTrendsManager.loadMeta(true);
+        RateTrendsManager.renderStatus();
+        expect(document.getElementById('rtStatus').innerHTML).toContain('startBackfill');
+    });
 });
