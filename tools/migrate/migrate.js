@@ -8,7 +8,10 @@
  *   node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project <newProjectId>
  *        [--key service-account.json] [--yes] [--budget 12000] [--cursor <file>] [--restart] [--dev]
  *
- * `plan` is offline. `apply` is a dry run unless --yes is given.
+ *   node tools/migrate/migrate.js convert --in rest-docs.json --out backup.json [--exclude a,b] [--exported-at ISO]
+ *   node tools/migrate/migrate.js wipe --project <newProjectId> --key service-account.json [--yes] [--test-domain @happa.local]
+ *
+ * `plan` and `convert` are offline. `apply` is a dry run unless --yes is given.
  */
 import fs from 'fs';
 import path from 'path';
@@ -96,9 +99,46 @@ async function apply() {
     if (!dryRun) console.log(`Writes this run: ${result.writes}. Cursor: ${cursorPath}`);
 }
 
-const commands = { plan, apply };
+async function convert() {
+    const { convertRestDocs } = await import('./lib/convert.js');
+    const input = arg('--in');
+    const out = arg('--out');
+    if (!input || !out) throw new Error('--in <REST documents .json> and --out <backup.json> are required');
+    const { backup, summary } = convertRestDocs(JSON.parse(fs.readFileSync(input, 'utf8')), {
+        exclude: (arg('--exclude') || '').split(','),
+        exportedAt: arg('--exported-at')
+    });
+    fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
+    fs.writeFileSync(out, JSON.stringify(backup));
+    console.log(`Project ${summary.project}, exportedAt ${summary.exportedAt}`);
+    Object.entries(summary.collections).forEach(([c, n]) => console.log(`  ${c}: ${n}`));
+    console.log(`Left out: ${JSON.stringify(summary.skipped)}`);
+    console.log(`Backup: ${out}. It holds shop data: keep it outside the repo.`);
+}
+
+async function wipe() {
+    const { wipeProject } = await import('./lib/wipe.js');
+    const project = arg('--project');
+    const keyFile = arg('--key') || process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    if (!keyFile) throw new Error('--key <service-account.json> for the project is required');
+    const key = JSON.parse(fs.readFileSync(keyFile, 'utf8'));
+    const { checkTarget } = await import('./lib/apply.js');
+    checkTarget({ project, keyProject: key.project_id });
+    const { initializeApp, cert } = await import('firebase-admin/app');
+    const { getFirestore } = await import('firebase-admin/firestore');
+    const { getAuth } = await import('firebase-admin/auth');
+    initializeApp({ credential: cert(key), projectId: project });
+    const dryRun = !flag('--yes');
+    console.log(`Target project: ${project}${dryRun ? ' — DRY RUN' : ' — DELETING EVERYTHING IN FIRESTORE + TEST LOGINS'}`);
+    await wipeProject({
+        project, keyProject: key.project_id, db: getFirestore(), auth: getAuth(), dryRun,
+        testDomain: arg('--test-domain'), log: (line) => console.log(line)
+    });
+}
+
+const commands = { plan, apply, convert, wipe };
 if (!commands[command]) {
-    console.error('Usage: node tools/migrate/migrate.js plan|apply ... (see tools/migrate/README.md)');
+    console.error('Usage: node tools/migrate/migrate.js plan|apply|convert|wipe ... (see tools/migrate/README.md)');
     process.exit(2);
 }
 commands[command]().catch(err => {
