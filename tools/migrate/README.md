@@ -12,8 +12,8 @@ Needs Node 22.12+ (the tool imports the app's own `www/js/utils` so the numbers 
 ```sh
 cd tools/migrate && npm ci && cd ../..
 node tools/migrate/migrate.js plan  --in backup.json
-node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project <NEW_PROJECT_ID>             # dry run
-node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project <NEW_PROJECT_ID> --key key.json --yes
+node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project happa-bfc07             # dry run
+node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project happa-bfc07 --key key.json --yes
 ```
 
 `tools/migrate/out/` is git-ignored. The bundle holds shop data (names, phones, users): keep it private and delete it after cutover. Never commit a service-account key.
@@ -83,31 +83,33 @@ The app signs in with **email and password only** (`www/js/auth/authentication.j
    firebase auth:export users.json --format=json --project aadhat-management
    firebase auth:import users.json --hash-algo=SCRYPT \
      --hash-key=<base64_signer_key> --salt-separator=<base64_salt_separator> \
-     --rounds=<rounds> --mem-cost=<mem_cost> --project <NEW_PROJECT_ID>
+     --rounds=<rounds> --mem-cost=<mem_cost> --project happa-bfc07
    ```
 3. Sign in to Happa with one account first. Wrong parameters mean nobody can sign in (fix: re-import with the right ones, or "Forgot password").
 4. Delete `users.json` (it holds password hashes).
 
 ## Cutover runbook
 
-Placeholders the owner fills in:
+Values (the ones still pending are marked):
 
 | | Value |
 |---|---|
-| App name | **Happa** (Hindi name: to confirm, e.g. हप्पा) |
-| Android package id | `<PACKAGE_ID>`, reverse domain, e.g. `com.<shop-domain>.happa` |
-| New Firebase project id | `<NEW_PROJECT_ID>` |
-| New hosting site | `<NEW_SITE>.web.app` |
+| App name | **Happa** (Hindi: **हप्पा**) |
+| Android package id | `com.happa.shop` |
+| New Firebase project id | `happa-bfc07` (display name "Happa"; `.firebaserc` alias `happa`) |
+| New hosting site | default site `happa-bfc07`: https://happa-bfc07.web.app |
+| Web config (`apiKey`, `appId`, …) | `<pending from owner>` (Project settings → Your apps) |
+| Service accounts | `<pending from owner>` |
 | Cutover date | `<CUTOVER_DATE>` |
 
 ### Before cutover
 
-1. **Create the project** under the shop's Google account (Spark). Firestore in **asia-south1** (Mumbai), unless the old project's Firestore location (old console → Firestore → Settings) is different; `firebase.json` and `.firebaserc` do not pin one. Enable Authentication → Email/Password. Add a web app to get the new `firebaseConfig`. Authentication → Settings → Authorized domains: `<NEW_SITE>.web.app`, `<NEW_PROJECT_ID>.firebaseapp.com`.
+1. **Project `happa-bfc07`** (created by the owner, Spark). Create the Firestore database in **asia-south1** (Mumbai), unless the old project's Firestore location (old console → Firestore → Settings) is different; `firebase.json` and `.firebaserc` do not pin one. Enable Authentication → Email/Password. Add a web app to get the new `firebaseConfig`. Authentication → Settings → Authorized domains: `happa-bfc07.web.app`, `happa-bfc07.firebaseapp.com`.
 2. **Service accounts and CI.**
-   - Deploy account (GitHub Actions): roles **Firebase Hosting Admin**, **Firebase Rules Admin** (`roles/firebaserules.admin`), **Cloud Datastore Index Admin** (`roles/datastore.indexAdmin`), and **Cloud Datastore Viewer** (`roles/datastore.viewer`) for the nightly backup (or a separate read-only backup account). Save its key as the secret `FIREBASE_SERVICE_ACCOUNT_<NEW>` (and `FIREBASE_BACKUP_SERVICE_ACCOUNT`).
+   - Deploy account (GitHub Actions): roles **Firebase Hosting Admin**, **Firebase Rules Admin** (`roles/firebaserules.admin`), **Cloud Datastore Index Admin** (`roles/datastore.indexAdmin`), and **Cloud Datastore Viewer** (`roles/datastore.viewer`) for the nightly backup (or a separate read-only backup account). Save its key as the secret `FIREBASE_SERVICE_ACCOUNT_HAPPA_BFC07` (and `FIREBASE_BACKUP_SERVICE_ACCOUNT`).
    - Migration account: **Cloud Datastore User** (`roles/datastore.user`) on the new project only. Key stays on the owner's computer and is deleted after cutover.
-3. **Point the code at the new project** (a separate PR, at cutover, not this one): `www/firebaseConfig.js`, `.firebaserc` (`default: <NEW_PROJECT_ID>`), `projectId` in `.github/workflows/firebase-hosting-merge.yml`, `firebase-hosting-pull-request.yml`, `firestore-rules-deploy.yml`, and the new secret names, plus the "new app" checklist below.
-4. **Deploy rules, indexes and hosting** to the new project: `firebase deploy --only firestore:rules,firestore:indexes,hosting --project <NEW_PROJECT_ID>`.
+3. **Point the code at the new project** in the cutover PR (not earlier: `main` auto-deploys, so switching the workflows sooner would send the old app's site and rules to Happa): `www/firebaseConfig.js`, `.firebaserc` (`default: happa-bfc07`; the `happa` alias is already there), `projectId: happa-bfc07` in `.github/workflows/firebase-hosting-merge.yml`, `firebase-hosting-pull-request.yml`, `firestore-rules-deploy.yml`, and the new secret names, plus the "new app" checklist below.
+4. **Deploy rules, indexes and hosting** to the new project: `firebase deploy --only firestore:rules,firestore:indexes,hosting --project happa-bfc07`.
 5. **Rehearse**: run steps 7–8 with a recent backup and `apply --dev`, open Happa on localhost, check Items, Outstanding, Wholesale → Outstanding, Rate trends and Settings, then delete the `dev_*` collections.
 
 ### Cutover day
@@ -117,8 +119,8 @@ Placeholders the owner fills in:
 8. **Migrate**:
    ```sh
    node tools/migrate/migrate.js plan --in backup.json            # read out/report.md: totals, warnings, writes
-   node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project <NEW_PROJECT_ID>            # dry run
-   node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project <NEW_PROJECT_ID> --key key.json --yes
+   node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project happa-bfc07            # dry run
+   node tools/migrate/migrate.js apply --bundle tools/migrate/out/bundle.json --project happa-bfc07 --key key.json --yes
    ```
    Then move the logins (above). `plan`/`apply` can be **rerun just before go-live** (add `--restart` for a new bundle) to pick up the latest items, dues, settings and patterns. Rerun only before Happa is in use: a rerun rewrites items, users, settings and rate patterns.
 9. **Set opening stock** per item in Happa: Stock → Stock Adjustment → type **Set**, the counted kg, and **Rate (₹/kg)** = the average cost. The stock replay uses that rate as the cost of the stock, so cost of goods sold and profit work from the first sale.
@@ -136,14 +138,14 @@ A new Android package installs **side by side** with the old app; `versionCode` 
 
 | File | What |
 |---|---|
-| `capacitor.config.json` | `appId` → `<PACKAGE_ID>`, `appName` → `Happa` |
-| `android/app/build.gradle` | `namespace` and `applicationId` → `<PACKAGE_ID>`; `versionCode 1`, `versionName` |
-| `android/app/src/main/java/com/hitesh/aadhat/MainActivity.java` | `package` line and folder path → `<PACKAGE_ID>` |
+| `capacitor.config.json` | `appId` → `com.happa.shop`, `appName` → `Happa` |
+| `android/app/build.gradle` | `namespace` and `applicationId` → `com.happa.shop`; `versionCode 1`, `versionName` |
+| `android/app/src/main/java/com/hitesh/aadhat/MainActivity.java` | `package com.happa.shop;`, moved to `java/com/happa/shop/` |
 | `android/app/src/main/res/values/strings.xml` | `app_name`, `title_activity_main`, `package_name`, `custom_url_scheme` |
 | `www/manifest.webmanifest` | `name`, `short_name` |
 | `www/index.html` | `<title>` |
 | `www/firebaseConfig.js` | new `firebaseConfig` |
-| `www/js/auth/authentication.js` | password-reset `url` (`https://<NEW_SITE>.web.app`) |
+| `www/js/auth/authentication.js` | password-reset `url` (`https://happa-bfc07.web.app`) |
 | `www/js/utils/release-info.js` | `DOWNLOAD_PAGE_URL`, `APK_DOWNLOAD_URL` (asset name), share text |
 | `www/download.html` | title, heading, site links, QR code (`www/img/download-qr.svg`) |
 | `www/changelog.json` | links to the download page (new entries) |
@@ -156,4 +158,4 @@ Releases: the old app's update banner fetches the **latest** GitHub release asse
 
 **Signing:** a new package does not need the old key. Create a **new keystore owned by the business**, store it and its passwords in the password manager, and set new secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` and the variable `ANDROID_CERT_SHA256` (SHA-256 of the new certificate: `keytool -list -v -keystore happa.keystore`). Archive the old keystore: it is needed only if the old app ever needs a fix.
 
-**Hosting:** Happa's site is `<NEW_SITE>.web.app` in the new project (its `/download` page links the Happa APK). The old site is unchanged.
+**Hosting:** Happa's site is `happa-bfc07.web.app` in the new project (its `/download` page links the Happa APK). The old site is unchanged.
