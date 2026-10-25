@@ -124,6 +124,8 @@ const STATIC_ASSETS = [
     '/js/utils/state.js',
     '/js/utils/stock-adjust.js',
     '/js/utils/dead-stock.js',
+    '/js/utils/item-rate-series.js',
+    '/js/utils/product-traffic.js',
     '/js/utils/rate-history.js',
     '/js/utils/rate-trends.js',
     '/js/utils/stock-check.js',

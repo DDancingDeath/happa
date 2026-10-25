@@ -7,6 +7,8 @@
  * @module utils/rate-history
  */
 
+import { t, getLang } from '../i18n/index.js';
+
 /** Rate types in history entries -> item array field. */
 export const RATE_FIELDS = { purchase: 'rates', wholesale: 'wholesaleRates', retail: 'saleRates' };
 
@@ -19,13 +21,19 @@ export const RATE_SANITY_FACTOR = 2;
 /** Two changes of the same item field within this window get a review flag. */
 export const QUICK_REPEAT_MS = 60 * 1000;
 
-export const FIELD_LABELS = {
-    purchase: 'Purchase rate / खरीद रेट',
-    wholesale: 'Wholesale rate / थोक रेट',
-    retail: 'Retail rate / खुदरा रेट',
-    name: 'Name / नाम',
-    hindiName: 'Hindi name / हिंदी नाम'
+/** i18n keys of the history field names. */
+export const FIELD_LABEL_KEYS = {
+    purchase: 'ui.rate_history.purchase_rate',
+    wholesale: 'ui.rate_history.wholesale_rate',
+    retail: 'ui.rate_history.retail_rate',
+    name: 'ui.rate_history.name',
+    hindiName: 'ui.rate_history.hindi_name'
 };
+
+/** Field name in the app language (unknown fields as they are). */
+export function fieldLabel(field, lang = getLang()) {
+    return FIELD_LABEL_KEYS[field] ? t(FIELD_LABEL_KEYS[field], undefined, lang) : String(field ?? '');
+}
 
 const cleanRates = (list) => (Array.isArray(list) ? list : [])
     .map(Number)
@@ -158,8 +166,19 @@ export function buildHistoryEntries(changes, { itemId, itemName, by, byUserId, a
  * @returns {string}
  */
 export function historyDocId(itemId, at, seq = 0) {
+    return `${historyIdBound(itemId, at)}_${String(seq).padStart(2, '0')}`;
+}
+
+/**
+ * Id prefix of an item's entries at `at`: ids of newer entries sort before it,
+ * ids of entries at or before `at` after it (used as an exclusive end bound).
+ * @param {string} itemId
+ * @param {number} at ms
+ * @returns {string}
+ */
+export function historyIdBound(itemId, at) {
     const inverted = String(9999999999999 - Math.floor(at)).padStart(13, '0');
-    return `${itemId}_${inverted}_${String(seq).padStart(2, '0')}`;
+    return `${itemId}_${inverted}`;
 }
 
 /**

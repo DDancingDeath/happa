@@ -95,8 +95,14 @@ function refreshForLanguage(lang) {
         },
         'cash-management': () => CashManagementManager.refreshForLanguage(),
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
+<<<<<<< Q:\aadhat\rate-trends-items\..\mc-merge\o
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
         finance: () => FinanceManager.renderDashboard()
+=======
+        settings: () => SettingsManager.loadSettings(),
+        finance: () => FinanceManager.renderDashboard(),
+        'rate-trends': () => RateTrendsManager.refreshForLanguage()
+>>>>>>> Q:\aadhat\rate-trends-items\..\mc-merge\t
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
@@ -1110,12 +1116,17 @@ window.app = {
         init: () => RateTrendsManager.init(),
         selectItem: (id) => RateTrendsManager.selectItem(id),
         setRange: (v) => RateTrendsManager.setRange(v),
+        setPeriod: (v) => RateTrendsManager.setPeriod(v),
         setView: (v) => RateTrendsManager.setView(v),
         setWeeks: (v) => RateTrendsManager.setWeeks(v),
         setCompareKind: (v) => RateTrendsManager.setCompareKind(v),
         setBudget: (v) => RateTrendsManager.setBudget(v),
         startBackfill: () => RateTrendsManager.startBackfill(),
-        continueBackfill: () => RateTrendsManager.continueBackfill()
+        continueBackfill: () => RateTrendsManager.continueBackfill(),
+        setSection: (v) => RateTrendsManager.setSection(v),
+        setTrafficMonth: (v) => RateTrendsManager.setTrafficMonth(v),
+        setTrafficItem: (v) => RateTrendsManager.setTrafficItem(v),
+        setTrafficWeeks: (v) => RateTrendsManager.setTrafficWeeks(v)
     },
 
     // Day (Today's Summary + Cash Management)

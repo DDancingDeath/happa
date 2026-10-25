@@ -31,6 +31,7 @@ import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart
 import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_MS } from '../utils/background-tasks.js';
 import { markStartup } from '../utils/startup-timings.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
+import { historyIdBound } from '../utils/rate-history.js';
 import { installFirestoreMeter, getQuotaStatus } from './firestore-meter.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
@@ -1774,15 +1775,15 @@ const FirebaseService = {
      * @async
      * @param {string} itemId
      * @param {number} [max=30]
+     * @param {{since?: number}} [opts] only entries newer than this (ms)
      * @returns {Promise<Array<Object>>} newest first
      */
-    async loadRateHistory(itemId, max = 30) {
-        const snapshot = await getDb().collection(col('rateHistory'))
+    async loadRateHistory(itemId, max = 30, { since = null } = {}) {
+        let query = getDb().collection(col('rateHistory'))
             .orderBy(firebase.firestore.FieldPath.documentId())
-            .startAt(`${itemId}_`)
-            .endAt(`${itemId}_\uf8ff`)
-            .limit(max)
-            .get();
+            .startAt(`${itemId}_`);
+        query = Number(since) > 0 ? query.endBefore(historyIdBound(itemId, Number(since))) : query.endAt(`${itemId}_\uf8ff`);
+        const snapshot = await query.limit(max).get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     },
 
@@ -1818,31 +1819,47 @@ const FirebaseService = {
     },
 
     /**
-     * Monthly stats of one item (document-id range, no index needed).
+     * Year stats docs of one item (document-id range, no index needed):
+     * one read per year of history.
      * @param {string} itemId
-     * @param {number} [max=120]
-     * @returns {Promise<Array<Object>>} oldest month first
+     * @param {number} [max=30]
+     * @returns {Promise<Array<Object>>} oldest year first
      */
-    async loadRateStatsForItem(itemId, max = 120) {
+    async loadRateStatsForItem(itemId, max = 30) {
         const snapshot = await getDb().collection(col('rateStats'))
             .orderBy(firebase.firestore.FieldPath.documentId())
             .startAt(`${itemId}_`)
             .endAt(`${itemId}_\uf8ff`)
             .limit(max)
             .get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(d => /^\d{4}$/.test(String(d.year || '')));
     },
 
     /**
-     * Stats docs of months >= fromMonth from the SERVER (never the offline
-     * cache), bounded, so a roll-forward compares with what everyone sees.
-     * @param {string} fromMonth YYYY-MM
+     * Year stats docs of every item for one year (single-field equality, so no
+     * composite index is needed). Bounded: at most `max` reads.
+     * @param {string} year YYYY
      * @param {number} [max=300]
      * @returns {Promise<{docs: Array<Object>, more: boolean}>}
      */
-    async loadServerRateStatsFrom(fromMonth, max = 300) {
+    async loadRateStatsForYear(year, max = 300) {
         const snapshot = await getDb().collection(col('rateStats'))
-            .where('month', '>=', fromMonth)
+            .where('year', '==', String(year))
+            .limit(max)
+            .get();
+        return { docs: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), more: snapshot.size >= max };
+    },
+
+    /**
+     * Year stats docs of years >= fromYear from the SERVER (never the offline
+     * cache), bounded, so a roll-forward compares with what everyone sees.
+     * @param {string} fromYear YYYY
+     * @param {number} [max=300]
+     * @returns {Promise<{docs: Array<Object>, more: boolean}>}
+     */
+    async loadServerRateStatsFromYear(fromYear, max = 300) {
+        const snapshot = await getDb().collection(col('rateStats'))
+            .where('year', '>=', String(fromYear))
             .limit(max)
             .get({ source: 'server' });
         return { docs: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), more: snapshot.size >= max };
