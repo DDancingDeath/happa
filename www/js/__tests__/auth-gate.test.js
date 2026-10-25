@@ -12,6 +12,7 @@ import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 let fake;
 let auth;
 let toast;
+const inline = (form) => document.getElementById(`${form}Message`).textContent;
 
 function installFirebase() {
     fake = createFakeFirestore();
@@ -32,7 +33,8 @@ function loginForm(email = 'a@x.com', password = 'secret1') {
       <div id="authScreen" style="display:flex"></div>
       <input id="loginEmail" value="${email}"><input id="loginPassword" value="${password}">
       <div class="auth-tab"></div><div class="auth-tab"></div>
-      <form id="loginForm"></form><form id="registerForm"></form>
+      <form id="loginForm"><div id="loginMessage" role="alert"></div><button type="submit">Login</button></form>
+      <form id="registerForm"><div id="registerMessage" role="alert"></div><button type="submit">Create Account</button></form>
       <input id="registerName"><input id="registerEmail"><input id="registerPassword"><input id="registerConfirmPassword">
       <div id="toast"></div>`;
 }
@@ -63,7 +65,8 @@ describe('login gate', () => {
         fake.seed('users', [{ id: 'u1', name: 'A', email: 'a@x.com', role: 'staff', status }]);
         await AuthManager.handleLogin();
         expect(auth.signOut).toHaveBeenCalled();
-        expect(toast).toHaveBeenCalledWith(message);
+        expect(inline('login')).toBe(message);
+        expect(toast).not.toHaveBeenCalled();
         expect(AppState.currentUser).toBeNull();
         expect(window.initializeApp).not.toHaveBeenCalled();
         expect(document.getElementById('authScreen').style.display).toBe('flex');
@@ -103,7 +106,8 @@ describe('login gate', () => {
     test('wrong password shows a readable message', async () => {
         auth.signInWithEmailAndPassword.mockRejectedValue(Object.assign(new Error('x'), { code: 'auth/wrong-password' }));
         await AuthManager.handleLogin();
-        expect(toast).toHaveBeenCalledWith('Login failed. Incorrect password.', 4000);
+        expect(inline('login')).toBe('Wrong password');
+        expect(toast).not.toHaveBeenCalled();
         expect(AppState.currentUser).toBeNull();
     });
 
@@ -111,7 +115,7 @@ describe('login gate', () => {
         loginForm('', '');
         await AuthManager.handleLogin();
         expect(auth.signInWithEmailAndPassword).not.toHaveBeenCalled();
-        expect(toast).toHaveBeenCalledWith('Please enter email and password');
+        expect(inline('login')).toBe('Please enter email and password');
     });
 });
 
@@ -130,7 +134,7 @@ describe('registration', () => {
         expect(profile).toMatchObject({ name: 'Ravi', email: 'a@x.com', role: 'staff', status: 'pending' });
         expect(Object.keys(profile).sort()).toEqual(['createdAt', 'email', 'name', 'role', 'status']);
         expect(auth.signOut).toHaveBeenCalled();
-        expect(toast).toHaveBeenCalledWith('Registration successful! Please wait for admin approval.');
+        expect(inline('login')).toBe('Registration successful! Please wait for admin approval.');
     });
 
     test('never overwrites an existing (possibly approved) profile', async () => {
@@ -147,7 +151,7 @@ describe('registration', () => {
         fill(...args);
         await AuthManager.handleRegister();
         expect(auth.createUserWithEmailAndPassword).not.toHaveBeenCalled();
-        expect(toast).toHaveBeenCalledWith(message);
+        expect(inline('register')).toBe(message);
     });
 });
 

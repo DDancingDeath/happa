@@ -150,6 +150,42 @@
   transform: translateY(0);
 }
 
+.auth-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
+}
+
+/* Inline sign-in / register / reset result, directly above the button */
+.auth-message {
+  margin: 4px 0 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  overflow-wrap: anywhere;
+}
+
+.auth-message:empty {
+  display: none;
+}
+
+.auth-message.success {
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #86efac;
+}
+
+.auth-message.info {
+  color: var(--text-primary);
+  background: #f3f4f6;
+  border-color: var(--border-color);
+}
+
 .auth-link {
   text-align: center;
   margin-top: 16px;

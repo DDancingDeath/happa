@@ -9,8 +9,107 @@ import { canOpenTab, hiddenPermissionClasses } from '../utils/role-access.js';
 
 const usersCollection = () => (window.getCollection ? window.getCollection('users') : 'users');
 
+const FORM_IDS = { login: 'loginForm', register: 'registerForm' };
+
+const NETWORK = 'msg.auth.err_network';
+const NOT_ALLOWED = 'msg.auth.err_operation_not_allowed';
+const CONFIG_ERROR = 'msg.auth.err_configuration';
+
+/** Firebase Auth error code -> catalogue key, per flow (login / register / reset). */
+const AUTH_ERROR_KEYS = {
+    login: {
+        'auth/user-not-found': 'msg.auth.err_user_not_found',
+        'auth/wrong-password': 'msg.auth.err_wrong_password',
+        // Returned instead of the two above while email enumeration protection is on
+        'auth/invalid-credential': 'msg.auth.err_invalid_credential',
+        'auth/invalid-login-credentials': 'msg.auth.err_invalid_credential',
+        'auth/invalid-email': 'msg.auth.err_invalid_email',
+        'auth/too-many-requests': 'msg.auth.err_too_many_requests',
+        'auth/network-request-failed': NETWORK,
+        'auth/user-disabled': 'msg.auth.err_user_disabled',
+        'auth/operation-not-allowed': NOT_ALLOWED
+    },
+    register: {
+        'auth/email-already-in-use': 'msg.auth.err_email_in_use',
+        'auth/invalid-email': 'msg.auth.err_invalid_email',
+        'auth/weak-password': 'msg.auth.err_weak_password',
+        'auth/too-many-requests': 'msg.auth.err_too_many_requests',
+        'auth/network-request-failed': NETWORK,
+        'auth/operation-not-allowed': NOT_ALLOWED
+    },
+    reset: {
+        'auth/invalid-email': 'msg.auth.err_invalid_email_format',
+        'auth/user-not-found': 'msg.auth.err_reset_user_not_found',
+        'auth/user-disabled': 'msg.auth.err_user_disabled',
+        'auth/network-request-failed': NETWORK,
+        'auth/too-many-requests': 'msg.auth.err_too_many_resets',
+        'auth/operation-not-allowed': NOT_ALLOWED,
+        'auth/missing-android-pkg-name': CONFIG_ERROR,
+        'auth/missing-continue-uri': CONFIG_ERROR,
+        'auth/missing-ios-bundle-id': CONFIG_ERROR,
+        'auth/invalid-continue-uri': CONFIG_ERROR,
+        'auth/unauthorized-continue-uri': CONFIG_ERROR
+    }
+};
+
+/**
+ * Readable text for a failed sign-in / registration / reset, in the app language.
+ * Unknown errors fall back to a generic message that names the code.
+ * @param {{code?: string}|null|undefined} error
+ * @param {'login'|'register'|'reset'} flow
+ * @returns {string}
+ */
+function authErrorMessage(error, flow) {
+    const code = error?.code;
+    const key = code && AUTH_ERROR_KEYS[flow]?.[code];
+    return key ? t(key) : t('msg.auth.err_unknown', { code: code || 'unknown' });
+}
+
 const AuthManager = {
     authFlowInProgress: false,
+    busy: { login: false, register: false, reset: false },
+
+    /**
+     * Writes `text` into the card's inline message area (above its button).
+     * textContent only, so nothing in the text is ever parsed as HTML.
+     * Falls back to a toast if the area isn't on the page.
+     * @param {'login'|'register'} form
+     * @param {string} text
+     * @param {'error'|'success'|'info'} [kind]
+     */
+    showMessage(form, text, kind = 'error') {
+        const el = document.getElementById(`${form}Message`);
+        if (!el) {
+            UIManager.showToast(text, 4000);
+            return;
+        }
+        el.classList.remove('error', 'success', 'info');
+        el.classList.add(kind);
+        el.textContent = text;
+    },
+
+    clearMessage(form) {
+        const el = document.getElementById(`${form}Message`);
+        if (el) el.textContent = '';
+    },
+
+    /** Loading state on the card's submit button; disabled so a double tap can't submit twice. */
+    setBusy(form, busy, labelKey) {
+        if (form in this.busy) this.busy[form] = busy;
+        const btn = document.querySelector(`#${FORM_IDS[form] || 'loginForm'} button[type="submit"]`);
+        if (!btn) return;
+        if (busy) {
+            if (btn.dataset.idleLabel === undefined) btn.dataset.idleLabel = btn.textContent;
+            if (labelKey) btn.textContent = t(labelKey);
+            btn.disabled = true;
+            btn.setAttribute('aria-busy', 'true');
+        } else {
+            if (btn.dataset.idleLabel !== undefined) btn.textContent = btn.dataset.idleLabel;
+            delete btn.dataset.idleLabel;
+            btn.disabled = false;
+            btn.removeAttribute('aria-busy');
+        }
+    },
 
     // Creates the pending Firestore profile for an auth user that doesn't have one yet.
     // Runs in a transaction (which always reads from the server, never the offline cache)
@@ -74,6 +173,8 @@ const AuthManager = {
         });
         loginForm.classList.add('hidden');
         registerForm.classList.add('hidden');
+        this.clearMessage('login');
+        this.clearMessage('register');
         
         // Show selected tab
         if (tab === 'login') {
@@ -102,13 +203,20 @@ const AuthManager = {
                 AuthManager.showAuthTab(tabType);
             });
         });
+        // Editing a field clears that card's message
+        Object.entries(FORM_IDS).forEach(([form, id]) => {
+            document.getElementById(id)?.addEventListener('input', () => this.clearMessage(form));
+        });
     },
 
     // Handle login
     async handleLogin() {
+        if (this.busy.login || this.busy.reset) return;
+        this.clearMessage('login');
+
         // Check Firebase initialization
         if (typeof firebase === 'undefined') {
-            UIManager.showToast(t('msg.auth.firebase_not_loaded_refresh_page'));
+            this.showMessage('login', t('msg.auth.firebase_not_loaded_refresh_page'));
             console.error('Firebase is undefined!');
             return;
         }
@@ -117,7 +225,7 @@ const AuthManager = {
         const passwordInput = document.getElementById('loginPassword');
         
         if (!emailInput || !passwordInput) {
-            UIManager.showToast(t('msg.auth.form_elements_not_found'));
+            this.showMessage('login', t('msg.auth.form_elements_not_found'));
             console.error('Form inputs not found!');
             return;
         }
@@ -126,11 +234,11 @@ const AuthManager = {
         const password = passwordInput.value;
         
         if (!email || !password) {
-            UIManager.showToast(t('msg.auth.enter_email_password'));
+            this.showMessage('login', t('msg.auth.enter_email_password'));
             return;
         }
         
-        UIManager.showLoading();
+        this.setBusy('login', true, 'ui.auth.signing_in');
         
         try {
             const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
@@ -145,8 +253,7 @@ const AuthManager = {
                 const created = await this.createPendingProfile(userCredential.user, '', email);
                 if (created) {
                     await firebase.auth().signOut();
-                    UIManager.hideLoading();
-                    UIManager.showToast(t('msg.common.account_pending_approval_wait_admin'));
+                    this.showMessage('login', t('msg.common.account_pending_approval_wait_admin'), 'info');
                     return;
                 }
                 // The profile exists on the server; the first read came from a stale cache.
@@ -162,15 +269,13 @@ const AuthManager = {
             
             if (userData.status === 'pending') {
                 await firebase.auth().signOut();
-                UIManager.hideLoading();
-                UIManager.showToast(t('msg.common.account_pending_approval_wait_admin'));
+                this.showMessage('login', t('msg.common.account_pending_approval_wait_admin'), 'info');
                 return;
             }
             
             if (userData.status === 'rejected') {
                 await firebase.auth().signOut();
-                UIManager.hideLoading();
-                UIManager.showToast(t('msg.common.account_has_been_rejected_contact'));
+                this.showMessage('login', t('msg.common.account_has_been_rejected_contact'));
                 return;
             }
             
@@ -188,55 +293,49 @@ const AuthManager = {
                 await window.initializeApp();
             }
             
-            UIManager.hideLoading();
-            
         } catch (error) {
-            console.error('Login error:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            console.error('Error stack:', error.stack);
-            
+            console.error('Login error:', error?.code, error?.message);
+            this.showMessage('login', authErrorMessage(error, 'login'));
+        } finally {
+            this.setBusy('login', false);
             UIManager.hideLoading();
-            
-            const reasons = {
-                'auth/invalid-email': 'msg.auth.err_invalid_email',
-                'auth/user-disabled': 'msg.auth.err_user_disabled',
-                'auth/user-not-found': 'msg.auth.err_user_not_found',
-                'auth/wrong-password': 'msg.auth.err_wrong_password',
-                'auth/invalid-credential': 'msg.auth.err_invalid_credential',
-                'auth/network-request-failed': 'msg.auth.err_network',
-                'auth/too-many-requests': 'msg.auth.err_too_many_requests'
-            };
-            const reason = reasons[error.code] ? t(reasons[error.code]) : error.message;
-            UIManager.showToast(t('msg.auth.login_failed', { reason }), 4000);
         }
     },
 
     // Handle registration
     async handleRegister() {
+        if (this.busy.register) return;
+        this.clearMessage('register');
+
         const name = document.getElementById('registerName').value.trim();
         const email = document.getElementById('registerEmail').value.trim();
         const password = document.getElementById('registerPassword').value;
         const confirmPassword = document.getElementById('registerConfirmPassword')?.value;
         
         if (!name || !email || !password) {
-            UIManager.showToast(t('msg.auth.fill_all_fields'));
+            this.showMessage('register', t('msg.auth.fill_all_fields'));
             return;
         }
         
         if (confirmPassword && password !== confirmPassword) {
-            UIManager.showToast(t('msg.auth.passwords_do_not_match'));
+            this.showMessage('register', t('msg.auth.passwords_do_not_match'));
             return;
         }
         
         if (password.length < 6) {
-            UIManager.showToast(t('msg.auth.password_must_at_least_6'));
+            this.showMessage('register', t('msg.auth.password_must_at_least_6'));
             return;
         }
         
-        UIManager.showLoading();
+        this.setBusy('register', true, 'ui.auth.creating_account');
         // Suppresses the app's onAuthStateChanged initialization for the temporary sign-ins below
         this.authFlowInProgress = true;
+        
+        // After a successful registration the user is sent to the Login card with the result there
+        const doneOnLoginCard = (text) => {
+            this.showAuthTab('login');
+            this.showMessage('login', text, 'success');
+        };
         
         try {
             const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
@@ -251,24 +350,20 @@ const AuthManager = {
             
             await firebase.auth().signOut();
             
-            UIManager.hideLoading();
-            UIManager.showToast(t('msg.auth.registration_successful_wait_admin_approval'));
-            
-            this.showAuthTab('login');
+            doneOnLoginCard(t('msg.auth.registration_successful_wait_admin_approval'));
             
         } catch (error) {
-            console.error('Registration error:', error);
+            console.error('Registration error:', error?.code, error?.message);
             
             if (error.code === 'auth/email-already-in-use') {
                 try {
                     const message = await this.recoverExistingRegistration(name, email, password);
-                    UIManager.hideLoading();
                     if (message) {
-                        UIManager.showToast(message, 4000);
+                        this.showAuthTab('login');
+                        this.showMessage('login', message, 'info');
                     } else {
-                        UIManager.showToast(t('msg.auth.registration_successful_wait_admin_approval'));
+                        doneOnLoginCard(t('msg.auth.registration_successful_wait_admin_approval'));
                     }
-                    this.showAuthTab('login');
                     return;
                 } catch (recoveryError) {
                     console.error('Registration recovery error:', recoveryError);
@@ -276,22 +371,19 @@ const AuthManager = {
                 }
             }
             
-            UIManager.hideLoading();
-            
-            const reasons = {
-                'auth/email-already-in-use': 'msg.auth.err_email_in_use',
-                'auth/invalid-email': 'msg.auth.err_invalid_email',
-                'auth/weak-password': 'msg.auth.err_weak_password'
-            };
-            const reason = reasons[error.code] ? t(reasons[error.code]) : error.message;
-            UIManager.showToast(t('msg.auth.registration_failed', { reason }), 4000);
+            this.showMessage('register', authErrorMessage(error, 'register'));
         } finally {
             this.authFlowInProgress = false;
+            this.setBusy('register', false);
+            UIManager.hideLoading();
         }
     },
 
-    // Handle forgot password
+    // Handle forgot password (shown on the Login card)
     async handleForgotPassword() {
+        if (this.busy.reset || this.busy.login) return;
+        this.clearMessage('login');
+
         const emailInput = document.getElementById('loginEmail');
         let email = emailInput?.value?.trim();
         
@@ -304,20 +396,21 @@ const AuthManager = {
         }
         
         if (!email) {
-            UIManager.showToast(t('msg.auth.enter_email_address'));
+            this.showMessage('login', t('msg.auth.enter_email_address'));
             return;
         }
         
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            UIManager.showToast(t('msg.auth.enter_valid_email_address'));
+            this.showMessage('login', t('msg.auth.enter_valid_email_address'));
             return;
         }
         
+        this.setBusy('reset', true);
+        this.showMessage('login', t('msg.auth.sending_reset_email'), 'info');
+        
         try {
-            UIManager.showLoading();
-            
             // Configure action code settings for password reset
             const actionCodeSettings = {
                 url: APP_IDENTITY.siteUrl,
@@ -326,30 +419,22 @@ const AuthManager = {
             
             await firebase.auth().sendPasswordResetEmail(email, actionCodeSettings);
             
-            UIManager.hideLoading();
-            UIManager.showToast(t('msg.auth.password_reset_email_sent_check', { email }), 5000);
+            this.showMessage('login', t('msg.auth.password_reset_email_sent_check', { email }), 'success');
         } catch (error) {
-            console.error('Password reset error:', error);
-            console.error('Error code:', error.code);
-            console.error('Error message:', error.message);
-            
+            console.error('Password reset error:', error?.code, error?.message);
+            this.showMessage('login', t('msg.auth.reset_email_failed', { reason: authErrorMessage(error, 'reset') }));
+        } finally {
+            this.setBusy('reset', false);
             UIManager.hideLoading();
-            
-            const configError = 'msg.auth.err_configuration';
-            const reasons = {
-                'auth/invalid-email': 'msg.auth.err_invalid_email_format',
-                'auth/user-not-found': 'msg.auth.err_reset_user_not_found',
-                'auth/network-request-failed': 'msg.auth.err_network',
-                'auth/too-many-requests': 'msg.auth.err_too_many_resets',
-                'auth/missing-android-pkg-name': configError,
-                'auth/missing-continue-uri': configError,
-                'auth/missing-ios-bundle-id': configError,
-                'auth/invalid-continue-uri': configError,
-                'auth/unauthorized-continue-uri': configError
-            };
-            const reason = reasons[error.code] ? t(reasons[error.code]) : error.message;
-            UIManager.showToast(t('msg.auth.reset_email_failed', { reason }), 5000);
         }
+    },
+
+    /**
+     * Shows a result of the app's own sign-in checks (pending / rejected / no profile /
+     * outdated app) on the Login card, e.g. when the check runs from onAuthStateChanged.
+     */
+    showLoginNotice(text, kind = 'error') {
+        this.showMessage('login', text, kind);
     },
 
     // Handle logout
@@ -489,4 +574,4 @@ const AuthManager = {
     }
 };
 // Export AuthManager
-export { AuthManager };
+export { AuthManager, authErrorMessage };

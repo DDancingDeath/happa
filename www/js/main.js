@@ -201,6 +201,7 @@ function blockOutdatedApp() {
     NotificationsManager.stop();
     document.getElementById('appContent')?.classList.add('hidden');
     UIManager.hideLoading();
+    AuthManager.showLoginNotice(t('msg.app.app_version_outdated_update_app'));
     UIManager.showModal(t('msg.app.app_version_outdated_update_app'));
 }
 
@@ -243,7 +244,7 @@ async function initializeUserData() {
                     notShown();
                     await firebase.auth().signOut();
                     UIManager.hideLoading();
-                    UIManager.showToast(t('msg.common.account_pending_approval_wait_admin'));
+                    AuthManager.showLoginNotice(t('msg.common.account_pending_approval_wait_admin'), 'info');
                     document.getElementById('authScreen').style.display = 'flex';
                     return;
                 }
@@ -252,7 +253,7 @@ async function initializeUserData() {
                     notShown();
                     await firebase.auth().signOut();
                     UIManager.hideLoading();
-                    UIManager.showToast(t('msg.common.account_has_been_rejected_contact'));
+                    AuthManager.showLoginNotice(t('msg.common.account_has_been_rejected_contact'));
                     document.getElementById('authScreen').style.display = 'flex';
                     return;
                 }
@@ -264,7 +265,7 @@ async function initializeUserData() {
                 notShown();
                 await firebase.auth().signOut();
                 UIManager.hideLoading();
-                UIManager.showToast(t('msg.app.user_account_not_found_register'));
+                AuthManager.showLoginNotice(t('msg.app.user_account_not_found_register'));
                 document.getElementById('authScreen').style.display = 'flex';
                 return;
             }
