@@ -5,7 +5,7 @@
  * @module i18n/localize
  */
 
-import { getLang } from './index.js';
+import { getLang, t } from './index.js';
 
 const DEVANAGARI = /[\u0900-\u097F]/;
 const SEP = ' / ';
@@ -44,4 +44,16 @@ export function pickLang(value, lang = getLang()) {
     if (other != null && String(other) !== '') return String(other);
     if (value.message != null) return splitBilingual(value.message, lang);
     return '';
+}
+
+const AUDIT_ACTIONS = ['CREATE_BILL', 'DELETE_BILL', 'CREATE_SALE', 'DELETE_SALE', 'DELETE_ITEM', 'UPDATE_PAYMENT', 'RECORD_PAYMENT',
+    'CLEAR_DATA', 'LOGIN', 'LOGOUT'];
+
+/**
+ * Audit action code (CREATE_BILL) in the app language; unknown codes as plain words.
+ * @param {string} action
+ * @returns {string}
+ */
+export function auditActionLabel(action = '') {
+    return AUDIT_ACTIONS.includes(action) ? t(`ui.diag.a_${action.toLowerCase()}`) : String(action).replace(/_/g, ' ');
 }

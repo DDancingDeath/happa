@@ -28,6 +28,15 @@ const SESSION_MAX_DAYS = 62;
 const SESSION_TTL_MS = 5 * 60 * 1000;
 /** Skips recomputing the dashboard on a tab revisit when nothing changed (#24). */
 const dashboardMemo = createRenderMemo();
+/** Stored withdrawal purposes (the form's option values) and their labels. */
+const WITHDRAWAL_PURPOSE_KEYS = {
+    'Personal Use': 'ui.finance.personal_use',
+    Salary: 'ui.finance.salary',
+    Investment: 'ui.finance.investment',
+    'Loan Repayment': 'ui.finance.loan_repayment',
+    Family: 'ui.finance.family',
+    Other: 'ui.stock.reason_other'
+};
 
 const isShown = (el) => !!el && el.style.display !== 'none';
 
@@ -362,7 +371,7 @@ export class FinanceManager {
             const scopes = [...section.children].filter(el =>
                 !el.querySelector('.filter-buttons') && !el.classList.contains('history-range-notice'));
             applyRangeState(scopes, isShown(section) ? status : 'ready', {
-                loadingText: start ? 'Loading older data for this period…' : 'Loading full history…',
+                loadingText: start ? t('ui.reports.loading_older') : t('ui.finance.loading_full_history'),
                 onRetry: () => {
                     retryRange('financeDashboard');
                     this.renderDashboard();
@@ -864,7 +873,7 @@ export class FinanceManager {
         if (!container) return;
         
         if (this.customAccounts.length === 0) {
-            container.innerHTML = '<p class="empty-state">No custom accounts added yet. Click + to add.</p>';
+            container.innerHTML = `<p class="empty-state">${Helpers.escapeHtml(t('ui.finance.no_accounts'))}</p>`;
             return;
         }
         
@@ -877,7 +886,7 @@ export class FinanceManager {
                         <span class="asset-icon">${Helpers.escapeHtml(acc.icon)}</span>
                         <div>
                             <div class="asset-name">${Helpers.escapeHtml(acc.name)}</div>
-                            <div class="asset-desc">${isAsset ? 'Asset' : 'Liability'}</div>
+                            <div class="asset-desc">${Helpers.escapeHtml(t(isAsset ? 'ui.finance.asset' : 'ui.finance.liability'))}</div>
                         </div>
                     </div>
                     <div class="asset-amount ${isAsset ? 'asset-positive' : 'asset-negative'}">
@@ -1019,8 +1028,8 @@ export class FinanceManager {
         if (!section) return;
         const first = [...section.children].find(el => !el.classList.contains('history-range-notice'));
         applyRangeState(first, isShown(section) ? status : 'ready', {
-            loadingText: 'Loading full history…',
-            errorText: "Couldn't load full history, so all-time totals are hidden.",
+            loadingText: t('ui.finance.loading_full_history'),
+            errorText: t('ui.finance.full_history_failed'),
             onRetry
         });
     }
@@ -1166,8 +1175,8 @@ export class FinanceManager {
 
         if (withdrawalsHistory.length === 0) {
             container.innerHTML = isFullHistoryLoaded()
-                ? '<p class="empty-state">No withdrawals recorded yet</p>'
-                : '<p class="empty-state">No recent withdrawals</p>';
+                ? `<p class="empty-state">${Helpers.escapeHtml(t('ui.finance.no_withdrawals'))}</p>`
+                : `<p class="empty-state">${Helpers.escapeHtml(t('ui.finance.no_recent_withdrawals'))}</p>`;
             return;
         }
         
@@ -1176,12 +1185,12 @@ export class FinanceManager {
         
         let html = '<div class="withdrawal-list">';
         sorted.forEach(w => {
-            const date = new Date(w.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            const date = new Date(w.date).toLocaleDateString(getLang() === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
             html += `
                 <div class="withdrawal-item">
                     <div class="withdrawal-info">
                         <div class="withdrawal-person">💸 ${Helpers.escapeHtml(w.person)}</div>
-                        <div class="withdrawal-purpose">${Helpers.escapeHtml(w.purpose)}</div>
+                        <div class="withdrawal-purpose">${Helpers.escapeHtml(WITHDRAWAL_PURPOSE_KEYS[w.purpose] ? t(WITHDRAWAL_PURPOSE_KEYS[w.purpose]) : w.purpose)}</div>
                         <div class="withdrawal-date">${date}</div>
                     </div>
                     <div class="withdrawal-amount">-₹${Math.round(w.amount).toLocaleString('en-IN')}</div>

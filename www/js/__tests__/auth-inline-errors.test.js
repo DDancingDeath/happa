@@ -99,7 +99,7 @@ describe.each([
         expect($('loginMessage').classList.contains('error')).toBe(true);
         expect(toast).not.toHaveBeenCalled();
         expect(loginBtn().disabled).toBe(false);
-        expect(loginBtn().textContent).toBe('Login');
+        expect(loginBtn().textContent).toBe(lang === 'hi' ? 'लॉगिन' : 'Login');
     });
 
     test('an error without a code still names it', async () => {

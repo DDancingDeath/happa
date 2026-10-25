@@ -7,7 +7,7 @@
 import { APP_VERSION } from '../version.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { openExternal } from '../utils/open-external.js';
-import { getLang, setLang, t } from '../i18n/index.js';
+import { getLang, t, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import {
     APK_DOWNLOAD_URL, APP_NAME, DOWNLOAD_PAGE_URL, LATEST_RELEASE_API,
     buildShareMessage, findRelease, shouldCheckForUpdate, updateToOffer,
@@ -93,25 +93,7 @@ export class AppUpdatesManager {
         sheet.setAttribute('aria-labelledby', 'whatsNewTitle');
 
         // Changelog text is only ever set via textContent (never innerHTML), so it cannot inject markup.
-        const toggle = el('div', 'app-sheet-lang-toggle');
-        toggle.setAttribute('role', 'group');
-        toggle.setAttribute('aria-label', t('ui.updates.language'));
-        const langButtons = {};
-        for (const [lang, label] of [['en', 'English'], ['hi', 'हिंदी']]) {
-            const btn = el('button', 'app-sheet-lang-btn', label);
-            btn.type = 'button';
-            btn.lang = lang;
-            btn.addEventListener('click', () => {
-                // One setting for the whole app (#143): this also switches every screen.
-                setLang(lang);
-                render(lang);
-                btn.focus();
-            });
-            langButtons[lang] = btn;
-            toggle.appendChild(btn);
-        }
-        sheet.appendChild(toggle);
-
+        // The sheet follows the app language (#143); it has no language switch of its own.
         const title = el('h3', 'app-sheet-title');
         title.id = 'whatsNewTitle';
         const versionLine = el('div', 'app-sheet-version');
@@ -126,9 +108,6 @@ export class AppUpdatesManager {
             const { lang, notesLang, notes, fellBack } = whatsNewContent(release, storedLang);
             const labels = WHATS_NEW_LABELS[lang];
             sheet.lang = lang;
-            for (const [l, btn] of Object.entries(langButtons)) {
-                btn.setAttribute('aria-pressed', String(l === lang));
-            }
             title.textContent = labels.title;
             versionLine.textContent = labels.version(release.version);
             fallbackNote.textContent = fellBack ? labels.fallback : '';
@@ -138,9 +117,12 @@ export class AppUpdatesManager {
             close.textContent = labels.close;
         };
         render(getLang());
+        const onLangChange = (e) => render(e.detail?.lang || getLang());
+        window.addEventListener(LANG_CHANGE_EVENT, onLangChange);
 
         const dismiss = () => {
             store.set(KEYS.lastSeen, APP_VERSION);
+            window.removeEventListener(LANG_CHANGE_EVENT, onLangChange);
             backdrop.remove();
         };
         close.addEventListener('click', dismiss);

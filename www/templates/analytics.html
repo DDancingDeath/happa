@@ -1,16 +1,16 @@
 <div id="analytics" class="tab">
     <!-- Header -->
     <div class="page-header" style="margin-bottom: 16px;">
-        <h2 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0;">📊 Business Insights</h2>
-        <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0 0 0;">Smart analytics to grow your business</p>
+        <h2 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 0;" data-i18n="ui.analytics.business_insights">📊 Business Insights</h2>
+        <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0 0 0;" data-i18n="ui.analytics.smart_analytics_to_grow_your">Smart analytics to grow your business</p>
     </div>
 
     <!-- Tab Navigation -->
     <div class="filter-buttons" style="margin-bottom: 16px; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;">
-        <button class="filter-btn active" onclick="window.app.analytics.showTab('overview', event)">Overview</button>
-        <button class="filter-btn" onclick="window.app.analytics.showTab('trends', event)">Trends</button>
-        <button class="filter-btn" onclick="window.app.analytics.showTab('items', event)">Items</button>
-        <button class="filter-btn" onclick="window.app.analytics.showTab('insights', event)">Insights</button>
+        <button class="filter-btn active" onclick="window.app.analytics.showTab('overview', event)" data-i18n="ui.analytics.overview">Overview</button>
+        <button class="filter-btn" onclick="window.app.analytics.showTab('trends', event)" data-i18n="ui.analytics.trends">Trends</button>
+        <button class="filter-btn" onclick="window.app.analytics.showTab('items', event)" data-i18n="ui.history.items">Items</button>
+        <button class="filter-btn" onclick="window.app.analytics.showTab('insights', event)" data-i18n="ui.analytics.insights">Insights</button>
     </div>
 
     <!-- ==================== OVERVIEW TAB ==================== -->
@@ -19,25 +19,25 @@
         <div class="settings-card" style="margin-bottom: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
                 <div>
-                    <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600;">💰 Today's Cash Prediction</h3>
-                    <p style="margin: 0; font-size: 12px; opacity: 0.85;">Based on your typical business pattern</p>
+                    <h3 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600;" data-i18n="ui.analytics.today_s_cash_prediction">💰 Today's Cash Prediction</h3>
+                    <p style="margin: 0; font-size: 12px; opacity: 0.85;" data-i18n="ui.analytics.based_on_your_typical_business">Based on your typical business pattern</p>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 11px; opacity: 0.8;">Confidence</div>
+                    <div style="font-size: 11px; opacity: 0.8;" data-i18n="ui.analytics.confidence">Confidence</div>
                     <div id="predictionConfidence" style="font-size: 14px; font-weight: 600;">--</div>
                 </div>
             </div>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
                 <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px;">
-                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;">Expected Purchases</div>
+                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;" data-i18n="ui.analytics.expected_purchases">Expected Purchases</div>
                     <div id="predictedPurchases" style="font-size: 18px; font-weight: 700;">₹0</div>
                 </div>
                 <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px;">
-                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;">Expected Sales</div>
+                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;" data-i18n="ui.analytics.expected_sales">Expected Sales</div>
                     <div id="predictedSales" style="font-size: 18px; font-weight: 700;">₹0</div>
                 </div>
                 <div style="background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px;">
-                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;">Cash Needed</div>
+                    <div style="font-size: 11px; opacity: 0.85; margin-bottom: 4px;" data-i18n="ui.analytics.cash_needed">Cash Needed</div>
                     <div id="predictedCashNeed" style="font-size: 18px; font-weight: 700;">₹0</div>
                 </div>
             </div>
@@ -45,67 +45,67 @@
 
         <!-- Month Summary -->
         <div class="settings-card" style="margin-bottom: 16px;">
-            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">📅 This Month Summary</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);" data-i18n="ui.analytics.this_month_summary">📅 This Month Summary</h3>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
                 <div class="stat-card stat-card-success-light" style="text-align: center; padding: 12px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Total Revenue</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.total_revenue">Total Revenue</div>
                     <div id="monthRevenue" style="font-size: 20px; font-weight: 700; color: #16a34a;">₹0</div>
-                    <div id="monthRevenueGrowth" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">vs last month</div>
+                    <div id="monthRevenueGrowth" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;"><span data-i18n="ui.analytics.vs_last_month">vs last month</span></div>
                 </div>
                 <div class="stat-card stat-card-info-light" style="text-align: center; padding: 12px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Total Purchases</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.total_purchases">Total Purchases</div>
                     <div id="monthPurchases" style="font-size: 20px; font-weight: 700; color: #2563eb;">₹0</div>
-                    <div id="monthPurchasesGrowth" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">vs last month</div>
+                    <div id="monthPurchasesGrowth" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;"><span data-i18n="ui.analytics.vs_last_month">vs last month</span></div>
                 </div>
                 <div class="stat-card" data-perm="profit" style="text-align: center; background: #fef3c7; padding: 12px;">
                     <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.finance.profit_on_goods_sold">Profit on goods sold</div>
                     <div id="monthProfit" style="font-size: 20px; font-weight: 700; color: #d97706;">₹0</div>
-                    <div id="monthProfitMargin" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">-- margin</div>
+                    <div id="monthProfitMargin" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;"><span data-i18n="ui.analytics.margin">-- margin</span></div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #fee2e2; padding: 12px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Expenses</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.nav.expenses">Expenses</div>
                     <div id="monthExpenses" style="font-size: 20px; font-weight: 700; color: #dc2626;">₹0</div>
-                    <div id="monthExpensesCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">-- transactions</div>
+                    <div id="monthExpensesCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;"><span data-i18n="ui.analytics.transactions">-- transactions</span></div>
                 </div>
             </div>
         </div>
 
         <!-- Outstanding Summary -->
         <div class="settings-card" style="margin-bottom: 16px;">
-            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">⚠️ Outstanding Dues</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);" data-i18n="ui.analytics.outstanding_dues">⚠️ Outstanding Dues</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                 <div class="stat-card" style="text-align: center; background: #fee2e2; border-left: 4px solid #dc2626; padding: 12px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">You Owe</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.you_owe">You Owe</div>
                     <div id="totalPayable" style="font-size: 18px; font-weight: 700; color: #dc2626;">₹0</div>
-                    <div id="payableCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">-- bills</div>
+                    <div id="payableCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;"><span data-i18n="ui.analytics.bills">-- bills</span></div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #dcfce7; border-left: 4px solid #16a34a; padding: 12px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">You'll Receive</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.you_ll_receive">You'll Receive</div>
                     <div id="totalReceivable" style="font-size: 18px; font-weight: 700; color: #16a34a;">₹0</div>
-                    <div id="receivableCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">-- bills</div>
+                    <div id="receivableCount" style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;"><span data-i18n="ui.analytics.bills">-- bills</span></div>
                 </div>
             </div>
         </div>
 
         <!-- Monthly Projection -->
         <div class="settings-card">
-            <h3 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">🔮 Month-End Projection</h3>
-            <p style="margin: 0 0 12px 0; font-size: 11px; color: var(--text-secondary);">Based on current pace</p>
+            <h3 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);" data-i18n="ui.analytics.month_end_projection">🔮 Month-End Projection</h3>
+            <p style="margin: 0 0 12px 0; font-size: 11px; color: var(--text-secondary);" data-i18n="ui.analytics.based_on_current_pace">Based on current pace</p>
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
                 <div class="stat-card" style="text-align: center; background: #f0fdf4; padding: 10px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Projected Revenue</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.projected_revenue">Projected Revenue</div>
                     <div id="projectedRevenue" style="font-size: 18px; font-weight: 700; color: #16a34a;">₹0</div>
                 </div>
                 <div class="stat-card" data-perm="profit" style="text-align: center; background: #fef3c7; padding: 10px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Projected Profit</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.projected_profit">Projected Profit</div>
                     <div id="projectedProfit" style="font-size: 18px; font-weight: 700; color: #d97706;">₹0</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #eff6ff; padding: 10px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Cash Required</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.cash_required">Cash Required</div>
                     <div id="projectedCashRequired" style="font-size: 18px; font-weight: 700; color: #2563eb;">₹0</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #fae8ff; padding: 10px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Days Remaining</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.days_remaining">Days Remaining</div>
                     <div id="daysRemaining" style="font-size: 18px; font-weight: 700; color: #a855f7;">0</div>
                 </div>
             </div>
@@ -117,11 +117,11 @@
         <!-- Profit Trend Chart -->
         <div class="settings-card" data-perm="profit" style="margin-bottom: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h3 style="margin: 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">📈 Profit Trend</h3>
+                <h3 style="margin: 0; font-size: 15px; font-weight: 600; color: var(--text-primary);" data-i18n="ui.analytics.profit_trend">📈 Profit Trend</h3>
                 <div class="filter-buttons" style="gap: 4px;">
-                    <button class="filter-btn active" onclick="window.app.analytics.setProfitPeriod('7days', event)" style="padding: 5px 8px; font-size: 11px;">7D</button>
-                    <button class="filter-btn" onclick="window.app.analytics.setProfitPeriod('30days', event)" style="padding: 5px 8px; font-size: 11px;">30D</button>
-                    <button class="filter-btn" onclick="window.app.analytics.setProfitPeriod('90days', event)" style="padding: 5px 8px; font-size: 11px;">90D</button>
+                    <button class="filter-btn active" onclick="window.app.analytics.setProfitPeriod('7days', event)" style="padding: 5px 8px; font-size: 11px;" data-i18n="ui.analytics.p7">7D</button>
+                    <button class="filter-btn" onclick="window.app.analytics.setProfitPeriod('30days', event)" style="padding: 5px 8px; font-size: 11px;" data-i18n="ui.analytics.p30">30D</button>
+                    <button class="filter-btn" onclick="window.app.analytics.setProfitPeriod('90days', event)" style="padding: 5px 8px; font-size: 11px;" data-i18n="ui.analytics.p90">90D</button>
                 </div>
             </div>
             <div id="profitTrendChart" style="height: 180px; overflow-x: auto;">
@@ -134,7 +134,7 @@
 
         <!-- Rate Trends Section -->
         <div class="settings-card">
-            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">💹 Item Rate Trends (This Month)</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);" data-i18n="ui.analytics.item_rate_trends_this_month">💹 Item Rate Trends (This Month)</h3>
             <div id="rateTrendsContainer">
                 <!-- Rate trends will be rendered here -->
             </div>
@@ -145,8 +145,8 @@
     <div id="analyticsItemsTab" class="analytics-tab-content" style="display: none;">
         <!-- Items to Focus -->
         <div class="settings-card" style="margin-bottom: 16px;">
-            <h3 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">🎯 Items to Focus</h3>
-            <p style="margin: 0 0 12px 0; font-size: 11px; color: var(--text-secondary);">Based on profit margins and demand</p>
+            <h3 style="margin: 0 0 4px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);" data-i18n="ui.analytics.items_to_focus">🎯 Items to Focus</h3>
+            <p style="margin: 0 0 12px 0; font-size: 11px; color: var(--text-secondary);" data-i18n="ui.analytics.based_on_profit_margins_and">Based on profit margins and demand</p>
             <div id="itemsToFocus">
                 <!-- Items will be rendered here -->
             </div>
@@ -154,16 +154,16 @@
 
         <!-- Top Performers -->
         <div class="settings-card">
-            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">🏆 Top Performers This Month</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);" data-i18n="ui.analytics.top_performers_this_month">🏆 Top Performers This Month</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div>
-                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">By Revenue</div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;" data-i18n="ui.analytics.by_revenue">By Revenue</div>
                     <div id="topByRevenue">
                         <!-- Top items by revenue -->
                     </div>
                 </div>
                 <div>
-                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">By Quantity</div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;" data-i18n="ui.analytics.by_quantity">By Quantity</div>
                     <div id="topByQuantity">
                         <!-- Top items by quantity -->
                     </div>
@@ -176,7 +176,7 @@
     <div id="analyticsInsightsTab" class="analytics-tab-content" style="display: none;">
         <!-- Smart Suggestions -->
         <div class="settings-card" style="margin-bottom: 16px; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
-            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;">💡 Smart Suggestions</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600;" data-i18n="ui.analytics.smart_suggestions">💡 Smart Suggestions</h3>
             <div id="smartSuggestions">
                 <!-- AI-like suggestions will be rendered here -->
             </div>
@@ -184,18 +184,18 @@
 
         <!-- Customer Insights -->
         <div class="settings-card">
-            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);">👥 Customer Insights</h3>
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--text-primary);" data-i18n="ui.analytics.customer_insights">👥 Customer Insights</h3>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px;">
                 <div class="stat-card" style="text-align: center; background: #eff6ff; padding: 10px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Active Buyers</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.active_buyers">Active Buyers</div>
                     <div id="activeBuyers" style="font-size: 18px; font-weight: 700; color: #2563eb;">0</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #f0fdf4; padding: 10px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Active Sellers</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.active_sellers">Active Sellers</div>
                     <div id="activeSellers" style="font-size: 18px; font-weight: 700; color: #16a34a;">0</div>
                 </div>
                 <div class="stat-card" style="text-align: center; background: #fef3c7; padding: 10px;">
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;">Avg/Customer</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 4px;" data-i18n="ui.analytics.avg_customer">Avg/Customer</div>
                     <div id="avgPerCustomer" style="font-size: 18px; font-weight: 700; color: #d97706;">₹0</div>
                 </div>
             </div>

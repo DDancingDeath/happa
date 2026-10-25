@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-happa="downloadTitle">happa — Download / डाउनलोड</title>
-    <meta name="description" content="Download the happa Android app and install steps in Hindi and English." data-happa-content="downloadDescription">
+    <title data-happa="downloadTitle">happa — Download</title>
+    <meta name="description" content="Download the happa Android app and see how to install it." data-happa-content="downloadDescription">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23667eea' width='100' height='100' rx='20'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='Arial,sans-serif' font-weight='bold'>h</text></svg>">
     <style>
         * { box-sizing: border-box; }
@@ -26,56 +26,82 @@
         .qr img { width: 200px; height: 200px; image-rendering: pixelated; }
         a { color: #4f46e5; }
         footer { text-align: center; color: #6b7280; font-size: 0.85rem; padding: 8px 16px 24px; }
+        .lang-switch { margin-top: 10px; font-size: 0.95rem; }
+        .lang-switch button { appearance: none; background: transparent; border: 0; color: #fff; font: inherit; min-height: 36px; padding: 6px 10px; cursor: pointer; text-decoration: underline; opacity: 0.85; }
+        .lang-switch button[aria-pressed="true"] { font-weight: 700; text-decoration: none; opacity: 1; }
+        html[lang="en"] .hi, html[lang="hi"] .en { display: none; }
     </style>
+    <script>
+        (function () {
+            var lang = 'en';
+            try {
+                var saved = localStorage.getItem('aadhat.lang');
+                if (saved === 'en' || saved === 'hi') lang = saved;
+                else if (/^hi\b/i.test(navigator.language || '')) lang = 'hi';
+            } catch (e) { /* storage blocked */ }
+            document.documentElement.lang = lang;
+        })();
+    </script>
 </head>
 <body>
     <header>
         <h1 data-happa="appName">happa</h1>
-        <p>आपका कारोबार, एक जगह / Your business, in one place</p>
+        <p class="en">Your business, in one place</p>
+        <p class="hi">आपका कारोबार, एक जगह</p>
+        <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" lang="en" data-lang-option="en">English</button>
+            <span aria-hidden="true">|</span>
+            <button type="button" lang="hi" data-lang-option="hi">हिंदी</button>
+        </div>
     </header>
     <main>
         <section>
-            <h2>Android ऐप डाउनलोड करें / Download Android app</h2>
-            <p class="muted">नया वर्ज़न / Latest version: <span class="version" id="latestVersion">—</span> <span id="latestDate"></span></p>
-            <a class="download-btn" id="downloadBtn" href="https://github.com/DDancingDeath/happa/releases/latest/download/happa.apk" data-happa-href="apkDownloadUrl" rel="noopener">⬇️ डाउनलोड करें / Download Android app</a>
-            <p class="muted">फ़ाइल का नाम / File name: <span data-happa="apkFile">happa.apk</span></p>
+            <h2 class="en">Download the Android app</h2>
+            <h2 class="hi">Android ऐप डाउनलोड करें</h2>
+            <p class="muted"><span class="en">Latest version:</span><span class="hi">नया वर्ज़न:</span> <span class="version" id="latestVersion">—</span> <span id="latestDate"></span></p>
+            <a class="download-btn" id="downloadBtn" href="https://github.com/DDancingDeath/happa/releases/latest/download/happa.apk" data-happa-href="apkDownloadUrl" rel="noopener"><span class="en">⬇️ Download Android app</span><span class="hi">⬇️ डाउनलोड करें</span></a>
+            <p class="muted"><span class="en">File name:</span><span class="hi">फ़ाइल का नाम:</span> <span data-happa="apkFile">happa.apk</span></p>
         </section>
 
         <section id="notesSection" hidden>
-            <h2>क्या नया है / What's new</h2>
-            <h3>हिंदी</h3>
-            <ul id="notesHi" lang="hi"></ul>
-            <h3>English</h3>
-            <ul id="notesEn" lang="en"></ul>
+            <h2 class="en">What's new</h2>
+            <h2 class="hi">क्या नया है</h2>
+            <ul id="notesList"></ul>
         </section>
 
         <section>
-            <h2>इंस्टॉल कैसे करें (Android 11 और नए)</h2>
-            <ol lang="hi">
-                <li>ऊपर हरे बटन <b>"डाउनलोड करें"</b> को दबाएँ। फ़ाइल डाउनलोड होने तक रुकें।</li>
-                <li>डाउनलोड पूरा होने पर सूचना (notification) में या <b>Files / Downloads</b> ऐप में <b data-happa="apkFile">happa.apk</b> खोलें।</li>
-                <li>अगर लिखा आए <b>"इस स्रोत से ऐप इंस्टॉल करने की अनुमति नहीं है"</b>, तो <b>Settings</b> दबाएँ और <b>"इस स्रोत से अनुमति दें" (Allow from this source)</b> चालू करें। फिर वापस आएँ।</li>
-                <li><b>Install</b> (पहली बार) या <b>Update</b> (पहले से ऐप है) दबाएँ।</li>
-                <li>पुराना ऐप हटाने की ज़रूरत नहीं है — नया वर्ज़न उसी के ऊपर अपडेट हो जाता है और आपका सारा डेटा सुरक्षित रहता है।</li>
-            </ol>
-            <h2 style="margin-top:16px">How to install (Android 11 and newer)</h2>
-            <ol lang="en">
-                <li>Tap the green <b>"Download Android app"</b> button above and wait for the download to finish.</li>
-                <li>Open <b data-happa="apkFile">happa.apk</b> from the download notification or the <b>Files / Downloads</b> app.</li>
-                <li>If you see <b>"For your security, your phone is not allowed to install unknown apps from this source"</b>, tap <b>Settings</b>, turn on <b>"Allow from this source"</b> for your browser or Files app, then go back.</li>
-                <li>Tap <b>Install</b> (first time) or <b>Update</b> (already installed).</li>
-                <li>No need to uninstall the old app — the new version updates over it and all your data is kept.</li>
-            </ol>
+            <div class="hi">
+                <h2>इंस्टॉल कैसे करें (Android 11 और नए)</h2>
+                <ol lang="hi">
+                    <li>ऊपर हरे बटन <b>"डाउनलोड करें"</b> को दबाएँ। फ़ाइल डाउनलोड होने तक रुकें।</li>
+                    <li>डाउनलोड पूरा होने पर सूचना में या फ़ोन के फ़ाइल वाले ऐप (<b>Files</b>) में <b data-happa="apkFile">happa.apk</b> खोलें।</li>
+                    <li>अगर लिखा आए कि इस स्रोत से ऐप इंस्टॉल करने की अनुमति नहीं है, तो <b>सेटिंग</b> दबाएँ और <b>"इस स्रोत से अनुमति दें"</b> चालू करें। फिर वापस आएँ।</li>
+                    <li><b>इंस्टॉल</b> (पहली बार) या <b>अपडेट</b> (पहले से ऐप है) दबाएँ।</li>
+                    <li>पुराना ऐप हटाने की ज़रूरत नहीं है — नया वर्ज़न उसी के ऊपर अपडेट हो जाता है और आपका सारा डेटा सुरक्षित रहता है।</li>
+                </ol>
+            </div>
+            <div class="en">
+                <h2>How to install (Android 11 and newer)</h2>
+                <ol lang="en">
+                    <li>Tap the green <b>"Download Android app"</b> button above and wait for the download to finish.</li>
+                    <li>Open <b data-happa="apkFile">happa.apk</b> from the download notification or the <b>Files / Downloads</b> app.</li>
+                    <li>If you see <b>"For your security, your phone is not allowed to install unknown apps from this source"</b>, tap <b>Settings</b>, turn on <b>"Allow from this source"</b> for your browser or Files app, then go back.</li>
+                    <li>Tap <b>Install</b> (first time) or <b>Update</b> (already installed).</li>
+                    <li>No need to uninstall the old app — the new version updates over it and all your data is kept.</li>
+                </ol>
+            </div>
         </section>
 
         <section>
-            <h2>कंप्यूटर पर चलाएँ / Use on computer</h2>
-            <p lang="hi">कंप्यूटर पर <b>Chrome</b> या <b>Edge</b> ब्राउज़र में <a href="https://myhappa.web.app" data-happa-href="siteUrl" data-happa="siteHost">myhappa.web.app</a> खोलें और अपने खाते से लॉगिन करें।</p>
-            <p lang="en">On a computer, open <a href="https://myhappa.web.app" data-happa-href="siteUrl" data-happa="siteHost">myhappa.web.app</a> in <b>Chrome</b> or <b>Edge</b> and sign in with your account.</p>
+            <h2 class="en">Use on a computer</h2>
+            <h2 class="hi">कंप्यूटर पर चलाएँ</h2>
+            <p class="hi" lang="hi">कंप्यूटर पर <b>Chrome</b> या <b>Edge</b> ब्राउज़र में <a href="https://myhappa.web.app" data-happa-href="siteUrl" data-happa="siteHost">myhappa.web.app</a> खोलें और अपने खाते से लॉगिन करें।</p>
+            <p class="en" lang="en">On a computer, open <a href="https://myhappa.web.app" data-happa-href="siteUrl" data-happa="siteHost">myhappa.web.app</a> in <b>Chrome</b> or <b>Edge</b> and sign in with your account.</p>
         </section>
 
         <section class="qr">
-            <h2>इस पेज को फ़ोन पर खोलें / Open this page on a phone</h2>
+            <h2 class="en">Open this page on a phone</h2>
+            <h2 class="hi">इस पेज को फ़ोन पर खोलें</h2>
             <img src="/img/download-qr.svg" alt="QR code for myhappa.web.app/download" data-happa-alt="qrAlt" width="200" height="200">
             <p class="muted" data-happa="downloadPageHost">myhappa.web.app/download</p>
         </section>
@@ -84,15 +110,45 @@
 
     <script>
         (function () {
-            function fillList(id, items) {
-                var list = document.getElementById(id);
-                (Array.isArray(items) ? items : []).forEach(function (note) {
+            var root = document.documentElement;
+            var appName = document.querySelector('h1').textContent;
+            var titles = { en: appName + ' — Download', hi: appName + ' — डाउनलोड' };
+            var releaseNotes = null;
+
+            function fillNotes(lang) {
+                var list = document.getElementById('notesList');
+                var notes = releaseNotes || {};
+                var items = Array.isArray(notes[lang]) && notes[lang].length ? notes[lang] : (notes[lang === 'hi' ? 'en' : 'hi'] || []);
+                list.textContent = '';
+                list.lang = items === notes[lang] ? lang : (lang === 'hi' ? 'en' : 'hi');
+                items.forEach(function (note) {
                     var li = document.createElement('li');
                     li.textContent = String(note);
                     list.appendChild(li);
                 });
-                return list.children.length;
+                document.getElementById('notesSection').hidden = !list.children.length;
             }
+
+            function show(lang) {
+                root.lang = lang;
+                document.title = titles[lang];
+                document.querySelectorAll('[data-lang-option]').forEach(function (btn) {
+                    btn.setAttribute('aria-pressed', String(btn.getAttribute('data-lang-option') === lang));
+                });
+                var group = document.querySelector('.lang-switch');
+                group.setAttribute('aria-label', lang === 'hi' ? 'भाषा' : 'Language');
+                if (releaseNotes) fillNotes(lang);
+            }
+
+            document.querySelectorAll('[data-lang-option]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var lang = btn.getAttribute('data-lang-option');
+                    try { localStorage.setItem('aadhat.lang', lang); } catch (e) { /* storage blocked */ }
+                    show(lang);
+                });
+            });
+            show(root.lang === 'hi' ? 'hi' : 'en');
+
             fetch('/changelog.json', { cache: 'no-cache' })
                 .then(function (res) { return res.ok ? res.json() : null; })
                 .then(function (data) {
@@ -100,9 +156,8 @@
                     if (!latest) return;
                     document.getElementById('latestVersion').textContent = 'v' + String(latest.version || '');
                     if (latest.date) document.getElementById('latestDate').textContent = '(' + String(latest.date) + ')';
-                    var notes = latest.notes || {};
-                    var count = fillList('notesHi', notes.hi) + fillList('notesEn', notes.en);
-                    if (count) document.getElementById('notesSection').hidden = false;
+                    releaseNotes = latest.notes || {};
+                    fillNotes(root.lang);
                 })
                 .catch(function () { /* page still works without notes */ });
         })();

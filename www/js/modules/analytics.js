@@ -13,6 +13,7 @@ import { profitByDay } from '../utils/finance-calc.js';
 import { t } from '../i18n/index.js';
 
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
+const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 
 const PROFIT_PERIOD_DAYS = { '7days': 7, '30days': 30, '90days': 90 };
 
@@ -156,7 +157,7 @@ export class AnalyticsManager {
         if (tabEl) {
             const scopes = [...tabEl.children].filter(el => !el.classList.contains('history-range-notice'));
             applyRangeState(scopes, status, {
-                loadingText: 'Loading older data…',
+                loadingText: t('ui.analytics.loading_older'),
                 onRetry: () => {
                     retryRange(owner);
                     rerender();
@@ -306,19 +307,19 @@ export class AnalyticsManager {
         this.updateElement('monthPurchases', formatCurrency(purchases));
         this.updateElement('monthProfit', profit === null ? '—' : formatCurrency(profit));
         this.updateElement('monthExpenses', formatCurrency(expenses));
-        this.updateElement('monthProfitMargin', `${profitMargin}% margin`);
-        this.updateElement('monthExpensesCount', `${thisMonthExpenses.length} transactions`);
+        this.updateElement('monthProfitMargin', t('ui.analytics.margin_pct', { value: profitMargin }));
+        this.updateElement('monthExpensesCount', t('ui.analytics.entries_count', { count: thisMonthExpenses.length }));
 
         const revenueGrowthEl = document.getElementById('monthRevenueGrowth');
         if (revenueGrowthEl) {
             const { arrow, color } = growthMarker(revenueGrowth, false);
-            revenueGrowthEl.innerHTML = `<span style="color: ${color}">${arrow} ${Math.abs(revenueGrowth)}%</span> vs last month`;
+            revenueGrowthEl.innerHTML = `<span style="color: ${color}">${arrow} ${Math.abs(revenueGrowth)}%</span> ${tx('ui.analytics.vs_last_month')}`;
         }
 
         const purchaseGrowthEl = document.getElementById('monthPurchasesGrowth');
         if (purchaseGrowthEl) {
             const { arrow, color } = growthMarker(purchaseGrowth, true);
-            purchaseGrowthEl.innerHTML = `<span style="color: ${color}">${arrow} ${Math.abs(purchaseGrowth)}%</span> vs last month`;
+            purchaseGrowthEl.innerHTML = `<span style="color: ${color}">${arrow} ${Math.abs(purchaseGrowth)}%</span> ${tx('ui.analytics.vs_last_month')}`;
         }
     }
 
@@ -390,7 +391,7 @@ export class AnalyticsManager {
         });
 
         if (sortedDates.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 40px;">No data available</p>';
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); padding: 40px;">${tx('ui.reports.no_data_available')}</p>`;
             return;
         }
 
@@ -443,19 +444,19 @@ export class AnalyticsManager {
             summaryContainer.innerHTML = `
                 <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center;">
                     <div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">Total Profit</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${tx('ui.analytics.total_profit')}</div>
                         <div style="font-size: 16px; font-weight: 700; color: ${totalProfit >= 0 ? '#16a34a' : '#dc2626'};">${formatCurrency(totalProfit)}</div>
                     </div>
                     <div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">Avg Daily</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${tx('ui.analytics.avg_daily')}</div>
                         <div style="font-size: 16px; font-weight: 700; color: ${avgProfit >= 0 ? '#16a34a' : '#dc2626'};">${formatCurrency(avgProfit)}</div>
                     </div>
                     <div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">Profit Days</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${tx('ui.analytics.profit_days')}</div>
                         <div style="font-size: 16px; font-weight: 700; color: #16a34a;">${profitDays}</div>
                     </div>
                     <div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">Loss Days</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${tx('ui.analytics.loss_days')}</div>
                         <div style="font-size: 16px; font-weight: 700; color: #dc2626;">${lossDays}</div>
                     </div>
                 </div>
@@ -521,7 +522,7 @@ export class AnalyticsManager {
         rateTrends.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 
         if (rateTrends.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No rate data available this month</p>';
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">' + tx('ui.analytics.no_rate_data') + '</p>';
             return;
         }
 
@@ -535,11 +536,11 @@ export class AnalyticsManager {
                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: ${bgColor}; border-radius: 8px; margin-bottom: 8px;">
                     <div style="flex: 1;">
                         <div style="font-weight: 600; font-size: 14px; color: var(--text-primary);">${Helpers.escapeHtml(trend.item)}</div>
-                        <div style="font-size: 12px; color: var(--text-secondary);">₹${trend.currentRate.toFixed(2)}/kg • ${trend.purchases} purchases</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">₹${trend.currentRate.toFixed(2)}/kg • ${tx('ui.analytics.purchases_count', { count: trend.purchases })}</div>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-weight: 700; font-size: 16px; color: ${color};">${arrow} ${Math.abs(trend.change).toFixed(1)}%</div>
-                        <div style="font-size: 11px; color: var(--text-secondary);">vs last month</div>
+                        <div style="font-size: 11px; color: var(--text-secondary);">${tx('ui.analytics.vs_last_month')}</div>
                     </div>
                 </div>
             `;
@@ -602,25 +603,25 @@ export class AnalyticsManager {
 
             // High margin items
             if (profitMargin > 15 && stats.sold > 5000) {
-                reason = `High profit margin (${profitMargin.toFixed(0)}%) - Push more sales`;
+                reason = t('ui.analytics.tip_high_margin', { value: profitMargin.toFixed(0) });
                 priority = 3;
                 icon = '🔥';
             }
             // Low margin but high volume
             else if (profitMargin > 0 && profitMargin < 10 && stats.soldQty > 50) {
-                reason = `High volume, low margin - Negotiate better rates`;
+                reason = t('ui.analytics.tip_low_margin');
                 priority = 2;
                 icon = '💡';
             }
             // Items with good sale rate vs purchase rate
             else if (avgSaleRate > avgPurchaseRate * 1.2 && stats.soldQty > 20) {
-                reason = `Good markup (₹${avgSaleRate.toFixed(0)} vs ₹${avgPurchaseRate.toFixed(0)}) - Increase stock`;
+                reason = t('ui.analytics.tip_good_markup', { sale: avgSaleRate.toFixed(0), purchase: avgPurchaseRate.toFixed(0) });
                 priority = 2;
                 icon = '📈';
             }
             // Purchased but not selling
             else if (stats.purchased > 10000 && stats.sold < stats.purchased * 0.5) {
-                reason = `Low turnover - Focus on clearing stock`;
+                reason = t('ui.analytics.tip_low_turnover');
                 priority = 1;
                 icon = '⚠️';
             }
@@ -634,7 +635,7 @@ export class AnalyticsManager {
         recommendations.sort((a, b) => b.priority - a.priority || b.revenue - a.revenue);
 
         if (recommendations.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">Not enough data for recommendations yet</p>';
+            container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">' + tx('ui.analytics.not_enough_data') + '</p>';
             return;
         }
 
@@ -681,7 +682,7 @@ export class AnalyticsManager {
         // Top by revenue
         const topRevenue = [...items].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
         revenueContainer.innerHTML = topRevenue.length === 0 
-            ? '<p style="color: var(--text-secondary); font-size: 13px;">No sales data</p>'
+            ? '<p style="color: var(--text-secondary); font-size: 13px;">' + tx('ui.analytics.no_sales_data') + '</p>'
             : topRevenue.map((item, idx) => `
                 <div style="display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
                     <div style="width: 22px; height: 22px; border-radius: 50%; background: ${idx === 0 ? '#fbbf24' : idx === 1 ? '#9ca3af' : idx === 2 ? '#cd7c32' : '#e5e7eb'}; color: ${idx < 3 ? 'white' : '#666'}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;">${idx + 1}</div>
@@ -693,7 +694,7 @@ export class AnalyticsManager {
         // Top by quantity
         const topQty = [...items].sort((a, b) => b.quantity - a.quantity).slice(0, 5);
         qtyContainer.innerHTML = topQty.length === 0 
-            ? '<p style="color: var(--text-secondary); font-size: 13px;">No sales data</p>'
+            ? '<p style="color: var(--text-secondary); font-size: 13px;">' + tx('ui.analytics.no_sales_data') + '</p>'
             : topQty.map((item, idx) => `
                 <div style="display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
                     <div style="width: 22px; height: 22px; border-radius: 50%; background: ${idx === 0 ? '#fbbf24' : idx === 1 ? '#9ca3af' : idx === 2 ? '#cd7c32' : '#e5e7eb'}; color: ${idx < 3 ? 'white' : '#666'}; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;">${idx + 1}</div>
@@ -749,9 +750,9 @@ export class AnalyticsManager {
         const customersContainer = document.getElementById('topCustomers');
         if (customersContainer) {
             customersContainer.innerHTML = topCustomers.length === 0 
-                ? '<p style="color: var(--text-secondary); font-size: 13px; text-align: center;">No customer data this month</p>'
+                ? '<p style="color: var(--text-secondary); font-size: 13px; text-align: center;">' + tx('ui.analytics.no_customer_data') + '</p>'
                 : `
-                    <div style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">Top Customers</div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">${tx('ui.analytics.top_customers')}</div>
                     ${topCustomers.map((c, idx) => `
                         <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-color);">
                             <div style="width: 24px; height: 24px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600;">${idx + 1}</div>
@@ -798,34 +799,34 @@ export class AnalyticsManager {
         if (saleDue > 50000) {
             suggestions.push({
                 icon: '💳',
-                text: `Collect ${formatCurrency(saleDue)} in pending dues from customers to improve cash flow`
+                text: t('ui.analytics.tip_collect_dues', { amount: formatCurrency(saleDue) })
             });
         }
 
         if (purchaseDue > saleDue * 1.5 && purchaseDue > 30000) {
             suggestions.push({
                 icon: '⚠️',
-                text: `You owe ${formatCurrency(purchaseDue)} to suppliers - prioritize clearing high-interest dues`
+                text: t('ui.analytics.tip_you_owe', { amount: formatCurrency(purchaseDue) })
             });
         }
 
         if (profit !== null && profit < 0 && month.sales.count > 0) {
             suggestions.push({
                 icon: '📉',
-                text: `This month is in loss by ${formatCurrency(Math.abs(profit))} - Review expenses and margins`
+                text: t('ui.analytics.tip_loss', { amount: formatCurrency(Math.abs(profit)) })
             });
         } else if (profit > 0 && dayOfMonth > 15) {
             const projectedProfit = (profit / dayOfMonth) * 30;
             suggestions.push({
                 icon: '📈',
-                text: `On track for ${formatCurrency(projectedProfit)} profit this month - Keep it up!`
+                text: t('ui.analytics.tip_on_track', { amount: formatCurrency(projectedProfit) })
             });
         }
 
         if (totalExpenses > totalRevenue * 0.1) {
             suggestions.push({
                 icon: '💡',
-                text: `Expenses are ${((totalExpenses / totalRevenue) * 100).toFixed(0)}% of revenue - Look for cost savings`
+                text: t('ui.analytics.tip_expenses_high', { value: ((totalExpenses / totalRevenue) * 100).toFixed(0) })
             });
         }
 
@@ -833,7 +834,7 @@ export class AnalyticsManager {
         if (avgDailySales < 10000 && dayOfMonth > 7) {
             suggestions.push({
                 icon: '🎯',
-                text: `Average daily sales: ${formatCurrency(avgDailySales)} - Consider promotions to boost sales`
+                text: t('ui.analytics.tip_low_daily_sales', { amount: formatCurrency(avgDailySales) })
             });
         }
 
@@ -845,14 +846,14 @@ export class AnalyticsManager {
         if (lowStockItems.length > 0) {
             suggestions.push({
                 icon: '📦',
-                text: `Low stock alert: ${lowStockItems.slice(0, 3).join(', ')}${lowStockItems.length > 3 ? ` +${lowStockItems.length - 3} more` : ''}`
+                text: t('ui.analytics.tip_low_stock', { items: lowStockItems.slice(0, 3).join(', ') + (lowStockItems.length > 3 ? t('ui.analytics.and_more', { count: lowStockItems.length - 3 }) : '') })
             });
         }
 
         if (suggestions.length === 0) {
             suggestions.push({
                 icon: '✨',
-                text: 'Your business is running smoothly! Keep maintaining good practices.'
+                text: t('ui.analytics.tip_all_good')
             });
         }
 
@@ -879,9 +880,9 @@ export class AnalyticsManager {
         const totalReceivable = saleDues.reduce((sum, s) => sum + (s.due || s.payment?.due || 0), 0);
 
         this.updateElement('totalPayable', formatCurrency(totalPayable));
-        this.updateElement('payableCount', `${purchaseDues.length} bills`);
+        this.updateElement('payableCount', t('ui.analytics.bills_count', { count: purchaseDues.length }));
         this.updateElement('totalReceivable', formatCurrency(totalReceivable));
-        this.updateElement('receivableCount', `${saleDues.length} bills`);
+        this.updateElement('receivableCount', t('ui.analytics.bills_count', { count: saleDues.length }));
     }
 
     /**

@@ -1,8 +1,8 @@
 <div id="stock" class="tab">
         
         <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn active" onclick="window.app.stock.filterTab('current', event)">Current Stock</button>
-            <button class="filter-btn" onclick="window.app.stock.filterTab('adjustment', event)">Stock Adjustment</button>
+            <button class="filter-btn active" onclick="window.app.stock.filterTab('current', event)" data-i18n="ui.stock.current_stock">Current Stock</button>
+            <button class="filter-btn" onclick="window.app.stock.filterTab('adjustment', event)" data-i18n="ui.stock.stock_adjustment">Stock Adjustment</button>
             <button class="filter-btn" id="deadStockTabBtn" style="display: none;" onclick="window.app.stock.filterTab('dead', event)" data-i18n="ui.deadstock.tab">Not selling</button>
         </div>
 
@@ -23,53 +23,53 @@
             <div style="margin-bottom: 20px;">
                 <input type="text" 
                        id="stockSearchInput" 
-                       placeholder="🔍 Search items..."
+                       placeholder="🔍 Search items..." data-i18n-placeholder="ui.stock.search_items"
                        style="width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s;"
                        oninput="window.app.stock.searchStock()"
                        onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
                        onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'">
             </div>
             <div id="stockList">
-                <p style="text-align: center; color: #888; margin-top: 40px;">No stock data available</p>
+                <p style="text-align: center; color: #888; margin-top: 40px;" data-i18n="ui.stock.no_stock_data_available">No stock data available</p>
             </div>
         </div>
 
         <div id="stockAdjustmentSection" style="display: none;">
             <div class="settings-card">
-                <h3>Manual Stock Adjustment</h3>
+                <h3 data-i18n="ui.stock.manual_stock_adjustment">Manual Stock Adjustment</h3>
                 
                 <div class="form-row">
-                    <label>Select Item:</label>
+                    <label data-i18n="ui.stock.select_item">Select Item:</label>
                     <select id="adjustItem" onchange="window.app.stock.loadAdjustItemStock()">
-                        <option value="">Select item</option>
+                        <option value="" data-i18n="ui.wholesale.select_item">Select item</option>
                     </select>
                 </div>
                 
                 <div style="background: #e3f2fd; padding: 12px; border-radius: 8px; margin: 12px 0;">
                     <div style="font-size: 14px; color: #333;">
-                        <strong>Current Stock:</strong> <span id="currentStockDisplay">-</span> kg
+                        <strong data-i18n="ui.stock.current_stock_2">Current Stock:</strong> <span id="currentStockDisplay">-</span> kg
                     </div>
                     <div id="avgRateDisplay" data-perm="profit" style="font-size: 13px; color: #666; margin-top: 4px; display: none;">
-                        <strong>Avg Rate:</strong> <span id="avgRateValue">-</span>
+                        <strong data-i18n="ui.today.avg_rate_label">Avg Rate:</strong> <span id="avgRateValue">-</span>
                     </div>
                 </div>
                 
                 <div class="form-row">
-                    <label>Adjustment Type:</label>
+                    <label data-i18n="ui.stock.adjustment_type">Adjustment Type:</label>
                     <select id="adjustType" onchange="window.app.stock.updateAdjustmentPlaceholder()">
-                        <option value="add">Add Stock</option>
-                        <option value="remove">Remove Stock</option>
-                        <option value="set">Set Stock</option>
+                        <option value="add" data-i18n="ui.stock.add_stock">Add Stock</option>
+                        <option value="remove" data-i18n="ui.stock.remove_stock">Remove Stock</option>
+                        <option value="set" data-i18n="ui.stock.set_stock">Set Stock</option>
                     </select>
                 </div>
                 
                 <div class="form-row">
-                    <label>Quantity (kg):</label>
-                    <input type="number" inputmode="decimal" id="adjustQuantity" placeholder="Enter quantity" />
+                    <label data-i18n="ui.wholesale.quantity_kg">Quantity (kg):</label>
+                    <input type="number" inputmode="decimal" id="adjustQuantity" placeholder="Enter quantity" data-i18n-placeholder="ui.wholesale.enter_quantity" />
                 </div>
                 
                 <div class="form-row">
-                    <label>Rate (₹/kg) - Optional:</label>
+                    <label data-i18n="ui.stock.rate_kg_optional">Rate (₹/kg) - Optional:</label>
                     <input type="number" inputmode="decimal" id="adjustRate" placeholder="0" value="0" />
                 </div>
                 
@@ -86,15 +86,15 @@
                 
                 <div class="form-row">
                     <label data-i18n="ui.stock.note_required_other">Note (required for Other):</label>
-                    <input type="text" id="adjustReason" placeholder="e.g., Rats damaged 2 bags" />
+                    <input type="text" id="adjustReason" placeholder="e.g., Rats damaged 2 bags" data-i18n-placeholder="ui.stock.e_g_rats_damaged_2" />
                 </div>
                 
-                <button class="add-to-bill-btn" onclick="window.app.stock.applyAdjustment()">Apply Adjustment</button>
+                <button class="add-to-bill-btn" onclick="window.app.stock.applyAdjustment()" data-i18n="ui.stock.apply_adjustment">Apply Adjustment</button>
             </div>
             
-            <h3>Adjustment History</h3>
+            <h3 data-i18n="ui.stock.adjustment_history">Adjustment History</h3>
             <div id="adjustmentHistory">
-                <p style="text-align: center; color: #888; margin-top: 20px;">No adjustments yet</p>
+                <p style="text-align: center; color: #888; margin-top: 20px;" data-i18n="ui.stock.no_adjustments_yet">No adjustments yet</p>
             </div>
         </div>
     </div>

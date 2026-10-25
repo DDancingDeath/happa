@@ -14,6 +14,8 @@ import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { canChangeExpense, EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
+
+const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
 
 /** The signed-in user, as canChangeExpense expects it. */
@@ -325,7 +327,7 @@ export class ExpensesManager {
                     </div>
                 </div>
                 ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
-                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)}${payment.createdByName ? ` • By: ${Helpers.escapeHtml(payment.createdByName)}` : ''}</div>
+                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
             </div>
         `).join('');
     }
@@ -343,8 +345,9 @@ export class ExpensesManager {
      * @returns {string} plain text
      */
     static emptyExpenseMessage(category) {
-        if (isFullHistoryLoaded()) return `No ${category} expenses recorded yet`;
-        return `No ${category} expenses since ${formatWindowDate(historyLoadedFrom())}`;
+        const kind = category === 'personal' ? 'personal' : 'business';
+        if (isFullHistoryLoaded()) return t(`ui.expenses.no_${kind}_expenses_recorded_yet`);
+        return t(`ui.expenses.no_${kind}_since`, { date: formatWindowDate(historyLoadedFrom()) });
     }
 
     static renderPersonalExpenseHistory() {
@@ -384,7 +387,7 @@ export class ExpensesManager {
                     </div>
                 </div>
                 ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
-                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)}${payment.createdByName ? ` • By: ${Helpers.escapeHtml(payment.createdByName)}` : ''}</div>
+                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
             </div>
         `).join('');
     }
@@ -466,15 +469,15 @@ export class ExpensesManager {
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <div style="display: flex; align-items: center;">
                                 <span style="font-size: 20px; margin-right: 12px;">🏷️</span>
-                                <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Category</span>
+                                <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_category')}</span>
                             </div>
-                            <span style="font-size: 15px; color: #333; font-weight: 600; text-transform: capitalize;">${Helpers.escapeHtml(category)}</span>
+                            <span style="font-size: 15px; color: #333; font-weight: 600; text-transform: capitalize;">${tx(category === 'personal' ? 'ui.expenses.personal_expenses' : 'ui.expenses.business_expenses')}</span>
                         </div>
                         
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <div style="display: flex; align-items: center;">
                                 <span style="font-size: 20px; margin-right: 12px;">📅</span>
-                                <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Date</span>
+                                <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.history.date')}</span>
                             </div>
                             <span style="font-size: 14px; color: #333; font-weight: 500;">${Helpers.escapeHtml(expense.date)}</span>
                         </div>
@@ -483,7 +486,7 @@ export class ExpensesManager {
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <div style="display: flex; align-items: center;">
                                 <span style="font-size: 20px; margin-right: 12px;">👨‍💼</span>
-                                <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Created By</span>
+                                <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_created_by')}</span>
                             </div>
                             <span style="font-size: 14px; color: #333; font-weight: 500;">${Helpers.escapeHtml(expense.createdByName)}</span>
                         </div>
@@ -493,18 +496,18 @@ export class ExpensesManager {
                 
                 <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0;">
-                        <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Type</span>
+                        <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.reports.pdf_type')}</span>
                         <span style="font-size: 18px; font-weight: 600; color: #2c3e50;">${Helpers.escapeHtml(expense.type)}</span>
                     </div>
                     
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0;">
-                        <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Amount</span>
+                        <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.outstanding.sort_amount')}</span>
                         <span style="font-size: 36px; font-weight: bold; color: #667eea; letter-spacing: 1px;">₹${Helpers.escapeHtml(expense.amount)}</span>
                     </div>
                     
                     ${expense.personName ? `
                     <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">Person Name</span>
+                        <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_person')}</span>
                         <span style="font-size: 18px; font-weight: 500; color: #2c3e50;">👤 ${Helpers.escapeHtml(expense.personName)}</span>
                     </div>
                     ` : ''}
@@ -512,7 +515,7 @@ export class ExpensesManager {
                 
                 ${expense.remarks ? `
                 <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 16px; border-radius: 8px;">
-                    <div style="font-size: 11px; color: #856404; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">📝 Remarks</div>
+                    <div style="font-size: 11px; color: #856404; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">📝 ${tx('ui.expenses.d_remarks')}</div>
                     <div style="font-size: 14px; color: #856404; line-height: 1.5;">${Helpers.escapeHtml(expense.remarks)}</div>
                 </div>
                 ` : ''}
@@ -565,11 +568,11 @@ export class ExpensesManager {
             const dialog = document.createElement('div');
             dialog.style.cssText = 'background: white; padding: 24px; border-radius: 16px; max-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);';
             dialog.innerHTML = `
-                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 12px;">Delete Expense</div>
-                <div style="font-size: 14px; color: #666; margin-bottom: 24px;">Are you sure you want to delete this expense? This action cannot be undone.</div>
+                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 12px;">${tx('ui.expenses.delete_title')}</div>
+                <div style="font-size: 14px; color: #666; margin-bottom: 24px;">${tx('ui.expenses.delete_confirm')}</div>
                 <div style="display: flex; gap: 12px;">
-                    <button id="cancelDelete" style="flex: 1; padding: 12px; border: 1px solid #ddd; background: white; border-radius: 8px; font-size: 14px; font-weight: 500; color: #666; cursor: pointer;">Cancel</button>
-                    <button id="confirmDelete" style="flex: 1; padding: 12px; border: none; background: #dc3545; border-radius: 8px; font-size: 14px; font-weight: 500; color: white; cursor: pointer;">Delete</button>
+                    <button id="cancelDelete" style="flex: 1; padding: 12px; border: 1px solid #ddd; background: white; border-radius: 8px; font-size: 14px; font-weight: 500; color: #666; cursor: pointer;">${tx('ui.modals.cancel')}</button>
+                    <button id="confirmDelete" style="flex: 1; padding: 12px; border: none; background: #dc3545; border-radius: 8px; font-size: 14px; font-weight: 500; color: white; cursor: pointer;">${tx('ui.modals.delete')}</button>
                 </div>
             `;
             

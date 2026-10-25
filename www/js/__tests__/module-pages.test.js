@@ -495,7 +495,7 @@ describe('Settings', () => {
         document.getElementById('auditFilterAction').value = 'DELETE_BILL';
         SettingsManager.renderAuditLogs();
         const list = document.getElementById('auditLogsList');
-        expect(list.textContent).toContain('DELETE BILL');
+        expect(list.textContent).toContain('Delete Bill');
         expect(list.textContent).toContain('Bill: P1 • Amount: ₹50');
         expect(list.textContent).not.toContain('Asha');
         expect(list.querySelector('b')).toBeNull();

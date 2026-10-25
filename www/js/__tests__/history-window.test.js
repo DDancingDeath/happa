@@ -255,7 +255,7 @@ describe('stale on-demand history hint (#132)', () => {
         const asOf = new Date(2026, 9, 21, 9, 5).getTime();
         const { svc, list } = setup({ from: JAN_1, liveFrom: MAR_1, asOf });
         expect(hw.staleHistoryHintText({ liveFrom: MAR_1, asOf }, new Date(2026, 9, 21, 12)))
-            .toMatch(/^Bills before 1 Mar 2026 don't update live \(as of 09:05( am)?\) and may be out of date\.$/i);
+            .toMatch(/^Older bills \(before 1 Mar 2026\) are as of 09:05( am)?\. Tap Refresh to get the latest\.$/i);
         const onRefreshed = jest.fn();
         hw.renderStaleHistoryHint(list, { id: 'hint', onRefreshed });
         const hint = document.getElementById('hint');

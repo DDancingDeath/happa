@@ -16,6 +16,8 @@ import { approxStockNote } from '../utils/stock-check.js';
 import { evaluateStockAdjustment, toFlags } from '../utils/bill-checks.js';
 import { findDeadStock, daysSinceLabel, localDaysBetween, DEAD_STOCK_DAY_OPTIONS, DEFAULT_DEAD_STOCK_DAYS } from '../utils/dead-stock.js';
 import { t } from '../i18n/index.js';
+
+const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 
@@ -93,7 +95,7 @@ export class StockManager {
             }
 
             if (Object.keys(stock).length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #888; margin-top: 40px;">No stock data available</p>';
+                container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${tx('ui.stock.no_stock_data_available')}</p>`;
                 return;
             }
 
@@ -203,7 +205,7 @@ export class StockManager {
             });
         
         if (stockWithDetails.length === 0) {
-            container.innerHTML = '<p style="text-align: center; color: #888; margin-top: 40px;">No stock available</p>';
+            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${tx('ui.stock.no_stock')}</p>`;
             return;
         }
         
@@ -228,7 +230,7 @@ export class StockManager {
                         <div>
                             <div style="font-weight: 600; font-size: 15px;">${Helpers.escapeHtml(displayName)}</div>
                             <div style="color: ${qtyColor}; font-size: 12px; margin-top: 4px;">
-                                ⚠ Unmatched — no catalogue item with this id/name
+                                ⚠ ${tx('ui.stock.unmatched')}
                             </div>
                         </div>
                         <div style="text-align: right;">
@@ -236,7 +238,7 @@ export class StockManager {
                                 ${item.quantity.toFixed(1)} kg
                             </div>
                             <div data-perm="profit" style="color: #666; font-size: 12px; margin-top: 4px;">
-                                Rate: ₹${item.rate ? item.rate.toFixed(2) : '0.00'}/kg
+                                ${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}
                             </div>
                         </div>
                     </div>
@@ -248,7 +250,7 @@ export class StockManager {
             // For staff: show "Available" if quantity > 100, otherwise show actual quantity
             // Rate is always shown, value is hidden when showing "Available"
             const showLimitedQty = isStaff && item.quantity > 100;
-            const quantityDisplay = showLimitedQty ? 'Available' : `${item.quantity.toFixed(1)} kg`;
+            const quantityDisplay = showLimitedQty ? tx('ui.stock.available') : `${item.quantity.toFixed(1)} kg`;
             const valueDisplay = showLimitedQty ? '' : `<div data-perm="stockValue" style="color: #666; font-size: 12px; margin-top: 4px;">≈ ₹${Math.round(item.quantity * (item.rate || 0))}</div>`;
             
             div.innerHTML = `
@@ -256,7 +258,7 @@ export class StockManager {
                     <div>
                         <div style="font-weight: 600; font-size: 15px;">${Helpers.escapeHtml(displayName)}</div>
                         <div data-perm="profit" style="color: #666; font-size: 13px; margin-top: 4px;">
-                            Rate: ₹${item.rate ? item.rate.toFixed(2) : '0.00'}/kg
+                            ${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}
                         </div>
                     </div>
                     <div style="text-align: right;">
@@ -272,7 +274,7 @@ export class StockManager {
             });
         } catch (error) {
             console.error('Error loading stock:', error);
-            container.innerHTML = '<p style="text-align: center; color: #dc3545; margin-top: 40px;">Failed to load stock data</p>';
+            container.innerHTML = `<p style="text-align: center; color: #dc3545; margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
         }
     }
 
@@ -315,7 +317,7 @@ export class StockManager {
                 noResultsMsg = document.createElement('p');
                 noResultsMsg.className = 'no-results-message';
                 noResultsMsg.style.cssText = 'text-align: center; color: #888; margin-top: 40px;';
-                noResultsMsg.textContent = 'No items found';
+                noResultsMsg.textContent = t('ui.stock.no_items_found');
                 container.appendChild(noResultsMsg);
             }
         } else if (noResultsMsg) {
@@ -403,6 +405,8 @@ export class StockManager {
     static refreshForLanguage() {
         const dead = document.getElementById('deadStockSection');
         if (dead && dead.style.display !== 'none') this.renderDeadStock();
+        if (document.querySelector('#stockList .stock-item')) this.renderStock();
+        this.updateAdjustmentPlaceholder();
         this.renderAdjustmentHistory();
         const updating = document.querySelector('#stockList .stock-updating');
         if (updating) updating.outerHTML = stockUpdatingHtml();
@@ -510,7 +514,7 @@ export class StockManager {
         const select = document.getElementById("adjustItem");
         if (!select) return;
 
-        select.innerHTML = '<option value="">Select item</option>';
+        select.innerHTML = `<option value="">${tx('ui.wholesale.select_item')}</option>`;
         AppState.items.forEach(item => {
             const option = document.createElement("option");
             option.value = item.id;
@@ -568,13 +572,13 @@ export class StockManager {
         
         switch (adjustType) {
             case 'add':
-                quantityInput.placeholder = 'Quantity to add';
+                quantityInput.placeholder = t('ui.stock.qty_to_add');
                 break;
             case 'remove':
-                quantityInput.placeholder = 'Quantity to remove';
+                quantityInput.placeholder = t('ui.stock.qty_to_remove');
                 break;
             case 'set':
-                quantityInput.placeholder = 'New stock quantity';
+                quantityInput.placeholder = t('ui.stock.qty_new');
                 break;
         }
     }
@@ -685,7 +689,7 @@ export class StockManager {
             attachOlderHistoryScroll(container, { noun: 'adjustments', onLoaded: () => this.renderAdjustmentHistory() });
 
             if (adjustments.length === 0) {
-                const message = isFullHistoryLoaded() ? 'No adjustments yet' : `No adjustments since ${formatWindowDate(historyLoadedFrom())}`;
+                const message = isFullHistoryLoaded() ? t('ui.stock.no_adjustments_yet') : t('ui.stock.no_adjustments_since', { date: formatWindowDate(historyLoadedFrom()) });
                 container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
                 return;
             }
@@ -696,18 +700,18 @@ export class StockManager {
                 const div = document.createElement("div");
                 div.className = "history-item";
                 
-                const typeLabels = { add: 'Added', remove: 'Removed', set: 'Set to' };
+                const typeLabels = { add: t('ui.stock.adj_added'), remove: t('ui.stock.adj_removed'), set: t('ui.stock.adj_set_to') };
                 const typeColors = { add: '#28a745', remove: '#dc3545', set: '#007bff' };
                 
                 // Handle legacy data that might not have adjustType or quantity
                 const adjustType = adj.adjustType || 'set';
                 const quantity = adj.quantity !== undefined ? adj.quantity : 'Unknown';
-                const typeLabel = typeLabels[adjustType] || 'Adjusted';
+                const typeLabel = typeLabels[adjustType] || t('ui.stock.adj_adjusted');
                 const typeColor = typeColors[adjustType] || '#6c757d';
                 
                 // Find item to show in correct language
                 const item = AppState.items.find(i => i.id === adj.itemId || i.name === adj.itemName);
-                const displayName = (AppState.settings.showHindi && item?.hindiName) ? item.hindiName : (item?.name || adj.itemName || 'Unknown Item');
+                const displayName = (AppState.settings.showHindi && item?.hindiName) ? item.hindiName : (item?.name || adj.itemName || t('ui.stock.unknown_item'));
                 
                 // Use adjustment rate if available, otherwise fall back to current stock rate
                 const adjustmentRate = adj.rate || 0;
@@ -722,17 +726,17 @@ export class StockManager {
                     <div class="history-header">
                         <strong>${Helpers.escapeHtml(displayName)}</strong>
                         <span style="color: ${typeColor}; font-weight: 600;">
-                            ${typeLabel} ${quantity !== 'Unknown' ? Helpers.escapeHtml(quantity) + ' kg' : ''}
+                            ${Helpers.escapeHtml(typeLabel)} ${quantity !== 'Unknown' ? Helpers.escapeHtml(quantity) + ' kg' : ''}
                         </span>
                     </div>
-                    <div class="history-date">${Helpers.escapeHtml(adj.date || 'Unknown date')}${adj.createdByName ? ` • By: ${Helpers.escapeHtml(adj.createdByName)}` : ''}</div>
+                    <div class="history-date">${Helpers.escapeHtml(adj.date || t('ui.stock.unknown_date'))}${adj.createdByName ? ` • ${tx('ui.stock.by', { name: adj.createdByName })}` : ''}</div>
                     <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-                        ${displayRate > 0 ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">Rate: ₹${displayRate.toFixed(2)}/kg${valueImpact ? ` • Value: ₹${Math.round(valueImpact)}` : ''}</div>` : ''}
+                        ${displayRate > 0 ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">${tx('ui.stock.rate_per_kg', { rate: displayRate.toFixed(2) })}${valueImpact ? ` • ${tx('ui.stock.value', { amount: Math.round(valueImpact) })}` : ''}</div>` : ''}
                         <div style="font-size: 13px; color: #666;">
                             ${(adj.previousStock || 0).toFixed(1)} kg → ${(adj.newStock || 0).toFixed(1)} kg
-                            ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` (asked ${Helpers.escapeHtml(adj.rawQuantity)} kg, capped at stock)` : ''}
+                            ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: adj.rawQuantity })}` : ''}
                         </div>
-                        ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : '<div style="font-size: 13px; color: #999; margin-top: 4px;"><em>No reason provided</em></div>'}
+                        ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : `<div style="font-size: 13px; color: #999; margin-top: 4px;"><em>${tx('ui.stock.no_reason')}</em></div>`}
                     </div>
                 `;
                 
@@ -740,7 +744,7 @@ export class StockManager {
             });
         } catch (error) {
             console.error('Error loading adjustment history:', error);
-            container.innerHTML = '<p style="text-align: center; color: #dc3545; margin-top: 20px;">Failed to load history</p>';
+            container.innerHTML = `<p style="text-align: center; color: #dc3545; margin-top: 20px;">${tx('ui.stock.history_failed')}</p>`;
         }
     }
 }

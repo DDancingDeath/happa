@@ -14,6 +14,9 @@
  */
 
 import { AppState } from './state.js';
+import { t, getLang } from '../i18n/index.js';
+
+const dateLocale = () => (getLang() === 'hi' ? 'hi-IN' : 'en-IN');
 
 const service = () => (typeof window !== 'undefined' ? window.FirebaseService : null) || null;
 
@@ -206,7 +209,7 @@ export function monthStart(monthsBack = 0, now = new Date()) {
 /** Short human date for notices, e.g. "1 Sep 2026". */
 export function formatWindowDate(ms) {
     if (!ms) return '';
-    return new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    return new Date(ms).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 /**
@@ -248,18 +251,17 @@ export function applyRangeState(scopes, status, opts = {}) {
         const spinner = document.createElement('span');
         spinner.className = 'history-range-spinner';
         notice.appendChild(spinner);
-        text.textContent = opts.loadingText || 'Loading older data…';
+        text.textContent = opts.loadingText || t('ui.analytics.loading_older');
         notice.appendChild(text);
     } else {
         const from = formatWindowDate(historyLoadedFrom());
-        text.textContent = opts.errorText ||
-            `Couldn't load older data. Figures only include records since ${from}.`;
+        text.textContent = opts.errorText || t('ui.hist.older_failed', { date: from });
         notice.appendChild(text);
         if (typeof opts.onRetry === 'function') {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'history-range-retry';
-            btn.textContent = 'Retry';
+            btn.textContent = t('ui.hist.retry');
             btn.addEventListener('click', opts.onRetry);
             notice.appendChild(btn);
         }
@@ -317,13 +319,12 @@ export function refreshOnDemandHistory() {
  * @returns {string}
  */
 export function staleHistoryHintText(info, now = new Date()) {
-    let when = '';
-    if (info.asOf) {
-        const at = new Date(info.asOf);
-        const time = at.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-        when = at.toDateString() === now.toDateString() ? ` (as of ${time})` : ` (as of ${formatWindowDate(info.asOf)} ${time})`;
-    }
-    return `Bills before ${formatWindowDate(info.liveFrom)} don't update live${when} and may be out of date.`;
+    const date = formatWindowDate(info.liveFrom);
+    if (!info.asOf) return t('ui.hist.stale', { date });
+    const at = new Date(info.asOf);
+    const clock = at.toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' });
+    const time = at.toDateString() === now.toDateString() ? clock : `${formatWindowDate(info.asOf)} ${clock}`;
+    return t('ui.hist.stale_at', { date, time });
 }
 
 /**
@@ -357,18 +358,18 @@ export function renderStaleHistoryHint(anchor, { id, onRefreshed } = {}) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'history-stale-refresh';
-    btn.textContent = 'Refresh';
-    btn.style.cssText = 'font-size:12px;padding:2px 10px;';
+    btn.textContent = t('ui.anom.refresh');
+    btn.style.cssText = 'font-size:14px;min-height:36px;padding:6px 14px;';
     btn.addEventListener('click', async () => {
         hint.dataset.busy = '1';
         btn.disabled = true;
-        btn.textContent = 'Refreshing…';
+        btn.textContent = t('ui.hist.refreshing');
         const ok = await refreshOnDemandHistory();
         delete hint.dataset.busy;
         if (!ok) {
             btn.disabled = false;
-            btn.textContent = 'Retry';
-            text.textContent = "Couldn't refresh older bills (no connection?).";
+            btn.textContent = t('ui.hist.retry');
+            text.textContent = t('ui.hist.refresh_failed');
             return;
         }
         renderStaleHistoryHint(anchor, { id, onRefreshed });

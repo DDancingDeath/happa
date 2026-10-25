@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261025x-ux-batch-a';
+const BUILD_ID = '20261025y-hindi-batch-c';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -99,12 +99,20 @@ function refreshForLanguage(lang) {
         'cash-management': () => CashManagementManager.refreshForLanguage(),
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
-        finance: () => FinanceManager.renderDashboard(),
+        finance: () => { FinanceManager.renderDashboard(); FinanceManager.renderCustomAccounts(); FinanceManager.renderWithdrawalHistory(); },
+        reports: () => ReportsManager.renderReports(),
+        analytics: () => AnalyticsManager.renderTabContent(AnalyticsManager.currentTab),
+        expenses: () => ExpensesManager.renderexpensesHistory(),
+        items: () => ItemsManager.renderItemsTable(document.getElementById('itemsSearchInput')?.value || ''),
+        diagnostics: () => {
+            DiagnosticsManager.renderTabs();
+            const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks' }[DiagnosticsManager.activeTab];
+            if (view) DiagnosticsManager[view]();
+        },
         'rate-trends': () => RateTrendsManager.refreshForLanguage(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
-        admin: () => AdminManager.renderContent(),
-        diagnostics: () => DiagnosticsManager.renderTabs(),
+        admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
         health: () => { if (HealthManager.data) HealthManager.render(); }
     }[tabId];
     if (redraw) run(tabId, redraw);

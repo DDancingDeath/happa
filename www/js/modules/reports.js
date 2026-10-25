@@ -11,6 +11,8 @@ import {
 } from '../utils/history-window.js';
 import { createRenderMemo } from '../utils/render-memo.js';
 import { t, tn } from '../i18n/index.js';
+
+const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 
@@ -274,7 +276,7 @@ export class ReportsManager {
         const purchaseItemFilter = document.getElementById('purchaseItemFilter');
         if (purchaseItemFilter) {
             const currentValue = purchaseItemFilter.value;
-            purchaseItemFilter.innerHTML = '<option value="all">All Items</option>';
+            purchaseItemFilter.innerHTML = `<option value="all">${tx('ui.reports.all_items')}</option>`;
             itemFilterOptions(purchaseHistory).forEach(({ value, label }) => {
                 const opt = document.createElement('option');
                 opt.value = value;
@@ -288,7 +290,7 @@ export class ReportsManager {
         const purchaseCustomerFilter = document.getElementById('purchaseCustomerFilter');
         if (purchaseCustomerFilter) {
             const currentValue = purchaseCustomerFilter.value;
-            purchaseCustomerFilter.innerHTML = '<option value="all">All Suppliers</option>';
+            purchaseCustomerFilter.innerHTML = `<option value="all">${tx('ui.reports.all_suppliers')}</option>`;
             const uniqueCustomers = [...new Set(purchaseHistory.map(p => p.customerName).filter(c => c))];
             uniqueCustomers.forEach(customer => {
                 const opt = document.createElement('option');
@@ -303,7 +305,7 @@ export class ReportsManager {
         const salesItemFilter = document.getElementById('salesItemFilter');
         if (salesItemFilter) {
             const currentValue = salesItemFilter.value;
-            salesItemFilter.innerHTML = '<option value="all">All Items</option>';
+            salesItemFilter.innerHTML = `<option value="all">${tx('ui.reports.all_items')}</option>`;
             itemFilterOptions(allSalesHistory).forEach(({ value, label }) => {
                 const opt = document.createElement('option');
                 opt.value = value;
@@ -317,7 +319,7 @@ export class ReportsManager {
         const salesCustomerFilter = document.getElementById('salesCustomerFilter');
         if (salesCustomerFilter) {
             const currentValue = salesCustomerFilter.value;
-            salesCustomerFilter.innerHTML = '<option value="all">All Customers</option>';
+            salesCustomerFilter.innerHTML = `<option value="all">${tx('ui.reports.all_customers')}</option>`;
             const uniqueCustomers = [...new Set(allSalesHistory.map(s => s.customerName).filter(c => c))];
             uniqueCustomers.forEach(customer => {
                 const opt = document.createElement('option');
@@ -382,7 +384,7 @@ export class ReportsManager {
         const start = this.getRangeStart();
         const status = rangeStatus('reports', start, () => this.renderReports());
         applyRangeState([...document.querySelectorAll('#reports .reports-section')], status, {
-            loadingText: start ? 'Loading older data for this period…' : 'Loading full history…',
+            loadingText: start ? t('ui.reports.loading_older') : t('ui.finance.loading_full_history'),
             onRetry: () => {
                 retryRange('reports');
                 this.renderReports();
@@ -519,7 +521,7 @@ export class ReportsManager {
             ctx.font = '14px Arial';
             ctx.fillStyle = '#888';
             ctx.textAlign = 'center';
-            ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+            ctx.fillText(t('ui.reports.no_data_available'), canvas.width / 2, canvas.height / 2);
             return;
         }
 
@@ -557,12 +559,12 @@ export class ReportsManager {
         ctx.fillStyle = '#3b82f6';
         ctx.fillRect(canvas.width - 120, 10, 12, 12);
         ctx.fillStyle = '#333';
-        ctx.fillText('Purchases', canvas.width - 100, 20);
+        ctx.fillText(t('ui.reports.chart_purchases'), canvas.width - 100, 20);
         
         ctx.fillStyle = '#10b981';
         ctx.fillRect(canvas.width - 120, 28, 12, 12);
         ctx.fillStyle = '#333';
-        ctx.fillText('Sales', canvas.width - 100, 38);
+        ctx.fillText(t('ui.reports.chart_sales'), canvas.width - 100, 38);
     }
 
     static renderTopItems(purchases, sales) {
@@ -576,7 +578,7 @@ export class ReportsManager {
             .slice(0, 5);
 
         if (topItems.length === 0) {
-            container.innerHTML = '<p class="no-data">No data available</p>';
+            container.innerHTML = `<p class="no-data">${tx('ui.reports.no_data_available')}</p>`;
             return;
         }
 
@@ -782,7 +784,7 @@ export class ReportsManager {
             ctx.font = '14px Arial';
             ctx.fillStyle = '#888';
             ctx.textAlign = 'center';
-            ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+            ctx.fillText(t('ui.reports.no_data_available'), canvas.width / 2, canvas.height / 2);
             return;
         }
 
@@ -849,12 +851,12 @@ export class ReportsManager {
         ctx.fillStyle = '#3b82f6';
         ctx.fillRect(canvas.width - 120, 10, 12, 12);
         ctx.fillStyle = '#333';
-        ctx.fillText('Purchases', canvas.width - 100, 20);
+        ctx.fillText(t('ui.reports.chart_purchases'), canvas.width - 100, 20);
         
         ctx.fillStyle = '#10b981';
         ctx.fillRect(canvas.width - 120, 28, 12, 12);
         ctx.fillStyle = '#333';
-        ctx.fillText('Sales', canvas.width - 100, 38);
+        ctx.fillText(t('ui.reports.chart_sales'), canvas.width - 100, 38);
     }
 
     static renderItemComparison(purchases, sales) {
@@ -877,7 +879,7 @@ export class ReportsManager {
             .slice(0, 10);
 
         if (items.length === 0) {
-            container.innerHTML = '<p class="no-data">No data available</p>';
+            container.innerHTML = `<p class="no-data">${tx('ui.reports.no_data_available')}</p>`;
             return;
         }
 
@@ -888,14 +890,14 @@ export class ReportsManager {
                 <div class="item-comparison-name">${Helpers.escapeHtml(name)}</div>
                 <div class="item-comparison-bars">
                     <div class="comparison-bar">
-                        <span class="bar-label">Purchases</span>
+                        <span class="bar-label">${tx('ui.reports.chart_purchases')}</span>
                         <div class="bar-track">
                             <div class="bar-fill purchase" style="width: ${(data.purchase / maxValue) * 100}%"></div>
                         </div>
                         <span class="bar-value">₹${this.formatNumber(data.purchase)}</span>
                     </div>
                     <div class="comparison-bar">
-                        <span class="bar-label">Sales</span>
+                        <span class="bar-label">${tx('ui.reports.chart_sales')}</span>
                         <div class="bar-track">
                             <div class="bar-fill sale" style="width: ${(data.sale / maxValue) * 100}%"></div>
                         </div>
@@ -916,7 +918,7 @@ export class ReportsManager {
         const items = Object.entries(itemData).sort((a, b) => b[1].value - a[1].value);
 
         if (items.length === 0) {
-            container.innerHTML = '<p class="no-data">No data available</p>';
+            container.innerHTML = `<p class="no-data">${tx('ui.reports.no_data_available')}</p>`;
             return;
         }
 
@@ -924,7 +926,7 @@ export class ReportsManager {
             <div class="item-breakdown-row">
                 <div class="item-breakdown-info">
                     <div class="item-breakdown-name">${Helpers.escapeHtml(name)}</div>
-                    <div class="item-breakdown-stats">${Helpers.escapeHtml(data.count)} times • ${data.qty.toFixed(1)} kg</div>
+                    <div class="item-breakdown-stats">${tx('ui.reports.times_kg', { count: data.count, qty: data.qty.toFixed(1) })}</div>
                 </div>
                 <div class="item-breakdown-value">
                     <div class="item-breakdown-amount">₹${this.formatNumber(data.value)}</div>
@@ -941,14 +943,14 @@ export class ReportsManager {
         const recentBills = bills.slice().sort((a, b) => (parseAnyBillDate(b.date) || 0) - (parseAnyBillDate(a.date) || 0)).slice(0, 10);
 
         if (recentBills.length === 0) {
-            container.innerHTML = `<p class="no-data">No recent ${type === 'purchase' ? 'purchases' : 'sales'}</p>`;
+            container.innerHTML = `<p class="no-data">${tx(type === 'purchase' ? 'ui.reports.no_recent_purchases' : 'ui.reports.no_recent_sales')}</p>`;
             return;
         }
 
         container.innerHTML = recentBills.map(bill => `
             <div class="transaction-item">
                 <div class="transaction-info">
-                    <div class="transaction-customer">${Helpers.escapeHtml(bill.customerName || 'Unknown')}</div>
+                    <div class="transaction-customer">${Helpers.escapeHtml(bill.customerName || t('ui.reports.unknown'))}</div>
                     <div class="transaction-date">${new Date(bill.date).toLocaleDateString('en-IN')}</div>
                     <div class="transaction-items">${Helpers.escapeHtml((bill.items || []).map(i => i.name).join(', '))}</div>
                 </div>
@@ -1049,7 +1051,7 @@ export class ReportsManager {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>${Helpers.escapeHtml(APP_IDENTITY.appName)} Business Report</title>
+    <title>${tx('ui.reports.pdf_title', { app: APP_IDENTITY.appName })}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
@@ -1077,39 +1079,39 @@ export class ReportsManager {
 </head>
 <body>
     <div class="header">
-        <h1>📊 ${Helpers.escapeHtml(APP_IDENTITY.appName)} Business Report</h1>
-        <p>Period: ${dateRange} | Generated: ${generatedAt}</p>
+        <h1>📊 ${tx('ui.reports.pdf_title', { app: APP_IDENTITY.appName })}</h1>
+        <p>${tx('ui.reports.pdf_period', { period: dateRange, at: generatedAt })}</p>
     </div>
 
     <div class="summary-grid">
         <div class="summary-card">
-            <h4>Total Purchases</h4>
+            <h4>${tx('ui.analytics.total_purchases')}</h4>
             <div class="value">₹${Helpers.escapeHtml(totalPurchases.toLocaleString('en-IN'))}</div>
         </div>
         <div class="summary-card success">
-            <h4>Total Sales</h4>
+            <h4>${tx('ui.reports.total_sales')}</h4>
             <div class="value">₹${Helpers.escapeHtml(totalSales.toLocaleString('en-IN'))}</div>
         </div>
         <div class="summary-card ${netProfit === null || netProfit >= 0 ? 'success' : 'danger'}">
-            <h4>${netProfit === null || netProfit >= 0 ? 'Profit' : 'Loss'} on goods sold</h4>
+            <h4>${tx(netProfit === null || netProfit >= 0 ? 'ui.reports.pdf_profit_goods' : 'ui.reports.pdf_loss_goods')}</h4>
             <div class="value ${netProfit === null || netProfit >= 0 ? 'text-success' : 'text-danger'}">${netProfit === null ? '—' : `₹${Math.abs(netProfit).toLocaleString('en-IN')}`}</div>
         </div>
         <div class="summary-card">
-            <h4>Total Transactions</h4>
+            <h4>${tx('ui.reports.pdf_total_entries')}</h4>
             <div class="value">${filteredPurchases.length + filteredSales.length}</div>
         </div>
     </div>
 
     <div class="section">
-        <h3>Item-wise Summary</h3>
+        <h3>${tx('ui.reports.pdf_item_summary')}</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Item Name</th>
-                    <th class="text-right">Transactions</th>
-                    <th class="text-right">Quantity (kg)</th>
-                    <th class="text-right">Total Value (₹)</th>
-                    <th class="text-right">Avg Rate (₹/kg)</th>
+                    <th>${tx('ui.items.item_name')}</th>
+                    <th class="text-right">${tx('ui.reports.pdf_entries')}</th>
+                    <th class="text-right">${tx('ui.reports.pdf_qty')}</th>
+                    <th class="text-right">${tx('ui.reports.pdf_total_value')}</th>
+                    <th class="text-right">${tx('ui.reports.pdf_avg_rate')}</th>
                 </tr>
             </thead>
             <tbody>
@@ -1129,25 +1131,25 @@ export class ReportsManager {
     </div>
 
     <div class="section">
-        <h3>Recent Transactions</h3>
+        <h3>${tx('ui.reports.pdf_recent')}</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th class="text-right">Amount (₹)</th>
+                    <th>${tx('ui.history.date')}</th>
+                    <th>${tx('ui.reports.pdf_type')}</th>
+                    <th>${tx('ui.reports.pdf_customer')}</th>
+                    <th>${tx('ui.history.items')}</th>
+                    <th class="text-right">${tx('ui.reports.pdf_amount')}</th>
                 </tr>
             </thead>
             <tbody>
-                ${[...filteredPurchases.map(p => ({...p, type: 'Purchase'})), ...filteredSales.map(s => ({...s, type: 'Sale'}))]
+                ${[...filteredPurchases.map(p => ({...p, type: t('ui.reports.pdf_purchase')})), ...filteredSales.map(s => ({...s, type: t('ui.reports.pdf_sale')}))]
                     .sort((a, b) => new Date(b.date) - new Date(a.date))
                     .slice(0, 20)
                     .map(bill => `
                         <tr>
                             <td>${new Date(bill.date).toLocaleDateString('en-IN')}</td>
-                            <td>${bill.type}</td>
+                            <td>${Helpers.escapeHtml(bill.type)}</td>
                             <td>${Helpers.escapeHtml(bill.customerName || '-')}</td>
                             <td>${Helpers.escapeHtml((bill.items || []).map(i => i.name).join(', '))}</td>
                             <td class="text-right">₹${Helpers.escapeHtml((bill.total || 0).toLocaleString('en-IN'))}</td>
@@ -1158,7 +1160,7 @@ export class ReportsManager {
     </div>
 
     <div class="footer">
-        <p>Report generated by ${Helpers.escapeHtml(APP_IDENTITY.appName)}</p>
+        <p>${tx('ui.reports.pdf_footer', { app: APP_IDENTITY.appName })}</p>
     </div>
 </body>
 </html>`;
@@ -1185,21 +1187,21 @@ export class ReportsManager {
     static getDateRangeText() {
         switch (this.currentDateFilter) {
             case 'today':
-                return 'Today (' + new Date().toLocaleDateString('en-IN') + ')';
+                return t('ui.reports.range_today', { date: new Date().toLocaleDateString('en-IN') });
             case 'week':
-                return 'This Week';
+                return t('ui.finance.period_week');
             case 'month':
-                return 'This Month';
+                return t('ui.finance.period_month');
             case 'year':
-                return 'This Year';
+                return t('ui.finance.period_year');
             case 'custom':
                 if (this.customStartDate && this.customEndDate) {
-                    return `${this.customStartDate.toLocaleDateString('en-IN')} to ${this.customEndDate.toLocaleDateString('en-IN')}`;
+                    return t('ui.reports.range_custom', { from: this.customStartDate.toLocaleDateString('en-IN'), to: this.customEndDate.toLocaleDateString('en-IN') });
                 }
-                return 'Custom Range';
+                return t('ui.finance.period_custom');
             case 'all':
             default:
-                return 'All Time';
+                return t('ui.finance.period_all');
         }
     }
 }

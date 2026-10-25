@@ -119,8 +119,8 @@ function downloadValues(d) {
         siteUrl: d.siteUrl,
         siteHost: d.siteHost,
         downloadPageHost: d.downloadPageHost,
-        downloadTitle: `${d.appName} — Download / डाउनलोड`,
-        downloadDescription: `Download the ${d.appName} Android app and install steps in Hindi and English.`,
+        downloadTitle: `${d.appName} — Download`,
+        downloadDescription: `Download the ${d.appName} Android app and see how to install it.`,
         qrAlt: `QR code for ${d.downloadPageHost}`
     };
 }

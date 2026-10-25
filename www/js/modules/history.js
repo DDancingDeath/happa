@@ -579,7 +579,7 @@ export class HistoryManager {
             
             <div class="bill-totals-section">
                 <div class="bill-totals-row total">
-                    <span>Total:</span>
+                    <span>${Helpers.escapeHtml(t('ui.admin.total_label'))}</span>
                     <strong>₹${Math.round(sale.saleTotal || sale.amountReceivable || 0)}</strong>
                 </div>
             </div>

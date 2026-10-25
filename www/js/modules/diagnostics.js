@@ -13,6 +13,9 @@ import { formatDateTimeIN } from '../utils/dates.js';
 import { getStartupTimings, startupRows } from '../utils/startup-timings.js';
 import { getQuotaStatus } from '../firebase/firestore-meter.js';
 import { t } from '../i18n/index.js';
+import { auditActionLabel } from '../i18n/localize.js';
+
+const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { runNumberChecks } from '../utils/number-checks.js';
 import { isFullHistoryLoaded } from '../utils/history-window.js';
 import { CashManagementManager } from './cash-management.js';
@@ -89,11 +92,11 @@ const DiagnosticsManager = {
             <div class="filter-buttons" style="margin-bottom: 16px;">
                 <button class="filter-btn ${this.activeTab === 'errors' ? 'active' : ''}" 
                         onclick="window.app.diagnostics.showTab('errors')">
-                    🐛 Errors
+                    🐛 ${tx('ui.diag.tab_errors')}
                 </button>
                 <button class="filter-btn ${this.activeTab === 'audit' ? 'active' : ''}" 
                         onclick="window.app.diagnostics.showTab('audit')">
-                    📋 Audit Logs
+                    📋 ${tx('ui.admin.col_audit_logs')}
                 </button>
                 ${numbersBtn}
             </div>
@@ -208,13 +211,13 @@ const DiagnosticsManager = {
         const s = getQuotaStatus();
         const rows = s.top.map(t => `<tr><td>${Helpers.escapeHtml(t.source)}</td><td style="text-align:right">${Helpers.escapeHtml(String(t.reads))}</td></tr>`).join('');
         const quota = s.quota.count
-            ? `<div style="color:#b45309;margin-top:6px;">⚠️ Daily free limit reached: ${s.quota.count} error(s), first ${Helpers.escapeHtml(formatDateTimeIN(new Date(s.quota.firstAt)))} (${Helpers.escapeHtml(s.quota.lastSource)})</div>`
+            ? `<div style="color:#b45309;margin-top:6px;">⚠️ ${tx('ui.diag.quota_hit', { count: s.quota.count, at: formatDateTimeIN(new Date(s.quota.firstAt)), source: s.quota.lastSource })}</div>`
             : '';
         return `
             <details class="diagnostics-reads" style="margin-bottom: 16px;">
-                <summary><strong>📊 Data reads this session</strong> ≈ ${Helpers.escapeHtml(String(s.reads))}${s.heavy ? ' ⚠️' : ''}</summary>
-                <div style="font-size:12px;color:#6b7280;margin-top:6px;">Since app open ${Helpers.escapeHtml(formatDateTimeIN(new Date(s.since)))}. Estimate; free limit is 50,000 reads/day shared by everyone.</div>
-                ${rows ? `<table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;"><thead><tr><th style="text-align:left">Top sources</th><th style="text-align:right">Reads</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+                <summary><strong>📊 ${tx('ui.diag.reads_title')}</strong> ≈ ${Helpers.escapeHtml(String(s.reads))}${s.heavy ? ' ⚠️' : ''}</summary>
+                <div style="font-size:12px;color:#6b7280;margin-top:6px;">${tx('ui.diag.reads_note', { at: formatDateTimeIN(new Date(s.since)) })}</div>
+                ${rows ? `<table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;"><thead><tr><th style="text-align:left">${tx('ui.diag.top_sources')}</th><th style="text-align:right">${tx('ui.diag.reads')}</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
                 ${quota}
             </details>
         `;
@@ -236,12 +239,12 @@ const DiagnosticsManager = {
             `${label}: ${l.first} (${l.docs} docs) → ${l.readyBy || '?'}`).join('; ');
         return `
             <details class="diagnostics-startup" style="margin-bottom: 16px;">
-                <summary><strong>⏱ Startup timings</strong> (ms since page start)</summary>
+                <summary><strong>⏱ ${tx('ui.diag.startup_title')}</strong> ${tx('ui.diag.startup_hint')}</summary>
                 <table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;">
-                    <thead><tr><th style="text-align:left">Step</th><th style="text-align:right">At</th><th style="text-align:right">Step time</th><th style="text-align:left">Details</th></tr></thead>
+                    <thead><tr><th style="text-align:left">${tx('ui.diag.col_step')}</th><th style="text-align:right">${tx('ui.diag.col_at')}</th><th style="text-align:right">${tx('ui.diag.col_step_time')}</th><th style="text-align:left">${tx('ui.diag.col_details')}</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table>
-                ${listeners ? `<div style="font-size:11px;color:#6b7280;margin-top:6px;">Listeners: ${Helpers.escapeHtml(listeners)}</div>` : ''}
+                ${listeners ? `<div style="font-size:11px;color:#6b7280;margin-top:6px;">${tx('ui.diag.listeners', { list: listeners })}</div>` : ''}
             </details>
         `;
     },
@@ -304,31 +307,31 @@ const DiagnosticsManager = {
             <div class="diagnostics-stats">
                 <div class="diag-stat-card">
                     <div class="diag-stat-value">${Helpers.escapeHtml(stats.total)}</div>
-                    <div class="diag-stat-label">Unique Errors</div>
+                    <div class="diag-stat-label">${tx('ui.diag.unique_errors')}</div>
                 </div>
                 <div class="diag-stat-card">
                     <div class="diag-stat-value">${Helpers.escapeHtml(stats.totalOccurrences)}</div>
-                    <div class="diag-stat-label">Total Occurrences</div>
+                    <div class="diag-stat-label">${tx('ui.diag.total_occurrences')}</div>
                 </div>
                 <div class="diag-stat-card">
                     <div class="diag-stat-value">${Helpers.escapeHtml(stats.byType['uncaught'] || 0)}</div>
-                    <div class="diag-stat-label">Uncaught Errors</div>
+                    <div class="diag-stat-label">${tx('ui.diag.uncaught')}</div>
                 </div>
                 <div class="diag-stat-card">
                     <div class="diag-stat-value">${stats.byType['console.error'] || 0}</div>
-                    <div class="diag-stat-label">Console Errors</div>
+                    <div class="diag-stat-label">${tx('ui.diag.console')}</div>
                 </div>
             </div>
 
             <!-- Controls -->
             <div class="diagnostics-controls">
                 <select id="diagTypeFilter" onchange="window.app.diagnostics.filterByType(this.value)">
-                    <option value="all" ${this.filter === 'all' ? 'selected' : ''}>All Types</option>
-                    <option value="uncaught" ${this.filter === 'uncaught' ? 'selected' : ''}>Uncaught Errors</option>
-                    <option value="unhandledrejection" ${this.filter === 'unhandledrejection' ? 'selected' : ''}>Promise Rejections</option>
-                    <option value="console.error" ${this.filter === 'console.error' ? 'selected' : ''}>Console Errors</option>
-                    <option value="warning" ${this.filter === 'warning' ? 'selected' : ''}>Warnings</option>
-                    <option value="manual" ${this.filter === 'manual' ? 'selected' : ''}>Manual Logs</option>
+                    <option value="all" ${this.filter === 'all' ? 'selected' : ''}>${tx('ui.diag.all_types')}</option>
+                    <option value="uncaught" ${this.filter === 'uncaught' ? 'selected' : ''}>${tx('ui.diag.uncaught')}</option>
+                    <option value="unhandledrejection" ${this.filter === 'unhandledrejection' ? 'selected' : ''}>${tx('ui.diag.rejections')}</option>
+                    <option value="console.error" ${this.filter === 'console.error' ? 'selected' : ''}>${tx('ui.diag.console')}</option>
+                    <option value="warning" ${this.filter === 'warning' ? 'selected' : ''}>${tx('ui.diag.warnings')}</option>
+                    <option value="manual" ${this.filter === 'manual' ? 'selected' : ''}>${tx('ui.diag.manual')}</option>
                 </select>
                 <button onclick="window.app.diagnostics.loadData()" class="diag-btn refresh">🔄</button>
                 <button onclick="window.app.diagnostics.clearAll()" class="diag-btn danger">🗑️</button>
@@ -339,7 +342,7 @@ const DiagnosticsManager = {
                 ${filteredData.length === 0 ? `
                     <div class="diag-empty">
                         <span class="diag-empty-icon">✅</span>
-                        <p>No errors found</p>
+                        <p>${tx('ui.diag.no_errors')}</p>
                     </div>
                 ` : filteredData.map(error => this.renderErrorCard(error)).join('')}
             </div>
@@ -361,11 +364,11 @@ const DiagnosticsManager = {
         };
 
         const typeLabels = {
-            'uncaught': '🔴 Uncaught',
-            'unhandledrejection': '🟠 Promise',
-            'console.error': '🟡 Console',
-            'warning': '🔵 Warning',
-            'manual': '🟣 Manual'
+            'uncaught': `🔴 ${tx('ui.diag.t_uncaught')}`,
+            'unhandledrejection': `🟠 ${tx('ui.diag.t_promise')}`,
+            'console.error': `🟡 ${tx('ui.diag.t_console')}`,
+            'warning': `🔵 ${tx('ui.diag.t_warning')}`,
+            'manual': `🟣 ${tx('ui.diag.t_manual')}`
         };
 
         const lastSeen = formatDateTimeIN(error.lastSeen);
@@ -375,27 +378,27 @@ const DiagnosticsManager = {
             <div class="diag-error-card" style="border-left: 4px solid ${typeColors[error.type] || '#666'};">
                 <div class="diag-error-header">
                     <span class="diag-error-type">${typeLabels[error.type] || Helpers.escapeHtml(error.type)}</span>
-                    <span class="diag-error-count">${Helpers.escapeHtml(error.count || 1)}x</span>
+                    <span class="diag-error-count">${Helpers.escapeHtml(error.count || 1)}×</span>
                     <button onclick="window.app.diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn">×</button>
                 </div>
-                <div class="diag-error-message">${this.escapeHtml(error.message || 'No message')}</div>
+                <div class="diag-error-message">${this.escapeHtml(error.message || t('ui.diag.no_message'))}</div>
                 ${error.source ? `<div class="diag-error-source">📍 ${Helpers.escapeHtml(error.source)}:${Helpers.escapeHtml(error.line || '?')}</div>` : ''}
                 <div class="diag-error-meta">
-                    <span>First: ${firstSeen}</span>
-                    <span>Last: ${lastSeen}</span>
+                    <span>${tx('ui.diag.first', { at: firstSeen })}</span>
+                    <span>${tx('ui.diag.last', { at: lastSeen })}</span>
                 </div>
                 ${error.stack ? `
                     <details class="diag-error-stack">
-                        <summary>Stack Trace</summary>
+                        <summary>${tx('ui.diag.stack')}</summary>
                         <pre>${this.escapeHtml(error.stack)}</pre>
                     </details>
                 ` : ''}
                 ${error.occurrences && error.occurrences.length > 0 ? `
                     <details class="diag-error-occurrences">
-                        <summary>Recent Occurrences (${error.occurrences.length})</summary>
+                        <summary>${tx('ui.diag.recent', { count: error.occurrences.length })}</summary>
                         <ul>
                             ${error.occurrences.slice(-5).map(o => `
-                                <li>${formatDateTimeIN(o.timestamp)} - ${Helpers.escapeHtml(o.userName || 'Unknown')}</li>
+                                <li>${formatDateTimeIN(o.timestamp)} - ${Helpers.escapeHtml(o.userName || t('ui.reports.unknown'))}</li>
                             `).join('')}
                         </ul>
                     </details>
@@ -441,14 +444,14 @@ const DiagnosticsManager = {
             <!-- Controls -->
             <div class="diagnostics-controls">
                 <select id="auditFilterAction" onchange="window.app.diagnostics.filterAuditLogs(this.value)">
-                    <option value="" ${this.auditFilter === '' ? 'selected' : ''}>All Actions</option>
-                    <option value="CREATE_BILL" ${this.auditFilter === 'CREATE_BILL' ? 'selected' : ''}>Create Bill</option>
-                    <option value="DELETE_BILL" ${this.auditFilter === 'DELETE_BILL' ? 'selected' : ''}>Delete Bill</option>
-                    <option value="CREATE_SALE" ${this.auditFilter === 'CREATE_SALE' ? 'selected' : ''}>Create Sale</option>
-                    <option value="DELETE_SALE" ${this.auditFilter === 'DELETE_SALE' ? 'selected' : ''}>Delete Sale</option>
-                    <option value="DELETE_ITEM" ${this.auditFilter === 'DELETE_ITEM' ? 'selected' : ''}>Delete Item</option>
-                    <option value="UPDATE_PAYMENT" ${this.auditFilter === 'UPDATE_PAYMENT' ? 'selected' : ''}>Update Payment</option>
-                    <option value="CLEAR_DATA" ${this.auditFilter === 'CLEAR_DATA' ? 'selected' : ''}>Clear Data</option>
+                    <option value="" ${this.auditFilter === '' ? 'selected' : ''}>${tx('ui.diag.all_actions')}</option>
+                    <option value="CREATE_BILL" ${this.auditFilter === 'CREATE_BILL' ? 'selected' : ''}>${tx('ui.diag.a_create_bill')}</option>
+                    <option value="DELETE_BILL" ${this.auditFilter === 'DELETE_BILL' ? 'selected' : ''}>${tx('ui.diag.a_delete_bill')}</option>
+                    <option value="CREATE_SALE" ${this.auditFilter === 'CREATE_SALE' ? 'selected' : ''}>${tx('ui.diag.a_create_sale')}</option>
+                    <option value="DELETE_SALE" ${this.auditFilter === 'DELETE_SALE' ? 'selected' : ''}>${tx('ui.diag.a_delete_sale')}</option>
+                    <option value="DELETE_ITEM" ${this.auditFilter === 'DELETE_ITEM' ? 'selected' : ''}>${tx('ui.diag.a_delete_item')}</option>
+                    <option value="UPDATE_PAYMENT" ${this.auditFilter === 'UPDATE_PAYMENT' ? 'selected' : ''}>${tx('ui.diag.a_update_payment')}</option>
+                    <option value="CLEAR_DATA" ${this.auditFilter === 'CLEAR_DATA' ? 'selected' : ''}>${tx('ui.diag.a_clear_data')}</option>
                 </select>
                 <button onclick="window.app.diagnostics.loadAuditLogs()" class="diag-btn refresh">🔄</button>
             </div>
@@ -458,7 +461,7 @@ const DiagnosticsManager = {
                 ${filteredLogs.length === 0 ? `
                     <div class="diag-empty">
                         <span class="diag-empty-icon">📋</span>
-                        <p>No audit logs found</p>
+                        <p>${tx('ui.settings.no_audit_logs')}</p>
                     </div>
                 ` : filteredLogs.map(log => this.renderAuditCard(log)).join('')}
             </div>
@@ -487,7 +490,7 @@ const DiagnosticsManager = {
             <div class="diag-audit-card" style="border-left: 4px solid ${actionColor};">
                 <div class="diag-audit-header">
                     <span class="diag-audit-icon">${actionIcon}</span>
-                    <span class="diag-audit-action" style="color: ${actionColor};">${Helpers.escapeHtml(log.action.replace(/_/g, ' '))}</span>
+                    <span class="diag-audit-action" style="color: ${actionColor};">${Helpers.escapeHtml(auditActionLabel(log.action))}</span>
                     <span class="diag-audit-time">${formattedDate}</span>
                 </div>
                 <div class="diag-audit-user">
@@ -540,13 +543,13 @@ const DiagnosticsManager = {
         if (!details || typeof details !== 'object') return '';
         
         const parts = [];
-        if (details.billNumber) parts.push(`Bill: ${details.billNumber}`);
-        if (details.amount) parts.push(`Amount: ₹${details.amount}`);
-        if (details.customer) parts.push(`Customer: ${details.customer}`);
-        if (details.itemName) parts.push(`Item: ${details.itemName}`);
-        if (details.paymentAmount) parts.push(`Payment: ₹${details.paymentAmount}`);
-        if (details.collections) parts.push(`Collections: ${details.collections.join(', ')}`);
-        if (details.recordsDeleted) parts.push(`Records: ${details.recordsDeleted}`);
+        if (details.billNumber) parts.push(t('ui.settings.audit_bill', { value: details.billNumber }));
+        if (details.amount) parts.push(t('ui.settings.audit_amount', { value: details.amount }));
+        if (details.customer) parts.push(t('ui.settings.audit_customer', { value: details.customer }));
+        if (details.itemName) parts.push(t('ui.settings.audit_item', { value: details.itemName }));
+        if (details.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: details.paymentAmount }));
+        if (details.collections) parts.push(t('ui.settings.audit_collections', { value: details.collections.join(', ') }));
+        if (details.recordsDeleted) parts.push(t('ui.settings.audit_records', { value: details.recordsDeleted }));
         
         return parts.join(' • ');
     },
