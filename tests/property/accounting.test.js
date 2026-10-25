@@ -140,6 +140,43 @@ test('AC1 closing stock per item: app quantity and value == oracle; AC8 no negat
     }), FC);
 });
 
+test('AC1 retail sales reduce stock like wholesale over the whole history (decision #33)', () => {
+    fc.assert(fc.property(shopArb(), ({ shop: s }) => {
+        // Only 'add' corrections, so quantity = purchases + adds − sales with no clamping.
+        const src = { ...sources(s), stockAdjustments: s.stockAdjustments.filter(a => a.adjustType === 'add') };
+        const retailOnly = O.stockReplay({ items: s.items, retailSales: s.retailSales }).perItem;
+        fc.pre(Object.keys(retailOnly).length > 0);
+        const withRetail = computeStock(src, s.items);
+        const withoutRetail = computeStock({ ...src, retailSales: [] }, s.items);
+        return Object.entries(retailOnly).every(([k, v]) =>
+            v.qty < 0 && close(withRetail[k]?.quantity ?? 0, (withoutRetail[k]?.quantity ?? 0) + v.qty, 1e-6));
+    }), FC);
+});
+
+/** How a retail line can name its item (old app versions saved names only). */
+const RETAIL_LINE_SHAPES = {
+    'item id': (it) => ({ itemId: it.id, name: it.name }),
+    'English name only (odd case, spaces)': (it) => ({ name: ` ${it.name.toUpperCase()} ` }),
+    'Hindi name only': (it) => ({ name: it.hindiName }),
+    'unknown item id, falls back to the name': (it) => ({ itemId: `deleted-${it.id}`, name: it.name.toLowerCase() })
+};
+
+test.each(Object.entries(RETAIL_LINE_SHAPES))('AC1 a retail line with %s reduces that item\'s stock (decision #33)', (_label, shape) => {
+    fc.assert(fc.property(shopArb(), fc.nat(), fc.integer({ min: 1, max: 25 }), ({ shop: s }, pick, qty) => {
+        const item = s.items[pick % s.items.length];
+        const t = s.truth.end + 60 * 60 * 1000;
+        const sale = {
+            id: 'r-shape', date: new Date(t).toISOString(), timestamp: t, customerName: 'Shape test',
+            items: [{ ...shape(item), qty, rate: 40, total: qty * 40 }], total: qty * 40,
+            payment: { cash: qty * 40, online: 0, due: 0 }
+        };
+        const before = computeStock(sources(s), s.items);
+        const after = computeStock({ ...sources(s), retailSales: [...s.retailSales, sale] }, s.items);
+        return close(after[item.id].quantity, (before[item.id]?.quantity ?? 0) - qty, 1e-6)
+            && Object.keys(after).every(k => k === item.id || close(after[k].quantity, before[k]?.quantity ?? 0, 1e-6));
+    }), FC);
+});
+
 // AC2 / AC3 -------------------------------------------------------------------
 
 test('AC2 bill total = cash + online + due (+ written off), within ₹1, and matches what happened', () => {

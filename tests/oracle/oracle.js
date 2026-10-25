@@ -189,7 +189,8 @@ export function today(data, nowMs, session = null) {
 /**
  * S1–S4 + COGS: weighted-average cost, replayed in time order.
  * Lines resolve to a catalogue item by itemId, else by English/Hindi name
- * (trimmed, case-insensitive). Purchases add at the line rate; sales remove at
+ * (trimmed, case-insensitive). Purchases add at the line rate; sales (wholesale
+ * and retail, owner decision #33) remove at
  * the average cost at that moment (that cost is the cost of goods sold);
  * adjustments: add (at their rate), remove (at average cost, never below 0),
  * set (to a quantity, at its rate or the average cost).

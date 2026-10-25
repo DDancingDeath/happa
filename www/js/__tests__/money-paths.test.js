@@ -359,7 +359,7 @@ describe('new retail sale save', () => {
         AppState.retailSalesHistory = [];
     });
 
-    test('retail oversell far beyond the limit still only warns (#33 open); accepted warning saved as a flag (#37)', async () => {
+    test('retail oversell far beyond the limit still only warns (#33: retail reduces stock, no block limit); accepted warning saved as a flag (#37)', async () => {
         AppState.stock = { 'item-rice': { quantity: 1 } };
         jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
         await addLine(0, 36, [10]);
