@@ -1539,6 +1539,77 @@ function defineRentSuite(prefix) {
         await assertFails(log('rentPending', 'RENT_PAYMENT'));
     });
 
+    // ---- tenant rent-history link: rent_public/{token} ----
+    const TOKEN = 'AbCdEfGhIjKlMnOpQrStUvWx';
+    const TOKEN2 = 'ZyXwVuTsRqPoNmLkJiHgFeDc';
+    const snap = (over = {}) => ({ lid: 'L1', v: 1, shop: 'Shop', tenant: 'Ram', place: 'Gali 2 · G1', rent: 5000, dueDay: 10,
+        ended: false, endMonth: null, months: [{ m: CUR, rent: 5000, elec: 0, units: 0, total: 5000, paid: 0, due: 5000, st: 'due', pd: [] }],
+        updatedAt: 1, ...over });
+    const pubOn = (f, tok) => f.collection(c('rent_public')).doc(tok);
+
+    t('link: anyone gets the exact token (one doc); nobody lists; an unknown token is just missing', async () => {
+        await seed('rent_public', TOKEN, snap());
+        const got = await assertSucceeds(anon().collection(c('rent_public')).doc(TOKEN).get());
+        if (!got.exists || got.data().tenant !== 'Ram') throw new Error('snapshot not readable');
+        const miss = await assertSucceeds(anon().collection(c('rent_public')).doc(TOKEN2).get());
+        if (miss.exists) throw new Error('unknown token found');
+        await assertFails(anon().collection(c('rent_public')).get());
+        await assertFails(anon().collection(c('rent_public')).where('lid', '==', 'L1').get());
+        await assertFails(as('rentMember').collection(c('rent_public')).limit(1).get());
+        await assertFails(anon().collection(c('rent_public')).doc(TOKEN).set(snap()));
+    });
+
+    t('link: made by owner/manager with the lease token in the same write; members only keep it current', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
+        await assertFails(pubOn(db('rentManager'), TOKEN).set(snap()));
+        await assertFails(leaseRef('rentMember').update({ shareToken: TOKEN, updatedAt: 2, updatedBy: 'rentMember' }));
+        const f = db('rentManager');
+        const b = f.batch();
+        b.set(pubOn(f, TOKEN), snap());
+        b.update(leaseOn(f), { shareToken: TOKEN, updatedAt: 2, updatedBy: 'rentManager' });
+        await assertSucceeds(b.commit());
+        // A member keeps it current (payment, meter, new month) while the lease points at it.
+        await assertSucceeds(pubOn(db('rentMember'), TOKEN).set(snap({ updatedAt: 3 })));
+        await assertFails(pubOn(db('rentMember'), TOKEN).set(snap({ phone: '9876543210' })));
+        await assertFails(pubOn(db('rentMember'), TOKEN).set(snap({ lid: 'L9' })));
+        await assertFails(pubOn(db('rentMember'), TOKEN).set(snap({ months: Array(37).fill(snap().months[0]) })));
+        await assertFails(pubOn(db('rentMember'), TOKEN2).set(snap()));
+        await assertFails(pubOn(db('staff1'), TOKEN).set(snap({ updatedAt: 4 })));
+        await assertFails(pubOn(db('rentMember'), 'short').set(snap()));
+    });
+
+    t('link: turned off or replaced only with the lease in the same write; members cannot', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
+        await seed('rent_public', TOKEN, snap());
+        await assertFails(pubOn(db('rentManager'), TOKEN).delete());
+        const off = (uid) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.delete(pubOn(f, TOKEN));
+            b.update(leaseOn(f), { shareToken: null, updatedAt: 2, updatedBy: uid });
+            return b.commit();
+        };
+        await assertFails(off('rentMember'));
+        const f = db('rentManager');
+        const swap = f.batch();
+        swap.delete(pubOn(f, TOKEN));
+        swap.set(pubOn(f, TOKEN2), snap());
+        swap.update(leaseOn(f), { shareToken: TOKEN2, updatedAt: 2, updatedBy: 'rentManager' });
+        await assertSucceeds(swap.commit());
+        await assertFails(pubOn(db('rentMember'), TOKEN).set(snap()));
+    });
+
+    t('link: a payment updates the charge and the snapshot in one write', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
+        await seed('rent_public', TOKEN, snap());
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        const f = db('rentOnly');
+        const b = f.batch();
+        b.update(chargeOn(f, CUR), pay('rentOnly', 2000));
+        b.set(pubOn(f, TOKEN), snap({ months: [{ ...snap().months[0], paid: 2000, due: 3000, st: 'partial', pd: ['2026-10-05'] }], updatedAt: 5 }));
+        await assertSucceeds(b.commit());
+    });
+
     t('only the owner deletes rentals records', async () => {
         await seed('rent_tenants', 'T1', { name: 'Ram', phone: '', notes: '', ...meta('x') });
         await assertFails(db('rentManager').collection(c('rent_tenants')).doc('T1').delete());

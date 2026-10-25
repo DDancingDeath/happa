@@ -1858,5 +1858,20 @@ export default {
     'ui.csv.summary': "SUMMARY",
     'ui.csv.total_purchases': "Total Purchases:",
     'ui.csv.total_sales': "Total Sales:",
-    'ui.csv.profit': "Profit on goods sold:"
+    'ui.csv.profit': "Profit on goods sold:",
+    'ui.rent.link_on': "Tenant link",
+    'ui.rent.link_make': "Make tenant link",
+    'ui.rent.link_title': "Tenant's rent-history link",
+    'ui.rent.link_help': "A read-only page with only this tenant's months: rent, electricity, paid and due. No login. Anyone with the link can see it, so send it only to the tenant.",
+    'ui.rent.link_send': "Send on WhatsApp",
+    'ui.rent.link_copy': "Copy link",
+    'ui.rent.link_new': "New link",
+    'ui.rent.link_off': "Turn off link",
+    'ui.rent.links_moved_out': "Moved out, link still on",
+    'msg.rent.link_copied': "✓ Link copied",
+    'msg.rent.link_message': "Your rent history: {url}",
+    'msg.rent.link_off_confirm': "Turn off the link? The tenant will no longer be able to open it.",
+    'msg.rent.link_new_confirm': "Make a new link? The old link stops working.",
+    'msg.rent.link_turned_off': "✓ Link turned off",
+    'msg.rent.link_ready': "✓ Link ready"
 };

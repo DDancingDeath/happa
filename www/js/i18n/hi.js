@@ -1858,5 +1858,20 @@ export default {
     'ui.csv.summary': "सारांश",
     'ui.csv.total_purchases': "कुल ख़रीद:",
     'ui.csv.total_sales': "कुल बिक्री:",
-    'ui.csv.profit': "बेचे माल पर मुनाफ़ा:"
+    'ui.csv.profit': "बेचे माल पर मुनाफ़ा:",
+    'ui.rent.link_on': "किरायेदार लिंक",
+    'ui.rent.link_make': "किरायेदार लिंक बनाएँ",
+    'ui.rent.link_title': "किरायेदार का किराया-हिसाब लिंक",
+    'ui.rent.link_help': "केवल देखने वाला पेज, जिसमें सिर्फ़ इसी किरायेदार के महीने हैं: किराया, बिजली, चुकाया और बकाया। लॉगिन नहीं। लिंक जिसके पास हो वह देख सकता है, इसलिए केवल किरायेदार को भेजें।",
+    'ui.rent.link_send': "व्हाट्सऐप पर भेजें",
+    'ui.rent.link_copy': "लिंक कॉपी करें",
+    'ui.rent.link_new': "नया लिंक",
+    'ui.rent.link_off': "लिंक बंद करें",
+    'ui.rent.links_moved_out': "खाली कर चुके, लिंक अभी चालू",
+    'msg.rent.link_copied': "✓ लिंक कॉपी हुआ",
+    'msg.rent.link_message': "आपके किराये का हिसाब: {url}",
+    'msg.rent.link_off_confirm': "लिंक बंद करें? किरायेदार इसे फिर नहीं खोल पाएगा।",
+    'msg.rent.link_new_confirm': "नया लिंक बनाएँ? पुराना लिंक काम करना बंद कर देगा।",
+    'msg.rent.link_turned_off': "✓ लिंक बंद हुआ",
+    'msg.rent.link_ready': "✓ लिंक तैयार"
 };

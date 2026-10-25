@@ -196,6 +196,7 @@ Oracle: `tests/oracle/rent.test.js`.
 | RENT-5 | Per tenant | Σ due of that lease's charges, oldest month first; a month is *Late* after its due day (default the 10th, per lease), *Part paid* when 0 < paid < amount. |
 | RENT-6 | Rent increase due | Once 12 months have passed since the rent was last set (or the start month): "Rent increase due: p% → ₹X", X = round(rent × (1 + p/100)), p per lease (default 5). Only a reminder; the rent changes when someone saves the new rent, from the next month's charge. |
 | RENT-7 | Electricity | Per unit sub-meter: units = current − previous reading, amount = units × rate per unit (both rounded to paise), added to that month's charge; saving again replaces it. |
+| RENT-8 | Tenant link page (`/r/<token>`), per month | rent = the month's rent; electricity = RENT-7 amount (units); total = rent + electricity; paid = Σ payments; due = total − paid; status Paid / Part paid / Due / Late as RENT-5; paid on = the payment dates. Cards: rent = the lease's current rent; total due = Σ due of the shown months (up to 36, newest first); paid = Σ paid of the shown months. Moved out → banner with the last month. |
 
 ---
 

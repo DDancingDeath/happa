@@ -668,7 +668,7 @@ service cloud.firestore {
             && rentStr(d, 'name', 1, 80) && rentStr(d, 'phone', 0, 20) && rentStr(d, 'notes', 0, 500)
           : base == 'rent_leases'
           ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
-                              'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince'].concat(rentMeta()))
+                              'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken'].concat(rentMeta()))
             && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
             && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
             && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
@@ -678,13 +678,18 @@ service cloud.firestore {
             && (d.get('chargedThrough', null) == null || rentMonth(d.chargedThrough))
             && (!('increasePct' in d) || (d.increasePct is number && d.increasePct >= 0 && d.increasePct <= 100))
             && (!('rentSince' in d) || rentMonth(d.rentSince))
+            && (d.get('shareToken', null) == null || rentShareToken(d.shareToken))
           : false);
     }
 
-    // New leases start active, with no charges, and take their unit in the same write.
+    function rentShareToken(t) {
+      return t is string && t.matches('^[A-Za-z0-9_-]{22,64}$');
+    }
+
+    // New leases start active, with no charges and no tenant link, and take their unit in the same write.
     function rentLeaseCreateOk(usersCol, docId) {
       let d = request.resource.data;
-      return d.get('chargedThrough', null) == null
+      return d.get('chargedThrough', null) == null && d.get('shareToken', null) == null
         && d.get('status', '') == 'active' && d.get('endMonth', null) == null
         && getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data.get('leaseId', null) == docId;
     }
@@ -705,6 +710,7 @@ service cloud.firestore {
       let next = d.get('chargedThrough', null);
       return validRentDoc('rent_leases') && rentCreationKept()
         && d.startMonth == r.startMonth && d.unitId == r.unitId && d.tenantId == r.tenantId
+        && (d.get('shareToken', null) == r.get('shareToken', null) || mgr)
         && (r.status == 'ended'
           ? d.status == 'ended' && d.get('endMonth', null) == r.get('endMonth', null) && next == before
           : d.status == 'active'
@@ -912,6 +918,33 @@ service cloud.firestore {
     function rentDeleteOk(base, usersCol) {
       return isOwnerIn(usersCol)
         || (base == 'rent_charges' && resource != null && rentChargeDeleteOk(usersCol, canManageRent(usersCol)));
+    }
+
+    // Tenant rent-history link (follow-up to #170): rent_public/{token} is a
+    // read-only snapshot anyone holding the exact token may get (no list). Written
+    // only by rentals roles while the lease points at this token (same write as
+    // the lease change, via getAfter); removed when the link is turned off/replaced.
+    function validRentPublic(usersCol, token) {
+      let d = request.resource.data;
+      return rentRoleIn(usersCol) != ''
+        && rentShareToken(token)
+        && d.keys().hasOnly(['lid', 'v', 'shop', 'tenant', 'place', 'rent', 'dueDay', 'ended', 'endMonth', 'months', 'updatedAt'])
+        && rentStr(d, 'lid', 1, 64)
+        && getAfter(rentLeasePath(usersCol, d.lid)).data.get('shareToken', null) == token
+        && d.get('v', 0) == 1
+        && rentStr(d, 'shop', 0, 80) && rentStr(d, 'tenant', 0, 80) && rentStr(d, 'place', 0, 150)
+        && rentMoney(d, 'rent') && d.get('dueDay', 0) is int
+        && d.get('ended', null) is bool && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
+        && d.get('months', null) is list && d.months.size() <= 36
+        && d.get('updatedAt', null) is number
+        && (resource == null || resource.data.lid == d.lid);
+    }
+
+    function rentPublicDeleteOk(usersCol, token) {
+      return isOwnerIn(usersCol)
+        || (rentRoleIn(usersCol) in ['owner', 'manager']
+            && get(rentLeasePath(usersCol, resource.data.lid)).data.get('shareToken', null) == token
+            && getAfter(rentLeasePath(usersCol, resource.data.lid)).data.get('shareToken', null) != token);
     }
 
     // Audit entries for rentals actions from users with a rentals role (a
@@ -1136,6 +1169,21 @@ service cloud.firestore {
       allow create: if isApproved() && validTelemetryEntry();
       allow update: if false;
       allow read, delete: if isAdmin();
+    }
+
+    // Tenant rent-history link: anyone with the exact token reads one doc; nobody lists.
+    match /rent_public/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if validRentPublic('users', token);
+      allow delete: if resource != null && rentPublicDeleteOk('users', token);
+    }
+
+    match /dev_rent_public/{token} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if validRentPublic('dev_users', token);
+      allow delete: if resource != null && rentPublicDeleteOk('dev_users', token);
     }
 
     // Rentals (#170): helpers above. Deletes: owner, or move-out removing unpaid later months.

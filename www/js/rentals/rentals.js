@@ -17,6 +17,9 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import * as store from './rent-store.js';
+import { AppState } from '../utils/state.js';
+import { APP_IDENTITY } from '../config/app-identity.js';
+import { isShareToken, publicLink } from './rent-public.js';
 import {
     PROPERTY_KINDS, PAYMENT_MODES, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY,
     monthKey, monthLabel, monthsToCharge, chargeStatus, chargeDue, monthSummary, leaseDues, buildRentReminderText,
@@ -294,7 +297,8 @@ function remind(leaseId) {
     if (!a || a.dues.total <= 0) return;
     const text = buildRentReminderText({
         tenantName: a.name, place: a.place, charges: a.dues.charges,
-        lastMonth: a.lease?.endMonth || state.month, lang: getLang()
+        lastMonth: a.lease?.endMonth || state.month, lang: getLang(),
+        link: linkFor(a.lease || store.snapshot().linked.find(l => l.id === leaseId))
     });
     if (!a.phone) UIManager.showToast(t('msg.rent.no_phone'), 'info');
     openExternal(whatsAppReminderUrl(text, a.phone));
@@ -366,6 +370,91 @@ async function editLease(leaseId) {
     if (next.rent !== lease.rent) AuditService.log('RENT_CHANGE', { leaseId, from: lease.rent, to: next.rent }).catch(auditWarn);
 }
 
+// ---------- Tenant rent-history link (read-only, own unit only) ----------
+
+/** Development data (collection names get a prefix) -> the link is marked so the page reads the same data. */
+const isDevData = () => typeof window.getCollection === 'function' && window.getCollection('rent_public') !== 'rent_public';
+
+/** Public site for the link (the APK's own origin isn't reachable by tenants). */
+function linkOrigin() {
+    const dev = typeof window !== 'undefined' && isDevData();
+    const web = /^https?:$/.test(window.location?.protocol || '');
+    return dev && web ? window.location.origin : APP_IDENTITY.siteUrl;
+}
+
+function linkFor(lease) {
+    if (!isShareToken(lease?.shareToken)) return '';
+    const params = new URLSearchParams(window.location?.search || '');
+    return publicLink(linkOrigin(), lease.shareToken, {
+        dev: isDevData(), emulator: params.get('emulator') === '1'
+    });
+}
+
+function findLease(leaseId) {
+    const d = store.snapshot();
+    return d.leases.find(l => l.id === leaseId) || d.linked.find(l => l.id === leaseId) || null;
+}
+
+/** Owner/manager: make, share, replace or turn off the tenant's read-only link. */
+async function shareLink(leaseId) {
+    if (!isManager()) return;
+    const lease = findLease(leaseId);
+    if (!lease) return;
+    const url = linkFor(lease);
+    const id = js(leaseId);
+    const body = url
+        ? `<p class="rent-help">${esc(t('ui.rent.link_help'))}</p>
+           <input id="rentLinkUrl" type="text" readonly value="${esc(url)}">
+           <div class="rent-actions">
+             <button type="button" class="rent-btn rent-btn-wa" onclick="window.app.rentals.linkAction('send', '${id}')">${esc(t('ui.rent.link_send'))}</button>
+             <button type="button" class="rent-btn" onclick="window.app.rentals.linkAction('copy', '${id}')">${esc(t('ui.rent.link_copy'))}</button>
+             <button type="button" class="rent-btn" onclick="window.app.rentals.linkAction('new', '${id}')">${esc(t('ui.rent.link_new'))}</button>
+             <button type="button" class="rent-btn" onclick="window.app.rentals.linkAction('off', '${id}')">${esc(t('ui.rent.link_off'))}</button>
+           </div>`
+        : `<p class="rent-help">${esc(t('ui.rent.link_help'))}</p>
+           <div class="rent-actions"><button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.linkAction('make', '${id}')">${esc(t('ui.rent.link_make'))}</button></div>`;
+    await dialog(`<h3>🔗 ${esc(t('ui.rent.link_title'))}</h3>${body}`);
+}
+
+async function linkAction(action, leaseId) {
+    dialogResolve?.(false);
+    const lease = findLease(leaseId);
+    if (!lease || !isManager()) return;
+    const d = store.snapshot();
+    const ix = index(d);
+    if (action === 'copy' || action === 'send') {
+        const url = linkFor(lease);
+        if (!url) return;
+        if (action === 'copy') {
+            try { await navigator.clipboard.writeText(url); UIManager.showToast(t('msg.rent.link_copied'), 'success'); } catch (_) { UIManager.showToast(url, 'info'); }
+            return;
+        }
+        const tenant = ix.tenants.get(lease.tenantId);
+        openExternal(whatsAppReminderUrl(t('msg.rent.link_message', { url }), tenant?.phone));
+        return;
+    }
+    try {
+        if (action === 'off') {
+            if (!await UIManager.showModal(t('msg.rent.link_off_confirm'), t('ui.rent.link_off'), true)) return;
+            await store.removeShareLink(lease);
+            UIManager.showToast(t('msg.rent.link_turned_off'), 'success');
+        } else {
+            if (action === 'new' && !await UIManager.showModal(t('msg.rent.link_new_confirm'), t('ui.rent.link_new'), true)) return;
+            await store.makeShareLink(lease, {
+                tenantName: ix.tenants.get(lease.tenantId)?.name || '',
+                place: placeOf(ix, lease.unitId),
+                shopName: AppState.settings?.shopName || ''
+            });
+            UIManager.showToast(t('msg.rent.link_ready'), 'success');
+        }
+        AuditService.log(action === 'off' ? 'RENT_LINK_OFF' : 'RENT_LINK_ON', { leaseId }).catch(auditWarn);
+        setTimeout(() => shareLink(leaseId), 300);
+    } catch (e) {
+        console.error('Tenant link not saved:', e);
+        UIManager.showToast(t('msg.rent.save_failed'), 'error');
+    }
+}
+
 // ---------- Tenants ----------
 
 function renderTenants(d) {
@@ -385,6 +474,7 @@ function renderTenants(d) {
             : esc(t('ui.rent.no_unit'));
         const id = js(tn.id);
         const actions = !manage ? '' : `<div class="rent-actions">
+            ${lease && isManager() ? `<button type="button" class="rent-btn" onclick="window.app.rentals.shareLink('${js(lease.id)}')">🔗 ${esc(t(isShareToken(lease.shareToken) ? 'ui.rent.link_on' : 'ui.rent.link_make'))}</button>` : ''}
             ${lease ? `<button type="button" class="rent-btn" onclick="window.app.rentals.editLease('${js(lease.id)}')">${esc(t('ui.rent.update_rent'))}</button>
                 <button type="button" class="rent-btn" onclick="window.app.rentals.moveOut('${js(lease.id)}')">${esc(t('ui.rent.move_out'))}</button>`
                 : `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.moveIn('${id}')">${esc(t('ui.rent.move_in'))}</button>`}
@@ -395,7 +485,14 @@ function renderTenants(d) {
             <div class="rent-sub">${tn.phone ? `📞 ${esc(tn.phone)} · ` : ''}${where}</div>
             ${tn.notes ? `<div class="rent-sub">${esc(tn.notes)}</div>` : ''}${actions}</div>`;
     }).join('');
-    return form + (rows || `<p class="rent-empty">${esc(t('ui.rent.no_tenants'))}</p>`);
+    // Moved-out tenants whose link is still on (it stays readable until turned off).
+    const endedLinks = isManager() ? d.linked.filter(l => l.status === 'ended').map(l => `<div class="rent-row">
+            <div class="rent-name">${esc(ix.tenants.get(l.tenantId)?.name || t('ui.rent.no_name'))}</div>
+            <div class="rent-sub">${esc(t('ui.rent.moved_out'))} · ${esc(monthLabel(l.endMonth, getLang()))}</div>
+            <div class="rent-actions"><button type="button" class="rent-btn" onclick="window.app.rentals.shareLink('${js(l.id)}')">🔗 ${esc(t('ui.rent.link_on'))}</button></div>
+        </div>`).join('') : '';
+    return form + (rows || `<p class="rent-empty">${esc(t('ui.rent.no_tenants'))}</p>`)
+        + (endedLinks ? `<h3 class="rent-month-title">${esc(t('ui.rent.links_moved_out'))}</h3>${endedLinks}` : '');
 }
 
 async function addTenant() {
@@ -712,7 +809,7 @@ export const RentalsModule = {
         pay, fillDue, remind, meter, editLease,
         addTenant, editTenant, archiveTenant, moveIn, moveOut, fillRent,
         addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit,
-        setRole
+        setRole, shareLink, linkAction
     }
 };
 
