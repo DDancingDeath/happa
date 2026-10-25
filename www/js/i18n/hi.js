@@ -652,6 +652,7 @@ export default {
     'ui.modals.show_rate_name_changes': "रेट और नाम के बदलाव देखें",
     'ui.modals.wholesale_rates_kg': "थोक रेट (₹/kg)",
     'ui.app.name': "happa",
+    'ui.app.tagline': "आपका कारोबार, एक जगह",
     'ui.nav.admin': "एडमिन",
     'ui.nav.ai_assistant': "AI सहायक",
     'ui.nav.analytics': "विश्लेषण",
