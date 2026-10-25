@@ -2,7 +2,7 @@
 
         <div class="filter-buttons" style="margin-bottom: 20px;">
             <button class="filter-btn active" onclick="window.app.expenses.filterExpenseTab('business', event)">Business Expenses</button>
-            <button class="filter-btn" onclick="window.app.expenses.filterExpenseTab('personal', event)">Personal Expenses</button>
+            <button class="filter-btn" data-perm="personalExpenses" onclick="window.app.expenses.filterExpenseTab('personal', event)">Personal Expenses</button>
         </div>
 
         <!-- Business Expenses Section -->
@@ -49,7 +49,7 @@
         </div>
 
         <!-- Personal Expenses Section -->
-        <div id="personalExpenseSection" style="display: none;">
+        <div id="personalExpenseSection" data-perm="personalExpenses" style="display: none;">
             <div class="form-row">
                 <label>Expense Type:</label>
                 <input type="text" id="personalExpenseType" list="personalExpenseTypeOptions" placeholder="Enter expense type" />

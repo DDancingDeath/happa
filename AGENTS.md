@@ -322,7 +322,10 @@ reference only:
 
 `firestore.rules` in this repo is the source of truth for Firebase's
 deployed rules. **Editing these without updating Rules Playground tests
-can break every user immediately**. Always:
+can break every user immediately**. What each role may see and do is set by
+the owner in Settings → Roles & access (`settings/app.roleAccess`); the
+permission list, defaults and which parts the rules enforce are in
+`docs/role-permissions.md`. Always:
 
 1. Edit the file.
 2. Add/adjust cases in `rules-tests/test.js` and run `npm run test:rules`
@@ -341,14 +344,16 @@ To run the whole app against local emulators:
 and open `http://localhost:<port>/?emulator=1` (uses `dev_` collections;
 seed a `dev_users/<uid>` profile with a role).
 
-**Bill edit window (#87).** Everyone except the owner may edit or delete a
-bill only for **2 days** after it was first saved (managers: any bill; others:
-their own; delete: own bill only). The clock is the bill's `createdAt`, the
-server time written by `saveBill()` on the first save; rules compare it with
-`request.time` and refuse any change to it. Bills saved before this (no
-`createdAt`) count as outside the window: only the owner can change or delete
-them. Recording payments / clearing dues is not limited. The client mirrors
-this in `utils/record-permissions.js` (`canEditBillFor` / `canDeleteBillFor`).
+**Bill edit window (#87, #84).** Everyone except the owner may edit or delete a
+bill only for the role's `editDays` (Settings → Roles & access,
+`settings/app.roleAccess.<role>.editDays`, default **2**) after it was first
+saved (managers: any bill; others: their own; delete: own bill only). The
+clock is the bill's `createdAt`, the server time written by `saveBill()` on
+the first save; rules compare it with `request.time` and refuse any change to
+it. The client-written `timestamp` is never used for this. Bills saved before
+this (no `createdAt`) count as outside the window: only the owner can change
+or delete them. Recording payments / clearing dues is not limited. The client
+mirrors this in `utils/role-access.js` (`canEditBillWith` / `canDeleteBillWith`).
 
 ---
 

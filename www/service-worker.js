@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v3';
+const CACHE_NAME = 'happa-v4';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -70,6 +70,7 @@ const STATIC_ASSETS = [
     '/js/modules/outstanding.js',
     '/js/modules/purchase.js',
     '/js/modules/rate-trends.js',
+    '/js/modules/roles-access.js',
     '/js/modules/reports.js',
     '/js/modules/retail-sale.js',
     '/js/modules/settings.js',
@@ -115,6 +116,7 @@ const STATIC_ASSETS = [
     '/js/utils/number-checks.js',
     '/js/utils/notification-format.js',
     '/js/utils/record-permissions.js',
+    '/js/utils/role-access.js',
     '/js/utils/release-info.js',
     '/js/config/app-identity.js',
     '/js/utils/render-memo.js',

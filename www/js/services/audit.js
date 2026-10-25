@@ -37,6 +37,8 @@ export class AuditService {
         
         // Data Management
         CLEAR_DATA: 'CLEAR_DATA',
+        // Owner changed Roles & access (#84)
+        CHANGE_ROLE_ACCESS: 'CHANGE_ROLE_ACCESS',
         
         // Auth
         LOGIN: 'LOGIN',

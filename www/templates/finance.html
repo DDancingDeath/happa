@@ -32,7 +32,7 @@
         <p class="finance-tap-hint" data-i18n="ui.finance.tap_hint">Tap any number to see what makes it up.</p>
 
         <!-- Profit on goods sold (#215): sales - cost of goods sold - business expenses. Every number opens its breakdown. -->
-        <div class="finance-hero-card finance-tappable" data-finance-card="profit" role="button" tabindex="0">
+        <div class="finance-hero-card finance-tappable" data-finance-card="profit" data-perm="profit" role="button" tabindex="0">
             <div class="finance-hero-header">
                 <span class="finance-hero-icon">📊</span>
                 <div>
@@ -43,7 +43,7 @@
             <div class="finance-hero-value" id="financeNetProfit">₹0</div>
             <div class="finance-hero-sub finance-tappable" id="financeAfterPersonalLine" data-finance-card="afterPersonal" role="button" tabindex="0"></div>
         </div>
-        <div id="financeProfitWarning" class="finance-stock-check finance-tappable" data-finance-card="uncosted" role="button" tabindex="0" style="display: none;"></div>
+        <div id="financeProfitWarning" data-perm="profit" class="finance-stock-check finance-tappable" data-finance-card="uncosted" role="button" tabindex="0" style="display: none;"></div>
 
         <!-- Stats Grid - 2x2 -->
         <div class="finance-stats-grid">
@@ -53,7 +53,7 @@
                 <div class="finance-stat-value" id="financeRevenue">₹0</div>
                 <div class="finance-stat-count" id="financeRevenueCount">0 sales</div>
             </div>
-            <div class="finance-stat-card investment finance-tappable" data-finance-card="cogs" role="button" tabindex="0">
+            <div class="finance-stat-card investment finance-tappable" data-perm="profit" data-finance-card="cogs" role="button" tabindex="0">
                 <div class="finance-stat-icon">📦</div>
                 <div class="finance-stat-label" data-i18n="ui.finance.cogs">Cost of goods sold</div>
                 <div class="finance-stat-value" id="financeCogs">₹0</div>
@@ -65,7 +65,7 @@
                 <div class="finance-stat-value" id="financeBusinessExp">₹0</div>
                 <div class="finance-stat-count" id="financeBusinessExpCount">0 entries</div>
             </div>
-            <div class="finance-stat-card personal finance-tappable" data-finance-card="stockNow" role="button" tabindex="0">
+            <div class="finance-stat-card personal finance-tappable" data-perm="stockValue" data-finance-card="stockNow" role="button" tabindex="0">
                 <div class="finance-stat-icon">🏬</div>
                 <div class="finance-stat-label" data-i18n="ui.finance.stock_value_now">Stock value now</div>
                 <div class="finance-stat-value" id="financeStockNow">₹0</div>
@@ -74,7 +74,7 @@
         </div>
 
         <!-- Profit Breakdown Table -->
-        <div class="card">
+        <div class="card" data-perm="profit">
             <div class="card-header">
                 <h3>📋 <span data-i18n="ui.finance.profit_breakdown">Profit breakdown</span></h3>
             </div>
@@ -86,7 +86,7 @@
         </div>
 
         <!-- Stock value for the period: opening + purchases - cost of goods sold = closing -->
-        <div class="card">
+        <div class="card" data-perm="stockValue">
             <div class="card-header">
                 <h3>📦 <span data-i18n="ui.finance.stock_value_title">Stock value</span></h3>
             </div>
@@ -112,7 +112,7 @@
         </div>
 
         <!-- Personal expenses and withdrawals: not subtracted from business profit (#36) -->
-        <div class="card">
+        <div class="card" data-perm="personalExpenses profit">
             <div class="card-header">
                 <h3>👤 <span data-i18n="ui.finance.personal_card_title">Personal expenses &amp; withdrawals</span></h3>
             </div>
@@ -132,7 +132,7 @@
         </div>
 
         <!-- Monthly Profit Chart -->
-        <div class="card">
+        <div class="card" data-perm="profit">
             <div class="card-header">
                 <h3>📈 <span data-i18n="ui.finance.monthly_trend">Monthly profit on goods sold</span></h3>
             </div>
@@ -145,7 +145,7 @@
     <!-- ==================== ASSETS SECTION ==================== -->
     <div id="financeAssetsSection" style="display: none;">
         <!-- Net Worth Hero Card -->
-        <div class="finance-hero-card">
+        <div class="finance-hero-card" data-perm="stockValue profit">
             <div class="finance-hero-header">
                 <span class="finance-hero-icon">💎</span>
                 <span class="finance-hero-label">Net Worth</span>
@@ -159,7 +159,7 @@
                 <h3>📊 Business Assets</h3>
             </div>
             <div class="asset-list">
-                <div class="asset-item">
+                <div class="asset-item" data-perm="stockValue">
                     <div class="asset-info">
                         <span class="asset-icon">📦</span>
                         <div>
@@ -189,7 +189,7 @@
                     </div>
                     <div class="asset-amount asset-negative" id="assetDuePay">-₹0</div>
                 </div>
-                <div class="asset-item">
+                <div class="asset-item" data-perm="profit">
                     <div class="asset-info">
                         <span class="asset-icon">💵</span>
                         <div>

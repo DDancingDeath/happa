@@ -62,13 +62,29 @@ service cloud.firestore {
       return ['purchases', 'retailSales', 'wholesaleSales'];
     }
 
-    // Everyone but the owner may change or delete a bill for 2 days after it was
-    // first saved (#87). `createdAt` is the server time of that first save
-    // (firestore-service.js saveBill). Bills saved before #87 have no createdAt
-    // and count as outside the window: owner only.
-    function withinBillWindow() {
+    // --- bill edit window (#87; days per role in Roles & access, #84) ---
+    // Clock: the bill's `createdAt`, the server time of its first save
+    // (firestore-service.js saveBill; validBillCreate requires it to equal
+    // request.time and nobody but the owner can change it). Bills without a
+    // server createdAt (saved before #87 / by old apps) are owner-only.
+    // Days: settings/app.roleAccess.<role>.editDays (int 0-30, else 2).
+    // settings/app is already read for the clientVersion gate on bill writes.
+    function settingsAppPath(usersCol) {
+      return /databases/$(database)/documents/$(usersCol == 'users' ? 'settings' : 'dev_settings')/app;
+    }
+
+    function billEditDays(usersCol) {
+      let role = get(profilePath(usersCol)).data.get('role', '');
+      let p = settingsAppPath(usersCol);
+      let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
+      let roleAccess = access is map ? access.get(role, {}) : {};
+      let d = roleAccess is map ? roleAccess.get('editDays', 2) : 2;
+      return (d is int && d >= 0 && d <= 30) ? d : 2;
+    }
+
+    function withinBillWindow(usersCol) {
       let c = resource.data.get('createdAt', null);
-      return c is timestamp && request.time < c + duration.value(2, 'd');
+      return c is timestamp && request.time < c + duration.value(billEditDays(usersCol), 'd');
     }
 
     function canDeleteBill(usersCol) {
@@ -76,7 +92,7 @@ service cloud.firestore {
       return isOwnerIn(usersCol)
         || (isApprovedIn(usersCol)
             && (resource == null
-                || (resource.data.get('userId', null) == request.auth.uid && withinBillWindow())));
+                || (resource.data.get('userId', null) == request.auth.uid && withinBillWindow(usersCol))));
     }
 
     function keepsBillOwner(usersCol) {
@@ -84,13 +100,13 @@ service cloud.firestore {
         || request.resource.data.get('userId', null) == resource.data.get('userId', null);
     }
 
-    // Full edits: owner/manager, or the bill's creator (legacy bills without
-    // userId: owner/manager only), within the 2-day window; createdAt never changes.
+    // Full edits (the owner is handled in canUpdateBill): a manager, or the bill's
+    // creator, inside the edit window; createdAt never changes.
     function canFullyEditBill(usersCol) {
       return (isManagerIn(usersCol)
               || (resource.data.get('userId', null) != null
                   && resource.data.get('userId', null) == request.auth.uid))
-        && withinBillWindow()
+        && withinBillWindow(usersCol)
         && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
     }
 

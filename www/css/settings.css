@@ -78,3 +78,46 @@
   background: var(--primary-color, #667eea);
   color: white;
 }
+
+/* Roles & access (#84): sections switched off for this role */
+body.no-perm-personalExpenses [data-perm~="personalExpenses"],
+body.no-perm-profit [data-perm~="profit"],
+body.no-perm-stockValue [data-perm~="stockValue"],
+body.no-perm-oldCashSessions [data-perm~="oldCashSessions"] {
+  display: none !important;
+}
+
+.role-access-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0 12px;
+  font-size: 14px;
+}
+
+.role-access-table th,
+.role-access-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+  text-align: center;
+}
+
+.role-access-table th:first-child,
+.role-access-table td:first-child {
+  text-align: left;
+}
+
+.role-access-table input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+}
+
+.role-access-table input[type="number"] {
+  width: 64px;
+  padding: 6px;
+}
+
+.role-access-group td {
+  font-weight: 600;
+  color: var(--text-secondary, #6c757d);
+  background: var(--bg-secondary, #f8f9fa);
+}

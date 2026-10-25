@@ -17,25 +17,32 @@ import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
 import { PurchaseManager } from './purchase.js';
 import { RetailSaleManager } from './retail-sale.js';
 import { t } from '../i18n/index.js';
-import { canEditBillFor, BILL_WINDOW_PASSED_KEY } from '../utils/record-permissions.js';
+import { accessFor, canEditBillWith } from '../utils/role-access.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
 const EDIT_TIMEOUT_MS = 20000;
 
 /**
- * Who may edit a bill (firestore.rules canFullyEditBill): the owner always; a
- * manager or the bill's creator for 2 days after it was saved (#87).
+ * Who may edit a bill (firestore.rules canFullyEditBill): owner; a manager any
+ * bill, the creator their own, both only within the role's edit window (#87,
+ * days set in Roles & access, #84). Legacy bills without userId/createdAt: owner.
  */
 export function canEditBill(bill) {
-    return canEditBillFor(bill, { uid: AppState.currentUser?.uid, role: AppState.userRole });
+    return canEditBillWith(bill, {
+        uid: AppState.currentUser?.uid, role: AppState.userRole, raw: AppState.settings?.roleAccess
+    });
 }
 export const EDIT_NOT_ALLOWED_KEY = 'msg.billing.edit_not_allowed';
+export const EDIT_WINDOW_CLOSED_KEY = 'msg.roles.edit_window_closed';
 
-/** Message key explaining why canEditBill(bill) is false. */
-export function editBlockedKey(bill) {
-    const uid = AppState.currentUser?.uid;
-    const mayEditInWindow = AppState.userRole === 'manager' || !!(uid && bill?.userId && bill.userId === uid);
-    return mayEditInWindow ? BILL_WINDOW_PASSED_KEY : EDIT_NOT_ALLOWED_KEY;
+/** Message for a refused edit: the window closed, or not this user's bill. */
+export function editRefusedMessage(bill) {
+    const role = AppState.userRole;
+    const mine = !!bill?.userId && bill.userId === AppState.currentUser?.uid;
+    if (role === 'manager' || mine) {
+        return t(EDIT_WINDOW_CLOSED_KEY, { days: accessFor(role, AppState.settings?.roleAccess).editDays });
+    }
+    return t(EDIT_NOT_ALLOWED_KEY);
 }
 
 /** Draft fields that make the bill checks treat the form as an edit of `bill` (#37). */
@@ -944,7 +951,7 @@ const BillingManager = {
                 return;
             }
             if (!canEditBill(bill)) {
-                UIManager.showToast(t(editBlockedKey(bill)));
+                UIManager.showToast(editRefusedMessage(bill));
                 return;
             }
 

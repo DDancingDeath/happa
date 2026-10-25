@@ -42,6 +42,14 @@
             </label>
         </div>
 
+        <div class="settings-card" id="roleAccessCard" style="display: none;">
+            <h3 data-i18n="ui.roles.title">Roles &amp; access</h3>
+            <p class="setting-description" data-i18n="ui.roles.hint">Choose what managers and members may see and do. The owner always sees everything.</p>
+            <div id="roleAccessGrid"></div>
+            <button class="add-item-btn" type="button" onclick="window.app.roles.save()" data-i18n="ui.roles.save">Save for everyone</button>
+            <p class="setting-description" id="roleAccessStatus"></p>
+        </div>
+
         <div class="settings-card">
             <h3 data-i18n="ui.settings.bluetooth_printer">Bluetooth Printer</h3>
             

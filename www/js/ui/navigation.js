@@ -1,6 +1,9 @@
 // -------------------- NAVIGATION AND TAB MANAGEMENT --------------------
 
 import { UIManager } from './ui-manager.js';
+import { AppState } from '../utils/state.js';
+import { canOpenTab } from '../utils/role-access.js';
+import { t } from '../i18n/index.js';
 
 const NavigationManager = {
     // Reset filter buttons to default state for a given tab
@@ -107,6 +110,12 @@ const NavigationManager = {
     showTabFromNav(tabId, event) {
         if (event) {
             event.preventDefault();
+        }
+        if (!canOpenTab(tabId, AppState.userRole, AppState.settings?.roleAccess)) {
+            this.setMenuOpen(false);
+            this.showTab(tabId);
+            this.setActiveNavLink('billing');
+            return;
         }
         
         this.setActiveNavLink(tabId);
@@ -226,6 +235,12 @@ const NavigationManager = {
 
     // Show tab
     showTab(tabId, evt) {
+        // Pages switched off for this role in Roles & access (#84), also for direct navigation
+        if (!canOpenTab(tabId, AppState.userRole, AppState.settings?.roleAccess)) {
+            UIManager.showToast(t('msg.roles.page_not_allowed'));
+            if (tabId !== 'billing') this.showTab('billing');
+            return false;
+        }
         const tabs = document.querySelectorAll('.tab');
         tabs.forEach(tab => tab.classList.remove('active'));
         

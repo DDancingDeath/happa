@@ -16,6 +16,7 @@ import { approxStockNote } from '../utils/stock-check.js';
 import { evaluateStockAdjustment, toFlags } from '../utils/bill-checks.js';
 import { findDeadStock, daysSinceLabel, localDaysBetween, DEAD_STOCK_DAY_OPTIONS, DEFAULT_DEAD_STOCK_DAYS } from '../utils/dead-stock.js';
 import { t } from '../i18n/index.js';
+import { can } from '../utils/role-access.js';
 
 const DEAD_STOCK_DAYS_KEY = 'aadhat.deadStockDays';
 
@@ -233,7 +234,7 @@ export class StockManager {
                             <div style="font-size: 18px; font-weight: 700; color: ${qtyColor};">
                                 ${item.quantity.toFixed(1)} kg
                             </div>
-                            <div style="color: #666; font-size: 12px; margin-top: 4px;">
+                            <div data-perm="profit" style="color: #666; font-size: 12px; margin-top: 4px;">
                                 Rate: ₹${item.rate ? item.rate.toFixed(2) : '0.00'}/kg
                             </div>
                         </div>
@@ -247,13 +248,13 @@ export class StockManager {
             // Rate is always shown, value is hidden when showing "Available"
             const showLimitedQty = isStaff && item.quantity > 100;
             const quantityDisplay = showLimitedQty ? 'Available' : `${item.quantity.toFixed(1)} kg`;
-            const valueDisplay = showLimitedQty ? '' : `<div style="color: #666; font-size: 12px; margin-top: 4px;">≈ ₹${Math.round(item.quantity * (item.rate || 0))}</div>`;
+            const valueDisplay = showLimitedQty ? '' : `<div data-perm="stockValue" style="color: #666; font-size: 12px; margin-top: 4px;">≈ ₹${Math.round(item.quantity * (item.rate || 0))}</div>`;
             
             div.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div style="font-weight: 600; font-size: 15px;">${Helpers.escapeHtml(displayName)}</div>
-                        <div style="color: #666; font-size: 13px; margin-top: 4px;">
+                        <div data-perm="profit" style="color: #666; font-size: 13px; margin-top: 4px;">
                             Rate: ₹${item.rate ? item.rate.toFixed(2) : '0.00'}/kg
                         </div>
                     </div>
@@ -368,12 +369,14 @@ export class StockManager {
     }
 
     /**
-     * Dead stock shows stock ₹ value and average cost: owner/manager only
-     * until decision #84 says otherwise.
+     * Dead stock shows stock ₹ value and average cost: owner/manager, and only
+     * when Roles & access (#84) leaves both on for the role.
      * @returns {boolean}
      */
     static canSeeDeadStock() {
-        return ['owner', 'manager'].includes(AppState.userRole);
+        const raw = AppState.settings?.roleAccess;
+        return ['owner', 'manager'].includes(AppState.userRole)
+            && can(AppState.userRole, 'profit', raw) && can(AppState.userRole, 'stockValue', raw);
     }
 
     /** Selected "no sale in N days" threshold (remembered on this device). */

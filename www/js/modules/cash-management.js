@@ -17,6 +17,7 @@ import { evaluateCashCount, toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
 import { dueEvents, sumDueEvents, saleTimePayment, normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
 import { t } from '../i18n/index.js';
+import { can } from '../utils/role-access.js';
 import { tip } from '../tip/index.js';
 import { cashCloseProps } from '../tip/scenarios/cash-close.js';
 
@@ -1040,6 +1041,11 @@ export class CashManagementManager {
      * @param {Object[]} sessions
      */
     static renderSessionList(container, sessions) {
+        // Roles & access (#84): without "Past cash days" only today and days still waiting for a count
+        if (!can(AppState.userRole, 'oldCashSessions', AppState.settings?.roleAccess)) {
+            const today = todayLocalISO();
+            sessions = sessions.filter(s => s.date === today || isNotCounted(s));
+        }
         sessions.sort((a, b) => String(b.date).localeCompare(String(a.date)));
 
         if (sessions.length === 0) {
@@ -1116,6 +1122,11 @@ export class CashManagementManager {
             
             if (!session) {
                 UIManager.showToast(t('msg.cash.session_not_found'));
+                return;
+            }
+            if (session.date !== todayLocalISO() && !isNotCounted(session)
+                && !can(AppState.userRole, 'oldCashSessions', AppState.settings?.roleAccess)) {
+                UIManager.showToast(t('msg.roles.section_not_allowed'));
                 return;
             }
 

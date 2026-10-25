@@ -266,7 +266,7 @@ describe('Validator', () => {
 
 ### Firestore Security Rules Tests
 
-`firestore.rules` only lets *approved* users (profile in `users`/`dev_users` with role owner/manager/staff and status not `pending`/`rejected`; a missing status counts as approved) touch business data, and stops users from changing their own `role`/`status`/`approvedAt`/`approvedBy`. The rules are tested against the Firestore emulator (needs Java 11+ on `PATH`/`JAVA_HOME`):
+`firestore.rules` only lets *approved* users (profile in `users`/`dev_users` with role owner/manager/staff and status not `pending`/`rejected`; a missing status counts as approved) touch business data, and stops users from changing their own `role`/`status`/`approvedAt`/`approvedBy`. Non-owners can fully edit or delete a bill only for the number of days the owner sets per role in **Settings → Roles & access** (default 2); what each role may see is set on the same screen — see [docs/role-permissions.md](docs/role-permissions.md). The rules are tested against the Firestore emulator (needs Java 11+ on `PATH`/`JAVA_HOME`):
 
 ```bash
 cd rules-tests && npm install && cd ..   # one-time: separate deps for the rules tests
