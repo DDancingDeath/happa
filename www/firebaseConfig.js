@@ -136,8 +136,11 @@ if (typeof firebase === 'undefined' || typeof firebase.auth !== 'function' || ty
     msg.id = 'sdkLoadError';
     msg.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;' +
       'padding:24px;text-align:center;background:#fff;color:#333;font:16px/1.5 Arial,sans-serif;';
-    msg.textContent = 'App could not start. Please connect to the internet once and reopen. / ' +
-      'ऐप शुरू नहीं हो सका। एक बार इंटरनेट से जुड़कर फिर खोलें।';
+    let hindi = false;
+    try { hindi = localStorage.getItem('aadhat.lang') === 'hi'; } catch (_) {}
+    msg.textContent = hindi
+      ? 'ऐप शुरू नहीं हो सका। एक बार इंटरनेट से जुड़कर फिर खोलें।'
+      : 'App could not start. Please connect to the internet once and reopen.';
     document.body.appendChild(msg);
   }
   throw new Error('Firebase SDK failed to load');

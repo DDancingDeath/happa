@@ -12,23 +12,6 @@ import { t } from '../i18n/index.js';
 export const HISTORY_TYPES = ['all', 'purchase', 'retail', 'wholesale'];
 export const HISTORY_PRESETS = ['all', 'today', 'yesterday', 'week', 'month', 'lastMonth', 'custom'];
 
-export const HISTORY_TYPE_LABELS = {
-    all: 'All / सभी',
-    purchase: 'Purchase / खरीद',
-    retail: 'Retail / खुदरा',
-    wholesale: 'Wholesale / थोक'
-};
-
-export const HISTORY_PRESET_LABELS = {
-    all: 'All dates / सभी तारीख',
-    today: 'Today / आज',
-    yesterday: 'Yesterday / कल',
-    week: 'This week / इस हफ्ते',
-    month: 'This month / इस महीने',
-    lastMonth: 'Last month / पिछला महीना',
-    custom: 'Custom / चुनें'
-};
-
 export const DEFAULT_HISTORY_FILTER = Object.freeze({ type: 'all', preset: 'all', from: '', to: '' });
 
 /** sessionStorage key for the last History filter. */

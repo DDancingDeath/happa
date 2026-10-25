@@ -45,7 +45,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261025q-language-in-settings';
+const BUILD_ID = '20261025s-single-language';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -88,7 +88,7 @@ function refreshForLanguage(lang) {
     if (!AppState.currentUser) return;
     const tabId = document.querySelector('.tab.active')?.id;
     const redraw = {
-        day: () => { DayManager.updateTodayHeader(); DayManager.loadTodayData(); },
+        day: () => { DayManager.updateTodayHeader(); DayManager.loadTodayData(); AnomaliesManager.drawDayReport(); },
         due: () => OutstandingManager.renderDue(),
         history: () => {
             const toggle = document.getElementById('historyViewToggle');
@@ -99,10 +99,14 @@ function refreshForLanguage(lang) {
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
         finance: () => FinanceManager.renderDashboard(),
-        'rate-trends': () => RateTrendsManager.refreshForLanguage()
+        'rate-trends': () => RateTrendsManager.refreshForLanguage(),
+        anomalies: () => AnomaliesManager.refreshForLanguage(),
+        stock: () => StockManager.refreshForLanguage(),
+        admin: () => AdminManager.renderContent()
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
+    run('notifications', () => NotificationsManager.renderPanel());
 }
 window.addEventListener(LANG_CHANGE_EVENT, (e) => refreshForLanguage(e.detail.lang));
 SettingsManager.syncItemNamesWithLanguage(getLang());

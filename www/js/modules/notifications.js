@@ -11,6 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { TelemetryService } from '../services/telemetry.js';
 import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
+import { pickLang } from '../i18n/localize.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import {
     UNREAD_LIMIT, PAGE_SIZE, describeNotification, notificationText, formatWhen,
@@ -280,8 +281,8 @@ const NotificationsManager = {
         const now = Date.now();
         if (!this.panelItems.length) {
             list.innerHTML = this.loading
-                ? '<div class="notif-empty">Loading… · लोड हो रहा है…</div>'
-                : '<div class="notif-empty">No notifications yet · अभी कोई सूचना नहीं</div>';
+                ? `<div class="notif-empty">${Helpers.escapeHtml(t('ui.notif.loading'))}</div>`
+                : `<div class="notif-empty">${Helpers.escapeHtml(t('ui.notif.none_yet'))}</div>`;
         } else {
             list.innerHTML = this.panelItems.map(n => {
                 const d = describeNotification(n);
@@ -292,9 +293,8 @@ const NotificationsManager = {
                 <button type="button" class="notif-row${unread ? ' unread' : ''}" onclick="window.app.notifications.openNotification('${Helpers.escapeJsAttr(n.id)}')">
                     <span class="notif-icon">${d.icon}</span>
                     <span class="notif-body">
-                        <span class="notif-en">${Helpers.escapeHtml(d.en)}</span>
-                        <span class="notif-hi">${Helpers.escapeHtml(d.hi)}</span>
-                        <span class="notif-meta">${who}<span title="${Helpers.escapeHtml(when.abs)} IST">${Helpers.escapeHtml(when.en)} · ${Helpers.escapeHtml(when.hi)}</span></span>
+                        <span class="notif-en">${Helpers.escapeHtml(pickLang(d))}</span>
+                        <span class="notif-meta">${who}<span title="${Helpers.escapeHtml(when.abs)} IST">${Helpers.escapeHtml(pickLang(when))}</span></span>
                     </span>
                 </button>`;
             }).join('');
@@ -371,7 +371,7 @@ const NotificationsManager = {
         if (!this.systemEnabled() || typeof document === 'undefined' || !document.hidden) return;
         try {
             const d = describeNotification(fresh[0]);
-            const body = `${d.en}\n${d.hi}${d.who ? `\n— ${d.who}` : ''}`;
+            const body = `${pickLang(d)}${d.who ? `\n— ${d.who}` : ''}`;
             const note = new window.Notification(fresh.length > 1 ? `${APP_IDENTITY.appName}: ${fresh.length} new` : APP_IDENTITY.appName, { body, tag: 'aadhat-notifications' });
             note.onclick = () => { window.focus(); this.openInbox().catch(e => console.warn('Opening notifications failed:', e)); note.close(); };
         } catch (e) {

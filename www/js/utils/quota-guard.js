@@ -1,11 +1,13 @@
 /**
  * @fileoverview Firestore quota guards (#194): detects "daily free limit
- * reached" (resource-exhausted) errors, shows one clear bilingual banner per
+ * reached" (resource-exhausted) errors, shows one clear banner (app language) per
  * session, and keeps an estimated per-session document-read counter for
  * Diagnostics. Pure parts are exported for tests; firebase/firestore-meter.js
  * feeds them from the SDK.
  * @module utils/quota-guard
  */
+
+import { t } from '../i18n/index.js';
 
 /** Warn once when a single app session has read more documents than this. */
 export const HEAVY_SESSION_READS = 3000;
@@ -28,12 +30,8 @@ export function isQuotaExhaustedError(err) {
     return QUOTA_TEXT_PATTERN.test(String(err.message || ''));
 }
 
-export const QUOTA_BANNER_TEXT = {
-    en: 'Daily free data limit reached — data may not load or save until about 12:30–13:30 IST. ' +
-        'Bills saved now are kept on this device and will sync later.',
-    hi: 'आज की मुफ़्त डेटा सीमा पूरी हो गई — लगभग दोपहर 12:30–1:30 बजे (IST) तक डेटा लोड या सेव नहीं हो सकता। ' +
-        'अभी सेव किए गए बिल इसी डिवाइस में रखे गए हैं और बाद में अपने-आप सिंक हो जाएँगे।'
-};
+/** Quota banner text in the app language. */
+export const quotaBannerText = (lang) => (lang ? t('ui.quota.banner', null, lang) : t('ui.quota.banner'));
 
 const BANNER_ID = 'quotaBanner';
 const DISMISS_KEY = 'aadhatQuotaBannerDismissed';
@@ -141,21 +139,18 @@ export function createQuotaGuard(env = {}) {
         el.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:99998;background:#fff3cd;color:#664d03;' +
             'border-bottom:2px solid #f0ad4e;padding:10px 40px 10px 12px;font:14px/1.4 Arial,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.15);';
         if (doc.getElementById('env-indicator')) el.style.paddingTop = '20px';
-        const en = doc.createElement('div');
-        en.textContent = `⚠️ ${QUOTA_BANNER_TEXT.en}`;
-        const hi = doc.createElement('div');
-        hi.textContent = QUOTA_BANNER_TEXT.hi;
-        hi.style.marginTop = '4px';
+        const text = doc.createElement('div');
+        text.textContent = `⚠️ ${quotaBannerText()}`;
         const close = doc.createElement('button');
         close.type = 'button';
-        close.setAttribute('aria-label', 'Close / बंद करें');
+        close.setAttribute('aria-label', t('ui.kbd.close'));
         close.textContent = '×';
         close.style.cssText = 'position:absolute;right:8px;top:6px;border:0;background:transparent;font-size:22px;line-height:1;color:#664d03;cursor:pointer;';
         close.addEventListener('click', () => {
             el.remove();
             try { storage?.setItem(DISMISS_KEY, '1'); } catch (_) { /* private mode */ }
         });
-        el.append(en, hi, close);
+        el.append(text, close);
         doc.body.appendChild(el);
         return true;
     }

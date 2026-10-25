@@ -17,6 +17,7 @@ import { evaluateCashCount, toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
 import { dueEvents, sumDueEvents, saleTimePayment, normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
 import { t } from '../i18n/index.js';
+import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 import { tip } from '../tip/index.js';
 import { cashCloseProps } from '../tip/scenarios/cash-close.js';
@@ -713,7 +714,7 @@ export class CashManagementManager {
             const band = evaluateCashCount({ expected, counted: actualAmount }, AppState.settings?.checkThresholds)
                 .filter(i => i.id !== 'cash-mismatch');
             alertDiv.style.whiteSpace = 'pre-line';
-            if (band.length) alertDiv.textContent += band.map(i => `\n⚠ ${i.en} / ${i.hi}`).join('');
+            if (band.length) alertDiv.textContent += band.map(i => `\n⚠ ${pickLang(i)}`).join('');
             // Owner/manager: today's anomaly summary before closing the day (#187)
             const anomalyLine = window.app?.anomalies?.cashCloseLine?.();
             if (anomalyLine) alertDiv.textContent += `\n🚨 ${anomalyLine}`;

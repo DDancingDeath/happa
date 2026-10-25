@@ -72,7 +72,7 @@ describe('findDeadStock', () => {
         const rows = findDeadStock({ stock, items, sources: sources(at(2026, 8, 1)), now: NOW, minDays: 60, windowStart });
         const chana = rows.find(r => r.itemId === 'chana');
         expect(chana).toMatchObject({ saleBeyondWindow: true, neverSold: false, uncertain: true });
-        expect(daysSinceLabel(chana.daysSinceSale, chana.saleBeyondWindow, localDaysBetween(windowStart, NOW))).toBe('> 51 days / दिन');
+        expect(daysSinceLabel(chana.daysSinceSale, chana.saleBeyondWindow, localDaysBetween(windowStart, NOW))).toBe('> 51 days');
         const rows30 = findDeadStock({ stock, items, sources: sources(at(2026, 8, 1)), now: NOW, minDays: 30, windowStart });
         expect(rows30.find(r => r.itemId === 'chana').uncertain).toBe(false);
     });
@@ -80,7 +80,7 @@ describe('findDeadStock', () => {
     test('full history loaded and no sale → never sold', () => {
         const rows = findDeadStock({ stock, items, sources: sources(at(2026, 8, 1)), now: NOW, minDays: 30, windowStart: 0 });
         expect(rows.find(r => r.itemId === 'chana')).toMatchObject({ neverSold: true, saleBeyondWindow: false });
-        expect(daysSinceLabel(null, false, Infinity)).toBe('never / कभी नहीं');
+        expect(daysSinceLabel(null, false, Infinity)).toBe('never');
     });
 
     test('never sold but all stock bought less than N days ago → not dead yet', () => {

@@ -188,11 +188,17 @@ describe('Android update banner', () => {
 });
 
 describe('share message', () => {
-    test('includes Hindi and English notes and the download link, encoded for wa.me', () => {
-        const msg = buildShareMessage({ version: '1.3.0', notes: { en: ['Fast & safe'], hi: ['तेज़'] } });
+    test('uses one language for labels and notes, with the download link, encoded for wa.me', () => {
+        const release = { version: '1.3.0', notes: { en: ['Fast & safe'], hi: ['तेज़'] } };
+        const msg = buildShareMessage(release);
         expect(msg).toContain('v1.3.0');
-        expect(msg).toContain('• तेज़');
         expect(msg).toContain('• Fast & safe');
+        expect(msg).not.toMatch(/[\u0900-\u097F]/);
+        const hiMsg = buildShareMessage(release, DOWNLOAD_PAGE_URL, 'hi');
+        expect(hiMsg).toContain('• तेज़');
+        expect(hiMsg).not.toContain('Fast');
+        expect(hiMsg).not.toContain('Download');
+        expect(buildShareMessage({ version: '1.3.0', notes: { hi: ['तेज़'] } })).toContain('• तेज़');
         expect(msg.trim().endsWith(DOWNLOAD_PAGE_URL)).toBe(true);
         const url = whatsAppShareUrl(msg);
         expect(url.startsWith('https://wa.me/?text=')).toBe(true);

@@ -3,16 +3,16 @@
         <div class="filter-buttons" style="margin-bottom: 20px;">
             <button class="filter-btn active" onclick="window.app.stock.filterTab('current', event)">Current Stock</button>
             <button class="filter-btn" onclick="window.app.stock.filterTab('adjustment', event)">Stock Adjustment</button>
-            <button class="filter-btn" id="deadStockTabBtn" style="display: none;" onclick="window.app.stock.filterTab('dead', event)">Not selling / नहीं बिक रहा</button>
+            <button class="filter-btn" id="deadStockTabBtn" style="display: none;" onclick="window.app.stock.filterTab('dead', event)" data-i18n="ui.deadstock.tab">Not selling</button>
         </div>
 
         <div id="deadStockSection" style="display: none;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-                <label for="deadStockDays" style="font-weight: 600;">No sale in / बिक्री नहीं:</label>
+                <label for="deadStockDays" style="font-weight: 600;" data-i18n="ui.deadstock.no_sale_in">No sale in:</label>
                 <select id="deadStockDays" onchange="window.app.stock.setDeadStockDays(this.value)">
-                    <option value="30">30 days / दिन</option>
-                    <option value="60">60 days / दिन</option>
-                    <option value="90">90 days / दिन</option>
+                    <option value="30" data-i18n="ui.deadstock.opt_30">30 days</option>
+                    <option value="60" data-i18n="ui.deadstock.opt_60">60 days</option>
+                    <option value="90" data-i18n="ui.deadstock.opt_90">90 days</option>
                 </select>
             </div>
             <div id="deadStockSummary" style="font-size: 13px; color: #555; margin-bottom: 8px;"></div>
@@ -74,18 +74,18 @@
                 </div>
                 
                 <div class="form-row">
-                    <label>Reason / कारण:</label>
+                    <label data-i18n="ui.stock.reason">Reason:</label>
                     <select id="adjustReasonCode">
-                        <option value="">Select reason / कारण चुनें</option>
-                        <option value="count">Physical count / गिनती</option>
-                        <option value="damage">Damaged / खराब</option>
-                        <option value="theft">Theft or loss / चोरी या गुम</option>
-                        <option value="other">Other / अन्य</option>
+                        <option value="" data-i18n="ui.stock.select_reason">Select reason</option>
+                        <option value="count" data-i18n="ui.stock.reason_count">Physical count</option>
+                        <option value="damage" data-i18n="ui.stock.reason_damage">Damaged</option>
+                        <option value="theft" data-i18n="ui.stock.reason_theft">Theft or loss</option>
+                        <option value="other" data-i18n="ui.stock.reason_other">Other</option>
                     </select>
                 </div>
                 
                 <div class="form-row">
-                    <label>Note (required for Other) / टिप्पणी:</label>
+                    <label data-i18n="ui.stock.note_required_other">Note (required for Other):</label>
                     <input type="text" id="adjustReason" placeholder="e.g., Rats damaged 2 bags" />
                 </div>
                 

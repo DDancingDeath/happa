@@ -11,16 +11,17 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
-import { planStockAdjustment } from '../utils/stock-adjust.js';
+import { planStockAdjustment, adjustReasonText } from '../utils/stock-adjust.js';
 import { approxStockNote } from '../utils/stock-check.js';
 import { evaluateStockAdjustment, toFlags } from '../utils/bill-checks.js';
 import { findDeadStock, daysSinceLabel, localDaysBetween, DEAD_STOCK_DAY_OPTIONS, DEFAULT_DEAD_STOCK_DAYS } from '../utils/dead-stock.js';
 import { t } from '../i18n/index.js';
+import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 
 const DEAD_STOCK_DAYS_KEY = 'aadhat.deadStockDays';
 
-const STOCK_UPDATING_HTML = '<p class="stock-updating" style="text-align: center; color: #888; margin-top: 40px;">Stock updating… / स्टॉक अपडेट हो रहा है…</p>';
+const stockUpdatingHtml = () => `<p class="stock-updating" style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(t('ui.stock.updating'))}</p>`;
 
 /**
  * Banner for approximate stock (member device, stale checkpoint; #129).
@@ -30,7 +31,7 @@ const STOCK_UPDATING_HTML = '<p class="stock-updating" style="text-align: center
 export function stockApproxNoteHtml(approx) {
     const note = approxStockNote(approx);
     if (!note) return '';
-    return `<p class="stock-approx" style="background: #fff8e1; color: #8a6d00; border-radius: 6px; padding: 8px 10px; font-size: 13px; margin: 0 0 8px;">${Helpers.escapeHtml(note.en)} — exact once the owner or a manager opens the app.<br>${Helpers.escapeHtml(note.hi)} — मालिक या मैनेजर के ऐप खोलने पर सही होगा।</p>`;
+    return `<p class="stock-approx" style="background: #fff8e1; color: #8a6d00; border-radius: 6px; padding: 8px 10px; font-size: 13px; margin: 0 0 8px;">${Helpers.escapeHtml(t('ui.stock.approx_note', { note: pickLang(note) }))}</p>`;
 }
 
 /**
@@ -75,7 +76,7 @@ export class StockManager {
             // placeholder instead of blocking the whole app.
             let stock;
             if (AppState.stockReady === false) {
-                container.innerHTML = STOCK_UPDATING_HTML;
+                container.innerHTML = stockUpdatingHtml();
                 stock = await FirebaseService.getStock();
             } else {
                 stock = await UIManager.withLoading(async () => {
@@ -87,7 +88,7 @@ export class StockManager {
             // Still waiting (e.g. another device is rebuilding the stock checkpoint, #194):
             // the numbers are not current yet; the data listeners re-render once they are.
             if (AppState.stockReady === false) {
-                container.innerHTML = STOCK_UPDATING_HTML;
+                container.innerHTML = stockUpdatingHtml();
                 return;
             }
 
@@ -398,6 +399,17 @@ export class StockManager {
      * from the already loaded bills only (no extra history reads).
      * @returns {Promise<void>}
      */
+    /** Language switched: redraw the JS-written parts of the Stock page from memory (no reads). */
+    static refreshForLanguage() {
+        const dead = document.getElementById('deadStockSection');
+        if (dead && dead.style.display !== 'none') this.renderDeadStock();
+        this.renderAdjustmentHistory();
+        const updating = document.querySelector('#stockList .stock-updating');
+        if (updating) updating.outerHTML = stockUpdatingHtml();
+        const approx = document.querySelector('#stockList .stock-approx');
+        if (approx) approx.outerHTML = stockApproxNoteHtml(AppState.stockApprox);
+    }
+
     static async renderDeadStock() {
         const container = document.getElementById('deadStockList');
         const summary = document.getElementById('deadStockSummary');
@@ -434,15 +446,15 @@ export class StockManager {
 
             if (summary) {
                 const windowNote = windowStart > 0
-                    ? `Using bills since ${formatWindowDate(windowStart)} (${windowDays} days). "> ${windowDays} days" = no sale in that time. / ${formatWindowDate(windowStart)} से बिल देखे गए।`
-                    : 'Using all bills. / सभी बिल देखे गए।';
+                    ? t('ui.deadstock.window_note', { date: formatWindowDate(windowStart), days: windowDays })
+                    : t('ui.deadstock.all_bills');
                 summary.innerHTML = rows.length
-                    ? `<strong>${e(rows.length)}</strong> items · ≈ ₹${e(Math.round(totalValue).toLocaleString('en-IN'))} in stock<br>${e(windowNote)}`
+                    ? `${e(t('ui.deadstock.summary', { n: rows.length, value: Math.round(totalValue).toLocaleString('en-IN') }))}<br>${e(windowNote)}`
                     : e(windowNote);
             }
 
             if (rows.length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 30px;">Every item in stock sold in the last ${e(minDays)} days 👍<br>पिछले ${e(minDays)} दिनों में स्टॉक का हर आइटम बिका है</p>`;
+                container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 30px;">${e(t('ui.deadstock.all_sold', { days: minDays }))}</p>`;
                 return;
             }
 
@@ -455,8 +467,8 @@ export class StockManager {
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
                         <div>
                             <div style="font-weight: 600; font-size: 15px;">${e(displayName || r.name || '-')}</div>
-                            <div style="color: #b45309; font-size: 13px; margin-top: 4px;">Last sale / आखिरी बिक्री: ${e(sale)}${r.uncertain ? ' *' : ''}</div>
-                            <div style="color: #666; font-size: 12px; margin-top: 2px;">Last purchase / आखिरी खरीद: ${e(purchase)}</div>
+                            <div style="color: #b45309; font-size: 13px; margin-top: 4px;">${e(t('ui.deadstock.last_sale'))}: ${e(sale)}${r.uncertain ? ' *' : ''}</div>
+                            <div style="color: #666; font-size: 12px; margin-top: 2px;">${e(t('ui.deadstock.last_purchase'))}: ${e(purchase)}</div>
                         </div>
                         <div style="text-align: right;">
                             <div style="font-size: 18px; font-weight: 700; color: #dc3545;">${e(r.quantity.toFixed(1))} kg</div>
@@ -466,11 +478,11 @@ export class StockManager {
                     </div>
                 </div>`;
             }).join('') + (rows.some(r => r.uncertain)
-                ? `<p style="font-size: 12px; color: #888; margin-top: 8px;">* Loaded bills cover only ${e(windowDays)} days, so a sale up to ${e(minDays)} days ago may not be counted. / * केवल ${e(windowDays)} दिनों के बिल लोड हैं।</p>`
+                ? `<p style="font-size: 12px; color: #888; margin-top: 8px;">* ${e(t('ui.deadstock.uncertain_note', { windowDays, days: minDays }))}</p>`
                 : '');
         } catch (error) {
             console.error('Error loading dead stock:', error);
-            container.innerHTML = '<p style="text-align: center; color: #dc3545; margin-top: 30px;">Failed to load / लोड नहीं हुआ</p>';
+            container.innerHTML = `<p style="text-align: center; color: #dc3545; margin-top: 30px;">${Helpers.escapeHtml(t('ui.deadstock.failed_load'))}</p>`;
         }
     }
 
@@ -720,7 +732,7 @@ export class StockManager {
                             ${(adj.previousStock || 0).toFixed(1)} kg → ${(adj.newStock || 0).toFixed(1)} kg
                             ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` (asked ${Helpers.escapeHtml(adj.rawQuantity)} kg, capped at stock)` : ''}
                         </div>
-                        ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adj.reason)}</em></div>` : '<div style="font-size: 13px; color: #999; margin-top: 4px;"><em>No reason provided</em></div>'}
+                        ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : '<div style="font-size: 13px; color: #999; margin-top: 4px;"><em>No reason provided</em></div>'}
                     </div>
                 `;
                 

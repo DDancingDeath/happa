@@ -168,7 +168,7 @@ const ItemsManager = {
                     <input type="text" 
                            value="${Helpers.escapeHtml(item.hindiName || '')}" 
                            oninput="window.app.items.updateHindiName(${id}, this.value)"
-                           placeholder="हिंदी नाम"
+                           placeholder="${Helpers.escapeHtml(t('ui.items.hindi_name_placeholder'))}"
                            style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;">
                 </div>
                 <div class="item-row">
@@ -507,13 +507,13 @@ const ItemsManager = {
         const more = plan.errors.length > 20 ? `<li>… ${e(plan.errors.length - 20)} more</li>` : '';
         return `
             <div style="text-align:left">
-                <div>✏️ Update / बदलेंगे: <strong>${e(plan.updates.length)}</strong></div>
-                <div>➕ New / नए: <strong>${e(plan.adds.length)}</strong></div>
-                <div>✔️ Unchanged / कोई बदलाव नहीं: <strong>${e(plan.unchanged.length)}</strong></div>
-                <div>⚠️ Rows with errors (not imported) / गलत पंक्तियाँ: <strong>${e(plan.errors.length)}</strong></div>
+                <div>✏️ ${e(t('ui.items.import_update'))}: <strong>${e(plan.updates.length)}</strong></div>
+                <div>➕ ${e(t('ui.items.import_new'))}: <strong>${e(plan.adds.length)}</strong></div>
+                <div>✔️ ${e(t('ui.items.import_unchanged'))}: <strong>${e(plan.unchanged.length)}</strong></div>
+                <div>⚠️ ${e(t('ui.items.import_errors'))}: <strong>${e(plan.errors.length)}</strong></div>
                 ${plan.skipped ? `<div>Empty rows skipped: ${e(plan.skipped)}</div>` : ''}
                 ${errorList ? `<ul style="margin:8px 0 0 16px; color:#b91c1c; font-size:13px">${errorList}${more}</ul>` : ''}
-                <p style="margin-top:10px; font-size:13px; color:#555">Items not in the sheet are kept. Nothing is deleted. A backup Excel of the current items downloads first.<br>शीट में न होने वाले आइटम नहीं हटेंगे।</p>
+                <p style="margin-top:10px; font-size:13px; color:#555">${e(t('ui.items.import_kept_note'))}</p>
             </div>`;
     },
 

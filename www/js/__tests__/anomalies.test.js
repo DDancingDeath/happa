@@ -216,14 +216,15 @@ describe('report, filters and patterns', () => {
             totals: { sales: 1200, saleCount: 3, purchases: 500, purchaseCount: 1, expenses: 50, totalIn: 1200, totalOut: 550, dueReceived: 0, duePaid: 0 },
             shopName: 'Gupta Traders'
         });
-        expect(text).toContain('Day report / आज की रिपोर्ट* — 22/10/2026');
-        expect(text).toContain('Sales / बिक्री: ₹1,200 (3 bills / बिल)');
-        expect(text).toContain('Anomalies / गड़बड़ियाँ: 1 (High/गंभीर 0, Medium/मध्यम 1, Low/कम 0)');
-        expect(text).toContain('Top parties / मुख्य पार्टी: Bold Name (1)');
-        expect(text).toContain('Yesterday, not reviewed / कल की, बिना जाँच: 1');
+        expect(text).toContain('Day report* — 22/10/2026');
+        expect(text).toContain('Sales: ₹1,200 (3 bills)');
+        expect(text).toContain('Anomalies: 1 (High 0, Medium 1, Low 0)');
+        expect(text).toContain('Top parties: Bold Name (1)');
+        expect(text).toContain('Yesterday, not reviewed: 1');
+        expect(text).not.toMatch(/[\u0900-\u097F]/);
         expect(text).toContain('#R5');
         expect(text).not.toMatch(/staff/i);
-        expect(buildDayReportText({ dayKey: '2026-10-22' })).toContain('none / कोई नहीं');
+        expect(buildDayReportText({ dayKey: '2026-10-22' })).toContain('Anomalies: none');
     });
 
     test('presets and filters', () => {

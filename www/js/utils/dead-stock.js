@@ -9,6 +9,7 @@
 
 import { createItemKeyResolver, eventTime } from './stock-replay.js';
 import { startOfLocalDay } from './dates.js';
+import { t } from '../i18n/index.js';
 
 /** Day thresholds offered in the selector. */
 export const DEAD_STOCK_DAY_OPTIONS = [30, 60, 90];
@@ -132,7 +133,7 @@ export function findDeadStock({ stock, items, sources, now, minDays = DEFAULT_DE
  * @returns {string}
  */
 export function daysSinceLabel(days, beyondWindow, windowDays) {
-    if (days !== null && days !== undefined) return days === 0 ? 'today / आज' : `${days} days / दिन`;
-    if (beyondWindow) return Number.isFinite(windowDays) ? `> ${windowDays} days / दिन` : '> window';
-    return 'never / कभी नहीं';
+    if (days !== null && days !== undefined) return days === 0 ? t('ui.deadstock.today') : t('ui.deadstock.n_days', { n: days });
+    if (beyondWindow) return Number.isFinite(windowDays) ? t('ui.deadstock.over_n_days', { n: windowDays }) : t('ui.deadstock.beyond_window');
+    return t('ui.deadstock.never');
 }

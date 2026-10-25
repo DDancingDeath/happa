@@ -1,12 +1,13 @@
 /**
  * @fileoverview Pure builders for the Outstanding party actions (#77): the
- * bilingual WhatsApp due reminder, the wa.me link, and the read-only
+ * WhatsApp due reminder (app language), the wa.me link, and the read-only
  * statement (khaata) model that the printer draws as an image.
  * Text only — nothing is stored or uploaded. No DOM, Firestore or AppState.
  * @module utils/due-reminder
  */
 
 import { round2 } from './money.js';
+import { t } from '../i18n/index.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -69,7 +70,7 @@ export function whatsAppReminderUrl(text, phone) {
 }
 
 /**
- * Bilingual (English / Hindi) polite reminder of a party's open bills,
+ * Polite reminder of a party's open bills in the app language,
  * oldest first, with the total due.
  * @param {{name: string, total: number, bills: Array<{billNumber: string, date: ?Date, due: number}>}} party
  * @param {{shopName?: string, upiId?: string}} [opts]
@@ -84,10 +85,9 @@ export function buildReminderText(party, { shopName = '', upiId = '' } = {}) {
 
     const lines = [];
     if (shop) lines.push(`*${shop}*`, '');
-    lines.push(name ? `Namaste ${name} ji / नमस्ते ${name} जी 🙏` : 'Namaste / नमस्ते 🙏');
-    lines.push('This is a gentle reminder about your pending payment.');
-    lines.push('आपका कुछ भुगतान बाकी है, कृपया ध्यान दें।');
-    lines.push('', '*Open bills / बकाया बिल:*');
+    lines.push(name ? t('ui.remind.greeting_name', { name }) : t('ui.remind.greeting'));
+    lines.push(t('ui.remind.gentle'));
+    lines.push('', `*${t('ui.remind.open_bills')}:*`);
     bills.slice(0, REMINDER_MAX_BILLS).forEach((b, i) => {
         const parts = [];
         if (b.billNumber) parts.push(`#${cleanText(b.billNumber)}`);
@@ -97,12 +97,11 @@ export function buildReminderText(party, { shopName = '', upiId = '' } = {}) {
         lines.push(`${i + 1}. ${parts.join(' · ')}`);
     });
     const more = bills.length - REMINDER_MAX_BILLS;
-    if (more > 0) lines.push(`…and ${more} more bill${more === 1 ? '' : 's'} / और ${more} बिल`);
-    lines.push('', `*Total due / कुल बकाया: ${formatINR(total)}*`, '');
-    lines.push('Please pay by cash or online (UPI) at your convenience.');
-    lines.push('कृपया सुविधा अनुसार नकद या ऑनलाइन (UPI) से भुगतान करें।');
+    if (more > 0) lines.push(t(more === 1 ? 'ui.remind.more_bill' : 'ui.remind.more_bills', { n: more }));
+    lines.push('', `*${t('ui.remind.total_due')}: ${formatINR(total)}*`, '');
+    lines.push(t('ui.remind.please_pay'));
     if (upi) lines.push(`UPI: ${upi}`);
-    lines.push('', 'Thank you / धन्यवाद');
+    lines.push('', t('ui.remind.thank_you'));
     return lines.join('\n');
 }
 
@@ -124,17 +123,17 @@ export function buildStatement(party, { kind = 'receivable', shopName = '', toda
         due: round2(Number(b.due) || 0)
     }));
     const total = round2(rows.reduce((s, r) => s + r.due, 0));
-    const partyName = cleanText(party?.name) || 'No name / बिना नाम';
+    const partyName = cleanText(party?.name) || t('ui.remind.no_name');
     const slug = partyName.replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '').slice(0, 30) || 'party';
     return {
-        title: 'Statement / खाता विवरण',
+        title: t('ui.remind.statement'),
         shopName: cleanText(shopName),
         partyName,
         asOf: formatDMY(today),
         rows,
         total,
-        totalLabel: kind === 'payable' ? 'Total payable / कुल देय' : 'Total due / कुल बकाया',
-        footer: 'Open bills only / केवल बकाया बिल',
+        totalLabel: t(kind === 'payable' ? 'ui.remind.total_payable' : 'ui.remind.total_due'),
+        footer: t('ui.remind.open_bills_only'),
         filename: `statement_${slug}_${formatDMY(today).split('/').reverse().join('')}.png`
     };
 }

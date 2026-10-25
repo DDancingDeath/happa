@@ -10,7 +10,7 @@ import {
     readsForQueryGet,
     readsForQuerySnapshot,
     readsForDocSnapshot,
-    QUOTA_BANNER_TEXT
+    quotaBannerText
 } from '../utils/quota-guard.js';
 import { installFirestoreMeter, getQuotaStatus, sourceLabel } from '../firebase/firestore-meter.js';
 import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart, MEMBER_APPROX_MAX_EXTRA_MS } from '../utils/rebuild-lease.js';
@@ -51,8 +51,8 @@ describe('quota banner', () => {
         for (let i = 0; i < 5; i++) guard.noteQuotaExhausted('purchases listen');
         const banners = document.querySelectorAll('#quotaBanner');
         expect(banners).toHaveLength(1);
-        expect(banners[0].textContent).toContain(QUOTA_BANNER_TEXT.en);
-        expect(banners[0].textContent).toContain(QUOTA_BANNER_TEXT.hi);
+        expect(banners[0].textContent).toContain(quotaBannerText('en'));
+        expect(banners[0].textContent).not.toMatch(/[\u0900-\u097F]/);
         expect(banners[0].textContent).toMatch(/12:30–13:30 IST/);
         expect(banners[0].textContent).not.toMatch(/staff|स्टाफ/i);
         expect(onQuota).toHaveBeenCalledTimes(1);

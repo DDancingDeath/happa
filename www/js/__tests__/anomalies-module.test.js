@@ -103,12 +103,13 @@ describe('Day report card', () => {
         await AnomaliesManager.refreshing;
         const card = document.getElementById('dayReportCard');
         expect(card.style.display).toBe('block');
-        expect(card.textContent).toContain('Day report / आज की रिपोर्ट');
+        expect(card.textContent).toContain('Day report');
+        expect(card.textContent).not.toContain('आज की रिपोर्ट');
         expect(card.textContent).toContain('Payment does not match total');
         expect(card.querySelector('img')).toBeNull();
         expect(card.innerHTML).toContain('&lt;img');
         expect(card.textContent).not.toMatch(/staff/i);
-        expect(AnomaliesManager.dayReportText()).toContain('Sales / बिक्री: ₹400 (1 bills / बिल)');
+        expect(AnomaliesManager.dayReportText()).toContain('Sales: ₹400 (1 bills)');
     });
 
     test('hidden for other users', () => {
