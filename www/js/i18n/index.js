@@ -100,13 +100,6 @@ export function applyTranslations(root = typeof document !== 'undefined' ? docum
     root.querySelectorAll('[data-lang-option]').forEach(btn => {
         btn.setAttribute('aria-pressed', String(btn.getAttribute('data-lang-option') === lang));
     });
-    // The side-menu toggle offers the other language, written in that language.
-    const toggle = root.querySelector('#navLangToggle');
-    if (toggle) {
-        const other = lang === 'hi' ? 'en' : 'hi';
-        toggle.textContent = other === 'hi' ? 'हिंदी' : 'English';
-        toggle.lang = other;
-    }
 }
 
 /**
@@ -129,10 +122,6 @@ export function setLang(lang, { store = defaultStore() } = {}) {
         window.dispatchEvent(new CustomEvent(LANG_CHANGE_EVENT, { detail: { lang: next } }));
     }
     return next;
-}
-
-export function toggleLang() {
-    return setLang(getLang() === 'hi' ? 'en' : 'hi');
 }
 
 /** For tests: forget the cached language so the next getLang() reads storage again. */

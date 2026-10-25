@@ -784,7 +784,7 @@ export default {
     'ui.settings.install_hint': "Chrome/Edge: एड्रेस बार में Install आइकन दबाएँ। iPhone/iPad Safari: Share → Add to Home Screen।",
     'ui.settings.labour_charges': "मज़दूरी",
     'ui.settings.labour_per_heavy_packet': "प्रति भारी बोरी मज़दूरी (₹):",
-    'ui.settings.language': "भाषा / Language",
+    'ui.settings.language': "भाषा",
     'ui.settings.language_hint': "ऐप के शब्द और संदेश। इस फ़ोन पर सेव रहता है।",
     'ui.settings.logout': "लॉगआउट",
     'ui.settings.no_devices_found': "कोई प्रिंटर नहीं मिला। प्रिंटर चालू करें और जोड़ने (pairing) वाले मोड में रखें।",

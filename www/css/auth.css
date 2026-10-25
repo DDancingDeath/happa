@@ -203,6 +203,31 @@
   text-decoration: underline;
 }
 
+/* Language choice before signing in */
+.auth-lang-links {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.auth-lang-link {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.auth-lang-link[aria-pressed="true"] {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
 .hidden {
   display: none !important;
 }

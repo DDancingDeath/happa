@@ -784,7 +784,7 @@ export default {
     'ui.settings.install_hint': "Chrome/Edge: address bar → Install icon. iPhone/iPad Safari: Share → Add to Home Screen.",
     'ui.settings.labour_charges': "Labour Charges",
     'ui.settings.labour_per_heavy_packet': "Labour per heavy packet (₹):",
-    'ui.settings.language': "Language / भाषा",
+    'ui.settings.language': "Language",
     'ui.settings.language_hint': "App text and messages. Saved on this device.",
     'ui.settings.logout': "Logout",
     'ui.settings.no_devices_found': "No devices found. Make sure your printer is powered on and in pairing mode.",

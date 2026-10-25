@@ -34,18 +34,6 @@
   letter-spacing: -0.5px;
 }
 
-/* App language toggle under the user name (#143) */
-.nav-lang-toggle {
-  margin-top: 10px;
-  background: rgba(255,255,255,0.2);
-  border: 1px solid rgba(255,255,255,0.5);
-  color: white;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  cursor: pointer;
-}
 .close-btn {
   background: rgba(255,255,255,0.2);
   border: none;
