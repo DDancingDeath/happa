@@ -10,7 +10,7 @@ jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(), ACTIO
 jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn() }));
 
 import {
-    COPY_MARK, buildReprintPayload, buildBillShareText, receiptDateTime, formatReceiptDateTime
+    copyMark, buildReprintPayload, buildBillShareText, receiptDateTime, formatReceiptDateTime
 } from '../utils/bill-share.js';
 import { BluetoothPrinterManager, PrinterService } from '../services/printer.js';
 import { HistoryManager } from '../modules/history.js';
@@ -50,11 +50,11 @@ describe('receipt date', () => {
         const config = { width: 384, padding: { side: 0 }, spacing: { line: 24, section: 12 }, fonts: { title: {}, header: {}, subtext: {} } };
 
         manager._drawReceiptHeader(ctx, buildReprintPayload(WHOLESALE, 'wholesale'), config, utils, 0);
-        expect(drawn).toEqual(['Receipt', COPY_MARK, 'Bill: W20250915-004', '15/09/2025 06:05 pm']);
+        expect(drawn).toEqual(['Receipt', copyMark(), 'Bill: W20250915-004', '15/09/2025 06:05 pm']);
 
         drawn.length = 0;
         manager._drawReceiptHeader(ctx, PURCHASE, config, utils, 0);
-        expect(drawn).not.toContain(COPY_MARK);
+        expect(drawn).not.toContain(copyMark());
         expect(drawn).toContain('03/10/2026 02:45 pm');
     });
 });
@@ -83,26 +83,27 @@ describe('buildReprintPayload', () => {
 describe('buildBillShareText', () => {
     test('bilingual, bill date, COPY mark, no internal figures', () => {
         const text = buildBillShareText(WHOLESALE, 'wholesale');
-        expect(text).toContain(`*Wholesale Bill / थोक बिल* (${COPY_MARK})`);
-        expect(text).toContain('Date / तारीख: 15/09/2025 06:05 pm');
-        expect(text).toContain('Customer / ग्राहक: Shyam Traders');
+        expect(text).toContain('*Wholesale Bill* (COPY)');
+        expect(text).toContain('Date: 15/09/2025 06:05 pm');
+        expect(text).toContain('Customer: Shyam Traders');
         expect(text).toContain('  ₹40 × 100.0kg = ₹4000');
-        expect(text).toContain('*Total / कुल: ₹4000*');
-        expect(text).toContain('Received / प्राप्त: ₹1500');
-        expect(text).toContain('Due / बकाया: ₹2500');
+        expect(text).toContain('*Total: ₹4000*');
+        expect(text).toContain('Received: ₹1500');
+        expect(text).toContain('Due: ₹2500');
+        expect(text).not.toMatch(/[\u0900-\u097F]/);
         expect(text).not.toMatch(/profit|expense|owner|staff|स्टाफ/i);
     });
 
     test('purchase shows labour and payable; comments only when marked for print', () => {
         const text = buildBillShareText(PURCHASE, 'purchase');
-        expect(text).toContain('*Purchase Bill / खरीद बिल*');
-        expect(text).toContain('Date / तारीख: 03/10/2026 02:45 pm');
-        expect(text).toContain('Labour / मजदूरी: ₹12');
-        expect(text).toContain('*Payable / देय: ₹988*');
-        expect(text).toContain('Paid / भुगतान: ₹500');
+        expect(text).toContain('*Purchase Bill*');
+        expect(text).toContain('Date: 03/10/2026 02:45 pm');
+        expect(text).toContain('Labour: ₹12');
+        expect(text).toContain('*Payable: ₹988*');
+        expect(text).toContain('Paid: ₹500');
         expect(text).not.toContain('internal note');
-        expect(buildBillShareText({ ...PURCHASE, printComments: true })).toContain('Note / नोट: internal note');
-        expect(buildBillShareText(PURCHASE, 'purchase', { copy: false })).not.toContain(COPY_MARK);
+        expect(buildBillShareText({ ...PURCHASE, printComments: true })).toContain('Note: internal note');
+        expect(buildBillShareText(PURCHASE, 'purchase', { copy: false })).not.toContain(copyMark());
     });
 });
 

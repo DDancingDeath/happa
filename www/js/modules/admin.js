@@ -22,14 +22,14 @@ import { t } from '../i18n/index.js';
  */
 /** Bill-check limits editable in Admin → Configure (keys of DEFAULT_THRESHOLDS). */
 const CHECK_THRESHOLD_FIELDS = [
-    ['oversellBlockKg', 'Oversell: block beyond (kg) / स्टॉक से ज़्यादा बिक्री: इससे ज़्यादा पर रोकें (किलो)'],
-    ['rateMultiple', 'Rate far from usual: times (×) / सामान्य रेट से कितने गुना पर चेतावनी'],
-    ['duplicateWindowSec', 'Same bill again within (seconds) / इतने सेकंड में वही बिल दोबारा'],
-    ['maxFutureMin', 'Bill date ahead by more than (minutes) / बिल की तारीख़ इतने मिनट से आगे'],
-    ['backdateDays', 'Bill date back by more than (days) / बिल की तारीख़ इतने दिन से पीछे'],
-    ['cashOkRs', 'Cash count: fine up to (₹) / नकद गिनती: इतने ₹ तक ठीक'],
-    ['cashHighRs', 'Cash count: big difference above (₹) / नकद गिनती: इतने ₹ से ज़्यादा बड़ा अंतर'],
-    ['stockAdjustFlagKg', 'Stock adjustment flagged above (kg) / स्टॉक बदलाव इतने किलो से ज़्यादा पर निशान']
+    ['oversellBlockKg', 'ui.checks.oversell_block'],
+    ['rateMultiple', 'ui.checks.rate_multiple'],
+    ['duplicateWindowSec', 'ui.checks.duplicate_window'],
+    ['maxFutureMin', 'ui.checks.max_future'],
+    ['backdateDays', 'ui.checks.backdate_days'],
+    ['cashOkRs', 'ui.checks.cash_ok'],
+    ['cashHighRs', 'ui.checks.cash_high'],
+    ['stockAdjustFlagKg', 'ui.checks.stock_adjust_flag']
 ];
 
 const AdminManager = {
@@ -152,16 +152,16 @@ const AdminManager = {
      * @returns {string}
      */
     renderCheckThresholds() {
-        const t = normalizeThresholds(AppState.settings?.checkThresholds);
+        const vals = normalizeThresholds(AppState.settings?.checkThresholds);
         const rows = CHECK_THRESHOLD_FIELDS.map(([key, label]) => `
-                <label for="adminCheck_${key}">${Helpers.escapeHtml(label)}</label>
+                <label for="adminCheck_${key}">${Helpers.escapeHtml(t(label))}</label>
                 <input type="number" inputmode="decimal" min="0" step="any" id="adminCheck_${key}"
-                       placeholder="${Helpers.escapeHtml(DEFAULT_THRESHOLDS[key])}" value="${Helpers.escapeHtml(t[key])}"
+                       placeholder="${Helpers.escapeHtml(DEFAULT_THRESHOLDS[key])}" value="${Helpers.escapeHtml(vals[key])}"
                        onchange="window.app.admin.saveCheckThresholds()" />`).join('');
         return `
             <div class="settings-card">
-                <h3>Bill checks / बिल जाँच</h3>
-                <p class="setting-description">Limits for the red/amber warnings while billing. They apply to everyone; blank = default. / बिलिंग में लाल/पीली चेतावनी की सीमाएँ। सभी पर लागू; खाली = डिफ़ॉल्ट।</p>
+                <h3>${Helpers.escapeHtml(t('ui.checks.title'))}</h3>
+                <p class="setting-description">${Helpers.escapeHtml(t('ui.checks.description'))}</p>
                 ${rows}
             </div>`;
     },
@@ -697,7 +697,7 @@ const AdminManager = {
         
         const modalHTML = `
             <div style="text-align: left;">
-                <p style="margin: 0 0 8px; font-size: 13px;">Choose what to delete / क्या हटाना है चुनें:</p>
+                <p style="margin: 0 0 8px; font-size: 13px;">${Helpers.escapeHtml(t('ui.admin.choose_what_delete'))}:</p>
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: bold; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #ddd;">
                     <input type="checkbox" id="selectAllCollections" style="width: 16px; height: 16px;">
                     <span style="font-size: 14px;">Select All</span>
@@ -769,10 +769,10 @@ const AdminManager = {
         const finalConfirm = await new Promise((resolve) => {
             UIManager.showModalWithHtml(`
                 <div style="text-align: left;">
-                    <p style="margin: 0 0 6px;">These records will be deleted for everyone / ये रिकॉर्ड सबके लिए हट जाएंगे:</p>
+                    <p style="margin: 0 0 6px;">${Helpers.escapeHtml(t('ui.admin.records_deleted_everyone'))}:</p>
                     <ul style="margin: 0 0 8px 16px; font-size: 13px;">${summary}</ul>
                     <p style="margin: 0 0 6px; font-size: 13px;">Total: <strong>${Helpers.escapeHtml(total)}</strong>. A backup file (JSON) is saved on this device first.</p>
-                    <label for="clearDataConfirmInput" style="font-size: 13px;">Type <strong>${DELETE_CONFIRM_WORD}</strong> to confirm / पुष्टि के लिए <strong>${DELETE_CONFIRM_WORD}</strong> लिखें:</label>
+                    <label for="clearDataConfirmInput" style="font-size: 13px;">${t('ui.admin.type_word_to_confirm', { word: `<strong>${Helpers.escapeHtml(DELETE_CONFIRM_WORD)}</strong>` })}:</label>
                     <input id="clearDataConfirmInput" type="text" autocomplete="off" autocapitalize="characters" style="width: 100%; padding: 8px; margin-top: 4px; border: 2px solid #e74c3c; border-radius: 6px;">
                 </div>`, t('msg.admin.final_confirmation'), true).then((result) => {
                 typed = document.getElementById('clearDataConfirmInput')?.value || '';

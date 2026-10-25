@@ -129,7 +129,13 @@ In order:
   fires `aadhat:langchange` so open screens redraw without a reload. English is
   the default; the choice is per device (`aadhat.lang`). Add every new key to
   both catalogues — `i18n-catalogue.test.js` fails on missing keys or on
-  "staff"/"स्टाफ". Escape `t()` output that goes into `innerHTML`.
+  "staff"/"स्टाफ". Escape `t()` output that goes into `innerHTML`. Show one
+  language at a time, never "English / हिंदी" together:
+  `single-language-guard.test.js` (scanner: `node scripts/mixed-language-scan.js`)
+  fails on any literal, template or template text mixing Latin and Devanagari.
+  Records that carry both languages (`{ en, hi }`, stored anomalies/flags) are shown
+  with `pickLang()` from `i18n/localize.js`; old stored "English / Hindi" sentences
+  fall back to `splitBilingual()`.
 - **Service worker / cache bump**: every app JS/CSS/template file (and
   icon/manifest) must be listed in `STATIC_ASSETS` in `www/service-worker.js`
   (`npm run check:sw`; a test enforces it). Any PR that changes a shipped

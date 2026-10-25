@@ -2,6 +2,9 @@
 // resolveShortcut() is pure (key event + context -> action) so it can be unit-tested;
 // installKeyboardShortcuts() wires it to the DOM.
 
+import { t } from '../i18n/index.js';
+import { pickLang } from '../i18n/localize.js';
+
 export const DESKTOP_QUERY = '(min-width: 1024px)';
 
 // Alt+1..9 -> first nine side-nav tabs, in navigation.html order.
@@ -170,23 +173,24 @@ function closeHelp() {
 
 function openHelp() {
     if (document.getElementById(HELP_ID)) return;
-    const row = (keys, en, hi) => `<tr><td>${keys}</td><td>${en}<span class="kbd-hi">· ${hi}</span></td></tr>`;
-    const tabRows = TAB_SHORTCUTS.map((t, i) => row(`<kbd>Alt</kbd> + <kbd>${i + 1}</kbd>`, t.en, t.hi)).join('');
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const row = (keys, label) => `<tr><td>${keys}</td><td>${esc(label)}</td></tr>`;
+    const tabRows = TAB_SHORTCUTS.map((tab, i) => row(`<kbd>Alt</kbd> + <kbd>${i + 1}</kbd>`, pickLang(tab))).join('');
     const overlay = document.createElement('div');
     overlay.id = HELP_ID;
     overlay.className = 'kbd-help-overlay';
     overlay.innerHTML = `
         <div class="kbd-help" role="dialog" aria-modal="true" aria-labelledby="kbdHelpTitle">
-            <h3 id="kbdHelpTitle">Keyboard shortcuts · कीबोर्ड शॉर्टकट</h3>
+            <h3 id="kbdHelpTitle">${esc(t('ui.kbd.title'))}</h3>
             <table><tbody>
                 ${tabRows}
-                ${row('<kbd>Ctrl</kbd> + <kbd>S</kbd>', 'Save current bill', 'मौजूदा बिल सेव करें')}
-                ${row('<kbd>Ctrl</kbd> + <kbd>P</kbd>', 'Save &amp; print current bill', 'मौजूदा बिल सेव और प्रिंट करें')}
-                ${row('<kbd>/</kbd>', 'Search on this page', 'इस पेज पर खोजें')}
-                ${row('<kbd>Esc</kbd>', 'Close dialog', 'डायलॉग बंद करें')}
-                ${row('<kbd>?</kbd>', 'Show / hide this help', 'यह मदद दिखाएँ / छिपाएँ')}
+                ${row('<kbd>Ctrl</kbd> + <kbd>S</kbd>', t('ui.kbd.save_bill'))}
+                ${row('<kbd>Ctrl</kbd> + <kbd>P</kbd>', t('ui.kbd.save_print_bill'))}
+                ${row('<kbd>/</kbd>', t('ui.kbd.search_page'))}
+                ${row('<kbd>Esc</kbd>', t('ui.kbd.close_dialog'))}
+                ${row('<kbd>?</kbd>', t('ui.kbd.toggle_help'))}
             </tbody></table>
-            <button type="button" class="kbd-help-close">Close · बंद करें</button>
+            <button type="button" class="kbd-help-close">${esc(t('ui.kbd.close'))}</button>
         </div>`;
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay || e.target.classList.contains('kbd-help-close')) closeHelp();
@@ -242,7 +246,8 @@ function addSidebarLink() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'desktop-shortcuts-link';
-    btn.textContent = '⌨ Shortcuts · शॉर्टकट (?)';
+    btn.setAttribute('data-i18n', 'ui.kbd.sidebar_link');
+    btn.textContent = t('ui.kbd.sidebar_link');
     btn.addEventListener('click', openHelp);
     nav.appendChild(btn);
     return true;

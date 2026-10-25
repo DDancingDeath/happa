@@ -90,6 +90,7 @@ const STATIC_ASSETS = [
     '/js/i18n/index.js',
     '/js/i18n/en.js',
     '/js/i18n/hi.js',
+    '/js/i18n/localize.js',
     '/js/utils/bill-checks.js',
     '/js/utils/bill-share.js',
     '/js/utils/aging.js',

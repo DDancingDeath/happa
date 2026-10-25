@@ -14,6 +14,7 @@ import { openExternal } from '../utils/open-external.js';
 import { whatsAppReminderUrl } from '../utils/due-reminder.js';
 import { chartScaleMax } from './reports.js';
 import { t } from '../i18n/index.js';
+import { pickLang } from '../i18n/localize.js';
 import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
     addDaysToKey, anomalyPatterns, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
@@ -37,7 +38,7 @@ const TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db
 
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
 const todayKey = () => istDayKey(Date.now());
-const bilingual = (o) => `${esc(o.en)} / ${esc(o.hi)}`;
+const loc = (o) => esc(pickLang(o));
 const money = (n) => {
     const v = Math.round((Number(n) || 0) * 100) / 100;
     return `${v < 0 ? '-' : ''}₹${Math.abs(v).toLocaleString('en-IN')}`;
@@ -294,52 +295,52 @@ export const AnomaliesManager = {
         const queue = this.reportList.filter(a => (a.dayKey === today || a.dayKey === yesterday) && (a.status || 'open') === 'open');
         const s = summarizeAnomalies(todays);
 
-        const chips = SEVERITIES.map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${bilingual(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`).join('');
-        const types = s.byType.slice(0, 6).map(t => `<li>${bilingual(t)} — <strong>${t.count}</strong></li>`).join('');
+        const chips = SEVERITIES.map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${loc(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`).join('');
+        const types = s.byType.slice(0, 6).map(ty => `<li>${loc(ty)} — <strong>${ty.count}</strong></li>`).join('');
         const tops = [
-            s.topItems.length ? `<div><span class="anomaly-muted">Top items / मुख्य आइटम:</span> ${s.topItems.map(x => `${esc(x.name)} (${x.count})`).join(', ')}</div>` : '',
-            s.topParties.length ? `<div><span class="anomaly-muted">Top parties / मुख्य पार्टी:</span> ${s.topParties.map(x => `${esc(x.name)} (${x.count})`).join(', ')}</div>` : ''
+            s.topItems.length ? `<div><span class="anomaly-muted">${esc(t('ui.anom.top_items'))}:</span> ${s.topItems.map(x => `${esc(x.name)} (${x.count})`).join(', ')}</div>` : '',
+            s.topParties.length ? `<div><span class="anomaly-muted">${esc(t('ui.anom.top_parties'))}:</span> ${s.topParties.map(x => `${esc(x.name)} (${x.count})`).join(', ')}</div>` : ''
         ].join('');
 
         const bySev = SEVERITIES.map(sev => {
             const rows = queue.filter(a => a.severity === sev);
             if (!rows.length) return '';
-            return `<div class="anomaly-queue-group"><div class="anomaly-queue-head" style="color:${SEV_COLORS[sev]}">${bilingual(SEVERITY_LABELS[sev])} (${rows.length})</div>
+            return `<div class="anomaly-queue-group"><div class="anomaly-queue-head" style="color:${SEV_COLORS[sev]}">${loc(SEVERITY_LABELS[sev])} (${rows.length})</div>
                 ${rows.slice(0, 8).map(a => this.rowHtml(a, { compact: true })).join('')}
-                ${rows.length > 8 ? `<div class="anomaly-muted">+${rows.length - 8} more / और</div>` : ''}</div>`;
+                ${rows.length > 8 ? `<div class="anomaly-muted">${esc(t('ui.anom.more', { n: rows.length - 8 }))}</div>` : ''}</div>`;
         }).join('');
 
         card.style.display = 'block';
         card.innerHTML = `
             <div class="anomaly-card-head">
-                <h3 class="section-title" style="margin:0;">🚨 Day report / आज की रिपोर्ट</h3>
-                <span><button type="button" class="anomaly-btn" title="Refresh / ताज़ा करें" onclick="window.app.anomalies.refreshNow()">🔄</button>
+                <h3 class="section-title" style="margin:0;">🚨 ${esc(t('ui.anom.day_report'))}</h3>
+                <span><button type="button" class="anomaly-btn" title="${esc(t('ui.anom.refresh'))}" aria-label="${esc(t('ui.anom.refresh'))}" onclick="window.app.anomalies.refreshNow()">🔄</button>
                 <span class="anomaly-count-badge ${s.total ? 'has' : ''}">${s.total}</span></span>
             </div>
             <div class="anomaly-muted" style="margin:4px 0 8px;">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
             <div class="anomaly-chips">${chips}</div>
-            ${s.total ? `<ul class="anomaly-type-list">${types}</ul>${tops}` : '<div class="anomaly-empty">No anomalies today ✅ / आज कोई गड़बड़ी नहीं</div>'}
-            ${yOpen.length ? `<div class="anomaly-yesterday">⏪ Yesterday, not reviewed / कल की, बिना जाँच: <strong>${yOpen.length}</strong></div>` : ''}
+            ${s.total ? `<ul class="anomaly-type-list">${types}</ul>${tops}` : `<div class="anomaly-empty">${esc(t('ui.anom.none_today'))}</div>`}
+            ${yOpen.length ? `<div class="anomaly-yesterday">⏪ ${esc(t('ui.anom.yesterday_open'))}: <strong>${yOpen.length}</strong></div>` : ''}
             <div class="anomaly-queue">
-                <div class="anomaly-queue-title">Needs review / जाँच बाकी (${queue.length})</div>
-                ${queue.length ? bySev : '<div class="anomaly-empty">Nothing to review / जाँचने को कुछ नहीं</div>'}
+                <div class="anomaly-queue-title">${esc(t('ui.anom.needs_review', { n: queue.length }))}</div>
+                ${queue.length ? bySev : `<div class="anomaly-empty">${esc(t('ui.anom.nothing_to_review'))}</div>`}
             </div>
             <div class="anomaly-actions">
                 <button type="button" class="btn btn-success" onclick="window.app.anomalies.shareDayReport()">📤 WhatsApp</button>
-                <button type="button" class="btn btn-secondary" onclick="window.app.anomalies.printDayReport()">🖨️ Print / image</button>
-                <button type="button" class="btn btn-primary" onclick="window.app.anomalies.openPage()">🔎 All anomalies / सभी गड़बड़ियाँ</button>
+                <button type="button" class="btn btn-secondary" onclick="window.app.anomalies.printDayReport()">🖨️ ${esc(t('ui.anom.print_image'))}</button>
+                <button type="button" class="btn btn-primary" onclick="window.app.anomalies.openPage()">🔎 ${esc(t('ui.anom.all_anomalies'))}</button>
             </div>`;
     },
 
     /** Reconciliation line for the card: today's cash close status. */
     cashStatusLine() {
         const s = this.lastSession;
-        if (!s) return 'Cash: not opened / नकद: शुरू नहीं';
-        if (!s.signedOut) return 'Cash: open / नकद: चालू';
-        if (s.counted === false) return 'Cash: closed, not counted / नकद: बंद, गिना नहीं';
+        if (!s) return t('ui.anom.cash_not_opened');
+        if (!s.signedOut) return t('ui.anom.cash_open');
+        if (s.counted === false) return t('ui.anom.cash_not_counted');
         const diff = Number(s.difference) || 0;
-        return Math.abs(diff) < 1 ? 'Cash: closed, matches / नकद: बंद, मेल खाता है'
-            : `Cash: closed, ${diff < 0 ? 'short' : 'extra'} ${money(Math.abs(diff))} / नकद: बंद, ${money(Math.abs(diff))} ${diff < 0 ? 'कम' : 'ज़्यादा'}`;
+        if (Math.abs(diff) < 1) return t('ui.anom.cash_matches');
+        return t(diff < 0 ? 'ui.anom.cash_short' : 'ui.anom.cash_extra', { amount: money(Math.abs(diff)) });
     },
 
     /** One line for the cash-close screen (owner/manager only). */
@@ -415,7 +416,7 @@ export const AnomaliesManager = {
                 ctx.font = i === 0 ? 'bold 22px sans-serif' : '20px sans-serif';
                 ctx.fillText(line, pad, pad + (i + 1) * lineH - 8);
             });
-            return PrinterService.showImagePreview(canvas, `day_report_${todayKey().replace(/-/g, '')}.png`, 'Day report');
+            return PrinterService.showImagePreview(canvas, `day_report_${todayKey().replace(/-/g, '')}.png`, t('ui.anom.day_report'));
         } catch (error) {
             console.error('Day report image failed:', error);
             UIManager.showToast(t('msg.anomalies.could_not_make_report_image'));
@@ -441,21 +442,21 @@ export const AnomaliesManager = {
         ].filter(Boolean).join(' · ');
         const id = jsAttr(a.id);
         const canOpen = a.refKind === 'bill' || a.refKind === 'cash' || a.refKind === 'stock';
-        const statusBadge = status === 'open' ? '' : `<span class="anomaly-status anomaly-status-${esc(status)}">${bilingual(STATUS_LABELS[status] || STATUS_LABELS.open)}</span>`;
+        const statusBadge = status === 'open' ? '' : `<span class="anomaly-status anomaly-status-${esc(status)}">${loc(STATUS_LABELS[status] || STATUS_LABELS.open)}</span>`;
         const review = status === 'open'
-            ? `<button type="button" class="anomaly-btn ok" onclick="window.app.anomalies.review('${id}', 'ok')">✓ OK</button>
-               <button type="button" class="anomaly-btn fixed" onclick="window.app.anomalies.review('${id}', 'fixed')">🔧 Fixed / सुधारा</button>`
-            : `<button type="button" class="anomaly-btn" onclick="window.app.anomalies.review('${id}', 'open')">↩ Reopen / फिर खोलें</button>`;
+            ? `<button type="button" class="anomaly-btn ok" onclick="window.app.anomalies.review('${id}', 'ok')">✓ ${esc(t('ui.anom.btn_ok'))}</button>
+               <button type="button" class="anomaly-btn fixed" onclick="window.app.anomalies.review('${id}', 'fixed')">🔧 ${esc(t('ui.anom.btn_fixed'))}</button>`
+            : `<button type="button" class="anomaly-btn" onclick="window.app.anomalies.review('${id}', 'open')">↩ ${esc(t('ui.anom.btn_reopen'))}</button>`;
         return `
             <div class="anomaly-row sev-${esc(a.severity)}${compact ? ' compact' : ''}">
                 <div class="anomaly-row-main"${canOpen ? ` onclick="window.app.anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
-                    <div class="anomaly-row-title"><span class="anomaly-dot" style="background:${SEV_COLORS[a.severity] || '#6b7280'}"></span>${bilingual(label)} ${statusBadge}</div>
-                    <div class="anomaly-row-why">${esc(a.en)}${a.hi && a.hi !== a.en ? ` / ${esc(a.hi)}` : ''}</div>
+                    <div class="anomaly-row-title"><span class="anomaly-dot" style="background:${SEV_COLORS[a.severity] || '#6b7280'}"></span>${loc(label)} ${statusBadge}</div>
+                    <div class="anomaly-row-why">${loc(a)}</div>
                     <div class="anomaly-row-meta">${meta}</div>
                     ${a.note ? `<div class="anomaly-row-note">📝 ${esc(a.note)}${a.reviewedByName ? ` — ${esc(a.reviewedByName)}` : ''}</div>` : ''}
                 </div>
                 <div class="anomaly-row-actions">
-                    ${canOpen ? `<button type="button" class="anomaly-btn" onclick="window.app.anomalies.openRef('${id}')">↗ Open / खोलें</button>` : ''}
+                    ${canOpen ? `<button type="button" class="anomaly-btn" onclick="window.app.anomalies.openRef('${id}')">↗ ${esc(t('ui.anom.btn_open'))}</button>` : ''}
                     ${review}
                 </div>
             </div>`;
@@ -494,9 +495,9 @@ export const AnomaliesManager = {
         if (status !== 'open') {
             const html = `
                 <div style="text-align:left;">
-                    <div style="margin-bottom:6px;"><strong>${bilingual(typeLabel(a.type))}</strong></div>
-                    <div style="margin-bottom:8px; color:#6b7280;">${esc(a.en)}</div>
-                    <label for="anomalyReviewNote">Note (optional) / नोट (वैकल्पिक):</label>
+                    <div style="margin-bottom:6px;"><strong>${loc(typeLabel(a.type))}</strong></div>
+                    <div style="margin-bottom:8px; color:#6b7280;">${loc(a)}</div>
+                    <label for="anomalyReviewNote">${esc(t('ui.anom.note_optional'))}:</label>
                     <textarea id="anomalyReviewNote" rows="2" maxlength="300" style="width:100%; box-sizing:border-box; padding:6px;">${esc(note)}</textarea>
                 </div>`;
             const title = t(status === 'ok' ? 'msg.anomalies.mark_ok' : 'msg.anomalies.mark_fixed');
@@ -572,12 +573,21 @@ export const AnomaliesManager = {
         await loading;
     },
 
-    fillTypeOptions() {
+    fillTypeOptions(force = false) {
         const sel = document.getElementById('anomalyFilterType');
-        if (!sel || sel.dataset.filled) return;
+        if (!sel || (sel.dataset.filled && !force)) return;
+        const cur = sel.value;
         sel.dataset.filled = '1';
-        sel.innerHTML = '<option value="all">All types / सभी प्रकार</option>' + Object.entries(ANOMALY_TYPES)
-            .map(([id, t]) => `<option value="${esc(id)}">${esc(t.en)} / ${esc(t.hi)}</option>`).join('');
+        sel.innerHTML = `<option value="all">${esc(t('ui.anom.all_types'))}</option>` + Object.entries(ANOMALY_TYPES)
+            .map(([id, label]) => `<option value="${esc(id)}">${loc(label)}</option>`).join('');
+        if (cur) sel.value = cur;
+    },
+
+    /** Language switched: redraw the page and its type list in the new language. */
+    refreshForLanguage() {
+        if (document.getElementById('anomalyDenied')?.style.display === 'block') return;
+        this.fillTypeOptions(true);
+        this.renderPage();
     },
 
     syncFilterInputs() {
@@ -679,7 +689,7 @@ export const AnomaliesManager = {
         if (userSel) {
             const users = [...new Set(this.page.docs.map(a => String(a.user || a.userId || '').trim()).filter(Boolean))].sort();
             const cur = this.page.filters.user;
-            userSel.innerHTML = '<option value="all">All users / सभी</option>' + users.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
+            userSel.innerHTML = `<option value="all">${esc(t('ui.anom.all_users'))}</option>` + users.map(u => `<option value="${esc(u)}">${esc(u)}</option>`).join('');
             userSel.value = users.includes(cur) ? cur : 'all';
         }
         const list = this.filtered();
@@ -688,14 +698,14 @@ export const AnomaliesManager = {
         if (summary) {
             const range = this.page.range;
             summary.innerHTML = this.page.loading && !list.length
-                ? '⏳ Loading… / लोड हो रहा है…'
-                : `<strong>${s.total}</strong> shown / दिखाई गईं${range ? ` · ${esc(formatDayKey(range.from))} – ${esc(formatDayKey(range.to))}` : ''} · `
-                + SEVERITIES.map(sev => `<span style="color:${SEV_COLORS[sev]}">${bilingual(SEVERITY_LABELS[sev])} ${s.bySeverity[sev]}</span>`).join(' · ');
+                ? `⏳ ${esc(t('ui.anom.loading'))}`
+                : `${esc(t('ui.anom.shown', { n: s.total }))}${range ? ` · ${esc(formatDayKey(range.from))} – ${esc(formatDayKey(range.to))}` : ''} · `
+                + SEVERITIES.map(sev => `<span style="color:${SEV_COLORS[sev]}">${loc(SEVERITY_LABELS[sev])} ${s.bySeverity[sev]}</span>`).join(' · ');
         }
         if (this.page.view === 'list') {
             listEl.innerHTML = this.page.loading && !list.length
-                ? '<div class="anomaly-empty">Loading… / लोड हो रहा है…</div>'
-                : list.length ? list.map(a => this.rowHtml(a)).join('') : '<div class="anomaly-empty">No anomalies for these filters / इन फ़िल्टर में कोई गड़बड़ी नहीं</div>';
+                ? `<div class="anomaly-empty">${esc(t('ui.anom.loading'))}</div>`
+                : list.length ? list.map(a => this.rowHtml(a)).join('') : `<div class="anomaly-empty">${esc(t('ui.anom.none_for_filters'))}</div>`;
         } else {
             this.renderPatterns(list);
         }
@@ -710,17 +720,17 @@ export const AnomaliesManager = {
         this.drawTrend(p, colorOf);
         const legend = document.getElementById('anomalyTrendLegend');
         if (legend) {
-            legend.innerHTML = p.types.map(t => `<span class="anomaly-legend"><i style="background:${colorOf(t)}"></i>${bilingual(typeLabel(t))}</span>`).join('');
+            legend.innerHTML = p.types.map(ty => `<span class="anomaly-legend"><i style="background:${colorOf(ty)}"></i>${loc(typeLabel(ty))}</span>`).join('');
         }
 
         const heat = document.getElementById('anomalyHeat');
         if (heat) {
             if (!p.heat.items.length) {
-                heat.innerHTML = '<div class="anomaly-empty">No item data / आइटम डेटा नहीं</div>';
+                heat.innerHTML = `<div class="anomaly-empty">${esc(t('ui.anom.no_item_data'))}</div>`;
             } else {
-                const max = Math.max(1, ...p.heat.items.flatMap(i => p.heat.types.map(t => p.heat.cells[i][t] || 0)));
-                heat.innerHTML = `<div class="anomaly-table-wrap"><table class="anomaly-heat"><thead><tr><th>Item / आइटम</th>${p.heat.types.map(t => `<th title="${esc(typeLabel(t).en)}">${esc(typeLabel(t).en)}</th>`).join('')}</tr></thead><tbody>${p.heat.items.map(i => `<tr><td>${esc(i)}</td>${p.heat.types.map(t => {
-                    const n = p.heat.cells[i][t] || 0;
+                const max = Math.max(1, ...p.heat.items.flatMap(i => p.heat.types.map(ty => p.heat.cells[i][ty] || 0)));
+                heat.innerHTML = `<div class="anomaly-table-wrap"><table class="anomaly-heat"><thead><tr><th>${esc(t('ui.anom.th_item'))}</th>${p.heat.types.map(ty => `<th title="${loc(typeLabel(ty))}">${loc(typeLabel(ty))}</th>`).join('')}</tr></thead><tbody>${p.heat.items.map(i => `<tr><td>${esc(i)}</td>${p.heat.types.map(ty => {
+                    const n = p.heat.cells[i][ty] || 0;
                     return `<td style="background:rgba(220,38,38,${n ? (0.15 + 0.75 * n / max).toFixed(2) : 0}); color:${n / max > 0.5 ? '#fff' : 'inherit'}">${n || ''}</td>`;
                 }).join('')}</tr>`).join('')}</tbody></table></div>`;
             }
@@ -729,11 +739,11 @@ export const AnomaliesManager = {
         const users = document.getElementById('anomalyByUser');
         if (users) {
             users.innerHTML = p.byUser.length
-                ? `<div class="anomaly-table-wrap"><table class="anomaly-table"><thead><tr><th>User / सदस्य</th><th>Total / कुल</th><th>High / गंभीर</th><th>Most common / सबसे ज़्यादा</th></tr></thead><tbody>${p.byUser.map(u => {
+                ? `<div class="anomaly-table-wrap"><table class="anomaly-table"><thead><tr><th>${esc(t('ui.anom.th_user'))}</th><th>${esc(t('ui.anom.th_total'))}</th><th>${esc(t('ui.anom.th_high'))}</th><th>${esc(t('ui.anom.th_most_common'))}</th></tr></thead><tbody>${p.byUser.map(u => {
                     const top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0];
-                    return `<tr><td>${esc(u.name)}</td><td>${u.count}</td><td>${u.high}</td><td>${top ? `${bilingual(typeLabel(top[0]))} (${top[1]})` : ''}</td></tr>`;
+                    return `<tr><td>${esc(u.name)}</td><td>${u.count}</td><td>${u.high}</td><td>${top ? `${loc(typeLabel(top[0]))} (${top[1]})` : ''}</td></tr>`;
                 }).join('')}</tbody></table></div>`
-                : '<div class="anomaly-empty">No user data / डेटा नहीं</div>';
+                : `<div class="anomaly-empty">${esc(t('ui.anom.no_user_data'))}</div>`;
         }
 
         const hours = document.getElementById('anomalyByHour');
@@ -745,9 +755,9 @@ export const AnomaliesManager = {
         const rep = document.getElementById('anomalyRepeat');
         if (rep) {
             const block = (title, rows) => `<div class="anomaly-repeat-block"><h4>${title}</h4>${rows.length
-                ? `<ul>${rows.map(r => `<li><strong>${esc(r.name)}</strong> — ${r.count}× on ${r.days} days / ${r.days} दिन <span class="anomaly-muted">(${r.types.map(t => esc(typeLabel(t).en)).join(', ')})</span></li>`).join('')}</ul>`
-                : '<div class="anomaly-muted">None / कोई नहीं</div>'}</div>`;
-            rep.innerHTML = block('Items / आइटम', p.repeat.items) + block('Users / सदस्य', p.repeat.users) + block('Parties / पार्टी', p.repeat.parties);
+                ? `<ul>${rows.map(r => `<li><strong>${esc(r.name)}</strong> — ${esc(t('ui.anom.repeat_times', { count: r.count, days: r.days }))} <span class="anomaly-muted">(${r.types.map(ty => loc(typeLabel(ty))).join(', ')})</span></li>`).join('')}</ul>`
+                : `<div class="anomaly-muted">${esc(t('ui.anom.none'))}</div>`}</div>`;
+            rep.innerHTML = block(esc(t('ui.anom.repeat_items')), p.repeat.items) + block(esc(t('ui.anom.repeat_users')), p.repeat.users) + block(esc(t('ui.anom.repeat_parties')), p.repeat.parties);
         }
     },
 
@@ -771,7 +781,7 @@ export const AnomaliesManager = {
             ctx.fillStyle = '#6b7280';
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('No data / डेटा नहीं', canvas.width / 2, canvas.height / 2);
+            ctx.fillText(t('ui.anom.no_data'), canvas.width / 2, canvas.height / 2);
             return;
         }
         const max = chartScaleMax(days.map(d => byDay.get(d)?.total || 0));

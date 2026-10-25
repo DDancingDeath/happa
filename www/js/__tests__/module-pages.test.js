@@ -212,7 +212,7 @@ describe('Stock', () => {
         await StockManager.applyStockAdjustment();
         expect(save).toHaveBeenCalledWith(expect.objectContaining({
             itemId: 'item-rice', itemName: 'Rice', adjustType: 'add', quantity: 25,
-            previousStock: 100, newStock: 125, reason: 'Other / अन्य: recount', createdBy: 'owner1'
+            previousStock: 100, newStock: 125, reason: 'Other: recount', createdBy: 'owner1'
         }));
     });
 

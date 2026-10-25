@@ -4,7 +4,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { DEFAULT_SETTINGS } from '../utils/constants.js';
 import { getAndroidMajorVersion } from '../utils/helpers.js';
-import { COPY_MARK, receiptDateTime } from '../utils/bill-share.js';
+import { copyMark, receiptDateTime } from '../utils/bill-share.js';
 import { t } from '../i18n/index.js';
 
 /** Dots darker than this (average of R,G,B) print black */
@@ -304,7 +304,7 @@ class BluetoothPrinterManager {
                 const itemObj = AppState.items.find(i => i.id === item.itemId || i.name === item.name);
                 const displayName = (itemObj && itemObj.hindiName) ? itemObj.hindiName : item.name;
                 
-                y = utils.drawLeft(`${displayName} (${item.weights.length} पैकेट, ${item.qty.toFixed(1)} kg)`, y, { size: 18, weight: 'bold' });
+                y = utils.drawLeft(`${displayName} (${t('ui.print.packets_kg', { n: item.weights.length, kg: item.qty.toFixed(1) })})`, y, { size: 18, weight: 'bold' });
                 
                 const weightsText = item.weights.map(w => parseFloat(w).toFixed(1)).join('  ');
                 const maxWidth = 380;
@@ -336,7 +336,7 @@ class BluetoothPrinterManager {
     _drawReceiptHeader(ctx, billData, config, utils, y) {
         y = utils.drawCenter('Receipt', y, config.fonts.title, true);
         if (billData.isCopy) {
-            y = utils.drawCenter(COPY_MARK, y, config.fonts.header, true);
+            y = utils.drawCenter(copyMark(), y, config.fonts.header, true);
         }
         
         // Bill number on left, the bill's own date/time on right (same line)
@@ -374,10 +374,10 @@ class BluetoothPrinterManager {
         ctx.font = `bold ${config.fonts.header.size}px Arial`;
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'left';
-        ctx.fillText('वस्तु', config.columns.item, y);
-        ctx.fillText('दर(₹)', config.columns.rate, y);
-        ctx.fillText('मात्रा(kg)', config.columns.quantity, y);
-        ctx.fillText('कुल(₹)', config.columns.total, y);
+        ctx.fillText(t('ui.print.th_item'), config.columns.item, y);
+        ctx.fillText(t('ui.print.th_rate'), config.columns.rate, y);
+        ctx.fillText(t('ui.print.th_qty'), config.columns.quantity, y);
+        ctx.fillText(t('ui.print.th_total'), config.columns.total, y);
         y += config.spacing.line;
         
         // Items
@@ -409,7 +409,7 @@ class BluetoothPrinterManager {
         const subtotal = billData.billTotal || billData.saleTotal || billData.total || 0;
         
         // Subtotal
-        ctx.fillText('कुल:', config.padding.left, y);
+        ctx.fillText(`${t('ui.bill.total')}:`, config.padding.left, y);
         const totalText = '₹' + Math.round(subtotal);
         const totalWidth = ctx.measureText(totalText).width;
         ctx.fillText(totalText, config.width - totalWidth - config.padding.left, y);
@@ -419,7 +419,7 @@ class BluetoothPrinterManager {
         if (billData.isPurchase && billData.laborCharges > 0) {
             if (billData.laborCalc) {
                 // Show calculation in middle and amount on right
-                ctx.fillText('मजदूरी:', config.padding.left, y);
+                ctx.fillText(`${t('ui.bill.labour')}:`, config.padding.left, y);
                 const calcWidth = ctx.measureText(billData.laborCalc).width;
                 const calcX = (config.width - calcWidth) / 2;
                 ctx.fillText(billData.laborCalc, calcX, y);
@@ -428,7 +428,7 @@ class BluetoothPrinterManager {
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
             } else {
                 // No calculation, just show amount
-                ctx.fillText('मजदूरी:', config.padding.left, y);
+                ctx.fillText(`${t('ui.bill.labour')}:`, config.padding.left, y);
                 const laborText = `₹${billData.laborCharges}`;
                 const laborWidth = ctx.measureText(laborText).width;
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
@@ -441,7 +441,7 @@ class BluetoothPrinterManager {
         
         // Grand total - Total bill amount
         ctx.font = `bold ${config.fonts.total.size}px Arial`;
-        const grandTotalLabel = 'कुल:';
+        const grandTotalLabel = `${t('ui.bill.total')}:`;
         ctx.fillText(grandTotalLabel, config.padding.left, y);
         const amountPayable = billData.amountPayable || billData.grandTotal || billData.saleTotal || billData.total ||
                              (subtotal - (billData.laborCharges || 0));
@@ -458,7 +458,7 @@ class BluetoothPrinterManager {
         // Total Received (कुल प्राप्त / कुल भुगतान)
         y += 4;
         ctx.font = `${config.fonts.body.size}px Arial`;
-        const receivedLabel = billData.isPurchase ? 'कुल भुगतान:' : 'कुल प्राप्त:';
+        const receivedLabel = `${t(billData.isPurchase ? 'ui.print.total_paid' : 'ui.print.total_received')}:`;
         ctx.fillText(receivedLabel, config.padding.left, y);
         const receivedText = '₹' + Math.round(totalReceived);
         const receivedWidth = ctx.measureText(receivedText).width;
@@ -470,7 +470,7 @@ class BluetoothPrinterManager {
         if (dueAmount > 0) {
             y += 4; // Small gap
             ctx.font = `bold ${config.fonts.body.size}px Arial`;
-            ctx.fillText('बकाया:', config.padding.left, y);
+            ctx.fillText(`${t('ui.bill.due')}:`, config.padding.left, y);
             const dueText = '₹' + Math.round(dueAmount);
             const dueWidth = ctx.measureText(dueText).width;
             ctx.fillText(dueText, config.width - dueWidth - config.padding.left, y);
@@ -790,9 +790,9 @@ class BluetoothPrinterManager {
         if (statement.shopName) y = center(statement.shopName, y, 24, true);
         y = center(statement.title, y, 22, true);
         y = center(statement.partyName, y, 20, true);
-        if (statement.asOf) y = center(`As on / दिनांक: ${statement.asOf}`, y, 17);
+        if (statement.asOf) y = center(`${t('ui.print.as_on')}: ${statement.asOf}`, y, 17);
         y = rule(y + 2);
-        y = leftRight('Bill / बिल · Date / तारीख', 'Due / बकाया', y + 8, 16, true);
+        y = leftRight(`${t('ui.bill.bill_no')} · ${t('ui.bill.date')}`, t('ui.bill.due'), y + 8, 16, true);
         rows.forEach(r => {
             const left = [r.billNumber ? `#${r.billNumber}` : '', r.date].filter(Boolean).join('  ');
             y = leftRight(left.slice(0, 30), rupees(r.due), y, 17);

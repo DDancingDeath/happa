@@ -1,50 +1,50 @@
 <div id="anomalies" class="tab">
     <div class="anomaly-page">
-        <h2 class="anomaly-page-title">🚨 Anomalies / गड़बड़ियाँ</h2>
-        <div id="anomalyDenied" class="anomaly-empty" style="display: none;">Only the owner or a manager can see this page. / यह पेज सिर्फ़ मालिक या मैनेजर देख सकते हैं।</div>
+        <h2 class="anomaly-page-title">🚨 <span data-i18n="ui.anom.page_title">Anomalies</span></h2>
+        <div id="anomalyDenied" class="anomaly-empty" style="display: none;" data-i18n="ui.anom.denied">Only the owner or a manager can see this page.</div>
         <div id="anomalyBody">
             <div class="anomaly-filters">
-                <label>Dates / तारीख़
+                <label><span data-i18n="ui.anom.f_dates">Dates</span>
                     <select id="anomalyFilterPreset" onchange="window.app.anomalies.applyFilters()">
-                        <option value="today">Today / आज</option>
-                        <option value="yesterday">Yesterday / कल</option>
-                        <option value="7d">Last 7 days / 7 दिन</option>
-                        <option value="30d">Last 30 days / 30 दिन</option>
-                        <option value="90d">Last 90 days / 90 दिन</option>
+                        <option value="today" data-i18n="ui.anom.p_today">Today</option>
+                        <option value="yesterday" data-i18n="ui.anom.p_yesterday">Yesterday</option>
+                        <option value="7d" data-i18n="ui.anom.p_7d">Last 7 days</option>
+                        <option value="30d" data-i18n="ui.anom.p_30d">Last 30 days</option>
+                        <option value="90d" data-i18n="ui.anom.p_90d">Last 90 days</option>
                     </select>
                 </label>
-                <label>Type / प्रकार
+                <label><span data-i18n="ui.anom.f_type">Type</span>
                     <select id="anomalyFilterType" onchange="window.app.anomalies.applyFilters()"></select>
                 </label>
-                <label>Severity / गंभीरता
+                <label><span data-i18n="ui.anom.f_severity">Severity</span>
                     <select id="anomalyFilterSeverity" onchange="window.app.anomalies.applyFilters()">
-                        <option value="all">All / सभी</option>
-                        <option value="high">High / गंभीर</option>
-                        <option value="medium">Medium / मध्यम</option>
-                        <option value="low">Low / कम</option>
+                        <option value="all" data-i18n="ui.anom.all">All</option>
+                        <option value="high" data-i18n="ui.anom.sev_high">High</option>
+                        <option value="medium" data-i18n="ui.anom.sev_medium">Medium</option>
+                        <option value="low" data-i18n="ui.anom.sev_low">Low</option>
                     </select>
                 </label>
-                <label>Status / स्थिति
+                <label><span data-i18n="ui.anom.f_status">Status</span>
                     <select id="anomalyFilterStatus" onchange="window.app.anomalies.applyFilters()">
-                        <option value="open">Open / बाकी</option>
-                        <option value="ok">OK / ठीक है</option>
-                        <option value="fixed">Fixed / सुधारा</option>
-                        <option value="all">All / सभी</option>
+                        <option value="open" data-i18n="ui.anom.st_open">Open</option>
+                        <option value="ok" data-i18n="ui.anom.st_ok">OK</option>
+                        <option value="fixed" data-i18n="ui.anom.st_fixed">Fixed</option>
+                        <option value="all" data-i18n="ui.anom.all">All</option>
                     </select>
                 </label>
-                <label>User / सदस्य
+                <label><span data-i18n="ui.anom.f_user">User</span>
                     <select id="anomalyFilterUser" onchange="window.app.anomalies.applyFilters()">
-                        <option value="all">All users / सभी</option>
+                        <option value="all" data-i18n="ui.anom.all_users">All users</option>
                     </select>
                 </label>
-                <label>Item / आइटम
-                    <input type="search" id="anomalyFilterItem" placeholder="Item name / आइटम का नाम" oninput="window.app.anomalies.applyFilters()">
+                <label><span data-i18n="ui.anom.f_item">Item</span>
+                    <input type="search" id="anomalyFilterItem" placeholder="Item name" data-i18n-placeholder="ui.anom.item_name" oninput="window.app.anomalies.applyFilters()">
                 </label>
             </div>
 
             <div class="sub-tabs">
-                <button type="button" id="anomalyTabList" class="sub-tab active" onclick="window.app.anomalies.showView('list')">📋 List / सूची</button>
-                <button type="button" id="anomalyTabPatterns" class="sub-tab" onclick="window.app.anomalies.showView('patterns')">📊 Patterns / पैटर्न</button>
+                <button type="button" id="anomalyTabList" class="sub-tab active" onclick="window.app.anomalies.showView('list')">📋 <span data-i18n="ui.anom.tab_list">List</span></button>
+                <button type="button" id="anomalyTabPatterns" class="sub-tab" onclick="window.app.anomalies.showView('patterns')">📊 <span data-i18n="ui.anom.tab_patterns">Patterns</span></button>
             </div>
 
             <div id="anomalySummary" class="anomaly-summary"></div>
@@ -52,31 +52,31 @@
             <div id="anomalyListView">
                 <div id="anomalyList" class="anomaly-list"></div>
                 <div style="text-align: center; margin: 12px 0;">
-                    <button type="button" id="anomalyMore" class="btn btn-secondary" style="display: none;" onclick="window.app.anomalies.loadMore()">Load more / और लोड करें</button>
+                    <button type="button" id="anomalyMore" class="btn btn-secondary" style="display: none;" onclick="window.app.anomalies.loadMore()" data-i18n="ui.anom.load_more">Load more</button>
                 </div>
             </div>
 
             <div id="anomalyPatternView" style="display: none;">
                 <div class="anomaly-pattern-grid">
                     <div class="modern-card anomaly-pattern-wide">
-                        <h3 class="section-title">Per day by type / हर दिन, प्रकार अनुसार</h3>
+                        <h3 class="section-title" data-i18n="ui.anom.h_per_day">Per day by type</h3>
                         <div class="anomaly-chart-wrap"><canvas id="anomalyTrendChart"></canvas></div>
                         <div id="anomalyTrendLegend" class="anomaly-legend-row"></div>
                     </div>
                     <div class="modern-card anomaly-pattern-wide">
-                        <h3 class="section-title">Item × type / आइटम × प्रकार</h3>
+                        <h3 class="section-title" data-i18n="ui.anom.h_item_type">Item × type</h3>
                         <div id="anomalyHeat"></div>
                     </div>
                     <div class="modern-card">
-                        <h3 class="section-title">By user / सदस्य अनुसार</h3>
+                        <h3 class="section-title" data-i18n="ui.anom.h_by_user">By user</h3>
                         <div id="anomalyByUser"></div>
                     </div>
                     <div class="modern-card">
-                        <h3 class="section-title">By hour of day (IST) / दिन के घंटे अनुसार</h3>
+                        <h3 class="section-title" data-i18n="ui.anom.h_by_hour">By hour of day (IST)</h3>
                         <div id="anomalyByHour"></div>
                     </div>
                     <div class="modern-card anomaly-pattern-wide">
-                        <h3 class="section-title">Repeat offenders (2+ days) / बार-बार (2+ दिन)</h3>
+                        <h3 class="section-title" data-i18n="ui.anom.h_repeat">Repeat offenders (2+ days)</h3>
                         <div id="anomalyRepeat" class="anomaly-repeat"></div>
                     </div>
                 </div>

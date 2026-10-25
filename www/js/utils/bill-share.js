@@ -1,14 +1,16 @@
 /**
  * @fileoverview Pure builders for reprinting / sharing a saved bill from
  * History (#136): the printer payload (bill's own date + COPY mark) and the
- * bilingual WhatsApp text. No DOM, Firestore or AppState access.
+ * WhatsApp text in the app language. No DOM, Firestore or AppState access.
  * @module utils/bill-share
  */
 
 import { readPayment, readLineItem, round2 } from './money.js';
 import { billDateOf } from './history-filters.js';
+import { t } from '../i18n/index.js';
 
-export const COPY_MARK = 'COPY / प्रति';
+/** "COPY" mark on a reprinted slip / shared text, in the app language. */
+export const copyMark = () => t('ui.bill.copy_mark');
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -77,15 +79,15 @@ export function buildReprintPayload(bill, type) {
 }
 
 const TITLES = {
-    purchase: 'Purchase Bill / खरीद बिल',
-    retail: 'Sale Bill / बिक्री बिल',
-    wholesale: 'Wholesale Bill / थोक बिल'
+    purchase: 'ui.bill.title_purchase',
+    retail: 'ui.bill.title_retail',
+    wholesale: 'ui.bill.title_wholesale'
 };
 
 const money = (n) => `₹${Math.round(Number(n) || 0)}`;
 
 /**
- * Bilingual WhatsApp text for a saved bill, dated with the bill's own date.
+ * WhatsApp text for a saved bill, in the app language, dated with the bill's own date.
  * Internal figures (expenses, profit, who created it) are never included.
  * @param {Object} bill
  * @param {string} [type]
@@ -96,12 +98,12 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
     const p = buildReprintPayload(bill, type);
     const kind = p.type;
     const date = billDateOf(bill);
-    const lines = [`*${TITLES[kind]}*${copy ? ` (${COPY_MARK})` : ''}`, ''];
-    if (p.billNumber) lines.push(`Bill / बिल: #${p.billNumber}`);
-    if (date) lines.push(`Date / तारीख: ${formatReceiptDateTime(date)}`);
-    if (p.customerName) lines.push(`Customer / ग्राहक: ${p.customerName}`);
-    if (p.printComments && String(p.comments || '').trim()) lines.push(`Note / नोट: ${String(p.comments).trim()}`);
-    lines.push('', '*Items / सामान:*');
+    const lines = [`*${t(TITLES[kind])}*${copy ? ` (${copyMark()})` : ''}`, ''];
+    if (p.billNumber) lines.push(`${t('ui.bill.bill_no')}: #${p.billNumber}`);
+    if (date) lines.push(`${t('ui.bill.date')}: ${formatReceiptDateTime(date)}`);
+    if (p.customerName) lines.push(`${t('ui.bill.customer')}: ${p.customerName}`);
+    if (p.printComments && String(p.comments || '').trim()) lines.push(`${t('ui.bill.note')}: ${String(p.comments).trim()}`);
+    lines.push('', `*${t('ui.bill.items')}:*`);
     p.items.forEach(item => {
         lines.push(item.name);
         lines.push(`  ${money(item.rate)} × ${Number(item.qty || 0).toFixed(1)}kg = ${money(item.total)}`);
@@ -112,16 +114,16 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
         const subtotal = p.billTotal || p.grandTotal || p.amountPayable || p.total || 0;
         const labor = Number(p.laborCharges) || 0;
         const payable = p.amountPayable || p.grandTotal || (subtotal - labor);
-        lines.push(`*Total / कुल: ${money(subtotal)}*`);
+        lines.push(`*${t('ui.bill.total')}: ${money(subtotal)}*`);
         if (labor > 0) {
-            lines.push(`Labour / मजदूरी: ${money(labor)}`);
-            lines.push(`*Payable / देय: ${money(payable)}*`);
+            lines.push(`${t('ui.bill.labour')}: ${money(labor)}`);
+            lines.push(`*${t('ui.bill.payable')}: ${money(payable)}*`);
         }
     } else {
-        lines.push(`*Total / कुल: ${money(p.total || p.saleTotal || p.grandTotal)}*`);
+        lines.push(`*${t('ui.bill.total')}: ${money(p.total || p.saleTotal || p.grandTotal)}*`);
     }
     const paid = p.payment.cash + p.payment.online;
-    if (paid > 0) lines.push(`${kind === 'purchase' ? 'Paid / भुगतान' : 'Received / प्राप्त'}: ${money(paid)}`);
-    if (p.payment.due > 0) lines.push(`Due / बकाया: ${money(p.payment.due)}`);
+    if (paid > 0) lines.push(`${t(kind === 'purchase' ? 'ui.bill.paid' : 'ui.bill.received')}: ${money(paid)}`);
+    if (p.payment.due > 0) lines.push(`${t('ui.bill.due')}: ${money(p.payment.due)}`);
     return lines.join('\n');
 }

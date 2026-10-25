@@ -126,16 +126,17 @@ describe('#77 reminder message', () => {
         ]
     };
 
-    test('bilingual, oldest bill first with bill no / own date / due, Indian-grouped total', () => {
+    test('in the app language, oldest bill first with bill no / own date / due, Indian-grouped total', () => {
         const text = buildReminderText(party, { shopName: 'Gupta Traders', upiId: 'gupta@upi' });
         const lines = text.split('\n');
         expect(lines[0]).toBe('*Gupta Traders*');
-        expect(text).toContain('Namaste Ram Lal ji / नमस्ते Ram Lal जी');
+        expect(text).toContain('Namaste Ram Lal ji');
+        expect(text).not.toMatch(/[\u0900-\u097F]/);
         expect(text).toContain('1. #R20260901-001 · 01/09/2026 · ₹1,00,000');
         expect(text).toContain('2. #R20261010-004 · 10/10/2026 · ₹23,457');
-        expect(text).toContain('*Total due / कुल बकाया: ₹1,23,457*');
+        expect(text).toContain('*Total due: ₹1,23,457*');
         expect(text).toContain('UPI: gupta@upi');
-        expect(text).toContain('धन्यवाद');
+        expect(text).toContain('Thank you');
         expect(text.toLowerCase()).not.toMatch(/staff|स्टाफ/);
     });
 
@@ -148,14 +149,14 @@ describe('#77 reminder message', () => {
     test('stored names cannot add lines or WhatsApp formatting', () => {
         expect(cleanText('Ram*\n*Total due: ₹0_~`')).toBe('Ram Total due: ₹0');
         const text = buildReminderText({ name: 'Ram\nTotal due / कुल बकाया: ₹0', bills: [{ billNumber: '1*', date: null, due: 10 }] });
-        expect(text.split('\n').filter(l => /^\*?Total due/.test(l))).toEqual(['*Total due / कुल बकाया: ₹10*']);
+        expect(text.split('\n').filter(l => /^\*?Total due/.test(l))).toEqual(['*Total due: ₹10*']);
         expect(text).toContain('1. #1 · ₹10');
     });
 
     test(`more than ${REMINDER_MAX_BILLS} bills are summarised, total still covers all`, () => {
         const bills = Array.from({ length: REMINDER_MAX_BILLS + 3 }, (_, i) => ({ billNumber: `B${i}`, date: null, due: 10 }));
         const text = buildReminderText({ name: 'A', bills });
-        expect(text).toContain('…and 3 more bills / और 3 बिल');
+        expect(text).toContain('…and 3 more bills');
         expect(text).not.toContain('#B21');
         expect(text).toContain(`₹${(REMINDER_MAX_BILLS + 3) * 10}`);
     });
@@ -175,10 +176,10 @@ describe('#77 reminder message', () => {
         const s = buildStatement(party, { kind: 'payable', shopName: 'Shop', today: TODAY });
         expect(s).toMatchObject({
             shopName: 'Shop', partyName: 'Ram Lal', asOf: '22/10/2026', total: 123456.6,
-            totalLabel: 'Total payable / कुल देय', filename: 'statement_Ram_Lal_20261022.png'
+            totalLabel: 'Total payable', filename: 'statement_Ram_Lal_20261022.png'
         });
         expect(s.rows.map(r => r.date)).toEqual(['01/09/2026', '10/10/2026']);
-        expect(buildStatement({ name: '', bills: [] }).partyName).toBe('No name / बिना नाम');
+        expect(buildStatement({ name: '', bills: [] }).partyName).toBe('No name');
     });
 });
 
@@ -239,7 +240,7 @@ describe('#46/#77 Outstanding panel', () => {
         const url = open.mock.calls[0][0];
         expect(open).toHaveBeenCalledWith(url, '_blank');
         expect(url.startsWith('https://wa.me/919876543210?text=')).toBe(true);
-        expect(decodeURIComponent(url.split('text=')[1])).toContain('Total due / कुल बकाया: ₹500');
+        expect(decodeURIComponent(url.split('text=')[1])).toContain('Total due: ₹500');
     });
 
     test('Statement goes through the printer image path', async () => {

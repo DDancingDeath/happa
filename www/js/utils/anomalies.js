@@ -23,6 +23,8 @@ import { billTotal, readLineItem, readPayment, round2, toMoney } from './money.j
 import { parseAnyBillDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
+import { t } from '../i18n/index.js';
+import { pickLang } from '../i18n/localize.js';
 
 /** Business day boundaries are Indian Standard Time (UTC+5:30), whatever the device clock zone. */
 export const IST_OFFSET_MS = 330 * 60000;
@@ -557,17 +559,17 @@ export function summarizeAnomalies(list) {
     };
 }
 
-/** One bilingual line for the cash-close screen. */
+/** One line for the cash-close screen, in the app language. */
 export function summaryLine(list) {
     const s = summarizeAnomalies(list);
-    if (s.total === 0) return "Today's anomalies: none / आज की गड़बड़ियाँ: कोई नहीं";
-    return `Today's anomalies: ${s.total} (${s.bySeverity.high} high) / आज की गड़बड़ियाँ: ${s.total} (${s.bySeverity.high} गंभीर)`;
+    if (s.total === 0) return t('ui.anom.summary_none');
+    return t('ui.anom.summary_count', { total: s.total, high: s.bySeverity.high });
 }
 
 const inr = (n) => `₹${round2(Number(n) || 0).toLocaleString('en-IN')}`;
 
 /**
- * Bilingual WhatsApp text of the day report (also the printed image lines).
+ * WhatsApp text of the day report, in the app language (also the printed image lines).
  * @param {Object} args
  * @param {string} args.dayKey
  * @param {Array<Object>} args.today - today's anomalies
@@ -578,36 +580,35 @@ const inr = (n) => `₹${round2(Number(n) || 0).toLocaleString('en-IN')}`;
  */
 export function buildDayReportText({ dayKey, today = [], yesterdayOpen = [], totals = null, shopName = '' }) {
     const lines = [];
-    lines.push(`*Day report / आज की रिपोर्ट* — ${formatDayKey(dayKey)}`);
+    lines.push(`*${t('ui.anom.day_report')}* — ${formatDayKey(dayKey)}`);
     const shop = cleanText(shopName);
     if (shop) lines.push(shop);
     if (totals) {
         lines.push('');
-        lines.push(`Sales / बिक्री: ${inr(totals.sales)} (${Number(totals.saleCount) || 0} bills / बिल)`);
-        lines.push(`Purchases / खरीद: ${inr(totals.purchases)} (${Number(totals.purchaseCount) || 0} bills / बिल)`);
-        lines.push(`Expenses / खर्च: ${inr(totals.expenses)}`);
-        lines.push(`Money in / आया: ${inr(totals.totalIn)} · Money out / गया: ${inr(totals.totalOut)}`);
-        lines.push(`Due received / उधार मिला: ${inr(totals.dueReceived)} · Due paid / उधार दिया: ${inr(totals.duePaid)}`);
+        lines.push(t('ui.anom.report_sales', { amount: inr(totals.sales), count: Number(totals.saleCount) || 0 }));
+        lines.push(t('ui.anom.report_purchases', { amount: inr(totals.purchases), count: Number(totals.purchaseCount) || 0 }));
+        lines.push(t('ui.anom.report_expenses', { amount: inr(totals.expenses) }));
+        lines.push(t('ui.anom.report_money', { moneyIn: inr(totals.totalIn), moneyOut: inr(totals.totalOut) }));
+        lines.push(t('ui.anom.report_due', { received: inr(totals.dueReceived), paid: inr(totals.duePaid) }));
     }
     const s = summarizeAnomalies(today);
     lines.push('');
     if (s.total === 0) {
-        lines.push('Anomalies / गड़बड़ियाँ: none / कोई नहीं ✅');
+        lines.push(t('ui.anom.report_none'));
     } else {
-        lines.push(`Anomalies / गड़बड़ियाँ: ${s.total} (High/गंभीर ${s.bySeverity.high}, Medium/मध्यम ${s.bySeverity.medium}, Low/कम ${s.bySeverity.low})`);
-        s.byType.forEach(t => lines.push(`• ${t.en} / ${t.hi}: ${t.count}`));
-        if (s.topItems.length) lines.push(`Top items / मुख्य आइटम: ${s.topItems.map(x => `${cleanText(x.name)} (${x.count})`).join(', ')}`);
-        if (s.topParties.length) lines.push(`Top parties / मुख्य पार्टी: ${s.topParties.map(x => `${cleanText(x.name)} (${x.count})`).join(', ')}`);
+        lines.push(t('ui.anom.report_count', { total: s.total, high: s.bySeverity.high, medium: s.bySeverity.medium, low: s.bySeverity.low }));
+        s.byType.forEach(x => lines.push(`• ${pickLang(x)}: ${x.count}`));
+        if (s.topItems.length) lines.push(`${t('ui.anom.top_items')}: ${s.topItems.map(x => `${cleanText(x.name)} (${x.count})`).join(', ')}`);
+        if (s.topParties.length) lines.push(`${t('ui.anom.top_parties')}: ${s.topParties.map(x => `${cleanText(x.name)} (${x.count})`).join(', ')}`);
     }
     if (yesterdayOpen.length) {
         lines.push('');
-        lines.push(`Yesterday, not reviewed / कल की, बिना जाँच: ${yesterdayOpen.length}`);
+        lines.push(`${t('ui.anom.yesterday_open')}: ${yesterdayOpen.length}`);
         sortAnomalies(yesterdayOpen).slice(0, 5).forEach(a => {
-            const l = typeLabel(a.type);
             const who = [cleanText(a.party), a.billNumber ? `#${cleanText(a.billNumber)}` : ''].filter(Boolean).join(' ');
-            lines.push(`• ${l.en} / ${l.hi}${who ? ` — ${who}` : ''}${a.amount ? ` — ${inr(Math.abs(a.amount))}` : ''}`);
+            lines.push(`• ${pickLang(typeLabel(a.type))}${who ? ` — ${who}` : ''}${a.amount ? ` — ${inr(Math.abs(a.amount))}` : ''}`);
         });
-        if (yesterdayOpen.length > 5) lines.push(`… +${yesterdayOpen.length - 5} more / और`);
+        if (yesterdayOpen.length > 5) lines.push(`… ${t('ui.anom.more', { n: yesterdayOpen.length - 5 })}`);
     }
     return lines.join('\n');
 }

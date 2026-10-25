@@ -23,7 +23,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { StockManager } from '../modules/stock.js';
-import { planStockAdjustment } from '../utils/stock-adjust.js';
+import { planStockAdjustment, adjustReasonText } from '../utils/stock-adjust.js';
 import { computeStock } from '../utils/stock-replay.js';
 
 describe('planStockAdjustment', () => {
@@ -51,6 +51,15 @@ describe('planStockAdjustment', () => {
         const p = planStockAdjustment({ ...base, reasonCode: 'other', reasonNote: 'gift', adjustType: 'add', quantity: 1 });
         expect(p).toMatchObject({ ok: true, newStock: 11 });
         expect(p.reason).toMatch(/Other.*: gift$/);
+    });
+
+    test('a saved reason shows in the app language, also for old "English / Hindi" records', () => {
+        const old = { reasonCode: 'other', reason: 'Other / अन्य: recount' };
+        expect(adjustReasonText(old, 'en')).toBe('Other: recount');
+        expect(adjustReasonText(old, 'hi')).toBe('अन्य: recount');
+        expect(adjustReasonText({ reasonCode: 'damage', reason: 'Damaged' }, 'hi')).toBe('खराब');
+        expect(adjustReasonText({ reason: 'Physical count / गिनती' }, 'en')).toBe('Physical count');
+        expect(adjustReasonText({ reason: 'typed by hand' }, 'hi')).toBe('typed by hand');
     });
 });
 
@@ -146,7 +155,7 @@ describe('StockManager.renderStock while stock is not ready (#194)', () => {
         FirebaseService.getStock.mockImplementation(async () => { AppState.stockReady = false; return pending; });
         await StockManager.renderStock();
         const html = document.getElementById('stockList').innerHTML;
-        expect(html).toContain('Stock updating… / स्टॉक अपडेट हो रहा है…');
+        expect(html).toContain('Stock updating…');
         expect(html).not.toContain('No stock data available');
         expect(html).not.toContain('Chana');
     });

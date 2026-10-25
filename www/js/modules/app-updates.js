@@ -95,7 +95,7 @@ export class AppUpdatesManager {
         // Changelog text is only ever set via textContent (never innerHTML), so it cannot inject markup.
         const toggle = el('div', 'app-sheet-lang-toggle');
         toggle.setAttribute('role', 'group');
-        toggle.setAttribute('aria-label', 'Language / भाषा');
+        toggle.setAttribute('aria-label', t('ui.updates.language'));
         const langButtons = {};
         for (const [lang, label] of [['en', 'English'], ['hi', 'हिंदी']]) {
             const btn = el('button', 'app-sheet-lang-btn', label);
@@ -181,20 +181,19 @@ export class AppUpdatesManager {
         banner.setAttribute('role', 'status');
 
         const text = el('div', 'app-update-text');
-        text.appendChild(el('strong', '', `नया वर्ज़न v${version} उपलब्ध है`));
-        text.appendChild(el('span', '', `Update available: v${version}`));
+        text.appendChild(el('strong', '', t('ui.updates.available', { version })));
         banner.appendChild(text);
 
         const actions = el('div', 'app-update-actions');
-        const download = el('button', 'app-update-download', 'डाउनलोड / Download');
+        const download = el('button', 'app-update-download', t('ui.updates.download'));
         download.type = 'button';
         download.addEventListener('click', () => this.openExternal(APK_DOWNLOAD_URL));
-        const howTo = el('a', 'app-update-howto', 'कैसे इंस्टॉल करें? / How to install');
+        const howTo = el('a', 'app-update-howto', t('ui.updates.how_to_install'));
         howTo.href = DOWNLOAD_PAGE_URL;
         howTo.addEventListener('click', (e) => { e.preventDefault(); this.openExternal(DOWNLOAD_PAGE_URL); });
         const close = el('button', 'app-update-close', '✕');
         close.type = 'button';
-        close.setAttribute('aria-label', 'Dismiss / बंद करें');
+        close.setAttribute('aria-label', t('ui.updates.dismiss'));
         close.addEventListener('click', () => {
             store.set(KEYS.dismissed, version);
             banner.remove();
@@ -212,7 +211,7 @@ export class AppUpdatesManager {
     static async getShareMessage() {
         const changelog = await this.loadChangelog();
         const release = findRelease(changelog, APP_VERSION) || changelog?.releases?.[0] || { version: APP_VERSION };
-        return buildShareMessage(release, DOWNLOAD_PAGE_URL);
+        return buildShareMessage(release, DOWNLOAD_PAGE_URL, getLang());
     }
 
     static async shareOnWhatsApp() {

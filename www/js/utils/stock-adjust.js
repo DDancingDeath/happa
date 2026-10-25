@@ -4,14 +4,34 @@
  */
 
 import { t } from '../i18n/index.js';
+import { splitBilingual } from '../i18n/localize.js';
 
-/** Reason picker options; `other` needs a note. */
+/** Reason picker options (catalogue keys); `other` needs a note. */
 export const ADJUST_REASONS = {
-    count: 'Physical count / गिनती',
-    damage: 'Damaged / खराब',
-    theft: 'Theft or loss / चोरी या गुम',
-    other: 'Other / अन्य'
+    count: 'ui.stock.reason_count',
+    damage: 'ui.stock.reason_damage',
+    theft: 'ui.stock.reason_theft',
+    other: 'ui.stock.reason_other'
 };
+
+/**
+ * Reason of a saved adjustment in the app language: the label from its reasonCode plus
+ * the typed note. Older records stored "English / Hindi: note"; their note is kept.
+ * @param {{reason?: string, reasonCode?: string}} adj
+ * @param {'en'|'hi'} [lang]
+ * @returns {string}
+ */
+export function adjustReasonText(adj, lang) {
+    const reason = String(adj?.reason || '').trim();
+    const key = ADJUST_REASONS[adj?.reasonCode];
+    if (!key) return splitBilingual(reason, lang);
+    const en = t(key, null, 'en');
+    const hi = t(key, null, 'hi');
+    const prefix = [`${en} / ${hi}`, en, hi].find(p => reason === p || reason.startsWith(`${p}: `));
+    const note = prefix ? reason.slice(prefix.length).replace(/^: /, '').trim() : '';
+    const label = lang ? t(key, null, lang) : t(key);
+    return note ? `${label}: ${note}` : label;
+}
 
 const round3 = (n) => Math.round(n * 1000) / 1000;
 
@@ -41,7 +61,7 @@ export function planStockAdjustment({ adjustType, quantity, currentStock, reason
     if (reasonCode === 'other' && !note) {
         return { ok: false, error: t('msg.stock.write_reason') };
     }
-    const reason = note ? `${ADJUST_REASONS[reasonCode]}: ${note}` : ADJUST_REASONS[reasonCode];
+    const reason = note ? `${t(ADJUST_REASONS[reasonCode])}: ${note}` : t(ADJUST_REASONS[reasonCode]);
 
     let effective = qty;
     let newStock;

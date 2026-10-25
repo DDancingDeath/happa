@@ -56,13 +56,17 @@ export const WHATS_NEW_LABELS = {
         title: "What's new",
         version: (v) => `Version ${v}`,
         close: 'OK',
-        fallback: 'Notes are not available in English for this version — showing Hindi.'
+        fallback: 'Notes are not available in English for this version — showing Hindi.',
+        shareTitle: (name, v) => `${name} app${v ? ` v${v}` : ''}`,
+        shareDownload: 'Download the app:'
     },
     hi: {
         title: 'क्या नया है',
         version: (v) => `वर्ज़न ${v}`,
         close: 'ठीक है',
-        fallback: 'इस वर्ज़न के नोट्स हिंदी में उपलब्ध नहीं हैं — अंग्रेज़ी में दिखाए जा रहे हैं।'
+        fallback: 'इस वर्ज़न के नोट्स हिंदी में उपलब्ध नहीं हैं — अंग्रेज़ी में दिखाए जा रहे हैं।',
+        shareTitle: (name, v) => `${name} ऐप${v ? ` v${v}` : ''}`,
+        shareDownload: 'ऐप डाउनलोड करें:'
     }
 };
 
@@ -110,14 +114,13 @@ export function updateToOffer(appVersion, latestTag, dismissedVersion) {
     return version;
 }
 
-/** WhatsApp-ready text (Hindi + English) for sharing the app. */
-export function buildShareMessage(release, url = DOWNLOAD_PAGE_URL) {
-    const lines = [`${APP_NAME} app` + (release?.version ? ` v${release.version}` : '')];
-    const hi = Array.isArray(release?.notes?.hi) ? release.notes.hi : [];
-    const en = Array.isArray(release?.notes?.en) ? release.notes.en : [];
-    if (hi.length) lines.push('', 'नया क्या है:', ...hi.map((n) => `• ${n}`));
-    if (en.length) lines.push('', "What's new:", ...en.map((n) => `• ${n}`));
-    lines.push('', 'ऐप डाउनलोड करें / Download the app:', url);
+/** WhatsApp-ready text for sharing the app, in `lang` (notes fall back to the other language). */
+export function buildShareMessage(release, url = DOWNLOAD_PAGE_URL, lang = DEFAULT_WHATS_NEW_LANG) {
+    const { lang: l, notes } = whatsNewContent(release, lang);
+    const labels = WHATS_NEW_LABELS[l];
+    const lines = [labels.shareTitle(APP_NAME, release?.version)];
+    if (notes.length) lines.push('', `${labels.title}:`, ...notes.map((n) => `• ${n}`));
+    lines.push('', labels.shareDownload, url);
     return lines.join('\n');
 }
 

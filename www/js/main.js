@@ -88,7 +88,7 @@ function refreshForLanguage(lang) {
     if (!AppState.currentUser) return;
     const tabId = document.querySelector('.tab.active')?.id;
     const redraw = {
-        day: () => { DayManager.updateTodayHeader(); DayManager.loadTodayData(); },
+        day: () => { DayManager.updateTodayHeader(); DayManager.loadTodayData(); AnomaliesManager.drawDayReport(); },
         due: () => OutstandingManager.renderDue(),
         history: () => {
             const toggle = document.getElementById('historyViewToggle');
@@ -99,10 +99,14 @@ function refreshForLanguage(lang) {
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
         finance: () => FinanceManager.renderDashboard(),
-        'rate-trends': () => RateTrendsManager.refreshForLanguage()
+        'rate-trends': () => RateTrendsManager.refreshForLanguage(),
+        anomalies: () => AnomaliesManager.refreshForLanguage(),
+        stock: () => StockManager.refreshForLanguage(),
+        admin: () => AdminManager.renderContent()
     }[tabId];
     if (redraw) run(tabId, redraw);
     if (tabId === 'day' && DayManager.currentSubTab === 'cash') run('day-cash', () => CashManagementManager.refreshForLanguage());
+    run('notifications', () => NotificationsManager.renderPanel());
 }
 window.addEventListener(LANG_CHANGE_EVENT, (e) => refreshForLanguage(e.detail.lang));
 SettingsManager.syncItemNamesWithLanguage(getLang());
