@@ -172,6 +172,13 @@ In order:
   Read both, write both, treat the nested one as canonical when present.
 - **State**: a single `AppState` object lives in `state.js`. Never invent
   a parallel cache.
+- **Businesses / Rentals (#149, #170)**: one app, a `Shop | Rentals` switch
+  (`js/ui/business-switcher.js`). Rentals code lives in `js/rentals/` and is
+  loaded **only** with `import()` when Rentals opens; its data is in `rent_*`
+  collections (all access in `rentals/rent-store.js`), roles in
+  `users/{uid}.rentRole`. Never import `js/rentals/*` statically or name a
+  `rent_*` collection from start-up code: `rentals-startup.test.js` fails.
+  Design: `docs/rentals-design.md`.
 
 ### Things that look wrong but aren't
 

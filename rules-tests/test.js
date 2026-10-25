@@ -38,6 +38,11 @@ async function seedUsers(usersCol) {
         await db.collection(usersCol).doc('legacyOwner').set({ name: 'O', email: 'o@x.com', role: 'owner' });
         await db.collection(usersCol).doc('legacyStaff').set({ name: 'L', email: 'l@x.com', role: 'staff' });
         await db.collection(usersCol).doc('noRole').set({ name: 'N', email: 'n@x.com', status: 'active' });
+        // Rentals (#170): shop member + rentals role, and a rentals-only helper (shop role 'none').
+        await db.collection(usersCol).doc('rentManager').set({ name: 'RM', role: 'staff', rentRole: 'manager', status: 'active' });
+        await db.collection(usersCol).doc('rentMember').set({ name: 'RC', role: 'staff', rentRole: 'member', status: 'active' });
+        await db.collection(usersCol).doc('rentOnly').set({ name: 'RO', role: 'none', rentRole: 'member', status: 'active' });
+        await db.collection(usersCol).doc('rentPending').set({ name: 'RP', role: 'staff', rentRole: 'manager', status: 'pending' });
     });
 }
 
@@ -1304,6 +1309,120 @@ function defineSuite(prefix) {
 
 defineSuite('');
 defineSuite('dev_');
+
+// ---- Rentals (#170): rent_* collections, roles per business (#149) ----
+function defineRentSuite(prefix) {
+    const t = (name, fn) => test(`[${prefix || 'prod'} rentals] ${name}`, fn);
+    const c = (name) => `${prefix}${name}`;
+    const RENT = ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges'].map(c);
+    const seed = (coll, id, data) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(c(coll)).doc(id).set(data));
+    const meta = (uid) => ({ archived: false, createdAt: 1, createdBy: uid, updatedAt: 1 });
+    const lease = { unitId: 'U1', propertyId: 'P1', tenantId: 'T1', rent: 5000, dueDay: 5, startMonth: '2026-09', endMonth: null,
+        deposit: 10000, status: 'active', chargedThrough: null, createdAt: 1, createdBy: 'legacyOwner', updatedAt: 1 };
+    const charge = { leaseId: 'L1', unitId: 'U1', propertyId: 'P1', tenantId: 'T1', tenantName: 'Ram', unitLabel: 'G1',
+        month: '2026-10', dueDay: 5, amount: 5000, paid: 0, open: true, payments: [], createdAt: 1, updatedAt: 1 };
+    const entry = (uid, amount) => ({ amount, mode: 'cash', ref: '', date: '2026-10-05', at: 2, by: uid, byName: 'x' });
+    const pay = (uid, amount, paid = amount) => ({
+        paid, open: paid < 5000, updatedAt: 2, payments: [entry(uid, amount)]
+    });
+
+    t('shop member and manager without a rentals role read nothing', async () => {
+        for (const coll of RENT) {
+            await assertFails(as('staff1').collection(coll).get());
+            await assertFails(as('manager1').collection(coll).doc('x').get());
+        }
+        await assertFails(as('rentPending').collection(c('rent_units')).get());
+        await assertFails(anon().collection(c('rent_units')).get());
+    });
+
+    t('owner and rentals roles read; rentals-only helper reads no shop data', async () => {
+        for (const uid of ['legacyOwner', 'rentManager', 'rentMember', 'rentOnly']) {
+            await assertSucceeds(as(uid).collection(c('rent_units')).where('archived', '==', false).get());
+        }
+        await assertFails(as('rentOnly').collection(`${prefix}purchases`).get());
+        await assertFails(as('rentOnly').collection(`${prefix}items`).get());
+        await assertFails(as('rentOnly').collection(`${prefix}expenses`).get());
+    });
+
+    t('owner and rentals manager add properties, units, tenants and leases; a member cannot', async () => {
+        const prop = { name: 'Gali 2', address: 'Main road', kind: 'house', notes: '', ...meta('rentManager') };
+        await assertSucceeds(as('rentManager').collection(c('rent_properties')).doc('P1').set(prop));
+        await assertSucceeds(as('legacyOwner').collection(c('rent_units')).doc('U1').set({ propertyId: 'P1', label: 'G1', rent: 5000, leaseId: null, ...meta('legacyOwner') }));
+        await assertSucceeds(as('rentManager').collection(c('rent_tenants')).doc('T1').set({ name: 'Ram', phone: '9876543210', notes: '', ...meta('rentManager') }));
+        await assertSucceeds(as('rentManager').collection(c('rent_leases')).doc('L1').set(lease));
+        await assertFails(as('rentMember').collection(c('rent_properties')).doc('P2').set(prop));
+        await assertFails(as('rentMember').collection(c('rent_leases')).doc('L2').set(lease));
+        await assertFails(as('staff1').collection(c('rent_tenants')).doc('T2').set({ name: 'X', phone: '', notes: '', ...meta('staff1') }));
+    });
+
+    t('shape checks: bad kind, negative rent, due day 29, bad month, extra field', async () => {
+        await assertFails(as('rentManager').collection(c('rent_properties')).doc('P').set({ name: 'A', address: '', kind: 'castle', notes: '', ...meta('x') }));
+        await assertFails(as('rentManager').collection(c('rent_units')).doc('U').set({ propertyId: 'P1', label: 'G', rent: -1, leaseId: null, ...meta('x') }));
+        await assertFails(as('rentManager').collection(c('rent_leases')).doc('L').set({ ...lease, dueDay: 29 }));
+        await assertFails(as('rentManager').collection(c('rent_leases')).doc('L').set({ ...lease, startMonth: '2026-13' }));
+        await assertFails(as('rentManager').collection(c('rent_tenants')).doc('T').set({ name: 'A', phone: '', notes: '', hack: 1, ...meta('x') }));
+        await assertFails(as('rentManager').collection(c('rent_tenants')).doc('T').set({ name: '', phone: '', notes: '', ...meta('x') }));
+    });
+
+    t('member creates a month charge only with the fixed id and nothing paid', async () => {
+        await assertSucceeds(as('rentMember').collection(c('rent_charges')).doc('L1_2026-10').set(charge));
+        await assertFails(as('rentMember').collection(c('rent_charges')).doc('L1_2026-11').set(charge));
+        await assertFails(as('rentMember').collection(c('rent_charges')).doc('L1_2026-10x').set({ ...charge, month: '2026-10x' }));
+        await assertFails(as('rentMember').collection(c('rent_charges')).doc('L2_2026-10').set({ ...charge, leaseId: 'L2', paid: 100 }));
+        await assertFails(as('staff1').collection(c('rent_charges')).doc('L3_2026-10').set({ ...charge, leaseId: 'L3' }));
+    });
+
+    t('member records a payment: append one own entry, paid grows by it, never above the rent', async () => {
+        await seed('rent_charges', 'L1_2026-10', charge);
+        const ref = (uid) => as(uid).collection(c('rent_charges')).doc('L1_2026-10');
+        await assertFails(ref('rentMember').update(pay('rentMember', 2000, 2500)));
+        await assertFails(ref('rentMember').update(pay('someoneElse', 2000)));
+        await assertFails(ref('rentMember').update(pay('rentMember', 6000)));
+        await assertFails(ref('rentMember').update({ ...pay('rentMember', 2000), amount: 2000 }));
+        await assertFails(ref('rentMember').update({ ...pay('rentMember', 2000), open: false }));
+        await assertSucceeds(ref('rentMember').update(pay('rentMember', 2000)));
+        await assertSucceeds(ref('rentOnly').update({
+            paid: 5000, open: false, updatedAt: 3, payments: [entry('rentMember', 2000), entry('rentOnly', 3000)]
+        }));
+        await assertFails(ref('staff1').update({
+            paid: 5000, open: false, updatedAt: 4, payments: [entry('rentMember', 2000), entry('rentOnly', 3000), entry('staff1', 0.5)]
+        }));
+    });
+
+    t('owner/manager may correct a charge amount; a member may not', async () => {
+        await seed('rent_charges', 'L1_2026-10', charge);
+        await assertFails(as('rentMember').collection(c('rent_charges')).doc('L1_2026-10').update({ amount: 4000 }));
+        await assertSucceeds(as('rentManager').collection(c('rent_charges')).doc('L1_2026-10').update({ amount: 4000 }));
+        await assertFails(as('rentManager').collection(c('rent_charges')).doc('L1_2026-10').update({ month: '2026-11' }));
+    });
+
+    t('member moves a lease chargedThrough forward only, and changes nothing else', async () => {
+        await seed('rent_leases', 'L1', { ...lease, chargedThrough: '2026-09' });
+        const ref = (uid) => as(uid).collection(c('rent_leases')).doc('L1');
+        await assertSucceeds(ref('rentMember').update({ chargedThrough: '2026-10', updatedAt: 2 }));
+        await assertFails(ref('rentMember').update({ chargedThrough: '2026-09', updatedAt: 3 }));
+        await assertFails(ref('rentMember').update({ rent: 1, updatedAt: 3 }));
+        await assertFails(ref('staff1').update({ chargedThrough: '2026-12', updatedAt: 3 }));
+        await assertSucceeds(ref('rentManager').update({ status: 'ended', endMonth: '2026-10', updatedAt: 4 }));
+    });
+
+    t('only the owner deletes rentals docs', async () => {
+        await seed('rent_tenants', 'T1', { name: 'Ram', phone: '', notes: '', ...meta('x') });
+        await assertFails(as('rentManager').collection(c('rent_tenants')).doc('T1').delete());
+        await assertSucceeds(as('legacyOwner').collection(c('rent_tenants')).doc('T1').delete());
+    });
+
+    t('nobody sets their own rentRole; registration cannot carry one; the owner can grant it', async () => {
+        const users = `${prefix}users`;
+        await assertFails(as('staff1').collection(users).doc('staff1').update({ rentRole: 'manager' }));
+        await assertFails(as('newbie').collection(users).doc('newbie').set({ name: 'N', role: 'staff', status: 'pending', rentRole: 'member' }));
+        await assertSucceeds(as('newbie').collection(users).doc('newbie').set({ name: 'N', role: 'staff', status: 'pending' }));
+        await assertSucceeds(as('legacyOwner').collection(users).doc('staff1').update({ rentRole: 'member' }));
+    });
+}
+
+defineRentSuite('');
+defineRentSuite('dev_');
 
 test('[cross-env] prod approval does not grant dev access and vice versa', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {

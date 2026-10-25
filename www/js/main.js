@@ -4,6 +4,7 @@ import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
+import { BusinessSwitcher } from './ui/business-switcher.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { ItemsManager } from './modules/items.js';
@@ -288,6 +289,7 @@ async function initializeUserData() {
                 }
                 
                 AppState.userRole = userData.role || 'staff';
+                AppState.rentRole = userData.rentRole || null;
                 AppState.userName = userData.name || 'User';
             } else {
                 // User document doesn't exist
@@ -410,6 +412,8 @@ async function initializeUserData() {
         markStartup('app-shown', { online: navigator.onLine });
         noteStartup('listeners', FirebaseService.getStartupListenerInfo?.() || {});
         logStartupTimings();
+        // Shop | Rentals switch (#149): Rentals code loads only when opened
+        BusinessSwitcher.init();
         FirebaseService.prepareStock({ defer: true })
             .then(() => markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox }));
 
@@ -463,6 +467,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Clean up Firebase listeners when user signs out
                 FirebaseService.cleanup();
                 NotificationsManager.stop();
+                BusinessSwitcher.reset();
                 AppState.currentUser = null;
                 document.getElementById('authScreen').style.display = 'flex';
             }
@@ -790,6 +795,14 @@ window.app = {
         toggleMenu: () => NavigationManager.toggleMenu(),
         closeMenu: () => NavigationManager.closeMenu(),
         showTab: (tabId, evt) => NavigationManager.showTabFromNav(tabId, evt)
+    },
+    
+    // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
+    business: {
+        set: (biz) => BusinessSwitcher.set(biz)
+    },
+    rentals: {
+        open: (page, evt) => BusinessSwitcher.openRentals(page, evt)
     },
     
     // Notifications inbox (#12)

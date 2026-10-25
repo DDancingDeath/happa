@@ -488,7 +488,8 @@ service cloud.firestore {
       return isSignedIn()
         && request.auth.uid == userId
         && request.resource.data.get('status', '') == 'pending'
-        && request.resource.data.get('role', '') == 'staff';
+        && request.resource.data.get('role', '') == 'staff'
+        && !('rentRole' in request.resource.data);
     }
 
     function canUpdateProfile(usersCol, userId) {
@@ -496,7 +497,7 @@ service cloud.firestore {
         || (isSignedIn()
             && request.auth.uid == userId
             && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['role', 'status', 'approvedAt', 'approvedBy']));
+                 .hasAny(['role', 'status', 'approvedAt', 'approvedBy', 'rentRole']));
     }
 
     // --- audit logs (#55) and telemetry (#122): append-only ---
@@ -551,6 +552,144 @@ service cloud.firestore {
         && shortStringOrAbsent(d, 'userAgent', 500)
         && shortStringOrAbsent(d, 'userName', 200)
         && shortStringOrAbsent(d, 'userRole', 32);
+    }
+
+    // ============================================
+    // RENTALS (#170): rent_* collections (dev_rent_* in development), roles
+    // per business (#149). The shop owner owns every business; anyone else
+    // needs users/{uid}.rentRole = 'manager' | 'member' (set by the owner).
+    // A shop role alone gives no rentals access, and a rentals role alone
+    // (shop role 'none') gives no shop access. See docs/rentals-design.md.
+    // ============================================
+
+    function rentProfile(usersCol) {
+      return get(profilePath(usersCol)).data;
+    }
+
+    // 'owner' | 'manager' | 'member' | '' (no access)
+    function rentRoleIn(usersCol) {
+      return !(isSignedIn() && exists(profilePath(usersCol))) ? ''
+        : rentProfile(usersCol).get('status', '') in ['pending', 'rejected'] ? ''
+        : rentProfile(usersCol).get('role', '') == 'owner' ? 'owner'
+        : rentProfile(usersCol).get('rentRole', '') in ['manager', 'member'] ? rentProfile(usersCol).rentRole
+        : '';
+    }
+
+    function canManageRent(usersCol) {
+      return rentRoleIn(usersCol) in ['owner', 'manager'];
+    }
+
+    function rentStr(d, key, min, max) {
+      return d.get(key, '') is string && d.get(key, '').size() >= min && d.get(key, '').size() <= max;
+    }
+
+    function rentMonth(v) {
+      return v is string && v.matches('^[0-9]{4}-(0[1-9]|1[0-2])$');
+    }
+
+    function rentMoney(d, key) {
+      return d.get(key, null) is number && d.get(key, 0) >= 0;
+    }
+
+    function rentMeta() {
+      return ['archived', 'createdAt', 'createdBy', 'updatedAt'];
+    }
+
+    // Shape of properties, units, tenants and leases (owner/manager writes).
+    function validRentDoc(base) {
+      let d = request.resource.data;
+      return d.get('archived', false) is bool
+        && (base == 'rent_properties'
+          ? d.keys().hasOnly(['name', 'address', 'kind', 'notes'].concat(rentMeta()))
+            && rentStr(d, 'name', 1, 80) && rentStr(d, 'address', 0, 200) && rentStr(d, 'notes', 0, 500)
+            && d.get('kind', 'other') in ['house', 'shop', 'flat', 'plot', 'godown', 'other']
+          : base == 'rent_units'
+          ? d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId'].concat(rentMeta()))
+            && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'label', 1, 60) && rentMoney(d, 'rent')
+            && (d.get('leaseId', null) == null || rentStr(d, 'leaseId', 1, 64))
+          : base == 'rent_tenants'
+          ? d.keys().hasOnly(['name', 'phone', 'notes'].concat(rentMeta()))
+            && rentStr(d, 'name', 1, 80) && rentStr(d, 'phone', 0, 20) && rentStr(d, 'notes', 0, 500)
+          : base == 'rent_leases'
+          ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
+                              'deposit', 'status', 'chargedThrough'].concat(rentMeta()))
+            && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
+            && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
+            && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
+            && rentMonth(d.get('startMonth', null))
+            && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
+            && d.get('status', '') in ['active', 'ended']
+            && (d.get('chargedThrough', null) == null || rentMonth(d.chargedThrough))
+          : false);
+    }
+
+    // Monthly charge generation by any rentals role: chargedThrough only moves forward.
+    function rentChargedThroughOnly() {
+      let d = request.resource.data;
+      let before = resource.data.get('chargedThrough', null);
+      return d.diff(resource.data).affectedKeys().hasOnly(['chargedThrough', 'updatedAt'])
+        && rentMonth(d.get('chargedThrough', null))
+        && (before == null || d.chargedThrough > before);
+    }
+
+    function rentChargeFields() {
+      return ['leaseId', 'unitId', 'propertyId', 'tenantId', 'tenantName', 'unitLabel', 'month', 'dueDay',
+              'amount', 'paid', 'open', 'payments', 'createdAt', 'updatedAt'];
+    }
+
+    // rent_charges/{leaseId}_{YYYY-MM}: created with nothing paid.
+    function validRentChargeCreate(docId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(rentChargeFields())
+        && rentStr(d, 'leaseId', 1, 64) && rentMonth(d.get('month', null))
+        && docId == d.leaseId + '_' + d.month
+        && rentMoney(d, 'amount')
+        && d.get('paid', null) == 0 && d.get('payments', null) == []
+        && d.get('open', null) == (d.amount > 0)
+        && rentStr(d, 'tenantName', 0, 80) && rentStr(d, 'unitLabel', 0, 60);
+    }
+
+    // A payment (rent-store.js recordPayment): one new entry by the caller,
+    // paid grows by exactly that amount and never above the rent.
+    function rentPaymentOk() {
+      let d = request.resource.data;
+      let r = resource.data;
+      let n = r.get('payments', []).size();
+      return d.diff(r).affectedKeys().hasOnly(['payments', 'paid', 'open', 'updatedAt'])
+        && appendsOneEntry('payments')
+        && d.payments[n].keys().hasOnly(['amount', 'mode', 'ref', 'date', 'at', 'by', 'byName'])
+        && d.payments[n].amount > 0
+        && d.payments[n].get('by', null) == request.auth.uid
+        && d.payments[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
+        && d.get('paid', null) is number
+        && d.paid >= r.paid + d.payments[n].amount - 0.01
+        && d.paid <= r.paid + d.payments[n].amount + 0.01
+        && d.paid <= r.amount + 0.01
+        && d.get('open', null) == (d.paid < r.amount - 0.001);
+    }
+
+    // Owner/manager corrections (e.g. a waived month): same shape, same lease and month.
+    function rentChargeEditOk() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(rentChargeFields())
+        && d.get('leaseId', null) == resource.data.leaseId && d.get('month', null) == resource.data.month
+        && rentMoney(d, 'amount') && rentMoney(d, 'paid')
+        && d.get('payments', null) is list
+        && d.get('open', null) == (d.paid < d.amount - 0.001);
+    }
+
+    function rentCreateOk(base, usersCol, docId) {
+      return base == 'rent_charges'
+        ? rentRoleIn(usersCol) != '' && validRentChargeCreate(docId)
+        : canManageRent(usersCol) && validRentDoc(base);
+    }
+
+    function rentUpdateOk(base, usersCol) {
+      return base == 'rent_charges'
+          ? (canManageRent(usersCol) && rentChargeEditOk()) || (rentRoleIn(usersCol) != '' && rentPaymentOk())
+        : base == 'rent_leases'
+          ? (canManageRent(usersCol) && validRentDoc(base)) || (rentRoleIn(usersCol) != '' && rentChargedThroughOnly())
+        : canManageRent(usersCol) && validRentDoc(base);
     }
 
     // ============================================
@@ -769,6 +908,67 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
     }
 
+    // Rentals (#170): helpers above. Deletes are owner-only; the app archives instead.
+    match /rent_properties/{docId} {
+      allow read: if rentRoleIn('users') != '';
+      allow create: if rentCreateOk('rent_properties', 'users', docId);
+      allow update: if rentUpdateOk('rent_properties', 'users');
+      allow delete: if isOwnerIn('users');
+    }
+    match /rent_units/{docId} {
+      allow read: if rentRoleIn('users') != '';
+      allow create: if rentCreateOk('rent_units', 'users', docId);
+      allow update: if rentUpdateOk('rent_units', 'users');
+      allow delete: if isOwnerIn('users');
+    }
+    match /rent_tenants/{docId} {
+      allow read: if rentRoleIn('users') != '';
+      allow create: if rentCreateOk('rent_tenants', 'users', docId);
+      allow update: if rentUpdateOk('rent_tenants', 'users');
+      allow delete: if isOwnerIn('users');
+    }
+    match /rent_leases/{docId} {
+      allow read: if rentRoleIn('users') != '';
+      allow create: if rentCreateOk('rent_leases', 'users', docId);
+      allow update: if rentUpdateOk('rent_leases', 'users');
+      allow delete: if isOwnerIn('users');
+    }
+    match /rent_charges/{docId} {
+      allow read: if rentRoleIn('users') != '';
+      allow create: if rentCreateOk('rent_charges', 'users', docId);
+      allow update: if rentUpdateOk('rent_charges', 'users');
+      allow delete: if isOwnerIn('users');
+    }
+    match /dev_rent_properties/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentCreateOk('rent_properties', 'dev_users', docId);
+      allow update: if rentUpdateOk('rent_properties', 'dev_users');
+      allow delete: if isOwnerIn('dev_users');
+    }
+    match /dev_rent_units/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentCreateOk('rent_units', 'dev_users', docId);
+      allow update: if rentUpdateOk('rent_units', 'dev_users');
+      allow delete: if isOwnerIn('dev_users');
+    }
+    match /dev_rent_tenants/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentCreateOk('rent_tenants', 'dev_users', docId);
+      allow update: if rentUpdateOk('rent_tenants', 'dev_users');
+      allow delete: if isOwnerIn('dev_users');
+    }
+    match /dev_rent_leases/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentCreateOk('rent_leases', 'dev_users', docId);
+      allow update: if rentUpdateOk('rent_leases', 'dev_users');
+      allow delete: if isOwnerIn('dev_users');
+    }
+    match /dev_rent_charges/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentCreateOk('rent_charges', 'dev_users', docId);
+      allow update: if rentUpdateOk('rent_charges', 'dev_users');
+      allow delete: if isOwnerIn('dev_users');
+    }
     // ============================================
     // DEVELOPMENT ENVIRONMENT COLLECTIONS (dev_ prefix)
     // Same rules as production, with dev_users as the profile source.
