@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const DEFAULT_REPO = 'DDancingDeath/AadhatManagementApp';
+const DEFAULT_REPO = 'DDancingDeath/happa';
 const MARKER = '<!-- plan-page -->';
 const PLAN_TITLE = '[Plan] Roadmap: pick order (auto-updated)';
 const PLAN_LABELS = ['type:docs', 'P0'];
@@ -305,6 +305,9 @@ async function main(argv = process.argv.slice(2)) {
         if (!isOpen(plan)) patch.state = 'open';
         const stable = (s) => (s || '').replace(/^_Last updated:.*$/m, '').replace(/\r\n/g, '\n');
         if (stable(plan.body) !== stable(md) || patch.state) ({ data: plan } = await gh(token, 'PATCH', `/repos/${repo}/issues/${plan.number}`, patch));
+    } else if (!argv.includes('--create')) {
+        console.log(`No plan issue in ${repo}; skipping (run with --create to open one).`);
+        return;
     } else {
         ({ data: plan } = await gh(token, 'POST', `/repos/${repo}/issues`, { title: PLAN_TITLE, body: md, labels: PLAN_LABELS }));
     }

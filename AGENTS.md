@@ -8,12 +8,13 @@
 
 ## 1. What this repo is
 
-`AadhatManagementApp` — a Hindi/English wholesale-retail business app for
+`happa` (formerly `AadhatManagementApp`) — a Hindi/English wholesale-retail business app for
 small-scale grain/produce traders. It runs on **Firebase Hosting + Firestore +
 Auth**, is built as **vanilla ES module-style JS** (no bundler, no framework),
 and is wrapped in **Capacitor** for Android distribution.
 
-- **Owner**: `DDancingDeath` (https://github.com/DDancingDeath/AadhatManagementApp)
+- **Owner**: `DDancingDeath` (https://github.com/DDancingDeath/happa; the old repo
+  https://github.com/DDancingDeath/AadhatManagementApp is kept as is and still holds the existing issues)
 - **App**: **Happa** (Android `com.happa`; displayed as lowercase "happa" in English and Hindi). Its name, Android
   package, Firebase project and site all come from `happa.config.json`
   (`npm run apply:happa-config` writes them everywhere, `npm run check:happa-config`
@@ -25,8 +26,10 @@ and is wrapped in **Capacitor** for Android distribution.
   v1.6.1. No workflow may deploy to it; the CI guard
   (`scripts/happa-config.js guard`) fails if anything resolves to it. Its
   release notes are archived in `docs/aadhat-changelog-archive.json`.
-- **Bug / feature list**: GitHub issues in this repo (labels, milestones and
-  the pinned plan issue — see section 5). There is no other master list.
+- **Bug / feature list**: GitHub issues (labels, milestones and the pinned
+  plan issue — see section 5). Existing issues, including the plan issue #171,
+  are still in `DDancingDeath/AadhatManagementApp` for now; refer to them as
+  `AadhatManagementApp#N`. There is no other master list.
 - **The staging clone (`AadhatManagementApp-staging`) is archived** —
   read-only reference only; nothing is developed or verified there any
   more. See section 6.
@@ -179,7 +182,8 @@ In order:
 
 ### Issues: the bug and feature list
 
-GitHub issues in `DDancingDeath/AadhatManagementApp` are the single list of
+GitHub issues (for now still in `DDancingDeath/AadhatManagementApp`, code in
+`DDancingDeath/happa`) are the single list of
 bugs, features and decisions. (The staging clone's `docs/REVIEW_ISSUES.md`
 is archived history — don't add to it or cite it as the master list.)
 

@@ -1,4 +1,6 @@
-# AadhatManagementApp
+# happa
+
+Formerly AadhatManagementApp (old repo: https://github.com/DDancingDeath/AadhatManagementApp).
 
 A comprehensive business management application for wholesale/retail operations built with ES6 modules, Firebase, and Capacitor for Android deployment.
 
@@ -333,13 +335,14 @@ issues to work on, in order, with progress per phase. It is generated from
 
 - When you add an issue, place it in `tools/plan/order.json`; the plan issue
   regenerates automatically. Unplaced open issues show up in 🆕.
+- It skips (and succeeds) when the repo has no plan issue; `--create` opens one.
 - Preview locally: `GH_TOKEN=... node tools/plan/generate.js --dry-run`
   (`--write-docs` also writes `docs/PLAN.md`).
 
 ## Bugs, features and the plan
 
 [GitHub issues](https://github.com/DDancingDeath/AadhatManagementApp/issues)
-are the only bug/feature list (labels `P0`–`P3`, `type:*`, `area:*`,
+(still in the old repo for now) are the only bug/feature list (labels `P0`–`P3`, `type:*`, `area:*`,
 `owner-decision`; sprint milestones). The pinned plan issue
 ([#171](https://github.com/DDancingDeath/AadhatManagementApp/issues/171))
 shows the pick order — see "Planning" below. The old staging clone and its

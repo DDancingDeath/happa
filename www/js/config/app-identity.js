@@ -7,6 +7,6 @@ export const APP_IDENTITY = Object.freeze({
     "siteUrl": "https://happa-bfc07.web.app",
     "downloadPageUrl": "https://happa-bfc07.web.app/download",
     "apkFile": "happa.apk",
-    "apkDownloadUrl": "https://github.com/DDancingDeath/AadhatManagementApp/releases/latest/download/happa.apk",
-    "latestReleaseApi": "https://api.github.com/repos/DDancingDeath/AadhatManagementApp/releases/latest"
+    "apkDownloadUrl": "https://github.com/DDancingDeath/happa/releases/latest/download/happa.apk",
+    "latestReleaseApi": "https://api.github.com/repos/DDancingDeath/happa/releases/latest"
 });

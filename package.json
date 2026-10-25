@@ -50,13 +50,13 @@
   "main": "www/js/main.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DDancingDeath/AadhatManagementApp.git"
+    "url": "git+https://github.com/DDancingDeath/happa.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/DDancingDeath/AadhatManagementApp/issues"
+    "url": "https://github.com/DDancingDeath/happa/issues"
   },
-  "homepage": "https://github.com/DDancingDeath/AadhatManagementApp#readme"
+  "homepage": "https://github.com/DDancingDeath/happa#readme"
 }
