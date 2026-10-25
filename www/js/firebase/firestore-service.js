@@ -698,6 +698,10 @@ function keepStoredCreatedAt(record, stored) {
 const sentBillPaymentSigs = new Map();
 /** Bills whose retry kept the server's money fields (a payment was recorded meanwhile). */
 const keptServerPaymentBills = new WeakSet();
+/** `${collKey}/${id}` of new bills whose first set() hasn't settled yet. */
+const pendingFirstSaves = new Set();
+/** Of those, the ones a retry has saved meanwhile. */
+const retriedBillSaves = new Set();
 
 /**
  * Creates a bill (or overwrites by id) and keeps memory/checkpoint in step.
@@ -732,9 +736,22 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
         record.createdAt = Date.now();
         payload = withServerCreatedAt(record);
     }
-    const write = docRef.set(payload);
+    pendingFirstSaves.add(key);
+    const sent = docRef.set(payload);
+    // A #70 retry may already have created this bill; this first attempt then arrives later as an
+    // update that changes createdAt, which the rules refuse for non-owners (#87). Nothing is lost.
+    const settled = () => {
+        pendingFirstSaves.delete(key);
+        retriedBillSaves.delete(key);
+    };
+    const write = Promise.resolve(sent).then(settled, (error) => {
+        const superseded = retriedBillSaves.has(key) && isPermissionDenied(error);
+        settled();
+        if (superseded) return { supersededByRetry: true };
+        throw error;
+    });
     // Server acknowledgement (may come after settleWrite released the UI)
-    Promise.resolve(write).then(() => run.complete(), (error) => run.completeAndFail('write_rejected', { code: String(error?.code || 'unknown').slice(0, 40) }));
+    write.then((r) => run.complete(r ? { supersededByRetry: true } : undefined), (error) => run.completeAndFail('write_rejected', { code: String(error?.code || 'unknown').slice(0, 40) }));
     noteStockWrite(collKey, previous, record);
     noteLocalRecordWrite(collKey, String(record.id), record);
     await settleWrite(write, label);
@@ -791,6 +808,7 @@ async function retryBillSave(collKey, record, ref, previous, key) {
         wrote = !Object.keys(record).every(k => stableJson(server[k]) === stableJson(record[k]));
         if (wrote) tx.set(ref, record);
     });
+    if (pendingFirstSaves.has(key)) retriedBillSaves.add(key);
     if (kept) {
         BILL_MONEY_FIELDS.forEach(k => {
             if (k in serverMoney) record[k] = serverMoney[k];
