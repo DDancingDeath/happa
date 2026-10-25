@@ -170,6 +170,26 @@ Owner/manager only. Pure code: `utils/rate-trends.js`, `utils/item-rate-series.j
 | PT3 | Day by day | For one item and month, from the bills loaded on the device: kg and bills per type per IST day (same RT-LINE rules, so the days add up to PT1). Week totals within the month are days 1–7, 8–14, 15–21, 22–28, 29–end. Months older than the loaded bills show PT1 totals instead. |
 | PT4 | Week by week | For one item, the last 12 / 26 / 52 / 104 RT-WEEKs: kg and bills per type, 0 when nothing moved. |
 
+## Rentals → Rent (`templates/rentals.html`, `rentals/rentals.js`, `rentals/rent-math.js`) — #170
+
+Rentals money is separate from the shop: none of these numbers feed Finance,
+Reports or the cash drawer. A **charge** is one month's rent of one lease
+(`rent_charges/{leaseId}_{YYYY-MM}`), created once per month from the lease's
+start month (at most 24 months back); amount = the lease's rent + that month's
+electricity (RENT-7); its due = amount − paid (never below 0). Move-out keeps
+charges only up to the last month (never in the future).
+Oracle: `tests/oracle/rent.test.js`.
+
+| ID | On screen | Definition |
+|---|---|---|
+| RENT-1 | Rent this month | Σ amount of this month's charges. |
+| RENT-2 | Collected this month | Σ paid on this month's charges (payments for older months are not counted here). |
+| RENT-3 | Still due this month | RENT-1 − RENT-2. |
+| RENT-4 | Total due (all months) | Σ due of every charge up to this month, including tenants who moved out. |
+| RENT-5 | Per tenant | Σ due of that lease's charges, oldest month first; a month is *Late* after its due day (default the 10th, per lease), *Part paid* when 0 < paid < amount. |
+| RENT-6 | Rent increase due | Once 12 months have passed since the rent was last set (or the start month): "Rent increase due: p% → ₹X", X = round(rent × (1 + p/100)), p per lease (default 5). Only a reminder; the rent changes when someone saves the new rent, from the next month's charge. |
+| RENT-7 | Electricity | Per unit sub-meter: units = current − previous reading, amount = units × rate per unit (both rounded to paise), added to that month's charge; saving again replaces it. |
+
 ---
 
 ## Accounting checks (always true)

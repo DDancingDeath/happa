@@ -1,0 +1,22 @@
+<!-- Rentals (#170). Loaded on demand by js/rentals/rentals.js, not by TemplateLoader.loadAllTemplates(). -->
+<div id="rentals" class="tab rentals-tab">
+    <h2 class="rent-title">🏠 <span data-i18n="ui.rent.title">Rentals</span></h2>
+    <div class="rent-subnav">
+        <button type="button" class="filter-btn" data-rent-page="rent" onclick="window.app.rentals.page('rent')" data-i18n="ui.nav.rent">Rent</button>
+        <button type="button" class="filter-btn" data-rent-page="tenants" onclick="window.app.rentals.page('tenants')" data-i18n="ui.nav.tenants">Tenants</button>
+        <button type="button" class="filter-btn" data-rent-page="properties" onclick="window.app.rentals.page('properties')" data-i18n="ui.nav.properties">Properties</button>
+        <button type="button" class="filter-btn" data-rent-page="access" onclick="window.app.rentals.page('access')" data-i18n="ui.rent.access" hidden>Access</button>
+    </div>
+    <div id="rentalsNotice" class="rent-notice" role="status" hidden></div>
+    <div id="rentalsBody" class="rent-body"></div>
+
+    <div id="rentDialog" class="rent-dialog" role="dialog" aria-modal="true" hidden>
+        <div class="rent-dialog-box">
+            <div id="rentDialogBody"></div>
+            <div class="rent-dialog-actions">
+                <button type="button" class="rent-btn" onclick="window.app.rentals.dialogClose(false)" data-i18n="ui.modals.cancel">Cancel</button>
+                <button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.dialogClose(true)" data-i18n="ui.common.save">Save</button>
+            </div>
+        </div>
+    </div>
+</div>

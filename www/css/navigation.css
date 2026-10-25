@@ -113,3 +113,28 @@
   width: 28px;
   text-align: center;
 }
+
+/* Business switcher (#149): the menu shows only the current business's pages */
+.biz-switch {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.biz-switch[hidden] { display: none; }
+.biz-switch button {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.5);
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+.biz-switch button.active {
+  background: white;
+  color: #4c51bf;
+}
+.nav-menu a[data-biz="rentals"] { display: none; }
+body.biz-rentals .nav-menu a[data-biz="rentals"] { display: flex; }
+body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }

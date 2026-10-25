@@ -29,6 +29,10 @@
             <div>
                 <h2 data-i18n="ui.app.name">happa</h2>
                 <div id="currentUserName" style="font-size: 14px; color: rgba(255,255,255,0.9); margin-top: 6px;"><span data-i18n="ui.navigation.loading">Loading...</span></div>
+                <div class="biz-switch" id="bizSwitch" role="group" aria-label="Business" data-i18n-aria-label="ui.biz.business" hidden>
+                    <button type="button" data-biz-btn="shop" class="active" aria-pressed="true" onclick="window.app.business.set('shop')">🌾 <span data-i18n="ui.biz.shop">Shop</span></button>
+                    <button type="button" data-biz-btn="rentals" aria-pressed="false" onclick="window.app.business.set('rentals')">🏠 <span data-i18n="ui.biz.rentals">Rentals</span></button>
+                </div>
             </div>
             <button class="close-btn" onclick="window.app.nav.toggleMenu()">×</button>
         </div>
@@ -93,13 +97,25 @@
                 <span class="nav-icon">🔬</span>
                 <span data-i18n="ui.nav.diagnostics">Diagnostics</span>
             </a>
+            <a href="#" data-biz="rentals" data-rent-nav="rent" onclick="window.app.rentals.open('rent', event)">
+                <span class="nav-icon">💰</span>
+                <span data-i18n="ui.nav.rent">Rent</span>
+            </a>
+            <a href="#" data-biz="rentals" data-rent-nav="tenants" onclick="window.app.rentals.open('tenants', event)">
+                <span class="nav-icon">👥</span>
+                <span data-i18n="ui.nav.tenants">Tenants</span>
+            </a>
+            <a href="#" data-biz="rentals" data-rent-nav="properties" onclick="window.app.rentals.open('properties', event)">
+                <span class="nav-icon">🏘️</span>
+                <span data-i18n="ui.nav.properties">Properties</span>
+            </a>
             <a href="#" onclick="window.app.nav.showTab('chat', event)">
                 <span class="nav-icon">🤖</span>
                 <span data-i18n="ui.nav.ai_assistant">AI Assistant</span>
             </a>
         </nav>
         <nav class="nav-menu nav-menu-footer">
-            <a href="#" onclick="window.app.nav.showTab('settings', event)">
+            <a href="#" data-biz="all" onclick="window.app.nav.showTab('settings', event)">
                 <span class="nav-icon">⚙️</span>
                 <span data-i18n="ui.nav.settings">Settings</span>
             </a>
