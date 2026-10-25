@@ -37,8 +37,6 @@ import { buildReminderText, buildStatement } from '../utils/due-reminder.js';
 const WWW = path.join(__dirname, '..', '..');
 const DEVANAGARI = /[\u0900-\u097F]/;
 const DEVANAGARI_ALL = /[\u0900-\u097F]+/g;
-// Owned by feat/language-in-settings (the language picker's own label), see the scanner.
-const LANGUAGE_PICKER_KEYS = new Set(['ui.settings.language']);
 
 jest.useFakeTimers({
     now: new Date('2026-10-21T12:00:00+05:30'),
@@ -68,9 +66,9 @@ describe('source scan: no "English / हिंदी" strings', () => {
 
 describe('catalogues keep to their own language', () => {
     test('English values have no Devanagari; Hindi values do not repeat the English text', () => {
-        const enMixed = Object.keys(en).filter(k => !LANGUAGE_PICKER_KEYS.has(k) && DEVANAGARI.test(en[k]));
+        const enMixed = Object.keys(en).filter(k => DEVANAGARI.test(en[k]));
         expect(enMixed).toEqual([]);
-        const hiWithEn = Object.keys(hi).filter(k => !LANGUAGE_PICKER_KEYS.has(k) && /[A-Za-z]{3}/.test(en[k])
+        const hiWithEn = Object.keys(hi).filter(k => /[A-Za-z]{3}/.test(en[k])
             && (hi[k].includes(`${en[k]} / `) || hi[k].includes(` / ${en[k]}`)));
         expect(hiWithEn).toEqual([]);
     });
@@ -107,7 +105,7 @@ function textAndAttrs(root) {
 function strayHindi(text, userData = []) {
     let rest = text;
     userData.forEach(v => { rest = rest.split(v).join(' '); });
-    const allowed = new Set(['हिंदी', 'भाषा']);
+    const allowed = new Set(['हिंदी']);
     return (rest.match(DEVANAGARI_ALL) || []).filter(w => !allowed.has(w));
 }
 
@@ -116,7 +114,7 @@ describe('templates render in one language', () => {
     const html = (f) => fs.readFileSync(path.join(WWW, 'templates', f), 'utf8');
     afterEach(() => { resetLangForTests(); localStorage.clear(); document.body.innerHTML = ''; });
 
-    test('English: no Devanagari in any template or the app shell (outside the language picker)', () => {
+    test('English: no Devanagari in any template or the app shell (only the language name हिंदी)', () => {
         setLang('en');
         const shell = fs.readFileSync(path.join(WWW, 'index.html'), 'utf8');
         const found = [];

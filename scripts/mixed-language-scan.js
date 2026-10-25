@@ -20,17 +20,9 @@ const ALLOW = [
     /^\s*हिंदी\s*\/\s*English\s*$/
 ];
 
-// The language picker's own label ("Language / भाषा") in the Settings row and the side-menu
-// toggle: left as is because feat/language-in-settings is moving that toggle.
-const ALLOW_IN_FILE = {
-    'www/templates/settings.html': [/^Language \/ भाषा$/],
-    'www/templates/navigation.html': [/^Language \/ भाषा$/]
-};
-
-function isMixed(text, file) {
+function isMixed(text) {
     if (!text || !LATIN.test(text) || !DEVANAGARI.test(text)) return false;
-    const allowed = ALLOW.concat(ALLOW_IN_FILE[file] || []);
-    return !allowed.some(re => re.test(String(text).trim()));
+    return !ALLOW.some(re => re.test(String(text).trim()));
 }
 
 function listFiles(dir, filter, out = []) {
@@ -96,7 +88,7 @@ function scanJsSource(source, file = '<js>') {
     const hit = (node, text) => hits.push({ file, line: node.loc.start.line, text: String(text).trim().slice(0, 120) });
     walk(ast, (node, parent) => {
         const text = stringOf(node);
-        if (text != null && isMixed(text, file)) { hit(node, text); return; }
+        if (text != null && isMixed(text)) { hit(node, text); return; }
         if (node.type === 'TemplateLiteral') {
             const langs = new Set(node.expressions.map(langProp).filter(Boolean));
             if (langs.size === 2) hit(node, `\`${text}\` renders both .en and .hi`);
@@ -106,7 +98,7 @@ function scanJsSource(source, file = '<js>') {
             const parts = concatParts(node);
             const strs = parts.map(stringOf);
             const joined = strs.map(s => (s == null ? '${}' : s)).join('');
-            if (!strs.some(s => s != null && isMixed(s, file)) && strs.some(s => s != null) && isMixed(joined, file)) hit(node, joined);
+            if (!strs.some(s => s != null && isMixed(s)) && strs.some(s => s != null) && isMixed(joined)) hit(node, joined);
             const langs = new Set(parts.map(langProp).filter(Boolean));
             if (langs.size === 2) hit(node, `${joined} renders both .en and .hi`);
         }
@@ -131,7 +123,7 @@ function scanHtmlSource(source, file = '<html>') {
     const markup = noComments.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, s => s.replace(/[^\n]/g, ' '));
     const textRe = />([^<]+)</g;
     while ((m = textRe.exec(markup))) {
-        if (isMixed(m[1], file)) hits.push({ file, line: lineOf(m.index), text: m[1].trim().slice(0, 120) });
+        if (isMixed(m[1])) hits.push({ file, line: lineOf(m.index), text: m[1].trim().slice(0, 120) });
     }
     const attrRe = /\s[\w:-]+\s*=\s*("([^"]*)"|'([^']*)')/g;
     while ((m = attrRe.exec(markup))) {
@@ -140,7 +132,7 @@ function scanHtmlSource(source, file = '<html>') {
             try { scanJsSource(value, file).forEach(h => hits.push({ ...h, line: lineOf(m.index) })); } catch (_) { /* not parseable */ }
             continue;
         }
-        if (isMixed(value, file)) hits.push({ file, line: lineOf(m.index), text: value.trim().slice(0, 120) });
+        if (isMixed(value)) hits.push({ file, line: lineOf(m.index), text: value.trim().slice(0, 120) });
     }
     return hits;
 }
@@ -153,7 +145,7 @@ function scanAll() {
     return hits;
 }
 
-module.exports = { isMixed, scanJsSource, scanHtmlSource, scanAll, jsFiles, htmlFiles, ALLOW, ALLOW_IN_FILE };
+module.exports = { isMixed, scanJsSource, scanHtmlSource, scanAll, jsFiles, htmlFiles, ALLOW };
 
 if (require.main === module) {
     const hits = scanAll();
