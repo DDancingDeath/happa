@@ -8,8 +8,10 @@
 import { round2 } from '../utils/money.js';
 import { cleanText, formatINR } from '../utils/due-reminder.js';
 
-/** Most months created for one lease in one go (start month far in the past). */
+/** Oldest start month allowed (months back) and most months charged per visit. */
 export const MAX_BACKFILL_MONTHS = 24;
+/** Most payment entries on one month's charge (the rules add them up without loops). */
+export const MAX_PAYMENTS_PER_CHARGE = 12;
 export const PROPERTY_KINDS = ['house', 'shop', 'flat', 'plot', 'godown', 'other'];
 export const PAYMENT_MODES = ['cash', 'upi', 'bank', 'cheque'];
 export const DEFAULT_DUE_DAY = 10;
@@ -53,16 +55,15 @@ export function monthLabel(key, lang = 'en') {
 export const chargeId = (leaseId, month) => `${leaseId}_${month}`;
 
 /**
- * Months still to be charged for a lease up to `currentMonth`: from the month
- * after `chargedThrough` (or `startMonth`) to the current or end month, at most
- * MAX_BACKFILL_MONTHS (the newest ones).
+ * Months still to be charged for a lease up to `currentMonth`, oldest first:
+ * from the month after `chargedThrough` (or `startMonth`) to the current or end
+ * month. Charges are created one month per write, in this order (rules).
  */
 export function monthsToCharge(lease, currentMonth) {
     if (!lease || lease.status !== 'active' || !isMonth(lease.startMonth) || !isMonth(currentMonth)) return [];
     const from = isMonth(lease.chargedThrough) ? addMonths(lease.chargedThrough, 1) : lease.startMonth;
     const to = isMonth(lease.endMonth) && lease.endMonth < currentMonth ? lease.endMonth : currentMonth;
-    const months = from <= to ? monthRange(from, to) : [];
-    return months.slice(-MAX_BACKFILL_MONTHS);
+    return from <= to ? monthRange(from, to) : [];
 }
 
 /** New charge document for one month of a lease. */
@@ -112,6 +113,7 @@ export function chargeStatus(charge, today = new Date()) {
 export function applyPayment(charge, amount) {
     const amt = round2(Number(amount));
     if (!Number.isFinite(amt) || amt <= 0) throw new Error('amount');
+    if ((charge.payments || []).length >= MAX_PAYMENTS_PER_CHARGE) throw new Error('too_many');
     if (amt > chargeDue(charge) + 0.001) throw new Error('over');
     const total = round2(Number(charge.amount) || 0);
     const paid = round2((Number(charge.paid) || 0) + amt);
@@ -211,12 +213,15 @@ export function tenantError(tn) {
     return '';
 }
 
-export function leaseError(l) {
+export function leaseError(l, currentMonth = '') {
     const rent = Number(l?.rent);
     const deposit = Number(l?.deposit || 0);
     if (!Number.isFinite(rent) || rent < 0 || !Number.isFinite(deposit) || deposit < 0) return 'msg.rent.bad_amount';
     if (!Number.isInteger(Number(l.dueDay)) || l.dueDay < 1 || l.dueDay > 28) return 'msg.rent.bad_due_day';
     if (!isMonth(l.startMonth)) return 'msg.rent.bad_month';
+    if (isMonth(currentMonth) && (l.startMonth < addMonths(currentMonth, -(MAX_BACKFILL_MONTHS - 1)) || l.startMonth > addMonths(currentMonth, 1))) {
+        return 'msg.rent.start_too_old';
+    }
     const pct = Number(l.increasePct ?? DEFAULT_INCREASE_PCT);
     if (!Number.isFinite(pct) || pct < 0 || pct > 100) return 'msg.rent.bad_percent';
     return '';

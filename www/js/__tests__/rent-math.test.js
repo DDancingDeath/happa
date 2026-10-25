@@ -35,10 +35,18 @@ describe('monthsToCharge', () => {
         expect(monthsToCharge(lease({ endMonth: '2026-09' }), '2026-12')).toEqual(['2026-08', '2026-09']);
     });
 
-    test('at most MAX_BACKFILL_MONTHS, newest first kept', () => {
-        const months = monthsToCharge(lease({ startMonth: '2020-01' }), '2026-10');
+    test('all missing months, oldest first (charged one month per write)', () => {
+        const months = monthsToCharge(lease({ startMonth: '2024-11' }), '2026-10');
         expect(months).toHaveLength(MAX_BACKFILL_MONTHS);
+        expect(months[0]).toBe('2024-11');
         expect(months[months.length - 1]).toBe('2026-10');
+    });
+
+    test('start month: at most 24 months back, at most next month', () => {
+        const ok = { rent: 1, dueDay: 10, increasePct: 5 };
+        expect(leaseError({ ...ok, startMonth: '2024-11' }, '2026-10')).toBe('');
+        expect(leaseError({ ...ok, startMonth: '2024-10' }, '2026-10')).toBe('msg.rent.start_too_old');
+        expect(leaseError({ ...ok, startMonth: '2026-12' }, '2026-10')).toBe('msg.rent.start_too_old');
     });
 
     test('newCharge is open with nothing paid (a 0 rent month is closed)', () => {
@@ -63,6 +71,7 @@ describe('payments and status', () => {
         expect(() => applyPayment(charge, -5)).toThrow('amount');
         expect(() => applyPayment(charge, 'x')).toThrow('amount');
         expect(() => applyPayment({ ...charge, paid: 4000 }, 1000.5)).toThrow('over');
+        expect(() => applyPayment({ ...charge, payments: Array(12).fill({ amount: 1 }) }, 1)).toThrow('too_many');
         expect(applyPayment({ amount: 0.3, paid: 0.1 }, 0.2)).toEqual({ amount: 0.2, paid: 0.3, open: false });
     });
 

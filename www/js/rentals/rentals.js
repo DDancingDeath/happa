@@ -20,7 +20,7 @@ import * as store from './rent-store.js';
 import {
     PROPERTY_KINDS, PAYMENT_MODES, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY,
     monthKey, monthLabel, monthsToCharge, chargeStatus, chargeDue, monthSummary, leaseDues, buildRentReminderText,
-    increaseDue, meterBill, propertyError, unitError, tenantError, leaseError, isMonth
+    increaseDue, meterBill, propertyError, unitError, tenantError, leaseError, isMonth, addMonths
 } from './rent-math.js';
 
 const PAGES = ['rent', 'tenants', 'properties', 'access'];
@@ -44,6 +44,10 @@ let domReady = null;
 // Owner decision: anyone with a rentals role records payments and updates records.
 const canWrite = () => !!rentalsRole();
 const isOwner = () => rentalsRole() === 'owner';
+const isManager = () => ['owner', 'manager'].includes(rentalsRole());
+const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.code || e);
+/** Shop role in the chosen language (Helpers.roleLabel is English only). */
+const roleText = (role) => t(`ui.role.${['owner', 'manager', 'staff'].includes(role) ? (role === 'staff' ? 'member' : role) : 'none'}`);
 const val = (id) => (document.getElementById(id)?.value ?? '').trim();
 const isVisible = () => document.getElementById('rentals')?.classList.contains('active');
 
@@ -220,7 +224,7 @@ function renderRent(d) {
         const actions = (a.dues.total > 0
             ? `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.pay('${js(a.leaseId)}')">${esc(t('ui.rent.record_payment'))}</button>
                <button type="button" class="rent-btn rent-btn-wa" onclick="window.app.rentals.remind('${js(a.leaseId)}')">${esc(t('ui.rent.whatsapp_reminder'))}</button>`
-            : '') + (a.lease && a.current
+            : '') + (a.lease && a.current && (!a.current.electricity || isManager())
             ? `<button type="button" class="rent-btn" onclick="window.app.rentals.meter('${js(a.leaseId)}')">⚡ ${esc(t('ui.rent.meter_reading'))}</button>`
             : '');
         return `<div class="rent-row">
@@ -267,10 +271,11 @@ async function pay(leaseId) {
         UIManager.showToast(t('msg.rent.payment_saved', { amount: formatINR(res.amount) }), 'success');
         AuditService.log('RENT_PAYMENT', {
             chargeId: id, month: charge?.month || '', amount: res.amount, mode, tenant: charge?.tenantName || ''
-        }).catch(() => {});
+        }).catch(auditWarn);
     } catch (e) {
         const key = e?.message === 'amount' ? 'msg.rent.bad_amount'
             : e?.message === 'over' ? 'msg.rent.more_than_due'
+            : e?.message === 'too_many' ? 'msg.rent.too_many_payments'
             : 'msg.rent.payment_failed';
         UIManager.showToast(t(key), 'error');
     }
@@ -303,11 +308,15 @@ async function meter(leaseId) {
     if (!lease || !charge) return;
     const unit = d.units.find(u => u.id === lease.unitId);
     const e = charge.electricity;
+    if (e && !isManager()) return UIManager.showToast(t('msg.rent.meter_manager_only'), 'info');
     const prev = e?.prev ?? unit?.lastReading ?? 0;
+    // Previous reading is fixed once known; the rate too for members (rules check both).
+    const prevLocked = e != null || unit?.lastReading != null;
+    const rateLocked = !isManager() && unit?.meterRate != null;
     const ok = await dialog(`<h3>⚡ ${esc(t('ui.rent.meter_reading'))}: ${esc(monthLabel(state.month, getLang()))}</h3>
-        <label class="rent-label">${esc(t('ui.rent.meter_prev'))}<input id="rentMeterPrev" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(prev)}"></label>
+        <label class="rent-label">${esc(t('ui.rent.meter_prev'))}<input id="rentMeterPrev" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(prev)}"${prevLocked ? ' readonly' : ''}></label>
         <label class="rent-label">${esc(t('ui.rent.meter_curr'))}<input id="rentMeterCurr" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.curr ?? '')}"></label>
-        <label class="rent-label">${esc(t('ui.rent.meter_rate'))}<input id="rentMeterRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.rate ?? unit?.meterRate ?? '')}"></label>
+        <label class="rent-label">${esc(t('ui.rent.meter_rate'))}<input id="rentMeterRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.rate ?? unit?.meterRate ?? '')}"${rateLocked ? ' readonly' : ''}></label>
         <p class="rent-help">${esc(t('ui.rent.meter_help'))}</p>`);
     if (!ok) return;
     let bill;
@@ -316,10 +325,11 @@ async function meter(leaseId) {
     } catch (_) {
         return UIManager.showToast(t('msg.rent.bad_reading'), 'error');
     }
+    if (!unit) return UIManager.showToast(t('msg.rent.save_failed'), 'error');
     try {
-        await store.recordMeter(charge.id, unit?.id || null, bill);
+        await store.recordMeter(charge.id, unit.id, bill);
         UIManager.showToast(t('msg.rent.meter_saved', { amount: formatINR(bill.amount), units: bill.units }), 'success');
-        AuditService.log('RENT_METER', { chargeId: charge.id, units: bill.units, rate: bill.rate, amount: bill.amount }).catch(() => {});
+        AuditService.log('RENT_METER', { chargeId: charge.id, units: bill.units, rate: bill.rate, amount: bill.amount }).catch(auditWarn);
     } catch (err) {
         UIManager.showToast(t(err?.message === 'below_paid' ? 'msg.rent.below_paid' : 'msg.rent.save_failed'), 'error');
     }
@@ -346,11 +356,14 @@ async function editLease(leaseId) {
     };
     const err = leaseError(next);
     if (err) return UIManager.showToast(t(err), 'error');
+    // The new rent applies from the first month not yet charged, so the next
+    // yearly reminder counts from there.
+    const appliesFrom = isMonth(lease.chargedThrough) && lease.chargedThrough >= state.month ? addMonths(state.month, 1) : state.month;
     const reviewed = next.rent !== lease.rent || inc.due;
     const fields = { rent: next.rent, dueDay: next.dueDay, increasePct: next.increasePct };
-    if (reviewed) fields.rentSince = state.month;
+    if (reviewed) fields.rentSince = appliesFrom;
     await saveRent(() => store.updateLease(leaseId, fields));
-    if (next.rent !== lease.rent) AuditService.log('RENT_CHANGE', { leaseId, from: lease.rent, to: next.rent }).catch(() => {});
+    if (next.rent !== lease.rent) AuditService.log('RENT_CHANGE', { leaseId, from: lease.rent, to: next.rent }).catch(auditWarn);
 }
 
 // ---------- Tenants ----------
@@ -431,10 +444,10 @@ async function moveIn(tenantId) {
         startMonth: val('rentLeaseStart'), deposit: Number(val('rentLeaseDeposit') || 0),
         increasePct: Number(val('rentLeasePct') || 0)
     };
-    const err = !unit || unit.leaseId ? 'msg.rent.no_vacant_unit' : leaseError(lease);
+    const err = !unit || unit.leaseId ? 'msg.rent.no_vacant_unit' : leaseError(lease, state.month);
     if (err) return UIManager.showToast(t(err), 'error');
     await saveRent(() => store.startLease({ unit, tenantId, ...lease }));
-    AuditService.log('RENT_MOVE_IN', { tenantId, unitId: unit.id, rent: lease.rent }).catch(() => {});
+    AuditService.log('RENT_MOVE_IN', { tenantId, unitId: unit.id, rent: lease.rent }).catch(auditWarn);
 }
 
 function fillRent(select) {
@@ -452,12 +465,16 @@ async function moveOut(leaseId) {
     const d = store.snapshot();
     const lease = d.leases.find(l => l.id === leaseId);
     if (!lease) return;
+    // Ending before the last charged month removes charged months: owner/manager only (rules).
+    const earliest = !isManager() && isMonth(lease.chargedThrough) && lease.chargedThrough > lease.startMonth
+        ? lease.chargedThrough : lease.startMonth;
     const ok = await dialog(`<h3>${esc(t('ui.rent.move_out'))}</h3>
         <p>${esc(t('msg.rent.move_out_note'))}</p>
-        <label class="rent-label">${esc(t('ui.rent.last_month'))}<input id="rentEndMonth" type="month" min="${esc(lease.startMonth)}" max="${esc(state.month)}" value="${esc(state.month)}"></label>`);
+        <label class="rent-label">${esc(t('ui.rent.last_month'))}<input id="rentEndMonth" type="month" min="${esc(earliest)}" max="${esc(state.month)}" value="${esc(state.month)}"></label>`);
     if (!ok) return;
     const end = val('rentEndMonth');
     if (!isMonth(end) || end < lease.startMonth || end > state.month) return UIManager.showToast(t('msg.rent.bad_end_month'), 'error');
+    if (end < earliest) return UIManager.showToast(t('msg.rent.backdate_manager_only'), 'error');
     const names = {
         tenantName: d.tenants.find(x => x.id === lease.tenantId)?.name || '',
         unitLabel: d.units.find(x => x.id === lease.unitId)?.label || ''
@@ -465,8 +482,9 @@ async function moveOut(leaseId) {
     try {
         await store.endLease(leaseId, end, state.month, names);
         UIManager.showToast(t('msg.rent.saved'), 'success');
-        AuditService.log('RENT_MOVE_OUT', { leaseId, endMonth: end }).catch(() => {});
+        AuditService.log('RENT_MOVE_OUT', { leaseId, endMonth: end }).catch(auditWarn);
     } catch (e) {
+        console.warn('Move-out failed:', e?.code || e?.message || e);
         const key = e?.message === 'later_paid' ? 'msg.rent.later_paid'
             : e?.message === 'bad_month' ? 'msg.rent.bad_end_month' : 'msg.rent.save_failed';
         UIManager.showToast(t(key), 'error');
@@ -595,7 +613,7 @@ function renderAccess() {
         .map(u => {
             const opts = roles.map(([v, k]) => `<option value="${v}"${(u.rentRole || '') === v ? ' selected' : ''}>${esc(t(k))}</option>`).join('');
             return `<div class="rent-row rent-access-row"><div><div class="rent-name">${esc(u.name || u.email || '')}</div>
-                <div class="rent-sub">${esc(t('ui.rent.shop_role', { role: Helpers.roleLabel(u.role) }))}</div></div>
+                <div class="rent-sub">${esc(t('ui.rent.shop_role', { role: roleText(u.role) }))}</div></div>
                 <select onchange="window.app.rentals.setRole('${js(u.id)}', this.value)">${opts}</select></div>`;
         }).join('');
     return `<p class="rent-help">${esc(t('ui.rent.access_help'))}</p>${rows || `<p class="rent-empty">${esc(t('ui.rent.no_users'))}</p>`}`;

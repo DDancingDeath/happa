@@ -1808,5 +1808,13 @@ export default {
     'ui.rent.meter_rate': "Rate per unit (₹)",
     'ui.rent.meter_help': "Electricity = (current − previous) × rate, added to this month's rent. Saving again replaces it.",
     'ui.rent.increase_pct': "Yearly increase (%)",
-    'ui.rent.rent_change_note': "The yearly increase is only a reminder. Change the rent here after agreeing with the tenant; it applies from next month's rent."
+    'ui.rent.rent_change_note': "The yearly increase is only a reminder. Change the rent here after agreeing with the tenant; it applies from next month's rent.",
+    'ui.role.owner': "Owner",
+    'ui.role.manager': "Manager",
+    'ui.role.member': "Member",
+    'ui.role.none': "No shop access",
+    'msg.rent.too_many_payments': "This month already has 12 payments; ask a manager to correct it",
+    'msg.rent.meter_manager_only': "This month's reading is saved. Only the owner or a manager can change it.",
+    'msg.rent.backdate_manager_only': "Only the owner or a manager can end the rent before the last charged month",
+    'msg.rent.start_too_old': "The start month must be within the last 24 months"
 };

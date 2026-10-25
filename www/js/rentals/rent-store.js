@@ -9,7 +9,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import {
     applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange,
-    MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY
+    MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
 
 /**
@@ -49,10 +49,12 @@ export function attach(month, onChange) {
     // Leases also report when a local write is acknowledged, so charges are only
     // generated for a lease the server already has (no transaction contention).
     const listen = (key, query, opts = {}) => {
-        unsubs.push(query.limit(LISTEN_LIMITS[key]).onSnapshot(opts, (snap) => {
-            if (snap.size >= LISTEN_LIMITS[key]) truncated.add(key); else truncated.delete(key);
+        // One more than the limit, so "full" is reported only when there really is more.
+        unsubs.push(query.limit(LISTEN_LIMITS[key] + 1).onSnapshot(opts, (snap) => {
+            if (snap.size > LISTEN_LIMITS[key]) truncated.add(key); else truncated.delete(key);
             const next = new Map();
-            snap.forEach(doc => next.set(doc.id, { id: doc.id, ...doc.data(), _pending: !!doc.metadata?.hasPendingWrites }));
+            snap.docs.slice(0, LISTEN_LIMITS[key])
+                .forEach(doc => next.set(doc.id, { id: doc.id, ...doc.data(), _pending: !!doc.metadata?.hasPendingWrites }));
             data[key] = next;
             onChange(key);
         }, (error) => {
@@ -95,7 +97,7 @@ const created = (fields) => ({ ...fields, archived: false, createdAt: Date.now()
 
 export const addProperty = (p) => coll('rent_properties').doc().set(created(p));
 export const updateProperty = (id, fields) => coll('rent_properties').doc(id).update(stamp(fields));
-export const addUnit = (u) => coll('rent_units').doc().set(created({ leaseId: null, lastReading: null, meterRate: null, ...u }));
+export const addUnit = (u) => coll('rent_units').doc().set(created({ leaseId: null, lastReading: null, meterRate: null, meterCharge: null, ...u }));
 export const updateUnit = (id, fields) => coll('rent_units').doc(id).update(stamp(fields));
 export const addTenant = (tn) => coll('rent_tenants').doc().set(created(tn));
 export const updateTenant = (id, fields) => coll('rent_tenants').doc(id).update(stamp(fields));
@@ -119,54 +121,61 @@ export async function startLease({ unit, tenantId, rent, dueDay, startMonth, dep
 }
 
 /**
- * Move out (one transaction): charges exist exactly up to the last month.
- * Missing months up to ndMonth are created, unpaid months after it are
- * deleted, and the lease ends with chargedThrough = endMonth. The last month
- * can't be in the future (currentMonth); unpaid earlier months stay due.
- * @throws {Error} 'bad_month' | 'later_paid' (a month after endMonth has payments) | 'missing'
+ * Creates the missing monthly charges of one lease up to `month`, one month per
+ * transaction (the rules let chargedThrough move one month at a time, so no
+ * month can be skipped). Each transaction re-reads the lease, so two phones
+ * never create the same month twice.
+ * @returns {Promise<number>} charges created
+ */
+export async function chargeLease(leaseId, month, names, maxMonths = MAX_BACKFILL_MONTHS) {
+    const db = FirebaseService.db;
+    const leaseRef = coll('rent_leases').doc(leaseId);
+    let created = 0;
+    while (created < maxMonths) {
+        const made = await db.runTransaction(async (tx) => {
+            const snap = await tx.get(leaseRef);
+            if (!snap.exists) return false;
+            const lease = { id: snap.id, ...snap.data() };
+            const [m] = monthsToCharge(lease, month);
+            if (!m) return false;
+            tx.set(coll('rent_charges').doc(chargeId(lease.id, m)), { ...newCharge(lease, m, names), updatedBy: uid() });
+            tx.update(leaseRef, { chargedThrough: m, updatedAt: Date.now(), updatedBy: uid() });
+            return true;
+        });
+        if (!made) break;
+        created++;
+    }
+    return created;
+}
+
+/**
+ * Move out. Charges are first brought up to the last month, then one
+ * transaction ends the lease with chargedThrough = endMonth, frees the unit and
+ * deletes unpaid months after the last month (a back-dated move-out; rules allow
+ * that for owner/manager only). The last month can't be in the future.
+ * @throws {Error} 'bad_month' | 'later_paid' (a later month has payments) | 'not_charged' | 'missing'
  */
 export async function endLease(leaseId, endMonth, currentMonth, names = {}) {
     const db = FirebaseService.db;
     const leaseRef = coll('rent_leases').doc(leaseId);
+    if (!isMonth(endMonth) || endMonth > currentMonth) throw new Error('bad_month');
+    await chargeLease(leaseId, endMonth, names, MAX_BACKFILL_MONTHS);
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(leaseRef);
         if (!snap.exists) throw new Error('missing');
         const lease = { id: snap.id, ...snap.data() };
-        if (!isMonth(endMonth) || endMonth > currentMonth || endMonth < lease.startMonth) throw new Error('bad_month');
-        const later = isMonth(lease.chargedThrough) && lease.chargedThrough > endMonth
-            ? monthRange(addMonths(endMonth, 1), lease.chargedThrough) : [];
+        if (lease.status !== 'active' || endMonth < lease.startMonth) throw new Error('bad_month');
+        if (!isMonth(lease.chargedThrough) || lease.chargedThrough < endMonth) throw new Error('not_charged');
+        const later = lease.chargedThrough > endMonth ? monthRange(addMonths(endMonth, 1), lease.chargedThrough) : [];
         const laterSnaps = await Promise.all(later.map(m => tx.get(coll('rent_charges').doc(chargeId(lease.id, m)))));
         if (laterSnaps.some(s => s.exists && ((Number(s.data().paid) || 0) > 0 || (s.data().payments || []).length))) {
             throw new Error('later_paid');
         }
         const now = Date.now();
-        for (const m of monthsToCharge(lease, endMonth)) {
-            tx.set(coll('rent_charges').doc(chargeId(lease.id, m)), { ...newCharge(lease, m, names), updatedBy: uid() });
-        }
         laterSnaps.filter(s => s.exists).forEach(s => tx.delete(s.ref));
         tx.update(leaseRef, { status: 'ended', endMonth, chargedThrough: endMonth, updatedAt: now, updatedBy: uid() });
         tx.update(coll('rent_units').doc(lease.unitId), { leaseId: null, updatedAt: now, updatedBy: uid() });
-    });
-}
-
-/**
- * Creates the missing monthly charges of one lease up to `month`. The lease is
- * re-read inside the transaction, so two phones never create the same month
- * twice (and the charge id is fixed per lease and month anyway).
- * @returns {Promise<number>} charges created
- */
-export async function chargeLease(leaseId, month, names) {
-    const db = FirebaseService.db;
-    const leaseRef = coll('rent_leases').doc(leaseId);
-    return db.runTransaction(async (tx) => {
-        const snap = await tx.get(leaseRef);
-        if (!snap.exists) return 0;
-        const lease = { id: snap.id, ...snap.data() };
-        const months = monthsToCharge(lease, month);
-        if (!months.length) return 0;
-        for (const m of months) tx.set(coll('rent_charges').doc(chargeId(lease.id, m)), { ...newCharge(lease, m, names), updatedBy: uid() });
-        tx.update(leaseRef, { chargedThrough: months[months.length - 1], updatedAt: Date.now(), updatedBy: uid() });
-        return months.length;
+        return later.length;
     });
 }
 
@@ -209,8 +218,8 @@ export async function recordMeter(id, unitId, meter) {
         if (!snap.exists) throw new Error('missing');
         const next = applyMeter(snap.data(), meter);
         const now = Date.now();
-        tx.update(chargeRef, { rent: next.rent, electricity: meter, amount: next.amount, open: next.open, updatedAt: now, updatedBy: uid() });
-        if (unitId) tx.update(coll('rent_units').doc(unitId), { lastReading: meter.curr, meterRate: meter.rate, updatedAt: now, updatedBy: uid() });
+        tx.update(chargeRef, { electricity: meter, amount: next.amount, open: next.open, updatedAt: now, updatedBy: uid() });
+        tx.update(coll('rent_units').doc(unitId), { lastReading: meter.curr, meterRate: meter.rate, meterCharge: id, updatedAt: now, updatedBy: uid() });
         return next;
     });
 }
