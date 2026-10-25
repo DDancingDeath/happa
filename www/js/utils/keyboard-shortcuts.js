@@ -13,7 +13,7 @@ export const TAB_SHORTCUTS = [
     { tabId: 'billing', en: 'Billing', hi: 'बिलिंग' },
     { tabId: 'wholesale-sales', en: 'Wholesale', hi: 'थोक' },
     { tabId: 'expenses', en: 'Expenses', hi: 'खर्च' },
-    { tabId: 'items', en: 'Items', hi: 'आइटम' },
+    { tabId: 'rates', en: 'Rates', hi: 'रेट' },
     { tabId: 'history', en: 'History', hi: 'इतिहास' },
     { tabId: 'stock', en: 'Stocks', hi: 'स्टॉक' },
     { tabId: 'due', en: 'Outstanding', hi: 'बकाया' },

@@ -34,7 +34,7 @@ setting is missing or invalid.
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
 | `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client |
-| `purchaseRates` | See purchase rates | खरीद रेट देखें | on | on | client (Items page only) |
+| `purchaseRates` | See purchase rates | खरीद रेट देखें | on | on | client (Rates page, Rates tab only) |
 | `historyDays` | History: days back (0 = all) | इतिहास: कितने दिन पीछे तक (0 = सभी) | 0 | 0 | client |
 | `editDays` | Edit/delete bills for (days) | बिल बदलने/हटाने के दिन | 2 | 2 | **client + rules** |
 
@@ -42,12 +42,14 @@ setting is missing or invalid.
   members edit and delete only their own bills. Recording a payment, clearing or writing off
   a due is **not** limited (it is bookkeeping, not an edit). The owner has no limit.
 - `historyDays`: whole days, 0–3650; 0 = all bills.
-- Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, Rate trends,
+- Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, the Rates page Trends and Product traffic tabs,
   App health) and the stock adjustment / item edit actions are not in the list: their rules are
   fixed and the setting could not open them. `TAB_ROLES` in `role-access.js` lists them (Admin:
   owner; the others: owner and manager); `canOpenTab()` refuses them for other roles, and
-  `NavigationManager` shows Today with a message instead.
-- `purchaseRates`: hides the Purchase rates column on the Items page and the purchase-rate
+  `NavigationManager` shows Today with a message instead. Trends and Product traffic are page id
+  `rate-trends` (routes `rates-trends`, `rates-traffic`; the old `rate-trends` id still works):
+  members do not see those tabs, and opening one shows Rates › Rates instead.
+- `purchaseRates`: hides the Purchase rates column on the Rates tab and the purchase-rate
   fields of the item form. Billing keeps showing purchase rates because members need them to
   make purchase bills; they also stay readable in the data.
 - #154 asked for "narrow only". The owner's later decision is per-role control, so the owner can

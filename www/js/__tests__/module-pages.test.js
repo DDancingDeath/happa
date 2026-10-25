@@ -1,5 +1,5 @@
 /**
- * @fileoverview Everyday pages (#96): Items, Stock, Today (day.js),
+ * @fileoverview Everyday pages (#96): Rates (items list), Stock, Today (day.js),
  * Admin/Users, Settings and Diagnostics — a happy path plus edge cases each,
  * using the shared SAMPLE_ITEMS fixture, including Hindi/English search.
  *
@@ -38,7 +38,7 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-describe('Items', () => {
+describe('Rates › Rates (items list)', () => {
     beforeEach(() => {
         document.body.innerHTML = `
           <table><thead><tr><th class="wholesale-column"></th></tr></thead><tbody id="itemsViewTableBody"></tbody></table>

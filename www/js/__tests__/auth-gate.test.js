@@ -226,6 +226,17 @@ describe('role-based restrictions', () => {
         expect(document.getElementById('del').disabled).toBe(false);
     });
 
+    test('Rates page: Trends and Product traffic tabs only for owner and manager', () => {
+        document.body.insertAdjacentHTML('beforeend',
+            '<div class="rates-subtabs" style="display: none;"></div><div class="rates-subtabs" style="display: none;"></div>');
+        const bars = () => [...document.querySelectorAll('.rates-subtabs')].map(b => b.style.display);
+        for (const [role, shownAs] of [['owner', ''], ['manager', ''], ['staff', 'none']]) {
+            AppState.userRole = role;
+            AuthManager.applyRoleBasedRestrictions();
+            expect(bars()).toEqual([shownAs, shownAs]);
+        }
+    });
+
     test('Roles & access (#84): the owner\'s choices per role drive pages and sections', () => {
         AppState.settings.roleAccess = { staff: { reports: true, profit: false }, manager: { finance: false } };
         try {
