@@ -21,6 +21,27 @@ node tools/migrate/migrate.js apply --bundle $D\out\bundle.json --project happa-
 
 Delete the folder's backup, bundle, key and `users.json` after cutover (keep only the encrypted backup archive). Without `--out-dir`, output goes to `tools/migrate/out/` (git-ignored).
 
+### Other inputs: `convert`
+
+`plan` reads only the backup format. A copy of the documents in Firestore REST form (`{name, fields: {stringValue, integerValue, timestampValue, …}, updateTime}`, keyed by the full document name or as an array; for example taken from a browser's offline cache, with no Firestore reads) is turned into that format first:
+
+```powershell
+node tools/migrate/migrate.js convert --in $D\rest-docs.json --out $D\backup.json --exclude telemetry,tipHealth,auditLogs
+```
+
+Root collections only (as the export), `dev_*` left out, timestamps kept to the nanosecond. `exportedAt` (the cutoff) is the newest `updateTime` unless `--exported-at <ISO>` is given. A cache holds only what that device had loaded: check the collection counts against the app before trusting it (collections it never opened, such as other users' profiles or `counters`, are missing).
+
+### After a rehearsal: `wipe`
+
+A rehearsal in the real project (not `--dev`) must be removed before the real migration, otherwise opening records with test payments are kept by `apply`:
+
+```powershell
+node tools/migrate/migrate.js wipe --project happa-bfc07 --key $D\key.json          # dry run: counts only
+node tools/migrate/migrate.js wipe --project happa-bfc07 --key $D\key.json --yes    # deletes
+```
+
+It deletes **every document in every root collection** (subcollections included) and the Auth users whose email ends with `--test-domain` (default `@happa.local`, the test logins); other Auth users (the imported logins) are kept. Cost: one delete and one read per document (Spark: 20,000 deletes and 50,000 reads a day). It refuses `aadhat-management` and a key for another project. Then run `plan`/`apply` again (`--restart`).
+
 ## What is carried
 
 | What | How | Flag (default first) |
