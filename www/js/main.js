@@ -23,6 +23,7 @@ import { DayManager } from './modules/day.js';
 import { AnomaliesManager } from './modules/anomalies.js';
 import { RateTrendsManager } from './modules/rate-trends.js';
 import { HealthManager } from './modules/health.js';
+import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
@@ -94,7 +95,7 @@ function refreshForLanguage(lang) {
         },
         'cash-management': () => CashManagementManager.refreshForLanguage(),
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
-        settings: () => SettingsManager.loadSettings(),
+        settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
         finance: () => FinanceManager.renderDashboard()
     }[tabId];
     if (redraw) run(tabId, redraw);
@@ -275,7 +276,7 @@ async function initializeUserData() {
         });
         // Shared labour rate / heavy-packet weight (#20) come from the same settings/app read
         FirebaseService.loadAppSettings()
-            .then(data => { configureTip(data); return SettingsManager.applySharedSettings(data); })
+            .then(data => { configureTip(data); RolesAccessManager.applyShared(data); return SettingsManager.applySharedSettings(data); })
             .catch(e => console.warn('Shared labour settings not loaded:', e?.code || e));
         // TIP reporting (#217): approved user only; writes are batched (≤ 1 counter write / 30 min)
         startTipReporting({ sink: writeTipReport, buildId: BUILD_ID });
@@ -1151,6 +1152,7 @@ window.app = {
         load: () => {
             AppUpdatesManager.renderSettings();
             SettingsManager.loadSettings();
+            RolesAccessManager.render();
         },
         save: () => SettingsManager.saveSettings(),
         toggleDarkMode: () => SettingsManager.toggleDarkMode(),
@@ -1170,6 +1172,12 @@ window.app = {
     install: {
         prompt: () => InstallManager.prompt(),
         refresh: () => InstallManager.refresh()
+    },
+
+    // Settings → Roles & access (owner, #84)
+    roles: {
+        render: () => RolesAccessManager.render(),
+        save: () => RolesAccessManager.saveForm()
     },
     
     // Users

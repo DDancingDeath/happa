@@ -5,6 +5,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
+import { canOpenTab, hiddenPermissionClasses } from '../utils/role-access.js';
 
 const usersCollection = () => (window.getCollection ? window.getCollection('users') : 'users');
 
@@ -390,11 +391,12 @@ const AuthManager = {
         }
     },
 
-    // Apply role-based UI restrictions
+    // Apply role-based UI restrictions (pages and sections per Roles & access, #84)
     applyRoleBasedRestrictions() {
         const isOwnerOrManager = AppState.userRole === 'owner' || AppState.userRole === 'manager';
         const isOwner = AppState.userRole === 'owner';
-        const isStaff = AppState.userRole === 'staff';
+        const roleAccess = AppState.settings?.roleAccess;
+        const mayOpen = (tabId) => canOpenTab(tabId, AppState.userRole, roleAccess);
         
         // Update username display in navigation
         const userNameDisplay = document.getElementById('currentUserName');
@@ -405,9 +407,9 @@ const AuthManager = {
         
         // Hide/show tabs based on role
         const restrictedTabs = {
-            'financeTab': isOwnerOrManager,
-            'analyticsTab': isOwnerOrManager,
-            'salesTab': !isStaff
+            'financeTab': mayOpen('finance'),
+            'analyticsTab': mayOpen('analytics'),
+            'salesTab': mayOpen('wholesale-sales')
         };
         
         Object.entries(restrictedTabs).forEach(([tabId, allowed]) => {
@@ -423,16 +425,8 @@ const AuthManager = {
             const onclick = item.getAttribute('onclick');
             const tabId = onclick?.match(/showTab\('([^']+)'/)?.[1];
             if (tabId) {
-                if (tabId === 'finance' && !isOwnerOrManager) {
-                    item.style.display = 'none';
-                } else if (tabId === 'finance' && isOwnerOrManager) {
-                    item.style.display = 'block';
-                }
-                
-                if (tabId === 'analytics' && !isOwnerOrManager) {
-                    item.style.display = 'none';
-                } else if (tabId === 'analytics' && isOwnerOrManager) {
-                    item.style.display = 'block';
+                if (['finance', 'analytics', 'reports', 'wholesale-sales'].includes(tabId)) {
+                    item.style.display = mayOpen(tabId) ? 'block' : 'none';
                 }
                 
                 // Anomalies (#187): owner/manager only until #84 decides otherwise
@@ -461,25 +455,17 @@ const AuthManager = {
                     item.style.display = 'block';
                 }
                 
-                if (tabId === 'sales' && isStaff) {
-                    item.style.display = 'none';
-                } else if (tabId === 'sales' && !isStaff) {
-                    item.style.display = 'block';
-                }
-                
-                if (tabId === 'wholesale-sales' && isStaff) {
-                    item.style.display = 'none';
-                } else if (tabId === 'wholesale-sales' && !isStaff) {
-                    item.style.display = 'block';
-                }
-                
-                if (tabId === 'reports' && isStaff) {
-                    item.style.display = 'none';
-                } else if (tabId === 'reports' && !isStaff) {
-                    item.style.display = 'block';
+                if (tabId === 'sales') {
+                    item.style.display = mayOpen('wholesale-sales') ? 'block' : 'none';
                 }
             }
         });
+
+        // Sections marked data-perm="<permission>" (styles.css hides them via these body classes)
+        if (document.body) {
+            [...document.body.classList].filter(c => c.startsWith('no-perm-')).forEach(c => document.body.classList.remove(c));
+            hiddenPermissionClasses(AppState.userRole, roleAccess).forEach(c => document.body.classList.add(c));
+        }
         
         // Restrict sensitive buttons
         const deleteButtons = document.querySelectorAll('[data-requires-owner]');

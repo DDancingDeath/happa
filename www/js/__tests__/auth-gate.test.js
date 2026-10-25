@@ -221,4 +221,21 @@ describe('role-based restrictions', () => {
         expect([...document.querySelectorAll('.nav-menu a')].every(a => a.style.display === 'block')).toBe(true);
         expect(document.getElementById('del').disabled).toBe(false);
     });
+
+    test('Roles & access (#84): the owner\'s choices per role drive pages and sections', () => {
+        AppState.settings.roleAccess = { staff: { reports: true, profit: false }, manager: { finance: false } };
+        try {
+            AppState.userRole = 'staff';
+            AuthManager.applyRoleBasedRestrictions();
+            expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['none', 'none', 'none', 'block']);
+            expect(document.body.classList.contains('no-perm-profit')).toBe(true);
+            AppState.userRole = 'manager';
+            AuthManager.applyRoleBasedRestrictions();
+            expect(shown('#financeTab')).toBe('none');
+            expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['none', 'none', 'block', 'block']);
+            expect(document.body.classList.contains('no-perm-profit')).toBe(false);
+        } finally {
+            delete AppState.settings.roleAccess;
+        }
+    });
 });

@@ -4,7 +4,7 @@
  * after the server committed; offline and conflicts keep the editor. Also the
  * client-side edit permission (canEditBill).
  */
-import { BillingManager, PurchaseManager, canEditBill, EDIT_NOT_ALLOWED_KEY } from '../modules/billing.js';
+import { BillingManager, PurchaseManager, canEditBill, EDIT_NOT_ALLOWED_KEY, EDIT_WINDOW_CLOSED_KEY } from '../modules/billing.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
@@ -101,51 +101,62 @@ describe('saveEditedBill', () => {
 });
 
 describe('canEditBill', () => {
+    const recent = { ...BILL, createdAt: { toMillis: () => Date.now() - 60 * 60 * 1000 } };
+    const old = { ...BILL, createdAt: { toMillis: () => Date.now() - 49 * 60 * 60 * 1000 }, timestamp: Date.now() };
+
     afterEach(() => {
         AppState.userRole = 'staff';
         AppState.currentUser = null;
+        delete AppState.settings.roleAccess;
     });
 
-    const HOUR = 3600000;
-    const saved = (msAgo) => ({ ...BILL, createdAt: { toMillis: () => Date.now() - msAgo } });
-
-    it('owner any bill; manager any bill and staff own bills within 2 days of saving (#87)', () => {
+    it('owner any bill; manager any recent bill; member only recent bills they created (#87: 2 days)', () => {
         AppState.currentUser = { uid: 'creator' };
         AppState.userRole = 'staff';
-        expect(canEditBill(saved(47 * HOUR))).toBe(true);
-        expect(canEditBill(saved(49 * HOUR))).toBe(false);
-        expect(canEditBill(BILL)).toBe(false);
-        expect(canEditBill({ ...saved(HOUR), userId: 'someone' })).toBe(false);
-        expect(canEditBill({ ...saved(HOUR), userId: undefined })).toBe(false);
+        expect(canEditBill(recent)).toBe(true);
+        expect(canEditBill(old)).toBe(false);
+        expect(canEditBill({ ...recent, userId: 'someone' })).toBe(false);
+        expect(canEditBill({ ...recent, userId: undefined })).toBe(false);
         AppState.userRole = 'manager';
-        expect(canEditBill({ ...saved(HOUR), userId: undefined })).toBe(true);
-        expect(canEditBill({ ...saved(49 * HOUR), userId: 'someone' })).toBe(false);
+        expect(canEditBill({ ...recent, userId: undefined })).toBe(true);
+        expect(canEditBill(old)).toBe(false);
+        expect(canEditBill(BILL)).toBe(false);
         AppState.userRole = 'owner';
-        expect(canEditBill({ ...BILL, userId: 'someone' })).toBe(true);
+        expect(canEditBill({ ...old, userId: 'someone' })).toBe(true);
+        expect(canEditBill(BILL)).toBe(true);
     });
 
-    it('editBill on an own bill past the window explains the 2-day limit', async () => {
+    it('uses the edit days the owner set in Roles & access (#84)', () => {
         AppState.currentUser = { uid: 'creator' };
         AppState.userRole = 'staff';
-        AppState.purchaseHistory = [saved(3 * 24 * HOUR)];
-        window.currentBillId = 'b1';
-        const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
-        BillingManager.editingBillIndex = undefined;
-        await BillingManager.editBill(0, 'purchase');
-        expect(toast).toHaveBeenCalledWith(t('msg.billing.edit_window_passed'));
-        expect(BillingManager.editingBillIndex).toBeUndefined();
-        toast.mockRestore();
+        AppState.settings.roleAccess = { staff: { editDays: 5 }, manager: { editDays: 0 } };
+        expect(canEditBill(old)).toBe(true);
+        AppState.userRole = 'manager';
+        expect(canEditBill(recent)).toBe(false);
     });
 
     it('editBill refuses with the policy message', async () => {
         AppState.currentUser = { uid: 'other' };
         AppState.userRole = 'staff';
-        AppState.purchaseHistory = [{ ...BILL }];
+        AppState.purchaseHistory = [{ ...recent }];
         window.currentBillId = 'b1';
         const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         BillingManager.editingBillIndex = undefined;
         await BillingManager.editBill(0, 'purchase');
         expect(toast).toHaveBeenCalledWith(t(EDIT_NOT_ALLOWED_KEY));
+        expect(BillingManager.editingBillIndex).toBeUndefined();
+        toast.mockRestore();
+    });
+
+    it('editBill on the creator\'s old bill says the edit window has closed', async () => {
+        AppState.currentUser = { uid: 'creator' };
+        AppState.userRole = 'staff';
+        AppState.purchaseHistory = [{ ...old }];
+        window.currentBillId = 'b1';
+        const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        BillingManager.editingBillIndex = undefined;
+        await BillingManager.editBill(0, 'purchase');
+        expect(toast).toHaveBeenCalledWith(t(EDIT_WINDOW_CLOSED_KEY, { days: 2 }));
         expect(BillingManager.editingBillIndex).toBeUndefined();
         toast.mockRestore();
     });

@@ -17,15 +17,15 @@ import {
     renderStaleHistoryHint, rangeStatus, retryRange, applyRangeState, needsHistoryFrom, loadOlderHistory, monthStart
 } from '../utils/history-window.js';
 import {
-    filterHistoryBills, resolveHistoryRange, normalizeHistoryFilter, formatHistoryRange, billDateOf,
+    filterHistoryBills, resolveHistoryRange, normalizeHistoryFilter, formatHistoryRange, billDateOf, billTimeMs,
     validateCustomRange, olderMonthsToLoad, HISTORY_FILTER_KEY, HISTORY_TYPES, WIDE_LOAD_MONTHS
 } from '../utils/history-filters.js';
+import { accessFor, canEditBillWith, canDeleteBillWith, historyCutoff, withinBillEditWindow } from '../utils/role-access.js';
 import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t } from '../i18n/index.js';
-import { canEditBillFor, canDeleteBillFor, withinBillEditWindow, BILL_WINDOW_PASSED_KEY } from '../utils/record-permissions.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', retail: 'ui.history.noun_retail', wholesale: 'ui.history.noun_wholesale' };
@@ -267,7 +267,9 @@ export class HistoryManager {
         const purchases = purchaseHistory.map(b => ({ ...b, type: 'purchase', isPurchase: true }));
         const wholesaleSales = salesHistory.map(s => ({ ...s, type: 'wholesale', isPurchase: false }));
         const retailSales = retailSalesHistory.map(s => ({ ...s, type: 'retail', isPurchase: false }));
-        const allHistory = [...purchases, ...wholesaleSales, ...retailSales];
+        const cutoff = historyCutoff(AppState.userRole, AppState.settings?.roleAccess);
+        const allHistory = [...purchases, ...wholesaleSales, ...retailSales]
+            .filter(b => cutoff === null || billTimeMs(b) >= cutoff);
         
         const sortedBills = filterHistoryBills(allHistory, { type, range, search: searchTerm });
         this.updateRangeLabel(range, sortedBills.length);
@@ -765,17 +767,15 @@ export class HistoryManager {
         
         document.getElementById('billDetailsContent').innerHTML = content;
         
-        // Edit/delete only when firestore.rules would allow it (2-day window for non-owners, #87)
-        const who = { uid: AppState.currentUser?.uid, role: AppState.userRole };
-        const mayEdit = canEditBillFor(bill, who);
-        const mayDelete = canDeleteBillFor(bill, who);
+        // Edit/Delete only when this user may still change the bill (#87 edit window, #84)
         const editBtn = document.getElementById('billEditBtn');
         const deleteBtn = document.getElementById('billDeleteBtn');
-        if (editBtn) editBtn.style.display = mayEdit ? '' : 'none';
-        if (deleteBtn) deleteBtn.style.display = mayDelete ? '' : 'none';
-        if (AppState.userRole !== 'owner' && !withinBillEditWindow(bill)) {
+        const who = { uid: AppState.currentUser?.uid, role: AppState.userRole, raw: AppState.settings?.roleAccess };
+        if (editBtn) editBtn.style.display = canEditBillWith(bill, who) ? '' : 'none';
+        if (deleteBtn) deleteBtn.style.display = canDeleteBillWith(bill, who) ? '' : 'none';
+        if (AppState.userRole !== 'owner' && !withinBillEditWindow(bill, who)) {
             document.getElementById('billDetailsContent').insertAdjacentHTML('beforeend',
-                `<div class="bill-window-note" style="margin: 0 16px 16px; padding: 10px; background: #f8f9fa; border-radius: 8px; color: #6c757d; font-size: 13px;">🔒 ${L(BILL_WINDOW_PASSED_KEY)}</div>`);
+                `<div class="bill-window-note" style="margin: 0 16px 16px; padding: 10px; background: #f8f9fa; border-radius: 8px; color: #6c757d; font-size: 13px;">🔒 ${L('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })}</div>`);
         }
         
         document.getElementById('billDetailsOverlay').classList.add('active');
@@ -832,12 +832,16 @@ export class HistoryManager {
         }
 
         try {
-            // Owner always; the bill's creator for 2 days after saving (firestore.rules canDeleteBill, #87)
+            // Owner any bill; anyone else only their own bill within the role's edit
+            // window (firestore.rules canDeleteBill; legacy bills are owner-only)
             const uid = AppState.currentUser?.uid;
-            if (!canDeleteBillFor(bill, { uid, role: AppState.userRole })) {
-                const ownBill = !!(uid && bill.userId && bill.userId === uid);
+            const who = { uid, role: AppState.userRole, raw: AppState.settings?.roleAccess };
+            if (!canDeleteBillWith(bill, who)) {
                 this.closeBillDetails();
-                UIManager.showToast(t(ownBill ? BILL_WINDOW_PASSED_KEY : 'msg.history.only_person_who_created_bill'));
+                const mine = !!bill.userId && bill.userId === uid;
+                UIManager.showToast(mine
+                    ? t('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })
+                    : t('msg.history.only_person_who_created_bill'));
                 return;
             }
 

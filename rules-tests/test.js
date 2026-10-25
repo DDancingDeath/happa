@@ -295,6 +295,70 @@ function defineSuite(prefix) {
         }
     });
 
+    // ---- per-role edit days from settings/app.roleAccess (#84), counted from createdAt ----
+
+    const setRoleAccess = (roleAccess) => env.withSecurityRulesDisabled(ctx =>
+        ctx.firestore().collection(`${prefix}settings`).doc('app').set({ roleAccess }, { merge: true }));
+    const mineSaved = (ms, extra = {}) => ({ ...otherBill, userId: 'staff1', createdAt: savedAgo(ms), ...extra });
+
+    t('edit window: days come from settings/app.roleAccess per role; bad values fall back to 2', async () => {
+        const coll = purchases;
+        await setRoleAccess({ staff: { editDays: 0 }, manager: { editDays: 10 } });
+        await seedBill(coll, 'hour', mineSaved(HOUR));
+        await seedBill(coll, 'five', mineSaved(5 * DAY));
+        await assertFails(as('staff1').collection(coll).doc('hour').update({ total: 9, clientVersion: 3 }));
+        await assertFails(as('staff1').collection(coll).doc('hour').delete());
+        await assertSucceeds(as('manager1').collection(coll).doc('five').update({ total: 9, clientVersion: 3 }));
+        await setRoleAccess({ staff: { editDays: 7 }, manager: { editDays: 'x' } });
+        await assertSucceeds(as('staff1').collection(coll).doc('five').update({ total: 10, clientVersion: 3 }));
+        await assertFails(as('manager1').collection(coll).doc('five').update({ total: 11, clientVersion: 3 }));
+        await setRoleAccess({ staff: { editDays: 99 } });
+        await assertFails(as('staff1').collection(coll).doc('five').update({ total: 12, clientVersion: 3 }));
+        await setRoleAccess({ staff: { editDays: 7 } });
+        await assertSucceeds(as('staff1').collection(coll).doc('five').delete());
+    });
+
+    t('edit window: per-role days still refuse made-up and old-app clocks', async () => {
+        await setRoleAccess({ staff: { editDays: 30 }, manager: { editDays: 30 } });
+        for (const coll of bills) {
+            const db = as('staff1').collection(coll);
+            // made-up createdAt on create is refused; a future client timestamp opens nothing
+            await assertFails(db.doc('n3').set({ userId: 'staff1', total: 5, clientVersion: 3, createdAt: Timestamp.fromMillis(Date.now() + 30 * DAY) }));
+            await assertSucceeds(db.doc('n4').set({ userId: 'staff1', total: 5, clientVersion: 3, timestamp: Date.now() + 365 * DAY }));
+            await assertFails(db.doc('n4').update({ total: 6, clientVersion: 3 }));
+            await assertFails(db.doc('n4').delete());
+            // old-app bill (no createdAt) stays owner-only, even with a fresh timestamp
+            await seedBill(coll, 'legacy', { ...otherBill, userId: 'staff1', timestamp: Date.now() });
+            await assertFails(db.doc('legacy').update({ total: 9, clientVersion: 3 }));
+            await assertFails(as('manager1').collection(coll).doc('legacy').update({ total: 9, clientVersion: 3 }));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('legacy').delete());
+        }
+    });
+
+    t('edit window: legacy backfill of timestamp or createdAt never unlocks an owner-only bill', async () => {
+        for (const coll of bills) {
+            const legacy = { userId: 'staff1', total: 100, date: '01/10/2026', payment: { due: 100 }, items: [] };
+            await seedBill(coll, 'old', legacy);
+            const ref = as('staff1').collection(coll).doc('old');
+            await assertSucceeds(ref.update({ timestamp: Date.now(), openDue: true, clientVersion: 3 }));
+            await assertFails(ref.update({ total: 9, clientVersion: 3 }));
+            await assertFails(ref.delete());
+            await assertFails(ref.update({ createdAt: serverTimestamp(), clientVersion: 3 }));
+            await assertFails(ref.update({ createdAt: Timestamp.fromMillis(Date.now()), total: 9, clientVersion: 3 }));
+            await assertFails(ref.set({ ...legacy, createdAt: serverTimestamp(), clientVersion: 3 }));
+            await assertFails(as('manager1').collection(coll).doc('old').update({ createdAt: serverTimestamp(), clientVersion: 3 }));
+        }
+    });
+
+    t('roles & access (settings/app.roleAccess): only the owner writes it; everyone approved reads it', async () => {
+        const roleAccess = { staff: { finance: true, editDays: 5 }, manager: { editDays: 30 } };
+        await assertFails(as('staff1').collection(`${prefix}settings`).doc('app').set({ roleAccess }, { merge: true }));
+        await assertFails(as('manager1').collection(`${prefix}settings`).doc('app').set({ roleAccess }, { merge: true }));
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}settings`).doc('app').set({ roleAccess }, { merge: true }));
+        await assertSucceeds(as('staff1').collection(`${prefix}settings`).doc('app').get());
+        await assertFails(as('pending1').collection(`${prefix}settings`).doc('app').get());
+    });
+
     // ---- settings/app (minClientVersion): owner only ----
 
     t('only the owner can write settings/app; other settings docs unchanged', async () => {

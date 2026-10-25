@@ -12,6 +12,9 @@ import { AdminManager } from '../modules/admin.js';
 import { UsersManager } from '../modules/users.js';
 import { SettingsManager } from '../modules/settings.js';
 import { DiagnosticsManager } from '../modules/diagnostics.js';
+import { RolesAccessManager } from '../modules/roles-access.js';
+import { AuditService } from '../services/audit.js';
+import { ROLE_ACCESS_DEFAULTS } from '../utils/role-access.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { TelemetryService } from '../services/telemetry.js';
 import { UIManager } from '../ui/ui-manager.js';
@@ -503,6 +506,48 @@ describe('Settings', () => {
         expect(list.textContent).toContain('Bill: P1 • Amount: ₹50');
         expect(list.textContent).not.toContain('Asha');
         expect(list.querySelector('b')).toBeNull();
+    });
+
+    test('Roles & access (#84): owner-only grid; saving writes settings/app and applies at once', async () => {
+        document.body.innerHTML += `<div id="roleAccessCard" style="display:none"><div id="roleAccessGrid"></div><p id="roleAccessStatus"></p></div>`;
+        const save = jest.spyOn(FirebaseService, 'saveRoleAccess').mockResolvedValue(undefined);
+        jest.spyOn(AuditService, 'log').mockResolvedValue(undefined);
+
+        AppState.userRole = 'manager';
+        RolesAccessManager.render();
+        expect(document.getElementById('roleAccessCard').style.display).toBe('none');
+        expect(document.getElementById('roleAccessGrid').innerHTML).toBe('');
+        expect(await RolesAccessManager.saveForm()).toBe(false);
+        expect(save).not.toHaveBeenCalled();
+
+        AppState.userRole = 'owner';
+        RolesAccessManager.render();
+        expect(document.getElementById('roleAccessCard').style.display).toBe('');
+        expect(document.getElementById('ra-staff-finance').checked).toBe(false);
+        expect(document.getElementById('ra-manager-finance').checked).toBe(true);
+        expect(document.getElementById('ra-staff-editDays').value).toBe('2');
+        expect(document.getElementById('roleAccessGrid').textContent).toContain('Member');
+        expect(document.getElementById('roleAccessGrid').textContent).not.toMatch(/staff/i);
+
+        document.getElementById('ra-staff-reports').checked = true;
+        document.getElementById('ra-staff-personalExpenses').checked = false;
+        document.getElementById('ra-staff-editDays').value = '45';
+        expect(await RolesAccessManager.saveForm()).toBe(true);
+        const saved = save.mock.calls[0][0];
+        expect(saved.staff).toMatchObject({ reports: true, personalExpenses: false, editDays: 30, finance: false });
+        expect(saved.manager).toEqual(ROLE_ACCESS_DEFAULTS.manager);
+        expect(AppState.settings.roleAccess).toEqual(saved);
+        expect(JSON.parse(localStorage.getItem('settings')).roleAccess.staff.reports).toBe(true);
+        expect(AuditService.log).toHaveBeenCalledWith('CHANGE_ROLE_ACCESS', { changes: expect.stringContaining('staff.reports=true') });
+        delete AppState.settings.roleAccess;
+    });
+
+    test('Roles & access: startup read uses settings/app.roleAccess, defaults when missing', () => {
+        RolesAccessManager.applyShared({ roleAccess: { staff: { finance: true } } });
+        expect(AppState.settings.roleAccess.staff.finance).toBe(true);
+        RolesAccessManager.applyShared(null);
+        expect(AppState.settings.roleAccess).toEqual(ROLE_ACCESS_DEFAULTS);
+        delete AppState.settings.roleAccess;
     });
 });
 

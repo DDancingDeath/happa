@@ -2356,6 +2356,25 @@ const FirebaseService = {
     },
 
     /**
+     * Roles & access for every device (#84). settings/app is owner-only;
+     * firestore.rules read roleAccess.<role>.editDays for bill edits.
+     * @param {{manager: Object, staff: Object}} roleAccess - normalized (utils/role-access.js)
+     * @returns {Promise<void>}
+     */
+    async saveRoleAccess(roleAccess) {
+        const fields = {
+            roleAccess: { manager: { ...roleAccess.manager }, staff: { ...roleAccess.staff } },
+            roleAccessUpdatedAt: Date.now(),
+            roleAccessUpdatedBy: AppState.currentUser?.uid || 'unknown'
+        };
+        const write = getDb().collection(col('settings')).doc('app').set(fields, { merge: true });
+        if (appSettingsPromise) {
+            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
+        }
+        await settleWrite(write, 'saveRoleAccess');
+    },
+
+    /**
      * Write TIP counters (one set+merge with FieldValue.increment per day doc)
      * and failure samples (create-only, one doc each). Failure samples whose
      * write failed for a retryable reason are returned for a later try;

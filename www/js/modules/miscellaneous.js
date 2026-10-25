@@ -14,6 +14,7 @@ import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { canChangeExpense, EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
+import { can } from '../utils/role-access.js';
 
 /** The signed-in user, as canChangeExpense expects it. */
 const currentUserInfo = () => ({ uid: AppState.currentUser?.uid, role: AppState.userRole });
@@ -123,6 +124,10 @@ export class ExpensesManager {
      * @param {Event} [evt] - Optional click event for button styling
      */
     static filterExpenseTab(view, evt) {
+        if (view === 'personal' && !can(AppState.userRole, 'personalExpenses', AppState.settings?.roleAccess)) {
+            UIManager.showToast(t('msg.roles.section_not_allowed'));
+            return;
+        }
         this.cancelExpenseEdit();
         const buttons = document.querySelectorAll('#expenses .filter-btn');
         buttons.forEach(btn => btn.classList.remove('active'));
@@ -344,6 +349,11 @@ export class ExpensesManager {
 
     static renderPersonalExpenseHistory() {
         const container = document.getElementById('personalExpenseHistoryList');
+        if (!container) return;
+        if (!can(AppState.userRole, 'personalExpenses', AppState.settings?.roleAccess)) {
+            container.innerHTML = '';
+            return;
+        }
         const personalExpenses = AppState.expensesHistory
             .filter(p => p.category === 'personal' && p.id)
             .sort((a, b) => {
