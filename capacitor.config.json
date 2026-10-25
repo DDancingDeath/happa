@@ -1,6 +1,6 @@
 {
-  "appId": "com.hitesh.aadhat",
-  "appName": "Aadhat Management",
+  "appId": "com.happa",
+  "appName": "happa",
   "webDir": "www",
   "server": {
     "allowNavigation": [

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Aadhat Management</string>
-    <string name="title_activity_main">Aadhat Management</string>
-    <string name="package_name">com.hitesh.aadhat</string>
-    <string name="custom_url_scheme">com.hitesh.aadhat</string>
+    <string name="app_name">happa</string>
+    <string name="title_activity_main">happa</string>
+    <string name="package_name">com.happa</string>
+    <string name="custom_url_scheme">com.happa</string>
 </resources>

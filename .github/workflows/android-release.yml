@@ -1,4 +1,4 @@
-# Builds the Android APK.
+# Builds the Happa Android APK (identity from happa.config.json).
 #  - Tag push v<version> (or manual re-run with a tag): signed release APK,
 #    verified against the production signing cert, published as a GitHub Release.
 #  - Pull requests touching the Android build: unsigned debug APK only (no release),
@@ -26,6 +26,8 @@ on:
       - 'www/js/version.js'
       - 'scripts/release.js'
       - 'scripts/release-notes.js'
+      - 'scripts/happa-config.js'
+      - 'happa.config.json'
       - '.github/workflows/android-release.yml'
 
 permissions:
@@ -97,6 +99,10 @@ jobs:
       - name: Check release consistency (versions + changelog)
         run: npm run check:release
 
+      - name: Check Happa config (no placeholders, owner confirmed)
+        if: steps.mode.outputs.release == 'true'
+        run: npm run check:happa-config
+
       - name: Check tag matches version and render release notes
         if: steps.mode.outputs.release == 'true'
         env:
@@ -115,17 +121,18 @@ jobs:
       - name: Require signing secrets
         if: steps.mode.outputs.release == 'true'
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          HAPPA_KEYSTORE_BASE64: ${{ secrets.HAPPA_KEYSTORE_BASE64 }}
+          HAPPA_KEYSTORE_PASSWORD: ${{ secrets.HAPPA_KEYSTORE_PASSWORD }}
+          HAPPA_KEY_ALIAS: ${{ secrets.HAPPA_KEY_ALIAS }}
+          HAPPA_KEY_PASSWORD: ${{ secrets.HAPPA_KEY_PASSWORD }}
+          HAPPA_CERT_SHA256: ${{ vars.HAPPA_CERT_SHA256 }}
         run: |
           missing=()
-          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+          for name in HAPPA_KEYSTORE_BASE64 HAPPA_KEYSTORE_PASSWORD HAPPA_KEY_ALIAS HAPPA_KEY_PASSWORD HAPPA_CERT_SHA256; do
             [[ -n "${!name}" ]] || missing+=("$name")
           done
           if (( ${#missing[@]} )); then
-            echo "::error::Missing repository secret(s): ${missing[*]}. Add them under Settings > Secrets and variables > Actions (see README 'Releasing'). Refusing to publish an unsigned APK."
+            echo "::error::Missing repository secret(s)/variable: ${missing[*]}. Set them as in docs/happa-go-live.md. Refusing to publish an unsigned or unpinned APK."
             exit 1
           fi
 
@@ -154,7 +161,7 @@ jobs:
         if: steps.mode.outputs.release != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: aadhat-debug-apk
+          name: happa-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 7
           if-no-files-found: error
@@ -163,15 +170,15 @@ jobs:
         if: steps.mode.outputs.release == 'true'
         working-directory: android
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          HAPPA_KEYSTORE_BASE64: ${{ secrets.HAPPA_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.HAPPA_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.HAPPA_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.HAPPA_KEY_PASSWORD }}
         run: |
           # android/app/build.gradle reads ANDROID_KEYSTORE_FILE/_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
           export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/release.keystore"
-          (umask 077 && printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_FILE")
-          unset ANDROID_KEYSTORE_BASE64
+          (umask 077 && printf '%s' "$HAPPA_KEYSTORE_BASE64" | base64 -d > "$ANDROID_KEYSTORE_FILE")
+          unset HAPPA_KEYSTORE_BASE64
           ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Remove keystore
@@ -181,7 +188,7 @@ jobs:
       - name: Verify APK signature and certificate
         if: steps.mode.outputs.release == 'true'
         env:
-          EXPECTED_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
+          EXPECTED_CERT_SHA256: ${{ vars.HAPPA_CERT_SHA256 }}
         run: |
           apk=android/app/build/outputs/apk/release/app-release.apk
           if [[ ! -f "$apk" ]]; then
@@ -204,15 +211,18 @@ jobs:
           fi
           echo "Signing certificate SHA-256: $actual"
           echo "Signing certificate SHA-256: \`$actual\`" >> "$GITHUB_STEP_SUMMARY"
-          if [[ -n "$EXPECTED_CERT_SHA256" ]]; then
-            expected="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr -d ': \t\r\n' | tr 'A-F' 'a-f')"
-            if [[ "$actual" != "$expected" ]]; then
-              echo "::error::APK is signed with the WRONG key ($actual, expected $expected). Phones could not update to it. Check the ANDROID_KEYSTORE_* secrets."
-              exit 1
-            fi
-            echo "Certificate matches ANDROID_CERT_SHA256."
-          else
-            echo "::warning::Repository variable ANDROID_CERT_SHA256 is not set; the signing certificate was not pinned."
+          expected="$(printf '%s' "$EXPECTED_CERT_SHA256" | tr -d ': \t\r\n' | tr 'A-F' 'a-f')"
+          if [[ -z "$expected" || "$actual" != "$expected" ]]; then
+            echo "::error::APK is signed with the WRONG key ($actual, expected $expected). Phones could not update to it. Check the HAPPA_KEYSTORE_* secrets and the HAPPA_CERT_SHA256 variable."
+            exit 1
+          fi
+          echo "Certificate matches HAPPA_CERT_SHA256."
+          want_pkg="$(node scripts/happa-config.js get androidPackage)"
+          pkg="$("$build_tools/aapt2" dump badging "$apk" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -n 1)"
+          echo "Package: $pkg"
+          if [[ "$pkg" != "$want_pkg" || "$pkg" == "com.hitesh.aadhat" ]]; then
+            echo "::error::APK package is '$pkg', expected '$want_pkg' (happa.config.json)."
+            exit 1
           fi
 
       - name: Stage release files
@@ -220,15 +230,17 @@ jobs:
         env:
           VERSION: ${{ steps.mode.outputs.version }}
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk dist/AadhatManagement.apk
-          cp android/app/build/outputs/apk/release/app-release.apk "dist/AadhatManagement-v$VERSION.apk"
+          name="$(node -p "require('./happa.config.json').apkName")"
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/$name.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/$name-v$VERSION.apk"
+          echo "$name" > dist/apk-name.txt
           (cd dist && sha256sum ./*.apk)
 
       - name: Upload release files
         if: steps.mode.outputs.release == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: aadhat-release
+          name: happa-release
           path: dist/
           retention-days: 30
           if-no-files-found: error
@@ -244,7 +256,7 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: aadhat-release
+          name: happa-release
           path: dist
 
       - name: Create or update release
@@ -254,8 +266,9 @@ jobs:
           TAG: ${{ needs.build.outputs.tag }}
           VERSION: ${{ needs.build.outputs.version }}
         run: |
-          title="Aadhat Management v$VERSION"
-          files=(dist/AadhatManagement.apk "dist/AadhatManagement-v$VERSION.apk")
+          name="$(cat dist/apk-name.txt)"
+          title="$name v$VERSION"
+          files=("dist/$name.apk" "dist/$name-v$VERSION.apk")
           if gh release view "$TAG" > /dev/null 2>&1; then
             echo "Release $TAG exists; replacing assets."
             gh release upload "$TAG" "${files[@]}" --clobber

@@ -1,4 +1,6 @@
-# This workflow deploys the production app on every push to main.
+# Deploys Happa's production site on every push to main.
+# The project comes from happa.config.json (.firebaserc); the guard refuses the
+# old app's project (aadhat-management), which is never deployed from here again.
 
 name: Deploy to Firebase Hosting on merge
 on:
@@ -17,9 +19,14 @@ jobs:
         run: npm ci
       - name: Run tests
         run: npm test
+      - name: Resolve Happa project (refuses aadhat-management)
+        id: project
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
+        run: node scripts/happa-config.js guard --require-ready --require-sa --sa-env SA_JSON
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
           channelId: live
-          projectId: aadhat-management
+          projectId: ${{ steps.project.outputs.project_id }}

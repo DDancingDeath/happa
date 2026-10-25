@@ -13,7 +13,9 @@ const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
-const APP_URL = process.env.APP_URL || 'https://aadhat-management.web.app';
+const { loadConfig, derive } = require('./happa-config.js');
+
+const APP_URL = process.env.APP_URL || derive(loadConfig()).siteUrl;
 const STATE_PATH = path.resolve(__dirname, 'auth-state.json');
 const ITEMS = process.argv.slice(2).filter(Boolean);
 if (!ITEMS.length) ITEMS.push('Gehu');

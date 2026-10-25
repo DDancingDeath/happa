@@ -16,6 +16,7 @@
 const fs = require('fs');
 const path = require('path');
 const { LABEL, DEFAULTS, addDays, planIssues, isPermissionDenied } = require('./autobugs-lib');
+const { loadConfig, derive } = require('../../scripts/happa-config.js');
 
 const BACKUP_DIR = path.join(__dirname, '..', 'backup');
 const HEALTH_LIMIT = 3000;
@@ -68,7 +69,7 @@ async function readFirestore(today) {
 
 async function main() {
     if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-        summary('### TIP auto bugs skipped\nNo service account secret (FIREBASE_BACKUP_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT).');
+        summary('### TIP auto bugs skipped\nNo service account secret (FIREBASE_BACKUP_SERVICE_ACCOUNT_HAPPA or FIREBASE_SERVICE_ACCOUNT_HAPPA).');
         return;
     }
     const today = todayIst();
@@ -91,7 +92,7 @@ async function main() {
         samples: data.samples,
         issues: (issues || []).filter(i => !i.pull_request),
         today,
-        healthUrl: process.env.TIP_HEALTH_URL || 'https://aadhat-management.web.app (menu → App health)'
+        healthUrl: process.env.TIP_HEALTH_URL || `${derive(loadConfig()).siteUrl} (menu → App health)`
     });
 
     summary(`### TIP auto bugs (${today})\nRead ${data.reads} docs (${data.docs.length} health, ${data.samples.length} samples). Plan: ${actions.length} action(s)${dryRun ? ' — dry run' : ''}.`);

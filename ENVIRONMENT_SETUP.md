@@ -36,13 +36,13 @@ All data will be stored in `dev_items`, `dev_purchases`, `dev_retailSales`, etc.
 
 ### For Production (deployed app)
 
-The deployed app at `aadhat-management.web.app` automatically uses production (no prefix).
+The deployed Happa site (`happa-bfc07.web.app`, see `happa.config.json`) automatically uses production (no prefix).
 
 ### Force Development on Production URL (for testing)
 
 ```bash
 # One-time: only affects this page load
-https://aadhat-management.web.app/?env=development
+https://happa-bfc07.web.app/?env=development
 
 # Persistent: set in browser console, persists across sessions
 localStorage.setItem('appEnv', 'development');

@@ -1,0 +1,16 @@
+{
+  "appName": "happa",
+  "appNameHi": "happa",
+  "androidPackage": "com.happa",
+  "apkName": "happa",
+  "githubRepo": "DDancingDeath/happa",
+  "ownerConfirmed": true,
+  "firebase": {
+    "projectId": "happa-bfc07",
+    "hostingSite": "",
+    "apiKey": "AIzaSyDRSZiNfMAwU9jDfFnHf3zldvT6lUZEUtg",
+    "messagingSenderId": "516108799937",
+    "appId": "1:516108799937:web:a4e3fdbff054b9cc07a940",
+    "measurementId": "G-1514HNS14K"
+  }
+}

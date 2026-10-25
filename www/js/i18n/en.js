@@ -651,7 +651,7 @@ export default {
     'ui.modals.share_on_whatsapp': "Share on WhatsApp",
     'ui.modals.show_rate_name_changes': "Show rate & name changes",
     'ui.modals.wholesale_rates_kg': "Wholesale Rates (₹/kg)",
-    'ui.nav.aadhat_billing': "Aadhat Billing",
+    'ui.app.name': "happa",
     'ui.nav.admin': "Admin",
     'ui.nav.ai_assistant': "AI Assistant",
     'ui.nav.analytics': "Analytics",

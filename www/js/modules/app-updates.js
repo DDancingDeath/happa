@@ -9,7 +9,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { openExternal } from '../utils/open-external.js';
 import { getLang, setLang, t } from '../i18n/index.js';
 import {
-    APK_DOWNLOAD_URL, DOWNLOAD_PAGE_URL, LATEST_RELEASE_API,
+    APK_DOWNLOAD_URL, APP_NAME, DOWNLOAD_PAGE_URL, LATEST_RELEASE_API,
     buildShareMessage, findRelease, shouldCheckForUpdate, updateToOffer,
     whatsAppShareUrl, whatsNewToShow, whatsNewContent, WHATS_NEW_LABELS
 } from '../utils/release-info.js';
@@ -229,7 +229,7 @@ export class AppUpdatesManager {
             return;
         }
         try {
-            await navigator.share({ title: 'Aadhat Management', text: await this.getShareMessage() });
+            await navigator.share({ title: APP_NAME, text: await this.getShareMessage() });
         } catch (e) {
             if (e?.name !== 'AbortError') UIManager.showToast(t('msg.updates.share_failed'));
         }

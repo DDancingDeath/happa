@@ -8,15 +8,28 @@
 
 ## 1. What this repo is
 
-`AadhatManagementApp` — a Hindi/English wholesale-retail business app for
+`happa` (formerly `AadhatManagementApp`) — a Hindi/English wholesale-retail business app for
 small-scale grain/produce traders. It runs on **Firebase Hosting + Firestore +
 Auth**, is built as **vanilla ES module-style JS** (no bundler, no framework),
 and is wrapped in **Capacitor** for Android distribution.
 
-- **Owner**: `DDancingDeath` (https://github.com/DDancingDeath/AadhatManagementApp)
-- **Live URL**: `https://aadhat-management.web.app`
-- **Bug / feature list**: GitHub issues in this repo (labels, milestones and
-  the pinned plan issue — see section 5). There is no other master list.
+- **Owner**: `DDancingDeath` (https://github.com/DDancingDeath/happa; the old repo
+  https://github.com/DDancingDeath/AadhatManagementApp is kept as is and still holds the existing issues)
+- **App**: **Happa** (Android `com.happa`; displayed as lowercase "happa" in English and Hindi). Its name, Android
+  package, Firebase project and site all come from `happa.config.json`
+  (`npm run apply:happa-config` writes them everywhere, `npm run check:happa-config`
+  is the release gate; go-live steps in `docs/happa-go-live.md`).
+- **Live URL**: `https://happa-bfc07.web.app` (Firebase project `happa-bfc07`,
+  from `happa.config.json`).
+- **Old app (archived, never changed)**: Android `com.hitesh.aadhat`, Firebase
+  project `aadhat-management`, site `aadhat-management.web.app`, last release
+  v1.6.1. No workflow may deploy to it; the CI guard
+  (`scripts/happa-config.js guard`) fails if anything resolves to it. Its
+  release notes are archived in `docs/aadhat-changelog-archive.json`.
+- **Bug / feature list**: GitHub issues (labels, milestones and the pinned
+  plan issue — see section 5). Existing issues, including the plan issue #171,
+  are still in `DDancingDeath/AadhatManagementApp` for now; refer to them as
+  `AadhatManagementApp#N`. There is no other master list.
 - **The staging clone (`AadhatManagementApp-staging`) is archived** —
   read-only reference only; nothing is developed or verified there any
   more. See section 6.
@@ -121,10 +134,10 @@ In order:
   file under `www/` bumps all three together:
   1. every `?v=<token>` in `www/index.html` (one token for the whole file),
   2. `BUILD_ID` in `www/js/main.js`,
-  3. `CACHE_NAME` (`aadhat-vN`) in `www/service-worker.js`.
+  3. `CACHE_NAME` (`happa-vN`) in `www/service-worker.js`.
 
   Token format: `?v=YYYYMMDD<letter>` (e.g. `20261021j`), `BUILD_ID` =
-  `'<same token>-<short-slug>'`, `CACHE_NAME` = next `aadhat-vN`. Parallel
+  `'<same token>-<short-slug>'`, `CACHE_NAME` = next `happa-vN`. Parallel
   PRs collide on these three lines — whoever merges second rebases and
   picks the next value. Don't touch app version / changelog for a cache bump.
 - **Versions / release notes**: `www/changelog.json` (newest first, `en` +
@@ -169,7 +182,8 @@ In order:
 
 ### Issues: the bug and feature list
 
-GitHub issues in `DDancingDeath/AadhatManagementApp` are the single list of
+GitHub issues (for now still in `DDancingDeath/AadhatManagementApp`, code in
+`DDancingDeath/happa`) are the single list of
 bugs, features and decisions. (The staging clone's `docs/REVIEW_ISSUES.md`
 is archived history — don't add to it or cite it as the master list.)
 
@@ -242,7 +256,8 @@ section 7) before pushing; don't commit one-off probe scripts.
    `npm run check:release`.
 3. Merge to `main` (web deploys automatically), then push tag `v<x.y.z>`.
    The tag-driven Android release workflow (#92 / PR #173) builds and signs
-   the APK and publishes a GitHub Release with `AadhatManagement.apk`.
+   the APK (Happa key, `HAPPA_*` secrets, pinned to `HAPPA_CERT_SHA256`) and
+   publishes a GitHub Release with `happa.apk`.
 4. Installed apps see the "Update available" banner (checks
    `releases/latest`, at most every 12 h); `/download` always links to the
    latest APK; users get a one-time "What's new" sheet.

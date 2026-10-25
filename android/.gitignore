@@ -57,6 +57,7 @@ captures/
 *.jks
 *.keystore
 keystore.properties
+keystore-happa.properties
 
 # External native build folder generated in Android Studio 2.2 and later
 .externalNativeBuild

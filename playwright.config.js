@@ -8,6 +8,9 @@
  */
 const { defineConfig, devices } = require('@playwright/test');
 
+const { loadConfig, derive } = require('./scripts/happa-config.js');
+
+const PROJECT_ID = derive(loadConfig()).projectId;
 const PORT = Number(process.env.E2E_PORT || 8099);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
 
@@ -34,7 +37,7 @@ module.exports = defineConfig({
     ],
     webServer: [
         {
-            command: 'npx --yes firebase-tools@latest emulators:start --only auth,firestore --project aadhat-management',
+            command: `npx --yes firebase-tools@latest emulators:start --only auth,firestore --project ${PROJECT_ID}`,
             url: 'http://127.0.0.1:9099/',
             reuseExistingServer: !process.env.CI,
             timeout: 180000,

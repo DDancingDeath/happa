@@ -1,9 +1,9 @@
 /**
- * Service Worker for Aadhat Management App
+ * Service Worker for Happa
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'aadhat-v68';
+const CACHE_NAME = 'happa-v2';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -116,6 +116,7 @@ const STATIC_ASSETS = [
     '/js/utils/notification-format.js',
     '/js/utils/record-permissions.js',
     '/js/utils/release-info.js',
+    '/js/config/app-identity.js',
     '/js/utils/render-memo.js',
     '/js/utils/startup-timings.js',
     '/js/utils/state.js',

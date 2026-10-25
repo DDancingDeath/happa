@@ -1,4 +1,6 @@
-# AadhatManagementApp
+# happa
+
+Formerly AadhatManagementApp (old repo: https://github.com/DDancingDeath/AadhatManagementApp).
 
 A comprehensive business management application for wholesale/retail operations built with ES6 modules, Firebase, and Capacitor for Android deployment.
 
@@ -152,7 +154,7 @@ cd android
 ./gradlew assembleRelease   # signed only if a keystore is configured (see below)
 ```
 
-Release signing: create `android/keystore.properties` (git-ignored) with `storeFile`, `storePassword`, `keyAlias`, `keyPassword`,
+Release signing (Happa key): create `android/keystore-happa.properties` (git-ignored; the old app's `keystore.properties` is not read) with `storeFile`, `storePassword`, `keyAlias`, `keyPassword`,
 or set `ANDROID_KEYSTORE_FILE`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
 
 ### Releasing (Android APK + GitHub Release)
@@ -172,13 +174,14 @@ The version lives in four places that must agree: `www/changelog.json` (top entr
 3. Open a PR, get it reviewed, merge to `main`.
 4. Owner tags the merged commit: `git tag v<ver> && git push origin v<ver>`.
 5. The workflow runs the tests and `check:release`, checks the tag equals `package.json` `version`, builds the signed
-   APK, verifies its signing certificate, and creates the GitHub Release "Aadhat Management v<ver>" (marked latest)
-   with notes from `www/changelog.json` and two assets: `AadhatManagement.apk` (stable name used by
-   `releases/latest/download/AadhatManagement.apk`, the app and the download page) and `AadhatManagement-v<ver>.apk`.
+   APK, verifies its signing certificate and package id, and creates the GitHub Release "happa v<ver>" (marked latest)
+   with notes from `www/changelog.json` and two assets: `happa.apk` (stable name used by
+   `releases/latest/download/happa.apk`, the app and the download page) and `happa-v<ver>.apk`.
+   Tag builds also run `npm run check:happa-config` (no placeholders left in `happa.config.json`).
    The web app still deploys on merge to `main` as before.
 
 Installed Android apps check `releases/latest` (at most every 12 h) and show an "Update available" banner;
-https://aadhat-management.web.app/download always links to the latest APK. After updating, each user sees a one-time
+https://happa-bfc07.web.app/download (site from `happa.config.json`) always links to the latest APK. After updating, each user sees a one-time
 "What's new" sheet (Settings → App updates reopens it and has "Share on WhatsApp" for sending the download link).
 
 To re-publish an existing tag (e.g. after fixing a secret), run the workflow manually (Actions → Android release →
@@ -186,15 +189,15 @@ Run workflow) with `tag` = `v<ver>`; assets are replaced (`--clobber`).
 
 **One-time owner setup** (Settings → Secrets and variables → Actions):
 
-- Secrets (all four are required; tag builds fail without them rather than publish an unsigned APK):
-  - `ANDROID_KEYSTORE_BASE64` — the release keystore, base64-encoded. In PowerShell:
-    `[Convert]::ToBase64String([IO.File]::ReadAllBytes('aadhat-release.keystore')) | Set-Clipboard`
-  - `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`
-- Variable (recommended) `ANDROID_CERT_SHA256` — SHA-256 of the production signing certificate. The workflow refuses to
-  publish an APK signed with any other key (phones cannot update an app signed with a different key). Current production
-  value: `2bce82fc9b7f006e070be664185084c2703a83d209e308ba21cc939c25887738`. To re-derive it:
-  `keytool -list -v -keystore aadhat-release.keystore -alias <alias>` (the "SHA256" line; colons are ignored) or
-  `apksigner verify --print-certs AadhatManagement-v1.2-android11plus-release.apk` ("certificate SHA-256 digest").
+- Secrets (all required; tag builds fail without them rather than publish an unsigned APK):
+  - `HAPPA_KEYSTORE_BASE64` — the Happa release keystore, base64-encoded.
+  - `HAPPA_KEYSTORE_PASSWORD`, `HAPPA_KEY_ALIAS`, `HAPPA_KEY_PASSWORD`
+- Variable (required) `HAPPA_CERT_SHA256` — SHA-256 of the Happa signing certificate. The workflow refuses to
+  publish an APK signed with any other key (phones cannot update an app signed with a different key).
+  Commands for all of these: [docs/happa-go-live.md](docs/happa-go-live.md).
+- The old app's secrets (`ANDROID_KEYSTORE_*`, `ANDROID_KEY_*`, `FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT`,
+  `FIREBASE_BACKUP_SERVICE_ACCOUNT`) are not read by current workflows but still are by older refs and tags, so they are
+  deleted at go-live (`docs/happa-go-live.md` step 7). `BACKUP_PASSPHRASE` stays.
 
 
 ## Testing
@@ -281,7 +284,7 @@ npm run test:rules                       # starts the emulator (demo-aadhat proj
 | Playwright E2E (nightly, manual dispatch, or PRs labelled `e2e`) | `npm run test:e2e` — phone + desktop projects against the Firebase emulators |
 | Production smoke (nightly, manual dispatch) | `npm run test:smoke` — live site, no login, non-GET Firebase requests blocked |
 
-The hosting workflows (`firebase-hosting-*.yml`) run Jest and deploy Hosting. `firestore-rules-deploy.yml` runs on pushes to `main` that change `firestore.rules` or `firestore.indexes.json` (and on manual dispatch, never on PRs): it reruns the rules tests, then runs `firebase deploy --only firestore:rules,firestore:indexes` with the `FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT` service account. That account needs the roles **Firebase Rules Admin** (`roles/firebaserules.admin`) and **Cloud Datastore Index Admin** (`roles/datastore.indexAdmin`) — Google Cloud console → IAM → the `github-action-…` service account; the job fails with a message naming the roles if they are missing. Indexes that exist only in the console are reported, not deleted. Manual fallback: `firebase deploy --only firestore:rules,firestore:indexes`.
+The hosting workflows (`firebase-hosting-*.yml`) run Jest and deploy Hosting. `firestore-rules-deploy.yml` runs on pushes to `main` that change `firestore.rules` or `firestore.indexes.json` (and on manual dispatch, never on PRs): it reruns the rules tests, then runs `firebase deploy --only firestore:rules,firestore:indexes` with the `FIREBASE_SERVICE_ACCOUNT_HAPPA` service account, against the project in `happa.config.json` (every Firebase workflow refuses `aadhat-management`). That account needs the roles **Firebase Rules Admin** (`roles/firebaserules.admin`) and **Cloud Datastore Index Admin** (`roles/datastore.indexAdmin`) — Google Cloud console → IAM → the `github-action-…` service account; the job fails with a message naming the roles if they are missing. Indexes that exist only in the console are reported, not deleted. Manual fallback: `firebase deploy --only firestore:rules,firestore:indexes`.
 
 ### End-to-end tests (Playwright)
 
@@ -332,13 +335,14 @@ issues to work on, in order, with progress per phase. It is generated from
 
 - When you add an issue, place it in `tools/plan/order.json`; the plan issue
   regenerates automatically. Unplaced open issues show up in 🆕.
+- It skips (and succeeds) when the repo has no plan issue; `--create` opens one.
 - Preview locally: `GH_TOKEN=... node tools/plan/generate.js --dry-run`
   (`--write-docs` also writes `docs/PLAN.md`).
 
 ## Bugs, features and the plan
 
 [GitHub issues](https://github.com/DDancingDeath/AadhatManagementApp/issues)
-are the only bug/feature list (labels `P0`–`P3`, `type:*`, `area:*`,
+(still in the old repo for now) are the only bug/feature list (labels `P0`–`P3`, `type:*`, `area:*`,
 `owner-decision`; sprint milestones). The pinned plan issue
 ([#171](https://github.com/DDancingDeath/AadhatManagementApp/issues/171))
 shows the pick order — see "Planning" below. The old staging clone and its

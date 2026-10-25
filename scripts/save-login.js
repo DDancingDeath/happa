@@ -11,7 +11,9 @@
 const { chromium } = require('playwright');
 const path = require('path');
 
-const APP_URL = process.env.APP_URL || 'https://aadhat-management.web.app';
+const { loadConfig, derive } = require('./happa-config.js');
+
+const APP_URL = process.env.APP_URL || derive(loadConfig()).siteUrl;
 const STATE_PATH = path.resolve(__dirname, 'auth-state.json');
 const LOGIN_TIMEOUT_MS = parseInt(process.env.LOGIN_TIMEOUT_MS || '300000', 10); // 5 min default
 const POLL_MS = 1000;

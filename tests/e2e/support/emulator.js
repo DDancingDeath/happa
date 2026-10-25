@@ -2,7 +2,9 @@
  * Firebase emulator helpers for the E2E suite (REST only, no SDK).
  * Ports match firebase.json and www/firebaseConfig.js (?emulator=1).
  */
-const PROJECT = 'aadhat-management';
+const { loadConfig, derive } = require('../../../scripts/happa-config.js');
+
+const PROJECT = derive(loadConfig()).projectId;
 const ROOT = `projects/${PROJECT}/databases/(default)/documents`;
 const FS = `http://127.0.0.1:8181/v1/${ROOT}`;
 const AUTH = 'http://127.0.0.1:9099';

@@ -110,6 +110,7 @@ rules-tests/node_modules/
 
 # scratch dirs from release.test.js
 .release-test-*/
+.happa-test-*/
 
 # Playwright E2E output
 test-results/

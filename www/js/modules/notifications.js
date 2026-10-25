@@ -11,6 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { TelemetryService } from '../services/telemetry.js';
 import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
+import { APP_IDENTITY } from '../config/app-identity.js';
 import {
     UNREAD_LIMIT, PAGE_SIZE, describeNotification, notificationText, formatWhen,
     badgeText, idsToMarkRead, prepareList, newArrivals, notificationTime, retentionCutoff
@@ -371,7 +372,7 @@ const NotificationsManager = {
         try {
             const d = describeNotification(fresh[0]);
             const body = `${d.en}\n${d.hi}${d.who ? `\n— ${d.who}` : ''}`;
-            const note = new window.Notification(fresh.length > 1 ? `Aadhat: ${fresh.length} new` : 'Aadhat', { body, tag: 'aadhat-notifications' });
+            const note = new window.Notification(fresh.length > 1 ? `${APP_IDENTITY.appName}: ${fresh.length} new` : APP_IDENTITY.appName, { body, tag: 'aadhat-notifications' });
             note.onclick = () => { window.focus(); this.openInbox().catch(e => console.warn('Opening notifications failed:', e)); note.close(); };
         } catch (e) {
             console.warn('System notification failed:', e);

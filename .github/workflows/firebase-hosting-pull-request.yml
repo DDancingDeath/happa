@@ -1,4 +1,6 @@
-# This workflow deploys a preview channel on PR.
+# Deploys a Happa preview channel on PR (test data, see firebaseConfig.js).
+# Skipped until happa.config.json has the real project and the
+# FIREBASE_SERVICE_ACCOUNT_HAPPA secret exists; never targets aadhat-management.
 
 name: Deploy to Firebase Hosting on PR
 on: pull_request
@@ -19,8 +21,14 @@ jobs:
         run: npm ci
       - name: Run tests
         run: npm test
+      - name: Resolve Happa project (refuses aadhat-management)
+        id: project
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
+        run: node scripts/happa-config.js guard --sa-env SA_JSON
       - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: steps.project.outputs.ready == 'true'
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT }}
-          projectId: aadhat-management
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
+          projectId: ${{ steps.project.outputs.project_id }}

@@ -3,9 +3,12 @@
  * Kept free of DOM/network so they can be unit tested.
  */
 
-export const DOWNLOAD_PAGE_URL = 'https://aadhat-management.web.app/download';
-export const APK_DOWNLOAD_URL = 'https://github.com/DDancingDeath/AadhatManagementApp/releases/latest/download/AadhatManagement.apk';
-export const LATEST_RELEASE_API = 'https://api.github.com/repos/DDancingDeath/AadhatManagementApp/releases/latest';
+import { APP_IDENTITY } from '../config/app-identity.js';
+
+export const APP_NAME = APP_IDENTITY.appName;
+export const DOWNLOAD_PAGE_URL = APP_IDENTITY.downloadPageUrl;
+export const APK_DOWNLOAD_URL = APP_IDENTITY.apkDownloadUrl;
+export const LATEST_RELEASE_API = APP_IDENTITY.latestReleaseApi;
 export const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 const SEMVER_RE = /^v?(\d+)\.(\d+)(?:\.(\d+))?$/;
@@ -109,7 +112,7 @@ export function updateToOffer(appVersion, latestTag, dismissedVersion) {
 
 /** WhatsApp-ready text (Hindi + English) for sharing the app. */
 export function buildShareMessage(release, url = DOWNLOAD_PAGE_URL) {
-    const lines = ['Aadhat Management app' + (release?.version ? ` v${release.version}` : '')];
+    const lines = [`${APP_NAME} app` + (release?.version ? ` v${release.version}` : '')];
     const hi = Array.isArray(release?.notes?.hi) ? release.notes.hi : [];
     const en = Array.isArray(release?.notes?.en) ? release.notes.en : [];
     if (hi.length) lines.push('', 'नया क्या है:', ...hi.map((n) => `• ${n}`));

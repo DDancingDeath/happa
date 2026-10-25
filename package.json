@@ -8,6 +8,8 @@
     "check:sw": "node scripts/check-sw-assets.js",
     "release": "node scripts/release.js",
     "check:release": "node scripts/release.js --check",
+    "apply:happa-config": "node scripts/happa-config.js apply",
+    "check:happa-config": "node scripts/happa-config.js check",
     "check:review": "node scripts/check-review-rules.js",
     "lint": "eslint .",
     "test:e2e": "playwright test",
@@ -43,18 +45,18 @@
     "jest-environment-jsdom": "^29.7.0"
   },
   "name": "aadhatmanagementapp",
-  "version": "1.6.1",
-  "description": "Aadhat Billing Management App",
+  "version": "1.0.0",
+  "description": "Happa: billing, stock and accounts for a shop",
   "main": "www/js/main.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/DDancingDeath/AadhatManagementApp.git"
+    "url": "git+https://github.com/DDancingDeath/happa.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/DDancingDeath/AadhatManagementApp/issues"
+    "url": "https://github.com/DDancingDeath/happa/issues"
   },
-  "homepage": "https://github.com/DDancingDeath/AadhatManagementApp#readme"
+  "homepage": "https://github.com/DDancingDeath/happa#readme"
 }

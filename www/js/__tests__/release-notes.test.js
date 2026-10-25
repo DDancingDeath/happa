@@ -6,6 +6,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const { buildReleaseNotes } = require('../../../scripts/release-notes.js');
+const { loadConfig, derive } = require('../../../scripts/happa-config.js');
 
 const SCRIPT = path.join(__dirname, '..', '..', '..', 'scripts', 'release-notes.js');
 
@@ -40,7 +41,9 @@ describe('release-notes', () => {
         expect(md).toContain("## What's new in v1.4.0 (2026-11-01)");
         expect(md).toContain('**English**\n- Faster stock page\n- Printer fix');
         expect(md).toContain('**हिन्दी**\n- स्टॉक पेज तेज़');
-        expect(md).toContain('https://aadhat-management.web.app/download');
+        const identity = derive(loadConfig());
+        expect(md).toContain(identity.downloadPageUrl);
+        expect(md).toContain(identity.apkFile);
         expect(md).toContain('**Install:**');
         expect(md).not.toContain('Older');
     });

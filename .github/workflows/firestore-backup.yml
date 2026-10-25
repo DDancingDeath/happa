@@ -1,6 +1,7 @@
 name: Firestore backup
 
-# Exports all production Firestore collections, then gzips and encrypts the
+# Exports all of Happa's production Firestore collections (project from
+# happa.config.json; the guard refuses aadhat-management), then gzips and encrypts the
 # file (AES-256, passphrase in the BACKUP_PASSPHRASE secret) and keeps it as a
 # workflow artifact. The repo is public, so the archive is never uploaded
 # unencrypted. Restore steps: tools/backup/README.md.
@@ -38,16 +39,16 @@ jobs:
       - name: Check secrets
         env:
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
-          SA: ${{ secrets.FIREBASE_BACKUP_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT }}
         run: |
           if [ -z "$BACKUP_PASSPHRASE" ]; then
             echo "::error::BACKUP_PASSPHRASE secret is not set; refusing to create an unencrypted backup."
             exit 1
           fi
-          if [ -z "$SA" ]; then
-            echo "::error::No service account secret (FIREBASE_BACKUP_SERVICE_ACCOUNT or FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT)."
-            exit 1
-          fi
+
+      - name: Resolve Happa project (refuses aadhat-management)
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_BACKUP_SERVICE_ACCOUNT_HAPPA || secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
+        run: node scripts/happa-config.js guard --require-ready --require-sa --sa-env SA_JSON
 
       # firebase-admin 14 needs Node >= 22 and only lists @google-cloud/firestore as an
       # optionalDependency, which npm silently skips on older Node. It is a direct
@@ -59,7 +60,7 @@ jobs:
       - name: Export Firestore
         id: export
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_BACKUP_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_BACKUP_SERVICE_ACCOUNT_HAPPA || secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
           BACKUP_TRIGGER: ${{ github.event_name }}
           BACKUP_FORCE: ${{ inputs.force && 'true' || 'false' }}
           BACKUP_WEEKLY_ABOVE: ${{ vars.BACKUP_WEEKLY_ABOVE }}

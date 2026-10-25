@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.hitesh.aadhat"
+    namespace "com.happa"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.hitesh.aadhat"
+        applicationId "com.happa"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10
-        versionName "1.6.1"
+        versionCode 1
+        versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,9 +16,10 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    // Release signing: provide android/keystore.properties (storeFile, storePassword,
-    // keyAlias, keyPassword) or ANDROID_KEYSTORE_* environment variables.
-    def keystorePropsFile = rootProject.file('keystore.properties')
+    // Release signing with the Happa key: provide android/keystore-happa.properties (storeFile,
+    // storePassword, keyAlias, keyPassword) or ANDROID_KEYSTORE_* environment variables.
+    // The old app's keystore.properties is deliberately not read.
+    def keystorePropsFile = rootProject.file('keystore-happa.properties')
     def keystoreProps = new Properties()
     if (keystorePropsFile.exists()) {
         keystorePropsFile.withInputStream { keystoreProps.load(it) }

@@ -4,6 +4,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
+import { APP_IDENTITY } from '../config/app-identity.js';
 
 const usersCollection = () => (window.getCollection ? window.getCollection('users') : 'users');
 
@@ -318,7 +319,7 @@ const AuthManager = {
             
             // Configure action code settings for password reset
             const actionCodeSettings = {
-                url: 'https://aadhat-management.web.app',
+                url: APP_IDENTITY.siteUrl,
                 handleCodeInApp: false
             };
             

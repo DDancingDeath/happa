@@ -11,8 +11,8 @@
 
 1. **Passphrase.** Settings → Secrets and variables → Actions → *New repository secret*. Name it `BACKUP_PASSPHRASE` and use a long random value. **Store it in your password manager.** Without it, no backup can be decrypted.
 2. **Service account with Firestore read access.**
-   - By default the job uses the existing `FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT` secret, the one used for hosting deploys. That account was created by `firebase init hosting:github` and normally only has Hosting roles. Check it in Google Cloud Console → IAM, and if needed grant **Cloud Datastore Viewer** (`roles/datastore.viewer`).
-   - **Recommended instead:** create a dedicated read-only account, e.g. `firestore-backup@aadhat-management.iam.gserviceaccount.com`, with only `roles/datastore.viewer`. Create a JSON key for it and save it as the secret `FIREBASE_BACKUP_SERVICE_ACCOUNT`. The workflow prefers that secret when it exists, so the deploy key doesn't also need data access.
+   - The job backs up Happa's project (`happa.config.json`; the workflow refuses `aadhat-management`). By default it uses the `FIREBASE_SERVICE_ACCOUNT_HAPPA` secret, the one used for hosting deploys. That account was created by `firebase init hosting:github` and normally only has Hosting roles. Check it in Google Cloud Console → IAM, and if needed grant **Cloud Datastore Viewer** (`roles/datastore.viewer`).
+   - **Recommended instead:** create a dedicated read-only account, e.g. `firestore-backup@happa-bfc07.iam.gserviceaccount.com`, with only `roles/datastore.viewer`. Create a JSON key for it and save it as the secret `FIREBASE_BACKUP_SERVICE_ACCOUNT_HAPPA`. The workflow prefers that secret when it exists, so the deploy key doesn't also need data access.
 3. Optional repository *variables* (Settings → Variables):
    - `BACKUP_WEEKLY_ABOVE` (default `15000`)
    - `BACKUP_HARD_MAX` (default `40000`)
@@ -54,7 +54,7 @@ At about 15k documents, a nightly backup uses about 30% of a day's free reads. W
 4. **Restore into production** (only after a drill, ideally with every phone closed):
    ```sh
    node tools/backup/restore-firestore.js --in backup.json --collections items,purchases \
-     --target prod --confirm-project aadhat-management --apply
+     --target prod --confirm-project happa-bfc07 --apply
    ```
    The restore never deletes anything. It writes each backed-up document by its original id: same-id documents are overwritten, everything else stays. To roll a collection back exactly, first delete the documents created after the backup, or restore into `dev_*` and compare.
 

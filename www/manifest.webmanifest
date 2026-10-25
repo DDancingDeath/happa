@@ -1,8 +1,8 @@
 {
     "id": "/",
-    "name": "Aadhat Management",
-    "short_name": "Aadhat",
-    "description": "Billing, stock and accounts for a wholesale and retail grain shop.",
+    "name": "happa",
+    "short_name": "happa",
+    "description": "Billing, stock and accounts for your shop.",
     "lang": "en-IN",
     "dir": "ltr",
     "start_url": "/?source=pwa",

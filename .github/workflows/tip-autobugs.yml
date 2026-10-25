@@ -1,6 +1,6 @@
 name: TIP auto bugs
 
-# Test in Production (#217): once a day, read the tipHealth counters and
+# Test in Production (#217): once a day, read Happa's tipHealth counters and
 # tipFailures samples that phones report, then open / update / reopen / close
 # `tip-auto` issues ("[Bug] TIP: <Check> failing: <reason> (<version>)") for the
 # top failures and failure-rate spikes. Issues close after 7 healthy days.
@@ -43,9 +43,15 @@ jobs:
         working-directory: tools/backup
         run: npm ci --no-audit --no-fund
 
+      - name: Resolve Happa project (refuses aadhat-management)
+        id: project
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_BACKUP_SERVICE_ACCOUNT_HAPPA || secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
+        run: node scripts/happa-config.js guard --require-ready --sa-env SA_JSON
+
       - name: File / update / close TIP issues
         env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_BACKUP_SERVICE_ACCOUNT || secrets.FIREBASE_SERVICE_ACCOUNT_AADHAT_MANAGEMENT }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_BACKUP_SERVICE_ACCOUNT_HAPPA || secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TIP_DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
         run: node tools/tip/autobugs.js

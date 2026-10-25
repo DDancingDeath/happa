@@ -12,10 +12,13 @@
 const fs = require('fs');
 const path = require('path');
 
+const { loadConfig, derive } = require('./happa-config.js');
+
 const DEFAULT_CHANGELOG = path.join(__dirname, '..', 'www', 'changelog.json');
-const DOWNLOAD_URL = 'https://aadhat-management.web.app/download';
+const IDENTITY = derive(loadConfig());
+const DOWNLOAD_URL = IDENTITY.downloadPageUrl;
 const INSTALL_STEPS =
-    'On your Android 11+ phone open the download page, tap Download, open `AadhatManagement.apk`, ' +
+    `On your Android 11+ phone open the download page, tap Download, open \`${IDENTITY.apkFile}\`, ` +
     'allow "Install unknown apps" if asked, then tap Update/Install (your data is stored online and is kept).';
 
 function normalizeVersion(v) {
