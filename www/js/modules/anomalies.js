@@ -299,10 +299,13 @@ export const AnomaliesManager = {
     drawDayReport() {
         const card = document.getElementById('dayReportCard');
         if (!card || !canSee()) return;
-        const { yesterday, today } = this.reportKeys();
+        const { today } = this.reportKeys();
+        const isOpen = (a) => (a.status || 'open') === 'open';
         const todays = this.reportList.filter(a => a.dayKey === today);
-        const yOpen = this.reportList.filter(a => a.dayKey === yesterday && (a.status || 'open') === 'open');
-        const queue = this.reportList.filter(a => (a.dayKey === today || a.dayKey === yesterday) && (a.status || 'open') === 'open');
+        const queue = todays.filter(isOpen);
+        // Older not-reviewed records stay on the Anomalies page; only their count is shown here
+        const pending = this.reportList.filter(a => a.dayKey !== today && isOpen(a)).length;
+        const allLabel = pending ? t('ui.anom.all_anomalies_pending', { n: pending }) : t('ui.anom.all_anomalies');
         const s = summarizeAnomalies(todays);
 
         const chips = SEVERITIES.map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${loc(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`).join('');
@@ -330,7 +333,6 @@ export const AnomaliesManager = {
             <div class="anomaly-muted" style="margin:4px 0 8px;">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
             <div class="anomaly-chips">${chips}</div>
             ${s.total ? `<ul class="anomaly-type-list">${types}</ul>${tops}` : `<div class="anomaly-empty">${esc(t('ui.anom.none_today'))}</div>`}
-            ${yOpen.length ? `<div class="anomaly-yesterday">⏪ ${esc(t('ui.anom.yesterday_open'))}: <strong>${yOpen.length}</strong></div>` : ''}
             <div class="anomaly-queue">
                 <div class="anomaly-queue-title">${esc(t('ui.anom.needs_review', { n: queue.length }))}</div>
                 ${queue.length ? bySev : `<div class="anomaly-empty">${esc(t('ui.anom.nothing_to_review'))}</div>`}
@@ -338,7 +340,7 @@ export const AnomaliesManager = {
             <div class="anomaly-actions">
                 <button type="button" class="btn btn-success" onclick="window.app.anomalies.shareDayReport()">📤 WhatsApp</button>
                 <button type="button" class="btn btn-secondary" onclick="window.app.anomalies.printDayReport()">🖨️ ${esc(t('ui.anom.print_image'))}</button>
-                <button type="button" class="btn btn-primary" onclick="window.app.anomalies.openPage()">🔎 ${esc(t('ui.anom.all_anomalies'))}</button>
+                <button type="button" class="btn btn-primary" onclick="window.app.anomalies.openPage()">🔎 ${esc(allLabel)}</button>
             </div>`;
     },
 
@@ -362,11 +364,10 @@ export const AnomaliesManager = {
     },
 
     dayReportText() {
-        const { yesterday, today } = this.reportKeys();
+        const { today } = this.reportKeys();
         return buildDayReportText({
             dayKey: today,
             today: this.reportList.filter(a => a.dayKey === today),
-            yesterdayOpen: this.reportList.filter(a => a.dayKey === yesterday && (a.status || 'open') === 'open'),
             totals: this.lastTotals,
             shopName: AppState.settings?.shopName || ''
         });

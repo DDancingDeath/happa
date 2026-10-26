@@ -219,11 +219,10 @@ describe('report, filters and patterns', () => {
         expect(summaryLine([])).toContain('none');
     });
 
-    test('day report text: totals, counts, yesterday unreviewed; names cleaned', () => {
+    test('day report text: totals and today\'s counts only; names cleaned', () => {
         const text = buildDayReportText({
             dayKey: '2026-10-22',
             today: [A({ party: '*Bold*\nName' })],
-            yesterdayOpen: [A({ dayKey: '2026-10-21', type: 'payment-split', severity: 'high', billNumber: 'R5' })],
             totals: { sales: 1200, saleCount: 3, purchases: 500, purchaseCount: 1, expenses: 50, totalIn: 1200, totalOut: 550, dueReceived: 0, duePaid: 0 },
             shopName: 'Gupta Traders'
         });
@@ -231,9 +230,8 @@ describe('report, filters and patterns', () => {
         expect(text).toContain('Sales: ₹1,200 (3 bills)');
         expect(text).toContain('Anomalies: 1 (High 0, Medium 1, Low 0)');
         expect(text).toContain('Top parties: Bold Name (1)');
-        expect(text).toContain('Yesterday, not reviewed: 1');
         expect(text).not.toMatch(/[\u0900-\u097F]/);
-        expect(text).toContain('#R5');
+        expect(text).not.toContain('Yesterday');
         expect(text).not.toMatch(/staff/i);
         expect(buildDayReportText({ dayKey: '2026-10-22' })).toContain('Anomalies: none');
     });

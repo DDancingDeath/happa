@@ -17,7 +17,6 @@
 .anomaly-sev-low { background: #f3f4f6; color: #374151; }
 .anomaly-type-list { margin: 4px 0 8px 18px; padding: 0; font-size: 14px; }
 .anomaly-type-list li { margin: 2px 0; }
-.anomaly-yesterday { margin: 8px 0; padding: 8px 10px; border-radius: 8px; background: #fff7ed; color: #9a3412; font-size: 14px; }
 .anomaly-queue { margin-top: 10px; }
 .anomaly-queue-title { font-weight: 700; margin-bottom: 6px; }
 .anomaly-queue-head { font-weight: 600; font-size: 13px; margin: 8px 0 4px; }
