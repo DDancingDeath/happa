@@ -60,6 +60,15 @@ At about 15k documents, a nightly backup uses about 30% of a day's free reads. W
 
 The in-app **Admin → Clear Data** backup file (JSON saved on the phone) uses the same format. Restore it the same way (no decryption step).
 
+## Checking the numbers in a backup
+
+`npm run audit:numbers -- backup.json` (from the repo root, after `npm ci`) recomputes every number the app shows
+(`docs/calculations.md`) for each of the last 60 days, the last 24 months and all time, once with the independent oracle
+and once with the app's own code, and lists every difference, the accounting checks (AC1–AC8) and data-quality problems
+(unreadable dates, negative stock, duplicate bill numbers, case-variant party names, …). It works offline on the
+decrypted file only and writes `NUMBER-AUDIT.md` next to it (never into the repo). Add `--bundle out/bundle.json` to
+also check a migration bundle's opening records. Never commit the report or run it in CI: it is real shop data.
+
 ## Not covered
 
 - Firebase **Auth** accounts are not part of Firestore and aren't exported. User profiles in `users` are.

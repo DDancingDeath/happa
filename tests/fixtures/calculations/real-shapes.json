@@ -1,0 +1,458 @@
+{
+  "description": "Anonymised shapes found by the real-data number audit (tools/audit): opening records from tools/migrate dated on the day the app is looked at and paid after go-live; a cleared purchase that still carries its old due; expenses dated \"D/M/YYYY, h:mm:ss pm\"; a legacy later payment with only amount and a D/M/YYYY date. Names and amounts are made up. \"now\" is the evening of the migration day, after the cutoff.",
+  "now": "2026-10-25T21:00:00",
+  "items": [
+    {
+      "id": "rice",
+      "name": "Rice",
+      "hindiName": "चावल",
+      "rates": [
+        30
+      ],
+      "wholesaleRates": [],
+      "saleRates": [
+        40
+      ]
+    },
+    {
+      "id": "wheat",
+      "name": "Wheat",
+      "hindiName": "गेहूं",
+      "rates": [
+        20
+      ],
+      "wholesaleRates": [],
+      "saleRates": [
+        26
+      ]
+    }
+  ],
+  "purchases": [
+    {
+      "id": "p-old",
+      "billNumber": "P-001",
+      "customerName": "Supplier A",
+      "date": "2026-10-01T04:30:00.000Z",
+      "timestamp": 1790829000000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 200,
+          "rate": 30,
+          "total": 6000,
+          "timestamp": 1790829000000,
+          "weights": []
+        }
+      ],
+      "billTotal": 6000,
+      "laborCharges": 0,
+      "grandTotal": 6000,
+      "amountPayable": 6000,
+      "totalPackets": 0,
+      "cashPayment": 6000,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 6000,
+        "online": 0,
+        "due": 0,
+        "total": 6000
+      },
+      "openDue": false
+    },
+    {
+      "id": "p-cleared",
+      "billNumber": "P-002",
+      "customerName": "Supplier C",
+      "date": "2026-10-05T05:30:00.000Z",
+      "timestamp": 1791178200000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 50,
+          "rate": 20,
+          "total": 1000,
+          "timestamp": 1791178200000,
+          "weights": []
+        }
+      ],
+      "billTotal": 1000,
+      "laborCharges": 0,
+      "grandTotal": 1000,
+      "amountPayable": 1000,
+      "totalPackets": 0,
+      "cashPayment": 0,
+      "onlinePayment": 0,
+      "dueAmount": 1000,
+      "payment": {
+        "cash": 0,
+        "online": 0,
+        "due": 1000,
+        "total": 1000
+      },
+      "openDue": true,
+      "cleared": true,
+      "clearedAt": 1791786600000
+    },
+    {
+      "id": "p-open",
+      "billNumber": "P-003",
+      "customerName": "Supplier A",
+      "date": "2026-10-10T06:30:00.000Z",
+      "timestamp": 1791613800000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 25,
+          "rate": 20,
+          "total": 500,
+          "timestamp": 1791613800000,
+          "weights": []
+        }
+      ],
+      "billTotal": 500,
+      "laborCharges": 0,
+      "grandTotal": 500,
+      "amountPayable": 500,
+      "totalPackets": 0,
+      "cashPayment": 250,
+      "onlinePayment": 0,
+      "dueAmount": 250,
+      "payment": {
+        "cash": 250,
+        "online": 0,
+        "due": 250,
+        "total": 500
+      },
+      "openDue": true
+    },
+    {
+      "id": "p-today",
+      "billNumber": "P-004",
+      "customerName": "Supplier A",
+      "date": "2026-10-25T14:30:00.000Z",
+      "timestamp": 1792938600000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 100,
+          "rate": 30,
+          "total": 3000,
+          "timestamp": 1792938600000,
+          "weights": []
+        }
+      ],
+      "billTotal": 3000,
+      "laborCharges": 0,
+      "grandTotal": 3000,
+      "amountPayable": 3000,
+      "totalPackets": 0,
+      "cashPayment": 2000,
+      "onlinePayment": 500,
+      "dueAmount": 500,
+      "payment": {
+        "cash": 2000,
+        "online": 500,
+        "due": 500,
+        "total": 3000
+      },
+      "openDue": true
+    },
+    {
+      "id": "opening-purchase-a",
+      "billNumber": "OPENING-PURCHASE-A",
+      "customerName": "Supplier D",
+      "date": "2026-10-25T03:30:00.000Z",
+      "timestamp": 1792899000000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [],
+      "total": 0,
+      "cashPayment": 0,
+      "onlinePayment": 0,
+      "dueAmount": 700,
+      "payment": {
+        "cash": 0,
+        "online": 0,
+        "due": 700,
+        "total": 0
+      },
+      "openDue": true,
+      "cleared": false,
+      "openingBalance": {
+        "migrated": true,
+        "kind": "payable",
+        "billType": "purchase",
+        "amount": 700,
+        "billTotal": 900,
+        "paidBefore": 200,
+        "asOf": 1792938340000,
+        "fromProject": "old-project",
+        "sourceBillId": "src-opening-purchase-a"
+      }
+    }
+  ],
+  "wholesaleSales": [],
+  "retailSales": [
+    {
+      "id": "r-old",
+      "billNumber": "S-001",
+      "customerName": "Customer B",
+      "date": "2026-10-20T05:30:00.000Z",
+      "timestamp": 1792474200000,
+      "type": "retail",
+      "isPurchase": false,
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 25,
+          "rate": 40,
+          "total": 1000,
+          "timestamp": 1792474200000,
+          "weights": []
+        }
+      ],
+      "total": 1000,
+      "totalPackets": 0,
+      "cashPayment": 600,
+      "onlinePayment": 0,
+      "dueAmount": 400,
+      "payment": {
+        "cash": 600,
+        "online": 0,
+        "due": 400,
+        "total": 1000
+      },
+      "openDue": true,
+      "payments": [
+        {
+          "amount": 200,
+          "recordedBy": "User 1",
+          "date": "25/10/2026, 3:20:00 pm"
+        }
+      ]
+    },
+    {
+      "id": "r-today",
+      "billNumber": "S-002",
+      "customerName": "Customer E",
+      "date": "2026-10-25T14:45:00.000Z",
+      "timestamp": 1792939500000,
+      "type": "retail",
+      "isPurchase": false,
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 10,
+          "rate": 40,
+          "total": 400,
+          "timestamp": 1792939500000,
+          "weights": []
+        }
+      ],
+      "total": 400,
+      "totalPackets": 0,
+      "cashPayment": 300,
+      "onlinePayment": 0,
+      "dueAmount": 100,
+      "payment": {
+        "cash": 300,
+        "online": 0,
+        "due": 100,
+        "total": 400
+      },
+      "openDue": true
+    },
+    {
+      "id": "opening-retail-a",
+      "billNumber": "OPENING-RETAIL-A",
+      "customerName": "Customer F",
+      "date": "2026-10-25T05:30:00.000Z",
+      "timestamp": 1792906200000,
+      "type": "retail",
+      "isPurchase": false,
+      "items": [],
+      "total": 0,
+      "cashPayment": 0,
+      "onlinePayment": 0,
+      "dueAmount": 5000,
+      "payment": {
+        "cash": 0,
+        "online": 0,
+        "due": 5000,
+        "total": 0
+      },
+      "openDue": true,
+      "cleared": false,
+      "openingBalance": {
+        "migrated": true,
+        "kind": "receivable",
+        "billType": "retail",
+        "amount": 5000,
+        "billTotal": 8000,
+        "paidBefore": 3000,
+        "asOf": 1792938340000,
+        "fromProject": "old-project",
+        "sourceBillId": "src-opening-retail-a"
+      }
+    },
+    {
+      "id": "opening-retail-b",
+      "billNumber": "OPENING-RETAIL-B",
+      "customerName": "Customer G",
+      "date": "2026-08-12T04:30:00.000Z",
+      "timestamp": 1786509000000,
+      "type": "retail",
+      "isPurchase": false,
+      "items": [],
+      "total": 0,
+      "cashPayment": 10,
+      "onlinePayment": 0,
+      "dueAmount": 30,
+      "payment": {
+        "cash": 10,
+        "online": 0,
+        "due": 30,
+        "total": 0
+      },
+      "openDue": true,
+      "cleared": false,
+      "openingBalance": {
+        "migrated": true,
+        "kind": "receivable",
+        "billType": "retail",
+        "amount": 40,
+        "billTotal": 240,
+        "paidBefore": 200,
+        "asOf": 1792938340000,
+        "fromProject": "old-project",
+        "sourceBillId": "src-opening-retail-b"
+      },
+      "payments": [
+        {
+          "id": "pay-1",
+          "cash": 10,
+          "online": 0,
+          "date": "2026-10-25T15:00:00.000Z",
+          "at": 1792940400000
+        }
+      ]
+    }
+  ],
+  "stockAdjustments": [],
+  "expenses": [
+    {
+      "id": "e1",
+      "amount": 120,
+      "category": "business",
+      "type": "Auto",
+      "date": "5/10/2026, 4:15:20 pm",
+      "timestamp": 1791197120000
+    },
+    {
+      "id": "e2",
+      "amount": 300,
+      "category": "business",
+      "type": "Labour",
+      "date": "15/10/2026, 11:02:00 am",
+      "timestamp": 1792042320000
+    },
+    {
+      "id": "e3",
+      "amount": 40,
+      "category": "personal",
+      "type": "Newspaper",
+      "date": "20/10/2026, 9:00:00 am",
+      "timestamp": 1792467000000
+    },
+    {
+      "id": "e4",
+      "amount": 75,
+      "category": "business",
+      "type": "Auto",
+      "date": "25/10/2026, 1:00:00 pm",
+      "timestamp": 1792913400000
+    },
+    {
+      "id": "e5",
+      "amount": 200,
+      "category": "business",
+      "type": "Bags",
+      "date": "10/9/2026, 6:30:00 pm",
+      "timestamp": 1789045200000
+    }
+  ],
+  "withdrawals": [],
+  "expected": {
+    "today": {
+      "T1_purchases": 3000,
+      "T1_purchaseCount": 1,
+      "T2_sales": 400,
+      "T2_saleCount": 1,
+      "T3_labour": 0,
+      "T4_businessExpenses": 75,
+      "T5_personalExpenses": 0,
+      "T6_cashIn": 510,
+      "T7_onlineIn": 0,
+      "T8_cashOut": 2075,
+      "T9_onlineOut": 500,
+      "T10_totalIn": 510,
+      "T11_totalOut": 2575,
+      "T12_net": -2065,
+      "T13_dueReceived": 210,
+      "T14_duePaid": 0,
+      "T15_dueToReceive": 100,
+      "T16_dueToPay": 500
+    },
+    "reportsDay": {
+      "R1_purchases": 3000,
+      "R1_purchaseCount": 1,
+      "R2_sales": 400,
+      "R2_saleCount": 1,
+      "R4_cash": 2300,
+      "R5_online": 500
+    },
+    "reportsAll": {
+      "R1_purchases": 10500,
+      "R1_purchaseCount": 4,
+      "R2_sales": 1400,
+      "R2_saleCount": 2,
+      "R4_cash": 9150,
+      "R5_online": 500,
+      "R6_dueToPay": 1450,
+      "R7_dueToReceive": 5530
+    },
+    "financeAll": {
+      "F1_sales": 1400,
+      "F1_saleCount": 2,
+      "F9_dueToReceive": 5530,
+      "F10_dueToPay": 1450
+    },
+    "analyticsMonth": {
+      "A3_expenses": 495,
+      "A3_expenseCount": 3,
+      "A5_payable": 1450,
+      "A5_payableCount": 3,
+      "A6_receivable": 5530,
+      "A6_receivableCount": 4
+    },
+    "outstanding": {
+      "O3_payableTotal": 1450,
+      "O4_receivableTotal": 5530
+    }
+  }
+}

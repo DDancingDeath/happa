@@ -106,10 +106,10 @@ For the selected PERIOD. Dues are all-time, not the period.
 |---|---|---|
 | A1 | This month: revenue | Σ BILL-TOTAL of sales from the 1st of this month to now. ❌ app differs: `DD/MM/YYYY` bills are misread (#49). |
 | A2 | This month: purchases | Σ BILL-TOTAL of purchases, same range. ❌ (#49) |
-| A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. |
+| A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. ❌ app differs: expenses dated `D/M/YYYY, h:mm:ss pm` (every expense the old app saved) are misread (#49). |
 | A4 | This month: profit | Same as F4 for the same range (#36). |
 | A7 | Profit trend (per day) | F4 split by day: each day's sales − cost of goods sold − business expenses − bad debts; the days add up to F4 for the whole range. |
-| A5 | Total payable | = F10; count of bills with BILL-DUE > 0. |
+| A5 | Total payable | = F10; count of bills with BILL-DUE > 0. ❌ app differs: counts cleared bills that still carry their old due (#220). |
 | A6 | Total receivable | = F9; count of bills with BILL-DUE > 0. ❌ app differs: counts cleared bills, misses `dueAmount`-only bills (#220). |
 
 Projections and predictions on Analytics are estimates and are not checked
@@ -192,6 +192,23 @@ Oracle: `tests/oracle/rent.test.js`.
 | RENT-7 | Electricity | Per unit sub-meter: units = current − previous reading, amount = units × rate per unit (both rounded to paise), added to that month's charge; saving again replaces it. |
 
 ---
+
+## Checking real data
+
+`npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and
+the app's own calculations side by side on a backup file for each of the last 60 days, the last 24
+months and all time, plus the accounting checks below, cross-page agreement and the Diagnostics number
+checks; `--bundle` adds a migration bundle's opening records. Shapes it finds become anonymised fixtures
+(`tests/fixtures/calculations/real-shapes.json`, `tests/oracle/real-shapes.test.js`), skipped with their
+issue while the app differs.
+
+- Opening records (`openingBalance`, written by `tools/migrate`, dated with the old bill's date) are
+  left out of every period figure and count only in dues (F9, F10, R6, R7, A5, A6, O1–O4); a payment on
+  one is a normal due payment on its day. The oracle follows this; ❌ the app counts them in Today
+  (T1/T2 counts, T15, T16), Reports (R1/R2 counts, R4) and Finance (F1 count) until PR #18
+  (`fix/opening-records-excluded`) is merged, which also adds the full OPENING definition here.
+- The oracle does not model stock that goes below zero (AC8); there the app writes the uncosted units
+  off (#215), so cost of goods sold, profit and stock value differ for those items.
 
 ## Accounting checks (always true)
 

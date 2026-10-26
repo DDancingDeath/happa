@@ -94,6 +94,16 @@ module.exports = [
         rules: { ...realErrors, 'no-control-regex': 'off' }
     },
     {
+        // Real-data number audit: ES modules run through Jest + Babel (the CLI and its Jest config stay CommonJS).
+        files: ['tools/audit/audit-lib.js', 'tools/audit/audit.run.js', 'tools/audit/causes.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: { ...globals.browser, ...globals.node, ...globals.jest }
+        },
+        rules: realErrors
+    },
+    {
         // tools/migrate is an ES module package (it imports the app's www/js utils).
         files: ['tools/migrate/**/*.js'],
         languageOptions: {
