@@ -92,6 +92,24 @@ describe('unit rows (RENT-10)', () => {
     });
 });
 
+test('a former tenant\'s late month stays in the unit\'s due but does not make the new tenant Late (review of #30)', () => {
+    const data = {
+        properties: [{ id: 'P1', name: 'Gupta Bhawan' }],
+        units: [{ id: 'U1', propertyId: 'P1', label: '2B', type: 'flat', rent: 8000 }],
+        tenants: [{ id: 'T2', name: 'New' }],
+        leases: [{ id: 'LNEW', unitId: 'U1', tenantId: 'T2', rent: 8000, dueDay: 10, status: 'active' }],
+        charges: [
+            { id: 'LOLD_2026-09', leaseId: 'LOLD', unitId: 'U1', month: '2026-09', dueDay: 5, amount: 7000, paid: 0 },
+            { id: 'LNEW_2026-10', leaseId: 'LNEW', unitId: 'U1', month: MONTH, dueDay: 10, amount: 8000, paid: 8000 }
+        ]
+    };
+    const [row] = unitRows(data, MONTH, TODAY);
+    expect(row).toMatchObject({ status: 'paid', late: false, due: 7000, expected: 8000, collected: 8000 });
+    expect(summarize([row]).late).toBe(0);
+    expect(filterRows([row], { status: 'late' })).toEqual([]);
+    expect(filterRows([row], { status: 'due' })).toHaveLength(1);
+});
+
 test('property totals always equal the sum of their unit rows (generated data)', () => {
     const arb = fc.record({
         units: fc.array(fc.record({ p: fc.integer({ min: 0, max: 3 }), type: fc.constantFrom(...UNIT_TYPES, undefined), occupied: fc.boolean(),

@@ -1993,5 +1993,6 @@ export default {
     'ui.rent.start_date': "शुरू होने की तारीख",
     'ui.rent.tenant_if_occupied': "किरायेदार (अगर भरा है)",
     'ui.rent.tenant_new': "नया किरायेदार",
-    'ui.rent.tenant_pick': "किरायेदार"
+    'ui.rent.tenant_pick': "किरायेदार",
+    'msg.rent.not_allowed': "सहेजा नहीं गया: यह बदलाव आपकी भूमिका या इस रिकॉर्ड के लिए अनुमति में नहीं है (जैसे पिछली तारीख से खाली कराना मालिक या मैनेजर ही कर सकते हैं)।"
 };

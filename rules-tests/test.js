@@ -1755,6 +1755,15 @@ function defineRentSuite(prefix) {
         await assertFails(pubOn(db('rentMember'), TOKEN).set(snap({ em: 'solar' })));
     });
 
+    t('rent can go down on a pro-rated lease (also one that started on the 1st); firstRent stays fixed (review of #30)', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, rent: 6000, firstRent: 3000, proRate: true, startDate: `${PREV}-16`, startMonth: PREV }));
+        await assertSucceeds(leaseRef('rentMember').update({ rent: 2500, updatedAt: 2, updatedBy: 'rentMember' }));
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, rent: 6000, firstRent: 6000, proRate: true, startDate: `${PREV}-01`, startMonth: PREV }));
+        await assertSucceeds(leaseRef('rentManager').update({ rent: 5000, updatedAt: 3, updatedBy: 'rentManager' }));
+        await assertFails(leaseRef('rentManager').update({ firstRent: 100, updatedAt: 4, updatedBy: 'rentManager' }));
+        await assertFails(leaseRef('rentManager').update({ firstRent: -1, updatedAt: 4, updatedBy: 'rentManager' }));
+    });
+
     t('only the owner deletes rentals records', async () => {
         await seed('rent_tenants', 'T1', { name: 'Ram', phone: '', notes: '', ...meta('x') });
         await assertFails(db('rentManager').collection(c('rent_tenants')).doc('T1').delete());

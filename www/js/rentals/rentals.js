@@ -133,17 +133,32 @@ const typeWord = (type) => t(`ui.rent.uword_${UNIT_TYPES.includes(type) ? type :
 const elecTag = (lease) => `<span class="rent-tag">${esc(t(`ui.rent.elec_tag_${elecMode(lease)}`))}</span>`;
 const sinceText = (lease) => (lease?.startDate ? t('ui.rent.since', { date: dateLabel(lease.startDate) }) : '');
 
+/**
+ * The unit's type when it is really known: its own type, else what the property
+ * kind says (flat / shop / godown). Untyped units in a house or plot get no type
+ * word in names tenants see (no guessed "Flat").
+ */
+const KIND_TYPES = { flat: 'flat', shop: 'commercial', godown: 'godown' };
+function knownType(unit, prop) {
+    if (UNIT_TYPES.includes(unit?.type)) return unit.type;
+    return KIND_TYPES[prop?.kind] || null;
+}
+
 /** "Flat 2B, Gupta Bhawan" in the chosen language (reminders, lists). */
 function placeOf(ix, unitId, fallback = '') {
     const unit = ix.units.get(unitId);
     if (!unit) return fallback;
-    return typedPlace(typeWord(unitType(unit)), unit.label, ix.properties.get(unit.propertyId)?.name);
+    const prop = ix.properties.get(unit.propertyId);
+    const type = knownType(unit, prop);
+    return typedPlace(type ? typeWord(type) : '', unit.label, prop?.name);
 }
 
 /** For the tenant link: "2B, Gupta Bhawan" + the type id (the page adds the word in its own language). */
 function linkPlace(ix, unitId) {
     const unit = ix.units.get(unitId);
-    return unit ? { place: placeText(unit.label, ix.properties.get(unit.propertyId)?.name), unitType: unitType(unit) } : { place: '' };
+    if (!unit) return { place: '' };
+    const prop = ix.properties.get(unit.propertyId);
+    return { place: placeText(unit.label, prop?.name), unitType: knownType(unit, prop) };
 }
 
 const kindLabel = (k) => t(`ui.rent.kind_${PROPERTY_KINDS.includes(k) ? k : 'other'}`);
@@ -802,7 +817,8 @@ function readTenantSection({ newUnit = false } = {}) {
 /** Saves a move-in from the tenant section (one batch); true when saved. */
 async function saveMoveIn({ unit, newUnit, occ, defs }) {
     try {
-        const res = await store.moveIn({ unit, newUnit, tenant: occ.tenant, tenantId: occ.tenantId, lease: occ.lease, meter: occ.meter, currentMonth: state.month });
+        const tenantName = occ.tenant?.name || store.snapshot().tenants.find(x => x.id === occ.tenantId)?.name || '';
+        const res = await store.moveIn({ unit, newUnit, tenant: occ.tenant, tenantId: occ.tenantId, tenantName, lease: occ.lease, meter: occ.meter, currentMonth: state.month });
         const first = firstMonthRent(occ.lease.rent, occ.lease.startDate, occ.lease.proRate);
         UIManager.showToast(t(res.charged ? 'msg.rent.moved_in_charged' : 'msg.rent.moved_in', { amount: formatINR(first) }), 'success');
         AuditService.log('RENT_MOVE_IN', { tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate }).catch(auditWarn);
@@ -810,7 +826,7 @@ async function saveMoveIn({ unit, newUnit, occ, defs }) {
         return true;
     } catch (e) {
         console.error('Move-in not saved:', e);
-        UIManager.showToast(t('msg.rent.save_failed'), 'error');
+        UIManager.showToast(t(e?.code === 'permission-denied' ? 'msg.rent.not_allowed' : 'msg.rent.save_failed'), 'error');
         return false;
     }
 }
@@ -818,6 +834,7 @@ async function saveMoveIn({ unit, newUnit, occ, defs }) {
 /** Settings › Rentals "Make a tenant link for new leases": the link for a lease just moved in (never blocks the move-in). */
 async function linkNewLease({ unit, res, occ, defs }) {
     const d = store.snapshot();
+    const prop = d.properties.find(x => x.id === unit.propertyId);
     const created = {
         id: res.leaseId, unitId: res.unitId, propertyId: unit.propertyId, tenantId: res.tenantId,
         ...occ.lease, status: 'active', endMonth: null, shareToken: null
@@ -825,8 +842,8 @@ async function linkNewLease({ unit, res, occ, defs }) {
     try {
         await store.makeShareLink(created, {
             tenantName: occ.tenant?.name || d.tenants.find(x => x.id === res.tenantId)?.name || '',
-            place: placeText(unit.label, d.properties.find(x => x.id === unit.propertyId)?.name),
-            unitType: unitType(unit),
+            place: placeText(unit.label, prop?.name),
+            unitType: knownType(unit, prop),
             shopName: headerName(defs)
         });
         AuditService.log('RENT_LINK_ON', { leaseId: res.leaseId }).catch(auditWarn);
@@ -1072,7 +1089,7 @@ async function saveRent(fn) {
         return out ?? true;
     } catch (e) {
         console.error('Rentals save failed:', e);
-        UIManager.showToast(t('msg.rent.save_failed'), 'error');
+        UIManager.showToast(t(e?.code === 'permission-denied' ? 'msg.rent.not_allowed' : 'msg.rent.save_failed'), 'error');
         return null;
     }
 }
@@ -1121,4 +1138,4 @@ export const RentalsModule = {
     }
 };
 
-export const _test = { state, accounts, index, render, maybeCharge, moveIn };
+export const _test = { state, accounts, index, render, maybeCharge, moveIn, placeOf, linkPlace };

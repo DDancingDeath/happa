@@ -33,13 +33,16 @@ export function unitRows({ properties = [], units = [], leases = [], tenants = [
         const expected = round2(thisMonth.reduce((s, c) => s + (Number(c.amount) || 0), 0));
         const collected = round2(thisMonth.reduce((s, c) => s + (Number(c.paid) || 0), 0));
         const open = mine.filter(c => chargeDue(c) > 0);
+        // due keeps everything owed on the unit (also a former tenant's months);
+        // Late / Paid / Part paid describe only the tenant living there now.
         const due = round2(open.reduce((s, c) => s + chargeDue(c), 0));
-        // Late is about the tenant living there now; a former tenant's late month stays in due.
-        const late = !!lease && open.some(c => chargeStatus(c, today).late);
+        const ownOpen = lease ? open.filter(c => c.leaseId === lease.id) : [];
+        const ownDue = round2(ownOpen.reduce((s, c) => s + chargeDue(c), 0));
+        const late = ownOpen.some(c => chargeStatus(c, today).late);
         const current = lease ? thisMonth.find(c => c.leaseId === lease.id) || null : null;
         const status = !lease ? 'vacant'
             : late ? 'late'
-            : due <= 0 ? (current ? 'paid' : 'due')
+            : ownDue <= 0 ? (current ? 'paid' : 'due')
             : (current && (Number(current.paid) || 0) > 0) ? 'partial' : 'due';
         return {
             unitId: u.id,

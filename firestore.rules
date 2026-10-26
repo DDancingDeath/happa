@@ -703,7 +703,9 @@ service cloud.firestore {
             && (d.get('shareToken', null) == null || rentShareToken(d.shareToken))
             && (!('startDate' in d) || (rentDate(d.startDate) && d.startDate[0:7] == d.startMonth))
             && d.get('proRate', false) is bool
-            && (d.get('firstRent', null) == null || (d.firstRent is number && d.firstRent >= 0 && d.firstRent <= d.rent))
+            // firstRent <= rent only when the lease is created; afterwards firstRent is fixed
+            // and the rent may go down (rentLeaseUpdateOk keeps firstRent unchanged).
+            && (d.get('firstRent', null) == null || (d.firstRent is number && d.firstRent >= 0 && (resource != null || d.firstRent <= d.rent)))
             && d.get('elecMode', 'meter') in ['included', 'meter', 'own']
             && (d.get('meterNo', null) == null || rentStr(d, 'meterNo', 1, 40))
           : false);

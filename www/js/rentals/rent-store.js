@@ -213,7 +213,7 @@ export async function removeShareLink(lease) {
  * @param {string} p.currentMonth
  * @returns {Promise<{unitId: string, tenantId: string, leaseId: string, charged: boolean}>}
  */
-export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = null, lease, meter = null, currentMonth }) {
+export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = null, tenantName = '', lease, meter = null, currentMonth }) {
     const db = FirebaseService.db;
     const now = Date.now();
     const batch = db.batch();
@@ -238,7 +238,7 @@ export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = 
     const charged = startMonth <= currentMonth;
     if (charged) {
         doc.chargedThrough = startMonth;
-        const names = { tenantName: tenant?.name || lease.tenantName || '', unitLabel: unit.label || '' };
+        const names = { tenantName: tenant?.name || tenantName || '', unitLabel: unit.label || '' };
         batch.set(coll('rent_charges').doc(chargeId(leaseRef.id, startMonth)),
             { ...newCharge({ id: leaseRef.id, ...doc }, startMonth, names), updatedBy: uid() });
     }

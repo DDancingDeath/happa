@@ -76,6 +76,37 @@ test('Add unit, occupied: one save creates all four (pro-rated first month when 
     expect(fake.raw('rent_charges').get(`${lease.id}_${M}`)).toMatchObject({ amount: 6000 });
 });
 
+test('an existing tenant moving in: the first charge carries the tenant name', async () => {
+    const res = await store.moveIn({
+        unit: { id: 'UV', propertyId: 'P1', label: 'V1' }, newUnit: false, tenantId: 'TX', tenantName: 'Rekha',
+        lease: { rent: 4000, dueDay: 10, startDate: `${M}-01`, proRate: false, deposit: 0, increasePct: 5, elecMode: 'included' },
+        currentMonth: M
+    }).catch(() => null);
+    // the fake's update needs the unit to exist
+    expect(res).toBeNull();
+    fake.seed('rent_units', [{ id: 'UV', propertyId: 'P1', label: 'V1', leaseId: null }]);
+    const ok = await store.moveIn({
+        unit: { id: 'UV', propertyId: 'P1', label: 'V1' }, newUnit: false, tenantId: 'TX', tenantName: 'Rekha',
+        lease: { rent: 4000, dueDay: 10, startDate: `${M}-01`, proRate: false, deposit: 0, increasePct: 5, elecMode: 'included' },
+        currentMonth: M
+    });
+    expect(fake.raw('rent_charges').get(`${ok.leaseId}_${M}`)).toMatchObject({ tenantName: 'Rekha', unitLabel: 'V1', tenantId: 'TX' });
+});
+
+test('names tenants see: no guessed "Flat" for an untyped unit; the property kind is used when it says', () => {
+    const ix = {
+        properties: new Map([['PH', { id: 'PH', name: 'Old House', kind: 'house' }], ['PS', { id: 'PS', name: 'Arora Market', kind: 'shop' }]]),
+        units: new Map([['A', { id: 'A', propertyId: 'PH', label: 'Upper' }], ['B', { id: 'B', propertyId: 'PS', label: '7' }],
+            ['C', { id: 'C', propertyId: 'PH', label: '2B', type: 'flat' }]]),
+        tenants: new Map(), leases: new Map()
+    };
+    expect(_test.placeOf(ix, 'A')).toBe('Upper, Old House');
+    expect(_test.linkPlace(ix, 'A')).toEqual({ place: 'Upper, Old House', unitType: null });
+    expect(_test.placeOf(ix, 'B')).toBe('Shop 7, Arora Market');
+    expect(_test.linkPlace(ix, 'B').unitType).toBe('commercial');
+    expect(_test.placeOf(ix, 'C')).toBe('Flat 2B, Old House');
+});
+
 test('a form error (bad phone) saves nothing at all', async () => {
     const counts = ['rent_units', 'rent_tenants', 'rent_leases', 'rent_charges'].map(c => raw(c).length);
     UIManager.showToast.mockClear();

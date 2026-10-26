@@ -1993,5 +1993,6 @@ export default {
     'ui.rent.start_date': "Start date",
     'ui.rent.tenant_if_occupied': "Tenant (if occupied)",
     'ui.rent.tenant_new': "New tenant",
-    'ui.rent.tenant_pick': "Tenant"
+    'ui.rent.tenant_pick': "Tenant",
+    'msg.rent.not_allowed': "Not saved: this change isn't allowed for your role or for this record (for example a back-dated move-out needs the owner or a manager)."
 };
