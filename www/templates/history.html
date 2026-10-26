@@ -1,10 +1,8 @@
 <div id="history" class="tab">
         
         <div class="filter-buttons history-type-filter" role="group" aria-label="Bill type" style="margin-bottom: 10px;" data-i18n-aria-label="ui.history.bill_type">
-            <button type="button" class="filter-btn active" data-type="all" onclick="window.app.history.filterHistory('all')" data-i18n="ui.history.all">All</button>
-            <button type="button" class="filter-btn filter-purchase" data-type="purchase" onclick="window.app.history.filterHistory('purchase')" data-i18n="ui.common.purchase">Purchase</button>
-            <button type="button" class="filter-btn filter-sale" data-type="retail" onclick="window.app.history.filterHistory('retail')" data-i18n="ui.history.retail">Retail</button>
-            <button type="button" class="filter-btn filter-sale" data-type="wholesale" onclick="window.app.history.filterHistory('wholesale')" data-i18n="ui.history.wholesale">Wholesale</button>
+            <button type="button" class="filter-btn filter-purchase active" data-type="purchase" onclick="window.app.history.filterHistory('purchase')" data-i18n="ui.history.tab_purchase">Purchase</button>
+            <button type="button" class="filter-btn filter-sale" data-type="sale" onclick="window.app.history.filterHistory('sale')" data-i18n="ui.history.tab_sale">Sale</button>
         </div>
 
         <div class="history-date-filter">
@@ -28,14 +26,10 @@
             <div id="historyRangeLabel" class="history-range-label" hidden></div>
         </div>
 
-        <div style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center;">
-            <input type="text" id="historySearch" placeholder="Search by bill number, customer, or item..." 
-                   oninput="window.app.history.searchHistory(this.value)"
-                   style="flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.history.search_bill_number_customer"/>
-            <button onclick="window.app.history.toggleView()" id="historyViewToggle" 
-                    style="padding: 12px 16px; background: #6366f1; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; white-space: nowrap; min-width: 100px;">
-               <span data-i18n="ui.history.table_view"> Table View</span>
-            </button>
+        <div class="history-search-row">
+            <input type="text" id="historySearch" class="history-search-input" placeholder="Search by bill number, customer, or item..."
+                   oninput="window.app.history.searchHistory(this.value)" data-i18n-placeholder="ui.history.search_bill_number_customer"/>
+            <button type="button" onclick="window.app.history.toggleView()" id="historyViewToggle" class="history-view-toggle" data-i18n="ui.history.table_view">Table View</button>
         </div>
 
         <div id="historyList">

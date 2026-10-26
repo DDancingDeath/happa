@@ -10,8 +10,8 @@ import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 //   tab     page element to show            section  sub-view handed to the page (see showTabFromNav)
 //   needs   extra TAB_ROLES/TAB_PERMISSIONS id   id   canonical id kept in history (aliases / old ids)
 //   nav     side-nav link to highlight (default: tab)
-// To add a page's sub-routes, add one group below (e.g. 'settings-roles', 'admin-configure',
-// 'wholesale-history') and open the section for that page in showTabFromNav.
+// To add a page's sub-routes, add one group below (e.g. 'settings-roles', 'admin-configure')
+// and open the section for that page in showTabFromNav.
 const ROUTES = Object.freeze({
     // Rates page (the items list). Old id: items.
     rates: { tab: 'items', nav: 'rates' },
@@ -22,7 +22,10 @@ const ROUTES = Object.freeze({
     'reports-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends' },
     'rate-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends', id: 'reports-trends' },
     'rates-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends', id: 'reports-trends' },
-    'rates-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends', id: 'reports-traffic' }
+    'rates-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends', id: 'reports-traffic' },
+
+    // Wholesale › History (old History 'wholesale' links land here).
+    'wholesale-history': { tab: 'wholesale-sales', section: 'history', nav: 'wholesale-sales' }
 });
 
 /** Route id -> { id (canonical), tab (page element id), section, needs (extra page permission), nav (side-nav link id) }. */
@@ -195,10 +198,11 @@ const NavigationManager = {
             setTimeout(() => window.app.outstanding.filterDue('purchase', { target: document.querySelector('#due .filter-btn') }), 100);
         }
         
-        // Render wholesale sales history when Wholesale Sales tab is shown
-        if (tabId === 'wholesale-sales' && window.app?.wholesaleSales) {
+        // Wholesale page: Sales (entry) tab, or History for 'wholesale-history'
+        if (route.tab === 'wholesale-sales' && window.app?.wholesaleSales) {
+            const view = route.section || 'sales';
             this.resetFilterButtons('wholesale-sales');
-            setTimeout(() => window.app.wholesaleSales.filterTab('sales', { target: document.querySelector('#wholesale-sales .filter-btn') }), 100);
+            setTimeout(() => window.app.wholesaleSales.filterTab(view, { target: document.querySelector(`#wholesale-sales .filter-btn[data-view="${view}"]`) || document.querySelector('#wholesale-sales .filter-btn') }), 100);
         }
         
         // Render stock when Stock tab is shown

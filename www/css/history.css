@@ -287,6 +287,309 @@
   display: none;
 }
 
+/* ==================== BILL ROW (History + Wholesale › History) ==================== */
+/* Phone: two lines. Line 1: bill no · party · amount (right). Line 2: date · items · chips.
+   Desktop columns are in desktop.css. */
+.history-item.bill-row {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr) auto;
+  grid-template-areas:
+    "no party amount"
+    "meta meta meta";
+  align-items: baseline;
+  column-gap: 10px;
+  row-gap: 4px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.history-item.bill-row:hover {
+  transform: none;
+}
+
+.history-item.bill-row[data-type="retail"],
+.history-item.bill-row[data-type="wholesale"] {
+  border-left-color: var(--sale-color);
+}
+
+.bill-row__no,
+.bill-row__party,
+.bill-row__date,
+.bill-row__items {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bill-row__no {
+  grid-area: no;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.bill-row__link {
+  cursor: pointer;
+  text-decoration: underline;
+  color: var(--purchase-dark);
+}
+
+.bill-row[data-type="retail"] .bill-row__link,
+.bill-row[data-type="wholesale"] .bill-row__link {
+  color: var(--sale-color);
+}
+
+.bill-row__party {
+  grid-area: party;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.bill-row__amount {
+  grid-area: amount;
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--purchase-dark);
+}
+
+.bill-row[data-type="retail"] .bill-row__amount,
+.bill-row[data-type="wholesale"] .bill-row__amount {
+  color: var(--sale-color);
+}
+
+.bill-row__meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.bill-row__date {
+  flex: 0 0 auto;
+}
+
+/* "By <name>" only on desktop; the phone card keeps to two lines */
+.bill-row__by {
+  display: none;
+}
+
+.bill-row .bill-row__items {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.bill-row .bill-row__chips {
+  flex: 0 0 auto;
+  margin: 0;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.bill-row .payment-badge {
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
+.bill-row .old-app-chip {
+  align-self: center;
+}
+
+/* Old-app carried dues: hidden by default, a separate group when shown */
+.opening-toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 10px;
+  padding: 4px 12px;
+  border: 1px solid #c4b5fd;
+  border-radius: 999px;
+  background: #fff;
+  color: #5b21b6;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.opening-toggle-chip.active {
+  background: #ede9fe;
+}
+
+.bill-group--opening {
+  margin: 0 0 14px;
+  padding: 8px 0 2px;
+  border: 1px dashed #c4b5fd;
+  border-radius: var(--radius-lg);
+  background: #faf8ff;
+}
+
+.bill-group__title {
+  margin: 0 12px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #5b21b6;
+}
+
+.bill-group--opening .history-item.bill-row {
+  border-left-color: #8b5cf6;
+  box-shadow: none;
+}
+
+/* Search row + Table View (standard secondary button) */
+.history-search-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
+}
+
+.history-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.history-view-toggle {
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.history-view-toggle:hover {
+  border-color: var(--primary-dark);
+  color: var(--primary-dark);
+}
+
+/* "Bills older than … aren't updated live" — one subtle line */
+.history-stale-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.history-stale-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.history-stale-refresh {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--card-bg);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Table View: one row per bill, same columns as the row */
+.bill-table-wrap {
+  overflow-x: auto;
+}
+
+.bill-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  font-size: 14px;
+}
+
+.bill-table thead th {
+  padding: 10px 8px;
+  background: var(--light-bg);
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 2px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.bill-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: top;
+}
+
+.bill-table__row {
+  cursor: pointer;
+}
+
+.bill-table__row:hover {
+  background: var(--light-bg);
+}
+
+.bill-table__no {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.bill-table .bill-table__amount {
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.bill-table__date {
+  white-space: nowrap;
+}
+
+.bill-table__by {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.bill-table__chips .payment-badge {
+  margin: 0 4px 4px 0;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.bill-table__group th {
+  padding: 6px 8px;
+  background: #ede9fe;
+  color: #5b21b6;
+  font-size: 12px;
+  text-align: left;
+}
+
+.bill-table__row.is-opening {
+  background: #faf8ff;
+}
+
+/* Wholesale › History controls */
+.wholesale-history-controls {
+  margin-bottom: 4px;
+}
+
 /* ==================== REPRINT / SHARE (#136) ==================== */
 .bill-action-btn.btn-reprint {
   background: #0f766e;

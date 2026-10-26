@@ -7,7 +7,7 @@
 import {
     billDateOf, billTimeMs, matchesHistoryType, resolveHistoryRange, isBillInRange,
     matchesHistorySearch, filterHistoryBills, normalizeHistoryFilter, formatHistoryRange,
-    validateCustomRange, olderMonthsToLoad
+    validateCustomRange, olderMonthsToLoad, normalizeHistoryTab, isWholesaleHistoryLink
 } from '../utils/history-filters.js';
 
 const local = (y, m, d, h = 0, min = 0) => new Date(y, m - 1, d, h, min).getTime();
@@ -35,7 +35,7 @@ describe('matchesHistoryType', () => {
         ['purchase', [true, false, false]],
         ['retail', [false, true, false]],
         ['wholesale', [false, false, true]],
-        ['sale', [false, true, true]]
+        ['sale', [false, true, false]]
     ])('%s', (type, expected) => {
         expect([p, r, w].map(b => matchesHistoryType(b, type))).toEqual(expected);
     });
@@ -117,11 +117,20 @@ describe('filterHistoryBills', () => {
 describe('normalizeHistoryFilter / formatHistoryRange', () => {
     test('restores a saved filter and rejects junk', () => {
         expect(normalizeHistoryFilter('{"type":"retail","preset":"custom","from":"2026-10-01","to":"bad"}'))
-            .toEqual({ type: 'retail', preset: 'custom', from: '2026-10-01', to: '' });
-        expect(normalizeHistoryFilter('not json')).toEqual({ type: 'all', preset: 'all', from: '', to: '' });
-        expect(normalizeHistoryFilter({ type: 'x', preset: 'y' })).toEqual({ type: 'all', preset: 'all', from: '', to: '' });
+            .toEqual({ type: 'sale', preset: 'custom', from: '2026-10-01', to: '' });
+        expect(normalizeHistoryFilter('not json')).toEqual({ type: 'purchase', preset: 'all', from: '', to: '' });
+        expect(normalizeHistoryFilter({ type: 'x', preset: 'y' })).toEqual({ type: 'purchase', preset: 'all', from: '', to: '' });
         expect(normalizeHistoryFilter({ preset: 'custom', from: '0202-08-03', to: '1999-12-31' }))
-            .toEqual({ type: 'all', preset: 'custom', from: '', to: '' });
+            .toEqual({ type: 'purchase', preset: 'custom', from: '', to: '' });
+    });
+
+    test('History tabs are Purchase | Sale; old "all" / "retail" map to them, "wholesale" is a Wholesale-page link', () => {
+        expect(['purchase', 'sale', 'retail', 'all', 'wholesale', undefined].map(normalizeHistoryTab))
+            .toEqual(['purchase', 'sale', 'sale', 'purchase', 'purchase', 'purchase']);
+        expect(isWholesaleHistoryLink('wholesale')).toBe(true);
+        expect(isWholesaleHistoryLink('{"type":"wholesale","preset":"all"}')).toBe(true);
+        expect(isWholesaleHistoryLink({ type: 'retail' })).toBe(false);
+        expect(isWholesaleHistoryLink('not json')).toBe(false);
     });
 
     test('label uses DD/MM/YYYY and the inclusive end day', () => {

@@ -1,8 +1,9 @@
 <div id="wholesale-sales" class="tab">
 
         <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn filter-sale active" onclick="window.app.wholesaleSales.filterTab('sales', event)" data-i18n="ui.common.sales">Sales</button>
-            <button class="filter-btn filter-sale" onclick="window.app.wholesaleSales.filterTab('outstanding', event)" data-i18n="ui.wholesale.outstanding">Outstanding</button>
+            <button class="filter-btn filter-sale active" data-view="sales" onclick="window.app.wholesaleSales.filterTab('sales', event)" data-i18n="ui.common.sales">Sales</button>
+            <button class="filter-btn filter-sale" data-view="history" onclick="window.app.wholesaleSales.filterTab('history', event)" data-i18n="ui.wholesale.tab_history">History</button>
+            <button class="filter-btn filter-sale" data-view="outstanding" onclick="window.app.wholesaleSales.filterTab('outstanding', event)" data-i18n="ui.wholesale.outstanding">Outstanding</button>
         </div>
 
         <div id="salesEntrySection">
@@ -127,10 +128,45 @@
         </div>
             </div>
 
-        <h3 data-i18n="ui.wholesale.sales_history">Sales History</h3>
-        <div id="salesHistoryList">
+        <h3 data-i18n="ui.wholesale.recent_sales">Recent wholesale bills</h3>
+        <div id="salesRecentList">
             <p style="text-align: center; color: #888; margin-top: 20px;" data-i18n="ui.wholesale.no_sales_yet">No sales yet</p>
         </div>
+        <div style="text-align: center; margin: 8px 0 16px;">
+            <button type="button" class="history-view-toggle" onclick="window.app.wholesaleSales.filterTab('history')" data-i18n="ui.wholesale.see_all_history">See all in History</button>
+        </div>
+        </div>
+
+        <div id="salesHistorySection" style="display: none;">
+            <div class="history-date-filter wholesale-history-controls">
+                <label for="wholesaleHistoryPreset" class="history-date-label" data-i18n="ui.history.date">Date</label>
+                <select id="wholesaleHistoryPreset" onchange="window.app.wholesaleSales.setHistoryPreset(this.value)">
+                    <option value="all" data-i18n="ui.history.all_dates">All dates</option>
+                    <option value="today" data-i18n="ui.history.today">Today</option>
+                    <option value="yesterday" data-i18n="ui.history.yesterday">Yesterday</option>
+                    <option value="week" data-i18n="ui.history.week">This week</option>
+                    <option value="month" data-i18n="ui.history.month">This month</option>
+                    <option value="lastMonth" data-i18n="ui.history.last_month">Last month</option>
+                    <option value="custom" data-i18n="ui.history.custom">Custom</option>
+                </select>
+                <div id="wholesaleHistoryCustomRange" class="history-custom-range" hidden>
+                    <input type="date" id="wholesaleHistoryFrom" aria-label="From date" min="2020-01-01" data-i18n-aria-label="ui.history.from_date">
+                    <span aria-hidden="true">–</span>
+                    <input type="date" id="wholesaleHistoryTo" aria-label="To date" min="2020-01-01" data-i18n-aria-label="ui.history.to_date">
+                    <button type="button" class="history-apply-range" onclick="window.app.wholesaleSales.applyHistoryRange()" data-i18n="ui.history.apply">Apply</button>
+                </div>
+                <div id="wholesaleHistoryRangeHint" class="history-range-hint" role="alert" hidden></div>
+            </div>
+
+            <div class="history-search-row">
+                <input type="text" id="wholesaleHistorySearch" class="history-search-input" placeholder="Search by bill number, customer, or item..."
+                       oninput="window.app.wholesaleSales.searchHistory(this.value)" data-i18n-placeholder="ui.history.search_bill_number_customer"/>
+                <button type="button" onclick="window.app.wholesaleSales.toggleHistoryView()" id="wholesaleHistoryViewToggle" class="history-view-toggle" data-i18n="ui.history.table_view">Table View</button>
+            </div>
+
+            <div id="salesHistoryList">
+                <p style="text-align: center; color: #888; margin-top: 20px;" data-i18n="ui.wholesale.no_sales_yet">No sales yet</p>
+            </div>
         </div>
 
         <div id="salesOutstandingSection" style="display: none;">

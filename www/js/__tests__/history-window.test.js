@@ -251,11 +251,11 @@ describe('stale on-demand history hint (#132)', () => {
         expect(document.getElementById('hint')).toBeNull();
     });
 
-    test('shows "as of" time and Refresh re-fetches, then re-renders', async () => {
+    test('plain "not updated live" text; Refresh re-fetches, then re-renders', async () => {
         const asOf = new Date(2026, 9, 21, 9, 5).getTime();
         const { svc, list } = setup({ from: JAN_1, liveFrom: MAR_1, asOf });
-        expect(hw.staleHistoryHintText({ liveFrom: MAR_1, asOf }, new Date(2026, 9, 21, 12)))
-            .toMatch(/^Older bills \(before 1 Mar 2026\) are as of 0?9:05( am)?\. Tap Refresh to get the latest\.$/i);
+        expect(hw.staleHistoryHintText({ liveFrom: MAR_1, asOf }))
+            .toBe("Bills older than 1 Mar 2026 aren't updated live. Refresh to see recent changes.");
         const onRefreshed = jest.fn();
         hw.renderStaleHistoryHint(list, { id: 'hint', onRefreshed });
         const hint = document.getElementById('hint');
@@ -267,6 +267,14 @@ describe('stale on-demand history hint (#132)', () => {
         // Re-rendering reuses the same element.
         hw.renderStaleHistoryHint(list, { id: 'hint' });
         expect(document.querySelectorAll('#hint')).toHaveLength(1);
+    });
+
+    test('hidden when the screen shows no bill older than the live window', () => {
+        const { list } = setup({ from: JAN_1, liveFrom: MAR_1, asOf: 1 });
+        hw.renderStaleHistoryHint(list, { id: 'hint', isRelevant: () => true });
+        expect(document.getElementById('hint')).not.toBeNull();
+        hw.renderStaleHistoryHint(list, { id: 'hint', isRelevant: (info) => info.liveFrom < 0 });
+        expect(document.getElementById('hint')).toBeNull();
     });
 
     test('failed refresh offers Retry and does not re-render', async () => {

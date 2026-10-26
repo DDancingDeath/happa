@@ -15,7 +15,7 @@
 
 import { AppState } from './state.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatDay, formatTimeOfDay } from './dates.js';
+import { formatDay } from './dates.js';
 
 const service = () => (typeof window !== 'undefined' ? window.FirebaseService : null) || null;
 
@@ -312,18 +312,13 @@ export function refreshOnDemandHistory() {
 }
 
 /**
- * Text of the "older bills may be out of date" hint.
- * @param {{liveFrom: number, asOf: number}} info
- * @param {Date} [now]
+ * Text of the "older bills aren't live" hint. Bills from `liveFrom` on are kept
+ * up to date live; older ones were loaded on demand and only change on Refresh.
+ * @param {{liveFrom: number}} info
  * @returns {string}
  */
-export function staleHistoryHintText(info, now = new Date()) {
-    const date = formatWindowDate(info.liveFrom);
-    if (!info.asOf) return t('ui.hist.stale', { date });
-    const at = new Date(info.asOf);
-    const clock = formatTimeOfDay(at, { lang: getLang() });
-    const time = at.toDateString() === now.toDateString() ? clock : `${formatWindowDate(info.asOf)} ${clock}`;
-    return t('ui.hist.stale_at', { date, time });
+export function staleHistoryHintText(info) {
+    return t('ui.hist.stale', { date: formatWindowDate(info.liveFrom) });
 }
 
 /**
@@ -333,12 +328,14 @@ export function staleHistoryHintText(info, now = new Date()) {
  * @param {Object} opts
  * @param {string} opts.id - unique element id for this screen
  * @param {Function} [opts.onRefreshed] - re-render after a refresh
+ * @param {(info: {liveFrom: number}) => boolean} [opts.isRelevant] - false hides
+ *   the hint (e.g. no older bill is on screen)
  */
-export function renderStaleHistoryHint(anchor, { id, onRefreshed } = {}) {
+export function renderStaleHistoryHint(anchor, { id, onRefreshed, isRelevant } = {}) {
     if (!anchor || !id) return;
     let hint = document.getElementById(id);
     const info = onDemandHistoryInfo();
-    if (!info) {
+    if (!info || (typeof isRelevant === 'function' && !isRelevant(info))) {
         hint?.remove();
         return;
     }
@@ -347,18 +344,17 @@ export function renderStaleHistoryHint(anchor, { id, onRefreshed } = {}) {
         hint.id = id;
         hint.className = 'history-stale-hint';
         hint.setAttribute('role', 'status');
-        hint.style.cssText = 'font-size:12px;color:#6b7280;margin:4px 0 8px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;';
     }
     if (hint.nextElementSibling !== anchor) anchor.parentNode?.insertBefore(hint, anchor);
     if (hint.dataset.busy === '1') return;
     hint.textContent = '';
     const text = document.createElement('span');
+    text.className = 'history-stale-text';
     text.textContent = staleHistoryHintText(info);
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'history-stale-refresh';
     btn.textContent = t('ui.anom.refresh');
-    btn.style.cssText = 'font-size:14px;min-height:36px;padding:6px 14px;';
     btn.addEventListener('click', async () => {
         hint.dataset.busy = '1';
         btn.disabled = true;
@@ -371,7 +367,7 @@ export function renderStaleHistoryHint(anchor, { id, onRefreshed } = {}) {
             text.textContent = t('ui.hist.refresh_failed');
             return;
         }
-        renderStaleHistoryHint(anchor, { id, onRefreshed });
+        renderStaleHistoryHint(anchor, { id, onRefreshed, isRelevant });
         onRefreshed?.();
     });
     hint.append(text, btn);

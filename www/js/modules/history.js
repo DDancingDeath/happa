@@ -18,18 +18,20 @@ import {
 } from '../utils/history-window.js';
 import {
     filterHistoryBills, resolveHistoryRange, normalizeHistoryFilter, formatHistoryRange, billDateOf, billTimeMs,
-    validateCustomRange, olderMonthsToLoad, HISTORY_FILTER_KEY, HISTORY_TYPES, WIDE_LOAD_MONTHS
+    validateCustomRange, olderMonthsToLoad, normalizeHistoryTab, isWholesaleHistoryLink,
+    HISTORY_FILTER_KEY, HISTORY_TAB_KEY, WIDE_LOAD_MONTHS
 } from '../utils/history-filters.js';
+import { buildBillRow, buildOpeningGroup, addOpeningToggle, billTableHtml } from '../ui/bill-row.js';
 import { accessFor, canEditBillWith, canDeleteBillWith, historyCutoff, withinBillEditWindow } from '../utils/role-access.js';
 import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
-import { formatAmount, formatRupees, isOpeningRecord, openingAmount } from '../utils/money.js';
+import { isOpeningRecord } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
-const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', retail: 'ui.history.noun_retail', wholesale: 'ui.history.noun_wholesale' };
+const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
 
 /**
  * Stable reference to a bill for inline onclick handlers. Indices into the
@@ -64,7 +66,17 @@ export class HistoryManager {
     static pageKey = '';
     /** Full filtered + sorted list of the last render (search covers all of it). */
     static pageBills = [];
-    static pageType = 'all';
+    static pageType = 'purchase';
+    /** Old-app opening records of the last render (shown only when the toggle is on). */
+    static pageOpenings = [];
+
+    /** "Show dues carried from old app" toggle, per tab (off by default). */
+    static showOpening = { purchase: false, sale: false };
+    /** Old-app opening records matching the current tab, dates and search. */
+    static openingCount = 0;
+
+    /** A saved filter from before asked for wholesale bills: open Wholesale › History once. */
+    static pendingWholesaleRedirect = false;
     static showMoreObserver = null;
 
     /** Type + date filter (#160); remembered for the browser session. */
@@ -86,12 +98,19 @@ export class HistoryManager {
     /** True while "Load older" from the range footer is running. */
     static loadingGap = false;
 
-    /** @returns {{type: string, preset: string, from: string, to: string}} */
+    /**
+     * Tab (Purchase / Sale, remembered per device) + dates (remembered for the session).
+     * @returns {{type: 'purchase'|'sale', preset: string, from: string, to: string}}
+     */
     static getFilter() {
         if (!this.filter) {
             let saved = null;
+            let tab = null;
             try { saved = sessionStorage.getItem(HISTORY_FILTER_KEY); } catch { /* storage blocked */ }
-            this.filter = normalizeHistoryFilter(saved);
+            try { tab = localStorage.getItem(HISTORY_TAB_KEY); } catch { /* storage blocked */ }
+            if (!tab && isWholesaleHistoryLink(saved)) this.pendingWholesaleRedirect = true;
+            const filter = normalizeHistoryFilter(saved);
+            this.filter = { ...filter, type: tab ? normalizeHistoryTab(tab) : filter.type };
         }
         return this.filter;
     }
@@ -99,7 +118,16 @@ export class HistoryManager {
     static setFilter(patch) {
         this.filter = normalizeHistoryFilter({ ...this.getFilter(), ...patch });
         try { sessionStorage.setItem(HISTORY_FILTER_KEY, JSON.stringify(this.filter)); } catch { /* storage blocked */ }
+        if (patch.type !== undefined) {
+            try { localStorage.setItem(HISTORY_TAB_KEY, this.filter.type); } catch { /* storage blocked */ }
+        }
         return this.filter;
+    }
+
+    /** Wholesale bills live on the Wholesale page: old History links go to Wholesale › History. */
+    static openWholesaleHistory() {
+        this.pendingWholesaleRedirect = false;
+        window.app?.nav?.showTab?.('wholesale-history');
     }
 
     /**
@@ -222,22 +250,27 @@ export class HistoryManager {
     }
 
     /**
-     * Render transaction history with type/date filters, search and paging.
+     * Render purchase or (retail) sale bills with date filter, search and paging.
+     * Wholesale bills are on the Wholesale page. Old-app opening records are
+     * hidden unless the tab's "Show dues carried from old app" toggle is on.
      * Supports both card and table view modes
-     * @param {'all'|'purchase'|'retail'|'wholesale'|'sale'} [type] - Type filter
-     *   (defaults to the remembered one; 'sale' = retail + wholesale)
+     * @param {'purchase'|'sale'} [type] - Tab (defaults to the remembered one;
+     *   old values: 'retail' = Sale, 'all' = Purchase, 'wholesale' opens Wholesale › History)
      * @param {string} [searchTerm=''] - Optional search term to filter by
      */
     static renderHistory(type, searchTerm = '') {
         const purchaseHistory = AppState.purchaseHistory || [];
-        const salesHistory = AppState.salesHistory || [];
         const retailSalesHistory = AppState.retailSalesHistory || [];
         const container = document.getElementById("historyList");
         if (!container) return;
 
-        if (type && type !== 'sale' && type !== this.getFilter().type) this.setFilter({ type });
+        if (isWholesaleHistoryLink(type) || (this.getFilter() && this.pendingWholesaleRedirect)) {
+            this.openWholesaleHistory();
+            return;
+        }
+        if (type && normalizeHistoryTab(type) !== this.getFilter().type) this.setFilter({ type: normalizeHistoryTab(type) });
         const filter = this.getFilter();
-        if (!type) type = filter.type;
+        type = filter.type;
         this.syncFilterUi();
 
         const range = resolveHistoryRange(filter.preset, new Date(), filter);
@@ -264,22 +297,27 @@ export class HistoryManager {
             onRetry: () => { retryRange('history'); this.refreshHistory(); }
         });
         
-        // Combine purchases and sales
-        const purchases = purchaseHistory.map(b => ({ ...b, type: 'purchase', isPurchase: true }));
-        const wholesaleSales = salesHistory.map(s => ({ ...s, type: 'wholesale', isPurchase: false }));
-        const retailSales = retailSalesHistory.map(s => ({ ...s, type: 'retail', isPurchase: false }));
+        // Purchases or retail sales (wholesale bills are on the Wholesale page)
+        const tabBills = type === 'sale'
+            ? retailSalesHistory.map(s => ({ ...s, type: 'retail', isPurchase: false }))
+            : purchaseHistory.map(b => ({ ...b, type: 'purchase', isPurchase: true }));
         const cutoff = historyCutoff(AppState.userRole, AppState.settings?.roleAccess);
-        const allHistory = [...purchases, ...wholesaleSales, ...retailSales]
-            .filter(b => cutoff === null || billTimeMs(b) >= cutoff);
+        const allHistory = tabBills.filter(b => cutoff === null || billTimeMs(b) >= cutoff);
         
-        const sortedBills = filterHistoryBills(allHistory, { type, range, search: searchTerm });
-        this.updateRangeLabel(range, sortedBills.length);
+        const matched = filterHistoryBills(allHistory, { type, range, search: searchTerm });
+        // Old-app carried dues are not happa bills: hidden unless the toggle is on (Outstanding always lists them).
+        const openings = matched.filter(b => isOpeningRecord(b));
+        const sortedBills = matched.filter(b => !isOpeningRecord(b));
+        const showOpenings = !!this.showOpening[type] && openings.length > 0;
+        this.pageOpenings = showOpenings ? openings : [];
+        this.openingCount = openings.length;
+        this.updateRangeLabel(range, sortedBills.length + this.pageOpenings.length);
         
         // Check view mode and render accordingly
         this.activeSearch = (searchTerm || '').trim();
         // Only the first PAGE_SIZE bills go into the DOM; live refreshes keep
         // how many are shown, a new filter/search/view starts over (#24).
-        const pageKey = `${type}|${filter.preset}|${range.from}|${range.to}|${this.activeSearch}|${this.viewMode}`;
+        const pageKey = `${type}|${filter.preset}|${range.from}|${range.to}|${this.activeSearch}|${this.viewMode}|${showOpenings}`;
         if (pageKey !== this.pageKey) {
             this.pageKey = pageKey;
             this.visibleCount = this.PAGE_SIZE;
@@ -293,7 +331,7 @@ export class HistoryManager {
             return;
         }
 
-        if (sortedBills.length === 0) {
+        if (sortedBills.length === 0 && !showOpenings) {
             container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
             this.renderShowMore(container);
             this.updateOlderHistoryUi();
@@ -302,6 +340,7 @@ export class HistoryManager {
 
         container.innerHTML = "";
         const fragment = document.createDocumentFragment();
+        if (showOpenings) fragment.appendChild(buildOpeningGroup(openings, bill => this.buildHistoryCard(bill)));
         sortedBills.slice(0, this.visibleCount).forEach(bill => fragment.appendChild(this.buildHistoryCard(bill)));
         container.appendChild(fragment);
         this.renderShowMore(container);
@@ -359,56 +398,22 @@ export class HistoryManager {
     }
 
     /**
-     * One history card.
-     * @param {Object} bill
+     * One history row (shared layout with Wholesale › History, see ui/bill-row.js).
+     * @param {Object} bill - type-tagged ('purchase' | 'retail')
      * @returns {HTMLElement}
      */
     static buildHistoryCard(bill) {
-        const div = document.createElement("div");
-        div.className = "history-item";
-        div.setAttribute('data-type', bill.type);
-        
-        // Use saved values from database
-        const totalPackets = bill.totalPackets || 0;
-        
-        const paymentParts = [];
-        // Handle both old and new payment structures with color coding
-        if (bill.payment) {
-            if (bill.payment.online > 0) paymentParts.push(`<span class="payment-badge payment-online">${L('ui.history.badge_online', { amount: formatAmount(bill.payment.online) })}</span>`);
-            if (bill.payment.cash > 0) paymentParts.push(`<span class="payment-badge payment-cash">${L('ui.history.badge_cash', { amount: formatAmount(bill.payment.cash) })}</span>`);
-            if (bill.payment.due > 0) paymentParts.push(`<span class="payment-badge payment-due">${L('ui.history.badge_due', { amount: formatAmount(bill.payment.due) })}</span>`);
-        } else {
-            // Fallback to old direct fields
-            if (bill.onlinePayment > 0) paymentParts.push(`<span class="payment-badge payment-online">${L('ui.history.badge_online', { amount: formatAmount(bill.onlinePayment) })}</span>`);
-            if (bill.cashPayment > 0) paymentParts.push(`<span class="payment-badge payment-cash">${L('ui.history.badge_cash', { amount: formatAmount(bill.cashPayment) })}</span>`);
-            if (bill.dueAmount > 0) paymentParts.push(`<span class="payment-badge payment-due">${L('ui.history.badge_due', { amount: formatAmount(bill.dueAmount) })}</span>`);
-        }
-        const paymentHTML = paymentParts.length > 0 ? `
-            <div class="history-payment">
-                ${paymentParts.join(' ')}
-            </div>
-        ` : '';
-        
-        // Use billNumber if available, otherwise generate short number from ID
-        const billNumber = bill.billNumber || (typeof bill.id === 'string' ? bill.id.substring(0, 8) : bill.id);
-        const opening = isOpeningRecord(bill);
-        const billTotal = opening ? openingAmount(bill) : (bill.grandTotal || bill.amountPayable || bill.saleTotal || bill.total || 0);
-        const formattedDate = Helpers.formatDateTime(billDateOf(bill) || bill.date);
-        const itemColor = (bill.type === 'retail' || bill.type === 'wholesale') ? '#28a745' : '#007bff';
-        
-        div.innerHTML = `
-            <div class="history-header">
-                <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" onclick="window.app.history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')">#${Helpers.escapeHtml(billNumber)}</span>${bill.customerName ? ` <strong>${Helpers.escapeHtml(bill.customerName)}</strong>` : ''}
-                <span style="color: ${itemColor}; font-weight: 700;">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span> ` : ''}${Helpers.escapeHtml(formatRupees(billTotal))}</span>
-            </div>
-            <div class="history-date">${formattedDate}${bill.createdByName || bill.userName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(bill.createdByName || bill.userName)}</strong>` : ''}</div>
-            <div class="history-summary">
-                ${opening ? L('ui.history.opening_summary') : `${Helpers.escapeHtml(bill.items.map(item => item.name).join(', '))} • ${Helpers.escapeHtml(tn('ui.history.n_packets', totalPackets))}`}
-            </div>
-            ${paymentHTML}
-        `;
-        
-        return div;
+        return buildBillRow(bill, {
+            kind: bill.type,
+            onclick: `window.app.history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
+        });
+    }
+
+    /** "Show dues carried from old app" chip for the current tab. */
+    static toggleOpenings() {
+        const tab = this.getFilter().type;
+        this.showOpening = { ...this.showOpening, [tab]: !this.showOpening[tab] };
+        this.refreshHistory();
     }
 
     /**
@@ -419,7 +424,7 @@ export class HistoryManager {
      */
     static emptyMessage(type, searchTerm) {
         if (searchTerm && searchTerm.trim()) return t('ui.history.no_results_for', { searchTerm });
-        const noun = t(NOUN_KEYS[type] || 'ui.history.noun_all');
+        const noun = t(NOUN_KEYS[type] || NOUN_KEYS.purchase);
         const r = this.activeRange;
         if (this.rangeGap && (this.rangeGap.kind === 'confirm' || (r.to !== null && r.to <= historyLoadedFrom()))) {
             const date = formatWindowDate(historyLoadedFrom());
@@ -442,6 +447,10 @@ export class HistoryManager {
         const list = document.getElementById('historyList');
         if (!list) return;
 
+        addOpeningToggle(list, {
+            id: 'historyOpeningToggle', count: this.openingCount, on: this.pageOpenings.length > 0,
+            onToggle: () => this.toggleOpenings()
+        });
         const ranged = this.activeRange.from !== null || this.activeRange.to !== null;
         attachOlderHistoryScroll(list, {
             noun: 'bills',
@@ -449,7 +458,13 @@ export class HistoryManager {
             enabled: () => !this.activeSearch && !this.hasHiddenBills() && !ranged,
             onLoaded: () => this.refreshHistory()
         });
-        renderStaleHistoryHint(list, { id: 'historyStaleHint', onRefreshed: () => this.refreshHistory() });
+        // Only while bills older than the live window are on screen.
+        const shown = [...this.pageOpenings, ...this.pageBills.slice(0, this.visibleCount)];
+        renderStaleHistoryHint(list, {
+            id: 'historyStaleHint',
+            onRefreshed: () => this.refreshHistory(),
+            isRelevant: (info) => shown.some(b => { const ms = billTimeMs(b); return ms !== null && ms < info.liveFrom; })
+        });
         this.renderRangeGap(list);
 
         let footer = document.getElementById('historySearchFooter');
@@ -903,14 +918,18 @@ export class HistoryManager {
     }
 
     /**
-     * Type chip (All / Purchase / Retail / Wholesale). Keeps the search text
-     * and date range so they work together.
+     * Tab (Purchase / Sale). Keeps the search text and date range so they work
+     * together; the tab is remembered on this device. Old 'wholesale' links
+     * open Wholesale › History.
      * @param {string} type
      */
     static filterHistory(type) {
-        const next = type === 'sale' ? 'all' : type;
-        if (!HISTORY_TYPES.includes(next)) return;
-        this.setFilter({ type: next });
+        if (isWholesaleHistoryLink(type)) {
+            this.openWholesaleHistory();
+            return;
+        }
+        this.pendingWholesaleRedirect = false;
+        this.setFilter({ type: normalizeHistoryTab(type) });
         this.refreshHistory();
     }
 
@@ -1130,98 +1149,16 @@ export class HistoryManager {
     static renderHistoryTable(bills, type) {
         const container = document.getElementById("historyList");
         
-        if (bills.length === 0) {
+        if (bills.length === 0 && this.pageOpenings.length === 0) {
             const searchInput = document.getElementById('historySearch');
             const searchTerm = searchInput ? searchInput.value : '';
             container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
             return;
         }
 
-        const itemColor = type === 'purchase' ? '#007bff' : (type === 'all' ? '#6366f1' : '#28a745');
-        
-        // Define alternating colors for different days - creative gradient backgrounds
-        const dayColors = [
-            'linear-gradient(to right, #fff5f5, #ffffff)',
-            'linear-gradient(to right, #f0f9ff, #ffffff)',
-            'linear-gradient(to right, #f5f3ff, #ffffff)',
-            'linear-gradient(to right, #ecfdf5, #ffffff)',
-            'linear-gradient(to right, #fffbeb, #ffffff)'
-        ];
-        let currentDayIndex = 0;
-        let lastDate = null;
-        
-        let tableHTML = `
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-                    <thead>
-                        <tr style="background: linear-gradient(135deg, ${itemColor}, ${itemColor}dd); color: white;">
-                            <th style="padding: 12px 8px; text-align: left; font-weight: 600; font-size: 14px;">${L('ui.history.customer')}</th>
-                            <th style="padding: 12px 8px; text-align: left; font-weight: 600; font-size: 14px;">${L('ui.history.items')}</th>
-                            <th style="padding: 12px 8px; text-align: right; font-weight: 600; font-size: 14px;">${L('ui.history.rate_rs')}</th>
-                            <th style="padding: 12px 8px; text-align: right; font-weight: 600; font-size: 14px;">${L('ui.history.weight_kg')}</th>
-                            <th style="padding: 12px 8px; text-align: right; font-weight: 600; font-size: 14px;">${L('ui.history.total_rs')}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-
-        bills.forEach(bill => {
-            const billNumber = bill.billNumber || (typeof bill.id === 'string' ? bill.id.substring(0, 8) : bill.id);
-            const billTotal = bill.grandTotal || bill.amountPayable || bill.saleTotal || bill.total || 0;
-            
-            // Extract date (DD/MM/YYYY) from bill date
-            const billDate = billDateOf(bill) || new Date(0);
-            const dateKey = `${billDate.getDate()}-${billDate.getMonth()}-${billDate.getFullYear()}`;
-            
-            // Change color when date changes
-            if (lastDate !== dateKey) {
-                currentDayIndex = (currentDayIndex + 1) % dayColors.length;
-                lastDate = dateKey;
-            }
-            
-            const rowBackground = dayColors[currentDayIndex];
-            const hoverColors = [
-                'linear-gradient(to right, #fee2e2, #fef2f2)',
-                'linear-gradient(to right, #dbeafe, #eff6ff)',
-                'linear-gradient(to right, #e9d5ff, #f3e8ff)',
-                'linear-gradient(to right, #d1fae5, #ecfdf5)',
-                'linear-gradient(to right, #fef3c7, #fffbeb)'
-            ];
-            const hoverBackground = hoverColors[currentDayIndex];
-            
-            bill.items.forEach((item, index) => {
-                const isFirstRow = index === 0;
-                const rowspan = bill.items.length;
-                
-                tableHTML += `
-                    <tr style="border-bottom: 1px solid #e5e7eb; background: ${rowBackground}; cursor: pointer; transition: all 0.3s ease;" 
-                        onmouseover="this.style.background='${hoverBackground}'; this.style.transform='scale(1.01)'" 
-                        onmouseout="this.style.background='${rowBackground}'; this.style.transform='scale(1)'"
-                        onclick="window.app.history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')">
-                        ${isFirstRow ? `
-                            <td rowspan="${rowspan}" style="padding: 12px 8px; border-right: 1px solid #e5e7eb; font-weight: 500;">
-                                ${Helpers.escapeHtml(bill.customerName || '-')}
-                            </td>
-                        ` : ''}
-                        <td style="padding: 12px 8px;">${Helpers.escapeHtml(item.name)}</td>
-                        <td style="padding: 12px 8px; text-align: right;">₹${Helpers.escapeHtml(item.rate)}</td>
-                        <td style="padding: 12px 8px; text-align: right;">${Number(item.qty || item.quantity || 0).toFixed(1)}</td>
-                        ${isFirstRow ? `
-                            <td rowspan="${rowspan}" style="padding: 12px 8px; text-align: right; border-left: 1px solid #e5e7eb; font-weight: 700; color: ${itemColor}; font-size: 15px;">
-                                ₹${Math.round(billTotal)}
-                            </td>
-                        ` : ''}
-                    </tr>
-                `;
-            });
+        container.innerHTML = billTableHtml(bills, {
+            openings: this.pageOpenings,
+            onclickFor: (bill) => `window.app.history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
         });
-
-        tableHTML += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-
-        container.innerHTML = tableHTML;
     }
 }
