@@ -37,8 +37,9 @@ export const METRICS = Object.freeze({
     I10: { home: 'insights.html', section: 'insights-actions' },
     I11: { home: 'insights.html', section: 'insights-items' },
     S4: { home: 'stock.html', section: 'stock' },
-    O3: { home: 'outstanding.html', section: 'outstanding' },
-    O4: { home: 'outstanding.html', section: 'outstanding' }
+    O3: { home: 'due.html', section: 'due' },
+    O4: { home: 'due.html', section: 'due' },
+    C9: { home: 'cash-management.html', section: 'cash-management' }
 });
 
 /**

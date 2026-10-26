@@ -114,19 +114,50 @@ export function figuresFromSnapshot(doc) {
 }
 
 /**
- * Sales and profit of the first `uptoDay` days of a snapshot's month (CMP for a part month).
+ * Sales and profit of days `fromDay`…`uptoDay` of a snapshot's month (CMP for a part month).
  * @param {?Object} doc
  * @param {number} uptoDay 1–31
+ * @param {number} [fromDay=1]
  * @returns {?{M1: number, M6: ?number}}
  */
-export function partialFigures(doc, uptoDay) {
+export function partialFigures(doc, uptoDay, fromDay = 1) {
     if (!doc || !doc.days) return null;
     let s = 0;
     let p = 0;
     Object.entries(doc.days).forEach(([d, v]) => {
-        if (Number(d) <= uptoDay) { s += v.s || 0; p += v.p || 0; }
+        if (Number(d) >= fromDay && Number(d) <= uptoDay) { s += v.s || 0; p += v.p || 0; }
     });
     return { M1: Math.round(s * 100) / 100, M6: doc.m && doc.m.M6 === null ? null : Math.round(p * 100) / 100 };
+}
+
+/**
+ * Figures for any [from, to) from month snapshots. Whole months add all
+ * figures; a part first or last month adds only its days (sales and profit),
+ * so a range starting mid-month is never padded with the whole month.
+ * @param {Object<string, Object>} docs month → snapshot doc
+ * @param {number} from
+ * @param {number} to
+ * @returns {?Object} null when a month is missing
+ */
+export function rangeFigures(docs, from, to) {
+    const keys = monthKeysBetween(from, to);
+    if (!keys.length) return null;
+    // Nearest local midnight, so a DST hour does not move the day.
+    const dayOf = (ms) => { const d = new Date(ms + 12 * 3600000); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+    const parts = keys.map(k => {
+        const b = monthBounds(k);
+        const startsInside = from > b.from + 12 * 3600000;
+        const endsInside = to < b.to - 12 * 3600000;
+        if (!startsInside && !endsInside) return { whole: figuresFromSnapshot(docs[k]) };
+        const fromDay = startsInside ? dayOf(from).getDate() : 1;
+        const uptoDay = endsInside ? new Date(dayOf(to).getTime() - 1).getDate() : 31;
+        return { part: partialFigures(docs[k], uptoDay, fromDay) };
+    });
+    if (parts.some(p => !(p.whole || p.part))) return null;
+    if (parts.every(p => p.whole)) return sumFigures(parts.map(p => p.whole));
+    const add = (k) => parts.some(p => (p.whole || p.part)[k] === null || (p.whole || p.part)[k] === undefined)
+        ? null : Math.round(parts.reduce((a, p) => a + (p.whole || p.part)[k], 0) * 100) / 100;
+    return { M1: add('M1'), M6: add('M6') };
 }
 
 /**

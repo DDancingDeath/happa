@@ -176,6 +176,7 @@ For one cash session's DAY. Only cash counts.
 | C6 | Deposits | Σ cash added to the drawer that day (❓ open: #103, what a deposit means). |
 | C7 | Expected cash | Opening + C1 + C4 + C6 − C2 − C5 − C3. |
 | C8 | Difference | Counted cash − C7 (shown as short / extra). |
+| C9 | Counted cash | Closing balance of the last signed-out, counted session (not "not counted"); the drawer term of M15. |
 
 ## Reports › Trends and Product traffic (`templates/rate-trends.html`, `modules/rate-trends.js`) — #65
 

@@ -25,7 +25,7 @@ import {
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
 import {
-    buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, monthsToRoll, monthBounds,
+    buildSnapshot, figuresFromSnapshot, rangeFigures, monthsToRoll, monthBounds,
     monthKeysBetween, lastMonthKeys, monthKeyOf
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
@@ -36,11 +36,17 @@ const SECTIONS = ['profit', 'cash', 'spending', 'worth'];
 const SESSION_TTL_MS = 10 * 60 * 1000;
 const ACCOUNTS_KEY = 'financeCustomAccounts';
 
+/** True when a route's page is in the app (a link to a page not shipped yet is hidden). */
+export function routeAvailable(link) {
+    if (typeof document === 'undefined' || !link) return false;
+    return !!(document.getElementById(link) || document.getElementById(String(link).split('-')[0]));
+}
+
 /** Renders takeaways as escaped sentences; a link becomes a small button. */
 export function takeawayHtml(list) {
     return (list || []).map(x => {
         const text = esc(t(x.key, x.params));
-        const link = x.link ? ` <button type="button" class="ins-link" data-go="${esc(x.link)}">${esc(t('ui.money.open'))} ›</button>` : '';
+        const link = x.link && routeAvailable(x.link) ? ` <button type="button" class="ins-link" data-go="${esc(x.link)}">${esc(t('ui.money.open'))} ›</button>` : '';
         return `<p>${text}${link}</p>`;
     }).join('');
 }
@@ -217,6 +223,30 @@ export const MoneyManager = {
         return !!el && el.classList.contains('active');
     },
 
+    /**
+     * M15 drawer term: the last 30 days of cash sessions, always fetched on
+     * their own (sessions() returns none once full history is loaded, because
+     * its due legs are then on the bills; the drawer balance is not).
+     */
+    drawerSessions(now = new Date()) {
+        const a = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
+        const b = toLocalISODate(now);
+        const key = `${a}|${b}`;
+        const hit = this.drawerCache;
+        const fresh = hit && hit.key === key && Date.now() - hit.at < SESSION_TTL_MS;
+        if (!fresh && !(hit && hit.pending && hit.key === key)) {
+            this.drawerCache = { key, pending: true, at: Date.now(), list: hit?.list || [] };
+            Promise.resolve(FirebaseService.loadCashSessionsBetween?.(a, b)).then(list => {
+                this.drawerCache = { key, pending: false, at: Date.now(), list: list || [] };
+                if (this.isOpen()) this.render();
+            }).catch(e => {
+                console.error('Money: loading drawer sessions failed:', e);
+                this.drawerCache = { key, pending: false, at: Date.now(), list: hit?.list || [] };
+            });
+        }
+        return this.drawerCache?.list || [];
+    },
+
     /** Figures for a comparison range: computed when loaded, else from month snapshots. */
     figuresFor(r, now = new Date()) {
         if (!r) return null;
@@ -224,18 +254,7 @@ export const MoneyManager = {
             const m = moneySummary(this.input(r.from), r);
             return { M1: m.M1.total, M4: m.M4.total, M6: m.M6.total, M14: m.M14, M16: m.M16.total, computed: true };
         }
-        const keys = monthKeysBetween(r.from, r.to);
-        if (!keys.length) return null;
-        const last = keys[keys.length - 1];
-        const lastBounds = monthBounds(last);
-        if (r.to < lastBounds.to) {
-            // Part month (e.g. 1–26 Oct last year): only sales and profit are kept per day.
-            const whole = sumFigures(keys.slice(0, -1).map(k => figuresFromSnapshot(this.snapshots[k])));
-            const part = partialFigures(this.snapshots[last], new Date(r.to - 1).getDate());
-            if (!part || (keys.length > 1 && !whole)) return null;
-            return { M1: (whole?.M1 || 0) + part.M1, M6: part.M6 === null || (whole && whole.M6 === null) ? null : (whole?.M6 || 0) + part.M6 };
-        }
-        return sumFigures(keys.map(k => figuresFromSnapshot(this.snapshots[k])));
+        return rangeFigures(this.snapshots, r.from, r.to);
     },
 
     /** Renders the open section. */
@@ -309,9 +328,9 @@ export const MoneyManager = {
         })));
         this.html('moneyProfitCaveats', this.caveatsHtml(m, ['M2', 'M6']));
         this.text('moneySales', money(m.M1.total));
-        this.html('moneySalesSplit', `<span>${esc(tn('ui.money.bills', m.M1.count))} · ${esc(t('ui.money.retail_wholesale', {
-            retail: formatRupees(m.M1.retail.total), wholesale: formatRupees(m.M1.wholesale.total)
-        }))}</span>`);
+        const splitLink = routeAvailable('insights-items')
+            ? ` · <button type="button" class="ins-link" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
+        this.html('moneySalesSplit', `<span data-metric-ref="M1">${esc(tn('ui.money.bills', m.M1.count))}</span>${splitLink}`);
         this.text('moneyCogs', money(m.M2));
         this.text('moneyGross', m.M3.total === null ? '—' : `${money(m.M3.total)}${m.M3.per100 !== null ? ` · ${t('ui.money.per100', { value: Math.round(m.M3.per100 * 10) / 10 })}` : ''}`);
         this.text('moneyBusinessTerm', money(m.M4.total));
@@ -495,7 +514,7 @@ export const MoneyManager = {
     renderWorth({ m, now }) {
         const dues = outstandingTotals({ purchases: AppState.purchaseHistory, wholesaleSales: AppState.salesHistory, retailSales: AppState.retailSalesHistory });
         const stock = m.stockNow;
-        const drawerSessions = this.sessions({ from: new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30).getTime(), to: now.getTime() + 1 }).list;
+        const drawerSessions = this.drawerSessions(now);
         const last = lastCountedSession(drawerSessions);
         const drawer = last ? Number(last.closingBalance) : 0;
         const accounts = this.accountsTotal();
@@ -512,10 +531,10 @@ export const MoneyManager = {
         this.html('moneyWorthTerms',
             (cfg.netWorthTerms.includes('stock') ? term('ui.money.stock_value', stock, 'stock', 'S4') : '')
             + (cfg.netWorthTerms.includes('receivable') ? term('ui.money.to_receive', dues.receivable.total, 'due', 'O4') : '')
-            + (cfg.netWorthTerms.includes('drawer') ? term(last ? 'ui.money.drawer_last' : 'ui.money.drawer_none', drawer, 'cash-management') : '')
-            + (cfg.netWorthTerms.includes('accounts') ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span>${money(accounts)}</span></div>` : '')
+            + (cfg.netWorthTerms.includes('drawer') ? term(last ? 'ui.money.drawer_last' : 'ui.money.drawer_none', drawer, 'cash-management', 'C9') : '')
+            + (cfg.netWorthTerms.includes('accounts') ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span data-input>${money(accounts)}</span></div>` : '')
             + term('ui.money.to_pay', -dues.payable.total, 'due', 'O3')
-            + `<div class="ins-row ins-total"><span>${esc(t('ui.money.net_worth'))}</span><span>${money(worth)}</span></div>`);
+            + `<div class="ins-row ins-total"><span>${esc(t('ui.money.net_worth'))}</span><span data-metric-ref="M15">${money(worth)}</span></div>`);
         const list = this.accounts();
         this.html('moneyAccounts', list.length
             ? list.map((a, i) => `<div class="ins-row"><span>${esc(a.icon || '')} ${esc(a.name)}</span><span>${a.type === 'liability' ? '−' : ''}${money(Number(a.balance) || 0)} <button type="button" class="ins-link" onclick="window.app.money.removeAccount(${i})" aria-label="${esc(t('ui.money.acc_remove'))}">✕</button></span></div>`).join('')

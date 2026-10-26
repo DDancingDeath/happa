@@ -2095,7 +2095,6 @@ export default {
     'ui.money.this_year': "यह साल",
     'ui.money.bills': "{count} बिल",
     'ui.money.bills_one': "1 बिल",
-    'ui.money.retail_wholesale': "खुदरा {retail} · थोक {wholesale}",
     'ui.money.per100': "₹100 की बिक्री पर ₹{value}",
     'ui.money.cash_online': "नकद {cash} · ऑनलाइन {online}",
     'ui.money.opening_stock': "शुरू का स्टॉक",
@@ -2157,5 +2156,6 @@ export default {
     'ui.tk.worth_up': "{when} से ₹{amount} ज़्यादा पूंजी।",
     'ui.tk.worth_down': "{when} से ₹{amount} कम पूंजी।",
     'ui.tk.worth_receivable': "इसमें से ₹{amount} अभी ग्राहकों के पास है।",
-    'ui.tk.worth_unknown': "स्टॉक की कीमत पता चलने तक कुल पूंजी नहीं निकल सकती।"
+    'ui.tk.worth_unknown': "स्टॉक की कीमत पता चलने तक कुल पूंजी नहीं निकल सकती।",
+    'ui.money.split_link': "खुदरा और थोक का हिस्सा"
 };

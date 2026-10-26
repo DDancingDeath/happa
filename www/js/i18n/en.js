@@ -2095,7 +2095,6 @@ export default {
     'ui.money.this_year': "This year",
     'ui.money.bills': "{count} bills",
     'ui.money.bills_one': "1 bill",
-    'ui.money.retail_wholesale': "retail {retail} · wholesale {wholesale}",
     'ui.money.per100': "₹{value} per ₹100 sold",
     'ui.money.cash_online': "cash {cash} · online {online}",
     'ui.money.opening_stock': "Stock at the start",
@@ -2157,5 +2156,6 @@ export default {
     'ui.tk.worth_up': "Worth ₹{amount} more than in {when}.",
     'ui.tk.worth_down': "Worth ₹{amount} less than in {when}.",
     'ui.tk.worth_receivable': "₹{amount} of it is still with customers.",
-    'ui.tk.worth_unknown': "Worth can't be worked out until the stock value is known."
+    'ui.tk.worth_unknown': "Worth can't be worked out until the stock value is known.",
+    'ui.money.split_link': "Retail and wholesale split"
 };

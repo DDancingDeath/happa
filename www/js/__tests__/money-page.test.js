@@ -6,13 +6,13 @@
 import fs from 'fs';
 import path from 'path';
 import * as O from '../../../tests/oracle/oracle.js';
-import { MoneyManager, compareHtml, barsSvg } from '../modules/money.js';
+import { MoneyManager, compareHtml, barsSvg, takeawayHtml } from '../modules/money.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { AppState } from '../utils/state.js';
-import { moneySummary, change } from '../utils/business-metrics.js';
+import { moneySummary, change, comparisonRanges, periodRange } from '../utils/business-metrics.js';
 import {
-    buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION
+    buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, rangeFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { setInsightsContext, resetInsightsContextForTests, getInsightsContext, contextMonth } from '../utils/insights-context.js';
@@ -104,14 +104,23 @@ describe('figures on screen == oracle (this month)', () => {
         expect(cats.reduce((a, b) => a + b, 0)).toBe(rupee(w.M4_businessExpenses));
     });
 
-    test('Worth section: M15 = stock + to receive + accounts + drawer − to pay; dues equal Outstanding\'s rule (AC12)', () => {
+    test('Worth section: M15 = stock + to receive + accounts + drawer − to pay; dues equal Outstanding\'s rule (AC12)', async () => {
         localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 1000, type: 'asset' }, { name: 'Loan', balance: 300, type: 'liability' }]));
+        // Full history is loaded (historyLoadedFrom 0): the drawer still comes from its own session load.
+        const load = jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([
+            { date: '2026-10-20', signedOut: true, closingBalance: 250 },
+            { date: '2026-10-19', signedOut: true, closingBalance: 999 }
+        ]);
+        MoneyManager.drawerCache = null;
         MoneyManager.init('worth');
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(load).toHaveBeenCalled();
         const dues = O.dueTotals(data);
         const stock = O.stockReplay(data).closing;
-        expect(shown('moneyWorthValue')).toBe(rupee(stock + dues.receivable + 700 - dues.payable));
+        expect(shown('moneyWorthValue')).toBe(rupee(stock + dues.receivable + 700 + 250 - dues.payable));
         const refs = [...document.querySelectorAll('#moneyWorthTerms [data-metric-ref]')].map(el => el.dataset.metricRef);
-        expect(refs).toEqual(['S4', 'O4', 'O3']);
+        expect(refs).toEqual(['S4', 'O4', 'C9', 'O3', 'M15']);
         localStorage.removeItem('financeCustomAccounts');
     });
 
@@ -183,6 +192,29 @@ describe('comparisons and takeaways', () => {
 });
 
 describe('taps, caveats and checks', () => {
+    test('single home: every ₹ on the rendered page is a tagged figure, link, takeaway or typed amount', async () => {
+        const { unexplainedValues } = await import('../utils/metric-registry.js');
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 1000, type: 'asset' }]));
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([{ date: '2026-10-20', signedOut: true, closingBalance: 250 }]);
+        ['profit', 'cash', 'spending', 'worth'].forEach(s => MoneyManager.init(s));
+        await Promise.resolve();
+        expect(unexplainedValues(document.getElementById('money'))).toEqual([]);
+        localStorage.removeItem('financeCustomAccounts');
+    });
+
+    test('retail/wholesale split lives on Insights › Items: Money only links to it, and hides the link until that page exists', () => {
+        MoneyManager.init('profit');
+        expect(document.getElementById('moneySalesSplit').textContent).not.toMatch(/₹/);
+        expect(document.querySelector('#moneySalesSplit [data-go="insights-items"]')).toBeNull();
+        document.body.insertAdjacentHTML('beforeend', '<div id="insights"></div>');
+        MoneyManager.render();
+        expect(document.querySelector('#moneySalesSplit [data-go="insights-items"]').dataset.metricRef).toBe('I2');
+    });
+
+    test('takeaway links to a page that is not in the app are hidden', () => {
+        expect(takeawayHtml([{ key: 'ui.tk.gut_sales_up_profit_down', link: 'insights-items' }])).not.toMatch(/data-go/);
+        expect(takeawayHtml([{ key: 'ui.tk.gut_sales_up_profit_down', link: 'money-cash' }])).toMatch(/data-go="money-cash"/);
+    });
     test('every number opens its breakdown with the same figures', () => {
         const open = jest.spyOn(FinanceBreakdownSheet, 'open').mockImplementation(() => {});
         MoneyManager.init('profit');
@@ -235,6 +267,39 @@ describe('month snapshots', () => {
     test('sum of months, missing months make the sum unknown', () => {
         expect(sumFigures([{ M1: 1, M6: 2 }, { M1: 3, M6: 4 }]).M1).toBe(4);
         expect(sumFigures([{ M1: 1 }, null])).toBeNull();
+    });
+
+    // A doc where every day of the month sold 10 and made 1 profit; whole-month M1 = 10 × days.
+    const dailyDoc = (key) => {
+        const b = monthBounds(key);
+        const n = Math.round((b.to - b.from) / 86400000);
+        const days = {};
+        for (let d = 1; d <= n; d++) days[d] = { s: 10, p: 1 };
+        return { month: key, v: SNAPSHOT_VERSION, m: { M1: 10 * n, M6: n, M4: 5 }, days };
+    };
+
+    test('a range starting mid-month adds only its days, not the whole first month (last 30 days)', () => {
+        const docs = { '2026-08': dailyDoc('2026-08'), '2026-09': dailyDoc('2026-09'), '2026-10': dailyDoc('2026-10') };
+        // "Last 30 days" on 21 Oct → previous = 22 Aug … 21 Sep (30 days).
+        const r = comparisonRanges(periodRange('last-30', new Date(2026, 9, 21, 15))).previous;
+        const f = rangeFigures(docs, r.from, r.to);
+        expect(f.M1).toBe(300);
+        expect(f.M6).toBe(30);
+    });
+
+    test('"This year" previous (same length before 1 Jan) is not padded with whole months', () => {
+        const docs = {};
+        ['2025-03', '2025-04', '2025-05', '2025-06', '2025-07', '2025-08', '2025-09', '2025-10', '2025-11', '2025-12'].forEach(k => { docs[k] = dailyDoc(k); });
+        const cur = periodRange('this-year', new Date(2026, 9, 21, 15));
+        const r = comparisonRanges(cur).previous;
+        const days = Math.round((cur.to - cur.from) / 86400000);
+        const f = rangeFigures(docs, r.from, r.to);
+        expect(f.M1).toBe(10 * days);
+        expect(f.M6).toBe(days);
+        // Whole months only: all figures, summed.
+        expect(rangeFigures(docs, monthBounds('2025-11').from, monthBounds('2025-12').to).M4).toBe(10);
+        // A missing month → no comparison.
+        expect(rangeFigures({ '2025-12': docs['2025-12'] }, r.from, r.to)).toBeNull();
     });
 
     test('only the current and previous month roll, every 6 hours, inside the loaded bills', () => {
