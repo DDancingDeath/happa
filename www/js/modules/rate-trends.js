@@ -15,6 +15,7 @@ import { Helpers } from '../utils/helpers.js';
 import { formatRupees } from '../utils/money.js';
 import { t, getLang, tn } from '../i18n/index.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { setInsightsContext } from '../utils/insights-context.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { chartScaleMax } from './reports.js';
 import { RATE_FIELDS, fieldLabel } from '../utils/rate-history.js';
@@ -215,8 +216,32 @@ export const RateTrendsManager = {
 
     /** Reports › Trends ('rates') or Reports › Product traffic ('traffic'). */
     open(section) {
+        this.home();
         this.section = section === 'traffic' ? 'traffic' : 'rates';
         return this.init();
+    },
+
+    /**
+     * One view, two entry points (redesign §5.3): moves this view into
+     * Insights › Seasons (or any host) and opens a section there, on the shared
+     * item and month. The same DOM, code and numbers as on the Rates page.
+     * @param {HTMLElement} host
+     * @param {{section?: string, itemId?: ?string, month?: ?string}} [opts]
+     */
+    mount(host, { section, itemId, month } = {}) {
+        const view = document.querySelector('.rt-page');
+        if (host && view && view.parentElement !== host) host.appendChild(view);
+        if (itemId) { this.itemId = itemId; this.trafficItemId = itemId; }
+        if (month && /^\d{4}-\d{2}$/.test(month)) this.trafficMonth = month;
+        this.section = section === 'traffic' ? 'traffic' : 'rates';
+        return this.init();
+    },
+
+    /** Puts the view back on the Rates page (it is moved by mount()). */
+    home() {
+        const view = document.querySelector('.rt-page');
+        const page = document.getElementById('rate-trends');
+        if (view && page && view.parentElement !== page) page.appendChild(view);
     },
 
     setSection(value) {
@@ -474,6 +499,7 @@ export const RateTrendsManager = {
 
     async selectItem(itemId) {
         this.itemId = itemId || null;
+        setInsightsContext({ itemId: this.itemId });
         await this.loadItem();
     },
 
@@ -981,6 +1007,7 @@ export const RateTrendsManager = {
 
     setTrafficItem(itemId) {
         this.trafficItemId = itemId || null;
+        setInsightsContext({ itemId: this.trafficItemId });
         const select = document.getElementById('rtTrafficItem');
         if (select && select.value !== itemId) select.value = itemId;
         this.renderDaily();

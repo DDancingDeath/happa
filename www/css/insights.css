@@ -253,3 +253,12 @@
     .ins-head, .ins-checks, .ins-wide-btn, .ins-form { display: none !important; }
     .ins-card { box-shadow: none; border: 1px solid #ccc; }
 }
+
+/* Insights: hosted Rate trends / Product traffic (same view as on the Rates page) */
+.ins-host .rates-subtabs { display: none !important; }
+.ins-host .rt-page { padding: 0; }
+.ins-takeaway-dark { color: var(--text-primary); margin: 10px 0; }
+.ins-takeaway-dark:empty { display: none; }
+.ins-heat th[scope="row"] { text-align: left; white-space: nowrap; padding-right: 6px; font-size: 13px; color: var(--text-primary); }
+.ins-heat .ins-now { color: var(--primary-dark); text-decoration: underline; }
+.ins-go-money { background: var(--info-light); color: var(--info-dark); }

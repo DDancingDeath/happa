@@ -39,7 +39,8 @@ const ROUTES = Object.freeze({
 
 // Money / Insights / Statements (redesign): '<page>-<section>' opens a section, e.g. 'money-cash'.
 const SECTION_PAGES = Object.freeze({
-    money: ['profit', 'cash', 'spending', 'worth']
+    money: ['profit', 'cash', 'spending', 'worth'],
+    insights: ['actions', 'items', 'parties', 'seasons', 'trends', 'traffic']
 });
 
 function sectionRoute(tabId) {
@@ -251,6 +252,11 @@ const NavigationManager = {
         // Money (redesign §5.2): its code loads on first open
         if (route.tab === 'money' && window.app?.money) {
             setTimeout(() => window.app.money.init(route.section), 100);
+        }
+
+        // Insights (redesign §5.3): its code loads on first open
+        if (route.tab === 'insights' && window.app?.insights) {
+            setTimeout(() => window.app.insights.init(route.section), 100);
         }
 
         // Initialize analytics when Analytics tab is shown

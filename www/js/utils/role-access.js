@@ -45,6 +45,7 @@ const OWNER_ACCESS = Object.freeze({
 export const TAB_PERMISSIONS = Object.freeze({
     finance: 'finance',
     money: 'finance',
+    insights: 'analytics',
     reports: 'reports',
     analytics: 'analytics',
     'wholesale-sales': 'wholesale'

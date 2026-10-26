@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261029v-money-page';
+const BUILD_ID = '20261026l-insights-page';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -81,6 +81,18 @@ function loadMoney() {
     }
     return moneyLoading;
 }
+// Insights page (redesign phase 3): insights.js is imported on first use
+let insights = null;
+let insightsLoading = null;
+function loadInsights() {
+    if (!insightsLoading) {
+        insightsLoading = import('./modules/insights.js')
+            .then(m => (insights = m.InsightsManager))
+            .catch(e => { insightsLoading = null; throw e; });
+    }
+    return insightsLoading;
+}
+
 // Load and inject HTML templates from separate .html files
 async function injectTemplates() {
     const templates = await TemplateLoader.loadAllTemplates();
@@ -133,6 +145,7 @@ function refreshForLanguage(lang) {
             if (view) DiagnosticsManager[view]();
         },
         money: () => money?.render(),
+        insights: () => insights?.render(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
@@ -1183,6 +1196,14 @@ window.app = {
             'saveWithdrawal', 'saveAccount', 'removeAccount', 'render']
             .map(name => [name, (...args) => loadMoney().then(m => m[name](...args))]))
     },
+    // Insights (redesign §5.3): insights.js is imported on first use
+    insights: {
+        init: (route) => loadInsights().then(m => m.init(route))
+            .catch(e => console.warn('Insights not loaded:', e?.message || e)),
+        ...Object.fromEntries(['setSection', 'setPreset', 'step', 'setItemsType', 'setPartyKind', 'setSeasonView', 'render']
+            .map(name => [name, (...args) => loadInsights().then(m => m[name](...args))]))
+    },
+
     // Reports › Trends / Product traffic: rate-trends.js is imported on first use
     rateTrends: {
         open: (section) => loadRateTrends().then(m => m.open(section))
