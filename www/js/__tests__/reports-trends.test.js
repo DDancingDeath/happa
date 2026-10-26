@@ -15,6 +15,12 @@ import hi from '../i18n/hi.js';
 const WWW = path.join(__dirname, '..', '..');
 const read = (rel) => fs.readFileSync(path.join(WWW, rel), 'utf8');
 
+// The real window.app from main.js, so a handler the pages call but main.js never registers fails here.
+beforeAll(async () => {
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    await import('../main.js');
+});
+
 let toast;
 beforeEach(() => {
     jest.useFakeTimers();
@@ -38,12 +44,10 @@ beforeEach(() => {
         ${read('templates/items.html')}
         ${read('templates/reports.html')}`;
     document.getElementById('reports').insertAdjacentHTML('beforeend', read('templates/rate-trends.html'));
-    window.app = {
-        items: { renderTable: jest.fn() },
-        rateTrends: { open: jest.fn() },
-        reports: { showView: (v) => ReportsManager.showView(v), filterTab: (v, e) => ReportsManager.filterTab(v, e) },
-        nav: { noteRoute: (id) => NavigationManager.noteRoute(id) }
-    };
+    jest.spyOn(window.app.items, 'renderTable').mockImplementation(() => {});
+    jest.spyOn(window.app.rateTrends, 'open').mockResolvedValue(undefined);
+    jest.spyOn(window.app.billing, 'switchMode').mockImplementation(() => {});
+    jest.spyOn(window.app.day, 'init').mockImplementation(() => {});
     NavigationManager.currentTab = null;
     history.replaceState(null, '');
 });
@@ -51,7 +55,6 @@ afterEach(() => {
     jest.runOnlyPendingTimers();
     jest.useRealTimers();
     jest.restoreAllMocks();
-    delete window.app;
 });
 
 const open = (id) => { NavigationManager.showTabFromNav(id); jest.runAllTimers(); };
@@ -140,6 +143,14 @@ describe('routes and deep links', () => {
         expect(NavigationManager.currentTab).toBe('reports');
     });
 
+    test('main.js registers what the Reports page and navigation call', () => {
+        expect(typeof window.app.reports.showView).toBe('function');
+        expect(typeof window.app.nav.noteRoute).toBe('function');
+        const note = jest.spyOn(NavigationManager, 'noteRoute');
+        window.app.nav.noteRoute('reports');
+        expect(note).toHaveBeenCalledWith('reports');
+    });
+
     test('a Reports bills button after Trends records a history entry', () => {
         open('reports-trends');
         const len = history.length;
@@ -204,5 +215,21 @@ describe('no rate-trends code or rateStats reads until Trends / Product traffic 
         const readers = fs.readdirSync(path.join(WWW, 'js', 'modules'))
             .filter(f => /loadRateStats|loadServerRateStats/.test(read(`js/modules/${f}`)));
         expect(readers).toEqual(['rate-trends.js']);
+    });
+});
+
+describe('every window.app method that navigation and Reports call is registered by main.js', () => {
+    const CALL = /window\.app(?:\?\.|\.)([A-Za-z_]\w*)(?:\?\.|\.)([A-Za-z_]\w*)\s*(?:\?\.)?\(/g;
+    const calls = (rel) => [...new Set([...read(rel).matchAll(CALL)].map(m => `${m[1]}.${m[2]}`))];
+
+    test.each(['js/ui/navigation.js', 'js/modules/reports.js'])('%s', (rel) => {
+        const used = calls(rel);
+        expect(used.length).toBeGreaterThan(0);
+        const missing = used.filter(k => { const [ns, fn] = k.split('.'); return typeof window.app[ns]?.[fn] !== 'function'; });
+        expect(missing).toEqual([]);
+    });
+
+    test('the scan catches a missing method', () => {
+        expect([...'window.app?.reports?.nope(1)'.matchAll(CALL)].map(m => m[2])).toEqual(['nope']);
     });
 });

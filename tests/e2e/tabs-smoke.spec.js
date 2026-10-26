@@ -21,6 +21,14 @@ test('every page opens without errors', async ({ page, problems }) => {
             await page.waitForTimeout(400);
         });
     }
+    await test.step('Reports › Product traffic, then Rates', async () => {
+        await showTab(page, 'reports-traffic');
+        await expect(page.locator('#rtTrafficSection')).toBeVisible();
+        await expect(page.locator('#reportsOverviewTab')).toBeHidden();
+        await showTab(page, 'rates');
+        await expect(page.locator('#items')).toBeVisible();
+        await expect(page.locator('#rate-trends')).toBeHidden();
+    });
     expect(problems.pageErrors).toEqual([]);
     expect(problems.consoleErrors).toEqual([]);
 });

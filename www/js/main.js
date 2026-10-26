@@ -793,7 +793,8 @@ window.app = {
     nav: {
         toggleMenu: () => NavigationManager.toggleMenu(),
         closeMenu: () => NavigationManager.closeMenu(),
-        showTab: (tabId, evt) => NavigationManager.showTabFromNav(tabId, evt)
+        showTab: (tabId, evt) => NavigationManager.showTabFromNav(tabId, evt),
+        noteRoute: (routeId) => NavigationManager.noteRoute(routeId)
     },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
@@ -1075,6 +1076,7 @@ window.app = {
     // Reports
     reports: {
         filterTab: (view, evt) => ReportsManager.filterTab(view, evt),
+        showView: (view, opts) => ReportsManager.showView(view, opts),
         setDateFilter: (filter, evt) => ReportsManager.setDateFilter(filter, evt),
         applyCustomDateFilter: () => ReportsManager.applyCustomDateFilter(),
         renderReports: () => ReportsManager.renderReports(),

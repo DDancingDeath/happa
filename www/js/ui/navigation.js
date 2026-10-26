@@ -6,11 +6,18 @@ import { canOpenTab, roleMayOpenTab } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 
-// Rates page = page 'items'. Reports › Trends / Product traffic = page 'reports' plus the owner/manager
-// 'rate-trends' permission (TAB_ROLES). Old ids (items, rate-trends, rates-trends, rates-traffic) still work.
+// Routes: every id that showTab() accepts besides plain page ids (the .tab element id).
+//   tab     page element to show            section  sub-view handed to the page (see showTabFromNav)
+//   needs   extra TAB_ROLES/TAB_PERMISSIONS id   id   canonical id kept in history (aliases / old ids)
+//   nav     side-nav link to highlight (default: tab)
+// To add a page's sub-routes, add one group below (e.g. 'settings-roles', 'admin-configure',
+// 'wholesale-history') and open the section for that page in showTabFromNav.
 const ROUTES = Object.freeze({
-    rates: { tab: 'items' },
-    items: { tab: 'items', id: 'rates' },
+    // Rates page (the items list). Old id: items.
+    rates: { tab: 'items', nav: 'rates' },
+    items: { tab: 'items', nav: 'rates', id: 'rates' },
+
+    // Reports › Trends / Product traffic (#65), owner/manager. Old ids: rate-trends, rates-trends, rates-traffic.
     'reports-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends' },
     'reports-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends' },
     'rate-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends', id: 'reports-trends' },
@@ -22,8 +29,7 @@ const ROUTES = Object.freeze({
 function resolveRoute(tabId) {
     const r = ROUTES[tabId];
     if (!r) return { id: tabId, tab: tabId, section: null, needs: null, nav: tabId };
-    const nav = r.tab === 'items' ? 'rates' : r.tab;
-    return { id: r.id || tabId, tab: r.tab, section: r.section || null, needs: r.needs || null, nav };
+    return { id: r.id || tabId, tab: r.tab, section: r.section || null, needs: r.needs || null, nav: r.nav || r.tab };
 }
 
 /** 'page' when the page itself is refused, 'section' when only the route's extra permission is, else null. */
