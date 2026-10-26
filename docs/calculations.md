@@ -262,7 +262,8 @@ Oracle: `tests/oracle/business-metrics.test.js`; accounting checks:
 | I7 | Low-profit items | Items with sales ≥ ₹5,000 in the period and profit per ₹100 under 3 (`lowMarginMinSales`, `lowMarginPer100`), or a loss. |
 | I8 | Sold below cost | Sale lines (bill × item) whose value is below their cost of goods sold, per item: times, kg, ₹ lost. |
 | I9 | Stock up before the season | Items whose busy month (I5) is within the next 8 weeks while the stock covers fewer weeks than it takes to get there + 4. |
-| O-OVERDUE | Overdue parties | Parties with an open BILL-DUE older than 30 days (`overdueDays`): count, total, oldest. |
+| I10 | Overdue parties | Parties with an open BILL-DUE older than 30 days (`overdueDays`): count, total, oldest; customers and suppliers separately. |
+| I11 | Purchases by item | Per catalogue item: line value, labour share (labour × line value ÷ the bill's line value), amount after labour, kg. Rows add up to M16 (#47). |
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and

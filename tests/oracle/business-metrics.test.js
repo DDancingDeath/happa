@@ -123,7 +123,7 @@ describe('layer == oracle', () => {
         expect(sup.reduce((a, p) => a + p.total, 0)).toBeCloseTo(w.M16_purchases, 2);
     });
 
-    test('purchase item rows share labour and add up to M16 (#47)', () => {
+    test('I11 purchase item rows share labour and add up to M16 (#47)', () => {
         const rows = purchaseItems(data.purchases, data.items, OCT);
         const m = moneySummary(input, OCT);
         expect(rows.reduce((a, x) => a + x.amount, 0)).toBeCloseTo(m.M16.total, 2);
@@ -226,7 +226,7 @@ describe('insights rules', () => {
         expect(belowCostSales(m)).toEqual([{ itemKey: 'i1', item: 'Rice', itemHi: 'Rice', times: 1, qty: 2, lost: 10 }]);
     });
 
-    test('overdue parties: open dues older than 30 days, one count per party', () => {
+    test('I10 overdue parties: open dues older than 30 days, one count per party', () => {
         const now = new Date(2026, 9, 26);
         const bills = [
             { customerName: 'A', date: '2026-09-01', payment: { due: 100 } },

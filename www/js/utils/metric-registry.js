@@ -34,6 +34,8 @@ export const METRICS = Object.freeze({
     I7: { home: 'insights.html', section: 'insights-actions' },
     I8: { home: 'insights.html', section: 'insights-actions' },
     I9: { home: 'insights.html', section: 'insights-actions' },
+    I10: { home: 'insights.html', section: 'insights-actions' },
+    I11: { home: 'insights.html', section: 'insights-items' },
     S4: { home: 'stock.html', section: 'stock' },
     O3: { home: 'outstanding.html', section: 'outstanding' },
     O4: { home: 'outstanding.html', section: 'outstanding' }
@@ -82,4 +84,37 @@ export function metricTags(html) {
     let m;
     while ((m = re.exec(String(html)))) out.push({ id: m[2], kind: m[1] === '-ref' ? 'ref' : m[1] === '-export' ? 'export' : 'value' });
     return out;
+}
+
+/**
+ * Rendered pages (not only templates): ₹ amounts shown outside a tagged
+ * element. A value is explained when an ancestor carries `data-metric`
+ * (its home), `data-metric-ref` (a link to its home), `data-metric-export`
+ * or `data-statement` (a document), `data-takeaway` (a sentence about the
+ * section's own figures), `data-input` (an amount the owner typed), or it is
+ * a chart (svg) or a caveat. Anything else is an untracked repeat.
+ * @param {Element} root rendered page
+ * @returns {string[]} the unexplained texts
+ */
+export function unexplainedValues(root) {
+    const allowed = '[data-metric],[data-metric-ref],[data-metric-export],[data-statement],[data-takeaway],[data-input],svg,.ins-caveat';
+    const out = [];
+    const walker = root.ownerDocument.createTreeWalker(root, 4 /* NodeFilter.SHOW_TEXT */);
+    let node = walker.nextNode();
+    while (node) {
+        const text = node.nodeValue || '';
+        const el = node.parentElement;
+        if (/₹\s?[−-]?\d/.test(text) && el && !el.closest(allowed) && !el.closest('[hidden]')) out.push(text.trim());
+        node = walker.nextNode();
+    }
+    return out;
+}
+
+/**
+ * Value tags of a rendered page: every element whose figure has its home here.
+ * @param {Element} root
+ * @returns {Array<{id: string, kind: 'value'}>}
+ */
+export function renderedValueTags(root) {
+    return [...root.querySelectorAll('[data-metric]')].map(el => ({ id: el.getAttribute('data-metric'), kind: 'value' }));
 }

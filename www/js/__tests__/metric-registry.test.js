@@ -4,7 +4,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { METRICS, LEGACY_DUPLICATES, registryProblems, metricTags } from '../utils/metric-registry.js';
+import { METRICS, LEGACY_DUPLICATES, registryProblems, metricTags, unexplainedValues, renderedValueTags } from '../utils/metric-registry.js';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const TEMPLATES = path.join(ROOT, 'www/templates');
@@ -43,4 +43,12 @@ test('every registered figure has a spec entry and an oracle test', () => {
     const noSpec = Object.keys(METRICS).filter(id => !new RegExp(`\\|\\s*${id}\\s*\\|`).test(spec));
     const noTest = Object.keys(METRICS).filter(id => /^[MI]/.test(id) && !new RegExp(`\\b${id}\\b`).test(oracle));
     expect({ noSpec, noTest }).toEqual({ noSpec: [], noTest: [] });
+});
+
+test('unexplainedValues finds a ₹ amount outside a tagged element; tagged, linked, takeaway, input, chart and caveat amounts are explained', () => {
+    document.body.innerHTML = '<div id="p"><b data-metric="M6">₹100</b><span data-metric-ref="O4">₹5</span><p data-takeaway>Profit ₹100</p>'
+        + '<i data-input>₹9</i><svg><title>₹3</title></svg><div class="ins-caveat">₹2</div><div hidden>₹8</div><em>retail ₹70</em></div>';
+    const root = document.getElementById('p');
+    expect(unexplainedValues(root)).toEqual(['retail ₹70']);
+    expect(renderedValueTags(root)).toEqual([{ id: 'M6', kind: 'value' }]);
 });
