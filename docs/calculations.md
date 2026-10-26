@@ -110,7 +110,7 @@ For the selected PERIOD. Dues are all-time, not the period.
 |---|---|---|
 | A1 | This month: revenue | Σ BILL-TOTAL of sales from the 1st of this month to now. ❌ app differs: `DD/MM/YYYY` bills are misread (#49). |
 | A2 | This month: purchases | Σ BILL-TOTAL of purchases, same range. ❌ (#49) |
-| A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. |
+| A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. ❌ app differs: expenses dated `D/M/YYYY, h:mm:ss pm` (every expense the old app saved) are misread (#49). |
 | A4 | This month: profit | Same as F4 for the same range (#36). Its margin carries the "cost not known" note, as R3. |
 | A7 | Profit trend (per day) | F4 split by day: each day's sales − cost of goods sold − business expenses − bad debts; the days add up to F4 for the whole range. |
 | A5 | Total payable | = F10; count of bills with BILL-DUE > 0. ❌ app differs: counts cleared bills that still carry their old due (#220). |
@@ -118,7 +118,7 @@ For the selected PERIOD. Dues are all-time, not the period.
 
 Analytics' customers (active buyers, top customers) group bills by PARTY. The cash prediction hides its confidence when there is no same-weekday history (its ₹0 then means "no data"). Smart suggestions name items (English or Hindi name), never ids; "low stock" lists only items whose stock was set at some point (a purchase or an opening stock adjustment) and is now below 10 kg.
 
-
+Projections and predictions on Analytics are estimates and are not checked
 here (#144 plans to redo them). "Projected profit" and the smart-suggestion
 profit lines start from A4 (the month's profit so far, scaled to the whole
 month); the "in loss" suggestion only shows when the month has sales.
