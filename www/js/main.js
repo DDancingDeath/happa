@@ -1221,7 +1221,7 @@ window.app = {
     statements: {
         init: (route) => loadStatements().then(m => m.init(route))
             .catch(e => console.warn('Statements not loaded:', e?.message || e)),
-        ...Object.fromEntries(['open', 'back', 'set', 'loadOlder', 'shareWhatsApp', 'downloadCsv', 'print', 'openParty', 'selectParty']
+        ...Object.fromEntries(['open', 'back', 'set', 'loadOlder', 'shareWhatsApp', 'downloadCsv', 'print', 'openParty', 'selectParty', 'setCsvEnglish']
             .map(name => [name, (...args) => loadStatements().then(m => m[name](...args))]))
     },
 

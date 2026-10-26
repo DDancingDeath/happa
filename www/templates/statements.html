@@ -18,11 +18,12 @@
             <strong id="statementsHeading"></strong>
         </div>
         <div class="ins-card st-controls" id="statementsControls"></div>
-        <div class="ins-card st-doc" id="statementsDoc"></div>
+        <div class="ins-card st-doc" data-statement id="statementsDoc"></div>
         <div class="st-actions">
             <button type="button" class="btn btn-secondary" onclick="window.app.statements.shareWhatsApp()" data-i18n="ui.statements.whatsapp">WhatsApp</button>
             <button type="button" class="btn btn-secondary" onclick="window.app.statements.print()" data-i18n="ui.statements.print">Print / PDF</button>
             <button type="button" class="btn btn-secondary" onclick="window.app.statements.downloadCsv()" data-i18n="ui.statements.download_csv">CSV</button>
         </div>
+        <div class="st-csv-option" id="statementsCsvOption" hidden></div>
     </div>
 </div>

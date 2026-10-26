@@ -17,7 +17,10 @@ import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
 import { openExternal } from '../utils/open-external.js';
 import { moneySummary } from '../utils/business-metrics.js';
-import { dayBook, partyLedger, partyChoices, itemLedger, exportLines, toCsv } from '../utils/statements.js';
+import {
+    dayBook, partyLedger, partyChoices, itemLedger, exportLines, toCsv, csvLanguage, readCsvEnglish, writeCsvEnglish, plainLabel, isoMinute
+} from '../utils/statements.js';
+import { can } from '../utils/role-access.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
 import { monthBounds, monthKeyOf } from '../utils/month-snapshots.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
@@ -67,6 +70,7 @@ export const StatementsManager = {
         if (!this.csvFrom) this.csvFrom = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1));
         if (!this.csvTo) this.csvTo = todayLocalISO();
         this.renderControls();
+        this.renderCsvOption();
         this.render();
     },
 
@@ -96,6 +100,28 @@ export const StatementsManager = {
 
     covered(from) {
         return isFullHistoryLoaded() || (Number.isFinite(from) && from >= historyLoadedFrom());
+    },
+
+    /** Section permissions (Roles & access): lines a role may not see are left out of the screen and every export. */
+    perms() {
+        const may = (p) => can(AppState.userRole, p, AppState.settings?.roleAccess);
+        return { profit: may('profit'), personalExpenses: may('personalExpenses'), stockValue: may('stockValue'), purchaseRates: may('purchaseRates') };
+    },
+
+    /** CSV language: the app's, or English when "CSV in English" is on. */
+    csvLang() { return csvLanguage(getLang(), readCsvEnglish()); },
+
+    setCsvEnglish(on) {
+        writeCsvEnglish(!!on);
+        this.renderCsvOption();
+        this.render();
+    },
+
+    renderCsvOption() {
+        const el = document.getElementById('statementsCsvOption');
+        if (!el) return;
+        el.hidden = getLang() !== 'hi';
+        el.innerHTML = el.hidden ? '' : `<label class="st-check"><input type="checkbox" id="statementsCsvEnglish"${readCsvEnglish() ? ' checked' : ''} onchange="window.app.statements.setCsvEnglish(this.checked)"> ${esc(t('ui.statements.csv_english'))}</label>`;
     },
 
     renderControls() {
@@ -164,8 +190,8 @@ export const StatementsManager = {
         this.render();
     },
 
-    kindLabel(kind) {
-        return t(`ui.statements.k_${String(kind).replace(/[A-Z]/g, ch => `_${ch.toLowerCase()}`)}`);
+    kindLabel(kind, lang) {
+        return t(`ui.statements.k_${String(kind).replace(/[A-Z]/g, ch => `_${ch.toLowerCase()}`)}`, null, lang);
     },
 
     renderDay() {
@@ -175,7 +201,10 @@ export const StatementsManager = {
         const to = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
         const title = `${t('ui.statements.day_book')} · ${formatDay(d, { lang })}`;
         if (!this.covered(from)) return this.notLoaded(formatDay(d, { lang }), from);
-        const { rows, totals } = dayBook(this.src(), { from, to });
+        const perms = this.perms();
+        const cl = this.csvLang();
+        const tc = (k) => t(k, null, cl);
+        const { rows, totals } = dayBook(this.src(), { from, to }, { personal: perms.personalExpenses });
         const isToday = this.day === todayLocalISO();
         const body = rows.map(r => `<tr><td>${esc(r.t ? formatDayTime(r.t, { lang }).split(', ').pop() : '')}</td><td>${esc(this.kindLabel(r.kind))}</td><td>${esc([r.billNo, r.party, r.note].filter(Boolean).join(' · '))}</td><td class="num">${money(r.amount)}</td><td class="num">${r.due ? money(r.due) : ''}</td></tr>`).join('');
         const tot = [
@@ -188,8 +217,8 @@ export const StatementsManager = {
             + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.time'))}</th><th>${esc(t('ui.statements.what'))}</th><th>${esc(t('ui.statements.details'))}</th><th class="num">${esc(t('ui.money.amount'))}</th><th class="num">${esc(t('ui.statements.due'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`
             + `<div class="st-totals">${tot.map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.statements.t_sales' ? 'M1' : k === 'ui.statements.t_purchases' ? 'M16' : 'M4'}">${money(v)}</span></div>`).join('')}</div>`;
         const share = [title, ...tot.map(([k, v]) => `${t(k)}: ${formatRupees(v)}`)].join('\n');
-        const csvHeader = [t('ui.statements.time'), t('ui.statements.what'), t('ui.statements.bill_no'), t('ui.insights.party'), t('ui.statements.details'), t('ui.money.amount'), t('ui.statements.cash'), t('ui.statements.online'), t('ui.statements.due')];
-        const csvRows = rows.map(r => [r.t ? formatDayTime(r.t, { lang }) : '', this.kindLabel(r.kind), r.billNo, r.party, r.note, r.amount, r.cash, r.online, r.due]);
+        const csvHeader = [tc('ui.statements.time'), tc('ui.statements.what'), tc('ui.statements.bill_no'), tc('ui.insights.party'), tc('ui.statements.details'), tc('ui.money.amount'), tc('ui.statements.cash'), tc('ui.statements.online'), tc('ui.statements.due')];
+        const csvRows = rows.map(r => [isoMinute(r.t), this.kindLabel(r.kind, cl), r.billNo, r.party, r.note, r.amount, r.cash, r.online, r.due]);
         return { title, html, share, csvHeader, csvRows };
     },
 
@@ -202,20 +231,23 @@ export const StatementsManager = {
         if (!this.covered(b.from)) return this.notLoaded(label, b.from);
         const base = pickReplayBase({ checkpoint: FirebaseService.getStockCheckpointState?.() || null, fullHistory: isFullHistoryLoaded(), from: b.from });
         const m = moneySummary({ ...this.src(), items: AppState.items || [], base }, { from: b.from, to });
+        const perms = this.perms();
+        const cl = this.csvLang();
+        // [label, value, spec ID, permission needed]
         const lines = [
-            ['ui.money.sales', m.M1.total, 'M1'], ['ui.money.cogs_minus', m.M2, 'M2'], ['ui.money.gross_eq', m.M3.total, 'M3'],
-            ['ui.money.business_minus', m.M4.total, 'M4'], ['ui.money.bad_debts_minus', m.M5, 'M5'], ['ui.money.profit_eq', m.M6.total, 'M6'],
-            ['ui.money.labour_line', m.M7, 'M7'], ['ui.money.personal_expenses', m.M8.total, 'M8'], ['ui.money.withdrawals', m.M9, 'M9'],
-            ['ui.money.kept', m.M10, 'M10'], ['ui.money.money_in', m.M12.total, 'M12'], ['ui.money.money_out', m.M13.total, 'M13'],
-            ['ui.money.net_money', m.M14, 'M14'], ['ui.money.bought', m.M16.total, 'M16']
-        ];
-        const stock = m.M17 ? [['ui.money.opening_stock', m.M17.opening], ['ui.money.closing_stock', m.M17.closing]] : [];
+            ['ui.money.sales', m.M1.total, 'M1'], ['ui.money.cogs_minus', m.M2, 'M2', 'profit'], ['ui.money.gross_eq', m.M3.total, 'M3', 'profit'],
+            ['ui.money.business_minus', m.M4.total, 'M4'], ['ui.money.bad_debts_minus', m.M5, 'M5'], ['ui.money.profit_eq', m.M6.total, 'M6', 'profit'],
+            ['ui.money.labour_line', m.M7, 'M7'], ['ui.money.personal_expenses', m.M8.total, 'M8', 'personalExpenses'], ['ui.money.withdrawals', m.M9, 'M9'],
+            ['ui.money.kept', m.M10, 'M10', 'profit'], ['ui.money.money_in', m.M12.total, 'M12'], ['ui.money.money_out', m.M13.total, 'M13'],
+            ['ui.money.net_money', m.M14, 'M14'], ['ui.money.bought', m.M16.total, 'M16'],
+            ...(m.M17 ? [['ui.money.opening_stock', m.M17.opening, null, 'stockValue'], ['ui.money.closing_stock', m.M17.closing, null, 'stockValue']] : [])
+        ].filter(([, , , perm]) => !perm || perms[perm]);
+        const caveats = perms.profit ? m.caveats : [];
         const html = `<h3 class="st-title">${esc(title)}</h3>`
-            + lines.map(([k, v, id]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}"><span>${esc(t(k))}</span><span data-metric-export="${id}">${money(v)}</span></div>`).join('')
-            + stock.map(([k, v]) => `<div class="ins-row ins-sub"><span>${esc(t(k))}</span><span>${money(v)}</span></div>`).join('')
-            + (m.caveats.length ? m.caveats.map(c => `<div class="ins-caveat">⚠ ${esc(t(`ui.money.caveat_${c.key}`, { qty: c.qty, amount: Math.round(c.estimate ?? c.amount ?? c.gap ?? 0) }))}</div>`).join('') : '');
-        const share = [title, ...lines.map(([k, v]) => `${t(k).replace(/^[−=+±]\s*/, '')}: ${v === null ? '—' : formatRupees(v)}`)].join('\n');
-        return { title, html, share, csvHeader: [t('ui.statements.what'), t('ui.money.amount')], csvRows: lines.map(([k, v]) => [t(k), v === null ? '' : v]) };
+            + lines.map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="${perm}"` : ''}><span>${esc(t(k))}</span><span${id ? ` data-metric-export="${id}"` : ''}>${money(v)}</span></div>`).join('')
+            + caveats.map(c => `<div class="ins-caveat" data-perm="profit">⚠ ${esc(t(`ui.money.caveat_${c.key}`, { qty: c.qty, amount: Math.round(c.estimate ?? c.amount ?? c.gap ?? 0) }))}</div>`).join('');
+        const share = [title, ...lines.map(([k, v]) => `${plainLabel(t(k))}: ${v === null ? '—' : formatRupees(v)}`)].join('\n');
+        return { title, html, share, csvHeader: [t('ui.statements.what', null, cl), t('ui.money.amount', null, cl)], csvRows: lines.map(([k, v]) => [plainLabel(t(k, null, cl)), v === null ? '' : v]) };
     },
 
     renderParty() {
@@ -233,8 +265,10 @@ export const StatementsManager = {
             + loadedNote
             + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t(this.partyKind === 'supplier' ? 'ui.statements.bought_col' : 'ui.statements.sold_col'))}</th><th class="num">${esc(t('ui.statements.paid_col'))}</th><th class="num">${esc(t('ui.statements.balance'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
         const share = [title, word(l.closing), ...l.rows.slice(-10).map(r => `${formatDay(r.t, { lang })} ${this.kindLabel(r.kind)} ${r.billNo} ${r.debit ? `+${formatRupees(r.debit)}` : `−${formatRupees(r.credit)}`} = ${formatRupees(r.balance)}`)].join('\n');
-        const csvHeader = [t('ui.statements.date'), t('ui.statements.what'), t('ui.statements.bill_no'), t(this.partyKind === 'supplier' ? 'ui.statements.bought_col' : 'ui.statements.sold_col'), t('ui.statements.paid_col'), t('ui.statements.balance')];
-        const csvRows = l.rows.map(r => [toLocalISODate(new Date(r.t)), this.kindLabel(r.kind), r.billNo, r.debit || '', r.credit || '', r.balance]);
+        const cl = this.csvLang();
+        const tc = (k) => t(k, null, cl);
+        const csvHeader = [tc('ui.statements.date'), tc('ui.statements.what'), tc('ui.statements.bill_no'), tc(this.partyKind === 'supplier' ? 'ui.statements.bought_col' : 'ui.statements.sold_col'), tc('ui.statements.paid_col'), tc('ui.statements.balance')];
+        const csvRows = l.rows.map(r => [toLocalISODate(new Date(r.t)), this.kindLabel(r.kind, cl), r.billNo, r.debit || '', r.credit || '', r.balance]);
         return { title, html, share, csvHeader, csvRows };
     },
 
@@ -250,13 +284,25 @@ export const StatementsManager = {
             return n;
         }
         const l = itemLedger(this.src(), AppState.items || [], this.itemKey);
-        const body = l.rows.map(r => `<tr${r.belowCost || r.beforeBought ? ' class="st-flag"' : ''}><td>${esc(r.t ? formatDay(r.t, { lang }) : '')}</td><td>${esc([this.kindLabel(r.kind), r.billNo, r.party].filter(Boolean).join(' · '))}${r.belowCost ? ` ⚠ ${esc(t('ui.statements.below_cost'))}` : ''}${r.beforeBought ? ` ⚠ ${esc(t('ui.statements.before_bought'))}` : ''}</td><td class="num">${r.qty > 0 ? '+' : ''}${r.qty}</td><td class="num">${r.balanceQty}</td><td class="num">${r.avgCost}</td></tr>`).join('');
+        const perms = this.perms();
+        const cl = this.csvLang();
+        const tc = (k) => t(k, null, cl);
+        // Average cost and purchase rates need purchaseRates; stock value needs stockValue; below-cost needs profit.
+        const showCost = perms.purchaseRates;
+        const rateOf = (r) => (r.kind === 'purchase' && !perms.purchaseRates ? '' : r.rate);
+        const body = l.rows.map(r => {
+            const below = r.belowCost && perms.profit;
+            return `<tr${below || r.beforeBought ? ' class="st-flag"' : ''}><td>${esc(r.t ? formatDay(r.t, { lang }) : '')}</td><td>${esc([this.kindLabel(r.kind), r.billNo, r.party].filter(Boolean).join(' · '))}${below ? ` ⚠ <span data-perm="profit">${esc(t('ui.statements.below_cost'))}</span>` : ''}${r.beforeBought ? ` ⚠ ${esc(t('ui.statements.before_bought'))}` : ''}</td><td class="num">${r.qty > 0 ? '+' : ''}${r.qty}</td><td class="num">${r.balanceQty}</td>${showCost ? `<td class="num" data-perm="purchaseRates">${r.avgCost}</td>` : ''}</tr>`;
+        }).join('');
+        const closing = perms.stockValue && perms.purchaseRates
+            ? t('ui.statements.kg_at', { kg: l.closing.qty, rate: l.closing.rate, value: formatRupees(l.closing.value) })
+            : t('ui.statements.kg_left', { kg: l.closing.qty });
         const html = `<h3 class="st-title">${esc(title)}</h3>`
-            + `<div class="ins-row ins-total"><span>${esc(t('ui.statements.closing_stock'))}</span><span data-metric-export="S4">${esc(t('ui.statements.kg_at', { kg: l.closing.qty, rate: l.closing.rate, value: formatRupees(l.closing.value) }))}</span></div>`
-            + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th><th class="num">${esc(t('ui.statements.stock_kg'))}</th><th class="num">${esc(t('ui.statements.avg_cost'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
-        const share = [title, t('ui.statements.kg_at', { kg: l.closing.qty, rate: l.closing.rate, value: formatRupees(l.closing.value) })].join('\n');
-        const csvHeader = [t('ui.statements.date'), t('ui.statements.what'), t('ui.statements.bill_no'), t('ui.insights.party'), t('ui.insights.kg'), t('ui.statements.rate'), t('ui.statements.stock_kg'), t('ui.statements.avg_cost')];
-        const csvRows = l.rows.map(r => [r.t ? toLocalISODate(new Date(r.t)) : '', this.kindLabel(r.kind), r.billNo, r.party, r.qty, r.rate, r.balanceQty, r.avgCost]);
+            + `<div class="ins-row ins-total"><span>${esc(t('ui.statements.closing_stock'))}</span><span data-metric-export="S4"${perms.stockValue ? ' data-perm="stockValue"' : ''}>${esc(closing)}</span></div>`
+            + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.date'))}</th><th>${esc(t('ui.statements.what'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th><th class="num">${esc(t('ui.statements.stock_kg'))}</th>${showCost ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.statements.avg_cost'))}</th>` : ''}</tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`;
+        const share = [title, closing].join('\n');
+        const csvHeader = [tc('ui.statements.date'), tc('ui.statements.what'), tc('ui.statements.bill_no'), tc('ui.insights.party'), tc('ui.insights.kg'), tc('ui.statements.rate'), tc('ui.statements.stock_kg'), ...(showCost ? [tc('ui.statements.avg_cost')] : [])];
+        const csvRows = l.rows.map(r => [r.t ? toLocalISODate(new Date(r.t)) : '', this.kindLabel(r.kind, cl), r.billNo, r.party, r.qty, rateOf(r), r.balanceQty, ...(showCost ? [r.avgCost] : [])]);
         return { title, html, share, csvHeader, csvRows };
     },
 
@@ -271,9 +317,15 @@ export const StatementsManager = {
         const rows = exportLines(this.src(), AppState.items || [], { from, to });
         const bills = new Set(rows.map(r => `${r.type}|${r.billNo}|${r.date}`)).size;
         const html = `<h3 class="st-title">${esc(title)}</h3><p>${esc(t('ui.statements.csv_ready', { lines: rows.length, bills }))}</p>`;
+        const cl = this.csvLang();
+        const rates = this.perms().purchaseRates;
         const csvHeader = ['date', 'type', 'bill_no', 'party', 'item', 'kg', 'rate', 'line_amount', 'labour', 'amount_after_labour', 'bill_total', 'cash', 'online', 'due']
-            .map(k => t(`ui.statements.csv_${k}`));
-        const csvRows = rows.map(r => [r.date, this.kindLabel(r.type), r.billNo, r.party, r.item, r.qty, r.rate, r.lineAmount, r.labour, r.amount, r.billTotal, r.cash, r.online, r.due]);
+            .map(k => t(`ui.statements.csv_${k}`, null, cl));
+        // Without purchaseRates the purchase lines keep kg and the bill's money, not the rate per kg.
+        const csvRows = rows.map(r => {
+            const hide = r.type === 'purchase' && !rates;
+            return [r.date, this.kindLabel(r.type, cl), r.billNo, r.party, r.item, r.qty, hide ? '' : r.rate, hide ? '' : r.lineAmount, r.labour, hide ? '' : r.amount, r.billTotal, r.cash, r.online, r.due];
+        });
         return { title, html, share: `${title}\n${t('ui.statements.csv_ready', { lines: rows.length, bills })}`, csvHeader, csvRows };
     },
 

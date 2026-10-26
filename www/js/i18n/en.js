@@ -2310,5 +2310,7 @@ export default {
     'ui.statements.k_write_off': "Written off",
     'ui.statements.k_cleared': "Marked cleared",
     'ui.statements.k_adjustment': "Stock correction",
-    'msg.statements.popup_blocked': "Allow pop-ups to print or save the PDF."
+    'msg.statements.popup_blocked': "Allow pop-ups to print or save the PDF.",
+    'ui.statements.csv_english': "CSV in English (for the accountant)",
+    'ui.statements.kg_left': "{kg} kg in stock"
 };

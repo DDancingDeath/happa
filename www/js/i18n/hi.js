@@ -2310,5 +2310,7 @@ export default {
     'ui.statements.k_write_off': "छोड़ दिया",
     'ui.statements.k_cleared': "चुकता लिखा",
     'ui.statements.k_adjustment': "स्टॉक सुधार",
-    'msg.statements.popup_blocked': "प्रिंट या PDF के लिए पॉप-अप चालू करें।"
+    'msg.statements.popup_blocked': "प्रिंट या PDF के लिए पॉप-अप चालू करें।",
+    'ui.statements.csv_english': "CSV अंग्रेज़ी में (मुनीम के लिए)",
+    'ui.statements.kg_left': "स्टॉक में {kg} किलो"
 };

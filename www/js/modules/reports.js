@@ -15,22 +15,13 @@ import { t, tn, getLang } from '../i18n/index.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 
-/** Device setting: CSV export in English even when the app is in Hindi (for the accountant). */
-export const CSV_ENGLISH_KEY = 'aadhat.csvEnglish';
+// Device setting: CSV in English (shared with Statements, utils/statements.js).
+export { CSV_ENGLISH_KEY };
 const CSV_COLUMNS = ['bill_id', 'date', 'time', 'type', 'customer', 'item', 'qty', 'rate', 'amount', 'labour', 'total', 'cash', 'online', 'due'];
 
-function readCsvEnglish() {
-    try { return localStorage.getItem(CSV_ENGLISH_KEY) === '1'; } catch (_) { return false; }
-}
-
-/**
- * Language of the CSV export: the app language, or English when English headers are chosen.
- * @param {'en'|'hi'} [lang]
- * @param {boolean} [english]
- * @returns {'en'|'hi'}
- */
+/** Language of the CSV export (defaults: app language, the device's English choice). */
 export function csvLanguage(lang = getLang(), english = readCsvEnglish()) {
-    return lang === 'hi' && !english ? 'hi' : 'en';
+    return sharedCsvLanguage(lang, english);
 }
 
 /** Header row of the CSV export in `lang`. */
@@ -38,6 +29,7 @@ export function csvHeaderRow(lang) {
     return CSV_COLUMNS.map(c => `"${t(`ui.csv.${c}`, null, lang)}"`).join(',');
 }
 import { lineItemIdentity } from '../utils/item-catalog.js';
+import { CSV_ENGLISH_KEY, readCsvEnglish, writeCsvEnglish, csvLanguage as sharedCsvLanguage } from '../utils/statements.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 
 const reportsMemo = createRenderMemo();
@@ -1012,7 +1004,7 @@ export class ReportsManager {
     }
 
     static setCsvEnglish(on) {
-        try { localStorage.setItem(CSV_ENGLISH_KEY, on ? '1' : '0'); } catch (_) { /* storage blocked */ }
+        writeCsvEnglish(on);
     }
 
     static async exportCSV() {

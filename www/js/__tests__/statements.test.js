@@ -11,7 +11,8 @@ import * as O from '../../../tests/oracle/oracle.js';
 import { generateShop } from '../../../tests/fixtures/generator.js';
 import { StatementsManager } from '../modules/statements.js';
 import { AppState } from '../utils/state.js';
-import { dayBook, partyLedger, partyChoices, itemLedger, exportLines, toCsv } from '../utils/statements.js';
+import { dayBook, partyLedger, partyChoices, itemLedger, exportLines, toCsv, csvCell, plainLabel, isoMinute, CSV_ENGLISH_KEY } from '../utils/statements.js';
+import { t } from '../i18n/index.js';
 import { moneySummary } from '../utils/business-metrics.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { computeStock } from '../utils/stock-replay.js';
@@ -129,6 +130,76 @@ describe('statements close on their home figures', () => {
 
     test('toCsv quotes commas, quotes and new lines', () => {
         expect(toCsv(['a', 'b'], [['x,y', 'say "hi"'], ['line\nbreak', 3]])).toBe('\uFEFFa,b\r\n"x,y","say ""hi"""\r\n"line\nbreak",3\r\n');
+    });
+
+    test('CSV injection: text starting with = + - @ is shown, not run; numbers stay numbers', () => {
+        const csv = toCsv(['h'], [['=HYPERLINK("x")'], ['+1'], ['-2+3'], ['@SUM(A1)'], [-50], ['Ram']]);
+        expect(csv.split('\r\n').slice(1, 7)).toEqual(['"\'=HYPERLINK(""x"")"', "'+1", "'-2+3", "'@SUM(A1)", '-50', 'Ram']);
+        expect(csvCell('− Cost')).toBe('− Cost');
+        expect(plainLabel('= Gross profit')).toBe('Gross profit');
+        expect(plainLabel('− Business expenses')).toBe('Business expenses');
+        expect(isoMinute(new Date(2026, 9, 21, 9, 5).getTime())).toBe('2026-10-21 09:05');
+    });
+});
+
+describe('Statements: CSV language, dates and permissions', () => {
+    const csvOf = () => {
+        let text = '';
+        global.URL.createObjectURL = jest.fn((blob) => { text = blob; return 'blob:x'; });
+        global.URL.revokeObjectURL = jest.fn();
+        jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+        StatementsManager.downloadCsv();
+        return toCsv(StatementsManager.current.csvHeader, StatementsManager.current.csvRows) && text && StatementsManager.current;
+    };
+
+    test('day-book CSV writes ISO dates (YYYY-MM-DD HH:mm); month CSV labels have no = or − signs', () => {
+        StatementsManager.open('day');
+        const cur = StatementsManager.current;
+        cur.csvRows.filter(r => r[0]).forEach(r => expect(r[0]).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/));
+        StatementsManager.open('month');
+        StatementsManager.current.csvRows.forEach(r => expect(r[0]).not.toMatch(/^[=−+-]/));
+    });
+
+    test('Hindi app: CSV headers in Hindi, or English when "CSV in English" is on (shared device setting)', async () => {
+        const i18n = await import('../i18n/index.js');
+        const getLang = jest.spyOn(i18n, 'getLang').mockReturnValue('hi');
+        localStorage.setItem(CSV_ENGLISH_KEY, '0');
+        StatementsManager.open('day');
+        expect(document.getElementById('statementsCsvOption').hidden).toBe(false);
+        const hiHeader = StatementsManager.current.csvHeader.join(',');
+        expect(hiHeader).not.toMatch(/[A-Za-z]{3,}/);
+        StatementsManager.setCsvEnglish(true);
+        expect(localStorage.getItem(CSV_ENGLISH_KEY)).toBe('1');
+        expect(StatementsManager.current.csvHeader[0]).toBe('Time');
+        StatementsManager.open('csv');
+        expect(StatementsManager.current.csvHeader[0]).toBe(t('ui.statements.csv_date', null, 'en'));
+        getLang.mockRestore();
+        localStorage.removeItem(CSV_ENGLISH_KEY);
+    });
+
+    test('a role without profit / personal expenses / stock value / purchase rates gets none of those lines on screen, WhatsApp or CSV', () => {
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess: { staff: { reports: true, profit: false, personalExpenses: false, stockValue: false, purchaseRates: false } } };
+        StatementsManager.open('month');
+        const ids = [...document.querySelectorAll('#statementsDoc [data-metric-export]')].map(el => el.dataset.metricExport);
+        ['M2', 'M3', 'M6', 'M8', 'M10'].forEach(id => expect(ids).not.toContain(id));
+        const words = [t('ui.money.cogs_minus'), t('ui.money.profit_eq'), t('ui.money.personal_expenses'), t('ui.money.closing_stock')].map(plainLabel);
+        const share = StatementsManager.current.share;
+        const csv = StatementsManager.current.csvRows.map(r => r[0]).join('|');
+        words.forEach(w => { expect(share).not.toContain(w); expect(csv).not.toContain(w); });
+        StatementsManager.open('day');
+        expect(StatementsManager.current.csvRows.some(r => r[1] === t('ui.statements.k_personal'))).toBe(false);
+        StatementsManager.open('item');
+        expect(StatementsManager.current.csvHeader).not.toContain(t('ui.statements.avg_cost'));
+        expect(StatementsManager.current.share).not.toMatch(/₹/);
+        StatementsManager.open('csv');
+        StatementsManager.current.csvRows.filter(r => r[1] === t('ui.statements.k_purchase')).forEach(r => expect(r[6]).toBe(''));
+    });
+
+    test('owner sees every line', () => {
+        StatementsManager.open('month');
+        const ids = [...document.querySelectorAll('#statementsDoc [data-metric-export]')].map(el => el.dataset.metricExport);
+        ['M2', 'M3', 'M6', 'M8', 'M10'].forEach(id => expect(ids).toContain(id));
     });
 });
 

@@ -29,10 +29,11 @@ const partyOf = (b) => String(b?.customerName ?? b?.supplierName ?? '').trim();
  * Day book (ST1): every bill, expense, withdrawal and due payment of [from, to), in time order.
  * @param {Object} src {purchases, wholesaleSales, retailSales, expenses, withdrawals}
  * @param {{from: number, to: number}} range
+ * @param {{personal?: boolean}} [opts] personal: false leaves personal expenses out (no personalExpenses permission)
  * @returns {{rows: Array<{t: ?number, kind: string, billNo: string, party: string, amount: number, cash: number, online: number, due: number, note: string}>,
  *   totals: {sales: number, purchases: number, expenses: number, withdrawals: number, dueReceived: number, duePaid: number, salesCount: number, purchaseCount: number}}}
  */
-export function dayBook(src, { from, to }) {
+export function dayBook(src, { from, to }, { personal = true } = {}) {
     const rows = [];
     const totals = { sales: 0, purchases: 0, expenses: 0, withdrawals: 0, dueReceived: 0, duePaid: 0, salesCount: 0, purchaseCount: 0 };
     const addBills = (list, kind) => billsInRange(list || [], from, to).forEach(b => {
@@ -47,6 +48,7 @@ export function dayBook(src, { from, to }) {
     (src.expenses || []).forEach(e => {
         const t = recTime(e);
         if (t === null || t < from || t >= to) return;
+        if (!personal && e.category === 'personal') return;
         const amount = num(e.amount);
         rows.push({ t, kind: e.category === 'personal' ? 'personal' : 'expense', billNo: '', party: String(e.personName || '').trim(), amount, cash: amount, online: 0, due: 0, note: [e.type, e.remarks].filter(Boolean).join(' · ') });
         totals.expenses += amount;
@@ -213,8 +215,48 @@ export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinit
     return { opening, rows, closing };
 }
 
-const csvCell = (v) => {
-    const s = v === null || v === undefined ? '' : String(v);
+/** Device setting: CSV in English even when the app is in Hindi (for the accountant). */
+export const CSV_ENGLISH_KEY = 'aadhat.csvEnglish';
+
+/** @returns {boolean} */
+export function readCsvEnglish() {
+    try { return localStorage.getItem(CSV_ENGLISH_KEY) === '1'; } catch (_) { return false; }
+}
+
+/** @param {boolean} on */
+export function writeCsvEnglish(on) {
+    try { localStorage.setItem(CSV_ENGLISH_KEY, on ? '1' : '0'); } catch (_) { /* storage blocked */ }
+}
+
+/**
+ * Language of a CSV: the app language, or English when English headers are chosen.
+ * @param {'en'|'hi'} lang
+ * @param {boolean} english
+ * @returns {'en'|'hi'}
+ */
+export function csvLanguage(lang, english) {
+    return lang === 'hi' && !english ? 'hi' : 'en';
+}
+
+/** A label without its statement sign ("− Cost of goods sold" → "Cost of goods sold"). */
+export const plainLabel = (s) => String(s ?? '').replace(/^[\s−=+±-]+/, '').trim();
+
+/** 'YYYY-MM-DD HH:mm' (local) of a time in ms; '' when unknown. */
+export function isoMinute(t) {
+    if (t === null || t === undefined || !Number.isFinite(t)) return '';
+    const pad = (x) => String(x).padStart(2, '0');
+    const d = new Date(t);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * One CSV cell. Text starting with = + - @ (or tab / CR) gets a leading ' so a
+ * spreadsheet shows it instead of running it as a formula (CSV injection);
+ * numbers are written as they are.
+ */
+export const csvCell = (v) => {
+    let s = v === null || v === undefined ? '' : String(v);
+    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
     return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
@@ -240,12 +282,7 @@ export function exportLines(src, items, { from, to }) {
     const byId = new Map((items || []).map(i => [i.id, i]));
     const getKey = createItemKeyResolver(items || []);
     const out = [];
-    const pad = (x) => String(x).padStart(2, '0');
-    const iso = (t) => {
-        if (t === null) return '';
-        const d = new Date(t);
-        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
+    const iso = isoMinute;
     [['purchase', src.purchases], ['retail', src.retailSales], ['wholesale', src.wholesaleSales]].forEach(([type, list]) => {
         billsInRange(list || [], from, to).forEach(b => {
             const lines = (Array.isArray(b.items) ? b.items : []).map(l => ({ l, v: readLineItem(l) }));
