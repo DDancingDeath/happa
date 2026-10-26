@@ -3534,6 +3534,25 @@ const FirebaseService = {
         usersCache = null;
     },
 
+    /**
+     * Removes a user's access (#74): role and approval are cleared and the profile
+     * is kept as `status: 'disabled'`, so the rules refuse it and the person can't
+     * re-register as pending. The Auth account itself needs the Admin SDK.
+     */
+    async disableUserProfile(userId, byUid) {
+        const del = firebase.firestore.FieldValue.delete();
+        await getDb().collection(col('users')).doc(userId).update({
+            status: 'disabled',
+            role: del,
+            rentRole: del,
+            approvedAt: del,
+            approvedBy: del,
+            disabledAt: firebase.firestore.FieldValue.serverTimestamp(),
+            disabledBy: byUid || null
+        });
+        usersCache = null;
+    },
+
     /** Number of documents in a collection (full read; Admin → Storage). */
     async countDocuments(name) {
         const snapshot = await getDb().collection(col(name)).get();

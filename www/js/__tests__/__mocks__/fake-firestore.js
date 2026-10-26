@@ -4,7 +4,7 @@
  * startAfter(doc) queries,
  * get(), onSnapshot() with sequential docChanges(), set (merge) / update
  * (dotted paths) / delete / add, batches, transactions and
- * FieldValue.increment. Also counts billed document reads.
+ * FieldValue.increment / delete. Also counts billed document reads.
  */
 import { compareFirestoreValues } from '../../utils/history-range.js';
 
@@ -46,6 +46,7 @@ const matches = (data, { field, op, value }, id) => {
 };
 
 const INC = Symbol('increment');
+const DEL = Symbol('delete');
 
 function applyFields(target, fields, { dotted }) {
     const out = clone(target) || {};
@@ -57,7 +58,9 @@ function applyFields(target, fields, { dotted }) {
             o = o[path[i]];
         }
         const last = path[path.length - 1];
-        if (value && value[INC] !== undefined) {
+        if (value && value[DEL]) {
+            delete o[last];
+        } else if (value && value[INC] !== undefined) {
             o[last] = (typeof o[last] === 'number' ? o[last] : 0) + value[INC];
         } else {
             o[last] = clone(value);
@@ -299,6 +302,7 @@ export function createFakeFirestore(options = {}) {
             FieldPath: { documentId: () => '__name__' },
             FieldValue: {
                 increment: (n) => ({ [INC]: n }),
+                delete: () => ({ [DEL]: true }),
                 serverTimestamp: () => Date.now()
             }
         })

@@ -10,6 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t } from '../i18n/index.js';
+import { UserAdmin, isDisabledProfile } from '../services/user-admin.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 
@@ -35,6 +36,7 @@ export class UsersManager {
             const activeUsers = [];
             
             users.forEach(userData => {
+                if (isDisabledProfile(userData)) return;
                 if (userData.status === 'pending' || !userData.role) {
                     pendingUsers.push(userData);
                 } else {
@@ -223,63 +225,28 @@ export class UsersManager {
     }
 
     /**
-     * Send password reset email to a user
+     * Send a password-reset email to a user (owner only)
      * @param {string} userId - User document ID
      * @param {string} email - User's email address
      */
     static async resetUserPassword(userId, email) {
-        const confirmed = await UIManager.showModal(
-            t('msg.common.send_password_reset_email', { email }),
-            t('msg.common.reset_password'),
-            true
-        );
-        
-        if (!confirmed) return;
-        
-        try {
-            await firebase.auth().sendPasswordResetEmail(email);
-            UIManager.hapticFeedback('success');
-            UIManager.showToast(t('msg.common.password_reset_email_sent', { email }));
-        } catch (error) {
-            console.error('Error sending reset email:', error);
-            UIManager.showModal(t('msg.common.failed_send_reset_email', { message: error.message }));
-        }
+        const sent = await UserAdmin.resetPassword(userId, email);
+        if (sent) UIManager.hapticFeedback('success');
+        return sent;
     }
 
     /**
-     * Delete a user from the system
+     * Remove a user's access (owner only); see services/user-admin.js
      * @param {string} userId - User document ID
      * @param {string} userName - User's display name
      */
     static async deleteUser(userId, userName) {
-        const confirmed = await UIManager.showModal(
-            t('msg.common.are_sure_want_delete_user', { userName }),
-            t('msg.common.delete_user'),
-            true
-        );
-        
-        if (!confirmed) return;
-        
-        // Double confirm for safety
-        const doubleConfirm = await UIManager.showModal(
-            t('msg.users.type_delete_confirm_deletion', { userName }),
-            t('msg.users.confirm_deletion'),
-            true
-        );
-        
-        if (!doubleConfirm) return;
-        
-        try {
-            // Delete user document from Firestore
-            await FirebaseService.deleteUserProfile(userId);
-            
+        const removed = await UserAdmin.removeUser(userId, userName);
+        if (removed) {
             UIManager.hapticFeedback('medium');
-            UIManager.showToast(t('msg.common.user_has_been_deleted', { userName }));
-            this.loadUsers();
-        } catch (error) {
-            console.error('Error deleting user:', error);
-            UIManager.showModal(t('msg.common.failed_delete_user', { message: error.message }));
+            await this.loadUsers();
         }
+        return removed;
     }
 
     static showCustomModal(html, buttons) {
