@@ -13,6 +13,7 @@ import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../uti
 import { OutstandingManager } from './outstanding.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { getLang, t } from '../i18n/index.js';
+import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -551,20 +552,9 @@ export class WholesaleSalesManager {
         const profit = Helpers.getElementInt('salesProfitAmount');
         const comments = Helpers.getInputText('salesComments');
         
-        let message = `*Sale Bill*\n\n`;
-        message += `Customer: ${customerName}\n`;
-        message += `Date: ${new Date().toLocaleDateString('en-IN')}\n`;
-        if (comments) message += `Note: ${comments}\n`;
-        message += `\n*Items:*\n`;
-        
-        wholesaleSaleItems.forEach(item => {
-            message += `${item.name}\n`;
-            message += `  Rate: ₹${item.rate.toFixed(2)} × ${item.qty.toFixed(1)}kg = ₹${Math.round(item.total)}\n`;
+        const message = buildDraftShareText({
+            kind: 'wholesale', customer: customerName, note: comments, items: wholesaleSaleItems, total, expenses, profit
         });
-        
-        message += `\n*Total: ₹${Math.round(total)}*`;
-        if (expenses > 0) message += `\nExpenses: ₹${Math.round(expenses)}`;
-        if (profit !== 0) message += `\nProfit: ₹${Math.round(profit)}`;
         
         const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
@@ -810,8 +800,8 @@ export class WholesaleSalesManager {
             const paymentParts = [];
             if (sale.payment) {
                 const totalReceived = (sale.payment.online || 0) + (sale.payment.cash || 0);
-                if (totalReceived > 0) paymentParts.push(`Received: ₹${Math.round(totalReceived)}`);
-                if (sale.payment.due > 0) paymentParts.push(`Due: ₹${Math.round(sale.payment.due)}`);
+                if (totalReceived > 0) paymentParts.push(`${L('ui.bill.received')}: ₹${Math.round(totalReceived)}`);
+                if (sale.payment.due > 0) paymentParts.push(`${L('ui.bill.due')}: ₹${Math.round(sale.payment.due)}`);
             }
             const paymentHTML = paymentParts.length > 0 ? `
                 <div class="history-payment">

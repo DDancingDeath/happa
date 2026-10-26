@@ -45,7 +45,13 @@ import { StockManager } from '../modules/stock.js';
 import { DiagnosticsManager } from '../modules/diagnostics.js';
 import { AppUpdatesManager } from '../modules/app-updates.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
-import { staleHistoryHintText } from '../utils/history-window.js';
+import { staleHistoryHintText, formatWindowDate } from '../utils/history-window.js';
+import { buildDraftShareText } from '../utils/bill-share.js';
+import { evaluateCashCount, evaluateStockAdjustment } from '../utils/bill-checks.js';
+import { notificationText, formatWhen } from '../utils/notification-format.js';
+import { formatDateTimeIN } from '../utils/dates.js';
+import { Helpers } from '../utils/helpers.js';
+import { OutstandingManager } from '../modules/outstanding.js';
 
 const WWW = path.join(__dirname, '..', '..');
 const DEVANAGARI = /[\u0900-\u097F]/;
@@ -266,9 +272,7 @@ describe('Hindi mode: no English UI words', () => {
     // Brand names, units, file types and the technical rule keys an owner types on App health.
     const ALLOWED = new Set(['happa', 'WhatsApp', 'UPI', 'GPay', 'AI', 'kg', 'KB', 'MB', 'CSV', 'PDF', 'JSON', 'English',
         'Android', 'Chrome', 'Edge', 'iPhone', 'iPad', 'Safari', 'Files', 'am', 'pm', 'v',
-        'billChecksBlocking', 'telemetryOnly', 'false', 'auto', 'rollback',
-        // Diagnostics times come from utils/dates.js (en-IN month names), not from the catalogues.
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']);
+        'billChecksBlocking', 'telemetryOnly', 'false', 'auto', 'rollback']);
     const userData = ['Ram Traders', 'Mahua', 'Suresh'];
 
     /** Latin words on screen that are not brand names, units, user data or web addresses. */
@@ -410,6 +414,82 @@ describe('Hindi mode: no English UI words', () => {
         expect(sheet.textContent).not.toContain('Faster bills');
         setLang('en');
         expect(sheet.textContent).toContain('Faster bills');
+    });
+
+    test('printed receipts (bill and expense) are drawn in Hindi', async () => {
+        const { BluetoothPrinterManager } = jest.requireActual('../services/printer.js');
+        const drawn = [];
+        const ctx = new Proxy({}, {
+            get: (target, prop) => {
+                if (prop === 'fillText') return (text) => drawn.push(String(text));
+                if (prop === 'measureText') return (text) => ({ width: String(text).length * 8 });
+                if (prop in target) return target[prop];
+                return () => {};
+            },
+            set: (target, prop, value) => { target[prop] = value; return true; }
+        });
+        const getContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = () => ctx;
+        try {
+            const printer = new BluetoothPrinterManager();
+            printer._renderBillCanvas({
+                billNumber: '101', customerName: 'Ram Traders', date: iso, isPurchase: true, comments: 'Mahua', printComments: true,
+                items: [{ name: 'Mahua', rate: 40, qty: 10, total: 400, weights: [10] }],
+                billTotal: 400, laborCharges: 6, amountPayable: 394, payment: { cash: 300, online: 0, due: 94 }
+            });
+            await printer.generateExpenseCanvas({ type: 'Mahua', amount: 200, personName: 'Suresh', timestamp: today.getTime() });
+        } finally {
+            HTMLCanvasElement.prototype.getContext = getContext;
+        }
+        const text = drawn.join('\n');
+        expect(englishWords(text)).toEqual([]);
+        ['रसीद', 'बिल: 101', 'ग्राहक: Ram Traders', 'नोट: Mahua', 'प्रकार', 'रकम'].forEach(s => expect(text).toContain(s));
+    });
+
+    test('WhatsApp texts of a bill being entered (purchase, retail, wholesale)', () => {
+        const items = [{ name: 'Mahua', rate: 40, qty: 10, total: 400 }];
+        const text = [
+            buildDraftShareText({ kind: 'purchase', customer: 'Ram Traders', items, total: 400, labour: 6 }),
+            buildDraftShareText({ kind: 'retail', items, total: 400 }),
+            buildDraftShareText({ kind: 'wholesale', customer: 'Suresh', note: 'Mahua', items, total: 400, expenses: 20, profit: 50 })
+        ].join('\n');
+        expect(englishWords(text)).toEqual([]);
+        ['खरीद बिल', 'ग्राहक', 'रेट', 'कुल', 'खर्च', 'मुनाफ़ा'].forEach(s => expect(text).toContain(s));
+    });
+
+    test('Outstanding list, bill checks and notifications', () => {
+        document.body.innerHTML = html('due.html');
+        AppState.currentDueFilter = 'purchase';
+        OutstandingManager.renderDue();
+        applyTranslations(document);
+        const clone = document.body.cloneNode(true);
+        clone.querySelectorAll('style, script').forEach(el => el.remove());
+        const checks = [...evaluateCashCount({ expected: -50, counted: 500 }), ...evaluateStockAdjustment(500)].map(i => pickLang(i, 'hi'));
+        const notes = [
+            notificationText({ type: 'rate_change', itemName: 'Mahua', rateType: 'purchase', oldRate: 40, newRate: 45, changedBy: 'Suresh' }, 'hi'),
+            notificationText({ type: 'edit', documentType: 'purchase', billNumber: '101', changedBy: 'Suresh' }, 'hi'),
+            formatWhen(today.getTime() - 3 * 86400000, today.getTime()).hi,
+            formatWhen(today.getTime(), today.getTime()).abs
+        ];
+        const text = [textAndAttrs(clone), ...checks, ...notes].join('\n');
+        expect(englishWords(text)).toEqual([]);
+        expect(text).toContain('Ram Traders');
+        expect(checks.join(' ')).toContain('नकद');
+    });
+
+    test('dates show Hindi month and day names; CSV headers follow the language with an English choice', () => {
+        const { csvHeaderRow, csvLanguage } = jest.requireActual('../modules/reports.js');
+        const oct = new Date(2026, 9, 21, 10, 5);
+        const dates = [formatWindowDate(oct.getTime()), Helpers.formatDate(oct), formatDateTimeIN(oct, { day: '2-digit', month: 'short' })].join(' ');
+        expect(dates).toContain('अक्टू');
+        expect(englishWords(dates)).toEqual([]);
+        expect(englishWords(csvHeaderRow(csvLanguage('hi', false)))).toEqual([]);
+        expect(csvLanguage('hi', true)).toBe('en');
+        expect(csvLanguage('en', false)).toBe('en');
+        expect(csvHeaderRow('en')).toContain('"Bill ID","Date"');
+        document.body.innerHTML = html('reports.html');
+        applyTranslations(document);
+        expect(document.getElementById('csvEnglishToggle').textContent).toContain('अंग्रेज़ी');
     });
 
     test('/download shows one language, with an English | हिंदी switch', () => {

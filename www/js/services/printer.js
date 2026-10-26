@@ -334,7 +334,7 @@ class BluetoothPrinterManager {
     }
 
     _drawReceiptHeader(ctx, billData, config, utils, y) {
-        y = utils.drawCenter('Receipt', y, config.fonts.title, true);
+        y = utils.drawCenter(t('ui.print.receipt'), y, config.fonts.title, true);
         if (billData.isCopy) {
             y = utils.drawCenter(copyMark(), y, config.fonts.header, true);
         }
@@ -345,7 +345,7 @@ class BluetoothPrinterManager {
         if (billData.billNumber) {
             // Draw bill number on left
             ctx.font = '17px Arial';
-            ctx.fillText('Bill: ' + billData.billNumber, config.padding.side, y);
+            ctx.fillText(`${t('ui.bill.bill_no')}: ${billData.billNumber}`, config.padding.side, y);
             
             // Draw date/time on right
             const dateWidth = ctx.measureText(dateTime).width;
@@ -363,7 +363,7 @@ class BluetoothPrinterManager {
 
     _drawCustomerInfo(billData, utils, y) {
         if (billData.customerName) {
-            y = utils.drawLeft('Customer: ' + billData.customerName, y, { size: 18, weight: 'normal' });
+            y = utils.drawLeft(`${t('ui.bill.customer')}: ${billData.customerName}`, y, { size: 18, weight: 'normal' });
             y += 8;
         }
         return y;
@@ -483,7 +483,7 @@ class BluetoothPrinterManager {
             ctx.font = `${config.fonts.body.size}px Arial`;
             
             // Print "Note: <comment>" on the same line, with word wrap if needed
-            const noteLabel = 'Note: ';
+            const noteLabel = `${t('ui.bill.note')}: `;
             const labelWidth = ctx.measureText(noteLabel).width;
             const maxWidth = config.width - config.padding.left - 10;
             const commentText = billData.comments.trim();
@@ -652,7 +652,7 @@ class BluetoothPrinterManager {
         // Receipt Header
         ctx.font = `bold ${config.fonts.header.size}px Arial`;
         ctx.textAlign = 'center';
-        ctx.fillText('Receipt', config.width / 2, y);
+        ctx.fillText(t('ui.print.receipt'), config.width / 2, y);
         y += config.fonts.header.size + 10;
         
         // Date and Time
@@ -692,13 +692,13 @@ class BluetoothPrinterManager {
         ctx.font = `${config.fonts.body.size}px Arial`;
         
         // Type
-        ctx.fillText('Type:', 10, y);
+        ctx.fillText(`${t('ui.print.type')}:`, 10, y);
         ctx.fillText(expense.type, 120, y);
         y += config.spacing.line;
         
         // Amount
         ctx.font = `bold ${config.fonts.total.size}px Arial`;
-        ctx.fillText('Amount:', 10, y);
+        ctx.fillText(`${t('ui.print.amount')}:`, 10, y);
         ctx.fillText(`₹${expense.amount}`, 120, y);
         y += config.spacing.line + 5;
         
@@ -706,7 +706,7 @@ class BluetoothPrinterManager {
         
         // Person (if available)
         if (expense.personName) {
-            ctx.fillText('Name:', 10, y);
+            ctx.fillText(`${t('ui.print.name')}:`, 10, y);
             ctx.fillText(expense.personName, 120, y);
             y += config.spacing.line;
         }
@@ -874,14 +874,14 @@ const PrinterService = {
         
         if (AppState.printerSettings.enabled && AppState.printerSettings.deviceName) {
             if (statusDiv) {
-                statusDiv.textContent = `Connected: ${AppState.printerSettings.deviceName}`;
+                statusDiv.textContent = t('ui.print.connected', { name: AppState.printerSettings.deviceName });
                 statusDiv.style.color = 'green';
             }
             if (connectBtn) connectBtn.style.display = 'none';
             if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
         } else {
             if (statusDiv) {
-                statusDiv.textContent = 'Not Connected';
+                statusDiv.textContent = t('ui.settings.printer_not_connected');
                 statusDiv.style.color = 'red';
             }
             if (connectBtn) connectBtn.style.display = 'inline-block';
@@ -894,9 +894,9 @@ const PrinterService = {
             const testBill = {
                 type: 'TEST',
                 date: new Date().toISOString(),
-                customerName: 'Test Customer',
+                customerName: t('ui.print.test_customer'),
                 items: [
-                    { name: 'Test Item', qty: 10, rate: 100, total: 1000, weights: [10] }
+                    { name: t('ui.print.test_item'), qty: 10, rate: 100, total: 1000, weights: [10] }
                 ],
                 billTotal: 1000,
                 laborCharges: 6,
@@ -939,7 +939,7 @@ const PrinterService = {
             const canvas = await this.manager.generateBillCanvas(billData);
             const billType = billData.isPurchase ? 'purchase' : 'sale';
             const filename = `${billType}_bill_${billData.billNumber || billData.id || Date.now()}${billData.isCopy ? '_copy' : ''}.png`;
-            return this.showImagePreview(canvas, filename, 'Bill');
+            return this.showImagePreview(canvas, filename, t('ui.bill.bill_no'));
         } catch (error) {
             console.error('Preview generation failed:', error);
             UIManager.showToast(t('msg.printer.failed_generate_bill_preview'));
@@ -966,7 +966,7 @@ const PrinterService = {
         }
         try {
             const canvas = this.manager.generateStatementCanvas(statement);
-            return this.showImagePreview(canvas, statement.filename || 'statement.png', 'Statement');
+            return this.showImagePreview(canvas, statement.filename || 'statement.png', t('ui.print.statement'));
         } catch (error) {
             console.error('Statement preview failed:', error);
             UIManager.showToast(t('msg.printer.failed_generate_statement'));
@@ -981,7 +981,7 @@ const PrinterService = {
      * @param {string} [shareTitle='Bill']
      * @returns {boolean}
      */
-    showImagePreview(canvas, filename, shareTitle = 'Bill') {
+    showImagePreview(canvas, filename, shareTitle = t('ui.bill.bill_no')) {
         try {
             // Convert canvas to data URL
             const dataUrl = canvas.toDataURL('image/png');
@@ -1023,7 +1023,7 @@ const PrinterService = {
             `;
             
             const downloadBtn = document.createElement('button');
-            downloadBtn.textContent = 'Download';
+            downloadBtn.textContent = t('ui.print.download');
             downloadBtn.style.cssText = `
                 padding: 12px 24px;
                 background: #22c55e;
@@ -1083,7 +1083,7 @@ const PrinterService = {
             };
             
             const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Close';
+            closeBtn.textContent = t('ui.common.close');
             closeBtn.style.cssText = `
                 padding: 12px 24px;
                 background: #007bff;
@@ -1175,7 +1175,7 @@ const PrinterService = {
             `;
             
             const downloadBtn = document.createElement('button');
-            downloadBtn.textContent = 'Download';
+            downloadBtn.textContent = t('ui.print.download');
             downloadBtn.style.cssText = `
                 padding: 12px 24px;
                 background: #22c55e;
@@ -1213,7 +1213,7 @@ const PrinterService = {
                             const file = new File([blob], filename, { type: 'image/png' });
                             await navigator.share({
                                 files: [file],
-                                title: 'Expense'
+                                title: t('ui.today.expense')
                             });
                             return;
                         } catch (e) {
@@ -1237,7 +1237,7 @@ const PrinterService = {
             };
             
             const closeBtn = document.createElement('button');
-            closeBtn.textContent = 'Close';
+            closeBtn.textContent = t('ui.common.close');
             closeBtn.style.cssText = `
                 padding: 12px 24px;
                 background: #007bff;
@@ -1278,7 +1278,7 @@ const PrinterService = {
         const billData = {
             id: saleData.id || Date.now(),
             billNumber: saleData.billNumber,
-            customerName: saleData.customerName || 'Walk-in Customer',
+            customerName: saleData.customerName || t('ui.print.walk_in_customer'),
             items: saleData.items.map(item => ({
                 name: item.name,
                 rate: item.rate,

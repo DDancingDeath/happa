@@ -294,7 +294,7 @@ const NotificationsManager = {
                     <span class="notif-icon">${d.icon}</span>
                     <span class="notif-body">
                         <span class="notif-en">${Helpers.escapeHtml(pickLang(d))}</span>
-                        <span class="notif-meta">${who}<span title="${Helpers.escapeHtml(when.abs)} IST">${Helpers.escapeHtml(pickLang(when))}</span></span>
+                        <span class="notif-meta">${who}<span title="${Helpers.escapeHtml(when.abs)}">${Helpers.escapeHtml(pickLang(when))}</span></span>
                     </span>
                 </button>`;
             }).join('');

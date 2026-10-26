@@ -5,7 +5,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { activityBills, outstandingDue, round2 } from '../utils/money.js';
-import { parseAnyBillDate, todayLocalISO } from '../utils/dates.js';
+import { parseAnyBillDate, todayLocalISO, displayLocale } from '../utils/dates.js';
 import { dueEvents, sumDueEvents, saleTimePayment } from '../utils/due-payments.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
@@ -83,9 +83,9 @@ export const DayManager = {
         if (header) {
             const today = new Date();
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            header.textContent = "Today's Activity";
+            header.textContent = t('ui.today.activity_title');
             if (subheader) {
-                subheader.textContent = today.toLocaleDateString('en-IN', options);
+                subheader.textContent = today.toLocaleDateString(displayLocale(), options);
             }
         }
     },

@@ -11,9 +11,32 @@ import {
     onDemandHistoryInfo, renderStaleHistoryHint
 } from '../utils/history-window.js';
 import { createRenderMemo } from '../utils/render-memo.js';
-import { t, tn } from '../i18n/index.js';
+import { t, tn, getLang } from '../i18n/index.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
+
+/** Device setting: CSV export in English even when the app is in Hindi (for the accountant). */
+export const CSV_ENGLISH_KEY = 'aadhat.csvEnglish';
+const CSV_COLUMNS = ['bill_id', 'date', 'time', 'type', 'customer', 'item', 'qty', 'rate', 'amount', 'labour', 'total', 'cash', 'online', 'due'];
+
+function readCsvEnglish() {
+    try { return localStorage.getItem(CSV_ENGLISH_KEY) === '1'; } catch (_) { return false; }
+}
+
+/**
+ * Language of the CSV export: the app language, or English when English headers are chosen.
+ * @param {'en'|'hi'} [lang]
+ * @param {boolean} [english]
+ * @returns {'en'|'hi'}
+ */
+export function csvLanguage(lang = getLang(), english = readCsvEnglish()) {
+    return lang === 'hi' && !english ? 'hi' : 'en';
+}
+
+/** Header row of the CSV export in `lang`. */
+export function csvHeaderRow(lang) {
+    return CSV_COLUMNS.map(c => `"${t(`ui.csv.${c}`, null, lang)}"`).join(',');
+}
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 
@@ -404,6 +427,7 @@ export class ReportsManager {
         }
 
         this.populateFilters();
+        this.syncCsvToggle();
 
         switch(this.currentTab) {
             case 'overview':
@@ -961,6 +985,19 @@ export class ReportsManager {
     }
 
     // ==================== EXPORT FUNCTIONS ====================
+    /** Shows the "English headers" choice only in Hindi mode, ticked as saved on this device. */
+    static syncCsvToggle() {
+        const wrap = document.getElementById('csvEnglishToggle');
+        if (!wrap) return;
+        wrap.hidden = getLang() !== 'hi';
+        const box = document.getElementById('csvEnglishHeaders');
+        if (box) box.checked = readCsvEnglish();
+    }
+
+    static setCsvEnglish(on) {
+        try { localStorage.setItem(CSV_ENGLISH_KEY, on ? '1' : '0'); } catch (_) { /* storage blocked */ }
+    }
+
     static async exportCSV() {
         if (!(await this.ensureRangeLoaded())) return;
         const purchaseHistory = AppState.purchaseHistory || [];
@@ -976,7 +1013,8 @@ export class ReportsManager {
             return;
         }
 
-        let csv = "Bill ID,Date,Time,Type,Customer,Item,Quantity (kg),Rate (₹/kg),Amount (₹),Labor (₹),Total (₹),Cash (₹),Online (₹),Due (₹)\n";
+        const lang = csvLanguage();
+        let csv = `\uFEFF${csvHeaderRow(lang)}\n`;
 
         const processTransaction = (bill, type) => {
             const date = parseAnyBillDate(bill.date) || new Date(NaN);
@@ -992,18 +1030,18 @@ export class ReportsManager {
             });
         };
 
-        filteredPurchases.forEach(p => processTransaction(p, 'Purchase'));
-        filteredSales.forEach(s => processTransaction(s, 'Sale'));
+        filteredPurchases.forEach(p => processTransaction(p, t('ui.reports.pdf_purchase', null, lang)));
+        filteredSales.forEach(s => processTransaction(s, t('ui.reports.pdf_sale', null, lang)));
 
         // Summary
         const totalPurchases = filteredPurchases.reduce((sum, p) => sum + billTotal(p), 0);
         const totalSales = filteredSales.reduce((sum, s) => sum + (s.total || s.grandTotal || 0), 0);
 
-        csv += `\n"SUMMARY",,,,,,,,,,,,\n`;
-        csv += `"Total Purchases:",₹${totalPurchases},,,,,,,,,,\n`;
-        csv += `"Total Sales:",₹${totalSales},,,,,,,,,,\n`;
+        csv += `\n"${t('ui.csv.summary', null, lang)}",,,,,,,,,,,,\n`;
+        csv += `"${t('ui.csv.total_purchases', null, lang)}",₹${totalPurchases},,,,,,,,,,\n`;
+        csv += `"${t('ui.csv.total_sales', null, lang)}",₹${totalSales},,,,,,,,,,\n`;
         const profit = this.periodProfit();
-        csv += `"Profit on goods sold:",${profit === null ? '—' : `₹${profit}`},,,,,,,,,,\n`;
+        csv += `"${t('ui.csv.profit', null, lang)}",${profit === null ? '—' : `₹${profit}`},,,,,,,,,,\n`;
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
