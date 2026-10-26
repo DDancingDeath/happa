@@ -3,7 +3,7 @@
     <div class="reports-header">
         <div class="reports-title-row">
             <h2 data-i18n="ui.reports.reports">📊 Reports</h2>
-            <div class="reports-export-btns">
+            <div class="reports-export-btns reports-bills-only">
                 <button class="export-btn csv" onclick="window.app.reports.exportCSV()">
                     <span>📥</span> CSV
                 </button>
@@ -12,7 +12,7 @@
                 </button>
             </div>
         </div>
-        <label class="csv-english-toggle" id="csvEnglishToggle" hidden>
+        <label class="csv-english-toggle reports-bills-only" id="csvEnglishToggle" hidden>
             <input type="checkbox" id="csvEnglishHeaders" onchange="window.app.reports.setCsvEnglish(this.checked)">
             <span data-i18n="ui.reports.csv_english">CSV in English (for the accountant)</span>
         </label>
@@ -20,26 +20,34 @@
 
     <!-- Tab Navigation -->
     <div class="reports-tabs">
-        <button class="reports-tab-btn active" onclick="window.app.reports.filterTab('overview', event)">
+        <button class="reports-tab-btn active" data-view="overview" onclick="window.app.reports.filterTab('overview', event)">
             <span class="tab-icon">📈</span>
             <span class="tab-label" data-i18n="ui.analytics.overview">Overview</span>
         </button>
-        <button class="reports-tab-btn" onclick="window.app.reports.filterTab('purchases', event)">
+        <button class="reports-tab-btn" data-view="purchases" onclick="window.app.reports.filterTab('purchases', event)">
             <span class="tab-icon">🛒</span>
             <span class="tab-label" data-i18n="ui.common.purchases">Purchases</span>
         </button>
-        <button class="reports-tab-btn" onclick="window.app.reports.filterTab('sales', event)">
+        <button class="reports-tab-btn" data-view="sales" onclick="window.app.reports.filterTab('sales', event)">
             <span class="tab-icon">💰</span>
             <span class="tab-label" data-i18n="ui.common.sales">Sales</span>
         </button>
-        <button class="reports-tab-btn" onclick="window.app.reports.filterTab('compare', event)">
+        <button class="reports-tab-btn" data-view="compare" onclick="window.app.reports.filterTab('compare', event)">
             <span class="tab-icon">⚖️</span>
             <span class="tab-label" data-i18n="ui.reports.compare">Compare</span>
+        </button>
+        <button class="reports-tab-btn reports-rt-btn" data-view="trends" style="display: none;" onclick="window.app.nav.showTab('reports-trends', event)">
+            <span class="tab-icon">💹</span>
+            <span class="tab-label" data-i18n="ui.reports.tab_trends">Trends</span>
+        </button>
+        <button class="reports-tab-btn reports-rt-btn" data-view="traffic" style="display: none;" onclick="window.app.nav.showTab('reports-traffic', event)">
+            <span class="tab-icon">📦</span>
+            <span class="tab-label" data-i18n="ui.reports.tab_traffic">Product traffic</span>
         </button>
     </div>
 
     <!-- Date Filter -->
-    <div class="reports-date-filter">
+    <div class="reports-date-filter reports-bills-only">
         <div class="filter-buttons">
             <button class="filter-btn" onclick="window.app.reports.setDateFilter('all', event)" data-i18n="ui.history.all">All</button>
             <button class="filter-btn" onclick="window.app.reports.setDateFilter('year', event)" data-i18n="ui.finance.year">Year</button>

@@ -99,7 +99,8 @@ In order:
 | `retailSalesHistory` | `AppState.retailSalesHistory` (this one's normal) |
 | `chat.js` | does not exist in this repo — `templates/chat.html` exists but no chat module is wired |
 | `bottom-nav.html` | doesn't exist — the "bottom" tabs are the bottom of the side nav in `navigation.html` |
-| `rates.html` / `rates.js` (Rates page) | Rates tab = `templates/items.html` + `modules/items.js` (page id `items`); Trends and Product traffic tabs = `templates/rate-trends.html` + `modules/rate-trends.js` (page id `rate-trends`, owner/manager, imported on first open). Routes `rates`, `rates-trends`, `rates-traffic` (old `items`, `rate-trends` still work) are in `ui/navigation.js` |
+| `rates.html` / `rates.js` (Rates page) | `templates/items.html` + `modules/items.js` (page id `items`, route `rates`; old `items` still works) |
+| Trends / Product traffic page | Tabs of Reports: `templates/rate-trends.html` (`#rate-trends`, injected inside `#reports`) + `modules/rate-trends.js` (imported on first open via `window.app.rateTrends.open()`; Reports only calls that). Owner/manager via the `rate-trends` entry in `TAB_ROLES`. Routes `reports-trends`, `reports-traffic` (old `rate-trends`, `rates-trends`, `rates-traffic` still work) are in `ui/navigation.js` |
 
 ### Conventions
 

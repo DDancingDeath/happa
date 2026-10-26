@@ -103,6 +103,7 @@ export function formatPerUnitRate(value, qty, suffix = '') {
 
 export class ReportsManager {
     static currentTab = 'overview';
+    static rtView = null;
     static currentDateFilter = 'week';
     static customStartDate = null;
     static customEndDate = null;
@@ -114,35 +115,46 @@ export class ReportsManager {
     };
 
     // ==================== TAB MANAGEMENT ====================
+    /** Bills view buttons (Overview, Purchases, Sales, Compare). */
     static filterTab(view, evt) {
+        if (evt) window.app?.nav?.noteRoute?.('reports');
         this.currentTab = view;
-        
-        // Update tab buttons
-        document.querySelectorAll('.reports-tab-btn').forEach(btn => btn.classList.remove('active'));
-        if (evt && evt.target) {
-            evt.target.closest('.reports-tab-btn').classList.add('active');
-        }
+        this.showView(null, { force: true });
+    }
 
-        // Hide all sections
-        document.querySelectorAll('.reports-section').forEach(section => {
+    /**
+     * Shows the last bills view (rtView null) or Trends / Product traffic ('trends' | 'traffic', owner/manager).
+     * Those two are the #rate-trends block (templates/rate-trends.html), driven by window.app.rateTrends,
+     * which imports modules/rate-trends.js on first use.
+     */
+    static showView(rtView, { force = false } = {}) {
+        this.rtView = rtView === 'trends' || rtView === 'traffic' ? rtView : null;
+        const view = this.rtView || this.currentTab;
+        document.querySelectorAll('#reports .reports-tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === view);
+        });
+        document.querySelector('#reports .reports-tab-btn.active')?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+        document.querySelectorAll('#reports .reports-section').forEach(section => {
             section.style.display = 'none';
         });
+        document.querySelectorAll('#reports .reports-bills-only').forEach(el => {
+            el.style.display = this.rtView ? 'none' : '';
+        });
+        const rateTrends = document.getElementById('rate-trends');
+        if (rateTrends) rateTrends.style.display = this.rtView ? '' : 'none';
+        if (this.rtView) return window.app?.rateTrends?.open(this.rtView === 'traffic' ? 'traffic' : 'rates');
 
-        // Show selected section
         const sectionMap = {
             'overview': 'reportsOverviewTab',
             'purchases': 'reportsPurchasesTab',
             'sales': 'reportsSalesTab',
             'compare': 'reportsCompareTab'
         };
+        const section = document.getElementById(sectionMap[view]);
+        if (section) section.style.display = 'block';
 
-        const sectionId = sectionMap[view];
-        if (sectionId) {
-            document.getElementById(sectionId).style.display = 'block';
-        }
-
-        // Render the appropriate section
-        this.renderReports();
+        if (force) this.renderReports();
+        else this.renderReportsIfStale();
     }
 
     // ==================== DATE FILTERING ====================
@@ -402,6 +414,7 @@ export class ReportsManager {
     }
 
     static renderReports() {
+        if (this.rtView) return;
         // Never show partial totals: wait for the period's history to load
         const start = this.getRangeStart();
         const status = rangeStatus('reports', start, () => this.renderReports());

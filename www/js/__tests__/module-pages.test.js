@@ -38,7 +38,7 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-describe('Rates › Rates (items list)', () => {
+describe('Rates page (items list)', () => {
     beforeEach(() => {
         document.body.innerHTML = `
           <table><thead><tr><th class="wholesale-column"></th></tr></thead><tbody id="itemsViewTableBody"></tbody></table>

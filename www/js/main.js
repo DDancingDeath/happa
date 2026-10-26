@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261026f-day-report-today';
+const BUILD_ID = '20261026g-trends-to-reports';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -58,7 +58,7 @@ markStartup('sdk-and-modules-loaded');
 
 InstallManager.init();
 
-// Rate trends code (Rates › Trends / Product traffic) is imported only when needed
+// Rate trends code (Reports › Trends / Product traffic) is imported only when needed
 let rateTrends = null;
 let rateTrendsLoading = null;
 function loadRateTrends() {
@@ -112,7 +112,7 @@ function refreshForLanguage(lang) {
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
         finance: () => { FinanceManager.renderDashboard(); FinanceManager.renderCustomAccounts(); FinanceManager.renderWithdrawalHistory(); },
-        reports: () => ReportsManager.renderReports(),
+        reports: () => { if (ReportsManager.rtView) rateTrends?.refreshForLanguage(); else ReportsManager.renderReports(); },
         analytics: () => AnalyticsManager.renderTabContent(AnalyticsManager.currentTab),
         expenses: () => ExpensesManager.renderexpensesHistory(),
         items: () => ItemsManager.renderItemsTable(document.getElementById('itemsSearchInput')?.value || ''),
@@ -121,7 +121,6 @@ function refreshForLanguage(lang) {
             const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks' }[DiagnosticsManager.activeTab];
             if (view) DiagnosticsManager[view]();
         },
-        'rate-trends': () => rateTrends?.refreshForLanguage(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
@@ -794,7 +793,8 @@ window.app = {
     nav: {
         toggleMenu: () => NavigationManager.toggleMenu(),
         closeMenu: () => NavigationManager.closeMenu(),
-        showTab: (tabId, evt) => NavigationManager.showTabFromNav(tabId, evt)
+        showTab: (tabId, evt) => NavigationManager.showTabFromNav(tabId, evt),
+        noteRoute: (routeId) => NavigationManager.noteRoute(routeId)
     },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
@@ -1076,6 +1076,7 @@ window.app = {
     // Reports
     reports: {
         filterTab: (view, evt) => ReportsManager.filterTab(view, evt),
+        showView: (view, opts) => ReportsManager.showView(view, opts),
         setDateFilter: (filter, evt) => ReportsManager.setDateFilter(filter, evt),
         applyCustomDateFilter: () => ReportsManager.applyCustomDateFilter(),
         renderReports: () => ReportsManager.renderReports(),
@@ -1156,7 +1157,7 @@ window.app = {
         savePolicies: () => HealthManager.savePolicies()
     },
 
-    // Rates › Trends / Product traffic: rate-trends.js is imported on first use
+    // Reports › Trends / Product traffic: rate-trends.js is imported on first use
     rateTrends: {
         open: (section) => loadRateTrends().then(m => m.open(section))
             .catch(e => console.warn('Rate trends not loaded:', e?.message || e)),

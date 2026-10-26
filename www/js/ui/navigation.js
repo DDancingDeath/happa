@@ -6,21 +6,43 @@ import { canOpenTab, roleMayOpenTab } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 
-// Rates page: Rates (the items list, page 'items') plus Trends and Product traffic (page 'rate-trends').
-// Old ids 'items' and 'rate-trends' still open Rates › Rates and Rates › Trends.
-const RATES_ROUTES = Object.freeze({
-    rates: { tab: 'items' },
-    items: { tab: 'items', id: 'rates' },
-    'rates-trends': { tab: 'rate-trends', section: 'rates' },
-    'rate-trends': { tab: 'rate-trends', section: 'rates', id: 'rates-trends' },
-    'rates-traffic': { tab: 'rate-trends', section: 'traffic' }
+// Routes: every id that showTab() accepts besides plain page ids (the .tab element id).
+//   tab     page element to show            section  sub-view handed to the page (see showTabFromNav)
+//   needs   extra TAB_ROLES/TAB_PERMISSIONS id   id   canonical id kept in history (aliases / old ids)
+//   nav     side-nav link to highlight (default: tab)
+// To add a page's sub-routes, add one group below (e.g. 'settings-roles', 'admin-configure',
+// 'wholesale-history') and open the section for that page in showTabFromNav.
+const ROUTES = Object.freeze({
+    // Rates page (the items list). Old id: items.
+    rates: { tab: 'items', nav: 'rates' },
+    items: { tab: 'items', nav: 'rates', id: 'rates' },
+
+    // Reports › Trends / Product traffic (#65), owner/manager. Old ids: rate-trends, rates-trends, rates-traffic.
+    'reports-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends' },
+    'reports-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends' },
+    'rate-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends', id: 'reports-trends' },
+    'rates-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends', id: 'reports-trends' },
+    'rates-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends', id: 'reports-traffic' }
 });
 
-/** Route id -> { id (canonical), tab (page element id), section, nav (side-nav link id) }. */
+/** Route id -> { id (canonical), tab (page element id), section, needs (extra page permission), nav (side-nav link id) }. */
 function resolveRoute(tabId) {
-    const r = RATES_ROUTES[tabId];
-    if (!r) return { id: tabId, tab: tabId, section: null, nav: tabId };
-    return { id: r.id || tabId, tab: r.tab, section: r.section || null, nav: 'rates' };
+    const r = ROUTES[tabId];
+    if (!r) return { id: tabId, tab: tabId, section: null, needs: null, nav: tabId };
+    return { id: r.id || tabId, tab: r.tab, section: r.section || null, needs: r.needs || null, nav: r.nav || r.tab };
+}
+
+/** 'page' when the page itself is refused, 'section' when only the route's extra permission is, else null. */
+function refusal(route) {
+    const raw = AppState.settings?.roleAccess;
+    if (!canOpenTab(route.tab, AppState.userRole, raw)) return 'page';
+    if (route.needs && !canOpenTab(route.needs, AppState.userRole, raw)) return 'section';
+    return null;
+}
+
+/** The role's built-in level allows the page and the route's extra permission. */
+function roleMayOpenRoute(route) {
+    return roleMayOpenTab(route.tab, AppState.userRole) && (!route.needs || roleMayOpenTab(route.needs, AppState.userRole));
 }
 
 const NavigationManager = {
@@ -131,7 +153,7 @@ const NavigationManager = {
             event.preventDefault();
         }
         const route = resolveRoute(tabId);
-        if (!canOpenTab(route.tab, AppState.userRole, AppState.settings?.roleAccess)) {
+        if (refusal(route)) {
             UIManager.showToast(this.refusedMessage(tabId));
             this.showTabFromNav(this.refusedTabFallback(tabId), null, opts);
             return;
@@ -157,7 +179,7 @@ const NavigationManager = {
             setTimeout(() => window.app.billing.switchMode('purchase', { currentTarget: document.getElementById('purchaseModeBtn') }), 100);
         }
         
-        // Rates › Rates: render the items table
+        // Rates page: render the items table
         if (route.tab === 'items' && window.app?.items) {
             setTimeout(() => window.app.items.renderTable(), 100);
         }
@@ -185,10 +207,10 @@ const NavigationManager = {
             setTimeout(() => window.app.stock.filterTab('current'), 100);
         }
         
-        // Render reports when Reports tab is shown
-        if (tabId === 'reports' && window.app?.reports) {
-            this.resetFilterButtons('reports');
-            setTimeout(() => window.app.reports.renderReportsIfStale(), 100);
+        // Reports: the bills views, or Trends / Product traffic (#65; their code and data load only then)
+        if (route.tab === 'reports' && window.app?.reports) {
+            if (!route.section) this.resetFilterButtons('reports');
+            setTimeout(() => window.app.reports.showView(route.section), 100);
         }
         
         // Initialize finance when Finance tab is shown
@@ -208,11 +230,6 @@ const NavigationManager = {
             setTimeout(() => window.app.anomalies.init(), 100);
         }
         
-        // Rates › Trends / Product traffic (owner/manager, #65): its code and data load only here
-        if (route.tab === 'rate-trends' && window.app?.rateTrends) {
-            setTimeout(() => window.app.rateTrends.open(route.section), 100);
-        }
-
         // Initialize App health page (owner/manager, #217)
         if (tabId === 'health' && window.app?.health) {
             setTimeout(() => window.app.health.init(), 100);
@@ -252,24 +269,24 @@ const NavigationManager = {
         }
     },
 
-    // Owner/manager-only pages fall back to Today (Trends and Product traffic to Rates); pages switched off in Roles & access to Billing
+    // Owner/manager-only pages fall back to Today (Trends and Product traffic to Reports); pages switched off in Roles & access to Billing
     refusedTabFallback(tabId) {
         const route = resolveRoute(tabId);
-        if (route.nav === 'rates' && route.tab !== 'items') return 'rates';
-        return roleMayOpenTab(route.tab, AppState.userRole) ? 'billing' : 'day';
+        if (refusal(route) === 'section') return route.tab;
+        return roleMayOpenRoute(route) ? 'billing' : 'day';
     },
 
     refusedMessage(tabId) {
         const route = resolveRoute(tabId);
-        if (route.nav === 'rates' && route.tab !== 'items') return t('msg.roles.tab_role_only');
-        return t(roleMayOpenTab(route.tab, AppState.userRole) ? 'msg.roles.page_not_allowed' : 'msg.roles.page_role_only');
+        if (refusal(route) === 'section') return t('msg.roles.tab_role_only');
+        return t(roleMayOpenRoute(route) ? 'msg.roles.page_not_allowed' : 'msg.roles.page_role_only');
     },
 
     // Show tab
     showTab(tabId, evt, opts = {}) {
         const route = resolveRoute(tabId);
         // Refused for this role (#84, F23), also for direct navigation
-        if (!canOpenTab(route.tab, AppState.userRole, AppState.settings?.roleAccess)) {
+        if (refusal(route)) {
             UIManager.showToast(this.refusedMessage(tabId));
             const fallback = this.refusedTabFallback(tabId);
             if (tabId !== fallback) this.showTab(fallback, undefined, opts);
@@ -283,11 +300,6 @@ const NavigationManager = {
         if (selectedTab) {
             selectedTab.classList.add('active');
         }
-        document.querySelectorAll('.rates-subtabs [data-route]').forEach(btn => {
-            const on = btn.dataset.route === route.id;
-            btn.classList.toggle('active', on);
-            btn.setAttribute('aria-selected', String(on));
-        });
         
         if (evt) {
             const buttons = document.querySelectorAll('.tab-button');
@@ -300,6 +312,11 @@ const NavigationManager = {
     },
 
     currentTab: null,
+
+    // A page's own tab buttons (e.g. Reports › Overview) record the route so Back returns to it
+    noteRoute(routeId) {
+        this.recordTab(resolveRoute(routeId).id);
+    },
 
     // One history entry per tab change, so the phone's back button returns to the previous tab
     recordTab(tabId, opts = {}) {

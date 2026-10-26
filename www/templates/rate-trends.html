@@ -1,10 +1,5 @@
-<div id="rate-trends" class="tab">
+<div id="rate-trends" class="reports-rt" style="display: none;">
     <div class="rt-page">
-        <div class="rt-tabs rates-subtabs" role="tablist" style="display: none;">
-            <button type="button" class="rt-tab" role="tab" data-route="rates" onclick="window.app.nav.showTab('rates', event)" data-i18n="ui.rates.tab_rates">🏷️ Rates</button>
-            <button type="button" class="rt-tab" role="tab" data-route="rates-trends" onclick="window.app.nav.showTab('rates-trends', event)" data-i18n="ui.rates.tab_trends">📈 Trends</button>
-            <button type="button" class="rt-tab" role="tab" data-route="rates-traffic" onclick="window.app.nav.showTab('rates-traffic', event)" data-i18n="ui.trends.tab_traffic">📦 Product traffic</button>
-        </div>
         <div id="rtDenied" class="rt-empty" style="display: none;" data-i18n="ui.trends.denied">Only the owner or a manager can see this page.</div>
         <div id="rtBody">
             <div id="rtRatesSection">
@@ -49,7 +44,7 @@
                         </select>
                     </div>
                     <div id="rtOutlook"></div>
-                    <div class="rt-muted" data-i18n="ui.trends.estimate_note">Estimate from your own past bills and Items-page rates — not a guarantee.</div>
+                    <div class="rt-muted" data-i18n="ui.trends.estimate_note">Estimate from your own past bills and Rates-page rates — not a guarantee.</div>
                 </div>
 
                 <div id="rtChartView">
@@ -62,7 +57,7 @@
                             <span><i style="background:#d97706"></i><span data-i18n="ui.trends.wholesale">Wholesale</span></span>
                         </div>
                         <div class="rt-legend">
-                            <span><b class="rt-line rt-line-solid"></b><span data-i18n="ui.trends.legend_items">Items page rate</span></span>
+                            <span><b class="rt-line rt-line-solid"></b><span data-i18n="ui.trends.legend_items">Rate on the Rates page</span></span>
                             <span><b class="rt-line rt-line-dashed"></b><span data-i18n="ui.trends.legend_bills">Estimated from bills</span></span>
                         </div>
                         <h3 class="rt-sub" data-i18n="ui.trends.kg_title">Kg bought and sold (from bills)</h3>
@@ -91,7 +86,7 @@
                         <div class="rt-table-wrap" id="rtTable"></div>
                     </div>
                     <div class="card rt-card">
-                        <h3 data-i18n="ui.trends.items_changes">Rate changes on the Items page</h3>
+                        <h3 data-i18n="ui.trends.items_changes">Rate changes on the Rates page</h3>
                         <div class="rt-table-wrap" id="rtSteps"></div>
                     </div>
                 </div>

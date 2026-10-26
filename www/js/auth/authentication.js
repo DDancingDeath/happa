@@ -546,9 +546,9 @@ const AuthManager = {
             }
         });
 
-        // Rates page: the Trends and Product traffic tabs (#65) are owner/manager only, as Rate trends was
-        document.querySelectorAll('.rates-subtabs').forEach(bar => {
-            bar.style.display = mayOpen('rate-trends') ? '' : 'none';
+        // Reports › Trends and Product traffic (#65): owner/manager only
+        document.querySelectorAll('.reports-rt-btn').forEach(btn => {
+            btn.style.display = mayOpen('rate-trends') ? '' : 'none';
         });
 
         // Sections marked data-perm="<permission>" (styles.css hides them via these body classes)
