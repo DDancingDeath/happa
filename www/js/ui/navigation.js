@@ -10,8 +10,8 @@ import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 //   tab     page element to show            section  sub-view handed to the page (see showTabFromNav)
 //   needs   extra TAB_ROLES/TAB_PERMISSIONS id   id   canonical id kept in history (aliases / old ids)
 //   nav     side-nav link to highlight (default: tab)
-// To add a page's sub-routes, add one group below (e.g. 'settings-roles', 'admin-configure',
-// 'wholesale-history') and open the section for that page in showTabFromNav.
+// To add a page's sub-routes, add one group below (e.g. 'settings-roles', 'admin-configure')
+// and open the section for that page in showTabFromNav.
 const ROUTES = Object.freeze({
     // Rates page (the items list). Old id: items.
     rates: { tab: 'items', nav: 'rates' },

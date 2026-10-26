@@ -100,7 +100,7 @@ describe('History tabs: Purchase | Sale only', () => {
         HistoryManager.filter = null;
         HistoryManager.refreshHistory();
         expect(window.app.nav.showTab).toHaveBeenCalledWith('wholesale-history');
-        expect(resolveRoute('wholesale-history')).toEqual({ id: 'wholesale-history', tab: 'wholesale-sales', section: 'history', nav: 'wholesale-sales' });
+        expect(resolveRoute('wholesale-history')).toEqual({ id: 'wholesale-history', tab: 'wholesale-sales', section: 'history', needs: null, nav: 'wholesale-sales' });
     });
 
     test('tab labels: Purchase | Sale in English, खरीद | बिक्री in Hindi', () => {

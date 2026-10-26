@@ -98,7 +98,8 @@ describe('routes and deep links', () => {
         ['reports-traffic', 'reports-traffic', 'reports', 'traffic'],
         ['rate-trends', 'reports-trends', 'reports', 'trends'],
         ['rates-trends', 'reports-trends', 'reports', 'trends'],
-        ['rates-traffic', 'reports-traffic', 'reports', 'traffic']
+        ['rates-traffic', 'reports-traffic', 'reports', 'traffic'],
+        ['wholesale-history', 'wholesale-history', 'wholesale-sales', 'history']
     ])('%s -> %s', (id, canonical, tab, section) => {
         expect(resolveRoute(id)).toMatchObject({ id: canonical, tab, section });
     });
