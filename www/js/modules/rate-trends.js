@@ -224,7 +224,7 @@ export const RateTrendsManager = {
     /**
      * One view, two entry points (redesign §5.3): moves this view into
      * Insights › Seasons (or any host) and opens a section there, on the shared
-     * item and month. The same DOM, code and numbers as on the Rates page.
+     * item and month. The same DOM, code and numbers as Reports › Trends.
      * @param {HTMLElement} host
      * @param {{section?: string, itemId?: ?string, month?: ?string}} [opts]
      */
@@ -237,7 +237,7 @@ export const RateTrendsManager = {
         return this.init();
     },
 
-    /** Puts the view back on the Rates page (it is moved by mount()). */
+    /** Puts the view back in #rate-trends (it is moved by mount()). */
     home() {
         const view = document.querySelector('.rt-page');
         const page = document.getElementById('rate-trends');

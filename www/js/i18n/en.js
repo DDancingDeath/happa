@@ -2219,7 +2219,6 @@ export default {
     'ui.insights.rate_trends': "Rate trends",
     'ui.insights.product_traffic': "Product traffic",
     'ui.insights.calendar_hint': "Darker = busier month for that item (kg sold, last 2 years). Tap a cell for that month's traffic.",
-    'ui.insights.also_in_rates': "Also on the Rates page ›",
     'ui.insights.loading_seasons': "Loading the season calendar…",
     'ui.insights.seasons_unavailable': "The season calendar couldn't load. Check the internet.",
     'ui.insights.seasons_need_year': "The season calendar needs at least 12 months of rate history (Rates › Trends).",

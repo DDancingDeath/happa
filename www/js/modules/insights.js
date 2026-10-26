@@ -1,7 +1,7 @@
 /**
  * @fileoverview Insights page (docs/insights-redesign.md §5.3): a short to-do
  * list, items, parties and seasons. Seasons hosts the Rate trends and Product
- * traffic views (the same module as the Rates page, moved here with mount()).
+ * traffic views (the same module as Reports › Trends, moved here with mount()).
  * Every figure comes from utils/business-metrics.js; this module only renders.
  * @module modules/insights
  */
@@ -443,10 +443,8 @@ export const InsightsManager = {
     renderSeasons(r) {
         const cal = document.getElementById('insightsCalendarCard');
         const host = document.getElementById('insightsTrendsHost');
-        const also = document.getElementById('insightsAlsoInRates');
         if (this.seasonView !== 'calendar') {
             if (cal) cal.hidden = true;
-            if (also) also.hidden = false;
             const { itemId } = getInsightsContext();
             this.loadRateTrends().then(RT => RT.mount(host, {
                 section: this.seasonView === 'traffic' ? 'traffic' : 'rates',
@@ -456,8 +454,7 @@ export const InsightsManager = {
             return;
         }
         if (cal) cal.hidden = false;
-        if (also) also.hidden = true;
-        // The Rate trends view goes back to the Rates page while the calendar shows.
+        // The Rate trends view goes back to its own page while the calendar shows.
         if (this.rateTrends) this.rateTrends.home();
         if (!this.seasonDocs) {
             this.html('insightsCalendar', `<p class="ins-empty-text">${esc(t('ui.insights.loading_seasons'))}</p>`);

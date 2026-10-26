@@ -203,7 +203,6 @@ describe('Seasons: one Rate trends view, two entry points', () => {
         await Promise.resolve();
         await Promise.resolve();
         expect(mount).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ section: 'traffic', month: '2026-09' }));
-        expect(document.getElementById('insightsAlsoInRates').hidden).toBe(false);
     });
 
     test('Calendar: heat map from rateStats month buckets (I5) and a season takeaway', async () => {

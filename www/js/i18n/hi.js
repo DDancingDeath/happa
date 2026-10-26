@@ -2219,7 +2219,6 @@ export default {
     'ui.insights.rate_trends': "रेट रुझान",
     'ui.insights.product_traffic': "माल की आवाजाही",
     'ui.insights.calendar_hint': "गहरा रंग = उस माल का ज़्यादा बिकने वाला महीना (पिछले 2 साल)। किसी खाने को छूकर उस महीने की आवाजाही देखें।",
-    'ui.insights.also_in_rates': "रेट पेज पर भी ›",
     'ui.insights.loading_seasons': "मौसम का कैलेंडर लोड हो रहा है…",
     'ui.insights.seasons_unavailable': "मौसम का कैलेंडर लोड नहीं हुआ। इंटरनेट देखें।",
     'ui.insights.seasons_need_year': "मौसम के कैलेंडर के लिए कम से कम 12 महीने का रेट इतिहास चाहिए (रेट › रुझान)।",
