@@ -15,6 +15,7 @@ import {
 import { filterHistoryBills, resolveHistoryRange, validateCustomRange, billTimeMs } from '../utils/history-filters.js';
 import { buildBillRow, buildOpeningGroup, addOpeningToggle, billTableHtml } from '../ui/bill-row.js';
 import { todayLocalISO } from '../utils/dates.js';
+import { historyCutoff } from '../utils/role-access.js';
 import { OutstandingManager } from './outstanding.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { getLang, t } from '../i18n/index.js';
@@ -792,9 +793,20 @@ export class WholesaleSalesManager {
         this.renderWholesaleHistory();
     }
 
-    /** Wholesale bills as list rows (opening records included; callers filter). */
+    /** Oldest time (ms) this role may see in History lists (role's "days back"); null = no limit. */
+    static historyCutoff() {
+        return historyCutoff(AppState.userRole, AppState.settings?.roleAccess);
+    }
+
+    /**
+     * Wholesale bills as list rows (opening records included; callers filter),
+     * without bills older than the role's History "days back" limit.
+     */
     static wholesaleBills() {
-        return (AppState.salesHistory || []).map(s => ({ ...s, type: 'wholesale', isPurchase: false }));
+        const cutoff = this.historyCutoff();
+        return (AppState.salesHistory || [])
+            .filter(s => cutoff === null || billTimeMs(s) >= cutoff)
+            .map(s => ({ ...s, type: 'wholesale', isPurchase: false }));
     }
 
     static buildSaleRow(sale) {
@@ -837,7 +849,10 @@ export class WholesaleSalesManager {
         if (!container) return;
         const f = this.historyFilter;
         const range = resolveHistoryRange(f.preset, new Date(), f);
-        const status = range.from !== null ? rangeStatus('wholesaleHistory', range.from, () => this.renderWholesaleHistory()) : 'ready';
+        // Never load months the role may not see: the load starts at the cutoff at the earliest.
+        const cutoff = this.historyCutoff();
+        const loadFrom = cutoff === null ? range.from : Math.max(range.from ?? cutoff, cutoff);
+        const status = loadFrom !== null ? rangeStatus('wholesaleHistory', loadFrom, () => this.renderWholesaleHistory()) : 'ready';
         applyRangeState(container, status, {
             loadingText: t('ui.history.loading_older_bills'),
             errorText: t('ui.history.older_load_failed', { date: formatWindowDate(historyLoadedFrom()) }),
@@ -859,7 +874,7 @@ export class WholesaleSalesManager {
         // Older months load one at a time as the user scrolls (all dates, no search).
         attachOlderHistoryScroll(container, {
             noun: 'sales',
-            enabled: () => !this.historySearch && !ranged,
+            enabled: () => !this.historySearch && !ranged && cutoff === null,
             onLoaded: () => this.renderSalesHistory()
         });
         const shown = [...this.historyOpenings, ...bills];

@@ -215,3 +215,43 @@ describe('aligned bill row', () => {
         expect(desktop).not.toMatch(/bill-row__no[^{]*\{[^}]*white-space:\s*(normal|pre-wrap)/);
     });
 });
+
+describe('Wholesale › History respects the role\'s History "days back" limit', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    afterEach(() => {
+        AppState.userRole = undefined;
+        AppState.settings = {};
+    });
+
+    test.each([['manager'], ['staff']])('%s with historyDays: older bills hidden, no older months loaded', async (role) => {
+        AppState.userRole = role;
+        AppState.settings = { roleAccess: { [role]: { historyDays: 3 } } };
+        const windowStart = Date.now() - DAY; // loaded window is newer than the cutoff
+        window.FirebaseService = {
+            getHistoryWindowStart: () => windowStart,
+            isFullHistoryLoaded: () => false,
+            ensureHistoryFrom: jest.fn(() => new Promise(() => {}))
+        };
+
+        WholesaleSalesManager.renderSalesHistory();
+        expect(wholesaleNos()).toEqual(['W1']);
+        expect(document.getElementById('wholesaleOpeningToggle')).toBeNull(); // W-OLD-1 is 6 days old
+        expect([...document.querySelectorAll('#salesRecentList .bill-row__no [onclick]')].map(s => s.textContent)).toEqual(['#W1']);
+
+        // A custom range back to 2020 only loads from the cutoff, never older months.
+        WholesaleSalesManager.applyHistoryRange('2020-01-01', '');
+        await new Promise(r => setTimeout(r, 0));
+        const calls = window.FirebaseService.ensureHistoryFrom.mock.calls;
+        expect(calls.length).toBeGreaterThan(0);
+        calls.forEach(([from]) => {
+            expect(from).toBeGreaterThanOrEqual(Date.now() - 3 * DAY - 60000);
+            expect(from).toBeLessThan(windowStart);
+        });
+    });
+
+    test('no limit for the owner: the whole range may load', () => {
+        AppState.userRole = 'owner';
+        WholesaleSalesManager.renderSalesHistory();
+        expect(wholesaleNos()).toEqual(['W1', 'W2']);
+    });
+});
