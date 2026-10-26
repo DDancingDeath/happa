@@ -1,5 +1,5 @@
 import {
-    newShareToken, isShareToken, publicMonth, buildPublicSnapshot, withMonth, withLease, publicLink, PUBLIC_MONTHS
+    newShareToken, isShareToken, publicMonth, buildPublicSnapshot, withMonth, withLease, withNames, publicLink, PUBLIC_MONTHS
 } from '../rentals/rent-public.js';
 import { buildRentReminderText } from '../rentals/rent-math.js';
 
@@ -49,6 +49,13 @@ test('updates: a payment replaces its month; move-out drops later months and mar
     expect(out).toMatchObject({ ended: true, endMonth: '2026-09' });
     expect(out.months.map(m => m.m)).toEqual(['2026-09']);
     expect(withLease(s, { ...lease, rent: 5250 }).rent).toBe(5250);
+});
+
+test('snapshot carries the unit type (known types only) and renames can change it', () => {
+    const s = buildPublicSnapshot({ lease, tenantName: 'Ram', place: '2B, Gupta Bhawan', unitType: 'flat', charges: [] });
+    expect(s.ut).toBe('flat');
+    expect(buildPublicSnapshot({ lease, unitType: 'castle', charges: [] }).ut).toBeUndefined();
+    expect(withNames(s, { unitType: 'commercial', place: 'Shop 3, Gupta Bhawan' }, 2)).toMatchObject({ ut: 'commercial', place: 'Shop 3, Gupta Bhawan', tenant: 'Ram' });
 });
 
 test('link: public site path /r/<token>; dev data and emulator marked', () => {

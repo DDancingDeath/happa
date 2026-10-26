@@ -42,3 +42,14 @@ body.dark-mode .rent-card, body.dark-mode .rent-form { background: #2d3748; }
 body.dark-mode .rent-row, body.dark-mode .rent-dialog-box { background: #1a202c; border-color: #4a5568; }
 @media (min-width: 1024px) { .rent-cards { grid-template-columns: repeat(4, 1fr); } }
 .rent-dialog-box input[readonly] { width: 100%; padding: 10px; border: 1px solid var(--border-color, #cbd5e0); border-radius: 8px; font-size: 14px; margin: 8px 0; box-sizing: border-box; }
+
+/* Property wise / unit wise (#170) */
+.rent-viewswitch { display: flex; gap: 8px; margin-bottom: 12px; }
+.rent-prop-card { display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.rent-group-title { margin: 14px 0 6px; font-size: 15px; color: var(--text-secondary, #4a5568); }
+.rent-detail-head { margin-bottom: 10px; }
+.rent-detail-head .rent-name { margin: 8px 0 2px; }
+.rent-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.rent-filters select, .rent-filters input { width: 100%; padding: 9px; border: 1px solid var(--border-color, #cbd5e0); border-radius: 8px; font-size: 15px; box-sizing: border-box; }
+.rent-badge-vacant { background: #edf2f7; color: #4a5568; }
+@media (min-width: 1024px) { .rent-filters { grid-template-columns: repeat(5, auto); } }

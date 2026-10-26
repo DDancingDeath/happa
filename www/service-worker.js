@@ -82,6 +82,7 @@ const STATIC_ASSETS = [
     '/js/rentals/rent-public.js',
     '/js/rentals/rent-settings.js',
     '/js/rentals/rent-store.js',
+    '/js/rentals/rent-views.js',
     '/js/rentals/rentals.js',
     '/js/services/audit.js',
     '/js/services/install-prompt.js',

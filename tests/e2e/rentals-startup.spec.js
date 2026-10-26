@@ -53,6 +53,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     const card = page.locator('.rent-row', { hasText: `Gali ${stamp}` });
     await card.locator('button', { hasText: 'Add unit' }).click();
     await page.fill('#rentUnitLabel', `G${stamp}`);
+    await page.selectOption('#rentUnitType', 'commercial');
     await page.fill('#rentUnitRent', '5000');
     await page.click('#rentDialog .rent-btn-primary');
     await expect(card).toContainText(`G${stamp}`);
@@ -63,11 +64,17 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.click('#rentalsBody .rent-form button');
     const row = page.locator('.rent-row', { hasText: `Ram ${stamp}` }).first();
     await row.locator('button', { hasText: 'Move in' }).click();
-    await page.selectOption('#rentLeaseUnit', { label: `Gali ${stamp} · G${stamp}` });
+    await page.selectOption('#rentLeaseUnit', { label: `Shop G${stamp}, Gali ${stamp}` });
     await page.click('#rentDialog .rent-btn-primary');
     await expect(row).toContainText(`G${stamp}`);
 
     await page.evaluate(() => window.app.rentals.page('rent'));
+    // Property wise: the property card, then the property's units grouped by type.
+    const propCard = page.locator('.rent-prop-card', { hasText: `Gali ${stamp}` });
+    await expect(propCard).toContainText('1 commercial');
+    await propCard.click();
+    await expect(page.locator('.rent-group-title')).toContainText(['Commercial / shop space (1)']);
+    await page.evaluate(() => window.app.rentals.setView('units'));
     const rent = page.locator('.rent-row', { hasText: `Ram ${stamp}` });
     await expect(rent).toContainText('5,000');
     await rent.locator('button', { hasText: 'Record payment' }).click();

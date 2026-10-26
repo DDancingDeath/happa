@@ -675,7 +675,9 @@ service cloud.firestore {
             && rentStr(d, 'name', 1, 80) && rentStr(d, 'address', 0, 200) && rentStr(d, 'notes', 0, 500)
             && d.get('kind', 'other') in ['house', 'shop', 'flat', 'plot', 'godown', 'other']
           : base == 'rent_units'
-          ? d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId', 'lastReading', 'meterRate', 'meterCharge'].concat(rentMeta()))
+          ? d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId', 'lastReading', 'meterRate', 'meterCharge',
+                              'type', 'area', 'floor'].concat(rentMeta()))
+            && rentUnitExtrasOk(d)
             && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'label', 1, 60) && rentMoney(d, 'rent')
             && (d.get('leaseId', null) == null || rentStr(d, 'leaseId', 1, 64))
             && rentNumOrNull(d, 'lastReading') && rentNumOrNull(d, 'meterRate')
@@ -701,6 +703,14 @@ service cloud.firestore {
 
     function rentShareToken(t) {
       return t is string && t.matches('^[A-Za-z0-9_-]{22,64}$');
+    }
+
+    // Unit type (flat / commercial / office / godown / other), optional size (sq ft) and floor.
+    // Units saved before types existed have no type (shown as flats until set).
+    function rentUnitExtrasOk(d) {
+      return (!('type' in d) || d.type in ['flat', 'commercial', 'office', 'godown', 'other'])
+        && (d.get('area', null) == null || (d.area is number && d.area > 0 && d.area <= 1000000))
+        && (d.get('floor', null) == null || rentStr(d, 'floor', 1, 20));
     }
 
     // New leases start active, with no charges and no tenant link, and take their unit in the same write.
@@ -909,6 +919,7 @@ service cloud.firestore {
         && (base == 'rent_charges' ? validRentChargeCreate(usersCol, docId)
           : base == 'rent_leases' ? validRentDoc(base) && rentLeaseCreateOk(usersCol, docId)
           : base == 'rent_units' ? validRentDoc(base) && request.resource.data.get('leaseId', null) == null
+            && request.resource.data.get('type', '') in ['flat', 'commercial', 'office', 'godown', 'other']
             && request.resource.data.get('lastReading', null) == null && request.resource.data.get('meterCharge', null) == null
           : validRentDoc(base));
     }
@@ -945,7 +956,8 @@ service cloud.firestore {
       let d = request.resource.data;
       return rentRoleIn(usersCol) != ''
         && rentShareToken(token)
-        && d.keys().hasOnly(['lid', 'v', 'shop', 'tenant', 'place', 'rent', 'dueDay', 'ended', 'endMonth', 'months', 'updatedAt'])
+        && d.keys().hasOnly(['lid', 'v', 'shop', 'tenant', 'place', 'ut', 'rent', 'dueDay', 'ended', 'endMonth', 'months', 'updatedAt'])
+        && (!('ut' in d) || d.ut in ['flat', 'commercial', 'office', 'godown', 'other'])
         && rentStr(d, 'lid', 1, 64)
         && getAfter(rentLeasePath(usersCol, d.lid)).data.get('shareToken', null) == token
         && d.get('v', 0) == 1

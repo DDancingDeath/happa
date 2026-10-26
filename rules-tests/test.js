@@ -1354,7 +1354,7 @@ function defineRentSuite(prefix) {
     const meta = (uid) => ({ archived: false, createdAt: 1, createdBy: uid, updatedAt: 1, updatedBy: uid });
     const lease = (over = {}) => ({ unitId: 'U1', propertyId: 'P1', tenantId: 'T1', rent: 5000, dueDay: 10, startMonth: PREV, endMonth: null,
         deposit: 10000, status: 'active', chargedThrough: null, increasePct: 5, rentSince: PREV, ...meta('legacyOwner'), ...over });
-    const unit = (over = {}) => ({ propertyId: 'P1', label: 'G1', rent: 5000, leaseId: 'L1', lastReading: null, meterRate: null, meterCharge: null, ...meta('legacyOwner'), ...over });
+    const unit = (over = {}) => ({ propertyId: 'P1', label: 'G1', type: 'flat', rent: 5000, leaseId: 'L1', lastReading: null, meterRate: null, meterCharge: null, ...meta('legacyOwner'), ...over });
     const charge = (month, over = {}) => ({ leaseId: 'L1', unitId: 'U1', propertyId: 'P1', tenantId: 'T1', tenantName: 'Ram', unitLabel: 'G1',
         month, dueDay: 10, rent: 5000, electricity: null, amount: 5000, paid: 0, open: true, payments: [], createdAt: 1, updatedAt: 1, updatedBy: 'x', ...over });
     const entry = (uid, amount) => ({ amount, mode: 'cash', ref: '', date: '2026-10-05', at: 2, by: uid, byName: 'x' });
@@ -1633,6 +1633,31 @@ function defineRentSuite(prefix) {
         b.update(chargeOn(f, CUR), pay('rentOnly', 2000));
         b.set(pubOn(f, TOKEN), snap({ months: [{ ...snap().months[0], paid: 2000, due: 3000, st: 'partial', pd: ['2026-10-05'] }], updatedAt: 5 }));
         await assertSucceeds(b.commit());
+    });
+
+    t('unit type (required on create), size and floor are checked; older units without a type still edit', async () => {
+        const units = (uid) => db(uid).collection(c('rent_units'));
+        const fresh = (over) => unit({ ...meta('rentMember'), leaseId: null, ...over });
+        await assertSucceeds(units('rentMember').doc('UA').set(fresh({ type: 'commercial', area: 450, floor: 'Ground' })));
+        await assertSucceeds(units('rentMember').doc('UB').set(fresh({ type: 'office', area: null, floor: null })));
+        const { type: _t, ...noType } = fresh({});
+        await assertFails(units('rentMember').doc('UC').set(noType));
+        await assertFails(units('rentMember').doc('UD').set(fresh({ type: 'castle' })));
+        for (const area of [0, -5, 2000000, '450']) await assertFails(units('rentMember').doc('UE').set(fresh({ area })));
+        await assertFails(units('rentMember').doc('UF').set(fresh({ floor: 'x'.repeat(21) })));
+        await assertFails(units('rentMember').doc('UF').set(fresh({ floor: '' })));
+        const { type: _u, ...legacy } = unit({ leaseId: null });
+        await seed('rent_units', 'UL', legacy);
+        await assertSucceeds(units('rentMember').doc('UL').update({ label: 'G9', updatedAt: 2, updatedBy: 'rentMember' }));
+        await assertFails(units('rentMember').doc('UL').update({ type: 'shop', updatedAt: 3, updatedBy: 'rentMember' }));
+        await assertSucceeds(units('rentMember').doc('UL').update({ type: 'godown', area: 1200, floor: 'Basement', updatedAt: 3, updatedBy: 'rentMember' }));
+        await assertFails(units('staff1').doc('UA').update({ type: 'flat', updatedAt: 4, updatedBy: 'staff1' }));
+    });
+
+    t('link: the unit type travels with the snapshot (known types only)', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
+        await assertSucceeds(pubOn(db('rentMember'), TOKEN).set(snap({ ut: 'commercial', place: 'Shop 3, Gupta Bhawan' })));
+        await assertFails(pubOn(db('rentMember'), TOKEN).set(snap({ ut: 'castle' })));
     });
 
     t('only the owner deletes rentals records', async () => {

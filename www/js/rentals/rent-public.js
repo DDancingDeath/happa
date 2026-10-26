@@ -12,6 +12,8 @@ import { chargeDue, chargeStatus, isMonth } from './rent-math.js';
 /** Months kept in the snapshot (newest). */
 export const PUBLIC_MONTHS = 36;
 export const SNAPSHOT_VERSION = 1;
+const UNIT_TYPES = ['flat', 'commercial', 'office', 'godown', 'other'];
+const unitTypeOrNull = (t) => (UNIT_TYPES.includes(t) ? t : null);
 const TOKEN_RE = /^[A-Za-z0-9_-]{22,64}$/;
 
 export const isShareToken = (t) => typeof t === 'string' && TOKEN_RE.test(t);
@@ -60,7 +62,7 @@ function leasePart(lease) {
 }
 
 /** A full snapshot from the lease and its charges (used when a link is made). */
-export function buildPublicSnapshot({ lease, tenantName = '', place = '', shopName = '', charges = [], now = Date.now() }) {
+export function buildPublicSnapshot({ lease, tenantName = '', place = '', unitType = null, shopName = '', charges = [], now = Date.now() }) {
     const months = charges.filter(c => c.leaseId === lease.id).map(c => publicMonth(c, new Date(now)))
         .sort(byMonth).slice(-PUBLIC_MONTHS);
     return {
@@ -69,6 +71,7 @@ export function buildPublicSnapshot({ lease, tenantName = '', place = '', shopNa
         shop: String(shopName || '').slice(0, 80),
         tenant: String(tenantName || '').slice(0, 80),
         place: String(place || '').slice(0, 150),
+        ...(unitTypeOrNull(unitType) ? { ut: unitType } : {}),
         ...leasePart(lease),
         months,
         updatedAt: now
@@ -83,12 +86,13 @@ export function withMonth(snap, charge, now = Date.now()) {
 }
 
 /** Snapshot with new display names (tenant, property or unit renamed). */
-export function withNames(snap, { tenantName, place }, now = Date.now()) {
+export function withNames(snap, { tenantName, place, unitType }, now = Date.now()) {
     // A name that isn't known any more (archived record) keeps the old one.
     return {
         ...snap,
         tenant: tenantName ? String(tenantName).slice(0, 80) : snap.tenant,
         place: place ? String(place).slice(0, 150) : snap.place,
+        ...(unitTypeOrNull(unitType) ? { ut: unitType } : {}),
         updatedAt: now
     };
 }

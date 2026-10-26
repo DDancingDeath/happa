@@ -143,10 +143,10 @@ export async function updateLease(id, fields) {
  * random token, points the lease at it and removes the old snapshot.
  * @returns {Promise<string>} the new token
  */
-export async function makeShareLink(lease, { tenantName, place, shopName }) {
+export async function makeShareLink(lease, { tenantName, place, unitType, shopName }) {
     const db = FirebaseService.db;
     const token = newShareToken();
-    const names = { tenantName, place, shopName };
+    const names = { tenantName, place, unitType, shopName };
     const batch = db.batch();
     batch.set(publicRef(token), buildPublicSnapshot({ lease, ...names, charges: await latestCharges(lease.id) }));
     batch.update(coll('rent_leases').doc(lease.id), stamp({ shareToken: token }));
@@ -178,14 +178,14 @@ export async function rebuildShareSnapshot(leaseId, token, names) {
 }
 
 /** After a tenant/property/unit rename: new display names in a lease's link snapshot. */
-export async function renameInLink(lease, { tenantName, place }) {
+export async function renameInLink(lease, { tenantName, place, unitType }) {
     const db = FirebaseService.db;
     const leaseRef = coll('rent_leases').doc(lease.id);
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(leaseRef);
         const pub = snap.exists ? await readPublic(tx, snap.data()) : null;
         if (!pub) return false;
-        tx.set(pub.ref, withNames(pub.data, { tenantName, place }));
+        tx.set(pub.ref, withNames(pub.data, { tenantName, place, unitType }));
         return true;
     });
 }
