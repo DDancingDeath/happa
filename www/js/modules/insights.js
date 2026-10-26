@@ -13,11 +13,12 @@ import { t, getLang } from '../i18n/index.js';
 import { formatRupees } from '../utils/money.js';
 import { formatMonth, formatDay } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
-import { historyLoadedFrom, isFullHistoryLoaded } from '../utils/history-window.js';
+import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
 import { findDeadStock } from '../utils/dead-stock.js';
+import { can, canOpenSection } from '../utils/role-access.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, itemSummary, belowCostSales, lowProfitItems,
-    purchaseItems, partySummary, stoppedComing, overdueParties, seasonIndex, stockUpItems
+    purchaseItems, partySummary, stoppedComingCheck, overdueParties, seasonIndex, stockUpItems
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext, contextMonth } from '../utils/insights-context.js';
@@ -69,6 +70,7 @@ export const InsightsManager = {
         const [section, view] = ROUTE_SECTION[route] || [route];
         if (SECTIONS.includes(section)) this.section = section;
         if (view) this.seasonView = view;
+        if (this.section === 'seasons' && !this.maySeasons()) this.section = 'actions';
         this.setupTaps();
         const sel = document.getElementById('insightsPreset');
         const { preset } = getInsightsContext();
@@ -81,6 +83,7 @@ export const InsightsManager = {
 
     setSection(section) {
         if (!SECTIONS.includes(section)) return;
+        if (section === 'seasons' && !this.maySeasons()) return;
         this.section = section;
         this.showSection();
         this.render();
@@ -126,6 +129,12 @@ export const InsightsManager = {
     },
 
     cfg() { return insightsSettings(AppState.settings?.insights); },
+
+    /** Section permission (Roles & access), e.g. 'profit'. */
+    may(permission) { return can(AppState.userRole, permission, AppState.settings?.roleAccess); },
+
+    /** Seasons hosts Rate trends / Product traffic: their role rule applies. */
+    maySeasons() { return canOpenSection('insights', 'seasons', AppState.userRole, AppState.settings?.roleAccess); },
     range() { return periodRange(getInsightsContext().preset, new Date(), this.cfg()); },
 
     showSection() {
@@ -136,6 +145,7 @@ export const InsightsManager = {
             b.setAttribute('aria-selected', String(on));
         });
         mark('#insights [data-insights-section]', 'insightsSection', this.section);
+        document.querySelectorAll('#insights [data-insights-section="seasons"]').forEach(b => { b.hidden = !this.maySeasons(); });
         mark('#insights [data-items-type]', 'itemsType', this.itemsType);
         mark('#insights [data-party-kind]', 'partyKind', this.partyKind);
         mark('#insights [data-season-view]', 'seasonView', this.seasonView);
@@ -206,15 +216,18 @@ export const InsightsManager = {
             this.html('insightsActionsBelow', `<p class="ins-empty-text">${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(this.range()) }))}</p>`);
             ['insightsActionsLow', 'insightsActionsStock'].forEach(id => this.html(id, ''));
         } else {
-            const below = belowCostSales(m).slice(0, 3);
+            // ₹ lost and ₹ per ₹100 are profit figures: not built for roles without 'profit'.
+            const showProfit = this.may('profit');
+            const below = showProfit ? belowCostSales(m).slice(0, 3) : [];
             this.html('insightsActionsBelow', below.map(b => this.actionCard('📉',
                 t('ui.insights.act_below_cost', { item: nameOf(b), times: b.times, kg: b.qty, amount: formatRupees(b.lost) }), null, '',
                 `<button type="button" class="btn btn-secondary" data-item="${esc(b.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
-            const low = lowProfitItems(itemSummary(m), cfg).slice(0, 3);
+            const low = showProfit ? lowProfitItems(itemSummary(m), cfg).slice(0, 3) : [];
             this.html('insightsActionsLow', low.map(x => this.actionCard('🪙',
                 t(x.per100 < 0 ? 'ui.insights.act_loss_item' : 'ui.insights.act_low_profit', { item: nameOf(x), value: Math.round(x.per100 * 10) / 10, sales: formatRupees(x.sales) }),
                 'insights-items', t('ui.insights.see_items'))).join(''));
-            this.renderStockUp();
+            if (this.maySeasons()) this.renderStockUp();
+            else this.html('insightsActionsStock', '');
         }
         const deadCount = this.deadStockCount(now);
         this.html('insightsActionsLinks',
@@ -247,9 +260,10 @@ export const InsightsManager = {
             return;
         }
         const now = new Date();
+        const weekly = this.weeklySoldKg(now);
         const rows = this.seasonRows().map(r => {
             const st = AppState.stock?.[r.itemKey];
-            return { ...r, qty: Number(st?.quantity) || 0, weeklyKg: this.weeklySoldKg(r.itemKey, now) };
+            return { ...r, qty: Number(st?.quantity) || 0, weeklyKg: weekly.get(r.itemKey) || 0 };
         });
         const list = stockUpItems(rows, now, {}, this.cfg()).slice(0, 3);
         const lang = getLang();
@@ -258,11 +272,11 @@ export const InsightsManager = {
         }), null, '', `<button type="button" class="btn btn-secondary" data-item="${esc(x.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
     },
 
-    weeklySoldKg(itemKey, now) {
+    /** kg sold per week over the last 8 weeks, per item key: one summary for all items. */
+    weeklySoldKg(now) {
         const from = now.getTime() - 56 * DAY_MS;
         const m = moneySummary(this.input(from), { from, to: now.getTime() + 1 }, { detail: true });
-        const row = itemSummary(m).find(r => r.itemKey === itemKey);
-        return row ? row.qty / 8 : 0;
+        return new Map(itemSummary(m).map(r => [r.itemKey, r.qty / 8]));
     },
 
     renderItems(m, r) {
@@ -289,8 +303,8 @@ export const InsightsManager = {
         const best = known.slice().sort((a, b) => b.profit - a.profit)[0];
         const weak = known.filter(x => x.sales >= this.cfg().lowMarginMinSales).sort((a, b) => a.per100 - b.per100)[0];
         let tk = '';
-        if (best) tk += `<p>${esc(t('ui.insights.tk_best_item', { item: nameOf(best), amount: formatRupees(best.profit) }))}</p>`;
-        if (weak && weak !== best) tk += `<p>${esc(t('ui.insights.tk_weak_item', { item: nameOf(weak), value: Math.round(weak.per100 * 10) / 10 }))}</p>`;
+        if (best) tk += `<p data-perm="profit">${esc(t('ui.insights.tk_best_item', { item: nameOf(best), amount: formatRupees(best.profit) }))}</p>`;
+        if (weak && weak !== best) tk += `<p data-perm="profit">${esc(t('ui.insights.tk_weak_item', { item: nameOf(weak), value: Math.round(weak.per100 * 10) / 10 }))}</p>`;
         if (!profitKnown) tk += `<p>${esc(t('ui.tk.profit_unknown'))}</p>`;
         this.html('insightsItemsTakeaway', tk);
         const unc = m.caveats.find(c => c.key === 'uncosted');
@@ -315,6 +329,9 @@ export const InsightsManager = {
         }
         const snaps = MoneyManager.snapshots || {};
         const keys = monthKeysBetween(ly.from, ly.to);
+        // Snapshots keep items per whole month only: a part period (e.g. 1–3 Oct) has no fair comparison.
+        const whole = (ms) => { const d = new Date(ms); return d.getDate() === 1 && d.getHours() === 0 && d.getMinutes() === 0; };
+        if (!whole(r.from) || !whole(r.to) || !whole(ly.from) || !whole(ly.to)) return null;
         const docs = keys.map(k => figuresFromSnapshot(snaps[k]));
         if (!docs.length || docs.some(d => !d)) return null;
         const out = new Map();
@@ -342,15 +359,46 @@ export const InsightsManager = {
         this.html(kind === 'sales' ? 'insightsCustomersTable' : 'insightsSuppliersTable', table(rows));
         const total = rows.reduce((a, p) => a + p.total, 0);
         const top5 = rows.filter(p => p.key).slice(0, 5).reduce((a, p) => a + p.total, 0);
-        const stopped = kind === 'sales' ? stoppedComing(src, new Date(), this.cfg()) : [];
+        const lyCheck = kind === 'sales' ? this.stoppedCheck(src, new Date()) : { list: [], known: true };
+        const stopped = lyCheck.list;
         let tk = total > 0 ? `<p>${esc(t(kind === 'sales' ? 'ui.insights.tk_top5_customers' : 'ui.insights.tk_top5_suppliers', { pct: Math.round((top5 / total) * 100) }))}</p>` : '';
         if (stopped.length) tk += `<p>${esc(t('ui.insights.tk_stopped', { n: stopped.length, days: this.cfg().stoppedComingDays }))}</p>`;
         this.html('insightsPartiesTakeaway', tk);
         const card = document.getElementById('insightsStoppedCard');
         if (card) card.hidden = kind !== 'sales';
-        this.html('insightsStopped', stopped.length
-            ? stopped.slice(0, 20).map(p => `<div class="ins-row"><span>${esc(p.name)}</span><span>${esc(t('ui.insights.last_on', { date: formatDay(p.last, { lang }) }))}</span></div>`).join('')
-            : `<p class="ins-empty-text">${esc(t('ui.insights.none_stopped'))}</p>`);
+        let stoppedHtml;
+        if (!lyCheck.known) {
+            stoppedHtml = `<div class="ins-caveat">⚠ ${esc(t('ui.insights.stopped_unknown'))}</div>`
+                + `<button type="button" class="btn btn-secondary" onclick="window.app.insights.loadOlder()">${esc(t('ui.money.load_older'))}</button>`;
+        } else if (stopped.length) {
+            stoppedHtml = stopped.slice(0, 20).map(p => `<div class="ins-row"><span>${esc(p.name)}</span><span>${esc(p.last
+                ? t('ui.insights.last_on', { date: formatDay(p.last, { lang }) })
+                : t('ui.insights.last_before', { date: formatDay(historyLoadedFrom(), { lang }) }))}</span></div>`).join('');
+        } else {
+            stoppedHtml = `<p class="ins-empty-text">${esc(t('ui.insights.none_stopped'))}</p>`;
+        }
+        this.html('insightsStopped', stoppedHtml);
+    },
+
+    /** I4 using the loaded bills and, for months not loaded, last year's month snapshots. */
+    stoppedCheck(src, now) {
+        const snaps = MoneyManager.snapshots || {};
+        const snapshotCustomers = {};
+        Object.entries(snaps).forEach(([k, doc]) => { if (doc && Array.isArray(doc.customers)) snapshotCustomers[k] = doc.customers.map(p => ({ key: p.k, name: p.n })); });
+        return stoppedComingCheck(src, now, this.cfg(), {
+            loadedFrom: isFullHistoryLoaded() ? 0 : historyLoadedFrom(),
+            snapshotCustomers
+        });
+    },
+
+    async loadOlder() {
+        const now = new Date();
+        try {
+            await ensureHistoryFrom(new Date(now.getFullYear() - 1, now.getMonth() - 1, 1));
+        } catch (e) {
+            console.error('Insights: loading older bills failed:', e);
+        }
+        this.render();
     },
 
     // ---- seasons

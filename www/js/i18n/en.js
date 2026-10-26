@@ -2225,5 +2225,7 @@ export default {
     'ui.insights.seasons_need_year': "The season calendar needs at least 12 months of rate history (Rates › Trends).",
     'ui.insights.tk_season': "{item} usually sells {times}× its average in {month}.",
     'ui.insights.tk_no_season': "No item has a busy month in the next 8 weeks.",
-    'ui.insights.checks_ok': "Items and parties add up to Money's sales"
+    'ui.insights.checks_ok': "Items and parties add up to Money's sales",
+    'ui.insights.stopped_unknown': "Last year's bills for these months are not loaded, so regular buyers who stopped coming can't be checked. Load older bills to check.",
+    'ui.insights.last_before': "no bill since before {date}"
 };

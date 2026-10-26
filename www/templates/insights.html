@@ -25,7 +25,7 @@
     <section class="ins-section" data-insights-pane="actions">
         <div class="ins-card ins-wide">
             <h3 class="ins-card-title" data-i18n="ui.insights.this_week">This week</h3>
-            <div id="insightsActionsDues"></div>
+            <div id="insightsActionsDues" data-metric="I10"></div>
             <div id="insightsActionsBelow" data-metric="I8"></div>
             <div id="insightsActionsLow" data-metric="I7"></div>
             <div id="insightsActionsStock" data-metric="I9"></div>
@@ -43,7 +43,7 @@
                 <button type="button" class="ins-tab" data-items-type="retail" onclick="window.app.insights.setItemsType('retail')" data-i18n="ui.insights.retail">Retail</button>
                 <button type="button" class="ins-tab" data-items-type="wholesale" onclick="window.app.insights.setItemsType('wholesale')" data-i18n="ui.insights.wholesale">Wholesale</button>
             </div>
-            <div class="ins-takeaway ins-takeaway-dark" id="insightsItemsTakeaway"></div>
+            <div class="ins-takeaway ins-takeaway-dark" data-takeaway id="insightsItemsTakeaway"></div>
             <div class="ins-caveats" id="insightsItemsCaveats"></div>
             <div class="ins-scroll"><table class="ins-table" id="insightsItemsTable" data-metric="I1"></table></div>
             <p class="ins-hint" data-i18n="ui.insights.items_hint">Tap an item to see its rate trend. Kg moved is in Product traffic.</p>
@@ -54,7 +54,7 @@
         </div>
         <div class="ins-card">
             <h3 class="ins-card-title" data-i18n="ui.insights.bought">What you bought</h3>
-            <div class="ins-scroll"><table class="ins-table" id="insightsBoughtTable"></table></div>
+            <div class="ins-scroll"><table class="ins-table" id="insightsBoughtTable" data-metric="I11"></table></div>
         </div>
     </section>
 
@@ -64,14 +64,14 @@
                 <button type="button" class="ins-tab active" data-party-kind="sales" onclick="window.app.insights.setPartyKind('sales')" data-i18n="ui.insights.customers">Customers</button>
                 <button type="button" class="ins-tab" data-party-kind="purchases" onclick="window.app.insights.setPartyKind('purchases')" data-i18n="ui.insights.suppliers">Suppliers</button>
             </div>
-            <div class="ins-takeaway ins-takeaway-dark" id="insightsPartiesTakeaway"></div>
+            <div class="ins-takeaway ins-takeaway-dark" data-takeaway id="insightsPartiesTakeaway"></div>
             <div class="ins-scroll"><table class="ins-table" id="insightsCustomersTable" data-metric="I3"></table></div>
             <div class="ins-scroll"><table class="ins-table" id="insightsSuppliersTable" data-metric="I4" hidden></table></div>
             <button type="button" class="ins-link" data-go="due" data-metric-ref="O4"><span data-i18n="ui.insights.dues_link">Dues → Outstanding</span> ›</button>
         </div>
         <div class="ins-card ins-wide" id="insightsStoppedCard">
             <h3 class="ins-card-title" data-i18n="ui.insights.stopped_title">Regular buyers who stopped coming</h3>
-            <div id="insightsStopped"></div>
+            <div id="insightsStopped" data-metric-ref="I3"></div>
         </div>
     </section>
 
@@ -84,7 +84,7 @@
             </div>
         </div>
         <div class="ins-card ins-wide" id="insightsCalendarCard">
-            <div class="ins-takeaway ins-takeaway-dark" id="insightsSeasonTakeaway"></div>
+            <div class="ins-takeaway ins-takeaway-dark" data-takeaway id="insightsSeasonTakeaway"></div>
             <div class="ins-scroll" id="insightsCalendar" data-metric="I5"></div>
             <p class="ins-hint" data-i18n="ui.insights.calendar_hint">Darker = busier month for that item (kg sold, last 2 years). Tap a cell to see that month's traffic.</p>
         </div>

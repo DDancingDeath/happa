@@ -269,7 +269,7 @@ period and item (`utils/insights-context.js`).
 | M18 | Labour to pay | T-LAB-2 for each day of the period (purchase bills by BILL-TIME, local day), each day rounded up on its own, summed (`labourToPayByDay()`). Money › Spending shows it under M7 with T-LAB-3's more / less / matches. |
 | I1 | Item sales and profit | Per catalogue item: Σ sale line totals, Σ their COGS, profit = sales − COGS, profit per ₹100 (AC10). |
 | I2 | Retail / wholesale | I1 split by bill type. |
-| I3 | Sales by customer | Per PARTY: Σ BILL-TOTAL, BILL-COUNT, last bill (AC11). "Stopped coming": bought in each of the same 3 calendar months last year, no bill for 60 days (`stoppedComingDays`). |
+| I3 | Sales by customer | Per PARTY: Σ BILL-TOTAL, BILL-COUNT, last bill (AC11). "Stopped coming": bought in each of the same 3 calendar months last year, no bill for 60 days (`stoppedComingDays`). Months of last year that are not loaded use that month's snapshot customer list (its top customers); with neither, the answer is unknown and the page asks to load older bills, never "every regular came". Item "vs last year" from snapshots only when both periods are whole months, else "—". |
 | I4 | Purchases by supplier | Per PARTY: Σ BILL-TOTAL after labour, labour, kg, last bill. Item rows share each bill's labour by line value, so they add up to M16 (#47). |
 | I5 | Season index | Per item and calendar month: kg sold that month ÷ the item's average monthly kg (RT4 `rateStats` months); needs 12 months. ≥ 1.5 busy, ≤ 0.5 quiet. |
 | I6 | Biggest change | The item (or category) with the largest absolute change between two periods; used in takeaway sentences only. |

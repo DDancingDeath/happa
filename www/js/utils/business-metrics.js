@@ -484,18 +484,37 @@ export function partySummary(src, kind, { from, to }) {
  * @returns {Array<{key, name, last}>}
  */
 export function stoppedComing(src, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
+    return stoppedComingCheck(src, now, cfg).list;
+}
+
+/**
+ * I4 with honesty about missing data. Last year's three months come from the
+ * loaded bills when they are loaded, else from that month's snapshot
+ * customer list (its top customers); a month with neither makes the answer
+ * unknown (`known: false`), so the page never claims "every regular came".
+ * @param {Object} src {wholesaleSales, retailSales}
+ * @param {Date} now
+ * @param {typeof INSIGHTS_DEFAULTS} [cfg]
+ * @param {{loadedFrom?: number, snapshotCustomers?: Object<string, ?Array<{key: string, name: string}>>}} [ctx]
+ *   loadedFrom: start of the loaded bills (0 = all); snapshotCustomers: 'YYYY-MM' → customers
+ * @returns {{list: Array<{key, name, last: ?number}>, known: boolean}}
+ */
+export function stoppedComingCheck(src, now = new Date(), cfg = INSIGHTS_DEFAULTS, { loadedFrom = 0, snapshotCustomers = {} } = {}) {
     const y = now.getFullYear() - 1;
     const m = now.getMonth();
-    const months = [-1, 0, 1].map(k => `${new Date(y, m + k, 1).getFullYear()}-${new Date(y, m + k, 1).getMonth()}`);
+    const lyMonths = [-1, 0, 1].map(k => new Date(y, m + k, 1));
+    const months = lyMonths.map(d => `${d.getFullYear()}-${d.getMonth()}`);
     const cutoff = now.getTime() - cfg.stoppedComingDays * DAY_MS;
+    if (loadedFrom > cutoff) return { list: [], known: false };
     const seen = new Map();
+    const rowOf = (key) => seen.get(key) || { key, spellings: new Map(), months: new Set(), last: 0 };
     activityBills([...(src.retailSales || []), ...(src.wholesaleSales || [])]).forEach(b => {
         const raw = String(b.customerName ?? '').trim().replace(/\s+/g, ' ');
         const key = normalizePartyName(raw);
         if (!key) return;
         const t = billTime(b);
         if (t === null) return;
-        const r = seen.get(key) || { key, spellings: new Map(), months: new Set(), last: 0 };
+        const r = rowOf(key);
         const d = new Date(t);
         r.months.add(`${d.getFullYear()}-${d.getMonth()}`);
         r.last = Math.max(r.last, t);
@@ -505,10 +524,25 @@ export function stoppedComing(src, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
         r.spellings.set(raw, sp);
         seen.set(key, r);
     });
-    return [...seen.values()]
+    for (let i = 0; i < lyMonths.length; i++) {
+        if (lyMonths[i].getTime() >= loadedFrom) continue;
+        const pad = String(lyMonths[i].getMonth() + 1).padStart(2, '0');
+        const list = snapshotCustomers[`${lyMonths[i].getFullYear()}-${pad}`];
+        if (!Array.isArray(list)) return { list: [], known: false };
+        list.forEach(p => {
+            const key = normalizePartyName(p.key || p.name || '');
+            if (!key) return;
+            const r = rowOf(key);
+            r.months.add(months[i]);
+            if (!r.spellings.size && p.name) r.spellings.set(p.name, { count: 1, last: 0 });
+            seen.set(key, r);
+        });
+    }
+    const list = [...seen.values()]
         .filter(r => months.every(k => r.months.has(k)) && r.last < cutoff)
-        .map(r => ({ key: r.key, name: pickPartyName(r.spellings), last: r.last }))
-        .sort((a, b) => b.last - a.last);
+        .map(r => ({ key: r.key, name: pickPartyName(r.spellings), last: r.last || null }))
+        .sort((a, b) => (b.last || 0) - (a.last || 0));
+    return { list, known: true };
 }
 
 /**

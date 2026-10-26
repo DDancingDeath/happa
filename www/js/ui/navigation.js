@@ -2,7 +2,7 @@
 
 import { UIManager } from './ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { canOpenTab, roleMayOpenTab } from '../utils/role-access.js';
+import { canOpenTab, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 
@@ -49,7 +49,7 @@ function sectionRoute(tabId) {
     if (!sections) return null;
     const section = rest.join('-');
     if (!section) return { id: page, tab: page, section: null, needs: null, nav: page };
-    return sections.includes(section) ? { id: tabId, tab: page, section, needs: null, nav: page } : null;
+    return sections.includes(section) ? { id: tabId, tab: page, section, needs: SECTION_TABS[`${page}:${section}`] || null, nav: page } : null;
 }
 
 /** Route id -> { id (canonical), tab (page element id), section, needs (extra page permission), nav (side-nav link id) }. */

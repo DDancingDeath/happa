@@ -115,6 +115,58 @@ describe('to-do list (I7, I8, overdue)', () => {
         InsightsManager.init('actions');
         expect(document.getElementById('insightsActionsBelow').textContent).toMatch(/below its cost/);
     });
+
+    test('a role without the profit permission gets no ₹-lost / per-₹100 cards, and no Seasons', () => {
+        AppState.purchaseHistory.push({ id: 'pz', date: '2026-10-02', timestamp: new Date(2026, 9, 2).getTime(), grandTotal: 1000, items: [{ itemId: FIX.items[0].id, name: FIX.items[0].name, qty: 20, rate: 50, total: 1000 }] });
+        AppState.retailSalesHistory.push({ id: 'rz', date: '2026-10-03', timestamp: new Date(2026, 9, 3).getTime(), total: 20, payment: { cash: 20 }, items: [{ itemId: FIX.items[0].id, name: FIX.items[0].name, qty: 1, rate: 20, total: 20 }] });
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess: { staff: { analytics: true, profit: false } } };
+        InsightsManager.init('trends');
+        expect(InsightsManager.section).toBe('actions');
+        expect(document.getElementById('insightsActionsBelow').textContent).toBe('');
+        expect(document.getElementById('insightsActionsLow').textContent).toBe('');
+        expect(document.querySelector('#insights [data-insights-section="seasons"]').hidden).toBe(true);
+        InsightsManager.setSection('seasons');
+        expect(InsightsManager.section).toBe('actions');
+    });
+});
+
+describe('honest comparisons (review fixes)', () => {
+    test('a part month is not compared with last year\'s whole month from snapshots ("—")', () => {
+        AppState.historyLoadedFrom = new Date(2026, 6, 1).getTime();
+        MoneyManager.snapshots = { '2025-10': { month: '2025-10', m: { M1: 1 }, items: { [FIX.items[0].id]: { s: 999999, c: 1, q: 1 } } } };
+        InsightsManager.init('items');
+        const cells = [...document.querySelectorAll('#insightsItemsTable tbody tr')].map(tr => tr.lastElementChild.textContent);
+        expect(cells.length).toBeGreaterThan(0);
+        cells.forEach(c => expect(c).toBe('—'));
+    });
+
+    test('"stopped coming" never says all-clear without last year\'s data; uses month snapshots when bills are not loaded', () => {
+        AppState.historyLoadedFrom = new Date(2026, 6, 1).getTime();
+        InsightsManager.init('parties');
+        expect(document.getElementById('insightsStopped').textContent).toMatch(/older bills/i);
+        expect(document.getElementById('insightsStopped').textContent).not.toMatch(/every regular/i);
+        const regular = [{ k: 'ramesh', n: 'Ramesh', t: 100, c: 1 }];
+        MoneyManager.snapshots = { '2025-09': { customers: regular }, '2025-10': { customers: regular }, '2025-11': { customers: regular } };
+        InsightsManager.render();
+        expect(document.getElementById('insightsStopped').textContent).toMatch(/Ramesh/);
+    });
+
+    test('stock-up works out weekly kg with one summary for all items', async () => {
+        const { stoppedComingCheck } = await import('../utils/business-metrics.js');
+        expect(typeof stoppedComingCheck).toBe('function');
+        const spy = jest.spyOn(InsightsManager, 'input');
+        InsightsManager.seasonDocs = [];
+        InsightsManager.renderStockUp();
+        expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    test('single home: every ₹ on the rendered Insights page is tagged', async () => {
+        const { unexplainedValues } = await import('../utils/metric-registry.js');
+        ['actions', 'items', 'parties'].forEach(s => InsightsManager.init(s));
+        InsightsManager.setPartyKind('purchases');
+        expect(unexplainedValues(document.getElementById('insights'))).toEqual([]);
+    });
 });
 
 describe('Seasons: one Rate trends view, two entry points', () => {
