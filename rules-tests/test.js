@@ -903,6 +903,44 @@ function defineSuite(prefix) {
         await assertSucceeds(as('legacyOwner').collection(rateStats).doc('wheat_2026').delete());
     });
 
+    // ---- month snapshots (redesign §7.6): monthStats/{YYYY-MM}, owner/manager only ----
+
+    const monthStats = `${prefix}monthStats`;
+    const snap = (extra = {}) => ({
+        month: '2026-10', v: 1,
+        m: { M1: 1000, M1c: 3, M2: 800, M6: 150, close: 5000 },
+        items: { wheat: { s: 1000, c: 800, q: 40, r: 1000, w: 0 } },
+        customers: [{ k: 'ram', n: 'Ram', t: 1000, c: 3 }], suppliers: [],
+        categories: { rent: 50 }, days: { 1: { s: 1000, p: 150 } }, builtAt: 1700000000000, ...extra
+    });
+
+    t('monthStats: owner and manager can write and read month snapshots', async () => {
+        await assertSucceeds(as('manager1').collection(monthStats).doc('2026-10').set(snap()));
+        await assertSucceeds(as('legacyOwner').collection(monthStats).doc('2026-10').set(snap({ stale: true })));
+        await assertSucceeds(as('manager1').collection(monthStats).doc('2026-10').get());
+        await assertSucceeds(as('manager1').collection(monthStats).orderBy(firebase.firestore.FieldPath.documentId()).startAt('2025-01').limit(40).get());
+    });
+
+    t('monthStats: members, pending users and strangers cannot read or write', async () => {
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(monthStats).doc('2026-10').set(snap()));
+        await assertFails(as('staff1').collection(monthStats).doc('2026-10').get());
+        await assertFails(as('staff1').collection(monthStats).doc('2026-11').set(snap({ month: '2026-11' })));
+        await assertFails(as('pending1').collection(monthStats).doc('2026-10').get());
+        await assertFails(anon().collection(monthStats).doc('2026-10').get());
+    });
+
+    t('monthStats: rejects a wrong id, a month that does not match it, unknown fields and a missing figures map; only an owner deletes', async () => {
+        await assertFails(as('manager1').collection(monthStats).doc('2026-1').set(snap({ month: '2026-1' })));
+        await assertFails(as('manager1').collection(monthStats).doc('2026-11').set(snap()));
+        await assertFails(as('manager1').collection(monthStats).doc('2026-10').set(snap({ extra: 1 })));
+        await assertFails(as('manager1').collection(monthStats).doc('2026-10').set(snap({ v: '1' })));
+        const { m: _m, ...noFigures } = snap();
+        await assertFails(as('manager1').collection(monthStats).doc('2026-10').set(noFigures));
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(monthStats).doc('2026-10').set(snap()));
+        await assertFails(as('manager1').collection(monthStats).doc('2026-10').delete());
+        await assertSucceeds(as('legacyOwner').collection(monthStats).doc('2026-10').delete());
+    });
+
     // Documents written by tools/migrate (#15), as its plan builds them from the synthetic backup.
     const migrated = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'tests', 'fixtures', 'migrate', 'migrated-docs.json'), 'utf8')).docs;
     const migratedDoc = (coll, id) => migrated.find(d => d.coll === coll && d.id === id).data;

@@ -188,6 +188,19 @@ export function formatDay(value, { lang = 'en', year = true } = {}) {
 }
 
 /**
+ * Month and year: "Oct 2026" (Hindi month names in Hindi).
+ * @param {*} value anything toJsDate accepts
+ * @param {{lang?: string, year?: boolean}} [opts]
+ * @returns {string}
+ */
+export function formatMonth(value, { lang = 'en', year = true } = {}) {
+    const d = toJsDate(value);
+    if (!d) return '';
+    const m = MONTHS[langOf(lang)][d.getMonth()];
+    return year ? `${m} ${d.getFullYear()}` : m;
+}
+
+/**
  * Time of day: "8:59 pm" / "8:59 अपराह्न".
  * @param {*} value
  * @param {{lang?: string}} [opts]

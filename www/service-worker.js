@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v67';
+const CACHE_NAME = 'happa-v31';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -50,6 +50,7 @@ const STATIC_ASSETS = [
     '/css/toast.css',
     '/css/totals.css',
     '/css/variables.css',
+    '/css/insights.css',
     '/js/auth/authentication.js',
     '/js/firebase/firestore-service.js',
     '/js/firebase/firestore-meter.js',
@@ -78,6 +79,7 @@ const STATIC_ASSETS = [
     '/js/modules/stock.js',
     '/js/modules/users.js',
     '/js/modules/wholesale-sales.js',
+    '/js/modules/money.js',
     '/js/rentals/rent-math.js',
     '/js/rentals/rent-public.js',
     '/js/rentals/rent-settings.js',
@@ -152,6 +154,9 @@ const STATIC_ASSETS = [
     '/js/utils/business-metrics.js',
     '/js/utils/insights-config.js',
     '/js/utils/metric-registry.js',
+    '/js/utils/month-snapshots.js',
+    '/js/utils/takeaways.js',
+    '/js/utils/insights-context.js',
     '/js/tip/tip.js',
     '/js/tip/index.js',
     '/js/tip/report.js',
@@ -185,6 +190,7 @@ const STATIC_ASSETS = [
     '/templates/stock.html',
     '/templates/users.html',
     '/templates/wholesale-sales.html',
+    '/templates/money.html',
     '/vendor/firebase/10.7.1/firebase-app-compat.js',
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'

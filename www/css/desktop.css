@@ -505,3 +505,28 @@
     flex: 1 1 120px;
   }
 }
+/* ---------- Money, Insights, Statements (redesign): two columns, wider period bar ---------- */
+@media (min-width: 1024px) {
+  .ins-title { margin-left: 0; }
+
+  .ins-head {
+    display: grid;
+    grid-template-columns: auto 1fr minmax(320px, 420px);
+    align-items: center;
+    gap: 16px;
+  }
+
+  .ins-head .ins-title { margin-bottom: 0; }
+  .ins-head .ins-period { margin-top: 0; }
+
+  .ins-section:not([hidden]) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 16px;
+    align-items: start;
+  }
+
+  .ins-section > .ins-hero { grid-column: 1 / -1; }
+  .ins-section > .ins-wide { grid-column: 1 / -1; }
+  .ins-hero-value { font-size: 40px; }
+}

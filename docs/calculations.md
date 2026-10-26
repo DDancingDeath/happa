@@ -234,6 +234,12 @@ Oracle: `tests/oracle/business-metrics.test.js`; accounting checks:
 (page "Money (layer)", "Insights (layer)"). Each figure has one home
 (`utils/metric-registry.js`).
 
+**Money page** (`templates/money.html`, `modules/money.js`) is the home of M1–M17. Each
+headline shows CMP against the previous period (from the loaded bills) and the same dates last
+year (from the bills when loaded, else from the month snapshots `monthStats/{YYYY-MM}`: one doc
+per month with M*, per-item and top-party totals and per-day sales and profit, built once by the
+owner and rolled for the current and previous month every 6 hours, `utils/month-snapshots.js`).
+
 | ID | On screen | Definition |
 |---|---|---|
 | M1 | Sales | Σ BILL-TOTAL of wholesale + retail bills with BILL-TIME in the period (OPENING left out); BILL-COUNT; split retail / wholesale; "of which still due" Σ BILL-DUE. Same as F1. |
