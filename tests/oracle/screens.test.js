@@ -33,8 +33,6 @@ const E = FIX.expected;
  * Remove the entry when the referenced issue is fixed.
  */
 const BUGS = {
-    // BUG: see #219 — Today leaves out expenses that are neither 'business' nor 'personal'
-    T4_businessExpenses: 219, T8_cashOut: 219, T11_totalOut: 219, T12_net: 219,
     // BUG: see #49 — Analytics parses DD/MM/YYYY dates with new Date()
     A1_revenue: 49, A2_purchases: 49,
     // BUG: see #220 — Analytics outstanding ignores cleared bills and dueAmount-only bills

@@ -335,8 +335,7 @@ test('AC7 same day: Today == oracle, Today cash == drawer, Today sales == Report
     fc.assert(fc.property(shopArb({ untaggedExpenseRate: 0 }), ({ shop: s }) => sameDayAgrees(s)), FC);
 });
 
-// BUG: see #219 — Today drops untagged expenses, so Today and the drawer disagree when there are any
-test.skip('AC7 same day agreement with untagged expenses (#219)', () => {
+test('AC7 same day agreement with untagged expenses (#219)', () => {
     fc.assert(fc.property(shopArb({ untaggedExpenseRate: 0.3 }), ({ shop: s }) => sameDayAgrees(s)), FC);
 });
 
