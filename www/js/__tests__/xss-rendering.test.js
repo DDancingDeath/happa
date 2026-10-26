@@ -147,7 +147,7 @@ describe('history list escapes record values', () => {
         const text = document.getElementById('historyList').textContent;
         expect(text).toContain('#P-001');
         expect(text).toContain('Wheat • 3 packets');
-        expect(text).toContain('₹ 1500');
+        expect(text).toContain('₹1,500');
     });
 });
 

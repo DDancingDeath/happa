@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261026b-opening-records';
+const BUILD_ID = '20261026c-data-batch-b';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -988,6 +988,7 @@ window.app = {
         loadAdjustItemStock: () => StockManager.loadAdjustItemStock(),
         updateAdjustmentPlaceholder: () => StockManager.updateAdjustmentPlaceholder(),
         applyAdjustment: () => StockManager.applyStockAdjustment(),
+        startOpeningStock: () => StockManager.startOpeningStock(),
         renderAdjustmentHistory: () => StockManager.renderAdjustmentHistory(),
         renderDeadStock: () => StockManager.renderDeadStock(),
         setDeadStockDays: (days) => StockManager.setDeadStockDays(days)

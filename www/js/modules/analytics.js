@@ -10,10 +10,12 @@ import { rangeStatus, retryRange, applyRangeState } from '../utils/history-windo
 import { createRenderMemo } from '../utils/render-memo.js';
 import { FinanceManager } from './finance.js';
 import { profitByDay } from '../utils/finance-calc.js';
-import { t } from '../i18n/index.js';
+import { t, getLang } from '../i18n/index.js';
+import { lowStockItems, stockedItemKeys } from '../utils/stock-check.js';
+import { normalizePartyName, partyDisplayNames } from '../utils/aging.js';
 import { activityBills } from '../utils/money.js';
 
-const formatCurrency = (amount) => Helpers.formatCurrency(amount);
+const formatCurrency = (amount, opts) => Helpers.formatCurrency(amount, opts);
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 
 const PROFIT_PERIOD_DAYS = { '7days': 7, '30days': 30, '90days': 90 };
@@ -254,7 +256,10 @@ export class AnalyticsManager {
         this.updateElement('predictedPurchases', formatCurrency(avgPurchases));
         this.updateElement('predictedSales', formatCurrency(avgSales));
         this.updateElement('predictedCashNeed', formatCurrency(cashNeeded));
-        this.updateElement('predictionConfidence', `${confidence}%`);
+        // No same-weekday history: the ₹0 estimates mean "no data", so no confidence either
+        this.updateElement('predictionConfidence', validData.length ? `${confidence}%` : '');
+        const confidenceBox = document.getElementById('predictionConfidenceBox');
+        if (confidenceBox) confidenceBox.style.display = validData.length ? '' : 'none';
     }
 
     /**
@@ -309,6 +314,7 @@ export class AnalyticsManager {
         this.updateElement('monthProfit', profit === null ? '—' : formatCurrency(profit));
         this.updateElement('monthExpenses', formatCurrency(expenses));
         this.updateElement('monthProfitMargin', t('ui.analytics.margin_pct', { value: profitMargin }));
+        FinanceManager.showMarginNote('monthMarginNote', month);
         this.updateElement('monthExpensesCount', t('ui.analytics.entries_count', { count: thisMonthExpenses.length }));
 
         const revenueGrowthEl = document.getElementById('monthRevenueGrowth');
@@ -722,17 +728,19 @@ export class AnalyticsManager {
         const sellers = new Set();
         const customerRevenue = {};
 
+        // Parties grouped by name with case and spaces ignored ("test party" = "Test Party")
+        const buyerName = (s) => s.customerName || s.buyer || s.customer || '';
+        const buyerNames = partyDisplayNames(sales.map(buyerName));
         sales.forEach(s => {
-            const buyer = s.buyer || s.customer || 'Walk-in';
-            if (buyer && buyer !== 'Walk-in') {
-                buyers.add(buyer);
-                customerRevenue[buyer] = (customerRevenue[buyer] || 0) + this.getTotal(s);
-            }
+            const key = normalizePartyName(buyerName(s));
+            if (!key) return;
+            buyers.add(key);
+            customerRevenue[key] = (customerRevenue[key] || 0) + this.getTotal(s);
         });
 
         purchases.forEach(p => {
-            const seller = p.seller || p.vendor || 'Unknown';
-            if (seller && seller !== 'Unknown') sellers.add(seller);
+            const key = normalizePartyName(p.customerName || p.seller || p.vendor || '');
+            if (key) sellers.add(key);
         });
 
         const totalCustomerRevenue = Object.values(customerRevenue).reduce((a, b) => a + b, 0);
@@ -744,7 +752,7 @@ export class AnalyticsManager {
 
         // Top customers
         const topCustomers = Object.entries(customerRevenue)
-            .map(([name, revenue]) => ({ name, revenue }))
+            .map(([key, revenue]) => ({ name: buyerNames.get(key) || key, revenue }))
             .sort((a, b) => b.revenue - a.revenue)
             .slice(0, 5);
 
@@ -798,56 +806,38 @@ export class AnalyticsManager {
 
         // Generate suggestions
         if (saleDue > 50000) {
-            suggestions.push({
-                icon: '💳',
-                text: t('ui.analytics.tip_collect_dues', { amount: formatCurrency(saleDue) })
-            });
+            suggestions.push({ icon: '💳', text: t('ui.analytics.tip_collect_dues', { amount: formatCurrency(saleDue) }) });
         }
 
         if (purchaseDue > saleDue * 1.5 && purchaseDue > 30000) {
-            suggestions.push({
-                icon: '⚠️',
-                text: t('ui.analytics.tip_you_owe', { amount: formatCurrency(purchaseDue) })
-            });
+            suggestions.push({ icon: '⚠️', text: t('ui.analytics.tip_you_owe', { amount: formatCurrency(purchaseDue) }) });
         }
 
         if (profit !== null && profit < 0 && month.sales.count > 0) {
-            suggestions.push({
-                icon: '📉',
-                text: t('ui.analytics.tip_loss', { amount: formatCurrency(Math.abs(profit)) })
-            });
+            suggestions.push({ icon: '📉', text: t('ui.analytics.tip_loss', { amount: formatCurrency(Math.abs(profit)) }) });
         } else if (profit > 0 && dayOfMonth > 15) {
             const projectedProfit = (profit / dayOfMonth) * 30;
-            suggestions.push({
-                icon: '📈',
-                text: t('ui.analytics.tip_on_track', { amount: formatCurrency(projectedProfit) })
-            });
+            suggestions.push({ icon: '📈', text: t('ui.analytics.tip_on_track', { amount: formatCurrency(projectedProfit) }) });
         }
 
-        if (totalExpenses > totalRevenue * 0.1) {
-            suggestions.push({
-                icon: '💡',
-                text: t('ui.analytics.tip_expenses_high', { value: ((totalExpenses / totalRevenue) * 100).toFixed(0) })
-            });
+        if (totalRevenue > 0 && totalExpenses > totalRevenue * 0.1) {
+            suggestions.push({ icon: '💡', text: t('ui.analytics.tip_expenses_high', { value: Math.round((totalExpenses / totalRevenue) * 100) }) });
         }
 
         const avgDailySales = totalRevenue / dayOfMonth;
         if (avgDailySales < 10000 && dayOfMonth > 7) {
-            suggestions.push({
-                icon: '🎯',
-                text: t('ui.analytics.tip_low_daily_sales', { amount: formatCurrency(avgDailySales) })
-            });
+            // Paise below ₹100, so ₹10 over 25 days reads ₹0.40, not ₹0
+            suggestions.push({ icon: '🎯', text: t('ui.analytics.tip_low_daily_sales', { amount: formatCurrency(avgDailySales, { small: true }) }) });
         }
 
-        // Stock suggestions
-        const lowStockItems = Object.entries(AppState.stock || {})
-            .filter(([_, data]) => (data.quantity || 0) < 10)
-            .map(([item]) => item);
-        
-        if (lowStockItems.length > 0) {
+        // Low stock: item names (not ids), only items whose stock was ever set
+        const low = lowStockItems(AppState.stock || {}, AppState.items || [],
+            stockedItemKeys({ purchases: AppState.purchaseHistory, stockAdjustments: AppState.stockAdjustments }, AppState.items, AppState.stock), { lang: getLang() });
+        if (low.length > 0) {
+            const names = low.slice(0, 3).map(r => r.name).join(', ');
             suggestions.push({
                 icon: '📦',
-                text: t('ui.analytics.tip_low_stock', { items: lowStockItems.slice(0, 3).join(', ') + (lowStockItems.length > 3 ? t('ui.analytics.and_more', { count: lowStockItems.length - 3 }) : '') })
+                text: t('ui.analytics.tip_low_stock', { items: names + (low.length > 3 ? t('ui.analytics.and_more', { count: low.length - 3 }) : '') })
             });
         }
 
@@ -857,7 +847,6 @@ export class AnalyticsManager {
                 text: t('ui.analytics.tip_all_good')
             });
         }
-
         container.innerHTML = suggestions.map(s => `
             <div style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.2);">
                 <div style="font-size: 20px;">${s.icon}</div>

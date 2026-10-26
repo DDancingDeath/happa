@@ -20,6 +20,15 @@
     margin: 0 0 16px 0;
 }
 
+/* Titles on the coloured cards (cash prediction, suggestions): plain white, not gradient text */
+#analytics .settings-card h3.analytics-title-light {
+    background: none;
+    -webkit-text-fill-color: #fff;
+    color: #fff;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
 /* Prediction Card Grid - Mobile */
 @media (max-width: 480px) {
     #analytics .settings-card > div[style*="grid-template-columns: repeat(3"] {
@@ -166,4 +175,13 @@
 #analytics .stat-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* "Cost not known" note under a margin (F14) */
+.margin-cost-note {
+    display: block;
+    font-size: 11px;
+    color: #b45309;
+    margin-top: 4px;
+    line-height: 1.3;
 }

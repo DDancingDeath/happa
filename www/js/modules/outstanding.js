@@ -10,7 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { openingAmount, openingOldTotals, readPayment, round2 } from '../utils/money.js';
+import { formatAmount, formatRupees, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2 } from '../utils/money.js';
 import { parseAnyBillDate, todayLocalISO } from '../utils/dates.js';
 import { checkPaymentSplit, directionFor } from '../utils/due-payments.js';
 import { CashManagementManager } from './cash-management.js';
@@ -204,6 +204,7 @@ export class OutstandingManager {
         const bgColor = '#d1ecf1';
         const borderColor = '#17a2b8';
         const tt = (key, params) => Helpers.escapeHtml(t(key, params));
+        const esc = (v) => Helpers.escapeHtml(v);
         const totalLabel = tt(isPurchase ? 'ui.outstanding.total_payable' : 'ui.outstanding.total_receivable');
         const paidLabel = tt(isPurchase ? 'ui.outstanding.paid' : 'ui.outstanding.received');
 
@@ -221,23 +222,23 @@ export class OutstandingManager {
             
             div.innerHTML = `
                 <div class="history-header">
-                    <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" onclick="window.app.outstanding.showDetails('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')">#${Helpers.escapeHtml(billNumber)}</span>${transaction.customerName ? `  <strong>${Helpers.escapeHtml(transaction.customerName)}</strong>` : ''}
-                    <span style="color: ${headerColor}; font-weight: 700;">${tt('ui.outstanding.due_amount', { amount: Math.round(transaction.outstanding) })}</span>
+                    <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" onclick="window.app.outstanding.showDetails('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')">#${Helpers.escapeHtml(billNumber)}</span>${isOpeningRecord(transaction) ? ` <span class="old-app-chip">${tt('ui.history.old_app_chip')}</span>` : ''}${transaction.customerName ? `  <strong>${Helpers.escapeHtml(transaction.customerName)}</strong>` : ''}
+                    <span style="color: ${headerColor}; font-weight: 700;">${tt('ui.outstanding.due_amount', { amount: formatAmount(transaction.outstanding) })}</span>
                 </div>
                 <div class="history-date">${Helpers.formatDate(transaction.date)}${transaction.createdByName ? ` • ${tt('ui.outstanding.by')} <strong>${Helpers.escapeHtml(transaction.createdByName)}</strong>` : ''} ${ageBadge}</div>
-                ${openingOldTotals(transaction) ? `<div class="history-date">${tt('ui.outstanding.opening_balance', { total: Math.round(openingOldTotals(transaction).total), paid: Math.round(openingOldTotals(transaction).paid) })}</div>` : ''}
+                ${openingOldTotals(transaction) ? `<div class="history-date">${tt('ui.outstanding.opening_balance', { total: formatAmount(openingOldTotals(transaction).total), paid: formatAmount(openingOldTotals(transaction).paid) })}</div>` : ''}
                 <div style="background: ${bgColor}; border-left: 4px solid ${borderColor}; padding: 12px; margin: 12px 0; border-radius: 4px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                         <span>${totalLabel}:</span>
-                        <strong>₹${Math.round(transaction.totalAmount)}</strong>
+                        <strong>${esc(formatRupees(transaction.totalAmount))}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                         <span>${paidLabel}:</span>
-                        <strong>₹${Math.round(transaction.paidAmount)}</strong>
+                        <strong>${esc(formatRupees(transaction.paidAmount))}</strong>
                     </div>
                     <div style="display: flex; justify-content: space-between; border-top: 2px solid ${borderColor}; padding-top: 6px; margin-top: 6px;">
                         <span style="font-weight: 600;">${tt('ui.outstanding.outstanding_label')}</span>
-                        <strong style="color: ${headerColor}; font-size: 16px;">₹${Math.round(transaction.outstanding)}</strong>
+                        <strong style="color: ${headerColor}; font-size: 16px;">${esc(formatRupees(transaction.outstanding))}</strong>
                     </div>
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <label style="flex-shrink: 0;">${tt(isPurchase ? 'ui.outstanding.pay_label' : 'ui.outstanding.received_label')}</label>

@@ -24,7 +24,7 @@ const rupees = (n, { paise = false } = {}) => {
     return `${n < 0 && (paise ? abs >= 0.005 : Math.round(abs) > 0) ? '-' : ''}₹${text}`;
 };
 const qtyText = (q) => (Number(q) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
-const dateText = (ms) => (ms == null ? '' : new Date(ms).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+const dateText = (ms) => (ms == null ? '' : Helpers.formatDate(ms));
 
 const BILL_TYPE_KEYS = { retail: 'ui.finance.bill_retail', wholesale: 'ui.finance.bill_wholesale', purchase: 'ui.finance.bill_purchase' };
 const ADJ_KEYS = { add: 'ui.finance.adj_add', remove: 'ui.finance.adj_remove', set: 'ui.finance.adj_set' };

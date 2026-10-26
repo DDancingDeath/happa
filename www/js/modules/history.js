@@ -26,6 +26,7 @@ import { todayLocalISO } from '../utils/dates.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
+import { formatAmount, formatRupees, isOpeningRecord, openingAmount } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', retail: 'ui.history.noun_retail', wholesale: 'ui.history.noun_wholesale' };
@@ -373,14 +374,14 @@ export class HistoryManager {
         const paymentParts = [];
         // Handle both old and new payment structures with color coding
         if (bill.payment) {
-            if (bill.payment.online > 0) paymentParts.push(`<span class="payment-badge payment-online">${L('ui.history.badge_online', { amount: Math.round(bill.payment.online) })}</span>`);
-            if (bill.payment.cash > 0) paymentParts.push(`<span class="payment-badge payment-cash">${L('ui.history.badge_cash', { amount: Math.round(bill.payment.cash) })}</span>`);
-            if (bill.payment.due > 0) paymentParts.push(`<span class="payment-badge payment-due">${L('ui.history.badge_due', { amount: Math.round(bill.payment.due) })}</span>`);
+            if (bill.payment.online > 0) paymentParts.push(`<span class="payment-badge payment-online">${L('ui.history.badge_online', { amount: formatAmount(bill.payment.online) })}</span>`);
+            if (bill.payment.cash > 0) paymentParts.push(`<span class="payment-badge payment-cash">${L('ui.history.badge_cash', { amount: formatAmount(bill.payment.cash) })}</span>`);
+            if (bill.payment.due > 0) paymentParts.push(`<span class="payment-badge payment-due">${L('ui.history.badge_due', { amount: formatAmount(bill.payment.due) })}</span>`);
         } else {
             // Fallback to old direct fields
-            if (bill.onlinePayment > 0) paymentParts.push(`<span class="payment-badge payment-online">${L('ui.history.badge_online', { amount: Math.round(bill.onlinePayment) })}</span>`);
-            if (bill.cashPayment > 0) paymentParts.push(`<span class="payment-badge payment-cash">${L('ui.history.badge_cash', { amount: Math.round(bill.cashPayment) })}</span>`);
-            if (bill.dueAmount > 0) paymentParts.push(`<span class="payment-badge payment-due">${L('ui.history.badge_due', { amount: Math.round(bill.dueAmount) })}</span>`);
+            if (bill.onlinePayment > 0) paymentParts.push(`<span class="payment-badge payment-online">${L('ui.history.badge_online', { amount: formatAmount(bill.onlinePayment) })}</span>`);
+            if (bill.cashPayment > 0) paymentParts.push(`<span class="payment-badge payment-cash">${L('ui.history.badge_cash', { amount: formatAmount(bill.cashPayment) })}</span>`);
+            if (bill.dueAmount > 0) paymentParts.push(`<span class="payment-badge payment-due">${L('ui.history.badge_due', { amount: formatAmount(bill.dueAmount) })}</span>`);
         }
         const paymentHTML = paymentParts.length > 0 ? `
             <div class="history-payment">
@@ -390,18 +391,19 @@ export class HistoryManager {
         
         // Use billNumber if available, otherwise generate short number from ID
         const billNumber = bill.billNumber || (typeof bill.id === 'string' ? bill.id.substring(0, 8) : bill.id);
-        const billTotal = bill.grandTotal || bill.amountPayable || bill.saleTotal || bill.total || 0;
+        const opening = isOpeningRecord(bill);
+        const billTotal = opening ? openingAmount(bill) : (bill.grandTotal || bill.amountPayable || bill.saleTotal || bill.total || 0);
         const formattedDate = Helpers.formatDateTime(billDateOf(bill) || bill.date);
         const itemColor = (bill.type === 'retail' || bill.type === 'wholesale') ? '#28a745' : '#007bff';
         
         div.innerHTML = `
             <div class="history-header">
                 <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" onclick="window.app.history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')">#${Helpers.escapeHtml(billNumber)}</span>${bill.customerName ? ` <strong>${Helpers.escapeHtml(bill.customerName)}</strong>` : ''}
-                <span style="color: ${itemColor}; font-weight: 700;">₹ ${Math.round(billTotal)}</span>
+                <span style="color: ${itemColor}; font-weight: 700;">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span> ` : ''}${Helpers.escapeHtml(formatRupees(billTotal))}</span>
             </div>
             <div class="history-date">${formattedDate}${bill.createdByName || bill.userName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(bill.createdByName || bill.userName)}</strong>` : ''}</div>
             <div class="history-summary">
-                ${Helpers.escapeHtml(bill.items.map(item => item.name).join(', '))} • ${Helpers.escapeHtml(tn('ui.history.n_packets', totalPackets))}
+                ${opening ? L('ui.history.opening_summary') : `${Helpers.escapeHtml(bill.items.map(item => item.name).join(', '))} • ${Helpers.escapeHtml(tn('ui.history.n_packets', totalPackets))}`}
             </div>
             ${paymentHTML}
         `;

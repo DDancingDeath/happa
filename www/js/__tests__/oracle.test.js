@@ -96,7 +96,7 @@ function outstandingScreenByParty(filter) {
     const out = {};
     document.querySelectorAll('#dueList .history-item').forEach(row => {
         const name = row.querySelector('.history-header strong')?.textContent || '';
-        const due = Number(row.querySelector('.history-header').textContent.match(/Due: ₹(\d+)/)[1]);
+        const due = Number(row.querySelector('.history-header').textContent.match(/Due: ₹([\d,]+)/)[1].replace(/,/g, ''));
         out[name] = (out[name] || 0) + due;
     });
     return out;

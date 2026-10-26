@@ -45,7 +45,7 @@ describe('bill rules', () => {
             flags: [{ rule: 'oversell', en: 'Rice: selling 10 kg, only 2 kg', hi: 'h', by: 'u1', at: T(11) }],
             overrides: [{ rule: 'oversell', reason: 'truck unloading', by: 'own1', at: T(11) }]
         });
-        const list = run({ bills: { retail: [b] } });
+        const list = run({ bills: { retail: [b] }, stock: { rice: { quantity: 2, rate: 30 } } });
         expect(types(list)).toEqual(['override', 'oversell']);
         const ov = list.find(a => a.type === 'override');
         expect(ov.id).toBe(anomalyId('override', 'bill', 'b1'));
@@ -55,6 +55,17 @@ describe('bill rules', () => {
         expect(list.find(a => a.type === 'oversell').en).toBe('Rice: selling 10 kg, only 2 kg');
     });
 
+    test('F15: "sold more than stock" is left out until stock of the item was first set', () => {
+        const b = bill({ flags: [{ rule: 'oversell', en: 'Rice: selling 10 kg, only 0 kg', hi: 'h', by: 'u1', at: T(11) }] });
+        expect(types(run({ bills: { retail: [b] } }))).toEqual([]);
+        const opening = { id: 'a1', itemId: 'rice', itemName: 'Rice', adjustType: 'set', quantity: 50, rate: 30, reasonCode: 'opening', timestamp: T(12) };
+        const oversells = (input) => types(run(input)).filter(x => x === 'oversell');
+        expect(oversells({ bills: { retail: [b] }, adjustments: [opening] })).toEqual([]);
+        const earlier = { ...opening, timestamp: T(9) };
+        expect(oversells({ bills: { retail: [b] }, adjustments: [earlier] })).toEqual(['oversell']);
+        const bought = { id: 'p1', items: [{ itemId: 'rice', name: 'Rice', qty: 5, rate: 30, total: 150 }], grandTotal: 150, total: 150, payment: { cash: 150 }, timestamp: T(8), date: new Date(T(8)).toISOString() };
+        expect(oversells({ bills: { retail: [b], purchase: [bought] } })).toEqual(['oversell']);
+    });
     test('re-check: payment that does not match the total (write-off still counts as paid)', () => {
         const bad = bill({ payment: { cash: 300, online: 0, due: 0 } });
         expect(types(run({ bills: { retail: [bad] } }))).toEqual(['payment-split']);

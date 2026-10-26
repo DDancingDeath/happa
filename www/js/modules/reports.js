@@ -2,6 +2,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
+import { normalizePartyName, partyDisplayNames } from '../utils/aging.js';
 import { activityBills, readPayment, outstandingDue, readLineItem, perUnitRate, billTotal } from '../utils/money.js';
 import { FinanceManager } from './finance.js';
 import { todayLocalISO, parseLocalDate, parseAnyBillDate } from '../utils/dates.js';
@@ -291,11 +292,10 @@ export class ReportsManager {
         if (purchaseCustomerFilter) {
             const currentValue = purchaseCustomerFilter.value;
             purchaseCustomerFilter.innerHTML = `<option value="all">${tx('ui.reports.all_suppliers')}</option>`;
-            const uniqueCustomers = [...new Set(purchaseHistory.map(p => p.customerName).filter(c => c))];
-            uniqueCustomers.forEach(customer => {
+            partyDisplayNames(purchaseHistory.map(p => p.customerName)).forEach((name, key) => {
                 const opt = document.createElement('option');
-                opt.value = customer;
-                opt.textContent = customer;
+                opt.value = key;
+                opt.textContent = name;
                 purchaseCustomerFilter.appendChild(opt);
             });
             purchaseCustomerFilter.value = currentValue || 'all';
@@ -320,11 +320,10 @@ export class ReportsManager {
         if (salesCustomerFilter) {
             const currentValue = salesCustomerFilter.value;
             salesCustomerFilter.innerHTML = `<option value="all">${tx('ui.reports.all_customers')}</option>`;
-            const uniqueCustomers = [...new Set(allSalesHistory.map(s => s.customerName).filter(c => c))];
-            uniqueCustomers.forEach(customer => {
+            partyDisplayNames(allSalesHistory.map(s => s.customerName)).forEach((name, key) => {
                 const opt = document.createElement('option');
-                opt.value = customer;
-                opt.textContent = customer;
+                opt.value = key;
+                opt.textContent = name;
                 salesCustomerFilter.appendChild(opt);
             });
             salesCustomerFilter.value = currentValue || 'all';
@@ -348,7 +347,7 @@ export class ReportsManager {
                 if (!hasItem) return false;
             }
             if (this.reportFilters.purchaseCustomer !== 'all') {
-                if (p.customerName !== this.reportFilters.purchaseCustomer) return false;
+                if (normalizePartyName(p.customerName) !== this.reportFilters.purchaseCustomer) return false;
             }
             return true;
         });
@@ -361,7 +360,7 @@ export class ReportsManager {
                 if (!hasItem) return false;
             }
             if (this.reportFilters.salesCustomer !== 'all') {
-                if (s.customerName !== this.reportFilters.salesCustomer) return false;
+                if (normalizePartyName(s.customerName) !== this.reportFilters.salesCustomer) return false;
             }
             return true;
         });
@@ -438,7 +437,8 @@ export class ReportsManager {
         const totalPurchases = filteredPurchases.reduce((sum, p) => sum + billTotal(p), 0);
         const totalSales = filteredSales.reduce((sum, s) => sum + (s.total || s.grandTotal || 0), 0);
         const totalVolume = totalPurchases + totalSales;
-        const profit = this.periodProfit();
+        const periodSummary = FinanceManager.profitSummary(this.getRange());
+        const profit = periodSummary.profit;
         const profitMargin = profit === null ? '—' : totalSales > 0 ? ((profit / totalSales) * 100).toFixed(1) : 0;
         const totalLabor = filteredPurchases.reduce((sum, p) => sum + (p.laborCharges || 0), 0) +
                           filteredSales.reduce((sum, s) => sum + (s.laborCharges || 0), 0);
@@ -472,6 +472,7 @@ export class ReportsManager {
         this.safeUpdateText('reportsSaleCount', filteredSales.length);
         this.safeUpdateText('reportsGrossProfit', profit === null ? '—' : this.formatNumber(Math.round(profit)));
         this.safeUpdateText('reportsProfitMargin', profitMargin);
+        FinanceManager.showMarginNote('reportsMarginNote', periodSummary);
         this.safeUpdateText('reportsTotalLabor', this.formatNumber(totalLabor));
         this.safeUpdateText('reportsCashPayment', this.formatNumber(totalCash));
         this.safeUpdateText('reportsOnlinePayment', this.formatNumber(totalOnline));

@@ -33,6 +33,34 @@ export function toMoney(v) {
     return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Amount with Indian digit grouping and no ₹ sign ("2,50,000"), for texts whose
+ * template already has the ₹. Whole rupees unless `decimals` is set;
+ * `small: true` shows paise below ₹100 so ₹0.40 is not shown as ₹0.
+ * @param {*} amount
+ * @param {{decimals?: number, small?: boolean}} [opts]
+ * @returns {string}
+ */
+export function formatAmount(amount, { decimals = 0, small = false } = {}) {
+    const n = Number(amount);
+    const v = Number.isFinite(n) ? n : 0;
+    let digits = decimals;
+    if (small && !decimals && Math.abs(v) < 100 && Math.abs(round2(v) - Math.round(v)) >= 0.005) digits = 2;
+    const shown = digits ? round2(v) : Math.round(v);
+    return (Object.is(shown, -0) ? 0 : shown).toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+/**
+ * The app's one currency format: "₹2,50,000", "-₹500" (options as formatAmount).
+ * @param {*} amount
+ * @param {{decimals?: number, small?: boolean}} [opts]
+ * @returns {string}
+ */
+export function formatRupees(amount, opts) {
+    const text = formatAmount(amount, opts);
+    return text.startsWith('-') ? `-₹${text.slice(1)}` : `₹${text}`;
+}
+
 /** First value that is present and numeric (0 counts as present). */
 function firstPresent(...values) {
     for (const v of values) {

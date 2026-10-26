@@ -430,7 +430,7 @@ export const DayManager = {
 
         container.innerHTML = transactions.map(t => {
             const time = parseAnyBillDate(t.date);
-            const timeStr = time ? time.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+            const timeStr = time ? Helpers.formatTime(time) : '';
             
             return `
                 <div style="display: flex; align-items: center; gap: 12px; padding: 12px; border-bottom: 1px solid #f3f4f6;">

@@ -138,7 +138,7 @@ export const HealthManager = {
         const status = document.getElementById('healthStatus');
         if (status) {
             status.textContent = t('ui.health.updated', {
-                time: new Date(at || Date.now()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                time: Helpers.formatTime(at || Date.now()),
                 docs: docs.length
             });
         }
@@ -199,7 +199,7 @@ export const HealthManager = {
         if (!failures || !failures.length) return '';
         const reasons = tipReasons();
         return `<div class="health-failures">${failures.map(f => {
-            const when = Number(f.at) ? new Date(Number(f.at)).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+            const when = Number(f.at) ? Helpers.formatDateTime(Number(f.at)) : '';
             const resultKey = RESULT_LABEL_KEYS[f.result];
             const flags = Object.entries(f.flags || {}).map(([k, v]) => `${k}=${v}`).join(', ');
             return `<div class="health-failure">

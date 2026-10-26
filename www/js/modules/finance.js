@@ -10,7 +10,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
 import { billTotal, outstandingDue, round2 } from '../utils/money.js';
 import { computeFinanceSummary, pickReplayBase } from '../utils/finance-calc.js';
-import { todayLocalISO, parseLocalDate, parseAnyBillDate, toLocalISODate } from '../utils/dates.js';
+import { todayLocalISO, parseLocalDate, parseAnyBillDate, toLocalISODate, formatDay } from '../utils/dates.js';
 import {
     rangeStatus, retryRange, applyRangeState, isFullHistoryLoaded, needsHistoryFrom,
     ensureHistoryFrom, historyLoadedFrom, monthStart
@@ -349,8 +349,8 @@ export class FinanceManager {
             case 'year': return t('ui.finance.period_year');
             case 'custom': 
                 if (this.customStartDate && this.customEndDate) {
-                    const start = parseLocalDate(this.customStartDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-                    const end = parseLocalDate(this.customEndDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                    const start = formatDay(parseLocalDate(this.customStartDate), { lang: getLang(), year: false });
+                    const end = formatDay(parseLocalDate(this.customEndDate), { lang: getLang(), year: false });
                     return `${start} - ${end}`;
                 }
                 return t('ui.finance.period_custom');
@@ -524,6 +524,20 @@ export class FinanceManager {
         return u.estimate > 0
             ? t('ui.finance.uncosted_warning', { qty, amount: Math.round(u.estimate).toLocaleString('en-IN') })
             : t('ui.finance.uncosted_warning_unknown', { qty });
+    }
+
+    /**
+     * Shows the "cost not known" note under a margin (Reports, Analytics) when some
+     * goods were sold before their purchase was recorded, so the margin is too high.
+     * @param {string} id element id
+     * @param {?Object} summary computeFinanceSummary result
+     */
+    static showMarginNote(id, summary) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const show = !!summary?.uncostedWarning;
+        el.textContent = show ? `⚠️ ${this.uncostedText(summary.stock.uncosted)}` : '';
+        el.style.display = show ? 'block' : 'none';
     }
 
     /** Filter state the dashboard depends on (besides data). */
@@ -1185,7 +1199,7 @@ export class FinanceManager {
         
         let html = '<div class="withdrawal-list">';
         sorted.forEach(w => {
-            const date = new Date(w.date).toLocaleDateString(getLang() === 'hi' ? 'hi-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            const date = Helpers.formatDate(parseAnyBillDate(w.date));
             html += `
                 <div class="withdrawal-item">
                     <div class="withdrawal-info">
