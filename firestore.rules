@@ -675,17 +675,22 @@ service cloud.firestore {
             && rentStr(d, 'name', 1, 80) && rentStr(d, 'address', 0, 200) && rentStr(d, 'notes', 0, 500)
             && d.get('kind', 'other') in ['house', 'shop', 'flat', 'plot', 'godown', 'other']
           : base == 'rent_units'
-          ? d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId', 'lastReading', 'meterRate', 'meterCharge'].concat(rentMeta()))
+          ? d.keys().hasOnly(['propertyId', 'label', 'rent', 'leaseId', 'lastReading', 'meterRate', 'meterCharge',
+                              'type', 'area', 'floor'].concat(rentMeta()))
+            && rentUnitExtrasOk(d)
             && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'label', 1, 60) && rentMoney(d, 'rent')
             && (d.get('leaseId', null) == null || rentStr(d, 'leaseId', 1, 64))
             && rentNumOrNull(d, 'lastReading') && rentNumOrNull(d, 'meterRate')
             && (d.get('meterCharge', null) == null || rentStr(d, 'meterCharge', 1, 80))
           : base == 'rent_tenants'
-          ? d.keys().hasOnly(['name', 'phone', 'notes'].concat(rentMeta()))
+          ? d.keys().hasOnly(['name', 'phone', 'phone2', 'notes'].concat(rentMeta()))
             && rentStr(d, 'name', 1, 80) && rentStr(d, 'phone', 0, 20) && rentStr(d, 'notes', 0, 500)
+            && (resource == null || d.get('phone', '') != resource.data.get('phone', '') ? rentMobile(d.get('phone', null)) : true)
+            && (d.get('phone2', null) == null || rentMobile(d.phone2))
           : base == 'rent_leases'
           ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
-                              'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken'].concat(rentMeta()))
+                              'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken',
+                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo'].concat(rentMeta()))
             && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
             && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
             && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
@@ -696,18 +701,46 @@ service cloud.firestore {
             && (!('increasePct' in d) || (d.increasePct is number && d.increasePct >= 0 && d.increasePct <= 100))
             && (!('rentSince' in d) || rentMonth(d.rentSince))
             && (d.get('shareToken', null) == null || rentShareToken(d.shareToken))
+            && (!('startDate' in d) || (rentDate(d.startDate) && d.startDate[0:7] == d.startMonth))
+            && d.get('proRate', false) is bool
+            // firstRent <= rent only when the lease is created; afterwards firstRent is fixed
+            // and the rent may go down (rentLeaseUpdateOk keeps firstRent unchanged).
+            && (d.get('firstRent', null) == null || (d.firstRent is number && d.firstRent >= 0 && (resource != null || d.firstRent <= d.rent)))
+            && d.get('elecMode', 'meter') in ['included', 'meter', 'own']
+            && (d.get('meterNo', null) == null || rentStr(d, 'meterNo', 1, 40))
           : false);
+    }
+
+    // 10-digit Indian mobile (WhatsApp reminders), stored without +91.
+    function rentMobile(v) {
+      return v is string && v.matches('^[6-9][0-9]{9}$');
+    }
+
+    function rentDate(v) {
+      return v is string && v.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$');
     }
 
     function rentShareToken(t) {
       return t is string && t.matches('^[A-Za-z0-9_-]{22,64}$');
     }
 
+    // Unit type (flat / commercial / office / godown / other), optional size (sq ft) and floor.
+    // Units saved before types existed have no type (shown as flats until set).
+    function rentUnitExtrasOk(d) {
+      return (!('type' in d) || d.type in ['flat', 'commercial', 'office', 'godown', 'other'])
+        && (d.get('area', null) == null || (d.area is number && d.area > 0 && d.area <= 1000000))
+        && (d.get('floor', null) == null || rentStr(d, 'floor', 1, 20));
+    }
+
     // New leases start active, with no charges and no tenant link, and take their unit in the same write.
     function rentLeaseCreateOk(usersCol, docId) {
       let d = request.resource.data;
-      return d.get('chargedThrough', null) == null && d.get('shareToken', null) == null
+      return d.get('shareToken', null) == null
         && d.get('status', '') == 'active' && d.get('endMonth', null) == null
+        // No charges yet, or the first month's charge written in the same batch (move-in).
+        && (d.get('chargedThrough', null) == null
+            || (d.chargedThrough == d.startMonth && d.startMonth <= rentThisMonth()
+                && existsAfter(rentChargePath(usersCol, docId, d.startMonth))))
         && getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data.get('leaseId', null) == docId;
     }
 
@@ -727,6 +760,8 @@ service cloud.firestore {
       let next = d.get('chargedThrough', null);
       return validRentDoc('rent_leases') && rentCreationKept()
         && d.startMonth == r.startMonth && d.unitId == r.unitId && d.tenantId == r.tenantId
+        && d.get('startDate', null) == r.get('startDate', null) && d.get('firstRent', null) == r.get('firstRent', null)
+        && d.get('proRate', false) == r.get('proRate', false)
         && (d.get('shareToken', null) == r.get('shareToken', null) || mgr)
         && (r.status == 'ended'
           ? d.status == 'ended' && d.get('endMonth', null) == r.get('endMonth', null) && next == before
@@ -791,14 +826,20 @@ service cloud.firestore {
         && docId == d.leaseId + '_' + d.month
         && lease.status == 'active'
         && lease.get('chargedThrough', null) == d.month
-        && get(rentLeasePath(usersCol, d.leaseId)).data.get('chargedThrough', null) != d.month
+        && (!exists(rentLeasePath(usersCol, d.leaseId))
+            || get(rentLeasePath(usersCol, d.leaseId)).data.get('chargedThrough', null) != d.month)
         && d.get('unitId', '') == lease.unitId && d.get('tenantId', '') == lease.tenantId
         && d.get('propertyId', '') == lease.propertyId && d.get('dueDay', 0) == lease.dueDay
-        && d.get('amount', null) == lease.rent && d.get('rent', null) == lease.rent
+        && d.get('amount', null) == rentMonthRent(lease, d.month) && d.get('rent', null) == rentMonthRent(lease, d.month)
         && d.get('electricity', null) == null
         && d.get('paid', null) == 0 && d.get('payments', null) == []
         && d.get('open', null) == (lease.rent > 0)
         && rentStr(d, 'tenantName', 0, 80) && rentStr(d, 'unitLabel', 0, 60);
+    }
+
+    // The rent of a month: a pro-rated first month (firstRent, set at move-in) or the lease rent (RENT-11).
+    function rentMonthRent(lease, month) {
+      return month == lease.startMonth && lease.get('firstRent', null) != null ? lease.firstRent : lease.rent;
     }
 
     // Σ amount of up to 12 payment entries (rules have no loops; a charge holds at most 12).
@@ -850,9 +891,11 @@ service cloud.firestore {
       let e = d.get('electricity', null);
       let old = r.get('electricity', null);
       let unit = get(rentPath(usersCol, 'rent_units', r.unitId)).data;
+      let leaseMode = get(rentLeasePath(usersCol, r.leaseId)).data.get('elecMode', 'meter');
       let unitAfter = getAfter(rentPath(usersCol, 'rent_units', r.unitId)).data;
       return d.diff(r).affectedKeys().hasOnly(['electricity', 'amount', 'open', 'updatedAt', 'updatedBy'])
         && rentWriterOk()
+        && leaseMode == 'meter'
         && e is map && e.keys().hasOnly(['prev', 'curr', 'rate', 'units', 'amount'])
         && e.get('prev', null) is number && e.get('curr', null) is number && e.get('rate', null) is number
         && e.get('units', null) is number && e.get('amount', null) is number
@@ -908,12 +951,24 @@ service cloud.firestore {
       return canWriteRent(usersCol)
         && (base == 'rent_charges' ? validRentChargeCreate(usersCol, docId)
           : base == 'rent_leases' ? validRentDoc(base) && rentLeaseCreateOk(usersCol, docId)
-          : base == 'rent_units' ? validRentDoc(base) && request.resource.data.get('leaseId', null) == null
-            && request.resource.data.get('lastReading', null) == null && request.resource.data.get('meterCharge', null) == null
+          : base == 'rent_units' ? validRentDoc(base) && rentUnitCreateLeaseOk(usersCol, docId)
+            && request.resource.data.get('type', '') in ['flat', 'commercial', 'office', 'godown', 'other']
+            && request.resource.data.get('meterCharge', null) == null
           : validRentDoc(base));
     }
 
     // The caller's rentals role is read once per rule (rules have an expression budget).
+    // A new unit is vacant, or occupied by a lease created in the same batch
+    // (Add unit with its tenant). An opening meter reading is allowed.
+    function rentUnitCreateLeaseOk(usersCol, docId) {
+      let l = request.resource.data.get('leaseId', null);
+      return l == null
+        || (rentStr(request.resource.data, 'leaseId', 1, 64)
+            && !exists(rentLeasePath(usersCol, l))
+            && getAfter(rentLeasePath(usersCol, l)).data.unitId == docId
+            && getAfter(rentLeasePath(usersCol, l)).data.status == 'active');
+    }
+
     function rentUpdateOk(base, usersCol, docId) {
       let role = rentRoleIn(usersCol);
       let mgr = role in ['owner', 'manager'];
@@ -945,7 +1000,10 @@ service cloud.firestore {
       let d = request.resource.data;
       return rentRoleIn(usersCol) != ''
         && rentShareToken(token)
-        && d.keys().hasOnly(['lid', 'v', 'shop', 'tenant', 'place', 'rent', 'dueDay', 'ended', 'endMonth', 'months', 'updatedAt'])
+        && d.keys().hasOnly(['lid', 'v', 'shop', 'tenant', 'place', 'ut', 'since', 'em', 'rent', 'dueDay', 'ended', 'endMonth', 'months', 'updatedAt'])
+        && (!('since' in d) || rentDate(d.since))
+        && (!('em' in d) || d.em in ['included', 'meter', 'own'])
+        && (!('ut' in d) || d.ut in ['flat', 'commercial', 'office', 'godown', 'other'])
         && rentStr(d, 'lid', 1, 64)
         && getAfter(rentLeasePath(usersCol, d.lid)).data.get('shareToken', null) == token
         && d.get('v', 0) == 1

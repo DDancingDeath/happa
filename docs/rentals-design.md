@@ -256,7 +256,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1 + owner answers + tenant link): rentals files 82 KB uncompressed (23 KB gzip) on a 2.6 MB precache (+3.2 %), plus the 3.7 KB switcher that start-up loads. Downloaded once per app version in the background, never at start-up. The tenant page (≈ 14 KB) is not precached | Budget: rentals files ≤ 100 KB uncompressed (raised from 80 KB for the owner's phase 1 additions); `rentals-startup.test.js` fails above it |
+| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit): rentals files 123 KB uncompressed (35 KB gzip), about +5 % of the precache, plus the 3.7 KB switcher that start-up loads. Downloaded once per app version in the background, never at start-up. The tenant page (≈ 15 KB) is not precached | Budget: rentals files ≤ 130 KB uncompressed (raised from 80 → 100 → 120 → 130 KB as the owner added features); `rentals-startup.test.js` fails above it |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -419,3 +419,73 @@ and units keep their own electricity rate. Rules: rentals roles read; owner and 
 managers create/update (`docId == 'default'`, field allow-list and ranges, `updatedBy` =
 writer); the owner deletes. Hard limits (100 properties, 20 units each, 24 months of
 back-charges) stay fixed: they size the listeners and the rules.
+
+## 9. Unit types and property-wise / unit-wise views (owner, 2026-10-26)
+
+Owner: *"we have multiple properties, and in each property we have flats and
+commercial spaces. I should be able to see property-wise or unit-wise."*
+
+- **Unit type** on `rent_units.type`: `flat` (Flat / फ़्लैट), `commercial` (Commercial /
+  shop space / दुकान/कमर्शियल), `office` (ऑफ़िस), `godown` (गोदाम), `other` (अन्य).
+  Required when a unit is created; editable; units saved earlier have no type and
+  count as Flat until someone sets one. Optional `area` (sq ft, > 0, ≤ 1,000,000) and
+  `floor` (≤ 20 characters). Rules check the enum and limits (tests for prod and
+  `dev_`).
+- **Rent page switch** "Property wise | Unit wise", remembered per device
+  (`localStorage['happa.rentView']`), Property wise by default.
+  - **Property wise:** page totals, then one card per property: units by type
+    ("6 flats · 3 commercial"), occupied / vacant, late count, this month's rent /
+    collected / pending. Tapping a card shows the property's totals and its units
+    grouped by type, each with tenant, rent, status (Paid / Part paid / Due / Late /
+    Vacant), amount due, open months and quick actions (record payment, WhatsApp
+    reminder, meter reading).
+  - **Unit wise:** every unit across properties with filters (property, type,
+    status: occupied / vacant / late / due), search (unit, tenant, property) and sort
+    by amount due; totals of the shown rows. Filters redraw only the list.
+  - Tenants who moved out and still owe rent are listed under both views.
+- **One calculation** (`js/rentals/rent-views.js`): `unitRows()` (RENT-10) and
+  `summarize()` (RENT-9). Every number on the page is a `summarize()` of unit rows,
+  so property cards add up to the page totals; tests (fixed cases and generated
+  data) also check the totals against RENT-1 / RENT-2 / RENT-4.
+- **Places read naturally:** "Flat 2B, Gupta Bhawan" / "Shop 3, Gupta Bhawan" (the
+  type word is skipped when the unit name already starts with it) in lists, the
+  move-in picker and the WhatsApp reminder. The tenant link stores the place without
+  the type word plus `ut`, and the page adds the word in its own language.
+- **Cost:** none extra — the views use the listeners Rentals already has
+  (properties, units, leases, this month's and open charges). Start-up is unchanged
+  (the rentals start-up guards still pass).
+
+## 9. Add unit with its tenant; start date; electricity (owner, 2026-10-26)
+
+Owner: *"while adding the unit, we should be adding the tenant of that unit"*, *"also
+if electricity is paid separately"*.
+
+- **Add unit** has a section "Tenant (if occupied)", shown by the toggle "Occupied —
+  add tenant now" (off = a Vacant unit, as before). **Add tenant** on a vacant unit
+  in the property view and **Move in** on the Tenants page open the same section.
+  Fields: new or existing tenant; name; **mobile number (required, 10-digit Indian
+  mobile, stored without +91; rules check it)** and an optional second number;
+  monthly rent; **start date** (date picker, today); "Pro-rate first month" (off);
+  due day (Rentals setting `rentDueDay`, else 10); yearly increase % (5); security
+  deposit (recorded on the lease only — not cash in the Aadhat drawer);
+  **Electricity**: *Included in rent* / *Meter, billed by us* / *Own meter (tenant
+  pays directly)* with an optional meter/consumer number; for a new unit billed by
+  meter, an opening reading and the rate (Rentals setting `rentMeterRate`).
+  Default electricity: meter when a rate is known, else included.
+- **One batch** (`rent-store.moveIn`): unit (new, or the vacant one), tenant (new),
+  lease (`startDate`, `startMonth`, `proRate`, `firstRent`, `elecMode`, `meterNo`)
+  and, when the start month has begun, the first month's charge with
+  `chargedThrough` set — all or nothing. A form error saves nothing.
+- **Rules:** a new unit may carry `leaseId` only for a lease created in the same
+  batch (`!exists` + `getAfter`); a new lease may have `chargedThrough ==
+  startMonth` only with that month's charge in the batch (`existsAfter`) and not in
+  the future; the charge amount is the lease rent, or `firstRent` for the start
+  month (≤ rent); `startDate` is a real date in `startMonth` and never changes;
+  `elecMode` ∈ included / meter / own; meter readings only when the lease is
+  `meter`; tenants need a valid mobile when created or when the number changes.
+- **Shown:** "Since dd/mm/yyyy" and the electricity tag (⚡ meter / ⚡ included /
+  ⚡ own meter) on tenant and unit rows; the tenant link shows "Tenant since …" and
+  the electricity note; the WhatsApp reminder header has "Tenant since …".
+- **Yearly increase** counts from the start date's anniversary (RENT-6). First month
+  full by default, optional pro-rating (RENT-11).
+

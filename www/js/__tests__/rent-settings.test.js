@@ -5,7 +5,8 @@
  */
 jest.mock('../rentals/rent-store.js', () => ({
     snapshot: jest.fn(), truncatedKeys: () => [], isAttached: () => false, attach: jest.fn(), detach: jest.fn(),
-    loadSettings: jest.fn(), saveSettings: jest.fn(async (v) => v), startLease: jest.fn(async () => 'L9'),
+    loadSettings: jest.fn(), saveSettings: jest.fn(async (v) => v),
+    moveIn: jest.fn(async () => ({ unitId: 'U1', tenantId: 'T1', leaseId: 'L9', charged: true })),
     makeShareLink: jest.fn(async () => 'tok'), updateLease: jest.fn(async () => {})
 }));
 jest.mock('../ui/business-switcher.js', () => ({ rentalsRole: jest.fn(() => 'manager') }));
@@ -43,8 +44,8 @@ async function moveInWith(settings) {
     const done = _test.moveIn('T1');
     await flush();
     const form = {
-        day: document.getElementById('rentLeaseDay').value,
-        pct: document.getElementById('rentLeasePct').value
+        day: document.getElementById('rentTDay').value,
+        pct: document.getElementById('rentTPct').value
     };
     RentalsModule.api.dialogClose(true);
     await done;
@@ -62,10 +63,10 @@ test('normalizeRentSettings: defaults when missing, invalid values fall back, te
 test('a new lease gets the Rentals defaults and, when on, a tenant link with the header', async () => {
     const form = await moveInWith({ dueDay: 5, increasePct: 7, tenantLink: true, receiptHeader: 'Sharma Rentals' });
     expect(form).toEqual({ day: '5', pct: '7' });
-    expect(store.startLease).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 'T1', rent: 4000, dueDay: 5, increasePct: 7 }));
+    expect(store.moveIn).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 'T1', lease: expect.objectContaining({ rent: 4000, dueDay: 5, increasePct: 7 }) }));
     expect(store.makeShareLink).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'L9', unitId: 'U1', dueDay: 5, status: 'active' }),
-        expect.objectContaining({ tenantName: 'Ram', shopName: 'Sharma Rentals' }));
+        expect.objectContaining({ id: 'L9', unitId: 'U1', tenantId: 'T1', dueDay: 5, status: 'active' }),
+        expect.objectContaining({ tenantName: 'Ram', place: expect.stringContaining('Gupta Bhawan'), shopName: 'Sharma Rentals' }));
     expect(SNAP.leases[0]).toMatchObject({ dueDay: 3, increasePct: 8 });
 });
 
@@ -80,16 +81,16 @@ test('settings unreadable: built-in defaults, the move-in still works', async ()
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     const done = _test.moveIn('T1');
     await flush();
-    expect(document.getElementById('rentLeaseDay').value).toBe('10');
+    expect(document.getElementById('rentTDay').value).toBe('10');
     RentalsModule.api.dialogClose(true);
     await done;
-    expect(store.startLease).toHaveBeenCalledWith(expect.objectContaining({ dueDay: 10, increasePct: 5 }));
+    expect(store.moveIn).toHaveBeenCalledWith(expect.objectContaining({ lease: expect.objectContaining({ dueDay: 10, increasePct: 5 }) }));
 });
 
 test('a rentals member moving a tenant in gets the defaults but makes no link', async () => {
     rentalsRole.mockReturnValue('member');
     await moveInWith({ dueDay: 7, tenantLink: true });
-    expect(store.startLease).toHaveBeenCalledWith(expect.objectContaining({ dueDay: 7 }));
+    expect(store.moveIn).toHaveBeenCalledWith(expect.objectContaining({ lease: expect.objectContaining({ dueDay: 7 }) }));
     expect(store.makeShareLink).not.toHaveBeenCalled();
 });
 

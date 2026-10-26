@@ -1,5 +1,5 @@
 import {
-    newShareToken, isShareToken, publicMonth, buildPublicSnapshot, withMonth, withLease, publicLink, PUBLIC_MONTHS
+    newShareToken, isShareToken, publicMonth, buildPublicSnapshot, withMonth, withLease, withNames, publicLink, PUBLIC_MONTHS
 } from '../rentals/rent-public.js';
 import { buildRentReminderText } from '../rentals/rent-math.js';
 
@@ -32,7 +32,7 @@ test('a month as the tenant sees it (RENT-8): rent, electricity, total, paid, da
 test('snapshot: only this lease, no phone or ids beyond the lease id, newest months kept', () => {
     const charges = [charge('2026-08'), charge('2026-09'), { ...charge('2026-09'), leaseId: 'OTHER' }];
     const s = buildPublicSnapshot({ lease, tenantName: 'Ram', place: 'Gali 2 · G1', shopName: 'Shop', charges, now: 1 });
-    expect(Object.keys(s).sort()).toEqual(['dueDay', 'endMonth', 'ended', 'lid', 'months', 'place', 'rent', 'shop', 'tenant', 'updatedAt', 'v']);
+    expect(Object.keys(s).sort()).toEqual(['dueDay', 'em', 'endMonth', 'ended', 'lid', 'months', 'place', 'rent', 'shop', 'tenant', 'updatedAt', 'v']);
     expect(s.months.map(m => m.m)).toEqual(['2026-08', '2026-09']);
     expect(JSON.stringify(s)).not.toMatch(/phone|tenantId|unitId|by"|byName|Asha/);
     let big = s;
@@ -49,6 +49,13 @@ test('updates: a payment replaces its month; move-out drops later months and mar
     expect(out).toMatchObject({ ended: true, endMonth: '2026-09' });
     expect(out.months.map(m => m.m)).toEqual(['2026-09']);
     expect(withLease(s, { ...lease, rent: 5250 }).rent).toBe(5250);
+});
+
+test('snapshot carries the unit type (known types only) and renames can change it', () => {
+    const s = buildPublicSnapshot({ lease, tenantName: 'Ram', place: '2B, Gupta Bhawan', unitType: 'flat', charges: [] });
+    expect(s.ut).toBe('flat');
+    expect(buildPublicSnapshot({ lease, unitType: 'castle', charges: [] }).ut).toBeUndefined();
+    expect(withNames(s, { unitType: 'commercial', place: 'Shop 3, Gupta Bhawan' }, 2)).toMatchObject({ ut: 'commercial', place: 'Shop 3, Gupta Bhawan', tenant: 'Ram' });
 });
 
 test('link: public site path /r/<token>; dev data and emulator marked', () => {

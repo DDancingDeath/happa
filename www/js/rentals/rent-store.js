@@ -8,7 +8,7 @@
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import {
-    applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings,
+    applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
     MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
 import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth, withNames, PUBLIC_MONTHS } from './rent-public.js';
@@ -143,10 +143,10 @@ export async function updateLease(id, fields) {
  * random token, points the lease at it and removes the old snapshot.
  * @returns {Promise<string>} the new token
  */
-export async function makeShareLink(lease, { tenantName, place, shopName }) {
+export async function makeShareLink(lease, { tenantName, place, unitType, shopName }) {
     const db = FirebaseService.db;
     const token = newShareToken();
-    const names = { tenantName, place, shopName };
+    const names = { tenantName, place, unitType, shopName };
     const batch = db.batch();
     batch.set(publicRef(token), buildPublicSnapshot({ lease, ...names, charges: await latestCharges(lease.id) }));
     batch.update(coll('rent_leases').doc(lease.id), stamp({ shareToken: token }));
@@ -178,14 +178,14 @@ export async function rebuildShareSnapshot(leaseId, token, names) {
 }
 
 /** After a tenant/property/unit rename: new display names in a lease's link snapshot. */
-export async function renameInLink(lease, { tenantName, place }) {
+export async function renameInLink(lease, { tenantName, place, unitType }) {
     const db = FirebaseService.db;
     const leaseRef = coll('rent_leases').doc(lease.id);
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(leaseRef);
         const pub = snap.exists ? await readPublic(tx, snap.data()) : null;
         if (!pub) return false;
-        tx.set(pub.ref, withNames(pub.data, { tenantName, place }));
+        tx.set(pub.ref, withNames(pub.data, { tenantName, place, unitType }));
         return true;
     });
 }
@@ -198,21 +198,65 @@ export async function removeShareLink(lease) {
     await batch.commit();
 }
 
-/** Moves a tenant into a vacant unit: the lease and the unit's leaseId in one batch. */
-export async function startLease({ unit, tenantId, rent, dueDay, startMonth, deposit, increasePct }) {
+/**
+ * Move-in in ONE batch (also "Add unit" with its tenant): the unit (new, or an
+ * existing vacant one), the tenant (new, or an existing one), the lease and, when
+ * the start month has begun, the first month's charge (full or pro-rated,
+ * RENT-11) with chargedThrough set. Same rules as every move-in; all or nothing.
+ * @param {Object} p
+ * @param {Object} p.unit existing unit {id, propertyId, ...} or new unit fields when p.newUnit
+ * @param {boolean} [p.newUnit]
+ * @param {?Object} [p.tenant] new tenant {name, phone, phone2?, notes?}
+ * @param {?string} [p.tenantId] existing tenant
+ * @param {Object} p.lease {rent, dueDay, startDate, proRate, deposit, increasePct, elecMode, meterNo?}
+ * @param {?{reading: number, rate: number}} [p.meter] opening reading / rate (new units)
+ * @param {string} p.currentMonth
+ * @returns {Promise<{unitId: string, tenantId: string, leaseId: string, charged: boolean}>}
+ */
+export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = null, tenantName = '', lease, meter = null, currentMonth }) {
     const db = FirebaseService.db;
-    const leaseRef = coll('rent_leases').doc();
     const now = Date.now();
     const batch = db.batch();
-    batch.set(leaseRef, {
-        unitId: unit.id, propertyId: unit.propertyId, tenantId,
-        rent, dueDay, startMonth, endMonth: null, deposit, increasePct, rentSince: startMonth,
-        status: 'active', chargedThrough: null,
+    const unitRef = newUnit ? coll('rent_units').doc() : coll('rent_units').doc(unit.id);
+    const leaseRef = coll('rent_leases').doc();
+    let tid = tenantId;
+    if (!tid) {
+        const tenantRef = coll('rent_tenants').doc();
+        tid = tenantRef.id;
+        batch.set(tenantRef, created({ name: tenant.name, phone: tenant.phone, ...(tenant.phone2 ? { phone2: tenant.phone2 } : {}), notes: tenant.notes || '' }));
+    }
+    const startMonth = lease.startDate.slice(0, 7);
+    const doc = {
+        unitId: unitRef.id, propertyId: unit.propertyId, tenantId: tid,
+        rent: lease.rent, dueDay: lease.dueDay, startMonth, startDate: lease.startDate,
+        proRate: !!lease.proRate, endMonth: null, deposit: lease.deposit || 0, increasePct: lease.increasePct,
+        rentSince: startMonth, elecMode: lease.elecMode, status: 'active', chargedThrough: null,
         createdAt: now, createdBy: uid(), updatedAt: now, updatedBy: uid()
-    });
-    batch.update(coll('rent_units').doc(unit.id), { leaseId: leaseRef.id, updatedAt: now, updatedBy: uid() });
+    };
+    if (lease.proRate) doc.firstRent = firstMonthRent(lease.rent, lease.startDate, true);
+    if (lease.elecMode === 'own' && lease.meterNo) doc.meterNo = String(lease.meterNo).slice(0, 40);
+    const charged = startMonth <= currentMonth;
+    if (charged) {
+        doc.chargedThrough = startMonth;
+        const names = { tenantName: tenant?.name || tenantName || '', unitLabel: unit.label || '' };
+        batch.set(coll('rent_charges').doc(chargeId(leaseRef.id, startMonth)),
+            { ...newCharge({ id: leaseRef.id, ...doc }, startMonth, names), updatedBy: uid() });
+    }
+    batch.set(leaseRef, doc);
+    if (newUnit) {
+        batch.set(unitRef, created({
+            propertyId: unit.propertyId, label: unit.label, rent: unit.rent, type: unit.type,
+            ...(unit.area != null ? { area: unit.area } : {}), ...(unit.floor ? { floor: unit.floor } : {}),
+            leaseId: leaseRef.id,
+            lastReading: meter && Number.isFinite(meter.reading) ? meter.reading : null,
+            meterRate: meter && Number.isFinite(meter.rate) ? meter.rate : null,
+            meterCharge: null
+        }));
+    } else {
+        batch.update(unitRef, { leaseId: leaseRef.id, updatedAt: now, updatedBy: uid() });
+    }
     await batch.commit();
-    return leaseRef.id;
+    return { unitId: unitRef.id, tenantId: tid, leaseId: leaseRef.id, charged };
 }
 
 /**
@@ -283,7 +327,27 @@ export async function endLease(leaseId, endMonth, currentMonth, names = {}) {
  * Records a payment on one month's charge (transaction; never more than is due).
  * @returns {Promise<{amount: number, paid: number, open: boolean}>}
  */
-export async function recordPayment(id, { amount, mode, ref, date }) {
+/**
+ * A charge written moments ago (e.g. by a move-in) may not have reached the
+ * server yet, and a transaction reads the server: wait (briefly) for this
+ * device's pending writes and try once more.
+ */
+async function withPendingRetry(run) {
+    try {
+        return await run();
+    } catch (e) {
+        const db = FirebaseService.db;
+        if (e?.message !== 'missing' || typeof db.waitForPendingWrites !== 'function') throw e;
+        await Promise.race([db.waitForPendingWrites(), new Promise(r => setTimeout(r, 8000))]);
+        return run();
+    }
+}
+
+export function recordPayment(id, entry) {
+    return withPendingRetry(() => recordPaymentOnce(id, entry));
+}
+
+async function recordPaymentOnce(id, { amount, mode, ref, date }) {
     const db = FirebaseService.db;
     const chargeRef = coll('rent_charges').doc(id);
     return db.runTransaction(async (tx) => {
@@ -313,7 +377,11 @@ export async function recordPayment(id, { amount, mode, ref, date }) {
  * @param {string} id charge id
  * @param {{prev: number, curr: number, rate: number, units: number, amount: number}} meter from meterBill()
  */
-export async function recordMeter(id, unitId, meter) {
+export function recordMeter(id, unitId, meter) {
+    return withPendingRetry(() => recordMeterOnce(id, unitId, meter));
+}
+
+async function recordMeterOnce(id, unitId, meter) {
     const db = FirebaseService.db;
     const chargeRef = coll('rent_charges').doc(id);
     return db.runTransaction(async (tx) => {

@@ -131,6 +131,14 @@ describe('page behaviour (jsdom)', () => {
         expect(statusOf({ ...x, due: 0, st: 'late' }, 10, new Date(2027, 0, 1))).toBe('paid');
     });
 
+    test('unit type word in the page language, never doubled', () => {
+        const { placeLine } = window.RentHistory;
+        expect(placeLine({ ut: 'flat', place: '2B, Gupta Bhawan' }, 'en')).toBe('Flat 2B, Gupta Bhawan');
+        expect(placeLine({ ut: 'flat', place: '2B, Gupta Bhawan' }, 'hi')).toBe('फ़्लैट 2B, Gupta Bhawan');
+        expect(placeLine({ ut: 'commercial', place: 'Shop 3, Gupta Bhawan' }, 'en')).toBe('Shop 3, Gupta Bhawan');
+        expect(placeLine({ place: 'Gali 2 · G1' }, 'en')).toBe('Gali 2 · G1');
+    });
+
     test('dev data and the emulator', () => {
         const { RentHistory } = window;
         const url = RentHistory.docUrl({ projectId: 'p', apiKey: 'k' }, TOKEN, new URLSearchParams('d=1&emulator=1'));

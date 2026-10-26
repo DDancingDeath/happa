@@ -19,7 +19,10 @@
             rent: 'Rent', due: 'Due on day', totalDue: 'Total due', paidAll: 'Paid (shown months)',
             elec: (u) => `Electricity (${u} units)`, total: 'Total', paid: 'Paid', left: 'Due',
             paidOn: 'Paid on', st: { paid: 'Paid', partial: 'Part paid', due: 'Due', late: 'Late' },
-            note: 'Read-only copy kept up to date by the owner. For questions, contact the owner.'
+            note: 'Read-only copy kept up to date by the owner. For questions, contact the owner.',
+            ut: { flat: 'Flat', commercial: 'Shop', office: 'Office', godown: 'Godown', other: '' },
+            since: (d) => `Tenant since ${d}`,
+            em: { included: 'Electricity is included in the rent.', own: 'Electricity: your own meter, paid by you to the board.', meter: '' }
         },
         hi: {
             title: 'किराये का हिसाब', loading: 'लोड हो रहा है…', other: 'English', print: 'प्रिंट',
@@ -29,7 +32,10 @@
             rent: 'किराया', due: 'हर महीने की तारीख', totalDue: 'कुल बकाया', paidAll: 'चुकाया (दिखाए महीने)',
             elec: (u) => `बिजली (${u} यूनिट)`, total: 'कुल', paid: 'चुकाया', left: 'बकाया',
             paidOn: 'भुगतान की तारीख', st: { paid: 'चुकाया', partial: 'कुछ चुकाया', due: 'बकाया', late: 'देर' },
-            note: 'यह केवल देखने के लिए है, मालिक इसे अपडेट रखते हैं। सवाल हों तो मालिक से बात करें।'
+            note: 'यह केवल देखने के लिए है, मालिक इसे अपडेट रखते हैं। सवाल हों तो मालिक से बात करें।',
+            ut: { flat: 'फ़्लैट', commercial: 'दुकान', office: 'ऑफ़िस', godown: 'गोदाम', other: '' },
+            since: (d) => `${d} से किरायेदार`,
+            em: { included: 'बिजली किराये में शामिल है।', own: 'बिजली: आपका अपना मीटर, बिल आप खुद भरते हैं।', meter: '' }
         }
     };
 
@@ -123,6 +129,13 @@
         root.innerHTML = `<div class="rh-empty"><p>${esc(L[key])}</p></div>`;
     }
 
+    /** "Flat 2B, Gupta Bhawan": the type word in the page language, unless the unit name starts with it. */
+    function placeLine(data, lang) {
+        const word = (TEXT[lang].ut || {})[data.ut] || '';
+        const place = String(data.place || '');
+        return word && !place.toLowerCase().startsWith(word.toLowerCase()) ? `${word} ${place}` : place;
+    }
+
     function render(root, data, lang, onToggle, today = new Date()) {
         const L = TEXT[lang];
         const months = (Array.isArray(data.months) ? data.months : []).slice().sort((a, b) => (a.m < b.m ? 1 : -1));
@@ -143,7 +156,9 @@
         root.innerHTML = `<header class="rh-top">
                 <div>${data.shop ? `<p class="rh-shop">${esc(data.shop)}</p>` : ''}
                     <h1 class="rh-title">${esc(L.title)}: ${esc(data.tenant)}</h1>
-                    <p class="rh-sub">${esc(data.place)}</p></div>
+                    <p class="rh-sub">${esc(placeLine(data, lang))}</p>
+                    ${data.since ? `<p class="rh-sub">${esc(L.since(dateLabel(data.since)))}</p>` : ''}
+                    ${L.em[data.em] ? `<p class="rh-sub">${esc(L.em[data.em])}</p>` : ''}</div>
                 <div class="rh-btns"><button type="button" class="rh-btn" id="rhLang" lang="${lang === 'hi' ? 'en' : 'hi'}">${esc(L.other)}</button>
                     <button type="button" class="rh-btn" id="rhPrint">${esc(L.print)}</button></div>
             </header>
@@ -188,7 +203,7 @@
         draw();
     }
 
-    const api = { start, decode, tokenFrom, docUrl, pickLang, monthLabel, statusOf, TEXT };
+    const api = { start, decode, tokenFrom, docUrl, pickLang, monthLabel, statusOf, placeLine, TEXT };
     if (typeof window !== 'undefined') {
         window.RentHistory = api;
         if (!window.__rentHistoryNoAutoStart) {
