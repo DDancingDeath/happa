@@ -32,6 +32,7 @@ test in the same PR (see AGENTS.md → PR checklist).
 | PERIOD | This week / month / year | Calendar period up to now: week from Monday, month from the 1st, year from 1 January (❓ open: #43, recommendation used). "Last 7 / 30 days" would be labelled so. |
 | AVG-COST | Average cost of an item | Weighted average: each purchase adds its quantity at the line rate; each sale removes quantity at the average cost of that moment; adjustments add (at their rate), remove (at average cost, never below zero) or set the quantity. Lines match a catalogue item by item id, else by English or Hindi name (trimmed, any case). Retail sales reduce stock like wholesale and are costed the same way (owner decision #33, 2026-10-25). |
 | COGS | Cost of goods sold | For every sale line: quantity × AVG-COST of that item at the moment of the sale. |
+| OPENING | Opening record (old-app due) | A bill-shaped record written by the move from the old app (`tools/migrate`): it has an `openingBalance` object, no lines and a total of ₹0, and is dated with the old bill's date (which can be today). It is a **balance only**: it counts in dues — Outstanding, aging (from its original date), reminders, statements, the all-time "due to receive / pay" totals (F9, F10, R6, R7, A5, A6) — and in **no** period or activity figure: not in Today (T1–T16), Reports R1–R5 and R8, Finance F1–F8, Analytics A1–A4, bill counts, stock, rate trends, item frequency, anomaly scans or Number checks AC2 / AC4. Money paid on it later is a normal DUE-PAY on the day it is paid (cash flow, drawer, T13 / T14); writing it off is not a bad debt (its sale was never a sale here). In code: `isOpeningRecord()` / `activityBills()` in `utils/money.js`, the one filter every period figure uses (review rule `period-aggregation-without-activity-filter`). |
 
 Labour on purchases is taken off the supplier's bill, so the stock is valued at
 the line rate (before labour) while the purchase costs the shop the bill total
@@ -60,8 +61,8 @@ All for DAY = today.
 | T12 | Net inflow / outflow | T10 − T11, shown as an amount with "Net inflow" or "Net outflow". ❌ (#219, via T8) |
 | T13 | Due received | DUE-PAYs received today (cash + online). |
 | T14 | Due paid | DUE-PAYs paid today (cash + online). |
-| T15 | Due to receive | Σ BILL-DUE of today's sales. |
-| T16 | Due to pay | Σ BILL-DUE of today's purchases. |
+| T15 | Due to receive | Σ BILL-DUE of today's sales (new dues made today; OPENING records are not today's sales even when dated today). The all-time total is on Outstanding / Finance (F9). |
+| T16 | Due to pay | Σ BILL-DUE of today's purchases (OPENING records left out, as T15). |
 
 ## Finance (`templates/finance.html`, `modules/finance.js`, `utils/finance-calc.js`) — #215
 
@@ -79,8 +80,8 @@ same period.
 | F6 | Stock value now | Σ over items with quantity > 0 of quantity × AVG-COST, after every record. Same number as Finance → Assets "Stock value" and the Stock page total. |
 | F7 | Cash flow | Money in − money out in the period. In: BILL-AT-SAVE of the period's sales + DUE-PAYs received in the period. Out: BILL-AT-SAVE of the period's purchases + DUE-PAYs paid in the period + all expenses (business and personal). Withdrawals are not included. |
 | F8 | Check line | Opening stock value + purchases (at line rate) − F2 + adjustments = closing stock value, for the period. A gap means goods were sold before their purchase was recorded; show "numbers don't match" with the gap per item. |
-| F9 | Due to receive (Assets) | Σ BILL-DUE of all loaded wholesale + retail sales. |
-| F10 | Due to pay (Assets) | Σ BILL-DUE of all loaded purchases. |
+| F9 | Due to receive (Assets) | Σ BILL-DUE of all loaded wholesale + retail sales, OPENING records included. |
+| F10 | Due to pay (Assets) | Σ BILL-DUE of all loaded purchases, OPENING records included. |
 | F11 | Withdrawals | Σ withdrawals in the period. |
 | F12 | Net worth | ❓ open: #39 (what to include; today's formula counts dues twice). Not tested yet. |
 
@@ -201,19 +202,20 @@ in Diagnostics → Number checks.
 | ID | Check |
 |---|---|
 | AC1 | Opening stock value + purchases − cost of goods sold ± adjustments = closing stock value (any period). |
-| AC2 | For every bill: cash + online + due (+ written off) = BILL-TOTAL, within ₹1. |
+| AC2 | For every bill (OPENING records excepted: they are a due with no total): cash + online + due (+ written off) = BILL-TOTAL, within ₹1. |
 | AC3 | For every bill: BILL-AT-SAVE + Σ `payments[]` = cash and online on the bill. |
 | AC4 | Σ over months = all time (sales, purchases) on Reports and Finance. |
-| AC5 | Outstanding total = Σ BILL-DUE of open bills (Outstanding, Finance, Reports agree). |
+| AC5 | Outstanding total = Σ BILL-DUE of open bills, OPENING records included (Outstanding, Finance, Reports agree); OPENING records age from their original bill date. |
 | AC6 | Drawer expected cash = opening + cash in − cash out for the day. |
 | AC7 | Same period, same number: Today, Reports, Analytics, Finance and the drawer agree on sales and cash; Finance profit, cost of goods sold and cash flow match the oracle every month. ❌ partly: #219 (untagged expenses), #49 (DD/MM dates on Analytics). |
 | AC8 | No item's stock goes below zero unless a sale was saved past the oversell warning. |
+| AC9 | Adding OPENING records changes no period or activity figure (Today, Reports, Finance, Analytics, stock, bill counts); only the dues change. Today's due to receive = Σ BILL-DUE of that day's real bills. |
 
 ---
 
 ## Worked example (`tests/fixtures/calculations/shop-month.json`)
 
-"Now" is 21 Oct 2026, 3 pm. Two items, Rice and Wheat.
+"Now" is 21 Oct 2026, 3 pm. Two items, Rice and Wheat. Four OPENING records (Test Party A ₹2,50,000 dated today, Test Party B ₹100 from January, a ₹5,000 payable and a ₹2,000 wholesale due) only raise the dues: F9 = R7 = A6 = ₹2,53,500, F10 = R6 = A5 = ₹5,600, O2 adds Test Party A and Test Party B, O1 adds Old Supplier; every other number is the same as without them.
 
 **Stock replay (AVG-COST)**
 

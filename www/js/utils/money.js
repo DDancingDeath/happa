@@ -125,6 +125,29 @@ export function isOpeningBalance(bill) {
 }
 
 /**
+ * Opening record carried from the old app (see isOpeningBalance). It is a
+ * balance, not activity: it counts only in dues (Outstanding, aging,
+ * reminders, all-time due totals, Finance receivables / payables) and never
+ * in a period or activity figure (Today, Reports, Finance period, Analytics,
+ * bill counts, stock, rate trends, anomaly scans, number checks).
+ * @param {Object} bill
+ * @returns {boolean}
+ */
+export function isOpeningRecord(bill) {
+    return isOpeningBalance(bill);
+}
+
+/**
+ * Bills that count as activity: drops opening records (isOpeningRecord).
+ * Every period / activity aggregation filters its bills through this.
+ * @param {Array<Object>} bills
+ * @returns {Array<Object>}
+ */
+export function activityBills(bills) {
+    return (Array.isArray(bills) ? bills : []).filter(b => !isOpeningRecord(b));
+}
+
+/**
  * Carried amount of an opening-balance record (0 for ordinary bills).
  * @param {Object} bill
  * @returns {number}

@@ -13,7 +13,7 @@
  * @module utils/due-payments
  */
 
-import { readPayment, round2 } from './money.js';
+import { isOpeningRecord, readPayment, round2 } from './money.js';
 import { parseAnyBillDate } from './dates.js';
 
 /** Bill type → collection key. */
@@ -127,6 +127,8 @@ export function dueEvents({ bills = {}, sessions = [], from, to }) {
     Object.entries(BILL_COLLECTIONS).forEach(([billType]) => {
         (bills[billType] || []).forEach(bill => {
             const list = Array.isArray(bill?.payments) ? bill.payments : [];
+            // Money paid on an old-app due is real money on its day; writing it off is not a bad debt here.
+            const opening = isOpeningRecord(bill);
             list.forEach((entry, i) => {
                 const at = entryTime(entry);
                 if (!inRange(at)) return;
@@ -134,7 +136,7 @@ export function dueEvents({ bills = {}, sessions = [], from, to }) {
                 if (seen.has(id)) return;
                 seen.add(id);
                 events.push({
-                    id, direction: directionFor(billType), ...entryParts(entry), at,
+                    id, direction: directionFor(billType), ...entryParts(entry), ...(opening ? { writeOff: 0 } : {}), at,
                     party: bill.customerName || bill.supplierName || '', billId: bill.id != null ? String(bill.id) : null
                 });
             });

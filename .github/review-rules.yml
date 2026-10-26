@@ -181,3 +181,15 @@ rules:
       definition (#216). If it is a known bug being fixed, remove its BUGS entry there.
     severity: warn
     learned_at: 2026-10-23
+  - id: period-aggregation-without-activity-filter
+    pattern: "\\(\\s*AppState\\.(purchaseHistory|salesHistory|retailSalesHistory)\\s*\\|\\|\\s*\\[\\]\\s*\\)\\s*\\.(filter|reduce|forEach)\\(|\\bsources\\.(purchases|wholesaleSales|retailSales)\\s*\\|\\|\\s*\\[\\]\\s*\\)\\s*\\.(filter|reduce)\\("
+    applies_to: ["www/js/modules/**/*.js", "www/js/utils/**/*.js"]
+    excludes: ["www/js/__tests__/**", "www/js/utils/money.js"]
+    message: |
+      Bill history aggregated without the shared activity filter.
+      Opening records carried from the old app are dues only: a period or activity
+      figure (Today, Reports, Finance, Analytics, counts, stock, anomalies) must go
+      through activityBills() / isOpeningRecord() from utils/money.js. Balances
+      (Outstanding, aging, all-time dues) may use the full list on purpose.
+    severity: warn
+    learned_at: 2026-10-25

@@ -15,6 +15,7 @@
  */
 
 import { createItemKeyResolver, eventTime } from './stock-replay.js';
+import { isOpeningRecord } from './money.js';
 import { t, getLang } from '../i18n/index.js';
 
 export const RATE_KINDS = ['purchase', 'retail', 'wholesale'];
@@ -153,7 +154,7 @@ const isDeletedBill = (bill) => bill?.deleted === true || bill?.isDeleted === tr
  * @returns {boolean} whether the bill was used
  */
 export function addBillToAcc(acc, bill, kind, resolve, { fromMs = null } = {}) {
-    if (!bill || isDeletedBill(bill) || !Array.isArray(bill.items)) return false;
+    if (!bill || isDeletedBill(bill) || isOpeningRecord(bill) || !Array.isArray(bill.items)) return false;
     const at = eventTime(bill);
     if (!Number.isFinite(at) || at === Number.MAX_SAFE_INTEGER || (fromMs !== null && at < fromMs)) return false;
     const month = istMonthKey(at);

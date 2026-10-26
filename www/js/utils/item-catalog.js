@@ -5,6 +5,7 @@
  */
 
 import { createItemKeyResolver } from './stock-replay.js';
+import { activityBills } from './money.js';
 import { t } from '../i18n/index.js';
 
 /**
@@ -98,7 +99,7 @@ export function itemUsageFrequency(sources, items) {
     const ids = new Set((items || []).map(i => i.id));
     const counts = {};
     [sources?.purchases, sources?.wholesaleSales, sources?.retailSales].forEach(bills => {
-        (bills || []).forEach(bill => {
+        activityBills(bills).forEach(bill => {
             (Array.isArray(bill?.items) ? bill.items : []).forEach(line => {
                 if (!line) return;
                 const key = getKey({ itemId: line.itemId, name: line.name || line.itemName });

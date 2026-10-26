@@ -17,7 +17,9 @@
  *    itemId plus a name;
  *  - edited bills (`editedAt`, payment recomputed) and deleted bills (absent);
  *  - stock adjustments (add / remove), business / personal / untagged expenses,
- *    withdrawals and one cash session per working day.
+ *    withdrawals and one cash session per working day;
+ *  - in some shops, opening records carried from the old app (dues only, no lines,
+ *    total 0, `openingBalance`), some dated on the migration day itself.
  * Sales never exceed the stock on hand at the start of the day, so stock never
  * goes negative (accounting check AC8).
  *
@@ -69,12 +71,15 @@ function dmyTime(d) {
  * @param {number} [opts.untaggedExpenseRate=0.03] share of expenses without a business/personal category
  * @param {number} [opts.editRate=0.04]
  * @param {number} [opts.deleteRate=0.02]
+ * @param {number} [opts.openingRate=0.5] chance the shop starts with opening records migrated from the old app
+ * @param {boolean} [opts.openingPayments=true] money received / paid (and written off) later on those records
  * @returns {Object} { items, purchases, wholesaleSales, retailSales, stockAdjustments, expenses, withdrawals, sessions, truth }
  */
 export function generateShop(opts = {}) {
     const {
         seed = 1, years = 3, start = '2023-04-01', activity = 1, creditRate = 0.35, legacyRate = 0.2,
-        ddmmRate = 0.25, untaggedExpenseRate = 0.03, editRate = 0.04, deleteRate = 0.02
+        ddmmRate = 0.25, untaggedExpenseRate = 0.03, editRate = 0.04, deleteRate = 0.02,
+        openingRate = 0.5, openingPayments = true
     } = opts;
     const rnd = prng(seed);
     const chance = (p) => rnd() < p;
@@ -322,6 +327,69 @@ export function generateShop(opts = {}) {
         sessionFor(at(9)); // a session for every working day
     }
 
+    // Migration from the old app (tools/migrate): opening records for old unpaid
+    // bills, written on a "migration day" and dated with the old bill's date
+    // (sometimes that same day, as in the live case). Drawn from their own PRNG
+    // after the history, so a shop with and without them is otherwise identical.
+    const orand = prng((seed * 31 + 7) >>> 0);
+    const ochance = (p) => orand() < p;
+    const obetween = (lo, hi) => lo + orand() * (hi - lo);
+    const oint = (lo, hi) => Math.floor(obetween(lo, hi + 1));
+    T.opening = [];
+    if (ochance(openingRate)) {
+        const migDay = new Date(first.getFullYear(), first.getMonth(), first.getDate() + Math.floor(days * obetween(0.5, 0.95)));
+        const asOf = new Date(migDay).setHours(20, 0, 0, 0);
+        const count = oint(1, 5);
+        for (let i = 0; i < count; i++) {
+            const kind = ['retail', 'retail', 'wholesale', 'purchase'][oint(0, 3)];
+            const sameDay = ochance(0.4);
+            const origin = sameDay ? new Date(migDay).setHours(oint(9, 19), oint(0, 59), 0, 0)
+                : new Date(first.getFullYear(), first.getMonth(), first.getDate() + oint(0, Math.max(0, Math.round((migDay - first) / DAY) - 1)), oint(9, 19), oint(0, 59)).getTime();
+            const due = ochance(0.15) ? 250000 : oint(1, 4000) * 10;
+            const id = `opening-${kind}-${nextId('old')}`;
+            const bill = {
+                id, billNumber: `OLD-${i + 1}`, customerName: PARTIES[oint(0, PARTIES.length - 1)],
+                date: ochance(0.3) ? dmyTime(new Date(origin)) : isoLocal(new Date(origin)), timestamp: origin,
+                type: kind, isPurchase: kind === 'purchase', items: [], total: 0, cashPayment: 0, onlinePayment: 0,
+                dueAmount: due, payment: { cash: 0, online: 0, due, total: 0 }, openDue: true, cleared: false,
+                openingBalance: { migrated: true, kind: kind === 'purchase' ? 'payable' : 'receivable', billType: kind, amount: due,
+                    billTotal: due, paidBefore: 0, asOf, fromProject: 'aadhat-management', sourceBillId: id }
+            };
+            if (kind === 'wholesale') bill.source = 'sales-tab';
+            const truth = { kind, opening: true, t: origin, total: 0, cash: 0, online: 0, due, atSaveCash: 0, atSaveOnline: 0,
+                laterCash: 0, laterOnline: 0, writtenOff: 0, cleared: false };
+            if (openingPayments && ochance(0.5)) {
+                const at = new Date(asOf + oint(1, 30) * DAY).setHours(oint(9, 19), oint(0, 59), 0, 0);
+                if (at < end) {
+                    const amt = ochance(0.4) ? due : Math.max(1, Math.round(due * obetween(0.1, 0.8)));
+                    const pid = nextId('pay-');
+                    bill.payments = [{ id: pid, amount: amt, cash: amt, online: 0, at, date: isoLocal(new Date(at)) }];
+                    bill.payment = { cash: amt, online: 0, due: due - amt, total: amt };
+                    bill.dueAmount = due - amt;
+                    truth.due = due - amt;
+                    truth.laterCash = amt;
+                    truth.cash = 0;
+                    const dir = kind === 'purchase' ? 'paid' : 'received';
+                    cashDay(at)[dir === 'paid' ? 'out' : 'in'] += amt;
+                    sessionFor(at).duePayments.push({ id: pid, billId: id, type: dir, amount: amt, cash: amt, online: 0, method: 'cash', timestamp: new Date(at).toISOString() });
+                    if (truth.due > 0 && ochance(0.3)) {
+                        bill.payments.push({ id: nextId('wo-'), kind: 'writeOff', amount: truth.due, at: at + 3600000 });
+                        bill.payment.writtenOff = truth.due;
+                        bill.payment.due = 0;
+                        bill.dueAmount = 0;
+                        bill.cleared = true;
+                        truth.writtenOff = truth.due;
+                        truth.due = 0;
+                        truth.cleared = true;
+                    }
+                }
+            }
+            T.bills[id] = truth;
+            T.opening.push(id);
+            (kind === 'purchase' ? out.purchases : kind === 'wholesale' ? out.wholesaleSales : out.retailSales).push(bill);
+        }
+        T.migrationDay = migDay.getTime();
+    }
     T.finalQty = { ...stock };
     T.end = end;
     T.start = first.getTime();

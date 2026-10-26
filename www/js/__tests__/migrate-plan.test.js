@@ -11,7 +11,7 @@ import path from 'path';
 import { buildPlan, parseOptions, revive, CLIENT_VERSION } from '../../../tools/migrate/lib/plan.js';
 import { formatReport } from '../../../tools/migrate/lib/report.js';
 import { buildAging } from '../utils/aging.js';
-import { billTotal, readPayment, wholesaleOutstanding } from '../utils/money.js';
+import { billTotal, outstandingDue, readPayment, wholesaleOutstanding } from '../utils/money.js';
 import { computeFinanceSummary } from '../utils/finance-calc.js';
 import {
     aggregateBills, billsToYearDocs, clampWindowToMigration, finalizeStats, monthBuckets, planRollForward, rollForwardWindow, weekBuckets
@@ -72,7 +72,9 @@ describe('plan: receivables as Outstanding shows them', () => {
         });
         expect(s.sales.total).toBe(0);
         expect(s.profit).toBe(0);
-        expect(s.sales.due).toBe(4240);
+        // A balance, not a sale of the period: the 4240 shows only in the dues (Outstanding, F9).
+        expect(s.sales).toEqual({ total: 0, count: 0, due: 0 });
+        expect(docs.reduce((a, d) => a + outstandingDue(d), 0)).toBe(4240);
     });
 
     test('wholesale dues follow the Wholesale page rule (sales-tab bills only)', () => {
