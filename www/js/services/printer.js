@@ -3,7 +3,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { DEFAULT_SETTINGS } from '../utils/constants.js';
-import { getAndroidMajorVersion } from '../utils/helpers.js';
+import { getAndroidMajorVersion, Helpers } from '../utils/helpers.js';
 import { copyMark, receiptDateTime } from '../utils/bill-share.js';
 import { t, tn } from '../i18n/index.js';
 
@@ -872,30 +872,60 @@ const PrinterService = {
         }
     },
 
+    /**
+     * Settings → Bluetooth Printer status line and buttons, from the real
+     * connection state (AadhatManagementApp#133).
+     */
     updateStatus() {
-        const statusDiv = document.getElementById('printerStatus');
-        const connectBtn = document.getElementById('connectPrinterBtn');
-        const disconnectBtn = document.getElementById('disconnectPrinterBtn');
-        
-        if (AppState.printerSettings.enabled && AppState.printerSettings.deviceName) {
-            if (statusDiv) {
-                statusDiv.textContent = t('ui.print.connected', { name: AppState.printerSettings.deviceName });
-                statusDiv.style.color = 'green';
-            }
-            if (connectBtn) connectBtn.style.display = 'none';
-            if (disconnectBtn) disconnectBtn.style.display = 'inline-block';
+        const statusText = document.getElementById('printerStatusText');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const testPrintBtn = document.getElementById('testPrintBtn');
+        const scanBtn = document.getElementById('scanPrintersBtn');
+        const saved = AppState.printerSettings || {};
+        const available = this.isAvailable();
+        const connected = this.isConnected();
+        const name = this.manager.printerName || saved.deviceName || '';
+
+        let text;
+        let color = '#999';
+        if (!available) {
+            text = t('ui.settings.printer_android_only');
+        } else if (connected) {
+            text = t('ui.settings.printer_connected_to', { deviceName: name });
+            color = '#4CAF50';
+        } else if (saved.deviceId && name) {
+            text = t('ui.settings.printer_saved_not_connected', { deviceName: name });
         } else {
-            if (statusDiv) {
-                statusDiv.textContent = t('ui.settings.printer_not_connected');
-                statusDiv.style.color = 'red';
-            }
-            if (connectBtn) connectBtn.style.display = 'inline-block';
-            if (disconnectBtn) disconnectBtn.style.display = 'none';
+            text = t('ui.settings.printer_not_connected');
         }
+        if (statusText) {
+            statusText.innerHTML = `<span style="color: ${color};">${connected ? '●' : '○'} ${Helpers.escapeHtml(text)}</span>`;
+            statusText.dataset.state = !available ? 'unavailable' : connected ? 'connected' : 'disconnected';
+        }
+        if (disconnectBtn) disconnectBtn.style.display = connected ? 'block' : 'none';
+        if (testPrintBtn) testPrintBtn.style.display = available && (connected || saved.deviceId) ? 'block' : 'none';
+        if (scanBtn) scanBtn.style.display = available ? '' : 'none';
+    },
+
+    /** Renders the status now, then again once the plugin confirms the link. */
+    async refreshStatus() {
+        this.updateStatus();
+        if (!this.isConnected()) return;
+        const up = await this.checkConnection();
+        if (!up) this.updateStatus();
     },
 
     async testPrint() {
+        if (!this.isAvailable()) {
+            await UIManager.showModal(t('msg.printer.android_app_only'));
+            return false;
+        }
+        if (!this.isConnected() && !(await this.reconnectSaved())) {
+            await UIManager.showModal(t('msg.settings.printer_not_connected'));
+            return false;
+        }
         try {
+            UIManager.showLoading();
             const testBill = {
                 type: 'TEST',
                 date: new Date().toISOString(),
@@ -913,9 +943,58 @@ const PrinterService = {
             
             await this.manager.write(testBill);
             UIManager.showToast(t('msg.printer.test_print_successful'));
+            return true;
         } catch (error) {
             console.error('Test print error:', error);
-            UIManager.showToast(t('msg.common.test_print_failed', { message: error.message }));
+            UIManager.showToast(t('msg.common.test_print_failed', { message: error?.message || error }), 'error');
+            return false;
+        } finally {
+            UIManager.hideLoading();
+        }
+    },
+
+    /** Bluetooth printing needs the Android app (cordova bluetoothSerial plugin). */
+    isAvailable() {
+        return !!window.bluetoothSerial;
+    },
+
+    /** Connected in this app session (the link is not kept across restarts). */
+    isConnected() {
+        return this.isAvailable() && !!this.manager.device;
+    },
+
+    /**
+     * Asks the plugin whether the link is still up; clears the device when it
+     * dropped (printer switched off / out of range).
+     * @returns {Promise<boolean>}
+     */
+    async checkConnection() {
+        if (!this.isConnected()) return false;
+        if (typeof window.bluetoothSerial.isConnected !== 'function') return true;
+        const up = await new Promise((resolve) => {
+            try {
+                window.bluetoothSerial.isConnected(() => resolve(true), () => resolve(false));
+            } catch {
+                resolve(false);
+            }
+        });
+        if (!up) {
+            this.manager.device = null;
+            this.manager.printerName = null;
+        }
+        return up;
+    },
+
+    /** Reconnects to the printer saved in Settings, without toasts. */
+    async reconnectSaved() {
+        const { deviceId, deviceName } = AppState.printerSettings || {};
+        if (!this.isAvailable() || !deviceId) return false;
+        try {
+            await this.manager.connect(deviceId, deviceName);
+            return true;
+        } catch (error) {
+            console.warn('Printer reconnect failed:', error?.message || error);
+            return false;
         }
     },
 

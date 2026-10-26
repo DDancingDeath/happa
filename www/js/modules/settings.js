@@ -9,6 +9,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
+import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { normalizeLabourSettings } from '../utils/money.js';
@@ -476,7 +477,7 @@ export class SettingsManager {
                 return;
             }
             
-            const devices = await window.app.printer.scan();
+            const devices = await PrinterService.scanDevices();
             this.displayBluetoothDevices(devices);
         } catch (error) {
             const errorMsg = t('msg.printer.failed_scan_devices', { message: error.message || error });
@@ -528,7 +529,7 @@ export class SettingsManager {
         try {
             UIManager.hapticFeedback('medium');
             
-            await window.app.printer.connect(deviceId, deviceName);
+            await PrinterService.connect(deviceId, deviceName);
             
             AppState.printerSettings.deviceId = deviceId;
             AppState.printerSettings.deviceName = deviceName;
@@ -550,7 +551,7 @@ export class SettingsManager {
     static async disconnectPrinter() {
         try {
             UIManager.hapticFeedback('light');
-            await window.app.printer.disconnect();
+            await PrinterService.disconnect();
             
             AppState.printerSettings.deviceId = null;
             AppState.printerSettings.deviceName = null;
@@ -564,73 +565,15 @@ export class SettingsManager {
     }
 
     static updatePrinterStatus() {
-        const { printerSettings } = AppState;
-        const statusText = document.getElementById('printerStatusText');
-        const disconnectBtn = document.getElementById('disconnectBtn');
-        const testPrintBtn = document.getElementById('testPrintBtn');
-        
-        const isConnected = window.app.printer && window.app.printer.device && printerSettings.deviceName;
-        
-        if (isConnected) {
-            if (statusText) {
-                statusText.innerHTML = `<span style="color: #4CAF50;">● ${Helpers.escapeHtml(t('ui.settings.printer_connected_to', { deviceName: printerSettings.deviceName }))}</span>`;
-            }
-            if (disconnectBtn) disconnectBtn.style.display = 'block';
-            if (testPrintBtn) testPrintBtn.style.display = 'block';
-        } else {
-            if (statusText) {
-                statusText.innerHTML = `<span style="color: #999;">○ ${Helpers.escapeHtml(t('ui.settings.printer_not_connected'))}</span>`;
-            }
-            if (disconnectBtn) disconnectBtn.style.display = 'none';
-            if (testPrintBtn) testPrintBtn.style.display = 'none';
-        }
+        return PrinterService.refreshStatus();
     }
 
     static async testPrint() {
-        if (!window.app.printer || !window.app.printer.device) {
-            await UIManager.showModal(t('msg.settings.printer_not_connected'));
-            return;
-        }
-        
-        try {
-            UIManager.hapticFeedback('medium');
-            UIManager.showLoading();
-            
-            const testBillData = {
-                isPurchase: true,
-                billTotal: 1000,
-                laborCharges: 12,
-                amountPayable: 988,
-                totalPackets: 3,
-                onlinePayment: 500,
-                cashPayment: 488,
-                laborCalc: '(6 × 2)',
-                items: [
-                    {
-                        name: 'Test Item 1',
-                        rate: 50,
-                        qty: 10,
-                        total: 500,
-                        weights: [5, 5]
-                    },
-                    {
-                        name: 'Test Item 2',
-                        rate: 50,
-                        qty: 10,
-                        total: 500,
-                        weights: [10]
-                    }
-                ]
-            };
-            
-            await window.app.printer.write(testBillData);
-            UIManager.hideLoading();
-            UIManager.showToast(t('msg.settings.test_print_sent'));
-            UIManager.hapticFeedback('heavy');
-        } catch (error) {
-            UIManager.hideLoading();
-            await UIManager.showModal(t('msg.common.test_print_failed', { message: error.message }));
-        }
+        UIManager.hapticFeedback('medium');
+        const printed = await PrinterService.testPrint();
+        PrinterService.updateStatus();
+        if (printed) UIManager.hapticFeedback('heavy');
+        return printed;
     }
 
     // Audit Logs Methods
