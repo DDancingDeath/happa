@@ -15,7 +15,7 @@ import { dueEvents, sumDueEvents, saleTimePayment, entryParts, legParts, checkPa
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields } from '../utils/cash-session.js';
+import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, duplicateSessionDays, sessionForDate } from '../utils/cash-session.js';
 import fs from 'fs';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import path from 'path';
@@ -67,7 +67,7 @@ describe('#66 ₹0 opening/closing and session notes', () => {
         document.body.innerHTML = CASH_TEMPLATE;
         saved = [];
         jest.spyOn(FirebaseService, 'loadCashSessions').mockResolvedValue([]);
-        jest.spyOn(FirebaseService, 'saveCashSession').mockImplementation(async (s) => { saved.push({ ...s }); return s; });
+        jest.spyOn(FirebaseService, 'openCashSession').mockImplementation(async (s) => { saved.push({ ...s }); return { session: { ...s, id: `cash_${s.date}` }, joined: false }; });
         ['salesHistory', 'retailSalesHistory', 'purchaseHistory', 'expensesHistory'].forEach(k => { AppState[k] = []; });
     });
 
@@ -753,5 +753,80 @@ describe('#98 review: the Cash-tab bill picker never guesses the bill', () => {
         expect(CashManagementManager.todaySession.duePayments).toHaveLength(1);
         expect(CashManagementManager.todayTransactions.dueReceived).toBe(60);
         expect(toast).toHaveBeenCalledWith('✓ Recorded ₹60 received from Old customer');
+    });
+});
+
+describe('#38 one cash session per day', () => {
+    const ctx = useFakeShop();
+    beforeEach(() => {
+        document.body.innerHTML = CASH_TEMPLATE;
+        const runTx = ctx.fake.db.runTransaction;
+        let queue = Promise.resolve();
+        // Firestore serialises transactions on one document: model that.
+        ctx.fake.db.runTransaction = (fn) => {
+            const run = queue.then(() => runTx(fn));
+            queue = run.catch(() => {});
+            return run;
+        };
+    });
+
+    const open = (amount, uid, name) => FirebaseService.openCashSession({
+        date: '2026-10-21', openingBalance: amount, signInTime: new Date().toISOString(), userId: uid, userName: name, signedOut: false, duePayments: []
+    });
+
+    test('two phones opening at once share one session at cash_<date>', async () => {
+        const [a, b] = await Promise.all([open(1000, 'u1', 'Owner'), open(900, 'u2', 'Ramesh')]);
+        const docs = [...ctx.fake.raw('cashManagement').keys()];
+        expect(docs).toEqual(['cash_2026-10-21']);
+        expect([a.joined, b.joined].sort()).toEqual([false, true]);
+        expect(a.session.id).toBe('cash_2026-10-21');
+        expect(b.session).toMatchObject({ id: 'cash_2026-10-21', openingBalance: 1000, userId: 'u1' });
+    });
+
+    test('joins a session an older app opened today with a random id', async () => {
+        ctx.fake.seed('cashManagement', [{ ...OPEN_SESSION, userName: 'Ramesh' }]);
+        const r = await open(700, 'u1', 'Owner');
+        expect(r).toMatchObject({ joined: true, session: { id: 's21', openingBalance: 1000 } });
+        expect(ctx.fake.raw('cashManagement').has('cash_2026-10-21')).toBe(false);
+    });
+
+    test('sign-in on a second phone joins and says so; sign-out stores closedBy', async () => {
+        await open(1000, 'u2', 'Ramesh');
+        setVal('cashSignInAmount', 1000);
+        await CashManagementManager.signIn();
+        expect(CashManagementManager.todaySession).toMatchObject({ id: 'cash_2026-10-21', userId: 'u2' });
+        expect(toast).toHaveBeenCalledWith(expect.stringContaining('already open (Ramesh, ₹1000)'));
+        expect(ctx.fake.raw('cashManagement').size).toBe(1);
+
+        setVal('cashSignOutAmount', 1000);
+        await CashManagementManager.signOut();
+        expect(ctx.fake.raw('cashManagement').get('cash_2026-10-21')).toMatchObject({ signedOut: true, closedBy: 'u1', userId: 'u2' });
+    });
+
+    test('offline, the open is queued as a merge that keeps entries from other phones', async () => {
+        ctx.fake.seed('cashManagement', [{ id: 'cash_2026-10-21', date: '2026-10-21', openingBalance: 1000, userId: 'u2', signedOut: false, duePayments: [{ id: 'p1', amount: 50 }] }]);
+        jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+        const r = await open(900, 'u1', 'Owner');
+        await ctx.fake.settle();
+        expect(r.session.id).toBe('cash_2026-10-21');
+        expect(ctx.fake.raw('cashManagement').get('cash_2026-10-21').duePayments).toEqual([{ id: 'p1', amount: 50 }]);
+    });
+
+    test('owner sees days with more than one session; the per-day id wins for that day', () => {
+        AppState.userRole = 'owner';
+        const sessions = [
+            { id: 'a', date: '2026-10-20', signInTime: '2026-10-20T04:00:00Z', openingBalance: 1, signedOut: true, counted: true, closingBalance: 1 },
+            { id: 'cash_2026-10-20', date: '2026-10-20', signInTime: '2026-10-20T05:00:00Z', openingBalance: 2, signedOut: true, counted: true, closingBalance: 2 },
+            { id: 'c', date: '2026-10-19', openingBalance: 3, signedOut: true, counted: true, closingBalance: 3 }
+        ];
+        expect(duplicateSessionDays(sessions)).toEqual(['2026-10-20']);
+        expect(sessionForDate(sessions, '2026-10-20').id).toBe('cash_2026-10-20');
+        expect(sessionForDate(sessions.filter(s => s.id !== 'cash_2026-10-20').concat({ id: 'b', date: '2026-10-20', signInTime: '2026-10-20T03:00:00Z' }), '2026-10-20').id).toBe('b');
+        CashManagementManager.cachedSessions = sessions;
+        CashManagementManager.renderHistoryFromCache();
+        expect(document.getElementById('cashHistoryList').textContent).toContain('1 day has more than one cash session');
+        AppState.userRole = 'manager';
+        CashManagementManager.renderHistoryFromCache();
+        expect(document.getElementById('cashHistoryList').textContent).not.toContain('more than one cash session');
     });
 });

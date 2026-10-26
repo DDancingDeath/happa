@@ -1035,6 +1035,25 @@ function defineSuite(prefix) {
         await assertFails(as('pending1').collection(cash).doc('s7').set(session({ userId: 'pending1' })));
     });
 
+    t('cash: one session per day at cash_<date> (#38); a second phone cannot overwrite it', async () => {
+        const day = session({ id: 'cash_2026-10-22' });
+        await assertFails(as('staff1').collection(cash).doc('cash_2026-10-21').set(day));
+        const noDate = { ...day };
+        delete noDate.date;
+        await assertFails(as('staff1').collection(cash).doc('cash_2026-10-22').set(noDate));
+        await assertSucceeds(as('staff1').collection(cash).doc('cash_2026-10-22').set(day));
+        const other = { ...day, userId: 'legacyStaff', openingBalance: 900 };
+        await assertFails(as('legacyStaff').collection(cash).doc('cash_2026-10-22').set(other));
+        await assertFails(as('legacyStaff').collection(cash).doc('cash_2026-10-22').set({ openingBalance: 900, userId: 'legacyStaff' }, { merge: true }));
+        await assertSucceeds(as('legacyStaff').collection(cash).doc('cash_2026-10-22').update({ cashDeposits: FieldValue.arrayUnion(deposit()) }));
+    });
+
+    t('cash: sign-out records closedBy as the caller only (#38)', async () => {
+        await seedSession();
+        await assertFails(as('staff1').collection(cash).doc('s1').update(closing({ closedBy: 'manager1' })));
+        await assertSucceeds(as('manager1').collection(cash).doc('s1').update(closing({ closedBy: 'manager1' })));
+    });
+
     t('cash: anyone approved appends deposits / due payments (arrayUnion and transaction)', async () => {
         await seedSession();
         const ref = as('staff1').collection(cash).doc('s1');

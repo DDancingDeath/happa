@@ -66,6 +66,41 @@ export function lastCountedSession(sessions) {
 }
 
 /**
+ * Id of a day's cash session (#38): one document per local day, so a second
+ * phone opening cash joins the same session.
+ * @param {string} date YYYY-MM-DD
+ * @returns {string}
+ */
+export function cashSessionDocId(date) {
+    return `cash_${date}`;
+}
+
+/**
+ * The session for `date`. Older days can have more than one (random ids from
+ * before #38): prefer the per-day id, then the earliest opened.
+ * @param {Object[]} sessions
+ * @param {string} date
+ * @returns {?Object}
+ */
+export function sessionForDate(sessions, date) {
+    const same = (sessions || []).filter(s => s && s.date === date);
+    if (same.length <= 1) return same[0] || null;
+    return same.find(s => s.id === cashSessionDocId(date))
+        || same.slice().sort((a, b) => String(a.signInTime || '').localeCompare(String(b.signInTime || '')))[0];
+}
+
+/**
+ * Days that have more than one cash session, newest first.
+ * @param {Object[]} sessions
+ * @returns {string[]}
+ */
+export function duplicateSessionDays(sessions) {
+    const count = new Map();
+    (sessions || []).forEach(s => { if (s?.date) count.set(s.date, (count.get(s.date) || 0) + 1); });
+    return [...count].filter(([, n]) => n > 1).map(([d]) => d).sort().reverse();
+}
+
+/**
  * Fields written when the app closes a session nobody closed (#101): the
  * expected balance is kept, but nothing was counted, so there is no closing
  * balance and no difference (no fake shortage).

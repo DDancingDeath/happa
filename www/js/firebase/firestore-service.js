@@ -32,6 +32,7 @@ import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_
 import { markStartup } from '../utils/startup-timings.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { historyIdBound } from '../utils/rate-history.js';
+import { cashSessionDocId, sessionForDate } from '../utils/cash-session.js';
 import { installFirestoreMeter, getQuotaStatus } from './firestore-meter.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
@@ -3377,6 +3378,41 @@ const FirebaseService = {
     async loadCashSessionsForDate(date) {
         const snapshot = await this.db.collection(col('cashManagement')).where('date', '==', date).get();
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    },
+
+    /**
+     * Opens the day's cash session once (#38). The session lives at
+     * `cash_<date>`, created in a transaction: a phone that comes second gets
+     * the existing session back (`joined: true`) instead of a second one. A
+     * session opened earlier that day by an older app (random id) is joined too.
+     * Offline the create is queued as a merge without the entry lists, so it
+     * can never wipe deposits or payments another phone added.
+     * @param {Object} session New session (needs `date`)
+     * @returns {Promise<{session: Object, joined: boolean}>}
+     */
+    async openCashSession(session) {
+        const ref = this.cashSessionRef(cashSessionDocId(session.date));
+        const fresh = { ...session, id: ref.id };
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        if (!offline) {
+            try {
+                const legacy = sessionForDate(await this.loadCashSessionsForDate(session.date), session.date);
+                if (legacy) return { session: legacy, joined: true };
+                return await getDb().runTransaction(async tx => {
+                    const snap = await tx.get(ref);
+                    if (snap.exists) return { session: { id: ref.id, ...snap.data() }, joined: true };
+                    tx.set(ref, fresh);
+                    return { session: fresh, joined: false };
+                });
+            } catch (error) {
+                if (error?.code !== 'unavailable') throw error;
+            }
+        }
+        const opening = { ...fresh };
+        delete opening.duePayments;
+        delete opening.cashDeposits;
+        ref.set(opening, { merge: true }).catch(e => console.error('Queued cash open failed:', e));
+        return { session: fresh, joined: false };
     },
 
     /**
