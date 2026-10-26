@@ -37,6 +37,7 @@ import { buildDayReportText, istDayKey } from '../utils/anomalies.js';
 import { buildBillShareText } from '../utils/bill-share.js';
 import { buildReminderText, buildStatement } from '../utils/due-reminder.js';
 import { AdminManager } from '../modules/admin.js';
+import { SettingsManager } from '../modules/settings.js';
 import { AnalyticsManager } from '../modules/analytics.js';
 import { ExpensesManager } from '../modules/miscellaneous.js';
 import { FinanceManager } from '../modules/finance.js';
@@ -354,16 +355,20 @@ describe('Hindi mode: no English UI words', () => {
         grab();
 
         document.body.innerHTML = html('admin.html');
-        AdminManager.activeTab = 'configure';
+        AdminManager.activeTab = 'users';
         AdminManager.renderTabs();
-        AdminManager.renderConfigure();
-        grab();
         await AdminManager.renderUsers();
         grab();
         AdminManager.renderData();
         AdminManager.storageStats = null;
         document.getElementById('adminContainer').insertAdjacentHTML('beforeend', '<div id="adminStorageStats"></div>');
         AdminManager.displayStorageStats({ totalDocs: 3, estimatedSize: '3 KB', breakdown: [{ name: 'items', labelKey: 'ui.admin.col_items', icon: '📦', count: 3 }] });
+        grab();
+
+        // Settings › Aadhat (bill checks moved here from Admin › Configure)
+        document.body.innerHTML = html('settings.html');
+        jest.spyOn(Helpers, 'getBillDeviceCode').mockReturnValue('742');
+        SettingsManager.renderShop(true);
         grab();
 
         document.body.innerHTML = html('expenses.html');

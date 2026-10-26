@@ -411,6 +411,23 @@ service cloud.firestore {
         || isOwnerIn(collection == 'settings' ? 'users' : 'dev_users');
     }
 
+    // Settings › Aadhat: a manager may update only these settings/app fields, and
+    // only when Roles & access allows it (roleAccess.manager.shopSettings == true).
+    function shopSettingsFields() {
+      return ['laborRate', 'heavyWeightThreshold', 'labourUpdatedAt', 'labourUpdatedBy',
+              'checkThresholds', 'checksUpdatedAt', 'checksUpdatedBy',
+              'businessName', 'businessDetails', 'businessUpdatedAt', 'businessUpdatedBy'];
+    }
+
+    function managerShopSettingsOk(collection, docId) {
+      let access = resource.data.get('roleAccess', {});
+      return docId == 'app' && collection in ['settings', 'dev_settings']
+        && isManagerIn(usersOf(collection))
+        && access is map && access.get('manager', {}) is map
+        && access.get('manager', {}).get('shopSettings', false) == true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(shopSettingsFields());
+    }
+
     // Stock records: writes must come from an app version that maintains the stock
     // checkpoint (sets clientVersion >= 3). Blocks outdated apps from creating or
     // overwriting bills/adjustments. DEPLOY ONLY AFTER every phone runs the new app.
@@ -955,6 +972,21 @@ service cloud.firestore {
         && rentRoleIn(usersCol) != '';
     }
 
+    // Settings › Rentals: defaults for NEW leases (rent_settings/default only).
+    // Rentals roles read; owner/manager write; the owner deletes.
+    function validRentSettings(usersCol, docId) {
+      let d = request.resource.data;
+      return docId == 'default'
+        && canManageRent(usersCol)
+        && rentWriterOk()
+        && d.keys().hasOnly(['dueDay', 'increasePct', 'meterRate', 'tenantLink', 'receiptHeader', 'updatedAt', 'updatedBy'])
+        && d.get('dueDay', 10) is int && d.get('dueDay', 10) >= 1 && d.get('dueDay', 10) <= 28
+        && d.get('increasePct', 5) is number && d.get('increasePct', 5) >= 0 && d.get('increasePct', 5) <= 100
+        && rentNumOrNull(d, 'meterRate')
+        && d.get('tenantLink', false) is bool
+        && rentStr(d, 'receiptHeader', 0, 80);
+    }
+
     // ============================================
     // PRODUCTION COLLECTIONS
     // ============================================
@@ -971,7 +1003,7 @@ service cloud.firestore {
       // record payment/due bookkeeping. Only an owner may change userId.
       // Cash, expenses, stock adjustments, items, counters: see canUpdateRecord.
       allow update: if businessAccess(collection)
-        && appSettingsGuard(collection, docId)
+        && (appSettingsGuard(collection, docId) || managerShopSettingsOk(collection, docId))
         && (!(collection in stockCollections()) || writesCurrentClient(collection))
         && canUpdateRecord(baseName(collection), usersOf(collection), docId);
       // Bills can only be deleted by an owner or by the user who created them
@@ -1220,6 +1252,18 @@ service cloud.firestore {
       allow create: if rentCreateOk('rent_charges', 'users', docId);
       allow update: if rentUpdateOk('rent_charges', 'users', docId);
       allow delete: if rentDeleteOk('rent_charges', 'users');
+    }
+
+    match /rent_settings/{docId} {
+      allow read: if rentRoleIn('users') != '';
+      allow create, update: if validRentSettings('users', docId);
+      allow delete: if rentRoleIn('users') == 'owner';
+    }
+
+    match /dev_rent_settings/{docId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create, update: if validRentSettings('dev_users', docId);
+      allow delete: if rentRoleIn('dev_users') == 'owner';
     }
 
     match /dev_rent_properties/{docId} {

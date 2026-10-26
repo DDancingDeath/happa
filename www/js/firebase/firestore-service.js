@@ -2354,6 +2354,26 @@ const FirebaseService = {
     },
 
     /**
+     * Business name and details printed on bills (Settings › Aadhat). settings/app:
+     * owner, or a manager allowed in Roles & access (firestore.rules).
+     * @param {{businessName: string, businessDetails: string}} details
+     * @returns {Promise<void>}
+     */
+    async saveBusinessDetails({ businessName, businessDetails }) {
+        const fields = {
+            businessName: String(businessName || ''),
+            businessDetails: String(businessDetails || ''),
+            businessUpdatedAt: Date.now(),
+            businessUpdatedBy: AppState.currentUser?.uid || 'unknown'
+        };
+        const write = getDb().collection(col('settings')).doc('app').set(fields, { merge: true });
+        if (appSettingsPromise) {
+            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
+        }
+        await settleWrite(write, 'saveBusinessDetails');
+    },
+
+    /**
      * Test in Production settings for every device (#217): rollback policies.
      * settings/app is owner-only.
      * @param {Object} policies - normalized (tip/tip.js normalizePolicies)

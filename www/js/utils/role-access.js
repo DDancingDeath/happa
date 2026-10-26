@@ -13,7 +13,9 @@ export const CONFIGURABLE_ROLES = ['manager', 'staff'];
 
 export const PAGE_PERMISSIONS = ['finance', 'reports', 'analytics', 'wholesale'];
 export const SECTION_PERMISSIONS = ['personalExpenses', 'profit', 'stockValue', 'oldCashSessions', 'purchaseRates'];
-export const SWITCH_PERMISSIONS = [...PAGE_PERMISSIONS, ...SECTION_PERMISSIONS];
+/** Managers only: may edit the Aadhat settings (Settings › Aadhat; firestore.rules check it on settings/app). */
+export const SETTINGS_PERMISSIONS = ['shopSettings'];
+export const SWITCH_PERMISSIONS = [...PAGE_PERMISSIONS, ...SECTION_PERMISSIONS, ...SETTINGS_PERMISSIONS];
 
 export const DEFAULT_EDIT_DAYS = 2;
 export const MAX_EDIT_DAYS = 30;
@@ -25,12 +27,12 @@ export const ROLE_ACCESS_DEFAULTS = Object.freeze({
     manager: Object.freeze({
         finance: true, reports: true, analytics: true, wholesale: true,
         personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true,
-        historyDays: 0, editDays: DEFAULT_EDIT_DAYS
+        shopSettings: false, historyDays: 0, editDays: DEFAULT_EDIT_DAYS
     }),
     staff: Object.freeze({
         finance: false, reports: false, analytics: false, wholesale: false,
         personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true,
-        historyDays: 0, editDays: DEFAULT_EDIT_DAYS
+        shopSettings: false, historyDays: 0, editDays: DEFAULT_EDIT_DAYS
     })
 });
 
@@ -66,6 +68,7 @@ export function normalizeRoleAccess(raw) {
         const r = src[role] && typeof src[role] === 'object' ? src[role] : {};
         const entry = {};
         for (const p of SWITCH_PERMISSIONS) entry[p] = typeof r[p] === 'boolean' ? r[p] : def[p];
+        if (role !== 'manager') entry.shopSettings = false;
         entry.historyDays = wholeDays(r.historyDays, def.historyDays, MAX_HISTORY_DAYS);
         entry.editDays = wholeDays(r.editDays, def.editDays, MAX_EDIT_DAYS);
         out[role] = entry;

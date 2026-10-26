@@ -1,8 +1,8 @@
 /**
- * @fileoverview Business switcher (#149): Shop | Rentals at the top of the side
- * menu. This is the only start-up file that knows about Rentals, and it only
+ * @fileoverview Business switcher (#149): Aadhat | Rentals at the top of the side
+ * menu (internal id 'shop'). This is the only start-up file that knows about Rentals, and it only
  * loads the Rentals code with import() when Rentals is opened (design §4).
- * The app always starts on Shop, so start-up never reads rentals data.
+ * The app always starts on Aadhat, so start-up never reads rentals data.
  * @module ui/business-switcher
  */
 
@@ -10,13 +10,11 @@ import { AppState } from '../utils/state.js';
 import { NavigationManager } from './navigation.js';
 import { UIManager } from './ui-manager.js';
 import { t } from '../i18n/index.js';
-
-const RENT_ROLES = ['manager', 'member'];
+import { rentRoleOf } from '../utils/settings-sections.js';
 
 /** 'owner' | 'manager' | 'member' | null: what this user may do in Rentals. */
 export function rentalsRole(state = AppState) {
-    if (state?.userRole === 'owner') return 'owner';
-    return RENT_ROLES.includes(state?.rentRole) ? state.rentRole : null;
+    return rentRoleOf(state?.userRole, state?.rentRole);
 }
 
 let current = 'shop';
@@ -62,6 +60,11 @@ export const BusinessSwitcher = {
             }).catch((e) => { loading = null; throw e; });
         }
         return loading;
+    },
+
+    /** Settings › Rentals form (dynamic import, only when that section is shown). */
+    loadSettings() {
+        return import('../rentals/rent-settings.js');
     },
 
     async set(biz) {

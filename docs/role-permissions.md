@@ -4,8 +4,14 @@ Owner decision on #84: *"Give owners access to control this from the app itself.
 Owner decision on #87: *non-owner users may edit or delete a bill for 2 days.*
 
 The owner sets, per role, which pages and numbers managers and members see, how far back
-History goes and for how many days bills can be changed. Screen: **Settings → Roles & access**
-(owner only, English and Hindi).
+History goes and for how many days bills can be changed. Screen: **Settings › Common › Roles & access**
+(owner only, English and Hindi; route `settings-roles`). The same card lists **People**: each
+approved user's Aadhat role (approved and changed in Admin › Users) and Rentals role (`users/{uid}.rentRole`,
+changed right there; this replaced the old Rentals › Access page, whose route now opens this card).
+
+The app has two businesses: **Aadhat** (आढ़त; stored and coded as `shop`, e.g. the switcher key, the
+`role` field and `settings/app`) and **Rentals**. Only the name on screen is Aadhat; ids, collections and
+permission ids keep `shop`.
 
 ## Roles
 
@@ -35,6 +41,7 @@ setting is missing or invalid.
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
 | `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client |
 | `purchaseRates` | See purchase rates | खरीद रेट देखें | on | on | client (Rates page only) |
+| `shopSettings` | Change Aadhat settings (labour, bill checks, business name) | आढ़त की सेटिंग बदलें | off | – (managers only) | **client + rules** |
 | `historyDays` | History: days back (0 = all) | इतिहास: कितने दिन पीछे तक (0 = सभी) | 0 | 0 | client |
 | `editDays` | Edit/delete bills for (days) | बिल बदलने/हटाने के दिन | 2 | 2 | **client + rules** |
 
@@ -42,6 +49,11 @@ setting is missing or invalid.
   members edit and delete only their own bills. Recording a payment, clearing or writing off
   a due is **not** limited (it is bookkeeping, not an edit). The owner has no limit.
 - `historyDays`: whole days, 0–3650; 0 = all bills.
+- `shopSettings`: managers only (members never see Settings › Aadhat; the client forces it off for
+  them). When on, a manager may update only the Aadhat fields of `settings/app`: `laborRate`,
+  `heavyWeightThreshold`, `checkThresholds`, `businessName`, `businessDetails` and their
+  `…UpdatedAt` / `…UpdatedBy` stamps (`managerShopSettingsOk`). Never `roleAccess`,
+  `minClientVersion`, `enforceClientVersion` or TIP settings, and never create or delete the doc.
 - Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, Reports › Trends and Product traffic,
   App health) and the stock adjustment / item edit actions are not in the list: their rules are
   fixed and the setting could not open them. `TAB_ROLES` in `role-access.js` lists them (Admin:
@@ -66,10 +78,10 @@ setting is missing or invalid.
 roleAccess: {
   manager: { finance: true, reports: true, analytics: true, wholesale: true,
              personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
-             purchaseRates: true, historyDays: 0, editDays: 2 },
+             purchaseRates: true, shopSettings: false, historyDays: 0, editDays: 2 },
   staff:   { finance: false, reports: false, analytics: false, wholesale: false,
              personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
-             purchaseRates: true, historyDays: 0, editDays: 2 }
+             purchaseRates: true, shopSettings: false, historyDays: 0, editDays: 2 }
 },
 roleAccessUpdatedAt: <ms>, roleAccessUpdatedBy: <uid>
 ```
@@ -77,7 +89,8 @@ roleAccessUpdatedAt: <ms>, roleAccessUpdatedBy: <uid>
 Why `settings/app` and not a separate `settings/permissions` doc:
 
 - **Owner-write only already**: `appSettingsGuard` lets only the owner write `settings/app`
-  (it also holds `minClientVersion`). Every approved user can read it.
+  (it also holds `minClientVersion`), except the Aadhat fields a manager may update when
+  `shopSettings` is on. Every approved user can read it.
 - **No extra client read**: every app start already reads `settings/app` once
   (`FirebaseService.loadAppSettings`, shared with the version check, labour rate and bill-check
   limits). A separate doc would cost one more read per app start on every phone.
@@ -140,7 +153,9 @@ canDeleteBill    = owner || (creator && withinBillWindow)
   deleted only by the owner. Backfilling a legacy `timestamp` (still allowed for ordering) does not
   unlock them, and nobody but the owner can add a `createdAt`.
 - Payment bookkeeping (`bookkeepingOnly` + `paymentEditOk`) is unchanged and not time-limited.
-- `settings/app` writes stay owner-only (`appSettingsGuard`).
+- `settings/app` writes stay owner-only (`appSettingsGuard`), apart from the Aadhat fields a
+  manager with `shopSettings` may update (`managerShopSettingsOk`; reads `roleAccess` from the
+  current doc, so it costs no extra read).
 
 **Per-request limits and read cost** (Spark: rules `get()`/`exists()` are billed as reads; a
 document is billed once per request; limit 10 docs per single write, 20 per batch/transaction):
@@ -202,3 +217,20 @@ The edit-window branch is only evaluated after `isOwnerIn` fails, so the owner n
 6. Live update via a `settings/app` listener if the owner wants changes to apply without a restart.
 7. Rules validation of the whole `roleAccess` shape on write (today: owner-only write, client
    normalization, rules fallback for `editDays`).
+
+## Settings sections (who sees what)
+
+Settings shows **Common** to everyone, plus the section of the business open in the switcher, with a
+small button to view the other business's section when the user may see it
+(`utils/settings-sections.js`, `settingsView()`):
+
+| Section | Sees | Edits | Stored in |
+|---|---|---|---|
+| Common: language, account (name, change password, sign out), notifications, printer, install, What's new / About | everyone | own device / own profile | device, `users/{uid}.name` |
+| Common: Roles & access (+ People) | owner | owner | `settings/app.roleAccess`, `users/{uid}.rentRole` |
+| Aadhat: business name and details, UPI ID, labour, bill checks, bill numbers, opening stock link | Aadhat owner and managers | owner; managers with `shopSettings` (UPI ID: this device) | `settings/app` (read at start-up, no extra read); UPI ID on the device |
+| Rentals: defaults for new leases (due day, yearly %, electricity rate, tenant link), header on tenant pages | Rentals owner and managers | owner and Rentals managers | `rent_settings/default` (+ `dev_`), read only when this section is shown or a tenant moves in |
+
+Members (Aadhat or Rentals) see only Common. Old routes keep working: `settings`, `admin-configure`
+and `settings-aadhat` (→ Aadhat), `settings-shop`, `settings-rentals`, `settings-roles`; Admin's old
+Configure tab opens Settings › Aadhat.

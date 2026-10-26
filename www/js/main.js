@@ -110,7 +110,7 @@ function refreshForLanguage(lang) {
         },
         'cash-management': () => CashManagementManager.refreshForLanguage(),
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
-        settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); },
+        settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); RolesAccessManager.renderPeople(); SettingsManager.renderSections(); },
         finance: () => { FinanceManager.renderDashboard(); FinanceManager.renderCustomAccounts(); FinanceManager.renderWithdrawalHistory(); },
         reports: () => { if (ReportsManager.rtView) rateTrends?.refreshForLanguage(); else ReportsManager.renderReports(); },
         analytics: () => AnalyticsManager.renderTabContent(AnalyticsManager.currentTab),
@@ -1201,12 +1201,19 @@ window.app = {
     
     // Settings
     settings: {
-        load: () => {
+        load: (section) => {
             AppUpdatesManager.renderSettings();
-            SettingsManager.loadSettings();
-            RolesAccessManager.render();
+            SettingsManager.open(section);
         },
         save: () => SettingsManager.saveSettings(),
+        showOther: () => SettingsManager.showOther(),
+        saveName: () => SettingsManager.saveName(),
+        changePassword: () => SettingsManager.changePassword(),
+        saveBusinessDetails: () => SettingsManager.saveBusinessDetails(),
+        saveUpi: () => SettingsManager.saveUpi(),
+        saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
+        saveRentals: () => SettingsManager.saveRentals(),
+        openOpeningStock: () => SettingsManager.openOpeningStock(),
         toggleDarkMode: () => SettingsManager.toggleDarkMode(),
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
@@ -1229,7 +1236,9 @@ window.app = {
     // Settings → Roles & access (owner, #84)
     roles: {
         render: () => RolesAccessManager.render(),
-        save: () => RolesAccessManager.saveForm()
+        save: () => RolesAccessManager.saveForm(),
+        loadPeople: () => RolesAccessManager.loadPeople(),
+        setRentRole: (userId, role) => RolesAccessManager.setRentRole(userId, role)
     },
     
     // Users
@@ -1257,7 +1266,7 @@ window.app = {
     admin: {
         init: () => AdminManager.init(),
         showTab: (tab) => AdminManager.showTab(tab),
-        saveCheckThresholds: () => AdminManager.saveCheckThresholds(),
+        saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
         approveUser: (userId) => AdminManager.approveUser(userId),
         rejectUser: (userId) => AdminManager.rejectUser(userId),
         showChangeRole: (userId, userName, currentRole) => AdminManager.showChangeRole(userId, userName, currentRole),

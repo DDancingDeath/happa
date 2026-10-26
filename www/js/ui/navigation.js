@@ -10,7 +10,7 @@ import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 //   tab     page element to show            section  sub-view handed to the page (see showTabFromNav)
 //   needs   extra TAB_ROLES/TAB_PERMISSIONS id   id   canonical id kept in history (aliases / old ids)
 //   nav     side-nav link to highlight (default: tab)
-// To add a page's sub-routes, add one group below (e.g. 'settings-roles', 'admin-configure')
+// To add a page's sub-routes, add one group below (one group per page)
 // and open the section for that page in showTabFromNav.
 const ROUTES = Object.freeze({
     // Rates page (the items list). Old id: items.
@@ -25,7 +25,16 @@ const ROUTES = Object.freeze({
     'rates-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends', id: 'reports-traffic' },
 
     // Wholesale › History (old History 'wholesale' links land here).
-    'wholesale-history': { tab: 'wholesale-sales', section: 'history', nav: 'wholesale-sales' }
+    'wholesale-history': { tab: 'wholesale-sales', section: 'history', nav: 'wholesale-sales' },
+
+    // Settings sections (Common, Aadhat = internal 'shop', Rentals, Roles & access).
+    // Old ids: settings-aadhat, admin-configure (Admin › Configure moved to Settings › Aadhat).
+    'settings-common': { tab: 'settings', section: 'common' },
+    'settings-shop': { tab: 'settings', section: 'shop' },
+    'settings-aadhat': { tab: 'settings', section: 'shop', id: 'settings-shop' },
+    'settings-rentals': { tab: 'settings', section: 'rentals' },
+    'settings-roles': { tab: 'settings', section: 'roles' },
+    'admin-configure': { tab: 'settings', section: 'shop', id: 'settings-shop' }
 });
 
 /** Route id -> { id (canonical), tab (page element id), section, needs (extra page permission), nav (side-nav link id) }. */
@@ -251,14 +260,14 @@ const NavigationManager = {
             setTimeout(() => window.app.cashManagement.init(), 100);
         }
         
-        // Load settings when Settings tab is shown
-        if (tabId === 'settings' && window.app?.settings) {
-            setTimeout(() => window.app.settings.load(), 100);
+        // Load settings when Settings tab is shown (a settings-* route opens that section)
+        if (route.tab === 'settings' && window.app?.settings) {
+            setTimeout(() => window.app.settings.load(route.section), 100);
         }
-        if (tabId === 'settings' && window.app?.install) {
+        if (route.tab === 'settings' && window.app?.install) {
             window.app.install.refresh();
         }
-        if (tabId === 'settings' && window.app?.notifications) {
+        if (route.tab === 'settings' && window.app?.notifications) {
             window.app.notifications.refreshSettings();
         }
         

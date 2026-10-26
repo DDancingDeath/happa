@@ -13,7 +13,7 @@ import { AuthManager } from '../auth/authentication.js';
 import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
 import {
-    CONFIGURABLE_ROLES, PAGE_PERMISSIONS, SECTION_PERMISSIONS, MAX_EDIT_DAYS, MAX_HISTORY_DAYS,
+    CONFIGURABLE_ROLES, PAGE_PERMISSIONS, SECTION_PERMISSIONS, SETTINGS_PERMISSIONS, MAX_EDIT_DAYS, MAX_HISTORY_DAYS,
     normalizeRoleAccess
 } from '../utils/role-access.js';
 
@@ -28,6 +28,7 @@ const PERMISSION_LABEL_KEYS = {
     stockValue: 'ui.roles.perm_stock_value',
     oldCashSessions: 'ui.roles.perm_old_cash_sessions',
     purchaseRates: 'ui.roles.perm_purchase_rates',
+    shopSettings: 'ui.roles.perm_shop_settings',
     historyDays: 'ui.roles.perm_history_days',
     editDays: 'ui.roles.perm_edit_days'
 };
@@ -68,6 +69,9 @@ export class RolesAccessManager {
         const group = (key) => `<tr class="role-access-group"><td colspan="${CONFIGURABLE_ROLES.length + 1}">${e(t(key))}</td></tr>`;
         const switchRow = (p) => `<tr><td>${e(t(PERMISSION_LABEL_KEYS[p]))}</td>${CONFIGURABLE_ROLES.map(r => `
             <td><input type="checkbox" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – ${t(ROLE_LABEL_KEYS[r])}`)}"${access[r][p] ? ' checked' : ''}></td>`).join('')}</tr>`;
+        // Settings switches are for managers only (members never see the Aadhat settings).
+        const managerRow = (p) => `<tr><td>${e(t(PERMISSION_LABEL_KEYS[p]))}</td>${CONFIGURABLE_ROLES.map(r => r !== 'manager' ? '<td>–</td>' : `
+            <td><input type="checkbox" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – ${t(ROLE_LABEL_KEYS[r])}`)}"${access[r][p] ? ' checked' : ''}></td>`).join('')}</tr>`;
         const daysRow = (p) => `<tr><td>${e(t(PERMISSION_LABEL_KEYS[p]))}</td>${CONFIGURABLE_ROLES.map(r => `
             <td><input type="number" inputmode="numeric" min="0" max="${DAY_LIMITS[p]}" step="1" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – ${t(ROLE_LABEL_KEYS[r])}`)}" value="${e(access[r][p])}"></td>`).join('')}</tr>`;
         grid.innerHTML = `
@@ -78,6 +82,8 @@ export class RolesAccessManager {
                     ${PAGE_PERMISSIONS.map(switchRow).join('')}
                     ${group('ui.roles.group_numbers')}
                     ${SECTION_PERMISSIONS.map(switchRow).join('')}
+                    ${group('ui.roles.group_settings')}
+                    ${SETTINGS_PERMISSIONS.map(managerRow).join('')}
                     ${group('ui.roles.group_days')}
                     ${daysRow('historyDays')}
                     ${daysRow('editDays')}
@@ -94,7 +100,7 @@ export class RolesAccessManager {
         const raw = {};
         for (const role of CONFIGURABLE_ROLES) {
             raw[role] = {};
-            for (const p of [...PAGE_PERMISSIONS, ...SECTION_PERMISSIONS]) {
+            for (const p of [...PAGE_PERMISSIONS, ...SECTION_PERMISSIONS, ...SETTINGS_PERMISSIONS]) {
                 const el = document.getElementById(fieldId(role, p));
                 if (el) raw[role][p] = !!el.checked;
             }
@@ -141,6 +147,67 @@ export class RolesAccessManager {
         const status = document.getElementById('roleAccessStatus');
         if (status) status.textContent = t('msg.roles.saved');
         UIManager.showToast(t('msg.roles.saved'));
+        return true;
+    }
+
+    /** Approved users, loaded only when the owner asks (one users read). */
+    static people = null;
+
+    static async loadPeople() {
+        if (AppState.userRole !== 'owner') return false;
+        const box = document.getElementById('rolePeopleList');
+        if (box) box.innerHTML = `<p class="setting-description">${Helpers.escapeHtml(t('ui.navigation.loading'))}</p>`;
+        try {
+            this.people = await FirebaseService.loadUsers();
+        } catch (error) {
+            console.warn('Roles & access: users not loaded', error?.code || error);
+            this.people = null;
+            if (box) box.innerHTML = '';
+            UIManager.showToast(t('msg.common.failed_load_users'));
+            return false;
+        }
+        this.renderPeople();
+        return true;
+    }
+
+    /** Each user's Aadhat role (changed in Admin › Users) and Rentals role (changed here). */
+    static renderPeople() {
+        const box = document.getElementById('rolePeopleList');
+        if (!box) return;
+        if (AppState.userRole !== 'owner' || !this.people) { box.innerHTML = ''; return; }
+        const e = Helpers.escapeHtml;
+        const shopRole = (r) => t(`ui.role.${r === 'owner' || r === 'manager' ? r : r === 'staff' ? 'member' : 'none'}`);
+        const rentOptions = [['', 'ui.rent.access_none'], ['manager', 'ui.rent.access_manager'], ['member', 'ui.rent.access_member']];
+        const rows = this.people
+            .filter(u => !['pending', 'rejected'].includes(u.status) && (u.role || u.rentRole))
+            .map(u => {
+                const owner = u.role === 'owner';
+                const rent = owner ? e(t('ui.role.owner'))
+                    : `<select aria-label="${e(t('ui.roles.rentals_role'))}" onchange="window.app.roles.setRentRole('${Helpers.escapeJsAttr(u.id)}', this.value)">${rentOptions.map(([v, k]) => `<option value="${v}"${(u.rentRole || '') === v ? ' selected' : ''}>${e(t(k))}</option>`).join('')}</select>`;
+                return `<tr><td>${e(u.name || u.email || '')}</td><td>${e(shopRole(u.role))}</td><td>${rent}</td></tr>`;
+            }).join('');
+        box.innerHTML = `<table class="role-access-table role-people-table">
+                <thead><tr><th>${e(t('ui.roles.person'))}</th><th>${e(t('ui.roles.shop_role'))}</th><th>${e(t('ui.roles.rentals_role'))}</th></tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <p class="setting-description">${e(t('ui.roles.people_hint'))}</p>`;
+    }
+
+    /** Owner: a user's Rentals role ('manager' | 'member' | none). */
+    static async setRentRole(userId, role) {
+        if (AppState.userRole !== 'owner') return false;
+        const value = ['manager', 'member'].includes(role) ? role : null;
+        try {
+            await FirebaseService.updateUser(userId, { rentRole: value });
+        } catch (error) {
+            console.error('Rentals role not saved:', error);
+            UIManager.showToast(t('msg.rent.save_failed'));
+            this.renderPeople();
+            return false;
+        }
+        const u = this.people?.find(x => x.id === userId);
+        if (u) u.rentRole = value;
+        UIManager.showToast(t('msg.rent.access_saved'));
         return true;
     }
 }

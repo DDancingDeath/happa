@@ -13,7 +13,6 @@ import { todayLocalISO } from '../utils/dates.js';
 import { openExternal } from '../utils/open-external.js';
 import { formatINR, whatsAppReminderUrl } from '../utils/due-reminder.js';
 import { t, getLang, applyTranslations, LANG_CHANGE_EVENT } from '../i18n/index.js';
-import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import * as store from './rent-store.js';
@@ -21,12 +20,12 @@ import { AppState } from '../utils/state.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { isShareToken, publicLink } from './rent-public.js';
 import {
-    PROPERTY_KINDS, PAYMENT_MODES, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY,
+    PROPERTY_KINDS, PAYMENT_MODES, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, normalizeRentSettings,
     monthKey, monthLabel, monthsToCharge, chargeStatus, chargeDue, monthSummary, leaseDues, buildRentReminderText,
     increaseDue, meterBill, propertyError, unitError, tenantError, leaseError, isMonth, addMonths
 } from './rent-math.js';
 
-const PAGES = ['rent', 'tenants', 'properties', 'access'];
+const PAGES = ['rent', 'tenants', 'properties'];
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
 const money = (n) => esc(formatINR(n));
@@ -38,7 +37,6 @@ const state = {
     errors: new Set(),
     charging: false,
     charged: new Set(),
-    users: null,
     renderTimer: null,
     entry: 0
 };
@@ -49,8 +47,6 @@ const canWrite = () => !!rentalsRole();
 const isOwner = () => rentalsRole() === 'owner';
 const isManager = () => ['owner', 'manager'].includes(rentalsRole());
 const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.code || e);
-/** Shop role in the chosen language (Helpers.roleLabel is English only). */
-const roleText = (role) => t(`ui.role.${['owner', 'manager', 'staff'].includes(role) ? (role === 'staff' ? 'member' : role) : 'none'}`);
 const val = (id) => (document.getElementById(id)?.value ?? '').trim();
 const isVisible = () => document.getElementById('rentals')?.classList.contains('active');
 
@@ -146,7 +142,6 @@ function render() {
         notice.hidden = state.errors.size === 0 && !limited;
         notice.textContent = state.errors.size ? t('msg.rent.could_not_load') : limited ? t('msg.rent.limit_reached') : '';
     }
-    if (state.page === 'access') { root.innerHTML = renderAccess(); return; }
     if (!['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges'].every(k => state.loaded.has(k))) {
         root.innerHTML = `<p class="rent-empty">${esc(t('ui.rent.loading'))}</p>`;
         return;
@@ -156,6 +151,15 @@ function render() {
         : state.page === 'properties' ? renderProperties(d)
         : renderRent(d);
 }
+
+/** Settings › Rentals defaults; built-in defaults when they can't be read. */
+const defaults = () => store.loadSettings().catch((e) => {
+    console.warn('Rentals settings not loaded:', e?.code || e);
+    return normalizeRentSettings(null);
+});
+
+/** Name on the tenant's page: Settings › Rentals header, else the business name. */
+const headerName = (s) => s?.receiptHeader || AppState.settings?.shopName || '';
 
 // ---------- Rent ----------
 
@@ -316,11 +320,12 @@ async function meter(leaseId) {
     const prev = e?.prev ?? unit?.lastReading ?? 0;
     // Previous reading is fixed once known; the rate too for members (rules check both).
     const prevLocked = e != null || unit?.lastReading != null;
+    const defaultRate = e?.rate ?? unit?.meterRate ?? (await defaults()).meterRate ?? '';
     const rateLocked = !isManager() && unit?.meterRate != null;
     const ok = await dialog(`<h3>⚡ ${esc(t('ui.rent.meter_reading'))}: ${esc(monthLabel(state.month, getLang()))}</h3>
         <label class="rent-label">${esc(t('ui.rent.meter_prev'))}<input id="rentMeterPrev" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(prev)}"${prevLocked ? ' readonly' : ''}></label>
         <label class="rent-label">${esc(t('ui.rent.meter_curr'))}<input id="rentMeterCurr" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.curr ?? '')}"></label>
-        <label class="rent-label">${esc(t('ui.rent.meter_rate'))}<input id="rentMeterRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(e?.rate ?? unit?.meterRate ?? '')}"${rateLocked ? ' readonly' : ''}></label>
+        <label class="rent-label">${esc(t('ui.rent.meter_rate'))}<input id="rentMeterRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(defaultRate)}"${rateLocked ? ' readonly' : ''}></label>
         <p class="rent-help">${esc(t('ui.rent.meter_help'))}</p>`);
     if (!ok) return;
     let bill;
@@ -453,7 +458,7 @@ async function linkAction(action, leaseId) {
             await store.makeShareLink(lease, {
                 tenantName: ix.tenants.get(lease.tenantId)?.name || '',
                 place: placeOf(ix, lease.unitId),
-                shopName: AppState.settings?.shopName || ''
+                shopName: headerName(await defaults())
             });
             UIManager.showToast(t('msg.rent.link_ready'), 'success');
         }
@@ -537,13 +542,15 @@ async function moveIn(tenantId) {
     const ix = index(d);
     const vacant = d.units.filter(u => !u.leaseId);
     if (!vacant.length) return UIManager.showToast(t('msg.rent.no_vacant_unit'), 'info');
+    // Settings › Rentals defaults fill a NEW lease; existing leases keep their own values.
+    const defs = await defaults();
     const options = vacant.map(u => `<option value="${esc(u.id)}" data-rent="${esc(u.rent || 0)}">${esc(placeOf(ix, u.id))}</option>`).join('');
     const ok = await dialog(`<h3>${esc(t('ui.rent.move_in'))}: ${esc(ix.tenants.get(tenantId)?.name || '')}</h3>
         <label class="rent-label">${esc(t('ui.rent.unit'))}<select id="rentLeaseUnit" onchange="window.app.rentals.fillRent(this)">${options}</select></label>
         <label class="rent-label">${esc(t('ui.rent.monthly_rent'))}<input id="rentLeaseRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(vacant[0].rent || 0)}"></label>
-        <label class="rent-label">${esc(t('ui.rent.due_day'))}<input id="rentLeaseDay" type="number" min="1" max="28" step="1" value="${DEFAULT_DUE_DAY}"></label>
+        <label class="rent-label">${esc(t('ui.rent.due_day'))}<input id="rentLeaseDay" type="number" min="1" max="28" step="1" value="${esc(defs.dueDay)}"></label>
         <label class="rent-label">${esc(t('ui.rent.start_month'))}<input id="rentLeaseStart" type="month" value="${esc(monthKey())}"></label>
-        <label class="rent-label">${esc(t('ui.rent.increase_pct'))}<input id="rentLeasePct" type="number" min="0" max="100" step="0.5" value="${DEFAULT_INCREASE_PCT}"></label>
+        <label class="rent-label">${esc(t('ui.rent.increase_pct'))}<input id="rentLeasePct" type="number" min="0" max="100" step="0.5" value="${esc(defs.increasePct)}"></label>
         <label class="rent-label">${esc(t('ui.rent.deposit'))}<input id="rentLeaseDeposit" type="number" inputmode="decimal" min="0" step="1" value="0"></label>`);
     if (!ok) return;
     const unit = ix.units.get(val('rentLeaseUnit'));
@@ -554,8 +561,20 @@ async function moveIn(tenantId) {
     };
     const err = !unit || unit.leaseId ? 'msg.rent.no_vacant_unit' : leaseError(lease, state.month);
     if (err) return UIManager.showToast(t(err), 'error');
-    await saveRent(() => store.startLease({ unit, tenantId, ...lease }));
+    const leaseId = await saveRent(() => store.startLease({ unit, tenantId, ...lease }));
+    if (!leaseId) return;
     AuditService.log('RENT_MOVE_IN', { tenantId, unitId: unit.id, rent: lease.rent }).catch(auditWarn);
+    if (defs.tenantLink && isManager()) {
+        const created = { id: leaseId, unitId: unit.id, propertyId: unit.propertyId, tenantId, ...lease, status: 'active', endMonth: null, shareToken: null };
+        try {
+            await store.makeShareLink(created, {
+                tenantName: ix.tenants.get(tenantId)?.name || '', place: placeOf(ix, unit.id), shopName: headerName(defs)
+            });
+            AuditService.log('RENT_LINK_ON', { leaseId }).catch(auditWarn);
+        } catch (e) {
+            console.warn('Tenant link not made for the new lease:', e?.code || e);
+        }
+    }
 }
 
 function fillRent(select) {
@@ -710,52 +729,6 @@ async function archiveUnit(id) {
     await saveRent(() => store.updateUnit(id, { archived: true }));
 }
 
-// ---------- Access (owner) ----------
-
-function renderAccess() {
-    if (!isOwner()) return '';
-    if (!state.users) {
-        void loadUsers();
-        return `<p class="rent-empty">${esc(t('ui.rent.loading'))}</p>`;
-    }
-    const roles = [['', 'ui.rent.access_none'], ['manager', 'ui.rent.access_manager'], ['member', 'ui.rent.access_member']];
-    const rows = state.users
-        .filter(u => u.role !== 'owner' && !['pending', 'rejected'].includes(u.status))
-        .map(u => {
-            const opts = roles.map(([v, k]) => `<option value="${v}"${(u.rentRole || '') === v ? ' selected' : ''}>${esc(t(k))}</option>`).join('');
-            return `<div class="rent-row rent-access-row"><div><div class="rent-name">${esc(u.name || u.email || '')}</div>
-                <div class="rent-sub">${esc(t('ui.rent.shop_role', { role: roleText(u.role) }))}</div></div>
-                <select onchange="window.app.rentals.setRole('${js(u.id)}', this.value)">${opts}</select></div>`;
-        }).join('');
-    return `<p class="rent-help">${esc(t('ui.rent.access_help'))}</p>${rows || `<p class="rent-empty">${esc(t('ui.rent.no_users'))}</p>`}`;
-}
-
-async function loadUsers() {
-    try {
-        state.users = await FirebaseService.loadUsers();
-    } catch (e) {
-        console.warn('Rentals access: users not loaded', e?.code || e);
-        state.users = [];
-        UIManager.showToast(t('msg.rent.could_not_load'), 'error');
-    }
-    if (state.page === 'access') render();
-}
-
-async function setRole(userId, role) {
-    if (!isOwner()) return;
-    const value = ['manager', 'member'].includes(role) ? role : null;
-    try {
-        await store.setRentRole(userId, value);
-        const u = state.users?.find(x => x.id === userId);
-        if (u) u.rentRole = value;
-        UIManager.showToast(t('msg.rent.access_saved'), 'success');
-    } catch (e) {
-        console.error('Rentals access not saved:', e);
-        UIManager.showToast(t('msg.rent.save_failed'), 'error');
-        render();
-    }
-}
-
 // ---------- shared ----------
 
 let dialogResolve = null;
@@ -778,13 +751,16 @@ function dialog(html) {
     });
 }
 
+/** Runs a save; resolves the save's result (true when it has none), or null when it failed. */
 async function saveRent(fn) {
     try {
-        await fn();
+        const out = await fn();
         UIManager.showToast(t('msg.rent.saved'), 'success');
+        return out ?? true;
     } catch (e) {
         console.error('Rentals save failed:', e);
         UIManager.showToast(t('msg.rent.save_failed'), 'error');
+        return null;
     }
 }
 
@@ -792,12 +768,16 @@ export const RentalsModule = {
     /** Shows a Rentals page and starts the listeners if they aren't running. */
     async enter(page = 'rent') {
         if (!rentalsRole()) return;
+        // Access moved to Settings › Roles & access (one screen for both businesses).
+        if (page === 'access') {
+            if (isOwner()) NavigationManager.showTabFromNav('settings-roles');
+            return;
+        }
         // leave() (or another enter) while the page is loading wins: don't show or listen then.
         const token = ++state.entry;
         await ensureDom();
         if (token !== state.entry) return;
-        state.page = PAGES.includes(page) && (page !== 'access' || isOwner()) ? page : 'rent';
-        if (state.page === 'access') state.users = null;
+        state.page = PAGES.includes(page) ? page : 'rent';
         NavigationManager.showTab('rentals');
         if (!store.isAttached()) {
             state.month = monthKey();
@@ -823,8 +803,8 @@ export const RentalsModule = {
         pay, fillDue, remind, meter, editLease,
         addTenant, editTenant, archiveTenant, moveIn, moveOut, fillRent,
         addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit,
-        setRole, shareLink, linkAction
+        shareLink, linkAction
     }
 };
 
-export const _test = { state, accounts, index, render, maybeCharge };
+export const _test = { state, accounts, index, render, maybeCharge, moveIn };

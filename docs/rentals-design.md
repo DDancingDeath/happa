@@ -5,16 +5,19 @@ Merges after the happa go-live PRs (#231 → #226 → #228 → #229 → #230 →
 
 ## 0. Decision (owner, 2026-10-25, #149)
 
-- **One app, happa, with a separate section per business.** The grain shop is
-  business #1, rentals is next, more may come later. No separate apps.
+- **One app, happa, with a separate section per business.** The grain business,
+  **Aadhat** (आढ़त), is business #1, rentals is next, more may come later. No separate apps.
 - **Hard requirement: "make sure it doesn't make the whole app slow."** Section 4
   turns this into rules that CI checks.
-- The app moves to Firebase project `happa-bfc07` as is (#231). The shop keeps its
-  current top-level collections (`purchases`, `items`, …). **Shop data is not
+- The app moves to Firebase project `happa-bfc07` as is (#231). Aadhat keeps its
+  current top-level collections (`purchases`, `items`, …). **Aadhat data is not
   restructured.** Rentals gets its own `rent_*` collections next to them.
+- **Name (owner, 2026-10-26):** the first business is shown as **Aadhat** / **आढ़त**
+  (it was "Shop"). Only the screen name changed: code ids, the switcher key, the
+  `role` field, `settings/app` and the collections keep `shop`.
 
 This is the #149 option C ("businesses with modules"), started in the cheapest
-way that keeps the shop untouched: the shop is the implicit business #1 on the
+way that keeps Aadhat untouched: Aadhat is the implicit business #1 on the
 existing paths, and rentals is born in its own collections. The full nested
 `businesses/{bid}/…` shape is described in 3.5 as the way to add a second
 business of the same type. It is not built now.
@@ -29,7 +32,7 @@ business of the same type. It is not built now.
 | Rent due and collection | One charge per lease per month (deterministic id, so it is created once even from two phones), partial payments, mode cash/UPI/bank/cheque | 1 |
 | WhatsApp reminder | One tap: a bilingual text with the open months and the total, sent to the tenant's chat | 1 |
 | Agreements | End month, notice period, lock-in, escalation % and next escalation month, agreement type | 2 |
-| Deposits ledger | Received / deduction / refund entries; shown as money held, **not** shop cash | 2 |
+| Deposits ledger | Received / deduction / refund entries; shown as money held, **not** Aadhat cash | 2 |
 | Receipts | Plain, **non-GST** rent receipt (tenant, unit, month, amount, mode, balance): WhatsApp text and printable/thermal. No GST fields | 2 |
 | Maintenance expenses | Per property: repairs, property tax, society, insurance, broker; cash/bank mode | 2 |
 | Electricity | **Sub-meter** per unit: previous and current reading, rate per unit; (current − previous) × rate added to that month's charge | **1** (small: one dialog, one transaction, rules check the arithmetic) |
@@ -39,16 +42,16 @@ business of the same type. It is not built now.
 | Reports | Monthly expected vs collected, outstanding per tenant (aging), yearly income per property (ITR "house property"), occupancy, deposits held, CSV/Excel | 3 |
 | Audit | Every create/edit/delete of lease, payment, deposit | 1 (payments), 2 (rest) |
 
-**Who uses Rentals (owner, 2026-10-25):** only the shop's own people — the owner and
+**Who uses Rentals (owner, 2026-10-25):** only Aadhat's own people — the owner and
 helpers given a rentals role. Tenants never get accounts or logins and never use
 the app; they only receive WhatsApp reminders and receipts (and, in the follow-up
-PR, a read-only link to their own rent history — no login). The Access page lists
-only app users.
+PR, a read-only link to their own rent history — no login). Settings › Roles & access
+› People lists only app users.
 
 Out of scope: online rent collection, e-stamp/agreement generation, GST invoices,
 tenant accounts of any kind, photo upload (Storage needs Blaze on new projects).
 
-### Reuse without coupling to the shop's money math
+### Reuse without coupling to Aadhat's money math
 
 | Building block | Reused how | Not reused |
 |---|---|---|
@@ -58,44 +61,45 @@ tenant accounts of any kind, photo upload (Storage needs Blaze on new projects).
 | `utils/aging.js` | Phase 3: the same day buckets (0–30, 31–60, …) for "outstanding per tenant" via a small adapter | Party/bill model |
 | `services/printer.js` | Phase 2: a rent-receipt layout through the existing raster/image path | Bill layouts |
 | `services/audit.js` | `AuditService.log('RENT_PAYMENT', …)` | – |
-| Expenses (`miscellaneous.js`) | Pattern only (form + list); rentals expenses live in `rent_expenses` | The shop `expenses` collection, so shop Finance/Reports and cash drawer numbers don't move |
-| Cash (`cash-management.js`) | **Not reused.** Owner confirmed (2026-10-25): rent and deposits never go into the shop's cash drawer; rentals money is kept separate | – |
+| Expenses (`miscellaneous.js`) | Pattern only (form + list); rentals expenses live in `rent_expenses` | Aadhat's `expenses` collection, so Aadhat Finance/Reports and cash drawer numbers don't move |
+| Cash (`cash-management.js`) | **Not reused.** Owner confirmed (2026-10-25): rent and deposits never go into Aadhat's cash drawer; rentals money is kept separate | – |
 | Notifications (#12) | Phase 3: rentals reminders as notification items, created only on a device that opened Rentals | – |
 | i18n (`t()`), `Helpers.escapeHtml` / `escapeJsAttr`, `UIManager.showToast/showModal` | As everywhere | – |
 
 ## 2. Business switcher UX
 
 - **Where:** a two-button switch at the top of the side menu, under the user name:
-  `🌾 Shop | 🏠 Rentals`. It is shown only to people who may open more than one
+  `🌾 Aadhat | 🏠 Rentals` (`🌾 आढ़त | 🏠 किराया`). It is shown only to people who may open more than one
   business (owner, or anyone with a rentals role). Everyone else sees exactly
   today's menu.
 - **What it does:** the menu shows only the current business's pages.
-  - Shop: today's links (Today, Billing, Sales, …).
+  - Aadhat: today's links (Today, Billing, Sales, …).
   - Rentals: **Rent**, **Tenants**, **Properties** (phase 1), later Expenses,
     Deposits, Reports.
   - Shared in both: Settings (and the language toggle / notifications bell).
   Done with one body class (`biz-rentals`) and `data-biz` on menu links, so no
-  shop link markup or the role code in `authentication.js` changes.
-- **Always starts on Shop** (owner rule "don't make the app slow", review of #10):
+  Aadhat link markup or the role code in `authentication.js` changes.
+- **Always starts on Aadhat** (owner rule "don't make the app slow", review of #10):
   the app never opens Rentals by itself on a cold start, so start-up reads no rentals
   data for anyone. Rentals loads only when someone taps it.
 - **Roles per business** (extends #228):
-  - `users/{uid}.role` stays the **shop** role (owner / manager / member — `staff`
-    internally). The shop **owner is the owner of every business**.
+  - `users/{uid}.role` stays the **Aadhat** role (owner / manager / member — `staff`
+    internally). The Aadhat **owner is the owner of every business**.
   - New `users/{uid}.rentRole`: absent = no rentals access; `manager` or `member`.
     Owner decision (2026-10-25): **anyone with a rentals role** adds properties,
     tenants and leases, records payments and meter readings and updates records.
     A manager can also correct a month's amount. Only the owner removes records
     and changes access. Only an owner can set `rentRole` (rules), from
-    **Rentals → Access** (owner only), so `users.js` is not changed. Every write
+    **Settings › Roles & access › People** (owner only; the old Rentals → Access
+    page opens it), so `users.js` is not changed. Every write
     carries `updatedBy` (= the writer, checked by the rules) and payments carry
     `by`/`byName`; payments, meter readings, rent changes, move-in/out also go to
     the audit log.
-  - A **rentals-only helper** = `role: 'none'`, `rentRole: 'member'`. The shop rules
-    already deny any role outside owner/manager/staff, so they can read no shop data.
+  - A **rentals-only helper** = `role: 'none'`, `rentRole: 'member'`. The Aadhat rules
+    already deny any role outside owner/manager/staff, so they can read no Aadhat data.
     Phase 1 rules support this; the client start-up path for such a user (skip the
-    shop listeners, open Rentals) is phase 2.
-  - #228's `settings/app.roleAccess` stays the per-page switch board for the shop.
+    Aadhat listeners, open Rentals) is phase 2.
+  - #228's `settings/app.roleAccess` stays the per-page switch board for Aadhat.
     Rentals adds `roleAccess.rent.<role>` later (phase 3: e.g. members don't see
     totals) — read from the same `settings/app` doc, so **0 extra reads**.
 
@@ -172,11 +176,11 @@ Phase 1 queries are single-field equality (`status == 'active'`, `open == true`,
 
 A separate `match /rent_…/{id}` block per collection (+ `dev_` mirror via a
 `rentCollections()` list like `businessCollections()`); `rent_*` is **not** in
-`businessCollections()`, so the shop wildcard never grants it.
+`businessCollections()`, so the Aadhat wildcard never grants it.
 
 - `rentRoleIn(usersCol)`: profile exists, status not pending/rejected, and
   `role == 'owner'` → `owner`, else `rentRole` ∈ manager/member.
-- **Read** any `rent_*`: rentals owner/manager/member. A shop member or manager
+- **Read** any `rent_*`: rentals owner/manager/member. An Aadhat member or manager
   without `rentRole` is denied (tested).
 - **Properties, units, tenants, leases** create/update: any rentals role, with type
   checks (strings sized, numbers ≥ 0, `dueDay` 1–28, `increasePct` 0–100, months
@@ -208,7 +212,7 @@ A separate `match /rent_…/{id}` block per collection (+ `dev_` mirror via a
   Delete: owner, or owner/manager inside the move-out write (lease active before,
   ended after) for an unpaid month after `endMonth`.
 - **Audit:** `auditLogs` also accepts `RENT_*` entries from users with a rentals
-  role (a rentals-only helper isn't approved for the shop).
+  role (a rentals-only helper isn't approved for Aadhat).
 - **Profiles:** a user can't set their own `rentRole` (added to the self-update
   deny list) and can't register with one.
 - Rules tests run for prod and `dev_` (`defineSuite(prefix)`).
@@ -216,7 +220,7 @@ A separate `match /rent_…/{id}` block per collection (+ `dev_` mirror via a
 ### 3.4 Read/write cost (who pays)
 
 Only people who open Rentals pay anything, and nobody pays at start-up (the app
-always starts on Shop). Today (3 properties) entering Rentals costs a few dozen
+always starts on Aadhat). Today (3 properties) entering Rentals costs a few dozen
 reads. At the limit the owner gave (100 properties, say 300 units/tenants/leases,
 ~400 open charges):
 
@@ -227,7 +231,7 @@ reads. At the limit the owner gave (100 properties, say 300 units/tenants/leases
 | Rent / Tenants / Properties pages | 0 (same listeners, switching pages re-renders from memory) | 0 | 0 |
 | Record a payment | 1 (transaction) | – | 1 + 1 audit |
 | WhatsApp reminder | 0 | 0 | 0 |
-| Rentals → Access (owner) | users list (already cached by `FirebaseService.loadUsers`) | 0 | 1 per change |
+| Settings › Roles & access › People (owner) | users list (already cached by `FirebaseService.loadUsers`) | 0 | 1 per change |
 
 All queries are bounded (limits above) and paid charges drop out of the
 `open == true` listener. Re-entering within 30 minutes costs only changed docs, so
@@ -236,7 +240,7 @@ Spark reads.
 
 ### 3.5 Later: a second business of the same type
 
-When a second rentals business (or a second shop) appears, move to #149's nested
+When a second rentals business (or a second Aadhat-type business) appears, move to #149's nested
 shape: `businesses/{bid}` (name, type, receipt header) +
 `businesses/{bid}/members/{uid}` (role) + `businesses/{bid}/rent_units/…`. The
 switcher lists businesses instead of types, and the role moves from
@@ -249,8 +253,8 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Guarantee | How it is built | How it is enforced |
 |---|---|---|
 | Rentals code is not in the start-up path | `index.html` has no rentals tag; `main.js` statically imports only `ui/business-switcher.js` (≈ 3 KB, no Firestore, no `rent_`), which loads `js/rentals/rentals.js` with `import()` on first use. The template (`templates/rentals.html`) and CSS (`css/rentals.css`) are fetched by the rentals module, not by `TemplateLoader.loadAllTemplates()` or `<link>` tags | **Jest `rentals-startup.test.js`** (every PR): walks the static import graph from `index.html` + `main.js` and fails if any `js/rentals/*` file is reachable, if any start-up file mentions `rent_`, if `index.html` or the template loader references rentals, or if `import('…/rentals/…')` appears anywhere other than `business-switcher.js` |
-| Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Shop) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Shop, opening a shop page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for shop-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
-| Shop read counts and start-up timings unchanged | The shop start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
+| Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
+| Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
 | Precache size | Measured (phase 1 + owner answers + tenant link): rentals files 82 KB uncompressed (23 KB gzip) on a 2.6 MB precache (+3.2 %), plus the 3.7 KB switcher that start-up loads. Downloaded once per app version in the background, never at start-up. The tenant page (≈ 14 KB) is not precached | Budget: rentals files ≤ 100 KB uncompressed (raised from 80 KB for the owner's phase 1 additions); `rentals-startup.test.js` fails above it |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
@@ -265,7 +269,7 @@ on-device numbers stay visible in Diagnostics (#183).
 
 ### Phase 1 — smallest useful thing (effort **M**, ≈ 1 week)
 
-Business switcher (always starts on Shop); Rentals → **Properties** (add/edit/archive property and its
+Business switcher (always starts on Aadhat); Rentals → **Properties** (add/edit/archive property and its
 units), **Tenants** (add/edit tenant, move into a unit with rent + due day + start
 month, move out), **Rent** (this month: expected, collected, outstanding; per
 tenant/unit: open months with due/partial/paid/late, **Record payment**,
@@ -279,16 +283,16 @@ Issues to create (`tools/plan/order.json`, milestone `Sprint 4 - Features`):
 - `[Test] Rentals stay out of the start-up path (import graph + no rent_* reads at start)` — `P2`, `type:test`, `area:ci`
 
 Tests:
-- **Unit (Jest):** `rent-math` (months between, charge status due/partial/paid/late, totals, payment validation), reminder text (escaping of WhatsApp marks, one language only, months up to the last month), rent increase (RENT-6), electricity (RENT-7), switcher (shown only with access, always starts on Shop, Shop wins over a slow Rentals load).
+- **Unit (Jest):** `rent-math` (months between, charge status due/partial/paid/late, totals, payment validation), reminder text (escaping of WhatsApp marks, one language only, months up to the last month), rent increase (RENT-6), electricity (RENT-7), switcher (shown only with access, always starts on Aadhat, Aadhat wins over a slow Rentals load).
 - **Oracle:** `tests/oracle/rent.test.js` recomputes RENT-1…RENT-4 (`docs/calculations.md`) with an independent loop over a generated set of leases/payments and compares with `rent-math`.
-- **Rules (prod + dev_):** shop member/manager without `rentRole` can't read any `rent_*`; rentals-only helper reads rentals but no shop data; any rentals role writes records signed with its own uid; a charge is created only with its lease's `chargedThrough` and at the lease rent; `chargedThrough` can't pass this month or point to a missing charge; a 24-month backfill batch stays within the rules limits; payments can't overpay or forge `by`; meter arithmetic is checked; only owner/manager correct an amount; move-out deletes unpaid later months only when the lease ends (a paid later month blocks it); only owner deletes otherwise; nobody sets their own `rentRole`.
+- **Rules (prod + dev_):** Aadhat member/manager without `rentRole` can't read any `rent_*`; rentals-only helper reads rentals but no Aadhat data; any rentals role writes records signed with its own uid; a charge is created only with its lease's `chargedThrough` and at the lease rent; `chargedThrough` can't pass this month or point to a missing charge; a 24-month backfill batch stays within the rules limits; payments can't overpay or forge `by`; meter arithmetic is checked; only owner/manager correct an amount; move-out deletes unpaid later months only when the lease ends (a paid later month blocks it); only owner deletes otherwise; nobody sets their own `rentRole`.
 - **E2E:** start-up loads no rentals code or data; property → unit → tenant → move-in → part payment → meter reading → move-out.
 - **Start-up guard:** `rentals-startup.test.js` and `rentals-cold-start.test.js` (Jest) + `rentals-startup.spec.js` (Playwright).
 
 ### Phase 2 — money completeness (effort **M**)
 
 Agreements (end month, notice period, lock-in, agreement type; the yearly increase
-stays a reminder, never automatic), deposits ledger (held / deductions / refund; separate from shop cash),
+stays a reminder, never automatic), deposits ledger (held / deductions / refund; separate from Aadhat cash),
 plain non-GST rent receipt (WhatsApp text + printable/thermal, no GST fields), property expenses, overpayment as
 advance, rentals-only users' start-up path, audit for every lease/deposit edit.
 
@@ -301,7 +305,7 @@ Issues:
 
 Tests: agreement-end reminders, deposits
 balance property test (received − deductions − refunds ≥ 0), receipt text snapshot,
-rules for each new collection, Playwright: rentals-only helper sees no shop request.
+rules for each new collection, Playwright: rentals-only helper sees no Aadhat request.
 
 ### Phase 3 — reminders and reports (effort **L**)
 
@@ -327,7 +331,7 @@ column snapshot, read-cost test (report reads bounded by month range).
    protections and record who wrote what (§2, §3.3).
 3. **Receipts:** plain, **non-GST** receipts; phase 2 adds a printable / WhatsApp
    receipt. No GST fields.
-4. **Cash:** rent and deposits **never** go into the shop's cash drawer — confirmed;
+4. **Cash:** rent and deposits **never** go into Aadhat's cash drawer — confirmed;
    nothing in rentals touches `cashManagement`.
 5. **Rent increase:** default **5 % per year per tenant**, editable per lease. The app
    only **reminds** on the anniversary ("Rent increase due: 5% → ₹X"); the rent is
@@ -352,7 +356,8 @@ property."* Tenants still never log in or use the app; the link is a read-only p
   tenant's link keeps working (with a "Moved out" banner) until turned off; such
   links are listed under Tenants → "Moved out, link still on".
 - **Snapshot** `rent_public/{token}` (`dev_rent_public` in development): `lid` (the
-  lease id, needed by the rules), `v`, shop display name (`settings.shopName`),
+  lease id, needed by the rules), `v`, display name (Settings › Rentals header, else the business name from
+  Settings › Aadhat, `settings/app.businessName`),
   tenant display name, property · unit, current rent, due day, `ended`/`endMonth`,
   and up to 36 months `{m, rent, elec, units, total, paid, due, st, pd[]}` (RENT-8).
   No phone numbers, no other tenants, no user names, no other ids.
@@ -393,3 +398,24 @@ property."* Tenants still never log in or use the app; the link is a read-only p
   language, not-found, 30 KB), and the E2E flow (make link → tenant opens it in a
   separate browser with one read → move-out banner → turn off → not available).
 
+
+## 8. Settings › Rentals (defaults for new leases)
+
+Settings shows a **Rentals** section to the Rentals owner and managers (members see only
+Common; see `docs/role-permissions.md`). It is one document, `rent_settings/default`
+(`dev_rent_settings/default` in development), read only when that section is shown or a
+tenant moves in (once per session, `rent-store.js loadSettings()`), never at start-up:
+
+| Field | Default | Used for |
+|---|---|---|
+| `dueDay` (int 1–28) | 10 | Due day filled in on Move in |
+| `increasePct` (0–100) | 5 | Yearly increase reminder % filled in on Move in |
+| `meterRate` (≥ 0 or null) | null | Electricity rate filled in for a unit that has no rate yet |
+| `tenantLink` (bool) | false | Owner/manager moving a tenant in also makes the tenant link |
+| `receiptHeader` (≤ 80) | '' | Name on the tenant's rent-history page (blank = the business name) |
+
+Defaults apply to **new** leases only: existing leases keep their own due day, % and link,
+and units keep their own electricity rate. Rules: rentals roles read; owner and Rentals
+managers create/update (`docId == 'default'`, field allow-list and ranges, `updatedBy` =
+writer); the owner deletes. Hard limits (100 properties, 20 units each, 24 months of
+back-charges) stay fixed: they size the listeners and the rules.
