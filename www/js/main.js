@@ -1200,7 +1200,7 @@ window.app = {
     insights: {
         init: (route) => loadInsights().then(m => m.init(route))
             .catch(e => console.warn('Insights not loaded:', e?.message || e)),
-        ...Object.fromEntries(['setSection', 'setPreset', 'step', 'setItemsType', 'setPartyKind', 'setSeasonView', 'render']
+        ...Object.fromEntries(['setSection', 'setPreset', 'step', 'setItemsType', 'setPartyKind', 'setSeasonView', 'render', 'loadOlder']
             .map(name => [name, (...args) => loadInsights().then(m => m[name](...args))]))
     },
 
