@@ -4,7 +4,7 @@
  * Firestore request named a rent_* collection. Opening Rentals then loads both
  * (so the probe really sees them) and only after the app-shown timing mark.
  */
-const { test, expect, login } = require('./support/app');
+const { test, expect, login, confirmModalIfOpen } = require('./support/app');
 
 const RENT_RE = /(?<![a-z])rent_(properties|units|tenants|leases|charges)/;
 const RENTALS_FILE = /\/js\/rentals\/|\/templates\/rentals\.html|\/css\/rentals\.css/;
@@ -61,7 +61,7 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.fill('#rentTenantName', `Ram ${stamp}`);
     await page.fill('#rentTenantPhone', '9876543210');
     await page.click('#rentalsBody .rent-form button');
-    const row = page.locator('.rent-row', { hasText: `Ram ${stamp}` });
+    const row = page.locator('.rent-row', { hasText: `Ram ${stamp}` }).first();
     await row.locator('button', { hasText: 'Move in' }).click();
     await page.selectOption('#rentLeaseUnit', { label: `Gali ${stamp} · G${stamp}` });
     await page.click('#rentDialog .rent-btn-primary');
@@ -83,10 +83,38 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.click('#rentDialog .rent-btn-primary');
     await expect(rent).toContainText('3,400');
 
+    // Tenant rent-history link: read-only page for this tenant only, no login.
     await page.evaluate(() => window.app.rentals.page('tenants'));
+    await row.locator('button', { hasText: 'Make tenant link' }).click();
+    await page.locator('#rentDialog button', { hasText: 'Make tenant link' }).click();
+    const url = await page.locator('#rentLinkUrl').inputValue({ timeout: 15000 });
+    expect(url).toMatch(/\/r\/[A-Za-z0-9_-]{24}\?d=1&emulator=1$/);
+    await page.click('#rentDialog .rent-btn-primary');
+    const tenantCtx = await page.context().browser().newContext();
+    const tenantPage = await tenantCtx.newPage();
+    const tenantReads = [];
+    tenantPage.on('request', r => { if (/documents\//.test(r.url())) tenantReads.push(r.url()); });
+    await tenantPage.goto(url);
+    await expect(tenantPage.locator('#rh')).toContainText(`Rent history: Ram ${stamp}`);
+    await expect(tenantPage.locator('#rh')).toContainText('3,400');
+    expect(tenantReads).toHaveLength(1);
+
     await row.locator('button', { hasText: 'Move out' }).click();
     await page.click('#rentDialog .rent-btn-primary');
     await expect(row).toContainText('Not living in a unit');
+    await tenantPage.reload();
+    await expect(tenantPage.locator('#rh')).toContainText('Moved out');
+
+    // The moved-out tenant's link stays until turned off.
+    const linked = page.locator('.rent-row', { hasText: `Ram ${stamp}` }).filter({ hasText: 'Moved out' });
+    await linked.locator('button', { hasText: 'Tenant link' }).click();
+    await page.locator('#rentDialog button', { hasText: 'Turn off link' }).click();
+    await confirmModalIfOpen(page);
+    await expect(page.locator('#toast')).toContainText('Link turned off', { timeout: 15000 });
+    await tenantPage.reload();
+    await expect(tenantPage.locator('#rh')).toContainText('not available');
+    await tenantCtx.close();
+
     await page.evaluate(() => window.app.rentals.page('rent'));
     await expect(page.locator('.rent-row', { hasText: `Ram ${stamp}` })).toContainText('Moved out');
     expect(problems.pageErrors).toEqual([]);

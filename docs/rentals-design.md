@@ -252,7 +252,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Shop) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Shop, opening a shop page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for shop-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Shop read counts and start-up timings unchanged | The shop start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1): rentals files 51.7 KB uncompressed (14.8 KB gzip) on a 2.42 MB precache (+2.1 %), plus the 3.7 KB switcher that start-up loads. Downloaded once per app version in the background | Budget: rentals files ≤ 80 KB uncompressed; `rentals-startup.test.js` fails above it |
+| Precache size | Measured (phase 1 + owner answers + tenant link): rentals files 82 KB uncompressed (23 KB gzip) on a 2.6 MB precache (+3.2 %), plus the 3.7 KB switcher that start-up loads. Downloaded once per app version in the background, never at start-up. The tenant page (≈ 14 KB) is not precached | Budget: rentals files ≤ 100 KB uncompressed (raised from 80 KB for the owner's phase 1 additions); `rentals-startup.test.js` fails above it |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -339,3 +339,57 @@ column snapshot, read-cost test (report reads bounded by month range).
 Text rule (owner, 2026-10-25): every screen text and the WhatsApp reminder are in
 one language at a time (English or Hindi via `t()` / the chosen language), never
 both in one string.
+
+## 7. Tenant rent-history link (follow-up PR; owner, 2026-10-25)
+
+Owner: *"provide them a link to see the history of the rents, but only for their
+property."* Tenants still never log in or use the app; the link is a read-only page.
+
+- **Share token per lease:** 144 random bits (`crypto.getRandomValues`), base64url,
+  made by the owner/manager (**Make tenant link**), stored on the lease as
+  `shareToken`. **New link** replaces it (old snapshot deleted, old link dead);
+  **Turn off link** deletes the snapshot and clears `shareToken`. A moved-out
+  tenant's link keeps working (with a "Moved out" banner) until turned off; such
+  links are listed under Tenants → "Moved out, link still on".
+- **Snapshot** `rent_public/{token}` (`dev_rent_public` in development): `lid` (the
+  lease id, needed by the rules), `v`, shop display name (`settings.shopName`),
+  tenant display name, property · unit, current rent, due day, `ended`/`endMonth`,
+  and up to 36 months `{m, rent, elec, units, total, paid, due, st, pd[]}` (RENT-8).
+  No phone numbers, no other tenants, no user names, no other ids.
+- **Kept current in the same write** as every charge creation, payment, meter
+  reading, rent change and move-out (each of those transactions also reads the
+  lease and, when it has a link, the snapshot: +1–2 reads per write only for
+  leases with a link). Making a link reads the lease's **newest 36** charges once
+  (`leaseId ==` + `orderBy(month desc)` + `limit(36)`; composite index
+  `rent_charges (leaseId ASC, month DESC)` + `dev_`), commits, then rebuilds the
+  snapshot once in a transaction (catches a payment made in between). Renaming a
+  tenant, property or unit rewrites the names in that tenant's snapshot.
+- **Rules:** `allow get: if true`, `allow list: if false`. Create/update only by a
+  rentals role, when `getAfter(lease).shareToken == token`, with a field allow-list,
+  string sizes, ≤ 36 months, and `lid` fixed. Setting/clearing `shareToken` on a
+  lease is owner/manager only; deleting a snapshot needs the lease to stop pointing
+  at it in the same write (or the owner). New leases start without a token.
+- **Public page** `/r/<token>`: `firebase.json` rewrites `/r/**` to `www/r.html`
+  (before the app's `**` rewrite) with `X-Robots-Tag: noindex` and `no-referrer`.
+  `r.html` + `r/rent-history.js` + `.css` (≈ 14 KB, budget 30 KB, tested) read
+  exactly **one** document over the Firestore REST API (project from
+  `/__/firebase/init.json`): no Firebase SDK, no app code, no service worker, not
+  in the app precache; the app's service worker skips `/r.html` and `/r/**`. English
+  or Hindi by the browser, with a toggle — one language at a time. Status (Paid /
+  Part paid / Due / Late) is worked out when the page opens from the month, due day
+  and due, so Late appears without any new write. Mobile first, printable, read-only; unknown/turned-off links
+  show "This link is not available".
+- **WhatsApp:** the rent reminder ends with "See your rent history: <link>" when the
+  link is on; **Send on WhatsApp** in the link dialog sends just the link. The
+  phase 2 receipt will carry it the same way. Links made from the APK use the
+  public site (`APP_IDENTITY.siteUrl`).
+- **Performance:** zero effect on app start (the rentals guards cover `rent_public`;
+  the page files are outside `js/` and never imported). The tenant page costs one
+  read per open.
+- **Tests:** rules (exact-token get, no list, unknown token missing, write without
+  the matching lease denied, members only keep it current, turn-off/replace only
+  with the lease, payment + snapshot in one write; prod and `dev_`), unit tests for
+  the snapshot builders and token, a jsdom test of the page (one read, single
+  language, not-found, 30 KB), and the E2E flow (make link → tenant opens it in a
+  separate browser with one read → move-out banner → turn off → not available).
+

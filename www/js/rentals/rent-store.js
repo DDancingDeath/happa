@@ -11,6 +11,7 @@ import {
     applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange,
     MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
+import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth, withNames, PUBLIC_MONTHS } from './rent-public.js';
 
 /**
  * Upper bound per rentals listener (design §3.4): sized for 100 properties with
@@ -22,6 +23,7 @@ export const LISTEN_LIMITS = {
     tenants: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
     leases: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
     openCharges: 2 * MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
+    linked: 2 * MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
     monthCharges: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY
 };
 
@@ -34,7 +36,7 @@ const uid = () => AppState.currentUser?.uid || null;
 
 const data = {
     properties: new Map(), units: new Map(), tenants: new Map(), leases: new Map(),
-    openCharges: new Map(), monthCharges: new Map()
+    openCharges: new Map(), monthCharges: new Map(), linked: new Map()
 };
 let unsubs = [];
 const truncated = new Set();
@@ -66,6 +68,8 @@ export function attach(month, onChange) {
     listen('units', coll('rent_units').where('archived', '==', false));
     listen('tenants', coll('rent_tenants').where('archived', '==', false));
     listen('leases', coll('rent_leases').where('status', '==', 'active'), { includeMetadataChanges: true });
+    // Leases with a tenant link (also moved-out ones, so their link can be turned off).
+    listen('linked', coll('rent_leases').where('shareToken', '>', ''));
     listen('openCharges', coll('rent_charges').where('open', '==', true));
     listen('monthCharges', coll('rent_charges').where('month', '==', month));
 }
@@ -88,6 +92,7 @@ export function snapshot() {
         units: [...data.units.values()],
         tenants: [...data.tenants.values()],
         leases: [...data.leases.values()],
+        linked: [...data.linked.values()],
         charges: [...charges.values()]
     };
 }
@@ -101,7 +106,97 @@ export const addUnit = (u) => coll('rent_units').doc().set(created({ leaseId: nu
 export const updateUnit = (id, fields) => coll('rent_units').doc(id).update(stamp(fields));
 export const addTenant = (tn) => coll('rent_tenants').doc().set(created(tn));
 export const updateTenant = (id, fields) => coll('rent_tenants').doc(id).update(stamp(fields));
-export const updateLease = (id, fields) => coll('rent_leases').doc(id).update(stamp(fields));
+
+// ---------- tenant rent-history link (rent_public/{token}) ----------
+
+const publicRef = (token) => coll('rent_public').doc(token);
+
+/**
+ * Inside a transaction: the lease's link snapshot (if the lease has a link).
+ * Reads must come before writes, so call this before any tx.set/update.
+ * @returns {Promise<?{ref: Object, data: Object}>}
+ */
+async function readPublic(tx, lease) {
+    if (!isShareToken(lease?.shareToken)) return null;
+    const ref = publicRef(lease.shareToken);
+    const snap = await tx.get(ref);
+    return snap.exists ? { ref, data: snap.data() } : null;
+}
+
+/** Changes rent / due day / yearly %; the link snapshot follows in the same transaction. */
+export async function updateLease(id, fields) {
+    const db = FirebaseService.db;
+    const leaseRef = coll('rent_leases').doc(id);
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(leaseRef);
+        if (!snap.exists) throw new Error('missing');
+        const lease = { id, ...snap.data() };
+        const pub = await readPublic(tx, lease);
+        tx.update(leaseRef, stamp(fields));
+        if (pub) tx.set(pub.ref, withLease(pub.data, { ...lease, ...fields }));
+    });
+}
+
+/**
+ * Owner/manager: make (or replace) the tenant's read-only link. Builds the
+ * snapshot from the lease's charges (one bounded query), writes it under a new
+ * random token, points the lease at it and removes the old snapshot.
+ * @returns {Promise<string>} the new token
+ */
+export async function makeShareLink(lease, { tenantName, place, shopName }) {
+    const db = FirebaseService.db;
+    const token = newShareToken();
+    const names = { tenantName, place, shopName };
+    const batch = db.batch();
+    batch.set(publicRef(token), buildPublicSnapshot({ lease, ...names, charges: await latestCharges(lease.id) }));
+    batch.update(coll('rent_leases').doc(lease.id), stamp({ shareToken: token }));
+    if (isShareToken(lease.shareToken)) batch.delete(publicRef(lease.shareToken));
+    await batch.commit();
+    // A payment or new month between the read above and the commit didn't see the
+    // link yet: rebuild once now (later writes keep it current themselves).
+    await rebuildShareSnapshot(lease.id, token, names);
+    return token;
+}
+
+/** The newest PUBLIC_MONTHS charges of a lease (one bounded query; index leaseId + month desc). */
+async function latestCharges(leaseId) {
+    const snap = await coll('rent_charges').where('leaseId', '==', leaseId).orderBy('month', 'desc').limit(PUBLIC_MONTHS).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/** Rewrites a link snapshot from the lease and its charges, if the lease still points at `token`. */
+export async function rebuildShareSnapshot(leaseId, token, names) {
+    const db = FirebaseService.db;
+    const charges = await latestCharges(leaseId);
+    const leaseRef = coll('rent_leases').doc(leaseId);
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(leaseRef);
+        if (!snap.exists || snap.data().shareToken !== token) return false;
+        tx.set(publicRef(token), buildPublicSnapshot({ lease: { id: leaseId, ...snap.data() }, ...names, charges }));
+        return true;
+    });
+}
+
+/** After a tenant/property/unit rename: new display names in a lease's link snapshot. */
+export async function renameInLink(lease, { tenantName, place }) {
+    const db = FirebaseService.db;
+    const leaseRef = coll('rent_leases').doc(lease.id);
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(leaseRef);
+        const pub = snap.exists ? await readPublic(tx, snap.data()) : null;
+        if (!pub) return false;
+        tx.set(pub.ref, withNames(pub.data, { tenantName, place }));
+        return true;
+    });
+}
+
+/** Owner/manager: turn the link off (snapshot deleted, lease token cleared). */
+export async function removeShareLink(lease) {
+    const batch = FirebaseService.db.batch();
+    if (isShareToken(lease.shareToken)) batch.delete(publicRef(lease.shareToken));
+    batch.update(coll('rent_leases').doc(lease.id), stamp({ shareToken: null }));
+    await batch.commit();
+}
 
 /** Moves a tenant into a vacant unit: the lease and the unit's leaseId in one batch. */
 export async function startLease({ unit, tenantId, rent, dueDay, startMonth, deposit, increasePct }) {
@@ -138,8 +233,11 @@ export async function chargeLease(leaseId, month, names, maxMonths = MAX_BACKFIL
             const lease = { id: snap.id, ...snap.data() };
             const [m] = monthsToCharge(lease, month);
             if (!m) return false;
-            tx.set(coll('rent_charges').doc(chargeId(lease.id, m)), { ...newCharge(lease, m, names), updatedBy: uid() });
+            const pub = await readPublic(tx, lease);
+            const charge = { ...newCharge(lease, m, names), updatedBy: uid() };
+            tx.set(coll('rent_charges').doc(chargeId(lease.id, m)), charge);
             tx.update(leaseRef, { chargedThrough: m, updatedAt: Date.now(), updatedBy: uid() });
+            if (pub) tx.set(pub.ref, withMonth(pub.data, charge));
             return true;
         });
         if (!made) break;
@@ -171,9 +269,11 @@ export async function endLease(leaseId, endMonth, currentMonth, names = {}) {
         if (laterSnaps.some(s => s.exists && ((Number(s.data().paid) || 0) > 0 || (s.data().payments || []).length))) {
             throw new Error('later_paid');
         }
+        const pub = await readPublic(tx, lease);
         const now = Date.now();
         laterSnaps.filter(s => s.exists).forEach(s => tx.delete(s.ref));
         tx.update(leaseRef, { status: 'ended', endMonth, chargedThrough: endMonth, updatedAt: now, updatedBy: uid() });
+        if (pub) tx.set(pub.ref, withLease(pub.data, { ...lease, status: 'ended', endMonth }));
         tx.update(coll('rent_units').doc(lease.unitId), { leaseId: null, updatedAt: now, updatedBy: uid() });
         return later.length;
     });
@@ -191,6 +291,8 @@ export async function recordPayment(id, { amount, mode, ref, date }) {
         if (!snap.exists) throw new Error('missing');
         const charge = snap.data();
         const next = applyPayment(charge, amount);
+        const leaseSnap = await tx.get(coll('rent_leases').doc(charge.leaseId));
+        const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data()) : null;
         const entry = {
             amount: next.amount, mode, ref: String(ref || '').slice(0, 60), date,
             at: Date.now(), by: uid(), byName: String(AppState.userName || '').slice(0, 80)
@@ -200,6 +302,7 @@ export async function recordPayment(id, { amount, mode, ref, date }) {
             payments: [...(charge.payments || []), entry],
             updatedAt: Date.now(), updatedBy: uid()
         });
+        if (pub) tx.set(pub.ref, withMonth(pub.data, { ...charge, paid: next.paid, open: next.open, payments: [...(charge.payments || []), entry] }));
         return next;
     });
 }
@@ -216,10 +319,14 @@ export async function recordMeter(id, unitId, meter) {
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(chargeRef);
         if (!snap.exists) throw new Error('missing');
-        const next = applyMeter(snap.data(), meter);
+        const charge = snap.data();
+        const next = applyMeter(charge, meter);
+        const leaseSnap = await tx.get(coll('rent_leases').doc(charge.leaseId));
+        const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data()) : null;
         const now = Date.now();
         tx.update(chargeRef, { electricity: meter, amount: next.amount, open: next.open, updatedAt: now, updatedBy: uid() });
         tx.update(coll('rent_units').doc(unitId), { lastReading: meter.curr, meterRate: meter.rate, meterCharge: id, updatedAt: now, updatedBy: uid() });
+        if (pub) tx.set(pub.ref, withMonth(pub.data, { ...charge, electricity: meter, amount: next.amount, open: next.open }));
         return next;
     });
 }

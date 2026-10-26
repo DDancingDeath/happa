@@ -41,3 +41,4 @@
 body.dark-mode .rent-card, body.dark-mode .rent-form { background: #2d3748; }
 body.dark-mode .rent-row, body.dark-mode .rent-dialog-box { background: #1a202c; border-color: #4a5568; }
 @media (min-width: 1024px) { .rent-cards { grid-template-columns: repeat(4, 1fr); } }
+.rent-dialog-box input[readonly] { width: 100%; padding: 10px; border: 1px solid var(--border-color, #cbd5e0); border-radius: 8px; font-size: 14px; margin: 8px 0; box-sizing: border-box; }

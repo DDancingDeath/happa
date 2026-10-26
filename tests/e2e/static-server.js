@@ -18,6 +18,8 @@ http.createServer((req, res) => {
     const urlPath = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let file = path.join(ROOT, urlPath);
     if (!file.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
+    // Firebase Hosting rewrite: /r/<token> -> r.html (tenant rent-history link).
+    if (/^\/r\/[^/]+\/?$/.test(urlPath) && !fs.existsSync(file)) file = path.join(ROOT, 'r.html');
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
         const index = path.join(file, 'index.html');
         file = fs.existsSync(index) ? index : path.join(ROOT, 'index.html');

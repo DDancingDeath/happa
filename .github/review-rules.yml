@@ -119,7 +119,7 @@ rules:
   - id: hardcoded-collection-prefix
     pattern: "['\"`]dev_"
     applies_to: ["www/**/*.js"]
-    excludes: ["www/firebaseConfig.js", "www/js/firebase/firestore-service.js", "www/js/__tests__/**"]
+    excludes: ["www/firebaseConfig.js", "www/js/firebase/firestore-service.js", "www/js/__tests__/**", "www/r/**"]
     message: |
       Hard-coded dev_ prefix. The prefix comes from window.getCollection / FirebaseService;
       typing it breaks the dev/prod split.

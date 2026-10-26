@@ -235,6 +235,7 @@ const REMINDER_TEXT = {
         total: (a) => `*Total due: ${a}*`,
         pay: 'Please pay by cash or online (UPI) at your convenience.',
         upi: 'UPI',
+        link: (u) => `See your rent history: ${u}`,
         thanks: 'Thank you'
     },
     hi: {
@@ -244,6 +245,7 @@ const REMINDER_TEXT = {
         total: (a) => `*कुल बकाया: ${a}*`,
         pay: 'कृपया सुविधा अनुसार नकद या ऑनलाइन (यूपीआई) से भुगतान करें।',
         upi: 'यूपीआई',
+        link: (u) => `अपने किराये का हिसाब देखें: ${u}`,
         thanks: 'धन्यवाद'
     }
 };
@@ -253,10 +255,10 @@ const REMINDER_TEXT = {
  * the open months up to `lastMonth` (a tenant who moved out is never asked for
  * later months), oldest first, and the total.
  * @param {{tenantName: string, place?: string, charges: Array<{month: string, amount: number, paid: number}>,
- *   lastMonth?: string, upiId?: string, lang?: 'en'|'hi'}} p
+ *   lastMonth?: string, upiId?: string, lang?: 'en'|'hi', link?: string}} p
  * @returns {string}
  */
-export function buildRentReminderText({ tenantName, place = '', charges = [], lastMonth = '', upiId = '', lang = 'en' }) {
+export function buildRentReminderText({ tenantName, place = '', charges = [], lastMonth = '', upiId = '', lang = 'en', link = '' }) {
     const L = REMINDER_TEXT[lang === 'hi' ? 'hi' : 'en'];
     const rows = charges.filter(c => chargeDue(c) > 0 && (!isMonth(lastMonth) || c.month <= lastMonth))
         .sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
@@ -269,6 +271,7 @@ export function buildRentReminderText({ tenantName, place = '', charges = [], la
     lines.push('', L.total(formatINR(total)), '', L.pay);
     const upi = cleanText(upiId);
     if (upi) lines.push(`${L.upi}: ${upi}`);
+    if (link) lines.push('', L.link(link));
     lines.push('', L.thanks);
     return lines.join('\n');
 }
