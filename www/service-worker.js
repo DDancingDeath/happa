@@ -87,6 +87,7 @@ const STATIC_ASSETS = [
     '/js/services/printer.js',
     '/js/services/telemetry.js',
     '/js/ui/bill-highlight.js',
+    '/js/ui/bill-row.js',
     '/js/ui/business-switcher.js',
     '/js/ui/party-due-line.js',
     '/js/ui/infinite-scroll.js',

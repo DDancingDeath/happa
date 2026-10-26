@@ -11,7 +11,7 @@ jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn
 
 import { AppState } from '../utils/state.js';
 import { HistoryManager } from '../modules/history.js';
-import { HISTORY_FILTER_KEY } from '../utils/history-filters.js';
+import { HISTORY_FILTER_KEY, HISTORY_TAB_KEY } from '../utils/history-filters.js';
 import { UIManager } from '../ui/ui-manager.js';
 
 const day = (offset, h = 10) => {
@@ -23,8 +23,7 @@ const bill = (id, timestamp, extra = {}) => ({ id, billNumber: id, timestamp, it
 const html = `
     <div id="history">
       <div class="history-type-filter">
-        <button class="filter-btn" data-type="all"></button><button class="filter-btn" data-type="purchase"></button>
-        <button class="filter-btn" data-type="retail"></button><button class="filter-btn" data-type="wholesale"></button>
+        <button class="filter-btn" data-type="purchase"></button><button class="filter-btn" data-type="sale"></button>
       </div>
       <select id="historyDatePreset"><option value="all"></option><option value="today"></option>
         <option value="yesterday"></option><option value="week"></option><option value="month"></option>
@@ -35,13 +34,14 @@ const html = `
       <div id="wrap"><div id="historyList"></div></div>
     </div>`;
 
-const ids = () => [...document.querySelectorAll('#historyList .history-item .history-header span[onclick]')]
+const ids = () => [...document.querySelectorAll('#historyList .history-item .bill-row__no [onclick]')]
     .map(s => s.textContent.replace('#', ''));
 
 describe('History filters (#160)', () => {
     beforeEach(() => {
         document.body.innerHTML = html;
         sessionStorage.clear();
+        localStorage.clear();
         HistoryManager.filter = null;
         HistoryManager.pageKey = '';
         HistoryManager.viewMode = 'card';
@@ -52,40 +52,43 @@ describe('History filters (#160)', () => {
         AppState.salesHistory = [bill('W-today', day(0, 12), { date: 'x' })];
     });
 
-    test('type chips + presets filter, combine with search, and are remembered', () => {
+    test('Purchase | Sale tabs + presets filter, combine with search, and are remembered', () => {
         HistoryManager.refreshHistory();
-        expect(ids()).toEqual(['W-today', 'P-today', 'S-yday', 'P-old']);
-        expect(document.querySelector('[data-type="all"]').classList.contains('active')).toBe(true);
+        expect(ids()).toEqual(['P-today', 'P-old']);
+        expect(document.querySelector('[data-type="purchase"]').classList.contains('active')).toBe(true);
 
-        HistoryManager.filterHistory('retail');
+        HistoryManager.filterHistory('sale');
         expect(ids()).toEqual(['S-yday']);
-        expect(document.querySelector('[data-type="retail"]').classList.contains('active')).toBe(true);
+        expect(document.querySelector('[data-type="sale"]').classList.contains('active')).toBe(true);
 
-        HistoryManager.filterHistory('all');
+        HistoryManager.filterHistory('purchase');
         HistoryManager.setDatePreset('today');
-        expect(ids()).toEqual(['W-today', 'P-today']);
-        expect(document.getElementById('historyRangeLabel').textContent).toMatch(/· 2 bills$/);
-
-        document.getElementById('historySearch').value = 'P-';
-        HistoryManager.refreshHistory();
         expect(ids()).toEqual(['P-today']);
+        expect(document.getElementById('historyRangeLabel').textContent).toMatch(/· 1 bill$/);
 
-        expect(JSON.parse(sessionStorage.getItem(HISTORY_FILTER_KEY))).toMatchObject({ type: 'all', preset: 'today' });
+        document.getElementById('historySearch').value = 'old';
+        HistoryManager.refreshHistory();
+        expect(ids()).toEqual([]);
+
+        expect(JSON.parse(sessionStorage.getItem(HISTORY_FILTER_KEY))).toMatchObject({ type: 'purchase', preset: 'today' });
+        expect(localStorage.getItem(HISTORY_TAB_KEY)).toBe('purchase');
         HistoryManager.filter = null; // new page load in the same session
         document.getElementById('historySearch').value = '';
         HistoryManager.refreshHistory();
-        expect(ids()).toEqual(['W-today', 'P-today']);
+        expect(ids()).toEqual(['P-today']);
         expect(document.getElementById('historyDatePreset').value).toBe('today');
     });
 
-    test('custom range shows the date inputs; legacy "sale" means retail + wholesale', () => {
+    test('custom range shows the date inputs; old "retail" / "all" values map to Sale / Purchase', () => {
         HistoryManager.setDatePreset('custom');
         expect(document.getElementById('historyCustomRange').hidden).toBe(false);
-        expect(ids()).toEqual(['W-today', 'P-today']);
+        expect(ids()).toEqual(['P-today']);
 
         HistoryManager.setDatePreset('all');
-        HistoryManager.renderHistory('sale');
-        expect(ids()).toEqual(['W-today', 'S-yday']);
+        HistoryManager.renderHistory('retail');
+        expect(ids()).toEqual(['S-yday']);
+        HistoryManager.renderHistory('all');
+        expect(ids()).toEqual(['P-today', 'P-old']);
     });
 
     test('a range older than the loaded window loads on demand with a progress notice', async () => {
@@ -131,6 +134,7 @@ describe('Custom range quota guard (#199 review)', () => {
         document.body.innerHTML = html.replace('<div id="historyRangeLabel" hidden></div>',
             '<div id="historyRangeHint" hidden></div><div id="historyRangeLabel" hidden></div>');
         sessionStorage.clear();
+        localStorage.clear();
         HistoryManager.filter = null;
         HistoryManager.pageKey = '';
         HistoryManager.confirmedFrom = null;

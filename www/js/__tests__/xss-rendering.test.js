@@ -103,7 +103,7 @@ describe('history list escapes record values', () => {
         expect(list.textContent).toContain(`#${IMG}`);
         expect(list.textContent).toContain(`${NUM} packets`);
 
-        const span = list.querySelector('.history-header span[onclick]');
+        const span = list.querySelector('.bill-row__no [onclick]');
         const calls = runHandler(span.getAttribute('onclick'));
         expect(calls).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
     });
@@ -123,7 +123,7 @@ describe('history list escapes record values', () => {
         HistoryManager.renderHistory('purchase');
         const list = document.getElementById('historyList');
         assertNoInjection(list);
-        expect(list.textContent).toContain(`₹${NUM}`);
+        expect(list.textContent).toContain(`× ₹${NUM}`);
         const row = list.querySelector('tr[onclick]');
         expect(runHandler(row.getAttribute('onclick'))).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
     });

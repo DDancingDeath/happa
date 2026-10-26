@@ -1,7 +1,8 @@
 /**
  * @fileoverview Pure helpers for the History screen filters (#160):
- * bill type (All / Purchase / Retail / Wholesale), date-range presets in
- * local (IST) time, search, and the filter remembered for the session.
+ * bill tab (Purchase / Sale; Sale = retail sales, wholesale bills are on the
+ * Wholesale page), date-range presets in local (IST) time, search, and the
+ * filter remembered for the session (the tab is remembered per device).
  * Nothing here touches the DOM, Firestore or AppState.
  * @module utils/history-filters
  */
@@ -9,13 +10,42 @@
 import { toJsDate, parseLocalDate, toLocalISODate } from './dates.js';
 import { t } from '../i18n/index.js';
 
-export const HISTORY_TYPES = ['all', 'purchase', 'retail', 'wholesale'];
+export const HISTORY_TYPES = ['purchase', 'sale'];
 export const HISTORY_PRESETS = ['all', 'today', 'yesterday', 'week', 'month', 'lastMonth', 'custom'];
 
-export const DEFAULT_HISTORY_FILTER = Object.freeze({ type: 'all', preset: 'all', from: '', to: '' });
+export const DEFAULT_HISTORY_FILTER = Object.freeze({ type: 'purchase', preset: 'all', from: '', to: '' });
 
-/** sessionStorage key for the last History filter. */
+/** sessionStorage key for the last History filter (dates). */
 export const HISTORY_FILTER_KEY = 'aadhat.historyFilter';
+
+/** localStorage key for the last History tab (remembered per device). */
+export const HISTORY_TAB_KEY = 'aadhat.historyTab';
+
+/**
+ * History tab for a stored or linked type. Old values: 'retail' is the Sale
+ * tab; 'all' / unknown fall back to Purchase. 'wholesale' is not a History
+ * tab any more (see isWholesaleHistoryLink).
+ * @param {*} type
+ * @returns {'purchase'|'sale'}
+ */
+export function normalizeHistoryTab(type) {
+    if (type === 'sale' || type === 'retail') return 'sale';
+    return 'purchase';
+}
+
+/**
+ * Old links / saved filters that asked History for wholesale bills; those now
+ * open Wholesale › History.
+ * @param {*} value - type string, filter object or its JSON
+ * @returns {boolean}
+ */
+export function isWholesaleHistoryLink(value) {
+    let v = value;
+    if (typeof v === 'string' && v.trim().startsWith('{')) {
+        try { v = JSON.parse(v); } catch { return false; }
+    }
+    return (v && typeof v === 'object' ? v.type : v) === 'wholesale';
+}
 
 /** Earliest date a custom range may start (no business data before this). */
 export const MIN_HISTORY_DATE = '2020-01-01';
@@ -87,7 +117,7 @@ export function billTimeMs(bill) {
 
 /**
  * Does a (type-tagged) history bill match the type filter?
- * 'sale' is the old Sale tab (retail + wholesale) and still accepted.
+ * 'sale' = retail sales (the History Sale tab); 'all' = anything.
  * @param {{type?: string, isPurchase?: boolean}} bill
  * @param {string} type
  * @returns {boolean}
@@ -97,9 +127,9 @@ export function matchesHistoryType(bill, type) {
     const billType = bill.type || (bill.isPurchase ? 'purchase' : '');
     switch (type) {
         case 'purchase': return billType === 'purchase';
+        case 'sale':
         case 'retail': return billType === 'retail';
         case 'wholesale': return billType === 'wholesale';
-        case 'sale': return billType === 'retail' || billType === 'wholesale';
         default: return true;
     }
 }
@@ -183,6 +213,7 @@ export function matchesHistorySearch(bill, term) {
 /**
  * Filter by type, range and search, newest first.
  * @param {Array<Object>} bills - type-tagged bills ({type: 'purchase'|'retail'|'wholesale'})
+ *   ('all' type = no type filter, used by Wholesale › History)
  * @param {{type?: string, range?: {from: number|null, to: number|null}, search?: string}} filter
  * @returns {Array<Object>} new array
  */
@@ -209,7 +240,7 @@ export function normalizeHistoryFilter(value) {
         return d && d >= parseLocalDate(MIN_HISTORY_DATE) ? s : '';
     };
     return {
-        type: HISTORY_TYPES.includes(obj.type) ? obj.type : (obj.type === 'sale' ? 'all' : DEFAULT_HISTORY_FILTER.type),
+        type: normalizeHistoryTab(obj.type),
         preset: HISTORY_PRESETS.includes(obj.preset) ? obj.preset : DEFAULT_HISTORY_FILTER.preset,
         from: isoOrEmpty(obj.from),
         to: isoOrEmpty(obj.to)

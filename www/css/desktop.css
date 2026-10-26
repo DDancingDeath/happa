@@ -214,47 +214,56 @@
     flex-wrap: nowrap;
   }
 
-  /* ---------- History / lists: dense rows ---------- */
-  #historyList .history-item,
-  #salesHistoryList .history-item {
-    display: grid;
-    grid-template-columns: minmax(260px, 1.3fr) minmax(250px, 1fr) minmax(0, 1.2fr) minmax(180px, auto);
+  /* ---------- History / Wholesale › History: one aligned row per bill ---------- */
+  /* bill no | party | amount | date & by | items | payment chips (ui/bill-row.js) */
+  .history-item.bill-row {
+    grid-template-columns: 9.5rem minmax(7rem, 1.2fr) 7rem 12rem minmax(6rem, 1fr) 12rem;
+    grid-template-areas: none;
     align-items: center;
-    column-gap: 20px;
-    padding: 10px 16px;
+    column-gap: 12px;
+    padding: 8px 16px;
     margin-bottom: 6px;
     border-radius: var(--radius);
     box-shadow: var(--shadow-xs);
   }
 
-  #historyList .history-item:hover,
-  #salesHistoryList .history-item:hover {
+  .history-item.bill-row:hover {
     transform: none;
     box-shadow: var(--shadow-sm);
   }
 
-  #historyList .history-item > *,
-  #salesHistoryList .history-item > * {
+  .history-item.bill-row > *,
+  .bill-row__meta > * {
+    grid-area: auto;
     margin: 0;
     min-width: 0;
   }
 
-  #historyList .history-summary,
-  #salesHistoryList .history-summary {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .bill-row__meta {
+    display: contents;
   }
 
-  #historyList .history-payment,
-  #salesHistoryList .history-payment {
+  .bill-row__by {
+    display: inline;
+  }
+
+  .bill-row__date,
+  .bill-row .bill-row__items {
+    font-size: 13px;
+  }
+
+  .bill-row .bill-row__chips {
     justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
-  #historyList .payment-badge,
-  #salesHistoryList .payment-badge {
+  .bill-row .payment-badge {
     padding: 3px 8px;
     font-size: 12px;
+  }
+
+  .history-view-toggle {
+    min-height: 40px;
   }
 
   /* ---------- Today: dashboard grid ---------- */

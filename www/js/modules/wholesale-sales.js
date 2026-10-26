@@ -9,7 +9,12 @@ import { computeShortfallsFrom, approxStockNote } from '../utils/stock-check.js'
 import { normalizeThresholds, stockCreditFor } from '../utils/bill-checks.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
-import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
+import {
+    isFullHistoryLoaded, historyLoadedFrom, formatWindowDate, rangeStatus, retryRange, applyRangeState, renderStaleHistoryHint
+} from '../utils/history-window.js';
+import { filterHistoryBills, resolveHistoryRange, validateCustomRange, billTimeMs } from '../utils/history-filters.js';
+import { buildBillRow, buildOpeningGroup, addOpeningToggle, billTableHtml } from '../ui/bill-row.js';
+import { todayLocalISO } from '../utils/dates.js';
 import { OutstandingManager } from './outstanding.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { getLang, t } from '../i18n/index.js';
@@ -19,8 +24,11 @@ import { lineItemIdentity } from '../utils/item-catalog.js';
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
     checkPaymentSplit, computeWholesaleTotals, KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, round2,
-    openingAmount, openingOldTotals, wholesaleOutstanding
+    openingAmount, openingOldTotals, wholesaleOutstanding, isOpeningRecord
 } from '../utils/money.js';
+
+/** Wholesale bills shown under the entry form (the rest are in Wholesale › History). */
+const RECENT_SALES = 5;
 
 const PAYMENT_TOLERANCE = 0.01;
 
@@ -560,23 +568,29 @@ export class WholesaleSalesManager {
         window.open(url, '_blank');
     }
 
+    /**
+     * Wholesale page tabs: Sales (entry + recent bills), History (every
+     * wholesale bill, with date filter, search and Table View), Outstanding.
+     * @param {'sales'|'history'|'outstanding'} view
+     * @param {Event} [evt]
+     */
     static filterSalesTab(view, evt) {
         this.outstandingParty = null;
         const buttons = document.querySelectorAll('#wholesale-sales .filter-btn');
         buttons.forEach(btn => btn.classList.remove('active'));
-        if (evt) evt.target.classList.add('active');
+        const target = evt?.target?.closest?.('.filter-btn') || document.querySelector(`#wholesale-sales .filter-btn[data-view="${view}"]`);
+        target?.classList.add('active');
         
-        const entrySection = document.getElementById('salesEntrySection');
-        const outstandingSection = document.getElementById('salesOutstandingSection');
-        
-        if (view === 'sales') {
-            entrySection.style.display = 'block';
-            outstandingSection.style.display = 'none';
-        } else {
-            entrySection.style.display = 'none';
-            outstandingSection.style.display = 'block';
-            this.renderSalesOutstanding();
-        }
+        const sections = {
+            sales: document.getElementById('salesEntrySection'),
+            history: document.getElementById('salesHistorySection'),
+            outstanding: document.getElementById('salesOutstandingSection')
+        };
+        Object.entries(sections).forEach(([key, el]) => {
+            if (el) el.style.display = key === view ? 'block' : 'none';
+        });
+        if (view === 'outstanding') this.renderSalesOutstanding();
+        else if (view === 'history') this.renderWholesaleHistory();
     }
 
     static updateWholesaleCustomerOptions(newCustomer) {
@@ -772,57 +786,166 @@ export class WholesaleSalesManager {
         });
     }
 
+    /** Re-render the recent bills under the entry form and Wholesale › History. */
     static renderSalesHistory() {
-        const salesHistory = AppState.salesHistory;
-        const container = document.getElementById("salesHistoryList");
-        
-        const salesTabHistory = salesHistory
-            .filter(sale => sale.source === 'sales-tab')
-            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        
-        // Older sales load one month at a time as the user scrolls
-        attachOlderHistoryScroll(container, { noun: 'sales', onLoaded: () => this.renderSalesHistory() });
+        this.renderRecentSales();
+        this.renderWholesaleHistory();
+    }
 
-        if (salesTabHistory.length === 0) {
+    /** Wholesale bills as list rows (opening records included; callers filter). */
+    static wholesaleBills() {
+        return (AppState.salesHistory || []).map(s => ({ ...s, type: 'wholesale', isPurchase: false }));
+    }
+
+    static buildSaleRow(sale) {
+        return buildBillRow(sale, {
+            kind: 'wholesale',
+            onclick: `window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')`
+        });
+    }
+
+    /** Latest few wholesale bills under the entry form (old-app dues left out). */
+    static renderRecentSales() {
+        const container = document.getElementById('salesRecentList');
+        if (!container) return;
+        const recent = filterHistoryBills(this.wholesaleBills().filter(b => !isOpeningRecord(b)), {}).slice(0, RECENT_SALES);
+        if (recent.length === 0) {
             const message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
+            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
+            return;
+        }
+        container.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        recent.forEach(sale => fragment.appendChild(this.buildSaleRow(sale)));
+        container.appendChild(fragment);
+    }
+
+    /** Wholesale › History state (date filter, search, view, old-app dues toggle). */
+    static historyFilter = { preset: 'all', from: '', to: '' };
+    static historySearch = '';
+    static historyView = 'card';
+    static showOpening = false;
+    static historyOpenings = [];
+
+    /**
+     * Wholesale › History: every wholesale bill (not only outstanding), newest
+     * first, same row and Table View as History. Old-app carried dues are
+     * hidden unless the toggle is on.
+     */
+    static renderWholesaleHistory() {
+        const container = document.getElementById('salesHistoryList');
+        if (!container) return;
+        const f = this.historyFilter;
+        const range = resolveHistoryRange(f.preset, new Date(), f);
+        const status = range.from !== null ? rangeStatus('wholesaleHistory', range.from, () => this.renderWholesaleHistory()) : 'ready';
+        applyRangeState(container, status, {
+            loadingText: t('ui.history.loading_older_bills'),
+            errorText: t('ui.history.older_load_failed', { date: formatWindowDate(historyLoadedFrom()) }),
+            onRetry: () => { retryRange('wholesaleHistory'); this.renderWholesaleHistory(); }
+        });
+        this.syncHistoryUi();
+
+        const matched = filterHistoryBills(this.wholesaleBills(), { type: 'wholesale', range, search: this.historySearch });
+        const openings = matched.filter(b => isOpeningRecord(b));
+        const bills = matched.filter(b => !isOpeningRecord(b));
+        const showOpenings = this.showOpening && openings.length > 0;
+        this.historyOpenings = showOpenings ? openings : [];
+        const placeToggle = () => addOpeningToggle(container, {
+            id: 'wholesaleOpeningToggle', count: openings.length, on: showOpenings,
+            onToggle: () => { this.showOpening = !this.showOpening; this.renderWholesaleHistory(); }
+        });
+
+        const ranged = range.from !== null || range.to !== null;
+        // Older months load one at a time as the user scrolls (all dates, no search).
+        attachOlderHistoryScroll(container, {
+            noun: 'sales',
+            enabled: () => !this.historySearch && !ranged,
+            onLoaded: () => this.renderSalesHistory()
+        });
+        const shown = [...this.historyOpenings, ...bills];
+        renderStaleHistoryHint(container, {
+            id: 'wholesaleStaleHint',
+            onRefreshed: () => this.renderSalesHistory(),
+            isRelevant: (info) => shown.some(b => { const ms = billTimeMs(b); return ms !== null && ms < info.liveFrom; })
+        });
+
+        if (bills.length === 0 && !showOpenings) {
+            let message;
+            if (this.historySearch) message = t('ui.history.no_results_for', { searchTerm: this.historySearch });
+            else if (ranged) message = t('ui.history.none_in_period', { noun: t('ui.history.noun_wholesale') });
+            else message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
             container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
+            placeToggle();
             return;
         }
 
-        container.innerHTML = "";
+        if (this.historyView === 'table') {
+            container.innerHTML = billTableHtml(bills, {
+                openings: this.historyOpenings,
+                onclickFor: (sale) => `window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')`
+            });
+            placeToggle();
+            return;
+        }
+        container.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        if (showOpenings) fragment.appendChild(buildOpeningGroup(openings, sale => this.buildSaleRow(sale)));
+        bills.forEach(sale => fragment.appendChild(this.buildSaleRow(sale)));
+        container.appendChild(fragment);
+        placeToggle();
+    }
 
-        salesTabHistory.forEach((sale) => {
-            const div = document.createElement("div");
-            div.className = "history-item";
-            
-            const totalWeight = sale.items.reduce((sum, item) => sum + (item.qty || item.quantity || 0), 0);
-            
-            const paymentParts = [];
-            if (sale.payment) {
-                const totalReceived = (sale.payment.online || 0) + (sale.payment.cash || 0);
-                if (totalReceived > 0) paymentParts.push(`${L('ui.bill.received')}: ₹${Math.round(totalReceived)}`);
-                if (sale.payment.due > 0) paymentParts.push(`${L('ui.bill.due')}: ₹${Math.round(sale.payment.due)}`);
-            }
-            const paymentHTML = paymentParts.length > 0 ? `
-                <div class="history-payment">
-                    ${paymentParts.join(' | ')}
-                </div>
-            ` : '';
-            
-            div.innerHTML = `
-                <div class="history-header">
-                    <span style="cursor: pointer; color: #22c55e; text-decoration: underline;" onclick="window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')">#${Helpers.escapeHtml(sale.billNumber || sale.id)}</span>${sale.customerName ? `<strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}
-                    <span style="color: #28a745; font-weight: 700;">₹ ${Math.round(sale.total)}</span>
-                </div>
-                <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>
-                <div class="history-summary">
-                    ${Helpers.escapeHtml(sale.items.map(item => item.name).join(', '))}
-                </div>
-                ${paymentHTML}
-            `;
-            
-            container.appendChild(div);
-        });
+    /** Reflect the Wholesale › History filter in its controls. */
+    static syncHistoryUi() {
+        const f = this.historyFilter;
+        const preset = document.getElementById('wholesaleHistoryPreset');
+        if (preset && preset.value !== f.preset) preset.value = f.preset;
+        const custom = document.getElementById('wholesaleHistoryCustomRange');
+        if (custom) custom.hidden = f.preset !== 'custom';
+        const toggle = document.getElementById('wholesaleHistoryViewToggle');
+        if (toggle) toggle.textContent = t(this.historyView === 'card' ? 'ui.history.table_view' : 'ui.history.card_view');
+    }
+
+    static setHistoryPreset(preset) {
+        const f = { ...this.historyFilter, preset };
+        if (preset === 'custom' && !f.from && !f.to) {
+            f.from = f.to = todayLocalISO();
+            const from = document.getElementById('wholesaleHistoryFrom');
+            const to = document.getElementById('wholesaleHistoryTo');
+            if (from && to) { from.value = f.from; to.value = f.to; }
+        }
+        this.historyFilter = f;
+        this.showHistoryRangeHint('');
+        this.renderWholesaleHistory();
+    }
+
+    /** Apply the custom From/To dates (invalid dates show a hint, nothing loads). */
+    static applyHistoryRange(from, to) {
+        if (from === undefined) from = document.getElementById('wholesaleHistoryFrom')?.value || '';
+        if (to === undefined) to = document.getElementById('wholesaleHistoryTo')?.value || '';
+        const check = validateCustomRange(from, to);
+        this.showHistoryRangeHint(check.ok ? '' : check.error);
+        if (!check.ok) return false;
+        this.historyFilter = { preset: 'custom', from: check.from, to: check.to };
+        this.renderWholesaleHistory();
+        return true;
+    }
+
+    static showHistoryRangeHint(text) {
+        const hint = document.getElementById('wholesaleHistoryRangeHint');
+        if (!hint) return;
+        hint.textContent = text || '';
+        hint.hidden = !text;
+    }
+
+    static searchHistory(term) {
+        this.historySearch = String(term || '').trim();
+        this.renderWholesaleHistory();
+    }
+
+    static toggleHistoryView() {
+        this.historyView = this.historyView === 'card' ? 'table' : 'card';
+        this.renderWholesaleHistory();
     }
 
     static async reprintSale(index) {
