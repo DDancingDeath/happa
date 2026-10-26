@@ -520,7 +520,7 @@ const AuthManager = {
                 }
                 
                 // New Money page (redesign): owner preview until the nav switch replaces Finance
-                if (tabId === 'money' || tabId === 'insights') {
+                if (tabId === 'money' || tabId === 'insights' || tabId === 'statements') {
                     item.style.display = isOwner && mayOpen(tabId) ? 'block' : 'none';
                 }
 
