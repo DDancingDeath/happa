@@ -13,7 +13,6 @@ jest.mock('../firebase/firestore-service.js', () => ({
     }
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: { showImagePreview: jest.fn(() => true) } }));
-jest.mock('../modules/reports.js', () => ({ chartScaleMax: (v) => Math.max(1, ...v) }));
 
 import { AnomaliesManager } from '../modules/anomalies.js';
 import { FirebaseService } from '../firebase/firestore-service.js';

@@ -9,7 +9,7 @@ test('pending user is signed out with a message', async ({ page, problems }) => 
     expect(problems.pageErrors).toEqual([]);
 });
 
-test('staff gets in without Finance / Admin / Diagnostics', async ({ page, problems }) => {
+test('staff gets in without Money / Admin / Diagnostics', async ({ page, problems }) => {
     await login(page, 'staff');
     const hidden = await page.evaluate(() => {
         const out = {};
@@ -19,6 +19,6 @@ test('staff gets in without Finance / Admin / Diagnostics', async ({ page, probl
         });
         return out;
     });
-    expect(hidden).toMatchObject({ finance: true, admin: true, diagnostics: true, billing: false });
+    expect(hidden).toMatchObject({ money: true, insights: true, statements: true, admin: true, diagnostics: true, billing: false });
     expect(problems.pageErrors).toEqual([]);
 });

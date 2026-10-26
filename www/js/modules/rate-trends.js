@@ -17,7 +17,7 @@ import { t, getLang, tn } from '../i18n/index.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { setInsightsContext } from '../utils/insights-context.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
-import { chartScaleMax } from './reports.js';
+import { chartScaleMax } from '../utils/chart-scale.js';
 import { RATE_FIELDS, fieldLabel } from '../utils/rate-history.js';
 import {
     DEFAULT_DAILY_READ_BUDGET, DIRECTION_KEYS, CONFIDENCE_KEYS, READ_BUDGET_OPTIONS,

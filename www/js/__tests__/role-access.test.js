@@ -12,8 +12,8 @@ const DAY = 24 * 60 * 60 * 1000;
 describe('Roles & access settings (#84)', () => {
     test('missing settings keep today\'s behaviour (and the 2-day edit window of #87)', () => {
         expect(normalizeRoleAccess(undefined)).toEqual(ROLE_ACCESS_DEFAULTS);
-        expect(canOpenTab('finance', 'staff')).toBe(false);
-        expect(canOpenTab('reports', 'manager')).toBe(true);
+        expect(canOpenTab('money', 'staff')).toBe(false);
+        expect(canOpenTab('statements', 'manager')).toBe(true);
         expect(canOpenTab('history', 'staff')).toBe(true);
         expect(accessFor('staff').editDays).toBe(2);
         expect(hiddenPermissionClasses('staff')).toEqual([]);
@@ -33,10 +33,10 @@ describe('Roles & access settings (#84)', () => {
 
     test('the owner always has everything; unknown roles get member access', () => {
         const raw = { manager: { finance: false }, staff: { reports: true, personalExpenses: false } };
-        expect(canOpenTab('finance', 'owner', raw)).toBe(true);
-        expect(canOpenTab('finance', 'manager', raw)).toBe(false);
-        expect(canOpenTab('reports', 'staff', raw)).toBe(true);
-        expect(canOpenTab('reports', 'stranger', raw)).toBe(true);
+        expect(canOpenTab('money', 'owner', raw)).toBe(true);
+        expect(canOpenTab('money', 'manager', raw)).toBe(false);
+        expect(canOpenTab('statements', 'staff', raw)).toBe(true);
+        expect(canOpenTab('statements', 'stranger', raw)).toBe(true);
         expect(hiddenPermissionClasses('staff', raw)).toEqual(['no-perm-personalExpenses']);
         expect(hiddenPermissionClasses('owner', raw)).toEqual([]);
     });
@@ -86,7 +86,7 @@ describe('Roles & access settings (#84)', () => {
 
 describe('direct navigation to a page that is off for the role', () => {
     beforeEach(() => {
-        document.body.innerHTML = '<div id="billing" class="tab"></div><div id="reports" class="tab"></div><nav class="nav-menu"></nav>';
+        document.body.innerHTML = '<div id="billing" class="tab"></div><div id="statements" class="tab"></div><nav class="nav-menu"></nav>';
         jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         jest.spyOn(UIManager, 'hapticFeedback').mockImplementation(() => {});
     });
@@ -99,13 +99,13 @@ describe('direct navigation to a page that is off for the role', () => {
     test('is refused and shows Billing instead; allowed once the owner turns it on', () => {
         AppState.userRole = 'staff';
         NavigationManager.showTabFromNav('reports');
-        expect(document.getElementById('reports').classList.contains('active')).toBe(false);
+        expect(document.getElementById('statements').classList.contains('active')).toBe(false);
         expect(document.getElementById('billing').classList.contains('active')).toBe(true);
         expect(UIManager.showToast).toHaveBeenCalledWith('This page is turned off for your role. Ask the owner.');
 
         AppState.settings.roleAccess = { staff: { reports: true } };
         NavigationManager.showTab('reports');
-        expect(document.getElementById('reports').classList.contains('active')).toBe(true);
+        expect(document.getElementById('statements').classList.contains('active')).toBe(true);
     });
 });
 

@@ -12,7 +12,7 @@ const NEGATIVE_STOCK = {
     cause: 'Stock went below zero (sold before the purchase was recorded, AC8). When the purchase refills the hole, '
         + 'www/js/utils/stock-replay.js:replayEvents values the stock at the refill rate and writes the uncosted units off '
         + '(#215 design: "uncosted" warning + check-line gap in utils/finance-calc.js:stockMovement); the oracle carries their cost '
-        + 'into the average instead. Confirmed when F2_cogs_items_never_below_zero (same periods without those items) has no mismatches.',
+        + 'into the average instead. Confirmed when M2_cogs_items_never_below_zero (same periods without those items) has no mismatches.',
     known: 'known (#215 design; AC8 data)'
 };
 const AC220 = {
@@ -45,6 +45,8 @@ export const CAUSES = {
     M3_gross: { ...NEGATIVE_STOCK, cause: `= sales − cost of goods sold (M2). ${NEGATIVE_STOCK.cause}` },
     M6_profit: { ...NEGATIVE_STOCK, cause: `= Finance profit (F4, #36). ${NEGATIVE_STOCK.cause}` },
     M10_kept: { ...NEGATIVE_STOCK, cause: `= profit (M6) − personal expenses − withdrawals. ${NEGATIVE_STOCK.cause}` },
+    M11_profitByDay: { ...NEGATIVE_STOCK, cause: `Per-day split of profit (M6); the days add up to M6. ${NEGATIVE_STOCK.cause}` },
+    M17_gap: { short: 'M17 check-line gap shown by design after refilled oversells', cause: 'The check-line gap the app shows on purpose when goods sold earlier are refilled (M17, as F8); same root as M2.', known: 'known (M17 by design; AC8 data)' },
     A3_expenses: {
         short: 'analytics.js:parseDate reads "D/M/YYYY, h:mm:ss pm" expense dates with new Date()',
         cause: 'www/js/modules/analytics.js:parseDate uses `new Date(text)`: expenses are dated "D/M/YYYY, h:mm:ss pm", '

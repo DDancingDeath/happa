@@ -17,7 +17,12 @@
 import fs from 'fs';
 import path from 'path';
 import { FirebaseService } from '../firebase/firestore-service.js';
-import { FinanceManager } from '../modules/finance.js';
+import { outstandingTotals } from '../utils/business-metrics.js';
+const round2 = (v) => Math.round(v * 100) / 100;
+const dues = () => {
+    const d = outstandingTotals({ purchases: AppState.purchaseHistory, wholesaleSales: AppState.salesHistory, retailSales: AppState.retailSalesHistory });
+    return { dueToReceive: d.receivable.total, dueToPay: d.payable.total };
+};
 import { OutstandingManager } from '../modules/outstanding.js';
 import { AppState } from '../utils/state.js';
 
@@ -127,9 +132,9 @@ describe.each(SCENARIOS.map(s => [s.name, s]))('oracle: %s', (_name, s) => {
         expect(outstandingScreenByParty('sale')).toEqual(oracleByParty(s.retailSales, 'customerName'));
     });
 
-    test('outstanding totals: Finance == oracle (wholesale + retail receivable, purchases payable)', () => {
+    test('outstanding totals (Money › Worth) == oracle (wholesale + retail receivable, purchases payable)', () => {
         const receivable = sum(oracleByParty(s.retailSales, 'customerName')) + sum(oracleByParty(s.wholesaleSales, 'customer'));
-        expect(FinanceManager.calculateOutstanding()).toEqual({ dueToReceive: receivable, dueToPay: sum(oracleByParty(s.purchases, 'customerName')) });
+        expect(dues()).toEqual({ dueToReceive: round2(receivable), dueToPay: round2(sum(oracleByParty(s.purchases, 'customerName'))) });
     });
 });
 
@@ -224,9 +229,9 @@ describe('oracle: seeded 3-year history', () => {
         expect(outstandingScreenByParty('sale')).toEqual(oracleByParty(s.retailSales, 'customerName'));
     });
 
-    test('Finance outstanding totals == oracle', () => {
+    test('Money outstanding totals == oracle', () => {
         const receivable = sum(oracleByParty(s.retailSales, 'customerName')) + sum(oracleByParty(s.wholesaleSales, 'customer'));
-        const { dueToReceive, dueToPay } = FinanceManager.calculateOutstanding();
+        const { dueToReceive, dueToPay } = dues();
         expect(r2(dueToReceive)).toBe(r2(receivable));
         expect(r2(dueToPay)).toBe(r2(sum(oracleByParty(s.purchases, 'customerName'))));
     });

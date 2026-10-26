@@ -89,7 +89,11 @@ a period longer than a day, T-LAB-1 is the sum over
 the period; T-LAB-2 is the sum of each day's T-LAB-2 (labour is paid per day,
 so each day is rounded up on its own).
 
-## Finance (`templates/finance.html`, `modules/finance.js`, `utils/finance-calc.js`) — #215
+## Finance (retired; `utils/finance-calc.js` stays as the engine of M*) — #215
+
+> Retired in redesign phase 5: the page is gone and its route opens Money. Its figures are now
+> the M* / I* figures below (retired-ID table in docs/insights-redesign.md §7.8); kept here as the
+> definition the old app versions still show.
 
 For the selected PERIOD (or All). Bills belong to the period by their stock
 time (numeric `timestamp`, else date), so a sale and its cost are always in the
@@ -110,7 +114,11 @@ same period.
 | F11 | Withdrawals | Σ withdrawals in the period. |
 | F12 | Net worth | ❓ open: #39 (what to include; today's formula counts dues twice). Not tested yet. |
 
-## Reports → Overview (`templates/reports.html`, `modules/reports.js`)
+## Reports → Overview (retired)
+
+> Retired in redesign phase 5: the page is gone and its route opens Statements. Its figures are now
+> the M* / I* figures below (retired-ID table in docs/insights-redesign.md §7.8); kept here as the
+> definition the old app versions still show.
 
 For the selected PERIOD. Dues are all-time, not the period.
 
@@ -125,7 +133,11 @@ For the selected PERIOD. Dues are all-time, not the period.
 | R7 | Due to receive | = F9 (retail + wholesale). |
 | R8 | Labour | Σ labour on the period's purchases. |
 
-## Analytics (`templates/analytics.html`, `modules/analytics.js`)
+## Analytics (retired)
+
+> Retired in redesign phase 5: the page is gone and its route opens Insights. Its figures are now
+> the M* / I* figures below (retired-ID table in docs/insights-redesign.md §7.8); kept here as the
+> definition the old app versions still show.
 
 | ID | On screen | Definition |
 |---|---|---|
@@ -178,7 +190,7 @@ For one cash session's DAY. Only cash counts.
 | C8 | Difference | Counted cash − C7 (shown as short / extra). |
 | C9 | Counted cash | Closing balance of the last signed-out, counted session (not "not counted"); the drawer term of M15. |
 
-## Reports › Trends and Product traffic (`templates/rate-trends.html`, `modules/rate-trends.js`) — #65
+## Insights › Seasons: Trends and Product traffic (`templates/rate-trends.html`, `modules/rate-trends.js`) — #65
 
 Owner/manager only. Pure code: `utils/rate-trends.js`, `utils/item-rate-series.js`,
 `utils/product-traffic.js`. Oracle: `tests/oracle/rate-trends.test.js`.
@@ -232,7 +244,7 @@ pages (docs/insights-redesign.md §7); pages only render. Owner choices are
 constants in `utils/insights-config.js` (overridable in `settings/app.insights`).
 Oracle: `tests/oracle/business-metrics.test.js`; accounting checks:
 `tests/property/business-metrics.test.js`; real data: `npm run audit:numbers`
-(page "Money (layer)", "Insights (layer)"). Each figure has one home
+(pages "Money (layer)", "Money screen", "Insights (layer)"). Each figure has one home
 (`utils/metric-registry.js`).
 
 **Money page** (`templates/money.html`, `modules/money.js`) is the home of M1–M17. Each
@@ -319,7 +331,7 @@ in Diagnostics → Number checks.
 | AC2 | For every bill (OPENING records excepted: they are a due with no total): cash + online + due (+ written off) = BILL-TOTAL, within ₹1. |
 | AC3 | For every bill: BILL-AT-SAVE + Σ `payments[]` = cash and online on the bill. |
 | AC4 | Σ over months = all time (sales, purchases) on Reports and Finance. |
-| AC5 | Outstanding total = Σ BILL-DUE of open bills, OPENING records included (Outstanding, Finance, Reports agree); OPENING records age from their original bill date. |
+| AC5 | Outstanding total = Σ BILL-DUE of open bills, OPENING records included (Outstanding and Money › Worth agree); OPENING records age from their original bill date. |
 | AC6 | Drawer expected cash = opening + cash in − cash out for the day. |
 | AC7 | Same period, same number: Today, Reports, Analytics, Finance and the drawer agree on sales and cash; Finance profit, cost of goods sold and cash flow match the oracle every month. |
 | AC8 | No item's stock goes below zero unless a sale was saved past the oversell warning. |

@@ -15,9 +15,8 @@ import path from 'path';
 import * as O from './oracle.js';
 import { DayManager } from '../../www/js/modules/day.js';
 import { AnomaliesManager } from '../../www/js/modules/anomalies.js';
-import { FinanceManager } from '../../www/js/modules/finance.js';
-import { ReportsManager } from '../../www/js/modules/reports.js';
-import { AnalyticsManager } from '../../www/js/modules/analytics.js';
+import { MoneyManager } from '../../www/js/modules/money.js';
+import { setInsightsContext, resetInsightsContextForTests } from '../../www/js/utils/insights-context.js';
 import { OutstandingManager } from '../../www/js/modules/outstanding.js';
 import { CashManagementManager } from '../../www/js/modules/cash-management.js';
 import { FirebaseService } from '../../www/js/firebase/firestore-service.js';
@@ -152,95 +151,56 @@ describe('Stock == oracle', () => {
     test('S2 average cost per item', () => {
         Object.entries(want.perItem).forEach(([k, v]) => expect(stock[k].rate).toBeCloseTo(v.rate, 6));
     });
-    test('S3/F6 stock value (Finance → Assets "Stock value")', () => {
-        AppState.stock = stock;
-        expect(O.r2(FinanceManager.calculateStockValue())).toBe(want.closing);
+    test('S3/S4 stock value (Stock total, Money › Worth term)', () => {
+        const value = Object.values(stock).reduce((a, x) => a + (x.quantity > 0 ? x.quantity * x.rate : 0), 0);
+        expect(O.r2(value)).toBe(want.closing);
     });
 });
 
-// ------------------------------------------------------------------ Finance
+// ------------------------------------------------------------------ Money (replaces Finance, Reports, Analytics)
 
-describe('Finance == oracle (all time)', () => {
-    const want = O.finance(data);
-    const SCREEN = {
-        F1_sales: 'financeRevenue', F2_cogs: 'financeCogs', F3_businessExpenses: 'financeBusinessExp', F4_profit: 'financeNetProfit',
-        F5_personalExpenses: 'financePersonalExp', F6_stockValue: 'financeStockNow', F11_withdrawals: 'financeTotalWithdrawn'
-    };
+describe('Money page (all time) == oracle', () => {
+    const w = O.metrics(data, [-Infinity, Infinity]);
+    const TEMPLATE = fs.readFileSync(path.resolve(__dirname, '../../www/templates/money.html'), 'utf8');
     beforeEach(() => {
-        FinanceManager.currentDateFilter = 'all';
-        document.body.innerHTML = `<div id="financeDashboardSection">${[...Object.values(SCREEN), 'financeProfitPeriod', 'financeAfterPersonalLine',
-            'financeRevenueCount', 'financeBusinessExpCount', 'financePersonalExpCount', 'financeAvailableBalance', 'financeProfitWarning']
-            .map(id => `<span id="${id}"></span>`).join('')}</div>`;
-        ['renderMonthlyChart', 'renderProfitBreakdown', 'renderStockBreakdown', 'renderCashFlow', 'renderFullHistoryPrompt']
-            .forEach(fn => jest.spyOn(FinanceManager, fn).mockImplementation(() => {}));
-        FinanceManager.renderDashboard();
+        resetInsightsContextForTests();
+        setInsightsContext({ preset: 'all' });
+        document.body.innerHTML = TEMPLATE;
+        document.getElementById('money').classList.add('active');
+        Object.assign(MoneyManager, { snapshots: {}, snapshotsLoaded: true, sessionCache: new Map(), drawerCache: null });
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
     });
 
-    Object.entries(SCREEN).forEach(([id, el]) => {
-        specTest(id)(`${id} (#${el})`, () => expect(shown(el)).toBe(rupee(want[id])));
+    test('Profit: M1, M2, M3, M6, M7, M16', () => {
+        MoneyManager.init('profit');
+        expect(shown('moneySales')).toBe(rupee(w.M1_sales));
+        expect(shown('moneyCogs')).toBe(rupee(w.M2_cogs));
+        expect(shown('moneyGross')).toBe(rupee(w.M3_gross));
+        expect(shown('moneyProfitValue')).toBe(rupee(w.M6_profit));
+        expect(shown('moneyLabour')).toBe(rupee(w.M7_labour));
+        expect(shown('moneyPurchases')).toBe(rupee(w.M16_purchases));
     });
-    test('F1 sale count', () => expect(shown('financeRevenueCount')).toBe(want.F1_saleCount));
-    test('F7 cash flow (money in − money out)', () => {
-        const s = FinanceManager.computeSummary({ from: -Infinity, to: Infinity, cashSessions: { sessions: [], complete: true } });
-        expect(s.cash.moneyIn).toBeCloseTo(want.F7_moneyIn, 2);
-        expect(s.cash.moneyOut).toBeCloseTo(want.F7_moneyOut, 2);
-        expect(s.cash.net).toBeCloseTo(want.F7_cashFlow, 2);
+    test('Cash: M12, M13, M14', () => {
+        MoneyManager.init('cash');
+        expect(shown('moneyIn')).toBe(rupee(w.M12_inCash + w.M12_inOnline));
+        expect(shown('moneyOut')).toBe(rupee(w.M13_outCash + w.M13_outOnline));
+        expect(shown('moneyNetCash')).toBe(rupee(w.M14_net));
     });
-    test('F8 check line: opening + purchases − cost of goods sold + adjustments = closing', () => {
-        const s = FinanceManager.computeSummary({ from: -Infinity, to: Infinity, cashSessions: { sessions: [], complete: true } }).stock;
-        const c = want.F8_check;
-        expect([s.opening, s.purchases, s.cogs, s.adjustments, s.closing].map(O.r2)).toEqual([c.opening, c.purchases, c.cogs, c.adjustments, c.closing]);
-        expect(s.gap).toBeCloseTo(0, 2);
+    test('Spending: M4, M8, M9, M10', () => {
+        MoneyManager.init('spending');
+        expect(shown('moneyBusiness')).toBe(rupee(w.M4_businessExpenses));
+        expect(shown('moneyPersonal')).toBe(rupee(w.M8_personalExpenses));
+        expect(shown('moneyWithdrawn')).toBe(rupee(w.M9_withdrawals));
+        expect(shown('moneyKept')).toBe(rupee(w.M10_kept));
     });
-    test('F9/F10 due to receive / due to pay', () => {
-        expect(FinanceManager.calculateOutstanding()).toEqual({ dueToReceive: want.F9_dueToReceive, dueToPay: want.F10_dueToPay });
+    test('Worth: stock, to receive and to pay terms equal Stock and Outstanding (S4, O3, O4)', () => {
+        MoneyManager.init('worth');
+        const dues = O.dueTotals(data);
+        const terms = [...document.querySelectorAll('#moneyWorthTerms [data-metric-ref]')]
+            .map(el => [el.dataset.metricRef, Number(el.textContent.replace(/[^\d.-]/g, ''))]);
+        expect(Object.fromEntries(terms.filter(([id]) => ['S4', 'O3', 'O4'].includes(id)).map(([id, v]) => [id, Math.abs(v)])))
+            .toEqual({ S4: rupee(O.stockReplay(data).closing), O3: rupee(dues.payable), O4: rupee(dues.receivable) });
     });
-});
-
-// ------------------------------------------------------------------ Reports
-
-describe('Reports overview (this month) == oracle', () => {
-    const SCREEN = {
-        R1_purchases: 'reportsTotalPurchases', R2_sales: 'reportsTotalSales', R3_profit: 'reportsGrossProfit',
-        R4_cash: 'reportsCashPayment', R5_online: 'reportsOnlinePayment', R6_dueToPay: 'reportsDueToPay',
-        R7_dueToReceive: 'reportsDueToReceive', R8_labour: 'reportsTotalLabor'
-    };
-    const want = O.reports(data, O.monthRange(NOW));
-    beforeEach(() => {
-        document.body.innerHTML = [...Object.values(SCREEN), 'reportsTotalVolume', 'reportsPurchaseCount', 'reportsSaleCount', 'reportsProfitMargin']
-            .map(id => `<span id="${id}"></span>`).join('');
-        jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
-        jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
-        ReportsManager.currentDateFilter = 'month';
-        ReportsManager.renderOverview();
-    });
-    Object.entries(SCREEN).forEach(([id, el]) => {
-        specTest(id)(`${id} (#${el})`, () => expect(shown(el)).toBe(rupee(want[id])));
-    });
-    test('R1/R2 bill counts', () => {
-        expect(shown('reportsPurchaseCount')).toBe(want.R1_purchaseCount);
-        expect(shown('reportsSaleCount')).toBe(want.R2_saleCount);
-    });
-});
-
-// ------------------------------------------------------------------ Analytics
-
-describe('Analytics (this month, outstanding) == oracle', () => {
-    const SCREEN = {
-        A1_revenue: 'monthRevenue', A2_purchases: 'monthPurchases', A3_expenses: 'monthExpenses', A4_profit: 'monthProfit',
-        A5_payable: 'totalPayable', A5_payableCount: 'payableCount', A6_receivable: 'totalReceivable', A6_receivableCount: 'receivableCount'
-    };
-    const want = O.analyticsMonth(data, NOW);
-    beforeEach(() => {
-        document.body.innerHTML = [...Object.values(SCREEN), 'monthProfitMargin', 'monthExpensesCount', 'monthRevenueGrowth', 'monthPurchasesGrowth']
-            .map(id => `<span id="${id}"></span>`).join('');
-        AnalyticsManager.renderMonthSummary();
-        AnalyticsManager.renderOutstandingDues();
-    });
-    Object.entries(SCREEN).forEach(([id, el]) => {
-        specTest(id)(`${id} (#${el})`, () => expect(shown(el)).toBe(rupee(want[id])));
-    });
-    test('A3 expense count', () => expect(shown('monthExpensesCount')).toBe(want.A3_expenseCount));
 });
 
 // ------------------------------------------------------------------ Outstanding

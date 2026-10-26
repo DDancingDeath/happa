@@ -41,14 +41,15 @@ const OWNER_ACCESS = Object.freeze({
     historyDays: 0, editDays: Infinity
 });
 
-/** Page ids (navigation tab ids) that a permission controls. */
+/**
+ * Page ids (navigation tab ids) that a permission controls. The stored keys kept
+ * their old names when the pages were replaced (phase 5): 'finance' opens Money,
+ * 'analytics' Insights and 'reports' Statements, so roles keep what they had.
+ */
 export const TAB_PERMISSIONS = Object.freeze({
-    finance: 'finance',
     money: 'finance',
     insights: 'analytics',
     statements: 'reports',
-    reports: 'reports',
-    analytics: 'analytics',
     'wholesale-sales': 'wholesale'
 });
 

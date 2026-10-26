@@ -32,9 +32,9 @@ setting is missing or invalid.
 
 | id | English | हिंदी | Manager default | Member default | Enforced |
 |---|---|---|---|---|---|
-| `finance` | Finance page (and the new Money page, which replaces it) | हिसाब-किताब पेज | on | off | client |
-| `reports` | Reports page (and the new Statements page, which replaces it) | रिपोर्ट पेज | on | off | client |
-| `analytics` | Analytics page (and the new Insights page, which replaces it; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | विश्लेषण पेज | on | off | client |
+| `finance` | Money page (the stored id kept the old Finance page's name) | हिसाब पेज | on | off | client |
+| `reports` | Statements page (stored id of the old Reports page) | बही-खाता पेज | on | off | client |
+| `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client |
 | `wholesale` | Wholesale page | थोक पेज | on | off | client |
 | `personalExpenses` | Personal expenses | निजी खर्च | on | on | client (rules: phase 2) |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
@@ -54,15 +54,19 @@ setting is missing or invalid.
   `heavyWeightThreshold`, `labourPackageKg`, `checkThresholds`, `businessName`, `businessDetails` and their
   `…UpdatedAt` / `…UpdatedBy` stamps (`managerShopSettingsOk`). Never `roleAccess`,
   `minClientVersion`, `enforceClientVersion` or TIP settings, and never create or delete the doc.
-- Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, Reports › Trends and Product traffic,
+- Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, Insights › Seasons (Trends and Product traffic),
   App health) and the stock adjustment / item edit actions are not in the list: their rules are
   fixed and the setting could not open them. `TAB_ROLES` in `role-access.js` lists them (Admin:
   owner; the others: owner and manager); `canOpenTab()` refuses them for other roles, and
-  `NavigationManager` shows Today with a message instead. Trends and Product traffic are tabs of
-  Reports with the extra permission id `rate-trends` (routes `reports-trends`, `reports-traffic`;
-  old `rate-trends`, `rates-trends`, `rates-traffic` still work). They need the Reports page
-  switch as well; members do not see them, and opening one shows Reports (or Today, if Reports
-  is off for that role) instead.
+  `NavigationManager` shows Today with a message instead. Trends and Product traffic are views of
+  Insights › Seasons with the extra permission id `rate-trends` (routes `insights-seasons`,
+  `insights-trends`, `insights-traffic`; old `reports-trends`, `reports-traffic`, `rate-trends`,
+  `rates-trends`, `rates-traffic` redirect there). They need the Insights page switch as well;
+  members do not see them, and opening one shows Insights (or Today, if Insights is off for that
+  role) instead.
+- Old page ids redirect (redesign phase 5): `finance*` → Money, `reports*` → Statements,
+  `analytics*` → Insights, with the same switches (`finance`, `reports`, `analytics`), so every
+  role keeps what it had.
 - `purchaseRates`: hides the Purchase rates column on the Rates page and the purchase-rate
   fields of the item form. Billing keeps showing purchase rates because members need them to
   make purchase bills; they also stay readable in the data.
@@ -108,15 +112,16 @@ Code: `www/js/utils/role-access.js` (pure: defaults, `normalizeRoleAccess`, `acc
 `hiddenPermissionClasses`) and `www/js/modules/roles-access.js` (the Settings screen).
 
 - **Nav and pages**: `AuthManager.applyRoleBasedRestrictions()` (the existing role gating,
-  tested in `auth-gate.test.js`) now asks `canOpenTab()` for Finance, Reports, Analytics and
+  tested in `auth-gate.test.js`) now asks `canOpenTab()` for Money, Insights, Statements and
   Sales (wholesale). `NavigationManager.showTab()` refuses a page that is off for the role
   (direct navigation, keyboard shortcuts, links from other pages) and shows Billing with a
   message.
 - **Sections and numbers**: elements carry `data-perm="profit"` (or `stockValue`,
   `personalExpenses`, …; several = space-separated). `applyRoleBasedRestrictions()` puts
   `no-perm-<id>` classes on `<body>` and `css/settings.css` hides the matching elements, which
-  also covers templates and rows rendered later. Marked: Finance profit / COGS / stock value /
-  personal cards, net worth; Reports gross profit; Analytics profit cards and trend; wholesale
+  also covers templates and rows rendered later. Marked: Money profit / cost of goods sold /
+  personal expenses, net worth terms; Insights profit cards and to-do ₹ lost; Statements profit,
+  personal expenses, stock value and purchase rate lines (also left out of WhatsApp, CSV and PDF); wholesale
   profit rows; Stock page rate (average cost) and ₹ value; the Personal expenses tab.
 - **Actions and lists**: Expenses refuses the Personal tab and draws no personal rows; Stock
   "Not selling" also needs `profit` and `stockValue`; Cash history without `oldCashSessions`

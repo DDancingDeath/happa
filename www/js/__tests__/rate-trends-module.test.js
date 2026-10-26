@@ -12,7 +12,6 @@ jest.mock('../firebase/firestore-service.js', () => ({
         saveRateStatsMeta: jest.fn(async () => {})
     }
 }));
-jest.mock('../modules/reports.js', () => ({ chartScaleMax: (v) => Math.max(1, ...v) }));
 
 import { RateTrendsManager } from '../modules/rate-trends.js';
 import { FirebaseService } from '../firebase/firestore-service.js';

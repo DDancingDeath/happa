@@ -15,7 +15,6 @@ jest.mock('../firebase/firestore-service.js', () => ({
         saveRateStats: jest.fn(async () => {})
     }
 }));
-jest.mock('../modules/reports.js', () => ({ chartScaleMax: (v) => Math.max(1, ...v) }));
 
 const fs = require('fs');
 const path = require('path');

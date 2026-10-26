@@ -1,7 +1,7 @@
 /**
  * @fileoverview Money paths that create records (#61): new purchase save
  * (items × rate, labour, payment split), new retail sale save, recording a due
- * payment from the Outstanding screen, Finance profit/outstanding and the
+ * payment from the Outstanding screen, Money profit/outstanding and the
  * cash drawer's expected balance.
  *
  * Tests marked `test.skip` pin a known bug (see the referenced issue); unskip
@@ -10,7 +10,7 @@
 import { PurchaseManager } from '../modules/purchase.js';
 import { RetailSaleManager } from '../modules/retail-sale.js';
 import { OutstandingManager } from '../modules/outstanding.js';
-import { FinanceManager } from '../modules/finance.js';
+import { moneySummary, outstandingTotals } from '../utils/business-metrics.js';
 import { CashManagementManager } from '../modules/cash-management.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
@@ -507,10 +507,9 @@ describe('recording a due payment (Outstanding)', () => {
     });
 });
 
-describe('Finance profit and outstanding (fixed dataset, all time)', () => {
+describe('Money profit and outstanding (fixed dataset, all time)', () => {
     beforeEach(() => {
         AppState.historyLoadedFrom = 0;
-        FinanceManager.currentDateFilter = 'all';
         AppState.salesHistory = [
             { id: 'w1', date: '2026-10-01T10:00:00', total: 5000, payment: { cash: 3000, online: 0, due: 2000 } }
         ];
@@ -526,38 +525,26 @@ describe('Finance profit and outstanding (fixed dataset, all time)', () => {
             { id: 'e2', date: '2026-10-02', amount: 80, category: 'personal' }
         ];
         AppState.withdrawalsHistory = [{ id: 'x1', date: '2026-10-02', amount: 1000 }];
-        document.body.innerHTML = `
-          <div id="financeDashboardSection">
-            <span id="financeNetProfit"></span><span id="financeRevenue"></span><span id="financeCogs"></span>
-            <span id="financeBusinessExp"></span><span id="financePersonalExp"></span>
-            <span id="financeTotalWithdrawn"></span><span id="financeAvailableBalance"></span>
-          </div>`;
     });
     afterEach(() => {
         ['salesHistory', 'retailSalesHistory', 'purchaseHistory', 'expensesHistory', 'withdrawalsHistory'].forEach(k => { AppState[k] = []; });
     });
 
-    test('dashboard (#215): profit = sales − cost of goods sold − business expenses; personal and withdrawals below it', () => {
-        jest.spyOn(FinanceManager, 'renderMonthlyChart').mockImplementation(() => {});
-        jest.spyOn(FinanceManager, 'renderProfitBreakdown').mockImplementation(() => {});
-        FinanceManager.renderDashboard();
-        const text = (id) => document.getElementById(id).textContent;
+    test('Money (#215): profit = sales − cost of goods sold − business expenses; personal and withdrawals below it', () => {
+        const m = moneySummary({
+            purchases: AppState.purchaseHistory, wholesaleSales: AppState.salesHistory, retailSales: AppState.retailSalesHistory,
+            expenses: AppState.expensesHistory, withdrawals: AppState.withdrawalsHistory, items: [], stockAdjustments: [],
+            base: { state: {}, from: -Infinity }
+        }, { from: -Infinity, to: Infinity });
         // No item lines, so nothing to cost: 6000 − 0 − 150; unsold purchases are stock, not a loss
-        expect(text('financeRevenue')).toBe('₹6,000');
-        expect(text('financeCogs')).toBe('₹0');
-        expect(text('financeNetProfit')).toBe('₹5,850');
-        expect(text('financePersonalExp')).toBe('₹80');
-        expect(text('financeTotalWithdrawn')).toBe('₹1,000');
+        expect([m.M1.total, m.M2, m.M6.total, m.M8.total, m.M9]).toEqual([6000, 0, 5850, 80, 1000]);
         // 5850 − 80 personal − 1000 withdrawn
-        expect(text('financeAvailableBalance')).toBe('₹4,770');
+        expect(m.M10).toBe(4770);
     });
 
     test('outstanding: receivable from wholesale + retail (cleared excluded), payable from purchases', () => {
-        expect(FinanceManager.calculateOutstanding()).toEqual({ dueToReceive: 2495, dueToPay: 1068 });
-    });
-
-    test('business balance = all-time revenue − costs − withdrawals', () => {
-        expect(FinanceManager.calculateBusinessBalance()).toBe(6000 - 2568 - 230 - 1000);
+        const d = outstandingTotals({ purchases: AppState.purchaseHistory, wholesaleSales: AppState.salesHistory, retailSales: AppState.retailSalesHistory });
+        expect([d.receivable.total, d.payable.total]).toEqual([2495, 1068]);
     });
 });
 

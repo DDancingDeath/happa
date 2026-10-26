@@ -14,12 +14,9 @@ import { StockManager } from './modules/stock.js';
 import { WholesaleSalesManager } from './modules/wholesale-sales.js';
 import { HistoryManager } from './modules/history.js';
 import { OutstandingManager } from './modules/outstanding.js';
-import { ReportsManager } from './modules/reports.js';
 import { ExpensesManager } from './modules/miscellaneous.js';
 import { SettingsManager } from './modules/settings.js';
 import { UsersManager } from './modules/users.js';
-import { FinanceManager } from './modules/finance.js';
-import { AnalyticsManager } from './modules/analytics.js';
 import { CashManagementManager } from './modules/cash-management.js';
 import { DayManager } from './modules/day.js';
 import { AnomaliesManager } from './modules/anomalies.js';
@@ -58,13 +55,12 @@ markStartup('sdk-and-modules-loaded');
 
 InstallManager.init();
 
-// Rate trends code (Reports › Trends / Product traffic) is imported only when needed
-let rateTrends = null;
+// Rate trends code (Insights › Seasons: Trends / Product traffic) is imported only when needed
 let rateTrendsLoading = null;
 function loadRateTrends() {
     if (!rateTrendsLoading) {
         rateTrendsLoading = import('./modules/rate-trends.js')
-            .then(m => (rateTrends = m.RateTrendsManager))
+            .then(m => m.RateTrendsManager)
             .catch(e => { rateTrendsLoading = null; throw e; });
     }
     return rateTrendsLoading;
@@ -146,9 +142,6 @@ function refreshForLanguage(lang) {
         'cash-management': () => CashManagementManager.refreshForLanguage(),
         'wholesale-sales': () => { WholesaleSalesManager.renderSalesHistory(); WholesaleSalesManager.renderSalesOutstanding(); },
         settings: () => { SettingsManager.loadSettings(); RolesAccessManager.render(); RolesAccessManager.renderPeople(); SettingsManager.renderSections(); },
-        finance: () => { FinanceManager.renderDashboard(); FinanceManager.renderCustomAccounts(); FinanceManager.renderWithdrawalHistory(); },
-        reports: () => { if (ReportsManager.rtView) rateTrends?.refreshForLanguage(); else ReportsManager.renderReports(); },
-        analytics: () => AnalyticsManager.renderTabContent(AnalyticsManager.currentTab),
         expenses: () => ExpensesManager.renderexpensesHistory(),
         items: () => ItemsManager.renderItemsTable(document.getElementById('itemsSearchInput')?.value || ''),
         diagnostics: () => {
@@ -1117,20 +1110,6 @@ window.app = {
         }
     },
     
-    // Reports
-    reports: {
-        filterTab: (view, evt) => ReportsManager.filterTab(view, evt),
-        showView: (view, opts) => ReportsManager.showView(view, opts),
-        setDateFilter: (filter, evt) => ReportsManager.setDateFilter(filter, evt),
-        applyCustomDateFilter: () => ReportsManager.applyCustomDateFilter(),
-        renderReports: () => ReportsManager.renderReports(),
-        renderReportsIfStale: () => ReportsManager.renderReportsIfStale(),
-        applyFilters: () => ReportsManager.applyFilters(),
-        exportCSV: () => ReportsManager.exportCSV(),
-        setCsvEnglish: (on) => ReportsManager.setCsvEnglish(on),
-        exportPDF: () => ReportsManager.exportPDF()
-    },
-    
     // Expenses
     expenses: {
         filterExpenseTab: (view, evt) => ExpensesManager.filterExpenseTab(view, evt),
@@ -1146,35 +1125,6 @@ window.app = {
         confirmDeleteExpense: () => ExpensesManager.confirmDeleteExpense(),
         editExpense: (expenseId, category) => ExpensesManager.editExpense(expenseId, category),
         deleteExpense: (expenseId, category) => ExpensesManager.deleteExpense(expenseId, category)
-    },
-    
-    // Finance
-    finance: {
-        filterTab: (view, evt) => FinanceManager.filterTab(view, evt),
-        setDateFilter: (filter, evt) => FinanceManager.setDateFilter(filter, evt),
-        applyCustomDateFilter: () => FinanceManager.applyCustomDateFilter(),
-        renderDashboard: () => FinanceManager.renderDashboard(),
-        renderAssets: () => FinanceManager.renderAssets(),
-        renderWithdrawals: () => FinanceManager.renderWithdrawals(),
-        recordWithdrawal: () => FinanceManager.recordWithdrawal(),
-        toggleOtherPurpose: () => FinanceManager.toggleOtherPurpose(),
-        showAddAccountModal: () => FinanceManager.showAddAccountModal(),
-        closeAccountModal: () => FinanceManager.closeAccountModal(),
-        saveNewAccount: () => FinanceManager.saveNewAccount(),
-        quickAddAccount: (name, icon) => FinanceManager.quickAddAccount(name, icon),
-        editAccount: (index) => FinanceManager.editAccount(index),
-        closeEditAccountModal: () => FinanceManager.closeEditAccountModal(),
-        updateAccount: () => FinanceManager.updateAccount(),
-        deleteAccount: () => FinanceManager.deleteAccount(),
-        init: () => FinanceManager.init()
-    },
-    
-    // Analytics
-    analytics: {
-        init: () => AnalyticsManager.init(),
-        renderAll: () => AnalyticsManager.renderAll(),
-        showTab: (tab, evt) => AnalyticsManager.showTab(tab, evt),
-        setProfitPeriod: (period, evt) => AnalyticsManager.setProfitPeriod(period, evt)
     },
     
     // Anomalies (#187, #40): Day report card on Today + Anomalies page
@@ -1225,7 +1175,7 @@ window.app = {
             .map(name => [name, (...args) => loadStatements().then(m => m[name](...args))]))
     },
 
-    // Reports › Trends / Product traffic: rate-trends.js is imported on first use
+    // Insights › Seasons: Trends / Product traffic (rate-trends.js is imported on first use)
     rateTrends: {
         open: (section) => loadRateTrends().then(m => m.open(section))
             .catch(e => console.warn('Rate trends not loaded:', e?.message || e)),

@@ -141,7 +141,6 @@ describe('counts use singular and plural (F32)', () => {
         expect(tn('ui.today.bills_count', 0, null, 'en')).toBe('0 bills');
         expect(tn('ui.history.n_packets', 1, null, 'en')).toBe('1 packet');
         expect(tn('ui.history.n_packets', 3, null, 'en')).toBe('3 packets');
-        expect(tn('ui.reports.n_transactions', 1, null, 'en')).toBe('1 transaction');
         expect(tn('ui.print.packets_kg', 1, { kg: '20.0' }, 'en')).toBe('1 packet, 20.0 kg');
         expect(tn('ui.history.n_packets', 1, null, 'hi')).toBe('1 बोरी');
         expect(tn('ui.trends.n_bills', 4, null, 'hi')).toBe('4 बिल');
