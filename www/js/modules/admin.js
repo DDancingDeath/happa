@@ -1,6 +1,7 @@
 /**
- * @fileoverview Admin Manager - Unified admin panel for Configure, Users, and Data management
- * Owner-only access to system configuration
+ * @fileoverview Admin Manager - owner-only panel: Users (approval, roles) and Data.
+ * Labour, bill checks and the business name moved to Settings › Aadhat; the old
+ * Configure tab opens that section.
  * @module modules/admin
  */
 
@@ -11,33 +12,20 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { buildBackup, isDeleteConfirmed, DELETE_CONFIRM_WORD } from '../utils/data-export.js';
-import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
 import { t } from '../i18n/index.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 
 /**
- * Admin Manager - Unified admin panel
+ * Admin Manager - owner-only panel
  * @namespace AdminManager
  */
-/** Bill-check limits editable in Admin → Configure (keys of DEFAULT_THRESHOLDS). */
-const CHECK_THRESHOLD_FIELDS = [
-    ['oversellBlockKg', 'ui.checks.oversell_block'],
-    ['rateMultiple', 'ui.checks.rate_multiple'],
-    ['duplicateWindowSec', 'ui.checks.duplicate_window'],
-    ['maxFutureMin', 'ui.checks.max_future'],
-    ['backdateDays', 'ui.checks.backdate_days'],
-    ['cashOkRs', 'ui.checks.cash_ok'],
-    ['cashHighRs', 'ui.checks.cash_high'],
-    ['stockAdjustFlagKg', 'ui.checks.stock_adjust_flag']
-];
-
 const AdminManager = {
     /**
      * Current active tab
      * @type {string}
      */
-    activeTab: 'configure',
+    activeTab: 'users',
 
     /**
      * Storage stats data
@@ -66,10 +54,6 @@ const AdminManager = {
 
         container.innerHTML = `
             <div class="filter-buttons" style="margin-bottom: 16px;">
-                <button class="filter-btn ${this.activeTab === 'configure' ? 'active' : ''}" 
-                        onclick="window.app.admin.showTab('configure')">
-                    🔧 ${tx('ui.admin.tab_configure')}
-                </button>
                 <button class="filter-btn ${this.activeTab === 'users' ? 'active' : ''}" 
                         onclick="window.app.admin.showTab('users')">
                     👥 ${tx('ui.admin.tab_users')}
@@ -77,6 +61,10 @@ const AdminManager = {
                 <button class="filter-btn ${this.activeTab === 'data' ? 'active' : ''}" 
                         onclick="window.app.admin.showTab('data')">
                     📊 ${tx('ui.admin.tab_data')}
+                </button>
+                <button class="filter-btn admin-open-settings" type="button"
+                        onclick="window.app.nav.showTab('settings-shop', event)">
+                    ⚙️ ${tx('ui.admin.shop_settings_link')}
                 </button>
             </div>
         `;
@@ -87,6 +75,11 @@ const AdminManager = {
      * @param {string} tab - Tab name
      */
     showTab(tab) {
+        // Old Configure tab: its items live in Settings › Aadhat now.
+        if (tab === 'configure') {
+            window.app?.nav?.showTab?.('settings-shop');
+            return;
+        }
         this.activeTab = tab;
         this.renderTabs();
         this.renderContent();
@@ -97,78 +90,12 @@ const AdminManager = {
      */
     renderContent() {
         switch (this.activeTab) {
-            case 'configure':
-                this.renderConfigure();
-                break;
             case 'users':
                 this.renderUsers();
                 break;
             case 'data':
                 this.renderData();
                 break;
-        }
-    },
-
-    /**
-     * Render Configure tab
-     */
-    renderConfigure() {
-        const container = document.getElementById('adminContainer');
-        if (!container) return;
-
-        const e = Helpers.escapeHtml;
-        container.innerHTML = `
-            <div class="settings-card">
-                <h3>${e(t('ui.settings.labour_charges'))}</h3>
-                <p class="setting-description">${e(t('ui.admin.labour_in_settings'))}</p>
-                <button type="button" class="filter-btn admin-open-settings" onclick="window.app.nav.showTab('settings', event)">${e(t('ui.admin.open_settings'))}</button>
-            </div>
-            ${this.renderCheckThresholds()}
-        `;
-    },
-
-    /**
-     * Bill-check limits card (#37): shop-wide, blank = default.
-     * @returns {string}
-     */
-    renderCheckThresholds() {
-        const vals = normalizeThresholds(AppState.settings?.checkThresholds);
-        const rows = CHECK_THRESHOLD_FIELDS.map(([key, label]) => `
-                <label for="adminCheck_${key}">${Helpers.escapeHtml(t(label))}</label>
-                <input type="number" inputmode="decimal" min="0" step="any" id="adminCheck_${key}"
-                       placeholder="${Helpers.escapeHtml(DEFAULT_THRESHOLDS[key])}" value="${Helpers.escapeHtml(vals[key])}"
-                       onchange="window.app.admin.saveCheckThresholds()" />`).join('');
-        return `
-            <div class="settings-card">
-                <h3>${Helpers.escapeHtml(t('ui.checks.title'))}</h3>
-                <p class="setting-description">${Helpers.escapeHtml(t('ui.checks.description'))}</p>
-                ${rows}
-            </div>`;
-    },
-
-    /**
-     * Save the bill-check limits for everyone (owner only).
-     * @returns {Promise<boolean>}
-     */
-    async saveCheckThresholds() {
-        if (AppState.userRole !== 'owner') return false;
-        const typed = {};
-        CHECK_THRESHOLD_FIELDS.forEach(([key]) => { typed[key] = document.getElementById(`adminCheck_${key}`)?.value; });
-        const next = normalizeThresholds(typed);
-        AppState.settings.checkThresholds = next;
-        localStorage.setItem('settings', JSON.stringify(AppState.settings));
-        CHECK_THRESHOLD_FIELDS.forEach(([key]) => {
-            const input = document.getElementById(`adminCheck_${key}`);
-            if (input) input.value = next[key];
-        });
-        try {
-            await FirebaseService.saveSharedCheckThresholds(next);
-            UIManager.showToast(t('msg.admin.settings_saved_everyone'));
-            return true;
-        } catch (error) {
-            console.error('Saving bill-check limits failed:', error);
-            UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
-            return false;
         }
     },
 

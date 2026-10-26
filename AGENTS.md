@@ -173,13 +173,23 @@ In order:
   Read both, write both, treat the nested one as canonical when present.
 - **State**: a single `AppState` object lives in `state.js`. Never invent
   a parallel cache.
-- **Businesses / Rentals (#149, #170)**: one app, a `Shop | Rentals` switch
-  (`js/ui/business-switcher.js`). Rentals code lives in `js/rentals/` and is
+- **Businesses / Rentals (#149, #170)**: one app, an `Aadhat | Rentals` switch
+  (`js/ui/business-switcher.js`). The first business is shown as **Aadhat** /
+  **आढ़त** (formerly "Shop"); code ids, the switcher key, `users.role`,
+  `settings/app` and permission ids keep `shop` — change only the `t()` text. Rentals code lives in `js/rentals/` and is
   loaded **only** with `import()` when Rentals opens; its data is in `rent_*`
   collections (all access in `rentals/rent-store.js`), roles in
   `users/{uid}.rentRole`. Never import `js/rentals/*` statically or name a
   `rent_*` collection from start-up code: `rentals-startup.test.js` fails.
   Design: `docs/rentals-design.md`.
+- **Settings sections**: Common (everyone: language, account, notifications,
+  printer, install, About, and the owner's Roles & access), **Aadhat** (owner and
+  managers: business name, UPI ID, labour, bill checks, bill numbers, opening
+  stock; stored in `settings/app`) and **Rentals** (owner and rentals managers:
+  defaults for new leases in `rent_settings/default`, loaded via
+  `BusinessSwitcher.loadSettings()` only when shown). Who sees what:
+  `utils/settings-sections.js`; routes `settings-shop`, `settings-rentals`,
+  `settings-roles` (old `admin-configure` still works). Admin keeps Users and Data.
 
 ### Things that look wrong but aren't
 

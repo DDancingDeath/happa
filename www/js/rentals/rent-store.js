@@ -8,7 +8,7 @@
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import {
-    applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange,
+    applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings,
     MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
 import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth, withNames, PUBLIC_MONTHS } from './rent-public.js';
@@ -333,3 +333,27 @@ export async function recordMeter(id, unitId, meter) {
 
 /** Owner: rentals role of a user ('manager' | 'member' | null). */
 export const setRentRole = (userId, role) => FirebaseService.updateUser(userId, { rentRole: role || null });
+
+// ---------- Settings › Rentals (rent_settings/default) ----------
+
+let settingsPromise = null;
+
+/** Rentals defaults, read once per session (only when Settings › Rentals or a move-in needs them). */
+export function loadSettings({ refresh = false } = {}) {
+    if (!settingsPromise || refresh) {
+        settingsPromise = coll('rent_settings').doc('default').get()
+            .then(snap => normalizeRentSettings(snap.exists ? snap.data() : null));
+        settingsPromise.catch(() => { settingsPromise = null; });
+    }
+    return settingsPromise;
+}
+
+/** Owner/manager: saves the defaults for new leases (rules check the shape). */
+export async function saveSettings(values) {
+    const next = normalizeRentSettings(values);
+    await coll('rent_settings').doc('default').set(stamp(next));
+    settingsPromise = Promise.resolve(next);
+    return next;
+}
+
+export const _resetSettingsCache = () => { settingsPromise = null; };

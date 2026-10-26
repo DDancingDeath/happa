@@ -19,6 +19,33 @@ export const DEFAULT_DUE_DAY = 10;
 export const DEFAULT_INCREASE_PCT = 5;
 export const MAX_PROPERTIES = 100;
 export const MAX_UNITS_PER_PROPERTY = 20;
+export const MAX_RECEIPT_HEADER = 80;
+
+/** Settings › Rentals defaults (rent_settings/default) used when they are not set. */
+export const RENT_SETTINGS_DEFAULTS = Object.freeze({
+    dueDay: DEFAULT_DUE_DAY, increasePct: DEFAULT_INCREASE_PCT, meterRate: null, tenantLink: false, receiptHeader: ''
+});
+
+/**
+ * Rentals defaults for NEW leases; missing or invalid values fall back to the
+ * defaults (existing leases keep their own values).
+ * @param {*} raw rent_settings/default data
+ * @returns {{dueDay: number, increasePct: number, meterRate: ?number, tenantLink: boolean, receiptHeader: string}}
+ */
+export function normalizeRentSettings(raw) {
+    const r = raw && typeof raw === 'object' ? raw : {};
+    const num = (v) => (v === null || v === undefined || v === '' ? NaN : Number(v));
+    const day = num(r.dueDay);
+    const pct = num(r.increasePct);
+    const rate = num(r.meterRate);
+    return {
+        dueDay: Number.isInteger(day) && day >= 1 && day <= 28 ? day : DEFAULT_DUE_DAY,
+        increasePct: Number.isFinite(pct) && pct >= 0 && pct <= 100 ? round2(pct) : DEFAULT_INCREASE_PCT,
+        meterRate: Number.isFinite(rate) && rate >= 0 ? round2(rate) : null,
+        tenantLink: r.tenantLink === true,
+        receiptHeader: cleanText(r.receiptHeader).slice(0, MAX_RECEIPT_HEADER)
+    };
+}
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

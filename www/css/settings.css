@@ -122,3 +122,37 @@ body.no-perm-purchaseRates [data-perm~="purchaseRates"] {
   color: var(--text-secondary, #6c757d);
   background: var(--bg-secondary, #f8f9fa);
 }
+/* Settings sections: Common, Aadhat, Rentals */
+.settings-section-title {
+  margin: 8px 0 12px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.settings-biz-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 24px 0 12px;
+  padding-top: 16px;
+  border-top: 2px solid var(--border-color);
+}
+
+.settings-biz-bar .settings-section-title {
+  margin: 0;
+}
+
+.settings-biz-toggle {
+  font-size: 13px;
+}
+
+.role-people-table td {
+  text-align: left;
+}
+
+.role-people-table select {
+  padding: 6px;
+  max-width: 160px;
+}

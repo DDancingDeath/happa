@@ -407,13 +407,21 @@ describe('Admin → Users and Users manager', () => {
         expect(document.querySelector('#adminPendingUsers img')).toBeNull();
     });
 
-    test('Admin → Configure only links to Settings for labour (one place to set it)', () => {
-        AdminManager.renderConfigure();
-        expect(document.getElementById('adminLaborRate')).toBeNull();
-        expect(document.getElementById('adminHeavyWeight')).toBeNull();
-        const link = document.querySelector('.admin-open-settings');
-        expect(link.getAttribute('onclick')).toContain("showTab('settings'");
-        expect(document.getElementById('adminContainer').textContent).not.toMatch(/Labor\b/);
+    test('Admin no longer duplicates Settings › Aadhat: no Configure tab, old tab opens Settings', () => {
+        window.app = { nav: { showTab: jest.fn() } };
+        AdminManager.activeTab = 'users';
+        AdminManager.renderTabs();
+        const tabs = document.getElementById('adminTabsContainer');
+        expect(tabs.innerHTML).not.toContain("showTab('configure')");
+        expect(tabs.textContent).not.toMatch(/Configure/);
+        expect(tabs.querySelector('.admin-open-settings').getAttribute('onclick')).toContain("showTab('settings-shop'");
+        AdminManager.showTab('configure');
+        expect(window.app.nav.showTab).toHaveBeenCalledWith('settings-shop');
+        expect(AdminManager.activeTab).toBe('users');
+        expect(document.querySelector('[id^="adminCheck_"]')).toBeNull();
+        expect(AdminManager.renderConfigure).toBeUndefined();
+        expect(AdminManager.saveCheckThresholds).toBeUndefined();
+        delete window.app;
     });
 });
 

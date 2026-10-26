@@ -334,6 +334,11 @@ class BluetoothPrinterManager {
     }
 
     _drawReceiptHeader(ctx, billData, config, utils, y) {
+        // Settings › Aadhat: business name and one line of details, when set
+        const name = String(AppState.settings?.shopName || '').trim();
+        const details = String(AppState.settings?.businessDetails || '').trim();
+        if (name) y = utils.drawCenter(name, y, config.fonts.header, true);
+        if (details) y = utils.drawCenter(details, y, config.fonts.small);
         y = utils.drawCenter(t('ui.print.receipt'), y, config.fonts.title, true);
         if (billData.isCopy) {
             y = utils.drawCenter(copyMark(), y, config.fonts.header, true);

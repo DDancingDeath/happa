@@ -364,6 +364,31 @@ function defineSuite(prefix) {
         await assertFails(as('pending1').collection(`${prefix}settings`).doc('app').get());
     });
 
+    // ---- Settings › Aadhat: manager edits only when Roles & access allows it, only shop fields ----
+
+    t('settings/app shop fields: manager only with roleAccess.manager.shopSettings; never roleAccess or version', async () => {
+        const app = (uid) => as(uid).collection(`${prefix}settings`).doc('app');
+        const seedApp = (shopSettings) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(`${prefix}settings`).doc('app')
+            .set({ minClientVersion: 3, laborRate: 6, roleAccess: { manager: { shopSettings }, staff: {} } }));
+        await seedApp(false);
+        await assertFails(app('manager1').set({ laborRate: 8, labourUpdatedAt: 1, labourUpdatedBy: 'manager1' }, { merge: true }));
+        await assertFails(app('manager1').set({ businessName: 'Aadhat', businessDetails: 'Main road' }, { merge: true }));
+        await seedApp(true);
+        await assertSucceeds(app('manager1').set({ laborRate: 8, labourUpdatedAt: 1, labourUpdatedBy: 'manager1' }, { merge: true }));
+        await assertSucceeds(app('manager1').set({ checkThresholds: { cashOkRs: 50 }, checksUpdatedAt: 1 }, { merge: true }));
+        await assertSucceeds(app('manager1').set({ businessName: 'Aadhat', businessDetails: 'Main road', businessUpdatedAt: 1 }, { merge: true }));
+        await assertFails(app('manager1').set({ roleAccess: { manager: { shopSettings: true, finance: true } } }, { merge: true }));
+        await assertFails(app('manager1').set({ minClientVersion: 99 }, { merge: true }));
+        await assertFails(app('manager1').set({ laborRate: 9, tipPolicies: {} }, { merge: true }));
+        await assertFails(app('manager1').delete());
+        await assertFails(app('staff1').set({ laborRate: 9 }, { merge: true }));
+        await assertSucceeds(app('legacyOwner').set({ businessName: 'Owner set' }, { merge: true }));
+    });
+
+    t('settings/app: a manager cannot create it even when allowed elsewhere', async () => {
+        await assertFails(as('manager1').collection(`${prefix}settings`).doc('app').set({ laborRate: 8 }));
+    });
+
     // ---- settings/app (minClientVersion): owner only ----
 
     t('only the owner can write settings/app; other settings docs unchanged', async () => {
@@ -1622,6 +1647,42 @@ function defineRentSuite(prefix) {
         await assertFails(as('newbie').collection(users).doc('newbie').set({ name: 'N', role: 'staff', status: 'pending', rentRole: 'member' }));
         await assertSucceeds(as('newbie').collection(users).doc('newbie').set({ name: 'N', role: 'staff', status: 'pending' }));
         await assertSucceeds(as('legacyOwner').collection(users).doc('staff1').update({ rentRole: 'member' }));
+    });
+
+    // ---- Settings › Rentals (rent_settings/default) ----
+    const rs = (over = {}) => ({ dueDay: 10, increasePct: 5, meterRate: 8, tenantLink: false, receiptHeader: 'Sharma Rentals', updatedAt: 1, ...over });
+    const rsRef = (uid, id = 'default') => db(uid).collection(c('rent_settings')).doc(id);
+
+    t('rent_settings: rentals roles read; shop-only users and strangers do not', async () => {
+        await seed('rent_settings', 'default', rs({ updatedBy: 'legacyOwner' }));
+        for (const uid of ['legacyOwner', 'rentManager', 'rentMember', 'rentOnly']) await assertSucceeds(rsRef(uid).get());
+        for (const uid of ['staff1', 'manager1', 'rentPending']) await assertFails(rsRef(uid).get());
+        await assertFails(anon().collection(c('rent_settings')).doc('default').get());
+    });
+
+    t('rent_settings: owner and rentals manager write; member and shop manager do not', async () => {
+        await assertSucceeds(rsRef('legacyOwner').set(rs({ updatedBy: 'legacyOwner' })));
+        await assertSucceeds(rsRef('rentManager').set(rs({ dueDay: 5, tenantLink: true, updatedBy: 'rentManager' })));
+        await assertFails(rsRef('rentMember').set(rs({ updatedBy: 'rentMember' })));
+        await assertFails(rsRef('rentOnly').set(rs({ updatedBy: 'rentOnly' })));
+        await assertFails(rsRef('manager1').set(rs({ updatedBy: 'manager1' })));
+        await assertFails(rsRef('rentManager').delete());
+        await assertSucceeds(rsRef('legacyOwner').delete());
+    });
+
+    t('rent_settings: only the default doc, signed by the writer, with valid values', async () => {
+        const w = (over) => rsRef('rentManager').set(rs({ updatedBy: 'rentManager', ...over }));
+        await assertFails(rsRef('rentManager', 'other').set(rs({ updatedBy: 'rentManager' })));
+        await assertFails(w({ updatedBy: 'legacyOwner' }));
+        await assertFails(w({ dueDay: 0 }));
+        await assertFails(w({ dueDay: 29 }));
+        await assertFails(w({ dueDay: 10.5 }));
+        await assertFails(w({ increasePct: 101 }));
+        await assertFails(w({ meterRate: -1 }));
+        await assertFails(w({ tenantLink: 'yes' }));
+        await assertFails(w({ receiptHeader: 'x'.repeat(81) }));
+        await assertFails(w({ extra: 1 }));
+        await assertSucceeds(w({ meterRate: null, receiptHeader: '' }));
     });
 }
 

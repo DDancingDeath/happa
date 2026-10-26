@@ -1,7 +1,8 @@
 /**
- * @fileoverview Settings Module
- * Handles application settings including display, labor rates, dark mode,
- * printer configuration, data management, and audit logs
+ * @fileoverview Settings: Common (language, account, notifications, printer,
+ * install, about, Roles & access), Aadhat (internal id 'shop': business name,
+ * UPI, labour, bill checks, bill numbers, opening stock) and Rentals (loaded on
+ * demand from js/rentals). Which sections show: utils/settings-sections.js.
  * @module modules/settings
  */
 
@@ -11,13 +12,32 @@ import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { normalizeLabourSettings } from '../utils/money.js';
-import { normalizeThresholds } from '../utils/bill-checks.js';
+import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
 import { t } from '../i18n/index.js';
 import { auditActionLabel } from '../i18n/localize.js';
+import { settingsView } from '../utils/settings-sections.js';
+import { BusinessSwitcher } from '../ui/business-switcher.js';
+import { APP_IDENTITY } from '../config/app-identity.js';
+import { AuthManager } from '../auth/authentication.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 /** '1' = item names follow the app language, '0' = the user chose "Show item names in Hindi" (#143). */
 export const ITEM_NAMES_FOLLOW_LANG_KEY = 'aadhat.itemNamesFollowLang';
+
+/** Bill-check limits in Settings › Aadhat (keys of DEFAULT_THRESHOLDS); moved from Admin › Configure. */
+export const CHECK_THRESHOLD_FIELDS = [
+    ['oversellBlockKg', 'ui.checks.oversell_block'],
+    ['rateMultiple', 'ui.checks.rate_multiple'],
+    ['duplicateWindowSec', 'ui.checks.duplicate_window'],
+    ['maxFutureMin', 'ui.checks.max_future'],
+    ['backdateDays', 'ui.checks.backdate_days'],
+    ['cashOkRs', 'ui.checks.cash_ok'],
+    ['cashHighRs', 'ui.checks.cash_high'],
+    ['stockAdjustFlagKg', 'ui.checks.stock_adjust_flag']
+];
+const MAX_BUSINESS_NAME = 80;
+const MAX_BUSINESS_DETAILS = 120;
+const MAX_UPI = 60;
 
 /** Set an input's value / checked state when it is on the page. */
 function setField(id, prop, value) {
@@ -38,14 +58,14 @@ export class SettingsManager {
     static loadSettings() {
         const { settings } = AppState;
         const labour = normalizeLabourSettings(settings);
-        const isOwner = AppState.userRole === 'owner';
+        const canEdit = this.canEditShop();
         
-        // Labour settings are shared by every device; only the owner may change them (#20)
+        // Labour settings are shared by every device; the owner (or a manager allowed in Roles & access) changes them (#20)
         setField('settingHeavyWeight', 'value', labour.heavyWeightThreshold);
         setField('settingLaborRate', 'value', labour.laborRate);
-        ['settingHeavyWeight', 'settingLaborRate'].forEach(id => setField(id, 'disabled', !isOwner));
+        ['settingHeavyWeight', 'settingLaborRate'].forEach(id => setField(id, 'disabled', !canEdit));
         const note = document.getElementById('labourSettingsNote');
-        if (note) note.textContent = t(isOwner ? 'msg.settings.labour_saved_for_everyone' : LABOUR_OWNER_ONLY_KEY);
+        if (note) note.textContent = t(canEdit ? 'msg.settings.labour_saved_for_everyone' : LABOUR_OWNER_ONLY_KEY);
         setField('settingAutoLabor', 'checked', settings.autoLaborEnabled !== false);
         setField('settingShowHindi', 'checked', settings.showHindi || false);
         
@@ -54,6 +74,8 @@ export class SettingsManager {
         if (userEmail && AppState.currentUser?.email) {
             userEmail.textContent = AppState.currentUser.email;
         }
+        const nameInput = document.getElementById('settingUserName');
+        if (nameInput && document.activeElement !== nameInput) nameInput.value = AppState.userName || '';
         
         const darkModeCheckbox = document.getElementById('settingDarkMode');
         if (darkModeCheckbox) {
@@ -146,15 +168,15 @@ export class SettingsManager {
 
     /**
      * Labour rate + heavy-packet weight: one shared value for every device (#20).
-     * Blank or invalid values fall back to ₹6 / 30 kg. Only the owner may change
-     * them (settings/app is owner-only in firestore.rules); for anyone else the
-     * form is reset to the shared values. Admin → Configure uses this too (#21).
+     * Blank or invalid values fall back to ₹6 / 30 kg. The owner, or a manager
+     * allowed in Roles & access, may change them (firestore.rules check the same
+     * on settings/app); for anyone else the form is reset to the shared values.
      * @param {{laborRate?: *, heavyWeightThreshold?: *}} values
      * @returns {Promise<boolean>} true when the shared value was saved
      */
     static async saveLabourSettings(values) {
         const current = normalizeLabourSettings(AppState.settings);
-        if (AppState.userRole !== 'owner') {
+        if (!this.canEditShop()) {
             setField('settingLaborRate', 'value', current.laborRate);
             setField('settingHeavyWeight', 'value', current.heavyWeightThreshold);
             UIManager.showToast(t(LABOUR_OWNER_ONLY_KEY));
@@ -184,6 +206,9 @@ export class SettingsManager {
     static async applySharedSettings(appSettings) {
         // Bill-check limits (#37): shop-wide, defaults when the owner has not set any
         AppState.settings.checkThresholds = normalizeThresholds(appSettings?.checkThresholds);
+        // Business name/details (Settings › Aadhat): shared; a name set only on this device is kept until one is saved
+        if (typeof appSettings?.businessName === 'string') AppState.settings.shopName = appSettings.businessName;
+        if (typeof appSettings?.businessDetails === 'string') AppState.settings.businessDetails = appSettings.businessDetails;
         localStorage.setItem('settings', JSON.stringify(AppState.settings));
         const hasShared = !!appSettings && (appSettings.laborRate !== undefined || appSettings.heavyWeightThreshold !== undefined);
         if (hasShared) {
@@ -211,6 +236,221 @@ export class SettingsManager {
         // Clean up the keys the old Admin → Configure screen wrote (never read by billing, #21)
         ['laborChargeRate', 'heavyWeightThreshold', 'autoLaborCharges'].forEach(key => localStorage.removeItem(key));
         if (document.getElementById('billTable')) window.app?.billing?.renderBill?.();
+    }
+
+    /** Owner, or a manager allowed in Roles & access (rules: settings/app). */
+    static canEditShop() {
+        return settingsView({ userRole: AppState.userRole, rentRole: AppState.rentRole, roleAccess: AppState.settings?.roleAccess }).shop.editable;
+    }
+
+    /** Section the user toggled to (null = the business open in the switcher). */
+    static sectionChoice = null;
+
+    /**
+     * Opens Settings: Common always; the Aadhat or Rentals section by the
+     * business switcher, or `section` from a settings-* route.
+     * @param {('common'|'shop'|'rentals'|'roles'|null)} [section]
+     */
+    static open(section = null) {
+        if (section === 'shop' || section === 'rentals') this.sectionChoice = section;
+        this.loadSettings();
+        window.app?.roles?.render?.();
+        const view = this.renderSections();
+        const target = section === 'roles' ? 'roleAccessCard'
+            : section === 'common' ? 'settingsCommon'
+            : (section === 'shop' || section === 'rentals') && view.active === section ? 'settingsBizBar' : null;
+        const el = target && document.getElementById(target);
+        if (el?.scrollIntoView) el.scrollIntoView({ block: 'start' });
+        return view;
+    }
+
+    /** View the other business's section (only offered when the user has a role there). */
+    static showOther() {
+        const view = this.currentView();
+        if (!view.other) return view;
+        this.sectionChoice = view.other;
+        return this.renderSections();
+    }
+
+    static currentView() {
+        return settingsView({
+            userRole: AppState.userRole, rentRole: AppState.rentRole,
+            business: BusinessSwitcher.current(), choice: this.sectionChoice, roleAccess: AppState.settings?.roleAccess
+        });
+    }
+
+    /** Shows the active business section only; Rentals code and data load only when that section is shown. */
+    static renderSections() {
+        const view = this.currentView();
+        const shop = document.getElementById('settingsShop');
+        const rentals = document.getElementById('settingsRentals');
+        if (shop) shop.hidden = view.active !== 'shop';
+        if (rentals) rentals.hidden = view.active !== 'rentals';
+        const bar = document.getElementById('settingsBizBar');
+        if (bar) bar.hidden = !view.active && !view.other;
+        const title = document.getElementById('settingsBizTitle');
+        if (title) {
+            title.hidden = !view.active;
+            title.textContent = view.active ? t(view.active === 'rentals' ? 'ui.settings.section_rentals' : 'ui.settings.section_shop') : '';
+        }
+        const toggle = document.getElementById('settingsBizToggle');
+        if (toggle) {
+            toggle.hidden = !view.other;
+            toggle.textContent = view.other ? t(view.other === 'rentals' ? 'ui.settings.view_rentals' : 'ui.settings.view_shop') : '';
+        }
+        if (view.active === 'shop') this.renderShop(view.shop.editable);
+        if (view.active === 'rentals') this.renderRentals(view.rentals.editable).catch(e => console.warn('Rentals settings not shown:', e));
+        else {
+            const body = document.getElementById('settingsRentalsBody');
+            if (body) body.innerHTML = '';
+        }
+        return view;
+    }
+
+    /** Settings › Aadhat: values from settings/app (already read at start-up) and this device. */
+    static renderShop(editable) {
+        const s = AppState.settings || {};
+        setField('settingBusinessName', 'value', s.shopName || '');
+        setField('settingBusinessDetails', 'value', s.businessDetails || '');
+        setField('settingUpiId', 'value', s.upiId || '');
+        document.querySelectorAll('#settingsShop [data-shop-edit]').forEach(el => { el.disabled = !editable; });
+        const viewOnly = document.getElementById('settingsShopViewOnly');
+        if (viewOnly) viewOnly.hidden = editable;
+        const code = document.getElementById('settingBillDeviceCode');
+        if (code) code.textContent = Helpers.getBillDeviceCode();
+        this.renderCheckThresholds(editable);
+    }
+
+    /** Bill-check limits (#37): shop-wide, blank = default. */
+    static renderCheckThresholds(editable = this.canEditShop()) {
+        const box = document.getElementById('settingsChecks');
+        if (!box) return;
+        const e = Helpers.escapeHtml;
+        const vals = normalizeThresholds(AppState.settings?.checkThresholds);
+        box.innerHTML = CHECK_THRESHOLD_FIELDS.map(([key, label]) => `
+                <label for="settingCheck_${key}">${e(t(label))}</label>
+                <input type="number" inputmode="decimal" min="0" step="any" id="settingCheck_${key}"
+                       placeholder="${e(DEFAULT_THRESHOLDS[key])}" value="${e(vals[key])}"${editable ? '' : ' disabled'}
+                       onchange="window.app.settings.saveCheckThresholds()" />`).join('');
+    }
+
+    /**
+     * Save the bill-check limits for everyone (owner, or a manager allowed in Roles & access).
+     * @returns {Promise<boolean>}
+     */
+    static async saveCheckThresholds() {
+        if (!this.canEditShop()) return false;
+        const typed = {};
+        CHECK_THRESHOLD_FIELDS.forEach(([key]) => { typed[key] = document.getElementById(`settingCheck_${key}`)?.value; });
+        const next = normalizeThresholds(typed);
+        AppState.settings.checkThresholds = next;
+        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', next[key]));
+        try {
+            await FirebaseService.saveSharedCheckThresholds(next);
+            UIManager.showToast(t('msg.admin.settings_saved_everyone'));
+            return true;
+        } catch (error) {
+            console.error('Saving bill-check limits failed:', error);
+            UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
+            return false;
+        }
+    }
+
+    /** Business name and one line of details, printed on bills; shared in settings/app. */
+    static async saveBusinessDetails() {
+        if (!this.canEditShop()) {
+            UIManager.showToast(t(LABOUR_OWNER_ONLY_KEY));
+            return false;
+        }
+        const clean = (id, max) => String(document.getElementById(id)?.value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
+        const details = { businessName: clean('settingBusinessName', MAX_BUSINESS_NAME), businessDetails: clean('settingBusinessDetails', MAX_BUSINESS_DETAILS) };
+        AppState.settings.shopName = details.businessName;
+        AppState.settings.businessDetails = details.businessDetails;
+        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        try {
+            await FirebaseService.saveBusinessDetails(details);
+            UIManager.showToast(t('msg.admin.settings_saved_everyone'));
+            return true;
+        } catch (error) {
+            console.error('Saving business details failed:', error);
+            UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
+            return false;
+        }
+    }
+
+    /** UPI ID for payment reminders: this device only (as before). */
+    static saveUpi() {
+        const upi = String(document.getElementById('settingUpiId')?.value ?? '').replace(/\s+/g, '').slice(0, MAX_UPI);
+        AppState.settings.upiId = upi;
+        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        setField('settingUpiId', 'value', upi);
+        UIManager.showToast(t('msg.settings.settings_saved_successfully'));
+        return upi;
+    }
+
+    /** Settings › Rentals: its code is imported (and rent_settings read) only now. */
+    static async renderRentals(editable) {
+        const body = document.getElementById('settingsRentalsBody');
+        if (!body) return;
+        try {
+            const mod = await BusinessSwitcher.loadSettings();
+            if (this.currentView().active !== 'rentals') return;
+            await mod.mount(body, { editable });
+        } catch (error) {
+            console.error('Rentals settings failed to open:', error);
+            body.innerHTML = `<p class="setting-description">${Helpers.escapeHtml(t('msg.rent.could_not_open'))}</p>`;
+        }
+    }
+
+    static async saveRentals() {
+        if (!this.currentView().rentals.editable) return null;
+        const mod = await BusinessSwitcher.loadSettings();
+        return mod.save();
+    }
+
+    /** Stocks › Set opening stock. */
+    static openOpeningStock() {
+        window.app?.nav?.showTab?.('stock');
+        setTimeout(() => window.app?.stock?.startOpeningStock?.(), 150);
+    }
+
+    /** Account: your name (your own profile; rules let you change it). */
+    static async saveName() {
+        const uid = AppState.currentUser?.uid;
+        const name = String(document.getElementById('settingUserName')?.value ?? '').replace(/\s+/g, ' ').trim().slice(0, 80);
+        if (!uid || !name) {
+            UIManager.showToast(t('msg.settings.name_needed'));
+            return false;
+        }
+        try {
+            await FirebaseService.updateUser(uid, { name });
+        } catch (error) {
+            console.error('Saving name failed:', error);
+            UIManager.showToast(t('msg.settings.name_not_saved'));
+            return false;
+        }
+        AppState.userName = name;
+        AuthManager.applyRoleBasedRestrictions();
+        UIManager.showToast(t('msg.settings.name_saved'));
+        return true;
+    }
+
+    /** Account: emails a link to set a new password. */
+    static async changePassword() {
+        const email = AppState.currentUser?.email;
+        if (!email) return false;
+        const ok = await UIManager.showModal(t('msg.common.send_password_reset_email', { email }), t('msg.common.reset_password'), true);
+        if (!ok) return false;
+        try {
+            await firebase.auth().sendPasswordResetEmail(email, { url: APP_IDENTITY.siteUrl, handleCodeInApp: false });
+            UIManager.showToast(t('msg.common.password_reset_email_sent', { email }));
+            return true;
+        } catch (error) {
+            console.error('Password reset email failed:', error?.code || error);
+            UIManager.showToast(t('msg.common.failed_send_reset_email', { message: error.message }), 'error');
+            return false;
+        }
     }
 
     static toggleBluetoothPrinter() {
