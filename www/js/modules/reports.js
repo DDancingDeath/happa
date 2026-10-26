@@ -59,14 +59,18 @@ const lineIdentity = (line, items = AppState.items, showHindi = AppState.setting
 export function aggregateLineItems(bills, items = AppState.items, showHindi = AppState.settings?.showHindi) {
     const byKey = new Map();
     (bills || []).forEach(bill => {
-        (bill?.items || []).forEach(raw => {
-            const item = readLineItem(raw);
+        const lines = (bill?.items || []).map(raw => ({ raw, item: readLineItem(raw) }));
+        // Labour taken off a purchase bill is shared over its lines by value, so item rows
+        // add up to the bill totals after labour (#47, I4 in docs/calculations.md).
+        const lineValue = lines.reduce((a, x) => a + x.item.total, 0);
+        const labour = parseFloat(bill?.laborCharges) || 0;
+        lines.forEach(({ raw, item }) => {
             const { key, label } = lineIdentity(raw, items, showHindi);
             if (!byKey.has(key)) byKey.set(key, { label, count: 0, qty: 0, value: 0 });
             const row = byKey.get(key);
             row.count++;
             row.qty += item.qty;
-            row.value += item.total;
+            row.value += item.total - (lineValue > 0 ? labour * (item.total / lineValue) : 0);
         });
     });
     const itemData = {};

@@ -33,10 +33,6 @@ const E = FIX.expected;
  * Remove the entry when the referenced issue is fixed.
  */
 const BUGS = {
-    // BUG: see #49 — Analytics parses DD/MM/YYYY dates with new Date()
-    A1_revenue: 49, A2_purchases: 49,
-    // BUG: see #220 — Analytics outstanding ignores cleared bills and dueAmount-only bills
-    A6_receivable: 220, A6_receivableCount: 220
 };
 
 /** test, or test.skip for a spec ID listed in BUGS (ORACLE_RUN_SKIPPED=1 runs them all). */
