@@ -86,7 +86,24 @@
           ]
         },
         {
-          "source": "/@(r.html|r/**)",
+          "source": "/r.html",
+          "headers": [
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow, noarchive"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "no-referrer"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/r/**",
           "headers": [
             {
               "key": "X-Robots-Tag",

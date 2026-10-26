@@ -48,8 +48,16 @@ describe('page budget and isolation', () => {
         const idx = hosting.rewrites.findIndex(r => r.source === '/r/**' && r.destination === '/r.html');
         expect(idx).toBeGreaterThanOrEqual(0);
         expect(idx).toBeLessThan(hosting.rewrites.findIndex(r => r.source === '**'));
-        const h = hosting.headers.find(x => x.source.includes('r/**'));
-        expect(h.headers).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'X-Robots-Tag' })]));
+        // Plain globs: an extglob like "/@(r.html|r/**)" never matches on Hosting (live headers were missing).
+        for (const source of ['/r.html', '/r/**']) {
+            const h = hosting.headers.find(x => x.source === source);
+            expect(h.headers).toEqual(expect.arrayContaining([
+                expect.objectContaining({ key: 'X-Robots-Tag' }),
+                expect.objectContaining({ key: 'Referrer-Policy', value: 'no-referrer' }),
+                expect.objectContaining({ key: 'Cache-Control', value: 'no-cache' })
+            ]));
+        }
+        expect(hosting.headers.some(x => /@\([^)]*\//.test(x.source))).toBe(false);
     });
 
     test('the app never loads the page code, and the page is not in the app precache', () => {
