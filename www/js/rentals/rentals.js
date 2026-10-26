@@ -25,8 +25,9 @@ import {
 } from './rent-views.js';
 import {
     PROPERTY_KINDS, PAYMENT_MODES, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, normalizeRentSettings,
-    monthKey, monthLabel, monthsToCharge, chargeStatus, chargeDue, monthSummary, leaseDues, buildRentReminderText,
-    increaseDue, meterBill, propertyError, unitError, tenantError, leaseError, isMonth, addMonths
+    monthKey, monthLabel, monthsToCharge, chargeStatus, chargeDue, leaseDues, buildRentReminderText,
+    increaseDue, meterBill, propertyError, unitError, tenantError, leaseError, isMonth, addMonths,
+    ELEC_MODES, elecMode, mobile10, dateLabel, firstMonthRent
 } from './rent-math.js';
 
 const PAGES = ['rent', 'tenants', 'properties'];
@@ -127,6 +128,10 @@ function index(d) {
 
 const typeLabel = (type) => t(`ui.rent.utype_${UNIT_TYPES.includes(type) ? type : 'flat'}`);
 const typeWord = (type) => t(`ui.rent.uword_${UNIT_TYPES.includes(type) ? type : 'flat'}`);
+
+/** "⚡ meter" / "⚡ included" / "⚡ own meter" tag for a lease. */
+const elecTag = (lease) => `<span class="rent-tag">${esc(t(`ui.rent.elec_tag_${elecMode(lease)}`))}</span>`;
+const sinceText = (lease) => (lease?.startDate ? t('ui.rent.since', { date: dateLabel(lease.startDate) }) : '');
 
 /** "Flat 2B, Gupta Bhawan" in the chosen language (reminders, lists). */
 function placeOf(ix, unitId, fallback = '') {
@@ -308,7 +313,7 @@ function unitRowHtml(r, d, { showProperty = true } = {}) {
     const extra = [r.floor ? t('ui.rent.floor_value', { floor: r.floor }) : '', r.area ? t('ui.rent.area_value', { area: r.area }) : '']
         .filter(Boolean).map(esc).join(' · ');
     const who = lease
-        ? `${esc(r.tenantName || t('ui.rent.no_name'))} · ${esc(t('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay }))}`
+        ? `${esc(r.tenantName || t('ui.rent.no_name'))} · ${esc(t('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay }))} ${elecTag(lease)}${lease.startDate ? ` · ${esc(sinceText(lease))}` : ''}`
         : `${esc(t('ui.rent.vacant'))} · ${money(r.rent)}`;
     const months = dues.charges.map(c => monthLine(c, lang)).join('');
     const inc = lease ? increaseDue(lease, state.month) : { due: false };
@@ -319,9 +324,11 @@ function unitRowHtml(r, d, { showProperty = true } = {}) {
     const actions = lease ? ((dues.total > 0
         ? `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.pay('${js(lease.id)}')">${esc(t('ui.rent.record_payment'))}</button>
            <button type="button" class="rent-btn rent-btn-wa" onclick="window.app.rentals.remind('${js(lease.id)}')">${esc(t('ui.rent.whatsapp_reminder'))}</button>`
-        : '') + (current && (!current.electricity || isManager())
+        : '') + (current && elecMode(lease) === 'meter' && (!current.electricity || isManager())
         ? `<button type="button" class="rent-btn" onclick="window.app.rentals.meter('${js(lease.id)}')">⚡ ${esc(t('ui.rent.meter_reading'))}</button>`
-        : '')) : '';
+        : '')) : (canWrite()
+        ? `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.addTenantToUnit('${js(r.unitId)}')">${esc(t('ui.rent.add_tenant'))}</button>`
+        : '');
     return `<div class="rent-row" data-unit="${esc(r.unitId)}">
         <div class="rent-row-head">
             <div><div class="rent-name">${head}</div>
@@ -447,7 +454,7 @@ function remind(leaseId) {
     if (!a || a.dues.total <= 0) return;
     const text = buildRentReminderText({
         tenantName: a.name, place: a.place, charges: a.dues.charges,
-        lastMonth: a.lease?.endMonth || state.month, lang: getLang(),
+        lastMonth: a.lease?.endMonth || state.month, lang: getLang(), since: a.lease?.startDate || '',
         link: linkFor(a.lease || store.snapshot().linked.find(l => l.id === leaseId))
     });
     if (!a.phone) UIManager.showToast(t('msg.rent.no_phone'), 'info');
@@ -460,6 +467,7 @@ async function meter(leaseId) {
     const lease = d.leases.find(l => l.id === leaseId);
     const charge = d.charges.find(c => c.leaseId === leaseId && c.month === state.month);
     if (!lease || !charge) return;
+    if (elecMode(lease) !== 'meter') return UIManager.showToast(t('msg.rent.no_meter_billing'), 'info');
     const unit = d.units.find(u => u.id === lease.unitId);
     const e = charge.electricity;
     if (e && !isManager()) return UIManager.showToast(t('msg.rent.meter_manager_only'), 'info');
@@ -503,6 +511,7 @@ async function editLease(leaseId) {
         <label class="rent-label">${esc(t('ui.rent.monthly_rent'))}<input id="rentEditRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(inc.due ? inc.newRent : lease.rent)}"></label>
         <label class="rent-label">${esc(t('ui.rent.due_day'))}<input id="rentEditDay" type="number" min="1" max="28" step="1" value="${esc(lease.dueDay)}"></label>
         <label class="rent-label">${esc(t('ui.rent.increase_pct'))}<input id="rentEditPct" type="number" min="0" max="100" step="0.5" value="${esc(inc.pct)}"></label>
+        ${elecFieldsHtml(elecMode(lease), lease.meterNo || '')}
         <p class="rent-help">${esc(t('ui.rent.rent_change_note'))}</p>`);
     if (!ok) return;
     const next = {
@@ -515,7 +524,10 @@ async function editLease(leaseId) {
     // yearly reminder counts from there.
     const appliesFrom = isMonth(lease.chargedThrough) && lease.chargedThrough >= state.month ? addMonths(state.month, 1) : state.month;
     const reviewed = next.rent !== lease.rent || inc.due;
-    const fields = { rent: next.rent, dueDay: next.dueDay, increasePct: next.increasePct };
+    const mode = ELEC_MODES.includes(val('rentTElec')) ? val('rentTElec') : elecMode(lease);
+    const fields = { rent: next.rent, dueDay: next.dueDay, increasePct: next.increasePct, elecMode: mode };
+    const meterNo = val('rentTMeterNo');
+    if (mode === 'own' && meterNo) fields.meterNo = meterNo.slice(0, 40);
     if (reviewed) fields.rentSince = appliesFrom;
     await saveRent(() => store.updateLease(leaseId, fields));
     if (next.rent !== lease.rent) AuditService.log('RENT_CHANGE', { leaseId, from: lease.rent, to: next.rent }).catch(auditWarn);
@@ -625,13 +637,14 @@ function renderTenants(d) {
     const form = manage ? `<div class="rent-form">
             <h3>${esc(t('ui.rent.add_tenant'))}</h3>
             <input id="rentTenantName" type="text" maxlength="80" placeholder="${esc(t('ui.rent.tenant_name'))}">
-            <input id="rentTenantPhone" type="tel" maxlength="20" placeholder="${esc(t('ui.rent.phone'))}">
+            <input id="rentTenantPhone" type="tel" maxlength="20" placeholder="${esc(t('ui.rent.phone_required'))}">
+            <input id="rentTenantPhone2" type="tel" maxlength="20" placeholder="${esc(t('ui.rent.phone2'))}">
             <input id="rentTenantNotes" type="text" maxlength="500" placeholder="${esc(t('ui.rent.notes'))}">
             <button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.addTenant()">${esc(t('ui.rent.add'))}</button>
         </div>` : '';
     const rows = [...d.tenants].sort((a, b) => a.name.localeCompare(b.name)).map(tn => {
         const lease = leaseByTenant.get(tn.id);
-        const where = lease ? `${esc(placeOf(ix, lease.unitId))} · ${esc(t('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay }))}`
+        const where = lease ? `${esc(placeOf(ix, lease.unitId))} · ${esc(t('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay }))} ${elecTag(lease)}${lease.startDate ? ` · ${esc(sinceText(lease))}` : ''}`
             : esc(t('ui.rent.no_unit'));
         const id = js(tn.id);
         const actions = !manage ? '' : `<div class="rent-actions">
@@ -643,7 +656,7 @@ function renderTenants(d) {
             ${lease ? '' : `<button type="button" class="rent-btn" onclick="window.app.rentals.archiveTenant('${id}')">${esc(t('ui.rent.remove'))}</button>`}
         </div>`;
         return `<div class="rent-row"><div class="rent-name">${esc(tn.name)}</div>
-            <div class="rent-sub">${tn.phone ? `📞 ${esc(tn.phone)} · ` : ''}${where}</div>
+            <div class="rent-sub">${tn.phone ? `📞 ${esc(tn.phone)}${tn.phone2 ? `, ${esc(tn.phone2)}` : ''} · ` : ''}${where}</div>
             ${tn.notes ? `<div class="rent-sub">${esc(tn.notes)}</div>` : ''}${actions}</div>`;
     }).join('');
     // Moved-out tenants whose link is still on (it stays readable until turned off).
@@ -657,9 +670,10 @@ function renderTenants(d) {
 }
 
 async function addTenant() {
-    const tn = { name: val('rentTenantName'), phone: val('rentTenantPhone'), notes: val('rentTenantNotes') };
-    const err = tenantError(tn);
+    const raw = { name: val('rentTenantName'), phone: val('rentTenantPhone'), phone2: val('rentTenantPhone2'), notes: val('rentTenantNotes') };
+    const err = tenantError(raw);
     if (err) return UIManager.showToast(t(err), 'error');
+    const tn = { name: raw.name, phone: mobile10(raw.phone), notes: raw.notes, ...(raw.phone2 ? { phone2: mobile10(raw.phone2) } : {}) };
     await saveRent(() => store.addTenant(tn));
 }
 
@@ -668,12 +682,14 @@ async function editTenant(id) {
     if (!tn) return;
     const ok = await dialog(`<h3>${esc(t('ui.rent.edit'))}</h3>
         <label class="rent-label">${esc(t('ui.rent.tenant_name'))}<input id="rentEditName" type="text" maxlength="80" value="${esc(tn.name)}"></label>
-        <label class="rent-label">${esc(t('ui.rent.phone'))}<input id="rentEditPhone" type="tel" maxlength="20" value="${esc(tn.phone || '')}"></label>
+        <label class="rent-label">${esc(t('ui.rent.phone_required'))}<input id="rentEditPhone" type="tel" maxlength="20" value="${esc(tn.phone || '')}"></label>
+        <label class="rent-label">${esc(t('ui.rent.phone2'))}<input id="rentEditPhone2" type="tel" maxlength="20" value="${esc(tn.phone2 || '')}"></label>
         <label class="rent-label">${esc(t('ui.rent.notes'))}<input id="rentEditNotes" type="text" maxlength="500" value="${esc(tn.notes || '')}"></label>`);
     if (!ok) return;
-    const next = { name: val('rentEditName'), phone: val('rentEditPhone'), notes: val('rentEditNotes') };
-    const err = tenantError(next);
+    const raw = { name: val('rentEditName'), phone: val('rentEditPhone'), phone2: val('rentEditPhone2'), notes: val('rentEditNotes') };
+    const err = tenantError(raw);
     if (err) return UIManager.showToast(t(err), 'error');
+    const next = { name: raw.name, phone: mobile10(raw.phone), notes: raw.notes, phone2: raw.phone2 ? mobile10(raw.phone2) : null };
     await saveRent(() => store.updateTenant(id, next));
     refreshLinkNames(l => l.tenantId === id);
 }
@@ -683,49 +699,180 @@ async function archiveTenant(id) {
     await saveRent(() => store.updateTenant(id, { archived: true }));
 }
 
+// ---------- Tenant section (Add unit with its tenant, Add tenant to a vacant unit, Move in) ----------
+
+/** Electricity choice of a lease (and the tenant's own meter number when that is chosen). */
+function elecFieldsHtml(mode, meterNo = '') {
+    return `<label class="rent-label">${esc(t('ui.rent.elec_mode'))}
+            <select id="rentTElec" onchange="window.app.rentals.tenantElec(this)">${ELEC_MODES.map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${esc(t(`ui.rent.elec_${m}`))}</option>`).join('')}</select></label>
+        <div id="rentTOwnBox"${mode === 'own' ? '' : ' hidden'}><label class="rent-label">${esc(t('ui.rent.own_meter_no'))}<input id="rentTMeterNo" type="text" maxlength="40" value="${esc(meterNo)}"></label></div>`;
+}
+
+/**
+ * The tenant fields. toggle: Add unit shows them only after "Occupied — add tenant
+ * now"; fixedTenant: Move in from the Tenants page; newUnit: opening meter reading.
+ */
+function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUnit = false, meterRate = '', defs = normalizeRentSettings(null) } = {}) {
+    const d = store.snapshot();
+    const busy = new Set(d.leases.map(l => l.tenantId));
+    const free = d.tenants.filter(x => !busy.has(x.id)).sort((a, b) => a.name.localeCompare(b.name));
+    // Settings › Rentals defaults fill a NEW lease; existing leases keep their own values.
+    const rate = meterRate !== '' && meterRate != null ? meterRate : (defs.meterRate ?? '');
+    const mode = rate !== '' && rate != null ? 'meter' : 'included';
+    const who = fixedTenant
+        ? `<input type="hidden" id="rentTPick" value="${esc(fixedTenant.id)}"><p class="rent-name">${esc(fixedTenant.name)}</p>`
+        : `<label class="rent-label">${esc(t('ui.rent.tenant_pick'))}<select id="rentTPick" onchange="window.app.rentals.tenantPick(this)">
+                <option value="">${esc(t('ui.rent.tenant_new'))}</option>${free.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></label>
+            <div id="rentTNewBox">
+                <label class="rent-label">${esc(t('ui.rent.tenant_name'))}<input id="rentTName" type="text" maxlength="80"></label>
+                <label class="rent-label">${esc(t('ui.rent.phone_required'))}<input id="rentTPhone" type="tel" maxlength="20" inputmode="tel"></label>
+                <label class="rent-label">${esc(t('ui.rent.phone2'))}<input id="rentTPhone2" type="tel" maxlength="20" inputmode="tel"></label>
+            </div>`;
+    const box = `<div id="rentTBox" class="rent-tenant-section"${toggle ? ' hidden' : ''}>
+        <h4 class="rent-group-title">${esc(t('ui.rent.tenant_if_occupied'))}</h4>
+        ${who}
+        <label class="rent-label">${esc(t('ui.rent.monthly_rent'))}<input id="rentTRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(rent || 0)}"></label>
+        <label class="rent-label">${esc(t('ui.rent.start_date'))}<input id="rentTDate" type="date" value="${esc(todayLocalISO())}"></label>
+        <label class="rent-check"><input id="rentTProRate" type="checkbox"> ${esc(t('ui.rent.pro_rate_first'))}</label>
+        <label class="rent-label">${esc(t('ui.rent.due_day'))}<input id="rentTDay" type="number" min="1" max="28" step="1" value="${esc(defs.dueDay)}"></label>
+        <label class="rent-label">${esc(t('ui.rent.increase_pct'))}<input id="rentTPct" type="number" min="0" max="100" step="0.5" value="${esc(defs.increasePct)}"></label>
+        <label class="rent-label">${esc(t('ui.rent.deposit'))}<input id="rentTDeposit" type="number" inputmode="decimal" min="0" step="1" value="0"></label>
+        <p class="rent-help">${esc(t('ui.rent.deposit_note'))}</p>
+        ${elecFieldsHtml(mode)}
+        ${newUnit ? `<div id="rentTMeterBox"${mode === 'meter' ? '' : ' hidden'}>
+            <label class="rent-label">${esc(t('ui.rent.opening_reading'))}<input id="rentTOpen" type="number" inputmode="decimal" min="0" step="0.01"></label>
+            <label class="rent-label">${esc(t('ui.rent.meter_rate'))}<input id="rentTRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(rate)}"></label>
+        </div>` : ''}
+    </div>`;
+    return (toggle ? `<label class="rent-check rent-occupied-toggle"><input id="rentTOn" type="checkbox" onchange="window.app.rentals.tenantToggle(this)"> ${esc(t('ui.rent.occupied_add_tenant'))}</label>` : '') + box;
+}
+
+function tenantToggle(cb) {
+    const box = document.getElementById('rentTBox');
+    if (box) box.hidden = !cb?.checked;
+}
+
+function tenantPick(sel) {
+    const box = document.getElementById('rentTNewBox');
+    if (box) box.hidden = !!sel?.value;
+}
+
+function tenantElec(sel) {
+    const own = document.getElementById('rentTOwnBox');
+    const meterBox = document.getElementById('rentTMeterBox');
+    if (own) own.hidden = sel?.value !== 'own';
+    if (meterBox) meterBox.hidden = sel?.value !== 'meter';
+}
+
+const checked = (id) => !!document.getElementById(id)?.checked;
+const numOrNull = (id) => (val(id) === '' ? null : Number(val(id)));
+
+/**
+ * Reads the tenant section: null when Add unit is saved as Vacant, else
+ * {error} or {tenant | tenantId, lease, meter}. Nothing is saved on an error.
+ */
+function readTenantSection({ newUnit = false } = {}) {
+    if (document.getElementById('rentTOn') && !checked('rentTOn')) return null;
+    const tenantId = val('rentTPick') || null;
+    let tenant = null;
+    if (!tenantId) {
+        const raw = { name: val('rentTName'), phone: val('rentTPhone'), phone2: val('rentTPhone2') };
+        const err = tenantError(raw);
+        if (err) return { error: err };
+        tenant = { name: raw.name, phone: mobile10(raw.phone), ...(raw.phone2 ? { phone2: mobile10(raw.phone2) } : {}) };
+    }
+    const startDate = val('rentTDate');
+    const elec = ELEC_MODES.includes(val('rentTElec')) ? val('rentTElec') : 'included';
+    const lease = {
+        rent: Number(val('rentTRent')), dueDay: Number(val('rentTDay')),
+        startDate, startMonth: startDate.slice(0, 7), proRate: checked('rentTProRate'),
+        deposit: Number(val('rentTDeposit') || 0), increasePct: Number(val('rentTPct') || 0),
+        elecMode: elec, meterNo: elec === 'own' ? val('rentTMeterNo').slice(0, 40) : ''
+    };
+    const err = leaseError(lease, state.month);
+    if (err) return { error: err };
+    let meter = null;
+    if (newUnit && elec === 'meter') {
+        meter = { reading: numOrNull('rentTOpen'), rate: numOrNull('rentTRate') };
+        if ([meter.reading, meter.rate].some(v => v !== null && (!Number.isFinite(v) || v < 0))) return { error: 'msg.rent.bad_reading' };
+    }
+    return { tenant, tenantId, lease, meter };
+}
+
+/** Saves a move-in from the tenant section (one batch); true when saved. */
+async function saveMoveIn({ unit, newUnit, occ, defs }) {
+    try {
+        const res = await store.moveIn({ unit, newUnit, tenant: occ.tenant, tenantId: occ.tenantId, lease: occ.lease, meter: occ.meter, currentMonth: state.month });
+        const first = firstMonthRent(occ.lease.rent, occ.lease.startDate, occ.lease.proRate);
+        UIManager.showToast(t(res.charged ? 'msg.rent.moved_in_charged' : 'msg.rent.moved_in', { amount: formatINR(first) }), 'success');
+        AuditService.log('RENT_MOVE_IN', { tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate }).catch(auditWarn);
+        if (defs?.tenantLink && isManager()) await linkNewLease({ unit, res, occ, defs });
+        return true;
+    } catch (e) {
+        console.error('Move-in not saved:', e);
+        UIManager.showToast(t('msg.rent.save_failed'), 'error');
+        return false;
+    }
+}
+
+/** Settings › Rentals "Make a tenant link for new leases": the link for a lease just moved in (never blocks the move-in). */
+async function linkNewLease({ unit, res, occ, defs }) {
+    const d = store.snapshot();
+    const created = {
+        id: res.leaseId, unitId: res.unitId, propertyId: unit.propertyId, tenantId: res.tenantId,
+        ...occ.lease, status: 'active', endMonth: null, shareToken: null
+    };
+    try {
+        await store.makeShareLink(created, {
+            tenantName: occ.tenant?.name || d.tenants.find(x => x.id === res.tenantId)?.name || '',
+            place: placeText(unit.label, d.properties.find(x => x.id === unit.propertyId)?.name),
+            unitType: unitType(unit),
+            shopName: headerName(defs)
+        });
+        AuditService.log('RENT_LINK_ON', { leaseId: res.leaseId }).catch(auditWarn);
+    } catch (e) {
+        console.warn('Tenant link not made for the new lease:', e?.code || e);
+    }
+}
+
+/** Property view: "Add tenant" on a vacant unit. */
+async function addTenantToUnit(unitId) {
+    const unit = store.snapshot().units.find(u => u.id === unitId);
+    if (!unit || unit.leaseId) return UIManager.showToast(t('msg.rent.no_vacant_unit'), 'info');
+    const ix = index(store.snapshot());
+    const defs = await defaults();
+    const ok = await dialog(`<h3>${esc(t('ui.rent.add_tenant'))}: ${esc(placeOf(ix, unit.id))}</h3>${tenantSectionHtml({ rent: unit.rent, meterRate: unit.meterRate, defs })}`);
+    if (!ok) return;
+    const occ = readTenantSection();
+    if (occ?.error) return UIManager.showToast(t(occ.error), 'error');
+    await saveMoveIn({ unit, newUnit: false, occ, defs });
+}
+
+/** Tenants page: move an existing tenant into a vacant unit. */
 async function moveIn(tenantId) {
     const d = store.snapshot();
     const ix = index(d);
+    const tenant = ix.tenants.get(tenantId);
     const vacant = d.units.filter(u => !u.leaseId);
+    if (!tenant) return;
     if (!vacant.length) return UIManager.showToast(t('msg.rent.no_vacant_unit'), 'info');
     // Settings › Rentals defaults fill a NEW lease; existing leases keep their own values.
     const defs = await defaults();
     const options = vacant.map(u => `<option value="${esc(u.id)}" data-rent="${esc(u.rent || 0)}">${esc(placeOf(ix, u.id))}</option>`).join('');
-    const ok = await dialog(`<h3>${esc(t('ui.rent.move_in'))}: ${esc(ix.tenants.get(tenantId)?.name || '')}</h3>
+    const ok = await dialog(`<h3>${esc(t('ui.rent.move_in'))}</h3>
         <label class="rent-label">${esc(t('ui.rent.unit'))}<select id="rentLeaseUnit" onchange="window.app.rentals.fillRent(this)">${options}</select></label>
-        <label class="rent-label">${esc(t('ui.rent.monthly_rent'))}<input id="rentLeaseRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(vacant[0].rent || 0)}"></label>
-        <label class="rent-label">${esc(t('ui.rent.due_day'))}<input id="rentLeaseDay" type="number" min="1" max="28" step="1" value="${esc(defs.dueDay)}"></label>
-        <label class="rent-label">${esc(t('ui.rent.start_month'))}<input id="rentLeaseStart" type="month" value="${esc(monthKey())}"></label>
-        <label class="rent-label">${esc(t('ui.rent.increase_pct'))}<input id="rentLeasePct" type="number" min="0" max="100" step="0.5" value="${esc(defs.increasePct)}"></label>
-        <label class="rent-label">${esc(t('ui.rent.deposit'))}<input id="rentLeaseDeposit" type="number" inputmode="decimal" min="0" step="1" value="0"></label>`);
+        ${tenantSectionHtml({ rent: vacant[0].rent, fixedTenant: tenant, defs })}`);
     if (!ok) return;
     const unit = ix.units.get(val('rentLeaseUnit'));
-    const lease = {
-        rent: Number(val('rentLeaseRent')), dueDay: Number(val('rentLeaseDay')),
-        startMonth: val('rentLeaseStart'), deposit: Number(val('rentLeaseDeposit') || 0),
-        increasePct: Number(val('rentLeasePct') || 0)
-    };
-    const err = !unit || unit.leaseId ? 'msg.rent.no_vacant_unit' : leaseError(lease, state.month);
-    if (err) return UIManager.showToast(t(err), 'error');
-    const leaseId = await saveRent(() => store.startLease({ unit, tenantId, ...lease }));
-    if (!leaseId) return;
-    AuditService.log('RENT_MOVE_IN', { tenantId, unitId: unit.id, rent: lease.rent }).catch(auditWarn);
-    if (defs.tenantLink && isManager()) {
-        const created = { id: leaseId, unitId: unit.id, propertyId: unit.propertyId, tenantId, ...lease, status: 'active', endMonth: null, shareToken: null };
-        try {
-            await store.makeShareLink(created, {
-                tenantName: ix.tenants.get(tenantId)?.name || '', place: placeOf(ix, unit.id), shopName: headerName(defs)
-            });
-            AuditService.log('RENT_LINK_ON', { leaseId }).catch(auditWarn);
-        } catch (e) {
-            console.warn('Tenant link not made for the new lease:', e?.code || e);
-        }
-    }
+    if (!unit || unit.leaseId) return UIManager.showToast(t('msg.rent.no_vacant_unit'), 'error');
+    const occ = readTenantSection();
+    if (occ?.error) return UIManager.showToast(t(occ.error), 'error');
+    await saveMoveIn({ unit, newUnit: false, occ, defs });
 }
 
 function fillRent(select) {
     const rent = select?.selectedOptions?.[0]?.getAttribute('data-rent');
-    const input = document.getElementById('rentLeaseRent');
+    const input = document.getElementById('rentTRent');
     if (input && rent != null) input.value = rent;
 }
 
@@ -843,13 +990,14 @@ async function archiveProperty(id) {
     });
 }
 
-async function unitDialog(title, unit) {
+async function unitDialog(title, unit, { withTenant = false, defs = null } = {}) {
     const ok = await dialog(`<h3>${esc(title)}</h3>
         <label class="rent-label">${esc(t('ui.rent.unit_label'))}<input id="rentUnitLabel" type="text" maxlength="60" value="${esc(unit?.label || '')}"></label>
         <label class="rent-label">${esc(t('ui.rent.unit_type'))}<select id="rentUnitType">${UNIT_TYPES.map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(typeLabel(k))}</option>`).join('')}</select></label>
         <label class="rent-label">${esc(t('ui.rent.monthly_rent'))}<input id="rentUnitRent" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.rent ?? 0)}"></label>
         <label class="rent-label">${esc(t('ui.rent.unit_area'))}<input id="rentUnitArea" type="number" inputmode="decimal" min="0" step="1" value="${esc(unit?.area ?? '')}"></label>
-        <label class="rent-label">${esc(t('ui.rent.unit_floor'))}<input id="rentUnitFloor" type="text" maxlength="20" value="${esc(unit?.floor || '')}"></label>`);
+        <label class="rent-label">${esc(t('ui.rent.unit_floor'))}<input id="rentUnitFloor" type="text" maxlength="20" value="${esc(unit?.floor || '')}"></label>
+        ${withTenant ? tenantSectionHtml({ toggle: true, rent: unit?.rent ?? 0, newUnit: true, defs: defs || undefined }) : ''}`);
     if (!ok) return null;
     const area = val('rentUnitArea');
     const u = {
@@ -859,15 +1007,25 @@ async function unitDialog(title, unit) {
     };
     const err = unitError(u) || unitExtraError(u);
     if (err) { UIManager.showToast(t(err), 'error'); return null; }
-    return u;
+    if (!withTenant) return u;
+    // The tenant's rent defaults to the unit rent typed above.
+    const rentInput = document.getElementById('rentTRent');
+    if (rentInput && Number(rentInput.value) === 0 && u.rent > 0) rentInput.value = String(u.rent);
+    const occ = readTenantSection({ newUnit: true });
+    if (occ?.error) { UIManager.showToast(t(occ.error), 'error'); return null; }
+    return { ...u, occ };
 }
 
 async function addUnit(propertyId) {
     if (store.snapshot().units.filter(x => x.propertyId === propertyId).length >= MAX_UNITS_PER_PROPERTY) {
         return UIManager.showToast(t('msg.rent.max_units', { max: MAX_UNITS_PER_PROPERTY }), 'error');
     }
-    const u = await unitDialog(t('ui.rent.add_unit'));
-    if (u) await saveRent(() => store.addUnit({ propertyId, ...u }));
+    const defs = await defaults();
+    const res = await unitDialog(t('ui.rent.add_unit'), null, { withTenant: true, defs });
+    if (!res) return;
+    const { occ, ...u } = res;
+    if (!occ) { await saveRent(() => store.addUnit({ propertyId, ...u })); return; }
+    await saveMoveIn({ unit: { propertyId, ...u }, newUnit: true, occ, defs });
 }
 
 async function editUnit(id) {
@@ -958,7 +1116,8 @@ export const RentalsModule = {
         pay, fillDue, remind, meter, editLease,
         addTenant, editTenant, archiveTenant, moveIn, moveOut, fillRent,
         addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit,
-        shareLink, linkAction, setView, openProperty, filterUnits
+        shareLink, linkAction, setView, openProperty, filterUnits,
+        addTenantToUnit, tenantToggle, tenantPick, tenantElec
     }
 };
 

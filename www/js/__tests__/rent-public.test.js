@@ -32,7 +32,7 @@ test('a month as the tenant sees it (RENT-8): rent, electricity, total, paid, da
 test('snapshot: only this lease, no phone or ids beyond the lease id, newest months kept', () => {
     const charges = [charge('2026-08'), charge('2026-09'), { ...charge('2026-09'), leaseId: 'OTHER' }];
     const s = buildPublicSnapshot({ lease, tenantName: 'Ram', place: 'Gali 2 · G1', shopName: 'Shop', charges, now: 1 });
-    expect(Object.keys(s).sort()).toEqual(['dueDay', 'endMonth', 'ended', 'lid', 'months', 'place', 'rent', 'shop', 'tenant', 'updatedAt', 'v']);
+    expect(Object.keys(s).sort()).toEqual(['dueDay', 'em', 'endMonth', 'ended', 'lid', 'months', 'place', 'rent', 'shop', 'tenant', 'updatedAt', 'v']);
     expect(s.months.map(m => m.m)).toEqual(['2026-08', '2026-09']);
     expect(JSON.stringify(s)).not.toMatch(/phone|tenantId|unitId|by"|byName|Asha/);
     let big = s;

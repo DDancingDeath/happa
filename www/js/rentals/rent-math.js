@@ -47,12 +47,57 @@ export function normalizeRentSettings(raw) {
     };
 }
 
+/** Electricity per lease: included in rent / sub-meter billed by us / tenant's own meter. */
+export const ELEC_MODES = ['included', 'meter', 'own'];
+
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const HI_MONTHS = ['जनवरी', 'फ़रवरी', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'];
 const pad2 = (n) => String(n).padStart(2, '0');
 
 export const isMonth = (key) => typeof key === 'string' && MONTH_RE.test(key);
+
+const DATE_RE = /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+
+/** A real calendar date 'YYYY-MM-DD'. */
+export function isDate(v) {
+    const m = typeof v === 'string' && DATE_RE.exec(v);
+    if (!m) return false;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
+}
+
+/** 'DD/MM/YYYY' for 'YYYY-MM-DD' ('' otherwise). */
+export function dateLabel(v) {
+    return isDate(v) ? v.split('-').reverse().join('/') : '';
+}
+
+/** Electricity mode of a lease; leases saved before modes existed bill by meter. */
+export const elecMode = (lease) => (ELEC_MODES.includes(lease?.elecMode) ? lease.elecMode : 'meter');
+
+/**
+ * 10-digit Indian mobile from what was typed ("+91 98765 43210", "098765 43210"),
+ * or '' when it isn't one.
+ */
+export function mobile10(v) {
+    let d = String(v ?? '').replace(/\D/g, '');
+    if (d.length === 12 && d.startsWith('91')) d = d.slice(2);
+    if (d.length === 11 && d.startsWith('0')) d = d.slice(1);
+    return /^[6-9]\d{9}$/.test(d) ? d : '';
+}
+
+/**
+ * RENT-11: first month's rent. Full rent by default (the usual practice); with
+ * "pro-rate first month", rent × days from the start date to the month's end ÷
+ * days in that month, rounded to the rupee.
+ */
+export function firstMonthRent(rent, startDate, proRate) {
+    const r = round2(Number(rent) || 0);
+    if (!proRate || !isDate(startDate)) return r;
+    const [y, m, d] = startDate.split('-').map(Number);
+    const days = new Date(y, m, 0).getDate();
+    return Math.round(r * (days - d + 1) / days);
+}
 
 /** 'YYYY-MM' of a date in local time. */
 export function monthKey(date = new Date()) {
@@ -95,7 +140,8 @@ export function monthsToCharge(lease, currentMonth) {
 
 /** New charge document for one month of a lease. */
 export function newCharge(lease, month, { tenantName = '', unitLabel = '', now = Date.now() } = {}) {
-    const amount = round2(Number(lease.rent) || 0);
+    const first = month === lease.startMonth && Number.isFinite(lease.firstRent);
+    const amount = round2(Number(first ? lease.firstRent : lease.rent) || 0);
     return {
         leaseId: lease.id,
         unitId: lease.unitId,
@@ -183,13 +229,27 @@ export function leaseDues(charges, leaseId) {
  * the new rent is saved only when someone confirms it.
  * @returns {{due: boolean, pct: number, newRent: number, from: string}}
  */
-export function increaseDue(lease, month) {
-    const base = isMonth(lease?.rentSince) ? lease.rentSince : lease?.startMonth;
+export function increaseDue(lease, month, today = new Date()) {
     const pct = Number.isFinite(lease?.increasePct) ? lease.increasePct : DEFAULT_INCREASE_PCT;
     const rent = Number(lease?.rent) || 0;
-    if (!isMonth(base) || !isMonth(month) || lease.status !== 'active') return { due: false, pct, newRent: rent, from: '' };
+    const newRent = Math.round(rent * (1 + pct / 100));
+    const off = { due: false, pct, newRent: rent, from: '' };
+    if (!lease || lease.status !== 'active' || !isMonth(month)) return off;
+    // Rent changed since move-in: a year from that month. Otherwise a year from the start date.
+    if (isMonth(lease.rentSince) && isMonth(lease.startMonth) && lease.rentSince > lease.startMonth) {
+        const from = addMonths(lease.rentSince, 12);
+        return { due: month >= from && pct > 0, pct, newRent, from };
+    }
+    if (isDate(lease.startDate)) {
+        const [y, m, d] = lease.startDate.split('-').map(Number);
+        const anniversary = new Date(y + 1, m - 1, d);
+        const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        return { due: start >= anniversary && pct > 0, pct, newRent, from: monthKey(anniversary) };
+    }
+    const base = isMonth(lease.rentSince) ? lease.rentSince : lease.startMonth;
+    if (!isMonth(base)) return off;
     const from = addMonths(base, 12);
-    return { due: month >= from && pct > 0, pct, newRent: Math.round(rent * (1 + pct / 100)), from };
+    return { due: month >= from && pct > 0, pct, newRent, from };
 }
 
 /**
@@ -236,6 +296,8 @@ export function unitError(u) {
 
 export function tenantError(tn) {
     if (!cleanText(tn?.name)) return 'msg.rent.name_required';
+    if (!mobile10(tn.phone)) return 'msg.rent.bad_phone';
+    if (tn.phone2 && !mobile10(tn.phone2)) return 'msg.rent.bad_phone';
     if (String(tn.name).length > 80 || String(tn.phone || '').length > 20) return 'msg.rent.too_long';
     return '';
 }
@@ -245,7 +307,9 @@ export function leaseError(l, currentMonth = '') {
     const deposit = Number(l?.deposit || 0);
     if (!Number.isFinite(rent) || rent < 0 || !Number.isFinite(deposit) || deposit < 0) return 'msg.rent.bad_amount';
     if (!Number.isInteger(Number(l.dueDay)) || l.dueDay < 1 || l.dueDay > 28) return 'msg.rent.bad_due_day';
+    if (l.startDate !== undefined && (!isDate(l.startDate) || l.startDate.slice(0, 7) !== l.startMonth)) return 'msg.rent.bad_date';
     if (!isMonth(l.startMonth)) return 'msg.rent.bad_month';
+    if (l.elecMode !== undefined && !ELEC_MODES.includes(l.elecMode)) return 'msg.rent.bad_elec_mode';
     if (isMonth(currentMonth) && (l.startMonth < addMonths(currentMonth, -(MAX_BACKFILL_MONTHS - 1)) || l.startMonth > addMonths(currentMonth, 1))) {
         return 'msg.rent.start_too_old';
     }
@@ -263,6 +327,7 @@ const REMINDER_TEXT = {
         pay: 'Please pay by cash or online (UPI) at your convenience.',
         upi: 'UPI',
         link: (u) => `See your rent history: ${u}`,
+        since: (d) => `Tenant since ${d}`,
         thanks: 'Thank you'
     },
     hi: {
@@ -273,6 +338,7 @@ const REMINDER_TEXT = {
         pay: 'कृपया सुविधा अनुसार नकद या ऑनलाइन (यूपीआई) से भुगतान करें।',
         upi: 'यूपीआई',
         link: (u) => `अपने किराये का हिसाब देखें: ${u}`,
+        since: (d) => `${d} से किरायेदार`,
         thanks: 'धन्यवाद'
     }
 };
@@ -285,7 +351,7 @@ const REMINDER_TEXT = {
  *   lastMonth?: string, upiId?: string, lang?: 'en'|'hi', link?: string}} p
  * @returns {string}
  */
-export function buildRentReminderText({ tenantName, place = '', charges = [], lastMonth = '', upiId = '', lang = 'en', link = '' }) {
+export function buildRentReminderText({ tenantName, place = '', charges = [], lastMonth = '', upiId = '', lang = 'en', link = '', since = '' }) {
     const L = REMINDER_TEXT[lang === 'hi' ? 'hi' : 'en'];
     const rows = charges.filter(c => chargeDue(c) > 0 && (!isMonth(lastMonth) || c.month <= lastMonth))
         .sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
@@ -293,6 +359,7 @@ export function buildRentReminderText({ tenantName, place = '', charges = [], la
     const where = cleanText(place);
     const lines = [L.hello(cleanText(tenantName)), L.intro];
     if (where) lines.push(`🏠 ${where}`);
+    if (isDate(since)) lines.push(L.since(dateLabel(since)));
     lines.push('', L.heading);
     rows.forEach((c, i) => lines.push(`${i + 1}. ${monthLabel(c.month, lang)} · ${formatINR(chargeDue(c))}`));
     lines.push('', L.total(formatINR(total)), '', L.pay);

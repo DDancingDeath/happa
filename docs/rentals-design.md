@@ -455,3 +455,37 @@ commercial spaces. I should be able to see property-wise or unit-wise."*
   (properties, units, leases, this month's and open charges). Start-up is unchanged
   (the rentals start-up guards still pass).
 
+## 9. Add unit with its tenant; start date; electricity (owner, 2026-10-26)
+
+Owner: *"while adding the unit, we should be adding the tenant of that unit"*, *"also
+if electricity is paid separately"*.
+
+- **Add unit** has a section "Tenant (if occupied)", shown by the toggle "Occupied —
+  add tenant now" (off = a Vacant unit, as before). **Add tenant** on a vacant unit
+  in the property view and **Move in** on the Tenants page open the same section.
+  Fields: new or existing tenant; name; **mobile number (required, 10-digit Indian
+  mobile, stored without +91; rules check it)** and an optional second number;
+  monthly rent; **start date** (date picker, today); "Pro-rate first month" (off);
+  due day (Rentals setting `rentDueDay`, else 10); yearly increase % (5); security
+  deposit (recorded on the lease only — not cash in the Aadhat drawer);
+  **Electricity**: *Included in rent* / *Meter, billed by us* / *Own meter (tenant
+  pays directly)* with an optional meter/consumer number; for a new unit billed by
+  meter, an opening reading and the rate (Rentals setting `rentMeterRate`).
+  Default electricity: meter when a rate is known, else included.
+- **One batch** (`rent-store.moveIn`): unit (new, or the vacant one), tenant (new),
+  lease (`startDate`, `startMonth`, `proRate`, `firstRent`, `elecMode`, `meterNo`)
+  and, when the start month has begun, the first month's charge with
+  `chargedThrough` set — all or nothing. A form error saves nothing.
+- **Rules:** a new unit may carry `leaseId` only for a lease created in the same
+  batch (`!exists` + `getAfter`); a new lease may have `chargedThrough ==
+  startMonth` only with that month's charge in the batch (`existsAfter`) and not in
+  the future; the charge amount is the lease rent, or `firstRent` for the start
+  month (≤ rent); `startDate` is a real date in `startMonth` and never changes;
+  `elecMode` ∈ included / meter / own; meter readings only when the lease is
+  `meter`; tenants need a valid mobile when created or when the number changes.
+- **Shown:** "Since dd/mm/yyyy" and the electricity tag (⚡ meter / ⚡ included /
+  ⚡ own meter) on tenant and unit rows; the tenant link shows "Tenant since …" and
+  the electricity note; the WhatsApp reminder header has "Tenant since …".
+- **Yearly increase** counts from the start date's anniversary (RENT-6). First month
+  full by default, optional pro-rating (RENT-11).
+

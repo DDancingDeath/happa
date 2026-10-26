@@ -53,3 +53,9 @@ body.dark-mode .rent-row, body.dark-mode .rent-dialog-box { background: #1a202c;
 .rent-filters select, .rent-filters input { width: 100%; padding: 9px; border: 1px solid var(--border-color, #cbd5e0); border-radius: 8px; font-size: 15px; box-sizing: border-box; }
 .rent-badge-vacant { background: #edf2f7; color: #4a5568; }
 @media (min-width: 1024px) { .rent-filters { grid-template-columns: repeat(5, auto); } }
+
+/* Tenant section in Add unit / Move in, electricity tag */
+.rent-check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-top: 10px; }
+.rent-occupied-toggle { font-weight: 600; margin-top: 14px; }
+.rent-tenant-section { border-top: 1px solid var(--border-color, #e2e8f0); margin-top: 10px; padding-top: 4px; }
+.rent-tag { display: inline-block; font-size: 12px; background: #fefcbf; color: #744210; border-radius: 10px; padding: 1px 7px; }

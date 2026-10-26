@@ -1521,6 +1521,7 @@ function defineRentSuite(prefix) {
 
     t('electricity: previous = the last reading, unit rate for members, unit updated with it, re-entry owner/manager only', async () => {
         await seed('rent_units', 'U1', unit({ lastReading: 100, meterRate: 8 }));
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
         await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 1000, payments: [entry('rentMember', 1000)] }));
         await assertFails(meterWrite('rentMember', elec(90, 150, 8), { paid: 1000 }));
         await assertFails(meterWrite('rentMember', elec(100, 150, 10), { paid: 1000 }));
@@ -1658,6 +1659,100 @@ function defineRentSuite(prefix) {
         await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
         await assertSucceeds(pubOn(db('rentMember'), TOKEN).set(snap({ ut: 'commercial', place: 'Shop 3, Gupta Bhawan' })));
         await assertFails(pubOn(db('rentMember'), TOKEN).set(snap({ ut: 'castle' })));
+    });
+
+    // ---- Add unit with its tenant / move-in in one batch; start date; phone; electricity modes ----
+    const today = (() => { const d = new Date(Date.now() + 330 * MIN); return `${CUR}-${String(d.getUTCDate()).padStart(2, '0')}`; })();
+    const moveInBatch = (uid, { newUnit = true, newTenant = true, phone = '9876543210', rent = 6000, chargeAmount = rent, firstRent = null,
+        startDate = today, startMonth = startDate.slice(0, 7), withCharge = true, unitLease = 'LN', extraLease = {} } = {}) => {
+        const f = db(uid);
+        const b = f.batch();
+        const m = meta(uid);
+        if (newTenant) b.set(f.collection(c('rent_tenants')).doc('TN'), { name: 'Sita', phone, notes: '', ...m });
+        const leaseDoc = { unitId: 'UN', propertyId: 'P1', tenantId: newTenant ? 'TN' : 'T1', rent, dueDay: 10, startMonth, startDate,
+            proRate: firstRent != null, endMonth: null, deposit: 0, increasePct: 5, rentSince: startMonth, elecMode: 'own', meterNo: 'CN-1234',
+            status: 'active', chargedThrough: withCharge ? startMonth : null, ...m, ...extraLease };
+        if (firstRent != null) leaseDoc.firstRent = firstRent;
+        if (withCharge) {
+            b.set(f.collection(c('rent_charges')).doc(`LN_${startMonth}`), {
+                leaseId: 'LN', unitId: 'UN', propertyId: 'P1', tenantId: leaseDoc.tenantId, tenantName: 'Sita', unitLabel: 'S1', month: startMonth,
+                dueDay: 10, rent: chargeAmount, electricity: null, amount: chargeAmount, paid: 0, open: chargeAmount > 0, payments: [],
+                createdAt: 1, updatedAt: 1, updatedBy: uid
+            });
+        }
+        b.set(f.collection(c('rent_leases')).doc('LN'), leaseDoc);
+        if (newUnit) {
+            b.set(f.collection(c('rent_units')).doc('UN'), unit({ ...m, label: 'S1', type: 'commercial', leaseId: unitLease, lastReading: 1200, meterRate: 9 }));
+        } else {
+            b.update(f.collection(c('rent_units')).doc('UN'), { leaseId: 'LN', updatedAt: 2, updatedBy: uid });
+        }
+        return b.commit();
+    };
+
+    t('add unit with its tenant: unit, tenant, lease and first charge in one batch (any rentals role)', async () => {
+        await assertSucceeds(moveInBatch('rentMember'));
+        let got = null;
+        await env.withSecurityRulesDisabled(async (ctx) => { got = (await ctx.firestore().collection(c('rent_leases')).doc('LN').get()).data(); });
+        if (got.chargedThrough !== CUR || got.startDate !== today) throw new Error('lease not saved as sent');
+    });
+
+    t('add unit with tenant: rent mismatch, bad phone, date/month mismatch, unit without its lease are refused', async () => {
+        await assertFails(moveInBatch('rentMember', { chargeAmount: 1 }));
+        await assertFails(moveInBatch('rentMember', { phone: '12345' }));
+        await assertFails(moveInBatch('rentMember', { phone: '+919876543210' }));
+        await assertFails(moveInBatch('rentMember', { startMonth: PREV }));
+        await assertFails(moveInBatch('rentMember', { unitLease: 'LX' }));
+        await assertFails(moveInBatch('staff1'));
+        await assertFails(moveInBatch('rentMember', { extraLease: { elecMode: 'solar' } }));
+    });
+
+    t('pro-rated first month: charge = firstRent (never above the rent); a future start has no charge yet', async () => {
+        await assertFails(moveInBatch('rentMember', { firstRent: 7000 }));
+        await assertFails(moveInBatch('rentMember', { firstRent: 3000, chargeAmount: 6000 }));
+        await assertSucceeds(moveInBatch('rentMember', { firstRent: 3000, chargeAmount: 3000 }));
+        const next = istMonth(1);
+        await env.clearFirestore();
+        await seedUsers(prefix ? 'dev_users' : 'users');
+        await assertFails(moveInBatch('rentMember', { startDate: `${next}-05`, withCharge: true }));
+        await assertSucceeds(moveInBatch('rentMember', { startDate: `${next}-05`, withCharge: false }));
+    });
+
+    t('move an existing tenant into an existing vacant unit with the first charge in one batch', async () => {
+        await seed('rent_units', 'UN', unit({ label: 'S1', leaseId: null }));
+        await seed('rent_tenants', 'T1', { name: 'Ram', phone: '9876543210', notes: '', ...meta('x') });
+        await assertSucceeds(moveInBatch('rentOnly', { newUnit: false, newTenant: false }));
+    });
+
+    t('tenant phone: a 10-digit mobile required on create; second number optional; old tenants without a phone still edit', async () => {
+        const ten = (uid) => db(uid).collection(c('rent_tenants'));
+        await assertSucceeds(ten('rentMember').doc('TA').set({ name: 'A', phone: '9876543210', phone2: '8123456789', notes: '', ...meta('rentMember') }));
+        await assertFails(ten('rentMember').doc('TB').set({ name: 'B', phone: '', notes: '', ...meta('rentMember') }));
+        await assertFails(ten('rentMember').doc('TC').set({ name: 'C', phone: '5876543210', notes: '', ...meta('rentMember') }));
+        await assertFails(ten('rentMember').doc('TD').set({ name: 'D', phone: '9876543210', phone2: '123', notes: '', ...meta('rentMember') }));
+        await seed('rent_tenants', 'TL', { name: 'Old', phone: '', notes: '', ...meta('x') });
+        await assertSucceeds(ten('rentMember').doc('TL').update({ notes: 'shop 2', updatedAt: 2, updatedBy: 'rentMember' }));
+        await assertFails(ten('rentMember').doc('TL').update({ phone: '99', updatedAt: 3, updatedBy: 'rentMember' }));
+    });
+
+    t('electricity modes: meter readings only when the lease bills by meter; start date and first rent stay fixed', async () => {
+        await seed('rent_units', 'U1', unit({ lastReading: 100, meterRate: 8 }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        for (const mode of ['included', 'own']) {
+            await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, elecMode: mode }));
+            await assertFails(meterWrite('rentManager', elec(100, 150, 8)));
+        }
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, elecMode: 'meter', startDate: `${PREV}-15`, startMonth: PREV }));
+        await assertSucceeds(meterWrite('rentMember', elec(100, 150, 8)));
+        await assertSucceeds(leaseRef('rentMember').update({ elecMode: 'own', meterNo: 'CN-9', updatedAt: 3, updatedBy: 'rentMember' }));
+        await assertFails(leaseRef('rentManager').update({ startDate: `${PREV}-01`, updatedAt: 4, updatedBy: 'rentManager' }));
+        await assertFails(leaseRef('rentManager').update({ firstRent: 1, updatedAt: 4, updatedBy: 'rentManager' }));
+    });
+
+    t('link snapshot carries the start date and electricity mode (checked)', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
+        await assertSucceeds(pubOn(db('rentMember'), TOKEN).set(snap({ since: `${PREV}-15`, em: 'own' })));
+        await assertFails(pubOn(db('rentMember'), TOKEN).set(snap({ since: '15/10/2026' })));
+        await assertFails(pubOn(db('rentMember'), TOKEN).set(snap({ em: 'solar' })));
     });
 
     t('only the owner deletes rentals records', async () => {

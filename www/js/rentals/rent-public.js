@@ -7,7 +7,7 @@
  */
 
 import { round2 } from '../utils/money.js';
-import { chargeDue, chargeStatus, isMonth } from './rent-math.js';
+import { chargeDue, chargeStatus, isMonth, isDate, elecMode } from './rent-math.js';
 
 /** Months kept in the snapshot (newest). */
 export const PUBLIC_MONTHS = 36;
@@ -57,7 +57,9 @@ function leasePart(lease) {
         rent: round2(Number(lease.rent) || 0),
         dueDay: Number.isInteger(lease.dueDay) ? lease.dueDay : 10,
         ended: lease.status === 'ended',
-        endMonth: isMonth(lease.endMonth) ? lease.endMonth : null
+        endMonth: isMonth(lease.endMonth) ? lease.endMonth : null,
+        ...(isDate(lease.startDate) ? { since: lease.startDate } : {}),
+        em: elecMode(lease)
     };
 }
 
