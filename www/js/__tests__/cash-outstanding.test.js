@@ -37,6 +37,9 @@ beforeEach(() => {
 afterEach(() => {
     jest.restoreAllMocks();
     CashManagementManager.todaySession = null;
+    CashManagementManager.cachedSessions = null;
+    CashManagementManager.olderCursor = null;
+    CashManagementManager.hasOlderSessions = false;
 });
 
 const TXNS = { cashSales: 1300, cashPurchases: 1500, businessExpenses: 150, personalExpenses: 80, dueReceived: 250, duePaid: 100, cashDeposits: 500 };
@@ -51,7 +54,7 @@ describe('#69 session totals', () => {
 
     test('history detail shows the same totals as the sign-out summary', async () => {
         const session = { id: 's1', date: '2026-10-20', openingBalance: 2000, signedOut: true, closingBalance: 2220, expectedBalance: 2220, difference: 0, transactions: TXNS };
-        jest.spyOn(FirebaseService, 'loadCashSessions').mockResolvedValue([session]);
+        CashManagementManager.cachedSessions = [session];
         let html = '';
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (h) => { html = h; return true; });
         await CashManagementManager.showSessionDetails('2026-10-20');
@@ -66,7 +69,7 @@ describe('#66 ₹0 opening/closing and session notes', () => {
     beforeEach(() => {
         document.body.innerHTML = CASH_TEMPLATE;
         saved = [];
-        jest.spyOn(FirebaseService, 'loadCashSessions').mockResolvedValue([]);
+        jest.spyOn(FirebaseService, 'loadCashSessionsPage').mockResolvedValue({ sessions: [], last: null, more: false });
         jest.spyOn(FirebaseService, 'openCashSession').mockImplementation(async (s) => { saved.push({ ...s }); return { session: { ...s, id: `cash_${s.date}` }, joined: false }; });
         ['salesHistory', 'retailSalesHistory', 'purchaseHistory', 'expensesHistory'].forEach(k => { AppState[k] = []; });
     });
@@ -116,7 +119,7 @@ describe('#66 ₹0 opening/closing and session notes', () => {
     test('session detail shows opening and closing notes, escaped', async () => {
         const session = { id: 's1', date: '2026-10-20', openingBalance: 0, signedOut: true, closingBalance: 0, expectedBalance: 0, difference: 0, counted: true,
             openingNotes: '<b>x</b>', closingNotes: 'Took ₹2,000 home', transactions: {} };
-        FirebaseService.loadCashSessions.mockResolvedValue([session]);
+        CashManagementManager.cachedSessions = [session];
         let html = '';
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (h) => { html = h; return true; });
         await CashManagementManager.showSessionDetails('2026-10-20');

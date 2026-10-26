@@ -457,6 +457,7 @@ export default {
     'ui.cash.sign_out_label': "Closed:",
     'ui.cash.suggested_from_last_count': "Suggested from the last count ({date}): ₹{amount}. Change it if the drawer has a different amount.",
     'ui.cash.tap_day_to_count': "Tap a day to record the real count:",
+    'ui.cash.load_older': "Load older days",
     'ui.cash.today_s_cash_status': "Today's Cash Status",
     'ui.cash.today_s_transactions': "Today's Transactions",
     'ui.cash.took_2_000_home': "e.g., Took ₹2,000 home",

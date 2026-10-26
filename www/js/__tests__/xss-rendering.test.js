@@ -230,7 +230,7 @@ describe('cash management escapes session values', () => {
 
     test('session details (signed out and in progress)', async () => {
         for (const signedOut of [true, false]) {
-            FirebaseService.loadCashSessions.mockResolvedValueOnce([{ ...session(), signedOut }]);
+            CashManagementManager.cachedSessions = [{ ...session(), signedOut }];
             await CashManagementManager.showSessionDetails('2026-10-01');
             const modal = document.getElementById('modalMessage');
             assertNoInjection(modal);

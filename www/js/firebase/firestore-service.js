@@ -3370,6 +3370,24 @@ const FirebaseService = {
     },
 
     /**
+     * One page of cash sessions, newest first (#34): Cash Management reads the
+     * latest few, and older days only when asked ("Load older").
+     * @param {number} max
+     * @param {?Object} [after] Last document snapshot of the previous page
+     * @returns {Promise<{sessions: Object[], last: ?Object, more: boolean}>}
+     */
+    async loadCashSessionsPage(max, after = null) {
+        let query = getDb().collection(col('cashManagement')).orderBy('date', 'desc');
+        if (after) query = query.startAfter(after);
+        const snapshot = await query.limit(max).get();
+        return {
+            sessions: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+            last: snapshot.docs[snapshot.docs.length - 1] || after,
+            more: snapshot.docs.length === max
+        };
+    },
+
+    /**
      * Cash sessions for one local day (YYYY-MM-DD); usually one. One small
      * query instead of loadCashSessions() (which reads every session).
      * @param {string} date
