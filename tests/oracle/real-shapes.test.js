@@ -25,19 +25,10 @@ const FIX = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/calc
 const NOW = O.timeOf(FIX.now);
 const E = FIX.expected;
 
-/** Opening records (tools/migrate) are counted in period figures: batch-B PR fix/opening-records-excluded. */
-const OPENING = 'PR #18 (batch-B fix/opening-records-excluded)';
-
 /**
  * Spec IDs (prefixed by the screen) the app gets wrong on these shapes. Each entry is a skipped test.
  */
 const BUGS = {
-    // BUG: see PR #18 (batch-B, fix/opening-records-excluded) — opening records dated today count on Today
-    'today.T1_purchaseCount': OPENING, 'today.T2_saleCount': OPENING, 'today.T15_dueToReceive': OPENING, 'today.T16_dueToPay': OPENING,
-    // BUG: see PR #18 — Reports and Finance count opening records as bills; a payment on one shows as cash on the old date
-    'reportsDay.R1_purchaseCount': OPENING, 'reportsDay.R2_saleCount': OPENING,
-    'reportsAll.R1_purchaseCount': OPENING, 'reportsAll.R2_saleCount': OPENING, 'reportsAll.R4_cash': OPENING,
-    'financeAll.F1_saleCount': OPENING,
     // BUG: see #49 — Analytics reads "D/M/YYYY, h:mm:ss pm" expense dates with new Date()
     'analyticsMonth.A3_expenses': 49, 'analyticsMonth.A3_expenseCount': 49,
     // BUG: see #220 — Analytics outstanding counts cleared bills that still carry their old due
