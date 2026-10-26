@@ -34,7 +34,8 @@ const set = (id, v) => { const el = document.getElementById(id); if (el.type ===
 
 async function addUnitWith(fill) {
     const p = RentalsModule.api.addUnit('P1');
-    await Promise.resolve();
+    // The dialog opens after Settings › Rentals defaults are read.
+    for (let i = 0; i < 50 && document.getElementById('rentDialog').hidden; i++) await new Promise(r => setTimeout(r));
     set('rentUnitLabel', 'S1');
     set('rentUnitType', 'commercial');
     set('rentUnitRent', '6000');

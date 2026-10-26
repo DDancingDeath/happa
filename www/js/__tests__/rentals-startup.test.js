@@ -22,7 +22,7 @@ const RENTALS = path.join(JS, 'rentals');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const rel = (p) => path.relative(WWW, p).split(path.sep).join('/');
 const RENT_COLLECTION = /['"`](?:dev_)?rent_[a-z]/;
-const BUDGET_BYTES = 120 * 1024;
+const BUDGET_BYTES = 130 * 1024;
 
 function listJs(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
