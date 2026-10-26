@@ -203,6 +203,7 @@ describe('old routes still work', () => {
 
     test.each([
         ['settings', 'settings', null],
+        ['settings-common', 'settings', 'common'],
         ['settings-shop', 'settings', 'shop'],
         ['settings-aadhat', 'settings', 'shop'],
         ['admin-configure', 'settings', 'shop'],
