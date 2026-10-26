@@ -226,14 +226,14 @@ describe('role-based restrictions', () => {
         expect(document.getElementById('del').disabled).toBe(false);
     });
 
-    test('Rates page: Trends and Product traffic tabs only for owner and manager', () => {
+    test('Reports: Trends and Product traffic buttons only for owner and manager', () => {
         document.body.insertAdjacentHTML('beforeend',
-            '<div class="rates-subtabs" style="display: none;"></div><div class="rates-subtabs" style="display: none;"></div>');
-        const bars = () => [...document.querySelectorAll('.rates-subtabs')].map(b => b.style.display);
-        for (const [role, shownAs] of [['owner', ''], ['manager', ''], ['staff', 'none']]) {
+            '<button class="reports-rt-btn" style="display: none;"></button><button class="reports-rt-btn" style="display: none;"></button>');
+        const shownAs = () => [...document.querySelectorAll('.reports-rt-btn')].map(b => b.style.display);
+        for (const [role, display] of [['owner', ''], ['manager', ''], ['staff', 'none']]) {
             AppState.userRole = role;
             AuthManager.applyRoleBasedRestrictions();
-            expect(bars()).toEqual([shownAs, shownAs]);
+            expect(shownAs()).toEqual([display, display]);
         }
     });
 

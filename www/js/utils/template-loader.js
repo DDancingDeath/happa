@@ -80,7 +80,8 @@ export class TemplateLoader {
         appContent.insertAdjacentHTML('beforeend', templates.finance);
         appContent.insertAdjacentHTML('beforeend', templates.analytics);
         appContent.insertAdjacentHTML('beforeend', templates.anomalies);
-        appContent.insertAdjacentHTML('beforeend', templates['rate-trends']);
+        // Reports › Trends / Product traffic (#65) live inside the Reports page
+        (appContent.querySelector('#reports') || appContent).insertAdjacentHTML('beforeend', templates['rate-trends']);
         appContent.insertAdjacentHTML('beforeend', templates.health);
         appContent.insertAdjacentHTML('beforeend', templates['cash-management']);
         appContent.insertAdjacentHTML('beforeend', templates.users);

@@ -47,7 +47,7 @@ It deletes **every document in every root collection** (subcollections included)
 | What | How | Flag (default first) |
 |---|---|---|
 | History | **Fresh start**: old bills are not copied; the old project and the encrypted backup are the archive | `--mode fresh` / `full` (copies every bill as is, no opening balances) |
-| Rates page (Rates tab) | `items` copied as is, same ids | `--copy items,users,rateHistory,itemFrequency` |
+| Rates page | `items` copied as is, same ids | `--copy items,users,rateHistory,itemFrequency` |
 | Users | `users` profile docs as is (roles, status), same uids; logins move with `auth:import` below | (part of `--copy`) |
 | Outstanding (retail) and Wholesale → Outstanding | one **opening record per old unpaid bill**, see below | always in `fresh` mode |
 | Wholesale dues that no page shows (bills not made on the Wholesale page) | **not carried**; the report lists their count and total under "Not carried (owner to decide)" | `--include-hidden-wholesale-dues` carries them to Wholesale → Outstanding |
@@ -87,7 +87,7 @@ One bill-shaped document **per old unpaid bill**, in the collection the due live
 `plan` cross-checks, re-reading the records with the app's own code: same total, same parties and per-party totals, same age groups as the old pages; monthly rate buckets = the app's own monthly aggregation (`rate-trends.js`); weekly kg = monthly kg.
 ### Buying and rate patterns
 
-`rateStats/{itemId}_{YYYY}` = `{ itemId, year, weeks: {'wYYYY-MM-DD': bucket}, months: {'mYYYY-MM': bucket}, updatedAt }` (IST weeks starting Monday, a week in its Monday's year; bucket = `{ purchase, retail, wholesale: {kg, amount, min, max, avg, bills}, bills }`), built by the app's own `billsToYearDocs()` from Rate trends (#227, which merges before this PR). `rateStats/_meta` is written the way the app's backfill writes it, with only the keys `firestore.rules` allows: `{ backfillDone: true, backfillAt: <backup time>, bills, reads: 0, months, by: 'migration', byUserId: '' }`. `backfillAt` is the cutoff: after it the rate line follows the Rates-tab rate (from the copied `rateHistory`). Because Happa has no bills from before the backup, its roll-forward leaves every bucket that started before `backfillAt` as carried when `by` is `'migration'` (`clampWindowToMigration()`), and the Rates page Trends tab hides **Rebuild** for a carried history (a rebuild from Happa's bills alone would erase it). So the week and the month of the cutover keep the old app's bills only; Happa's bills in the rest of that week and month are not added to those two buckets (from the next week and month on, everything is counted).
+`rateStats/{itemId}_{YYYY}` = `{ itemId, year, weeks: {'wYYYY-MM-DD': bucket}, months: {'mYYYY-MM': bucket}, updatedAt }` (IST weeks starting Monday, a week in its Monday's year; bucket = `{ purchase, retail, wholesale: {kg, amount, min, max, avg, bills}, bills }`), built by the app's own `billsToYearDocs()` from Rate trends (#227, which merges before this PR). `rateStats/_meta` is written the way the app's backfill writes it, with only the keys `firestore.rules` allows: `{ backfillDone: true, backfillAt: <backup time>, bills, reads: 0, months, by: 'migration', byUserId: '' }`. `backfillAt` is the cutoff: after it the rate line follows the Rates-page rate (from the copied `rateHistory`). Because Happa has no bills from before the backup, its roll-forward leaves every bucket that started before `backfillAt` as carried when `by` is `'migration'` (`clampWindowToMigration()`), and Reports › Trends hides **Rebuild** for a carried history (a rebuild from Happa's bills alone would erase it). So the week and the month of the cutover keep the old app's bills only; Happa's bills in the rest of that week and month are not added to those two buckets (from the next week and month on, everything is counted).
 
 ### Write budget (Spark: 20,000 writes/day)
 
@@ -117,7 +117,7 @@ The app signs in with **email and password only** (`www/js/auth/authentication.j
 The go-live runbook is **`docs/happa-go-live.md`** in the Happa PR (#231). It covers the project `happa-bfc07`, `happa.config.json`, signing (`HAPPA_*` secrets, `Happa.apk`), the workflow and `.firebaserc` switch, and the merge order. This section is only the data part: run it at that runbook's step 6 ("Stop billing in the old app and run the migration").
 
 1. Rules and indexes are already deployed to `happa-bfc07` (go-live step 5). Get a key for a migration service account in `happa-bfc07` with **Cloud Datastore User** (`roles/datastore.user`). Save it as `$D\key.json` (outside the repo) and delete it after cutover.
-2. **Rehearse** (any time before): run `plan` and `apply --dev` with a recent backup, open Happa on localhost, check Rates, Outstanding, Wholesale → Outstanding, Rates › Trends and Settings, then delete the `dev_*` collections in `happa-bfc07`.
+2. **Rehearse** (any time before): run `plan` and `apply --dev` with a recent backup, open Happa on localhost, check Rates, Outstanding, Wholesale → Outstanding, Reports › Trends and Settings, then delete the `dev_*` collections in `happa-bfc07`.
 3. At the cut-off: close the cash session in the old app. From then on **the shop stops billing in the old app**: a bill saved there does not appear in Happa. Take the final backup (go-live step 6.2), download, check and decrypt it (`tools/backup/README.md`) **into `$D` (`Q:\aadhat-data\`), not into the repo**.
 4. **Migrate**:
    ```powershell
@@ -129,7 +129,7 @@ The go-live runbook is **`docs/happa-go-live.md`** in the Happa PR (#231). It co
    Then move the logins (above). `plan`/`apply` can be **rerun just before go-live** (add `--restart` for a new bundle) to pick up the latest items, dues, settings and patterns. Rerun only before Happa is in use: a rerun rewrites items, users, settings and rate patterns.
 5. **Set opening stock** per item in Happa: Stock → Stock Adjustment → type **Set**, the counted kg, and **Rate (₹/kg)** = the average cost. The stock replay uses that rate as the cost of the stock, so cost of goods sold and profit work from the first sale.
 6. **Re-enter shop name and UPI id in Happa Settings on each device.** They live on the phone, not in Firestore, so they are not carried. Printer, language, dark mode and the Hindi-names option are per phone too.
-7. **Check** in Happa: sign in as each role; Rates item count; Outstanding and Wholesale → Outstanding totals and age groups equal the report; a reminder and a statement for one party; Rates › Trends shows the history; a test bill gets the next number.
+7. **Check** in Happa: sign in as each role; Rates item count; Outstanding and Wholesale → Outstanding totals and age groups equal the report; a reminder and a statement for one party; Reports › Trends shows the history; a test bill gets the next number.
 8. Keep the final backup archive (encrypted, as the workflow made it) and the passphrase in the password manager. The old app, site and project stay as they are; nothing in this tool changes them.
 
 Optional: the owner can send a notice with the Happa download link from the old app's inbox.
