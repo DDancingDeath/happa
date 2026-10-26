@@ -112,6 +112,36 @@ describe('Day report card', () => {
         expect(AnomaliesManager.dayReportText()).toContain('Sales: ₹400 (1 bill)');
     });
 
+    test("only today's anomalies on the card and in the share text; older open ones are a count on All anomalies", async () => {
+        const yAt = now - 86400000;
+        AppState.retailSalesHistory = [badBill, {
+            ...badBill, id: 'b0', billNumber: 'R0', customerName: 'Yesterday Party',
+            date: new Date(yAt).toISOString(), timestamp: yAt
+        }];
+        AnomaliesManager.renderDayReport({ sales: 400, saleCount: 1 }, null);
+        await AnomaliesManager.refreshing;
+        const card = document.getElementById('dayReportCard');
+        expect(AnomaliesManager.reportList.map(a => a.dayKey)).toEqual(expect.arrayContaining(['2026-10-20', '2026-10-21']));
+        expect(card.textContent).not.toContain('Yesterday Party');
+        expect(card.textContent).not.toContain('R0');
+        expect(card.textContent).not.toContain('Yesterday');
+        expect(card.textContent).toContain('Needs review (1)');
+        expect(card.querySelector('.anomaly-count-badge').textContent).toBe('1');
+        expect(card.textContent).toContain('All anomalies · 1 pending');
+        const text = AnomaliesManager.dayReportText();
+        expect(text).toContain('Anomalies: 1 (High 1, Medium 0, Low 0)');
+        expect(text).not.toContain('R0');
+        expect(text).not.toContain('Yesterday');
+    });
+
+    test('no pending count when nothing older is open', async () => {
+        AnomaliesManager.renderDayReport({}, null);
+        await AnomaliesManager.refreshing;
+        const card = document.getElementById('dayReportCard');
+        expect(card.textContent).toContain('All anomalies');
+        expect(card.textContent).not.toContain('pending');
+    });
+
     test('hidden for other users', () => {
         AppState.userRole = 'staff';
         AnomaliesManager.renderDayReport({}, null);

@@ -603,12 +603,11 @@ const inr = (n) => `₹${round2(Number(n) || 0).toLocaleString('en-IN')}`;
  * @param {Object} args
  * @param {string} args.dayKey
  * @param {Array<Object>} args.today - today's anomalies
- * @param {Array<Object>} [args.yesterdayOpen] - yesterday's not yet reviewed
  * @param {Object} [args.totals] - day totals shown on Today
  * @param {string} [args.shopName]
  * @returns {string}
  */
-export function buildDayReportText({ dayKey, today = [], yesterdayOpen = [], totals = null, shopName = '' }) {
+export function buildDayReportText({ dayKey, today = [], totals = null, shopName = '' }) {
     const lines = [];
     lines.push(`*${t('ui.anom.day_report')}* — ${formatDayKey(dayKey)}`);
     const shop = cleanText(shopName);
@@ -630,15 +629,6 @@ export function buildDayReportText({ dayKey, today = [], yesterdayOpen = [], tot
         s.byType.forEach(x => lines.push(`• ${pickLang(x)}: ${x.count}`));
         if (s.topItems.length) lines.push(`${t('ui.anom.top_items')}: ${s.topItems.map(x => `${cleanText(x.name)} (${x.count})`).join(', ')}`);
         if (s.topParties.length) lines.push(`${t('ui.anom.top_parties')}: ${s.topParties.map(x => `${cleanText(x.name)} (${x.count})`).join(', ')}`);
-    }
-    if (yesterdayOpen.length) {
-        lines.push('');
-        lines.push(`${t('ui.anom.yesterday_open')}: ${yesterdayOpen.length}`);
-        sortAnomalies(yesterdayOpen).slice(0, 5).forEach(a => {
-            const who = [cleanText(a.party), a.billNumber ? `#${cleanText(a.billNumber)}` : ''].filter(Boolean).join(' ');
-            lines.push(`• ${pickLang(typeLabel(a.type))}${who ? ` — ${who}` : ''}${a.amount ? ` — ${inr(Math.abs(a.amount))}` : ''}`);
-        });
-        if (yesterdayOpen.length > 5) lines.push(`… ${t('ui.anom.more', { n: yesterdayOpen.length - 5 })}`);
     }
     return lines.join('\n');
 }
