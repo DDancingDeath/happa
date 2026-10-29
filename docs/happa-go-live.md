@@ -236,6 +236,14 @@ package (`com.happa`) against `happa.config.json`, then publishes
 **"happa v1.0.0"** with `happa.apk` and `happa-v1.0.0.apk`. Tag after step 10,
 so the APK has the feature PRs in it and the data is already in place.
 
+**Release candidate first (optional).** A tag `v1.0.0-rc1` (on a commit whose
+`package.json` version is `1.0.0`) runs the same build, signing and certificate
+checks but publishes **"happa v1.0.0-rc1"** as a *prerelease* that is never
+marked latest, with `happa.apk` and `happa-v1.0.0-rc1.apk`. The update banner and
+`/download` read `releases/latest`, so they don't offer it; testers install it
+from the release page. It has the same version code as v1.0.0, so the final APK
+installs over it.
+
 Side effect: happa v1.0.0 becomes the repo's *latest* release. The old app's
 download page link (`releases/latest/download/AadhatManagement.apk`) then stops
 working. The old APK stays available at `releases/tag/v1.6.1`. Old phones get
