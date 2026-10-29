@@ -40,10 +40,22 @@
                 </div>
             </div>
 
-            <!-- LABOR - Single line -->
-            <div style="display: flex; justify-content: center; align-items: center; gap: 10px; background: #fef2f2; border: 1px solid #fecaca; padding: 12px 20px; border-radius: 12px; margin-bottom: 16px;">
-                <span style="font-size: 14px; color: #991b1b;" data-i18n="ui.today.labor">👷 Labour:</span>
-                <span style="font-size: 18px; font-weight: 600; color: #991b1b;" id="todayLaborCost">₹0</span>
+            <!-- LABOUR: deducted from farmers (T-LAB-1) and to pay labour (T-LAB-2); tap for bill-wise breakdown -->
+            <div id="todayLabourCard" class="today-labour-card" role="button" tabindex="0"
+                onclick="window.app.day.showLabourBreakdown()" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.app.day.showLabourBreakdown(); }">
+                <div class="today-labour-title" data-i18n="ui.today.labor">👷 Labour:</div>
+                <div class="today-labour-row">
+                    <span data-i18n="ui.today.labour_deducted">Deducted from farmers:</span>
+                    <strong id="todayLaborCost">₹0</strong>
+                    <span class="today-labour-sub" id="todayLabourDeductedBills"></span>
+                </div>
+                <div class="today-labour-row">
+                    <span data-i18n="ui.today.labour_to_pay">To pay labour:</span>
+                    <strong id="todayLabourToPay">₹0</strong>
+                    <span class="today-labour-sub" id="todayLabourToPayCalc"></span>
+                </div>
+                <div class="today-labour-diff" id="todayLabourDiff"></div>
+                <div class="today-labour-hint" data-i18n="ui.today.labour_tap_hint">Tap for each bill</div>
             </div>
 
             <!-- 2. PAYMENT BREAKDOWN -->

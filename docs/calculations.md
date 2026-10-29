@@ -53,7 +53,7 @@ All for DAY = today.
 |---|---|---|
 | T1 | Purchases | Σ BILL-TOTAL of today's purchases; count of bills. |
 | T2 | Sales | Σ BILL-TOTAL of today's wholesale + retail sales; count of bills. |
-| T3 | Labour | Σ labour on today's purchases. |
+| T3 | Labour › Deducted from farmers | Same number as T-LAB-1 below. |
 | T4 | Business expenses | Σ today's expenses of kind business (EXP-KIND), untagged ones included. |
 | T5 | Personal expenses | Σ today's expenses tagged personal. |
 | T6 | Cash received | BILL-AT-SAVE cash of today's sales + cash part of DUE-PAYs received today. |
@@ -67,6 +67,25 @@ All for DAY = today.
 | T14 | Due paid | DUE-PAYs paid today (cash + online). |
 | T15 | Due to receive | Σ BILL-DUE of today's sales (new dues made today; OPENING records are not today's sales even when dated today). The all-time total is on Outstanding / Finance (F9). |
 | T16 | Due to pay | Σ BILL-DUE of today's purchases (OPENING records left out, as T15). |
+
+### Labour: deducted and to pay (`utils/labour.js`)
+
+Two different questions, both shown on the Today Labour card (tap for each
+bill), in the day report (WhatsApp / image) and meant for Money › Spending
+when the redesign lands. One implementation: `labourSummary()` in
+`utils/labour.js`; oracle: `tests/oracle/labour.test.js`. Purchases only,
+OPENING records left out (`activityBills()`).
+
+| ID | On screen | Definition |
+|---|---|---|
+| T-LAB-1 | Deducted from farmers: ₹X (N bills) | X = Σ labour on the day's purchase bills (`laborCharges`, older bills `labour`; 0 when Labour was unticked). On a bill it is heavy packets × labour rate unless typed by hand. N = bills with labour > 0. |
+| T-LAB-2 | To pay labour: ₹Y (W kg ÷ K kg = P packages × ₹R) | W = Σ kg of every line on the day's purchase bills (`qty`, older lines `quantity`), with or without Labour ticked. K = Settings › Aadhat "Package weight for labour (kg)" (`settings/app.labourPackageKg`, default 35, allowed 1–200; anything else is 35). P = ⌈W ÷ K⌉ — **rounded up**: a part package is paid as a full one (1,000 kg ÷ 35 = 28.57 → 29); 0 kg → 0. R = the shared labour rate (`laborRate`, ₹ per heavy packet, default ₹6) — it is a per-packet rate, so it is used per package as is. Y = P × R. |
+| T-LAB-3 | ₹Z more / less than deducted | Z = \|Y − X\|: "more" when Y > X, "less" when Y < X, "matches" when they are within 50 paise. Not an error: they differ when Labour was unticked on a bill, packets were at or below the heavy weight, or the kg does not fill whole packages. |
+
+Applies when the redesign lands (Money › Spending is not on `main` yet): for
+a period longer than a day, T-LAB-1 is the sum over
+the period; T-LAB-2 is the sum of each day's T-LAB-2 (labour is paid per day,
+so each day is rounded up on its own).
 
 ## Finance (`templates/finance.html`, `modules/finance.js`, `utils/finance-calc.js`) — #215
 

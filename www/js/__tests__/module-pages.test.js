@@ -452,7 +452,7 @@ describe('Settings', () => {
         expect(await SettingsManager.saveSettings()).toBe(true);
         expect(AppState.settings).toMatchObject({ heavyWeightThreshold: 35, laborRate: 8, autoLaborEnabled: true, showHindi: true });
         expect(JSON.parse(localStorage.getItem('settings')).laborRate).toBe(8);
-        expect(shared).toHaveBeenCalledWith({ laborRate: 8, heavyWeightThreshold: 35 });
+        expect(shared).toHaveBeenCalledWith({ laborRate: 8, heavyWeightThreshold: 35, labourPackageKg: 35 });
         expect(window.app.items.render).toHaveBeenCalled();
     });
 
@@ -462,7 +462,7 @@ describe('Settings', () => {
         document.getElementById('settingLaborRate').value = '';
         await SettingsManager.saveSettings();
         expect(AppState.settings.laborRate).toBe(6);
-        expect(shared).toHaveBeenCalledWith({ laborRate: 6, heavyWeightThreshold: 30 });
+        expect(shared).toHaveBeenCalledWith({ laborRate: 6, heavyWeightThreshold: 30, labourPackageKg: 35 });
     });
 
     test('only the owner can change the shared labour rate (#20)', async () => {
@@ -488,7 +488,7 @@ describe('Settings', () => {
         AppState.userRole = 'owner';
         AppState.settings.laborRate = 5;
         await SettingsManager.applySharedSettings({ minClientVersion: 3 });
-        expect(shared).toHaveBeenCalledWith({ laborRate: 5, heavyWeightThreshold: 30 });
+        expect(shared).toHaveBeenCalledWith({ laborRate: 5, heavyWeightThreshold: 30, labourPackageKg: 35 });
     });
 
     test('audit log: owner-only, filter by action, user text escaped', async () => {

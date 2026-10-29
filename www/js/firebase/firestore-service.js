@@ -2317,15 +2317,16 @@ const FirebaseService = {
     },
 
     /**
-     * Saves the labour rate and heavy-packet weight for every device (#20).
+     * Saves the labour rate, heavy-packet weight and labour package weight for every device (#20).
      * settings/app is owner-only (firestore.rules); merge keeps minClientVersion etc.
-     * @param {{laborRate: number, heavyWeightThreshold: number}} labour
+     * @param {{laborRate: number, heavyWeightThreshold: number, labourPackageKg?: number}} labour
      * @returns {Promise<void>}
      */
-    async saveSharedLabourSettings({ laborRate, heavyWeightThreshold }) {
+    async saveSharedLabourSettings({ laborRate, heavyWeightThreshold, labourPackageKg }) {
         const fields = {
             laborRate,
             heavyWeightThreshold,
+            ...(labourPackageKg !== undefined ? { labourPackageKg } : {}),
             labourUpdatedAt: Date.now(),
             labourUpdatedBy: AppState.currentUser?.uid || 'unknown'
         };

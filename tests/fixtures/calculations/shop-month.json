@@ -91,6 +91,11 @@
       "T10_totalIn": 350, "T11_totalOut": 1924, "T12_net": -1574,
       "T13_dueReceived": 50, "T14_duePaid": 400, "T15_dueToReceive": 250, "T16_dueToPay": 0
     },
+    "labourToday": {
+      "settings": { "laborRate": 6, "labourPackageKg": 35 },
+      "T_LAB_1_deducted": 6, "T_LAB_1_bills": 1,
+      "T_LAB_2_kg": 40, "T_LAB_2_packages": 2, "T_LAB_2_toPay": 12, "T_LAB_3_difference": 6
+    },
     "stock": {
       "perItem": { "i-rice": { "qty": 63, "value": 1959.04 }, "i-wheat": { "qty": 33, "value": 858 } },
       "opening": 0, "purchases": 5580, "cogs": 2710.96, "adjustments": -52, "closing": 2817.04

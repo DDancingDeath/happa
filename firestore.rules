@@ -424,7 +424,7 @@ service cloud.firestore {
     // Settings › Aadhat: a manager may update only these settings/app fields, and
     // only when Roles & access allows it (roleAccess.manager.shopSettings == true).
     function shopSettingsFields() {
-      return ['laborRate', 'heavyWeightThreshold', 'labourUpdatedAt', 'labourUpdatedBy',
+      return ['laborRate', 'heavyWeightThreshold', 'labourPackageKg', 'labourUpdatedAt', 'labourUpdatedBy',
               'checkThresholds', 'checksUpdatedAt', 'checksUpdatedBy',
               'businessName', 'businessDetails', 'businessUpdatedAt', 'businessUpdatedBy'];
     }

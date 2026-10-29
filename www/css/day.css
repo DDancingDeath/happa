@@ -357,3 +357,89 @@ body.dark-mode .item-detail-row:hover {
     width: 100%;
   }
 }
+
+/* Labour card on Today: deducted from farmers and to pay labour */
+.today-labour-card {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  color: #991b1b;
+  cursor: pointer;
+}
+
+.today-labour-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.today-labour-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.today-labour-row strong {
+  font-size: 17px;
+}
+
+.today-labour-sub,
+.today-labour-hint {
+  font-size: 12px;
+  color: #7f1d1d;
+  opacity: 0.85;
+}
+
+.today-labour-diff {
+  font-size: 13px;
+  color: #374151;
+  margin-top: 4px;
+}
+
+.today-labour-hint {
+  margin-top: 4px;
+}
+
+.labour-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.labour-breakdown-table th,
+.labour-breakdown-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: right;
+}
+
+.labour-breakdown-table th:first-child,
+.labour-breakdown-table td:first-child {
+  text-align: left;
+}
+
+.labour-breakdown-note {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 8px 0 0;
+}
+
+body.dark-mode .today-labour-card {
+  background: #3b1d1d;
+  border-color: #7f1d1d;
+  color: #fecaca;
+}
+
+body.dark-mode .today-labour-sub,
+body.dark-mode .today-labour-hint {
+  color: #fecaca;
+}
+
+body.dark-mode .today-labour-diff {
+  color: #e5e7eb;
+}

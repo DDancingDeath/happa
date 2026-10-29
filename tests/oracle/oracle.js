@@ -189,6 +189,29 @@ export function today(data, nowMs, session = null) {
     };
 }
 
+// ---------------------------------------------------------------- Labour (T-LAB-*)
+
+/**
+ * T-LAB-1 / T-LAB-2 / T-LAB-3 for the local day containing `nowMs`: labour deducted
+ * on the day's purchases, and labour to pay = ⌈kg ÷ package kg⌉ × rate (whole
+ * paise integers, so the rounding up does not depend on float division).
+ */
+export function labourDay(data, nowMs, { laborRate = 6, labourPackageKg = 35 } = {}) {
+    const purchases = datedBills(data.purchases, dayRange(nowMs));
+    const deducted = purchases.map(labourOf);
+    const kg = r2(sum(purchases, b => sum(b.items || [], i => n(i.qty ?? i.quantity))));
+    const kgP = Math.round(kg * 100);
+    const pkP = Math.round(labourPackageKg * 100);
+    const packages = kgP > 0 ? Math.floor((kgP + pkP - 1) / pkP) : 0;
+    const toPay = r2(packages * laborRate);
+    const ded = r2(sum(deducted, x => x));
+    return {
+        T_LAB_1_deducted: ded, T_LAB_1_bills: deducted.filter(x => x > 0).length,
+        T_LAB_2_kg: kg, T_LAB_2_packages: packages, T_LAB_2_toPay: toPay,
+        T_LAB_3_difference: r2(toPay - ded)
+    };
+}
+
 // ---------------------------------------------------------------- Stock (S*) and cost of goods sold
 
 /**

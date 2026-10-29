@@ -315,12 +315,26 @@ export function dueNeedsName(due, name) {
 /** Default labour charge per heavy packet (₹) and heavy-packet weight (kg). */
 export const DEFAULT_LABOUR_RATE = 6;
 export const DEFAULT_HEAVY_WEIGHT = 30;
+/** Package weight (kg) used to work out what to pay the labour (T-LAB-2), and its allowed range. */
+export const DEFAULT_LABOUR_PACKAGE_KG = 35;
+export const LABOUR_PACKAGE_KG_MIN = 1;
+export const LABOUR_PACKAGE_KG_MAX = 200;
+
+/**
+ * Package weight within 1–200 kg; anything else (blank, invalid, out of range) is 35.
+ * @param {*} v
+ * @returns {number}
+ */
+export function normalizePackageKg(v) {
+    const n = toMoney(v);
+    return n !== null && n >= LABOUR_PACKAGE_KG_MIN && n <= LABOUR_PACKAGE_KG_MAX ? round2(n) : DEFAULT_LABOUR_PACKAGE_KG;
+}
 
 /**
  * Labour settings with blank / invalid / non-positive values replaced by the
  * defaults (owner decision on #20: 6 is intended; to skip labour, untick Labour).
- * @param {{laborRate?: *, heavyWeightThreshold?: *}} [raw]
- * @returns {{laborRate: number, heavyWeightThreshold: number}}
+ * @param {{laborRate?: *, heavyWeightThreshold?: *, labourPackageKg?: *}} [raw]
+ * @returns {{laborRate: number, heavyWeightThreshold: number, labourPackageKg: number}}
  */
 export function normalizeLabourSettings(raw = {}) {
     const positive = (v, fallback) => {
@@ -329,7 +343,8 @@ export function normalizeLabourSettings(raw = {}) {
     };
     return {
         laborRate: positive(raw?.laborRate, DEFAULT_LABOUR_RATE),
-        heavyWeightThreshold: positive(raw?.heavyWeightThreshold, DEFAULT_HEAVY_WEIGHT)
+        heavyWeightThreshold: positive(raw?.heavyWeightThreshold, DEFAULT_HEAVY_WEIGHT),
+        labourPackageKg: normalizePackageKg(raw?.labourPackageKg)
     };
 }
 

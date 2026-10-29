@@ -51,7 +51,7 @@ setting is missing or invalid.
 - `historyDays`: whole days, 0–3650; 0 = all bills.
 - `shopSettings`: managers only (members never see Settings › Aadhat; the client forces it off for
   them). When on, a manager may update only the Aadhat fields of `settings/app`: `laborRate`,
-  `heavyWeightThreshold`, `checkThresholds`, `businessName`, `businessDetails` and their
+  `heavyWeightThreshold`, `labourPackageKg`, `checkThresholds`, `businessName`, `businessDetails` and their
   `…UpdatedAt` / `…UpdatedBy` stamps (`managerShopSettingsOk`). Never `roleAccess`,
   `minClientVersion`, `enforceClientVersion` or TIP settings, and never create or delete the doc.
 - Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, Reports › Trends and Product traffic,
