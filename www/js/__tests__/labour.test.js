@@ -62,6 +62,8 @@ describe('utils/labour.js', () => {
             expect(labourToPay(bills, { laborRate: 6, labourPackageKg: bad })).toMatchObject({ packageKg: DEFAULT_LABOUR_PACKAGE_KG, packages: 29 });
         });
         expect(labourToPay(bills, {})).toMatchObject({ packageKg: 35, rate: 6, amount: 174 });
+        // Billing (purchase.js) treats a 0 rate as unset and uses ₹6; so does To pay.
+        expect(labourToPay(bills, { laborRate: 0 })).toMatchObject({ rate: 6, packages: 29, amount: 174 });
     });
 
     test('old-app opening records are left out of both figures', () => {

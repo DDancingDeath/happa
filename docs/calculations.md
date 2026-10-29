@@ -82,7 +82,8 @@ OPENING records left out (`activityBills()`).
 | T-LAB-2 | To pay labour: ₹Y (W kg ÷ K kg = P packages × ₹R) | W = Σ kg of every line on the day's purchase bills (`qty`, older lines `quantity`), with or without Labour ticked. K = Settings › Aadhat "Package weight for labour (kg)" (`settings/app.labourPackageKg`, default 35, allowed 1–200; anything else is 35). P = ⌈W ÷ K⌉ — **rounded up**: a part package is paid as a full one (1,000 kg ÷ 35 = 28.57 → 29); 0 kg → 0. R = the shared labour rate (`laborRate`, ₹ per heavy packet, default ₹6) — it is a per-packet rate, so it is used per package as is. Y = P × R. |
 | T-LAB-3 | ₹Z more / less than deducted | Z = \|Y − X\|: "more" when Y > X, "less" when Y < X, "matches" when they are within 50 paise. Not an error: they differ when Labour was unticked on a bill, packets were at or below the heavy weight, or the kg does not fill whole packages. |
 
-For a period longer than a day (Money › Spending), T-LAB-1 is the sum over
+Applies when the redesign lands (Money › Spending is not on `main` yet): for
+a period longer than a day, T-LAB-1 is the sum over
 the period; T-LAB-2 is the sum of each day's T-LAB-2 (labour is paid per day,
 so each day is rounded up on its own).
 
