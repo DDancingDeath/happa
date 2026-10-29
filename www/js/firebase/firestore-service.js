@@ -3370,6 +3370,43 @@ const FirebaseService = {
     },
 
     /**
+     * One page of cash sessions, newest first (#34): Cash Management reads the
+     * latest few, and older days only when asked ("Load older").
+     * @param {number} max
+     * @param {?Object} [after] Last document snapshot of the previous page
+     * @returns {Promise<{sessions: Object[], last: ?Object, more: boolean}>}
+     */
+    async loadCashSessionsPage(max, after = null) {
+        let query = getDb().collection(col('cashManagement')).orderBy('date', 'desc');
+        if (after) query = query.startAfter(after);
+        const snapshot = await query.limit(max).get();
+        return {
+            sessions: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+            last: snapshot.docs[snapshot.docs.length - 1] || after,
+            more: snapshot.docs.length === max
+        };
+    },
+
+    /**
+     * The few sessions Cash needs beyond the latest page (#34), each a small
+     * targeted query: the newest counted day (carry-forward and the opening
+     * check), past days still open (auto-close) and days closed without a
+     * count (review list, newest 30).
+     * @param {string} today YYYY-MM-DD
+     * @returns {Promise<Object[]>}
+     */
+    async loadCashSessionsNeeded(today) {
+        const coll = getDb().collection(col('cashManagement'));
+        const rows = (snap) => snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const [counted, open, uncounted] = await Promise.all([
+            coll.where('signedOut', '==', true).where('counted', '==', true).orderBy('date', 'desc').limit(1).get(),
+            coll.where('signedOut', '==', false).where('date', '<', today).get(),
+            coll.where('counted', '==', false).orderBy('date', 'desc').limit(30).get()
+        ]);
+        return [...rows(counted), ...rows(open), ...rows(uncounted)];
+    },
+
+    /**
      * Cash sessions for one local day (YYYY-MM-DD); usually one. One small
      * query instead of loadCashSessions() (which reads every session).
      * @param {string} date

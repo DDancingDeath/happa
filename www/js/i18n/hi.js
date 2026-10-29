@@ -457,6 +457,7 @@ export default {
     'ui.cash.sign_out_label': "बंद:",
     'ui.cash.suggested_from_last_count': "पिछली गिनती ({date}) से: ₹{amount}। गल्ले में अलग रकम हो तो बदल दें।",
     'ui.cash.tap_day_to_count': "असल गिनती दर्ज करने के लिए दिन पर दबाएँ:",
+    'ui.cash.load_older': "पुराने दिन देखें",
     'ui.cash.today_s_cash_status': "आज का नकद",
     'ui.cash.today_s_transactions': "आज के लेन-देन",
     'ui.cash.took_2_000_home': "जैसे, ₹2,000 घर ले गए",

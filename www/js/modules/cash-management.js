@@ -9,7 +9,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale } from '../utils/dates.js';
+import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale, localISODaysAgo } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
 import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { round2, outstandingDue } from '../utils/money.js';
@@ -39,6 +39,11 @@ function startCashCloseRun(session, expected, counted, difference) {
 /** Cash-tab bill picker values that are not bills. */
 const DUE_BILL_NONE = '__none__';
 const DUE_BILL_UNLINKED = '__nobill__';
+
+/** Sessions read when Cash opens (today and the one before), and per "Load older" (#34). */
+const RECENT_SESSIONS = 2;
+const OLDER_SESSIONS_PAGE = 30;
+const DUPLICATE_CHECK_DAYS = 31;
 
 const sessionRef = (sessionId) => {
     const name = window.getCollection ? window.getCollection('cashManagement') : 'cashManagement';
@@ -85,9 +90,7 @@ export class CashManagementManager {
      */
     static async init() {
         await UIManager.withLoading(async () => {
-            // Load all sessions once and cache
-            const sessions = await FirebaseService.loadCashSessions();
-            this.cachedSessions = sessions;
+            const sessions = await this.loadRecentSessions();
             
             // Auto sign-out any previous day sessions that weren't closed
             await this.autoSignOutPreviousDays(sessions);
@@ -101,6 +104,7 @@ export class CashManagementManager {
         this.updateUI();
         this.loadCustomerOptions();
         this.renderHistoryFromCache();
+        this.loadDuplicateDays().catch(e => console.warn('Cash: duplicate-day check failed:', e));
         
         // Listen for cash amount input changes for validation
         const signOutInput = document.getElementById('cashSignOutAmount');
@@ -379,6 +383,74 @@ export class CashManagementManager {
     }
 
     /**
+     * Reads the latest sessions (today and the one before, #34) and merges
+     * them into the cache; older days already loaded with "Load older" stay.
+     * @returns {Promise<Object[]>} the cache
+     */
+    static async loadRecentSessions() {
+        const [page, needed] = await Promise.all([
+            FirebaseService.loadCashSessionsPage(RECENT_SESSIONS),
+            FirebaseService.loadCashSessionsNeeded(todayLocalISO()).catch(err => {
+                console.warn('Cash: targeted session queries failed:', err?.message || err);
+                return [];
+            })
+        ]);
+        const fresh = new Map([...needed, ...page.sessions].map(s => [s.id, s]));
+        const kept = (this.cachedSessions || []).filter(s => !fresh.has(s.id));
+        if (!this.olderCursor) {
+            this.olderCursor = page.last;
+            this.hasOlderSessions = page.more;
+        }
+        this.cachedSessions = [...fresh.values(), ...kept];
+        return this.cachedSessions;
+    }
+
+    /**
+     * Owner only: days of the last month with more than one session (#38),
+     * read once per app session with one date-range query.
+     */
+    static async loadDuplicateDays() {
+        if (AppState.userRole !== 'owner' || this.duplicateDays) return;
+        const today = todayLocalISO();
+        const fromIso = localISODaysAgo(DUPLICATE_CHECK_DAYS);
+        try {
+            this.duplicateDays = duplicateSessionDays(await FirebaseService.loadCashSessionsBetween(fromIso, today));
+            if (this.duplicateDays.length > 0) this.renderHistoryFromCache();
+        } catch (err) {
+            console.warn('Cash: duplicate-day check failed:', err?.message || err);
+        }
+    }
+
+    /** Next page of older days, added to the cache ("Load older"). */
+    static async loadOlderSessions() {
+        if (!this.olderCursor) return;
+        const button = document.getElementById('cashLoadOlder');
+        if (button) button.disabled = true;
+        try {
+            const page = await FirebaseService.loadCashSessionsPage(OLDER_SESSIONS_PAGE, this.olderCursor);
+            const known = new Set((this.cachedSessions || []).map(s => s.id));
+            this.cachedSessions = [...(this.cachedSessions || []), ...page.sessions.filter(s => !known.has(s.id))];
+            this.olderCursor = page.last;
+            this.hasOlderSessions = page.more;
+            this.renderHistoryFromCache();
+        } catch (error) {
+            console.error('Error loading older cash days:', error);
+            UIManager.showToast(t('ui.cash.failed_load_history'));
+            if (button) button.disabled = false;
+        }
+    }
+
+    /** Puts a session (new or changed) into the cache. */
+    static cacheSession(session) {
+        if (!session?.id) return;
+        const list = this.cachedSessions || [];
+        const idx = list.findIndex(s => s.id === session.id);
+        if (idx === -1) list.unshift(session);
+        else list[idx] = session;
+        this.cachedSessions = list;
+    }
+
+    /**
      * Load today's cash session from cached sessions
      * @param {Array} sessions - Cached sessions array
      */
@@ -396,9 +468,10 @@ export class CashManagementManager {
     static async loadTodaySession() {
         try {
             const today = todayLocalISO(); // YYYY-MM-DD (local day)
-            const sessions = await FirebaseService.loadCashSessions();
+            const sessions = await FirebaseService.loadCashSessionsForDate(today);
             
             this.todaySession = sessionForDate(sessions, today);
+            if (this.todaySession) this.cacheSession(this.todaySession);
             
             if (this.todaySession) {
                 // Session exists - calculate transactions
@@ -735,7 +808,7 @@ export class CashManagementManager {
 
         try {
             // Compare with the last real count (days closed without a count are skipped, #101)
-            const sessions = await FirebaseService.loadCashSessions();
+            const sessions = this.cachedSessions || await this.loadRecentSessions();
             const lastCounted = lastCountedSession(sessions);
             
             if (lastCounted) {
@@ -1030,9 +1103,9 @@ export class CashManagementManager {
         if (!container) return;
 
         try {
-            const sessions = await FirebaseService.loadCashSessions();
-            this.cachedSessions = sessions; // Update cache
-            this.renderSessionList(container, sessions);
+            if (!this.cachedSessions) await this.loadRecentSessions();
+            if (this.todaySession) this.cacheSession(this.todaySession);
+            this.renderSessionList(container, [...this.cachedSessions]);
         } catch (error) {
             console.error('Error rendering history:', error);
             container.innerHTML = `<p style="text-align: center; color: #ef4444; padding: 20px;">${L('ui.cash.failed_load_history')}</p>`;
@@ -1047,14 +1120,18 @@ export class CashManagementManager {
      */
     static renderSessionList(container, sessions) {
         // Roles & access (#84): without "Past cash days" only today and days still waiting for a count
-        if (!can(AppState.userRole, 'oldCashSessions', AppState.settings?.roleAccess)) {
+        const pastDays = can(AppState.userRole, 'oldCashSessions', AppState.settings?.roleAccess);
+        if (!pastDays) {
             const today = todayLocalISO();
             sessions = sessions.filter(s => s.date === today || isNotCounted(s));
         }
         sessions.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+        const loadOlder = pastDays && this.hasOlderSessions
+            ? `<button type="button" id="cashLoadOlder" onclick="window.app.cashManagement.loadOlder()" style="display: block; margin: 12px auto 4px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; font-weight: 600;">${L('ui.cash.load_older')}</button>`
+            : '';
 
         if (sessions.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #6c757d; padding: 20px;">${L('ui.cash.no_history')}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: #6c757d; padding: 20px;">${L('ui.cash.no_history')}</p>${loadOlder}`;
             return;
         }
 
@@ -1069,7 +1146,9 @@ export class CashManagementManager {
                 <strong>${Helpers.escapeHtml(tn('ui.cash.days_not_counted', notCounted.length))}</strong>
                 <div style="margin-top: 4px;">${L('ui.cash.tap_day_to_count')} ${notCounted.map(s => `<a href="#" onclick="window.app.cashManagement.showDetails('${Helpers.escapeJsAttr(s.date)}'); return false;" style="color: #9a3412; font-weight: 600;">${Helpers.escapeHtml(dayLabel(s))}</a>`).join(', ')}</div>
             </div>` : '';
-        const dupDays = AppState.userRole === 'owner' ? duplicateSessionDays(sessions) : [];
+        const dupDays = AppState.userRole === 'owner'
+            ? [...new Set([...(this.duplicateDays || []), ...duplicateSessionDays(sessions)])].sort().reverse()
+            : [];
         const duplicates = dupDays.length > 0 ? `
             <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #991b1b;">
                 <strong>${Helpers.escapeHtml(tn('ui.cash.duplicate_days', dupDays.length))}</strong>
@@ -1123,13 +1202,16 @@ export class CashManagementManager {
                     ` : ''}
                 </div>
             `;
-        }).join('');
+        }).join('') + loadOlder;
     }
 
     static async showSessionDetails(sessionDate) {
         try {
-            const sessions = await FirebaseService.loadCashSessions();
-            const session = sessionForDate(sessions, sessionDate);
+            let session = sessionForDate(this.cachedSessions || [], sessionDate);
+            if (!session) {
+                session = sessionForDate(await FirebaseService.loadCashSessionsForDate(sessionDate), sessionDate);
+                if (session) this.cacheSession(session);
+            }
             
             if (!session) {
                 UIManager.showToast(t('msg.cash.session_not_found'));

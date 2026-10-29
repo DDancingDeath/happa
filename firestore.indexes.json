@@ -129,6 +129,98 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "cashManagement",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "signedOut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "counted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cashManagement",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "signedOut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cashManagement",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "counted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "dev_cashManagement",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "signedOut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "counted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "dev_cashManagement",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "signedOut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "dev_cashManagement",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "counted",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
