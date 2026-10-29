@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261029u-business-metrics';
+const BUILD_ID = '20261029v-money-page';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -70,6 +70,17 @@ function loadRateTrends() {
     return rateTrendsLoading;
 }
 
+// Money page (redesign phase 2): money.js and the calculation layer are imported on first use
+let money = null;
+let moneyLoading = null;
+function loadMoney() {
+    if (!moneyLoading) {
+        moneyLoading = import('./modules/money.js')
+            .then(m => (money = m.MoneyManager))
+            .catch(e => { moneyLoading = null; throw e; });
+    }
+    return moneyLoading;
+}
 // Load and inject HTML templates from separate .html files
 async function injectTemplates() {
     const templates = await TemplateLoader.loadAllTemplates();
@@ -121,6 +132,7 @@ function refreshForLanguage(lang) {
             const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks' }[DiagnosticsManager.activeTab];
             if (view) DiagnosticsManager[view]();
         },
+        money: () => money?.render(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
@@ -1163,6 +1175,14 @@ window.app = {
         savePolicies: () => HealthManager.savePolicies()
     },
 
+    // Money (redesign §5.2): money.js is imported on first use
+    money: {
+        init: (section) => loadMoney().then(m => m.init(section))
+            .catch(e => console.warn('Money not loaded:', e?.message || e)),
+        ...Object.fromEntries(['setSection', 'setPreset', 'step', 'loadOlder', 'buildHistory', 'toggleWithdrawalForm',
+            'saveWithdrawal', 'saveAccount', 'removeAccount', 'render']
+            .map(name => [name, (...args) => loadMoney().then(m => m[name](...args))]))
+    },
     // Reports › Trends / Product traffic: rate-trends.js is imported on first use
     rateTrends: {
         open: (section) => loadRateTrends().then(m => m.open(section))

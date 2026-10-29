@@ -58,6 +58,25 @@ describe('hand-worked example (docs/calculations.md, Worked example)', () => {
         expect(m.M6.total).toBeCloseTo(-110.96, 2);
     });
 
+    test('labour for a period: M7 = T-LAB-1 summed, M18 = each day\'s ⌈kg ÷ package⌉ × rate summed (utils/labour.js)', async () => {
+        const { labourSummary, labourToPayByDay } = await import('../../www/js/utils/labour.js');
+        const { billsInRange } = await import('../../www/js/utils/finance-calc.js');
+        const { toLocalISODate } = await import('../../www/js/utils/dates.js');
+        const settings = { laborRate: 6, labourPackageKg: 35 };
+        const bills = billsInRange(data.purchases, OCT.from, OCT.to);
+        expect(labourSummary(bills, settings).deducted.amount).toBe(moneySummary(input, OCT).M7);
+        const kgByDay = {};
+        data.purchases.filter(b => !O.isOpening(b)).forEach(b => {
+            const t = O.timeOf(b.timestamp ?? b.date);
+            if (!(t >= OCT.from && t < OCT.to)) return;
+            const day = toLocalISODate(new Date(t));
+            kgByDay[day] = (kgByDay[day] || 0) + (b.items || []).reduce((a, l) => a + (Number(l.qty ?? l.quantity) || 0), 0);
+        });
+        const M18 = Object.values(kgByDay).reduce((a, kg) => a + Math.ceil(kg / 35 - 1e-9) * 6, 0);
+        expect(M18).toBeGreaterThan(0);
+        expect(labourToPayByDay(bills, settings, b => toLocalISODate(new Date(O.timeOf(b.timestamp ?? b.date)))).amount).toBe(M18);
+    });
+
     test('O3 / O4 with counts (#220: cleared bills left out, dueAmount-only bills in)', () => {
         const d = outstandingTotals(data);
         expect(d).toEqual({ payable: { total: 5600, count: 2 }, receivable: { total: 253500, count: 6 } });

@@ -43,4 +43,5 @@
 @import url('css/notifications.css');
 
 /* Desktop layout (min-width media queries only) */
+@import url('css/insights.css');
 @import url('css/desktop.css');

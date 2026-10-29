@@ -11,7 +11,7 @@
  */
 
 import { computeFinanceSummary, billsInRange, profitByDay } from './finance-calc.js';
-import { activityBills, billTotal, outstandingDue, readLineItem, round2 } from './money.js';
+import { activityBills, billLabour, billTotal, outstandingDue, readLineItem, round2 } from './money.js';
 import { eventTime, createItemKeyResolver } from './stock-replay.js';
 import { parseAnyBillDate } from './dates.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
@@ -418,7 +418,7 @@ export function purchaseItems(purchases, items, { from, to }) {
     billsInRange(purchases || [], from, to).forEach(b => {
         const lines = (Array.isArray(b.items) ? b.items : []).map(l => ({ l, v: readLineItem(l) }));
         const value = lines.reduce((a, x) => a + x.v.total, 0);
-        const labour = num(b.laborCharges);
+        const labour = billLabour(b);
         let used = 0;
         lines.forEach(({ l, v }) => {
             const share = value > 0 ? labour * (v.total / value) : 0;
@@ -463,7 +463,7 @@ export function partySummary(src, kind, { from, to }) {
         r.spellings.set(raw, sp);
         r.total += billTotal(b);
         r.count++;
-        r.labour += num(b.laborCharges);
+        r.labour += billLabour(b);
         r.qty += (Array.isArray(b.items) ? b.items : []).reduce((a, l) => a + readLineItem(l).qty, 0);
         r.last = Math.max(r.last, t);
         rows.set(key, r);

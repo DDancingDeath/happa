@@ -44,6 +44,7 @@ const OWNER_ACCESS = Object.freeze({
 /** Page ids (navigation tab ids) that a permission controls. */
 export const TAB_PERMISSIONS = Object.freeze({
     finance: 'finance',
+    money: 'finance',
     reports: 'reports',
     analytics: 'analytics',
     'wholesale-sales': 'wholesale'

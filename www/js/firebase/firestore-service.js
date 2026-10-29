@@ -1902,6 +1902,41 @@ const FirebaseService = {
         await getDb().collection(col('rateStats')).doc('_meta').set(data, { merge: true });
     },
 
+    // ---- Month snapshots (redesign §7.6): monthStats/{YYYY-MM}, owner/manager only (rules) ----
+
+    /**
+     * Month snapshot docs from `fromMonth` on (document-id range, no index): at most `max` reads.
+     * @param {string} fromMonth 'YYYY-MM'
+     * @param {number} [max=40]
+     * @returns {Promise<Object<string, Object>>} month → doc
+     */
+    async loadMonthStats(fromMonth, max = 40) {
+        const snapshot = await getDb().collection(col('monthStats'))
+            .orderBy(firebase.firestore.FieldPath.documentId())
+            .startAt(String(fromMonth))
+            .limit(max)
+            .get();
+        const out = {};
+        snapshot.docs.forEach(doc => { if (/^\d{4}-\d{2}$/.test(doc.id)) out[doc.id] = { ...doc.data(), month: doc.id }; });
+        return out;
+    },
+
+    /**
+     * Writes whole month snapshots (set, idempotent), 400 per batch.
+     * @param {Array<Object>} docs buildSnapshot() results
+     * @returns {Promise<void>}
+     */
+    async saveMonthStats(docs) {
+        if (!docs || docs.length === 0) return;
+        const db = getDb();
+        const ref = db.collection(col('monthStats'));
+        for (let i = 0; i < docs.length; i += 400) {
+            const batch = db.batch();
+            docs.slice(i, i + 400).forEach(d => batch.set(ref.doc(d.month), d));
+            await batch.commit();
+        }
+    },
+
     /**
      * Applies an item import plan with batched writes (merge updates + new
      * docs). Never deletes. One batch for typical catalogues, so a failure

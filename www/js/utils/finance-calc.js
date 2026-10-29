@@ -22,7 +22,7 @@ import {
     collectEvents, cloneState, createItemKeyResolver, replayEvents, replayWithValues,
     stateValue, eventTime
 } from './stock-replay.js';
-import { activityBills, billTotal, outstandingDue, readLineItem, round2 } from './money.js';
+import { activityBills, billLabour, billTotal, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { parseAnyBillDate } from './dates.js';
 
@@ -339,7 +339,7 @@ export function computeFinanceSummary({
     const salesDue = round2(sales.reduce((a, b) => a + outstandingDue(b), 0));
     const purchasesTotal = round2(purchases.reduce((a, b) => a + billTotal(b), 0));
     // Labour deducted on purchase bills: not part of the goods' cost (owner question on #215).
-    const labourOf = (b) => num(b.laborCharges);
+    const labourOf = billLabour;
     const labour = round2(purchases.reduce((a, b) => a + labourOf(b), 0));
 
     let businessExp = 0;

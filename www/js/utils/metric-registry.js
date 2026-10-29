@@ -15,7 +15,7 @@ export const METRICS = Object.freeze({
     M4: { home: 'money.html', section: 'money-spending' },
     M5: { home: 'money.html', section: 'money-profit' },
     M6: { home: 'money.html', section: 'money-profit' },
-    M7: { home: 'money.html', section: 'money-profit' },
+    M7: { home: 'money.html', section: 'money-spending' },
     M8: { home: 'money.html', section: 'money-spending' },
     M9: { home: 'money.html', section: 'money-spending' },
     M10: { home: 'money.html', section: 'money-spending' },
@@ -26,6 +26,7 @@ export const METRICS = Object.freeze({
     M15: { home: 'money.html', section: 'money-worth' },
     M16: { home: 'money.html', section: 'money-profit' },
     M17: { home: 'money.html', section: 'money-profit' },
+    M18: { home: 'money.html', section: 'money-spending' },
     I1: { home: 'insights.html', section: 'insights-items' },
     I2: { home: 'insights.html', section: 'insights-items' },
     I3: { home: 'insights.html', section: 'insights-parties' },
@@ -37,8 +38,9 @@ export const METRICS = Object.freeze({
     I10: { home: 'insights.html', section: 'insights-actions' },
     I11: { home: 'insights.html', section: 'insights-items' },
     S4: { home: 'stock.html', section: 'stock' },
-    O3: { home: 'outstanding.html', section: 'outstanding' },
-    O4: { home: 'outstanding.html', section: 'outstanding' }
+    O3: { home: 'due.html', section: 'due' },
+    O4: { home: 'due.html', section: 'due' },
+    C9: { home: 'cash-management.html', section: 'cash-management' }
 });
 
 /**

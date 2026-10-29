@@ -32,7 +32,7 @@ setting is missing or invalid.
 
 | id | English | हिंदी | Manager default | Member default | Enforced |
 |---|---|---|---|---|---|
-| `finance` | Finance page | हिसाब-किताब पेज | on | off | client |
+| `finance` | Finance page (and the new Money page, which replaces it) | हिसाब-किताब पेज | on | off | client |
 | `reports` | Reports page | रिपोर्ट पेज | on | off | client |
 | `analytics` | Analytics page | विश्लेषण पेज | on | off | client |
 | `wholesale` | Wholesale page | थोक पेज | on | off | client |

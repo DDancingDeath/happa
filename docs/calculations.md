@@ -73,8 +73,8 @@ All for DAY = today.
 ### Labour: deducted and to pay (`utils/labour.js`)
 
 Two different questions, both shown on the Today Labour card (tap for each
-bill), in the day report (WhatsApp / image) and meant for Money › Spending
-when the redesign lands. One implementation: `labourSummary()` in
+bill), in the day report (WhatsApp / image) and, for a period, on Money ›
+Spending (M7, M18): Today is their home for today, Money › Spending for periods. One implementation: `labourSummary()` in
 `utils/labour.js`; oracle: `tests/oracle/labour.test.js`. Purchases only,
 OPENING records left out (`activityBills()`).
 
@@ -84,7 +84,7 @@ OPENING records left out (`activityBills()`).
 | T-LAB-2 | To pay labour: ₹Y (W kg ÷ K kg = P packages × ₹R) | W = Σ kg of every line on the day's purchase bills (`qty`, older lines `quantity`), with or without Labour ticked. K = Settings › Aadhat "Package weight for labour (kg)" (`settings/app.labourPackageKg`, default 35, allowed 1–200; anything else is 35). P = ⌈W ÷ K⌉ — **rounded up**: a part package is paid as a full one (1,000 kg ÷ 35 = 28.57 → 29); 0 kg → 0. R = the shared labour rate (`laborRate`, ₹ per heavy packet, default ₹6) — it is a per-packet rate, so it is used per package as is. Y = P × R. |
 | T-LAB-3 | ₹Z more / less than deducted | Z = \|Y − X\|: "more" when Y > X, "less" when Y < X, "matches" when they are within 50 paise. Not an error: they differ when Labour was unticked on a bill, packets were at or below the heavy weight, or the kg does not fill whole packages. |
 
-Applies when the redesign lands (Money › Spending is not on `main` yet): for
+On Money › Spending (M7, M18), for
 a period longer than a day, T-LAB-1 is the sum over
 the period; T-LAB-2 is the sum of each day's T-LAB-2 (labour is paid per day,
 so each day is rounded up on its own).
@@ -176,6 +176,7 @@ For one cash session's DAY. Only cash counts.
 | C6 | Deposits | Σ cash added to the drawer that day (❓ open: #103, what a deposit means). |
 | C7 | Expected cash | Opening + C1 + C4 + C6 − C2 − C5 − C3. |
 | C8 | Difference | Counted cash − C7 (shown as short / extra). |
+| C9 | Counted cash | Closing balance of the last signed-out, counted session (not "not counted"); the drawer term of M15. |
 
 ## Reports › Trends and Product traffic (`templates/rate-trends.html`, `modules/rate-trends.js`) — #65
 
@@ -234,6 +235,12 @@ Oracle: `tests/oracle/business-metrics.test.js`; accounting checks:
 (page "Money (layer)", "Insights (layer)"). Each figure has one home
 (`utils/metric-registry.js`).
 
+**Money page** (`templates/money.html`, `modules/money.js`) is the home of M1–M17. Each
+headline shows CMP against the previous period (from the loaded bills) and the same dates last
+year (from the bills when loaded, else from the month snapshots `monthStats/{YYYY-MM}`: one doc
+per month with M*, per-item and top-party totals and per-day sales and profit, built once by the
+owner and rolled for the current and previous month every 6 hours, `utils/month-snapshots.js`).
+
 | ID | On screen | Definition |
 |---|---|---|
 | M1 | Sales | Σ BILL-TOTAL of wholesale + retail bills with BILL-TIME in the period (OPENING left out); BILL-COUNT; split retail / wholesale; "of which still due" Σ BILL-DUE. Same as F1. |
@@ -242,7 +249,7 @@ Oracle: `tests/oracle/business-metrics.test.js`; accounting checks:
 | M4 | Business expenses | Σ business expenses (EXP-KIND), by category (the expense `type`; untagged ones are their own row). Same as F3. |
 | M5 | Bad debts | Dues to receive written off in the period, on the write-off date (as in F4). |
 | M6 | Profit | M3 − M4 − M5. **The** profit (#36); same as F4. "—" with a caveat while the cost of goods sold isn't known. |
-| M7 | Labour on purchases | Σ labour on the period's purchases. Shown as its own line under profit, **not** subtracted (owner decision 2026-10-26). |
+| M7 | Labour on purchases | Σ labour on the period's purchases = T-LAB-1 over the period (`labourSummary()`). Each bill's labour is read by `billLabour()` (`laborCharges`, older bills `labour`) everywhere: Spending, its breakdown, Statements, month snapshots, items and parties. **Not** subtracted from profit (owner decision 2026-10-26). Shown on Money › Spending with M18. |
 | M8 | Personal expenses | Σ expenses tagged personal. Same as F5. |
 | M9 | Withdrawals | Σ withdrawals dated in the period. Same as F11. |
 | M10 | Kept in business | M6 − M8 − M9. |
@@ -253,6 +260,7 @@ Oracle: `tests/oracle/business-metrics.test.js`; accounting checks:
 | M15 | Net worth | S4 + O4 + other accounts (owner-entered) + last counted drawer cash − O3 (owner decision #39, 2026-10-26; `netWorthTerms`). Each due counted once. |
 | M16 | Purchases | Σ BILL-TOTAL (after labour) of purchases with BILL-TIME in the period; BILL-COUNT; line value before labour and M7 as its two parts. |
 | M17 | Stock movement check | Opening stock value + purchases at line rate − M2 ± adjustments = closing (as F8). |
+| M18 | Labour to pay | T-LAB-2 for each day of the period (purchase bills by BILL-TIME, local day), each day rounded up on its own, summed (`labourToPayByDay()`). Money › Spending shows it under M7 with T-LAB-3's more / less / matches. |
 | I1 | Item sales and profit | Per catalogue item: Σ sale line totals, Σ their COGS, profit = sales − COGS, profit per ₹100 (AC10). |
 | I2 | Retail / wholesale | I1 split by bill type. |
 | I3 | Sales by customer | Per PARTY: Σ BILL-TOTAL, BILL-COUNT, last bill (AC11). "Stopped coming": bought in each of the same 3 calendar months last year, no bill for 60 days (`stoppedComingDays`). |

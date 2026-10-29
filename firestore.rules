@@ -1176,6 +1176,33 @@ service cloud.firestore {
       allow delete: if isOwnerIn('dev_users');
     }
 
+    // --- month snapshots (redesign §7.6): monthStats/{YYYY-MM} ---
+    // One doc per calendar month with that month's Money figures, per-item and
+    // top-party totals, so Money / Insights compare with last year without
+    // reading old bills. Built and rolled by owner/manager devices; read by them.
+    function validMonthStats(usersCol, docId) {
+      let d = request.resource.data;
+      return isManagerIn(usersCol)
+        && docId.matches('^[0-9]{4}-[0-9]{2}$')
+        && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale'])
+        && d.keys().hasAll(['month', 'v', 'm'])
+        && d.month == docId
+        && d.v is int
+        && d.m is map;
+    }
+
+    match /monthStats/{docId} {
+      allow read: if isManagerIn('users');
+      allow create, update: if validMonthStats('users', docId);
+      allow delete: if isOwnerIn('users');
+    }
+
+    match /dev_monthStats/{docId} {
+      allow read: if isManagerIn('dev_users');
+      allow create, update: if validMonthStats('dev_users', docId);
+      allow delete: if isOwnerIn('dev_users');
+    }
+
     // --- Test in Production (#217) ---
     // tipHealth/{deviceId}_{YYYYMMDD}: daily per-device counters, written with
     // set+merge and FieldValue.increment. Any approved user may create/update
