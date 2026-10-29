@@ -373,9 +373,11 @@ function defineSuite(prefix) {
             .set({ minClientVersion: 3, laborRate: 6, roleAccess: { manager: { shopSettings }, staff: {} } }));
         await seedApp(false);
         await assertFails(app('manager1').set({ laborRate: 8, labourUpdatedAt: 1, labourUpdatedBy: 'manager1' }, { merge: true }));
+        await assertFails(app('manager1').set({ labourPackageKg: 40 }, { merge: true }));
         await assertFails(app('manager1').set({ businessName: 'Aadhat', businessDetails: 'Main road' }, { merge: true }));
         await seedApp(true);
         await assertSucceeds(app('manager1').set({ laborRate: 8, labourUpdatedAt: 1, labourUpdatedBy: 'manager1' }, { merge: true }));
+        await assertSucceeds(app('manager1').set({ labourPackageKg: 40, labourUpdatedAt: 2, labourUpdatedBy: 'manager1' }, { merge: true }));
         await assertSucceeds(app('manager1').set({ checkThresholds: { cashOkRs: 50 }, checksUpdatedAt: 1 }, { merge: true }));
         await assertSucceeds(app('manager1').set({ businessName: 'Aadhat', businessDetails: 'Main road', businessUpdatedAt: 1 }, { merge: true }));
         await assertFails(app('manager1').set({ roleAccess: { manager: { shopSettings: true, finance: true } } }, { merge: true }));
@@ -383,6 +385,7 @@ function defineSuite(prefix) {
         await assertFails(app('manager1').set({ laborRate: 9, tipPolicies: {} }, { merge: true }));
         await assertFails(app('manager1').delete());
         await assertFails(app('staff1').set({ laborRate: 9 }, { merge: true }));
+        await assertFails(app('staff1').set({ labourPackageKg: 40 }, { merge: true }));
         await assertSucceeds(app('legacyOwner').set({ businessName: 'Owner set' }, { merge: true }));
     });
 

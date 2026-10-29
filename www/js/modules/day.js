@@ -5,6 +5,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { activityBills, outstandingDue, round2 } from '../utils/money.js';
+import { formatKg, labourCalcText, labourSummary } from '../utils/labour.js';
 import { parseAnyBillDate, todayLocalISO, displayLocale } from '../utils/dates.js';
 import { dueEvents, sumDueEvents, saleTimePayment } from '../utils/due-payments.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -152,8 +153,9 @@ export const DayManager = {
         }, 0);
         const totalExpenses = totalBusinessExpenses + totalPersonalExpenses;
 
-        // Calculate labor cost from purchases
-        const totalLaborCost = todayPurchases.reduce((sum, p) => sum + (p.laborCharges || p.labour || 0), 0);
+        // Labour (T-LAB-1 deducted from farmers, T-LAB-2 to pay labour)
+        const labour = labourSummary(todayPurchases, AppState.settings);
+        const totalLaborCost = labour.deducted.amount;
 
         // Calculate quantities
         let qtyPurchased = 0;
@@ -222,6 +224,7 @@ export const DayManager = {
         this.updateElement('todayTotalSales', formatCurrency(totalSales));
         this.updateElement('todaySaleCount', tn('ui.today.bills_count', todayWholesaleSales.length + todayRetailSales.length));
         this.updateElement('todayLaborCost', formatCurrency(totalLaborCost));
+        this.renderLabour(labour);
         
         // Expenses breakdown
         this.updateElement('todayBusinessExpenses', formatCurrency(totalBusinessExpenses));
@@ -272,7 +275,9 @@ export const DayManager = {
             sales: totalSales, saleCount: todayWholesaleSales.length + todayRetailSales.length,
             purchases: totalPurchases, purchaseCount: todayPurchases.length,
             expenses: totalExpenses, totalIn: totalCashIn, totalOut: totalCashOut,
-            dueReceived, duePaid
+            dueReceived, duePaid,
+            labourDeducted: labour.deducted.amount, labourDeductedBills: labour.deducted.bills,
+            labourToPay: labour.toPay
         }, session && session.date === todayIso ? session : null);
 
         // App health banner (#217): a live check below its target today (owner/manager)
@@ -351,6 +356,43 @@ export const DayManager = {
     updateElement(id, value) {
         const el = document.getElementById(id);
         if (el) el.textContent = value;
+    },
+
+    /**
+     * Today › Labour card: deducted from farmers (T-LAB-1), to pay labour (T-LAB-2) and the gap.
+     * @param {ReturnType<typeof labourSummary>} labour
+     */
+    renderLabour(labour) {
+        this.lastLabour = labour;
+        const { deducted, toPay, difference } = labour;
+        this.updateElement('todayLabourDeductedBills', tn('ui.today.labour_deducted_bills', deducted.bills));
+        this.updateElement('todayLabourToPay', formatCurrency(toPay.amount));
+        this.updateElement('todayLabourToPayCalc', labourCalcText(toPay, 'ui.today.labour_to_pay_calc'));
+        const diff = Math.abs(difference);
+        const key = diff < 0.5 ? 'ui.today.labour_same' : difference > 0 ? 'ui.today.labour_more' : 'ui.today.labour_less';
+        this.updateElement('todayLabourDiff', t(key, { amount: formatCurrency(diff) }));
+    },
+
+    /** Tap on the Labour card: today's purchase bills with kg, packets and labour deducted. */
+    showLabourBreakdown() {
+        const labour = this.lastLabour;
+        if (!labour) return Promise.resolve(false);
+        const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
+        const { deducted, toPay, rows } = labour;
+        const body = rows.length ? rows.map(({ bill, kg, packets, labour: amount }) => {
+            const name = [bill.billNumber ? `#${bill.billNumber}` : '', bill.customerName || bill.seller || ''].filter(Boolean).join(' ');
+            return `<tr><td>${esc(name || t('ui.reports.unknown'))}</td><td>${esc(formatKg(kg))}</td><td>${esc(packets)}</td><td>${esc(formatCurrency(amount))}</td></tr>`;
+        }).join('') : `<tr><td colspan="4">${esc(t('ui.today.no_purchases_today'))}</td></tr>`;
+        const packets = rows.reduce((sum, r) => sum + r.packets, 0);
+        const html = `
+            <table class="labour-breakdown-table">
+                <thead><tr><th>${esc(t('ui.today.labour_col_bill'))}</th><th>${esc(t('ui.today.labour_col_kg'))}</th><th>${esc(t('ui.today.labour_col_packets'))}</th><th>${esc(t('ui.today.labour_col_deducted'))}</th></tr></thead>
+                <tbody>${body}</tbody>
+                <tfoot><tr><th>${esc(t('ui.today.labour_total'))}</th><th>${esc(formatKg(toPay.kg))}</th><th>${esc(packets)}</th><th>${esc(formatCurrency(deducted.amount))}</th></tr></tfoot>
+            </table>
+            <p class="labour-breakdown-note"><strong>${esc(t('ui.today.labour_to_pay'))}</strong> ${esc(formatCurrency(toPay.amount))} ${esc(labourCalcText(toPay, 'ui.today.labour_to_pay_calc'))}</p>
+            <p class="labour-breakdown-note">${esc(t('ui.today.labour_note'))}</p>`;
+        return UIManager.showModalWithHtml(html, t('ui.today.labour_breakdown_title'));
     },
 
     /**

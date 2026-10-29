@@ -12,7 +12,7 @@ import { AuditService } from '../services/audit.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
-import { normalizeLabourSettings } from '../utils/money.js';
+import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, normalizeLabourSettings, normalizePackageKg } from '../utils/money.js';
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
 import { t } from '../i18n/index.js';
 import { auditActionLabel } from '../i18n/localize.js';
@@ -22,6 +22,7 @@ import { APP_IDENTITY } from '../config/app-identity.js';
 import { AuthManager } from '../auth/authentication.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
+const LABOUR_INPUTS = ['settingHeavyWeight', 'settingLaborRate', 'settingLabourPackageKg'];
 /** '1' = item names follow the app language, '0' = the user chose "Show item names in Hindi" (#143). */
 export const ITEM_NAMES_FOLLOW_LANG_KEY = 'aadhat.itemNamesFollowLang';
 
@@ -47,6 +48,13 @@ function setField(id, prop, value) {
     return el;
 }
 
+/** Typed package weight is blank (→ default) or within 1–200 kg. */
+export function packageKgInRange(value) {
+    if (String(value ?? '').trim() === '') return true;
+    const n = Number(value);
+    return Number.isFinite(n) && n >= LABOUR_PACKAGE_KG_MIN && n <= LABOUR_PACKAGE_KG_MAX;
+}
+
 /**
  * Settings Manager - Manages application settings
  * @class SettingsManager
@@ -64,7 +72,8 @@ export class SettingsManager {
         // Labour settings are shared by every device; the owner (or a manager allowed in Roles & access) changes them (#20)
         setField('settingHeavyWeight', 'value', labour.heavyWeightThreshold);
         setField('settingLaborRate', 'value', labour.laborRate);
-        ['settingHeavyWeight', 'settingLaborRate'].forEach(id => setField(id, 'disabled', !canEdit));
+        setField('settingLabourPackageKg', 'value', labour.labourPackageKg);
+        LABOUR_INPUTS.forEach(id => setField(id, 'disabled', !canEdit));
         const note = document.getElementById('labourSettingsNote');
         if (note) note.textContent = t(canEdit ? 'msg.settings.labour_saved_for_everyone' : LABOUR_OWNER_ONLY_KEY);
         setField('settingAutoLabor', 'checked', settings.autoLaborEnabled !== false);
@@ -150,17 +159,23 @@ export class SettingsManager {
         
         const rateInput = document.getElementById('settingLaborRate');
         const weightInput = document.getElementById('settingHeavyWeight');
+        const packageInput = document.getElementById('settingLabourPackageKg');
         const current = normalizeLabourSettings(AppState.settings);
+        const packageOk = !packageInput || packageKgInRange(packageInput.value);
+        if (!packageOk) packageInput.value = current.labourPackageKg;
         const typed = normalizeLabourSettings({
             laborRate: rateInput ? rateInput.value : current.laborRate,
-            heavyWeightThreshold: weightInput ? weightInput.value : current.heavyWeightThreshold
+            heavyWeightThreshold: weightInput ? weightInput.value : current.heavyWeightThreshold,
+            labourPackageKg: packageInput && packageOk ? packageInput.value : current.labourPackageKg
         });
-        const labourChanged = (rateInput || weightInput)
-            && (typed.laborRate !== current.laborRate || typed.heavyWeightThreshold !== current.heavyWeightThreshold);
+        const labourChanged = (rateInput || weightInput || packageInput)
+            && (typed.laborRate !== current.laborRate || typed.heavyWeightThreshold !== current.heavyWeightThreshold
+                || typed.labourPackageKg !== current.labourPackageKg);
         const labourWrite = labourChanged ? this.saveLabourSettings(typed) : Promise.resolve(false);
         
         UIManager.hapticFeedback('light');
-        UIManager.showToast(t('msg.settings.settings_saved_successfully'));
+        UIManager.showToast(t(packageOk ? 'msg.settings.settings_saved_successfully' : 'msg.settings.package_kg_range',
+            { min: LABOUR_PACKAGE_KG_MIN, max: LABOUR_PACKAGE_KG_MAX }));
         
         window.app?.items?.render?.();
         window.app?.billing?.loadItemsDropdown?.();
@@ -180,12 +195,14 @@ export class SettingsManager {
         if (!this.canEditShop()) {
             setField('settingLaborRate', 'value', current.laborRate);
             setField('settingHeavyWeight', 'value', current.heavyWeightThreshold);
+            setField('settingLabourPackageKg', 'value', current.labourPackageKg);
             UIManager.showToast(t(LABOUR_OWNER_ONLY_KEY));
             return false;
         }
         const next = normalizeLabourSettings({
             laborRate: values?.laborRate ?? current.laborRate,
-            heavyWeightThreshold: values?.heavyWeightThreshold ?? current.heavyWeightThreshold
+            heavyWeightThreshold: values?.heavyWeightThreshold ?? current.heavyWeightThreshold,
+            labourPackageKg: values?.labourPackageKg ?? current.labourPackageKg
         });
         this.applyLabourLocally(next);
         try {
@@ -211,7 +228,8 @@ export class SettingsManager {
         if (typeof appSettings?.businessName === 'string') AppState.settings.shopName = appSettings.businessName;
         if (typeof appSettings?.businessDetails === 'string') AppState.settings.businessDetails = appSettings.businessDetails;
         localStorage.setItem('settings', JSON.stringify(AppState.settings));
-        const hasShared = !!appSettings && (appSettings.laborRate !== undefined || appSettings.heavyWeightThreshold !== undefined);
+        const hasShared = !!appSettings && (appSettings.laborRate !== undefined || appSettings.heavyWeightThreshold !== undefined
+            || appSettings.labourPackageKg !== undefined);
         if (hasShared) {
             this.applyLabourLocally(normalizeLabourSettings(appSettings));
             return;
@@ -226,14 +244,16 @@ export class SettingsManager {
     /**
      * Put labour settings into AppState (+ the offline cache in localStorage) and
      * refresh the open purchase bill and the settings form.
-     * @param {{laborRate: number, heavyWeightThreshold: number}} labour
+     * @param {{laborRate: number, heavyWeightThreshold: number, labourPackageKg: number}} labour
      */
     static applyLabourLocally(labour) {
         AppState.settings.laborRate = labour.laborRate;
         AppState.settings.heavyWeightThreshold = labour.heavyWeightThreshold;
+        AppState.settings.labourPackageKg = normalizePackageKg(labour.labourPackageKg);
         localStorage.setItem('settings', JSON.stringify(AppState.settings));
         setField('settingLaborRate', 'value', labour.laborRate);
         setField('settingHeavyWeight', 'value', labour.heavyWeightThreshold);
+        setField('settingLabourPackageKg', 'value', AppState.settings.labourPackageKg);
         // Clean up the keys the old Admin → Configure screen wrote (never read by billing, #21)
         ['laborChargeRate', 'heavyWeightThreshold', 'autoLaborCharges'].forEach(key => localStorage.removeItem(key));
         if (document.getElementById('billTable')) window.app?.billing?.renderBill?.();

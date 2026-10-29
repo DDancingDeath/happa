@@ -150,6 +150,10 @@
 
             <label data-i18n="ui.settings.labour_per_heavy_packet">Labour per heavy packet (₹):</label>
             <input type="number" inputmode="decimal" id="settingLaborRate" placeholder="6" value="6" onchange="window.app.settings.save()" />
+
+            <label for="settingLabourPackageKg" data-i18n="ui.settings.labour_package_kg">Package weight for labour (kg):</label>
+            <input type="number" inputmode="decimal" id="settingLabourPackageKg" min="1" max="200" placeholder="35" value="35" onchange="window.app.settings.save()" />
+            <p class="setting-description" data-i18n="ui.settings.labour_package_kg_hint">Today › Labour: today's purchased kg ÷ this weight, rounded up, × labour per packet = to pay labour.</p>
             <p class="setting-description" id="labourSettingsNote"><span data-i18n="ui.settings.saved_for_everyone">Saved for everyone.</span></p>
 
             <label class="checkbox-label">

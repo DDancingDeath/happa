@@ -24,6 +24,7 @@ import { parseAnyBillDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
 import { firstStockTimes, stockKeyFor } from './stock-check.js';
+import { labourCalcText } from './labour.js';
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 
@@ -617,6 +618,10 @@ export function buildDayReportText({ dayKey, today = [], totals = null, shopName
         lines.push(tn('ui.anom.report_sales', Number(totals.saleCount) || 0, { amount: inr(totals.sales) }));
         lines.push(tn('ui.anom.report_purchases', Number(totals.purchaseCount) || 0, { amount: inr(totals.purchases) }));
         lines.push(t('ui.anom.report_expenses', { amount: inr(totals.expenses) }));
+        if (totals.labourToPay) {
+            lines.push(tn('ui.anom.report_labour_deducted', Number(totals.labourDeductedBills) || 0, { amount: inr(totals.labourDeducted) }));
+            lines.push(labourCalcText(totals.labourToPay, 'ui.anom.report_labour_to_pay', { amount: inr(totals.labourToPay.amount) }));
+        }
         lines.push(t('ui.anom.report_money', { moneyIn: inr(totals.totalIn), moneyOut: inr(totals.totalOut) }));
         lines.push(t('ui.anom.report_due', { received: inr(totals.dueReceived), paid: inr(totals.duePaid) }));
     }
