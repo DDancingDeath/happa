@@ -351,6 +351,7 @@ export const InsightsManager = {
         const src = { purchases: AppState.purchaseHistory || [], wholesaleSales: AppState.salesHistory || [], retailSales: AppState.retailSalesHistory || [] };
         if (!this.covered(r.from)) {
             this.html('insightsPartiesTakeaway', `<p>${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(r) }))}</p>`);
+            ['insightsCustomersTable', 'insightsSuppliersTable', 'insightsStopped'].forEach(id => this.html(id, ''));
             return;
         }
         const kind = this.partyKind;

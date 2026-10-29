@@ -288,3 +288,20 @@ describe('round-2 review fixes', () => {
         document.querySelectorAll('#insightsBoughtTable tbody tr').forEach(tr => expect(tr.children.length).toBe(3));
     });
 });
+
+describe('round-3 review fixes', () => {
+    test('Parties: stepping to a period that is not loaded leaves no customers, suppliers or stopped-coming of the period before', () => {
+        AppState.historyLoadedFrom = new Date(2026, 8, 1).getTime();
+        InsightsManager.init('parties');
+        InsightsManager.step(-1);
+        expect(document.querySelectorAll('#insightsCustomersTable tbody tr').length).toBeGreaterThan(0);
+        expect(document.getElementById('insightsStopped').innerHTML).not.toBe('');
+        InsightsManager.setPartyKind('purchases');
+        expect(document.querySelectorAll('#insightsSuppliersTable tbody tr').length).toBeGreaterThan(0);
+        InsightsManager.step(-1);
+        expect(document.getElementById('insightsPartiesTakeaway').textContent).toMatch(/not loaded/);
+        ['insightsCustomersTable', 'insightsSuppliersTable', 'insightsStopped'].forEach(id => {
+            expect(document.getElementById(id).innerHTML).toBe('');
+        });
+    });
+});
