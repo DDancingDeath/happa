@@ -8,7 +8,7 @@
 
 import { billsInRange } from './finance-calc.js';
 import { activityBills, billTotal, isOpeningRecord, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
-import { saleTimePayment, entryParts, entryTime } from './due-payments.js';
+import { saleTimePayment, entryParts, entryTime, dueEvents } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayWithValues, eventTime } from './stock-replay.js';
 import { normalizePartyName } from './aging.js';
 import { parseAnyBillDate } from './dates.js';
@@ -27,13 +27,14 @@ const partyOf = (b) => String(b?.customerName ?? b?.supplierName ?? '').trim();
 
 /**
  * Day book (ST1): every bill, expense, withdrawal and due payment of [from, to), in time order.
+ * Due payments come from the bills and the range's cash-session legs (de-duplicated by id, as M12).
  * @param {Object} src {purchases, wholesaleSales, retailSales, expenses, withdrawals}
  * @param {{from: number, to: number}} range
- * @param {{personal?: boolean}} [opts] personal: false leaves personal expenses out (no personalExpenses permission)
+ * @param {{personal?: boolean, sessions?: Array}} [opts] personal: false leaves personal expenses out (no personalExpenses permission)
  * @returns {{rows: Array<{t: ?number, kind: string, billNo: string, party: string, amount: number, cash: number, online: number, due: number, note: string}>,
  *   totals: {sales: number, purchases: number, expenses: number, withdrawals: number, dueReceived: number, duePaid: number, salesCount: number, purchaseCount: number}}}
  */
-export function dayBook(src, { from, to }, { personal = true } = {}) {
+export function dayBook(src, { from, to }, { personal = true, sessions = [] } = {}) {
     const rows = [];
     const totals = { sales: 0, purchases: 0, expenses: 0, withdrawals: 0, dueReceived: 0, duePaid: 0, salesCount: 0, purchaseCount: 0 };
     const addBills = (list, kind) => billsInRange(list || [], from, to).forEach(b => {
@@ -59,18 +60,14 @@ export function dayBook(src, { from, to }, { personal = true } = {}) {
         rows.push({ t, kind: 'withdrawal', billNo: '', party: String(w.person || '').trim(), amount: num(w.amount), cash: num(w.amount), online: 0, due: 0, note: String(w.purpose || '') });
         totals.withdrawals += num(w.amount);
     });
-    [['purchase', src.purchases], ['retail', src.retailSales], ['wholesale', src.wholesaleSales]].forEach(([type, list]) => (list || []).forEach(b => {
-        (Array.isArray(b.payments) ? b.payments : []).forEach(e => {
-            const t = entryTime(e);
-            if (!Number.isFinite(t) || t < from || t >= to) return;
-            const p = entryParts(e);
-            if (p.writeOff) return;
-            const amount = round2(p.cash + p.online);
-            const kind = type === 'purchase' ? 'duePaid' : 'dueReceived';
-            rows.push({ t, kind, billNo: billNo(b), party: partyOf(b), amount, cash: p.cash, online: p.online, due: 0, note: '' });
-            totals[kind] += amount;
-        });
-    }));
+    const bills = { purchase: src.purchases || [], retail: src.retailSales || [], wholesale: src.wholesaleSales || [] };
+    dueEvents({ bills, sessions, from, to }).forEach(e => {
+        const amount = round2(e.cash + e.online);
+        if (amount === 0) return;
+        const kind = e.direction === 'paid' ? 'duePaid' : 'dueReceived';
+        rows.push({ t: Number.isFinite(e.at) ? e.at : null, kind, billNo: e.billNo || '', party: String(e.party || '').trim(), amount, cash: e.cash, online: e.online, due: 0, note: '' });
+        totals[kind] += amount;
+    });
     rows.sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
     Object.keys(totals).forEach(k => { if (!/Count$/.test(k)) totals[k] = round2(totals[k]); });
     return { rows, totals };

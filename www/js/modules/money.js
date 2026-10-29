@@ -211,8 +211,11 @@ export const MoneyManager = {
         return Number.isFinite(from) && from >= historyLoadedFrom();
     },
 
-    /** Cash sessions for a range (their due-payment legs count payments on bills no longer loaded). */
-    sessions({ from, to }) {
+    /**
+     * Cash sessions for a range (their due-payment legs count payments on bills no longer loaded).
+     * `onLoad` runs when a pending load settles (Statements re-renders with them).
+     */
+    sessions({ from, to }, onLoad = null) {
         if (isFullHistoryLoaded()) return { list: [], complete: true };
         const end = Math.min(to, Date.now());
         if (!Number.isFinite(from) || end - from > 62 * 86400000) return { list: [], complete: false };
@@ -221,15 +224,22 @@ export const MoneyManager = {
         if (hit && hit.list && Date.now() - hit.at < SESSION_TTL_MS) return { list: hit.list, complete: true };
         if (!hit || (!hit.pending && Date.now() - hit.at >= SESSION_TTL_MS)) {
             const [a, b] = key.split('|');
-            this.sessionCache.set(key, { pending: true, at: Date.now(), list: hit?.list || null });
+            const waiters = new Set();
+            this.sessionCache.set(key, { pending: true, at: Date.now(), list: hit?.list || null, waiters });
+            const settle = () => waiters.forEach(fn => {
+                try { fn(); } catch (e) { console.error('Money: sessions listener failed:', e); }
+            });
             Promise.resolve(FirebaseService.loadCashSessionsBetween?.(a, b)).then(list => {
                 this.sessionCache.set(key, { pending: false, at: Date.now(), list: list || [] });
                 if (this.isOpen()) this.render();
+                settle();
             }).catch(e => {
                 console.error('Money: loading cash sessions failed:', e);
                 this.sessionCache.set(key, { pending: false, at: Date.now(), list: null });
+                settle();
             });
         }
+        if (onLoad) this.sessionCache.get(key)?.waiters?.add(onLoad);
         return { list: hit?.list || [], complete: false };
     },
 

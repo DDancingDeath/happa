@@ -117,7 +117,7 @@ export function saleTimePayment(bill) {
  * @param {Object[]} [args.sessions] Cash sessions whose `duePayments` to include
  * @param {number} args.from Inclusive start (ms)
  * @param {number} args.to Exclusive end (ms)
- * @returns {Array<{id: string, direction: 'received'|'paid', cash: number, online: number, writeOff: number, at: number, party: string, billId: ?string}>}
+ * @returns {Array<{id: string, direction: 'received'|'paid', cash: number, online: number, writeOff: number, at: number, party: string, billId: ?string, billNo: string}>}
  */
 export function dueEvents({ bills = {}, sessions = [], from, to }) {
     const inRange = (t) => Number.isFinite(t) && t >= from && t < to;
@@ -137,7 +137,8 @@ export function dueEvents({ bills = {}, sessions = [], from, to }) {
                 seen.add(id);
                 events.push({
                     id, direction: directionFor(billType), ...entryParts(entry), ...(opening ? { writeOff: 0 } : {}), at,
-                    party: bill.customerName || bill.supplierName || '', billId: bill.id != null ? String(bill.id) : null
+                    party: bill.customerName || bill.supplierName || '', billId: bill.id != null ? String(bill.id) : null,
+                    billNo: String(bill.billNumber || bill.billNo || '')
                 });
             });
         });
@@ -153,7 +154,8 @@ export function dueEvents({ bills = {}, sessions = [], from, to }) {
             seen.add(id);
             events.push({
                 id, direction: leg.type === 'paid' ? 'paid' : 'received', ...legParts(leg), writeOff: 0,
-                at, party: leg.customer || '', billId: leg.billId != null ? String(leg.billId) : null
+                at, party: leg.customer || '', billId: leg.billId != null ? String(leg.billId) : null,
+                billNo: String(leg.billNumber || '')
             });
         });
     });

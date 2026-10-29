@@ -10,6 +10,8 @@ import fc from 'fast-check';
 import * as O from '../../../tests/oracle/oracle.js';
 import { generateShop } from '../../../tests/fixtures/generator.js';
 import { StatementsManager } from '../modules/statements.js';
+import { MoneyManager } from '../modules/money.js';
+import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { dayBook, partyLedger, partyChoices, itemLedger, exportLines, toCsv, csvCell, plainLabel, isoMinute, CSV_ENGLISH_KEY } from '../utils/statements.js';
 import { t } from '../i18n/index.js';
@@ -43,6 +45,8 @@ beforeEach(() => {
     AppState.userRole = 'owner';
     AppState.settings = {};
     document.body.innerHTML = TEMPLATE;
+    MoneyManager.sessionCache = new Map();
+    jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
     Object.assign(StatementsManager, { kind: null, day: null, month: null, partyKind: 'customer', partyKey: null, itemKey: null, csvFrom: null, csvTo: null, current: null });
 });
 afterEach(() => {
@@ -268,5 +272,62 @@ describe('Statements page', () => {
         StatementsManager.open('day');
         StatementsManager.set('day', '2026-09-30');
         expect(document.getElementById('statementsDoc').textContent).toMatch(/not loaded/);
+    });
+});
+
+describe('payments on old bills with part of the history loaded (round-3 review)', () => {
+    const num = (s) => Number(String(s).replace(/[^\d.-]/g, ''));
+    const SESSION = {
+        id: 's-2026-10-20', date: '2026-10-20', signedOut: true, closingBalance: 0,
+        duePayments: [{ id: 'pay-old', billId: 'w-may', billType: 'wholesale', billNumber: 'W-MAY', type: 'received', customer: 'Old Buyer', cash: 500, online: 0, timestamp: '2026-10-20T11:00:00' }]
+    };
+    const flush = async () => { for (let i = 0; i < 5; i++) await Promise.resolve(); };
+
+    test('a 5-month-old due cleared this month is in the month statement (M12, M14) and the day book, as on Money › Cash', async () => {
+        AppState.historyLoadedFrom = new Date(2026, 9, 1).getTime();
+        MoneyManager.sessionCache = new Map();
+        MoneyManager.summaryCache = { sig: null, map: new Map(), computed: 0 };
+        Object.assign(MoneyManager, { snapshots: {}, snapshotsLoaded: true, section: 'cash' });
+        const load = jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([SESSION]);
+        document.getElementById('statements').classList.add('active');
+        const val = (id) => num(document.querySelector(`#statementsDoc [data-metric-export="${id}"]`).textContent);
+
+        StatementsManager.open('month');
+        expect(document.getElementById('statementsDoc').textContent).toMatch(/payments on old bills may be missing/);
+        await flush();
+        expect(load).toHaveBeenCalled();
+        expect(document.getElementById('statementsDoc').textContent).not.toMatch(/payments on old bills may be missing/);
+        const r = { from: new Date(2026, 9, 1).getTime(), to: NOW + 1 };
+        const base = { state: {}, from: -Infinity };
+        const before = moneySummary({ ...data, base }, r);
+        const after = moneySummary({ ...data, base, sessions: [SESSION] }, r);
+        expect(after.M12.total).toBe(before.M12.total + 500);
+        expect(val('M12')).toBe(Math.round(after.M12.total));
+        expect(val('M14')).toBe(Math.round(after.M14));
+
+        document.body.insertAdjacentHTML('beforeend', fs.readFileSync(path.join(ROOT, 'www/templates/money.html'), 'utf8'));
+        document.getElementById('money').classList.add('active');
+        MoneyManager.init('cash');
+        expect(num(document.getElementById('moneyIn').textContent)).toBe(val('M12'));
+        expect(num(document.getElementById('moneyNetCash').textContent)).toBe(val('M14'));
+
+        StatementsManager.open('day');
+        StatementsManager.set('day', '2026-10-20');
+        await flush();
+        const row = [...document.querySelectorAll('#statementsDoc tbody tr')].find(tr => /W-MAY/.test(tr.textContent));
+        expect(row.textContent).toMatch(/Old Buyer/);
+        const { totals } = dayBook(data, { from: new Date(2026, 9, 20).getTime(), to: DAY[0] }, { sessions: [SESSION] });
+        const plain = dayBook(data, { from: new Date(2026, 9, 20).getTime(), to: DAY[0] });
+        expect(totals.dueReceived).toBe(plain.totals.dueReceived + 500);
+        expect(StatementsManager.current.share).toMatch(new RegExp(`${t('ui.statements.t_due_received')}: ₹${totals.dueReceived.toLocaleString('en-IN')}`));
+    });
+
+    test('a payment on a loaded bill and its session leg count once', () => {
+        const bill = data.purchases.find(b => b.id === 'p2');
+        const leg = { id: bill.payments[0].id, billId: 'p2', type: 'paid', customer: 'Ram Lal', cash: 400, online: 0, timestamp: bill.payments[0].date };
+        const plain = dayBook(data, { from: DAY[0], to: DAY[1] });
+        const withLeg = dayBook(data, { from: DAY[0], to: DAY[1] }, { sessions: [{ id: 's', date: '2026-10-21', duePayments: [leg] }] });
+        expect(withLeg.totals).toEqual(plain.totals);
+        expect(withLeg.rows.length).toBe(plain.rows.length);
     });
 });
