@@ -3,7 +3,8 @@
  * payment (RENT-12) as WhatsApp text, a printer/image canvas and a PDF; the
  * tenant's receipts list (reprint) and void. Loaded with import() by
  * rentals.js only when a receipt is opened, so Rentals itself stays small.
- * Receipts are issued by rent-store.js recordPayment() with the payment.
+ * Receipts are issued by rent-store.js recordPayment() with the payment, or
+ * later here (Issue receipt) for a payment saved without one.
  * @module rentals/rent-receipt
  */
 
@@ -18,6 +19,7 @@ import { round2 } from '../utils/money.js';
 import { monthLabel, dateLabel, PAYMENT_MODES } from './rent-math.js';
 import { typedPlace, UNIT_TYPES } from './rent-views.js';
 import * as store from './rent-store.js';
+import * as rs from './rent-receipt-store.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
@@ -59,9 +61,10 @@ export function receiptRows(r, lang = getLang()) {
     if (paidEarlier(r) > 0) rows.push([tr('ui.rcpt.paid_earlier'), inr(paidEarlier(r))]);
     rows.push(
         [tr('ui.rcpt.paid_now'), inr(r.paid), true],
-        [tr('ui.rcpt.mode'), tr(`ui.rcpt.mode_${mode}`)],
-        [tr('ui.rcpt.balance'), inr(r.balance), true]
+        [tr('ui.rcpt.mode'), tr(`ui.rcpt.mode_${mode}`)]
     );
+    if (cleanText(r.ref)) rows.push([tr('ui.rcpt.ref'), cleanText(r.ref)]);
+    rows.push([tr('ui.rcpt.balance'), inr(r.balance), true]);
     return rows;
 }
 
@@ -216,10 +219,11 @@ async function shareFile(blob, filename) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ---------- dialogs (env from rentals.js: dialog, linkOf(leaseId), canVoid) ----------
+// ---------- dialogs (env from rentals.js: dialog, rcOf(charge), linkOf(leaseId), canVoid, head) ----------
 
 let current = null;
 let list = [];
+let missing = [];
 
 const fileName = (r, ext) => `${String(r.no || 'receipt').replace(/[^\w-]/g, '')}.${ext}`;
 
@@ -233,8 +237,10 @@ function ensureCss() {
 }
 
 /** Receipt dialog: preview and WhatsApp / Print / Image / PDF (+ Cancel receipt for owner/manager). */
-export function showReceipt(env, r) {
+export function showReceipt(env, rcpt) {
     ensureCss();
+    // Business name and address come from Settings › Rentals (not stored on the receipt).
+    const r = { ...rcpt, biz: env.head?.biz || '', bizAddr: env.head?.bizAddr || '' };
     current = { env, r };
     const lang = getLang();
     const h = headLines(r, lang);
@@ -261,7 +267,7 @@ export async function showHistory(env, tenantId) {
     ensureCss();
     const name = store.snapshot().tenants.find(x => x.id === tenantId)?.name || '';
     try {
-        list = await store.listReceipts(tenantId);
+        [list, missing] = await Promise.all([rs.listReceipts(tenantId), rs.withoutReceipt(tenantId, env.canVoid)]);
     } catch (e) {
         console.warn('Receipts not loaded:', e?.code || e);
         UIManager.showToast(t('msg.rent.could_not_load'), 'error');
@@ -273,20 +279,48 @@ export async function showHistory(env, tenantId) {
                 <div class="rent-sub">${esc(dateLabel(r.date))} · ${esc((r.months || []).map(m => monthLabel(m, lang)).join(', '))} · ${esc(inr(r.paid))}</div></div>
             <button type="button" class="rent-btn rent-btn-small" onclick="window.app.rentals.receiptAction('open', '${js(r.id)}')">${esc(t('ui.rcpt.open'))}</button>
         </div>`).join('');
+    const unpaid = missing.map((x, i) => `<div class="rent-rcpt-item">
+            <div class="rent-sub">${esc(dateLabel(x.entry.date))} · ${esc(monthLabel(x.charge.month, lang))} · ${esc(inr(x.entry.amount))}</div>
+            <button type="button" class="rent-btn rent-btn-small rent-btn-primary" onclick="window.app.rentals.receiptAction('issue', '${i}')">${esc(t('ui.rcpt.issue'))}</button>
+        </div>`).join('');
     current = { env, r: null };
     return env.dialog(`<h3>🧾 ${esc(t('ui.rcpt.history_title', { name: cleanText(name) }))}</h3>
+        ${unpaid ? `<p class="rent-label">${esc(t('ui.rcpt.without'))}</p>${unpaid}` : ''}
         ${rows || `<p class="rent-empty">${esc(t('ui.rcpt.none'))}</p>`}
         <p class="rent-help">${esc(t('ui.rcpt.history_note'))}</p>`, { info: true });
 }
 
+async function issue(env, x) {
+    try {
+        const r = await rs.issueReceipt(x.charge.id, x.pi, env.rcOf(x.charge));
+        if (!r) return showHistory(env, x.charge.tenantId);
+        UIManager.showToast(t('msg.rent.receipt_issued', { no: r.no }), 'success');
+        AuditService.log('RENT_RECEIPT_ISSUE', { chargeId: x.charge.id, pi: x.pi, no: r.no }).catch(e => console.warn('Rentals audit entry not written:', e?.code || e));
+        return showReceipt(env, r);
+    } catch (e) {
+        console.error('Receipt not issued:', e);
+        UIManager.showToast(t(e?.code === 'permission-denied' ? 'msg.rent.not_allowed' : 'msg.rent.save_failed'), 'error');
+        return false;
+    }
+}
+
 async function voidReceipt(env, r) {
-    const ok = await env.dialog(`<h3>${esc(t('ui.rcpt.void_title', { no: r.no }))}</h3>
+    const asked = env.dialog(`<h3>${esc(t('ui.rcpt.void_title', { no: r.no }))}</h3>
         <p class="rent-help">${esc(t('ui.rcpt.void_help'))}</p>
         <label class="rent-label">${esc(t('ui.rcpt.void_reason'))}<input id="rentVoidReason" type="text" maxlength="200"></label>`);
-    if (!ok) return false;
-    const reason = (document.getElementById('rentVoidReason')?.value || '').trim();
+    // Save stays off until there is a reason (the rules refuse a cancel without one).
+    const input = document.getElementById('rentVoidReason');
+    const save = document.querySelector('#rentDialog .rent-dialog-actions .rent-btn-primary');
+    const sync = () => { if (save) save.disabled = !input?.value.trim(); };
+    input?.addEventListener('input', sync);
+    sync();
+    const ok = await asked;
+    const reason = (input?.value || '').trim();
+    const shown = document.getElementById('rentVoidReason');
+    if (save && (!shown || shown === input)) save.disabled = false;
+    if (!ok || !reason) return false;
     try {
-        await store.voidReceipt(r.id, reason);
+        await rs.voidReceipt(r.id, reason);
         UIManager.showToast(t('msg.rent.receipt_voided', { no: r.no }), 'success');
         AuditService.log('RENT_RECEIPT_VOID', { receiptId: r.id, no: r.no, reason }).catch(e => console.warn('Rentals audit entry not written:', e?.code || e));
         return true;
@@ -302,6 +336,10 @@ export async function action(env, name, id) {
     if (name === 'open') {
         const r = list.find(x => x.id === id);
         if (r) showReceipt(env, r);
+        return;
+    }
+    if (name === 'issue') {
+        if (missing[Number(id)]) await issue(env, missing[Number(id)]);
         return;
     }
     const r = current?.r;

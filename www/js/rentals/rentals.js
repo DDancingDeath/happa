@@ -441,21 +441,14 @@ async function pay(leaseId) {
     const mode = PAYMENT_MODES.includes(val('rentPayMode')) ? val('rentPayMode') : 'cash';
     const ref = val('rentPayRef');
     const date = val('rentPayDate') || todayLocalISO();
-    const d = store.snapshot();
-    const ix = index(d);
-    const s = await defaults();
-    const lp = linkPlace(ix, charge?.unitId);
-    const rc = {
-        tenantName: ix.tenants.get(charge?.tenantId)?.name || charge?.tenantName || '',
-        place: lp.place || charge?.unitLabel || '', ut: lp.unitType || null, biz: headerName(s), bizAddr: s.receiptAddress || ''
-    };
     try {
-        const res = await store.recordPayment(id, { amount, mode, ref, date }, rc);
-        UIManager.showToast(t('msg.rent.payment_saved', { amount: formatINR(res.amount) }), 'success');
+        const res = await store.recordPayment(id, { amount, mode, ref, date }, rcOf(charge));
+        const no = res.noReceipt;
+        UIManager.showToast(t(no ? 'msg.rent.payment_saved_no_receipt' : 'msg.rent.payment_saved', { amount: formatINR(res.amount) }), no ? 'warning' : 'success');
         AuditService.log('RENT_PAYMENT', {
             chargeId: id, month: charge?.month || '', amount: res.amount, mode, tenant: charge?.tenantName || '', receipt: res.receipt?.no || ''
         }).catch(auditWarn);
-        if (res.receipt) void receiptUi('showReceipt', res.receipt);
+        if (res.receipt || no) void receiptUi(no ? 'showHistory' : 'showReceipt', no ? charge?.tenantId : res.receipt);
     } catch (e) {
         const key = e?.message === 'amount' ? 'msg.rent.bad_amount'
             : e?.message === 'over' ? 'msg.rent.more_than_due'
@@ -473,10 +466,19 @@ function fillDue(select) {
 
 // ---------- Receipts (rent-receipt.js, loaded on first use) ----------
 
-/** Runs a rent-receipt.js function with what it needs from here (dialog, tenant link, who may cancel). */
+/** Unit words on a receipt of charge `c`. */
+function rcOf(c) {
+    const lp = linkPlace(index(store.snapshot()), c?.unitId);
+    return { place: lp.place || c?.unitLabel || '', ut: lp.unitType || null };
+}
+
+/** Runs a rent-receipt.js function with what it needs from here (dialog, header, tenant link, owner/manager). */
 function receiptUi(fn, ...args) {
-    return import('./rent-receipt.js')
-        .then(m => m[fn]({ dialog, linkOf: (id) => linkFor(findLease(id)), canVoid: isManager() }, ...args))
+    return Promise.all([import('./rent-receipt.js'), defaults()])
+        .then(([m, s]) => m[fn]({
+            dialog, rcOf, linkOf: (id) => linkFor(findLease(id)), canVoid: isManager(),
+            head: { biz: headerName(s), bizAddr: s.receiptAddress || '' }
+        }, ...args))
         .catch((e) => {
             console.error('Receipt not shown:', e);
             UIManager.showToast(t('msg.rent.could_not_load'), 'error');

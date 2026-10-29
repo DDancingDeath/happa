@@ -372,8 +372,9 @@ small button to view the other business's section when the user may see it
 | Rentals: defaults for new leases (due day, yearly %, electricity rate, tenant link), business name and address on rent receipts and tenant pages | Rentals owner and managers | owner and Rentals managers | `rent_settings/default` (+ `dev_`), read only when this section is shown, a tenant moves in or a payment is recorded |
 
 Rent receipts (`rent_receipts`, numbered by `rent_counters/receipts_<year>`): issued by anyone with a
-rentals role with the payment they record; never edited or deleted; only the owner and Rentals
-managers cancel one (void, with an audit entry).
+rentals role with the payment they record; a payment saved without one gets it later from its writer or
+from the owner / a Rentals manager (Issue receipt); never edited or deleted; only the owner and Rentals
+managers cancel one (void, with a required reason and an audit entry).
 
 Members (Aadhat or Rentals) see only Common. Old routes keep working: `settings`, `admin-configure`
 and `settings-aadhat` (→ Aadhat), `settings-shop`, `settings-rentals`, `settings-roles`; Admin's old

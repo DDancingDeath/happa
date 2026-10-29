@@ -1,8 +1,9 @@
 /**
  * Rentals › Record payment offers the receipt (RENT-12): the payment carries the
- * names for the receipt (tenant, place without the type word + its type, the
- * receipt header and address from Settings › Rentals), and rent-receipt.js is
- * loaded only then (also for a tenant's Receipts list).
+ * place for the receipt (without the type word + its type), the receipt shows the
+ * header and address from Settings › Rentals, and rent-receipt.js is loaded only
+ * then (also for a tenant's Receipts list). Saved without a receipt: a warning
+ * and the Receipts list with Issue receipt.
  */
 jest.mock('../rentals/rent-store.js', () => ({
     snapshot: jest.fn(), truncatedKeys: () => [], isAttached: () => false, attach: jest.fn(), detach: jest.fn(),
@@ -18,6 +19,7 @@ import * as receipt from '../rentals/rent-receipt.js';
 import { RentalsModule, _test } from '../rentals/rentals.js';
 import { normalizeRentSettings, monthKey } from '../rentals/rent-math.js';
 import { AuditService } from '../services/audit.js';
+import { UIManager } from '../ui/ui-manager.js';
 
 const flush = () => new Promise(r => setTimeout(r));
 const MONTH = monthKey();
@@ -49,22 +51,29 @@ test('a payment carries the receipt names, then the receipt opens (module loaded
     await done;
     await flush();
     expect(store.recordPayment).toHaveBeenCalledWith(CHARGE.id, expect.objectContaining({ amount: 2000, mode: 'cash' }), {
-        tenantName: 'Ram Kumar', place: '2B, Gupta Bhawan', ut: 'flat', biz: 'Sharma Rentals', bizAddr: 'Main Road, Kanpur'
+        place: '2B, Gupta Bhawan', ut: 'flat'
     });
+    expect(UIManager.showToast).toHaveBeenCalledWith('✓ Payment of ₹2,000 saved', 'success');
     expect(AuditService.log).toHaveBeenCalledWith('RENT_PAYMENT', expect.objectContaining({ amount: 2000, receipt: 'R-2026-0001' }));
-    expect(receipt.showReceipt).toHaveBeenCalledWith(expect.objectContaining({ canVoid: false }), RECEIPT);
+    expect(receipt.showReceipt).toHaveBeenCalledWith(expect.objectContaining({
+        canVoid: false, head: { biz: 'Sharma Rentals', bizAddr: 'Main Road, Kanpur' }
+    }), RECEIPT);
     const env = receipt.showReceipt.mock.calls[0][0];
     expect(env.linkOf('L1')).toBe('');
 });
 
-test('no receipt (refused): the payment is saved and no receipt dialog opens', async () => {
-    store.recordPayment.mockResolvedValue({ amount: 2000, paid: 2000, open: true, receipt: null });
+test('saved without a receipt (refused): a distinct warning, then the Receipts list with Issue receipt', async () => {
+    store.recordPayment.mockResolvedValue({ amount: 2000, paid: 2000, open: true, receipt: null, noReceipt: true });
     const done = _test.pay('L1');
     await flush();
     RentalsModule.api.dialogClose(true);
     await done;
     await flush();
+    expect(UIManager.showToast).toHaveBeenCalledWith('Payment saved, but no receipt was issued — tap Issue receipt', 'warning');
+    expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.anything(), 'success');
     expect(receipt.showReceipt).not.toHaveBeenCalled();
+    expect(receipt.showHistory).toHaveBeenCalledWith(expect.objectContaining({ rcOf: expect.any(Function) }), 'T1');
+    expect(receipt.showHistory.mock.calls[0][0].rcOf(CHARGE)).toEqual({ place: '2B, Gupta Bhawan', ut: 'flat' });
 });
 
 test('Receipts on a tenant opens their payment history; managers may cancel', async () => {

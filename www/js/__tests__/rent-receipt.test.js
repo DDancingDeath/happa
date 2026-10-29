@@ -1,19 +1,24 @@
 /**
  * Rent receipt (RENT-12): WhatsApp text, printer canvas and PDF in one language,
  * stored text cleaned / escaped, electricity only for a meter-billed month,
- * part payments, the tenant link, cancelled receipts, reprint from the list.
+ * part payments, the reference, the header from Settings, the tenant link,
+ * cancelled receipts (reason required), reprint and issuing one later.
  */
 jest.mock('../rentals/rent-store.js', () => ({
-    listReceipts: jest.fn(),
-    voidReceipt: jest.fn(async () => true),
     snapshot: jest.fn(() => ({ tenants: [{ id: 'T1', name: 'Ram Kumar', phone: '9876543210' }] }))
+}));
+jest.mock('../rentals/rent-receipt-store.js', () => ({
+    listReceipts: jest.fn(),
+    withoutReceipt: jest.fn(async () => []),
+    issueReceipt: jest.fn(),
+    voidReceipt: jest.fn(async () => true)
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: { printCanvas: jest.fn(async () => true) } }));
 jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}) } }));
 jest.mock('../ui/ui-manager.js', () => ({ UIManager: { showToast: jest.fn(), showModal: jest.fn() } }));
 jest.mock('../utils/open-external.js', () => ({ openExternal: jest.fn() }));
 
-import * as store from '../rentals/rent-store.js';
+import * as store from '../rentals/rent-receipt-store.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { openExternal } from '../utils/open-external.js';
@@ -129,10 +134,12 @@ describe('dialogs: receipt, reprint from the list, cancel', () => {
     });
 
     test('names are escaped in the dialog; members see no cancel button', async () => {
-        const e = env();
-        await showReceipt(e, base({ tenantName: '<img src=x onerror=alert(1)>', biz: '<b>x</b>' }));
+        const e = env({ head: { biz: '<b>x</b>', bizAddr: '' } });
+        await showReceipt(e, base({ tenantName: '<img src=x onerror=alert(1)>', ref: '<i>UPI</i>' }));
         expect(document.querySelector('img, b')).toBeNull();
         expect(document.body.textContent).toContain('<img src=x onerror=alert(1)>');
+        expect(document.body.textContent).toContain('Ref<i>UPI</i>');
+        expect(document.querySelector('i')).toBeNull();
         expect(document.body.innerHTML).not.toContain("receiptAction('void')");
         expect(e.dialog.mock.calls[0][1]).toEqual({ info: true });
     });
@@ -181,5 +188,84 @@ describe('dialogs: receipt, reprint from the list, cancel', () => {
         expect(document.body.innerHTML).not.toContain("receiptAction('void')");
         await action(e, 'void');
         expect(store.voidReceipt).not.toHaveBeenCalled();
+    });
+});
+
+describe('reference, header and payments without a receipt', () => {
+    const env = (over = {}) => ({
+        dialog: jest.fn(async (html) => { document.body.innerHTML = html; return true; }),
+        linkOf: jest.fn(() => ''),
+        rcOf: jest.fn(() => ({ place: '2B, Gupta Bhawan', ut: 'flat' })),
+        canVoid: false,
+        head: { biz: 'Sharma Rentals', bizAddr: 'Main Road, Kanpur' },
+        ...over
+    });
+
+    test('a UPI/cheque reference is a Ref row in the text, the image and the dialog; none when empty', async () => {
+        const r = base({ mode: 'cheque', ref: '*00123*' });
+        expect(buildReceiptText(r, { lang: 'en' })).toContain('Paid by: Cheque\nRef: 00123\n*Balance due: ₹0*');
+        expect(buildReceiptText(r, { lang: 'hi' })).toContain('संदर्भ: 00123');
+        drawReceipt(r, 'en');
+        expect(drawn).toEqual(expect.arrayContaining(['Ref', '00123']));
+        await showReceipt(env(), r);
+        expect(document.body.textContent).toContain('Ref00123');
+        expect(receiptRows(base(), 'en').map(x => x[0])).not.toContain('Ref');
+    });
+
+    test('the header shown is Settings › Rentals (not stored on the receipt)', async () => {
+        const e = env({ head: { biz: 'New Name', bizAddr: 'New Road' } });
+        await showReceipt(e, base({ biz: undefined, bizAddr: undefined }));
+        expect(document.body.textContent).toContain('New Name');
+        expect(document.body.textContent).toContain('New Road');
+        await action(e, 'wa');
+        expect(decodeURIComponent(openExternal.mock.calls[0][0].split('text=')[1])).toContain('\nNew Name\nNew Road\n');
+    });
+
+    test('cancel needs a reason: Save stays off until one is typed; an empty one is never sent', async () => {
+        let saveState = null;
+        const e = env({ canVoid: true });
+        e.dialog.mockImplementation((html) => {
+            document.body.innerHTML = `<div id="rentDialog"><div>${html}</div><div class="rent-dialog-actions"><button class="rent-btn-primary">Save</button></div></div>`;
+            return Promise.resolve(true).then(() => { saveState = document.querySelector('.rent-btn-primary').disabled; return true; });
+        });
+        await showReceipt(e, base());
+        await action(e, 'void');
+        expect(saveState).toBe(true);
+        expect(store.voidReceipt).not.toHaveBeenCalled();
+        expect(document.querySelector('.rent-btn-primary').disabled).toBe(false);
+
+        e.dialog.mockImplementation((html) => {
+            document.body.innerHTML = `<div id="rentDialog"><div>${html}</div><div class="rent-dialog-actions"><button class="rent-btn-primary">Save</button></div></div>`;
+            const input = document.getElementById('rentVoidReason');
+            if (input) {
+                input.value = '  wrong tenant ';
+                input.dispatchEvent(new Event('input'));
+            }
+            return Promise.resolve(true).then(() => { saveState = document.querySelector('.rent-btn-primary').disabled; return true; });
+        });
+        await showReceipt(e, base());
+        await action(e, 'void');
+        expect(saveState).toBe(false);
+        expect(store.voidReceipt).toHaveBeenCalledWith('L1_2026-10_0', 'wrong tenant');
+    });
+
+    test('Receipts lists payments without a receipt with Issue receipt; issuing opens the new receipt', async () => {
+        const charge = { id: 'L1_2026-09', month: '2026-09', tenantId: 'T1', unitId: 'U1', rent: 5000 };
+        store.listReceipts.mockResolvedValue([base()]);
+        store.withoutReceipt.mockResolvedValue([{ charge, pi: 1, entry: { amount: 1500, date: '2026-09-12', by: 'u1' } }]);
+        store.issueReceipt.mockResolvedValue(base({ id: 'L1_2026-09_1', no: 'R-2026-0008', paid: 1500, issuedBy: 'u1' }));
+        const e = env();
+        await showHistory(e, 'T1');
+        expect(store.withoutReceipt).toHaveBeenCalledWith('T1', false);
+        expect(document.body.textContent).toContain('Payments without a receipt');
+        expect(document.body.textContent).toContain('12/09/2026');
+        expect(document.body.innerHTML).toContain("receiptAction('issue', '0')");
+        expect(document.body.textContent).not.toContain('before receipts');
+
+        await action(e, 'issue', '0');
+        expect(store.issueReceipt).toHaveBeenCalledWith('L1_2026-09', 1, { place: '2B, Gupta Bhawan', ut: 'flat' });
+        expect(e.rcOf).toHaveBeenCalledWith(charge);
+        expect(AuditService.log).toHaveBeenCalledWith('RENT_RECEIPT_ISSUE', { chargeId: 'L1_2026-09', pi: 1, no: 'R-2026-0008' });
+        expect(document.body.textContent).toContain('Rent receipt R-2026-0008');
     });
 });

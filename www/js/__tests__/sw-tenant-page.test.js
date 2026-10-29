@@ -45,3 +45,38 @@ test('app pages are still handled (control)', () => {
     fetchHandler(r);
     expect(r.respondWith).toHaveBeenCalled();
 });
+
+// Rent receipt files are not precached (precache budget): the first use caches them, then they work offline.
+test('the lazy receipt module is cached on first use and served offline after', async () => {
+    const handlers = {};
+    const store = new Map();
+    const self = { addEventListener: (type, fn) => { handlers[type] = fn; }, location: { origin: 'https://myhappa.web.app' }, skipWaiting: () => {}, clients: { claim: () => {} } };
+    const caches = {
+        match: jest.fn(async (req) => store.get(req.url || req)),
+        open: jest.fn(async () => ({ put: async (req, res) => { store.set(req.url, res); }, add: async (req) => { store.set(req.url, 'precached'); } })),
+        keys: jest.fn(async () => [])
+    };
+    let online = true;
+    const body = { ok: true, clone() { return this; } };
+    const fetchFn = jest.fn(async () => { if (!online) throw new TypeError('offline'); return body; });
+    const src = fs.readFileSync(path.join(__dirname, '..', '..', 'service-worker.js'), 'utf8');
+    function Request(u) { this.url = u; }
+    new Function('self', 'caches', 'fetch', 'Request', src)(self, caches, fetchFn, Request);
+    const pending = [];
+    await handlers.install({ waitUntil: (p) => pending.push(p) });
+    await Promise.all(pending);
+    const url = 'https://myhappa.web.app/js/rentals/rent-receipt.js';
+    expect(store.has(url)).toBe(false);
+    expect(store.has('/js/rentals/rentals.js')).toBe(true);
+    const get = async () => {
+        let res;
+        handlers.fetch({ request: { url, method: 'GET', mode: 'cors', headers: { get: () => '' } }, respondWith: (r) => { res = r; }, waitUntil: () => {} });
+        const out = await res;
+        await new Promise(r => setTimeout(r, 0));
+        return out;
+    };
+    expect(await get()).toBe(body);
+    expect(store.get(url)).toBe(body);
+    online = false;
+    expect(await get()).toBe(body);
+});

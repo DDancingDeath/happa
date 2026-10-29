@@ -144,7 +144,8 @@ In order:
   fall back to `splitBilingual()`.
 - **Service worker / cache bump**: every app JS/CSS/template file (and
   icon/manifest) must be listed in `STATIC_ASSETS` in `www/service-worker.js`
-  (`npm run check:sw`; a test enforces it). Any PR that changes a shipped
+  (`npm run check:sw`; a test enforces it), or in `LAZY_ASSETS` for a file loaded only on use
+  (not precached; the fetch handler caches it on first use). Any PR that changes a shipped
   file under `www/` bumps all three together:
   1. every `?v=<token>` in `www/index.html` (one token for the whole file),
   2. `BUILD_ID` in `www/js/main.js`,
@@ -181,9 +182,11 @@ In order:
   (`js/ui/business-switcher.js`). The first business is shown as **Aadhat** /
   **आढ़त** (formerly "Shop"); code ids, the switcher key, `users.role`,
   `settings/app` and permission ids keep `shop` — change only the `t()` text. Rentals code lives in `js/rentals/` and is
-  loaded **only** with `import()` when Rentals opens (rent receipts, `rentals/rent-receipt.js`, even
-  later: `rentals.js` imports it only when a receipt is opened); its data is in `rent_*`
-  collections (all access in `rentals/rent-store.js`), roles in
+  loaded **only** with `import()` when Rentals opens (rent receipts, `rentals/rent-receipt.js` +
+  `rent-receipt-store.js`, even later: `rentals.js` imports them only when a receipt is opened; they are in
+  the service worker's `LAZY_ASSETS`, not `STATIC_ASSETS`); its data is in `rent_*`
+  collections (all access in `rentals/rent-store.js`; receipt list / issue-later / cancel in
+  `rentals/rent-receipt-store.js`), roles in
   `users/{uid}.rentRole`. Never import `js/rentals/*` statically or name a
   `rent_*` collection from start-up code: `rentals-startup.test.js` fails.
   Design: `docs/rentals-design.md`.

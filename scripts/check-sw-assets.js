@@ -8,6 +8,8 @@
  * Fails if any entry does not exist on disk (a 404 during precache used to make
  * cache.addAll reject, silently disabling offline caching) or if an app file
  * (js/css/templates/img/icons/vendor, download.html, changelog.json, manifest) is missing from the list.
+ * Files in LAZY_ASSETS (loaded with import() on use, cached at runtime) must exist
+ * and must not be precached.
  */
 const fs = require('fs');
 const path = require('path');
@@ -42,11 +44,14 @@ function expectedAssets() {
     ];
 }
 
-function readStaticAssets(source = fs.readFileSync(SW_PATH, 'utf8')) {
-    const match = source.match(/const STATIC_ASSETS\s*=\s*\[([\s\S]*?)\];/);
-    if (!match) throw new Error('STATIC_ASSETS array not found in service-worker.js');
+function readList(name, source = fs.readFileSync(SW_PATH, 'utf8')) {
+    const match = source.match(new RegExp(`const ${name}\\s*=\\s*\\[([\\s\\S]*?)\\];`));
+    if (!match) throw new Error(`${name} array not found in service-worker.js`);
     return [...match[1].matchAll(/['"]([^'"]+)['"]/g)].map((m) => m[1]);
 }
+
+const readStaticAssets = (source) => readList('STATIC_ASSETS', source);
+const readLazyAssets = (source) => readList('LAZY_ASSETS', source);
 
 function existsOnDisk(url) {
     if (url === '/') return fs.existsSync(path.join(WWW, 'index.html'));
@@ -57,20 +62,23 @@ function existsOnDisk(url) {
 
 function check() {
     const listed = readStaticAssets();
-    const missingOnDisk = listed.filter((u) => !existsOnDisk(u));
-    const notListed = expectedAssets().filter((u) => !listed.includes(u));
-    const duplicates = listed.filter((u, i) => listed.indexOf(u) !== i);
-    return { listed, missingOnDisk, notListed, duplicates };
+    const lazy = readLazyAssets();
+    const all = [...listed, ...lazy];
+    const missingOnDisk = all.filter((u) => !existsOnDisk(u));
+    const notListed = expectedAssets().filter((u) => !all.includes(u));
+    const duplicates = all.filter((u, i) => all.indexOf(u) !== i);
+    return { listed, lazy, missingOnDisk, notListed, duplicates };
 }
 
-module.exports = { expectedAssets, readStaticAssets, existsOnDisk, check };
+module.exports = { expectedAssets, readStaticAssets, readLazyAssets, existsOnDisk, check };
 
 if (require.main === module) {
     if (process.argv.includes('--print')) {
-        console.log(expectedAssets().map((u) => `    '${u}',`).join('\n'));
+        const lazy = readLazyAssets();
+        console.log(expectedAssets().filter((u) => !lazy.includes(u)).map((u) => `    '${u}',`).join('\n'));
         process.exit(0);
     }
-    const { listed, missingOnDisk, notListed, duplicates } = check();
+    const { listed, lazy, missingOnDisk, notListed, duplicates } = check();
     let ok = true;
     if (missingOnDisk.length) {
         ok = false;
@@ -78,12 +86,12 @@ if (require.main === module) {
     }
     if (notListed.length) {
         ok = false;
-        console.error('App files not precached by the service worker:\n  ' + notListed.join('\n  '));
+        console.error('App files in neither STATIC_ASSETS nor LAZY_ASSETS:\n  ' + notListed.join('\n  '));
     }
     if (duplicates.length) {
         ok = false;
-        console.error('Duplicate STATIC_ASSETS entries:\n  ' + duplicates.join('\n  '));
+        console.error('Duplicate (or both precached and lazy) entries:\n  ' + duplicates.join('\n  '));
     }
-    if (ok) console.log(`OK: ${listed.length} STATIC_ASSETS entries, all present on disk.`);
+    if (ok) console.log(`OK: ${listed.length} STATIC_ASSETS + ${lazy.length} LAZY_ASSETS entries, all present on disk.`);
     process.exit(ok ? 0 : 1);
 }
