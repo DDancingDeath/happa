@@ -249,7 +249,7 @@ owner and rolled for the current and previous month every 6 hours, `utils/month-
 | M4 | Business expenses | Σ business expenses (EXP-KIND), by category (the expense `type`; untagged ones are their own row). Same as F3. |
 | M5 | Bad debts | Dues to receive written off in the period, on the write-off date (as in F4). |
 | M6 | Profit | M3 − M4 − M5. **The** profit (#36); same as F4. "—" with a caveat while the cost of goods sold isn't known. |
-| M7 | Labour on purchases | Σ labour on the period's purchases = T-LAB-1 over the period (`labourSummary()`). **Not** subtracted from profit (owner decision 2026-10-26). Shown on Money › Spending with M18. |
+| M7 | Labour on purchases | Σ labour on the period's purchases = T-LAB-1 over the period (`labourSummary()`). Each bill's labour is read by `billLabour()` (`laborCharges`, older bills `labour`) everywhere: Spending, its breakdown, Statements, month snapshots, items and parties. **Not** subtracted from profit (owner decision 2026-10-26). Shown on Money › Spending with M18. |
 | M8 | Personal expenses | Σ expenses tagged personal. Same as F5. |
 | M9 | Withdrawals | Σ withdrawals dated in the period. Same as F11. |
 | M10 | Kept in business | M6 − M8 − M9. |

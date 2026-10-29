@@ -459,6 +459,29 @@ describe('labour on Money › Spending (T-LAB-1, T-LAB-2 for the period)', () =>
         expect(document.querySelector('#moneyProfit [data-metric="M7"]')).toBeNull();
         expect(unexplainedValuesOf('money')).toEqual([]);
     });
+
+    test('an old bill with only `labour` gives the same M7 on Spending, its breakdown, the snapshot, items and parties', async () => {
+        const { purchaseItems, partySummary } = await import('../utils/business-metrics.js');
+        AppState.purchaseHistory = AppState.purchaseHistory.map(b => {
+            if (b.id !== 'p3') return b;
+            const { laborCharges, ...old } = b;
+            return { ...old, labour: laborCharges };
+        });
+        const open = jest.spyOn(FinanceBreakdownSheet, 'open').mockImplementation(() => {});
+        MoneyManager.init('spending');
+        expect(shown('moneyLabour')).toBe(6);
+        document.querySelector('#moneySpending [data-breakdown="labour"]').click();
+        const fin = open.mock.calls[0][1].getSummary();
+        expect(fin.purchases.labour).toBe(6);
+        expect(fin.detail.labour.reduce((a, r) => a + r.amount, 0)).toBe(6);
+        const src = { ...data, purchases: AppState.purchaseHistory };
+        const m = moneySummary({ ...src, base: { state: {}, from: -Infinity } }, { from: OCT[0], to: OCT[1] });
+        expect(m.M7).toBe(6);
+        expect(figuresFromSnapshot(buildSnapshot('2026-10', m, src, NOW)).M7).toBe(6);
+        const range = { from: OCT[0], to: OCT[1] };
+        expect(purchaseItems(src.purchases, src.items, range).reduce((a, r) => a + r.labour, 0)).toBe(6);
+        expect(partySummary(src, 'purchases', range).reduce((a, r) => a + r.labour, 0)).toBe(6);
+    });
 });
 
 describe('render cost', () => {

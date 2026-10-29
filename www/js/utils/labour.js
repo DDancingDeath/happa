@@ -7,12 +7,12 @@
  */
 
 import {
-    activityBills, formatRupees, normalizeLabourSettings, readLineItem, round2, toMoney,
+    activityBills, billLabour, formatRupees, normalizeLabourSettings, readLineItem, round2, toMoney,
     DEFAULT_LABOUR_PACKAGE_KG, LABOUR_PACKAGE_KG_MIN, LABOUR_PACKAGE_KG_MAX, normalizePackageKg
 } from './money.js';
 import { tn } from '../i18n/index.js';
 
-export { DEFAULT_LABOUR_PACKAGE_KG, LABOUR_PACKAGE_KG_MIN, LABOUR_PACKAGE_KG_MAX, normalizePackageKg };
+export { billLabour, DEFAULT_LABOUR_PACKAGE_KG, LABOUR_PACKAGE_KG_MIN, LABOUR_PACKAGE_KG_MAX, normalizePackageKg };
 
 /** kg as shown: Indian grouping, up to 2 decimals ("1,234.5"). */
 export const formatKg = (kg) => (Number(kg) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
@@ -45,12 +45,6 @@ export function billPackets(bill) {
     if (counted > 0) return counted;
     const stored = toMoney(bill?.totalPackets);
     return stored && stored > 0 ? Math.round(stored) : 0;
-}
-
-/** Labour deducted on a purchase bill (0 when Labour was unticked). */
-export function billLabour(bill) {
-    const v = toMoney(bill?.laborCharges) ?? toMoney(bill?.labour);
-    return round2(v || 0);
 }
 
 /**

@@ -34,6 +34,17 @@ export function toMoney(v) {
 }
 
 /**
+ * Labour deducted on a purchase bill (T-LAB-1, M7): `laborCharges`, older bills
+ * `labour`; 0 when Labour was unticked. The only reader of a bill's labour.
+ * @param {Object} bill
+ * @returns {number}
+ */
+export function billLabour(bill) {
+    const v = toMoney(bill?.laborCharges) ?? toMoney(bill?.labour);
+    return round2(v || 0);
+}
+
+/**
  * Amount with Indian digit grouping and no ₹ sign ("2,50,000"), for texts whose
  * template already has the ₹. Whole rupees unless `decimals` is set;
  * `small: true` shows paise below ₹100 so ₹0.40 is not shown as ₹0.
