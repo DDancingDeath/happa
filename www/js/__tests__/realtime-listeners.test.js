@@ -168,6 +168,35 @@ describe('FirebaseService.setupRealtimeListeners', () => {
         expect(calcSpy).toHaveBeenCalledTimes(1);
     });
 
+    it('a bill or withdrawal change refreshes an open Money page; Insights and Statements wait until shown', async () => {
+        install();
+        document.body.innerHTML = '<div id="money" class="tab active"></div><div id="insights" class="tab"></div><div id="statements" class="tab"></div>';
+        window.app = { money: { render: jest.fn() }, insights: { render: jest.fn() }, statements: { render: jest.fn() } };
+        await FirebaseService.setupRealtimeListeners();
+        await fake.settle();
+        jest.useFakeTimers();
+
+        await fake.db.collection('retailSales').doc('r1').set(bill('r1', NOW, { total: 50, items: [{ name: 'Gehu', qty: 1, rate: 50 }] }));
+        await fake.settle();
+        jest.advanceTimersByTime(200);
+        await fake.settle();
+        expect(window.app.money.render).toHaveBeenCalledTimes(1);
+        expect(window.app.insights.render).not.toHaveBeenCalled();
+
+        await fake.db.collection('withdrawals').doc('w1').set({ id: 'w1', amount: 100, person: 'A', date: new Date(NOW).toISOString(), timestamp: NOW });
+        await fake.settle();
+        jest.advanceTimersByTime(200);
+        await fake.settle();
+        expect(window.app.money.render).toHaveBeenCalledTimes(2);
+
+        document.getElementById('money').classList.remove('active');
+        document.getElementById('statements').classList.add('active');
+        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'statements' } }));
+        await fake.settle();
+        expect(window.app.statements.render).toHaveBeenCalledTimes(1);
+        expect(window.app.insights.render).not.toHaveBeenCalled();
+    });
+
     it('getStock reuses the listener-computed stock until data changes', async () => {
         install();
         fake.seed('purchases', [bill('p1', NOW, { items: [{ name: 'Gehu', qty: 5, rate: 10 }] })]);
