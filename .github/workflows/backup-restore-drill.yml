@@ -1,0 +1,142 @@
+name: Backup restore drill
+
+# Monthly restore drill into the Firestore EMULATOR (never a real project, no
+# Firebase reads): takes the newest backup artifact (a weekly one when there is
+# one), checks and decrypts it, restores every collection into an emulator
+# (demo-happa-drill) and reads each document back to compare it with the backup.
+# A failed drill opens an `ops` issue in this repo. Steps: tools/backup/README.md.
+
+on:
+  schedule:
+    - cron: '0 9 3 * *' # 3rd of each month, 14:30 IST
+  pull_request:
+    paths:
+      - 'tools/backup/**'
+      - '.github/workflows/backup-restore-drill.yml'
+      - '.github/workflows/firestore-backup.yml'
+  workflow_dispatch:
+    inputs:
+      artifact:
+        description: 'Backup artifact name (default: newest weekly, else newest nightly)'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: backup-restore-drill-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # PRs touching the backup tools: the same pipeline on synthetic data
+  # (openssl-encrypted like the nightly job, then checked and restored into the emulator).
+  synthetic:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/backup/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install backup tool dependencies (job only)
+        working-directory: tools/backup
+        run: npm ci --no-audit --no-fund
+      - name: Build an encrypted artifact from the synthetic fixture
+        env:
+          BACKUP_PASSPHRASE: synthetic-only-not-a-secret
+        run: |
+          set -euo pipefail
+          d="$RUNNER_TEMP/synthetic"; mkdir -p "$d"
+          node -e "const {buildManifest}=require('./tools/backup/backup-lib');const b=require('./tests/fixtures/migrate/backup-synthetic.json');require('fs').writeFileSync(process.argv[1],JSON.stringify(buildManifest(b)))" "$d/manifest.json"
+          gzip -9 -c tests/fixtures/migrate/backup-synthetic.json > "$d/b.json.gz"
+          openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$d/b.json.gz" -out "$d/firestore-backup-weekly-synthetic.json.gz.enc" -pass env:BACKUP_PASSPHRASE
+          rm "$d/b.json.gz"
+          (cd "$d" && sha256sum firestore-backup-weekly-synthetic.json.gz.enc manifest.json > SHA256SUMS)
+      - name: Check, decrypt, parse, compare counts
+        env:
+          BACKUP_PASSPHRASE: synthetic-only-not-a-secret
+        run: node tools/backup/verify-backup.js --dir "$RUNNER_TEMP/synthetic" --out "$RUNNER_TEMP/synthetic-out/backup.json"
+      - name: Restore into the Firestore emulator and read every document back
+        run: |
+          npx --yes firebase-tools@latest emulators:exec --only firestore --project demo-happa-drill \
+            "node tools/backup/restore-firestore.js --in '$RUNNER_TEMP/synthetic-out/backup.json' --emulator --project demo-happa-drill --target prod --confirm-project demo-happa-drill --apply --check"
+
+  drill:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/backup/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install backup tool dependencies (job only)
+        working-directory: tools/backup
+        run: npm ci --no-audit --no-fund
+
+      - name: Download the backup artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WANT: ${{ inputs.artifact }}
+        run: |
+          set -euo pipefail
+          list=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq '.artifacts | map(select(.expired == false and (.name | test("^firestore-backup-(nightly|weekly)-")))) | sort_by(.created_at) | reverse | .[] | "\(.name) \(.workflow_run.id)"')
+          if [ -n "$WANT" ]; then pick=$(echo "$list" | awk -v w="$WANT" '$1 == w' | head -n1)
+          else pick=$(echo "$list" | grep '^firestore-backup-weekly-' | head -n1 || true)
+               [ -n "$pick" ] || pick=$(echo "$list" | head -n1); fi
+          if [ -z "$pick" ]; then echo "::error::No backup artifact found${WANT:+ named $WANT}"; exit 1; fi
+          name=${pick% *}; run=${pick#* }
+          echo "Drill uses $name (run $run)" | tee -a "$GITHUB_STEP_SUMMARY"
+          gh run download "$run" -R "$GITHUB_REPOSITORY" -n "$name" -D "$RUNNER_TEMP/drill/artifact"
+
+      - name: Check checksums, decrypt, parse, compare counts
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: node tools/backup/verify-backup.js --dir "$RUNNER_TEMP/drill/artifact" --out "$RUNNER_TEMP/drill/backup.json"
+
+      - name: Restore into the Firestore emulator and read every document back
+        run: |
+          npx --yes firebase-tools@latest emulators:exec --only firestore --project demo-happa-drill \
+            "node tools/backup/restore-firestore.js --in '$RUNNER_TEMP/drill/backup.json' --emulator --project demo-happa-drill --target prod --confirm-project demo-happa-drill --apply --check"
+          echo "Restore into the emulator and read-back check: OK" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove plaintext
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/drill"
+
+  alert:
+    needs: drill
+    if: always() && github.event_name != 'pull_request' && github.repository == 'DDancingDeath/happa'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Open / close the drill alert issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ALERT_KIND: drill
+          EVENT_NAME: ${{ github.event_name }}
+          CURRENT_GOOD: ${{ needs.drill.result == 'success' }}
+        run: node tools/backup/alert.js

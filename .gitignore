@@ -132,3 +132,6 @@ backup*.json
 *.enc
 # synthetic test data (no real shop data)
 !tests/fixtures/migrate/*.json
+
+# backup verify test scratch folders
+tests/backup/.artifact-test-*/
