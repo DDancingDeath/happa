@@ -112,7 +112,7 @@ function screenFindings({ lang, roots }) {
     const els = [];
     for (const sel of roots) document.querySelectorAll(sel).forEach(el => { if (vis(el) && !els.some(e => e.contains(el))) els.push(el); });
     // Test data, product names and code identifiers (App health policy keys) are the same in both languages.
-    const DATA = /happa|\bE2E\b|\b(phone|desktop)\b|PEDIT-\w+|\b(Before|After) Edit\b|Gali \d+|Ram \d+|\bG\d+\b|Tenant E2E|E2E (Shop|Bhawan)|Manager One|Staff One|Pending Person|\bOwner\b|Rice|Wheat|Mustard|चावल|गेहूं|सरसों|[\w.+-]+@[\w.-]+|https?:\/\/\S+|\b[\w-]+\.(web\.app|local)\b|\bkg\b|\bKG\b|WhatsApp|\bUPI\b|\bPDF\b|\bCSV\b|Excel|\bOK\b|\bID\b|\bGST\b|Bluetooth|Android|\bAPK\b|Google|GPay|Chrome|Edge|Safari|iPhone|iPad|Firebase|\bJSON\b|DEVELOPMENT|\b[a-z]+[A-Z]\w*\b|"[a-z]+(-[a-z]+)+"/g;
+    const DATA = /happa|Tenant E2E|E2E (Shop|Bhawan)|\bE2E\b|\b(phone|desktop)\b|PEDIT-\w+|\b(Before|After) Edit\b|Gali \d+|Ram \d+|\bG\d+\b|Manager One|Staff One|Pending Person|\bOwner\b|Rice|Wheat|Mustard|चावल|गेहूं|सरसों|[\w.+-]+@[\w.-]+|https?:\/\/\S+|\b[\w-]+\.(web\.app|local)\b|\bkg\b|\bKG\b|WhatsApp|\bUPI\b|\bPDF\b|\bCSV\b|Excel|\bOK\b|\bID\b|\bGST\b|Bluetooth|Android|\bAPK\b|Google|GPay|Chrome|Edge|Safari|iPhone|iPad|Firebase|\bJSON\b|DEVELOPMENT|\b[a-z]+[A-Z]\w*\b|"[a-z]+(-[a-z]+)+"|"\w+":\s*(true|false)\b/g;
     const dev = /[\u0900-\u097F]/;
     const latin = /[A-Za-z]{3,}/;
     const out = { bad: [], mixed: [], wrongLang: [], english: [] };
@@ -136,6 +136,9 @@ function screenFindings({ lang, roots }) {
         while ((n = walker.nextNode())) {
             const p = n.parentElement;
             if (!p || p.closest('script,style,noscript,[data-lang-option],.auth-lang-links,#navLangToggle,.dev-banner') || !vis(p)) continue;
+            // Text marked as the other language on purpose (a language switch button).
+            const marked = p.closest('[lang]:not(html)');
+            if (marked && marked.lang && marked.lang !== lang) continue;
             look(n.textContent, '');
         }
         root.querySelectorAll('input[placeholder],textarea[placeholder]').forEach(el => { if (vis(el)) look(el.placeholder, 'placeholder: '); });
