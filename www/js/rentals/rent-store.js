@@ -394,18 +394,22 @@ export async function receiptRetry(run) {
 /**
  * Records a payment on one month's charge (transaction; never more than is due).
  * With `rc` ({place, ut} for the receipt) the same transaction issues its receipt.
- * Still refused after the retries: saved without one (`noReceipt`; issueReceipt later).
- * @returns {Promise<{amount: number, paid: number, open: boolean, receipt: ?Object, noReceipt?: boolean}>}
+ * Still refused after the retries: saved without one (`noReceipt`, `receiptError` = the
+ * last error code; issueReceipt later).
+ * @returns {Promise<{amount: number, paid: number, open: boolean, receipt: ?Object, noReceipt?: boolean, receiptError?: string}>}
  */
 export async function recordPayment(id, entry, rc = null) {
+    let refused = '';
     if (rc) {
         try {
             return await receiptRetry((year) => recordPaymentOnce(id, entry, rc, year));
         } catch (e) {
             if (!REFUSED.includes(e?.code)) throw e;
+            refused = e.code;
         }
     }
-    return { ...(await withPendingRetry(() => recordPaymentOnce(id, entry, null))), noReceipt: !!rc };
+    const res = await withPendingRetry(() => recordPaymentOnce(id, entry, null));
+    return { ...res, noReceipt: !!rc, ...(refused ? { receiptError: refused } : {}) };
 }
 
 export const clip = (v, n) => String(v || '').slice(0, n);
@@ -424,11 +428,11 @@ export function putReceipt(tx, id, ch, pi, rc, year, seq, extra = {}) {
         tenantName: ch.tenantName || '', place: clip(rc.place, 150), ...(rc.ut ? { ut: rc.ut } : {}),
         months: [ch.month], rent: ch.rent, elec: ch.electricity || null, total: ch.amount,
         paid: e.amount, mode: e.mode, ref: e.ref || '', date: e.date, balance: Math.max(0, round2(ch.amount - ch.paid)),
-        by: e.by, byName: e.byName || '', ...extra, createdAt: now, void: false
+        by: e.by, byName: e.byName || '', ...extra, createdAt: FirebaseService.serverTimestamp(), void: false
     };
     tx.set(coll('rent_receipts').doc(rid), r);
     tx.set(coll('rent_counters').doc(`receipts_${year}`), { last: seq, rid, updatedAt: now, updatedBy: uid() });
-    return { id: rid, ...r };
+    return { id: rid, ...r, createdAt: now };
 }
 
 async function recordPaymentOnce(id, { amount, mode, ref, date }, rc, year) {

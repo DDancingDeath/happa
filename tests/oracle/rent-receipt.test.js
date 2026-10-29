@@ -8,7 +8,7 @@
 import fc from 'fast-check';
 import { createFakeFirestore } from '../../www/js/__tests__/__mocks__/fake-firestore.js';
 
-jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: { get db() { return global.__rentOracleDb; } } }));
+jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: { get db() { return global.__rentOracleDb; }, serverTimestamp: () => 'SERVER_TIME' } }));
 
 import { AppState } from '../../www/js/utils/state.js';
 import * as store from '../../www/js/rentals/rent-store.js';

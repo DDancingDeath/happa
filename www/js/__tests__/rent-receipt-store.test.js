@@ -8,7 +8,7 @@
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
 const fake = createFakeFirestore({ occ: true });
-jest.mock('../firebase/firestore-service.js', () => ({ FirebaseService: { get db() { return global.__fakeDb; } } }));
+jest.mock('../firebase/firestore-service.js', () => ({ FirebaseService: { get db() { return global.__fakeDb; }, serverTimestamp: () => 'SERVER_TIME' } }));
 global.__fakeDb = fake.db;
 
 import { AppState } from '../utils/state.js';
@@ -45,7 +45,8 @@ test('a part payment issues R-YYYY-0001 with the month, rent, total, paid now, m
     // The header comes from Settings when shown; the name is the charge's (rules check both).
     expect(a.receipt).not.toHaveProperty('biz');
     expect(a.receipt).not.toHaveProperty('issuedBy');
-    expect(fake.raw('rent_receipts').get('L1_2026-10_0').no).toBe(no(1));
+    expect(a.receipt.createdAt).toEqual(expect.any(Number));
+    expect(fake.raw('rent_receipts').get('L1_2026-10_0')).toMatchObject({ no: no(1), createdAt: 'SERVER_TIME' });
     expect(fake.raw('rent_charges').get('L1_2026-10').payments[0]).toMatchObject({ amount: 2000, rno: no(1), by: 'u1' });
     expect(fake.raw('rent_counters').get(`receipts_${YEAR}`)).toMatchObject({ last: 1, rid: 'L1_2026-10_0' });
 
@@ -96,7 +97,7 @@ test('when the receipt is refused the payment is still saved, without a number, 
     fake.seed('rent_charges', [charge('L1_2026-10')]);
     const tries = refusing(() => true);
     const res = await pay('L1_2026-10', 2000);
-    expect(res).toMatchObject({ amount: 2000, paid: 2000, receipt: null, noReceipt: true });
+    expect(res).toMatchObject({ amount: 2000, paid: 2000, receipt: null, noReceipt: true, receiptError: 'permission-denied' });
     expect(tries).toHaveLength(3);
     expect(fake.raw('rent_charges').get('L1_2026-10').payments).toEqual([expect.not.objectContaining({ rno: expect.anything() })]);
     expect(fake.raw('rent_receipts').size).toBe(0);
@@ -129,6 +130,7 @@ test('a payment saved without a receipt gets one later (Issue receipt): next num
     expect(r).toMatchObject({
         id: 'L1_2026-10_0', no: no(2), pi: 0, paid: 2000, by: 'u1', byName: 'Hitesh', issuedBy: 'u2', total: 5000, balance: 2000, place: '2B, Gupta Bhawan'
     });
+    expect(fake.raw('rent_receipts').get('L1_2026-10_0').createdAt).toBe('SERVER_TIME');
     const ch = fake.raw('rent_charges').get('L1_2026-10');
     expect(ch.payments.map(p => p.rno)).toEqual([no(2), no(1)]);
     expect(ch.paid).toBe(3000);
