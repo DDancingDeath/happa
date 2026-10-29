@@ -53,8 +53,10 @@ async function login(page, role = 'owner') {
 async function showTab(page, tab) {
     await page.evaluate((t) => window.app.nav.showTab(t), tab);
     await page.waitForFunction((t) => {
-        // Route ids (rates, reports-trends, ...) have no element of their own: use the page they opened
-        const el = document.getElementById(t) || document.querySelector('.tab.active');
+        // Route ids (rates, reports-trends, ...) have no page of their own: use the page they opened.
+        // Some route ids name a hidden inner element (#rate-trends lives in Insights), so only a .tab counts.
+        const own = document.getElementById(t);
+        const el = own && own.classList.contains('tab') ? own : document.querySelector('.tab.active');
         return el && el.offsetParent !== null;
     }, tab);
 }

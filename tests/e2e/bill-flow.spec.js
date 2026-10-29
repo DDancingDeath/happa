@@ -44,7 +44,7 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     const input = page.locator(`[id="payment_${sale.id}"]`);
     await expect(input).toBeVisible();
     await input.fill('160');
-    await page.click(`[id="payment_${sale.id}"] + button`);
+    await page.click(`[id="payment_${sale.id}"] ~ button[data-record-payment]`);
     await expectToast(page, /Payment of ₹160 recorded/);
     const paid = await getDoc('dev_retailSales', sale._id);
     expect(paid.payment).toMatchObject({ cash: 160, due: 200 });

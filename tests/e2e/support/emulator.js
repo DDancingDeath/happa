@@ -14,9 +14,12 @@ const H = { Authorization: 'Bearer owner', 'Content-Type': 'application/json' };
 const PASSWORD = 'Test#12345';
 const USERS = {
     owner: { email: 'owner@e2e.local', name: 'Owner', role: 'owner', status: 'active' },
-    staff: { email: 'staff@e2e.local', name: 'Staff One', role: 'staff', status: 'approved' },
+    manager: { email: 'manager@e2e.local', name: 'Manager One', role: 'manager', status: 'approved', rentRole: 'manager' },
+    staff: { email: 'staff@e2e.local', name: 'Staff One', role: 'staff', status: 'approved', rentRole: 'member' },
     pending: { email: 'pending@e2e.local', name: 'Pending Person', role: 'staff', status: 'pending' }
 };
+/** Tenant rent-history link seeded in dev_rent_public (page /r/<token>). */
+const TENANT_TOKEN = 'e2eTenantLinkToken_000001';
 const ITEMS = [
     { id: 'itm_rice', name: 'Rice', hindiName: 'चावल', rates: [30], saleRates: [36], wholesaleRates: [34] },
     { id: 'itm_wheat', name: 'Wheat', hindiName: 'गेहूं', rates: [22], saleRates: [26], wholesaleRates: [25] },
@@ -103,4 +106,4 @@ async function deleteAll(c) {
     }
 }
 
-module.exports = { PASSWORD, USERS, ITEMS, waitForEmulators, resetEmulators, signUp, commit, getDoc, listDocs, deleteAll };
+module.exports = { PASSWORD, USERS, ITEMS, TENANT_TOKEN, waitForEmulators, resetEmulators, signUp, commit, getDoc, listDocs, deleteAll };
