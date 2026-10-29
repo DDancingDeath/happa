@@ -253,8 +253,8 @@ and close on the figure of the home page:
 
 | ID | Statement | Closes on |
 |---|---|---|
-| ST1 | Day book: every bill, expense, withdrawal and due payment of one day, in time order. For today it lists them with a link to Today and no totals (Today is their home), on screen, in WhatsApp and in the CSV | Today T1, T2, T13, T14 (expenses = T4 + T5) |
-| ST2 | Month statement: the Money ladder, money in / out and spending of one month | M1–M17 of that month |
+| ST1 | Day book: every bill, expense, withdrawal and due payment of one day, in time order. Due payments come from the bills and that day's cash-session legs (de-duplicated by id, as M12), so a payment on a bill that is no longer loaded is listed; until the sessions load it says payments may be missing. For today it lists them with a link to Today and no totals (Today is their home), on screen, in WhatsApp and in the CSV | Today T1, T2, T13, T14 (expenses = T4 + T5) |
+| ST2 | Month statement: the Money ladder, money in / out and spending of one month (with that month's cash sessions, as Money › Cash; "payments may be missing" until they load) | M1–M17 of that month |
 | ST3 | Party ledger: bills (+), paid with the bill, later payments, write-offs and "marked cleared" (−), running balance; old-app balances start at their carried amount | Σ BILL-DUE of the party's bills (Outstanding) |
 | ST4 | Item ledger: purchases, sales and corrections of one item with running kg and AVG-COST; flags a sale below cost or before the stock was bought | S1, S3 |
 | ST5 | CSV: one row per bill line; labour shared by line value. Dates `YYYY-MM-DD HH:mm`; text starting with = + - @ gets a leading ' (no formulas); headers in the app language or English ("CSV in English", device setting `aadhat.csvEnglish`); lines a role may not see (profit, personal expenses, stock value, purchase rates) are left out of the screen, WhatsApp, Print and CSV. | Σ amount = M1 (sales), M16 (purchases); Σ labour = M7 |
