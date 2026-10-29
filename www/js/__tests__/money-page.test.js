@@ -72,7 +72,7 @@ afterEach(() => {
 const OCT = [new Date(2026, 9, 1).getTime(), new Date(2026, 9, 22).getTime()];
 
 describe('figures on screen == oracle (this month)', () => {
-    test('Profit section: M1, M2, M3, M5, M6, M7, M16', () => {
+    test('Profit section: M1, M2, M3, M5, M6, M16', () => {
         MoneyManager.init('profit');
         const w = O.metrics(data, OCT);
         expect(shown('moneyProfitValue')).toBe(rupee(w.M6_profit));
@@ -80,7 +80,6 @@ describe('figures on screen == oracle (this month)', () => {
         expect(shown('moneyCogs')).toBe(rupee(w.M2_cogs));
         expect(shown('moneyGross')).toBe(rupee(w.M3_gross));
         expect(shown('moneyBadDebts')).toBe(rupee(w.M5_badDebts));
-        expect(shown('moneyLabour')).toBe(rupee(w.M7_labour));
         expect(shown('moneyPurchases')).toBe(rupee(w.M16_purchases));
         expect(document.getElementById('moneyPeriodLabel').textContent).toBe('Oct 2026 (to the 21)');
     });
@@ -101,6 +100,7 @@ describe('figures on screen == oracle (this month)', () => {
         expect(shown('moneyPersonal')).toBe(rupee(w.M8_personalExpenses));
         expect(shown('moneyWithdrawn')).toBe(rupee(w.M9_withdrawals));
         expect(shown('moneyKept')).toBe(rupee(w.M10_kept));
+        expect(shown('moneyLabour')).toBe(rupee(w.M7_labour));
         const cats = [...document.querySelectorAll('#moneyCategories .ins-barval')].map(el => Number(el.textContent.replace(/[^\d.-]/g, '')));
         expect(cats.reduce((a, b) => a + b, 0)).toBe(rupee(w.M4_businessExpenses));
     });
@@ -400,6 +400,33 @@ describe('what each role sees (Roles & access)', () => {
         MoneyManager.render();
         const again = [...document.querySelectorAll('#moneyWorthTerms [data-metric-ref]')].map(el => el.dataset.metricRef);
         expect(again).toEqual(expect.arrayContaining(['S4', 'M15']));
+    });
+});
+
+describe('labour on Money › Spending (T-LAB-1, T-LAB-2 for the period)', () => {
+    let unexplainedValuesOf;
+    beforeAll(async () => {
+        const { unexplainedValues } = await import('../utils/metric-registry.js');
+        unexplainedValuesOf = (id) => unexplainedValues(document.getElementById(id));
+    });
+    test('deducted = M7 and to pay = each day\'s packages × rate, with the more / less line', () => {
+        AppState.settings = { laborRate: 6, labourPackageKg: 35 };
+        MoneyManager.init('spending');
+        const w = O.metrics(data, OCT);
+        expect(shown('moneyLabour')).toBe(rupee(w.M7_labour));
+        const kgByDay = {};
+        FIX.purchases.filter(b => !O.isOpening(b)).forEach(b => {
+            const t = O.timeOf(b.timestamp ?? b.date);
+            if (t < OCT[0] || t >= OCT[1]) return;
+            const d = new Date(t).toDateString();
+            kgByDay[d] = (kgByDay[d] || 0) + b.items.reduce((a, l) => a + Number(l.qty ?? l.quantity ?? 0), 0);
+        });
+        const toPay = Object.values(kgByDay).reduce((a, kg) => a + Math.ceil(kg / 35) * 6, 0);
+        expect(shown('moneyLabourToPay')).toBe(toPay);
+        expect(document.getElementById('moneyLabourCalc').textContent).toMatch(/35 kg/);
+        expect(document.getElementById('moneyLabourDiff').textContent).toMatch(toPay > w.M7_labour ? /more than deducted/ : /less than deducted|matches/);
+        expect(document.querySelector('#moneyProfit [data-metric="M7"]')).toBeNull();
+        expect(unexplainedValuesOf('money')).toEqual([]);
     });
 });
 

@@ -13,14 +13,15 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
-import { formatRupees, round2 } from '../utils/money.js';
+import { formatRupees, round2, normalizeLabourSettings } from '../utils/money.js';
+import { labourSummary, labourToPayByDay, labourCalcText } from '../utils/labour.js';
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate } from '../utils/dates.js';
-import { pickReplayBase } from '../utils/finance-calc.js';
+import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
 import { lastCountedSession } from '../utils/cash-session.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth,
-    itemSummary, biggestChange, profitPerDay
+    itemSummary, biggestChange, profitPerDay, billTime
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
@@ -370,7 +371,6 @@ export const MoneyManager = {
         this.text('moneyBusinessTerm', money(m.M4.total));
         this.text('moneyBadDebts', money(m.M5));
         this.text('moneyProfitTerm', money(m.M6.total));
-        this.text('moneyLabour', money(m.M7));
         this.text('moneyPurchases', `${money(m.M16.total)} · ${tn('ui.money.bills', m.M16.count)}`);
         this.renderStockMovement(m);
         if (onProfit) this.renderProfitChart(m, r, now);
@@ -455,7 +455,7 @@ export const MoneyManager = {
         this.html('moneyCashChart', barsSvg(keys.map(k => round2(days[k] || 0)), { labels: labelsD, onTap: 'data-day' }));
     },
 
-    renderSpending({ m, prev, ly, labels }) {
+    renderSpending({ m, prev, ly, labels, r }) {
         this.text('moneyBusiness', money(m.M4.total));
         const vsLy = change(m.M4.total, ly?.M4 ?? null);
         this.html('moneySpendCompare', compareHtml([{ c: change(m.M4.total, prev?.M4 ?? null), label: labels.prev }, { c: vsLy, label: labels.ly }]));
@@ -475,6 +475,24 @@ export const MoneyManager = {
         this.text('moneyWithdrawn', money(m.M9));
         this.text('moneyKept', money(m.M10));
         this.renderWithdrawals(m);
+        this.renderLabour(r);
+    },
+
+    /** Labour for the period (one home for periods; Today has today's): T-LAB-1 deducted (M7), T-LAB-2 to pay per day (M18). */
+    renderLabour(r) {
+        const bills = billsInRange(AppState.purchaseHistory || [], r.from, r.to);
+        const settings = AppState.settings || {};
+        const { deducted } = labourSummary(bills, settings);
+        const { laborRate: rate, labourPackageKg: packageKg } = normalizeLabourSettings(settings);
+        const toPay = { ...labourToPayByDay(bills, settings, b => { const t = billTime(b); return t === null ? null : toLocalISODate(new Date(t)); }), packageKg, rate };
+        this.text('moneyLabour', money(deducted.amount));
+        this.text('moneyLabourBills', tn('ui.today.labour_deducted_bills', deducted.bills));
+        this.text('moneyLabourToPay', money(toPay.amount));
+        this.text('moneyLabourCalc', labourCalcText(toPay, 'ui.money.labour_to_pay_calc'));
+        const diff = round2(toPay.amount - deducted.amount);
+        const key = Math.abs(diff) < 0.5 ? 'ui.today.labour_same' : diff > 0 ? 'ui.today.labour_more' : 'ui.today.labour_less';
+        this.text('moneyLabourDiff', t(key, { amount: formatRupees(Math.abs(diff)) }));
+        return { deducted, toPay };
     },
 
     renderWithdrawals(m) {

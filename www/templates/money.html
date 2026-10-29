@@ -41,7 +41,6 @@
                     <div class="ins-row ins-tap" data-breakdown="business" role="button" tabindex="0"><span data-i18n="ui.money.business_minus">− Business expenses</span><span data-metric-ref="M4" id="moneyBusinessTerm">—</span></div>
                     <div class="ins-row ins-tap" data-breakdown="badDebts" role="button" tabindex="0"><span data-i18n="ui.money.bad_debts_minus">− Bad debts</span><span data-metric="M5" id="moneyBadDebts">—</span></div>
                     <div class="ins-row ins-total ins-tap" data-perm="profit" data-breakdown="profit" role="button" tabindex="0"><span data-i18n="ui.money.profit_eq">= Profit</span><span data-metric-ref="M6" id="moneyProfitTerm">—</span></div>
-                    <div class="ins-row ins-note ins-tap" data-breakdown="labour" role="button" tabindex="0"><span data-i18n="ui.money.labour_line">Labour on purchases (not in cost)</span><span data-metric="M7" id="moneyLabour">—</span></div>
                 </div>
             </div>
             <div class="ins-card" data-perm="profit">
@@ -91,6 +90,12 @@
             <div class="ins-card">
                 <h3 class="ins-card-title" data-i18n="ui.money.by_category">By category</h3>
                 <div class="ins-bars" data-metric-ref="M4" id="moneyCategories"></div>
+            </div>
+            <div class="ins-card" id="moneyLabourCard">
+                <h3 class="ins-card-title" data-i18n="ui.money.labour_line">Labour on purchases (not in cost)</h3>
+                <div class="ins-row ins-tap" data-breakdown="labour" role="button" tabindex="0"><span><span data-i18n="ui.money.labour_deducted">Deducted from farmers</span> <small id="moneyLabourBills"></small></span><span data-metric="M7" id="moneyLabour">—</span></div>
+                <div class="ins-row"><span><span data-i18n="ui.money.labour_to_pay">To pay labour</span><br><small id="moneyLabourCalc" data-metric-ref="M18"></small></span><span data-metric="M18" id="moneyLabourToPay">—</span></div>
+                <p class="ins-hint" data-takeaway id="moneyLabourDiff"></p>
             </div>
             <div class="ins-card" data-perm="personalExpenses">
                 <div class="ins-row ins-tap" data-breakdown="personal" role="button" tabindex="0"><span data-i18n="ui.money.personal_expenses">Personal expenses</span><span data-metric="M8" id="moneyPersonal">—</span></div>
