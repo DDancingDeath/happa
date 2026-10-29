@@ -1059,6 +1059,25 @@ const PrinterService = {
     },
 
     /**
+     * Any receipt already drawn on a 384 px canvas (e.g. a rent receipt): the
+     * Bluetooth printer when connected, otherwise the image preview.
+     * @returns {Promise<boolean>}
+     */
+    async printCanvas(canvas, filename, title) {
+        if (this.manager.device && window.bluetoothSerial) {
+            try {
+                await this.manager._enqueue(() => this.manager._send(canvasToEscPos(canvas), 'WRITE CANVAS'));
+                UIManager.showToast(t('msg.printer.printed_successfully'));
+                return true;
+            } catch (error) {
+                console.error('Bluetooth print failed:', error);
+                UIManager.showToast(t('msg.printer.print_failed', { message: error.message || error }));
+            }
+        }
+        return this.showImagePreview(canvas, filename, title);
+    },
+
+    /**
      * Full-screen image preview with Download (share sheet on phones) / Close.
      * @param {HTMLCanvasElement} canvas
      * @param {string} filename

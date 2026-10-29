@@ -23,6 +23,11 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const rel = (p) => path.relative(WWW, p).split(path.sep).join('/');
 const RENT_COLLECTION = /['"`](?:dev_)?rent_[a-z]/;
 const BUDGET_BYTES = 130 * 1024;
+/** Rentals files loaded with import() only when used (not when Rentals opens), with their own budget. */
+const LAZY = ['rent-receipt.js'];
+const LAZY_BUDGET_BYTES = 20 * 1024;
+/** Size as served (LF line endings), the same on a Windows checkout and in CI. */
+const sizeOf = (f) => Buffer.byteLength(read(f).replace(/\r\n/g, '\n'));
 
 function listJs(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -94,8 +99,23 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
     });
 
     test(`Rentals files stay within the ${BUDGET_BYTES / 1024} KB precache budget`, () => {
-        const files = [...listJs(RENTALS), path.join(WWW, 'templates', 'rentals.html'), path.join(WWW, 'css', 'rentals.css')];
-        const bytes = files.reduce((s, f) => s + fs.statSync(f).size, 0);
+        const files = [...listJs(RENTALS).filter(f => !LAZY.includes(path.basename(f))), path.join(WWW, 'templates', 'rentals.html'), path.join(WWW, 'css', 'rentals.css')];
+        const bytes = files.reduce((s, f) => s + sizeOf(f), 0);
         expect(bytes).toBeLessThanOrEqual(BUDGET_BYTES);
+    });
+
+    // Receipts are split out: rentals.js loads rent-receipt.js with import() when a receipt is opened.
+    test(`the receipt module loads only when used and stays within ${LAZY_BUDGET_BYTES / 1024} KB`, () => {
+        const files = listJs(RENTALS);
+        LAZY.forEach(name => {
+            const importers = files.filter(f => path.basename(f) !== name && read(f).includes(name)).map(rel);
+            expect(importers).toEqual(['js/rentals/rentals.js']);
+            const src = read(path.join(RENTALS, 'rentals.js'));
+            expect(src).toMatch(new RegExp(`import\\(\\s*'\\./${name.replace('.', '\\.')}'\\s*\\)`));
+            expect(src).not.toMatch(new RegExp(`^import .*${name.replace('.', '\\.')}`, 'm'));
+            expect(sizeOf(path.join(RENTALS, name)) + sizeOf(path.join(WWW, 'css', 'rent-receipt.css'))).toBeLessThanOrEqual(LAZY_BUDGET_BYTES);
+        });
+        expect(read(path.join(RENTALS, 'rent-receipt.js'))).toMatch(/css\/rent-receipt\.css/);
+        expect(read(path.join(WWW, 'index.html'))).not.toMatch(/rent-receipt/);
     });
 });

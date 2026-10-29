@@ -55,9 +55,9 @@ async function moveInWith(settings) {
 test('normalizeRentSettings: defaults when missing, invalid values fall back, text cleaned', () => {
     expect(normalizeRentSettings(null)).toEqual({ ...RENT_SETTINGS_DEFAULTS });
     expect(normalizeRentSettings({ dueDay: 29, increasePct: -1, meterRate: 'x', tenantLink: 'yes', receiptHeader: 5 }))
-        .toEqual({ dueDay: 10, increasePct: 5, meterRate: null, tenantLink: false, receiptHeader: '5' });
-    expect(normalizeRentSettings({ dueDay: 5, increasePct: 7.5, meterRate: '8.5', tenantLink: true, receiptHeader: ' *Sharma*  Rentals ' }))
-        .toEqual({ dueDay: 5, increasePct: 7.5, meterRate: 8.5, tenantLink: true, receiptHeader: 'Sharma Rentals' });
+        .toEqual({ dueDay: 10, increasePct: 5, meterRate: null, tenantLink: false, receiptHeader: '5', receiptAddress: '' });
+    expect(normalizeRentSettings({ dueDay: 5, increasePct: 7.5, meterRate: '8.5', tenantLink: true, receiptHeader: ' *Sharma*  Rentals ', receiptAddress: ` Main Road,\n Kanpur ${'x'.repeat(300)}` }))
+        .toEqual({ dueDay: 5, increasePct: 7.5, meterRate: 8.5, tenantLink: true, receiptHeader: 'Sharma Rentals', receiptAddress: `Main Road, Kanpur ${'x'.repeat(182)}` });
 });
 
 test('a new lease gets the Rentals defaults and, when on, a tenant link with the header', async () => {
