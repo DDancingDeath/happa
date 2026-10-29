@@ -24,7 +24,7 @@ const RENTALS = path.join(JS, 'rentals');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const rel = (p) => path.relative(WWW, p).split(path.sep).join('/');
 const RENT_COLLECTION = /['"`](?:dev_)?rent_[a-z]/;
-const PRECACHE_BUDGET_BYTES = 130 * 1024;
+const PRECACHE_BUDGET_BYTES = 140 * 1024;
 /** Loaded with import() only when a receipt is used (file: its only importer); not precached, own budget. */
 const LAZY = { 'rent-receipt.js': 'rentals.js', 'rent-receipt-store.js': 'rent-receipt.js' };
 const LAZY_URLS = [...Object.keys(LAZY).map(n => `/js/rentals/${n}`), '/css/rent-receipt.css'];

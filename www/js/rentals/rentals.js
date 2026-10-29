@@ -850,7 +850,7 @@ function readTenantSection({ newUnit = false, given = null } = {}) {
     return { tenant, tenantId, lease, meter };
 }
 
-/** Saves a move-in or change of unit from the tenant section; true when saved. */
+/** Saves a move-in from the tenant section; true when saved. */
 async function saveMoveIn({ unit, newUnit, occ, defs, from = null, endMonth = '' }) {
     try {
         const d = store.snapshot();
@@ -878,7 +878,7 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, endMonth = ''
 const MOVE_ERRORS = ['unit_taken', 'tenant_changed', 'later_paid', 'bad_move_date'];
 const EDIT_DAYS = 2;
 
-/** Units a tenant can move into, grouped by property; `current` (the tenant's unit) is selected. */
+/** Vacant units by property; `current` = the tenant's unit. */
 function unitPickHtml(id, d, ix, { current = '', none = true, attrs = '' } = {}) {
     const groups = vacantByProperty(d.properties, d.units, current).map(g => `<optgroup label="${esc(g.property.name)}">${g.units.map(u => {
         const type = knownType(u, g.property);
@@ -888,7 +888,7 @@ function unitPickHtml(id, d, ix, { current = '', none = true, attrs = '' } = {})
     return `<label class="rent-label">${esc(t('ui.rent.unit'))}<select id="${id}"${attrs}>${none ? `<option value="">${esc(t('ui.rent.unit_none'))}</option>` : ''}${groups}</select></label>`;
 }
 
-/** A tenant (new, {id, name}, or null: picked here) moves into a vacant unit (picked if not given) or changes unit (asks first). Property view Add tenant: toUnit(null, unitId). */
+/** Move in or change unit (asks first); tenant: new, {id, name} or null (picked here); no unitId: picked here. */
 async function toUnit(tenant, unitId = '') {
     const d = store.snapshot();
     const ix = index(d);
