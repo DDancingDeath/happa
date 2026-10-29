@@ -244,6 +244,7 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
 
     const st = {};
     const totals = { opening: 0, purchases: 0, cogs: 0, adjustments: 0, closing: 0 };
+    const cogsByItem = {};
     const value = () => Object.values(st).reduce((a, s) => a + (s.q > 0 ? s.v : 0), 0);
     let openingTaken = false;
     for (const e of ev) {
@@ -270,7 +271,7 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
         const delta = s.v - before;
         if (e.t >= range[0]) {
             if (e.op === 'buy') totals.purchases += delta;
-            else if (e.op === 'sell') totals.cogs -= delta;
+            else if (e.op === 'sell') { totals.cogs -= delta; cogsByItem[e.k] = (cogsByItem[e.k] || 0) - delta; }
             else totals.adjustments += delta;
         }
     }
@@ -279,7 +280,7 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
     const perItem = {};
     Object.entries(st).forEach(([k, s]) => { perItem[k] = { qty: s.q, rate: s.q > 0 ? s.v / s.q : 0, value: s.q > 0 ? s.v : 0 }; });
     Object.keys(totals).forEach(k => { totals[k] = r2(totals[k]); });
-    return { ...totals, perItem };
+    return { ...totals, perItem, cogsByItem };
 }
 
 // ---------------------------------------------------------------- Finance (F*), new definitions from #215
@@ -356,6 +357,86 @@ export function analyticsMonth(data, nowMs) {
         A5_payableCount: (data.purchases || []).filter(b => openDue(b) > 0).length,
         A6_receivable: r2(sum(allSales, openDue)),
         A6_receivableCount: allSales.filter(b => openDue(b) > 0).length
+    };
+}
+
+// ---------------------------------------------------------------- Money (M*) and Insights (I*) — redesign phase 1
+
+const lineTotal = (l) => (has(l.total) ? n(l.total) : n(l.qty ?? l.quantity) * n(l.rate));
+const partyKey = (name) => String(name ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+
+/**
+ * M1–M16 and I1/I3/I4 for [from, to) (BILL-TIME, OPENING left out, BILL-COUNT).
+ * M2/M3/M6 follow F2/F4; M7 = labour; M12/M13 split cash/online (expenses are cash).
+ */
+export function metrics(data, range = [-Infinity, Infinity]) {
+    const inR = (b) => inRange(eventTimeOf(b), range);
+    const retail = activity(data.retailSales).filter(inR);
+    const wholesale = activity(data.wholesaleSales).filter(inR);
+    const sales = [...wholesale, ...retail];
+    const purchases = activity(data.purchases).filter(inR);
+    const f = finance(data, range);
+    const stock = stockReplay(data, range);
+    const exp = (data.expenses || []).filter(e => inRange(timeOf(e.date), range));
+    const expenseTotal = sum(exp, expenseAmount);
+    const dues = duePaymentsIn({ purchase: data.purchases, retail: data.retailSales, wholesale: data.wholesaleSales }, [], range);
+    const at = (bills) => bills.reduce((a, b) => { const p = paidAtSave(b); a.cash += p.cash; a.online += p.online; return a; }, { cash: 0, online: 0 });
+    const sold = at(sales);
+    const bought = at(purchases);
+
+    // I1: sale line totals per item (+ one '' row for bill-level differences), COGS per item.
+    const items = data.items || [];
+    const keyOf = (line) => {
+        if (line.itemId && items.some(i => i.id === line.itemId)) return line.itemId;
+        const name = String(line.name ?? line.itemName ?? '').trim().toLowerCase();
+        const hit = items.find(i => String(i.name).trim().toLowerCase() === name || String(i.hindiName || '').trim().toLowerCase() === name);
+        return hit ? hit.id : name;
+    };
+    const itemSales = {};
+    sales.forEach(b => {
+        let lines = 0;
+        (b.items || []).forEach(l => { const k = keyOf(l); itemSales[k] = (itemSales[k] || 0) + lineTotal(l); lines += lineTotal(l); });
+        const rest = billValue(b) - lines;
+        if (Math.abs(rest) >= 0.005) itemSales[''] = (itemSales[''] || 0) + rest;
+    });
+    Object.keys(itemSales).forEach(k => { itemSales[k] = r2(itemSales[k]); });
+    const itemCogs = {};
+    Object.entries(stock.cogsByItem).forEach(([k, v]) => { itemCogs[k] = r2(v); });
+
+    const byParty = (bills) => {
+        const out = {};
+        bills.forEach(b => { const k = partyKey(b.customerName ?? b.supplierName); out[k] = r2((out[k] || 0) + billValue(b)); });
+        return out;
+    };
+    const salesTotal = sum(sales, billValue);
+    return {
+        M1_sales: r2(salesTotal), M1_saleCount: sales.length,
+        M1_retail: r2(sum(retail, billValue)), M1_retailCount: retail.length,
+        M1_wholesale: r2(sum(wholesale, billValue)), M1_wholesaleCount: wholesale.length,
+        M2_cogs: stock.cogs,
+        M3_gross: r2(salesTotal - stock.cogs),
+        M4_businessExpenses: f.F3_businessExpenses,
+        M5_badDebts: f.F4_badDebts,
+        M6_profit: f.F4_profit,
+        M7_labour: r2(sum(purchases, labourOf)),
+        M8_personalExpenses: f.F5_personalExpenses,
+        M9_withdrawals: f.F11_withdrawals,
+        M10_kept: r2(f.F4_profit - f.F5_personalExpenses - f.F11_withdrawals),
+        M12_inCash: r2(sold.cash + dues.receivedCash), M12_inOnline: r2(sold.online + dues.receivedOnline),
+        M13_outCash: r2(bought.cash + dues.paidCash + expenseTotal), M13_outOnline: r2(bought.online + dues.paidOnline),
+        M14_net: f.F7_cashFlow,
+        M16_purchases: r2(sum(purchases, billValue)), M16_purchaseCount: purchases.length,
+        I1_itemSales: itemSales, I1_itemCogs: itemCogs,
+        I3_customers: byParty(sales), I4_suppliers: byParty(purchases)
+    };
+}
+
+/** O3/O4 totals and bill counts over all bills (receivables include wholesale). */
+export function dueTotals(data) {
+    const allSales = [...(data.wholesaleSales || []), ...(data.retailSales || [])];
+    return {
+        payable: r2(sum(data.purchases || [], openDue)), payableCount: (data.purchases || []).filter(b => openDue(b) > 0).length,
+        receivable: r2(sum(allSales, openDue)), receivableCount: allSales.filter(b => openDue(b) > 0).length
     };
 }
 

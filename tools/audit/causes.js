@@ -40,6 +40,11 @@ export const CAUSES = {
     F6_stockValue: NEGATIVE_STOCK,
     S3_value: NEGATIVE_STOCK,
     S4_total: NEGATIVE_STOCK,
+    // Calculation layer (business-metrics.js): the cost of goods sold is the same replay as F2.
+    M2_cogs: NEGATIVE_STOCK,
+    M3_gross: { ...NEGATIVE_STOCK, cause: `= sales − cost of goods sold (M2). ${NEGATIVE_STOCK.cause}` },
+    M6_profit: { ...NEGATIVE_STOCK, cause: `= Finance profit (F4, #36). ${NEGATIVE_STOCK.cause}` },
+    M10_kept: { ...NEGATIVE_STOCK, cause: `= profit (M6) − personal expenses − withdrawals. ${NEGATIVE_STOCK.cause}` },
     A3_expenses: {
         short: 'analytics.js:parseDate reads "D/M/YYYY, h:mm:ss pm" expense dates with new Date()',
         cause: 'www/js/modules/analytics.js:parseDate uses `new Date(text)`: expenses are dated "D/M/YYYY, h:mm:ss pm", '

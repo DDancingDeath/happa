@@ -26,6 +26,7 @@ import { sessionTotals } from '@app/utils/cash-session.js';
 import { computeStock } from '@app/utils/stock-replay.js';
 import { profitByDay, computeFinanceSummary } from '@app/utils/finance-calc.js';
 import { runNumberChecks } from '@app/utils/number-checks.js';
+import { moneySummary, billCount, itemSummary, partySummary, purchaseItems } from '@app/utils/business-metrics.js';
 import { billsToYearDocs, monthBuckets, weekBuckets } from '@app/utils/rate-trends.js';
 import { monthBucketsFor, trafficRows } from '@app/utils/product-traffic.js';
 
@@ -241,6 +242,30 @@ function auditDataset(C, scope, data, periods, nowMs) {
             cmp('F2_cogs_items_never_below_zero', 'Finance', label, wantClean.cogs, appClean.cogs);
             chk('F8_gap_items_never_below_zero', 'Finance', label, Math.abs(appClean.stock.gap) <= 1, 0, appClean.stock.gap);
         }
+
+        // ---- Calculation layer (business-metrics.js): Money M*, bill count, items and parties add up
+        const mm = moneySummary({ ...data, base: { state: {}, from: -Infinity } }, { from: p.from, to: p.to }, { detail: true });
+        const wantM = O.metrics(data, range);
+        [['M1_sales', mm.M1.total], ['M2_cogs', mm.M2], ['M3_gross', mm.M3.total], ['M4_businessExpenses', mm.M4.total],
+            ['M5_badDebts', mm.M5], ['M6_profit', mm.M6.total], ['M7_labour', mm.M7], ['M8_personalExpenses', mm.M8.total],
+            ['M9_withdrawals', mm.M9], ['M10_kept', mm.M10], ['M12_inCash', mm.M12.cash], ['M12_inOnline', mm.M12.online],
+            ['M13_outCash', mm.M13.cash], ['M13_outOnline', mm.M13.online], ['M14_net', mm.M14], ['M16_purchases', mm.M16.total]]
+            .forEach(([k, v]) => cmp(k, 'Money (layer)', label, wantM[k], v));
+        cmp('M1_saleCount', 'Money (layer)', label, wantM.M1_saleCount, mm.M1.count, 'count');
+        cmp('M16_purchaseCount', 'Money (layer)', label, wantM.M16_purchaseCount, mm.M16.count, 'count');
+        const bc = billCount(data, p.from, p.to);
+        chk('AC14_bill_count', 'Money vs Reports vs oracle', label, bc.sales === wantM.M1_saleCount && bc.sales === mm.M1.count,
+            wantM.M1_saleCount, bc.sales, 'count');
+        const itemRows = itemSummary(mm);
+        const sumOf = (list, f) => list.reduce((a, x) => a + f(x), 0);
+        chk('AC10_items_eq_sales', 'Insights (layer)', label, Math.abs(sumOf(itemRows, x => x.sales) - mm.M1.total) <= 1, mm.M1.total, r2(sumOf(itemRows, x => x.sales)));
+        if (mm.M2 !== null) chk('AC10_items_eq_cogs', 'Insights (layer)', label, Math.abs(sumOf(itemRows, x => x.cogs) - mm.M2) <= 1, mm.M2, r2(sumOf(itemRows, x => x.cogs)));
+        const cust = partySummary(data, 'sales', { from: p.from, to: p.to });
+        const sup = partySummary(data, 'purchases', { from: p.from, to: p.to });
+        chk('AC11_parties_eq_sales', 'Insights (layer)', label, Math.abs(sumOf(cust, x => x.total) - mm.M1.total) <= 1, mm.M1.total, r2(sumOf(cust, x => x.total)));
+        chk('AC11_parties_eq_purchases', 'Insights (layer)', label, Math.abs(sumOf(sup, x => x.total) - mm.M16.total) <= 1, mm.M16.total, r2(sumOf(sup, x => x.total)));
+        const pItems = purchaseItems(data.purchases, data.items, { from: p.from, to: p.to });
+        chk('I4_items_eq_purchases', 'Insights (layer)', label, Math.abs(sumOf(pItems, x => x.amount) - mm.M16.total) <= 1, mm.M16.total, r2(sumOf(pItems, x => x.amount)));
 
         // ---- Same period, same number (AC7)
         if (today) {

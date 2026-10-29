@@ -13,7 +13,9 @@ import { profitByDay } from '../utils/finance-calc.js';
 import { t, getLang } from '../i18n/index.js';
 import { lowStockItems, stockedItemKeys } from '../utils/stock-check.js';
 import { normalizePartyName, partyDisplayNames } from '../utils/aging.js';
-import { activityBills } from '../utils/money.js';
+import { activityBills, billTotal } from '../utils/money.js';
+import { parseAnyBillDate } from '../utils/dates.js';
+import { outstandingTotals } from '../utils/business-metrics.js';
 
 const formatCurrency = (amount, opts) => Helpers.formatCurrency(amount, opts);
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -190,9 +192,8 @@ export class AnalyticsManager {
      * Parse transaction date
      */
     static parseDate(dateField) {
-        if (!dateField) return new Date(0);
-        if (dateField.toDate) return dateField.toDate();
-        return new Date(dateField);
+        // dates.js only: expenses are dated 'D/M/YYYY, h:mm:ss pm' (#49)
+        return parseAnyBillDate(dateField) || new Date(NaN);
     }
 
     /**
@@ -209,7 +210,7 @@ export class AnalyticsManager {
      * Get transaction total
      */
     static getTotal(t) {
-        return Number(t.grandTotal) || Number(t.amountPayable) || Number(t.billTotal) || Number(t.total) || 0;
+        return billTotal(t);
     }
 
     /**
@@ -797,12 +798,9 @@ export class AnalyticsManager {
         const profit = month.profit;
 
         // Outstanding analysis
-        const purchaseDue = (AppState.purchaseHistory || [])
-            .filter(p => (p.due || p.payment?.due) > 0)
-            .reduce((sum, p) => sum + (p.due || p.payment?.due || 0), 0);
-        const saleDue = [...(AppState.salesHistory || []), ...(AppState.retailSalesHistory || [])]
-            .filter(s => (s.due || s.payment?.due) > 0)
-            .reduce((sum, s) => sum + (s.due || s.payment?.due || 0), 0);
+        const dues = this.dueTotals();
+        const purchaseDue = dues.payable.total;
+        const saleDue = dues.receivable.total;
 
         // Generate suggestions
         if (saleDue > 50000) {
@@ -859,20 +857,21 @@ export class AnalyticsManager {
      * Render Outstanding Dues
      */
     static renderOutstandingDues() {
-        // Purchase dues (you owe)
-        const purchaseDues = (AppState.purchaseHistory || [])
-            .filter(p => (p.due || p.payment?.due) > 0);
-        const totalPayable = purchaseDues.reduce((sum, p) => sum + (p.due || p.payment?.due || 0), 0);
+        // BILL-DUE via the calculation layer: cleared bills and dueAmount-only bills handled (#220)
+        const { payable, receivable } = this.dueTotals();
+        this.updateElement('totalPayable', formatCurrency(payable.total));
+        this.updateElement('payableCount', t('ui.analytics.bills_count', { count: payable.count }));
+        this.updateElement('totalReceivable', formatCurrency(receivable.total));
+        this.updateElement('receivableCount', t('ui.analytics.bills_count', { count: receivable.count }));
+    }
 
-        // Sale dues (you'll receive)
-        const saleDues = [...(AppState.salesHistory || []), ...(AppState.retailSalesHistory || [])]
-            .filter(s => (s.due || s.payment?.due) > 0);
-        const totalReceivable = saleDues.reduce((sum, s) => sum + (s.due || s.payment?.due || 0), 0);
-
-        this.updateElement('totalPayable', formatCurrency(totalPayable));
-        this.updateElement('payableCount', t('ui.analytics.bills_count', { count: purchaseDues.length }));
-        this.updateElement('totalReceivable', formatCurrency(totalReceivable));
-        this.updateElement('receivableCount', t('ui.analytics.bills_count', { count: saleDues.length }));
+    /** O3 / O4 totals and bill counts (business-metrics outstandingTotals). */
+    static dueTotals() {
+        return outstandingTotals({
+            purchases: AppState.purchaseHistory || [],
+            wholesaleSales: AppState.salesHistory || [],
+            retailSales: AppState.retailSalesHistory || []
+        });
     }
 
     /**

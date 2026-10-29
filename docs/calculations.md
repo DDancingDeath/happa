@@ -29,19 +29,21 @@ test in the same PR (see AGENTS.md → PR checklist).
 | DUE-PAY | Due payment | One entry in a bill's `payments[]` (cash and/or online; entries before #107 have only `amount`, which is cash), or the same payment as a leg in the cash session's `duePayments`. The same payment id is counted once. A write-off (`kind: 'writeOff'`) is never money. |
 | EXP-KIND | Business or personal expense | Personal only when the expense is tagged personal. Anything else — including old expenses with no tag — is business and should be shown as "uncategorised" (owner decision #36). |
 | DAY | A day | Local (IST) calendar day, midnight to midnight, using the bill's own date (❓ open: #99 asks whether "Today" should follow the open cash session instead). Dates may be ISO, `DD/MM/YYYY` or `DD/MM/YYYY, h:mm:ss am`; all mean local time. |
-| PERIOD | This week / month / year | Calendar period up to now: week from Monday, month from the 1st, year from 1 January (❓ open: #43, recommendation used). "Last 7 / 30 days" would be labelled so. |
+| PERIOD | This week / month / year | Calendar period up to now: week from Monday, month from the 1st, year from 1 January (owner decision #43, 2026-10-26: calendar month; `insights-config.js` `monthMode` / `yearStartMonth` can switch to the last 30 days or an April year). "Last 7 / 30 days" would be labelled so. |
 | AVG-COST | Average cost of an item | Weighted average: each purchase adds its quantity at the line rate; each sale removes quantity at the average cost of that moment; adjustments add (at their rate), remove (at average cost, never below zero) or set the quantity. Lines match a catalogue item by item id, else by English or Hindi name (trimmed, any case). Retail sales reduce stock like wholesale and are costed the same way (owner decision #33, 2026-10-25). |
 | COGS | Cost of goods sold | For every sale line: quantity × AVG-COST of that item at the moment of the sale. |
 | OPENING | Opening record (old-app due) | A bill-shaped record written by the move from the old app (`tools/migrate`): it has an `openingBalance` object, no lines and a total of ₹0, and is dated with the old bill's date (which can be today). It is a **balance only**: it counts in dues — Outstanding, aging (from its original date), reminders, statements, the all-time "due to receive / pay" totals (F9, F10, R6, R7, A5, A6) — and in **no** period or activity figure: not in Today (T1–T16), Reports R1–R5 and R8, Finance F1–F8, Analytics A1–A4, bill counts, stock, rate trends, item frequency, anomaly scans or Number checks AC2 / AC4. Money paid on it later is a normal DUE-PAY on the day it is paid (cash flow, drawer, T13 / T14); writing it off is not a bad debt (its sale was never a sale here). In code: `isOpeningRecord()` / `activityBills()` in `utils/money.js`, the one filter every period figure uses (review rule `period-aggregation-without-activity-filter`). |
-| BILL-COUNT | "N bills", "N sales", average bill | Number of bills in the period that are activity: OPENING records are never counted. Today (T1/T2), Reports (R1/R2, Purchases / Sales tabs, Compare), Finance (F1 count) and Analytics use this one rule, so they agree; History lists opening records too, marked "Old app". |
+| BILL-COUNT | "N bills", "N sales", average bill | Number of bills whose BILL-TIME is in the period that are activity: OPENING records are never counted (`billCount()` in `utils/business-metrics.js`). Today (T1/T2), Reports (R1/R2, Purchases / Sales tabs, Compare), Finance (F1 count) and Analytics use this one rule, so they agree; History lists opening records too, marked "Old app". |
+| BILL-TIME | When a bill counts | The bill's stock time: numeric `timestamp`, else its `date` read by `utils/dates.js` (ISO, `DD/MM/YYYY`, `D/M/YYYY, h:mm:ss am`; all local IST). Expenses, withdrawals and payments are read by the same parser (`recordTime`). No other date parsing is used by the calculation layer (#49). |
+| CMP | Comparisons | For a period: *previous* = the same days of the previous month for a calendar month, else the same length just before ("last 30 days" always uses the same length, even when it starts on the 1st); *last year* = the same dates one year earlier. The last day is counted inclusively and clipped to the shorter month (1–30 Oct vs 1–30 Sep, 1–28 Mar vs all of Feb); a month that has reached its last day compares with the whole other month. % change = (now − then) ÷ \|then\| × 100, rounded; "—" when `then` is 0 or not loaded; "about the same" under 2 % (`insights-config.js` `sameWithinPct`). |
 | PARTY | One party | Bills belong to the same party when their names match with case, extra spaces and Unicode form ignored ("test party" = "Test Party"). The name shown is the spelling used most; on a tie the one with more capitalised words. Outstanding, aging, reminders, Reports' customer filters and Analytics' customers group this way. |
 | MONEY-TEXT | How ₹ is written | Indian grouping everywhere: whole rupees (₹2,50,000); rates per kg in paise (₹1,234.50). Amounts below ₹100 that are averages show paise (₹0.40, not ₹0). One formatter: `formatRupees()` in `utils/money.js` (`Helpers.formatCurrency`). |
 | DATE-TEXT | How dates are written | "25 Oct 2026" for a date; "25 Oct, 8:59 pm" for a date and time (the year is added when it is not this year); Hindi month names and पूर्वाह्न / अपराह्न in Hindi. One formatter: `formatDay()` / `formatDayTime()` in `utils/dates.js`. |
 
 Labour on purchases is taken off the supplier's bill, so the stock is valued at
 the line rate (before labour) while the purchase costs the shop the bill total
-after labour. (❓ open: whether labour should lower the stock cost; today it
-does not.)
+after labour. (Owner decision 2026-10-26: labour is **not** part of the cost of goods sold; Money shows it
+as its own line, M7. `insights-config.js` `labourInCost` keeps the choice in one place.)
 
 ---
 
@@ -127,13 +129,13 @@ For the selected PERIOD. Dues are all-time, not the period.
 
 | ID | On screen | Definition |
 |---|---|---|
-| A1 | This month: revenue | Σ BILL-TOTAL of sales from the 1st of this month to now. ❌ app differs: `DD/MM/YYYY` bills are misread (#49). |
-| A2 | This month: purchases | Σ BILL-TOTAL of purchases, same range. ❌ (#49) |
-| A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. ❌ app differs: expenses dated `D/M/YYYY, h:mm:ss pm` (every expense the old app saved) are misread (#49). |
+| A1 | This month: revenue | Σ BILL-TOTAL of sales from the 1st of this month to now (dates read by `utils/dates.js`, #49 fixed). |
+| A2 | This month: purchases | Σ BILL-TOTAL of purchases, same range. |
+| A3 | This month: expenses | Σ business expenses (EXP-KIND), same range; count. Expenses dated `D/M/YYYY, h:mm:ss pm` (every expense the old app saved) are read by `utils/dates.js` (#49 fixed). |
 | A4 | This month: profit | Same as F4 for the same range (#36). Its margin carries the "cost not known" note, as R3. |
 | A7 | Profit trend (per day) | F4 split by day: each day's sales − cost of goods sold − business expenses − bad debts; the days add up to F4 for the whole range. |
-| A5 | Total payable | = F10; count of bills with BILL-DUE > 0. ❌ app differs: counts cleared bills that still carry their old due (#220). |
-| A6 | Total receivable | = F9; count of bills with BILL-DUE > 0. ❌ app differs: counts cleared bills, misses `dueAmount`-only bills (#220). |
+| A5 | Total payable | = F10; count of bills with BILL-DUE > 0 (`outstandingTotals`, #220 fixed). |
+| A6 | Total receivable | = F9; count of bills with BILL-DUE > 0 (`outstandingTotals`, #220 fixed). |
 
 Analytics' customers (active buyers, top customers) group bills by PARTY. The cash prediction hides its confidence when there is no same-weekday history (its ₹0 then means "no data"). Smart suggestions name items (English or Hindi name), never ids; "low stock" lists only items whose stock was set at some point (a purchase or an opening stock adjustment) and is now below 10 kg.
 
@@ -222,6 +224,46 @@ Oracle: `tests/oracle/rent.test.js`.
 
 ---
 
+## Calculation layer: Money (M*) and Insights (I*) (`utils/business-metrics.js`) — redesign
+
+One pure module computes every figure of the Money, Insights and Statements
+pages (docs/insights-redesign.md §7); pages only render. Owner choices are
+constants in `utils/insights-config.js` (overridable in `settings/app.insights`).
+Oracle: `tests/oracle/business-metrics.test.js`; accounting checks:
+`tests/property/business-metrics.test.js`; real data: `npm run audit:numbers`
+(page "Money (layer)", "Insights (layer)"). Each figure has one home
+(`utils/metric-registry.js`).
+
+| ID | On screen | Definition |
+|---|---|---|
+| M1 | Sales | Σ BILL-TOTAL of wholesale + retail bills with BILL-TIME in the period (OPENING left out); BILL-COUNT; split retail / wholesale; "of which still due" Σ BILL-DUE. Same as F1. |
+| M2 | Cost of goods sold | Σ COGS of the period's sale lines. Same as F2. |
+| M3 | Gross profit | M1 − M2; "profit per ₹100 sold" = M3 ÷ M1 × 100. |
+| M4 | Business expenses | Σ business expenses (EXP-KIND), by category (the expense `type`; untagged ones are their own row). Same as F3. |
+| M5 | Bad debts | Dues to receive written off in the period, on the write-off date (as in F4). |
+| M6 | Profit | M3 − M4 − M5. **The** profit (#36); same as F4. "—" with a caveat while the cost of goods sold isn't known. |
+| M7 | Labour on purchases | Σ labour on the period's purchases. Shown as its own line under profit, **not** subtracted (owner decision 2026-10-26). |
+| M8 | Personal expenses | Σ expenses tagged personal. Same as F5. |
+| M9 | Withdrawals | Σ withdrawals dated in the period. Same as F11. |
+| M10 | Kept in business | M6 − M8 − M9. |
+| M11 | Profit by month / day | M6 per calendar month (13 months, last year faint) and per day of a month; the days add up to M6. |
+| M12 | Money in | BILL-AT-SAVE of the period's sales + DUE-PAYs received; split cash / online. |
+| M13 | Money out | BILL-AT-SAVE of the period's purchases + DUE-PAYs paid + all expenses (cash until #117); split cash / online. |
+| M14 | Net money in / out | M12 − M13. Same as F7. |
+| M15 | Net worth | S4 + O4 + other accounts (owner-entered) + last counted drawer cash − O3 (owner decision #39, 2026-10-26; `netWorthTerms`). Each due counted once. |
+| M16 | Purchases | Σ BILL-TOTAL (after labour) of purchases with BILL-TIME in the period; BILL-COUNT; line value before labour and M7 as its two parts. |
+| M17 | Stock movement check | Opening stock value + purchases at line rate − M2 ± adjustments = closing (as F8). |
+| I1 | Item sales and profit | Per catalogue item: Σ sale line totals, Σ their COGS, profit = sales − COGS, profit per ₹100 (AC10). |
+| I2 | Retail / wholesale | I1 split by bill type. |
+| I3 | Sales by customer | Per PARTY: Σ BILL-TOTAL, BILL-COUNT, last bill (AC11). "Stopped coming": bought in each of the same 3 calendar months last year, no bill for 60 days (`stoppedComingDays`). |
+| I4 | Purchases by supplier | Per PARTY: Σ BILL-TOTAL after labour, labour, kg, last bill. Item rows share each bill's labour by line value, so they add up to M16 (#47). |
+| I5 | Season index | Per item and calendar month: kg sold that month ÷ the item's average monthly kg (RT4 `rateStats` months); needs 12 months. ≥ 1.5 busy, ≤ 0.5 quiet. |
+| I6 | Biggest change | The item (or category) with the largest absolute change between two periods; used in takeaway sentences only. |
+| I7 | Low-profit items | Items with sales ≥ ₹5,000 in the period and profit per ₹100 under 3 (`lowMarginMinSales`, `lowMarginPer100`), or a loss. |
+| I8 | Sold below cost | Sale lines (bill × item) whose value is below their cost of goods sold, per item: times, kg, ₹ lost. |
+| I9 | Stock up before the season | Items whose busy month (I5) is within the next 8 weeks while the stock covers fewer weeks than it takes to get there + 4. |
+| I10 | Overdue parties | Parties with an open BILL-DUE older than 30 days (`overdueDays`): count, total, oldest; customers and suppliers separately. |
+| I11 | Purchases by item | Per catalogue item: line value, labour share (labour × line value ÷ the bill's line value), amount after labour, kg. Rows add up to M16 (#47). |
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and
@@ -253,9 +295,14 @@ in Diagnostics → Number checks.
 | AC4 | Σ over months = all time (sales, purchases) on Reports and Finance. |
 | AC5 | Outstanding total = Σ BILL-DUE of open bills, OPENING records included (Outstanding, Finance, Reports agree); OPENING records age from their original bill date. |
 | AC6 | Drawer expected cash = opening + cash in − cash out for the day. |
-| AC7 | Same period, same number: Today, Reports, Analytics, Finance and the drawer agree on sales and cash; Finance profit, cost of goods sold and cash flow match the oracle every month. ❌ partly: #49 (DD/MM dates on Analytics). |
+| AC7 | Same period, same number: Today, Reports, Analytics, Finance and the drawer agree on sales and cash; Finance profit, cost of goods sold and cash flow match the oracle every month. |
 | AC8 | No item's stock goes below zero unless a sale was saved past the oversell warning. |
 | AC9 | Adding OPENING records changes no period or activity figure (Today, Reports, Finance, Analytics, stock, bill counts); only the dues change. Today's due to receive = Σ BILL-DUE of that day's real bills. |
+| AC10 | Items add up: Σ I1 over items = M1 and Σ item cost of goods sold = M2 (a bill whose total differs from its lines adds one "bill adjustments" row). |
+| AC11 | Parties add up: Σ I3 = M1; Σ I4 = M16. Purchase item rows (labour shared by line value) add up to M16 (#47). |
+| AC12 | Money › Worth terms equal their homes: stock = S4, to receive = O4, to pay = O3. |
+| AC13 | Single home: no figure is rendered as a value by two templates (`utils/metric-registry.js`, `metric-registry.test.js`). |
+| AC14 | One bill count: BILL-COUNT is the same for the calculation layer, Reports, Finance and the oracle for any period. |
 
 ---
 

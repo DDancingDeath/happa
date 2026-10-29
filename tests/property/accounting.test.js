@@ -377,8 +377,8 @@ test('AC7 same month: sales on Reports == Analytics == Finance == oracle; Financ
         && finance.profit === Math.round(want.R3_profit))), FC);
 });
 
-// BUG: see #49 — Analytics parses DD/MM/YYYY dates with new Date(), so its month misses those bills
-test.skip('AC7 same month with DD/MM dates: Analytics sales == Reports (#49)', () => {
+// #49 fixed: Analytics reads dates through utils/dates.js
+test('AC7 same month with DD/MM dates: Analytics sales == Reports (#49)', () => {
     fc.assert(fc.property(shopArb({ ddmmRate: 0.4, years: 1 }), ({ shop: s }) => sameMonth(s, ({ reports, analytics }) => analytics.sales === reports.sales)), FC);
 });
 
