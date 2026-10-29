@@ -139,9 +139,10 @@ export const DayManager = {
         }, 0);
         const totalSales = totalWholesaleSales + totalRetailSales;
         
-        // Expenses split by category
-        const businessExpenses = todayExpenses.filter(e => e.category === 'business');
-        const personalExpenses = todayExpenses.filter(e => e.category === 'personal');
+        // EXP-KIND: personal only when tagged personal; untagged counts as business (#219)
+        const isPersonal = (e) => String(e.category || e.type || '').toLowerCase() === 'personal';
+        const businessExpenses = todayExpenses.filter(e => !isPersonal(e));
+        const personalExpenses = todayExpenses.filter(isPersonal);
         
         const totalBusinessExpenses = businessExpenses.reduce((sum, e) => {
             return sum + (Number(e.amount) || Number(e.total) || 0);

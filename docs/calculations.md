@@ -54,15 +54,15 @@ All for DAY = today.
 | T1 | Purchases | Σ BILL-TOTAL of today's purchases; count of bills. |
 | T2 | Sales | Σ BILL-TOTAL of today's wholesale + retail sales; count of bills. |
 | T3 | Labour | Σ labour on today's purchases. |
-| T4 | Business expenses | Σ today's expenses of kind business (EXP-KIND). ❌ app differs: untagged expenses are left out (#219). |
+| T4 | Business expenses | Σ today's expenses of kind business (EXP-KIND), untagged ones included. |
 | T5 | Personal expenses | Σ today's expenses tagged personal. |
 | T6 | Cash received | BILL-AT-SAVE cash of today's sales + cash part of DUE-PAYs received today. |
 | T7 | Online received | Same, online. |
-| T8 | Cash paid | BILL-AT-SAVE cash of today's purchases + all of today's expenses + cash part of DUE-PAYs paid today. ❌ app differs: untagged expenses are left out (#219). (❓ open: #117 adds a cash/online mode for expenses; until then all expenses count as cash.) |
+| T8 | Cash paid | BILL-AT-SAVE cash of today's purchases + all of today's expenses + cash part of DUE-PAYs paid today. (❓ open: #117 adds a cash/online mode for expenses; until then all expenses count as cash.) |
 | T9 | Online paid | BILL-AT-SAVE online of today's purchases + online part of DUE-PAYs paid today. |
 | T10 | Total in | T6 + T7. |
-| T11 | Total out | T8 + T9. ❌ (#219, via T8) |
-| T12 | Net inflow / outflow | T10 − T11, shown as an amount with "Net inflow" or "Net outflow". ❌ (#219, via T8) |
+| T11 | Total out | T8 + T9. |
+| T12 | Net inflow / outflow | T10 − T11, shown as an amount with "Net inflow" or "Net outflow". |
 | T13 | Due received | DUE-PAYs received today (cash + online). |
 | T14 | Due paid | DUE-PAYs paid today (cash + online). |
 | T15 | Due to receive | Σ BILL-DUE of today's sales (new dues made today; OPENING records are not today's sales even when dated today). The all-time total is on Outstanding / Finance (F9). |
@@ -234,7 +234,7 @@ in Diagnostics → Number checks.
 | AC4 | Σ over months = all time (sales, purchases) on Reports and Finance. |
 | AC5 | Outstanding total = Σ BILL-DUE of open bills, OPENING records included (Outstanding, Finance, Reports agree); OPENING records age from their original bill date. |
 | AC6 | Drawer expected cash = opening + cash in − cash out for the day. |
-| AC7 | Same period, same number: Today, Reports, Analytics, Finance and the drawer agree on sales and cash; Finance profit, cost of goods sold and cash flow match the oracle every month. ❌ partly: #219 (untagged expenses), #49 (DD/MM dates on Analytics). |
+| AC7 | Same period, same number: Today, Reports, Analytics, Finance and the drawer agree on sales and cash; Finance profit, cost of goods sold and cash flow match the oracle every month. ❌ partly: #49 (DD/MM dates on Analytics). |
 | AC8 | No item's stock goes below zero unless a sale was saved past the oversell warning. |
 | AC9 | Adding OPENING records changes no period or activity figure (Today, Reports, Finance, Analytics, stock, bill counts); only the dues change. Today's due to receive = Σ BILL-DUE of that day's real bills. |
 
