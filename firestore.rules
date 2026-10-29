@@ -509,8 +509,15 @@ service cloud.firestore {
         && !('rentRole' in request.resource.data);
     }
 
+    // An owner can't change their own role/status, nor demote or remove another
+    // owner (two owners removing each other at once would leave none).
+    function ownerProfileGuardOk(userId) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status'])
+        || (request.auth.uid != userId && resource.data.get('role', '') != 'owner');
+    }
+
     function canUpdateProfile(usersCol, userId) {
-      return isOwnerIn(usersCol)
+      return (isOwnerIn(usersCol) && ownerProfileGuardOk(userId))
         || (isSignedIn()
             && request.auth.uid == userId
             && !request.resource.data.diff(resource.data).affectedKeys()
@@ -1238,7 +1245,7 @@ service cloud.firestore {
       allow read: if canReadProfile('users', userId);
       allow create: if canCreateProfile(userId);
       allow update: if canUpdateProfile('users', userId);
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() && resource.data.get('role', '') != 'owner';
     }
 
     match /users/{userId}/preferences/{prefId} {
@@ -1368,7 +1375,7 @@ service cloud.firestore {
       allow read: if canReadProfile('dev_users', userId);
       allow create: if canCreateProfile(userId);
       allow update: if canUpdateProfile('dev_users', userId);
-      allow delete: if isOwnerIn('dev_users');
+      allow delete: if isOwnerIn('dev_users') && resource.data.get('role', '') != 'owner';
     }
 
     match /dev_users/{userId}/preferences/{prefId} {

@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261026j-rent-unit-views';
+const BUILD_ID = '20261029a-admin-users';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -278,11 +278,11 @@ async function initializeUserData() {
                     return;
                 }
                 
-                if (userData.status === 'rejected') {
+                if (userData.status === 'rejected' || userData.status === 'disabled') {
                     notShown();
                     await firebase.auth().signOut();
                     UIManager.hideLoading();
-                    AuthManager.showLoginNotice(t('msg.common.account_has_been_rejected_contact'));
+                    AuthManager.showLoginNotice(t(userData.status === 'disabled' ? 'msg.common.account_removed_contact_owner' : 'msg.common.account_has_been_rejected_contact'));
                     document.getElementById('authScreen').style.display = 'flex';
                     return;
                 }
@@ -1246,7 +1246,9 @@ window.app = {
         load: () => UsersManager.loadUsers(),
         approveUser: (userId, role) => UsersManager.approveUser(userId, role),
         rejectUser: (userId) => UsersManager.rejectUser(userId),
-        showChangeRoleDialog: (userId, userName, currentRole) => UsersManager.showChangeRoleDialog(userId, userName, currentRole)
+        showChangeRoleDialog: (userId, userName, currentRole) => UsersManager.showChangeRoleDialog(userId, userName, currentRole),
+        resetUserPassword: (userId, email) => UsersManager.resetUserPassword(userId, email),
+        deleteUser: (userId, userName) => UsersManager.deleteUser(userId, userName)
     },
     
     // Diagnostics (owner; managers see Number checks only)
@@ -1270,6 +1272,8 @@ window.app = {
         approveUser: (userId) => AdminManager.approveUser(userId),
         rejectUser: (userId) => AdminManager.rejectUser(userId),
         showChangeRole: (userId, userName, currentRole) => AdminManager.showChangeRole(userId, userName, currentRole),
+        resetUserPassword: (userId, email) => AdminManager.resetUserPassword(userId, email),
+        deleteUser: (userId, userName) => AdminManager.deleteUser(userId, userName),
         loadStorageStats: () => AdminManager.loadStorageStats(),
         clearAllData: () => AdminManager.clearAllData()
     },

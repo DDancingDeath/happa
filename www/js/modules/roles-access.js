@@ -179,7 +179,7 @@ export class RolesAccessManager {
         const shopRole = (r) => t(`ui.role.${r === 'owner' || r === 'manager' ? r : r === 'staff' ? 'member' : 'none'}`);
         const rentOptions = [['', 'ui.rent.access_none'], ['manager', 'ui.rent.access_manager'], ['member', 'ui.rent.access_member']];
         const rows = this.people
-            .filter(u => !['pending', 'rejected'].includes(u.status) && (u.role || u.rentRole))
+            .filter(u => !['pending', 'rejected', 'disabled'].includes(u.status) && (u.role || u.rentRole))
             .map(u => {
                 const owner = u.role === 'owner';
                 const rent = owner ? e(t('ui.role.owner'))

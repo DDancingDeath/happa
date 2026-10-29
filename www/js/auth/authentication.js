@@ -273,9 +273,9 @@ const AuthManager = {
                 return;
             }
             
-            if (userData.status === 'rejected') {
+            if (userData.status === 'rejected' || userData.status === 'disabled') {
                 await firebase.auth().signOut();
-                this.showMessage('login', t('msg.common.account_has_been_rejected_contact'));
+                this.showMessage('login', t(userData.status === 'disabled' ? 'msg.common.account_removed_contact_owner' : 'msg.common.account_has_been_rejected_contact'));
                 return;
             }
             

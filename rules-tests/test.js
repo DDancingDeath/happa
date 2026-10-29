@@ -36,6 +36,7 @@ async function seedUsers(usersCol) {
         await db.collection(usersCol).doc('staff1').set({ name: 'S', email: 's@x.com', role: 'staff', status: 'active' });
         await db.collection(usersCol).doc('manager1').set({ name: 'M', email: 'm@x.com', role: 'manager', status: 'approved' });
         await db.collection(usersCol).doc('legacyOwner').set({ name: 'O', email: 'o@x.com', role: 'owner' });
+        await db.collection(usersCol).doc('owner2').set({ name: 'O2', email: 'o2@x.com', role: 'owner', status: 'approved' });
         await db.collection(usersCol).doc('legacyStaff').set({ name: 'L', email: 'l@x.com', role: 'staff' });
         await db.collection(usersCol).doc('noRole').set({ name: 'N', email: 'n@x.com', status: 'active' });
         // Rentals (#170): shop member + rentals role, and a rentals-only helper (shop role 'none').
@@ -559,6 +560,30 @@ function defineSuite(prefix) {
 
     t('owner can delete a user', () =>
         assertSucceeds(as('legacyOwner').collection(users).doc('rejected1').delete()));
+
+    // AadhatManagementApp#74: no self-removal, and two owners can't remove each other.
+    t('owner cannot change own role or status', async () => {
+        await assertFails(as('owner2').collection(users).doc('owner2').update({ role: 'manager' }));
+        await assertFails(as('owner2').collection(users).doc('owner2').update({ status: 'disabled' }));
+        await assertFails(as('legacyOwner').collection(users).doc('legacyOwner').update({ role: FieldValue.delete(), status: 'disabled' }));
+        await assertSucceeds(as('owner2').collection(users).doc('owner2').update({ name: 'Renamed', lastLogin: new Date() }));
+    });
+
+    t('owner cannot remove, demote or delete another owner', async () => {
+        await assertFails(as('legacyOwner').collection(users).doc('owner2').update({
+            role: FieldValue.delete(), rentRole: FieldValue.delete(), status: 'disabled', disabledBy: 'legacyOwner'
+        }));
+        await assertFails(as('owner2').collection(users).doc('legacyOwner').update({ role: 'manager' }));
+        await assertFails(as('owner2').collection(users).doc('legacyOwner').delete());
+        await assertFails(as('legacyOwner').collection(users).doc('legacyOwner').delete());
+        await assertSucceeds(as('owner2').collection(users).doc('legacyOwner').update({ name: 'Renamed' }));
+    });
+
+    t('owner can still remove a non-owner (disabled profile)', () =>
+        assertSucceeds(as('legacyOwner').collection(users).doc('manager1').update({
+            role: FieldValue.delete(), rentRole: FieldValue.delete(), approvedAt: FieldValue.delete(), approvedBy: FieldValue.delete(),
+            status: 'disabled', disabledAt: new Date(), disabledBy: 'legacyOwner'
+        })));
 
     t('approved user can access own preferences only', async () => {
         await assertSucceeds(as('staff1').collection(users).doc('staff1').collection('preferences').doc('ui').set({ a: 1 }));
