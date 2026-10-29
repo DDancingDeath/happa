@@ -11,7 +11,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
-import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields } from '../utils/cash-session.js';
+import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { round2, outstandingDue } from '../utils/money.js';
 import { evaluateCashCount, toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
@@ -384,7 +384,7 @@ export class CashManagementManager {
      */
     static loadTodaySessionFromCache(sessions) {
         const today = todayLocalISO(); // YYYY-MM-DD (local day)
-        this.todaySession = sessions.find(s => s.date === today) || null;
+        this.todaySession = sessionForDate(sessions, today);
     }
 
     /**
@@ -398,7 +398,7 @@ export class CashManagementManager {
             const today = todayLocalISO(); // YYYY-MM-DD (local day)
             const sessions = await FirebaseService.loadCashSessions();
             
-            this.todaySession = sessions.find(s => s.date === today);
+            this.todaySession = sessionForDate(sessions, today);
             
             if (this.todaySession) {
                 // Session exists - calculate transactions
@@ -752,7 +752,6 @@ export class CashManagementManager {
             }
 
             const session = {
-                id: Helpers.generateId(),
                 date: todayLocalISO(),
                 openingBalance: amount,
                 signInTime: new Date().toISOString(),
@@ -763,13 +762,15 @@ export class CashManagementManager {
             };
             if (openingNotes) session.openingNotes = openingNotes;
 
-            await FirebaseService.saveCashSession(session);
-            this.todaySession = session;
+            const { session: opened, joined } = await FirebaseService.openCashSession(session);
+            this.todaySession = opened;
             await this.calculateTodayTransactions();
             this.updateUI();
             this.renderHistory();
             
-            UIManager.showToast(t('msg.cash.cash_signed_in_successfully'));
+            UIManager.showToast(joined
+                ? t('msg.cash.joined_open_session', { name: opened.userName || '', amount: opened.openingBalance })
+                : t('msg.cash.cash_signed_in_successfully'));
             
             // Clear inputs
             document.getElementById('cashSignInAmount').value = '';
@@ -777,7 +778,9 @@ export class CashManagementManager {
             if (openingNotesInput) openingNotesInput.value = '';
         } catch (error) {
             console.error('Sign in error:', error);
-            UIManager.showToast(t('msg.cash.failed_sign_in', { message: error.message }));
+            UIManager.showToast(error?.code === CASH_NEEDS_INTERNET
+                ? t('msg.cash.open_needs_internet')
+                : t('msg.cash.failed_sign_in', { message: error.message }));
         }
     }
 
@@ -810,6 +813,7 @@ export class CashManagementManager {
             signOutTime: new Date().toISOString(),
             signedOut: true,
             counted: true,
+            closedBy: AppState.currentUser?.uid || 'unknown',
             transactions: {
                 cashSales: this.todayTransactions.cashSales,
                 cashPurchases: this.todayTransactions.cashPurchases,
@@ -1065,8 +1069,14 @@ export class CashManagementManager {
                 <strong>${Helpers.escapeHtml(tn('ui.cash.days_not_counted', notCounted.length))}</strong>
                 <div style="margin-top: 4px;">${L('ui.cash.tap_day_to_count')} ${notCounted.map(s => `<a href="#" onclick="window.app.cashManagement.showDetails('${Helpers.escapeJsAttr(s.date)}'); return false;" style="color: #9a3412; font-weight: 600;">${Helpers.escapeHtml(dayLabel(s))}</a>`).join(', ')}</div>
             </div>` : '';
+        const dupDays = AppState.userRole === 'owner' ? duplicateSessionDays(sessions) : [];
+        const duplicates = dupDays.length > 0 ? `
+            <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #991b1b;">
+                <strong>${Helpers.escapeHtml(tn('ui.cash.duplicate_days', dupDays.length))}</strong>
+                <div style="margin-top: 4px;">${dupDays.map(d => Helpers.escapeHtml(dayLabel({ date: d }))).join(', ')}</div>
+            </div>` : '';
 
-        container.innerHTML = review + sessions.map(session => {
+        container.innerHTML = review + duplicates + sessions.map(session => {
             const date = dayLabel(session);
             const uncounted = isNotCounted(session);
 
@@ -1119,7 +1129,7 @@ export class CashManagementManager {
     static async showSessionDetails(sessionDate) {
         try {
             const sessions = await FirebaseService.loadCashSessions();
-            const session = sessions.find(s => s.date === sessionDate);
+            const session = sessionForDate(sessions, sessionDate);
             
             if (!session) {
                 UIManager.showToast(t('msg.cash.session_not_found'));

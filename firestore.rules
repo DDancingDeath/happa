@@ -276,12 +276,13 @@ service cloud.firestore {
 
     // --- cash sessions (cashManagement) ---
 
-    // cash-management.js signIn
-    function validCashCreate() {
+    // cash-management.js signIn. A per-day session (#38) lives at cash_<date>.
+    function validCashCreate(docId) {
       let d = request.resource.data;
       return d.get('openingBalance', null) is number && d.openingBalance >= 0
         && d.get('signedOut', false) == false
-        && d.get('userId', null) == request.auth.uid;
+        && d.get('userId', null) == request.auth.uid
+        && (!docId.matches('cash_.*') || docId == 'cash_' + d.get('date', ''));
     }
 
     // Deposits and due-payment legs are appended one at a time (arrayUnion, or
@@ -312,7 +313,8 @@ service cloud.firestore {
         && d.get('signedOut', false) == true
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
              'closingBalance', 'expectedBalance', 'difference', 'signOutTime', 'signedOut', 'counted',
-             'transactions', 'closingNotes', 'flags', 'autoSignedOut', 'autoClosed', 'autoSignOutReason'])
+             'transactions', 'closingNotes', 'flags', 'autoSignedOut', 'autoClosed', 'autoSignOutReason', 'closedBy'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['closedBy']) || d.closedBy == request.auth.uid)
         && (d.get('closingBalance', null) == null || (d.closingBalance is number && d.closingBalance >= 0))
         && (d.get('counted', true) == false || d.get('closingBalance', null) is number)
         && (d.get('expectedBalance', null) == null || d.expectedBalance is number);
@@ -371,19 +373,27 @@ service cloud.firestore {
       return collection.matches('dev_.*') ? 'dev_users' : 'users';
     }
 
-    function canCreateRecord(base, u) {
+    function canCreateRecord(base, u, docId) {
       return isOwnerIn(u)
         || (base in billCollections() ? validBillCreate()
           : base in ['expenses', 'withdrawals'] ? validLedgerCreate()
           : base == 'stockAdjustments' ? validAdjustmentCreate()
-          : base in ['cashManagement', 'cashSessions'] ? validCashCreate()
+          : base in ['cashManagement', 'cashSessions'] ? validCashCreate(docId)
           : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.keys())
           : base == 'counters' ? validCounterCreate()
           : true);
     }
 
+    // A closed cash day stays closed for everyone, owners too (#38): a queued or
+    // stale write must not reopen it. There is no reopen action.
+    function cashStaysClosed() {
+      return resource.data.get('signedOut', false) != true
+        || request.resource.data.get('signedOut', false) == true;
+    }
+
     function canUpdateRecord(base, u, docId) {
       return base in billCollections() ? canUpdateBill(u, docId)
+        : base in ['cashManagement', 'cashSessions'] && !cashStaysClosed() ? false
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base in ['withdrawals', 'stockAdjustments']
@@ -1063,7 +1073,7 @@ service cloud.firestore {
       allow create: if businessAccess(collection)
         && appSettingsGuard(collection, docId)
         && (!(collection in stockCollections()) || writesCurrentClient(collection))
-        && canCreateRecord(baseName(collection), usersOf(collection));
+        && canCreateRecord(baseName(collection), usersOf(collection), docId);
       // Bills: full edits by owner/manager/creator; anyone else approved may only
       // record payment/due bookkeeping. Only an owner may change userId.
       // Cash, expenses, stock adjustments, items, counters: see canUpdateRecord.
