@@ -12,7 +12,7 @@ test('edit a purchase from History keeps its money fields', async ({ page, probl
     await page.click('#history .filter-purchase');
     await page.fill('#historySearch', billNumber);
     await page.dispatchEvent('#historySearch', 'input');
-    const header = page.locator('#historyList .history-header span[onclick]').first();
+    const header = page.locator('#historyList .bill-row__link').first();
     await expect(header).toBeVisible();
     await header.click();
     await page.click('#billEditBtn');

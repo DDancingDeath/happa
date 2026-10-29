@@ -44,7 +44,7 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     const input = page.locator(`[id="payment_${sale.id}"]`);
     await expect(input).toBeVisible();
     await input.fill('160');
-    await page.click(`[id="payment_${sale.id}"] + button`);
+    await page.click(`[id="payment_${sale.id}"] ~ button[data-record-payment]`);
     await expectToast(page, /Payment of ₹160 recorded/);
     const paid = await getDoc('dev_retailSales', sale._id);
     expect(paid.payment).toMatchObject({ cash: 160, due: 200 });
@@ -55,13 +55,13 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     await showTab(page, 'cash-management');
     await page.fill('#cashSignInAmount', '1000');
     await page.click('button[onclick="window.app.cashManagement.signIn()"]');
-    await expectToast(page, /Cash signed in successfully/);
+    await expectToast(page, /Cash opened for today/);
     await expect(page.locator('#cashSignOutAmount')).toBeVisible();
     const expected = Number((await page.locator('#expectedCashAmount').textContent()).replace(/[^\d.-]/g, ''));
     expect(expected).toBeGreaterThanOrEqual(1000);
     await page.fill('#cashSignOutAmount', String(expected));
     await page.click('button[onclick="window.app.cashManagement.signOut()"]');
-    await expectToast(page, /Cash signed out successfully/);
+    await expectToast(page, /Cash closed/);
     const sessions = await listDocs('dev_cashManagement');
     expect(sessions).toHaveLength(1);
     expect(sessions[0]).toMatchObject({ openingBalance: 1000, signedOut: true, closingBalance: expected, expectedBalance: expected, difference: 0 });
