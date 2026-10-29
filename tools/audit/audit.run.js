@@ -99,11 +99,12 @@ function moneyScreen(p) {
     const out = {};
     MoneyManager.init('profit');
     Object.assign(out, { M1_sales: shown('moneySales'), M2_cogs: shown('moneyCogs'), M6_profit: shown('moneyProfitValue'),
-        M7_labour: shown('moneyLabour'), M16_purchases: shown('moneyPurchases') });
+        M16_purchases: shown('moneyPurchases') });
     MoneyManager.init('cash');
     out.M14_net = shown('moneyNetCash');
     MoneyManager.init('spending');
-    Object.assign(out, { M4_businessExpenses: shown('moneyBusiness'), M8_personalExpenses: shown('moneyPersonal'), M9_withdrawals: shown('moneyWithdrawn') });
+    Object.assign(out, { M4_businessExpenses: shown('moneyBusiness'), M8_personalExpenses: shown('moneyPersonal'), M9_withdrawals: shown('moneyWithdrawn'),
+        M7_labour: shown('moneyLabour') });
     return out;
 }
 

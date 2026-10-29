@@ -171,13 +171,12 @@ describe('Money page (all time) == oracle', () => {
         jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
     });
 
-    test('Profit: M1, M2, M3, M6, M7, M16', () => {
+    test('Profit: M1, M2, M3, M6, M16', () => {
         MoneyManager.init('profit');
         expect(shown('moneySales')).toBe(rupee(w.M1_sales));
         expect(shown('moneyCogs')).toBe(rupee(w.M2_cogs));
         expect(shown('moneyGross')).toBe(rupee(w.M3_gross));
         expect(shown('moneyProfitValue')).toBe(rupee(w.M6_profit));
-        expect(shown('moneyLabour')).toBe(rupee(w.M7_labour));
         expect(shown('moneyPurchases')).toBe(rupee(w.M16_purchases));
     });
     test('Cash: M12, M13, M14', () => {
@@ -186,12 +185,13 @@ describe('Money page (all time) == oracle', () => {
         expect(shown('moneyOut')).toBe(rupee(w.M13_outCash + w.M13_outOnline));
         expect(shown('moneyNetCash')).toBe(rupee(w.M14_net));
     });
-    test('Spending: M4, M8, M9, M10', () => {
+    test('Spending: M4, M7, M8, M9, M10', () => {
         MoneyManager.init('spending');
         expect(shown('moneyBusiness')).toBe(rupee(w.M4_businessExpenses));
         expect(shown('moneyPersonal')).toBe(rupee(w.M8_personalExpenses));
         expect(shown('moneyWithdrawn')).toBe(rupee(w.M9_withdrawals));
         expect(shown('moneyKept')).toBe(rupee(w.M10_kept));
+        expect(shown('moneyLabour')).toBe(rupee(w.M7_labour));
     });
     test('Worth: stock, to receive and to pay terms equal Stock and Outstanding (S4, O3, O4)', () => {
         MoneyManager.init('worth');
