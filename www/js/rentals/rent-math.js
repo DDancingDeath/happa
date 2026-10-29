@@ -20,17 +20,18 @@ export const DEFAULT_INCREASE_PCT = 5;
 export const MAX_PROPERTIES = 100;
 export const MAX_UNITS_PER_PROPERTY = 20;
 export const MAX_RECEIPT_HEADER = 80;
+export const MAX_RECEIPT_ADDRESS = 200;
 
 /** Settings › Rentals defaults (rent_settings/default) used when they are not set. */
 export const RENT_SETTINGS_DEFAULTS = Object.freeze({
-    dueDay: DEFAULT_DUE_DAY, increasePct: DEFAULT_INCREASE_PCT, meterRate: null, tenantLink: false, receiptHeader: ''
+    dueDay: DEFAULT_DUE_DAY, increasePct: DEFAULT_INCREASE_PCT, meterRate: null, tenantLink: false, receiptHeader: '', receiptAddress: ''
 });
 
 /**
  * Rentals defaults for NEW leases; missing or invalid values fall back to the
  * defaults (existing leases keep their own values).
  * @param {*} raw rent_settings/default data
- * @returns {{dueDay: number, increasePct: number, meterRate: ?number, tenantLink: boolean, receiptHeader: string}}
+ * @returns {{dueDay: number, increasePct: number, meterRate: ?number, tenantLink: boolean, receiptHeader: string, receiptAddress: string}}
  */
 export function normalizeRentSettings(raw) {
     const r = raw && typeof raw === 'object' ? raw : {};
@@ -43,7 +44,8 @@ export function normalizeRentSettings(raw) {
         increasePct: Number.isFinite(pct) && pct >= 0 && pct <= 100 ? round2(pct) : DEFAULT_INCREASE_PCT,
         meterRate: Number.isFinite(rate) && rate >= 0 ? round2(rate) : null,
         tenantLink: r.tenantLink === true,
-        receiptHeader: cleanText(r.receiptHeader).slice(0, MAX_RECEIPT_HEADER)
+        receiptHeader: cleanText(r.receiptHeader).slice(0, MAX_RECEIPT_HEADER),
+        receiptAddress: cleanText(r.receiptAddress).slice(0, MAX_RECEIPT_ADDRESS)
     };
 }
 
@@ -125,6 +127,12 @@ export function monthLabel(key, lang = 'en') {
 }
 
 export const chargeId = (leaseId, month) => `${leaseId}_${month}`;
+
+/** 'R-2026-0001': the business's receipt sequence of that year (RENT-12). */
+export const receiptNo = (year, seq) => `R-${year}-${String(seq).padStart(4, '0')}`;
+
+/** This year in India (IST); receipt numbers restart each year. */
+export const istYear = (now = Date.now()) => new Date(now + 330 * 60000).getUTCFullYear();
 
 /**
  * Months still to be charged for a lease up to `currentMonth`, oldest first:

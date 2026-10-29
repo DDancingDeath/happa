@@ -11,7 +11,7 @@ import { Helpers } from '../utils/helpers.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
 import * as store from './rent-store.js';
-import { MAX_RECEIPT_HEADER } from './rent-math.js';
+import { MAX_RECEIPT_HEADER, MAX_RECEIPT_ADDRESS } from './rent-math.js';
 
 const esc = (v) => Helpers.escapeHtml(v);
 const val = (id) => document.getElementById(id)?.value ?? '';
@@ -53,6 +53,8 @@ export async function mount(el, { editable }) {
             <h3>${esc(t('ui.rentset.receipt_title'))}</h3>
             <label for="rentSetHeader">${esc(t('ui.rentset.receipt_header'))}</label>
             <input type="text" id="rentSetHeader" maxlength="${MAX_RECEIPT_HEADER}" value="${esc(s.receiptHeader)}" placeholder="${esc(t('ui.rentset.receipt_header_placeholder'))}"${off}>
+            <label for="rentSetAddress">${esc(t('ui.rentset.receipt_address'))}</label>
+            <input type="text" id="rentSetAddress" maxlength="${MAX_RECEIPT_ADDRESS}" value="${esc(s.receiptAddress)}" placeholder="${esc(t('ui.rentset.receipt_address_placeholder'))}"${off}>
             <p class="setting-description">${esc(t('ui.rentset.receipt_hint'))}</p>
         </div>
         ${editable ? `<button type="button" class="add-item-btn" id="rentSetSave" onclick="window.app.settings.saveRentals()">${esc(t('ui.roles.save'))}</button>`
@@ -66,7 +68,8 @@ export async function save() {
         increasePct: Number(val('rentSetIncrease')),
         meterRate: val('rentSetMeterRate') === '' ? null : Number(val('rentSetMeterRate')),
         tenantLink: !!document.getElementById('rentSetTenantLink')?.checked,
-        receiptHeader: val('rentSetHeader')
+        receiptHeader: val('rentSetHeader'),
+        receiptAddress: val('rentSetAddress')
     };
     try {
         const next = await store.saveSettings(values);

@@ -121,7 +121,7 @@ All names go through `window.getCollection()`: production `rent_x`, development
 
 Phase 2 adds `rent_deposits` (`{leaseId, kind: received|deduction|refund, amount, date, note}`),
 `rent_expenses` (`{propertyId, category, amount, mode, date, note}`) and agreement
-fields on `rent_leases`.
+fields on `rent_leases`. Rent receipts (`rent_receipts`, `rent_counters`) are built: §10.
 
 **Limits (owner: up to 100 properties, 3 today).** At most 100 properties and 20
 units per property (enforced when adding). Every listener has a limit sized for
@@ -256,7 +256,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit): rentals files 123 KB uncompressed (35 KB gzip), about +5 % of the precache, plus the 3.7 KB switcher that start-up loads. Downloaded once per app version in the background, never at start-up. The tenant page (≈ 15 KB) is not precached | Budget: rentals files ≤ 130 KB uncompressed (raised from 80 → 100 → 120 → 130 KB as the owner added features); `rentals-startup.test.js` fails above it |
+| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts): the files loaded when Rentals opens are 129.3 KB as served (LF), plus the 3.7 KB switcher that start-up loads. Receipts (§10) are split out: `rent-receipt.js` + `css/rent-receipt.css` (≈ 15 KB) load with `import()` only when a receipt or a tenant's Receipts list is opened. Downloaded once per app version in the background, never at start-up. The tenant page (≈ 15 KB) is not precached | Budget: files loaded when Rentals opens ≤ 130 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features); the receipt module ≤ 20 KB and imported only by `rentals.js` with `import()`; `rentals-startup.test.js` fails above either |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -412,7 +412,8 @@ tenant moves in (once per session, `rent-store.js loadSettings()`), never at sta
 | `increasePct` (0–100) | 5 | Yearly increase reminder % filled in on Move in |
 | `meterRate` (≥ 0 or null) | null | Electricity rate filled in for a unit that has no rate yet |
 | `tenantLink` (bool) | false | Owner/manager moving a tenant in also makes the tenant link |
-| `receiptHeader` (≤ 80) | '' | Name on the tenant's rent-history page (blank = the business name) |
+| `receiptHeader` (≤ 80) | '' | Name on rent receipts and the tenant's rent-history page (blank = the business name) |
+| `receiptAddress` (≤ 200) | '' | Address under the name on rent receipts (§10) |
 
 Defaults apply to **new** leases only: existing leases keep their own due day, % and link,
 and units keep their own electricity rate. Rules: rentals roles read; owner and Rentals
@@ -489,3 +490,54 @@ if electricity is paid separately"*.
 - **Yearly increase** counts from the start date's anniversary (RENT-6). First month
   full by default, optional pro-rating (RENT-11).
 
+
+## 10. Rent receipts (phase 2; owner, 2026-10-30)
+
+Owner: plain, **non-GST** receipts (no GST fields); only the shop's people use Rentals, tenants get
+WhatsApp messages and the read-only link; rent never goes into the Aadhat cash drawer.
+
+- **When:** every payment recorded with **Record payment** (full or part) gets a receipt **in the same
+  transaction** (`rent-store.js recordPayment`), and the receipt opens right after the payment with
+  **WhatsApp**, **Print**, **Image** and **PDF**. **Receipts** on a tenant (Tenants page, and each occupied
+  unit on the Rent page) lists that tenant's receipts, newest first, to reprint any of them. Payments
+  recorded before receipts existed have none.
+- **Number:** `R-<year>-<seq>` (`R-2026-0001`), one sequence per business per year (IST):
+  `rent_counters/receipts_<year>` `{last, rid}`. The payment transaction reads the counter, writes
+  `last + 1`, the receipt and the number on the payment entry (`payments[i].rno`). The rules allow the
+  counter only to move by exactly one, pointing at a receipt created in the same write with that number,
+  and the receipt only with that counter move, so a number can never be used twice or skipped. Two
+  people paying at the same moment: the later write is refused and the app reads again (up to 3 tries).
+  If the receipt is still refused (e.g. rules not yet deployed), **the payment is saved without a
+  receipt** — a receipt problem never blocks a payment.
+- **Document** `rent_receipts/{chargeId}_{i}` (`dev_rent_receipts` in development; one per payment, `i` =
+  the payment's index on the charge): `no, year, seq, chargeId, pi, leaseId, tenantId, unitId, propertyId,
+  tenantName, place` (unit and property, without the type word) + `ut` (type id, so a reprint says
+  "Flat" / "फ़्लैट" in the reader's language), `months` (`[month]`), `rent`, `elec` (the month's meter bill or
+  `null`: only meter-billed leases have one), `total, paid, mode, ref, date, balance, by, byName, biz,
+  bizAddr` (Settings › Rentals name and address at the time), `createdAt, void`. Field allow-list in the
+  rules; every amount is checked against the charge after the payment (RENT-12).
+- **Never edited or deleted.** A mistake is corrected by **Cancel receipt** (owner / Rentals manager):
+  `void: true` with who, when and a reason, in the same write as the charge's `voided` list (payment
+  indexes), plus an audit entry `RENT_RECEIPT_VOID`. The payment itself does not change; a correction is a
+  new payment (with its own receipt) or an owner/manager correction of the month.
+- **Text:** WhatsApp text, dialog, image and PDF all come from `t()` in the app language only (keys
+  `ui.rcpt.*`); stored names are cleaned of WhatsApp marks and new lines and HTML-escaped on screen. The
+  tenant link is added to the WhatsApp text when the lease has one.
+- **Print / image / PDF:** one 384 px canvas (58 mm printer) drawn by `drawReceipt()`; Print goes through
+  `PrinterService.printCanvas()` (the existing ESC/POS raster path, else the image preview); Image shares the
+  PNG; PDF is a one-page PDF wrapping the JPEG (no library).
+- **Tenant link:** each paid entry on `/r/<token>` shows its date, amount and receipt number
+  (`months[].py[] = {d, a, r}`), written in the same transaction as the payment (and dropped when
+  cancelled), so the public page still reads exactly one document.
+- **Cost and speed:** start-up unchanged (no receipt code or `rent_` name in the start-up graph).
+  Recording a payment reads one more document (the counter) and writes two more (receipt, counter). The
+  receipt code (`js/rentals/rent-receipt.js`, `css/rent-receipt.css`) loads with `import()` only when a
+  receipt is opened; the Receipts list is one bounded query (`tenantId ==`, `createdAt desc`, limit 60;
+  composite index `rent_receipts (tenantId ASC, createdAt DESC)` + `dev_`).
+- **Backup:** `rent_receipts` and `rent_counters` are in `BACKUP_COLLECTIONS`.
+- **Tests:** rules (prod and `dev_`: number + receipt + counter in one write, no reuse or skip, a
+  concurrent second claim refused, content checked against the charge, electricity, void only by
+  owner/manager with the charge, never edited or deleted, read by rentals roles only, a manager payment with
+  the tenant link snapshot fits the rules limits); Jest (store on an optimistic in-memory Firestore: numbers
+  unique under concurrent payments, fallback without a receipt, void; text for each electricity mode and a
+  part payment, one language, escaping, reprint, void; the tenant page); oracle `tests/oracle/rent-receipt.test.js`.

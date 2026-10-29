@@ -18,7 +18,7 @@
             movedOut: (m) => `Moved out. Last month: ${m}`,
             rent: 'Rent', due: 'Due on day', totalDue: 'Total due', paidAll: 'Paid (shown months)',
             elec: (u) => `Electricity (${u} units)`, total: 'Total', paid: 'Paid', left: 'Due',
-            paidOn: 'Paid on', st: { paid: 'Paid', partial: 'Part paid', due: 'Due', late: 'Late' },
+            paidOn: 'Paid on', receipt: 'Receipt', st: { paid: 'Paid', partial: 'Part paid', due: 'Due', late: 'Late' },
             note: 'Read-only copy kept up to date by the owner. For questions, contact the owner.',
             ut: { flat: 'Flat', commercial: 'Shop', office: 'Office', godown: 'Godown', other: '' },
             since: (d) => `Tenant since ${d}`,
@@ -31,7 +31,7 @@
             movedOut: (m) => `मकान खाली किया। आखिरी महीना: ${m}`,
             rent: 'किराया', due: 'हर महीने की तारीख', totalDue: 'कुल बकाया', paidAll: 'चुकाया (दिखाए महीने)',
             elec: (u) => `बिजली (${u} यूनिट)`, total: 'कुल', paid: 'चुकाया', left: 'बकाया',
-            paidOn: 'भुगतान की तारीख', st: { paid: 'चुकाया', partial: 'कुछ चुकाया', due: 'बकाया', late: 'देर' },
+            paidOn: 'भुगतान की तारीख', receipt: 'रसीद', st: { paid: 'चुकाया', partial: 'कुछ चुकाया', due: 'बकाया', late: 'देर' },
             note: 'यह केवल देखने के लिए है, मालिक इसे अपडेट रखते हैं। सवाल हों तो मालिक से बात करें।',
             ut: { flat: 'फ़्लैट', commercial: 'दुकान', office: 'ऑफ़िस', godown: 'गोदाम', other: '' },
             since: (d) => `${d} से किरायेदार`,
@@ -144,7 +144,8 @@
         const rows = months.map(x => {
             const st = statusOf(x, data.dueDay, today);
             const elec = Number(x.elec) > 0 ? `<div class="rh-row"><span>${esc(L.elec(x.units))}</span><span>${esc(inr(x.elec))}</span></div>` : '';
-            const dates = Array.isArray(x.pd) && x.pd.length ? `<div class="rh-dates">${esc(L.paidOn)}: ${esc(x.pd.map(dateLabel).join(', '))}</div>` : '';
+            const pays = Array.isArray(x.py) && x.py.length ? x.py.filter(p => p && typeof p === 'object').map(p => `<div class="rh-dates">${esc(L.paidOn)}: ${esc([dateLabel(p.d), inr(p.a), p.r ? `${L.receipt} ${p.r}` : ''].filter(Boolean).join(' · '))}</div>`).join('') : '';
+            const dates = pays || (Array.isArray(x.pd) && x.pd.length ? `<div class="rh-dates">${esc(L.paidOn)}: ${esc(x.pd.map(dateLabel).join(', '))}</div>` : '');
             return `<section class="rh-month">
                 <div class="rh-mhead"><span>${esc(monthLabel(x.m, lang))}</span><span class="rh-st rh-st-${st}">${esc(L.st[st])}</span></div>
                 <div class="rh-row"><span>${esc(L.rent)}</span><span>${esc(inr(x.rent))}</span></div>${elec}

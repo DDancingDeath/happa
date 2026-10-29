@@ -181,7 +181,8 @@ In order:
   (`js/ui/business-switcher.js`). The first business is shown as **Aadhat** /
   **आढ़त** (formerly "Shop"); code ids, the switcher key, `users.role`,
   `settings/app` and permission ids keep `shop` — change only the `t()` text. Rentals code lives in `js/rentals/` and is
-  loaded **only** with `import()` when Rentals opens; its data is in `rent_*`
+  loaded **only** with `import()` when Rentals opens (rent receipts, `rentals/rent-receipt.js`, even
+  later: `rentals.js` imports it only when a receipt is opened); its data is in `rent_*`
   collections (all access in `rentals/rent-store.js`), roles in
   `users/{uid}.rentRole`. Never import `js/rentals/*` statically or name a
   `rent_*` collection from start-up code: `rentals-startup.test.js` fails.

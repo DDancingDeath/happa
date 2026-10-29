@@ -23,7 +23,7 @@ const BACKUP_COLLECTIONS = [
     'tipHealth', 'tipFailures', 'users', 'auditLogs', 'telemetry',
     // Rentals
     'rent_public', 'rent_properties', 'rent_units', 'rent_tenants', 'rent_leases',
-    'rent_charges', 'rent_settings'
+    'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters'
 ];
 
 /** Sub-collections named in firestore.rules, as `<parent collection>/<sub-collection>`. */

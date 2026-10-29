@@ -131,6 +131,19 @@ describe('page behaviour (jsdom)', () => {
         expect(statusOf({ ...x, due: 0, st: 'late' }, 10, new Date(2027, 0, 1))).toBe('paid');
     });
 
+    test('receipt number next to each paid entry, from the same single read', async () => {
+        const months = [{ ...SNAP.months[1], py: [{ d: '2026-10-05', a: 1500, r: 'R-2026-0007' }, { d: '2026-10-06', a: 500 }] }];
+        const { calls, done } = run({ body: { fields: enc({ ...SNAP, months }).mapValue.fields } });
+        await done;
+        const text = document.getElementById('rh').textContent;
+        expect(text).toContain('Paid on: 05/10/2026 · ₹1,500 · Receipt R-2026-0007');
+        expect(text).toContain('Paid on: 06/10/2026 · ₹500');
+        expect(calls.filter(u => /documents\//.test(u))).toHaveLength(1);
+        const hi = run({ lang: 'hi-IN', body: { fields: enc({ ...SNAP, months }).mapValue.fields } });
+        await hi.done;
+        expect(document.getElementById('rh').textContent).toContain('रसीद R-2026-0007');
+    });
+
     test('unit type word in the page language, never doubled', () => {
         const { placeLine } = window.RentHistory;
         expect(placeLine({ ut: 'flat', place: '2B, Gupta Bhawan' }, 'en')).toBe('Flat 2B, Gupta Bhawan');

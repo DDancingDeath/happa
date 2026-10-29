@@ -7,9 +7,10 @@
 
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
+import { round2 } from '../utils/money.js';
 import {
     applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
-    MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
+    receiptNo, istYear, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
 import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth, withNames, PUBLIC_MONTHS } from './rent-public.js';
 
@@ -324,10 +325,6 @@ export async function endLease(leaseId, endMonth, currentMonth, names = {}) {
 }
 
 /**
- * Records a payment on one month's charge (transaction; never more than is due).
- * @returns {Promise<{amount: number, paid: number, open: boolean}>}
- */
-/**
  * A charge written moments ago (e.g. by a move-in) may not have reached the
  * server yet, and a transaction reads the server: wait (briefly) for this
  * device's pending writes and try once more.
@@ -343,11 +340,33 @@ async function withPendingRetry(run) {
     }
 }
 
-export function recordPayment(id, entry) {
-    return withPendingRetry(() => recordPaymentOnce(id, entry));
+/**
+ * Records a payment on one month's charge (transaction; never more than is due).
+ * With `rc` (names for the receipt) the same transaction issues its receipt:
+ * the next number of the year's counter, rent_receipts/{chargeId}_{i}, and the
+ * number on the payment entry (rules check all three together).
+ * @param {string} id charge id
+ * @param {{amount: number, mode: string, ref?: string, date: string}} entry
+ * @param {?{tenantName?: string, place?: string, ut?: ?string, biz?: string, bizAddr?: string}} [rc]
+ * @returns {Promise<{amount: number, paid: number, open: boolean, receipt: ?Object}>}
+ */
+export async function recordPayment(id, entry, rc = null) {
+    // Someone else took the next number first (the rules refuse the stale one): read again.
+    // Still refused (e.g. rules not yet deployed): the payment is saved without a receipt.
+    for (let i = 0; rc && i < 3; i++) {
+        try {
+            return await withPendingRetry(() => recordPaymentOnce(id, entry, rc));
+        } catch (e) {
+            if (!['permission-denied', 'aborted', 'failed-precondition'].includes(e?.code)) throw e;
+            console.warn('Receipt not issued, trying again:', e.code);
+        }
+    }
+    return withPendingRetry(() => recordPaymentOnce(id, entry, null));
 }
 
-async function recordPaymentOnce(id, { amount, mode, ref, date }) {
+const clip = (v, n) => String(v || '').slice(0, n);
+
+async function recordPaymentOnce(id, { amount, mode, ref, date }, rc) {
     const db = FirebaseService.db;
     const chargeRef = coll('rent_charges').doc(id);
     return db.runTransaction(async (tx) => {
@@ -357,17 +376,71 @@ async function recordPaymentOnce(id, { amount, mode, ref, date }) {
         const next = applyPayment(charge, amount);
         const leaseSnap = await tx.get(coll('rent_leases').doc(charge.leaseId));
         const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data()) : null;
-        const entry = {
-            amount: next.amount, mode, ref: String(ref || '').slice(0, 60), date,
-            at: Date.now(), by: uid(), byName: String(AppState.userName || '').slice(0, 80)
+        const year = istYear();
+        const ctrRef = rc && Number.isFinite(charge.rent) ? coll('rent_counters').doc(`receipts_${year}`) : null;
+        const seq = ctrRef ? (Number((await tx.get(ctrRef)).data()?.last) || 0) + 1 : 0;
+        const pi = (charge.payments || []).length;
+        const now = Date.now();
+        const e = {
+            amount: next.amount, mode, ref: clip(ref, 60), date,
+            at: now, by: uid(), byName: clip(AppState.userName, 80),
+            ...(seq ? { rno: receiptNo(year, seq) } : {})
         };
-        tx.update(chargeRef, {
-            paid: next.paid, open: next.open,
-            payments: [...(charge.payments || []), entry],
-            updatedAt: Date.now(), updatedBy: uid()
-        });
-        if (pub) tx.set(pub.ref, withMonth(pub.data, { ...charge, paid: next.paid, open: next.open, payments: [...(charge.payments || []), entry] }));
-        return next;
+        const payments = [...(charge.payments || []), e];
+        tx.update(chargeRef, { paid: next.paid, open: next.open, payments, updatedAt: now, updatedBy: uid() });
+        let receipt = null;
+        if (seq) {
+            const rid = `${id}_${pi}`;
+            receipt = {
+                no: e.rno, year, seq, chargeId: id, pi,
+                leaseId: charge.leaseId, tenantId: charge.tenantId, unitId: charge.unitId, propertyId: charge.propertyId,
+                tenantName: clip(rc.tenantName || charge.tenantName, 80), place: clip(rc.place, 150),
+                ...(rc.ut ? { ut: rc.ut } : {}),
+                months: [charge.month], rent: charge.rent, elec: charge.electricity || null, total: charge.amount,
+                paid: e.amount, mode, ref: e.ref, date, balance: Math.max(0, round2(charge.amount - next.paid)),
+                by: e.by, byName: e.byName, biz: clip(rc.biz, 80), bizAddr: clip(rc.bizAddr, 200),
+                createdAt: now, void: false
+            };
+            tx.set(coll('rent_receipts').doc(rid), receipt);
+            tx.set(ctrRef, { last: seq, rid, updatedAt: now, updatedBy: uid() });
+            receipt = { id: rid, ...receipt };
+        }
+        if (pub) tx.set(pub.ref, withMonth(pub.data, { ...charge, paid: next.paid, open: next.open, payments }));
+        return { ...next, receipt };
+    });
+}
+
+/** The newest receipts of a tenant (payment history; index tenantId + createdAt desc). */
+export async function listReceipts(tenantId, max = 60) {
+    const snap = await coll('rent_receipts').where('tenantId', '==', tenantId).orderBy('createdAt', 'desc').limit(max).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Owner/manager: marks a receipt void (it stays, never edited otherwise). The
+ * charge lists the payment as voided so the tenant link drops its number.
+ * @returns {Promise<boolean>} false when it was already void
+ */
+export async function voidReceipt(rid, reason) {
+    const db = FirebaseService.db;
+    const ref = coll('rent_receipts').doc(rid);
+    return db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) throw new Error('missing');
+        const r = snap.data();
+        if (r.void) return false;
+        const chargeRef = coll('rent_charges').doc(r.chargeId);
+        const ch = await tx.get(chargeRef);
+        const lease = ch.exists ? await tx.get(coll('rent_leases').doc(r.leaseId)) : null;
+        const pub = lease?.exists ? await readPublic(tx, lease.data()) : null;
+        const now = Date.now();
+        tx.update(ref, { void: true, voidBy: uid(), voidByName: clip(AppState.userName, 80), voidAt: now, voidReason: clip(reason, 200) });
+        if (ch.exists) {
+            const voided = [...(ch.data().voided || []).filter(i => i !== r.pi), r.pi];
+            tx.update(chargeRef, { voided, updatedAt: now, updatedBy: uid() });
+            if (pub) tx.set(pub.ref, withMonth(pub.data, { ...ch.data(), voided }));
+        }
+        return true;
     });
 }
 
