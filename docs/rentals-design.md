@@ -121,7 +121,7 @@ All names go through `window.getCollection()`: production `rent_x`, development
 
 Phase 2 adds `rent_deposits` (`{leaseId, kind: received|deduction|refund, amount, date, note}`),
 `rent_expenses` (`{propertyId, category, amount, mode, date, note}`) and agreement
-fields on `rent_leases`. Rent receipts (`rent_receipts`, `rent_counters`) are built: §10.
+fields on `rent_leases`. Rent receipts (`rent_receipts`, `rent_counters`) are built: §11.
 
 **Limits (owner: up to 100 properties, 3 today).** At most 100 properties and 20
 units per property (enforced when adding). Every listener has a limit sized for
@@ -256,7 +256,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the receipt files, `templates/rentals.html`, `css/rentals.css`) are **134.3 KiB** as served (LF), 5.7 KiB under the budget, plus the 3.7 KB switcher that start-up loads. Receipts (§10) are not precached: `rent-receipt.js`, `rent-receipt-store.js` and `css/rent-receipt.css` (≈ 22 KiB, `LAZY_ASSETS` in the service worker) load with `import()` only when a receipt or a tenant's Receipts list is opened; the service worker caches them then, so they work offline after first use in that app version. The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 15 KB) is not precached | Budget: precached Rentals files ≤ 140 KB as served (raised from 80 → 100 → 120 → 130 → 140 KB as the owner added features); the receipt files ≤ 24 KB, not precached and reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above either, and `check:sw` fails if a receipt file is precached |
+| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **128.0 KiB** (131,049 bytes) as served (LF), 2,071 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Not precached (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used and cached by the service worker then, so they work offline after first use in that app version: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 12.6 KiB) and the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway). The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 130 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again); lazy files: receipts ≤ 24 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -413,7 +413,7 @@ tenant moves in (once per session, `rent-store.js loadSettings()`), never at sta
 | `meterRate` (≥ 0 or null) | null | Electricity rate filled in for a unit that has no rate yet |
 | `tenantLink` (bool) | false | Owner/manager moving a tenant in also makes the tenant link |
 | `receiptHeader` (≤ 80) | '' | Name on rent receipts and the tenant's rent-history page (blank = the business name) |
-| `receiptAddress` (≤ 200) | '' | Address under the name on rent receipts (§10) |
+| `receiptAddress` (≤ 200) | '' | Address under the name on rent receipts (§11) |
 
 Defaults apply to **new** leases only: existing leases keep their own due day, % and link,
 and units keep their own electricity rate. Rules: rentals roles read; owner and Rentals
@@ -456,7 +456,7 @@ commercial spaces. I should be able to see property-wise or unit-wise."*
   (properties, units, leases, this month's and open charges). Start-up is unchanged
   (the rentals start-up guards still pass).
 
-## 9. Add unit with its tenant; start date; electricity (owner, 2026-10-26)
+## 10. Add unit with its tenant; start date; electricity (owner, 2026-10-26)
 
 Owner: *"while adding the unit, we should be adding the tenant of that unit"*, *"also
 if electricity is paid separately"*.
@@ -491,7 +491,7 @@ if electricity is paid separately"*.
   full by default, optional pro-rating (RENT-11).
 
 
-## 10. Rent receipts (phase 2; owner, 2026-10-30)
+## 11. Rent receipts (phase 2; owner, 2026-10-30)
 
 Owner: plain, **non-GST** receipts (no GST fields); only the shop's people use Rentals, tenants get
 WhatsApp messages and the read-only link; rent never goes into the Aadhat cash drawer.
@@ -565,42 +565,76 @@ WhatsApp messages and the read-only link; rent never goes into the Aadhat cash d
   by the service worker; text for each electricity mode and a
   part payment, one language, escaping, reprint, void; the tenant page); oracle `tests/oracle/rent-receipt.test.js`.
 
-## 11. Unit on the tenant form (owner, 2026-10-30)
+## 12. Unit on the tenant form (owner, 2026-10-30)
 
 Owner: *"maybe we should have unit option in tenant page"*.
 
 - **Tenants page:** Add tenant and Edit have a **Unit** select: "No unit", then the vacant
   units grouped by property (`<optgroup>`, `rent-views.js vacantByProperty`); a tenant's
   current unit is shown selected. **Move in** and the property view's **Add tenant** use the
-  same dialog (`rentals.js toUnit`).
+  same dialog (`rent-unit.js toUnit`).
 - **New tenant + unit, or a tenant without a lease:** the Move in fields (start date,
   pro-rate, rent from the unit, due day from Settings › Rentals, else the 10th).
 - **Change unit** (tenant with an active lease picks another unit; asks first): the old lease
-  ends exactly as on move-out and the new lease (with `fromLeaseId`) starts, keeping the old
-  lease's due day, yearly %, deposit and electricity mode (the rent is the new unit's). A move on the 1st
-  ends the old lease with the month before, so that month is charged once (on the new unit);
-  a mid-month move charges both units for that month and the confirmation says so (an
-  owner/manager can adjust the old unit's last month). Taking back an already charged month
-  is owner/manager only. If the old lease had a tenant link, an owner/manager gets a new link
-  for the new lease; otherwise the old link shows "Moved out". "No unit" for a tenant with a
-  lease opens Move out.
-- **One store function** (`rent-store.js moveIn`): when something must be re-read (an
-  existing unit must still have `leaseId == null`; an existing tenant must have no other
-  active lease: one query `tenantId == x && status == active`, limit 2, re-run on every
-  retry; for a change, the old lease, its later months and link snapshot) it runs as a
-  transaction that also writes the tenant (move-in) or the old lease (change), so two phones
-  racing for one tenant or unit conflict and the retry is refused (offline it says a connection
-  is needed). A new tenant (new unit, or a vacant one checked against the listener's copy; the
-  rules refuse a taken unit) stays one batch (works offline). About 3–4 reads per move. A change's first month is
-  charged right after (`chargeLease`; the write is at the rules' 20-document limit); if that
-  fails, the next charge pass makes it.
+  ends exactly as on move-out, pointing at the new lease (`movedTo`), and the new lease (with
+  `fromLeaseId`) starts, in one transaction, keeping the old lease's due day, yearly %, deposit
+  and electricity mode (the rent is the new unit's). "No unit" for a tenant with a lease opens
+  Move out.
+- **The move month (lead's default, 2026-10-30; RENT-13):** "Pro-rate move month" is ticked
+  by default. The old unit is charged for the days up to the day before the move date, the new
+  unit from the move date to the month end; both amounts are filled in (and follow the date and
+  rent), the old one written to that month's charge (`rent`, `amount`) in the same write. A move
+  on the 1st ends the old lease with the month before, so there is no old-unit charge that
+  month (also for a member when this month was already charged: that unpaid charge is removed
+  in the same write). Unticked: both units the full month. An amount below what is already paid
+  for the old month is refused ("untick, or ask the owner or a manager").
+  **Who may change the amounts:** members get the worked-out values only; the rules recompute
+  the old month from the stored charge rent and the new lease's move date and accept exactly
+  that (± the rounding), only in the write that ends the lease with `movedTo`. Owners and
+  managers may type any amount from 0 to the month's rent (rules: any lower amount, never below
+  paid), as they can already correct a charge. Chosen over an owner/manager-only override
+  because members do changes too, and the default must not charge them twice; and over an
+  exact check for everyone because the owner wants the amounts editable.
+- **Tenant link carried over:** when the old lease has a link, the new lease takes the same
+  token in the same write (the old lease clears it), and the snapshot is rewritten for the new
+  lease: `lid`, place, rent, due day, electricity; not Moved out; the tenant's original "since"
+  kept; the old unit's months kept, tagged with that place (`pl`, `pt`), so the page shows the
+  history of both units with receipt numbers. Later payments, meter readings and receipts on
+  the old lease's months update that snapshot through `movedTo` (`readPublic(…, follow)`; one
+  more read only for a moved lease). Rules: a new lease may start with a token only with
+  `fromLeaseId`, when that lease had exactly this token before the write and has none after;
+  the old lease may give it up (any rentals role) only to that new lease; the snapshot's `lid`
+  may change only to a lease made from its own lease (`fromLeaseId`). A member can't take
+  another lease's token or snapshot this way (tested). **New link** later makes a fresh
+  snapshot of the current lease only.
+- **One store function** (`rent-store.js moveIn`, with `rent-unit.js changeUnit` for a
+  change): when something must be re-read (an existing unit must still have `leaseId == null`;
+  an existing tenant must have no other active lease: one query `tenantId == x && status ==
+  active`, limit 2, re-run on every retry; for a change, the old lease, its later months, the
+  move month's charge and link snapshot) it runs as a transaction that also writes the tenant
+  (move-in, also Add unit with an existing tenant) or the old lease (change), so two phones
+  racing for one tenant or unit conflict and the retry is refused (Jest: transaction retries on
+  the optimistic fake; offline it says a connection is needed). A new tenant (new unit, or a
+  vacant one checked against the listener's copy; the rules refuse a taken unit) stays one batch
+  (works offline). About 3–5
+  reads per move. A change's first month is charged right after (`chargeLease`; the change write
+  is at the rules' limits); if that fails, the next charge pass makes it.
 - **Rules:** every new lease's property is its unit's and its tenant exists; non-owners can't
   set a start date more than 2 days back (IST; the app's default edit window, fixed because
   the Roles & access days would cost reads past the limit). With `fromLeaseId` (never
   changed): that lease was active, ends in the same write on another unit for the same
-  tenant, with `endMonth` = the new start month, or the month before for a move on the 1st.
-  Unit `leaseId` rules are unchanged, so an occupied unit is never overwritten.
+  tenant, points back with `movedTo` (set only in that write), with `endMonth` = the new start
+  month, or the month before for a move on the 1st. Removing the one charged month after
+  `endMonth` is allowed to members only in that write (`movedTo`, one month); otherwise it stays
+  owner/manager. Unit `leaseId` rules are unchanged, so an occupied unit is never overwritten.
+  To fit the change write in the rules' budget of 1,000 expressions, a lease or unit update
+  that changes only its state (`status`, `endMonth`, `chargedThrough`, `movedTo`,
+  `shareToken`; a unit's `leaseId`) checks only those fields, and the caller's role is read
+  once per rule.
+- **Size:** `rent-unit.js` (picker, move in / change dialogs, `changeUnit`) and `rent-link.js`
+  (make / share / replace / turn off a tenant link; needs the network anyway) are not precached:
+  `LAZY_ASSETS`, loaded with `import()` from `rentals.js` on first use and cached then (§4).
 - **Not done:** a tenant `activeLeaseId` mirror for a rules-level "one lease per tenant"
   guarantee. It needs a migration of existing tenants, an extra checked document in move-in,
-  move-out and change writes (the change is already at the read limit). The transaction
+  move-out and change writes (the change is already at the limits). The transaction
   above enforces it for every app write path.

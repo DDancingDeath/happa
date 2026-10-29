@@ -21,7 +21,7 @@ import { APP_IDENTITY } from '../config/app-identity.js';
 import { isShareToken, publicLink } from './rent-public.js';
 import {
     UNIT_TYPES, VIEW_KEY, unitType, unitRows, summarize, propertySummaries, groupByType, filterRows,
-    placeText, typedPlace, unitExtraError, vacantByProperty
+    placeText, typedPlace, unitExtraError
 } from './rent-views.js';
 import {
     PROPERTY_KINDS, PAYMENT_MODES, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, normalizeRentSettings,
@@ -190,6 +190,7 @@ function render() {
     root.innerHTML = state.page === 'tenants' ? renderTenants(d)
         : state.page === 'properties' ? renderProperties(d)
         : renderRent(d);
+    if (state.page === 'tenants' && canWrite()) void unitUi('fillPicker', 'rentTenantUnitBox', 'rentTenantUnit');
 }
 
 /** Settings › Rentals defaults; built-in defaults when they can't be read. */
@@ -598,27 +599,6 @@ function findLease(leaseId) {
     return d.leases.find(l => l.id === leaseId) || d.linked.find(l => l.id === leaseId) || null;
 }
 
-/** Owner/manager: make, share, replace or turn off the tenant's read-only link. */
-async function shareLink(leaseId) {
-    if (!isManager()) return;
-    const lease = findLease(leaseId);
-    if (!lease) return;
-    const url = linkFor(lease);
-    const id = js(leaseId);
-    const body = url
-        ? `<p class="rent-help">${esc(t('ui.rent.link_help'))}</p>
-           <input id="rentLinkUrl" type="text" readonly value="${esc(url)}">
-           <div class="rent-actions">
-             <button type="button" class="rent-btn rent-btn-wa" onclick="window.app.rentals.linkAction('send', '${id}')">${esc(t('ui.rent.link_send'))}</button>
-             <button type="button" class="rent-btn" onclick="window.app.rentals.linkAction('copy', '${id}')">${esc(t('ui.rent.link_copy'))}</button>
-             <button type="button" class="rent-btn" onclick="window.app.rentals.linkAction('new', '${id}')">${esc(t('ui.rent.link_new'))}</button>
-             <button type="button" class="rent-btn" onclick="window.app.rentals.linkAction('off', '${id}')">${esc(t('ui.rent.link_off'))}</button>
-           </div>`
-        : `<p class="rent-help">${esc(t('ui.rent.link_help'))}</p>
-           <div class="rent-actions"><button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.linkAction('make', '${id}')">${esc(t('ui.rent.link_make'))}</button></div>`;
-    await dialog(`<h3>🔗 ${esc(t('ui.rent.link_title'))}</h3>${body}`);
-}
-
 /** After a rename: linked tenants' pages show the new tenant / property / unit names. */
 function refreshLinkNames(affects) {
     const d = store.snapshot();
@@ -627,45 +607,6 @@ function refreshLinkNames(affects) {
         store.renameInLink(l, { tenantName: ix.tenants.get(l.tenantId)?.name, ...linkPlace(ix, l.unitId) })
             .catch(e => console.warn('Tenant link names not updated:', e?.code || e));
     });
-}
-
-async function linkAction(action, leaseId) {
-    dialogResolve?.(false);
-    const lease = findLease(leaseId);
-    if (!lease || !isManager()) return;
-    const d = store.snapshot();
-    const ix = index(d);
-    if (action === 'copy' || action === 'send') {
-        const url = linkFor(lease);
-        if (!url) return;
-        if (action === 'copy') {
-            try { await navigator.clipboard.writeText(url); UIManager.showToast(t('msg.rent.link_copied'), 'success'); } catch (_) { UIManager.showToast(url, 'info'); }
-            return;
-        }
-        const tenant = ix.tenants.get(lease.tenantId);
-        openExternal(whatsAppReminderUrl(t('msg.rent.link_message', { url }), tenant?.phone));
-        return;
-    }
-    try {
-        if (action === 'off') {
-            if (!await UIManager.showModal(t('msg.rent.link_off_confirm'), t('ui.rent.link_off'), true)) return;
-            await store.removeShareLink(lease);
-            UIManager.showToast(t('msg.rent.link_turned_off'), 'success');
-        } else {
-            if (action === 'new' && !await UIManager.showModal(t('msg.rent.link_new_confirm'), t('ui.rent.link_new'), true)) return;
-            await store.makeShareLink(lease, {
-                tenantName: ix.tenants.get(lease.tenantId)?.name || '',
-                ...linkPlace(ix, lease.unitId),
-                shopName: headerName(await defaults())
-            });
-            UIManager.showToast(t('msg.rent.link_ready'), 'success');
-        }
-        AuditService.log(action === 'off' ? 'RENT_LINK_OFF' : 'RENT_LINK_ON', { leaseId }).catch(auditWarn);
-        setTimeout(() => shareLink(leaseId), 300);
-    } catch (e) {
-        console.error('Tenant link not saved:', e);
-        UIManager.showToast(t('msg.rent.save_failed'), 'error');
-    }
 }
 
 // ---------- Tenants ----------
@@ -680,7 +621,7 @@ function renderTenants(d) {
             <input id="rentTenantPhone" type="tel" maxlength="20" placeholder="${esc(t('ui.rent.phone_required'))}">
             <input id="rentTenantPhone2" type="tel" maxlength="20" placeholder="${esc(t('ui.rent.phone2'))}">
             <input id="rentTenantNotes" type="text" maxlength="500" placeholder="${esc(t('ui.rent.notes'))}">
-            ${unitPickHtml('rentTenantUnit', d, ix)}
+            <div id="rentTenantUnitBox"></div>
             <button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.addTenant()">${esc(t('ui.rent.add'))}</button>
         </div>` : '';
     const rows = [...d.tenants].sort((a, b) => a.name.localeCompare(b.name)).map(tn => {
@@ -717,7 +658,7 @@ async function addTenant() {
     if (err) return UIManager.showToast(t(err), 'error');
     const tn = { name: raw.name, phone: mobile10(raw.phone), notes: raw.notes, ...(raw.phone2 ? { phone2: mobile10(raw.phone2) } : {}) };
     const unitId = val('rentTenantUnit');
-    if (unitId) return toUnit(tn, unitId);
+    if (unitId) return unitUi('toUnit', tn, unitId);
     await saveRent(() => store.addTenant(tn));
 }
 
@@ -726,22 +667,23 @@ async function editTenant(id) {
     const tn = d.tenants.find(x => x.id === id);
     if (!tn) return;
     const lease = d.leases.find(l => l.tenantId === id);
+    const u = await unitMod().catch(() => null);
     const ok = await dialog(`<h3>${esc(t('ui.rent.edit'))}</h3>
         <label class="rent-label">${esc(t('ui.rent.tenant_name'))}<input id="rentEditName" type="text" maxlength="80" value="${esc(tn.name)}"></label>
         <label class="rent-label">${esc(t('ui.rent.phone_required'))}<input id="rentEditPhone" type="tel" maxlength="20" value="${esc(tn.phone || '')}"></label>
         <label class="rent-label">${esc(t('ui.rent.phone2'))}<input id="rentEditPhone2" type="tel" maxlength="20" value="${esc(tn.phone2 || '')}"></label>
         <label class="rent-label">${esc(t('ui.rent.notes'))}<input id="rentEditNotes" type="text" maxlength="500" value="${esc(tn.notes || '')}"></label>
-        ${unitPickHtml('rentEditUnit', d, index(d), { current: lease?.unitId })}`);
+        ${u ? u.unitPickHtml(unitCtx(), 'rentEditUnit', d, { current: lease?.unitId }) : ''}`);
     if (!ok) return;
     const raw = { name: val('rentEditName'), phone: val('rentEditPhone'), phone2: val('rentEditPhone2'), notes: val('rentEditNotes') };
     const err = tenantError(raw);
     if (err) return UIManager.showToast(t(err), 'error');
     const next = { name: raw.name, phone: mobile10(raw.phone), notes: raw.notes, phone2: raw.phone2 ? mobile10(raw.phone2) : null };
-    const pick = val('rentEditUnit');
+    const pick = u ? val('rentEditUnit') : lease?.unitId || '';
     if (await saveRent(() => store.updateTenant(id, next)) === null) return;
     refreshLinkNames(l => l.tenantId === id);
     if (pick === (lease?.unitId || '')) return;
-    if (pick) await toUnit({ id, name: next.name }, pick);
+    if (pick) await unitUi('toUnit', { id, name: next.name }, pick);
     else await moveOut(lease.id);
 }
 
@@ -850,24 +792,21 @@ function readTenantSection({ newUnit = false, given = null } = {}) {
     return { tenant, tenantId, lease, meter };
 }
 
-/** Saves a move-in from the tenant section; true when saved. */
-async function saveMoveIn({ unit, newUnit, occ, defs, from = null, endMonth = '' }) {
+/** Saves a move-in from the tenant section (or a change of unit: `save`); true when saved. */
+async function saveMoveIn({ unit, newUnit, occ, defs, from = null, save = null }) {
     try {
-        const d = store.snapshot();
-        const tenantName = occ.tenant?.name || d.tenants.find(x => x.id === occ.tenantId)?.name || '';
-        const res = await store.moveIn({
-            unit, newUnit, tenant: occ.tenant, tenantId: occ.tenantId, tenantName, lease: occ.lease, meter: occ.meter, currentMonth: state.month,
-            fromLeaseId: from?.id, endMonth, oldLabel: d.units.find(u => u.id === from?.unitId)?.label
-        });
-        const first = firstMonthRent(occ.lease.rent, occ.lease.startDate, occ.lease.proRate);
-        const oldLink = isShareToken(from?.shareToken);
-        const link = isManager() && (defs?.tenantLink || oldLink);
+        const tenantName = occ.tenant?.name || store.snapshot().tenants.find(x => x.id === occ.tenantId)?.name || '';
+        const res = await (save ? save(tenantName) : store.moveIn({
+            unit, newUnit, tenant: occ.tenant, tenantId: occ.tenantId, tenantName, lease: occ.lease, meter: occ.meter, currentMonth: state.month
+        }));
+        const first = occ.lease.firstRent ?? firstMonthRent(occ.lease.rent, occ.lease.startDate, occ.lease.proRate);
+        const moved = isShareToken(from?.shareToken);
         UIManager.showToast(t(`msg.rent.${from ? 'unit_changed' : 'moved_in'}${res.charged ? '_charged' : ''}`, { amount: formatINR(first) })
-            + (oldLink && !link ? ` ${t('msg.rent.old_link_moved_out')}` : ''), 'success');
+            + (moved ? ` ${t('msg.rent.link_moved')}` : ''), 'success');
         AuditService.log(from ? 'RENT_UNIT_CHANGE' : 'RENT_MOVE_IN', {
             tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate, fromLeaseId: from?.id || null
         }).catch(auditWarn);
-        if (link) await linkNewLease({ unit, res, occ, defs });
+        if (defs?.tenantLink && isManager() && !moved) await lazyUi('./rent-link.js', 'linkNewLease', { unit, res, occ, defs });
         return true;
     } catch (e) {
         console.error('Move-in not saved:', e);
@@ -877,82 +816,30 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, endMonth = ''
         return false;
     }
 }
-const MOVE_ERRORS = ['unit_taken', 'tenant_changed', 'later_paid', 'bad_move_date'];
+const MOVE_ERRORS = ['unit_taken', 'tenant_changed', 'later_paid', 'bad_move_date', 'split_below_paid'];
 const EDIT_DAYS = 2;
 
-/** Vacant units by property; `current` = the tenant's unit. */
-function unitPickHtml(id, d, ix, { current = '', none = true, attrs = '' } = {}) {
-    const groups = vacantByProperty(d.properties, d.units, current).map(g => `<optgroup label="${esc(g.property.name)}">${g.units.map(u => {
-        const type = knownType(u, g.property);
-        const now = u.id === current;
-        return `<option value="${esc(u.id)}" data-rent="${esc(u.rent || 0)}"${now ? ' selected' : ''}>${esc(typedPlace(type ? typeWord(type) : '', u.label, ''))}${now ? ` ${esc(t('ui.rent.unit_now'))}` : ''}</option>`;
-    }).join('')}</optgroup>`).join('');
-    return `<label class="rent-label">${esc(t('ui.rent.unit'))}<select id="${id}"${attrs}>${none ? `<option value="">${esc(t('ui.rent.unit_none'))}</option>` : ''}${groups}</select></label>`;
+// ---------- Unit picker / change of unit (rent-unit.js) and link actions (rent-link.js), loaded on first use ----------
+
+const unitMod = () => import('./rent-unit.js');
+const unitCtx = () => ({
+    esc, js, val, dialog, closeDialog: () => dialogResolve?.(false), index, placeOf, linkPlace, linkFor, findLease, knownType, typeWord,
+    defaults, headerName, tenantSectionHtml, readTenantSection, saveMoveIn, isManager: isManager(), month: state.month
+});
+
+/** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
+function lazyUi(file, fn, ...args) {
+    return (file === './rent-unit.js' ? unitMod() : import('./rent-link.js')).then(m => m[fn](unitCtx(), ...args)).catch((e) => {
+        console.error('Rentals file not loaded:', e);
+        UIManager.showToast(t('msg.rent.could_not_load'), 'error');
+    });
 }
-
-/** A change of unit keeps the old lease's due day, yearly %, deposit and electricity mode (the rent is the new unit's). */
-const keepTerms = (l, defs) => ({ defs: { ...defs, dueDay: l.dueDay, increasePct: l.increasePct ?? defs.increasePct }, deposit: l.deposit || 0, elec: elecMode(l) });
-
-/** Move in or change unit (asks first); tenant: new, {id, name} or null (picked here); no unitId: picked here. */
-async function toUnit(tenant, unitId = '') {
-    const d = store.snapshot();
-    const ix = index(d);
-    const pick = unitId ? null : vacantByProperty(d.properties, d.units)[0]?.units[0];
-    const shown = pick || ix.units.get(unitId);
-    if (!shown || shown.leaseId) return UIManager.showToast(t(unitId ? 'msg.rent.unit_taken' : 'msg.rent.no_vacant_unit'), 'error');
-    const from = d.leases.find(l => tenant?.id && l.tenantId === tenant.id);
-    const defs = await defaults();
-    const ok = await dialog(`<h3>${esc(t(from ? 'ui.rent.change_unit' : tenant ? 'ui.rent.move_in' : 'ui.rent.add_tenant'))}${pick ? '' : `: ${esc(placeOf(ix, unitId))}`}</h3>
-        ${pick ? unitPickHtml('rentLeaseUnit', d, ix, { none: false, attrs: ' onchange="window.app.rentals.fillRent(this)"' }) : ''}
-        ${tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keepTerms(from, defs) : { defs }) })}`);
-    if (!ok) return;
-    const unit = pick ? ix.units.get(val('rentLeaseUnit')) || pick : shown;
-    const occ = readTenantSection({ given: tenant?.id ? null : tenant });
-    if (occ?.error) return UIManager.showToast(t(occ.error), 'error');
-    let endMonth = '';
-    if (from) {
-        const { startDate: date, startMonth: month } = occ.lease;
-        const mgr = isManager();
-        const prev = addMonths(month, -1);
-        // On the 1st the old lease ends the month before (no double charge), if a member needn't undo a charged month.
-        endMonth = date.endsWith('-01') && prev >= from.startMonth && (mgr || !(from.chargedThrough > prev)) ? prev : month;
-        if (!mgr && from.chargedThrough > endMonth) return UIManager.showToast(t('msg.rent.change_backdate'), 'error');
-        const place = placeOf(ix, from.unitId);
-        const ask = t('msg.rent.change_unit_confirm', {
-            name: tenant.name, from: place, to: placeOf(ix, unit.id), date: dateLabel(date),
-            month: monthLabel(endMonth, getLang()), dues: formatINR(leaseDues(d.charges, from.id).total)
-        }) + (endMonth === month ? ` ${t('msg.rent.change_unit_both', { from: place, month: monthLabel(month, getLang()) })}` : '');
-        if (!await UIManager.showModal(ask, t('ui.rent.change_unit'), true)) return;
-    }
-    await saveMoveIn({ unit, newUnit: false, occ, defs, from, endMonth });
-}
-
-/** Settings › Rentals "Make a tenant link for new leases": the link for a lease just moved in (never blocks the move-in). */
-async function linkNewLease({ unit, res, occ, defs }) {
-    const d = store.snapshot();
-    const prop = d.properties.find(x => x.id === unit.propertyId);
-    const created = {
-        id: res.leaseId, unitId: res.unitId, propertyId: unit.propertyId, tenantId: res.tenantId,
-        ...occ.lease, status: 'active', endMonth: null, shareToken: null
-    };
-    try {
-        await store.makeShareLink(created, {
-            tenantName: occ.tenant?.name || d.tenants.find(x => x.id === res.tenantId)?.name || '',
-            place: placeText(unit.label, prop?.name),
-            unitType: knownType(unit, prop),
-            shopName: headerName(defs)
-        });
-        AuditService.log('RENT_LINK_ON', { leaseId: res.leaseId }).catch(auditWarn);
-    } catch (e) {
-        console.warn('Tenant link not made for the new lease:', e?.code || e);
-    }
-}
-
+const unitUi = (fn, ...args) => lazyUi('./rent-unit.js', fn, ...args);
 
 /** Tenants page: move an existing tenant into a vacant unit. */
 async function moveIn(tenantId) {
     const tenant = store.snapshot().tenants.find(x => x.id === tenantId);
-    if (tenant) await toUnit(tenant);
+    if (tenant) await unitUi('toUnit', tenant);
 }
 
 function fillRent(select) {
@@ -1203,11 +1090,11 @@ export const RentalsModule = {
         pay, fillDue, remind, meter, editLease,
         addTenant, editTenant, archiveTenant, moveIn, moveOut, fillRent,
         addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit,
-        shareLink, linkAction, setView, openProperty, filterUnits,
-        addTenantToUnit: (unitId) => toUnit(null, unitId), tenantToggle, tenantPick, tenantElec,
+        shareLink: (id) => lazyUi('./rent-link.js', 'shareLink', id), linkAction: (a, id) => lazyUi('./rent-link.js', 'linkAction', a, id), setView, openProperty, filterUnits,
+        addTenantToUnit: (unitId) => unitUi('toUnit', null, unitId), tenantToggle, tenantPick, tenantElec,
         receipts: (tenantId) => receiptUi('showHistory', tenantId),
         receiptAction: (name, id) => receiptUi('action', name, id)
     }
 };
 
-export const _test = { state, accounts, index, render, maybeCharge, moveIn, placeOf, linkPlace, pay, toUnit, editTenant, addTenant };
+export const _test = { state, accounts, index, render, maybeCharge, moveIn, placeOf, linkPlace, pay, toUnit: (...a) => unitUi('toUnit', ...a), editTenant, addTenant };

@@ -183,7 +183,8 @@ In order:
   **आढ़त** (formerly "Shop"); code ids, the switcher key, `users.role`,
   `settings/app` and permission ids keep `shop` — change only the `t()` text. Rentals code lives in `js/rentals/` and is
   loaded **only** with `import()` when Rentals opens (rent receipts, `rentals/rent-receipt.js` +
-  `rent-receipt-store.js`, even later: `rentals.js` imports them only when a receipt is opened; they are in
+  `rent-receipt-store.js`, the unit picker / change of unit `rent-unit.js` and the tenant link actions
+  `rent-link.js`, even later: `rentals.js` imports them only when used; they are in
   the service worker's `LAZY_ASSETS`, not `STATIC_ASSETS`); its data is in `rent_*`
   collections (all access in `rentals/rent-store.js`; receipt list / issue-later / cancel in
   `rentals/rent-receipt-store.js`), roles in

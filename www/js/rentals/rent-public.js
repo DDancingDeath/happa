@@ -89,10 +89,13 @@ export function buildPublicSnapshot({ lease, tenantName = '', place = '', unitTy
     };
 }
 
-/** Snapshot with one month added or replaced (payment, meter reading, new charge). */
-export function withMonth(snap, charge, now = Date.now()) {
-    const month = publicMonth(charge, new Date(now));
-    const months = (snap.months || []).filter(x => x.m !== month.m).concat(month).sort(byMonth).slice(-PUBLIC_MONTHS);
+/** Snapshot with one month added or replaced; `old`: an earlier unit's month ({pl, pt} tag, or true: the tagged one). */
+export function withMonth(snap, charge, now = Date.now(), old = null) {
+    const prev = old === true ? (snap.months || []).find(x => x.m === charge.month && x.pl) : null;
+    const tag = old === true ? prev && { pl: prev.pl, ...(prev.pt ? { pt: prev.pt } : {}) } : old;
+    if (old && !tag) return snap;
+    const month = { ...publicMonth(charge, new Date(now)), ...tag };
+    const months = (snap.months || []).filter(x => x.m !== month.m || !x.pl !== !tag).concat(month).sort(byMonth).slice(-PUBLIC_MONTHS);
     return { ...snap, months, updatedAt: now };
 }
 

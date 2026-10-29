@@ -48,11 +48,11 @@ export function issueReceipt(id, pi, rc) {
         const charge = (await tx.get(chargeRef)).data();
         if (!charge?.payments?.[pi] || charge.payments[pi].rno || !Number.isFinite(charge.rent)) return null;
         const lease = await tx.get(coll('rent_leases').doc(charge.leaseId));
-        const pub = lease.exists ? await readPublic(tx, lease.data()) : null;
+        const pub = lease.exists ? await readPublic(tx, lease.data(), true) : null;
         const seq = await nextSeq(tx, year);
         const ch = { ...charge, payments: charge.payments.map((p, i) => (i === pi ? { ...p, rno: receiptNo(year, seq) } : p)) };
         tx.update(chargeRef, { payments: ch.payments, updatedAt: Date.now(), updatedBy: uid() });
-        if (pub) tx.set(pub.ref, withMonth(pub.data, ch));
+        if (pub) tx.set(pub.ref, withMonth(pub.data, ch, Date.now(), pub.old));
         return putReceipt(tx, id, ch, pi, rc, year, seq, { issuedBy: uid() });
     }));
 }
@@ -72,13 +72,13 @@ export async function voidReceipt(rid, reason) {
         const chargeRef = coll('rent_charges').doc(r.chargeId);
         const ch = await tx.get(chargeRef);
         const lease = ch.exists ? await tx.get(coll('rent_leases').doc(r.leaseId)) : null;
-        const pub = lease?.exists ? await readPublic(tx, lease.data()) : null;
+        const pub = lease?.exists ? await readPublic(tx, lease.data(), true) : null;
         const now = Date.now();
         tx.update(ref, { void: true, voidBy: uid(), voidByName: clip(AppState.userName, 80), voidAt: now, voidReason: clip(reason, 200) });
         if (ch.exists) {
             const voided = [...(ch.data().voided || []).filter(i => i !== r.pi), r.pi];
             tx.update(chargeRef, { voided, updatedAt: now, updatedBy: uid() });
-            if (pub) tx.set(pub.ref, withMonth(pub.data, { ...ch.data(), voided }));
+            if (pub) tx.set(pub.ref, withMonth(pub.data, { ...ch.data(), voided }, now, pub.old));
         }
         return true;
     });

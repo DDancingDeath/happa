@@ -144,6 +144,27 @@ describe('page behaviour (jsdom)', () => {
         expect(document.getElementById('rh').textContent).toContain('रसीद R-2026-0007');
     });
 
+    test('after a change of unit: the old unit\'s months are named, the current unit\'s first in the move month', async () => {
+        const months = [
+            { ...SNAP.months[0], pl: '1A, Gupta Bhawan', pt: 'flat' },
+            { ...SNAP.months[1], rent: 2419, total: 2419, paid: 2000, due: 419, pl: '1A, Gupta Bhawan', pt: 'flat', py: [{ d: '2026-10-05', a: 2000, r: 'R-2026-0007' }] },
+            { m: '2026-10', rent: 4645, elec: 0, units: 0, total: 4645, paid: 0, due: 4645, dd: 10, st: 'due', pd: [] }
+        ];
+        const snap = { ...SNAP, ended: false, endMonth: null, place: '7, Arora Market', ut: 'commercial', months };
+        const { done } = run({ body: { fields: enc(snap).mapValue.fields } });
+        await done;
+        const heads = [...document.querySelectorAll('.rh-mhead span:first-child')].map(x => x.textContent);
+        expect(heads).toEqual(['Oct 2026', 'Oct 2026 · Flat 1A, Gupta Bhawan', 'Sep 2026 · Flat 1A, Gupta Bhawan']);
+        const text = document.getElementById('rh').textContent;
+        expect(text).not.toContain('Moved out');
+        expect(text).toContain('Shop 7, Arora Market');
+        expect(text).toContain('Receipt R-2026-0007');
+        expect(text).toMatch(/Total due\s*₹5,064/);
+        const hi = run({ lang: 'hi-IN', body: { fields: enc(snap).mapValue.fields } });
+        await hi.done;
+        expect(document.getElementById('rh').textContent).toContain('फ़्लैट 1A, Gupta Bhawan');
+    });
+
     test('unit type word in the page language, never doubled', () => {
         const { placeLine } = window.RentHistory;
         expect(placeLine({ ut: 'flat', place: '2B, Gupta Bhawan' }, 'en')).toBe('Flat 2B, Gupta Bhawan');

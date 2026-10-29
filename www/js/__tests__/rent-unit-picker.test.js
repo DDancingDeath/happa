@@ -1,7 +1,8 @@
 /**
  * Unit picker on the tenant form (owner: "unit option in tenant page"): vacant
  * units grouped by property; move-in and change of unit in one transaction
- * (rent-store assignUnit); an occupied (stale) unit is refused.
+ * (rent-store moveIn, rent-unit changeUnit); an occupied (stale) unit is refused;
+ * the move month pro-rated on both units (RENT-13); the tenant link carried over.
  */
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
@@ -18,15 +19,29 @@ import { RentalsModule, _test } from '../rentals/rentals.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
 import { rentalsRole } from '../ui/business-switcher.js';
-import { monthKey, addMonths } from '../rentals/rent-math.js';
+import { monthKey, addMonths, firstMonthRent } from '../rentals/rent-math.js';
 import { vacantByProperty } from '../rentals/rent-views.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
+import { changeUnit, moveMonthRent } from '../rentals/rent-unit.js';
+import { buildPublicSnapshot } from '../rentals/rent-public.js';
 
 const M = monthKey();
 const PREV = addMonths(M, -1);
 const leases = () => [...fake.raw('rent_leases').entries()].map(([id, d]) => ({ id, ...d }));
 const lease = (over = {}) => ({ rent: 9000, dueDay: 10, startDate: todayLocalISO(), startMonth: M, proRate: false, deposit: 0, increasePct: 5, elecMode: 'included', ...over });
 const meta = { archived: false, createdAt: 1, createdBy: 'x', updatedAt: 1, updatedBy: 'x' };
+const dim = new Date(Number(M.slice(0, 4)), Number(M.slice(5, 7)), 0).getDate();
+const NAMES = { oldLabel: '1A', old: { place: '1A, Gupta Bhawan', unitType: 'flat' }, now: { place: '7, Arora Market', unitType: 'commercial' } };
+// As the change dialog saves it (rent-unit.js): no split unless oldRent is given ('auto' = worked out from the charge).
+const change = (over = {}) => changeUnit({
+    unitId: 'U3', tenantId: 'T1', tenantName: 'Ram', fromLeaseId: 'L1', endMonth: M, lease: lease(), oldRent: null, names: NAMES, currentMonth: M, ...over
+});
+// Only Date is faked (the dialogs wait with real timers): today = day `day` of this month.
+const at = (day) => jest.useFakeTimers({
+    now: new Date(`${M}-${String(day).padStart(2, '0')}T12:00:00`),
+    doNotFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'setImmediate', 'clearImmediate', 'queueMicrotask', 'nextTick', 'hrtime', 'performance']
+});
+afterEach(() => jest.useRealTimers());
 
 function seedAll() {
     fake = createFakeFirestore({ occ: true });
@@ -101,8 +116,8 @@ test('assign: an existing tenant without a lease moves in (unit, tenant and one 
 });
 
 test('change unit: the old lease ends with the move month, its charges and dues stay; the new lease starts on the new unit', async () => {
-    const res = await store.moveIn({ unit: { id: 'U3' }, tenantId: 'T1', fromLeaseId: 'L1', endMonth: M, lease: lease(), currentMonth: M, tenantName: 'Ram' });
-    expect(fake.raw('rent_leases').get('L1')).toMatchObject({ status: 'ended', endMonth: M, chargedThrough: M });
+    const res = await change();
+    expect(fake.raw('rent_leases').get('L1')).toMatchObject({ status: 'ended', endMonth: M, chargedThrough: M, movedTo: res.leaseId });
     expect(fake.raw('rent_units').get('U1').leaseId).toBeNull();
     expect(fake.raw('rent_units').get('U3').leaseId).toBe(res.leaseId);
     expect(fake.raw('rent_leases').get(res.leaseId)).toMatchObject({ unitId: 'U3', propertyId: 'P2', tenantId: 'T1', fromLeaseId: 'L1', status: 'active', chargedThrough: M });
@@ -114,8 +129,7 @@ test('change unit: the old lease ends with the move month, its charges and dues 
 });
 
 test('change unit back-dated to last month: refused while a later month has a payment; nothing written', async () => {
-    await expect(store.moveIn({ unit: { id: 'U3' }, tenantId: 'T1', fromLeaseId: 'L1', endMonth: PREV, lease: lease({ startDate: `${PREV}-20`, startMonth: PREV }), currentMonth: M }))
-        .rejects.toThrow('later_paid');
+    await expect(change({ endMonth: PREV, lease: lease({ startDate: `${PREV}-20`, startMonth: PREV }) })).rejects.toThrow('later_paid');
     expect(fake.raw('rent_leases').get('L1').status).toBe('active');
     expect(fake.raw('rent_units').get('U3').leaseId).toBeNull();
 });
@@ -124,7 +138,7 @@ test('an occupied destination (stale list) or a tenant whose lease changed meanw
     const before = leases().length;
     await expect(store.moveIn({ unit: { id: 'U4' }, tenantId: 'T2', lease: lease(), currentMonth: M })).rejects.toThrow('unit_taken');
     await expect(store.moveIn({ unit: { id: 'U2' }, tenantId: 'T1', lease: lease(), currentMonth: M })).rejects.toThrow('tenant_changed');
-    await expect(store.moveIn({ unit: { id: 'U2' }, tenantId: 'T2', fromLeaseId: 'L1', endMonth: M, lease: lease(), currentMonth: M })).rejects.toThrow('tenant_changed');
+    await expect(change({ unitId: 'U2', tenantId: 'T2' })).rejects.toThrow('tenant_changed');
     expect(leases()).toHaveLength(before);
     expect(fake.raw('rent_units').get('U2').leaseId).toBeNull();
     expect(fake.raw('rent_leases').get('L1').status).toBe('active');
@@ -142,7 +156,7 @@ test('vacate then reassign: the freed unit takes another tenant; the old tenant 
 
 test('a move on the 1st ends the old lease the month before: that month is charged once, on the new unit', async () => {
     fake.seed('rent_charges', [{ id: `L1_${M}`, leaseId: 'L1', unitId: 'U1', propertyId: 'P1', tenantId: 'T1', month: M, dueDay: 10, rent: 5000, amount: 5000, paid: 0, open: true, payments: [] }]);
-    const res = await store.moveIn({ unit: { id: 'U3' }, tenantId: 'T1', fromLeaseId: 'L1', endMonth: PREV, lease: lease({ startDate: `${M}-01` }), currentMonth: M });
+    const res = await change({ endMonth: PREV, lease: lease({ startDate: `${M}-01` }), oldRent: 'auto' });
     expect(fake.raw('rent_leases').get('L1')).toMatchObject({ status: 'ended', endMonth: PREV, chargedThrough: PREV });
     expect(fake.raw('rent_charges').has(`L1_${M}`)).toBe(false);
     expect(fake.raw('rent_charges').get(`L1_${PREV}`)).toMatchObject({ open: true });
@@ -177,6 +191,74 @@ test('a write by another phone between the reads and the commit makes the transa
     expect(fake.raw('rent_units').get('U2').leaseId).toBeNull();
 });
 
+// ---------- RENT-13: the move month pro-rated on both units ----------
+
+test('change of unit, pro-rated: the old month goes down to its days (+ electricity) in the same write; the new lease starts pro-rated', async () => {
+    fake.seed('rent_charges', [{ ...fake.raw('rent_charges').get(`L1_${M}`), id: `L1_${M}`, electricity: { prev: 1, curr: 31, rate: 10, units: 30, amount: 300 }, amount: 5300 }]);
+    const date = `${M}-16`;
+    const x = Math.round(5000 * 15 / dim);
+    const next = Math.round(9000 * (dim - 15) / dim);
+    const res = await change({ lease: lease({ startDate: date, proRate: true, firstRent: next }), oldRent: 'auto' });
+    expect(moveMonthRent(5000, {}, M, date)).toBe(x);
+    expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ rent: x, amount: x + 300, paid: 2000, open: true });
+    expect(fake.raw('rent_leases').get(res.leaseId)).toMatchObject({ proRate: true, firstRent: next, fromLeaseId: 'L1' });
+    expect(fake.raw('rent_charges').get(`${res.leaseId}_${M}`)).toMatchObject({ rent: next, amount: next });
+});
+
+test('change of unit: an owner/manager amount for the old month is used; never below what is already paid (nothing written)', async () => {
+    await expect(change({ lease: lease({ startDate: `${M}-16` }), oldRent: 1500 })).rejects.toThrow('split_below_paid');
+    expect(fake.raw('rent_leases').get('L1').status).toBe('active');
+    expect(fake.raw('rent_charges').get(`L1_${M}`).amount).toBe(5000);
+    await change({ lease: lease({ startDate: `${M}-16` }), oldRent: 2100 });
+    expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ rent: 2100, amount: 2100, open: true });
+});
+
+test('change of unit with a tenant link: the new lease takes the same link; history of both units, receipts, no Moved out', async () => {
+    const TOKEN = 'AbCdEfGhIjKlMnOpQrStUvWx';
+    const charges = [...fake.raw('rent_charges').entries()].map(([id, c]) => ({ id, ...c }));
+    charges.find(c => c.month === M).payments[0].rno = 'R-2026-0007';
+    fake.seed('rent_charges', charges);
+    const l1 = { id: 'L1', ...fake.raw('rent_leases').get('L1'), shareToken: TOKEN };
+    fake.seed('rent_leases', [l1]);
+    fake.seed('rent_public', [{ id: TOKEN, ...buildPublicSnapshot({ lease: l1, tenantName: 'Ram', place: '1A, Gupta Bhawan', unitType: 'flat', charges, now: 1 }) }]);
+    const date = `${M}-16`;
+    const res = await change({ lease: lease({ startDate: date, proRate: true, firstRent: 4645 }), oldRent: 'auto' });
+    expect(fake.raw('rent_leases').get('L1')).toMatchObject({ shareToken: null, movedTo: res.leaseId, status: 'ended' });
+    expect(fake.raw('rent_leases').get(res.leaseId).shareToken).toBe(TOKEN);
+    const pub = fake.raw('rent_public').get(TOKEN);
+    expect(pub).toMatchObject({ lid: res.leaseId, place: '7, Arora Market', ut: 'commercial', ended: false, endMonth: null, rent: 9000, since: `${PREV}-01` });
+    const old = pub.months.filter(x => x.pl === '1A, Gupta Bhawan' && x.pt === 'flat');
+    expect(old.map(x => x.m)).toEqual([PREV, M]);
+    expect(old[1]).toMatchObject({ rent: Math.round(5000 * 15 / dim), paid: 2000, py: [{ a: 2000, r: 'R-2026-0007' }] });
+    expect(pub.months.find(x => x.m === M && !x.pl)).toMatchObject({ rent: 4645 });
+    // A later payment of the old unit's dues still shows on the same link.
+    await store.recordPayment(`L1_${PREV}`, { amount: 1000, mode: 'cash', ref: '', date: `${M}-20` });
+    const after = fake.raw('rent_public').get(TOKEN);
+    expect(after.months.find(x => x.m === PREV && x.pl)).toMatchObject({ paid: 1000, due: 4000 });
+    expect(after.months.filter(x => x.m === PREV)).toHaveLength(1);
+});
+
+test('Add unit with an existing tenant: another phone moving that tenant in between the reads and the commit makes it retry and refuse', async () => {
+    const orig = fake.db.runTransaction;
+    let once = true;
+    fake.db.runTransaction = (fn) => orig(async (tx) => {
+        const out = await fn(tx);
+        if (once) {
+            once = false;
+            fake.seed('rent_leases', [{ id: 'LO', unitId: 'U3', propertyId: 'P2', tenantId: 'T2', status: 'active', startMonth: M }]);
+            fake.seed('rent_tenants', [{ id: 'T2', name: 'Sita', phone: '9876543211', ...meta, updatedAt: 2 }]);
+        }
+        return out;
+    });
+    const units = fake.raw('rent_units').size;
+    await expect(store.moveIn({ unit: { propertyId: 'P1', label: '9Z', rent: 4000, type: 'flat' }, newUnit: true, tenantId: 'T2', lease: lease(), currentMonth: M }))
+        .rejects.toThrow('tenant_changed');
+    fake.db.runTransaction = orig;
+    expect(fake.stats.retries).toBe(1);
+    expect(fake.raw('rent_units').size).toBe(units);
+    expect(leases().filter(l => l.tenantId === 'T2')).toHaveLength(1);
+});
+
 // ---------- the tenant page ----------
 
 const set = (id, v) => { document.getElementById(id).value = v; };
@@ -185,6 +267,10 @@ async function waitFor(id) {
     for (let i = 0; i < 100 && !open(); i++) await new Promise(r => setTimeout(r));
     expect(open()).toBeTruthy();
 }
+async function picker() {
+    for (let i = 0; i < 100 && !document.querySelector('#rentTenantUnit optgroup'); i++) await new Promise(r => setTimeout(r));
+    return document.getElementById('rentTenantUnit');
+}
 async function showTenants() {
     store.attach(M, (k) => _test.state.loaded.add(k));
     await fake.settle();
@@ -192,9 +278,9 @@ async function showTenants() {
     _test.render();
 }
 
-test('tenant form: "No unit" and the vacant units grouped by property', async () => {
+test('tenant form: "No unit" and the vacant units grouped by property (picker loaded on first use)', async () => {
     await showTenants();
-    const sel = document.getElementById('rentTenantUnit');
+    const sel = await picker();
     expect(sel.options[0]).toMatchObject({ value: '', textContent: 'No unit' });
     const groups = [...sel.querySelectorAll('optgroup')].map(g => [g.label, [...g.querySelectorAll('option')].map(o => o.value)]);
     expect(groups).toEqual([['Arora Market', ['U3']], ['Gupta Bhawan', ['U2']]]);
@@ -202,6 +288,7 @@ test('tenant form: "No unit" and the vacant units grouped by property', async ()
 
 test('add a tenant with a unit: the move-in fields, then tenant and lease saved together', async () => {
     await showTenants();
+    await picker();
     set('rentTenantName', 'Gita');
     set('rentTenantPhone', '98765 00000');
     set('rentTenantUnit', 'U3');
@@ -216,6 +303,7 @@ test('add a tenant with a unit: the move-in fields, then tenant and lease saved 
 });
 
 test('edit a tenant: another unit asks first (with the dues) and changes the unit', async () => {
+    at(16);
     await showTenants();
     const p = _test.editTenant('T1');
     await waitFor('rentEditUnit');
@@ -245,6 +333,7 @@ test('a non-owner back-dating a start more than 2 days: clear message, nothing s
 });
 
 test('change of unit when the first charge fails: no claim it was charged; the next charge pass adds it', async () => {
+    at(16);
     await showTenants();
     const orig = fake.db.runTransaction;
     let fail = true;
@@ -266,30 +355,114 @@ test('change of unit when the first charge fails: no claim it was charged; the n
     await fake.settle();
     _test.state.charged.clear();
     await _test.maybeCharge();
-    expect(fake.raw('rent_charges').get(`${lease2.id}_${M}`)).toMatchObject({ amount: 7000 });
+    expect(fake.raw('rent_charges').get(`${lease2.id}_${M}`)).toMatchObject({ amount: firstMonthRent(7000, `${M}-16`, true) });
 });
 
-test('change of unit with a tenant link: a manager gets a new link; a member is told the old one shows Moved out', async () => {
-    fake.seed('rent_leases', [{ ...fake.raw('rent_leases').get('L1'), id: 'L1', shareToken: 'AbCdEfGhIjKlMnOpQrStUvWx' }]);
+test('change of unit with a tenant link: the link moves to the new unit for a member or a manager (no new link)', async () => {
+    const TOKEN = 'AbCdEfGhIjKlMnOpQrStUvWx';
+    for (const role of ['member', 'manager']) {
+        store.detach();
+        seedAll();
+        UIManager.showToast.mockClear();
+        at(16);
+        fake.seed('rent_leases', [{ ...fake.raw('rent_leases').get('L1'), id: 'L1', shareToken: TOKEN }]);
+        rentalsRole.mockReturnValue(role);
+        await showTenants();
+        const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U2');
+        await waitFor('rentTRent');
+        RentalsModule.api.dialogClose(true);
+        await p;
+        expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/tenant link now shows the new unit/), 'success');
+        const moved = leases().find(l => l.fromLeaseId === 'L1');
+        expect(moved.shareToken).toBe(TOKEN);
+        expect(fake.raw('rent_leases').get('L1').shareToken).toBeNull();
+    }
+});
+
+test('change dialog: "Pro-rate move month" ticked with both amounts filled in; members can\'t change them; unticked = full rent on both', async () => {
+    at(16);
     await showTenants();
     const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U2');
-    await waitFor('rentTRent');
+    await waitFor('rentSplitOn');
+    const x = Math.round(5000 * 15 / dim);
+    expect(document.getElementById('rentSplitOn').checked).toBe(true);
+    expect(document.getElementById('rentSplitOld').value).toBe(String(x));
+    expect(document.getElementById('rentSplitNew').value).toBe(String(firstMonthRent(7000, `${M}-16`, true)));
+    expect(document.getElementById('rentSplitOld').readOnly).toBe(true);
+    expect(document.getElementById('rentTProRate').closest('label').hidden).toBe(true);
+    // The date changes: the amounts follow.
+    set('rentTDate', `${M}-11`);
+    document.getElementById('rentTDate').dispatchEvent(new Event('change'));
+    expect(document.getElementById('rentSplitOld').value).toBe(String(Math.round(5000 * 10 / dim)));
+    set('rentTDate', `${M}-16`);
+    document.getElementById('rentTDate').dispatchEvent(new Event('change'));
     RentalsModule.api.dialogClose(true);
     await p;
-    expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/old tenant link now shows Moved out/), 'success');
+    expect(UIManager.showModal).toHaveBeenCalledWith(expect.stringMatching(/split by days/), 'Change unit', true);
+    expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ rent: x, amount: x });
+
     store.detach();
     seedAll();
-    fake.seed('rent_leases', [{ ...fake.raw('rent_leases').get('L1'), id: 'L1', shareToken: 'AbCdEfGhIjKlMnOpQrStUvWx' }]);
     rentalsRole.mockReturnValue('manager');
     await showTenants();
     const q = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U2');
-    await waitFor('rentTRent');
+    await waitFor('rentSplitOn');
+    expect(document.getElementById('rentSplitOld').readOnly).toBe(false);
+    const box = document.getElementById('rentSplitOn');
+    box.checked = false;
+    box.dispatchEvent(new Event('change'));
+    expect(document.getElementById('rentSplitBox').hidden).toBe(true);
     RentalsModule.api.dialogClose(true);
     await q;
-    expect(leases().find(l => l.fromLeaseId === 'L1').shareToken).toBeTruthy();
+    expect(UIManager.showModal).toHaveBeenLastCalledWith(expect.stringMatching(/Both units are charged the full rent/), 'Change unit', true);
+    expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ rent: 5000, amount: 5000 });
+    const moved = leases().find(l => l.fromLeaseId === 'L1');
+    expect(moved.proRate).toBe(false);
+    expect(fake.raw('rent_charges').get(`${moved.id}_${M}`)).toMatchObject({ amount: 7000 });
+});
+
+test('a manager may change the pre-filled amounts (within the month\'s rent)', async () => {
+    at(16);
+    rentalsRole.mockReturnValue('manager');
+    await showTenants();
+    const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U2');
+    await waitFor('rentSplitOn');
+    set('rentSplitOld', '9999');
+    RentalsModule.api.dialogClose(true);
+    await p;
+    expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/up to that month's rent/), 'error');
+    const q = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U2');
+    await waitFor('rentSplitOn');
+    set('rentSplitOld', '2600');
+    set('rentSplitNew', '3000');
+    RentalsModule.api.dialogClose(true);
+    await q;
+    expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ rent: 2600, amount: 2600 });
+    const moved = leases().find(l => l.fromLeaseId === 'L1');
+    expect(moved).toMatchObject({ proRate: true, firstRent: 3000 });
+});
+
+test('a member\'s change on the 1st with this month already charged: the old lease ends last month, that charge goes (no old-unit rent this month)', async () => {
+    at(2);
+    fake.seed('rent_charges', [{ ...fake.raw('rent_charges').get(`L1_${M}`), id: `L1_${M}`, paid: 0, open: true, payments: [] }]);
+    await showTenants();
+    const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U2');
+    await waitFor('rentSplitOn');
+    set('rentTDate', `${M}-01`);
+    document.getElementById('rentTDate').dispatchEvent(new Event('change'));
+    expect(document.getElementById('rentSplitOldL').hidden).toBe(true);
+    expect(document.getElementById('rentSplitHelp').textContent).toMatch(/nothing is charged for the old unit/);
+    RentalsModule.api.dialogClose(true);
+    await p;
+    expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.anything(), 'error');
+    expect(fake.raw('rent_leases').get('L1')).toMatchObject({ status: 'ended', endMonth: PREV, chargedThrough: PREV });
+    expect(fake.raw('rent_charges').has(`L1_${M}`)).toBe(false);
+    const moved = leases().find(l => l.fromLeaseId === 'L1');
+    expect(fake.raw('rent_charges').get(`${moved.id}_${M}`)).toMatchObject({ amount: 7000 });
 });
 
 test('change of unit keeps the old lease terms (due day, yearly %, deposit, electricity); the rent is the new unit\'s', async () => {
+    at(16);
     fake.seed('rent_leases', [{ ...fake.raw('rent_leases').get('L1'), id: 'L1', dueDay: 5, increasePct: 8, deposit: 15000, elecMode: 'own' }]);
     await showTenants();
     const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U3');
