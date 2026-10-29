@@ -823,7 +823,7 @@ service cloud.firestore {
           : base == 'rent_leases'
           ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
                               'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken',
-                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo'].concat(rentMeta()))
+                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo', 'fromLeaseId'].concat(rentMeta()))
             && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
             && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
             && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
@@ -866,15 +866,41 @@ service cloud.firestore {
     }
 
     // New leases start active, with no charges and no tenant link, and take their unit in the same write.
+    // The lease's property is its unit's, and its tenant exists. Non-owners can't
+    // back-date the start more than 2 days (IST; the app's default edit window, fixed
+    // here because Roles & access days would cost reads past this write's limit).
     function rentLeaseCreateOk(usersCol, docId) {
       let d = request.resource.data;
+      let unit = getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data;
       return d.get('shareToken', null) == null
         && d.get('status', '') == 'active' && d.get('endMonth', null) == null
         // No charges yet, or the first month's charge written in the same batch (move-in).
         && (d.get('chargedThrough', null) == null
             || (d.chargedThrough == d.startMonth && d.startMonth <= rentThisMonth()
                 && existsAfter(rentChargePath(usersCol, docId, d.startMonth))))
-        && getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data.get('leaseId', null) == docId;
+        && unit.get('leaseId', null) == docId
+        && unit.get('propertyId', '') == d.propertyId
+        && existsAfter(rentPath(usersCol, 'rent_tenants', d.tenantId))
+        && (rentRoleIn(usersCol) == 'owner' || d.get('startDate', '') >= rentDaysAgo(2))
+        && (d.get('fromLeaseId', null) == null || rentUnitChangeOk(usersCol, d));
+    }
+
+    // Change of unit (rent-store.js moveIn): the same tenant's active lease
+    // (fromLeaseId) ends in this write on another unit, with the move month, or the
+    // month before when the move is on the 1st (that month isn't charged twice).
+    function rentUnitChangeOk(usersCol, d) {
+      let old = getAfter(rentLeasePath(usersCol, d.fromLeaseId)).data;
+      return rentStr(d, 'fromLeaseId', 1, 64)
+        && get(rentLeasePath(usersCol, d.fromLeaseId)).data.status == 'active'
+        && old.status == 'ended' && old.tenantId == d.tenantId && old.unitId != d.unitId
+        && (old.endMonth == d.startMonth
+            || (d.get('startDate', '').matches('^.{8}01$') && nextMonth(old.endMonth) == d.startMonth));
+    }
+
+    // 'YYYY-MM-DD' n days ago in India (IST).
+    function rentDaysAgo(n) {
+      let ist = request.time + duration.value(330, 'm') - duration.value(n, 'd');
+      return string(ist.year()) + '-' + pad2(ist.month()) + '-' + pad2(ist.day());
     }
 
     // Lease changes (review of #10, High):
@@ -895,6 +921,7 @@ service cloud.firestore {
         && d.startMonth == r.startMonth && d.unitId == r.unitId && d.tenantId == r.tenantId
         && d.get('startDate', null) == r.get('startDate', null) && d.get('firstRent', null) == r.get('firstRent', null)
         && d.get('proRate', false) == r.get('proRate', false)
+        && d.get('fromLeaseId', null) == r.get('fromLeaseId', null)
         && (d.get('shareToken', null) == r.get('shareToken', null) || mgr)
         && (r.status == 'ended'
           ? d.status == 'ended' && d.get('endMonth', null) == r.get('endMonth', null) && next == before

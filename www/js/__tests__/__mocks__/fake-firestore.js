@@ -296,7 +296,8 @@ export function createFakeFirestore(options = {}) {
                         return ref.get().then(s => { stats.reads--; stats.docGets--; return s; });
                     },
                     set: (ref, data, opts) => ops.push(() => ref.set(data, opts)),
-                    update: (ref, fields) => ops.push(() => ref.update(fields))
+                    update: (ref, fields) => ops.push(() => ref.update(fields)),
+                    delete: (ref) => ops.push(() => ref.delete())
                 };
                 const result = await fn(tx);
                 if (options.occ) {

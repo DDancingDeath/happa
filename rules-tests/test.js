@@ -1852,7 +1852,7 @@ function defineRentSuite(prefix) {
         await assertFails(leaseRef('rentMember').set(lease(meta('rentMember'))));
         const f = db('rentMember');
         const b = f.batch();
-        b.set(leaseOn(f), lease(meta('rentMember')));
+        b.set(leaseOn(f), lease({ ...meta('rentMember'), startMonth: CUR, rentSince: CUR, startDate: today }));
         b.update(unitOn(f), { leaseId: 'L1', updatedAt: 2, updatedBy: 'rentMember' });
         await assertSucceeds(b.commit());
         await assertFails(db('rentMember').collection(c('rent_properties')).doc('P2').set({ ...prop, updatedBy: 'someoneElse' }));
@@ -2097,11 +2097,12 @@ function defineRentSuite(prefix) {
     // ---- Add unit with its tenant / move-in in one batch; start date; phone; electricity modes ----
     const today = (() => { const d = new Date(Date.now() + 330 * MIN); return `${CUR}-${String(d.getUTCDate()).padStart(2, '0')}`; })();
     const moveInBatch = (uid, { newUnit = true, newTenant = true, phone = '9876543210', rent = 6000, chargeAmount = rent, firstRent = null,
-        startDate = today, startMonth = startDate.slice(0, 7), withCharge = true, unitLease = 'LN', extraLease = {} } = {}) => {
+        startDate = today, startMonth = startDate.slice(0, 7), withCharge = true, unitLease = 'LN', extraLease = {}, touch = false } = {}) => {
         const f = db(uid);
         const b = f.batch();
         const m = meta(uid);
         if (newTenant) b.set(f.collection(c('rent_tenants')).doc('TN'), { name: 'Sita', phone, notes: '', ...m });
+        if (touch) b.update(f.collection(c('rent_tenants')).doc('T1'), { updatedAt: 2, updatedBy: uid });
         const leaseDoc = { unitId: 'UN', propertyId: 'P1', tenantId: newTenant ? 'TN' : 'T1', rent, dueDay: 10, startMonth, startDate,
             proRate: firstRent != null, endMonth: null, deposit: 0, increasePct: 5, rentSince: startMonth, elecMode: 'own', meterNo: 'CN-1234',
             status: 'active', chargedThrough: withCharge ? startMonth : null, ...m, ...extraLease };
@@ -2154,6 +2155,144 @@ function defineRentSuite(prefix) {
         await seed('rent_units', 'UN', unit({ label: 'S1', leaseId: null }));
         await seed('rent_tenants', 'T1', { name: 'Ram', phone: '9876543210', notes: '', ...meta('x') });
         await assertSucceeds(moveInBatch('rentOnly', { newUnit: false, newTenant: false }));
+    });
+
+    t('tenant form move-in (assignUnit): the tenant is touched in the same write', async () => {
+        await seed('rent_units', 'UN', unit({ label: 'S1', leaseId: null }));
+        await seed('rent_tenants', 'T1', { name: 'Ram', phone: '9876543210', notes: '', ...meta('x') });
+        await assertFails(moveInBatch('staff1', { newUnit: false, newTenant: false, touch: true }));
+        await assertSucceeds(moveInBatch('rentMember', { newUnit: false, newTenant: false, touch: true }));
+        await env.clearFirestore();
+        await seedUsers(prefix ? 'dev_users' : 'users');
+        await seed('rent_tenants', 'T1', { name: 'Ram', phone: '9876543210', notes: '', ...meta('x') });
+        await assertSucceeds(moveInBatch('rentMember', { newTenant: false, touch: true }));
+    });
+
+    t('a lease names an existing tenant and its unit\'s property', async () => {
+        await seed('rent_units', 'UN', unit({ label: 'S1', leaseId: null }));
+        await assertFails(moveInBatch('rentManager', { newUnit: false, newTenant: false }));
+        await assertFails(moveInBatch('rentManager', { newUnit: false, withCharge: false, extraLease: { propertyId: 'P9' } }));
+        await assertSucceeds(moveInBatch('rentManager', { newUnit: false, withCharge: false }));
+    });
+
+    // ---- Change of unit (tenant form, rent-store assignUnit): old lease ends, new one starts, one write ----
+    const istDate = (daysAgo) => new Date(Date.now() + 330 * MIN - daysAgo * DAY).toISOString().slice(0, 10);
+    const seedChange = async (month, destLease = null, { through = month, token = null } = {}) => {
+        await seed('rent_tenants', 'T1', { name: 'Ram', phone: '9876543210', notes: '', ...meta('x') });
+        await seed('rent_units', 'U1', unit());
+        await seed('rent_units', 'U2', unit({ label: 'G2', leaseId: destLease }));
+        await seed('rent_leases', 'L1', lease({ startMonth: istMonth(-6), rentSince: istMonth(-6), chargedThrough: through, shareToken: token }));
+        for (const m of [month, through]) await seed('rent_charges', `L1_${m}`, charge(m));
+        if (token) await seed('rent_public', token, snap());
+    };
+    // As assignUnit: the new lease's first month is charged right after (chargeLease), not in this write.
+    const changeUnit = (uid, { date = today, unitId = 'U2', propertyId = 'P1', tenantId = 'T1', from = 'L1', freeOld = true, del = [], pub = '', endMonth = '' } = {}) => {
+        const f = db(uid);
+        const b = f.batch();
+        const month = date.slice(0, 7);
+        const end = endMonth || month;
+        del.forEach(m => b.delete(chargeOn(f, m)));
+        b.update(leaseOn(f), { status: 'ended', endMonth: end, chargedThrough: end, updatedAt: 2, updatedBy: uid });
+        if (pub) b.set(pubOn(f, pub), snap({ ended: true, endMonth: end }));
+        if (freeOld) b.update(unitOn(f), { leaseId: null, updatedAt: 2, updatedBy: uid });
+        b.set(f.collection(c('rent_leases')).doc('LN'), { unitId, propertyId, tenantId, rent: 6000, dueDay: 10, startMonth: month, startDate: date,
+            proRate: false, endMonth: null, deposit: 0, increasePct: 5, rentSince: month, elecMode: 'included', status: 'active',
+            chargedThrough: null, fromLeaseId: from, ...meta(uid) });
+        b.update(f.collection(c('rent_units')).doc(unitId), { leaseId: 'LN', updatedAt: 2, updatedBy: uid });
+        return b.commit();
+    };
+
+    t('change of unit: old lease ends and the new one starts in one write; fromLeaseId stays fixed', async () => {
+        await seedChange(CUR);
+        await assertSucceeds(changeUnit('rentMember'));
+        let got = null;
+        await env.withSecurityRulesDisabled(async (ctx) => { got = (await ctx.firestore().collection(c('rent_leases')).doc('LN').get()).data(); });
+        if (got.fromLeaseId !== 'L1') throw new Error('fromLeaseId not saved');
+        await assertFails(db('rentManager').collection(c('rent_leases')).doc('LN').update({ fromLeaseId: 'L9', updatedAt: 3, updatedBy: 'rentManager' }));
+        const f = db('rentMember');
+        const b = f.batch();
+        b.set(f.collection(c('rent_charges')).doc(`LN_${CUR}`), { ...charge(CUR, { leaseId: 'LN', unitId: 'U2', unitLabel: 'G2', rent: 6000, amount: 6000 }), updatedBy: 'rentMember' });
+        b.update(f.collection(c('rent_leases')).doc('LN'), { chargedThrough: CUR, updatedAt: 3, updatedBy: 'rentMember' });
+        await assertSucceeds(b.commit());
+    });
+
+    t('change of unit with a tenant link and a back-dated move: snapshot and unpaid later month in the same write', async () => {
+        await seedChange(PREV, null, { through: CUR, token: TOKEN });
+        await assertFails(changeUnit('rentMember', { date: `${PREV}-15`, del: [CUR], pub: TOKEN }));
+        await assertSucceeds(changeUnit('legacyOwner', { date: `${PREV}-15`, del: [CUR], pub: TOKEN }));
+    });
+
+    t('change of unit back-dated two months with a link: both unpaid later months go in the same write', async () => {
+        await seedChange(PREV2, null, { through: CUR, token: TOKEN });
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV));
+        await assertSucceeds(changeUnit('legacyOwner', { date: `${PREV2}-15`, del: [PREV, CUR], pub: TOKEN }));
+    });
+
+    t('change of unit: an occupied unit is never overwritten (any role)', async () => {
+        await seedChange(CUR, 'LX');
+        await seed('rent_leases', 'LX', lease({ unitId: 'U2', tenantId: 'T9', chargedThrough: CUR }));
+        for (const uid of ['rentMember', 'rentManager', 'legacyOwner']) await assertFails(changeUnit(uid));
+    });
+
+    t('change of unit: unit, property and tenant agree; the old lease is this tenant\'s and ends in the same write', async () => {
+        await seedChange(CUR);
+        await seed('rent_tenants', 'T2', { name: 'Sita', phone: '9876543211', notes: '', ...meta('x') });
+        await seed('rent_units', 'U3', unit({ label: 'G3', leaseId: null, propertyId: 'P2' }));
+        await assertFails(changeUnit('rentManager', { propertyId: 'P9' }));
+        await assertFails(changeUnit('rentManager', { unitId: 'U3' }));
+        await assertFails(changeUnit('rentManager', { tenantId: 'T2' }));
+        await assertFails(changeUnit('rentManager', { from: 'L9' }));
+        await assertFails(changeUnit('rentManager', { freeOld: false }));
+        await assertSucceeds(changeUnit('rentManager', { unitId: 'U3', propertyId: 'P2' }));
+    });
+
+    t('change of unit: only rentals roles', async () => {
+        await seedChange(CUR);
+        for (const uid of ['staff1', 'manager1', 'rentPending']) await assertFails(changeUnit(uid));
+        await assertSucceeds(changeUnit('rentOnly'));
+    });
+
+    t('change of unit: non-owners back-date only within the edit window; the owner any date', async () => {
+        const back = istDate(3);
+        await seedChange(back.slice(0, 7));
+        await assertFails(changeUnit('rentMember', { date: back }));
+        await assertFails(changeUnit('rentManager', { date: back }));
+        await assertSucceeds(changeUnit('legacyOwner', { date: back }));
+    });
+
+    t('change of unit: fromLeaseId must be an active lease (not one already ended)', async () => {
+        await seedChange(CUR);
+        await seed('rent_leases', 'L9', lease({ unitId: 'U9', status: 'ended', endMonth: PREV, chargedThrough: PREV }));
+        await assertFails(changeUnit('rentManager', { from: 'L9' }));
+    });
+
+    t('change of unit on the 1st: the old lease may end the month before (only then)', async () => {
+        await seedChange(PREV, null, { through: CUR });
+        await assertFails(changeUnit('legacyOwner', { date: `${CUR}-02`, endMonth: PREV, del: [CUR] }));
+        await assertSucceeds(changeUnit('legacyOwner', { date: `${CUR}-01`, endMonth: PREV, del: [CUR] }));
+    });
+
+    t('change of unit by the owner with a link, back-dated 3 months: three later months go in the same write', async () => {
+        const m3 = istMonth(-3);
+        await seedChange(m3, null, { through: CUR, token: TOKEN });
+        for (const m of [PREV2, PREV]) await seed('rent_charges', `L1_${m}`, charge(m));
+        await assertSucceeds(changeUnit('legacyOwner', { date: `${m3}-15`, del: [PREV2, PREV, CUR], pub: TOKEN }));
+    });
+
+    t('every new lease: non-owners back-date the start at most 2 days (the boundary is allowed); the owner any date', async () => {
+        await seed('rent_units', 'UN', unit({ label: 'S1', leaseId: null }));
+        await assertFails(moveInBatch('rentMember', { newUnit: false, startDate: istDate(3) }));
+        await assertFails(moveInBatch('rentManager', { startDate: istDate(3) }));
+        await assertSucceeds(moveInBatch('rentMember', { newUnit: false, startDate: istDate(2) }));
+        await env.clearFirestore();
+        await seedUsers(prefix ? 'dev_users' : 'users');
+        await assertSucceeds(moveInBatch('legacyOwner', { startDate: `${istMonth(-3)}-05` }));
+    });
+
+    t('change of unit: 1 day back is inside the 2-day window', async () => {
+        const yesterday = istDate(1);
+        await seedChange(yesterday.slice(0, 7));
+        await assertSucceeds(changeUnit('rentOnly', { date: yesterday }));
     });
 
     t('tenant phone: a 10-digit mobile required on create; second number optional; old tenants without a phone still edit', async () => {

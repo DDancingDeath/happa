@@ -564,3 +564,41 @@ WhatsApp messages and the read-only link; rent never goes into the Aadhat cash d
   wrong device clock, void; the warning and Issue receipt; the Ref row; the lazy files cached on first use
   by the service worker; text for each electricity mode and a
   part payment, one language, escaping, reprint, void; the tenant page); oracle `tests/oracle/rent-receipt.test.js`.
+
+## 11. Unit on the tenant form (owner, 2026-10-30)
+
+Owner: *"maybe we should have unit option in tenant page"*.
+
+- **Tenants page:** Add tenant and Edit have a **Unit** select: "No unit", then the vacant
+  units grouped by property (`<optgroup>`, `rent-views.js vacantByProperty`); a tenant's
+  current unit is shown selected. **Move in** and the property view's **Add tenant** use the
+  same dialog (`rentals.js toUnit`).
+- **New tenant + unit, or a tenant without a lease:** the Move in fields (start date,
+  pro-rate, rent from the unit, due day from Settings › Rentals, else the 10th).
+- **Change unit** (tenant with an active lease picks another unit; asks first): the old lease
+  ends exactly as on move-out and the new lease (with `fromLeaseId`) starts. A move on the 1st
+  ends the old lease with the month before, so that month is charged once (on the new unit);
+  a mid-month move charges both units for that month and the confirmation says so (an
+  owner/manager can adjust the old unit's last month). Taking back an already charged month
+  is owner/manager only. If the old lease had a tenant link, an owner/manager gets a new link
+  for the new lease; otherwise the old link shows "Moved out". "No unit" for a tenant with a
+  lease opens Move out.
+- **One store function** (`rent-store.js moveIn`): when something must be re-read (an
+  existing unit must still have `leaseId == null`; an existing tenant must have no other
+  active lease: one query `tenantId == x && status == active`, limit 2, re-run on every
+  retry; for a change, the old lease, its later months and link snapshot) it runs as a
+  transaction that also writes the tenant (move-in) or the old lease (change), so two phones
+  racing for one tenant or unit conflict and the retry is refused. A new unit with a new
+  tenant stays one batch (works offline). About 3–4 reads per move. A change's first month is
+  charged right after (`chargeLease`; the write is at the rules' 20-document limit); if that
+  fails, the next charge pass makes it.
+- **Rules:** every new lease's property is its unit's and its tenant exists; non-owners can't
+  set a start date more than 2 days back (IST; the app's default edit window, fixed because
+  the Roles & access days would cost reads past the limit). With `fromLeaseId` (never
+  changed): that lease was active, ends in the same write on another unit for the same
+  tenant, with `endMonth` = the new start month, or the month before for a move on the 1st.
+  Unit `leaseId` rules are unchanged, so an occupied unit is never overwritten.
+- **Not done:** a tenant `activeLeaseId` mirror for a rules-level "one lease per tenant"
+  guarantee. It needs a migration of existing tenants, an extra checked document in move-in,
+  move-out and change writes (the change is already at the read limit). The transaction
+  above enforces it for every app write path.

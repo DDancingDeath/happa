@@ -129,6 +129,14 @@ export function placeText(label, propertyName) {
     return [String(label || '').trim(), String(propertyName || '').trim()].filter(Boolean).join(', ');
 }
 
+/** Vacant units (plus `keep`, the tenant's own) by property, both A–Z; properties without any left out. */
+export function vacantByProperty(properties = [], units = [], keep = '') {
+    const az = (k) => (a, b) => String(a[k]).localeCompare(String(b[k]));
+    return [...properties].sort(az('name'))
+        .map(property => ({ property, units: units.filter(u => u.propertyId === property.id && !u.archived && (!u.leaseId || u.id === keep)).sort(az('label')) }))
+        .filter(g => g.units.length);
+}
+
 /**
  * The unit as people say it: "Flat 2B, Gupta Bhawan". The type word is skipped
  * when the label already starts with it ("Shop 3").
