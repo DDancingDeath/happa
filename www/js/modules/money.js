@@ -446,8 +446,8 @@ export const MoneyManager = {
         this.html('moneyCashCaveats', this.caveatsHtml(m, ['M12', 'M14']));
         this.text('moneyIn', money(m.M12.total));
         this.text('moneyOut', money(m.M13.total));
-        this.html('moneyInSplit', `<span>${esc(t('ui.money.cash_online', { cash: formatRupees(m.M12.cash), online: formatRupees(m.M12.online) }))}</span>`);
-        this.html('moneyOutSplit', `<span>${esc(t('ui.money.cash_online', { cash: formatRupees(m.M13.cash), online: formatRupees(m.M13.online) }))}</span>`);
+        this.html('moneyInSplit', `<span data-metric-ref="M12">${esc(t('ui.money.cash_online', { cash: formatRupees(m.M12.cash), online: formatRupees(m.M12.online) }))}</span>`);
+        this.html('moneyOutSplit', `<span data-metric-ref="M13">${esc(t('ui.money.cash_online', { cash: formatRupees(m.M13.cash), online: formatRupees(m.M13.online) }))}</span>`);
         // Day by day (net money in), only for a month.
         if (!r.month) { this.html('moneyCashChart', ''); return; }
         const days = {};

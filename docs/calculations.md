@@ -253,7 +253,7 @@ and close on the figure of the home page:
 
 | ID | Statement | Closes on |
 |---|---|---|
-| ST1 | Day book: every bill, expense, withdrawal and due payment of one day, in time order | Today T1, T2, T13, T14 (expenses = T4 + T5) |
+| ST1 | Day book: every bill, expense, withdrawal and due payment of one day, in time order. For today it lists them with a link to Today and no totals (Today is their home), on screen, in WhatsApp and in the CSV | Today T1, T2, T13, T14 (expenses = T4 + T5) |
 | ST2 | Month statement: the Money ladder, money in / out and spending of one month | M1–M17 of that month |
 | ST3 | Party ledger: bills (+), paid with the bill, later payments, write-offs and "marked cleared" (−), running balance; old-app balances start at their carried amount | Σ BILL-DUE of the party's bills (Outstanding) |
 | ST4 | Item ledger: purchases, sales and corrections of one item with running kg and AVG-COST; flags a sale below cost or before the stock was bought | S1, S3 |

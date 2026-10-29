@@ -206,7 +206,8 @@ export const StatementsManager = {
         const tc = (k) => t(k, null, cl);
         const { rows, totals } = dayBook(this.src(), { from, to }, { personal: perms.personalExpenses });
         const isToday = this.day === todayLocalISO();
-        const body = rows.map(r => `<tr><td>${esc(r.t ? formatDayTime(r.t, { lang }).split(', ').pop() : '')}</td><td>${esc(this.kindLabel(r.kind))}</td><td>${esc([r.billNo, r.party, r.note].filter(Boolean).join(' · '))}</td><td class="num">${money(r.amount)}</td><td class="num">${r.due ? money(r.due) : ''}</td></tr>`).join('');
+        const timeOf = (r) => (r.t ? formatDayTime(r.t, { lang }).split(', ').pop() : '');
+        const body = rows.map(r => `<tr><td>${esc(timeOf(r))}</td><td>${esc(this.kindLabel(r.kind))}</td><td>${esc([r.billNo, r.party, r.note].filter(Boolean).join(' · '))}</td><td class="num">${money(r.amount)}</td><td class="num">${r.due ? money(r.due) : ''}</td></tr>`).join('');
         const tot = [
             ['ui.statements.t_sales', totals.sales, totals.salesCount], ['ui.statements.t_purchases', totals.purchases, totals.purchaseCount],
             ['ui.statements.t_expenses', totals.expenses], ['ui.statements.t_withdrawals', totals.withdrawals],
@@ -215,8 +216,10 @@ export const StatementsManager = {
         const html = (isToday ? `<p class="ins-hint"><button type="button" class="ins-link" onclick="window.app.nav.showTab('day')">${esc(t('ui.statements.today_link'))} ›</button></p>` : '')
             + `<h3 class="st-title">${esc(title)}</h3>`
             + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.time'))}</th><th>${esc(t('ui.statements.what'))}</th><th>${esc(t('ui.statements.details'))}</th><th class="num">${esc(t('ui.money.amount'))}</th><th class="num">${esc(t('ui.statements.due'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`
-            + `<div class="st-totals">${tot.map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.statements.t_sales' ? 'M1' : k === 'ui.statements.t_purchases' ? 'M16' : 'M4'}">${money(v)}</span></div>`).join('')}</div>`;
-        const share = [title, ...tot.map(([k, v]) => `${t(k)}: ${formatRupees(v)}`)].join('\n');
+            + (isToday ? '' : `<div class="st-totals">${tot.map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.statements.t_sales' ? 'M1' : k === 'ui.statements.t_purchases' ? 'M16' : 'M4'}">${money(v)}</span></div>`).join('')}</div>`);
+        let share = [title, ...tot.map(([k, v]) => `${t(k)}: ${formatRupees(v)}`)].join('\n');
+        // Today's totals have one home (Today); today's day book lists the bills only.
+        if (isToday) share = [title, ...rows.map(r => [timeOf(r), this.kindLabel(r.kind), r.billNo, r.party, r.note, formatRupees(r.amount)].filter(Boolean).join(' · '))].join('\n');
         const csvHeader = [tc('ui.statements.time'), tc('ui.statements.what'), tc('ui.statements.bill_no'), tc('ui.insights.party'), tc('ui.statements.details'), tc('ui.money.amount'), tc('ui.statements.cash'), tc('ui.statements.online'), tc('ui.statements.due')];
         const csvRows = rows.map(r => [isoMinute(r.t), this.kindLabel(r.kind, cl), r.billNo, r.party, r.note, r.amount, r.cash, r.online, r.due]);
         return { title, html, share, csvHeader, csvRows };

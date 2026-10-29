@@ -19,16 +19,16 @@ const FIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/calculati
 const copy = (v) => JSON.parse(JSON.stringify(v));
 const template = (name) => fs.readFileSync(path.join(ROOT, 'www/templates', name), 'utf8');
 
-/** page file → { root element id, draw(): renders every section and returns once per state worth checking } */
+/** page file → { root element id, states: one draw per tab; the page is checked after EACH (hidden tabs are skipped) } */
 const PAGES = {
     'money.html': {
         root: 'money',
-        states: [() => ['profit', 'cash', 'spending', 'worth'].forEach(s => MoneyManager.init(s))]
+        states: ['profit', 'cash', 'spending', 'worth'].map(s => () => MoneyManager.init(s))
     },
     'insights.html': {
         root: 'insights',
         states: [
-            () => ['actions', 'items', 'parties'].forEach(s => InsightsManager.init(s)),
+            ...['actions', 'items', 'parties'].map(s => () => InsightsManager.init(s)),
             () => InsightsManager.setPartyKind('purchases')
         ]
     },

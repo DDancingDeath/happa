@@ -216,6 +216,20 @@ describe('Statements page', () => {
         expect(document.getElementById('statementsView').hidden).toBe(true);
     });
 
+    test('today\'s day book links to Today and lists the bills without repeating Today\'s totals (screen, WhatsApp, CSV)', () => {
+        StatementsManager.open('day');
+        const doc = document.getElementById('statementsDoc');
+        expect(doc.querySelector('.st-totals')).toBeNull();
+        expect(doc.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
+        const share = StatementsManager.current.share;
+        expect(share).not.toMatch(new RegExp(t('ui.statements.t_sales')));
+        expect(share.split('\n').length).toBe(1 + doc.querySelectorAll('tbody tr').length);
+        expect(StatementsManager.current.csvRows.length).toBe(doc.querySelectorAll('tbody tr').length);
+        StatementsManager.set('day', '2026-10-20');
+        expect(document.querySelector('#statementsDoc .st-totals')).not.toBeNull();
+        expect(StatementsManager.current.share).toMatch(new RegExp(t('ui.statements.t_sales')));
+    });
+
     test('month statement shows Money\'s figures (export totals)', () => {
         StatementsManager.open('month');
         const m = moneySummary({ ...data, base: { state: {}, from: -Infinity } }, { from: new Date(2026, 9, 1).getTime(), to: NOW + 1 });
