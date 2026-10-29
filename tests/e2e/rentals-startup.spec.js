@@ -64,7 +64,8 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.click('#rentalsBody .rent-form button');
     const row = page.locator('.rent-row', { hasText: `Ram ${stamp}` }).first();
     await row.locator('button', { hasText: 'Move in' }).click();
-    await page.selectOption('#rentLeaseUnit', { label: `Shop G${stamp}, Gali ${stamp}` });
+    // Units are grouped by property (optgroup), so the option is just the unit.
+    await page.selectOption('#rentLeaseUnit', { label: `Shop G${stamp}` });
     await expect(page.locator('#rentTDate')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
     await page.selectOption('#rentTElec', 'meter');
     await page.click('#rentDialog .rent-btn-primary');
