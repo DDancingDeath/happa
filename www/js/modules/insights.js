@@ -521,6 +521,13 @@ export const InsightsManager = {
                 this.render();
                 return;
             }
+            const party = e.target.closest('[data-party]');
+            if (party && party.dataset.party && window.app?.statements) {
+                Promise.resolve(window.app.statements.selectParty(party.dataset.party, this.partyKind === 'purchases' ? 'supplier' : 'customer'))
+                    .then(() => window.app.nav.showTab('statements-party'))
+                    .catch(err => console.warn('Insights: party ledger not opened:', err?.message || err));
+                return;
+            }
             const item = e.target.closest('[data-item]');
             if (item && item.dataset.item) {
                 setInsightsContext({ itemId: item.dataset.item });

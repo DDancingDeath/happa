@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261029w-insights-page';
+const BUILD_ID = '20261029x-statements';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -91,6 +91,18 @@ function loadInsights() {
             .catch(e => { insightsLoading = null; throw e; });
     }
     return insightsLoading;
+}
+
+// Statements page (redesign phase 4): statements.js is imported on first use
+let statements = null;
+let statementsLoading = null;
+function loadStatements() {
+    if (!statementsLoading) {
+        statementsLoading = import('./modules/statements.js')
+            .then(m => (statements = m.StatementsManager))
+            .catch(e => { statementsLoading = null; throw e; });
+    }
+    return statementsLoading;
 }
 
 // Load and inject HTML templates from separate .html files
@@ -146,6 +158,7 @@ function refreshForLanguage(lang) {
         },
         money: () => money?.render(),
         insights: () => insights?.render(),
+        statements: () => { statements?.renderControls(); statements?.render(); },
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
@@ -1202,6 +1215,14 @@ window.app = {
             .catch(e => console.warn('Insights not loaded:', e?.message || e)),
         ...Object.fromEntries(['setSection', 'setPreset', 'step', 'setItemsType', 'setPartyKind', 'setSeasonView', 'render', 'loadOlder']
             .map(name => [name, (...args) => loadInsights().then(m => m[name](...args))]))
+    },
+
+    // Statements (redesign §5.4): statements.js is imported on first use
+    statements: {
+        init: (route) => loadStatements().then(m => m.init(route))
+            .catch(e => console.warn('Statements not loaded:', e?.message || e)),
+        ...Object.fromEntries(['open', 'back', 'set', 'loadOlder', 'shareWhatsApp', 'downloadCsv', 'print', 'openParty', 'selectParty', 'setCsvEnglish']
+            .map(name => [name, (...args) => loadStatements().then(m => m[name](...args))]))
     },
 
     // Reports › Trends / Product traffic: rate-trends.js is imported on first use

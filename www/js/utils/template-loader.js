@@ -35,6 +35,7 @@ export class TemplateLoader {
             'rate-trends',
             'money',
             'insights',
+            'statements',
             'health',
             'day',
             'cash-management',
@@ -86,6 +87,7 @@ export class TemplateLoader {
         (appContent.querySelector('#reports') || appContent).insertAdjacentHTML('beforeend', templates['rate-trends']);
         appContent.insertAdjacentHTML('beforeend', templates.money);
         appContent.insertAdjacentHTML('beforeend', templates.insights);
+        appContent.insertAdjacentHTML('beforeend', templates.statements);
         appContent.insertAdjacentHTML('beforeend', templates.health);
         appContent.insertAdjacentHTML('beforeend', templates['cash-management']);
         appContent.insertAdjacentHTML('beforeend', templates.users);
