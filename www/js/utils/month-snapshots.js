@@ -11,7 +11,7 @@ import { itemSummary, partySummary, profitPerDay } from './business-metrics.js';
 export const SNAPSHOT_VERSION = 1;
 /** Current / previous month snapshots older than this are rebuilt from the loaded bills. */
 export const SNAPSHOT_ROLL_MS = 6 * 60 * 60 * 1000;
-const TOP_PARTIES = 50;
+export const TOP_PARTIES = 50;
 
 const pad = (x) => String(x).padStart(2, '0');
 
@@ -57,7 +57,8 @@ export function buildSnapshot(month, m, src, now = Date.now()) {
     itemSummary(m).forEach(r => {
         items[r.itemKey || '_'] = { s: r.sales, c: r.cogs, q: r.qty, r: r.retail, w: r.wholesale };
     });
-    const parties = (kind) => partySummary(src, kind, range).slice(0, TOP_PARTIES)
+    const allCustomers = partySummary(src, 'sales', range);
+    const parties = (kind) => (kind === 'sales' ? allCustomers : partySummary(src, kind, range)).slice(0, TOP_PARTIES)
         .map(p => ({ k: p.key, n: p.name, t: p.total, c: p.count }));
     const categories = {};
     (m.M4.byCategory || []).forEach(c => { categories[c.category] = c.total; });
@@ -83,7 +84,7 @@ export function buildSnapshot(month, m, src, now = Date.now()) {
             M1: m.M1.total, M1c: m.M1.count, M1r: m.M1.retail.total, M1w: m.M1.wholesale.total,
             M2: m.M2, M3: m.M3.total, M4: m.M4.total, M5: m.M5, M6: m.M6.total, M7: m.M7,
             M8: m.M8.total, M9: m.M9, M10: m.M10, M12: m.M12.total, M13: m.M13.total, M14: m.M14,
-            M16: m.M16.total, M16c: m.M16.count, close: m.M17 ? m.M17.closing : null
+            M16: m.M16.total, M16c: m.M16.count, close: m.M17 ? m.M17.closing : null, Cc: allCustomers.length
         },
         items,
         customers: parties('sales'),
@@ -92,6 +93,19 @@ export function buildSnapshot(month, m, src, now = Date.now()) {
         days,
         builtAt: now
     };
+}
+
+/**
+ * Every customer of a snapshot's month, or null when the stored list was cut to the top
+ * TOP_PARTIES (m.Cc = how many there were; older snapshots without it count as cut when full).
+ * @param {?Object} doc
+ * @returns {?Array<{key: string, name: string}>}
+ */
+export function snapshotCustomers(doc) {
+    if (!doc || !Array.isArray(doc.customers)) return null;
+    const all = Number(doc.m?.Cc);
+    const cut = Number.isFinite(all) ? all > doc.customers.length : doc.customers.length >= TOP_PARTIES;
+    return cut ? null : doc.customers.map(p => ({ key: p.k, name: p.n }));
 }
 
 /**

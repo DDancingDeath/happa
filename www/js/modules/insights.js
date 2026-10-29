@@ -22,7 +22,7 @@ import {
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext, contextMonth } from '../utils/insights-context.js';
-import { figuresFromSnapshot, monthKeyOf, monthKeysBetween } from '../utils/month-snapshots.js';
+import { figuresFromSnapshot, monthKeyOf, monthKeysBetween, snapshotCustomers as customersOfSnapshot } from '../utils/month-snapshots.js';
 import { MoneyManager } from './money.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
@@ -261,6 +261,7 @@ export const InsightsManager = {
         }
         const now = new Date();
         const weekly = this.weeklySoldKg(now);
+        if (!weekly) { this.html('insightsActionsStock', ''); return; }
         const rows = this.seasonRows().map(r => {
             const st = AppState.stock?.[r.itemKey];
             return { ...r, qty: Number(st?.quantity) || 0, weeklyKg: weekly.get(r.itemKey) || 0 };
@@ -272,11 +273,17 @@ export const InsightsManager = {
         }), null, '', `<button type="button" class="btn btn-secondary" data-item="${esc(x.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
     },
 
-    /** kg sold per week over the last 8 weeks, per item key: one summary for all items. */
+    /**
+     * kg sold per week over the last 8 weeks (or the weeks of bills loaded, if fewer),
+     * per item key: one summary for all items. null under 2 loaded weeks.
+     */
     weeklySoldKg(now) {
-        const from = now.getTime() - 56 * DAY_MS;
-        const m = moneySummary(this.input(from), { from, to: now.getTime() + 1 }, { detail: true });
-        return new Map(itemSummary(m).map(r => [r.itemKey, r.qty / 8]));
+        const end = now.getTime();
+        const from = Math.max(end - 56 * DAY_MS, isFullHistoryLoaded() ? -Infinity : historyLoadedFrom());
+        const weeks = (end - from) / (7 * DAY_MS);
+        if (!(weeks >= 2)) return null;
+        const m = moneySummary(this.input(from), { from, to: end + 1 }, { detail: true });
+        return new Map(itemSummary(m).map(r => [r.itemKey, r.qty / weeks]));
     },
 
     renderItems(m, r) {
@@ -314,9 +321,10 @@ export const InsightsManager = {
         this.html('insightsSplit', `<div class="ins-row"><span>${esc(t('ui.insights.retail'))}</span><span>${money(m.M1.retail.total)} · ${pct(m.M1.retail.total)}%</span></div>`
             + `<div class="ins-row"><span>${esc(t('ui.insights.wholesale'))}</span><span>${money(m.M1.wholesale.total)} · ${pct(m.M1.wholesale.total)}%</span></div>`);
         const bought = purchaseItems(AppState.purchaseHistory || [], AppState.items || [], r);
+        const paid = this.may('purchaseRates');
         this.html('insightsBoughtTable', bought.length
-            ? `<thead><tr><th>${esc(t('ui.insights.item'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th><th class="num">${esc(t('ui.insights.paid'))}</th></tr></thead><tbody>`
-                + bought.map(x => `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${Math.round(x.qty)}</td><td class="num">${money(x.amount)}</td></tr>`).join('') + '</tbody>'
+            ? `<thead><tr><th>${esc(t('ui.insights.item'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th>${paid ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.insights.paid'))}</th>` : ''}</tr></thead><tbody>`
+                + bought.map(x => `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${Math.round(x.qty)}</td>${paid ? `<td class="num" data-perm="purchaseRates">${money(x.amount)}</td>` : ''}</tr>`).join('') + '</tbody>'
             : `<tr><td>${esc(t('ui.insights.no_purchases'))}</td></tr>`);
     },
 
@@ -384,7 +392,7 @@ export const InsightsManager = {
     stoppedCheck(src, now) {
         const snaps = MoneyManager.snapshots || {};
         const snapshotCustomers = {};
-        Object.entries(snaps).forEach(([k, doc]) => { if (doc && Array.isArray(doc.customers)) snapshotCustomers[k] = doc.customers.map(p => ({ key: p.k, name: p.n })); });
+        Object.entries(snaps).forEach(([k, doc]) => { if (doc) snapshotCustomers[k] = customersOfSnapshot(doc); });
         return stoppedComingCheck(src, now, this.cfg(), {
             loadedFrom: isFullHistoryLoaded() ? 0 : historyLoadedFrom(),
             snapshotCustomers

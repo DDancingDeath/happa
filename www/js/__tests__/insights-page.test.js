@@ -228,3 +228,63 @@ describe('Seasons: one Rate trends view, two entry points', () => {
         expect(seasonIndex(kg)).toBeNull();
     });
 });
+
+describe('round-2 review fixes', () => {
+    test('"stopped coming" is unknown when a snapshot\'s customer list was cut to the top customers', async () => {
+        const { snapshotCustomers, TOP_PARTIES } = await import('../utils/month-snapshots.js');
+        const full = Array.from({ length: TOP_PARTIES }, (_, i) => ({ k: `c${i}`, n: `C${i}`, t: 10, c: 1 }));
+        expect(snapshotCustomers({ customers: full, m: { Cc: TOP_PARTIES + 7 } })).toBeNull();
+        expect(snapshotCustomers({ customers: full })).toBeNull();
+        expect(snapshotCustomers({ customers: full, m: { Cc: TOP_PARTIES } })).toHaveLength(TOP_PARTIES);
+        expect(snapshotCustomers({ customers: full.slice(0, 3) })).toHaveLength(3);
+
+        AppState.historyLoadedFrom = new Date(2026, 6, 1).getTime();
+        const regular = [{ k: 'ramesh', n: 'Ramesh', t: 100, c: 1 }];
+        MoneyManager.snapshots = {
+            '2025-09': { customers: regular, m: { Cc: 1 } },
+            '2025-10': { customers: [...regular, ...full.slice(1)], m: { Cc: 80 } },
+            '2025-11': { customers: regular, m: { Cc: 1 } }
+        };
+        InsightsManager.init('parties');
+        expect(document.getElementById('insightsStopped').textContent).toMatch(/older bills/i);
+        expect(document.getElementById('insightsStopped').textContent).not.toMatch(/every regular/i);
+    });
+
+    test('a built snapshot records how many customers the month had (m.Cc)', async () => {
+        const { buildSnapshot } = await import('../utils/month-snapshots.js');
+        const { moneySummary } = await import('../utils/business-metrics.js');
+        const sep = { from: new Date(2026, 8, 1).getTime(), to: new Date(2026, 9, 1).getTime() };
+        const doc = buildSnapshot('2026-09', moneySummary({ ...data, base: { state: {}, from: -Infinity } }, sep, { detail: true }), data, NOW);
+        expect(doc.m.Cc).toBe(doc.customers.length);
+    });
+
+    test('weekly kg divides by the weeks actually loaded; under 2 weeks there is no stock-up card', async () => {
+        const { moneySummary, itemSummary } = await import('../utils/business-metrics.js');
+        const from = NOW - 28 * 86400000;
+        AppState.historyLoadedFrom = from;
+        const weekly = InsightsManager.weeklySoldKg(new Date(NOW));
+        const want = itemSummary(moneySummary(InsightsManager.input(from), { from, to: NOW + 1 }, { detail: true }));
+        expect(want.some(r => r.qty > 0)).toBe(true);
+        want.forEach(r => expect(weekly.get(r.itemKey)).toBeCloseTo(r.qty / 4, 6));
+
+        AppState.historyLoadedFrom = NOW - 10 * 86400000;
+        expect(InsightsManager.weeklySoldKg(new Date(NOW))).toBeNull();
+        InsightsManager.seasonDocs = [];
+        document.getElementById('insightsActionsStock').innerHTML = '<p>old</p>';
+        InsightsManager.renderStockUp();
+        expect(document.getElementById('insightsActionsStock').innerHTML).toBe('');
+    });
+
+    test('"What you bought" shows what was paid only with the purchase rates permission', () => {
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess: { staff: { analytics: true, purchaseRates: false } } };
+        InsightsManager.init('items');
+        const rows = [...document.querySelectorAll('#insightsBoughtTable tbody tr')];
+        expect(rows.length).toBeGreaterThan(0);
+        rows.forEach(tr => expect(tr.children.length).toBe(2));
+        expect(document.getElementById('insightsBoughtTable').textContent).not.toMatch(/₹/);
+        AppState.settings = { roleAccess: { staff: { analytics: true, purchaseRates: true } } };
+        InsightsManager.render();
+        document.querySelectorAll('#insightsBoughtTable tbody tr').forEach(tr => expect(tr.children.length).toBe(3));
+    });
+});
