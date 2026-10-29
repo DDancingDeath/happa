@@ -238,8 +238,39 @@ describe('taps, caveats and checks', () => {
         AppState.historyLoadedFrom = new Date(2026, 9, 1).getTime();
         setInsightsContext({ preset: 'month:2026-01' });
         MoneyManager.init('profit');
-        expect(document.getElementById('moneyProfitValue').textContent).toBe('—');
-        expect(document.getElementById('moneyProfitTakeaway').textContent).toMatch(/not loaded/);
+        expect(document.getElementById('moneyBody').hidden).toBe(true);
+        expect(document.getElementById('moneyNotLoaded').textContent).toMatch(/not loaded/);
+    });
+
+    test('stepping to an unloaded month leaves no figure of the month before on screen', () => {
+        AppState.historyLoadedFrom = new Date(2026, 8, 1).getTime();
+        const visibleRupees = () => {
+            const out = [];
+            const walk = (el) => {
+                if (el.hidden) return;
+                if (el.children.length === 0 && /₹|\d/.test(el.textContent)) out.push(el.textContent);
+                [...el.children].forEach(walk);
+            };
+            walk(document.getElementById('money'));
+            return out.filter(s => /₹/.test(s));
+        };
+        for (const section of ['profit', 'cash', 'spending', 'worth']) {
+            resetInsightsContextForTests();
+            MoneyManager.init(section);
+            MoneyManager.step(-1);
+            expect(shown('moneySales')).not.toBeNaN();
+            expect(visibleRupees().length).toBeGreaterThan(0);
+            MoneyManager.step(-1);
+            expect(document.getElementById('moneyPeriodLabel').textContent).toBe('Aug 2026');
+            expect(document.getElementById('moneyBody').hidden).toBe(true);
+            expect(document.getElementById('moneyNotLoaded').hidden).toBe(false);
+            expect(document.getElementById('moneyNotLoaded').textContent).toMatch(/not loaded/);
+            expect(document.getElementById('moneyChecks').textContent).toBe('');
+            expect(visibleRupees()).toEqual([]);
+            MoneyManager.step(1);
+            expect(document.getElementById('moneyBody').hidden).toBe(false);
+            expect(document.getElementById('moneyNotLoaded').hidden).toBe(true);
+        }
     });
 
     test('the checks line says the page adds up', () => {

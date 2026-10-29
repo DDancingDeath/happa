@@ -303,6 +303,7 @@ export const MoneyManager = {
             this.renderNotLoaded(r);
             return;
         }
+        this.showBody(true);
         const sessions = this.sessions(r);
         const m = this.summary(r, { sessions, detail: true });
         this.lastSummary = m;
@@ -322,11 +323,23 @@ export const MoneyManager = {
         this.renderChecks(ctx);
     },
 
+    /** Shows the figures, or hides all of them behind the "not loaded" message. */
+    showBody(show) {
+        const body = document.getElementById('moneyBody');
+        if (body) body.hidden = !show;
+        const box = document.getElementById('moneyNotLoaded');
+        if (box) {
+            box.hidden = show;
+            if (show) box.innerHTML = '';
+        }
+    },
+
     renderNotLoaded(r) {
-        const msg = `<div class="ins-empty"><p>${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(r) }))}</p>`
-            + `<button type="button" class="btn btn-primary" onclick="window.app.money.loadOlder()">${esc(t('ui.money.load_older'))}</button></div>`;
-        ['moneyProfitTakeaway', 'moneyCashTakeaway', 'moneySpendTakeaway'].forEach(id => this.html(id, msg));
-        ['moneyProfitValue', 'moneyNetCash', 'moneyBusiness'].forEach(id => this.text(id, '—'));
+        this.showBody(false);
+        this.lastSummary = null;
+        this.html('moneyNotLoaded', `<div class="ins-empty"><p>${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(r) }))}</p>`
+            + `<button type="button" class="btn btn-primary" onclick="window.app.money.loadOlder()">${esc(t('ui.money.load_older'))}</button></div>`);
+        this.html('moneyChecks', '');
     },
 
     async loadOlder() {
