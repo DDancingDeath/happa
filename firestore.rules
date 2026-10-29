@@ -384,8 +384,16 @@ service cloud.firestore {
           : true);
     }
 
+    // A closed cash day stays closed for everyone, owners too (#38): a queued or
+    // stale write must not reopen it. There is no reopen action.
+    function cashStaysClosed() {
+      return resource.data.get('signedOut', false) != true
+        || request.resource.data.get('signedOut', false) == true;
+    }
+
     function canUpdateRecord(base, u, docId) {
       return base in billCollections() ? canUpdateBill(u, docId)
+        : base in ['cashManagement', 'cashSessions'] && !cashStaysClosed() ? false
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base in ['withdrawals', 'stockAdjustments']

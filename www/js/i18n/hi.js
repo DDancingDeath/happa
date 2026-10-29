@@ -105,6 +105,7 @@ export default {
     'msg.cash.cash_session_details': "नकद सत्र का ब्योरा",
     'msg.cash.cash_signed_in_successfully': "✓ आज का कैश खुल गया",
     'msg.cash.joined_open_session': "आज का कैश पहले से खुला है ({name}, ₹{amount})। उसी में जुड़ गए।",
+    'msg.cash.open_needs_internet': "कैश खोलने के लिए इंटरनेट चाहिए। इंटरनेट चालू करके फिर कोशिश करें।",
     'msg.cash.cash_signed_out_successfully': "✓ कैश बंद हो गया",
     'msg.cash.choose_bill_or_no_bill': "बिल चुनें या \"No bill\"",
     'msg.cash.confirm_sign_out': "कैश बंद करें?",

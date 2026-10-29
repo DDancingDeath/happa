@@ -66,6 +66,12 @@ export function lastCountedSession(sessions) {
 }
 
 /**
+ * Error code thrown by FirebaseService.openCashSession when there is no
+ * connection (#38): opening cash is never queued offline.
+ */
+export const CASH_NEEDS_INTERNET = 'cash/needs-internet';
+
+/**
  * Id of a day's cash session (#38): one document per local day, so a second
  * phone opening cash joins the same session.
  * @param {string} date YYYY-MM-DD

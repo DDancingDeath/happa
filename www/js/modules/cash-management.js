@@ -11,7 +11,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
-import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, sessionForDate, duplicateSessionDays } from '../utils/cash-session.js';
+import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { round2, outstandingDue } from '../utils/money.js';
 import { evaluateCashCount, toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
@@ -778,7 +778,9 @@ export class CashManagementManager {
             if (openingNotesInput) openingNotesInput.value = '';
         } catch (error) {
             console.error('Sign in error:', error);
-            UIManager.showToast(t('msg.cash.failed_sign_in', { message: error.message }));
+            UIManager.showToast(error?.code === CASH_NEEDS_INTERNET
+                ? t('msg.cash.open_needs_internet')
+                : t('msg.cash.failed_sign_in', { message: error.message }));
         }
     }
 

@@ -32,7 +32,7 @@ import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_
 import { markStartup } from '../utils/startup-timings.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { historyIdBound } from '../utils/rate-history.js';
-import { cashSessionDocId, sessionForDate } from '../utils/cash-session.js';
+import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { installFirestoreMeter, getQuotaStatus } from './firestore-meter.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
@@ -3373,10 +3373,11 @@ const FirebaseService = {
      * Cash sessions for one local day (YYYY-MM-DD); usually one. One small
      * query instead of loadCashSessions() (which reads every session).
      * @param {string} date
+     * @param {Object} [getOptions] e.g. `{ source: 'server' }`
      * @returns {Promise<Array<Object>>}
      */
-    async loadCashSessionsForDate(date) {
-        const snapshot = await this.db.collection(col('cashManagement')).where('date', '==', date).get();
+    async loadCashSessionsForDate(date, getOptions) {
+        const snapshot = await this.db.collection(col('cashManagement')).where('date', '==', date).get(getOptions);
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     },
 
@@ -3385,34 +3386,30 @@ const FirebaseService = {
      * `cash_<date>`, created in a transaction: a phone that comes second gets
      * the existing session back (`joined: true`) instead of a second one. A
      * session opened earlier that day by an older app (random id) is joined too.
-     * Offline the create is queued as a merge without the entry lists, so it
-     * can never wipe deposits or payments another phone added.
+     * Opening needs a connection: a write queued offline could not see another
+     * phone's session and would overwrite its opening or reopen a closed day.
      * @param {Object} session New session (needs `date`)
      * @returns {Promise<{session: Object, joined: boolean}>}
+     * @throws {Error} code `cash/needs-internet` when offline
      */
     async openCashSession(session) {
+        const needsInternet = () => Object.assign(new Error('Open cash needs internet'), { code: CASH_NEEDS_INTERNET });
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) throw needsInternet();
         const ref = this.cashSessionRef(cashSessionDocId(session.date));
         const fresh = { ...session, id: ref.id };
-        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        if (!offline) {
-            try {
-                const legacy = sessionForDate(await this.loadCashSessionsForDate(session.date), session.date);
-                if (legacy) return { session: legacy, joined: true };
-                return await getDb().runTransaction(async tx => {
-                    const snap = await tx.get(ref);
-                    if (snap.exists) return { session: { id: ref.id, ...snap.data() }, joined: true };
-                    tx.set(ref, fresh);
-                    return { session: fresh, joined: false };
-                });
-            } catch (error) {
-                if (error?.code !== 'unavailable') throw error;
-            }
+        try {
+            const legacy = sessionForDate(await this.loadCashSessionsForDate(session.date, { source: 'server' }), session.date);
+            if (legacy) return { session: legacy, joined: true };
+            return await getDb().runTransaction(async tx => {
+                const snap = await tx.get(ref);
+                if (snap.exists) return { session: { id: ref.id, ...snap.data() }, joined: true };
+                tx.set(ref, fresh);
+                return { session: fresh, joined: false };
+            });
+        } catch (error) {
+            if (error?.code === 'unavailable') throw needsInternet();
+            throw error;
         }
-        const opening = { ...fresh };
-        delete opening.duePayments;
-        delete opening.cashDeposits;
-        ref.set(opening, { merge: true }).catch(e => console.error('Queued cash open failed:', e));
-        return { session: fresh, joined: false };
     },
 
     /**

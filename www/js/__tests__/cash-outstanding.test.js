@@ -15,7 +15,7 @@ import { dueEvents, sumDueEvents, saleTimePayment, entryParts, legParts, checkPa
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, duplicateSessionDays, sessionForDate } from '../utils/cash-session.js';
+import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, duplicateSessionDays, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import fs from 'fs';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import path from 'path';
@@ -803,13 +803,32 @@ describe('#38 one cash session per day', () => {
         expect(ctx.fake.raw('cashManagement').get('cash_2026-10-21')).toMatchObject({ signedOut: true, closedBy: 'u1', userId: 'u2' });
     });
 
-    test('offline, the open is queued as a merge that keeps entries from other phones', async () => {
-        ctx.fake.seed('cashManagement', [{ id: 'cash_2026-10-21', date: '2026-10-21', openingBalance: 1000, userId: 'u2', signedOut: false, duePayments: [{ id: 'p1', amount: 50 }] }]);
+    test('offline, opening cash is refused and writes nothing (no blind merge over the day)', async () => {
+        const closed = { date: '2026-10-21', openingBalance: 1000, userId: 'u2', signInTime: 'x',
+            signedOut: true, counted: true, closingBalance: 1200, duePayments: [{ id: 'p1', amount: 50 }] };
+        ctx.fake.seed('cashManagement', [{ id: 'cash_2026-10-21', ...closed }]);
         jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
-        const r = await open(900, 'u1', 'Owner');
+        await expect(open(900, 'u1', 'Owner')).rejects.toMatchObject({ code: CASH_NEEDS_INTERNET });
+        jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        setVal('cashSignInAmount', 900);
+        await CashManagementManager.signIn();
         await ctx.fake.settle();
-        expect(r.session.id).toBe('cash_2026-10-21');
-        expect(ctx.fake.raw('cashManagement').get('cash_2026-10-21').duePayments).toEqual([{ id: 'p1', amount: 50 }]);
+        expect(toast).toHaveBeenCalledWith('Open cash needs internet. Connect and try again.');
+        expect(ctx.fake.raw('cashManagement').get('cash_2026-10-21')).toEqual(closed);
+        expect(ctx.fake.raw('cashManagement').size).toBe(1);
+    });
+
+    test('a lost connection during the open is reported as needing internet, nothing queued', async () => {
+        ctx.fake.db.runTransaction = () => Promise.reject(Object.assign(new Error('offline'), { code: 'unavailable' }));
+        await expect(open(900, 'u1', 'Owner')).rejects.toMatchObject({ code: CASH_NEEDS_INTERNET });
+        await ctx.fake.settle();
+        expect(ctx.fake.raw('cashManagement').size).toBe(0);
+    });
+
+    test('the same-day lookup asks the server, not the offline cache', async () => {
+        const spy = jest.spyOn(FirebaseService, 'loadCashSessionsForDate');
+        await open(900, 'u1', 'Owner');
+        expect(spy).toHaveBeenCalledWith('2026-10-21', { source: 'server' });
     });
 
     test('owner sees days with more than one session; the per-day id wins for that day', () => {

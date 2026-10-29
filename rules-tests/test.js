@@ -1054,6 +1054,21 @@ function defineSuite(prefix) {
         await assertSucceeds(as('manager1').collection(cash).doc('s1').update(closing({ closedBy: 'manager1' })));
     });
 
+    t('cash: nobody, owners included, sets signedOut back to false on a closed day (#38)', async () => {
+        await seedSession(closing());
+        const opening = session({ id: 'cash_2026-10-22', openingBalance: 900, signInTime: 'y' });
+        for (const uid of ['legacyOwner', 'owner2', 'manager1', 'staff1']) {
+            const ref = as(uid).collection(cash).doc('s1');
+            await assertFails(ref.set({ ...opening, userId: uid }, { merge: true }));
+            await assertFails(ref.update({ signedOut: false }));
+            await assertFails(ref.set(session({ userId: uid })));
+        }
+        await assertSucceeds(as('staff1').collection(cash).doc('s1').update({ cashDeposits: FieldValue.arrayUnion(deposit()) }));
+        await assertSucceeds(as('legacyOwner').collection(cash).doc('s1').update({ closingNotes: 'checked' }));
+        await seedSession();
+        await assertSucceeds(as('legacyOwner').collection(cash).doc('s1').update(closing()));
+    });
+
     t('cash: anyone approved appends deposits / due payments (arrayUnion and transaction)', async () => {
         await seedSession();
         const ref = as('staff1').collection(cash).doc('s1');
