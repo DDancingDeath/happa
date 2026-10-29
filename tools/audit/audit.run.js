@@ -140,6 +140,7 @@ function wholesaleDue(data) {
  * @param {Object} data loadBackup().data shape
  * @param {Array} periods auditPeriods()
  * @param {number} nowMs
+ * @returns {{negativeStock: (row: Object) => boolean}} evidence for causeFor()
  */
 function auditDataset(C, scope, data, periods, nowMs) {
     load(data);
@@ -149,7 +150,8 @@ function auditDataset(C, scope, data, periods, nowMs) {
     const months = { M1: 0, M16: 0, M2: 0, M6: 0, M14: 0 };
     // Items whose stock went below zero (sold before bought): the app writes the refilled deficit off (#215),
     // the oracle carries it forward. Cost of goods sold on the other items must still agree exactly.
-    const dipped = negativeDips(data).items;
+    const dips = negativeDips(data);
+    const dipped = dips.items;
     const clean = dipped.length ? withoutItems(data, dipped) : null;
     const cleanSources = clean && { purchases: clean.purchases, wholesaleSales: clean.wholesaleSales, retailSales: clean.retailSales, stockAdjustments: clean.stockAdjustments };
 
@@ -337,6 +339,21 @@ function auditDataset(C, scope, data, periods, nowMs) {
             cmp('PT1_kg', 'Product traffic', `${itemName(r.itemId)} ${p.label}`, kg, r.kg, 'kg');
         });
     });
+
+    // Evidence for tools/audit/causes.js: 'negative stock' only where it really applies.
+    const firstDip = Math.min(Infinity, ...Object.values(dips.firstDip));
+    const periodEnd = new Map(periods.map(p => [p.kind === 'all' ? 'all time' : p.label, p.to]));
+    const dippedNames = new Set(dipped.map(itemName));
+    return {
+        // An item went below zero before the period ended, and the same figure without those items agrees.
+        negativeStock: (row) => {
+            if (!clean) return false;
+            if (row.spec === 'S3_value') return dippedNames.has(row.period);
+            const end = periodEnd.get(row.period);
+            if (end === undefined || !(firstDip < end)) return false;
+            return !C.mismatches.some(m => m.scope === scope && m.period === row.period && /_items_never_below_zero$/.test(m.spec));
+        }
+    };
 }
 
 // ------------------------------------------------------------------ migrated state
@@ -404,7 +421,7 @@ run('real-data number audit', () => {
     const C = new Collector();
     const notes = [];
 
-    auditDataset(C, 'real', data, auditPeriods(nowMs, opts), nowMs);
+    const evidence = { real: auditDataset(C, 'real', data, auditPeriods(nowMs, opts), nowMs) };
     load(data);
     CashManagementManager.todaySession = null;
     const numberChecks = runNumberChecks(data, { fullHistory: true });
@@ -428,7 +445,7 @@ run('real-data number audit', () => {
         });
         periods.sort((a, b) => (a.kind === 'all') - (b.kind === 'all') || (a.kind === 'month') - (b.kind === 'month'));
         const before = C.mismatches.length;
-        auditDataset(C, 'migrated', m.data, periods, goLive);
+        evidence.migrated = auditDataset(C, 'migrated', m.data, periods, goLive);
         const found = C.mismatches.slice(before);
         // Is anything from an opening record in a period figure? Compare the app with the openings removed.
         const withoutOpenings = { ...m.data, purchases: m.data.purchases.filter(b => !O.isOpening(b)), retailSales: m.data.retailSales.filter(b => !O.isOpening(b)), wholesaleSales: m.data.wholesaleSales.filter(b => !O.isOpening(b)) };
@@ -456,7 +473,7 @@ run('real-data number audit', () => {
         title: 'Real-data number audit',
         appRef: ENV.AUDIT_APP_REF || 'working tree',
         compare: ENV.AUDIT_COMPARE && fs.existsSync(ENV.AUDIT_COMPARE) ? JSON.parse(fs.readFileSync(ENV.AUDIT_COMPARE, 'utf8')) : null,
-        exportedAt, ms, periods: opts, collector: C, causes: (g) => causeFor(g, CAUSES), quality, numberChecks, migrated, notes
+        exportedAt, ms, periods: opts, collector: C, causes: (g) => causeFor(g, CAUSES, evidence[g.scope]), quality, numberChecks, migrated, notes
     });
     if (ENV.AUDIT_OUT) fs.writeFileSync(ENV.AUDIT_OUT, report);
     if (ENV.AUDIT_JSON) {
