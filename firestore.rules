@@ -463,6 +463,34 @@ service cloud.firestore {
         || (collection in devBusinessCollections() && isApprovedIn('dev_users'));
     }
 
+    // --- reads (#57, #18; docs/role-permissions.md "Server-side read rules") ---
+    // Called after businessAccess, so the caller's profile is already read. The
+    // owner reads everything (backup, Admin). `single` = a get of one document.
+    function canReadRecord(base, u, docId, single) {
+      return isOwnerIn(u)
+        || (base in ['notifications', 'drafts']
+            ? (single && resource == null) || resource.data.get('userId', null) == request.auth.uid
+          : base == 'autoSaves' ? docId == request.auth.uid
+          : base == 'settings' ? single && docId == 'app'
+          : base == 'withdrawals' ? roleSeesMoneyPages(u)
+          : base == 'cashSessions' ? isManagerIn(u)
+          : true);
+    }
+
+    // Withdrawals are shown only on Money, Statements and Insights (roleAccess ids
+    // finance, reports, analytics; defaults: on for managers, off for members). A
+    // manager or member reads them only when one of those is on for their role: one
+    // extra read (settings/app), never for the owner.
+    function roleSeesMoneyPages(usersCol) {
+      let role = get(profilePath(usersCol)).data.get('role', '');
+      let def = role == 'manager';
+      let p = settingsAppPath(usersCol);
+      let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
+      let r = access is map ? access.get(role, {}) : {};
+      let a = r is map ? r : {};
+      return a.get('finance', def) == true || a.get('reports', def) == true || a.get('analytics', def) == true;
+    }
+
     // --- stock checkpoint (stockCheckpoints/current) ---
 
     function isManagerIn(usersCol) {
@@ -506,8 +534,9 @@ service cloud.firestore {
     // --- user profile rules (shared by users and dev_users) ---
 
     function canReadProfile(usersCol, userId) {
-      // A pending/rejected user must still be able to read their own profile at login.
-      return isApprovedIn(usersCol) || (isSignedIn() && request.auth.uid == userId);
+      // Own profile (pending/rejected users too, at login); owner and managers read
+      // everyone (Admin, Roles & access, App health). Members never read others (#57).
+      return (isSignedIn() && request.auth.uid == userId) || isManagerIn(usersCol);
     }
 
     function canCreateProfile(userId) {
@@ -1067,8 +1096,13 @@ service cloud.firestore {
     // ============================================
 
     // Business collections (production and dev_ mirrors) live under one wildcard match.
+    // Reads: see canReadRecord (own notifications/drafts/auto-save, settings/app only,
+    // withdrawals by role access).
     match /{collection}/{docId} {
-      allow read: if businessAccess(collection);
+      allow get: if businessAccess(collection)
+        && canReadRecord(baseName(collection), usersOf(collection), docId, true);
+      allow list: if businessAccess(collection)
+        && canReadRecord(baseName(collection), usersOf(collection), docId, false);
       // Stock records need an up-to-date app (clientVersion >= 3) on create/update.
       allow create: if businessAccess(collection)
         && appSettingsGuard(collection, docId)

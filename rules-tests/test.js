@@ -512,8 +512,13 @@ function defineSuite(prefix) {
     t('pending user cannot list users', () =>
         assertFails(as('pending1').collection(users).get()));
 
-    t('approved staff can list users', () =>
-        assertSucceeds(as('staff1').collection(users).orderBy('createdAt', 'desc').get()));
+    t('members cannot list users or read other profiles; owner and manager can (#57)', async () => {
+        await assertFails(as('staff1').collection(users).orderBy('createdAt', 'desc').get());
+        await assertFails(as('staff1').collection(users).doc('manager1').get());
+        await assertSucceeds(as('staff1').collection(users).doc('staff1').get());
+        await assertSucceeds(as('manager1').collection(users).get());
+        await assertSucceeds(as('legacyOwner').collection(users).doc('staff1').get());
+    });
 
     t('registration as pending staff succeeds', () =>
         assertSucceeds(as('newbie').collection(users).doc('newbie').set({
@@ -1434,6 +1439,164 @@ function defineSuite(prefix) {
 
 defineSuite('');
 defineSuite('dev_');
+
+// ---- Read matrix (#57, #18): every role × collection, get and list ----
+// docs/role-permissions.md "Server-side read rules".
+const READ_ROLES = {
+    owner: 'legacyOwner', manager: 'manager1', member: 'staff1', legacyMember: 'legacyStaff',
+    rentMember: 'rentMember', rentalsOnly: 'rentOnly', pending: 'pending1', rejected: 'rejected1',
+    noRole: 'noRole', noProfile: 'ghost', anon: null
+};
+const OWNER = ['owner'];
+const MANAGERS = ['owner', 'manager'];
+const APPROVED = ['owner', 'manager', 'member', 'legacyMember', 'rentMember'];
+const RENTALS = ['owner', 'rentMember', 'rentalsOnly'];
+const EVERYONE = Object.keys(READ_ROLES);
+const SIGNED_IN = EVERYONE.filter(r => r !== 'anon');
+const dbFor = (role) => (READ_ROLES[role] ? as(READ_ROLES[role]) : anon());
+
+function defineReadMatrix(prefix) {
+    const c = (name) => `${prefix}${name}`;
+    const seedDocs = (docs) => env.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        for (const [path, data] of docs) await db.doc(path).set(data);
+    });
+    // One test per case: `get`/`list` build the request for a role (uid may be null);
+    // the arrays name the roles that are allowed, every other role must be refused.
+    const cases = [];
+    const add = (name, spec) => cases.push({ name, ...spec });
+
+    const shared = ['purchases', 'retailSales', 'wholesaleSales', 'items', 'expenses', 'stockAdjustments',
+        'cashManagement', 'itemFrequency', 'counters', 'stockCheckpoints'];
+    shared.forEach(name => add(name, {
+        seed: [[`${c(name)}/d1`, { userId: 'manager1', timestamp: 1, date: '2026-10-01' }]],
+        get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: APPROVED,
+        list: (db) => db.collection(c(name)).get(), listAllowed: APPROVED
+    }));
+    add('settings/app', {
+        seed: [[`${c('settings')}/app`, { minClientVersion: 3 }], [`${c('settings')}/other`, { a: 1 }]],
+        get: (db) => db.collection(c('settings')).doc('app').get(), getAllowed: APPROVED,
+        list: (db) => db.collection(c('settings')).get(), listAllowed: OWNER
+    });
+    add('settings (other docs)', {
+        seed: [[`${c('settings')}/other`, { a: 1 }]],
+        get: (db) => db.collection(c('settings')).doc('other').get(), getAllowed: OWNER,
+        list: (db) => db.collection(c('settings')).where('a', '==', 1).get(), listAllowed: OWNER
+    });
+    ['notifications', 'drafts'].forEach(name => {
+        add(`${name}: own (query on userId)`, {
+            seed: [[`${c(name)}/n-staff`, { userId: 'staff1', read: false, timestamp: 1 }]],
+            get: (db) => db.collection(c(name)).doc('missing').get(), getAllowed: APPROVED,
+            list: (db, uid) => db.collection(c(name)).where('userId', '==', uid || 'x').get(), listAllowed: APPROVED
+        });
+        add(`${name}: another user's`, {
+            seed: [[`${c(name)}/n-staff`, { userId: 'staff1', read: false, timestamp: 1 }]],
+            get: (db) => db.collection(c(name)).doc('n-staff').get(), getAllowed: ['owner', 'member'],
+            list: (db) => db.collection(c(name)).get(), listAllowed: OWNER
+        });
+    });
+    add('autoSaves', {
+        seed: [[`${c('autoSaves')}/staff1`, { userId: 'staff1' }]],
+        get: (db) => db.collection(c('autoSaves')).doc('staff1').get(), getAllowed: ['owner', 'member'],
+        list: (db) => db.collection(c('autoSaves')).get(), listAllowed: OWNER
+    });
+    add('autoSaves: own document', {
+        seed: [],
+        get: (db, uid) => db.collection(c('autoSaves')).doc(uid || 'x').get(), getAllowed: APPROVED,
+        list: (db, uid) => db.collection(c('autoSaves')).where(firebase.firestore.FieldPath.documentId(), '==', uid || 'x').get(),
+        listAllowed: APPROVED
+    });
+    const withdrawal = [`${c('withdrawals')}/w1`, { amount: 100, userId: 'manager1', timestamp: 1, date: '2026-10-01' }];
+    const appWith = (roleAccess) => [`${c('settings')}/app`, { roleAccess }];
+    const wGet = (db) => db.collection(c('withdrawals')).doc('w1').get();
+    const wList = (db) => db.collection(c('withdrawals')).where('timestamp', '>=', 0).orderBy('timestamp', 'desc').get();
+    add('withdrawals: default access (managers yes, members no)', {
+        seed: [withdrawal], get: wGet, getAllowed: MANAGERS, list: wList, listAllowed: MANAGERS
+    });
+    for (const perm of ['finance', 'reports', 'analytics']) {
+        add(`withdrawals: members with ${perm} on`, {
+            seed: [withdrawal, appWith({ staff: { [perm]: true } })],
+            get: wGet, getAllowed: APPROVED, list: wList, listAllowed: APPROVED
+        });
+    }
+    add('withdrawals: managers with Money, Statements and Insights off', {
+        seed: [withdrawal, appWith({ manager: { finance: false, reports: false, analytics: false }, staff: { finance: false } })],
+        get: wGet, getAllowed: OWNER, list: wList, listAllowed: OWNER
+    });
+    add('cashSessions (legacy)', {
+        seed: [[`${c('cashSessions')}/s1`, { userId: 'staff1' }]],
+        get: (db) => db.collection(c('cashSessions')).doc('s1').get(), getAllowed: MANAGERS,
+        list: (db) => db.collection(c('cashSessions')).get(), listAllowed: MANAGERS
+    });
+    add('users: own profile', {
+        seed: [],
+        get: (db, uid) => db.collection(c('users')).doc(uid || 'x').get(), getAllowed: SIGNED_IN,
+        list: (db, uid) => db.collection(c('users')).where(firebase.firestore.FieldPath.documentId(), '==', uid || 'x').get(),
+        listAllowed: SIGNED_IN
+    });
+    add('users: other profiles', {
+        seed: [],
+        get: (db) => db.collection(c('users')).doc('legacyStaff').get(), getAllowed: ['owner', 'manager', 'legacyMember'],
+        list: (db) => db.collection(c('users')).get(), listAllowed: MANAGERS
+    });
+    add('users: preferences', {
+        seed: [[`${c('users')}/staff1/preferences/ui`, { a: 1 }]],
+        get: (db) => db.collection(c('users')).doc('staff1').collection('preferences').doc('ui').get(), getAllowed: ['member'],
+        list: (db) => db.collection(c('users')).doc('staff1').collection('preferences').get(), listAllowed: ['member']
+    });
+    add('auditLogs', {
+        seed: [[`${c('auditLogs')}/a1`, { action: 'X', userId: 'staff1', timestamp: 1 }]],
+        get: (db) => db.collection(c('auditLogs')).doc('a1').get(), getAllowed: OWNER,
+        list: (db) => db.collection(c('auditLogs')).where('timestamp', '>=', 0).orderBy('timestamp', 'desc').limit(300).get(),
+        listAllowed: OWNER
+    });
+    add('telemetry', {
+        seed: [[`${c('telemetry')}/t1`, { userId: 'staff1', fingerprint: 'f', count: 1 }]],
+        get: (db) => db.collection(c('telemetry')).doc('t1').get(), getAllowed: OWNER,
+        list: (db) => db.collection(c('telemetry')).get(), listAllowed: OWNER
+    });
+    ['tipHealth', 'tipFailures', 'anomalies', 'rateStats', 'monthStats', 'rateHistory'].forEach(name => add(name, {
+        seed: [[`${c(name)}/d1`, { a: 1 }]],
+        get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: MANAGERS,
+        list: (db) => db.collection(c(name)).get(), listAllowed: MANAGERS
+    }));
+    ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges', 'rent_settings'].forEach(name => add(name, {
+        seed: [[`${c(name)}/d1`, { archived: false }]],
+        get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: RENTALS,
+        list: (db) => db.collection(c(name)).get(), listAllowed: RENTALS
+    }));
+    add('rent_public (tenant link)', {
+        seed: [[`${c('rent_public')}/tok`, { lid: 'L1', v: 1 }]],
+        get: (db) => db.collection(c('rent_public')).doc('tok').get(), getAllowed: EVERYONE,
+        list: (db) => db.collection(c('rent_public')).get(), listAllowed: []
+    });
+    add('unknown collection', {
+        seed: [[`${c('somethingElse')}/d1`, { a: 1 }]],
+        get: (db) => db.collection(c('somethingElse')).doc('d1').get(), getAllowed: [],
+        list: (db) => db.collection(c('somethingElse')).get(), listAllowed: []
+    });
+
+    for (const k of cases) {
+        test(`[${prefix || 'prod'}] read matrix: ${k.name}`, async () => {
+            await seedDocs(k.seed);
+            const wrong = [];
+            for (const role of EVERYONE) {
+                for (const [kind, run, allowed] of [['get', k.get, k.getAllowed], ['list', k.list, k.listAllowed]]) {
+                    const expectOk = allowed.includes(role);
+                    try {
+                        await (expectOk ? assertSucceeds : assertFails)(run(dbFor(role), READ_ROLES[role]));
+                    } catch (e) {
+                        wrong.push(`${role} ${kind} should be ${expectOk ? 'allowed' : 'denied'}`);
+                    }
+                }
+            }
+            if (wrong.length) throw new Error(wrong.join('; '));
+        });
+    }
+}
+
+defineReadMatrix('');
+defineReadMatrix('dev_');
 
 // ---- Rentals (#170): rent_* collections, roles per business (#149) ----
 // Months relative to "now" in IST, as the rules compute them.

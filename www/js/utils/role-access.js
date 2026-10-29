@@ -96,6 +96,18 @@ export function can(role, permission, raw) {
     return accessFor(role, raw)[permission] === true;
 }
 
+/** Pages that show withdrawals: Money, Statements, Insights (stored ids). */
+export const WITHDRAWAL_PERMISSIONS = Object.freeze(['finance', 'reports', 'analytics']);
+
+/**
+ * firestore.rules (roleSeesMoneyPages) let a manager or member read withdrawals
+ * only when one of those pages is on for the role; the owner always.
+ */
+export function canReadWithdrawals(role, raw) {
+    if (role === 'owner') return true;
+    return WITHDRAWAL_PERMISSIONS.some(p => can(role, p, raw));
+}
+
 /** Pages whose rules are fixed by role (not configurable in Roles & access). */
 export const TAB_ROLES = Object.freeze({
     admin: Object.freeze(['owner']),

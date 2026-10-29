@@ -32,17 +32,17 @@ setting is missing or invalid.
 
 | id | English | हिंदी | Manager default | Member default | Enforced |
 |---|---|---|---|---|---|
-| `finance` | Money page (the stored id kept the old Finance page's name) | हिसाब पेज | on | off | client |
-| `reports` | Statements page (stored id of the old Reports page) | बही-खाता पेज | on | off | client |
-| `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule, and `reports` opens Seasons too; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client |
+| `finance` | Money page (the stored id kept the old Finance page's name) | हिसाब पेज | on | off | client; **rules** for withdrawals |
+| `reports` | Statements page (stored id of the old Reports page) | बही-खाता पेज | on | off | client; **rules** for withdrawals |
+| `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule, and `reports` opens Seasons too; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client; **rules** for withdrawals |
 | `wholesale` | Wholesale page | थोक पेज | on | off | client |
-| `personalExpenses` | Personal expenses | निजी खर्च | on | on | client (rules: phase 2) |
+| `personalExpenses` | Personal expenses | निजी खर्च | on | on | client (rules: phase 2, see "Server-side read rules") |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
-| `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client |
+| `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client (rules: phase 2) |
 | `purchaseRates` | See purchase rates | खरीद रेट देखें | on | on | client (Rates page only) |
 | `shopSettings` | Change Aadhat settings (labour, bill checks, business name) | आढ़त की सेटिंग बदलें | off | – (managers only) | **client + rules** |
-| `historyDays` | History: days back (0 = all) | इतिहास: कितने दिन पीछे तक (0 = सभी) | 0 | 0 | client |
+| `historyDays` | History: days back (0 = all) | इतिहास: कितने दिन पीछे तक (0 = सभी) | 0 | 0 | client only (see "Server-side read rules") |
 | `editDays` | Edit/delete bills for (days) | बिल बदलने/हटाने के दिन | 2 | 2 | **client + rules** |
 
 - `editDays`: whole days, 0–30; 0 = never. Managers may edit any bill and delete their own;
@@ -73,8 +73,10 @@ setting is missing or invalid.
   fields of the item form. Billing keeps showing purchase rates because members need them to
   make purchase bills; they also stay readable in the data.
 - #154 asked for "narrow only". The owner's later decision is per-role control, so the owner can
-  also turn a page *on* for members. Everything in the list is data members can already read
-  (client-only gating), so turning it on grants nothing the rules would refuse.
+  also turn a page *on* for members. Almost everything in the list is data members can already
+  read (client-only gating). The exception is withdrawals: the rules let a role read them only
+  while Money, Statements or Insights is on for it, so turning one of those on also opens
+  withdrawals in the rules (see "Server-side read rules").
 
 ## Where it is stored
 
@@ -173,9 +175,132 @@ document is billed once per request; limit 10 docs per single write, 20 per batc
 | Non-owner full bill edit | profile, `settings/app` | none (same docs) |
 | Non-owner bill delete | profile, `settings/app` | **+1 read** (delete did not read `settings/app` before) |
 | Owner writes | profile | none (owner short-circuits) |
-| Reads of any collection | profile | none |
+| Reads | profile (+ `settings/app` for withdrawals) | see "Server-side read rules" |
 
 The edit-window branch is only evaluated after `isOwnerIn` fails, so the owner never pays for it.
+
+## Server-side read rules (#57, #18)
+
+Until this change the rules limited only writes: every approved user could read every business
+collection and every user profile. Now each role reads what its screens need. Code:
+`canReadRecord` / `roleSeesMoneyPages` / `canReadProfile` in `firestore.rules`; tests: the
+"read matrix" in `rules-tests/test.js` (every role × collection, `get` and `list`, prod and `dev_`).
+
+Roles below: **Owner**; **Manager**; **Member** (stored `staff`, also legacy profiles without
+`status`); **Rentals-only** (`role` not owner/manager/staff, with a `rentRole`); **Pending** /
+rejected / no profile / unknown role.
+
+### What the app reads (inventory of `www/js`)
+
+`dev_` collections are read the same way with `dev_users` / `dev_settings/app`.
+
+| Collection | Reads in the app | Member needs it |
+|---|---|---|
+| `purchases`, `retailSales`, `wholesaleSales` | window listeners (`timestamp >= liveFrom`), due listeners (`openDue == true`, `timestamp < liveFrom`; pinned ids), one-shot older history, oldest-timestamp probe, re-read after a due is paid, bill-number seed (`helpers.js`), Rates trends paging (owner/manager) | **yes, all ages**: stock = checkpoint + bills since its `asOf` (up to ~3 months back for members), Outstanding needs old bills with a due, History within `historyDays`, billing checks |
+| `items`, `itemFrequency/global`, `counters`, `stockCheckpoints` (`current`, `legacyScan`) | listeners / gets at start-up, billing transaction | yes |
+| `expenses` | window/older-history queries (business and personal rows together) | business: yes (Expenses, Today); personal: only with `personalExpenses`, **but** the cash count's expected balance subtracts today's personal expenses |
+| `stockAdjustments` | history queries (stock) | yes |
+| `cashManagement` | Cash page (latest page, last counted day, open past days, uncounted days, by date, between dates), Today, Outstanding (cash leg), Money, Anomalies | today, the last counted day (carry-forward, any age) and uncounted days; other past days only with `oldCashSessions` |
+| `withdrawals` | history queries; shown only on Money, Statements, Insights | only with `finance`, `reports` or `analytics` (default off) |
+| `cashSessions` (legacy) | none (backup only) | no |
+| `settings/app` | one get per app start (version gate, Roles & access, labour, bill checks, business name, TIP policy) | yes; no other `settings` doc is read |
+| `notifications` | own only (`where('userId', '==', uid)`) | own |
+| `drafts` | own only (`where('userId', '==', uid)`, get by id) | own |
+| `autoSaves/{uid}` | own doc | own |
+| `users` | own profile at start-up / login / registration; full list: Admin and Roles & access › People (owner), App health device names (owner/manager), notification fan-out on item and rate edits (owner/manager) | **own only**. Names shown on bills, payments and audit rows are stored on those records, so no name mirror is needed |
+| `users/{uid}/preferences` | own | own |
+| `auditLogs`, `telemetry` | append by everyone; read in Settings/Diagnostics and the anomaly scan by the owner only | no |
+| `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | App health, Anomalies, Rates history, Insights › Seasons, Money snapshots (the app loads them for owner/manager only) | no |
+| `rent_*` | Rentals (`js/rentals/rent-store.js`), loaded only when Rentals opens | rentals roles only |
+| `rent_public/{token}` | tenant page, get by token | anyone with the link |
+
+### Read matrix: before → after
+
+G = get one document, L = list/query. ✓ allowed, ✗ refused. Pending covers rejected users,
+signed-in users without a profile and unknown roles; signed-out users are refused everywhere
+except `rent_public` get.
+
+| Collection | Owner | Manager | Member | Rentals-only | Pending |
+|---|---|---|---|---|---|
+| bills, `items`, `expenses`, `stockAdjustments`, `cashManagement`, `itemFrequency`, `counters`, `stockCheckpoints` | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ |
+| `withdrawals` | ✓ → ✓ | ✓ → ✓ while Money, Statements or Insights is on for managers (default) | ✓ → ✗; ✓ while one of them is on for members | ✗ → ✗ | ✗ → ✗ |
+| `cashSessions` (legacy) | ✓ → ✓ | ✓ → ✓ | ✓ → ✗ | ✗ → ✗ | ✗ → ✗ |
+| `settings/app` (G) | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ |
+| other `settings` docs, `settings` (L) | ✓ → ✓ | ✓ → ✗ | ✓ → ✗ | ✗ → ✗ | ✗ → ✗ |
+| `notifications`, `drafts`: own | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ |
+| `notifications`, `drafts`: other users' (G, unfiltered L) | ✓ → ✓ | ✓ → ✗ | ✓ → ✗ | ✗ → ✗ | ✗ → ✗ |
+| `autoSaves`: own / other users' | ✓ / ✓ | ✓ / ✓ → ✗ | ✓ / ✓ → ✗ | ✗ | ✗ |
+| `users`: own profile | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ |
+| `users`: other profiles (G, L) | ✓ → ✓ | ✓ → ✓ | ✓ → **✗** | ✗ → ✗ | ✗ → ✗ |
+| `users/{uid}/preferences` | own only (unchanged) | own | own | ✗ | ✗ |
+| `auditLogs`, `telemetry` | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
+| `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
+| `rent_*` (incl. `rent_settings`) | ✓ → ✓ | ✗ without a `rentRole` | ✗ without a `rentRole` | ✓ → ✓ | ✗ → ✗ |
+| `rent_public` | G ✓, L ✗ for everyone, signed out too (unchanged) | | | | |
+
+Rentals were already scoped and are unchanged; the matrix tests now check them for every role
+(a shop role alone reads no `rent_*`, a rentals role alone reads no shop data).
+
+### How the app's queries satisfy the rules
+
+- `notifications` and `drafts` queries already filter `where('userId', '==', uid)`; a get of a
+  missing draft is allowed (nothing to leak). Auto-save reads only `autoSaves/<own uid>`.
+- Withdrawals: `FirebaseService` reads them (listener, older history, refresh, oldest probe,
+  legacy scan) only when `canReadWithdrawals(role, roleAccess)` (`utils/role-access.js`) says the
+  rules allow it; otherwise `AppState.withdrawalsHistory` stays empty and no query is sent. It
+  uses the last known Roles & access (saved on the device), so when the owner turns Money,
+  Statements or Insights on for members, their withdrawals load from the next app start after the
+  phone has seen the change. Tests: `realtime-listeners.test.js`.
+- No other query changed: members still read bills, items, expenses, stock adjustments, cash days
+  and counters exactly as before, so billing, History (within `historyDays`), Rates and
+  Outstanding work as they did.
+
+### Read cost
+
+Rules `get()`/`exists()` are billed once per request per document; for a listener they are
+billed when it starts, on every change to its results and after a reconnect. The caller's
+profile was already read for every business read; `isOwnerIn` / `isManagerIn` reuse it.
+
+| Read | Docs the rules read before → after | Change |
+|---|---|---|
+| Own profile (every app start, login) | profile → none (own uid is checked first) | **−1 read** per start |
+| Profile list (owner/manager) | profile → profile | none |
+| Business collections, notifications, drafts, auto-save, settings | profile → profile | none |
+| Withdrawals, owner | profile → profile | none |
+| Withdrawals, manager or member allowed by Roles & access | profile → profile + `settings/app` | **+1 read** per listener start, per change to the withdrawals it shows and per reconnect; +1 per older-history query |
+| Withdrawals, member without Money/Statements/Insights | listener + queries → not sent | **saves** the whole withdrawals window and older-history reads |
+
+At most two documents are read by any read rule (profile, `settings/app`), well inside the limit
+of 10. Members keep reading bills with no extra rule read, which is why `historyDays` stays
+client-only (below).
+
+### Not enforced in the rules (phase 2), and why
+
+1. **Personal expenses** (`personalExpenses`). Personal rows share `expenses` with business rows
+   (`category: 'personal'`, older rows `type`; untagged rows count as business), and members'
+   expense queries don't filter on it. A rule on the field would refuse their whole query; a
+   `category != 'personal'` filter drops every row without the field and needs a new index. The
+   cash count also needs today's personal expenses for the expected balance. Plan: a
+   `personalExpenses` (+ `dev_`) collection with an owner-run batched migration, the cash day
+   keeping its own running personal total, and `allow read` checking
+   `roleAccess.<role>.personalExpenses` (+1 read for managers/members per query).
+2. **History age** (`historyDays`). The bills behind stock (back to the checkpoint's `asOf`) and
+   Outstanding (any age while a due is open; some are listened to by id) are older than a short
+   history window, so the rules can't refuse old bills without breaking stock and dues. Checking
+   it would also add a `settings/app` read to every evaluation of the busiest listeners (every
+   bill change on every phone). Stays client-only; a server-side window needs stock and due
+   summaries that don't depend on reading old bills.
+3. **Past cash days** (`oldCashSessions`). The carry-forward reads the last counted day whatever
+   its age, and the review list reads uncounted days (older days may have no `counted` field), so
+   the queries can't carry a date bound the rules could check. Needs a carry-forward summary on
+   today's session first.
+4. **Profit, stock ₹ value, purchase rates**: client-only by design; they come from purchase
+   rates and the stock checkpoint that members need for billing and stock.
+5. `settings/app` stays readable by every approved user: each phone needs `minClientVersion`,
+   `roleAccess`, labour, bill checks and TIP policy at start-up; a separate owner-only doc would
+   cost one more read per app start for everyone.
+6. Write side, not reads: another user's draft can still be deleted and another user's
+   notification marked read (#18 follow-up).
 
 ## Caching (≤ 1 read per app start)
 
@@ -210,15 +335,13 @@ The edit-window branch is only evaluated after `isOwnerIn` fails, so the owner n
 
 ## Phase 2 (not in the first PR)
 
-1. **Personal expenses in rules**: move personal rows to a `personalExpenses` (+ `dev_`) collection
-   (owner-run batched migration) with `allow read` checking `roleAccess.<role>.personalExpenses`
-   (one extra `get()` per query/listener start, not per document). A `scope` field cannot protect a
-   shared collection because members' list queries do not filter on it.
+1. **Personal expenses in rules**: see "Server-side read rules" (separate collection, migration,
+   cash-day personal total).
 2. **Profit / average cost and stock ₹ value**: client-only by design. Both come from purchase
    rates that members need for billing and stock; hiding them in rules would need owner-only copies
    of purchase rates.
-3. **History age and past cash days in rules**: needs member queries constrained by `timestamp`
-   / `date` so rules can check `resource.data` on list queries.
+3. **History age and past cash days in rules**: see "Server-side read rules" (stock, dues and the
+   cash carry-forward read older records; needs summaries first).
 4. History "own bills only" for members (Q31).
 5. Expense/withdrawal edit window from `roleAccess` (today a fixed 24 h, #18).
 6. Live update via a `settings/app` listener if the owner wants changes to apply without a restart.

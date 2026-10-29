@@ -72,7 +72,7 @@ function applyFields(target, fields, { dotted }) {
 export function createFakeFirestore(options = {}) {
     const store = new Map();
     const listeners = new Set();
-    const stats = { reads: 0, gets: 0, docGets: 0, listens: 0, writes: 0, queryLog: [] };
+    const stats = { reads: 0, gets: 0, docGets: 0, listens: 0, writes: 0, queryLog: [], listenLog: [] };
     const failures = options.failures || {};
     let flushScheduled = false;
     let serverHeld = !!options.holdServer;
@@ -212,6 +212,7 @@ export function createFakeFirestore(options = {}) {
         l.error = fns[1] || (() => {});
         listeners.add(l);
         stats.listens++;
+        stats.listenLog.push(l.coll);
         startListener(l);
         return () => listeners.delete(l);
     };
