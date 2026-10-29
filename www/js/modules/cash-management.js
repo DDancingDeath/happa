@@ -9,7 +9,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale } from '../utils/dates.js';
+import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale, localISODaysAgo } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
 import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { round2, outstandingDue } from '../utils/money.js';
@@ -43,6 +43,7 @@ const DUE_BILL_UNLINKED = '__nobill__';
 /** Sessions read when Cash opens (today and the one before), and per "Load older" (#34). */
 const RECENT_SESSIONS = 2;
 const OLDER_SESSIONS_PAGE = 30;
+const DUPLICATE_CHECK_DAYS = 31;
 
 const sessionRef = (sessionId) => {
     const name = window.getCollection ? window.getCollection('cashManagement') : 'cashManagement';
@@ -103,6 +104,7 @@ export class CashManagementManager {
         this.updateUI();
         this.loadCustomerOptions();
         this.renderHistoryFromCache();
+        this.loadDuplicateDays().catch(e => console.warn('Cash: duplicate-day check failed:', e));
         
         // Listen for cash amount input changes for validation
         const signOutInput = document.getElementById('cashSignOutAmount');
@@ -386,15 +388,37 @@ export class CashManagementManager {
      * @returns {Promise<Object[]>} the cache
      */
     static async loadRecentSessions() {
-        const page = await FirebaseService.loadCashSessionsPage(RECENT_SESSIONS);
-        const fresh = new Set(page.sessions.map(s => s.id));
+        const [page, needed] = await Promise.all([
+            FirebaseService.loadCashSessionsPage(RECENT_SESSIONS),
+            FirebaseService.loadCashSessionsNeeded(todayLocalISO()).catch(err => {
+                console.warn('Cash: targeted session queries failed:', err?.message || err);
+                return [];
+            })
+        ]);
+        const fresh = new Map([...needed, ...page.sessions].map(s => [s.id, s]));
         const kept = (this.cachedSessions || []).filter(s => !fresh.has(s.id));
         if (!this.olderCursor) {
             this.olderCursor = page.last;
             this.hasOlderSessions = page.more;
         }
-        this.cachedSessions = [...page.sessions, ...kept];
+        this.cachedSessions = [...fresh.values(), ...kept];
         return this.cachedSessions;
+    }
+
+    /**
+     * Owner only: days of the last month with more than one session (#38),
+     * read once per app session with one date-range query.
+     */
+    static async loadDuplicateDays() {
+        if (AppState.userRole !== 'owner' || this.duplicateDays) return;
+        const today = todayLocalISO();
+        const fromIso = localISODaysAgo(DUPLICATE_CHECK_DAYS);
+        try {
+            this.duplicateDays = duplicateSessionDays(await FirebaseService.loadCashSessionsBetween(fromIso, today));
+            if (this.duplicateDays.length > 0) this.renderHistoryFromCache();
+        } catch (err) {
+            console.warn('Cash: duplicate-day check failed:', err?.message || err);
+        }
     }
 
     /** Next page of older days, added to the cache ("Load older"). */
@@ -1122,7 +1146,9 @@ export class CashManagementManager {
                 <strong>${Helpers.escapeHtml(tn('ui.cash.days_not_counted', notCounted.length))}</strong>
                 <div style="margin-top: 4px;">${L('ui.cash.tap_day_to_count')} ${notCounted.map(s => `<a href="#" onclick="window.app.cashManagement.showDetails('${Helpers.escapeJsAttr(s.date)}'); return false;" style="color: #9a3412; font-weight: 600;">${Helpers.escapeHtml(dayLabel(s))}</a>`).join(', ')}</div>
             </div>` : '';
-        const dupDays = AppState.userRole === 'owner' ? duplicateSessionDays(sessions) : [];
+        const dupDays = AppState.userRole === 'owner'
+            ? [...new Set([...(this.duplicateDays || []), ...duplicateSessionDays(sessions)])].sort().reverse()
+            : [];
         const duplicates = dupDays.length > 0 ? `
             <div style="background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #991b1b;">
                 <strong>${Helpers.escapeHtml(tn('ui.cash.duplicate_days', dupDays.length))}</strong>

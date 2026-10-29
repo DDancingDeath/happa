@@ -3388,6 +3388,25 @@ const FirebaseService = {
     },
 
     /**
+     * The few sessions Cash needs beyond the latest page (#34), each a small
+     * targeted query: the newest counted day (carry-forward and the opening
+     * check), past days still open (auto-close) and days closed without a
+     * count (review list, newest 30).
+     * @param {string} today YYYY-MM-DD
+     * @returns {Promise<Object[]>}
+     */
+    async loadCashSessionsNeeded(today) {
+        const coll = getDb().collection(col('cashManagement'));
+        const rows = (snap) => snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const [counted, open, uncounted] = await Promise.all([
+            coll.where('signedOut', '==', true).where('counted', '==', true).orderBy('date', 'desc').limit(1).get(),
+            coll.where('signedOut', '==', false).where('date', '<', today).get(),
+            coll.where('counted', '==', false).orderBy('date', 'desc').limit(30).get()
+        ]);
+        return [...rows(counted), ...rows(open), ...rows(uncounted)];
+    },
+
+    /**
      * Cash sessions for one local day (YYYY-MM-DD); usually one. One small
      * query instead of loadCashSessions() (which reads every session).
      * @param {string} date

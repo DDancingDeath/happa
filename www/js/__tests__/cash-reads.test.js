@@ -44,6 +44,7 @@ beforeEach(() => {
     CashManagementManager.todaySession = null;
     CashManagementManager.olderCursor = null;
     CashManagementManager.hasOlderSessions = false;
+    CashManagementManager.duplicateDays = null;
 });
 afterEach(() => {
     jest.useRealTimers();
@@ -61,10 +62,22 @@ async function openSignInAndBrowse() {
 }
 
 test('open + sign in + details + history reads the recent sessions only', async () => {
+    AppState.userRole = 'manager';
     await openSignInAndBrowse();
-    process.stdout.write(`cash reads (${DAYS} days of history): ${fake.stats.reads}\n`);
+    process.stdout.write(`cash reads, manager (${DAYS} days of history): ${fake.stats.reads}\n`);
     expect(fake.stats.reads).toBeLessThan(10);
     expect(fake.stats.queryLog.filter(q => q.coll === 'cashManagement' && !q.limitN && !q.filters.length)).toHaveLength(0);
+});
+
+test('the owner also reads the last month once for the duplicate-day check', async () => {
+    await openSignInAndBrowse();
+    await fake.settle();
+    const first = fake.stats.reads;
+    await CashManagementManager.init();
+    await fake.settle();
+    process.stdout.write(`cash reads, owner (${DAYS} days of history): ${first}, opening Cash again: ${fake.stats.reads - first}\n`);
+    expect(first).toBeLessThan(45);
+    expect(fake.stats.reads - first).toBeLessThan(10);
 });
 
 test('details of a loaded day come from the cache; opening Cash again keeps older pages', async () => {
@@ -95,4 +108,52 @@ test('without "Past cash days" there is no Load older button', async () => {
     await CashManagementManager.init();
     expect(document.getElementById('cashLoadOlder')).toBeNull();
     AppState.settings = {};
+});
+
+describe('partial history: the targeted queries fill what the 2-day window misses', () => {
+    const day = (n) => iso(new Date(2026, 9, 21 - n));
+    const reseed = (patch) => {
+        const docs = [...fake.raw('cashManagement').entries()].map(([id, d]) => ({ id, ...d, ...(patch(d.date) || {}) }));
+        fake.raw('cashManagement').clear();
+        fake.seed('cashManagement', docs);
+    };
+
+    test('carry-forward and the opening check use the newest counted day even 11 days back', async () => {
+        reseed(date => {
+            if (date >= day(10)) return { counted: false, autoSignedOut: true, closingBalance: null };
+            if (date === day(11)) return { closingBalance: 777 };
+            return null;
+        });
+        await CashManagementManager.init();
+        expect(document.getElementById('cashSignInAmount').value).toBe('777');
+        expect(document.getElementById('cashSignInSuggestion').textContent).toContain(day(11));
+        document.getElementById('cashSignInAmount').value = '500';
+        await CashManagementManager.signIn();
+        expect(UIManager.showModal.mock.calls[0][0]).toContain(`(${day(11)}) was ₹777`);
+    });
+
+    test('days closed without a count are listed even when far back, also without "Past cash days"', async () => {
+        const uncounted = [day(3), day(40), day(200)];
+        reseed(date => (uncounted.includes(date) ? { counted: false, autoSignedOut: true, closingBalance: null } : null));
+        AppState.userRole = 'manager';
+        AppState.settings = { roleAccess: { manager: { oldCashSessions: false } } };
+        await CashManagementManager.init();
+        const text = document.getElementById('cashHistoryList').textContent;
+        expect(text).toContain('3 days closed without a cash count');
+        expect(document.querySelectorAll('#cashHistoryList a[onclick*="showDetails"]')).toHaveLength(3);
+        AppState.settings = {};
+    });
+
+    test('a past day left open is closed automatically even outside the window', async () => {
+        reseed(date => (date === day(5) ? { signedOut: false, counted: null, closingBalance: null } : null));
+        await CashManagementManager.init();
+        expect(fake.raw('cashManagement').get(`s${day(5)}`)).toMatchObject({ signedOut: true, counted: false });
+    });
+
+    test('owner sees a day with two sessions from a targeted query, not only the loaded window', async () => {
+        fake.seed('cashManagement', [{ id: 'legacyRandom', date: day(9), openingBalance: 1, signInTime: 'x', userId: 'u2', signedOut: true, counted: true, closingBalance: 1 }]);
+        await CashManagementManager.init();
+        await fake.settle();
+        expect(document.getElementById('cashHistoryList').textContent).toContain('1 day has more than one cash session');
+    });
 });
