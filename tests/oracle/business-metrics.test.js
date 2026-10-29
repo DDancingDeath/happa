@@ -185,6 +185,34 @@ describe('PERIOD and CMP', () => {
         const c = comparisonRanges(periodRange('month:2026-03', now));
         expect([new Date(c.previous.from), new Date(c.previous.to)]).toEqual([new Date(2026, 1, 1), new Date(2026, 2, 1)]);
     });
+    const span = (r) => [new Date(r.from), new Date(r.to)];
+    test('month ends keep the last day: 30 Oct vs 1–30 Sep, 28 Mar vs all Feb, 31 Mar vs all Feb', () => {
+        expect(span(comparisonRanges(periodRange('this-month', new Date(2026, 9, 30, 15))).previous)).toEqual([new Date(2026, 8, 1), new Date(2026, 9, 1)]);
+        expect(span(comparisonRanges(periodRange('this-month', new Date(2026, 2, 28, 15))).previous)).toEqual([new Date(2026, 1, 1), new Date(2026, 2, 1)]);
+        expect(span(comparisonRanges(periodRange('this-month', new Date(2026, 2, 31, 15))).previous)).toEqual([new Date(2026, 1, 1), new Date(2026, 2, 1)]);
+        expect(span(comparisonRanges(periodRange('this-month', new Date(2026, 2, 27, 15))).previous)).toEqual([new Date(2026, 1, 1), new Date(2026, 1, 28)]);
+    });
+    test('February in a leap year and its last-year comparison', () => {
+        const feb28 = comparisonRanges(periodRange('this-month', new Date(2028, 1, 28, 15)));
+        expect(span(feb28.previous)).toEqual([new Date(2028, 0, 1), new Date(2028, 0, 29)]);
+        expect(span(feb28.lastYear)).toEqual([new Date(2027, 1, 1), new Date(2027, 2, 1)]);
+        const feb29 = comparisonRanges(periodRange('this-month', new Date(2028, 1, 29, 15)));
+        expect(span(feb29.previous)).toEqual([new Date(2028, 0, 1), new Date(2028, 1, 1)]);
+        expect(span(feb29.lastYear)).toEqual([new Date(2027, 1, 1), new Date(2027, 2, 1)]);
+        const mar = comparisonRanges(periodRange('this-month', new Date(2029, 2, 31, 15)));
+        expect(span(mar.lastYear)).toEqual([new Date(2028, 2, 1), new Date(2028, 3, 1)]);
+        const feb2029 = comparisonRanges(periodRange('month:2029-02', new Date(2029, 5, 1)));
+        expect(span(feb2029.lastYear)).toEqual([new Date(2028, 1, 1), new Date(2028, 2, 1)]);
+    });
+    test('the last 30 days always compare with the 30 days before, even when they start on the 1st', () => {
+        const at = new Date(2026, 2, 30, 15);
+        for (const r of [periodRange('last-30', at), periodRange('this-month', at, insightsSettings({ monthMode: 'last30' }))]) {
+            expect(new Date(r.from)).toEqual(new Date(2026, 2, 1));
+            const c = comparisonRanges(r);
+            expect(span(c.previous)).toEqual([new Date(2026, 0, 30), new Date(2026, 2, 1)]);
+            expect(c.previous.to - c.previous.from).toBe(r.to - r.from);
+        }
+    });
     test('change(): %, direction, "about the same" under 2%, null when nothing to compare', () => {
         expect(change(112, 100)).toEqual({ pct: 12, diff: 12, dir: 'up' });
         expect(change(99, 100).dir).toBe('same');

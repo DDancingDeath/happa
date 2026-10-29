@@ -107,15 +107,26 @@ export function comparisonRanges(range) {
     if (!Number.isFinite(range.from) || !Number.isFinite(range.to)) return { previous: null, lastYear: null };
     let previous;
     const f = new Date(range.from);
-    if (f.getDate() === 1 && f.getHours() === 0 && range.to - range.from <= 31 * DAY_MS) {
-        previous = { from: shiftDate(range.from, { months: -1 }), to: Math.min(shiftDate(range.to, { months: -1 }), range.from) };
-        const t = new Date(range.to);
-        if (t.getDate() === 1 && t.getHours() === 0) previous.to = range.from;
+    const rolling = range.preset === 'last-30' || (range.preset === 'this-month' && !range.month);
+    if (!rolling && f.getDate() === 1 && f.getHours() === 0 && range.to - range.from <= 31 * DAY_MS) {
+        previous = { from: shiftDate(range.from, { months: -1 }), to: Math.min(shiftEnd(range.to, { months: -1 }), range.from) };
     } else {
         previous = { from: range.from - (range.to - range.from), to: range.from };
     }
-    const lastYear = { from: shiftDate(range.from, { years: -1 }), to: shiftDate(range.to, { years: -1 }) };
+    const lastYear = { from: shiftDate(range.from, { years: -1 }), to: shiftEnd(range.to, { years: -1 }) };
     return { previous, lastYear };
+}
+
+/** Exclusive end shifted by its inclusive last day (to − 1 ms), clipped to the month's end (a month's last day stays the last day), plus a day. */
+function shiftEnd(to, by) {
+    const last = new Date(to - 1);
+    const dayStart = new Date(last.getFullYear(), last.getMonth(), last.getDate()).getTime();
+    const monthEnd = new Date(last.getFullYear(), last.getMonth() + 1, 0).getDate() === last.getDate();
+    const shifted = new Date(shiftDate(dayStart, by));
+    const end = monthEnd
+        ? new Date(shifted.getFullYear(), shifted.getMonth() + 1, 1)
+        : new Date(shifted.getFullYear(), shifted.getMonth(), shifted.getDate() + 1);
+    return end.getTime() - (dayStart + DAY_MS - to);
 }
 
 /**
