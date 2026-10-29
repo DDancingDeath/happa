@@ -12,8 +12,9 @@ const NEGATIVE_STOCK = {
     cause: 'Stock went below zero (sold before the purchase was recorded, AC8). When the purchase refills the hole, '
         + 'www/js/utils/stock-replay.js:replayEvents values the stock at the refill rate and writes the uncosted units off '
         + '(#215 design: "uncosted" warning + check-line gap in utils/finance-calc.js:stockMovement); the oracle carries their cost '
-        + 'into the average instead. Confirmed when F2_cogs_items_never_below_zero (same periods without those items) has no mismatches.',
-    known: 'known (#215 design; AC8 data)'
+        + 'into the average instead. Confirmed when M2_cogs_items_never_below_zero (same periods without those items) has no mismatches.',
+    known: 'known (#215 design; AC8 data)',
+    check: 'negativeStock'
 };
 const AC220 = {
     short: 'analytics.js:renderOutstandingDues counts cleared bills that keep an old due',
@@ -36,7 +37,7 @@ export const CAUSES = {
     R3_profit: { ...NEGATIVE_STOCK, cause: `= Finance profit (#36). ${NEGATIVE_STOCK.cause}` },
     A4_profit: { ...NEGATIVE_STOCK, cause: `= Finance profit (#36). ${NEGATIVE_STOCK.cause}` },
     A7_profitByDay: { ...NEGATIVE_STOCK, cause: `Per-day split of Finance profit (AC7_profitByDay_vs_finance agrees). ${NEGATIVE_STOCK.cause}` },
-    F8_gap: { short: 'F8 check-line gap shown by design after refilled oversells', cause: 'The check-line gap the app shows on purpose when goods sold earlier are refilled (F8); same root as F2.', known: 'known (F8 by design; AC8 data)' },
+    F8_gap: { short: 'F8 check-line gap shown by design after refilled oversells', cause: 'The check-line gap the app shows on purpose when goods sold earlier are refilled (F8); same root as F2.', known: 'known (F8 by design; AC8 data)', check: 'negativeStock' },
     F6_stockValue: NEGATIVE_STOCK,
     S3_value: NEGATIVE_STOCK,
     S4_total: NEGATIVE_STOCK,
@@ -45,6 +46,8 @@ export const CAUSES = {
     M3_gross: { ...NEGATIVE_STOCK, cause: `= sales − cost of goods sold (M2). ${NEGATIVE_STOCK.cause}` },
     M6_profit: { ...NEGATIVE_STOCK, cause: `= Finance profit (F4, #36). ${NEGATIVE_STOCK.cause}` },
     M10_kept: { ...NEGATIVE_STOCK, cause: `= profit (M6) − personal expenses − withdrawals. ${NEGATIVE_STOCK.cause}` },
+    M11_profitByDay: { ...NEGATIVE_STOCK, cause: `Per-day split of profit (M6); the days add up to M6. ${NEGATIVE_STOCK.cause}` },
+    M17_gap: { short: 'M17 check-line gap shown by design after refilled oversells', cause: 'The check-line gap the app shows on purpose when goods sold earlier are refilled (M17, as F8); same root as M2.', known: 'known (M17 by design; AC8 data)', check: 'negativeStock' },
     A3_expenses: {
         short: 'analytics.js:parseDate reads "D/M/YYYY, h:mm:ss pm" expense dates with new Date()',
         cause: 'www/js/modules/analytics.js:parseDate uses `new Date(text)`: expenses are dated "D/M/YYYY, h:mm:ss pm", '
@@ -83,10 +86,28 @@ export const CAUSES = {
 };
 
 /**
- * @param {{scope: string, spec: string, page: string}} g a mismatch group
+ * The cause of a mismatch group. A cause with `check` (e.g. 'negativeStock') is
+ * only given for the rows where `evidence[check](row)` confirms it applies; it is
+ * never matched by spec ID alone.
+ * @param {{scope: string, spec: string, page: string, rows?: Array<{period: string}>}} g a mismatch group
  * @param {Object} table CAUSES
- * @returns {?{cause: string, known: string}}
+ * @param {?Object<string, (row: Object) => boolean>} [evidence] the scope's checks
+ * @returns {?{cause: string, known: string, short?: string}}
  */
-export function causeFor(g, table) {
-    return table[`${g.scope}:${g.spec}@${g.page}`] || table[`${g.scope}:${g.spec}`] || table[`${g.spec}@${g.page}`] || table[g.spec] || null;
+export function causeFor(g, table, evidence = null) {
+    const c = table[`${g.scope}:${g.spec}@${g.page}`] || table[`${g.scope}:${g.spec}`] || table[`${g.spec}@${g.page}`] || table[g.spec] || null;
+    if (!c || !c.check) return c;
+    const applies = evidence && evidence[c.check];
+    const rows = g.rows || [];
+    if (!applies || !rows.length) return null;
+    const hit = rows.filter(r => applies(r)).length;
+    if (hit === rows.length) return c;
+    if (!hit) return null;
+    const left = rows.length - hit;
+    return {
+        ...c,
+        short: `${c.short || c.cause} (${hit} of ${rows.length}; ${left} not explained)`,
+        cause: `${c.cause} Checked per period: it applies to ${hit} of ${rows.length}; the other ${left} are not explained by it.`,
+        known: `partly ${c.known}; ${left} new`
+    };
 }

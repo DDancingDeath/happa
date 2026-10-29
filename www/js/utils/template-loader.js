@@ -27,10 +27,7 @@ export class TemplateLoader {
             'stock',
             'wholesale-sales',
             'expenses',
-            'reports',
             'settings',
-            'finance',
-            'analytics',
             'anomalies',
             'rate-trends',
             'money',
@@ -78,15 +75,12 @@ export class TemplateLoader {
         appContent.insertAdjacentHTML('beforeend', templates['wholesale-sales']);
         appContent.insertAdjacentHTML('beforeend', templates.expenses);
         
-        appContent.insertAdjacentHTML('beforeend', templates.reports);
         appContent.insertAdjacentHTML('beforeend', templates.settings);
-        appContent.insertAdjacentHTML('beforeend', templates.finance);
-        appContent.insertAdjacentHTML('beforeend', templates.analytics);
         appContent.insertAdjacentHTML('beforeend', templates.anomalies);
-        // Reports › Trends / Product traffic (#65) live inside the Reports page
-        (appContent.querySelector('#reports') || appContent).insertAdjacentHTML('beforeend', templates['rate-trends']);
         appContent.insertAdjacentHTML('beforeend', templates.money);
         appContent.insertAdjacentHTML('beforeend', templates.insights);
+        // Trends / Product traffic (#65): Insights › Seasons mounts this view
+        (appContent.querySelector('#insights') || appContent).insertAdjacentHTML('beforeend', templates['rate-trends']);
         appContent.insertAdjacentHTML('beforeend', templates.statements);
         appContent.insertAdjacentHTML('beforeend', templates.health);
         appContent.insertAdjacentHTML('beforeend', templates['cash-management']);

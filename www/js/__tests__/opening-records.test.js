@@ -1,7 +1,7 @@
 /**
  * @fileoverview Opening records carried from the old app (tools/migrate) are
  * balances only: they count in dues (Outstanding, aging, all-time due totals,
- * Finance receivables) and in no period or activity figure. Reproduces the live
+ * Money receivables) and in no period or activity figure. Reproduces the live
  * Today screen: one large opening due dated today + a ₹10 sale paid ₹4
  * showed the opening due + ₹6 as "Due to receive" and "Sales ₹10 · 2 bills".
  * Fake values: ₹2,50,000 opening, so Today due ₹6 and Outstanding ₹2,50,006.
@@ -9,8 +9,7 @@
 import { DayManager } from '../modules/day.js';
 import { AnomaliesManager } from '../modules/anomalies.js';
 import { OutstandingManager } from '../modules/outstanding.js';
-import { FinanceManager } from '../modules/finance.js';
-import { ReportsManager } from '../modules/reports.js';
+import { billCount, outstandingTotals } from '../utils/business-metrics.js';
 import { CashManagementManager } from '../modules/cash-management.js';
 import { AppState } from '../utils/state.js';
 import { activityBills, isOpeningRecord } from '../utils/money.js';
@@ -94,25 +93,17 @@ describe('live case (fake values): ₹2,50,000 opening due today + ₹10 sale pa
         OutstandingManager.renderDue();
         expect(document.querySelector('#dueAging .aging-total').textContent.replace(/[^\d]/g, '')).toBe('250006');
         expect(document.querySelectorAll('#dueList .history-item')).toHaveLength(2);
-        expect(FinanceManager.calculateOutstanding().dueToReceive).toBe(250006);
+        expect(outstandingTotals({ retailSales: AppState.retailSalesHistory }).receivable.total).toBe(250006);
     });
 
-    test('Finance and Reports: 1 sale of ₹10 today', () => {
+    test('Money: 1 sale of ₹10 today', () => {
         const day = [new Date(2026, 9, 25).getTime(), new Date(2026, 9, 26).getTime()];
         const s = computeFinanceSummary({
             sources: { purchases: [], wholesaleSales: [], retailSales: AppState.retailSalesHistory, stockAdjustments: [] },
             items: ITEMS, base: { state: {}, from: -Infinity }, from: day[0], to: day[1]
         });
         expect(s.sales).toEqual({ total: 10, count: 1, due: 6 });
-
-        document.body.innerHTML = ['reportsTotalSales', 'reportsSaleCount', 'reportsDueToReceive'].map(id => `<span id="${id}"></span>`).join('');
-        jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
-        jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
-        ReportsManager.currentDateFilter = 'today';
-        ReportsManager.renderOverview();
-        expect(text('reportsSaleCount')).toBe('1');
-        expect(text('reportsTotalSales').replace(/[^\d]/g, '')).toBe('10');
-        expect(text('reportsDueToReceive').replace(/[^\d]/g, '')).toBe('250006');
+        expect(billCount({ retailSales: AppState.retailSalesHistory }, day[0], day[1]).sales).toBe(1);
     });
 });
 

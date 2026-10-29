@@ -12,7 +12,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { PrinterService } from '../services/printer.js';
 import { openExternal } from '../utils/open-external.js';
 import { whatsAppReminderUrl } from '../utils/due-reminder.js';
-import { chartScaleMax } from './reports.js';
+import { chartScaleMax } from '../utils/chart-scale.js';
 import { t } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import {

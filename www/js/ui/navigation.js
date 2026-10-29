@@ -2,7 +2,7 @@
 
 import { UIManager } from './ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { canOpenTab, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
+import { canOpenTab, canOpenPage, canOpenSection, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 
@@ -17,12 +17,17 @@ const ROUTES = Object.freeze({
     rates: { tab: 'items', nav: 'rates' },
     items: { tab: 'items', nav: 'rates', id: 'rates' },
 
-    // Reports › Trends / Product traffic (#65), owner/manager. Old ids: rate-trends, rates-trends, rates-traffic.
-    'reports-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends' },
-    'reports-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends' },
-    'rate-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends', id: 'reports-trends' },
-    'rates-trends': { tab: 'reports', section: 'trends', needs: 'rate-trends', id: 'reports-trends' },
-    'rates-traffic': { tab: 'reports', section: 'traffic', needs: 'rate-trends', id: 'reports-traffic' },
+    // Old pages (redesign phase 5): Finance → Money, Reports → Statements, Analytics → Insights.
+    finance: { tab: 'money', id: 'money' },
+    reports: { tab: 'statements', id: 'statements' },
+    analytics: { tab: 'insights', id: 'insights' },
+
+    // Trends / Product traffic live in Insights › Seasons, owner/manager. Old ids from Rates and Reports.
+    'reports-trends': { tab: 'insights', section: 'trends', needs: 'rate-trends', id: 'insights-trends' },
+    'reports-traffic': { tab: 'insights', section: 'traffic', needs: 'rate-trends', id: 'insights-traffic' },
+    'rate-trends': { tab: 'insights', section: 'trends', needs: 'rate-trends', id: 'insights-trends' },
+    'rates-trends': { tab: 'insights', section: 'trends', needs: 'rate-trends', id: 'insights-trends' },
+    'rates-traffic': { tab: 'insights', section: 'traffic', needs: 'rate-trends', id: 'insights-traffic' },
 
     // Wholesale › History (old History 'wholesale' links land here).
     'wholesale-history': { tab: 'wholesale-sales', section: 'history', nav: 'wholesale-sales' },
@@ -57,7 +62,8 @@ function sectionRoute(tabId) {
 function resolveRoute(tabId) {
     const s = sectionRoute(tabId);
     if (s) return s;
-    const r = ROUTES[tabId];
+    const old = String(tabId).match(/^(finance|reports|analytics)-/);
+    const r = ROUTES[tabId] || (old && ROUTES[old[1]]);
     if (!r) return { id: tabId, tab: tabId, section: null, needs: null, nav: tabId };
     return { id: r.id || tabId, tab: r.tab, section: r.section || null, needs: r.needs || null, nav: r.nav || r.tab };
 }
@@ -65,7 +71,8 @@ function resolveRoute(tabId) {
 /** 'page' when the page itself is refused, 'section' when only the route's extra permission is, else null. */
 function refusal(route) {
     const raw = AppState.settings?.roleAccess;
-    if (!canOpenTab(route.tab, AppState.userRole, raw)) return 'page';
+    if (!canOpenPage(route.tab, AppState.userRole, raw)) return 'page';
+    if (route.section && !canOpenSection(route.tab, route.section, AppState.userRole, raw)) return 'section';
     if (route.needs && !canOpenTab(route.needs, AppState.userRole, raw)) return 'section';
     return null;
 }
@@ -238,18 +245,6 @@ const NavigationManager = {
             setTimeout(() => window.app.stock.filterTab('current'), 100);
         }
         
-        // Reports: the bills views, or Trends / Product traffic (#65; their code and data load only then)
-        if (route.tab === 'reports' && window.app?.reports) {
-            if (!route.section) this.resetFilterButtons('reports');
-            setTimeout(() => window.app.reports.showView(route.section), 100);
-        }
-        
-        // Initialize finance when Finance tab is shown
-        if (tabId === 'finance' && window.app?.finance) {
-            this.resetFilterButtons('finance');
-            setTimeout(() => window.app.finance.init(), 100);
-        }
-        
         // Money (redesign §5.2): its code loads on first open
         if (route.tab === 'money' && window.app?.money) {
             setTimeout(() => window.app.money.init(route.section), 100);
@@ -265,12 +260,6 @@ const NavigationManager = {
             setTimeout(() => window.app.statements.init(route.section), 100);
         }
 
-        // Initialize analytics when Analytics tab is shown
-        if (tabId === 'analytics' && window.app?.analytics) {
-            this.resetFilterButtons('analytics');
-            setTimeout(() => window.app.analytics.init(), 100);
-        }
-        
         // Initialize Anomalies page (owner/manager, #187)
         if (tabId === 'anomalies' && window.app?.anomalies) {
             setTimeout(() => window.app.anomalies.init(), 100);
@@ -315,7 +304,7 @@ const NavigationManager = {
         }
     },
 
-    // Owner/manager-only pages fall back to Today (Trends and Product traffic to Reports); pages switched off in Roles & access to Billing
+    // Owner/manager-only pages fall back to Today (Trends and Product traffic to Insights); pages switched off in Roles & access to Billing
     refusedTabFallback(tabId) {
         const route = resolveRoute(tabId);
         if (refusal(route) === 'section') return route.tab;

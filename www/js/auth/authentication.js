@@ -5,7 +5,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
-import { canOpenTab, hiddenPermissionClasses } from '../utils/role-access.js';
+import { canOpenPage, hiddenPermissionClasses } from '../utils/role-access.js';
 
 const usersCollection = () => (window.getCollection ? window.getCollection('users') : 'users');
 
@@ -486,7 +486,7 @@ const AuthManager = {
         const isOwnerOrManager = AppState.userRole === 'owner' || AppState.userRole === 'manager';
         const isOwner = AppState.userRole === 'owner';
         const roleAccess = AppState.settings?.roleAccess;
-        const mayOpen = (tabId) => canOpenTab(tabId, AppState.userRole, roleAccess);
+        const mayOpen = (tabId) => canOpenPage(tabId, AppState.userRole, roleAccess);
         
         // Update username display in navigation
         const userNameDisplay = document.getElementById('currentUserName');
@@ -497,8 +497,6 @@ const AuthManager = {
         
         // Hide/show tabs based on role
         const restrictedTabs = {
-            'financeTab': mayOpen('finance'),
-            'analyticsTab': mayOpen('analytics'),
             'salesTab': mayOpen('wholesale-sales')
         };
         
@@ -515,15 +513,10 @@ const AuthManager = {
             const onclick = item.getAttribute('onclick');
             const tabId = onclick?.match(/showTab\('([^']+)'/)?.[1];
             if (tabId) {
-                if (['finance', 'analytics', 'reports', 'wholesale-sales'].includes(tabId)) {
+                if (['money', 'insights', 'statements', 'wholesale-sales'].includes(tabId)) {
                     item.style.display = mayOpen(tabId) ? 'block' : 'none';
                 }
                 
-                // New Money page (redesign): owner preview until the nav switch replaces Finance
-                if (tabId === 'money' || tabId === 'insights' || tabId === 'statements') {
-                    item.style.display = isOwner && mayOpen(tabId) ? 'block' : 'none';
-                }
-
                 // Anomalies (#187): owner/manager only until #84 decides otherwise
                 if (tabId === 'anomalies') {
                     item.style.display = isOwnerOrManager ? 'block' : 'none';
@@ -549,11 +542,6 @@ const AuthManager = {
                     item.style.display = mayOpen('wholesale-sales') ? 'block' : 'none';
                 }
             }
-        });
-
-        // Reports › Trends and Product traffic (#65): owner/manager only
-        document.querySelectorAll('.reports-rt-btn').forEach(btn => {
-            btn.style.display = mayOpen('rate-trends') ? '' : 'none';
         });
 
         // Sections marked data-perm="<permission>" (styles.css hides them via these body classes)

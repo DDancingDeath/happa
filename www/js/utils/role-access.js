@@ -41,14 +41,15 @@ const OWNER_ACCESS = Object.freeze({
     historyDays: 0, editDays: Infinity
 });
 
-/** Page ids (navigation tab ids) that a permission controls. */
+/**
+ * Page ids (navigation tab ids) that a permission controls. The stored keys kept
+ * their old names when the pages were replaced (phase 5): 'finance' opens Money,
+ * 'analytics' Insights and 'reports' Statements, so roles keep what they had.
+ */
 export const TAB_PERMISSIONS = Object.freeze({
-    finance: 'finance',
     money: 'finance',
     insights: 'analytics',
     statements: 'reports',
-    reports: 'reports',
-    analytics: 'analytics',
     'wholesale-sales': 'wholesale'
 });
 
@@ -132,9 +133,28 @@ export const SECTION_TABS = Object.freeze({
 
 /** canOpenTab for a page section (route): the page's rule and the hosted page's rule. */
 export function canOpenSection(tabId, section, role, raw) {
-    if (!canOpenTab(tabId, role, raw)) return false;
+    const alsoBy = section ? SECTION_ALSO_ALLOWED[`${tabId}:${section}`] : null;
+    const pageOk = canOpenTab(tabId, role, raw)
+        || (!!alsoBy && roleMayOpenTab(tabId, role) && alsoBy.some(p => can(role, p, raw)));
+    if (!pageOk) return false;
     const hosted = section ? SECTION_TABS[`${tabId}:${section}`] : null;
     return !hosted || canOpenTab(hosted, role, raw);
+}
+
+/**
+ * Back-compat (phase 5): Trends and Product traffic were tabs of Reports, so the old
+ * Reports switch still opens them in Insights › Seasons (as does Insights' own switch).
+ */
+export const SECTION_ALSO_ALLOWED = Object.freeze({
+    'insights:seasons': Object.freeze(['reports']),
+    'insights:trends': Object.freeze(['reports']),
+    'insights:traffic': Object.freeze(['reports'])
+});
+
+/** The page opens at all: its own rule, or one of its sections opens by another switch (then only those sections show). */
+export function canOpenPage(tabId, role, raw) {
+    if (canOpenTab(tabId, role, raw)) return true;
+    return Object.keys(SECTION_ALSO_ALLOWED).some(k => k.startsWith(`${tabId}:`) && canOpenSection(tabId, k.slice(tabId.length + 1), role, raw));
 }
 
 /**

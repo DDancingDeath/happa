@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v70';
+const CACHE_NAME = 'happa-v71';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -19,7 +19,6 @@ const STATIC_ASSETS = [
     '/icons/icon-192.png',
     '/icons/icon-512.png',
     '/icons/icon-maskable-512.png',
-    '/css/analytics.css',
     '/css/anomalies.css',
     '/css/app-updates.css',
     '/css/auth.css',
@@ -57,13 +56,11 @@ const STATIC_ASSETS = [
     '/js/main.js',
     '/js/modules/admin.js',
     '/js/modules/anomalies.js',
-    '/js/modules/analytics.js',
     '/js/modules/app-updates.js',
     '/js/modules/billing.js',
     '/js/modules/cash-management.js',
     '/js/modules/day.js',
     '/js/modules/diagnostics.js',
-    '/js/modules/finance.js',
     '/js/modules/health.js',
     '/js/modules/history.js',
     '/js/modules/items.js',
@@ -73,7 +70,6 @@ const STATIC_ASSETS = [
     '/js/modules/purchase.js',
     '/js/modules/rate-trends.js',
     '/js/modules/roles-access.js',
-    '/js/modules/reports.js',
     '/js/modules/retail-sale.js',
     '/js/modules/settings.js',
     '/js/modules/stock.js',
@@ -153,6 +149,7 @@ const STATIC_ASSETS = [
     '/js/utils/finance-breakdown.js',
     '/js/utils/template-loader.js',
     '/js/utils/validator.js',
+    '/js/utils/chart-scale.js',
     '/js/utils/business-metrics.js',
     '/js/utils/insights-config.js',
     '/js/utils/metric-registry.js',
@@ -170,7 +167,6 @@ const STATIC_ASSETS = [
     '/js/tip/scenarios/cash-close.js',
     '/js/version.js',
     '/templates/admin.html',
-    '/templates/analytics.html',
     '/templates/anomalies.html',
     '/templates/auth.html',
     '/templates/billing.html',
@@ -182,13 +178,11 @@ const STATIC_ASSETS = [
     '/templates/expenses.html',
     '/templates/rate-trends.html',
     '/templates/rentals.html',
-    '/templates/finance.html',
     '/templates/health.html',
     '/templates/history.html',
     '/templates/items.html',
     '/templates/modals.html',
     '/templates/navigation.html',
-    '/templates/reports.html',
     '/templates/settings.html',
     '/templates/stock.html',
     '/templates/users.html',

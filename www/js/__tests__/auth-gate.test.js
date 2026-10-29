@@ -193,26 +193,25 @@ describe('logout', () => {
 describe('role-based restrictions', () => {
     beforeEach(() => {
         document.body.innerHTML = `
-          <div id="financeTab"></div><div id="analyticsTab"></div><div id="salesTab"></div>
+          <div id="salesTab"></div>
           <nav class="nav-menu">
-            <a onclick="showTab('finance')"></a><a onclick="showTab('admin')"></a>
-            <a onclick="showTab('diagnostics')"></a><a onclick="showTab('reports')"></a>
+            <a onclick="showTab('money')"></a><a onclick="showTab('admin')"></a>
+            <a onclick="showTab('diagnostics')"></a><a onclick="showTab('statements')"></a>
           </nav>
           <button data-requires-owner id="del"></button><button data-requires-manager id="exp"></button>`;
     });
     const shown = (sel) => document.querySelector(sel).style.display;
 
-    test('staff: finance/admin/diagnostics/reports hidden, owner/manager buttons disabled', () => {
+    test('staff: money/admin/diagnostics/statements hidden, owner/manager buttons disabled', () => {
         AppState.userRole = 'staff';
         AuthManager.applyRoleBasedRestrictions();
-        expect(shown('#financeTab')).toBe('none');
         expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['none', 'none', 'none', 'none']);
         expect(document.getElementById('del').disabled).toBe(true);
         expect(document.getElementById('exp').disabled).toBe(true);
     });
 
     // Diagnostics is visible to managers for Number checks only (#216); errors/audit stay owner-only.
-    test('manager: finance/reports/diagnostics visible, admin hidden, export allowed', () => {
+    test('manager: money/statements/diagnostics visible, admin hidden, export allowed', () => {
         AppState.userRole = 'manager';
         AuthManager.applyRoleBasedRestrictions();
         expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['block', 'none', 'block', 'block']);
@@ -227,17 +226,6 @@ describe('role-based restrictions', () => {
         expect(document.getElementById('del').disabled).toBe(false);
     });
 
-    test('Reports: Trends and Product traffic buttons only for owner and manager', () => {
-        document.body.insertAdjacentHTML('beforeend',
-            '<button class="reports-rt-btn" style="display: none;"></button><button class="reports-rt-btn" style="display: none;"></button>');
-        const shownAs = () => [...document.querySelectorAll('.reports-rt-btn')].map(b => b.style.display);
-        for (const [role, display] of [['owner', ''], ['manager', ''], ['staff', 'none']]) {
-            AppState.userRole = role;
-            AuthManager.applyRoleBasedRestrictions();
-            expect(shownAs()).toEqual([display, display]);
-        }
-    });
-
     test('Roles & access (#84): the owner\'s choices per role drive pages and sections', () => {
         AppState.settings.roleAccess = { staff: { reports: true, profit: false }, manager: { finance: false } };
         try {
@@ -247,7 +235,6 @@ describe('role-based restrictions', () => {
             expect(document.body.classList.contains('no-perm-profit')).toBe(true);
             AppState.userRole = 'manager';
             AuthManager.applyRoleBasedRestrictions();
-            expect(shown('#financeTab')).toBe('none');
             expect([...document.querySelectorAll('.nav-menu a')].map(a => a.style.display)).toEqual(['none', 'none', 'block', 'block']);
             expect(document.body.classList.contains('no-perm-profit')).toBe(false);
         } finally {

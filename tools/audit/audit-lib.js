@@ -257,7 +257,7 @@ function itemLabel(items, key) {
     return it ? String(it.name) : String(key);
 }
 
-/** Sale lines that took stock below zero (time-ordered replay, same matching as the oracle). */
+/** Sale lines that took stock below zero (time-ordered replay, same matching as the oracle); `firstDip` = item key → when it first went below zero. */
 export function negativeDips(data) {
     const items = data.items || [];
     const keyOf = (l) => {
@@ -275,6 +275,7 @@ export function negativeDips(data) {
     const q = {};
     let events = 0;
     const hit = new Set();
+    const firstDip = {};
     for (const e of ev) {
         if (e.adj) {
             const n = num(e.adj.quantity) || 0;
@@ -284,9 +285,13 @@ export function negativeDips(data) {
             continue;
         }
         q[e.k] = (q[e.k] || 0) + e.q;
-        if (e.q < 0 && q[e.k] < -1e-9) { events++; hit.add(e.k); }
+        if (e.q < 0 && q[e.k] < -1e-9) {
+            events++;
+            hit.add(e.k);
+            if (!(e.k in firstDip)) firstDip[e.k] = e.t;
+        }
     }
-    return { events, items: [...hit] };
+    return { events, items: [...hit], firstDip };
 }
 
 /** The data with every line and stock adjustment of the given item keys taken out (bill totals untouched). */

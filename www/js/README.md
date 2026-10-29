@@ -26,7 +26,6 @@ www/js/
 │   └── firestore-service.js  # Firestore CRUD operations
 ├── modules/
 │   ├── admin.js              # Owner admin panel: configure, users, data
-│   ├── analytics.js          # Usage analytics and charts
 │   ├── app-updates.js        # Update banner + What's new sheet
 │   ├── billing.js            # Core billing coordinator (mode switching, drafts, auto-save)
 │   ├── purchase.js           # Purchase bill creation (weights, rates, labor)
@@ -35,13 +34,15 @@ www/js/
 │   ├── cash-management.js    # Session-based cash tracking
 │   ├── day.js                # Today page
 │   ├── diagnostics.js        # Owner view of telemetry errors + audit logs
-│   ├── finance.js            # Financial overview and profit/loss
+│   ├── insights.js           # Insights page: to do, items, parties, seasons
+│   ├── money.js              # Money page: profit, cash, spending, worth
 │   ├── history.js            # Bill history and editing
 │   ├── items.js              # Items and rates management
 │   ├── miscellaneous.js      # Expenses and withdrawals
 │   ├── outstanding.js        # Outstanding payments tracking
-│   ├── reports.js            # Reports generation
+│   ├── rate-trends.js        # Trends / Product traffic (mounted in Insights › Seasons)
 │   ├── settings.js           # App settings, audit logs, storage stats
+│   ├── statements.js         # Statements: day book, month, ledgers, CSV
 │   ├── stock.js              # Stock tracking and adjustments
 │   └── users.js              # User management and roles
 ├── services/
@@ -90,8 +91,9 @@ www/js/
 | `history.js` | Bill history, view/edit/delete bills |
 | `cash-management.js` | Cash session sign-in/out, balance tracking |
 | `outstanding.js` | Customer/supplier outstanding amounts |
-| `finance.js` | Profit/loss, financial overview |
-| `reports.js` | Analytics, date-filtered reports |
+| `money.js` | Money page: profit, cash, spending, net worth (figures from `utils/business-metrics.js`) |
+| `insights.js` | Insights page: to do, items, parties, seasons |
+| `statements.js` | Statements: day book, month statement, ledgers, CSV / PDF / WhatsApp |
 | `miscellaneous.js` | Expenses, withdrawals |
 | `settings.js` | App settings, audit log viewer, storage stats |
 | `users.js` | User approval, role management (owner only) |

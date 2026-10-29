@@ -48,7 +48,7 @@ export const METRICS = Object.freeze({
  * them (docs/insights-redesign.md §10). Empty once Finance, Reports and
  * Analytics are gone.
  */
-export const LEGACY_DUPLICATES = Object.freeze(['finance.html', 'reports.html', 'analytics.html']);
+export const LEGACY_DUPLICATES = Object.freeze([]);
 
 /**
  * Problems with the values found in templates.

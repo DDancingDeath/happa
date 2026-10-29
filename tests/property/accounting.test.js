@@ -17,11 +17,9 @@ import { computeStock, buildCheckpointState } from '../../www/js/utils/stock-rep
 import { buildAging } from '../../www/js/utils/aging.js';
 import { sessionTotals } from '../../www/js/utils/cash-session.js';
 import { computeFinanceSummary } from '../../www/js/utils/finance-calc.js';
+import { moneySummary, outstandingTotals } from '../../www/js/utils/business-metrics.js';
 import { DayManager } from '../../www/js/modules/day.js';
 import { AnomaliesManager } from '../../www/js/modules/anomalies.js';
-import { FinanceManager } from '../../www/js/modules/finance.js';
-import { ReportsManager } from '../../www/js/modules/reports.js';
-import { AnalyticsManager } from '../../www/js/modules/analytics.js';
 import { OutstandingManager } from '../../www/js/modules/outstanding.js';
 import { CashManagementManager } from '../../www/js/modules/cash-management.js';
 import { AppState } from '../../www/js/utils/state.js';
@@ -64,6 +62,19 @@ function load(s) {
     AppState.historyLoadedFrom = 0;
     AppState.userRole = 'owner';
     AppState.settings = { showHindi: false };
+}
+
+/** Money figures from the calculation layer (utils/business-metrics.js) for [from, to). */
+function money(s, from, to) {
+    const m = moneySummary({ ...s, base: { state: {}, from: -Infinity } }, { from, to });
+    return { sales: m.M1.total, saleCount: m.M1.count, purchases: m.M16.total, purchaseCount: m.M16.count,
+        cogs: m.M2, profit: m.M6.total, badDebts: m.M5, cash: m.M14 };
+}
+
+/** Money › Worth dues (AppState, as the page reads them). */
+function dues() {
+    const d = outstandingTotals({ purchases: AppState.purchaseHistory, wholesaleSales: AppState.salesHistory, retailSales: AppState.retailSalesHistory });
+    return { dueToReceive: d.receivable.total, dueToPay: d.payable.total };
 }
 
 /** Number shown in an element ("₹1,274", "-₹52" → number). */
@@ -210,47 +221,25 @@ test('AC3 sum of payments[] = amount paid after the bill was saved', () => {
 
 // AC4 -------------------------------------------------------------------------
 
-test('AC4 sum over months = all time (Reports screen; Finance sales, purchases, cost of goods sold, profit, cash flow)', () => {
+test('AC4 sum over months = all time (Money: sales, purchases, cost of goods sold, profit, cash flow)', () => {
     fc.assert(fc.property(shopArb({ years: 2 }), ({ shop: s }) => {
         load(s);
-        jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
-        jest.setSystemTime(new Date(s.truth.end + 3600000));
-        jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
-        jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
-        document.body.innerHTML = ['reportsTotalVolume', 'reportsTotalPurchases', 'reportsTotalSales', 'reportsPurchaseCount', 'reportsSaleCount',
-            'reportsGrossProfit', 'reportsProfitMargin', 'reportsTotalLabor', 'reportsCashPayment', 'reportsOnlinePayment', 'reportsDueToPay', 'reportsDueToReceive']
-            .map(id => `<span id="${id}"></span>`).join('');
-        const reports = () => { ReportsManager.renderOverview(); return { sales: shown('reportsTotalSales'), purchases: shown('reportsTotalPurchases') }; };
-        const finance = (from, to) => {
-            const f = FinanceManager.computeSummary({ from, to, cashSessions: { sessions: [], complete: true } });
-            return { sales: f.sales.total, purchases: f.purchases.total, cogs: f.cogs, profit: f.profit, cash: f.cash.net };
-        };
-
-        ReportsManager.currentDateFilter = 'all';
-        const allR = reports();
-        const allF = finance(-Infinity, Infinity);
-        const sumR = { sales: 0, purchases: 0 };
-        const sumF = { sales: 0, purchases: 0, cogs: 0, profit: 0, cash: 0 };
+        const all = money(s, -Infinity, Infinity);
+        const sum = { sales: 0, purchases: 0, cogs: 0, profit: 0, cash: 0 };
         for (const [y, m] of monthsOf(s)) {
-            ReportsManager.currentDateFilter = 'custom';
-            ReportsManager.customStartDate = new Date(y, m, 1);
-            ReportsManager.customEndDate = new Date(y, m + 1, 0, 23, 59, 59, 999);
-            const r = reports();
-            sumR.sales += r.sales; sumR.purchases += r.purchases;
-            const f = finance(new Date(y, m, 1).getTime(), new Date(y, m + 1, 1).getTime());
-            Object.keys(sumF).forEach(k => { sumF[k] += f[k]; });
+            const f = money(s, new Date(y, m, 1).getTime(), new Date(y, m + 1, 1).getTime());
+            Object.keys(sum).forEach(k => { sum[k] += f[k]; });
         }
         const truthSales = Object.values(s.truth.bills).filter(b => b.kind !== 'purchase').reduce((a, b) => a + b.total, 0);
         const truthPurchases = Object.values(s.truth.bills).filter(b => b.kind === 'purchase').reduce((a, b) => a + b.total, 0);
-        return sumR.sales === allR.sales && sumR.purchases === allR.purchases && allR.sales === truthSales
-            && Object.keys(sumF).every(k => close(sumF[k], allF[k], 0.5))
-            && allF.sales === truthSales && allF.purchases === truthPurchases;
+        return Object.keys(sum).every(k => close(sum[k], all[k], 0.5))
+            && all.sales === truthSales && all.purchases === truthPurchases;
     }), { ...FC, numRuns: Math.max(2, Math.ceil(RUNS / 2)) });
 });
 
 // AC5 -------------------------------------------------------------------------
 
-test('AC5 Outstanding total = sum of open dues (Outstanding screen, Finance)', () => {
+test('AC5 Outstanding total = sum of open dues (Outstanding screen, Money › Worth)', () => {
     fc.assert(fc.property(shopArb(), ({ shop: s }) => {
         load(s);
         const truth = Object.entries(s.truth.bills);
@@ -267,7 +256,7 @@ test('AC5 Outstanding total = sum of open dues (Outstanding screen, Finance)', (
             });
             return total;
         };
-        const fin = FinanceManager.calculateOutstanding();
+        const fin = dues();
         return screenTotal('purchase') === open(b => b.kind === 'purchase')
             && screenTotal('sale') === open(b => b.kind === 'retail')
             && close(fin.dueToPay, open(b => b.kind === 'purchase'))
@@ -310,12 +299,10 @@ function todayScreen(s, ms) {
     };
 }
 
-/** Same-day Today / Reports / cash drawer / oracle agreement for sampled days. */
+/** Same-day Today / Money / cash drawer / oracle agreement for sampled days. */
 function sameDayAgrees(s) {
     load(s);
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
-    jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
-    jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
     return spread(s.sessions, 8).every(session => {
         const ms = O.timeOf(session.date) + 19 * 3600000;
         const t = todayScreen(s, ms);
@@ -324,14 +311,12 @@ function sameDayAgrees(s) {
         const okToday = Object.keys(t).every(k => t[k] === Math.round(want[k]));
         const okDrawer = close(t.T6_cashIn, Math.round(tx.cashSales + tx.dueReceived), 1)
             && close(t.T8_cashOut, Math.round(tx.cashPurchases + tx.duePaid + tx.businessExpenses + tx.personalExpenses), 1);
-        document.body.innerHTML = '<span id="reportsTotalSales"></span><span id="reportsTotalPurchases"></span>';
-        ReportsManager.currentDateFilter = 'today';
-        ReportsManager.renderOverview();
-        return okToday && okDrawer && shown('reportsTotalSales') === t.T2_sales;
+        const [from, to] = O.dayRange(ms);
+        return okToday && okDrawer && Math.round(money(s, from, to).sales) === t.T2_sales;
     });
 }
 
-test('AC7 same day: Today == oracle, Today cash == drawer, Today sales == Reports (no untagged expenses)', () => {
+test('AC7 same day: Today == oracle, Today cash == drawer, Today sales == Money (no untagged expenses)', () => {
     fc.assert(fc.property(shopArb({ untaggedExpenseRate: 0 }), ({ shop: s }) => sameDayAgrees(s)), FC);
 });
 
@@ -339,53 +324,28 @@ test('AC7 same day agreement with untagged expenses (#219)', () => {
     fc.assert(fc.property(shopArb({ untaggedExpenseRate: 0.3 }), ({ shop: s }) => sameDayAgrees(s)), FC);
 });
 
-/** Same calendar month: Reports, Analytics, Finance (custom range) and the oracle. */
+/** Same calendar month: Money (the layer every page reads) and the oracle. */
 function sameMonth(s, check) {
     load(s);
-    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
-    jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
-    jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
-    ['renderMonthlyChart', 'renderProfitBreakdown', 'renderStockBreakdown', 'renderCashFlow', 'renderFullHistoryPrompt']
-        .forEach(fn => jest.spyOn(FinanceManager, fn).mockImplementation(() => {}));
     return spread(monthsOf(s).slice(0, -1), 4).every(([y, m]) => {
-        const now = new Date(y, m + 1, 0, 23, 59, 0).getTime(); // last minute of the month
-        jest.setSystemTime(new Date(now));
-        document.body.innerHTML = ['reportsTotalPurchases', 'reportsTotalSales', 'reportsGrossProfit', 'monthRevenue', 'monthPurchases',
-            'monthProfit', 'monthExpenses', 'monthProfitMargin', 'monthExpensesCount']
-            .map(id => `<span id="${id}"></span>`).join('') +
-            '<div id="financeDashboardSection"><span id="financeRevenue"></span><span id="financeNetProfit"></span></div>';
-        ReportsManager.currentDateFilter = 'month';
-        ReportsManager.renderOverview();
-        AnalyticsManager.renderMonthSummary();
-        FinanceManager.currentDateFilter = 'custom';
-        FinanceManager.customStartDate = `${y}-${pad(m + 1)}-01`;
-        FinanceManager.customEndDate = isoDay(now);
-        FinanceManager.renderDashboard();
-        const want = O.reports(s, [new Date(y, m, 1).getTime(), new Date(y, m + 1, 1).getTime()]);
-        return check({
-            reports: { sales: shown('reportsTotalSales'), purchases: shown('reportsTotalPurchases'), profit: shown('reportsGrossProfit') },
-            analytics: { sales: shown('monthRevenue'), purchases: shown('monthPurchases'), profit: shown('monthProfit') },
-            finance: { sales: shown('financeRevenue'), profit: shown('financeNetProfit') },
-            want
-        });
+        const range = [new Date(y, m, 1).getTime(), new Date(y, m + 1, 1).getTime()];
+        const f = money(s, ...range);
+        return check({ money: { sales: Math.round(f.sales), purchases: Math.round(f.purchases), profit: f.profit === null ? null : Math.round(f.profit) }, want: O.reports(s, range) });
     });
 }
 
-test('AC7 same month: sales on Reports == Analytics == Finance == oracle; Finance profit == oracle (ISO dates)', () => {
-    fc.assert(fc.property(shopArb({ ddmmRate: 0, years: 1 }), ({ shop: s }) => sameMonth(s, ({ reports, analytics, finance, want }) =>
-        reports.sales === Math.round(want.R2_sales) && analytics.sales === reports.sales && finance.sales === reports.sales
-        && finance.profit === Math.round(want.R3_profit))), FC);
+test('AC7 same month: Money sales and profit == oracle (ISO dates)', () => {
+    fc.assert(fc.property(shopArb({ ddmmRate: 0, years: 1 }), ({ shop: s }) => sameMonth(s, ({ money: g, want }) =>
+        g.sales === Math.round(want.R2_sales) && g.profit === Math.round(want.R3_profit))), FC);
 });
 
-// #49 fixed: Analytics reads dates through utils/dates.js
-test('AC7 same month with DD/MM dates: Analytics sales == Reports (#49)', () => {
-    fc.assert(fc.property(shopArb({ ddmmRate: 0.4, years: 1 }), ({ shop: s }) => sameMonth(s, ({ reports, analytics }) => analytics.sales === reports.sales)), FC);
+test('AC7 same month with DD/MM dates: Money sales == oracle (#49)', () => {
+    fc.assert(fc.property(shopArb({ ddmmRate: 0.4, years: 1 }), ({ shop: s }) => sameMonth(s, ({ money: g, want }) => g.sales === Math.round(want.R2_sales))), FC);
 });
 
-test('AC7 same month: purchases and profit agree on Reports, Analytics and Finance (#36, #47)', () => {
-    fc.assert(fc.property(shopArb({ ddmmRate: 0, years: 1 }), ({ shop: s }) => sameMonth(s, ({ reports, analytics, finance, want }) =>
-        reports.purchases === Math.round(want.R1_purchases) && analytics.purchases === reports.purchases
-        && reports.profit === finance.profit && analytics.profit === finance.profit)), FC);
+test('AC7 same month: Money purchases and profit == oracle (#36, #47)', () => {
+    fc.assert(fc.property(shopArb({ ddmmRate: 0, years: 1 }), ({ shop: s }) => sameMonth(s, ({ money: g, want }) =>
+        g.purchases === Math.round(want.R1_purchases) && g.profit === Math.round(want.R3_profit))), FC);
 });
 
 test('AC1/AC7 each month: Finance cost of goods sold, profit and cash flow == oracle (#215)', () => {
@@ -402,7 +362,7 @@ test('AC1/AC7 each month: Finance cost of goods sold, profit and cash flow == or
 });
 // Opening records (old-app dues, tools/migrate) ---------------------------------
 
-test('AC5 with opening records: Outstanding and Finance dues include them; aging uses the original bill date', () => {
+test('AC5 with opening records: Outstanding and Money dues include them; aging uses the original bill date', () => {
     fc.assert(fc.property(shopArb({ openingRate: 1 }), ({ shop: s }) => {
         load(s);
         const openDue = (pred) => Object.values(s.truth.bills).filter(pred).reduce((a, b) => a + b.due, 0);
@@ -415,7 +375,7 @@ test('AC5 with opening records: Outstanding and Finance dues include them; aging
         document.querySelectorAll('#dueList .history-item .history-header').forEach(h => {
             screen += Number(h.textContent.match(/Due: ₹([\d,.]+)/)[1].replace(/,/g, ''));
         });
-        const fin = FinanceManager.calculateOutstanding();
+        const fin = dues();
         const openingRetailDue = allBills(s).filter(b => O.isOpening(b) && b.type === 'retail').reduce((a, b) => a + outstandingDue(b), 0);
         const ages = buildAging(allBills(s).filter(b => O.isOpening(b) && outstandingDue(b) > 0), { today: new Date(s.truth.end) })
             .parties.flatMap(p => p.bills);
@@ -426,48 +386,23 @@ test('AC5 with opening records: Outstanding and Finance dues include them; aging
     }), FC);
 });
 
-/** Every period / activity figure for a shop: Today on sampled days, Reports, Finance, Analytics, stock. */
+/** Every period / activity figure for a shop: Today on sampled days, Money (all time and months), stock. */
 function periodFigures(s, days, months) {
     load(s);
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
-    jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
-    jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
-    const out = { today: {}, reports: {}, finance: {}, analytics: {} };
+    const out = { today: {}, money: {} };
     days.forEach(ms => {
         out.today[ms] = todayScreen(s, ms);
         out.today[ms].saleCount = shown('todaySaleCount');
         out.today[ms].purchaseCount = shown('todayPurchaseCount');
     });
-    const reportIds = ['reportsTotalVolume', 'reportsTotalPurchases', 'reportsTotalSales', 'reportsPurchaseCount', 'reportsSaleCount',
-        'reportsGrossProfit', 'reportsProfitMargin', 'reportsTotalLabor', 'reportsCashPayment', 'reportsOnlinePayment'];
-    const fin = (from, to) => {
-        const f = FinanceManager.computeSummary({ from, to, cashSessions: { sessions: [], complete: true } });
-        return { sales: f.sales.total, saleCount: f.sales.count, purchases: f.purchases.total, purchaseCount: f.purchases.count,
-            cogs: f.cogs, profit: f.profit, badDebts: f.badDebts, cash: f.cash.net, closing: f.stock?.closing ?? null };
-    };
-    jest.setSystemTime(new Date(s.truth.end + 3600000));
-    out.finance.all = fin(-Infinity, Infinity);
-    document.body.innerHTML = reportIds.map(id => `<span id="${id}"></span>`).join('');
-    ReportsManager.currentDateFilter = 'all';
-    ReportsManager.renderOverview();
-    out.reports.all = Object.fromEntries(reportIds.map(id => [id, document.getElementById(id).textContent]));
+    out.money.all = money(s, -Infinity, Infinity);
     out.stock = computeStock(sources(s), s.items);
-    months.forEach(([y, m]) => {
-        const now = new Date(y, m + 1, 0, 23, 59, 0).getTime();
-        jest.setSystemTime(new Date(now));
-        document.body.innerHTML = [...reportIds, 'monthRevenue', 'monthPurchases', 'monthProfit', 'monthExpenses', 'monthProfitMargin', 'monthExpensesCount']
-            .map(id => `<span id="${id}"></span>`).join('');
-        ReportsManager.currentDateFilter = 'month';
-        ReportsManager.renderOverview();
-        AnalyticsManager.renderMonthSummary();
-        out.reports[`${y}-${m}`] = Object.fromEntries(reportIds.map(id => [id, document.getElementById(id).textContent]));
-        out.analytics[`${y}-${m}`] = ['monthRevenue', 'monthPurchases', 'monthProfit', 'monthProfitMargin'].map(id => document.getElementById(id).textContent);
-        out.finance[`${y}-${m}`] = fin(new Date(y, m, 1).getTime(), new Date(y, m + 1, 1).getTime());
-    });
+    months.forEach(([y, m]) => { out.money[`${y}-${m}`] = money(s, new Date(y, m, 1).getTime(), new Date(y, m + 1, 1).getTime()); });
     return out;
 }
 
-test('no period or activity figure changes when opening records are added (Today, Reports, Finance, Analytics, stock)', () => {
+test('no period or activity figure changes when opening records are added (Today, Money, stock)', () => {
     fc.assert(fc.property(shopArb({ years: 1 }), ({ opts }) => {
         const plain = generateShop({ ...opts, openingRate: 0 });
         const migrated = generateShop({ ...opts, openingRate: 1, openingPayments: false });

@@ -1,6 +1,5 @@
 /**
- * @fileoverview #24: History renders 50 bills at a time; Finance/Reports/
- * Analytics skip recomputing on a tab revisit when their inputs are unchanged.
+ * @fileoverview #24: History renders 50 bills at a time.
  */
 
 jest.mock('../firebase/firestore-service.js', () => ({ FirebaseService: { db: null } }));
@@ -10,9 +9,6 @@ jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn
 
 import { AppState } from '../utils/state.js';
 import { HistoryManager } from '../modules/history.js';
-import { ReportsManager } from '../modules/reports.js';
-import { FinanceManager } from '../modules/finance.js';
-import { AnalyticsManager } from '../modules/analytics.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 
 const bills = (n) => Array.from({ length: n }, (_, i) => ({
@@ -75,63 +71,5 @@ describe('History paging (#24)', () => {
         expect(document.querySelectorAll('#historyList tbody tr')).toHaveLength(50);
         showMore().click();
         expect(document.querySelectorAll('#historyList tbody tr')).toHaveLength(100);
-    });
-});
-
-describe('Finance/Reports/Analytics revisit memo (#24)', () => {
-    beforeEach(() => {
-        document.body.innerHTML = '<div id="reports"><div class="reports-section"></div></div>' +
-            '<div id="finance"><div id="financeDashboardSection"></div></div>';
-        AppState.purchaseHistory = bills(5);
-        AppState.salesHistory = [];
-        AppState.retailSalesHistory = [];
-        AppState.expensesHistory = [];
-        AppState.historyLoadedFrom = 0;
-        ReportsManager.currentTab = 'overview';
-        ReportsManager.currentDateFilter = 'all';
-    });
-
-    test('Reports: unchanged revisit skips, data or filter change recomputes', () => {
-        const spy = jest.spyOn(ReportsManager, 'renderOverview').mockImplementation(() => {});
-        ReportsManager.renderReportsIfStale();
-        ReportsManager.renderReportsIfStale();
-        expect(spy).toHaveBeenCalledTimes(1);
-
-        AppState.purchaseHistory = [...AppState.purchaseHistory, ...bills(1)];
-        ReportsManager.renderReportsIfStale();
-        expect(spy).toHaveBeenCalledTimes(2);
-
-        ReportsManager.currentDateFilter = 'year';
-        ReportsManager.renderReportsIfStale();
-        expect(spy).toHaveBeenCalledTimes(3);
-        ReportsManager.renderReportsIfStale();
-        expect(spy).toHaveBeenCalledTimes(3);
-
-        // An explicit render (filter buttons, live sync) always recomputes.
-        ReportsManager.renderReports();
-        expect(spy).toHaveBeenCalledTimes(4);
-    });
-
-    test('Finance: tab-show init skips the dashboard when nothing changed', () => {
-        const spy = jest.spyOn(FinanceManager, 'renderMonthlyChart').mockImplementation(() => {});
-        FinanceManager.init();
-        FinanceManager.init();
-        expect(spy).toHaveBeenCalledTimes(1);
-        AppState.dataVersion += 1;
-        FinanceManager.init();
-        expect(spy).toHaveBeenCalledTimes(2);
-    });
-
-    test('Analytics: tab-show init skips the overview when nothing changed', () => {
-        const spy = jest.spyOn(AnalyticsManager, 'renderMonthSummary').mockImplementation(() => {});
-        jest.spyOn(AnalyticsManager, 'renderTodayPrediction').mockImplementation(() => {});
-        jest.spyOn(AnalyticsManager, 'renderOutstandingDues').mockImplementation(() => {});
-        jest.spyOn(AnalyticsManager, 'renderMonthlyProjection').mockImplementation(() => {});
-        AnalyticsManager.init();
-        AnalyticsManager.init();
-        expect(spy).toHaveBeenCalledTimes(1);
-        AppState.expensesHistory = [{ id: 'e1', date: '2026-10-21', amount: 5 }];
-        AnalyticsManager.init();
-        expect(spy).toHaveBeenCalledTimes(2);
     });
 });

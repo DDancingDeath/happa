@@ -15,7 +15,7 @@ import { formatMonth, formatDay } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
 import { findDeadStock } from '../utils/dead-stock.js';
-import { can, canOpenSection } from '../utils/role-access.js';
+import { can, canOpenTab, canOpenSection } from '../utils/role-access.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, itemSummary, belowCostSales, lowProfitItems,
     purchaseItems, partySummary, stoppedComingCheck, overdueParties, seasonIndex, stockUpItems
@@ -70,7 +70,7 @@ export const InsightsManager = {
         const [section, view] = ROUTE_SECTION[route] || [route];
         if (SECTIONS.includes(section)) this.section = section;
         if (view) this.seasonView = view;
-        if (this.section === 'seasons' && !this.maySeasons()) this.section = 'actions';
+        if (!this.mayOpen(this.section)) this.section = SECTIONS.find(s => this.mayOpen(s)) || 'actions';
         this.setupTaps();
         const sel = document.getElementById('insightsPreset');
         const { preset } = getInsightsContext();
@@ -82,8 +82,7 @@ export const InsightsManager = {
     },
 
     setSection(section) {
-        if (!SECTIONS.includes(section)) return;
-        if (section === 'seasons' && !this.maySeasons()) return;
+        if (!SECTIONS.includes(section) || !this.mayOpen(section)) return;
         this.section = section;
         this.showSection();
         this.render();
@@ -135,6 +134,12 @@ export const InsightsManager = {
 
     /** Seasons hosts Rate trends / Product traffic: their role rule applies. */
     maySeasons() { return canOpenSection('insights', 'seasons', AppState.userRole, AppState.settings?.roleAccess); },
+
+    /** Without Insights' own switch only Seasons may open (the old Reports switch, for Trends / Product traffic). */
+    mayOpen(section) {
+        if (section === 'seasons') return this.maySeasons();
+        return canOpenTab('insights', AppState.userRole, AppState.settings?.roleAccess);
+    },
     range() { return periodRange(getInsightsContext().preset, new Date(), this.cfg()); },
 
     showSection() {
@@ -145,7 +150,7 @@ export const InsightsManager = {
             b.setAttribute('aria-selected', String(on));
         });
         mark('#insights [data-insights-section]', 'insightsSection', this.section);
-        document.querySelectorAll('#insights [data-insights-section="seasons"]').forEach(b => { b.hidden = !this.maySeasons(); });
+        document.querySelectorAll('#insights [data-insights-section]').forEach(b => { b.hidden = !this.mayOpen(b.dataset.insightsSection); });
         mark('#insights [data-items-type]', 'itemsType', this.itemsType);
         mark('#insights [data-party-kind]', 'partyKind', this.partyKind);
         mark('#insights [data-season-view]', 'seasonView', this.seasonView);

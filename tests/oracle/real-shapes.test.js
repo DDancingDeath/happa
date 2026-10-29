@@ -14,9 +14,7 @@ import path from 'path';
 import * as O from './oracle.js';
 import { DayManager } from '../../www/js/modules/day.js';
 import { AnomaliesManager } from '../../www/js/modules/anomalies.js';
-import { FinanceManager } from '../../www/js/modules/finance.js';
-import { ReportsManager } from '../../www/js/modules/reports.js';
-import { AnalyticsManager } from '../../www/js/modules/analytics.js';
+import { moneySummary, outstandingTotals } from '../../www/js/utils/business-metrics.js';
 import { OutstandingManager } from '../../www/js/modules/outstanding.js';
 import { CashManagementManager } from '../../www/js/modules/cash-management.js';
 import { AppState } from '../../www/js/utils/state.js';
@@ -28,12 +26,7 @@ const E = FIX.expected;
 /**
  * Spec IDs (prefixed by the screen) the app gets wrong on these shapes. Each entry is a skipped test.
  */
-const BUGS = {
-    // BUG: see #49 — Analytics reads "D/M/YYYY, h:mm:ss pm" expense dates with new Date()
-    'analyticsMonth.A3_expenses': 49, 'analyticsMonth.A3_expenseCount': 49,
-    // BUG: see #220 — Analytics outstanding counts cleared bills that still carry their old due
-    'analyticsMonth.A5_payable': 220, 'analyticsMonth.A5_payableCount': 220
-};
+const BUGS = {};
 const specTest = (id) => (BUGS[id] && !process.env.ORACLE_RUN_SKIPPED ? test.skip : test);
 
 const data = {
@@ -104,47 +97,29 @@ describe('Today == oracle with opening records and a legacy later payment', () =
     });
 });
 
-describe('Reports == oracle with opening records', () => {
-    const SCREEN = {
-        R1_purchases: 'reportsTotalPurchases', R1_purchaseCount: 'reportsPurchaseCount', R2_sales: 'reportsTotalSales', R2_saleCount: 'reportsSaleCount',
-        R4_cash: 'reportsCashPayment', R5_online: 'reportsOnlinePayment', R6_dueToPay: 'reportsDueToPay', R7_dueToReceive: 'reportsDueToReceive'
-    };
-    const render = (filter) => {
-        jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
-        jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
-        spans([...Object.values(SCREEN), 'reportsGrossProfit', 'reportsTotalLabor', 'reportsTotalVolume', 'reportsProfitMargin']);
-        ReportsManager.currentDateFilter = filter;
-        ReportsManager.renderOverview();
-    };
-    Object.keys(E.reportsDay).forEach(id => {
-        specTest(`reportsDay.${id}`)(`today: ${id}`, () => { render('today'); expect(shown(SCREEN[id])).toBe(E.reportsDay[id]); });
+describe('Money (calculation layer) == oracle with opening records (replaces Reports, Finance, Analytics)', () => {
+    const summary = (range) => moneySummary({ ...data, base: { state: {}, from: -Infinity } }, range);
+    const bills = (m) => ({ R1_purchases: m.M16.total, R1_purchaseCount: m.M16.count, R2_sales: m.M1.total, R2_saleCount: m.M1.count });
+    const keys = ['R1_purchases', 'R1_purchaseCount', 'R2_sales', 'R2_saleCount'];
+    test('that day: purchases and sales with their bill counts leave opening records out', () => {
+        expect(bills(summary({ from: DAY[0], to: DAY[1] }))).toEqual(pick(E.reportsDay, keys));
     });
-    Object.keys(E.reportsAll).forEach(id => {
-        specTest(`reportsAll.${id}`)(`all time: ${id}`, () => { render('all'); expect(shown(SCREEN[id])).toBe(E.reportsAll[id]); });
+    test('all time: the same, and F1 sales', () => {
+        const m = summary({ from: -Infinity, to: Infinity });
+        expect(bills(m)).toEqual(pick(E.reportsAll, keys));
+        expect([m.M1.total, m.M1.count]).toEqual([E.financeAll.F1_sales, E.financeAll.F1_saleCount]);
     });
-});
-
-describe('Finance == oracle with opening records', () => {
-    const summary = () => FinanceManager.computeSummary({ from: -Infinity, to: Infinity, cashSessions: { sessions: [], complete: true } });
-    specTest('financeAll.F1_sales')('F1 sales', () => expect(summary().sales.total).toBe(E.financeAll.F1_sales));
-    specTest('financeAll.F1_saleCount')('F1 sale count leaves opening records out', () => expect(summary().sales.count).toBe(E.financeAll.F1_saleCount));
-    test('F9/F10 dues include opening records', () => {
-        expect(FinanceManager.calculateOutstanding()).toEqual({ dueToReceive: E.financeAll.F9_dueToReceive, dueToPay: E.financeAll.F10_dueToPay });
+    test('dues include opening records; a cleared purchase with an old due is not counted (#220)', () => {
+        const d = outstandingTotals(data);
+        expect([d.receivable.total, d.payable.total]).toEqual([E.financeAll.F9_dueToReceive, E.financeAll.F10_dueToPay]);
+        expect([d.payable.total, d.payable.count, d.receivable.total, d.receivable.count])
+            .toEqual([E.analyticsMonth.A5_payable, E.analyticsMonth.A5_payableCount, E.analyticsMonth.A6_receivable, E.analyticsMonth.A6_receivableCount]);
     });
-});
-
-describe('Analytics == oracle (D/M/YYYY expense dates, cleared purchase with an old due)', () => {
-    const SCREEN = {
-        A3_expenses: 'monthExpenses', A3_expenseCount: 'monthExpensesCount', A5_payable: 'totalPayable', A5_payableCount: 'payableCount',
-        A6_receivable: 'totalReceivable', A6_receivableCount: 'receivableCount'
-    };
-    beforeEach(() => {
-        spans([...Object.values(SCREEN), 'monthRevenue', 'monthPurchases', 'monthProfit', 'monthProfitMargin', 'monthRevenueGrowth', 'monthPurchasesGrowth']);
-        AnalyticsManager.renderMonthSummary();
-        AnalyticsManager.renderOutstandingDues();
-    });
-    Object.entries(SCREEN).forEach(([id, el]) => {
-        specTest(`analyticsMonth.${id}`)(`${id} (#${el})`, () => expect(shown(el)).toBe(E.analyticsMonth[id]));
+    test('this month\'s expenses read D/M/YYYY dates (#49)', () => {
+        const [from] = O.monthRange(NOW);
+        const m = summary({ from, to: NOW + 1 });
+        expect(m.M4.total).toBe(E.analyticsMonth.A3_expenses);
+        expect(m.M4.count).toBe(E.analyticsMonth.A3_expenseCount);
     });
 });
 

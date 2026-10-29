@@ -1,5 +1,5 @@
 import {
-    normalizeRoleAccess, accessFor, canOpenTab, canOpenSection, canEditBillWith, canDeleteBillWith, historyCutoff,
+    normalizeRoleAccess, accessFor, canOpenTab, canOpenSection, canOpenPage, canEditBillWith, canDeleteBillWith, historyCutoff,
     hiddenPermissionClasses, billCreatedMs, ROLE_ACCESS_DEFAULTS
 } from '../utils/role-access.js';
 import { NavigationManager } from '../ui/navigation.js';
@@ -12,8 +12,8 @@ const DAY = 24 * 60 * 60 * 1000;
 describe('Roles & access settings (#84)', () => {
     test('missing settings keep today\'s behaviour (and the 2-day edit window of #87)', () => {
         expect(normalizeRoleAccess(undefined)).toEqual(ROLE_ACCESS_DEFAULTS);
-        expect(canOpenTab('finance', 'staff')).toBe(false);
-        expect(canOpenTab('reports', 'manager')).toBe(true);
+        expect(canOpenTab('money', 'staff')).toBe(false);
+        expect(canOpenTab('statements', 'manager')).toBe(true);
         expect(canOpenTab('history', 'staff')).toBe(true);
         expect(accessFor('staff').editDays).toBe(2);
         expect(hiddenPermissionClasses('staff')).toEqual([]);
@@ -33,10 +33,10 @@ describe('Roles & access settings (#84)', () => {
 
     test('the owner always has everything; unknown roles get member access', () => {
         const raw = { manager: { finance: false }, staff: { reports: true, personalExpenses: false } };
-        expect(canOpenTab('finance', 'owner', raw)).toBe(true);
-        expect(canOpenTab('finance', 'manager', raw)).toBe(false);
-        expect(canOpenTab('reports', 'staff', raw)).toBe(true);
-        expect(canOpenTab('reports', 'stranger', raw)).toBe(true);
+        expect(canOpenTab('money', 'owner', raw)).toBe(true);
+        expect(canOpenTab('money', 'manager', raw)).toBe(false);
+        expect(canOpenTab('statements', 'staff', raw)).toBe(true);
+        expect(canOpenTab('statements', 'stranger', raw)).toBe(true);
         expect(hiddenPermissionClasses('staff', raw)).toEqual(['no-perm-personalExpenses']);
         expect(hiddenPermissionClasses('owner', raw)).toEqual([]);
     });
@@ -86,7 +86,7 @@ describe('Roles & access settings (#84)', () => {
 
 describe('direct navigation to a page that is off for the role', () => {
     beforeEach(() => {
-        document.body.innerHTML = '<div id="billing" class="tab"></div><div id="reports" class="tab"></div><nav class="nav-menu"></nav>';
+        document.body.innerHTML = '<div id="billing" class="tab"></div><div id="statements" class="tab"></div><nav class="nav-menu"></nav>';
         jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         jest.spyOn(UIManager, 'hapticFeedback').mockImplementation(() => {});
     });
@@ -99,13 +99,13 @@ describe('direct navigation to a page that is off for the role', () => {
     test('is refused and shows Billing instead; allowed once the owner turns it on', () => {
         AppState.userRole = 'staff';
         NavigationManager.showTabFromNav('reports');
-        expect(document.getElementById('reports').classList.contains('active')).toBe(false);
+        expect(document.getElementById('statements').classList.contains('active')).toBe(false);
         expect(document.getElementById('billing').classList.contains('active')).toBe(true);
         expect(UIManager.showToast).toHaveBeenCalledWith('This page is turned off for your role. Ask the owner.');
 
         AppState.settings.roleAccess = { staff: { reports: true } };
         NavigationManager.showTab('reports');
-        expect(document.getElementById('reports').classList.contains('active')).toBe(true);
+        expect(document.getElementById('statements').classList.contains('active')).toBe(true);
     });
 });
 
@@ -175,5 +175,46 @@ describe('page sections that host another page', () => {
             expect(canOpenSection('insights', s, 'manager', raw)).toBe(true);
         });
         expect(canOpenSection('insights', 'items', 'staff', { staff: { analytics: false } })).toBe(false);
+    });
+
+    test('Trends / Product traffic open with EITHER the old Reports switch or the Insights switch (back-compat)', () => {
+        const reportsOnly = { manager: { reports: true, analytics: false } };
+        ['seasons', 'trends', 'traffic'].forEach(s => {
+            expect(canOpenSection('insights', s, 'manager', reportsOnly)).toBe(true);
+            expect(canOpenSection('insights', s, 'manager', { manager: { reports: false, analytics: true } })).toBe(true);
+            expect(canOpenSection('insights', s, 'manager', { manager: { reports: false, analytics: false } })).toBe(false);
+            expect(canOpenSection('insights', s, 'staff', { staff: { reports: true } })).toBe(false);
+        });
+        ['actions', 'items', 'parties'].forEach(s => expect(canOpenSection('insights', s, 'manager', reportsOnly)).toBe(false));
+        expect(canOpenPage('insights', 'manager', reportsOnly)).toBe(true);
+        expect(canOpenPage('insights', 'manager', { manager: { reports: false, analytics: false } })).toBe(false);
+        expect(canOpenPage('insights', 'staff', { staff: { reports: true } })).toBe(false);
+    });
+
+    test('a manager with only Reports opens the old Trends link on Insights › Seasons, and no other section', async () => {
+        const { InsightsManager } = await import('../modules/insights.js');
+        const { MoneyManager } = await import('../modules/money.js');
+        jest.spyOn(MoneyManager, 'loadSnapshots').mockResolvedValue();
+        const savedApp = window.app;
+        AppState.userRole = 'manager';
+        AppState.settings = { roleAccess: { manager: { reports: true, analytics: false } } };
+        document.body.innerHTML = '<div id="day" class="tab"></div><div id="insights" class="tab">'
+            + ['actions', 'items', 'parties', 'seasons'].map(s => `<button data-insights-section="${s}"></button><div data-insights-pane="${s}"></div>`).join('') + '</div>';
+        const init = jest.spyOn(InsightsManager, 'init').mockImplementation(() => {});
+        window.app = { ...(window.app || {}), insights: { init: (r) => InsightsManager.init(r) } };
+        NavigationManager.showTab('reports-trends');
+        expect(document.getElementById('insights').classList.contains('active')).toBe(true);
+        init.mockRestore();
+        jest.spyOn(InsightsManager, 'render').mockImplementation(() => {});
+        jest.spyOn(InsightsManager, 'setupTaps').mockImplementation(() => {});
+        InsightsManager.init('items');
+        expect(InsightsManager.section).toBe('seasons');
+        InsightsManager.setSection('parties');
+        expect(InsightsManager.section).toBe('seasons');
+        InsightsManager.showSection();
+        const shown = [...document.querySelectorAll('[data-insights-section]')].filter(b => !b.hidden).map(b => b.dataset.insightsSection);
+        expect(shown).toEqual(['seasons']);
+        window.app = savedApp;
+        jest.restoreAllMocks();
     });
 });

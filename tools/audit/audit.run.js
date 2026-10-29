@@ -5,28 +5,29 @@
  *
  * For every audited period each number is computed twice: by the independent
  * oracle (tests/oracle/oracle.js) and by the app's own code, the functions the
- * screens call (DayManager, ReportsManager, FinanceManager, AnalyticsManager,
+ * screens call (DayManager, MoneyManager and the calculation layer,
  * OutstandingManager, CashManagementManager, stock-replay, rate-trends,
  * number-checks). App modules come from `@app/` (AUDIT_APP_ROOT, default this
  * checkout), so the same audit can run against another branch's www/.
  */
 import fs from 'fs';
+import path from 'path';
 import * as O from '../../tests/oracle/oracle.js';
 import { loadBackup, auditPeriods, Collector, dataQuality, renderReport, isoDay, negativeDips, withoutItems } from './audit-lib.js';
 import { CAUSES, causeFor } from './causes.js';
 import { DayManager } from '@app/modules/day.js';
 import { AnomaliesManager } from '@app/modules/anomalies.js';
-import { FinanceManager } from '@app/modules/finance.js';
-import { ReportsManager } from '@app/modules/reports.js';
-import { AnalyticsManager } from '@app/modules/analytics.js';
+import { MoneyManager } from '@app/modules/money.js';
+import { FirebaseService } from '@app/firebase/firestore-service.js';
+import { setInsightsContext, resetInsightsContextForTests } from '@app/utils/insights-context.js';
 import { OutstandingManager } from '@app/modules/outstanding.js';
 import { CashManagementManager } from '@app/modules/cash-management.js';
 import { AppState } from '@app/utils/state.js';
 import { sessionTotals } from '@app/utils/cash-session.js';
 import { computeStock } from '@app/utils/stock-replay.js';
-import { profitByDay, computeFinanceSummary } from '@app/utils/finance-calc.js';
+import { computeFinanceSummary } from '@app/utils/finance-calc.js';
 import { runNumberChecks } from '@app/utils/number-checks.js';
-import { moneySummary, billCount, itemSummary, partySummary, purchaseItems } from '@app/utils/business-metrics.js';
+import { moneySummary, billCount, itemSummary, partySummary, purchaseItems, outstandingTotals, profitPerDay } from '@app/utils/business-metrics.js';
 import { billsToYearDocs, monthBuckets, weekBuckets } from '@app/utils/rate-trends.js';
 import { monthBucketsFor, trafficRows } from '@app/utils/product-traffic.js';
 
@@ -85,56 +86,25 @@ function todayScreen(ms, session) {
     return out;
 }
 
-const REPORTS = {
-    R1_purchases: 'reportsTotalPurchases', R2_sales: 'reportsTotalSales', R3_profit: 'reportsGrossProfit', R4_cash: 'reportsCashPayment',
-    R5_online: 'reportsOnlinePayment', R6_dueToPay: 'reportsDueToPay', R7_dueToReceive: 'reportsDueToReceive', R8_labour: 'reportsTotalLabor'
-};
-function reportsScreen(p) {
-    document.body.innerHTML = [...Object.values(REPORTS), 'reportsTotalVolume', 'reportsPurchaseCount', 'reportsSaleCount', 'reportsProfitMargin']
-        .map(id => `<span id="${id}"></span>`).join('');
+const MONEY_TEMPLATE = () => fs.readFileSync(path.join(ENV.AUDIT_APP_ROOT || process.cwd(), 'www', 'templates', 'money.html'), 'utf8');
+
+/** The Money page drawn in jsdom for a period: every section's headline figures. */
+function moneyScreen(p) {
     at(p.now);
-    if (p.kind === 'all') {
-        ReportsManager.currentDateFilter = 'all';
-    } else {
-        ReportsManager.currentDateFilter = 'custom';
-        ReportsManager.customStartDate = new Date(p.from);
-        ReportsManager.customEndDate = new Date(p.to - 1);
-    }
-    ReportsManager.renderOverview();
+    resetInsightsContextForTests();
+    setInsightsContext({ preset: p.kind === 'all' ? 'all' : `month:${p.label}` });
+    document.body.innerHTML = MONEY_TEMPLATE();
+    document.getElementById('money').classList.add('active');
+    Object.assign(MoneyManager, { snapshots: {}, snapshotsLoaded: true, sessionCache: new Map(), drawerCache: null });
     const out = {};
-    Object.entries(REPORTS).forEach(([k, id]) => { out[k] = shown(id); });
-    out.R1_purchaseCount = shown('reportsPurchaseCount');
-    out.R2_saleCount = shown('reportsSaleCount');
-    return out;
-}
-
-function analyticsScreen(now) {
-    const ids = ['monthRevenue', 'monthPurchases', 'monthExpenses', 'monthProfit', 'totalPayable', 'payableCount', 'totalReceivable', 'receivableCount',
-        'monthProfitMargin', 'monthExpensesCount', 'monthRevenueGrowth', 'monthPurchasesGrowth'];
-    document.body.innerHTML = ids.map(id => `<span id="${id}"></span>`).join('');
-    at(now);
-    AnalyticsManager.renderMonthSummary();
-    AnalyticsManager.renderOutstandingDues();
-    return {
-        A1_revenue: shown('monthRevenue'), A2_purchases: shown('monthPurchases'), A3_expenses: shown('monthExpenses'), A3_expenseCount: shown('monthExpensesCount'),
-        A4_profit: shown('monthProfit'), A5_payable: shown('totalPayable'), A5_payableCount: shown('payableCount'),
-        A6_receivable: shown('totalReceivable'), A6_receivableCount: shown('receivableCount')
-    };
-}
-
-function financeAllScreen(now) {
-    const SCREEN = {
-        F1_sales: 'financeRevenue', F2_cogs: 'financeCogs', F3_businessExpenses: 'financeBusinessExp', F4_profit: 'financeNetProfit',
-        F5_personalExpenses: 'financePersonalExp', F6_stockValue: 'financeStockNow', F11_withdrawals: 'financeTotalWithdrawn'
-    };
-    at(now);
-    FinanceManager.currentDateFilter = 'all';
-    document.body.innerHTML = `<div id="financeDashboardSection">${[...Object.values(SCREEN), 'financeProfitPeriod', 'financeAfterPersonalLine',
-        'financeRevenueCount', 'financeBusinessExpCount', 'financePersonalExpCount', 'financeAvailableBalance', 'financeProfitWarning']
-        .map(id => `<span id="${id}"></span>`).join('')}</div>`;
-    FinanceManager.renderDashboard();
-    const out = {};
-    Object.entries(SCREEN).forEach(([k, id]) => { out[k] = shown(id); });
+    MoneyManager.init('profit');
+    Object.assign(out, { M1_sales: shown('moneySales'), M2_cogs: shown('moneyCogs'), M6_profit: shown('moneyProfitValue'),
+        M16_purchases: shown('moneyPurchases') });
+    MoneyManager.init('cash');
+    out.M14_net = shown('moneyNetCash');
+    MoneyManager.init('spending');
+    Object.assign(out, { M4_businessExpenses: shown('moneyBusiness'), M8_personalExpenses: shown('moneyPersonal'), M9_withdrawals: shown('moneyWithdrawn'),
+        M7_labour: shown('moneyLabour') });
     return out;
 }
 
@@ -157,7 +127,10 @@ function outstandingScreen(filter) {
     return { byParty, total: totalEl ? Number(totalEl.textContent.replace(/[^\d.]/g, '')) : (empty ? 0 : NaN) };
 }
 
-const financeSummary = (from, to, detail = false) => FinanceManager.computeSummary({ from, to, detail, cashSessions: { sessions: [], complete: true } });
+/** Open dues of wholesale sales (Outstanding lists them on Wholesale, Money adds them to "To receive"). */
+function wholesaleDue(data) {
+    return outstandingTotals({ wholesaleSales: data.wholesaleSales }).receivable.total;
+}
 
 // ------------------------------------------------------------------ one data set
 
@@ -168,16 +141,18 @@ const financeSummary = (from, to, detail = false) => FinanceManager.computeSumma
  * @param {Object} data loadBackup().data shape
  * @param {Array} periods auditPeriods()
  * @param {number} nowMs
+ * @returns {{negativeStock: (row: Object) => boolean}} evidence for causeFor()
  */
 function auditDataset(C, scope, data, periods, nowMs) {
     load(data);
     const cmp = (spec, page, period, oracle, app, unit = 'money') => C.compare({ spec, page, period, oracle, app, unit, scope });
     const chk = (spec, page, period, ok, expected = null, actual = null, unit = 'money') => C.check({ spec, page, period, ok, expected, actual, unit, scope });
     const sessionOn = (day) => (data.sessions || []).find(s => s.date === day) || null;
-    const months = { reports: { R1: 0, R2: 0 }, finance: { F1: 0, F2: 0, F4: 0, F7: 0 } };
+    const months = { M1: 0, M16: 0, M2: 0, M6: 0, M14: 0 };
     // Items whose stock went below zero (sold before bought): the app writes the refilled deficit off (#215),
     // the oracle carries it forward. Cost of goods sold on the other items must still agree exactly.
-    const dipped = negativeDips(data).items;
+    const dips = negativeDips(data);
+    const dipped = dips.items;
     const clean = dipped.length ? withoutItems(data, dipped) : null;
     const cleanSources = clean && { purchases: clean.purchases, wholesaleSales: clean.wholesaleSales, retailSales: clean.retailSales, stockAdjustments: clean.stockAdjustments };
 
@@ -210,37 +185,16 @@ function auditDataset(C, scope, data, periods, nowMs) {
             }
         }
 
-        // ---- Reports
-        const rep = reportsScreen(p);
-        const wantR = O.reports(data, range);
-        ['R1_purchases', 'R2_sales', 'R3_profit', 'R4_cash', 'R5_online', 'R8_labour'].forEach(k => cmp(k, 'Reports', label, rupee(wantR[k]), rep[k]));
-        cmp('R1_purchaseCount', 'Reports', label, wantR.R1_purchaseCount, rep.R1_purchaseCount, 'count');
-        cmp('R2_saleCount', 'Reports', label, wantR.R2_saleCount, rep.R2_saleCount, 'count');
-        if (p.kind === 'all') {
-            cmp('R6_dueToPay', 'Reports', label, rupee(wantR.R6_dueToPay), rep.R6_dueToPay);
-            cmp('R7_dueToReceive', 'Reports', label, rupee(wantR.R7_dueToReceive), rep.R7_dueToReceive);
-        }
-
-        // ---- Finance (the function its dashboard calls)
-        const fin = financeSummary(p.from, p.to);
+        // ---- Stock check line (M17) and cost of goods sold without the items that went below zero
         const wantF = O.finance(data, range);
-        cmp('F1_sales', 'Finance', label, wantF.F1_sales, fin.sales.total);
-        cmp('F1_saleCount', 'Finance', label, wantF.F1_saleCount, fin.sales.count, 'count');
-        cmp('F2_cogs', 'Finance', label, wantF.F2_cogs, fin.cogs);
-        cmp('F3_businessExpenses', 'Finance', label, wantF.F3_businessExpenses, fin.expenses.business);
-        cmp('F4_profit', 'Finance', label, wantF.F4_profit, fin.profit);
-        cmp('F5_personalExpenses', 'Finance', label, wantF.F5_personalExpenses, fin.expenses.personal);
-        cmp('F7_cashFlow', 'Finance', label, wantF.F7_cashFlow, fin.cash.net);
-        cmp('F11_withdrawals', 'Finance', label, wantF.F11_withdrawals, fin.withdrawn);
         const c = wantF.F8_check;
-        chk('AC1_check_line', 'Finance (oracle)', label, Math.abs(c.opening + c.purchases - c.cogs + c.adjustments - c.closing) <= 1,
+        chk('AC1_check_line', 'Money (oracle)', label, Math.abs(c.opening + c.purchases - c.cogs + c.adjustments - c.closing) <= 1,
             c.closing, r2(c.opening + c.purchases - c.cogs + c.adjustments));
-        if (fin.stock) chk('F8_gap', 'Finance', label, Math.abs(fin.stock.gap) <= 1, 0, fin.stock.gap);
         if (clean) {
             const appClean = computeFinanceSummary({ sources: cleanSources, items: clean.items, base: { state: {}, from: -Infinity }, from: p.from, to: p.to });
             const wantClean = O.stockReplay(clean, range);
-            cmp('F2_cogs_items_never_below_zero', 'Finance', label, wantClean.cogs, appClean.cogs);
-            chk('F8_gap_items_never_below_zero', 'Finance', label, Math.abs(appClean.stock.gap) <= 1, 0, appClean.stock.gap);
+            cmp('M2_cogs_items_never_below_zero', 'Money (layer)', label, wantClean.cogs, appClean.cogs);
+            chk('M17_gap_items_never_below_zero', 'Money (layer)', label, Math.abs(appClean.stock.gap) <= 1, 0, appClean.stock.gap);
         }
 
         // ---- Calculation layer (business-metrics.js): Money M*, bill count, items and parties add up
@@ -253,8 +207,9 @@ function auditDataset(C, scope, data, periods, nowMs) {
             .forEach(([k, v]) => cmp(k, 'Money (layer)', label, wantM[k], v));
         cmp('M1_saleCount', 'Money (layer)', label, wantM.M1_saleCount, mm.M1.count, 'count');
         cmp('M16_purchaseCount', 'Money (layer)', label, wantM.M16_purchaseCount, mm.M16.count, 'count');
+        if (mm.M17) chk('M17_gap', 'Money (layer)', label, Math.abs(mm.M17.gap) <= 1, 0, mm.M17.gap);
         const bc = billCount(data, p.from, p.to);
-        chk('AC14_bill_count', 'Money vs Reports vs oracle', label, bc.sales === wantM.M1_saleCount && bc.sales === mm.M1.count,
+        chk('AC14_bill_count', 'Money vs oracle', label, bc.sales === wantM.M1_saleCount && bc.sales === mm.M1.count,
             wantM.M1_saleCount, bc.sales, 'count');
         const itemRows = itemSummary(mm);
         const sumOf = (list, f) => list.reduce((a, x) => a + f(x), 0);
@@ -269,23 +224,18 @@ function auditDataset(C, scope, data, periods, nowMs) {
 
         // ---- Same period, same number (AC7)
         if (today) {
-            chk('AC7_sales_today_reports', 'Today vs Reports', label, today.T2_sales === rep.R2_sales, today.T2_sales, rep.R2_sales);
-            chk('AC7_sales_today_finance', 'Today vs Finance', label, Math.abs(today.T2_sales - fin.sales.total) <= 1, today.T2_sales, r2(fin.sales.total));
-            chk('AC7_purchases_today_reports', 'Today vs Reports', label, today.T1_purchases === rep.R1_purchases, today.T1_purchases, rep.R1_purchases);
+            chk('AC7_sales_today_money', 'Today vs Money', label, Math.abs(today.T2_sales - mm.M1.total) <= 1, today.T2_sales, r2(mm.M1.total));
+            chk('AC7_purchases_today_money', 'Today vs Money', label, Math.abs(today.T1_purchases - mm.M16.total) <= 1, today.T1_purchases, r2(mm.M16.total));
         }
-        chk('AC7_sales_reports_finance', 'Reports vs Finance', label, Math.abs(rep.R2_sales - fin.sales.total) <= 1, r2(fin.sales.total), rep.R2_sales);
-        if (fin.profit !== null) chk('AC7_profit_reports_finance', 'Reports vs Finance', label, Math.abs(rep.R3_profit - fin.profit) <= 1, r2(fin.profit), rep.R3_profit);
 
+        if (p.kind === 'month' || p.kind === 'all') {
+            // ---- Money page on screen (that month seen at its end, or all time)
+            const scr = moneyScreen(p);
+            Object.keys(scr).forEach(k => cmp(k, 'Money screen', label, rupee(wantM[k]), scr[k]));
+            if (mm.M6.total !== null) chk('AC7_profit_screen_layer', 'Money screen vs layer', label, Math.abs(scr.M6_profit - mm.M6.total) <= 1, r2(mm.M6.total), scr.M6_profit);
+        }
         if (p.kind === 'month') {
-            // ---- Analytics "this month" seen at the end of that month
-            const an = analyticsScreen(p.now);
-            const wantA = O.analyticsMonth(data, p.now);
-            ['A1_revenue', 'A2_purchases', 'A3_expenses', 'A4_profit'].forEach(k => cmp(k, 'Analytics', label, rupee(wantA[k]), an[k]));
-            cmp('A3_expenseCount', 'Analytics', label, wantA.A3_expenseCount, an.A3_expenseCount, 'count');
-            chk('AC7_sales_analytics_reports', 'Analytics vs Reports', label, an.A1_revenue === rep.R2_sales, rep.R2_sales, an.A1_revenue);
-            if (fin.profit !== null) chk('AC7_profit_analytics_finance', 'Analytics vs Finance', label, Math.abs(an.A4_profit - fin.profit) <= 1, r2(fin.profit), an.A4_profit);
-            months.reports.R1 += rep.R1_purchases; months.reports.R2 += rep.R2_sales;
-            months.finance.F1 += fin.sales.total; months.finance.F2 += fin.cogs || 0; months.finance.F4 += fin.profit || 0; months.finance.F7 += fin.cash.net;
+            months.M1 += mm.M1.total; months.M16 += mm.M16.total; months.M2 += mm.M2 || 0; months.M6 += mm.M6.total || 0; months.M14 += mm.M14;
         }
 
         if (p.kind === 'all') {
@@ -294,23 +244,11 @@ function auditDataset(C, scope, data, periods, nowMs) {
             const earliest = Math.min(...covered.map(x => x.from));
             const allDated = [...data.purchases, ...data.retailSales, ...data.wholesaleSales].every(b => O.timeOf(b.date) >= earliest && O.timeOf(b.date) < nowMs + 86400000);
             if (allDated && covered.length) {
-                chk('AC4_months_eq_all', 'Reports (R1)', 'months vs all time', Math.abs(months.reports.R1 - rep.R1_purchases) <= covered.length, rep.R1_purchases, months.reports.R1);
-                chk('AC4_months_eq_all', 'Reports (R2)', 'months vs all time', Math.abs(months.reports.R2 - rep.R2_sales) <= covered.length, rep.R2_sales, months.reports.R2);
-                chk('AC4_months_eq_all', 'Finance (F1)', 'months vs all time', Math.abs(months.finance.F1 - fin.sales.total) <= 1, fin.sales.total, r2(months.finance.F1));
-                chk('AC4_months_eq_all', 'Finance (F2)', 'months vs all time', Math.abs(months.finance.F2 - (fin.cogs || 0)) <= 1, fin.cogs, r2(months.finance.F2));
-                chk('AC4_months_eq_all', 'Finance (F4)', 'months vs all time', Math.abs(months.finance.F4 - (fin.profit || 0)) <= 1, fin.profit, r2(months.finance.F4));
-                chk('AC4_months_eq_all', 'Finance (F7)', 'months vs all time', Math.abs(months.finance.F7 - fin.cash.net) <= 1, fin.cash.net, r2(months.finance.F7));
+                [['M1', mm.M1.total], ['M16', mm.M16.total], ['M2', mm.M2 || 0], ['M6', mm.M6.total || 0], ['M14', mm.M14]].forEach(([k, all]) =>
+                    chk('AC4_months_eq_all', `Money (${k})`, 'months vs all time', Math.abs(months[k] - all) <= 1, r2(all), r2(months[k])));
             }
 
-            // ---- Finance screen, assets, stock
-            const fs2 = financeAllScreen(p.now);
-            ['F1_sales', 'F2_cogs', 'F3_businessExpenses', 'F4_profit', 'F5_personalExpenses', 'F6_stockValue', 'F11_withdrawals']
-                .forEach(k => cmp(k, 'Finance screen', label, rupee(wantF[k]), fs2[k]));
-            cmp('F6_stockValue', 'Finance', label, wantF.F6_stockValue, fin.stock ? fin.stock.now : NaN);
-            const assets = FinanceManager.calculateOutstanding();
-            cmp('F9_dueToReceive', 'Finance', label, wantF.F9_dueToReceive, assets.dueToReceive);
-            cmp('F10_dueToPay', 'Finance', label, wantF.F10_dueToPay, assets.dueToPay);
-
+            // ---- Stock
             const app = computeStock({ purchases: data.purchases, wholesaleSales: data.wholesaleSales, retailSales: data.retailSales, stockAdjustments: data.stockAdjustments }, data.items);
             const want = O.stockReplay(data).perItem;
             const itemName = (k) => (data.items.find(i => i.id === k)?.name) || k;
@@ -321,14 +259,6 @@ function auditDataset(C, scope, data, periods, nowMs) {
             });
             const appTotal = Object.values(app).reduce((s, x) => s + (x.quantity > 0 ? x.quantity * x.rate : 0), 0);
             cmp('S4_total', 'Stock', label, wantF.F6_stockValue, r2(appTotal));
-
-            // ---- Analytics outstanding (A5/A6) and Outstanding (O*)
-            const an = analyticsScreen(p.now);
-            const wantA = O.analyticsMonth(data, p.now);
-            cmp('A5_payable', 'Analytics', label, rupee(wantA.A5_payable), an.A5_payable);
-            cmp('A5_payableCount', 'Analytics', label, wantA.A5_payableCount, an.A5_payableCount, 'count');
-            cmp('A6_receivable', 'Analytics', label, rupee(wantA.A6_receivable), an.A6_receivable);
-            cmp('A6_receivableCount', 'Analytics', label, wantA.A6_receivableCount, an.A6_receivableCount, 'count');
 
             const wantO = O.outstanding(data);
             const pay = outstandingScreen('purchase');
@@ -342,26 +272,22 @@ function auditDataset(C, scope, data, periods, nowMs) {
             cmp('O3_payableTotal', 'Outstanding', label, rupee(wantO.O3_payableTotal), pay.total);
             cmp('O4_receivableTotal', 'Outstanding', label, rupee(wantO.O4_receivableTotal), sale.total);
 
-            // ---- Cross-page dues (AC5)
-            chk('AC5_due_to_pay', 'Finance vs Reports vs Analytics vs Outstanding', label,
-                [rep.R6_dueToPay, an.A5_payable, pay.total].every(v => Math.abs(v - assets.dueToPay) <= 1), assets.dueToPay, rep.R6_dueToPay);
-            chk('AC5_due_to_receive', 'Finance vs Reports vs Analytics', label,
-                [rep.R7_dueToReceive, an.A6_receivable].every(v => Math.abs(v - assets.dueToReceive) <= 1), assets.dueToReceive, an.A6_receivable);
+            // ---- Cross-page dues (AC5): Outstanding == Money › Worth terms
+            const dues = outstandingTotals(data);
+            chk('AC5_due_to_pay', 'Outstanding vs Money', label, Math.abs(pay.total - dues.payable.total) <= 1, r2(dues.payable.total), pay.total);
+            chk('AC5_due_to_receive', 'Outstanding vs Money', label, Math.abs(sale.total + wholesaleDue(data) - dues.receivable.total) <= 1, r2(dues.receivable.total), r2(sale.total + wholesaleDue(data)));
         }
     }
 
-    // ---- A7 profit trend: per-day profit == Finance profit of that day (last audited days)
+    // ---- M11 profit by day: per-day profit == that day's profit (last audited days)
     const days = periods.filter(p => p.kind === 'day');
     if (days.length) {
         const first = Math.min(...days.map(d => d.from));
-        at(Math.max(...days.map(d => d.now)));
-        const summary = FinanceManager.profitSummary({ from: first, to: Infinity, detail: true });
-        if (summary.profit !== null) {
-            const byDay = profitByDay(summary.detail, isoDay);
+        const summary = moneySummary({ ...data, base: { state: {}, from: -Infinity } }, { from: first, to: Infinity }, { detail: true });
+        if (summary.M6.total !== null) {
+            const byDay = profitPerDay(summary);
             days.forEach(d => {
-                cmp('A7_profitByDay', 'Analytics', d.label, O.finance(data, [d.from, d.to]).F4_profit, byDay[d.label] || 0);
-                const f = financeSummary(d.from, d.to);
-                if (f.profit !== null) chk('AC7_profitByDay_vs_finance', 'Analytics vs Finance', d.label, Math.abs((byDay[d.label] || 0) - f.profit) <= 1, f.profit, byDay[d.label] || 0);
+                cmp('M11_profitByDay', 'Money (layer)', d.label, O.metrics(data, [d.from, d.to]).M6_profit, byDay[d.label] || 0);
             });
         }
     }
@@ -414,6 +340,21 @@ function auditDataset(C, scope, data, periods, nowMs) {
             cmp('PT1_kg', 'Product traffic', `${itemName(r.itemId)} ${p.label}`, kg, r.kg, 'kg');
         });
     });
+
+    // Evidence for tools/audit/causes.js: 'negative stock' only where it really applies.
+    const firstDip = Math.min(Infinity, ...Object.values(dips.firstDip));
+    const periodEnd = new Map(periods.map(p => [p.kind === 'all' ? 'all time' : p.label, p.to]));
+    const dippedNames = new Set(dipped.map(itemName));
+    return {
+        // An item went below zero before the period ended, and the same figure without those items agrees.
+        negativeStock: (row) => {
+            if (!clean) return false;
+            if (row.spec === 'S3_value') return dippedNames.has(row.period);
+            const end = periodEnd.get(row.period);
+            if (end === undefined || !(firstDip < end)) return false;
+            return !C.mismatches.some(m => m.scope === scope && m.period === row.period && /_items_never_below_zero$/.test(m.spec));
+        }
+    };
 }
 
 // ------------------------------------------------------------------ migrated state
@@ -468,10 +409,7 @@ beforeEach(() => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(AnomaliesManager, 'renderDayReport').mockImplementation(() => {});
-    jest.spyOn(ReportsManager, 'renderTrendChart').mockImplementation(() => {});
-    jest.spyOn(ReportsManager, 'renderTopItems').mockImplementation(() => {});
-    ['renderMonthlyChart', 'renderProfitBreakdown', 'renderStockBreakdown', 'renderCashFlow', 'renderFullHistoryPrompt']
-        .forEach(fn => jest.spyOn(FinanceManager, fn).mockImplementation(() => {}));
+    jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
 });
 
 const run = ENV.AUDIT_BACKUP ? test : test.skip;
@@ -484,7 +422,7 @@ run('real-data number audit', () => {
     const C = new Collector();
     const notes = [];
 
-    auditDataset(C, 'real', data, auditPeriods(nowMs, opts), nowMs);
+    const evidence = { real: auditDataset(C, 'real', data, auditPeriods(nowMs, opts), nowMs) };
     load(data);
     CashManagementManager.todaySession = null;
     const numberChecks = runNumberChecks(data, { fullHistory: true });
@@ -508,7 +446,7 @@ run('real-data number audit', () => {
         });
         periods.sort((a, b) => (a.kind === 'all') - (b.kind === 'all') || (a.kind === 'month') - (b.kind === 'month'));
         const before = C.mismatches.length;
-        auditDataset(C, 'migrated', m.data, periods, goLive);
+        evidence.migrated = auditDataset(C, 'migrated', m.data, periods, goLive);
         const found = C.mismatches.slice(before);
         // Is anything from an opening record in a period figure? Compare the app with the openings removed.
         const withoutOpenings = { ...m.data, purchases: m.data.purchases.filter(b => !O.isOpening(b)), retailSales: m.data.retailSales.filter(b => !O.isOpening(b)), wholesaleSales: m.data.wholesaleSales.filter(b => !O.isOpening(b)) };
@@ -536,7 +474,7 @@ run('real-data number audit', () => {
         title: 'Real-data number audit',
         appRef: ENV.AUDIT_APP_REF || 'working tree',
         compare: ENV.AUDIT_COMPARE && fs.existsSync(ENV.AUDIT_COMPARE) ? JSON.parse(fs.readFileSync(ENV.AUDIT_COMPARE, 'utf8')) : null,
-        exportedAt, ms, periods: opts, collector: C, causes: (g) => causeFor(g, CAUSES), quality, numberChecks, migrated, notes
+        exportedAt, ms, periods: opts, collector: C, causes: (g) => causeFor(g, CAUSES, evidence[g.scope]), quality, numberChecks, migrated, notes
     });
     if (ENV.AUDIT_OUT) fs.writeFileSync(ENV.AUDIT_OUT, report);
     if (ENV.AUDIT_JSON) {

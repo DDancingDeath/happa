@@ -156,10 +156,9 @@ const VIEWS = {
     stockAdjustmentHistory: { tab: 'stock', run: () => window.app?.stock?.renderAdjustmentHistory?.() },
     stockView: { tab: 'stock', run: () => window.app?.stock?.render?.() },
     expensesHistory: { tab: 'expenses', run: () => window.app?.expenses?.renderHistory?.() },
-    financeOverview: { tab: 'finance', run: () => window.app?.finance?.renderDashboard?.() },
-    financeWithdrawals: { tab: 'finance', run: () => window.app?.finance?.renderWithdrawals?.() },
-    analytics: { tab: 'analytics', run: () => window.app?.analytics?.renderAll?.() },
-    reports: { tab: 'reports', run: () => window.app?.reports?.renderReports?.() }
+    money: { tab: 'money', run: () => window.app?.money?.render?.() },
+    insights: { tab: 'insights', run: () => window.app?.insights?.render?.() },
+    statements: { tab: 'statements', run: () => window.app?.statements?.render?.() }
 };
 
 /** Debounce window that coalesces bursts of snapshot events (ms). */
@@ -290,17 +289,17 @@ const PINNED_CHUNK = 30;
 
 const HISTORY_COLLECTIONS = [
     { key: 'purchases', stateKey: 'purchaseHistory', label: 'Purchases', stock: true, dues: true,
-        views: ['billingDropdown', 'salesDropdown', 'history', 'due', 'stockView', 'financeOverview', 'analytics', 'reports'] },
+        views: ['billingDropdown', 'salesDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
     { key: 'retailSales', stateKey: 'retailSalesHistory', label: 'Retail sales', stock: true, dues: true,
-        views: ['billingDropdown', 'history', 'due', 'stockView', 'financeOverview', 'analytics', 'reports'] },
+        views: ['billingDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
     { key: 'wholesaleSales', stateKey: 'salesHistory', label: 'Sales', stock: true, dues: true,
-        views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'financeOverview', 'analytics', 'reports'] },
+        views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
     { key: 'expenses', stateKey: 'expensesHistory', label: 'Expenses',
-        views: ['expensesHistory', 'financeOverview', 'analytics', 'reports'] },
+        views: ['expensesHistory', 'money', 'insights', 'statements'] },
     { key: 'stockAdjustments', stateKey: 'stockAdjustments', label: 'Stock adjustments', stock: true,
-        views: ['stockAdjustmentHistory', 'stockView'] },
+        views: ['stockAdjustmentHistory', 'stockView', 'money', 'insights', 'statements'] },
     { key: 'withdrawals', stateKey: 'withdrawalsHistory', label: 'Withdrawals', optional: true,
-        views: ['financeOverview', 'financeWithdrawals'] }
+        views: ['money', 'statements'] }
 ];
 const HISTORY_SPEC = Object.fromEntries(HISTORY_COLLECTIONS.map(s => [s.key, s]));
 const ALL_HISTORY_VIEWS = [...new Set(HISTORY_COLLECTIONS.flatMap(s => s.views))];

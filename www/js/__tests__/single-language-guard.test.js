@@ -21,7 +21,6 @@ jest.mock('../firebase/firestore-service.js', () => ({
     }
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: { showImagePreview: jest.fn(() => true) } }));
-jest.mock('../modules/reports.js', () => ({ chartScaleMax: (v) => Math.max(1, ...v) }));
 
 const fs = require('fs');
 const path = require('path');
@@ -38,9 +37,7 @@ import { buildBillShareText } from '../utils/bill-share.js';
 import { buildReminderText, buildStatement } from '../utils/due-reminder.js';
 import { AdminManager } from '../modules/admin.js';
 import { SettingsManager } from '../modules/settings.js';
-import { AnalyticsManager } from '../modules/analytics.js';
 import { ExpensesManager } from '../modules/miscellaneous.js';
-import { FinanceManager } from '../modules/finance.js';
 import { ItemsManager } from '../modules/items.js';
 import { StockManager } from '../modules/stock.js';
 import { DiagnosticsManager } from '../modules/diagnostics.js';
@@ -323,8 +320,7 @@ describe('Hindi mode: no English UI words', () => {
         expect(found).toEqual([]);
     });
 
-    test('Reports, Analytics, Admin, Expenses, Stock, Finance, Items, Diagnostics and History parts drawn by JS', async () => {
-        const { ReportsManager } = jest.requireActual('../modules/reports.js');
+    test('Admin, Expenses, Stock, Items, Diagnostics and History parts drawn by JS', async () => {
         FirebaseService.loadUsers.mockResolvedValue([
             { id: 'u1', name: 'Suresh', email: 'suresh@example.com', status: 'pending' },
             { id: 'u2', name: 'Ram Traders', email: 'ram@example.com', role: 'manager', status: 'active' }
@@ -336,23 +332,6 @@ describe('Hindi mode: no English UI words', () => {
             clone.querySelectorAll('style, script').forEach(el => el.remove());
             texts.push(textAndAttrs(clone));
         };
-
-        document.body.innerHTML = html('reports.html');
-        ReportsManager.populateFilters();
-        ReportsManager.renderTopItems(AppState.purchaseHistory, AppState.salesHistory);
-        ReportsManager.renderItemBreakdown(AppState.purchaseHistory, 'purchaseItemsBreakdown');
-        ReportsManager.renderRecentTransactions([], 'recentSalesList', 'sale');
-        ReportsManager.renderItemComparison(AppState.purchaseHistory, AppState.salesHistory);
-        texts.push(ReportsManager.getDateRangeText());
-        grab();
-
-        document.body.innerHTML = html('analytics.html');
-        AnalyticsManager.renderOutstandingDues();
-        AnalyticsManager.renderRateTrends();
-        AnalyticsManager.renderItemsToFocus();
-        AnalyticsManager.renderTopPerformers();
-        AnalyticsManager.renderCustomerInsights();
-        grab();
 
         document.body.innerHTML = html('admin.html');
         AdminManager.activeTab = 'users';
@@ -380,12 +359,6 @@ describe('Hindi mode: no English UI words', () => {
         await StockManager.renderAdjustmentHistory();
         grab();
 
-        document.body.innerHTML = html('finance.html');
-        FinanceManager.customAccounts = [{ name: 'Suresh', icon: '🏦', balance: 100, type: 'liability' }];
-        FinanceManager.renderCustomAccounts();
-        FinanceManager.renderWithdrawalHistory();
-        grab();
-
         document.body.innerHTML = html('items.html');
         ItemsManager.renderItemsTable('zzz');
         grab();
@@ -407,7 +380,7 @@ describe('Hindi mode: no English UI words', () => {
 
         const text = texts.join('\n').replace(/<[^>]+>/g, ' ');
         expect(englishWords(text)).toEqual([]);
-        ['रिपोर्ट', 'सभी विक्रेता', 'एडमिन', 'मंज़ूर करें', 'दुकान के खर्च', 'घटाया', 'तनख़्वाह', 'पुराने बिल', 'बिल बना']
+        ['एडमिन', 'मंज़ूर करें', 'दुकान के खर्च', 'घटाया', 'पुराने बिल', 'बिल बना']
             .forEach(s => expect(text).toContain(s));
     });
 
@@ -483,18 +456,15 @@ describe('Hindi mode: no English UI words', () => {
     });
 
     test('dates show Hindi month and day names; CSV headers follow the language with an English choice', () => {
-        const { csvHeaderRow, csvLanguage } = jest.requireActual('../modules/reports.js');
+        const { csvLanguage } = jest.requireActual('../utils/statements.js');
         const oct = new Date(2026, 9, 21, 10, 5);
         const dates = [formatWindowDate(oct.getTime()), Helpers.formatDate(oct), formatDateTimeIN(oct, { day: '2-digit', month: 'short' })].join(' ');
         expect(dates).toContain('अक्टू');
         expect(englishWords(dates)).toEqual([]);
-        expect(englishWords(csvHeaderRow(csvLanguage('hi', false)))).toEqual([]);
         expect(csvLanguage('hi', true)).toBe('en');
         expect(csvLanguage('en', false)).toBe('en');
-        expect(csvHeaderRow('en')).toContain('"Bill ID","Date"');
-        document.body.innerHTML = html('reports.html');
-        applyTranslations(document);
-        expect(document.getElementById('csvEnglishToggle').textContent).toContain('अंग्रेज़ी');
+        expect(csvLanguage('hi', false)).toBe('hi');
+        expect(hi['ui.statements.csv_english']).toContain('अंग्रेज़ी');
     });
 
     test('/download shows one language, with an English | हिंदी switch', () => {

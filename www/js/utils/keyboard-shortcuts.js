@@ -17,7 +17,7 @@ export const TAB_SHORTCUTS = [
     { tabId: 'history', en: 'History', hi: 'इतिहास' },
     { tabId: 'stock', en: 'Stocks', hi: 'स्टॉक' },
     { tabId: 'due', en: 'Outstanding', hi: 'बकाया' },
-    { tabId: 'finance', en: 'Finance', hi: 'वित्त' }
+    { tabId: 'money', en: 'Money', hi: 'हिसाब' }
 ];
 
 const BILL_BUTTONS = {
