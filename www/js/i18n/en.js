@@ -1527,6 +1527,7 @@ export default {
     'msg.rent.no_vacant_unit': "No vacant unit. Add a unit under Properties first.",
     'msg.rent.payment_failed': "Payment not saved. It needs the internet; try again.",
     'msg.rent.payment_saved': "✓ Payment of {amount} saved",
+    'msg.rent.payment_saved_no_receipt': "Payment of {amount} saved, receipt not issued",
     'msg.rent.save_failed': "Not saved. Check the internet and try again.",
     'msg.rent.saved': "✓ Saved",
     'msg.rent.too_long': "Text is too long",

@@ -1095,7 +1095,9 @@ service cloud.firestore {
     // (with rno = its number) to the charge and moves the year's counter
     // rent_counters/receipts_{YYYY} on by exactly one; the number is that counter
     // value, so numbers are unique and gap-free per year. The amounts are the
-    // charge's after the payment. Never edited, except cancel (void) by owner/manager.
+    // charge's after the payment; the year is this year in India and createdAt the
+    // server time; tenant name, header and address are the charge's / settings'
+    // (place and type stay as the app wrote them). Never edited, except cancel (void) by owner/manager.
     function rentReceiptFields() {
       return ['no', 'year', 'seq', 'chargeId', 'pi', 'leaseId', 'tenantId', 'unitId', 'propertyId', 'tenantName',
               'place', 'ut', 'months', 'rent', 'elec', 'total', 'paid', 'mode', 'ref', 'date', 'balance', 'by',
@@ -1113,6 +1115,20 @@ service cloud.firestore {
         && (exists(path) ? get(path).data.get('last', 0) == seq - 1 : seq == 1);
     }
 
+    // The header the app writes: Settings › Rentals receiptHeader, else the shared
+    // business name (settings/app businessName) or '' when the app can't read it;
+    // the address is receiptAddress ('' without the settings doc).
+    function rentReceiptHeaderOk(usersCol, d) {
+      let rsPath = rentPath(usersCol, 'rent_settings', 'default');
+      let rs = exists(rsPath) ? get(rsPath).data : {};
+      let hdr = rs.get('receiptHeader', '');
+      let appPath = settingsAppPath(usersCol);
+      return d.get('bizAddr', null) == rs.get('receiptAddress', '')
+        && (hdr != '' ? d.get('biz', null) == hdr
+          : d.get('biz', null) == ''
+            || (exists(appPath) && d.get('biz', null) == get(appPath).data.get('businessName', '')));
+    }
+
     function validRentReceiptCreate(usersCol, rid) {
       let d = request.resource.data;
       let chPath = rentPath(usersCol, 'rent_charges', d.get('chargeId', '-'));
@@ -1122,7 +1138,7 @@ service cloud.firestore {
         && !d.keys().hasAny(['voidBy', 'voidByName', 'voidAt', 'voidReason']) && d.get('void', null) == false
         && rentStr(d, 'chargeId', 1, 80) && d.get('pi', -1) is int && d.pi >= 0 && d.pi < 12
         && rid == d.chargeId + '_' + string(d.pi)
-        && d.get('year', 0) is int && d.year >= 2024 && d.year <= 2100
+        && d.get('year', 0) is int && d.year == (request.time + duration.value(330, 'm')).year()
         && d.get('seq', 0) is int && d.seq >= 1
         && d.get('no', '') is string && d.no.matches('R-' + string(d.year) + '-0*' + string(d.seq))
         && rentReceiptSeqOk(usersCol, rid, d.year, d.seq)
@@ -1137,10 +1153,11 @@ service cloud.firestore {
         && d.get('total', null) == ch.amount
         && d.get('balance', null) is number
         && d.balance >= ch.amount - ch.paid - 0.01 && d.balance <= ch.amount - ch.paid + 0.01
-        && rentStr(d, 'tenantName', 0, 80) && rentStr(d, 'place', 0, 150) && rentStr(d, 'byName', 0, 80)
-        && rentStr(d, 'biz', 0, 80) && rentStr(d, 'bizAddr', 0, 200)
+        && rentStr(d, 'tenantName', 0, 80) && d.tenantName == get(chPath).data.get('tenantName', '')
+        && rentStr(d, 'place', 0, 150) && rentStr(d, 'byName', 0, 80)
+        && rentStr(d, 'biz', 0, 80) && rentStr(d, 'bizAddr', 0, 200) && rentReceiptHeaderOk(usersCol, d)
         && (!('ut' in d) || d.ut in ['flat', 'commercial', 'office', 'godown', 'other'])
-        && d.get('createdAt', null) is number;
+        && d.get('createdAt', null) == request.time;
     }
 
     // Cancel: void once, by owner/manager, nothing else changes; the charge marks it in the same write.

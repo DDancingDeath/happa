@@ -14,6 +14,7 @@ import { openExternal } from '../utils/open-external.js';
 import { formatINR, whatsAppReminderUrl } from '../utils/due-reminder.js';
 import { t, getLang, applyTranslations, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
+import { TelemetryService } from '../services/telemetry.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import * as store from './rent-store.js';
 import { AppState } from '../utils/state.js';
@@ -441,17 +442,13 @@ async function pay(leaseId) {
     const mode = PAYMENT_MODES.includes(val('rentPayMode')) ? val('rentPayMode') : 'cash';
     const ref = val('rentPayRef');
     const date = val('rentPayDate') || todayLocalISO();
-    const d = store.snapshot();
-    const ix = index(d);
-    const s = await defaults();
-    const lp = linkPlace(ix, charge?.unitId);
-    const rc = {
-        tenantName: ix.tenants.get(charge?.tenantId)?.name || charge?.tenantName || '',
-        place: lp.place || charge?.unitLabel || '', ut: lp.unitType || null, biz: headerName(s), bizAddr: s.receiptAddress || ''
-    };
+    const lp = linkPlace(index(store.snapshot()), charge?.unitId);
+    const rc = { place: lp.place || charge?.unitLabel || '', ut: lp.unitType || null, shopName: AppState.settings?.sharedShopName || '' };
     try {
         const res = await store.recordPayment(id, { amount, mode, ref, date }, rc);
-        UIManager.showToast(t('msg.rent.payment_saved', { amount: formatINR(res.amount) }), 'success');
+        const nr = res.receiptRefused;
+        UIManager.showToast(t(nr ? 'msg.rent.payment_saved_no_receipt' : 'msg.rent.payment_saved', { amount: formatINR(res.amount) }), nr ? 'warning' : 'success');
+        if (nr) TelemetryService.logWarning('Rent receipt refused', { code: nr, chargeId: id });
         AuditService.log('RENT_PAYMENT', {
             chargeId: id, month: charge?.month || '', amount: res.amount, mode, tenant: charge?.tenantName || '', receipt: res.receipt?.no || ''
         }).catch(auditWarn);

@@ -1527,6 +1527,7 @@ export default {
     'msg.rent.no_vacant_unit': "कोई खाली यूनिट नहीं। पहले संपत्ति में यूनिट जोड़ें।",
     'msg.rent.payment_failed': "भुगतान सहेजा नहीं गया। इंटरनेट चाहिए, फिर कोशिश करें।",
     'msg.rent.payment_saved': "✓ {amount} का भुगतान सहेजा गया",
+    'msg.rent.payment_saved_no_receipt': "{amount} का भुगतान सहेजा गया, रसीद नहीं बनी",
     'msg.rent.save_failed': "सहेजा नहीं गया। इंटरनेट जाँचकर फिर कोशिश करें।",
     'msg.rent.saved': "✓ सहेजा गया",
     'msg.rent.too_long': "लिखावट बहुत लंबी है",

@@ -23,9 +23,11 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const rel = (p) => path.relative(WWW, p).split(path.sep).join('/');
 const RENT_COLLECTION = /['"`](?:dev_)?rent_[a-z]/;
 const BUDGET_BYTES = 130 * 1024;
-/** Rentals files loaded with import() only when used (not when Rentals opens), with their own budget. */
+/** Rentals files rentals.js loads with import() (precached by the service worker like the rest), with their own budget. */
 const LAZY = ['rent-receipt.js'];
 const LAZY_BUDGET_BYTES = 20 * 1024;
+/** Everything Rentals ships: every js/rentals file, its template and its CSS. */
+const TOTAL_BUDGET_BYTES = 150 * 1024;
 /** Size as served (LF line endings), the same on a Windows checkout and in CI. */
 const sizeOf = (f) => Buffer.byteLength(read(f).replace(/\r\n/g, '\n'));
 
@@ -105,7 +107,7 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
     });
 
     // Receipts are split out: rentals.js loads rent-receipt.js with import() when a receipt is opened.
-    test(`the receipt module loads only when used and stays within ${LAZY_BUDGET_BYTES / 1024} KB`, () => {
+    test(`the receipt module is loaded when Rentals opens a receipt (import() from rentals.js) and stays within ${LAZY_BUDGET_BYTES / 1024} KB`, () => {
         const files = listJs(RENTALS);
         LAZY.forEach(name => {
             const importers = files.filter(f => path.basename(f) !== name && read(f).includes(name)).map(rel);
@@ -117,5 +119,12 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
         });
         expect(read(path.join(RENTALS, 'rent-receipt.js'))).toMatch(/css\/rent-receipt\.css/);
         expect(read(path.join(WWW, 'index.html'))).not.toMatch(/rent-receipt/);
+        expect(read(path.join(WWW, 'service-worker.js'))).toContain("'/js/rentals/rent-receipt.js'");
+    });
+
+    test(`all Rentals files together (js/rentals/*, rentals.html, rentals.css) stay within ${TOTAL_BUDGET_BYTES / 1024} KB`, () => {
+        const files = [...listJs(RENTALS), path.join(WWW, 'templates', 'rentals.html'), path.join(WWW, 'css', 'rentals.css')];
+        expect(files.length).toBeGreaterThan(LAZY.length + 2);
+        expect(files.reduce((s, f) => s + sizeOf(f), 0)).toBeLessThanOrEqual(TOTAL_BUDGET_BYTES);
     });
 });

@@ -226,6 +226,8 @@ export class SettingsManager {
         AppState.settings.checkThresholds = normalizeThresholds(appSettings?.checkThresholds);
         // Business name/details (Settings › Aadhat): shared; a name set only on this device is kept until one is saved
         if (typeof appSettings?.businessName === 'string') AppState.settings.shopName = appSettings.businessName;
+        // The shared name alone (rent receipts fall back to it; firestore.rules check it)
+        AppState.settings.sharedShopName = typeof appSettings?.businessName === 'string' ? appSettings.businessName : '';
         if (typeof appSettings?.businessDetails === 'string') AppState.settings.businessDetails = appSettings.businessDetails;
         localStorage.setItem('settings', JSON.stringify(AppState.settings));
         const hasShared = !!appSettings && (appSettings.laborRate !== undefined || appSettings.heavyWeightThreshold !== undefined
@@ -391,6 +393,8 @@ export class SettingsManager {
         localStorage.setItem('settings', JSON.stringify(AppState.settings));
         try {
             await FirebaseService.saveBusinessDetails(details);
+            AppState.settings.sharedShopName = details.businessName;
+            localStorage.setItem('settings', JSON.stringify(AppState.settings));
             UIManager.showToast(t('msg.admin.settings_saved_everyone'));
             return true;
         } catch (error) {

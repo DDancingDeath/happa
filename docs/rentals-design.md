@@ -256,7 +256,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts): the files loaded when Rentals opens are 129.3 KB as served (LF), plus the 3.7 KB switcher that start-up loads. Receipts (§10) are split out: `rent-receipt.js` + `css/rent-receipt.css` (≈ 15 KB) load with `import()` only when a receipt or a tenant's Receipts list is opened. Downloaded once per app version in the background, never at start-up. The tenant page (≈ 15 KB) is not precached | Budget: files loaded when Rentals opens ≤ 130 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features); the receipt module ≤ 20 KB and imported only by `rentals.js` with `import()`; `rentals-startup.test.js` fails above either |
+| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts): the files loaded when Rentals opens are 129.3 KB as served (LF), plus the 3.7 KB switcher that start-up loads. Receipts (§10) are split out: `rent-receipt.js` + `css/rent-receipt.css` (≈ 15 KB) load with `import()` only when a receipt or a tenant's Receipts list is opened. Downloaded once per app version in the background, never at start-up. The tenant page (≈ 15 KB) is not precached | Budget: files loaded when Rentals opens ≤ 130 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features); the receipt module ≤ 20 KB and imported only by `rentals.js` with `import()`; everything together (`js/rentals/*`, `templates/rentals.html`, `css/rentals.css`) ≤ 150 KB; `rentals-startup.test.js` fails above any of them |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -506,16 +506,23 @@ WhatsApp messages and the read-only link; rent never goes into the Aadhat cash d
   `last + 1`, the receipt and the number on the payment entry (`payments[i].rno`). The rules allow the
   counter only to move by exactly one, pointing at a receipt created in the same write with that number,
   and the receipt only with that counter move, so a number can never be used twice or skipped. Two
-  people paying at the same moment: the later write is refused and the app reads again (up to 3 tries).
-  If the receipt is still refused (e.g. rules not yet deployed), **the payment is saved without a
-  receipt** — a receipt problem never blocks a payment.
+  people paying at the same moment: the transaction reads again by itself; on `aborted` /
+  `failed-precondition` the app tries once more. If the receipt is refused (`permission-denied`, e.g.
+  rules not yet deployed), **the payment is saved without a receipt** and the app says so ("Payment
+  saved, receipt not issued") and reports it (telemetry warning `Rent receipt refused`). Such a payment
+  can never get a receipt later (the rules allow one only in the write that adds the payment).
 - **Document** `rent_receipts/{chargeId}_{i}` (`dev_rent_receipts` in development; one per payment, `i` =
   the payment's index on the charge): `no, year, seq, chargeId, pi, leaseId, tenantId, unitId, propertyId,
   tenantName, place` (unit and property, without the type word) + `ut` (type id, so a reprint says
   "Flat" / "फ़्लैट" in the reader's language), `months` (`[month]`), `rent`, `elec` (the month's meter bill or
   `null`: only meter-billed leases have one), `total, paid, mode, ref, date, balance, by, byName, biz,
   bizAddr` (Settings › Rentals name and address at the time), `createdAt, void`. Field allow-list in the
-  rules; every amount is checked against the charge after the payment (RENT-12).
+  rules; every amount is checked against the charge after the payment (RENT-12). The rules also fix
+  `year` = this year in IST (server clock), `createdAt` = server time (`serverTimestamp()`),
+  `tenantName` = the charge's, `bizAddr` = `receiptAddress` and `biz` = `receiptHeader` of
+  `rent_settings/default` (read in the payment transaction), else the shared business name
+  (`settings/app.businessName`) or blank when the phone can't read it. `place` / `ut` stay as the app
+  wrote them (checking them would need the unit and property reads).
 - **Never edited or deleted.** A mistake is corrected by **Cancel receipt** (owner / Rentals manager):
   `void: true` with who, when and a reason, in the same write as the charge's `voided` list (payment
   indexes), plus an audit entry `RENT_RECEIPT_VOID`. The payment itself does not change; a correction is a
@@ -530,7 +537,7 @@ WhatsApp messages and the read-only link; rent never goes into the Aadhat cash d
   (`months[].py[] = {d, a, r}`), written in the same transaction as the payment (and dropped when
   cancelled), so the public page still reads exactly one document.
 - **Cost and speed:** start-up unchanged (no receipt code or `rent_` name in the start-up graph).
-  Recording a payment reads one more document (the counter) and writes two more (receipt, counter). The
+  Recording a payment reads two more documents (the counter, `rent_settings/default`) and writes two more (receipt, counter). The
   receipt code (`js/rentals/rent-receipt.js`, `css/rent-receipt.css`) loads with `import()` only when a
   receipt is opened; the Receipts list is one bounded query (`tenantId ==`, `createdAt desc`, limit 60;
   composite index `rent_receipts (tenantId ASC, createdAt DESC)` + `dev_`).

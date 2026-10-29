@@ -2220,7 +2220,11 @@ function defineRentSuite(prefix) {
         no: rno(seq), year: R_YEAR, seq, chargeId: `L1_${month}`, pi, leaseId: 'L1', tenantId: 'T1', unitId: 'U1', propertyId: 'P1',
         tenantName: 'Ram', place: 'G1, Gali 2', ut: 'flat', months: [month], rent: 5000, elec: null, total,
         paid: amount, mode: 'cash', ref: '', date: '2026-10-05', balance: total - paidAfter, by: uid, byName: 'x',
-        biz: 'Sharma Rentals', bizAddr: 'Main Road', createdAt: 2, void: false, ...over
+        biz: 'Sharma Rentals', bizAddr: 'Main Road', createdAt: serverTimestamp(), void: false, ...over
+    });
+    // Settings › Rentals receipt header and address (the receipt's biz / bizAddr must match).
+    const seedHeader = (over = {}) => seed('rent_settings', 'default', {
+        dueDay: 10, increasePct: 5, meterRate: 8, tenantLink: false, receiptHeader: 'Sharma Rentals', receiptAddress: 'Main Road', updatedAt: 1, updatedBy: 'x', ...over
     });
     // One payment write with its receipt and the year's counter (as rent-store.js recordPayment).
     const payReceipt = (uid, seq, { prior = [], amount = 2000, total = 5000, rcpt = {}, ent = {}, ctr = {}, noCounter = false, noReceipt = false, f = db(uid) } = {}) => {
@@ -2241,6 +2245,7 @@ function defineRentSuite(prefix) {
     };
 
     t('receipts: the payment, its receipt and the next number of the year go in one write', async () => {
+        await seedHeader();
         await seed('rent_charges', `L1_${CUR}`, charge(CUR));
         await assertFails(payReceipt('staff1', 1));
         await assertFails(payReceipt('rentMember', 1, { noCounter: true }));
@@ -2263,6 +2268,7 @@ function defineRentSuite(prefix) {
     });
 
     t('receipts: content must match the payment and the charge; fields allow-listed', async () => {
+        await seedHeader();
         await seed('rent_charges', `L1_${CUR}`, charge(CUR));
         for (const rcpt of [{ paid: 999 }, { balance: 0 }, { total: 9999 }, { months: [PREV] }, { by: 'rentOnly' }, { mode: 'upi' },
             { rent: 1 }, { elec: elec(0, 10, 8) }, { void: true }, { voidBy: 'x' }, { gst: 18 }, { leaseId: 'L9' }, { no: rno(2) },
@@ -2270,10 +2276,53 @@ function defineRentSuite(prefix) {
             await assertFails(payReceipt('rentMember', 1, { rcpt }));
         }
         await assertFails(payReceipt('rentMember', 1, { rcpt: { pi: 1 } }));
-        await assertSucceeds(payReceipt('rentMember', 1, { rcpt: { ut: 'commercial', bizAddr: '' } }));
+        await assertSucceeds(payReceipt('rentMember', 1, { rcpt: { ut: 'commercial' } }));
+    });
+
+    t('receipts: the year is this year in India and createdAt the server time (a consistent next-year number is refused)', async () => {
+        await seedHeader();
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        const Y = R_YEAR + 1;
+        const no = `R-${Y}-0001`;
+        const f = db('rentMember');
+        const b = f.batch();
+        b.update(chargeOn(f, CUR), { paid: 2000, open: true, updatedAt: 2, updatedBy: 'rentMember', payments: [{ ...entry('rentMember', 2000), rno: no }] });
+        b.set(rctOn(f, `L1_${CUR}_0`), { ...receipt('rentMember', 1), no, year: Y });
+        b.set(f.collection(c('rent_counters')).doc(`receipts_${Y}`), { last: 1, rid: `L1_${CUR}_0`, updatedAt: 2, updatedBy: 'rentMember' });
+        await assertFails(b.commit());
+        await assertFails(payReceipt('rentMember', 1, { rcpt: { createdAt: Date.now() } }));
+        await assertSucceeds(payReceipt('rentMember', 1));
+    });
+
+    t('receipts: tenant name is the charge\'s; header and address are Settings › Rentals\' (forgeries refused)', async () => {
+        await seedHeader();
+        await seed('settings', 'app', { businessName: 'Gupta Aadhat' });
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        for (const rcpt of [{ tenantName: 'Shyam' }, { tenantName: '' }, { biz: 'Fake Traders' }, { biz: 'Gupta Aadhat' }, { biz: '' },
+            { bizAddr: 'Other Road' }, { bizAddr: '' }]) {
+            await assertFails(payReceipt('rentMember', 1, { rcpt }));
+        }
+        await assertSucceeds(payReceipt('rentMember', 1));
+    });
+
+    t('receipts: without a Rentals header the business name (or nothing) heads the receipt, with no address', async () => {
+        await seed('settings', 'app', { businessName: 'Gupta Aadhat' });
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        for (const rcpt of [{ biz: 'Fake Traders', bizAddr: '' }, { biz: 'Sharma Rentals', bizAddr: '' }, { biz: 'Gupta Aadhat', bizAddr: 'Main Road' }]) {
+            await assertFails(payReceipt('rentMember', 1, { rcpt }));
+        }
+        await assertSucceeds(payReceipt('rentMember', 1, { rcpt: { biz: 'Gupta Aadhat', bizAddr: '' } }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV));
+        const f = db('rentOnly');
+        const b = f.batch();
+        b.update(chargeOn(f, PREV), { paid: 1000, open: true, updatedAt: 2, updatedBy: 'rentOnly', payments: [{ ...entry('rentOnly', 1000), rno: rno(2) }] });
+        b.set(rctOn(f, `L1_${PREV}_0`), { ...receipt('rentOnly', 2, { amount: 1000, month: PREV }), biz: '', bizAddr: '' });
+        b.set(ctrOn(f), { last: 2, rid: `L1_${PREV}_0`, updatedAt: 2, updatedBy: 'rentOnly' });
+        await assertSucceeds(b.commit());
     });
 
     t('receipts: a meter-billed month carries its electricity exactly', async () => {
+        await seedHeader();
         const e = elec(100, 150, 8);
         await seed('rent_charges', `L1_${CUR}`, charge(CUR, { electricity: e, amount: 5400 }));
         await assertFails(payReceipt('rentMember', 1, { total: 5400 }));
@@ -2282,6 +2331,7 @@ function defineRentSuite(prefix) {
     });
 
     t('receipts: two people paying at once never get the same number; the later one is refused and retries', async () => {
+        await seedHeader();
         await seed('rent_charges', `L1_${CUR}`, charge(CUR));
         await seed('rent_charges', `L1_${PREV}`, charge(PREV));
         // Both read the counter before either wrote (number 1 for both), then commit together.
@@ -2308,12 +2358,15 @@ function defineRentSuite(prefix) {
     });
 
     t('receipts: a manager payment with its receipt and the tenant link snapshot fits in one write', async () => {
+        // No Rentals header: the business name is read too (the most reads a payment write needs).
+        await seedHeader({ receiptHeader: '' });
+        await seed('settings', 'app', { businessName: 'Gupta Aadhat' });
         await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
         await seed('rent_charges', `L1_${CUR}`, charge(CUR));
         const f = db('rentManager');
         const b = f.batch();
         b.update(chargeOn(f, CUR), { paid: 2000, open: true, updatedAt: 2, updatedBy: 'rentManager', payments: [{ ...entry('rentManager', 2000), rno: rno(1) }] });
-        b.set(rctOn(f, `L1_${CUR}_0`), receipt('rentManager', 1));
+        b.set(rctOn(f, `L1_${CUR}_0`), { ...receipt('rentManager', 1), biz: 'Gupta Aadhat' });
         b.set(ctrOn(f), { last: 1, rid: `L1_${CUR}_0`, updatedAt: 2, updatedBy: 'rentManager' });
         b.set(pubOn(f, TOKEN), snap());
         await assertSucceeds(b.commit());

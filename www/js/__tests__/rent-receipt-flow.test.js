@@ -1,8 +1,9 @@
 /**
  * Rentals › Record payment offers the receipt (RENT-12): the payment carries the
- * names for the receipt (tenant, place without the type word + its type, the
- * receipt header and address from Settings › Rentals), and rent-receipt.js is
- * loaded only then (also for a tenant's Receipts list).
+ * place without the type word + its type and the shared business name (the
+ * store takes the tenant name from the charge and the header/address from
+ * Settings › Rentals), and rent-receipt.js is loaded only then (also for a
+ * tenant's Receipts list). A refused receipt shows a warning.
  */
 jest.mock('../rentals/rent-store.js', () => ({
     snapshot: jest.fn(), truncatedKeys: () => [], isAttached: () => false, attach: jest.fn(), detach: jest.fn(),
@@ -12,12 +13,16 @@ jest.mock('../rentals/rent-receipt.js', () => ({ showReceipt: jest.fn(), showHis
 jest.mock('../ui/business-switcher.js', () => ({ rentalsRole: jest.fn(() => 'member') }));
 jest.mock('../ui/ui-manager.js', () => ({ UIManager: { showToast: jest.fn(), showModal: jest.fn() } }));
 jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}) } }));
+jest.mock('../services/telemetry.js', () => ({ TelemetryService: { logWarning: jest.fn() } }));
 
 import * as store from '../rentals/rent-store.js';
 import * as receipt from '../rentals/rent-receipt.js';
 import { RentalsModule, _test } from '../rentals/rentals.js';
 import { normalizeRentSettings, monthKey } from '../rentals/rent-math.js';
 import { AuditService } from '../services/audit.js';
+import { TelemetryService } from '../services/telemetry.js';
+import { UIManager } from '../ui/ui-manager.js';
+import { AppState } from '../utils/state.js';
 
 const flush = () => new Promise(r => setTimeout(r));
 const MONTH = monthKey();
@@ -38,6 +43,7 @@ beforeEach(() => {
     store.snapshot.mockReturnValue(SNAP);
     store.loadSettings.mockResolvedValue(normalizeRentSettings({ receiptHeader: 'Sharma Rentals', receiptAddress: 'Main Road, Kanpur' }));
     store.recordPayment.mockResolvedValue({ amount: 2000, paid: 2000, open: true, receipt: RECEIPT });
+    AppState.settings = { shopName: 'This phone only', sharedShopName: 'Gupta Aadhat' };
     _test.state.month = MONTH;
 });
 
@@ -49,22 +55,26 @@ test('a payment carries the receipt names, then the receipt opens (module loaded
     await done;
     await flush();
     expect(store.recordPayment).toHaveBeenCalledWith(CHARGE.id, expect.objectContaining({ amount: 2000, mode: 'cash' }), {
-        tenantName: 'Ram Kumar', place: '2B, Gupta Bhawan', ut: 'flat', biz: 'Sharma Rentals', bizAddr: 'Main Road, Kanpur'
+        place: '2B, Gupta Bhawan', ut: 'flat', shopName: 'Gupta Aadhat'
     });
+    expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringContaining('saved'), 'success');
     expect(AuditService.log).toHaveBeenCalledWith('RENT_PAYMENT', expect.objectContaining({ amount: 2000, receipt: 'R-2026-0001' }));
     expect(receipt.showReceipt).toHaveBeenCalledWith(expect.objectContaining({ canVoid: false }), RECEIPT);
     const env = receipt.showReceipt.mock.calls[0][0];
     expect(env.linkOf('L1')).toBe('');
 });
 
-test('no receipt (refused): the payment is saved and no receipt dialog opens', async () => {
-    store.recordPayment.mockResolvedValue({ amount: 2000, paid: 2000, open: true, receipt: null });
+test('receipt refused: the payment is saved, a warning says no receipt was issued, and it is reported', async () => {
+    store.recordPayment.mockResolvedValue({ amount: 2000, paid: 2000, open: true, receipt: null, receiptRefused: 'permission-denied' });
     const done = _test.pay('L1');
     await flush();
     RentalsModule.api.dialogClose(true);
     await done;
     await flush();
     expect(receipt.showReceipt).not.toHaveBeenCalled();
+    expect(UIManager.showToast).toHaveBeenCalledWith('Payment of ₹2,000 saved, receipt not issued', 'warning');
+    expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.anything(), 'success');
+    expect(TelemetryService.logWarning).toHaveBeenCalledWith('Rent receipt refused', { code: 'permission-denied', chargeId: CHARGE.id });
 });
 
 test('Receipts on a tenant opens their payment history; managers may cancel', async () => {

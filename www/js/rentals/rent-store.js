@@ -8,6 +8,7 @@
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { round2 } from '../utils/money.js';
+import { toJsDate } from '../utils/dates.js';
 import {
     applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
     receiptNo, istYear, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
@@ -342,29 +343,27 @@ async function withPendingRetry(run) {
 
 /**
  * Records a payment on one month's charge (transaction; never more than is due).
- * With `rc` (names for the receipt) the same transaction issues its receipt:
- * the next number of the year's counter, rent_receipts/{chargeId}_{i}, and the
- * number on the payment entry (rules check all three together).
- * @param {string} id charge id
- * @param {{amount: number, mode: string, ref?: string, date: string}} entry
- * @param {?{tenantName?: string, place?: string, ut?: ?string, biz?: string, bizAddr?: string}} [rc]
- * @returns {Promise<{amount: number, paid: number, open: boolean, receipt: ?Object}>}
+ * With `rc` the same write issues its receipt (rules check it; header/address from
+ * rent_settings). A refused one can't be added later: saved without (receiptRefused).
+ * @param {?{place?: string, ut?: ?string, shopName?: string}} [rc]
+ * @returns {Promise<{amount: number, paid: number, open: boolean, receipt: ?Object, receiptRefused?: string}>}
  */
 export async function recordPayment(id, entry, rc = null) {
-    // Someone else took the next number first (the rules refuse the stale one): read again.
-    // Still refused (e.g. rules not yet deployed): the payment is saved without a receipt.
-    for (let i = 0; rc && i < 3; i++) {
+    const once = (r) => withPendingRetry(() => recordPaymentOnce(id, entry, r));
+    for (let i = 0; rc; i++) {
         try {
-            return await withPendingRetry(() => recordPaymentOnce(id, entry, rc));
+            return await once(rc);
         } catch (e) {
-            if (!['permission-denied', 'aborted', 'failed-precondition'].includes(e?.code)) throw e;
-            console.warn('Receipt not issued, trying again:', e.code);
+            if (e?.code === 'permission-denied') return { ...(await once(null)), receiptRefused: e.code };
+            // runTransaction retries contention: one more try at most.
+            if (i || !['aborted', 'failed-precondition'].includes(e?.code)) throw e;
         }
     }
-    return withPendingRetry(() => recordPaymentOnce(id, entry, null));
+    return once(null);
 }
 
 const clip = (v, n) => String(v || '').slice(0, n);
+const str = (v) => (typeof v === 'string' ? v : '');
 
 async function recordPaymentOnce(id, { amount, mode, ref, date }, rc) {
     const db = FirebaseService.db;
@@ -379,6 +378,7 @@ async function recordPaymentOnce(id, { amount, mode, ref, date }, rc) {
         const year = istYear();
         const ctrRef = rc && Number.isFinite(charge.rent) ? coll('rent_counters').doc(`receipts_${year}`) : null;
         const seq = ctrRef ? (Number((await tx.get(ctrRef)).data()?.last) || 0) + 1 : 0;
+        const rs = seq ? (await tx.get(coll('rent_settings').doc('default'))).data() || {} : {};
         const pi = (charge.payments || []).length;
         const now = Date.now();
         const e = {
@@ -394,26 +394,27 @@ async function recordPaymentOnce(id, { amount, mode, ref, date }, rc) {
             receipt = {
                 no: e.rno, year, seq, chargeId: id, pi,
                 leaseId: charge.leaseId, tenantId: charge.tenantId, unitId: charge.unitId, propertyId: charge.propertyId,
-                tenantName: clip(rc.tenantName || charge.tenantName, 80), place: clip(rc.place, 150),
+                tenantName: str(charge.tenantName), place: clip(rc.place, 150),
                 ...(rc.ut ? { ut: rc.ut } : {}),
                 months: [charge.month], rent: charge.rent, elec: charge.electricity || null, total: charge.amount,
                 paid: e.amount, mode, ref: e.ref, date, balance: Math.max(0, round2(charge.amount - next.paid)),
-                by: e.by, byName: e.byName, biz: clip(rc.biz, 80), bizAddr: clip(rc.bizAddr, 200),
-                createdAt: now, void: false
+                by: e.by, byName: e.byName, biz: str(rs.receiptHeader) || str(rc.shopName), bizAddr: str(rs.receiptAddress),
+                createdAt: FirebaseService.serverTimestamp?.() ?? now, void: false
             };
             tx.set(coll('rent_receipts').doc(rid), receipt);
             tx.set(ctrRef, { last: seq, rid, updatedAt: now, updatedBy: uid() });
-            receipt = { id: rid, ...receipt };
+            receipt = { id: rid, ...receipt, createdAt: now };
         }
         if (pub) tx.set(pub.ref, withMonth(pub.data, { ...charge, paid: next.paid, open: next.open, payments }));
         return { ...next, receipt };
     });
 }
 
-/** The newest receipts of a tenant (payment history; index tenantId + createdAt desc). */
+/** A tenant's newest receipts (index tenantId + createdAt desc; none yet = newest). */
 export async function listReceipts(tenantId, max = 60) {
     const snap = await coll('rent_receipts').where('tenantId', '==', tenantId).orderBy('createdAt', 'desc').limit(max).get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const at = (r) => toJsDate(r.createdAt)?.getTime() ?? Infinity;
+    return snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) })).sort((a, b) => at(b) - at(a));
 }
 
 /**
