@@ -45,6 +45,7 @@ const OWNER_ACCESS = Object.freeze({
 export const TAB_PERMISSIONS = Object.freeze({
     finance: 'finance',
     money: 'finance',
+    insights: 'analytics',
     reports: 'reports',
     analytics: 'analytics',
     'wholesale-sales': 'wholesale'
@@ -116,6 +117,23 @@ export function canOpenTab(tabId, role, raw) {
     if (!roleMayOpenTab(tabId, role)) return false;
     const permission = TAB_PERMISSIONS[tabId];
     return !permission || can(role, permission, raw);
+}
+
+/**
+ * Sections of a page that show another page's data keep that page's rule:
+ * Insights › Seasons hosts Rate trends and Product traffic (owner, manager).
+ */
+export const SECTION_TABS = Object.freeze({
+    'insights:seasons': 'rate-trends',
+    'insights:trends': 'rate-trends',
+    'insights:traffic': 'rate-trends'
+});
+
+/** canOpenTab for a page section (route): the page's rule and the hosted page's rule. */
+export function canOpenSection(tabId, section, role, raw) {
+    if (!canOpenTab(tabId, role, raw)) return false;
+    const hosted = section ? SECTION_TABS[`${tabId}:${section}`] : null;
+    return !hosted || canOpenTab(hosted, role, raw);
 }
 
 /**

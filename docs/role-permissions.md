@@ -34,7 +34,7 @@ setting is missing or invalid.
 |---|---|---|---|---|---|
 | `finance` | Finance page (and the new Money page, which replaces it) | हिसाब-किताब पेज | on | off | client |
 | `reports` | Reports page | रिपोर्ट पेज | on | off | client |
-| `analytics` | Analytics page | विश्लेषण पेज | on | off | client |
+| `analytics` | Analytics page (and the new Insights page, which replaces it; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | विश्लेषण पेज | on | off | client |
 | `wholesale` | Wholesale page | थोक पेज | on | off | client |
 | `personalExpenses` | Personal expenses | निजी खर्च | on | on | client (rules: phase 2) |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |

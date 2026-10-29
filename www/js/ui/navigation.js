@@ -2,7 +2,7 @@
 
 import { UIManager } from './ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { canOpenTab, roleMayOpenTab } from '../utils/role-access.js';
+import { canOpenTab, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 
@@ -39,7 +39,8 @@ const ROUTES = Object.freeze({
 
 // Money / Insights / Statements (redesign): '<page>-<section>' opens a section, e.g. 'money-cash'.
 const SECTION_PAGES = Object.freeze({
-    money: ['profit', 'cash', 'spending', 'worth']
+    money: ['profit', 'cash', 'spending', 'worth'],
+    insights: ['actions', 'items', 'parties', 'seasons', 'trends', 'traffic']
 });
 
 function sectionRoute(tabId) {
@@ -48,7 +49,7 @@ function sectionRoute(tabId) {
     if (!sections) return null;
     const section = rest.join('-');
     if (!section) return { id: page, tab: page, section: null, needs: null, nav: page };
-    return sections.includes(section) ? { id: tabId, tab: page, section, needs: null, nav: page } : null;
+    return sections.includes(section) ? { id: tabId, tab: page, section, needs: SECTION_TABS[`${page}:${section}`] || null, nav: page } : null;
 }
 
 /** Route id -> { id (canonical), tab (page element id), section, needs (extra page permission), nav (side-nav link id) }. */
@@ -251,6 +252,11 @@ const NavigationManager = {
         // Money (redesign §5.2): its code loads on first open
         if (route.tab === 'money' && window.app?.money) {
             setTimeout(() => window.app.money.init(route.section), 100);
+        }
+
+        // Insights (redesign §5.3): its code loads on first open
+        if (route.tab === 'insights' && window.app?.insights) {
+            setTimeout(() => window.app.insights.init(route.section), 100);
         }
 
         // Initialize analytics when Analytics tab is shown

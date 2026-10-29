@@ -102,6 +102,7 @@ In order:
 | `rates.html` / `rates.js` (Rates page) | `templates/items.html` + `modules/items.js` (page id `items`, route `rates`; old `items` still works) |
 | Trends / Product traffic page | Tabs of Reports: `templates/rate-trends.html` (`#rate-trends`, injected inside `#reports`) + `modules/rate-trends.js` (imported on first open via `window.app.rateTrends.open()`; Reports only calls that). Owner/manager via the `rate-trends` entry in `TAB_ROLES`. Routes `reports-trends`, `reports-traffic` (old `rate-trends`, `rates-trends`, `rates-traffic` still work) are in `ui/navigation.js` |
 | `money.html` / `money.js` (Money page) | `templates/money.html` + `modules/money.js` (route `money`, sections `money-profit|cash|spending|worth`; imported on first open; figures from `utils/business-metrics.js`; month snapshots `monthStats` via `utils/month-snapshots.js`) |
+| `insights.html` / `insights.js` (Insights page) | `templates/insights.html` + `modules/insights.js` (route `insights`, sections `insights-actions|items|parties|seasons|trends|traffic`; Seasons mounts the Rate trends view with `RateTrendsManager.mount()`, one DOM shared with Reports › Trends) |
 
 ### Conventions
 

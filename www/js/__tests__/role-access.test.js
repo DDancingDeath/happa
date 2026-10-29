@@ -1,5 +1,5 @@
 import {
-    normalizeRoleAccess, accessFor, canOpenTab, canEditBillWith, canDeleteBillWith, historyCutoff,
+    normalizeRoleAccess, accessFor, canOpenTab, canOpenSection, canEditBillWith, canDeleteBillWith, historyCutoff,
     hiddenPermissionClasses, billCreatedMs, ROLE_ACCESS_DEFAULTS
 } from '../utils/role-access.js';
 import { NavigationManager } from '../ui/navigation.js';
@@ -163,5 +163,17 @@ describe('See purchase rates permission (F36)', () => {
         expect(hiddenPermissionClasses('staff', raw)).toEqual(['no-perm-purchaseRates']);
         expect(hiddenPermissionClasses('manager', raw)).toEqual([]);
         expect(hiddenPermissionClasses('owner', { manager: { purchaseRates: false } })).toEqual([]);
+    });
+});
+
+describe('page sections that host another page', () => {
+    test('Insights › Seasons / Trends / Traffic keep the Rate trends rule (owner, manager)', () => {
+        const raw = { staff: { analytics: true }, manager: { analytics: true } };
+        expect(canOpenSection('insights', 'items', 'staff', raw)).toBe(true);
+        ['seasons', 'trends', 'traffic'].forEach(s => {
+            expect(canOpenSection('insights', s, 'staff', raw)).toBe(false);
+            expect(canOpenSection('insights', s, 'manager', raw)).toBe(true);
+        });
+        expect(canOpenSection('insights', 'items', 'staff', { staff: { analytics: false } })).toBe(false);
     });
 });

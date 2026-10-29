@@ -34,6 +34,7 @@ export class TemplateLoader {
             'anomalies',
             'rate-trends',
             'money',
+            'insights',
             'health',
             'day',
             'cash-management',
@@ -84,6 +85,7 @@ export class TemplateLoader {
         // Reports › Trends / Product traffic (#65) live inside the Reports page
         (appContent.querySelector('#reports') || appContent).insertAdjacentHTML('beforeend', templates['rate-trends']);
         appContent.insertAdjacentHTML('beforeend', templates.money);
+        appContent.insertAdjacentHTML('beforeend', templates.insights);
         appContent.insertAdjacentHTML('beforeend', templates.health);
         appContent.insertAdjacentHTML('beforeend', templates['cash-management']);
         appContent.insertAdjacentHTML('beforeend', templates.users);
