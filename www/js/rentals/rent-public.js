@@ -35,6 +35,14 @@ export function publicMonth(charge, today = new Date()) {
     const paid = round2(Number(charge.paid) || 0);
     const s = chargeStatus(charge, today);
     const dates = [...new Set((charge.payments || []).map(p => p.date).filter(d => typeof d === 'string'))].sort().slice(-12);
+    const voided = new Set(charge.voided || []);
+    // Receipt numbers next to each payment (only once a payment has one).
+    const py = (charge.payments || []).some(p => p.rno)
+        ? (charge.payments || []).slice(0, 12).map((p, i) => ({
+            d: typeof p.date === 'string' ? p.date : '', a: round2(Number(p.amount) || 0),
+            ...(p.rno && !voided.has(i) ? { r: String(p.rno).slice(0, 20) } : {})
+        }))
+        : null;
     return {
         m: charge.month,
         rent,
@@ -45,7 +53,8 @@ export function publicMonth(charge, today = new Date()) {
         due: chargeDue(charge),
         dd: Number.isInteger(charge.dueDay) ? charge.dueDay : null,
         st: s.status === 'paid' ? 'paid' : s.late ? 'late' : s.status,
-        pd: dates
+        pd: dates,
+        ...(py ? { py } : {})
     };
 }
 

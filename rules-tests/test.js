@@ -1730,7 +1730,7 @@ function defineReadMatrix(prefix) {
         get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: MANAGERS,
         list: (db) => db.collection(c(name)).get(), listAllowed: MANAGERS
     }));
-    ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges', 'rent_settings'].forEach(name => add(name, {
+    ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters'].forEach(name => add(name, {
         seed: [[`${c(name)}/d1`, { archived: false }]],
         get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: RENTALS,
         list: (db) => db.collection(c(name)).get(), listAllowed: RENTALS
@@ -2211,6 +2211,213 @@ function defineRentSuite(prefix) {
         await assertSucceeds(as('legacyOwner').collection(users).doc('staff1').update({ rentRole: 'member' }));
     });
 
+    // ---- Rent receipts (RENT-12): rent_receipts + rent_counters ----
+    const R_YEAR = new Date(Date.now() + 330 * MIN).getUTCFullYear();
+    const rno = (seq) => `R-${R_YEAR}-${String(seq).padStart(4, '0')}`;
+    const rctOn = (f, id) => f.collection(c('rent_receipts')).doc(id);
+    const ctrOn = (f, year = R_YEAR) => f.collection(c('rent_counters')).doc(`receipts_${year}`);
+    // Profile names (seedUsers): "Received by" must be the writer's.
+    const NAME = { rentMember: 'RC', rentManager: 'RM', rentOnly: 'RO', legacyOwner: 'O', staff1: 'S' };
+    const paid1 = (uid, amount, seq) => ({ ...entry(uid, amount), byName: NAME[uid], ...(seq ? { rno: rno(seq) } : {}) });
+    const receipt = (uid, seq, { pi = 0, amount = 2000, paidAfter = amount, month = CUR, total = 5000, ...over } = {}) => ({
+        no: rno(seq), year: R_YEAR, seq, chargeId: `L1_${month}`, pi, leaseId: 'L1', tenantId: 'T1', unitId: 'U1', propertyId: 'P1',
+        tenantName: 'Ram', place: 'G1, Gali 2', ut: 'flat', months: [month], rent: 5000, elec: null, total,
+        paid: amount, mode: 'cash', ref: '', date: '2026-10-05', balance: total - paidAfter, by: uid, byName: NAME[uid],
+        createdAt: 2, void: false, ...over
+    });
+    // One payment write with its receipt and the year's counter (as rent-store.js recordPayment).
+    const payReceipt = (uid, seq, { prior = [], amount = 2000, total = 5000, rcpt = {}, ent = {}, ctr = {}, noCounter = false, noReceipt = false, f = db(uid) } = {}) => {
+        const b = f.batch();
+        const pi = prior.length;
+        const paid = prior.reduce((s, x) => s + x.amount, 0) + amount;
+        b.update(chargeOn(f, CUR), { paid, open: paid < total, updatedAt: 2, updatedBy: uid, payments: [...prior, { ...paid1(uid, amount, seq), ...ent }] });
+        if (!noReceipt) b.set(rctOn(f, `L1_${CUR}_${pi}`), receipt(uid, seq, { pi, amount, paidAfter: paid, total, ...rcpt }));
+        if (!noCounter) b.set(ctrOn(f), { last: seq, rid: `L1_${CUR}_${pi}`, updatedAt: 2, updatedBy: uid, ...ctr });
+        return b.commit();
+    };
+    const seedPaid = async (seq = 1) => {
+        const e = paid1('rentMember', 2000, seq);
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 2000, payments: [e] }));
+        await seed('rent_receipts', `L1_${CUR}_0`, receipt('rentMember', seq));
+        await seed('rent_counters', `receipts_${R_YEAR}`, { last: seq, rid: `L1_${CUR}_0`, updatedAt: 1, updatedBy: 'rentMember' });
+        return e;
+    };
+
+    t('receipts: the payment, its receipt and the next number of the year go in one write', async () => {
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await assertFails(payReceipt('staff1', 1));
+        await assertFails(payReceipt('rentMember', 1, { noCounter: true }));
+        await assertFails(payReceipt('rentMember', 1, { noReceipt: true }));
+        await assertFails(payReceipt('rentMember', 2));
+        await assertFails(payReceipt('rentMember', 1, { ent: { rno: rno(7) } }));
+        await assertSucceeds(payReceipt('rentMember', 1));
+        const first = paid1('rentMember', 2000, 1);
+        // Review attacks: reuse a number, jump the counter, point the counter elsewhere.
+        await assertFails(payReceipt('rentOnly', 1, { prior: [first], amount: 1000 }));
+        await assertFails(payReceipt('rentOnly', 3, { prior: [first], amount: 1000 }));
+        await assertFails(payReceipt('rentOnly', 2, { prior: [first], amount: 1000, ctr: { rid: `L1_${CUR}_0` } }));
+        await assertSucceeds(payReceipt('rentOnly', 2, { prior: [first], amount: 1000 }));
+        // A payment without a receipt (an older app) is still allowed.
+        await assertSucceeds(chargeRef('rentMember', CUR).update({
+            paid: 3500, open: true, updatedAt: 3, updatedBy: 'rentMember',
+            payments: [first, paid1('rentOnly', 1000, 2), entry('rentMember', 500)]
+        }));
+        await assertFails(ctrOn(db('rentMember')).set({ last: 3, rid: `L1_${CUR}_2`, updatedAt: 4, updatedBy: 'rentMember' }));
+    });
+
+    t('receipts: content must match the payment and the charge; fields allow-listed', async () => {
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        for (const rcpt of [{ paid: 999 }, { balance: 0 }, { total: 9999 }, { months: [PREV] }, { by: 'rentOnly' }, { mode: 'upi' },
+            { rent: 1 }, { elec: elec(0, 10, 8) }, { void: true }, { voidBy: 'x' }, { gst: 18 }, { leaseId: 'L9' }, { no: rno(2) },
+            { ut: 'castle' }, { biz: 'Sharma Rentals' }, { bizAddr: 'Main Road' }, { year: R_YEAR + 1 }, { tenantName: 'Shyam' },
+            { issuedBy: 'rentMember' }]) {
+            await assertFails(payReceipt('rentMember', 1, { rcpt }));
+        }
+        await assertFails(payReceipt('rentMember', 1, { rcpt: { pi: 1 } }));
+        // "Received by" is the writer's profile name, on the entry and the receipt alike.
+        await assertFails(payReceipt('rentMember', 1, { rcpt: { byName: 'Owner' }, ent: { byName: 'Owner' } }));
+        await assertSucceeds(payReceipt('rentMember', 1, { rcpt: { ut: 'commercial' } }));
+    });
+
+    t('receipts: a meter-billed month carries its electricity exactly', async () => {
+        const e = elec(100, 150, 8);
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { electricity: e, amount: 5400 }));
+        await assertFails(payReceipt('rentMember', 1, { total: 5400 }));
+        await assertFails(payReceipt('rentMember', 1, { total: 5400, rcpt: { elec: { ...e, amount: 1 } } }));
+        await assertSucceeds(payReceipt('rentMember', 1, { total: 5400, amount: 5400, rcpt: { elec: e } }));
+    });
+
+    t('receipts: two people paying at once never get the same number; the later one is refused and retries', async () => {
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV));
+        // Both read the counter before either wrote (number 1 for both), then commit together.
+        const claim = (uid, m, seq) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.update(chargeOn(f, m), { paid: 1000, open: true, updatedAt: 2, updatedBy: uid, payments: [paid1(uid, 1000, seq)] });
+            b.set(rctOn(f, `L1_${m}_0`), { ...receipt(uid, seq, { amount: 1000 }), chargeId: `L1_${m}`, months: [m] });
+            b.set(ctrOn(f), { last: seq, rid: `L1_${m}_0`, updatedAt: 2, updatedBy: uid });
+            return b.commit();
+        };
+        const results = await Promise.allSettled([claim('rentMember', CUR, 1), claim('rentManager', PREV, 1)]);
+        const won = results.map(r => r.status === 'fulfilled');
+        if (won.filter(Boolean).length !== 1) throw new Error(`expected exactly one to succeed: ${results.map(r => r.status)}`);
+        const [winM, loseUid, loseM] = won[0] ? [CUR, 'rentManager', PREV] : [PREV, 'rentMember', CUR];
+        await assertFails(claim(loseUid, loseM, 1));
+        await assertSucceeds(claim(loseUid, loseM, 2));
+        let nos = [];
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            const s = await ctx.firestore().collection(c('rent_receipts')).get();
+            nos = s.docs.map(d => d.data().no).sort();
+        });
+        if (JSON.stringify(nos) !== JSON.stringify([rno(1), rno(2)])) throw new Error(`numbers: ${nos} (${winM})`);
+    });
+
+    t('receipts: a manager payment with its receipt and the tenant link snapshot fits in one write', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        const f = db('rentManager');
+        const b = f.batch();
+        b.update(chargeOn(f, CUR), { paid: 2000, open: true, updatedAt: 2, updatedBy: 'rentManager', payments: [paid1('rentManager', 2000, 1)] });
+        b.set(rctOn(f, `L1_${CUR}_0`), receipt('rentManager', 1));
+        b.set(ctrOn(f), { last: 1, rid: `L1_${CUR}_0`, updatedAt: 2, updatedBy: 'rentManager' });
+        b.set(pubOn(f, TOKEN), snap());
+        await assertSucceeds(b.commit());
+    });
+
+    t('receipts: the year is the server\'s (IST), not the device\'s', async () => {
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        const y = R_YEAR + 1;
+        const no = `R-${y}-0001`;
+        const f = db('rentMember');
+        const b = f.batch();
+        b.update(chargeOn(f, CUR), { paid: 2000, open: true, updatedAt: 2, updatedBy: 'rentMember', payments: [{ ...paid1('rentMember', 2000), rno: no }] });
+        b.set(rctOn(f, `L1_${CUR}_0`), { ...receipt('rentMember', 1), year: y, no });
+        b.set(ctrOn(f, y), { last: 1, rid: `L1_${CUR}_0`, updatedAt: 2, updatedBy: 'rentMember' });
+        await assertFails(b.commit());
+        await assertSucceeds(payReceipt('rentMember', 1));
+    });
+
+    // A payment saved without a receipt (refused, or an older app) gets one later.
+    const later = (uid, pi, seq, { rcpt = {}, payments = null, noCharge = false, noReceipt = false, total = 5000, withLink = false } = {}) => {
+        const f = db(uid);
+        const b = f.batch();
+        const list = [paid1('rentMember', 2000), paid1('rentOnly', 1000)];
+        const by = list[pi].by;
+        if (!noCharge) b.update(chargeOn(f, CUR), { payments: payments || list.map((e, i) => (i === pi ? { ...e, rno: rno(seq) } : e)), updatedAt: 3, updatedBy: uid });
+        if (!noReceipt) b.set(rctOn(f, `L1_${CUR}_${pi}`), receipt(by, seq, { pi, amount: list[pi].amount, paidAfter: 3000, total, issuedBy: uid, ...rcpt }));
+        b.set(ctrOn(f), { last: seq, rid: `L1_${CUR}_${pi}`, updatedAt: 3, updatedBy: uid });
+        if (withLink) b.set(pubOn(f, TOKEN), snap());
+        return b.commit();
+    };
+
+    t('receipts: issued later for a payment without one, by its writer or an owner/manager', async () => {
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 3000, payments: [paid1('rentMember', 2000), paid1('rentOnly', 1000)] }));
+        await assertFails(later('rentMember', 1, 1));
+        await assertFails(later('staff1', 1, 1));
+        await assertFails(later('rentOnly', 1, 1, { noCharge: true }));
+        await assertFails(later('rentOnly', 1, 1, { noReceipt: true }));
+        await assertFails(later('rentOnly', 1, 2));
+        await assertFails(later('rentOnly', 1, 1, { rcpt: { issuedBy: 'rentMember' } }));
+        await assertFails(later('rentOnly', 1, 1, { rcpt: { balance: 4000 } }));
+        await assertFails(later('rentOnly', 1, 1, { rcpt: { byName: 'Owner' } }));
+        await assertFails(later('rentOnly', 1, 1, { rcpt: { tenantName: 'Shyam' } }));
+        await assertFails(later('rentOnly', 1, 1, { payments: [{ ...paid1('rentMember', 2000), amount: 1 }, { ...paid1('rentOnly', 1000), rno: rno(1) }] }));
+        await assertFails(later('rentOnly', 1, 1, { payments: [paid1('rentMember', 2000), { ...paid1('rentOnly', 1000), rno: rno(1), amount: 999 }] }));
+        await assertSucceeds(later('rentOnly', 1, 1));
+        // Not twice for the same entry; a manager issues the other one's (balance due as when issued).
+        await assertFails(later('rentManager', 1, 2));
+        await assertFails(later('rentManager', 0, 2, { rcpt: { balance: 3000 } }));
+        await assertSucceeds(later('rentManager', 0, 2, { payments: [paid1('rentMember', 2000, 2), paid1('rentOnly', 1000, 1)] }));
+    });
+
+    t('receipts: a manager issuing later with the tenant link snapshot fits in one write', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 3000, payments: [paid1('rentMember', 2000), paid1('rentOnly', 1000)] }));
+        await assertSucceeds(later('rentManager', 1, 1, { withLink: true }));
+    });
+
+    t('receipts: never edited or deleted; owner/manager cancel (void) together with the charge', async () => {
+        await seedPaid(1);
+        const rRef = (uid) => rctOn(db(uid), `L1_${CUR}_0`);
+        const voidFields = (uid) => ({ void: true, voidBy: uid, voidByName: 'x', voidAt: 3, voidReason: 'wrong name' });
+        const voidWrite = (uid, { charge: withCharge = true, idx = 0, fields = voidFields(uid) } = {}) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.update(rctOn(f, `L1_${CUR}_0`), fields);
+            if (withCharge) b.update(chargeOn(f, CUR), { voided: [idx], updatedAt: 3, updatedBy: uid });
+            return b.commit();
+        };
+        await assertFails(rRef('legacyOwner').update({ paid: 1 }));
+        await assertFails(rRef('legacyOwner').update({ tenantName: 'Shyam' }));
+        await assertFails(rRef('legacyOwner').delete());
+        await assertFails(rRef('rentManager').delete());
+        await assertFails(ctrOn(db('legacyOwner')).delete());
+        await assertFails(voidWrite('rentMember'));
+        await assertFails(voidWrite('rentManager', { charge: false }));
+        await assertFails(voidWrite('rentManager', { idx: 1 }));
+        await assertFails(voidWrite('rentManager', { fields: { ...voidFields('rentManager'), paid: 1 } }));
+        await assertFails(voidWrite('rentManager', { fields: voidFields('legacyOwner') }));
+        await assertFails(voidWrite('rentManager', { fields: { ...voidFields('rentManager'), voidReason: '' } }));
+        await assertFails(chargeRef('rentManager', CUR).update({ voided: [0], updatedAt: 3, updatedBy: 'rentManager' }));
+        await assertSucceeds(voidWrite('rentManager'));
+        await assertFails(rRef('legacyOwner').update({ voidReason: 'changed' }));
+        await assertFails(rRef('legacyOwner').update({ void: false }));
+    });
+
+    t('receipts: read by rentals roles only', async () => {
+        await seedPaid(1);
+        for (const uid of ['legacyOwner', 'rentManager', 'rentMember', 'rentOnly']) {
+            await assertSucceeds(db(uid).collection(c('rent_receipts')).where('tenantId', '==', 'T1').orderBy('createdAt', 'desc').limit(60).get());
+            await assertSucceeds(ctrOn(db(uid)).get());
+        }
+        for (const uid of ['staff1', 'manager1', 'rentPending']) {
+            await assertFails(rctOn(db(uid), `L1_${CUR}_0`).get());
+            await assertFails(ctrOn(db(uid)).get());
+        }
+        await assertFails(rctOn(anon(), `L1_${CUR}_0`).get());
+    });
+
     // ---- Settings › Rentals (rent_settings/default) ----
     const rs = (over = {}) => ({ dueDay: 10, increasePct: 5, meterRate: 8, tenantLink: false, receiptHeader: 'Sharma Rentals', updatedAt: 1, ...over });
     const rsRef = (uid, id = 'default') => db(uid).collection(c('rent_settings')).doc(id);
@@ -2243,8 +2450,9 @@ function defineRentSuite(prefix) {
         await assertFails(w({ meterRate: -1 }));
         await assertFails(w({ tenantLink: 'yes' }));
         await assertFails(w({ receiptHeader: 'x'.repeat(81) }));
+        await assertFails(w({ receiptAddress: 'x'.repeat(201) }));
         await assertFails(w({ extra: 1 }));
-        await assertSucceeds(w({ meterRate: null, receiptHeader: '' }));
+        await assertSucceeds(w({ meterRate: null, receiptHeader: '', receiptAddress: 'Main Road, Kanpur' }));
     });
 }
 
@@ -2272,7 +2480,9 @@ async function main() {
 
     let passed = 0;
     let failed = 0;
-    for (const { name, fn } of tests) {
+    // RULES_TEST_FILTER=<text> runs only the tests whose name contains it (local debugging).
+    const only = process.env.RULES_TEST_FILTER || '';
+    for (const { name, fn } of tests.filter(x => x.name.includes(only))) {
         await env.clearFirestore();
         await seedUsers('users');
         await seedUsers('dev_users');
@@ -2287,7 +2497,7 @@ async function main() {
     }
 
     await env.cleanup();
-    console.log(`\n${passed} passed, ${failed} failed, ${tests.length} total`);
+    console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);
     process.exit(failed ? 1 : 0);
 }
 

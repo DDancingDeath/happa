@@ -1,0 +1,7 @@
+/* Rent receipt dialog and a tenant's receipts list (loaded by js/rentals/rent-receipt.js on first use). */
+.rent-rcpt { border: 1px dashed var(--border-color, #cbd5e0); border-radius: 8px; padding: 10px; margin-top: 8px; }
+.rent-rcpt-biz { font-weight: 700; text-align: center; }
+.rent-rcpt-row { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; padding: 2px 0; }
+.rent-rcpt-bold { font-weight: 700; }
+.rent-rcpt-void { color: #c53030; font-weight: 700; }
+.rent-rcpt-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-color, #e2e8f0); padding: 6px 0; }

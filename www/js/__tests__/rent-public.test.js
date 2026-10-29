@@ -18,6 +18,19 @@ test('share token: 144 random bits, base64url, never repeats', () => {
     expect(isShareToken('../../etc/passwd/xxxxxxxxxxxxxxxx')).toBe(false);
 });
 
+test('receipt numbers next to each payment (RENT-12); a cancelled receipt\'s number is left out', () => {
+    const c = charge('2026-10', {
+        paid: 3000, voided: [1],
+        payments: [{ amount: 1000, date: '2026-10-05', rno: 'R-2026-0001', by: 'u1' }, { amount: 1500, date: '2026-10-06', rno: 'R-2026-0002' },
+            { amount: 500, date: '2026-10-07', rno: 'R-2026-0003' }]
+    });
+    expect(publicMonth(c, new Date(2026, 9, 8)).py).toEqual([
+        { d: '2026-10-05', a: 1000, r: 'R-2026-0001' }, { d: '2026-10-06', a: 1500 }, { d: '2026-10-07', a: 500, r: 'R-2026-0003' }
+    ]);
+    expect(JSON.stringify(publicMonth(c))).not.toMatch(/u1|by/);
+    expect(publicMonth(charge('2026-10', { paid: 100, payments: [{ amount: 100, date: '2026-10-05' }] }))).not.toHaveProperty('py');
+});
+
 test('a month as the tenant sees it (RENT-8): rent, electricity, total, paid, dates, due, status', () => {
     const c = charge('2026-09', {
         electricity: { prev: 100, curr: 150, rate: 8, units: 50, amount: 400 }, amount: 5400, paid: 2000,

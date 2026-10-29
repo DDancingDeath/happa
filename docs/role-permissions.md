@@ -235,7 +235,7 @@ except `rent_public` get.
 | `users/{uid}/preferences` | own only (unchanged) | own | own | ✗ | ✗ |
 | `auditLogs`, `telemetry` | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
-| `rent_*` (incl. `rent_settings`) | ✓ → ✓ | ✗ without a `rentRole` | ✗ without a `rentRole` | ✓ → ✓ | ✗ → ✗ |
+| `rent_*` (incl. `rent_settings`, `rent_receipts`, `rent_counters`) | ✓ → ✓ | ✗ without a `rentRole` | ✗ without a `rentRole` | ✓ → ✓ | ✗ → ✗ |
 | `rent_public` | G ✓, L ✗ for everyone, signed out too (unchanged) | | | | |
 
 Rentals were already scoped and are unchanged; the matrix tests now check them for every role
@@ -369,7 +369,12 @@ small button to view the other business's section when the user may see it
 | Common: language, account (name, change password, sign out), notifications, printer, install, What's new / About | everyone | own device / own profile | device, `users/{uid}.name` |
 | Common: Roles & access (+ People) | owner | owner | `settings/app.roleAccess`, `users/{uid}.rentRole` |
 | Aadhat: business name and details, UPI ID, labour, bill checks, bill numbers, opening stock link | Aadhat owner and managers | owner; managers with `shopSettings` (UPI ID: this device) | `settings/app` (read at start-up, no extra read); UPI ID on the device |
-| Rentals: defaults for new leases (due day, yearly %, electricity rate, tenant link), header on tenant pages | Rentals owner and managers | owner and Rentals managers | `rent_settings/default` (+ `dev_`), read only when this section is shown or a tenant moves in |
+| Rentals: defaults for new leases (due day, yearly %, electricity rate, tenant link), business name and address on rent receipts and tenant pages | Rentals owner and managers | owner and Rentals managers | `rent_settings/default` (+ `dev_`), read only when this section is shown, a tenant moves in or a payment is recorded |
+
+Rent receipts (`rent_receipts`, numbered by `rent_counters/receipts_<year>`): issued by anyone with a
+rentals role with the payment they record; a payment saved without one gets it later from its writer or
+from the owner / a Rentals manager (Issue receipt); never edited or deleted; only the owner and Rentals
+managers cancel one (void, with a required reason and an audit entry).
 
 Members (Aadhat or Rentals) see only Common. Old routes keep working: `settings`, `admin-configure`
 and `settings-aadhat` (→ Aadhat), `settings-shop`, `settings-rentals`, `settings-roles`; Admin's old

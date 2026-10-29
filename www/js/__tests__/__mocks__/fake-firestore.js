@@ -283,18 +283,36 @@ export function createFakeFirestore(options = {}) {
             };
         },
         runTransaction: async (fn) => {
-            const ops = [];
-            const tx = {
-                get: async (ref) => {
-                    stats.reads++;
-                    return ref.get().then(s => { stats.reads--; stats.docGets--; return s; });
-                },
-                set: (ref, data, opts) => ops.push(() => ref.set(data, opts)),
-                update: (ref, fields) => ops.push(() => ref.update(fields))
-            };
-            const result = await fn(tx);
-            for (const op of ops) await op();
-            return result;
+            // options.occ: optimistic concurrency like the client SDK — a transaction
+            // whose read documents changed before it commits runs again (up to 5 times).
+            for (let attempt = 1; ; attempt++) {
+                const ops = [];
+                const seen = new Map();
+                const tx = {
+                    get: async (ref) => {
+                        stats.reads++;
+                        const [c, id] = ref.path.split('/');
+                        seen.set(ref.path, coll(c).get(id));
+                        return ref.get().then(s => { stats.reads--; stats.docGets--; return s; });
+                    },
+                    set: (ref, data, opts) => ops.push(() => ref.set(data, opts)),
+                    update: (ref, fields) => ops.push(() => ref.update(fields))
+                };
+                const result = await fn(tx);
+                if (options.occ) {
+                    const stale = [...seen].some(([p, v]) => { const [c, id] = p.split('/'); return coll(c).get(id) !== v; });
+                    if (stale) {
+                        stats.retries = (stats.retries || 0) + 1;
+                        if (attempt >= 5) throw Object.assign(new Error('aborted'), { code: 'aborted' });
+                        continue;
+                    }
+                    // Commit atomically: every write starts before anything else can run.
+                    await Promise.all(ops.map(op => op()));
+                    return result;
+                }
+                for (const op of ops) await op();
+                return result;
+            }
         }
     };
 

@@ -944,7 +944,7 @@ service cloud.firestore {
 
     function rentChargeFields() {
       return ['leaseId', 'unitId', 'propertyId', 'tenantId', 'tenantName', 'unitLabel', 'month', 'dueDay',
-              'rent', 'electricity', 'amount', 'paid', 'open', 'payments', 'createdAt', 'updatedAt', 'updatedBy'];
+              'rent', 'electricity', 'amount', 'paid', 'open', 'payments', 'voided', 'createdAt', 'updatedAt', 'updatedBy'];
     }
 
     // rent_charges/{leaseId}_{YYYY-MM}: created only in the write that moves its
@@ -965,7 +965,7 @@ service cloud.firestore {
         && d.get('propertyId', '') == lease.propertyId && d.get('dueDay', 0) == lease.dueDay
         && d.get('amount', null) == rentMonthRent(lease, d.month) && d.get('rent', null) == rentMonthRent(lease, d.month)
         && d.get('electricity', null) == null
-        && d.get('paid', null) == 0 && d.get('payments', null) == []
+        && d.get('paid', null) == 0 && d.get('payments', null) == [] && !('voided' in d)
         && d.get('open', null) == (lease.rent > 0)
         && rentStr(d, 'tenantName', 0, 80) && rentStr(d, 'unitLabel', 0, 60);
     }
@@ -987,25 +987,29 @@ service cloud.firestore {
     }
 
     // One new payment entry by the caller (amount > 0, known mode), at most 12 per charge.
-    function rentNewEntryOk() {
+    // An entry with a receipt number (rno) needs its receipt rent_receipts/{charge}_{i}
+    // with that number created in the same write (validRentReceiptCreate).
+    function rentNewEntryOk(usersCol, docId) {
       let list = request.resource.data.payments;
       let n = resource.data.get('payments', []).size();
       return appendsOneEntry('payments') && n < 12
-        && list[n].keys().hasOnly(['amount', 'mode', 'ref', 'date', 'at', 'by', 'byName'])
+        && list[n].keys().hasOnly(['amount', 'mode', 'ref', 'date', 'at', 'by', 'byName', 'rno'])
         && list[n].amount > 0
         && list[n].get('by', null) == request.auth.uid
-        && list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque'];
+        && list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
+        && (!('rno' in list[n])
+            || getAfter(rentPath(usersCol, 'rent_receipts', docId + '_' + string(n))).data.get('no', '') == list[n].rno);
     }
 
     // A payment (rent-store.js recordPayment): paid grows by exactly the new
     // entry and never above the amount due.
-    function rentPaymentOk() {
+    function rentPaymentOk(usersCol, docId) {
       let d = request.resource.data;
       let r = resource.data;
       let n = r.get('payments', []).size();
       return d.diff(r).affectedKeys().hasOnly(['payments', 'paid', 'open', 'updatedAt', 'updatedBy'])
         && rentWriterOk()
-        && rentNewEntryOk()
+        && rentNewEntryOk(usersCol, docId)
         && d.get('paid', null) is number
         && d.paid >= r.paid + d.payments[n].amount - 0.01
         && d.paid <= r.paid + d.payments[n].amount + 0.01
@@ -1048,7 +1052,7 @@ service cloud.firestore {
 
     // Owner/manager corrections (e.g. a waived month): same lease, month and
     // creation; payments unchanged or one new own entry; paid = Σ entries ≤ amount.
-    function rentChargeEditOk() {
+    function rentChargeEditOk(usersCol, docId) {
       let d = request.resource.data;
       let r = resource.data;
       return d.keys().hasOnly(rentChargeFields())
@@ -1056,9 +1060,10 @@ service cloud.firestore {
         && d.get('leaseId', null) == r.leaseId && d.get('month', null) == r.month
         && d.get('unitId', null) == r.unitId && d.get('tenantId', null) == r.tenantId
         && d.get('electricity', null) == r.get('electricity', null) && d.get('rent', null) == r.get('rent', null)
+        && d.get('voided', []) == r.get('voided', [])
         && rentMoney(d, 'amount') && rentMoney(d, 'paid')
         && d.get('payments', null) is list
-        && (d.payments == r.get('payments', []) || rentNewEntryOk())
+        && (d.payments == r.get('payments', []) || rentNewEntryOk(usersCol, docId))
         && d.payments.size() <= 12
         && rentPaidMatches(d.paid, rentPaidSum(d.payments))
         && d.paid <= d.amount + 0.01
@@ -1067,6 +1072,157 @@ service cloud.firestore {
 
     function rentPaidMatches(paid, sum) {
       return paid >= sum - 0.01 && paid <= sum + 0.01;
+    }
+
+    // This year in India (IST = UTC+5:30): receipt numbers follow the server's clock.
+    function rentIstYear() {
+      return (request.time + duration.value(330, 'm')).year();
+    }
+
+    // Receipt issued later (rent-store.js issueReceipt): entry i gains its rno and
+    // nothing else changes; i comes from this year's receipt counter, which must
+    // point at rent_receipts/{charge}_{i} created in the same write with that number.
+    function rentChargeRnoOk(usersCol, docId) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['payments', 'updatedAt', 'updatedBy'])
+        && rentWriterOk()
+        && rentRnoIdx(usersCol, docId, resource.data.get('payments', []), request.resource.data.get('payments', []),
+             getAfter(rentCounterPath(usersCol, rentIstYear())).data.get('rid', ''));
+    }
+
+    function rentRnoIdx(usersCol, docId, a, b, rid) {
+      return b is list && b.size() == a.size()
+        && rid.size() > docId.size() + 1 && rid[0:docId.size() + 1] == docId + '_'
+        && rentRnoAt(usersCol, a, b, rid, int(rid[docId.size() + 1:rid.size()]));
+    }
+
+    function rentRnoAt(usersCol, a, b, rid, i) {
+      return i >= 0 && i < a.size() && !('rno' in a[i]) && b[i].diff(a[i]).affectedKeys().hasOnly(['rno'])
+        && b.removeAll([b[i]]) == a.removeAll([a[i]])
+        && getAfter(rentPath(usersCol, 'rent_receipts', rid)).data.get('no', '') == b[i].rno;
+    }
+
+    // Cancelling a receipt (rent-store.js voidReceipt), owner/manager: the charge
+    // lists that payment's index in `voided` (so the tenant link drops its number)
+    // in the same write that marks rent_receipts/{charge}_{i} void.
+    function rentChargeVoidOk(usersCol, docId) {
+      let d = request.resource.data;
+      let r = resource.data;
+      let old = r.get('voided', []);
+      let v = d.get('voided', []);
+      return d.diff(r).affectedKeys().hasOnly(['voided', 'updatedAt', 'updatedBy'])
+        && rentWriterOk()
+        && v is list && v.size() == old.size() + 1 && v.size() <= 12 && v.hasAll(old)
+        && v[v.size() - 1] is int && !(v[v.size() - 1] in old)
+        && v[v.size() - 1] >= 0 && v[v.size() - 1] < r.get('payments', []).size()
+        && getAfter(rentPath(usersCol, 'rent_receipts', docId + '_' + string(v[v.size() - 1]))).data.get('void', false) == true;
+    }
+
+    // ---- Rent receipts (RENT-12): plain, non-GST, one per payment ----
+    // rent_receipts/{chargeId}_{i} is created in the payment write that adds entry i
+    // (with rno = its number) to the charge, or later for an entry i without one
+    // (rentChargeRnoOk), and moves this IST year's counter rent_counters/receipts_{YYYY}
+    // on by exactly one; the number is that counter value, so numbers are unique and
+    // gap-free per year. The header (business name, address) is not stored: the app
+    // shows it from Settings. Never edited, except cancel (void) by owner/manager.
+    function rentReceiptFields() {
+      return ['no', 'year', 'seq', 'chargeId', 'pi', 'leaseId', 'tenantId', 'unitId', 'propertyId', 'tenantName',
+              'place', 'ut', 'months', 'rent', 'elec', 'total', 'paid', 'mode', 'ref', 'date', 'balance', 'by',
+              'byName', 'issuedBy', 'createdAt', 'void', 'voidBy', 'voidByName', 'voidAt', 'voidReason'];
+    }
+
+    function rentCounterPath(usersCol, year) {
+      return rentPath(usersCol, 'rent_counters', 'receipts_' + string(year));
+    }
+
+    // The counter moves from seq − 1 (or nothing, for the year's first receipt) to seq, pointing at this receipt.
+    function rentReceiptSeqOk(usersCol, rid, year, seq) {
+      let path = rentCounterPath(usersCol, year);
+      return getAfter(path).data.get('last', 0) == seq && getAfter(path).data.get('rid', '') == rid
+        && (exists(path) ? get(path).data.get('last', 0) == seq - 1 : seq == 1);
+    }
+
+    // "Received by" is the caller's profile name (users/{uid}.name, cut to 80; the app says 'User' when it is empty).
+    function rentByNameOk(usersCol, v) {
+      let nm = rentProfile(usersCol).get('name', '');
+      return v == (nm == '' ? 'User' : nm.size() > 80 ? nm[0:80] : nm);
+    }
+
+    // Balance due = the charge's after this write (a receipt issued later shows it as then).
+    function rentBalanceOk(d, amount, paid) {
+      return d.get('balance', null) is number && d.balance >= amount - paid - 0.01 && d.balance <= amount - paid + 0.01;
+    }
+
+    // With the payment: entry pi is new and the caller's.
+    function rentReceiptWithPayment(usersCol, d, ch, before) {
+      return before.size() == d.pi && ch.payments.size() == d.pi + 1
+        && d.get('by', '') == request.auth.uid && rentByNameOk(usersCol, d.get('byName', ''))
+        && !('issuedBy' in d);
+    }
+
+    // Later: entry pi existed without a number (its writer, or an owner/manager: see the match).
+    function rentReceiptLater(d, ch, before) {
+      return before.size() == ch.payments.size() && !('rno' in before[d.pi])
+        && d.get('issuedBy', '') == request.auth.uid;
+    }
+
+    function validRentReceiptCreate(usersCol, rid) {
+      let chPath = rentPath(usersCol, 'rent_charges', request.resource.data.get('chargeId', '-'));
+      return rentReceiptCreateOk(usersCol, rid, request.resource.data, getAfter(chPath).data,
+        get(chPath).data.get('payments', []));
+    }
+
+    function rentReceiptCreateOk(usersCol, rid, d, ch, before) {
+      return d.keys().hasOnly(rentReceiptFields())
+        && !d.keys().hasAny(['voidBy', 'voidByName', 'voidAt', 'voidReason']) && d.get('void', null) == false
+        && rentStr(d, 'chargeId', 1, 80) && d.get('pi', -1) is int && d.pi >= 0 && d.pi < 12
+        && rid == d.chargeId + '_' + string(d.pi)
+        && d.get('year', 0) is int && d.year == rentIstYear()
+        && d.get('seq', 0) is int && d.seq >= 1
+        && d.get('no', '') is string && d.no.matches('R-' + string(d.year) + '-0*' + string(d.seq))
+        && rentReceiptSeqOk(usersCol, rid, d.year, d.seq)
+        && d.pi < ch.payments.size()
+        && (rentReceiptWithPayment(usersCol, d, ch, before) || rentReceiptLater(d, ch, before))
+        && rentBalanceOk(d, ch.amount, ch.paid)
+        && rentReceiptMatches(d, ch, ch.payments[d.pi]);
+    }
+
+    // The receipt shows payment entry e and its charge exactly.
+    function rentReceiptMatches(d, ch, e) {
+      return e.get('rno', '') == d.no && e.get('by', '') == d.get('by', '') && e.get('byName', '') == d.get('byName', '')
+        && e.amount == d.get('paid', -1) && e.mode == d.get('mode', '') && e.date == d.get('date', '')
+        && e.get('ref', '') == d.get('ref', '')
+        && d.get('leaseId', '') == ch.leaseId && d.get('tenantId', '') == ch.tenantId
+        && d.get('unitId', '') == ch.unitId && d.get('propertyId', '') == ch.propertyId
+        && d.get('months', null) == [ch.month]
+        && d.get('rent', null) == ch.rent && d.get('elec', null) == ch.get('electricity', null)
+        && d.get('total', null) == ch.amount
+        && d.get('tenantName', null) == ch.get('tenantName', '')
+        && rentStr(d, 'place', 0, 150) && rentStr(d, 'byName', 0, 80)
+        && (!('ut' in d) || d.ut in ['flat', 'commercial', 'office', 'godown', 'other'])
+        && d.get('createdAt', null) is number;
+    }
+
+    // Cancel: void once, by owner/manager, nothing else changes; the charge marks it in the same write.
+    function rentReceiptVoidOk(usersCol) {
+      let d = request.resource.data;
+      let r = resource.data;
+      let chPath = rentPath(usersCol, 'rent_charges', r.chargeId);
+      return r.get('void', false) == false && d.get('void', null) == true
+        && d.diff(r).affectedKeys().hasOnly(['void', 'voidBy', 'voidByName', 'voidAt', 'voidReason'])
+        && d.get('voidBy', null) == request.auth.uid && d.get('voidAt', null) is number
+        && rentStr(d, 'voidByName', 0, 80) && rentStr(d, 'voidReason', 1, 200)
+        && (!existsAfter(chPath) || r.pi in getAfter(chPath).data.get('voided', []));
+    }
+
+    function validRentCounter(usersCol, id) {
+      let d = request.resource.data;
+      let rcpt = getAfter(rentPath(usersCol, 'rent_receipts', d.get('rid', '-'))).data;
+      return id.matches('^receipts_[0-9]{4}$')
+        && d.keys().hasOnly(['last', 'rid', 'updatedAt', 'updatedBy']) && rentWriterOk()
+        && d.get('last', 0) is int && d.last == (resource == null ? 1 : resource.data.last + 1)
+        && rentStr(d, 'rid', 1, 90)
+        && !exists(rentPath(usersCol, 'rent_receipts', d.rid))
+        && rcpt.seq == d.last && id == 'receipts_' + string(rcpt.year);
     }
 
     // Move-out removes unpaid months after the last month, only inside the
@@ -1110,8 +1266,8 @@ service cloud.firestore {
 
     function rentUpdateAs(base, usersCol, docId, mgr) {
       return base == 'rent_charges'
-          ? (rentCreationKept() && (rentPaymentOk() || rentMeterOk(usersCol, docId, mgr)))
-            || (mgr && rentChargeEditOk())
+          ? (rentCreationKept() && (rentPaymentOk(usersCol, docId) || rentChargeRnoOk(usersCol, docId) || rentMeterOk(usersCol, docId, mgr)))
+            || (mgr && (rentChargeEditOk(usersCol, docId) || rentChargeVoidOk(usersCol, docId)))
         : base == 'rent_leases'
           ? rentLeaseUpdateOk(usersCol, docId, mgr)
         : base == 'rent_units'
@@ -1170,12 +1326,12 @@ service cloud.firestore {
       return docId == 'default'
         && canManageRent(usersCol)
         && rentWriterOk()
-        && d.keys().hasOnly(['dueDay', 'increasePct', 'meterRate', 'tenantLink', 'receiptHeader', 'updatedAt', 'updatedBy'])
+        && d.keys().hasOnly(['dueDay', 'increasePct', 'meterRate', 'tenantLink', 'receiptHeader', 'receiptAddress', 'updatedAt', 'updatedBy'])
         && d.get('dueDay', 10) is int && d.get('dueDay', 10) >= 1 && d.get('dueDay', 10) <= 28
         && d.get('increasePct', 5) is number && d.get('increasePct', 5) >= 0 && d.get('increasePct', 5) <= 100
         && rentNumOrNull(d, 'meterRate')
         && d.get('tenantLink', false) is bool
-        && rentStr(d, 'receiptHeader', 0, 80);
+        && rentStr(d, 'receiptHeader', 0, 80) && rentStr(d, 'receiptAddress', 0, 200);
     }
 
     // ============================================
@@ -1490,6 +1646,37 @@ service cloud.firestore {
       allow read: if rentRoleIn('dev_users') != '';
       allow create, update: if validRentSettings('dev_users', docId);
       allow delete: if rentRoleIn('dev_users') == 'owner';
+    }
+
+    // Rent receipts and their yearly counters (helpers above): rentals roles read;
+    // created with a payment, or later for a payment without one (its writer or owner/manager);
+    // never edited except cancel (owner/manager); never deleted.
+    match /rent_receipts/{rid} {
+      allow read: if rentRoleIn('users') != '';
+      allow create: if canWriteRent('users') && validRentReceiptCreate('users', rid)
+        && (request.resource.data.get('by', '') == request.auth.uid || canManageRent('users'));
+      allow update: if canManageRent('users') && rentReceiptVoidOk('users');
+      allow delete: if false;
+    }
+
+    match /dev_rent_receipts/{rid} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if canWriteRent('dev_users') && validRentReceiptCreate('dev_users', rid)
+        && (request.resource.data.get('by', '') == request.auth.uid || canManageRent('dev_users'));
+      allow update: if canManageRent('dev_users') && rentReceiptVoidOk('dev_users');
+      allow delete: if false;
+    }
+
+    match /rent_counters/{id} {
+      allow read: if rentRoleIn('users') != '';
+      allow create, update: if canWriteRent('users') && validRentCounter('users', id);
+      allow delete: if false;
+    }
+
+    match /dev_rent_counters/{id} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create, update: if canWriteRent('dev_users') && validRentCounter('dev_users', id);
+      allow delete: if false;
     }
 
     match /dev_rent_properties/{docId} {

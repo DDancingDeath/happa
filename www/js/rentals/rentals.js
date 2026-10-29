@@ -341,7 +341,7 @@ function unitRowHtml(r, d, { showProperty = true } = {}) {
            <button type="button" class="rent-btn rent-btn-wa" onclick="window.app.rentals.remind('${js(lease.id)}')">${esc(t('ui.rent.whatsapp_reminder'))}</button>`
         : '') + (current && elecMode(lease) === 'meter' && (!current.electricity || isManager())
         ? `<button type="button" class="rent-btn" onclick="window.app.rentals.meter('${js(lease.id)}')">⚡ ${esc(t('ui.rent.meter_reading'))}</button>`
-        : '')) : (canWrite()
+        : '') + receiptsBtn(lease.tenantId)) : (canWrite()
         ? `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.addTenantToUnit('${js(r.unitId)}')">${esc(t('ui.rent.add_tenant'))}</button>`
         : '');
     return `<div class="rent-row" data-unit="${esc(r.unitId)}">
@@ -442,11 +442,13 @@ async function pay(leaseId) {
     const ref = val('rentPayRef');
     const date = val('rentPayDate') || todayLocalISO();
     try {
-        const res = await store.recordPayment(id, { amount, mode, ref, date });
-        UIManager.showToast(t('msg.rent.payment_saved', { amount: formatINR(res.amount) }), 'success');
+        const res = await store.recordPayment(id, { amount, mode, ref, date }, rcOf(charge));
+        const no = res.noReceipt;
+        UIManager.showToast(t(no ? 'msg.rent.payment_saved_no_receipt' : 'msg.rent.payment_saved', { amount: formatINR(res.amount) }), no ? 'warning' : 'success');
         AuditService.log('RENT_PAYMENT', {
-            chargeId: id, month: charge?.month || '', amount: res.amount, mode, tenant: charge?.tenantName || ''
+            chargeId: id, month: charge?.month || '', amount: res.amount, mode, tenant: charge?.tenantName || '', receipt: res.receipt?.no || ''
         }).catch(auditWarn);
+        if (res.receipt || no) void receiptUi(no ? 'showHistory' : 'showReceipt', no ? charge?.tenantId : res.receipt);
     } catch (e) {
         const key = e?.message === 'amount' ? 'msg.rent.bad_amount'
             : e?.message === 'over' ? 'msg.rent.more_than_due'
@@ -461,6 +463,29 @@ function fillDue(select) {
     const input = document.getElementById('rentPayAmount');
     if (input && due != null) input.value = due;
 }
+
+// ---------- Receipts (rent-receipt.js, loaded on first use) ----------
+
+/** Unit words on a receipt of charge `c`. */
+function rcOf(c) {
+    const lp = linkPlace(index(store.snapshot()), c?.unitId);
+    return { place: lp.place || c?.unitLabel || '', ut: lp.unitType || null };
+}
+
+/** Runs a rent-receipt.js function with what it needs from here (dialog, header, tenant link, owner/manager). */
+function receiptUi(fn, ...args) {
+    return Promise.all([import('./rent-receipt.js'), defaults()])
+        .then(([m, s]) => m[fn]({
+            dialog, rcOf, linkOf: (id) => linkFor(findLease(id)), canVoid: isManager(),
+            head: { biz: headerName(s), bizAddr: s.receiptAddress || '' }
+        }, ...args))
+        .catch((e) => {
+            console.error('Receipt not shown:', e);
+            UIManager.showToast(t('msg.rent.could_not_load'), 'error');
+        });
+}
+
+const receiptsBtn = (tenantId) => `<button type="button" class="rent-btn" onclick="window.app.rentals.receipts('${js(tenantId)}')">🧾 ${esc(t('ui.rcpt.receipts'))}</button>`;
 
 function remind(leaseId) {
     const d = store.snapshot();
@@ -668,6 +693,7 @@ function renderTenants(d) {
                 <button type="button" class="rent-btn" onclick="window.app.rentals.moveOut('${js(lease.id)}')">${esc(t('ui.rent.move_out'))}</button>`
                 : `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.moveIn('${id}')">${esc(t('ui.rent.move_in'))}</button>`}
             <button type="button" class="rent-btn" onclick="window.app.rentals.editTenant('${id}')">${esc(t('ui.rent.edit'))}</button>
+            ${receiptsBtn(tn.id)}
             ${lease ? '' : `<button type="button" class="rent-btn" onclick="window.app.rentals.archiveTenant('${id}')">${esc(t('ui.rent.remove'))}</button>`}
         </div>`;
         return `<div class="rent-row"><div class="rent-name">${esc(tn.name)}</div>
@@ -1063,13 +1089,15 @@ async function archiveUnit(id) {
 
 let dialogResolve = null;
 
-/** Rentals form dialog (template #rentDialog); resolves true on Save. Inputs stay readable after it closes. */
-function dialog(html) {
+/** Rentals form dialog (template #rentDialog); resolves true on Save. Inputs stay readable after it closes. `info`: no Save button. */
+function dialog(html, { info = false } = {}) {
     dialogResolve?.(false);
     const box = document.getElementById('rentDialog');
     const body = document.getElementById('rentDialogBody');
     if (!box || !body) return Promise.resolve(false);
     body.innerHTML = html;
+    const save = box.querySelector('.rent-dialog-actions .rent-btn-primary');
+    if (save) save.hidden = info;
     box.hidden = false;
     body.querySelector('input, select')?.focus();
     return new Promise((resolve) => {
@@ -1134,8 +1162,10 @@ export const RentalsModule = {
         addTenant, editTenant, archiveTenant, moveIn, moveOut, fillRent,
         addProperty, editProperty, archiveProperty, addUnit, editUnit, archiveUnit,
         shareLink, linkAction, setView, openProperty, filterUnits,
-        addTenantToUnit, tenantToggle, tenantPick, tenantElec
+        addTenantToUnit, tenantToggle, tenantPick, tenantElec,
+        receipts: (tenantId) => receiptUi('showHistory', tenantId),
+        receiptAction: (name, id) => receiptUi('action', name, id)
     }
 };
 
-export const _test = { state, accounts, index, render, maybeCharge, moveIn, placeOf, linkPlace };
+export const _test = { state, accounts, index, render, maybeCharge, moveIn, placeOf, linkPlace, pay };

@@ -53,6 +53,7 @@ describe('backup covers every collection in firestore.rules', () => {
         expect(NIGHTLY_EXCLUDE.slice().sort()).toEqual(['auditLogs', 'telemetry', 'tipFailures', 'tipHealth']);
         expect(nightly).toEqual(expect.arrayContaining([
             'rent_public', 'rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges', 'rent_settings',
+            'rent_receipts', 'rent_counters',
             'rateStats', 'rateHistory', 'settings', 'users', 'counters', 'purchases', 'retailSales', 'wholesaleSales'
         ]));
         expect(planCollections(roots, { mode: 'weekly' }).names).toEqual(roots);

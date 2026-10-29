@@ -9,12 +9,14 @@
  *    can happen before Rentals is opened);
  *  - index.html and the template loader don't load the rentals CSS/template;
  *  - only ui/business-switcher.js imports the Rentals code, with import();
- *  - the Rentals files stay within the size budget.
+ *  - the precached Rentals files stay within the size budget; the receipt files
+ *    are not precached, load only on use and have their own budget.
  */
 const fs = require('fs');
 const path = require('path');
 const acorn = require('acorn');
 const walk = require('acorn-walk');
+const { readStaticAssets, readLazyAssets } = require('../../../scripts/check-sw-assets.js');
 
 const WWW = path.resolve(__dirname, '..', '..');
 const JS = path.join(WWW, 'js');
@@ -22,7 +24,13 @@ const RENTALS = path.join(JS, 'rentals');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const rel = (p) => path.relative(WWW, p).split(path.sep).join('/');
 const RENT_COLLECTION = /['"`](?:dev_)?rent_[a-z]/;
-const BUDGET_BYTES = 130 * 1024;
+const PRECACHE_BUDGET_BYTES = 130 * 1024;
+/** Loaded with import() only when a receipt is used (file: its only importer); not precached, own budget. */
+const LAZY = { 'rent-receipt.js': 'rentals.js', 'rent-receipt-store.js': 'rent-receipt.js' };
+const LAZY_URLS = [...Object.keys(LAZY).map(n => `/js/rentals/${n}`), '/css/rent-receipt.css'];
+const LAZY_BUDGET_BYTES = 24 * 1024;
+/** Size as served (LF line endings), the same on a Windows checkout and in CI. */
+const sizeOf = (f) => Buffer.byteLength(read(f).replace(/\r\n/g, '\n'));
 
 function listJs(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -93,9 +101,28 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
         expect(init).toBeGreaterThan(shown);
     });
 
-    test(`Rentals files stay within the ${BUDGET_BYTES / 1024} KB precache budget`, () => {
-        const files = [...listJs(RENTALS), path.join(WWW, 'templates', 'rentals.html'), path.join(WWW, 'css', 'rentals.css')];
-        const bytes = files.reduce((s, f) => s + fs.statSync(f).size, 0);
-        expect(bytes).toBeLessThanOrEqual(BUDGET_BYTES);
+    // What the service worker downloads for Rentals on install (STATIC_ASSETS), at its served size.
+    test(`precached Rentals files stay within the ${PRECACHE_BUDGET_BYTES / 1024} KB budget`, () => {
+        const precached = readStaticAssets();
+        const notPrecached = listJs(RENTALS).map(f => `/${rel(f)}`).filter(u => !precached.includes(u));
+        expect(notPrecached.sort()).toEqual(LAZY_URLS.filter(u => u.endsWith('.js')).sort());
+        const files = precached.filter(u => u.startsWith('/js/rentals/') || ['/templates/rentals.html', '/css/rentals.css'].includes(u));
+        const bytes = files.reduce((s, u) => s + sizeOf(path.join(WWW, u)), 0);
+        expect(bytes).toBeLessThanOrEqual(PRECACHE_BUDGET_BYTES);
+    });
+
+    test(`receipt files are not precached, load only on use and stay within ${LAZY_BUDGET_BYTES / 1024} KB`, () => {
+        expect(readLazyAssets().sort()).toEqual([...LAZY_URLS].sort());
+        expect(readStaticAssets().filter(u => LAZY_URLS.includes(u))).toEqual([]);
+        const files = listJs(RENTALS);
+        Object.entries(LAZY).forEach(([name, by]) => {
+            expect(files.filter(f => path.basename(f) !== name && read(f).includes(`./${name}`)).map(f => path.basename(f))).toEqual([by]);
+        });
+        const src = read(path.join(RENTALS, 'rentals.js'));
+        expect(src).toMatch(/import\(\s*'\.\/rent-receipt\.js'\s*\)/);
+        expect(src).not.toMatch(/^import .*rent-receipt/m);
+        expect(LAZY_URLS.reduce((s, u) => s + sizeOf(path.join(WWW, u)), 0)).toBeLessThanOrEqual(LAZY_BUDGET_BYTES);
+        expect(read(path.join(RENTALS, 'rent-receipt.js'))).toMatch(/css\/rent-receipt\.css/);
+        expect(read(path.join(WWW, 'index.html'))).not.toMatch(/rent-receipt/);
     });
 });
