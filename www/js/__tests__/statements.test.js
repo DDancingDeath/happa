@@ -331,3 +331,17 @@ describe('payments on old bills with part of the history loaded (round-3 review)
         expect(withLeg.rows.length).toBe(plain.rows.length);
     });
 });
+
+test('CSV labour of an old bill with only `labour` adds up to M7 (round-3 review)', () => {
+    const purchases = data.purchases.map(b => {
+        if (b.id !== 'p3') return b;
+        const { laborCharges, ...old } = b;
+        return { ...old, labour: laborCharges };
+    });
+    const r = { from: new Date(2026, 9, 1).getTime(), to: NOW + 1 };
+    const src = { ...data, purchases };
+    const lines = exportLines(src, data.items, r).filter(l => l.type === 'purchase');
+    const m = moneySummary({ ...src, base: { state: {}, from: -Infinity } }, r);
+    expect(m.M7).toBe(6);
+    expect(lines.reduce((a, l) => a + l.labour, 0)).toBe(m.M7);
+});

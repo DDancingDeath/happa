@@ -7,7 +7,7 @@
  */
 
 import { billsInRange } from './finance-calc.js';
-import { activityBills, billTotal, isOpeningRecord, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
+import { activityBills, billLabour, billTotal, isOpeningRecord, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, entryParts, entryTime, dueEvents } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayWithValues, eventTime } from './stock-replay.js';
 import { normalizePartyName } from './aging.js';
@@ -284,7 +284,7 @@ export function exportLines(src, items, { from, to }) {
         billsInRange(list || [], from, to).forEach(b => {
             const lines = (Array.isArray(b.items) ? b.items : []).map(l => ({ l, v: readLineItem(l) }));
             const value = lines.reduce((a, x) => a + x.v.total, 0);
-            const labour = type === 'purchase' ? num(b.laborCharges) : 0;
+            const labour = type === 'purchase' ? billLabour(b) : 0;
             const p = saleTimePayment(b);
             const total = billTotal(b);
             let used = 0;
