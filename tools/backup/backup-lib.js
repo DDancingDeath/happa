@@ -1,11 +1,97 @@
 /**
  * Pure helpers shared by export-firestore.js and restore-firestore.js.
  * No network access here, so they are unit-tested
- * (www/js/__tests__/firestore-backup.test.js).
+ * (www/js/__tests__/firestore-backup.test.js, tests/backup/).
  */
 'use strict';
 
 const BACKUP_FORMAT = 'aadhat-backup-v1';
+
+/**
+ * Every production root collection that firestore.rules names (explicitly or in
+ * businessCollections()). tests/backup/backup-collections.test.js fails when the
+ * rules gain a collection that is missing here, so nothing is silently left out.
+ * The export itself still backs up every root collection Firestore lists.
+ */
+const BACKUP_COLLECTIONS = [
+    // businessCollections()
+    'purchases', 'retailSales', 'wholesaleSales', 'items', 'expenses',
+    'stockAdjustments', 'withdrawals', 'cashManagement', 'cashSessions',
+    'settings', 'itemFrequency', 'notifications', 'autoSaves', 'drafts', 'counters',
+    // own match blocks
+    'stockCheckpoints', 'rateHistory', 'anomalies', 'rateStats', 'monthStats',
+    'tipHealth', 'tipFailures', 'users', 'auditLogs', 'telemetry',
+    // Rentals
+    'rent_public', 'rent_properties', 'rent_units', 'rent_tenants', 'rent_leases',
+    'rent_charges', 'rent_settings'
+];
+
+/** Sub-collections named in firestore.rules, as `<parent collection>/<sub-collection>`. */
+const SUBCOLLECTIONS = ['users/preferences'];
+
+/**
+ * Left out of the nightly export to save reads (logs and test-in-production
+ * counters, most of a run's reads). The weekly (Sunday) export includes them.
+ */
+const NIGHTLY_EXCLUDE = ['auditLogs', 'telemetry', 'tipHealth', 'tipFailures'];
+
+/** The only collections the BACKUP_EXCLUDE variable may drop; it can't drop business data. */
+const OPTIONAL_COLLECTIONS = [...NIGHTLY_EXCLUDE, 'notifications', 'autoSaves', 'drafts'];
+
+const IST_OFFSET_MS = 330 * 60 * 1000;
+
+/**
+ * Day of the week in India (0 = Sunday).
+ * @param {Date} [now]
+ * @returns {number}
+ */
+function istDayOfWeek(now = new Date()) {
+    return new Date(now.getTime() + IST_OFFSET_MS).getUTCDay();
+}
+
+/**
+ * Which export to take. Scheduled runs take the weekly (full) export on
+ * Sundays (IST) and the nightly one otherwise; a manual run picks either.
+ * @param {{requested?: string, scheduled: boolean, dayOfWeek: number}} o
+ * @returns {'nightly'|'weekly'}
+ */
+function backupMode({ requested, scheduled, dayOfWeek }) {
+    if (requested === 'nightly' || requested === 'weekly') return requested;
+    return scheduled && dayOfWeek === 0 ? 'weekly' : 'nightly';
+}
+
+/**
+ * Collections for one run.
+ * @param {string[]} ids root collection ids that exist in Firestore
+ * @param {{mode: 'nightly'|'weekly', exclude?: string[]}} o `exclude` = BACKUP_EXCLUDE
+ * @returns {{names: string[], excluded: string[], refused: string[], undeclared: string[]}}
+ *   refused: BACKUP_EXCLUDE entries ignored because they are business data;
+ *   undeclared: exported collections missing from BACKUP_COLLECTIONS.
+ */
+function planCollections(ids, { mode, exclude = [] }) {
+    const extra = exclude.map(s => String(s).trim()).filter(Boolean);
+    const refused = extra.filter(n => !OPTIONAL_COLLECTIONS.includes(n) && BACKUP_COLLECTIONS.includes(n));
+    const skip = new Set([...(mode === 'weekly' ? [] : NIGHTLY_EXCLUDE), ...extra.filter(n => !refused.includes(n))]);
+    const names = selectCollections(ids, [...skip]);
+    const excluded = ids.filter(id => !id.startsWith('dev_') && skip.has(id)).sort();
+    const undeclared = names.filter(n => !BACKUP_COLLECTIONS.includes(n));
+    return { names, excluded, refused, undeclared };
+}
+
+/**
+ * Document counts of a backup, written next to the encrypted file as
+ * manifest.json (counts only, no data) and embedded in the backup itself.
+ * @param {{format: string, mode?: string, exportedAt: string, project?: string, collections: Object<string, Array>, subcollections?: Object<string, Array>}} backup
+ * @returns {object}
+ */
+function buildManifest(backup) {
+    const collections = {};
+    Object.keys(backup.collections || {}).sort().forEach(n => { collections[n] = backup.collections[n].length; });
+    const subcollections = {};
+    Object.keys(backup.subcollections || {}).sort().forEach(n => { subcollections[n] = backup.subcollections[n].length; });
+    const totalDocs = [...Object.values(collections), ...Object.values(subcollections)].reduce((a, b) => a + b, 0);
+    return { format: backup.format, mode: backup.mode || 'full', exportedAt: backup.exportedAt, project: backup.project, totalDocs, collections, subcollections };
+}
 
 /**
  * Converts Firestore values to JSON-safe tagged objects (recursively).
@@ -110,4 +196,20 @@ function targetCollection(name, target) {
     return name.startsWith('dev_') ? name : `dev_${name}`;
 }
 
-module.exports = { BACKUP_FORMAT, serialize, deserialize, selectCollections, decideRun, targetCollection };
+/**
+ * Restore target for a sub-collection document path (`users/u1/preferences/p`):
+ * only the root collection gets the dev_ prefix.
+ * @param {string} docPath
+ * @param {'dev'|'prod'} target
+ * @returns {string}
+ */
+function targetDocPath(docPath, target) {
+    const [root, ...rest] = docPath.split('/');
+    return [targetCollection(root, target), ...rest].join('/');
+}
+
+module.exports = {
+    BACKUP_FORMAT, BACKUP_COLLECTIONS, SUBCOLLECTIONS, NIGHTLY_EXCLUDE, OPTIONAL_COLLECTIONS,
+    serialize, deserialize, selectCollections, planCollections, backupMode, istDayOfWeek, buildManifest,
+    decideRun, targetCollection, targetDocPath
+};

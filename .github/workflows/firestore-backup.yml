@@ -1,16 +1,29 @@
 name: Firestore backup
 
-# Exports all of Happa's production Firestore collections (project from
-# happa.config.json; the guard refuses aadhat-management), then gzips and encrypts the
-# file (AES-256, passphrase in the BACKUP_PASSPHRASE secret) and keeps it as a
-# workflow artifact. The repo is public, so the archive is never uploaded
-# unencrypted. Restore steps: tools/backup/README.md.
+# Exports Happa's production Firestore data (project from happa.config.json; the
+# guard refuses aadhat-management), then gzips and encrypts it (AES-256,
+# passphrase in the BACKUP_PASSPHRASE secret) and keeps it as a workflow artifact
+# for 60 days with manifest.json (document counts only) and SHA256SUMS. The repo
+# is public, so the data is never uploaded unencrypted.
+#   nightly: every collection except auditLogs, telemetry, tipHealth, tipFailures
+#   weekly (Sundays IST): everything, including those
+# A second job checks the artifact offline (no Firebase reads): checksums,
+# decryption, parsing and counts against the manifest. If the scheduled backup
+# fails or is skipped two nights running, an `ops` issue is opened in this repo.
+# Restore steps: tools/backup/README.md.
 
 on:
   schedule:
-    - cron: '15 8 * * *' # 13:45 IST daily, just after the free-tier read quota resets (midnight Pacific)
+    # 08:15 UTC = 13:45 IST, after the free-tier quota resets at midnight Pacific
+    # (12:30 IST until 1 Nov 2026, 13:30 IST from then until March).
+    - cron: '15 8 * * *'
   workflow_dispatch:
     inputs:
+      mode:
+        description: 'nightly (skips auditLogs, telemetry, tipHealth, tipFailures) or weekly (everything)'
+        type: choice
+        options: [nightly, weekly]
+        default: nightly
       force:
         description: 'Ignore the free-quota size guard'
         type: boolean
@@ -27,6 +40,11 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      skipped: ${{ steps.export.outputs.skipped }}
+      mode: ${{ steps.export.outputs.mode }}
+      reads: ${{ steps.export.outputs.reads }}
+      artifact: ${{ steps.encrypt.outputs.artifact }}
     steps:
       - uses: actions/checkout@v4
 
@@ -62,6 +80,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_BACKUP_SERVICE_ACCOUNT_HAPPA || secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
           BACKUP_TRIGGER: ${{ github.event_name }}
+          BACKUP_MODE: ${{ inputs.mode || 'auto' }}
           BACKUP_FORCE: ${{ inputs.force && 'true' || 'false' }}
           BACKUP_WEEKLY_ABOVE: ${{ vars.BACKUP_WEEKLY_ABOVE }}
           BACKUP_HARD_MAX: ${{ vars.BACKUP_HARD_MAX }}
@@ -69,28 +88,32 @@ jobs:
         run: node tools/backup/export-firestore.js --out "$RUNNER_TEMP/backup/firestore-backup.json"
 
       - name: Compress and encrypt
+        id: encrypt
         if: steps.export.outputs.skipped == 'false'
         env:
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          MODE: ${{ steps.export.outputs.mode }}
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/backup"
           STAMP=$(TZ=Asia/Kolkata date +%Y-%m-%d_%H%M)
+          NAME="firestore-backup-$MODE-$STAMP"
           gzip -9 firestore-backup.json
           openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt \
-            -in firestore-backup.json.gz -out "firestore-backup-$STAMP.json.gz.enc" \
+            -in firestore-backup.json.gz -out "$NAME.json.gz.enc" \
             -pass env:BACKUP_PASSPHRASE
           rm -f firestore-backup.json.gz
-          sha256sum firestore-backup-*.enc > SHA256SUMS
-          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          sha256sum "$NAME.json.gz.enc" manifest.json > SHA256SUMS
+          echo "artifact=$NAME" >> "$GITHUB_OUTPUT"
 
       - name: Upload encrypted backup
         if: steps.export.outputs.skipped == 'false'
         uses: actions/upload-artifact@v4
         with:
-          name: firestore-backup-${{ env.STAMP }}
+          name: ${{ steps.encrypt.outputs.artifact }}
           path: |
-            ${{ runner.temp }}/backup/firestore-backup-*.enc
+            ${{ runner.temp }}/backup/*.json.gz.enc
+            ${{ runner.temp }}/backup/manifest.json
             ${{ runner.temp }}/backup/SHA256SUMS
           retention-days: 60
           if-no-files-found: error
@@ -98,3 +121,48 @@ jobs:
       - name: Remove plaintext
         if: always()
         run: rm -rf "$RUNNER_TEMP/backup"
+
+  # Restore check, entirely offline: no Firebase credentials in this job.
+  verify:
+    needs: backup
+    if: needs.backup.outputs.skipped == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.backup.outputs.artifact }}
+          path: ${{ runner.temp }}/artifact
+      - name: Verify checksums, decrypt, parse, compare counts with the manifest
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: node tools/backup/verify-backup.js --dir "$RUNNER_TEMP/artifact"
+      - name: Remove download
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/artifact"
+
+  alert:
+    needs: [backup, verify]
+    if: always() && github.repository == 'DDancingDeath/happa'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Open / update / close the backup alert issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ALERT_KIND: backup
+          EVENT_NAME: ${{ github.event_name }}
+          CURRENT_GOOD: ${{ needs.backup.result == 'success' && needs.backup.outputs.skipped == 'false' && needs.verify.result == 'success' }}
+        run: node tools/backup/alert.js

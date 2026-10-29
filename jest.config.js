@@ -15,7 +15,9 @@ module.exports = {
         '**/www/js/**/*.spec.js',
         // Business-correctness tests (#216): spec oracle + accounting property checks
         '**/tests/oracle/**/*.test.js',
-        '**/tests/property/**/*.test.js'
+        '**/tests/property/**/*.test.js',
+        // Firestore backup tooling (tools/backup)
+        '**/tests/backup/**/*.test.js'
     ],
     
     // Stryker's sandbox copies of the repo (#216)
