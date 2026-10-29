@@ -763,13 +763,13 @@ function elecFieldsHtml(mode, meterNo = '') {
  * The tenant fields. toggle: Add unit shows them only after "Occupied — add tenant
  * now"; fixedTenant: Move in from the Tenants page; newUnit: opening meter reading.
  */
-function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUnit = false, meterRate = '', defs = normalizeRentSettings(null) } = {}) {
+function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUnit = false, meterRate = '', defs = normalizeRentSettings(null), deposit = 0, elec = '' } = {}) {
     const d = store.snapshot();
     const busy = new Set(d.leases.map(l => l.tenantId));
     const free = d.tenants.filter(x => !busy.has(x.id)).sort((a, b) => a.name.localeCompare(b.name));
     // Settings › Rentals defaults fill a NEW lease; existing leases keep their own values.
     const rate = meterRate !== '' && meterRate != null ? meterRate : (defs.meterRate ?? '');
-    const mode = rate !== '' && rate != null ? 'meter' : 'included';
+    const mode = elec || (rate !== '' && rate != null ? 'meter' : 'included');
     const who = fixedTenant
         ? `<input type="hidden" id="rentTPick" value="${esc(fixedTenant.id)}"><p class="rent-name">${esc(fixedTenant.name)}</p>`
         : `<label class="rent-label">${esc(t('ui.rent.tenant_pick'))}<select id="rentTPick" onchange="window.app.rentals.tenantPick(this)">
@@ -787,7 +787,7 @@ function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUn
         <label class="rent-check"><input id="rentTProRate" type="checkbox"> ${esc(t('ui.rent.pro_rate_first'))}</label>
         <label class="rent-label">${esc(t('ui.rent.due_day'))}<input id="rentTDay" type="number" min="1" max="28" step="1" value="${esc(defs.dueDay)}"></label>
         <label class="rent-label">${esc(t('ui.rent.increase_pct'))}<input id="rentTPct" type="number" min="0" max="100" step="0.5" value="${esc(defs.increasePct)}"></label>
-        <label class="rent-label">${esc(t('ui.rent.deposit'))}<input id="rentTDeposit" type="number" inputmode="decimal" min="0" step="1" value="0"></label>
+        <label class="rent-label">${esc(t('ui.rent.deposit'))}<input id="rentTDeposit" type="number" inputmode="decimal" min="0" step="1" value="${esc(deposit)}"></label>
         <p class="rent-help">${esc(t('ui.rent.deposit_note'))}</p>
         ${elecFieldsHtml(mode)}
         ${newUnit ? `<div id="rentTMeterBox"${mode === 'meter' ? '' : ' hidden'}>
@@ -871,7 +871,9 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, endMonth = ''
         return true;
     } catch (e) {
         console.error('Move-in not saved:', e);
-        UIManager.showToast(t(MOVE_ERRORS.includes(e?.message) ? `msg.rent.${e.message}` : e?.code === 'permission-denied' ? 'msg.rent.not_allowed' : 'msg.rent.save_failed'), 'error');
+        UIManager.showToast(t(MOVE_ERRORS.includes(e?.message) ? `msg.rent.${e.message}`
+            : e?.code === 'unavailable' || navigator.onLine === false ? 'msg.rent.offline'
+                : e?.code === 'permission-denied' ? 'msg.rent.not_allowed' : 'msg.rent.save_failed'), 'error');
         return false;
     }
 }
@@ -888,6 +890,9 @@ function unitPickHtml(id, d, ix, { current = '', none = true, attrs = '' } = {})
     return `<label class="rent-label">${esc(t('ui.rent.unit'))}<select id="${id}"${attrs}>${none ? `<option value="">${esc(t('ui.rent.unit_none'))}</option>` : ''}${groups}</select></label>`;
 }
 
+/** A change of unit keeps the old lease's due day, yearly %, deposit and electricity mode (the rent is the new unit's). */
+const keepTerms = (l, defs) => ({ defs: { ...defs, dueDay: l.dueDay, increasePct: l.increasePct ?? defs.increasePct }, deposit: l.deposit || 0, elec: elecMode(l) });
+
 /** Move in or change unit (asks first); tenant: new, {id, name} or null (picked here); no unitId: picked here. */
 async function toUnit(tenant, unitId = '') {
     const d = store.snapshot();
@@ -899,7 +904,7 @@ async function toUnit(tenant, unitId = '') {
     const defs = await defaults();
     const ok = await dialog(`<h3>${esc(t(from ? 'ui.rent.change_unit' : tenant ? 'ui.rent.move_in' : 'ui.rent.add_tenant'))}${pick ? '' : `: ${esc(placeOf(ix, unitId))}`}</h3>
         ${pick ? unitPickHtml('rentLeaseUnit', d, ix, { none: false, attrs: ' onchange="window.app.rentals.fillRent(this)"' }) : ''}
-        ${tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, defs })}`);
+        ${tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keepTerms(from, defs) : { defs }) })}`);
     if (!ok) return;
     const unit = pick ? ix.units.get(val('rentLeaseUnit')) || pick : shown;
     const occ = readTenantSection({ given: tenant?.id ? null : tenant });

@@ -1612,6 +1612,7 @@ export default {
     'msg.rent.unit_changed': "✓ Unit changed. The new unit's rent is added from its first month.",
     'msg.rent.unit_changed_charged': "✓ Unit changed. First month's rent in the new unit: {amount}",
     'msg.rent.old_link_moved_out': "The old tenant link now shows Moved out; an owner or manager can make a new one.",
+    'msg.rent.offline': "No internet. Moving in a tenant who is already listed, or changing a unit, needs a connection: try again when online.",
     'ui.rent.unit_label': "Unit name (e.g. Ground floor, Shop 2)",
     'ui.rent.vacant': "Vacant",
     'ui.rent.whatsapp_reminder': "WhatsApp reminder",

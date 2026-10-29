@@ -74,10 +74,17 @@ test('vacant list: vacant units only, grouped by property (A–Z), the current u
     expect(ids(vacantByProperty(props, units, 'b'))).toEqual([['P2', ['c']], ['P1', ['e', 'b', 'a']]]);
 });
 
-test('assign: a new tenant and their lease (first month charged) in one transaction, 1 read', async () => {
+const unitDoc = (id) => ({ id, ...fake.raw('rent_units').get(id) });
+
+test('assign: a new tenant into a vacant unit is one batch (no reads, works offline); a taken unit in the list is refused', async () => {
     const reads = fake.stats.reads;
-    const res = await store.moveIn({ unit: { id: 'U2' }, tenant: { name: 'Gita', phone: '9876500000' }, lease: lease({ rent: 7000 }), currentMonth: M });
-    expect(fake.stats.reads - reads).toBe(1);
+    const orig = fake.db.runTransaction;
+    fake.db.runTransaction = jest.fn(async () => { throw Object.assign(new Error('offline'), { code: 'unavailable' }); });
+    const res = await store.moveIn({ unit: unitDoc('U2'), tenant: { name: 'Gita', phone: '9876500000' }, lease: lease({ rent: 7000 }), currentMonth: M });
+    await expect(store.moveIn({ unit: unitDoc('U4'), tenant: { name: 'Om', phone: '9876500001' }, lease: lease(), currentMonth: M })).rejects.toThrow('unit_taken');
+    expect(fake.db.runTransaction).not.toHaveBeenCalled();
+    fake.db.runTransaction = orig;
+    expect(fake.stats.reads - reads).toBe(0);
     expect(fake.raw('rent_tenants').get(res.tenantId)).toMatchObject({ name: 'Gita', phone: '9876500000' });
     expect(fake.raw('rent_leases').get(res.leaseId)).toMatchObject({ unitId: 'U2', propertyId: 'P1', tenantId: res.tenantId, status: 'active', chargedThrough: M });
     expect(fake.raw('rent_units').get('U2').leaseId).toBe(res.leaseId);
@@ -280,6 +287,32 @@ test('change of unit with a tenant link: a manager gets a new link; a member is 
     RentalsModule.api.dialogClose(true);
     await q;
     expect(leases().find(l => l.fromLeaseId === 'L1').shareToken).toBeTruthy();
+});
+
+test('change of unit keeps the old lease terms (due day, yearly %, deposit, electricity); the rent is the new unit\'s', async () => {
+    fake.seed('rent_leases', [{ ...fake.raw('rent_leases').get('L1'), id: 'L1', dueDay: 5, increasePct: 8, deposit: 15000, elecMode: 'own' }]);
+    await showTenants();
+    const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U3');
+    await waitFor('rentTRent');
+    const v = (id) => document.getElementById(id).value;
+    expect([v('rentTRent'), v('rentTDay'), v('rentTPct'), v('rentTDeposit'), v('rentTElec')]).toEqual(['9000', '5', '8', '15000', 'own']);
+    RentalsModule.api.dialogClose(true);
+    await p;
+    expect(leases().find(l => l.fromLeaseId === 'L1')).toMatchObject({ rent: 9000, dueDay: 5, increasePct: 8, deposit: 15000, elecMode: 'own' });
+});
+
+test('offline, an existing tenant can\'t move in: the message says a connection is needed', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    await showTenants();
+    const orig = fake.db.runTransaction;
+    fake.db.runTransaction = async () => { throw Object.assign(new Error('offline'), { code: 'unavailable' }); };
+    const p = _test.toUnit({ id: 'T2', name: 'Sita' }, 'U2');
+    await waitFor('rentTRent');
+    RentalsModule.api.dialogClose(true);
+    await p;
+    fake.db.runTransaction = orig;
+    expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/No internet/), 'error');
+    expect(fake.raw('rent_units').get('U2').leaseId).toBeNull();
 });
 
 test('a unit taken on another phone (stale list): clear message, nothing saved', async () => {

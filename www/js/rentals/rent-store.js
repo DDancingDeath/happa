@@ -204,8 +204,8 @@ const hasPayment = (s) => s.exists && ((Number(s.data().paid) || 0) > 0 || (s.da
 /**
  * Move-in, all or nothing (new or vacant unit, new or lease-free tenant, lease, first charge),
  * or with fromLeaseId a change of unit: the old lease ends with endMonth as on move-out and the
- * new one is charged just after (rules read limit). Re-reads run in a transaction that writes
- * the tenant or old lease, so a racing phone retries; a new unit + new tenant is a batch.
+ * new one is charged just after (rules read limit). An existing tenant or a change runs in a
+ * transaction that writes the tenant or old lease, so a racing phone retries; a new tenant is a batch.
  * @throws {Error} 'unit_taken' | 'tenant_changed' | 'bad_move_date' | 'later_paid' | 'missing'
  */
 export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = null, tenantName = '', fromLeaseId = null, endMonth = '', oldLabel = '', lease, meter = null, currentMonth }) {
@@ -218,11 +218,13 @@ export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = 
     const tenantRef = tenantId ? coll('rent_tenants').doc(tenantId) : coll('rent_tenants').doc();
     const leaseRef = coll('rent_leases').doc();
     const names = { tenantName: tenant?.name || tenantName || '' };
+    const tx = !!(tenantId || fromLeaseId);
     const run = async (w) => {
         let u = unit;
         let end = null;
         if (!newUnit) {
-            u = (await w.get(unitRef)).data();
+            // A new tenant needs no re-read (a batch, works offline): this copy is checked, the rules refuse a taken unit.
+            if (tx) u = (await w.get(unitRef)).data();
             if (!u || u.archived) throw new Error('missing');
             if (u.leaseId) throw new Error('unit_taken');
         }
@@ -274,7 +276,7 @@ export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = 
         return { unitId: unitRef.id, tenantId: tenantRef.id, leaseId: leaseRef.id, charged };
     };
     let res;
-    if (newUnit && !tenantId) {
+    if (!tx) {
         const batch = db.batch();
         res = await run(batch);
         await batch.commit();
