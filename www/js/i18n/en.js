@@ -915,6 +915,7 @@ export default {
     'ui.roles.group_pages': "Pages",
     'ui.roles.hint': "Choose what managers and members may see and do. The owner always sees everything.",
     'ui.roles.history_days_hint': "History shows only bills from the last this-many days for that role. 0 = all bills.",
+    'ui.roles.client_only_note': "Hidden in the app; full database protection comes later.",
     'ui.roles.manager': "Manager",
     'ui.roles.member': "Member",
     'ui.roles.perm_analytics': "Insights page",

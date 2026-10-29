@@ -915,6 +915,7 @@ export default {
     'ui.roles.group_pages': "पेज",
     'ui.roles.hint': "चुनें कि मैनेजर और सदस्य क्या देख और कर सकते हैं। मालिक हमेशा सब कुछ देखता है।",
     'ui.roles.history_days_hint': "इतिहास में उस भूमिका को सिर्फ पिछले इतने दिनों के बिल दिखेंगे। 0 = सभी बिल।",
+    'ui.roles.client_only_note': "ऐप में छिपा है; डेटाबेस में पूरी सुरक्षा बाद में आएगी।",
     'ui.roles.manager': "मैनेजर",
     'ui.roles.member': "सदस्य",
     'ui.roles.perm_analytics': "कारोबार पेज",

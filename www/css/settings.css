@@ -122,6 +122,13 @@ body.no-perm-purchaseRates [data-perm~="purchaseRates"] {
   color: var(--text-secondary, #6c757d);
   background: var(--bg-secondary, #f8f9fa);
 }
+
+.role-access-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-secondary, #6c757d);
+}
 /* Settings sections: Common, Aadhat, Rentals */
 .settings-section-title {
   margin: 8px 0 12px;

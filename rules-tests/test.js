@@ -126,8 +126,8 @@ function defineSuite(prefix) {
     });
 
     t('non-bill business docs stay deletable by approved staff', async () => {
-        await seedBill(`${prefix}drafts`, 'd', { userId: 'manager1' });
-        await assertSucceeds(as('staff1').collection(`${prefix}drafts`).doc('d').delete());
+        await seedBill(`${prefix}itemFrequency`, 'd', { userId: 'manager1' });
+        await assertSucceeds(as('staff1').collection(`${prefix}itemFrequency`).doc('d').delete());
     });
 
     t('staff cannot change userId on another user\'s bill (update or full set)', async () => {
@@ -1427,6 +1427,176 @@ function defineSuite(prefix) {
         await seedBill(counters, 'S20261022', { next: 3 });
         await assertFails(as('staff1').collection(counters).doc('S20261022').set(counter({ next: 2 }), { merge: true }));
         await assertSucceeds(as('staff1').collection(counters).doc('S20261022').set(counter({ next: 9 }), { merge: true }));
+    });
+
+    // ---- per-user records: auto-saves, drafts, notifications (#18 follow-up) ----
+
+    const autoSaves = `${prefix}autoSaves`;
+    const drafts = `${prefix}drafts`;
+    const notifications = `${prefix}notifications`;
+    const autoSave = (uid, extra = {}) => ({ userId: uid, userName: 'X', mode: 'purchase', lastSaved: serverTimestamp(),
+        purchase: { items: [], weights: [1] }, sale: { items: [], weights: [] }, ...extra });
+    const draft = (uid, extra = {}) => ({ id: 'd1', userId: uid, userName: 'X', mode: 'purchase', timestamp: 1,
+        items: [], weights: [5], ...extra });
+    // firestore-service.js notifyRateChanges / notifyItemEdit → sendNotification
+    const rateNote = (actor, recipient, extra = {}) => ({
+        type: 'rate_change', itemId: 'g', itemName: 'Gehu', itemHindiName: '', rateType: 'sale', rateTypeLabel: 'Sale',
+        oldRate: 40, newRate: 45, changedBy: 'Boss', changedByUserId: actor,
+        read: false, timestamp: serverTimestamp(), userId: recipient, eventKey: 'rate-1-sale', ...extra });
+    const itemNote = (actor, recipient, extra = {}) => ({
+        type: 'item_edit', action: 'updated', fields: ['name'], itemId: 'g', itemName: 'Gehu', itemHindiName: '',
+        changedBy: 'Boss', changedByUserId: actor, read: false, timestamp: serverTimestamp(),
+        userId: recipient, eventKey: 'item-1', ...extra });
+    const noteId = (n) => `${n.eventKey}_${n.userId}`;
+    const sendAs = (uid, n) => as(uid).collection(notifications).doc(noteId(n)).set(n);
+
+    t('autoSaves: each user writes and deletes only their own', async () => {
+        await assertSucceeds(as('staff1').collection(autoSaves).doc('staff1').set(autoSave('staff1')));
+        await assertSucceeds(as('staff1').collection(autoSaves).doc('staff1').set(autoSave('staff1', { mode: 'sale' })));
+        await assertSucceeds(as('staff1').collection(autoSaves).doc('staff1').delete());
+        await assertSucceeds(as('legacyOwner').collection(autoSaves).doc('legacyOwner').set(autoSave('legacyOwner')));
+    });
+
+    t('autoSaves: nobody plants, overwrites or wipes another user\'s auto-save', async () => {
+        await seedBill(autoSaves, 'manager1', autoSave('manager1'));
+        for (const uid of ['staff1', 'legacyStaff', 'manager1', 'legacyOwner']) {
+            await assertFails(as(uid).collection(autoSaves).doc('owner2').set(autoSave('owner2')));
+        }
+        for (const uid of ['staff1', 'legacyOwner']) {
+            await assertFails(as(uid).collection(autoSaves).doc('manager1').set(autoSave('manager1')));
+            await assertFails(as(uid).collection(autoSaves).doc('manager1').update({ purchase: { items: [], weights: [] } }));
+        }
+        await assertFails(as('staff1').collection(autoSaves).doc('manager1').delete());
+        // own doc, but claiming to be someone else
+        await assertFails(as('staff1').collection(autoSaves).doc('staff1').set(autoSave('manager1')));
+        await assertFails(as('pending1').collection(autoSaves).doc('pending1').set(autoSave('pending1')));
+        // Admin › Clear Data
+        await assertSucceeds(as('legacyOwner').collection(autoSaves).doc('manager1').delete());
+    });
+
+    t('drafts: own drafts are saved, loaded and deleted', async () => {
+        const ref = as('staff1').collection(drafts).doc('d1');
+        await assertSucceeds(ref.set(draft('staff1')));
+        await assertSucceeds(ref.update({ weights: [5, 6] }));
+        await assertSucceeds(ref.delete());
+        await assertSucceeds(as('staff1').collection(drafts).doc('gone').delete());
+    });
+
+    t('drafts: nobody creates a draft for another user or changes userId', async () => {
+        for (const uid of ['staff1', 'manager1', 'legacyOwner']) {
+            await assertFails(as(uid).collection(drafts).doc('x').set(draft('owner2')));
+        }
+        await assertFails(as('staff1').collection(drafts).doc('x').set(draft('staff1', { userId: null })));
+        await seedBill(drafts, 'mine', draft('staff1'));
+        await assertFails(as('staff1').collection(drafts).doc('mine').update({ userId: 'manager1' }));
+        await seedBill(drafts, 'theirs', draft('manager1'));
+        await assertFails(as('staff1').collection(drafts).doc('theirs').update({ userId: 'staff1' }));
+        await assertFails(as('staff1').collection(drafts).doc('theirs').update({ weights: [] }));
+        await assertFails(as('legacyOwner').collection(drafts).doc('theirs').update({ weights: [] }));
+    });
+
+    t('drafts: only their own user (or the owner, Clear Data) deletes them', async () => {
+        await seedBill(drafts, 'theirs', draft('manager1'));
+        await assertFails(as('staff1').collection(drafts).doc('theirs').delete());
+        await assertFails(as('legacyStaff').collection(drafts).doc('theirs').delete());
+        await assertSucceeds(as('legacyOwner').collection(drafts).doc('theirs').delete());
+    });
+
+    t('notifications: owner and manager fan rate and item edits out to others (batched)', async () => {
+        for (const actor of ['legacyOwner', 'manager1']) {
+            const db = as(actor);
+            const batch = db.batch();
+            const notes = [
+                rateNote(actor, 'staff1', { eventKey: `rate-${actor}-sale` }),
+                rateNote(actor, 'owner2', { eventKey: `rate-${actor}-sale` }),
+                rateNote(actor, 'staff1', { eventKey: `rate-${actor}-wholesale`, rateType: 'wholesale', oldRate: [1, 2], newRate: [3] }),
+                itemNote(actor, 'owner2', { eventKey: `item-${actor}` }),
+                itemNote(actor, 'owner2', { eventKey: `item-${actor}-a`, action: 'added', fields: [] })
+            ];
+            notes.forEach(n => batch.set(db.collection(notifications).doc(noteId(n)), n));
+            await assertSucceeds(batch.commit());
+        }
+        // notifyItemEdit for an item without a Hindi name / old rows without fields
+        await assertSucceeds(sendAs('manager1', itemNote('manager1', 'owner2', { eventKey: 'item-2', itemId: null })));
+    });
+
+    t('notifications: members cannot send any notification', async () => {
+        for (const uid of ['staff1', 'legacyStaff']) {
+            await assertFails(sendAs(uid, rateNote(uid, 'owner2')));
+            await assertFails(sendAs(uid, itemNote(uid, 'owner2')));
+            await assertFails(sendAs(uid, rateNote(uid, uid)));
+        }
+        await assertFails(sendAs('pending1', rateNote('pending1', 'owner2')));
+    });
+
+    t('notifications: a sender cannot forge the actor, type, fields or read state', async () => {
+        for (const actor of ['manager1', 'legacyOwner']) {
+            // "changed by" someone else
+            await assertFails(sendAs(actor, rateNote('owner2', 'staff1')));
+            await assertFails(sendAs(actor, rateNote(null, 'staff1')));
+            // other types / extra fields / wrong shape
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { type: 'edit' })));
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { type: 'cash_mismatch', message: 'Pay me' })));
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { message: 'Call 9999' })));
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { tab: 'settings' })));
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { rateType: 'secret' })));
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { newRate: 'free' })));
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { action: 'added' })));
+            await assertFails(sendAs(actor, itemNote(actor, 'owner2', { action: 'deleted' })));
+            await assertFails(sendAs(actor, itemNote(actor, 'owner2', { fields: ['password'] })));
+            await assertFails(sendAs(actor, itemNote(actor, 'owner2', { oldRate: 1 })));
+            // already read, client time, to themselves, no recipient
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { read: true })));
+            await assertFails(sendAs(actor, rateNote(actor, 'staff1', { timestamp: Date.now() })));
+            await assertFails(sendAs(actor, rateNote(actor, actor)));
+            await assertFails(sendAs(actor, rateNote(actor, '')));
+            // doc id must be <eventKey>_<userId>
+            await assertFails(as(actor).collection(notifications).doc('rate-1-sale_owner2').set(rateNote(actor, 'staff1')));
+        }
+    });
+
+    t('notifications: the recipient marks them read; nothing else changes', async () => {
+        await seedBill(notifications, 'n1', { ...rateNote('manager1', 'staff1'), timestamp: 1 });
+        const mine = as('staff1').collection(notifications).doc('n1');
+        await assertSucceeds(mine.update({ read: true, readAt: Date.now() }));
+        await assertFails(mine.update({ read: false, newRate: 1 }));
+        await assertFails(mine.update({ userId: 'manager1' }));
+        await assertFails(mine.update({ readAt: 'now' }));
+        await assertFails(mine.set({ ...rateNote('manager1', 'staff1'), timestamp: 1, read: true }));
+        // markAllNotificationsRead: batched
+        await seedBill(notifications, 'n2', { ...itemNote('manager1', 'staff1'), timestamp: 2 });
+        const db = as('staff1');
+        const batch = db.batch();
+        ['n1', 'n2'].forEach(id => batch.update(db.collection(notifications).doc(id), { read: true, readAt: Date.now() }));
+        await assertSucceeds(batch.commit());
+    });
+
+    t('notifications: nobody changes another user\'s notification, the owner included', async () => {
+        await seedBill(notifications, 'n1', { ...rateNote('manager1', 'staff1'), timestamp: 1 });
+        for (const uid of ['legacyStaff', 'manager1', 'legacyOwner']) {
+            const ref = as(uid).collection(notifications).doc('n1');
+            await assertFails(ref.update({ read: true, readAt: Date.now() }));
+            await assertFails(ref.update({ userId: uid }));
+            await assertFails(ref.update({ itemName: 'Chawal' }));
+        }
+        // re-sending over an existing doc is an update: refused too
+        await assertSucceeds(sendAs('manager1', rateNote('manager1', 'staff1', { eventKey: 'x' })));
+        await assertFails(sendAs('manager1', rateNote('manager1', 'staff1', { eventKey: 'x', newRate: 99 })));
+    });
+
+    t('notifications: deleted by the recipient (old-notification cleanup) or the owner only', async () => {
+        await seedBill(notifications, 'n1', { ...rateNote('manager1', 'staff1'), timestamp: 1 });
+        await seedBill(notifications, 'n2', { ...rateNote('manager1', 'staff1'), timestamp: 1 });
+        await seedBill(notifications, 'n3', { ...rateNote('manager1', 'staff1'), timestamp: 1 });
+        await assertFails(as('legacyStaff').collection(notifications).doc('n1').delete());
+        await assertFails(as('manager1').collection(notifications).doc('n1').delete());
+        await assertSucceeds(as('staff1').collection(notifications).doc('n1').delete());
+        await assertSucceeds(as('legacyOwner').collection(notifications).doc('n2').delete());
+        // the recipient's batched cleanup
+        const db = as('staff1');
+        const batch = db.batch();
+        batch.delete(db.collection(notifications).doc('n3'));
+        await assertSucceeds(batch.commit());
     });
 
     t('pending users cannot write cash, expenses, items or counters', async () => {

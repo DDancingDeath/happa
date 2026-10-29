@@ -299,8 +299,18 @@ client-only (below).
 5. `settings/app` stays readable by every approved user: each phone needs `minClientVersion`,
    `roleAccess`, labour, bill checks and TIP policy at start-up; a separate owner-only doc would
    cost one more read per app start for everyone.
-6. Write side, not reads: another user's draft can still be deleted and another user's
-   notification marked read (#18 follow-up).
+6. Write side of per-user records (#18 follow-up), **now enforced**: `autoSaves/{uid}` is
+   written and deleted only by that user (`docId == uid`, `userId` = own uid); drafts are
+   created and changed only by their own user with `userId` = own uid, never changed; a
+   notification is created only by an owner or manager (the only roles that edit items) for
+   another user, with `changedByUserId` = own uid, server `timestamp`, `read: false`, id
+   `<eventKey>_<userId>`, type `rate_change` or `item_edit` and only the fields the app
+   writes; members send none. Only the recipient updates a notification, and only `read` /
+   `readAt`. Drafts and notifications are deleted by their own user, auto-saves by theirs; the
+   owner may delete any of them (Admin › Clear Data) but not write them. Still not checked:
+   who a notification goes to (wholesale rate changes go only to owners/managers, item edits
+   only to owners) — that would cost one profile read per recipient. No extra rule reads
+   (the sender's profile is already read). Tests: "per-user records" in `rules-tests/test.js`.
 
 ## Caching (≤ 1 read per app start)
 
