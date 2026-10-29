@@ -529,6 +529,11 @@ describe('Settings', () => {
         expect(document.getElementById('ra-staff-editDays').value).toBe('2');
         expect(document.getElementById('roleAccessGrid').textContent).toContain('Member');
         expect(document.getElementById('roleAccessGrid').textContent).not.toMatch(/staff/i);
+        // Personal expenses and History days are enforced by the app only: say so next to them.
+        const noted = [...document.querySelectorAll('#roleAccessGrid .role-access-note')]
+            .map(n => n.closest('tr').querySelector('input').id);
+        expect(noted).toEqual(['ra-manager-personalExpenses', 'ra-manager-historyDays']);
+        expect(document.querySelector('.role-access-note').textContent).toBe('Hidden in the app; full database protection comes later.');
 
         document.getElementById('ra-staff-reports').checked = true;
         document.getElementById('ra-staff-personalExpenses').checked = false;

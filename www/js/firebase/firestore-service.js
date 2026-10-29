@@ -30,6 +30,7 @@ import { defaultWindowStart, monthsBefore, normalizeFrom, dateDescComparator } f
 import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart } from '../utils/rebuild-lease.js';
 import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_MS } from '../utils/background-tasks.js';
 import { markStartup } from '../utils/startup-timings.js';
+import { canReadWithdrawals } from '../utils/role-access.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { historyIdBound } from '../utils/rate-history.js';
 import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
@@ -303,6 +304,15 @@ const HISTORY_COLLECTIONS = [
 ];
 const HISTORY_SPEC = Object.fromEntries(HISTORY_COLLECTIONS.map(s => [s.key, s]));
 const ALL_HISTORY_VIEWS = [...new Set(HISTORY_COLLECTIONS.flatMap(s => s.views))];
+
+/**
+ * Whether this user may read a history collection (firestore.rules): withdrawals
+ * only with Money, Statements or Insights on for the role (#57). Uses the last
+ * known Roles & access, so a change applies from the next app start.
+ */
+function historySpecReadable(spec, role = AppState.userRole, roleAccess = AppState.settings?.roleAccess) {
+    return spec.key !== 'withdrawals' || canReadWithdrawals(role, roleAccess);
+}
 
 /** Firestore document id of each mapped record (the data may carry its own `id`). */
 const docIds = new WeakMap();
@@ -950,6 +960,10 @@ async function extendHistory(target) {
     const db = getDb();
     const snaps = [];
     for (const spec of HISTORY_COLLECTIONS) {
+        if (!historySpecReadable(spec)) {
+            snaps.push(null);
+            continue;
+        }
         const makeQuery = (attempt) => {
             let q = db.collection(col(spec.key));
             if (!full) q = q.where('timestamp', '>=', target).where('timestamp', '<', upper);
@@ -1017,6 +1031,10 @@ async function refreshOnDemand() {
     const db = getDb();
     const snaps = [];
     for (const spec of HISTORY_COLLECTIONS) {
+        if (!historySpecReadable(spec)) {
+            snaps.push(null);
+            continue;
+        }
         const makeQuery = (attempt) => {
             let q = db.collection(col(spec.key));
             if (!full) q = q.where('timestamp', '>=', from).where('timestamp', '<', ws.liveFrom);
@@ -1070,13 +1088,13 @@ function oldestTimestamp() {
     if (!oldestTimestampPromise) {
         const gen = sessionGen;
         const db = getDb();
-        oldestTimestampPromise = Promise.all(HISTORY_COLLECTIONS.map(spec =>
+        oldestTimestampPromise = Promise.all(HISTORY_COLLECTIONS.map(spec => (!historySpecReadable(spec) ? Infinity :
             getWithRetry(a => db.collection(col(spec.key)).orderBy('timestamp', 'asc').limit(1 + a), `${spec.label} oldest`)
                 .then(s => (s.docs.length ? Number(s.docs[0].data().timestamp) : Infinity))
                 .catch(err => {
                     if (spec.optional) return Infinity;
                     throw err;
-                })
+                }))
         )).then(values => Math.min(...values)).catch(err => {
             if (gen === sessionGen) oldestTimestampPromise = null;
             throw err;
@@ -1240,7 +1258,7 @@ async function backfillLegacyTimestampsNow(spec, docs, gen) {
  */
 async function scanLegacyCollections(ws, gen) {
     for (const spec of HISTORY_COLLECTIONS) {
-        if (!needsLegacyScan(spec.key)) continue;
+        if (!needsLegacyScan(spec.key) || !historySpecReadable(spec)) continue;
         const db = getDb();
         let snap;
         try {
@@ -3047,6 +3065,11 @@ const FirebaseService = {
             HISTORY_COLLECTIONS.forEach(spec => {
                 const c = createCollState(spec);
                 windowState.colls[spec.key] = c;
+                if (!historySpecReadable(spec)) {
+                    Object.assign(c.live, { docs: [], initialized: true, server: true });
+                    publishCollection(c);
+                    return;
+                }
                 const affectsStock = !!spec.stock;
                 const windowQuery = db.collection(col(spec.key))
                     .where('timestamp', '>=', liveFrom)

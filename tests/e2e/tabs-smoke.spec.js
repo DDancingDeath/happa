@@ -34,3 +34,18 @@ test('every page opens without errors', async ({ page, problems }) => {
     expect(problems.pageErrors).toEqual([]);
     expect(problems.consoleErrors).toEqual([]);
 });
+
+// Read rules (#57): a member's pages read only what the rules allow them.
+const MEMBER_TABS = ['billing', 'day', 'history', 'due', 'stock', 'rates', 'expenses', 'cash-management', 'settings'];
+
+test('a member opens every page they may see without permission errors', async ({ page, problems }) => {
+    await login(page, 'staff');
+    for (const tab of MEMBER_TABS) {
+        await test.step(tab, async () => {
+            await showTab(page, tab);
+            await page.waitForTimeout(400);
+        });
+    }
+    expect(problems.pageErrors).toEqual([]);
+    expect(problems.consoleErrors).toEqual([]);
+});

@@ -373,15 +373,98 @@ service cloud.firestore {
       return collection.matches('dev_.*') ? 'dev_users' : 'users';
     }
 
-    function canCreateRecord(base, u, docId) {
+    // --- per-user records: auto-save, drafts, notifications (#18 follow-up) ---
+    // Nobody writes another user's records, the owner included; the owner may
+    // only delete them (Admin › Clear Data deletes auto-saves and drafts).
+
+    // autoSaves/{uid} (billing.js autoSaveToCloud / deleteAutoSave): that user only.
+    function ownAutoSaveWrite(docId) {
+      return docId == request.auth.uid
+        && request.resource.data.get('userId', request.auth.uid) == request.auth.uid;
+    }
+
+    // drafts (billing.js saveDraft / loadDraft / deleteDraft): own drafts only;
+    // userId never changes.
+    function validDraftCreate() {
+      return request.resource.data.get('userId', null) == request.auth.uid;
+    }
+
+    function draftUpdateOk() {
+      return resource.data.get('userId', null) == request.auth.uid
+        && request.resource.data.get('userId', null) == request.auth.uid;
+    }
+
+    // notifications: the sender's device writes one doc per recipient
+    // (firestore-service.js sendNotification / planNotificationDocs, id
+    // <eventKey>_<userId>). The only senders are item adds and rate/name edits
+    // (notifyRateChanges, notifyItemEdit), and only owners/managers edit items,
+    // so only they may create them: stamped with their own uid and server time,
+    // types rate_change and item_edit, these fields only.
+    function notificationFields() {
+      return ['type', 'action', 'fields', 'itemId', 'itemName', 'itemHindiName',
+              'rateType', 'rateTypeLabel', 'oldRate', 'newRate',
+              'changedBy', 'changedByUserId', 'userId', 'eventKey', 'read', 'timestamp'];
+    }
+
+    function rateValueOk(d, key) {
+      return d.get(key, null) is number || d.get(key, null) is list;
+    }
+
+    function validNotificationCreate(u, docId) {
+      let d = request.resource.data;
+      return isManagerIn(u)
+        && d.keys().hasOnly(notificationFields())
+        && d.get('changedByUserId', null) == request.auth.uid
+        && d.get('userId', null) is string && d.userId.size() > 0 && d.userId != request.auth.uid
+        && d.get('eventKey', null) is string && docId == d.eventKey + '_' + d.userId
+        && d.get('read', null) == false
+        && d.get('timestamp', null) == request.time
+        && d.get('changedBy', '') is string
+        && (d.get('itemId', null) == null || d.itemId is string)
+        && d.get('itemName', '') is string
+        && d.get('itemHindiName', '') is string
+        && (d.get('type', null) == 'rate_change'
+            ? d.get('rateType', null) in ['purchase', 'sale', 'wholesale']
+              && d.get('rateTypeLabel', '') is string
+              && rateValueOk(d, 'oldRate') && rateValueOk(d, 'newRate')
+              && !d.keys().hasAny(['action', 'fields'])
+            : d.get('type', null) == 'item_edit'
+              && d.get('action', null) in ['added', 'updated']
+              && d.get('fields', []) is list
+              && d.get('fields', []).hasOnly(['name', 'hindiName', 'contactPerson'])
+              && !d.keys().hasAny(['rateType', 'rateTypeLabel', 'oldRate', 'newRate']));
+    }
+
+    // The recipient marks it read (markNotificationsRead / markAllNotificationsRead).
+    function notificationReadOnly() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return resource.data.get('userId', null) == request.auth.uid
+        && changed.hasOnly(['read', 'readAt'])
+        && request.resource.data.get('read', false) is bool
+        && (!changed.hasAny(['readAt']) || request.resource.data.readAt is number);
+    }
+
+    // Delete: the doc's own user (resource == null: already gone, a no-op), or
+    // the owner. autoSaves are keyed by uid.
+    function canDeleteOwnRecord(base, u, docId) {
       return isOwnerIn(u)
+        || (base == 'autoSaves'
+            ? docId == request.auth.uid
+            : resource == null || resource.data.get('userId', null) == request.auth.uid);
+    }
+
+    function canCreateRecord(base, u, docId) {
+      return base == 'autoSaves' ? ownAutoSaveWrite(docId)
+        : base == 'drafts' ? validDraftCreate()
+        : base == 'notifications' ? validNotificationCreate(u, docId)
+        : (isOwnerIn(u)
         || (base in billCollections() ? validBillCreate()
           : base in ['expenses', 'withdrawals'] ? validLedgerCreate()
           : base == 'stockAdjustments' ? validAdjustmentCreate()
           : base in ['cashManagement', 'cashSessions'] ? validCashCreate(docId)
           : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.keys())
           : base == 'counters' ? validCounterCreate()
-          : true);
+          : true));
     }
 
     // A closed cash day stays closed for everyone, owners too (#38): a queued or
@@ -394,6 +477,9 @@ service cloud.firestore {
     function canUpdateRecord(base, u, docId) {
       return base in billCollections() ? canUpdateBill(u, docId)
         : base in ['cashManagement', 'cashSessions'] && !cashStaysClosed() ? false
+        : base == 'autoSaves' ? ownAutoSaveWrite(docId)
+        : base == 'drafts' ? draftUpdateOk()
+        : base == 'notifications' ? notificationReadOnly()
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base in ['withdrawals', 'stockAdjustments']
@@ -406,8 +492,9 @@ service cloud.firestore {
         : true;
     }
 
-    function canDeleteRecord(base, u) {
+    function canDeleteRecord(base, u, docId) {
       return base in billCollections() ? canDeleteBill(u)
+        : base in ['autoSaves', 'drafts', 'notifications'] ? canDeleteOwnRecord(base, u, docId)
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canDeleteExpense(u)
         : base in ['withdrawals', 'stockAdjustments'] ? isManagerIn(u)
@@ -463,6 +550,34 @@ service cloud.firestore {
         || (collection in devBusinessCollections() && isApprovedIn('dev_users'));
     }
 
+    // --- reads (#57, #18; docs/role-permissions.md "Server-side read rules") ---
+    // Called after businessAccess, so the caller's profile is already read. The
+    // owner reads everything (backup, Admin). `single` = a get of one document.
+    function canReadRecord(base, u, docId, single) {
+      return isOwnerIn(u)
+        || (base in ['notifications', 'drafts']
+            ? (single && resource == null) || resource.data.get('userId', null) == request.auth.uid
+          : base == 'autoSaves' ? docId == request.auth.uid
+          : base == 'settings' ? single && docId == 'app'
+          : base == 'withdrawals' ? roleSeesMoneyPages(u)
+          : base == 'cashSessions' ? isManagerIn(u)
+          : true);
+    }
+
+    // Withdrawals are shown only on Money, Statements and Insights (roleAccess ids
+    // finance, reports, analytics; defaults: on for managers, off for members). A
+    // manager or member reads them only when one of those is on for their role: one
+    // extra read (settings/app), never for the owner.
+    function roleSeesMoneyPages(usersCol) {
+      let role = get(profilePath(usersCol)).data.get('role', '');
+      let def = role == 'manager';
+      let p = settingsAppPath(usersCol);
+      let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
+      let r = access is map ? access.get(role, {}) : {};
+      let a = r is map ? r : {};
+      return a.get('finance', def) == true || a.get('reports', def) == true || a.get('analytics', def) == true;
+    }
+
     // --- stock checkpoint (stockCheckpoints/current) ---
 
     function isManagerIn(usersCol) {
@@ -506,8 +621,9 @@ service cloud.firestore {
     // --- user profile rules (shared by users and dev_users) ---
 
     function canReadProfile(usersCol, userId) {
-      // A pending/rejected user must still be able to read their own profile at login.
-      return isApprovedIn(usersCol) || (isSignedIn() && request.auth.uid == userId);
+      // Own profile (pending/rejected users too, at login); owner and managers read
+      // everyone (Admin, Roles & access, App health). Members never read others (#57).
+      return (isSignedIn() && request.auth.uid == userId) || isManagerIn(usersCol);
     }
 
     function canCreateProfile(userId) {
@@ -1067,8 +1183,13 @@ service cloud.firestore {
     // ============================================
 
     // Business collections (production and dev_ mirrors) live under one wildcard match.
+    // Reads: see canReadRecord (own notifications/drafts/auto-save, settings/app only,
+    // withdrawals by role access).
     match /{collection}/{docId} {
-      allow read: if businessAccess(collection);
+      allow get: if businessAccess(collection)
+        && canReadRecord(baseName(collection), usersOf(collection), docId, true);
+      allow list: if businessAccess(collection)
+        && canReadRecord(baseName(collection), usersOf(collection), docId, false);
       // Stock records need an up-to-date app (clientVersion >= 3) on create/update.
       allow create: if businessAccess(collection)
         && appSettingsGuard(collection, docId)
@@ -1077,6 +1198,8 @@ service cloud.firestore {
       // Bills: full edits by owner/manager/creator; anyone else approved may only
       // record payment/due bookkeeping. Only an owner may change userId.
       // Cash, expenses, stock adjustments, items, counters: see canUpdateRecord.
+      // Auto-saves and drafts: their own user only; notifications: the recipient
+      // marks them read.
       allow update: if businessAccess(collection)
         && (appSettingsGuard(collection, docId) || managerShopSettingsOk(collection, docId))
         && (!(collection in stockCollections()) || writesCurrentClient(collection))
@@ -1084,10 +1207,11 @@ service cloud.firestore {
       // Bills can only be deleted by an owner or by the user who created them
       // (matches the client check in history.js deleteBill). Cash sessions,
       // items and counters: owner only. Expenses: owner/manager, or the creator
-      // within 24 hours. Withdrawals/stock adjustments: owner/manager.
+      // within 24 hours. Withdrawals/stock adjustments: owner/manager. Auto-saves,
+      // drafts, notifications: their own user, or the owner (Clear Data).
       allow delete: if businessAccess(collection)
         && appSettingsGuard(collection, docId)
-        && canDeleteRecord(baseName(collection), usersOf(collection));
+        && canDeleteRecord(baseName(collection), usersOf(collection), docId);
     }
 
     // State/lease writes: owner or manager only; anyone approved may mark it stale.

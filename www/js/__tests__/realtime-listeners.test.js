@@ -170,6 +170,7 @@ describe('FirebaseService.setupRealtimeListeners', () => {
 
     it('a bill or withdrawal change refreshes an open Money page; Insights and Statements wait until shown', async () => {
         install();
+        AppState.userRole = 'owner';
         document.body.innerHTML = '<div id="money" class="tab active"></div><div id="insights" class="tab"></div><div id="statements" class="tab"></div>';
         window.app = { money: { render: jest.fn() }, insights: { render: jest.fn() }, statements: { render: jest.fn() } };
         await FirebaseService.setupRealtimeListeners();
@@ -213,5 +214,78 @@ describe('FirebaseService.setupRealtimeListeners', () => {
         const third = await FirebaseService.getStock();
         expect(calcSpy).toHaveBeenCalledTimes(2);
         expect(third.i1.quantity).toBe(6);
+    });
+});
+
+describe('withdrawals follow Roles & access (firestore.rules, #57)', () => {
+    const W = { id: 'w1', amount: 100, person: 'A', date: new Date(NOW).toISOString(), timestamp: NOW };
+    const OLD = NOW - 400 * 24 * 60 * 60 * 1000;
+
+    beforeEach(() => {
+        AppState.currentUser = null;
+        AppState.stock = {};
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        jest.spyOn(console, 'info').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        FirebaseService.cleanup();
+        jest.restoreAllMocks();
+        delete global.firebase;
+        AppState.userRole = null;
+        delete AppState.settings.roleAccess;
+    });
+
+    const start = async (role, roleAccess) => {
+        install();
+        AppState.userRole = role;
+        if (roleAccess) AppState.settings.roleAccess = roleAccess;
+        else delete AppState.settings.roleAccess;
+        fake.seed('withdrawals', [W, { ...W, id: 'w0', timestamp: OLD, date: new Date(OLD).toISOString() }]);
+        fake.seed('purchases', [bill('p1', NOW - 1000), bill('p0', OLD)]);
+        await FirebaseService.setupRealtimeListeners();
+        await FirebaseService.loadOlderHistory(1);
+        await FirebaseService.ensureHistoryFrom(null);
+        return {
+            listened: fake.stats.listenLog,
+            queried: fake.stats.queryLog.map(q => q.coll)
+        };
+    };
+
+    it('a member without Money, Statements or Insights never listens to or queries withdrawals', async () => {
+        for (const roleAccess of [null, { staff: { finance: false, reports: false, analytics: false } }]) {
+            const { listened, queried } = await start('staff', roleAccess);
+            expect(listened).toContain('purchases');
+            expect(listened).not.toContain('withdrawals');
+            expect(queried).toContain('purchases');
+            expect(queried).not.toContain('withdrawals');
+            expect(AppState.withdrawalsHistory).toEqual([]);
+            expect(AppState.purchaseHistory.map(p => p.id)).toEqual(['p1', 'p0']);
+            FirebaseService.cleanup();
+        }
+    });
+
+    it('members with one of those pages on, managers by default and the owner read withdrawals', async () => {
+        const cases = [
+            ['staff', { staff: { finance: true } }],
+            ['staff', { staff: { reports: true } }],
+            ['staff', { staff: { analytics: true } }],
+            ['manager', null],
+            ['owner', { manager: { finance: false, reports: false, analytics: false } }]
+        ];
+        for (const [role, roleAccess] of cases) {
+            const { listened, queried } = await start(role, roleAccess);
+            expect(listened).toContain('withdrawals');
+            expect(queried).toContain('withdrawals');
+            expect(AppState.withdrawalsHistory.map(w => w.id)).toEqual(['w1', 'w0']);
+            FirebaseService.cleanup();
+        }
+    });
+
+    it('a manager with Money, Statements and Insights off does not read withdrawals', async () => {
+        const { listened, queried } = await start('manager', { manager: { finance: false, reports: false, analytics: false } });
+        expect(listened).not.toContain('withdrawals');
+        expect(queried).not.toContain('withdrawals');
+        expect(AppState.withdrawalsHistory).toEqual([]);
     });
 });
