@@ -62,6 +62,7 @@ beforeEach(() => {
     MoneyManager.snapshotsLoaded = true;
     MoneyManager.sessionCache = new Map();
     MoneyManager.section = 'profit';
+    MoneyManager.summaryCache = { sig: null, map: new Map(), computed: 0 };
 });
 afterEach(() => {
     jest.useRealTimers();
@@ -177,7 +178,7 @@ describe('comparisons and takeaways', () => {
     test('cash, spending and worth takeaways', () => {
         expect(cashTakeaways({ net: -1574, out: { atPurchase: 1274, duePaid: 400, expenses: 250 }, profit: 100, salesDue: 250 }).map(x => x.key))
             .toEqual(['ui.tk.cash_out', 'ui.tk.biggest_out_purchases', 'ui.tk.gut_dues']);
-        expect(spendingTakeaways({ business: 670, vsLastYear: { pct: 8, dir: 'up' }, topCategory: 'rent', withdrawn: 2000, kept: -3170, personal: 1080 }).map(x => x.key))
+        expect(spendingTakeaways({ business: 670, vsLastYear: { pct: 8, dir: 'up' }, topCategory: 'rent', withdrawn: 2000, kept: -3170, personal: 1080, show: { profit: true, personal: true } }).map(x => x.key))
             .toEqual(['ui.tk.expenses_up', 'ui.tk.kept_negative']);
         expect(worthTakeaways({ worth: null }).map(x => x.key)).toEqual(['ui.tk.worth_unknown']);
         expect(worthTakeaways({ worth: 5000, change: { dir: 'up', diff: 1000 }, receivable: 200, sinceLabel: 'Oct 2025' }).map(x => x.key))
@@ -340,5 +341,79 @@ describe('shared period', () => {
         const svg = barsSvg([1, -2, NaN, 4], { faint: [1, 1, 1, 1] });
         expect((svg.match(/<rect/g) || []).length).toBe(3);
         expect(svg).toContain('polyline');
+    });
+});
+
+describe('what each role sees (Roles & access)', () => {
+    const asMember = (perms) => {
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess: { staff: { finance: true, profit: true, personalExpenses: true, stockValue: true, ...perms } } };
+    };
+    const spendText = () => document.getElementById('moneySpendTakeaway').textContent;
+    const w = () => O.metrics(data, OCT);
+    const amount = (v) => `₹${Math.abs(Math.round(v))}`;
+
+    test('owner: the spending takeaway says what went to personal use and what stays of the profit', () => {
+        MoneyManager.init('spending');
+        expect(spendText()).toContain(t('ui.tk.kept_negative', { taken: Math.round(w().M9_withdrawals + w().M8_personalExpenses), kept: Math.abs(Math.round(w().M10_kept)) }));
+    });
+    test('without profit: personal use only, nothing about the profit', () => {
+        asMember({ profit: false });
+        MoneyManager.init('spending');
+        expect(spendText()).toContain(t('ui.tk.taken', { taken: Math.round(w().M9_withdrawals + w().M8_personalExpenses) }));
+        expect(spendText()).not.toMatch(/profit/i);
+        expect(spendText()).not.toContain(amount(w().M10_kept));
+    });
+    test('without personal expenses: no personal use and no profit in the sentence', () => {
+        asMember({ personalExpenses: false });
+        MoneyManager.init('spending');
+        expect(spendText()).not.toMatch(/personal|profit/i);
+        expect(spendText()).not.toContain(amount(w().M9_withdrawals + w().M8_personalExpenses));
+        expect(spendText()).not.toContain(amount(w().M10_kept));
+    });
+    test('without either: only the business expenses sentence', () => {
+        asMember({ profit: false, personalExpenses: false });
+        MoneyManager.init('spending');
+        expect(document.querySelectorAll('#moneySpendTakeaway p').length).toBe(1);
+        expect(spendText()).not.toMatch(/personal|profit/i);
+    });
+    test('without profit the cash takeaway does not compare with the profit', () => {
+        MoneyManager.init('cash');
+        expect(document.getElementById('moneyCashTakeaway').textContent).toMatch(/below profit/);
+        asMember({ profit: false });
+        MoneyManager.render();
+        expect(document.getElementById('moneyCashTakeaway').textContent).not.toMatch(/profit/i);
+    });
+    test('Worth without stock value: no stock row (S4), no net worth (M15)', async () => {
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        asMember({ stockValue: false });
+        MoneyManager.drawerCache = null;
+        MoneyManager.init('worth');
+        await Promise.resolve();
+        const refs = [...document.querySelectorAll('#moneyWorthTerms [data-metric-ref]')].map(el => el.dataset.metricRef);
+        expect(refs).not.toContain('S4');
+        expect(refs).not.toContain('M15');
+        expect(refs).toEqual(expect.arrayContaining(['O4', 'O3']));
+        expect(document.getElementById('moneyWorthValue').textContent).toBe('—');
+        expect(document.getElementById('moneyWorthTakeaway').textContent).toBe('');
+        AppState.settings = { roleAccess: { staff: { finance: true, stockValue: true } } };
+        MoneyManager.render();
+        const again = [...document.querySelectorAll('#moneyWorthTerms [data-metric-ref]')].map(el => el.dataset.metricRef);
+        expect(again).toEqual(expect.arrayContaining(['S4', 'M15']));
+    });
+});
+
+describe('render cost', () => {
+    test('a tab switch reuses the summaries; the chart and item driver are worked out on Profit only', () => {
+        MoneyManager.init('cash');
+        const onCash = MoneyManager.summaryCache.computed;
+        MoneyManager.setSection('profit');
+        const afterProfit = MoneyManager.summaryCache.computed;
+        expect(afterProfit).toBeGreaterThan(onCash);
+        ['cash', 'spending', 'worth', 'profit', 'cash', 'profit'].forEach(s => MoneyManager.setSection(s));
+        expect(MoneyManager.summaryCache.computed).toBe(afterProfit);
+        AppState.dataVersion = (AppState.dataVersion || 0) + 1;
+        MoneyManager.setSection('cash');
+        expect(MoneyManager.summaryCache.computed).toBeGreaterThan(afterProfit);
     });
 });

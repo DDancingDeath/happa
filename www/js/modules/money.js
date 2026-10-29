@@ -29,12 +29,21 @@ import {
     monthKeysBetween, lastMonthKeys, monthKeyOf
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
+import { can } from '../utils/role-access.js';
+import { dataSignature } from '../utils/render-memo.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const money = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : formatRupees(v));
 const SECTIONS = ['profit', 'cash', 'spending', 'worth'];
 const SESSION_TTL_MS = 10 * 60 * 1000;
 const ACCOUNTS_KEY = 'financeCustomAccounts';
+const listIds = new WeakMap();
+let nextListId = 1;
+const listId = (list) => {
+    if (!Array.isArray(list) || !list.length) return 0;
+    if (!listIds.has(list)) listIds.set(list, nextListId++);
+    return listIds.get(list);
+};
 
 /** True when a route's page is in the app (a link to a page not shipped yet is hidden). */
 export function routeAvailable(link) {
@@ -95,6 +104,7 @@ export const MoneyManager = {
     sessionCache: new Map(),
     building: false,
     lastSummary: null,
+    summaryCache: { sig: null, map: new Map(), computed: 0 },
 
     /** Opens the page (from the side menu or a route like money-cash). */
     init(section) {
@@ -151,6 +161,10 @@ export const MoneyManager = {
 
     cfg() {
         return insightsSettings(AppState.settings?.insights);
+    },
+
+    can(permission) {
+        return can(AppState.userRole, permission, AppState.settings?.roleAccess);
     },
 
     range() {
@@ -247,11 +261,30 @@ export const MoneyManager = {
         return this.drawerCache?.list || [];
     },
 
+    /**
+     * moneySummary for a range, kept until the data changes (AppState.dataVersion,
+     * the loaded arrays and history window; render-memo's dataSignature), so a tab
+     * switch or a re-render reuses every period it has already worked out.
+     */
+    summary(r, { sessions = null, detail = false } = {}) {
+        const sig = dataSignature();
+        if (this.summaryCache.sig !== sig) this.summaryCache = { sig, map: new Map(), computed: this.summaryCache.computed };
+        const s = sessions || { list: [], complete: true };
+        const key = (d) => `${r.from}|${r.to}|${d ? 1 : 0}|${listId(s.list)}|${s.complete !== false}`;
+        const map = this.summaryCache.map;
+        const hit = map.get(key(true)) || (!detail && map.get(key(false)));
+        if (hit) return hit;
+        const m = moneySummary(this.input(r.from, s), r, { detail });
+        this.summaryCache.computed += 1;
+        map.set(key(detail), m);
+        return m;
+    },
+
     /** Figures for a comparison range: computed when loaded, else from month snapshots. */
     figuresFor(r, now = new Date()) {
         if (!r) return null;
         if (this.covered(r.from)) {
-            const m = moneySummary(this.input(r.from), r);
+            const m = this.summary(r);
             return { M1: m.M1.total, M4: m.M4.total, M6: m.M6.total, M14: m.M14, M16: m.M16.total, computed: true };
         }
         return rangeFigures(this.snapshots, r.from, r.to);
@@ -270,7 +303,7 @@ export const MoneyManager = {
             return;
         }
         const sessions = this.sessions(r);
-        const m = moneySummary(this.input(r.from, sessions), r, { detail: true });
+        const m = this.summary(r, { sessions, detail: true });
         this.lastSummary = m;
         const cmpR = comparisonRanges(r);
         const prev = this.figuresFor(cmpR.previous, now);
@@ -320,7 +353,8 @@ export const MoneyManager = {
         const vsLy = change(m.M6.total, ly?.M6 ?? null);
         this.text('moneyProfitValue', money(m.M6.total));
         this.html('moneyProfitCompare', compareHtml([{ c: vsPrev, label: labels.prev }, { c: vsLy, label: labels.ly }]));
-        const driverRows = this.itemDriver(m, r);
+        const onProfit = this.section === 'profit';
+        const driverRows = onProfit ? this.itemDriver(m, r) : null;
         this.html('moneyProfitTakeaway', takeawayHtml(profitTakeaways({
             profit: m.M6.total, vsLastYear: vsLy, vsPrevious: vsPrev, lastYearLabel: labels.ly, previousLabel: labels.prev,
             driver: driverRows, uncosted: m.caveats.find(c => c.key === 'uncosted') || null,
@@ -339,14 +373,14 @@ export const MoneyManager = {
         this.text('moneyLabour', money(m.M7));
         this.text('moneyPurchases', `${money(m.M16.total)} · ${tn('ui.money.bills', m.M16.count)}`);
         this.renderStockMovement(m);
-        this.renderProfitChart(m, r, now);
+        if (onProfit) this.renderProfitChart(m, r, now);
     },
 
     /** I6: the item whose profit changed most vs the previous period (loaded bills only). */
     itemDriver(m, r) {
         const prevR = comparisonRanges(r).previous;
         if (!prevR || !this.covered(prevR.from) || m.M6.total === null) return null;
-        const prevM = moneySummary(this.input(prevR.from), prevR, { detail: true });
+        const prevM = this.summary(prevR, { detail: true });
         if (prevM.M6.total === null) return null;
         const key = (x) => ({ ...x, key: x.itemKey });
         const best = biggestChange(itemSummary(m).map(key), itemSummary(prevM).map(key), x => x.profit || 0);
@@ -374,7 +408,7 @@ export const MoneyManager = {
         const valueOf = (k) => {
             if (k === current && r.month === current) return m.M6.total;
             const b = monthBounds(k);
-            if (this.covered(b.from)) return moneySummary(this.input(b.from), { from: b.from, to: Math.min(b.to, now.getTime() + 1) }).M6.total;
+            if (this.covered(b.from)) return this.summary({ from: b.from, to: Math.min(b.to, now.getTime() + 1) }).M6.total;
             return figuresFromSnapshot(this.snapshots[k])?.M6 ?? null;
         };
         const vals = keys.map(valueOf);
@@ -395,7 +429,7 @@ export const MoneyManager = {
     renderCash({ m, prev, ly, labels, r }) {
         this.text('moneyNetCash', money(m.M14));
         this.html('moneyCashCompare', compareHtml([{ c: change(m.M14, prev?.M14 ?? null), label: labels.prev }, { c: change(m.M14, ly?.M14 ?? null), label: labels.ly }]));
-        this.html('moneyCashTakeaway', takeawayHtml(cashTakeaways({ net: m.M14, out: m.M13, profit: m.M6.total, salesDue: m.M1.due })));
+        this.html('moneyCashTakeaway', takeawayHtml(cashTakeaways({ net: m.M14, out: m.M13, profit: this.can('profit') ? m.M6.total : null, salesDue: m.M1.due })));
         this.html('moneyCashCaveats', this.caveatsHtml(m, ['M12', 'M14']));
         this.text('moneyIn', money(m.M12.total));
         this.text('moneyOut', money(m.M13.total));
@@ -429,7 +463,8 @@ export const MoneyManager = {
         const catName = (k) => (k === 'untagged' ? t('ui.money.untagged') : k === 'other' ? t('ui.money.other') : k);
         this.html('moneySpendTakeaway', takeawayHtml(spendingTakeaways({
             business: m.M4.total, vsLastYear: vsLy, topCategory: cats[0] ? catName(cats[0].category) : null,
-            withdrawn: m.M9, kept: m.M10, personal: m.M8.total
+            withdrawn: m.M9, kept: m.M10, personal: m.M8.total,
+            show: { profit: this.can('profit'), personal: this.can('personalExpenses') }
         })));
         this.html('moneySpendCaveats', this.caveatsHtml(m, ['M4']));
         const max = Math.max(1, ...cats.map(c => c.total));
@@ -519,22 +554,23 @@ export const MoneyManager = {
         const drawer = last ? Number(last.closingBalance) : 0;
         const accounts = this.accountsTotal();
         const worth = netWorth({ stock, receivable: dues.receivable.total, payable: dues.payable.total, accounts, drawer }, this.cfg());
-        this.text('moneyWorthValue', money(worth));
+        const seeStock = this.can('stockValue');
+        this.text('moneyWorthValue', seeStock ? money(worth) : '—');
         const lyClose = figuresFromSnapshot(this.snapshots[monthKeyOf(new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime())])?.closing;
         const sinceLabel = formatMonth(new Date(now.getFullYear() - 1, now.getMonth(), 1), { lang: getLang() });
         // Compared on the stock + dues part only (old dues and accounts are not kept per month).
         const c = lyClose !== null && lyClose !== undefined && stock !== null ? change(stock, lyClose) : null;
-        this.html('moneyWorthCompare', c ? compareHtml([{ c, label: t('ui.money.stock_vs', { when: sinceLabel }) }]) : '');
-        this.html('moneyWorthTakeaway', takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel })));
+        this.html('moneyWorthCompare', c && seeStock ? compareHtml([{ c, label: t('ui.money.stock_vs', { when: sinceLabel }) }]) : '');
+        this.html('moneyWorthTakeaway', seeStock ? takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel })) : '');
         const term = (label, value, link, ref) => `<div class="ins-row"><span>${esc(t(label))}</span><span><span${ref ? ` data-metric-ref="${ref}"` : ''}>${money(value)}</span> <button type="button" class="ins-link" data-go="${link}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button></span></div>`;
         const cfg = this.cfg();
         this.html('moneyWorthTerms',
-            (cfg.netWorthTerms.includes('stock') ? term('ui.money.stock_value', stock, 'stock', 'S4') : '')
+            (seeStock && cfg.netWorthTerms.includes('stock') ? term('ui.money.stock_value', stock, 'stock', 'S4') : '')
             + (cfg.netWorthTerms.includes('receivable') ? term('ui.money.to_receive', dues.receivable.total, 'due', 'O4') : '')
             + (cfg.netWorthTerms.includes('drawer') ? term(last ? 'ui.money.drawer_last' : 'ui.money.drawer_none', drawer, 'cash-management', 'C9') : '')
             + (cfg.netWorthTerms.includes('accounts') ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span data-input>${money(accounts)}</span></div>` : '')
             + term('ui.money.to_pay', -dues.payable.total, 'due', 'O3')
-            + `<div class="ins-row ins-total"><span>${esc(t('ui.money.net_worth'))}</span><span data-metric-ref="M15">${money(worth)}</span></div>`);
+            + (seeStock ? `<div class="ins-row ins-total"><span>${esc(t('ui.money.net_worth'))}</span><span data-metric-ref="M15">${money(worth)}</span></div>` : ''));
         const list = this.accounts();
         this.html('moneyAccounts', list.length
             ? list.map((a, i) => `<div class="ins-row"><span>${esc(a.icon || '')} ${esc(a.name)}</span><span>${a.type === 'liability' ? '−' : ''}${money(Number(a.balance) || 0)} <button type="button" class="ins-link" onclick="window.app.money.removeAccount(${i})" aria-label="${esc(t('ui.money.acc_remove'))}">✕</button></span></div>`).join('')
@@ -639,7 +675,7 @@ export const MoneyManager = {
     openBreakdown(cardId) {
         const r = this.range();
         FinanceBreakdownSheet.open(cardId, {
-            getSummary: () => moneySummary(this.input(r.from, this.sessions(r)), r, { detail: true }).finance,
+            getSummary: () => this.summary(r, { sessions: this.sessions(r), detail: true }).finance,
             periodLabel: this.periodLabel(r)
         });
     },

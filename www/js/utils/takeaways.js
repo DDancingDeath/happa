@@ -60,10 +60,12 @@ export function cashTakeaways({ net, out, profit, salesDue }) {
 }
 
 /**
- * Spending (M4, M8–M10).
- * @param {{business: number, vsLastYear: ?Object, topCategory: ?string, withdrawn: number, kept: ?number, personal: number}} a
+ * Spending (M4, M8–M10). Personal use (M8 + M9) only with `show.personal`; what
+ * stays of the profit (M10) only with both `show.profit` and `show.personal`.
+ * @param {{business: number, vsLastYear: ?Object, topCategory: ?string, withdrawn: number, kept: ?number, personal: number,
+ *   show?: {profit?: boolean, personal?: boolean}}} a
  */
-export function spendingTakeaways({ business, vsLastYear, topCategory, withdrawn, kept, personal }) {
+export function spendingTakeaways({ business, vsLastYear, topCategory, withdrawn, kept, personal, show = {} }) {
     const out = [];
     if (business > 0 && vsLastYear && vsLastYear.dir !== 'same' && topCategory) {
         out.push({ key: `ui.tk.expenses_${vsLastYear.dir}`, params: { pct: Math.abs(vsLastYear.pct), category: topCategory } });
@@ -72,8 +74,12 @@ export function spendingTakeaways({ business, vsLastYear, topCategory, withdrawn
     } else if (business <= 0) {
         out.push({ key: 'ui.tk.expenses_none' });
     }
-    if (kept !== null && kept !== undefined) {
-        out.push({ key: kept >= 0 ? 'ui.tk.kept' : 'ui.tk.kept_negative', params: { taken: Math.round(withdrawn + personal), kept: Math.abs(Math.round(kept)) } });
+    if (!show.personal) return out;
+    const taken = Math.round((withdrawn || 0) + (personal || 0));
+    if (show.profit && kept !== null && kept !== undefined) {
+        out.push({ key: kept >= 0 ? 'ui.tk.kept' : 'ui.tk.kept_negative', params: { taken, kept: Math.abs(Math.round(kept)) } });
+    } else if (taken > 0) {
+        out.push({ key: 'ui.tk.taken', params: { taken } });
     }
     return out;
 }

@@ -2152,6 +2152,7 @@ export default {
     'ui.tk.expenses_none': "इस समय में दुकान का कोई खर्च नहीं।",
     'ui.tk.kept': "₹{taken} निजी काम में गए; मुनाफ़े के ₹{kept} दुकान में बचे।",
     'ui.tk.kept_negative': "₹{taken} निजी काम में गए, मुनाफ़े से ₹{kept} ज़्यादा।",
+    'ui.tk.taken': "₹{taken} निजी काम में गए।",
     'ui.tk.worth': "आपकी कुल पूंजी ₹{amount} है।",
     'ui.tk.worth_up': "{when} से ₹{amount} ज़्यादा पूंजी।",
     'ui.tk.worth_down': "{when} से ₹{amount} कम पूंजी।",

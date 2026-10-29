@@ -2152,6 +2152,7 @@ export default {
     'ui.tk.expenses_none': "No business expenses in this period.",
     'ui.tk.kept': "₹{taken} went to personal use; ₹{kept} of the profit stays in the business.",
     'ui.tk.kept_negative': "₹{taken} went to personal use, ₹{kept} more than the profit.",
+    'ui.tk.taken': "₹{taken} went to personal use.",
     'ui.tk.worth': "You are worth ₹{amount}.",
     'ui.tk.worth_up': "Worth ₹{amount} more than in {when}.",
     'ui.tk.worth_down': "Worth ₹{amount} less than in {when}.",
