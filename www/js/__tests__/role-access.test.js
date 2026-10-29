@@ -1,5 +1,5 @@
 import {
-    normalizeRoleAccess, accessFor, canOpenTab, canOpenSection, canEditBillWith, canDeleteBillWith, historyCutoff,
+    normalizeRoleAccess, accessFor, canOpenTab, canOpenSection, canOpenPage, canEditBillWith, canDeleteBillWith, historyCutoff,
     hiddenPermissionClasses, billCreatedMs, ROLE_ACCESS_DEFAULTS
 } from '../utils/role-access.js';
 import { NavigationManager } from '../ui/navigation.js';
@@ -175,5 +175,46 @@ describe('page sections that host another page', () => {
             expect(canOpenSection('insights', s, 'manager', raw)).toBe(true);
         });
         expect(canOpenSection('insights', 'items', 'staff', { staff: { analytics: false } })).toBe(false);
+    });
+
+    test('Trends / Product traffic open with EITHER the old Reports switch or the Insights switch (back-compat)', () => {
+        const reportsOnly = { manager: { reports: true, analytics: false } };
+        ['seasons', 'trends', 'traffic'].forEach(s => {
+            expect(canOpenSection('insights', s, 'manager', reportsOnly)).toBe(true);
+            expect(canOpenSection('insights', s, 'manager', { manager: { reports: false, analytics: true } })).toBe(true);
+            expect(canOpenSection('insights', s, 'manager', { manager: { reports: false, analytics: false } })).toBe(false);
+            expect(canOpenSection('insights', s, 'staff', { staff: { reports: true } })).toBe(false);
+        });
+        ['actions', 'items', 'parties'].forEach(s => expect(canOpenSection('insights', s, 'manager', reportsOnly)).toBe(false));
+        expect(canOpenPage('insights', 'manager', reportsOnly)).toBe(true);
+        expect(canOpenPage('insights', 'manager', { manager: { reports: false, analytics: false } })).toBe(false);
+        expect(canOpenPage('insights', 'staff', { staff: { reports: true } })).toBe(false);
+    });
+
+    test('a manager with only Reports opens the old Trends link on Insights › Seasons, and no other section', async () => {
+        const { InsightsManager } = await import('../modules/insights.js');
+        const { MoneyManager } = await import('../modules/money.js');
+        jest.spyOn(MoneyManager, 'loadSnapshots').mockResolvedValue();
+        const savedApp = window.app;
+        AppState.userRole = 'manager';
+        AppState.settings = { roleAccess: { manager: { reports: true, analytics: false } } };
+        document.body.innerHTML = '<div id="day" class="tab"></div><div id="insights" class="tab">'
+            + ['actions', 'items', 'parties', 'seasons'].map(s => `<button data-insights-section="${s}"></button><div data-insights-pane="${s}"></div>`).join('') + '</div>';
+        const init = jest.spyOn(InsightsManager, 'init').mockImplementation(() => {});
+        window.app = { ...(window.app || {}), insights: { init: (r) => InsightsManager.init(r) } };
+        NavigationManager.showTab('reports-trends');
+        expect(document.getElementById('insights').classList.contains('active')).toBe(true);
+        init.mockRestore();
+        jest.spyOn(InsightsManager, 'render').mockImplementation(() => {});
+        jest.spyOn(InsightsManager, 'setupTaps').mockImplementation(() => {});
+        InsightsManager.init('items');
+        expect(InsightsManager.section).toBe('seasons');
+        InsightsManager.setSection('parties');
+        expect(InsightsManager.section).toBe('seasons');
+        InsightsManager.showSection();
+        const shown = [...document.querySelectorAll('[data-insights-section]')].filter(b => !b.hidden).map(b => b.dataset.insightsSection);
+        expect(shown).toEqual(['seasons']);
+        window.app = savedApp;
+        jest.restoreAllMocks();
     });
 });

@@ -2,7 +2,7 @@
 
 import { UIManager } from './ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { canOpenTab, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
+import { canOpenTab, canOpenPage, canOpenSection, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
 
@@ -71,7 +71,8 @@ function resolveRoute(tabId) {
 /** 'page' when the page itself is refused, 'section' when only the route's extra permission is, else null. */
 function refusal(route) {
     const raw = AppState.settings?.roleAccess;
-    if (!canOpenTab(route.tab, AppState.userRole, raw)) return 'page';
+    if (!canOpenPage(route.tab, AppState.userRole, raw)) return 'page';
+    if (route.section && !canOpenSection(route.tab, route.section, AppState.userRole, raw)) return 'section';
     if (route.needs && !canOpenTab(route.needs, AppState.userRole, raw)) return 'section';
     return null;
 }

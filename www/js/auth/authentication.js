@@ -5,7 +5,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
-import { canOpenTab, hiddenPermissionClasses } from '../utils/role-access.js';
+import { canOpenPage, hiddenPermissionClasses } from '../utils/role-access.js';
 
 const usersCollection = () => (window.getCollection ? window.getCollection('users') : 'users');
 
@@ -486,7 +486,7 @@ const AuthManager = {
         const isOwnerOrManager = AppState.userRole === 'owner' || AppState.userRole === 'manager';
         const isOwner = AppState.userRole === 'owner';
         const roleAccess = AppState.settings?.roleAccess;
-        const mayOpen = (tabId) => canOpenTab(tabId, AppState.userRole, roleAccess);
+        const mayOpen = (tabId) => canOpenPage(tabId, AppState.userRole, roleAccess);
         
         // Update username display in navigation
         const userNameDisplay = document.getElementById('currentUserName');

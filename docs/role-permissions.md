@@ -34,7 +34,7 @@ setting is missing or invalid.
 |---|---|---|---|---|---|
 | `finance` | Money page (the stored id kept the old Finance page's name) | हिसाब पेज | on | off | client |
 | `reports` | Statements page (stored id of the old Reports page) | बही-खाता पेज | on | off | client |
-| `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client |
+| `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule, and `reports` opens Seasons too; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client |
 | `wholesale` | Wholesale page | थोक पेज | on | off | client |
 | `personalExpenses` | Personal expenses | निजी खर्च | on | on | client (rules: phase 2) |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
@@ -61,8 +61,10 @@ setting is missing or invalid.
   `NavigationManager` shows Today with a message instead. Trends and Product traffic are views of
   Insights › Seasons with the extra permission id `rate-trends` (routes `insights-seasons`,
   `insights-trends`, `insights-traffic`; old `reports-trends`, `reports-traffic`, `rate-trends`,
-  `rates-trends`, `rates-traffic` redirect there). They need the Insights page switch as well;
-  members do not see them, and opening one shows Insights (or Today, if Insights is off for that
+  `rates-trends`, `rates-traffic` redirect there). They need the Insights switch (`analytics`) OR, for back-compat, the
+  Reports switch (`reports`; they were Reports tabs before phase 5): a manager with only Reports
+  on still sees Insights in the menu, with Seasons as its only section (`SECTION_ALSO_ALLOWED`,
+  `canOpenPage()` / `canOpenSection()` in `role-access.js`). Members do not see them, and opening one shows Insights (or Today, if Insights is off for that
   role) instead.
 - Old page ids redirect (redesign phase 5): `finance*` → Money, `reports*` → Statements,
   `analytics*` → Insights, with the same switches (`finance`, `reports`, `analytics`), so every
