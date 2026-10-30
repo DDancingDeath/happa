@@ -59,6 +59,9 @@ function main() {
 try {
     main();
 } catch (err) {
-    console.error(`Backup check failed: ${err && err.message ? err.message : err}`);
+    const message = err && err.message ? err.message : String(err);
+    const cause = err && err.cause && err.cause.message;
+    console.error(`Backup check failed: ${message}`);
+    if (cause && !message.includes(cause)) console.error(`  cause: ${cause}`);
     process.exit(1);
 }
