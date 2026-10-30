@@ -14,8 +14,9 @@
  * audited day: the owner with a checkpoint rebuilt that day, the owner with the
  * checkpoint built at the previous month end, and a member with that one.
  *
- * A class of mismatch the app still has is listed in BUGS with its issue / PR; its
- * test is skipped until the fix (ORACLE_RUN_SKIPPED=1 runs it).
+ * A class of mismatch the app still has is listed in BUGS with its fix PR; its test is
+ * marked `test.failing`, so the suite goes red as soon as the fix lands: then remove
+ * the BUGS entry.
  */
 import fs from 'fs';
 import path from 'path';
@@ -33,18 +34,27 @@ const ROOT = path.resolve(__dirname, '../..');
 const ACCOUNTS = [{ name: 'Test bank', balance: 25000, type: 'asset' }, { name: 'Test loan', balance: 4000, type: 'liability' }];
 const KEYS = ['items', 'purchases', 'wholesaleSales', 'retailSales', 'stockAdjustments', 'expenses', 'withdrawals', 'sessions'];
 
+/** Days on which the backup has more than one cash session. */
+const MULTI_SESSION_DAYS = (() => {
+    const n = new Map();
+    [...CORE.sessions, ...HISTORY.sessions].forEach(x => n.set(x.date, (n.get(x.date) || 0) + 1));
+    return new Set([...n].filter(([, c]) => c > 1).map(([d]) => d));
+})();
+
 /**
- * Mismatch classes the app has today: name → [spec pattern, issue / PR]. Their rows are
- * left out of "every other figure" and asserted in their own skipped test.
+ * Mismatch classes the app has today: name → [row predicate, fix PR]. Their rows are left
+ * out of "every other figure" and asserted in their own `test.failing` test.
  */
 const BUGS = {
     // A comparison the app can't make (no snapshot / part month) next to one it can is left out without a word.
-    missingComparisonText: [(m) => /^CMP_.*_not_known_hidden$/.test(m.spec), 'PR fix/phone-path-gaps (money.js: "vs {label}: not known")'],
-    // Today keeps one cash session per day (day.js:loadTodaySession); a leg in the day's other session on a bill
-    // the phone hasn't loaded is missing from T6/T7/T8/T9/T10/T11/T12/T13/T14 (the day book has it).
-    todayOneSession: [(m) => /^T([6-9]|1[0-4])_/.test(m.spec) && m.page === 'Today (phone)', 'found by the phone-path coverage PR (see its body)']
+    missingComparisonText: [(m) => /^CMP_.*_not_known_hidden$/.test(m.spec), 'PR #174 (fix/phone-path-gaps: money.js "vs {label}: not known")'],
+    // Today keeps one cash session per day (day.js:loadTodaySession); on a day with two sessions, a leg in the other
+    // session on a bill the phone hasn't loaded is missing from T6–T14 (the day book has it).
+    todayOneSession: [(m) => /^T([6-9]|1[0-4])_/.test(m.spec) && m.page === 'Today (phone)' && MULTI_SESSION_DAYS.has(String(m.period).slice(0, 10)),
+        'fix PR from branch fix/today-all-sessions (day.js: Today counts the legs of every session of the day)']
 };
-const bugTest = (k) => (BUGS[k] && !process.env.ORACLE_RUN_SKIPPED ? test.skip : test);
+/** A known bug's test fails today; `test.failing` turns red once the fix makes it pass. */
+const bugTest = (k) => (BUGS[k] ? test.failing : test);
 const isBug = (m) => Object.values(BUGS).some(([is]) => is(m));
 const rowsOf = (k) => C.mismatches.filter(BUGS[k][0]).map(m => `${m.spec} @ ${m.page} ${m.period}: oracle ${m.oracle}, app ${m.app}`);
 
@@ -156,7 +166,8 @@ describe('cash sessions, due-payment legs and Today', () => {
         expect(pass('owner').paidTodayNotLoaded).toBe(0);
         expect(pass(MEMBER).paidTodayNotLoaded).toBe(2);
         // The old purchase paid at 16:00 is a leg of the day's open session: Today counts it (T8, T9, T11, T14).
-        expect(of(/^T(8|9|11|14)_/)).toEqual([]);
+        // Checked on every row, the known-bug rows included.
+        expect(C.mismatches.filter(m => /^T(8|9|11|14)_/.test(m.spec)).map(m => `${m.spec} @ ${m.period}`)).toEqual([]);
     });
 
     bugTest('todayOneSession')('Today counts the legs of every session of the day (T6–T14)', () => {
