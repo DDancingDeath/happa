@@ -86,6 +86,7 @@ test('an existing tenant moving in: the first charge carries the tenant name', a
     // the fake's update needs the unit to exist
     expect(res).toBeNull();
     fake.seed('rent_units', [{ id: 'UV', propertyId: 'P1', label: 'V1', leaseId: null }]);
+    fake.seed('rent_tenants', [{ id: 'TX', name: 'Rekha', phone: '9876543219' }]);
     const ok = await store.moveIn({
         unit: { id: 'UV', propertyId: 'P1', label: 'V1' }, newUnit: false, tenantId: 'TX', tenantName: 'Rekha',
         lease: { rent: 4000, dueDay: 10, startDate: `${M}-01`, proRate: false, deposit: 0, increasePct: 5, elecMode: 'included' },

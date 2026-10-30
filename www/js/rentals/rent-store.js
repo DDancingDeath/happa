@@ -113,12 +113,16 @@ export const updateTenant = (id, fields) => coll('rent_tenants').doc(id).update(
 const publicRef = (token) => coll('rent_public').doc(token);
 
 /**
- * Inside a transaction: the lease's link snapshot (if the lease has a link).
- * Reads must come before writes, so call this before any tx.set/update.
- * @returns {Promise<?{ref: Object, data: Object}>}
+ * Inside a transaction: the lease's link snapshot (if the lease has a link; `follow`: or
+ * the one it took along to another unit, `old`). Call before any tx.set/update.
+ * @returns {Promise<?{ref: Object, data: Object, old?: boolean}>}
  */
-export async function readPublic(tx, lease) {
-    if (!isShareToken(lease?.shareToken)) return null;
+export async function readPublic(tx, lease, follow = false) {
+    if (!isShareToken(lease?.shareToken)) {
+        if (!follow || !lease?.movedTo) return null;
+        const pub = await readPublic(tx, (await tx.get(coll('rent_leases').doc(lease.movedTo))).data(), true);
+        return pub && { ...pub, old: true };
+    }
     const ref = publicRef(lease.shareToken);
     const snap = await tx.get(ref);
     return snap.exists ? { ref, data: snap.data() } : null;
@@ -199,65 +203,80 @@ export async function removeShareLink(lease) {
     await batch.commit();
 }
 
+const hasPayment = (s) => s.exists && ((Number(s.data().paid) || 0) > 0 || (s.data().payments || []).length > 0);
+
 /**
- * Move-in in ONE batch (also "Add unit" with its tenant): the unit (new, or an
- * existing vacant one), the tenant (new, or an existing one), the lease and, when
- * the start month has begun, the first month's charge (full or pro-rated,
- * RENT-11) with chargedThrough set. Same rules as every move-in; all or nothing.
- * @param {Object} p
- * @param {Object} p.unit existing unit {id, propertyId, ...} or new unit fields when p.newUnit
- * @param {boolean} [p.newUnit]
- * @param {?Object} [p.tenant] new tenant {name, phone, phone2?, notes?}
- * @param {?string} [p.tenantId] existing tenant
- * @param {Object} p.lease {rent, dueDay, startDate, proRate, deposit, increasePct, elecMode, meterNo?}
- * @param {?{reading: number, rate: number}} [p.meter] opening reading / rate (new units)
- * @param {string} p.currentMonth
- * @returns {Promise<{unitId: string, tenantId: string, leaseId: string, charged: boolean}>}
+ * Move-in, all or nothing: unit (new or vacant), tenant (new or without a lease), lease and the
+ * first charge. An existing tenant (or a change) is re-read in a transaction that writes the tenant
+ * (or the old lease), so racing phones conflict; a new tenant is a batch (offline; a vacant unit is
+ * checked against the listener's copy, the rules refuse a taken one). `change`: rent-unit.js changeUnit.
+ * @throws {Error} 'unit_taken' | 'tenant_changed' | 'missing'
  */
-export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = null, tenantName = '', lease, meter = null, currentMonth }) {
+export async function moveIn({ unit, newUnit = false, tenant = null, tenantId = null, tenantName = '', lease, meter = null, currentMonth, change = null }) {
     const db = FirebaseService.db;
-    const now = Date.now();
-    const batch = db.batch();
     const unitRef = newUnit ? coll('rent_units').doc() : coll('rent_units').doc(unit.id);
+    const tenantRef = tenantId ? coll('rent_tenants').doc(tenantId) : coll('rent_tenants').doc();
     const leaseRef = coll('rent_leases').doc();
-    let tid = tenantId;
-    if (!tid) {
-        const tenantRef = coll('rent_tenants').doc();
-        tid = tenantRef.id;
-        batch.set(tenantRef, created({ name: tenant.name, phone: tenant.phone, ...(tenant.phone2 ? { phone2: tenant.phone2 } : {}), notes: tenant.notes || '' }));
-    }
-    const startMonth = lease.startDate.slice(0, 7);
-    const doc = {
-        unitId: unitRef.id, propertyId: unit.propertyId, tenantId: tid,
-        rent: lease.rent, dueDay: lease.dueDay, startMonth, startDate: lease.startDate,
-        proRate: !!lease.proRate, endMonth: null, deposit: lease.deposit || 0, increasePct: lease.increasePct,
-        rentSince: startMonth, elecMode: lease.elecMode, status: 'active', chargedThrough: null,
-        createdAt: now, createdBy: uid(), updatedAt: now, updatedBy: uid()
+    const names = { tenantName: tenant?.name || tenantName || '' };
+    const tx = !!(tenantId || change);
+    const run = async (w) => {
+        let u = unit;
+        if (!newUnit) {
+            // A new tenant needs no re-read (a batch, works offline): this copy is checked, the rules refuse a taken unit.
+            if (tx) u = (await w.get(unitRef)).data();
+            if (!u || u.archived) throw new Error('missing');
+            if (u.leaseId) throw new Error('unit_taken');
+        }
+        if (tenantId) {
+            if (!change && !(await w.get(tenantRef)).exists) throw new Error('missing');
+            // Outside the transaction but re-run on each retry.
+            const q = await coll('rent_leases').where('tenantId', '==', tenantId).where('status', '==', 'active').limit(2).get();
+            if (q.size > 1 || (q.docs[0]?.id || null) !== (change?.from || null)) throw new Error('tenant_changed');
+        }
+        const end = change && await change.read(w, leaseRef.id);
+        const now = Date.now();
+        const by = { updatedAt: now, updatedBy: uid() };
+        if (end) end.write();
+        else if (tenantId) w.update(tenantRef, by);
+        else w.set(tenantRef, created({ name: tenant.name, phone: tenant.phone, ...(tenant.phone2 ? { phone2: tenant.phone2 } : {}), notes: tenant.notes || '' }));
+        names.unitLabel = u.label || '';
+        const startMonth = lease.startDate.slice(0, 7);
+        const doc = {
+            unitId: unitRef.id, propertyId: u.propertyId, tenantId: tenantRef.id,
+            rent: lease.rent, dueDay: lease.dueDay, startMonth, startDate: lease.startDate,
+            proRate: !!lease.proRate, endMonth: null, deposit: lease.deposit || 0, increasePct: lease.increasePct,
+            rentSince: startMonth, elecMode: lease.elecMode, status: 'active', chargedThrough: null,
+            ...end?.lease, createdAt: now, createdBy: uid(), updatedAt: now, updatedBy: uid()
+        };
+        if (lease.proRate) doc.firstRent = lease.firstRent ?? firstMonthRent(lease.rent, lease.startDate, true);
+        if (lease.elecMode === 'own' && lease.meterNo) doc.meterNo = String(lease.meterNo).slice(0, 40);
+        const charged = !end && startMonth <= currentMonth;
+        if (charged) {
+            doc.chargedThrough = startMonth;
+            w.set(coll('rent_charges').doc(chargeId(leaseRef.id, startMonth)), { ...newCharge({ id: leaseRef.id, ...doc }, startMonth, names), updatedBy: uid() });
+        }
+        w.set(leaseRef, doc);
+        if (!newUnit) w.update(unitRef, { leaseId: leaseRef.id, ...by });
+        else {
+            w.set(unitRef, created({
+                propertyId: u.propertyId, label: u.label, rent: u.rent, type: u.type,
+                ...(u.area != null ? { area: u.area } : {}), ...(u.floor ? { floor: u.floor } : {}),
+                leaseId: leaseRef.id,
+                lastReading: meter && Number.isFinite(meter.reading) ? meter.reading : null,
+                meterRate: meter && Number.isFinite(meter.rate) ? meter.rate : null,
+                meterCharge: null
+            }));
+        }
+        return { unitId: unitRef.id, tenantId: tenantRef.id, leaseId: leaseRef.id, charged };
     };
-    if (lease.proRate) doc.firstRent = firstMonthRent(lease.rent, lease.startDate, true);
-    if (lease.elecMode === 'own' && lease.meterNo) doc.meterNo = String(lease.meterNo).slice(0, 40);
-    const charged = startMonth <= currentMonth;
-    if (charged) {
-        doc.chargedThrough = startMonth;
-        const names = { tenantName: tenant?.name || tenantName || '', unitLabel: unit.label || '' };
-        batch.set(coll('rent_charges').doc(chargeId(leaseRef.id, startMonth)),
-            { ...newCharge({ id: leaseRef.id, ...doc }, startMonth, names), updatedBy: uid() });
-    }
-    batch.set(leaseRef, doc);
-    if (newUnit) {
-        batch.set(unitRef, created({
-            propertyId: unit.propertyId, label: unit.label, rent: unit.rent, type: unit.type,
-            ...(unit.area != null ? { area: unit.area } : {}), ...(unit.floor ? { floor: unit.floor } : {}),
-            leaseId: leaseRef.id,
-            lastReading: meter && Number.isFinite(meter.reading) ? meter.reading : null,
-            meterRate: meter && Number.isFinite(meter.rate) ? meter.rate : null,
-            meterCharge: null
-        }));
-    } else {
-        batch.update(unitRef, { leaseId: leaseRef.id, updatedAt: now, updatedBy: uid() });
-    }
-    await batch.commit();
-    return { unitId: unitRef.id, tenantId: tid, leaseId: leaseRef.id, charged };
+    let res;
+    if (!tx) {
+        const batch = db.batch();
+        res = await run(batch);
+        await batch.commit();
+    } else res = await db.runTransaction(run);
+    if (change) res.charged = (await chargeLease(res.leaseId, currentMonth, names).catch(() => 0)) > 0;
+    return res;
 }
 
 /**
@@ -309,19 +328,23 @@ export async function endLease(leaseId, endMonth, currentMonth, names = {}) {
         const lease = { id: snap.id, ...snap.data() };
         if (lease.status !== 'active' || endMonth < lease.startMonth) throw new Error('bad_month');
         if (!isMonth(lease.chargedThrough) || lease.chargedThrough < endMonth) throw new Error('not_charged');
-        const later = lease.chargedThrough > endMonth ? monthRange(addMonths(endMonth, 1), lease.chargedThrough) : [];
-        const laterSnaps = await Promise.all(later.map(m => tx.get(coll('rent_charges').doc(chargeId(lease.id, m)))));
-        if (laterSnaps.some(s => s.exists && ((Number(s.data().paid) || 0) > 0 || (s.data().payments || []).length))) {
-            throw new Error('later_paid');
-        }
-        const pub = await readPublic(tx, lease);
-        const now = Date.now();
-        laterSnaps.filter(s => s.exists).forEach(s => tx.delete(s.ref));
-        tx.update(leaseRef, { status: 'ended', endMonth, chargedThrough: endMonth, updatedAt: now, updatedBy: uid() });
-        if (pub) tx.set(pub.ref, withLease(pub.data, { ...lease, status: 'ended', endMonth }));
-        tx.update(coll('rent_units').doc(lease.unitId), { leaseId: null, updatedAt: now, updatedBy: uid() });
-        return later.length;
+        return (await endInTx(tx, lease, endMonth))();
     });
+}
+
+/** Move-out reads in a transaction; returns the writes (+ `fields`, `snap`: the link). @throws {Error} 'later_paid' */
+export async function endInTx(tx, lease, endMonth) {
+    const later = await Promise.all(monthRange(addMonths(endMonth, 1), lease.chargedThrough).map(m => tx.get(coll('rent_charges').doc(chargeId(lease.id, m)))));
+    if (later.some(hasPayment)) throw new Error('later_paid');
+    const pub = await readPublic(tx, lease);
+    return (fields = {}, snap = (s) => withLease(s, { ...lease, status: 'ended', endMonth })) => {
+        const by = { updatedAt: Date.now(), updatedBy: uid() };
+        later.filter(s => s.exists).forEach(s => tx.delete(s.ref));
+        tx.update(coll('rent_leases').doc(lease.id), { status: 'ended', endMonth, chargedThrough: endMonth, ...fields, ...by });
+        if (pub) tx.set(pub.ref, snap(pub.data));
+        tx.update(coll('rent_units').doc(lease.unitId), { leaseId: null, ...by });
+        return later.length;
+    };
 }
 
 /**
@@ -417,7 +440,7 @@ async function recordPaymentOnce(id, { amount, mode, ref, date }, rc, year) {
         const charge = snap.data();
         const next = applyPayment(charge, amount);
         const leaseSnap = await tx.get(coll('rent_leases').doc(charge.leaseId));
-        const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data()) : null;
+        const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data(), true) : null;
         const seq = rc && Number.isFinite(charge.rent) ? await nextSeq(tx, year) : 0;
         const now = Date.now();
         const e = {
@@ -427,7 +450,7 @@ async function recordPaymentOnce(id, { amount, mode, ref, date }, rc, year) {
         };
         const ch = { ...charge, paid: next.paid, open: next.open, payments: [...(charge.payments || []), e] };
         tx.update(chargeRef, { paid: ch.paid, open: ch.open, payments: ch.payments, updatedAt: now, updatedBy: uid() });
-        if (pub) tx.set(pub.ref, withMonth(pub.data, ch));
+        if (pub) tx.set(pub.ref, withMonth(pub.data, ch, now, pub.old));
         return { ...next, receipt: seq ? putReceipt(tx, id, ch, ch.payments.length - 1, rc, year, seq) : null };
     });
 }
@@ -451,11 +474,11 @@ async function recordMeterOnce(id, unitId, meter) {
         const charge = snap.data();
         const next = applyMeter(charge, meter);
         const leaseSnap = await tx.get(coll('rent_leases').doc(charge.leaseId));
-        const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data()) : null;
+        const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data(), true) : null;
         const now = Date.now();
         tx.update(chargeRef, { electricity: meter, amount: next.amount, open: next.open, updatedAt: now, updatedBy: uid() });
         tx.update(coll('rent_units').doc(unitId), { lastReading: meter.curr, meterRate: meter.rate, meterCharge: id, updatedAt: now, updatedBy: uid() });
-        if (pub) tx.set(pub.ref, withMonth(pub.data, { ...charge, electricity: meter, amount: next.amount, open: next.open }));
+        if (pub) tx.set(pub.ref, withMonth(pub.data, { ...charge, electricity: meter, amount: next.amount, open: next.open }, now, pub.old));
         return next;
     });
 }

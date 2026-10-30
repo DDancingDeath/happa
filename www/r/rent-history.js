@@ -138,7 +138,8 @@
 
     function render(root, data, lang, onToggle, today = new Date()) {
         const L = TEXT[lang];
-        const months = (Array.isArray(data.months) ? data.months : []).slice().sort((a, b) => (a.m < b.m ? 1 : -1));
+        const months = (Array.isArray(data.months) ? data.months : []).slice()
+            .sort((a, b) => (a.m !== b.m ? (a.m < b.m ? 1 : -1) : (a.pl ? 1 : 0) - (b.pl ? 1 : 0)));
         const totalDue = months.reduce((s, x) => s + (Number(x.due) || 0), 0);
         const totalPaid = months.reduce((s, x) => s + (Number(x.paid) || 0), 0);
         const rows = months.map(x => {
@@ -147,7 +148,7 @@
             const pays = Array.isArray(x.py) && x.py.length ? x.py.filter(p => p && typeof p === 'object').map(p => `<div class="rh-dates">${esc(L.paidOn)}: ${esc([dateLabel(p.d), inr(p.a), p.r ? `${L.receipt} ${p.r}` : ''].filter(Boolean).join(' · '))}</div>`).join('') : '';
             const dates = pays || (Array.isArray(x.pd) && x.pd.length ? `<div class="rh-dates">${esc(L.paidOn)}: ${esc(x.pd.map(dateLabel).join(', '))}</div>` : '');
             return `<section class="rh-month">
-                <div class="rh-mhead"><span>${esc(monthLabel(x.m, lang))}</span><span class="rh-st rh-st-${st}">${esc(L.st[st])}</span></div>
+                <div class="rh-mhead"><span>${esc(monthLabel(x.m, lang))}${x.pl ? ` · ${esc(placeLine({ place: x.pl, ut: x.pt }, lang))}` : ''}</span><span class="rh-st rh-st-${st}">${esc(L.st[st])}</span></div>
                 <div class="rh-row"><span>${esc(L.rent)}</span><span>${esc(inr(x.rent))}</span></div>${elec}
                 <div class="rh-row"><span>${esc(L.total)}</span><span>${esc(inr(x.total))}</span></div>
                 <div class="rh-row"><span>${esc(L.paid)}</span><span>${esc(inr(x.paid))}</span></div>

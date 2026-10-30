@@ -1,10 +1,14 @@
 /**
  * Rent oracle (#170, docs/calculations.md RENT-1 … RENT-5): an independent,
  * deliberately simple recomputation of the rentals numbers from leases and
- * payments, compared with rentals/rent-math.js on generated histories.
+ * payments, compared with rentals/rent-math.js on generated histories; RENT-13
+ * (change of unit, the move month) against rentals/rent-unit.js.
  */
 import fc from 'fast-check';
-import { monthsToCharge, newCharge, applyPayment, monthSummary, leaseDues } from '../../www/js/rentals/rent-math.js';
+import { monthsToCharge, newCharge, applyPayment, monthSummary, leaseDues, firstMonthRent } from '../../www/js/rentals/rent-math.js';
+import { moveMonthRent } from '../../www/js/rentals/rent-unit.js';
+
+jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: {} }));
 
 const MONTHS = ['2026-01', '2026-02', '2026-03', '2026-04', '2026-05', '2026-06'];
 
@@ -81,5 +85,31 @@ describe('rent oracle (RENT-1 … RENT-5)', () => {
             expect(got.summary).toEqual({ expected: want.expected, collected: want.collected, pending: want.pending, outstanding: want.outstanding });
             for (const l of leases) expect(got.dues(l.id)).toBe(want.perLease[l.id]);
         }), { seed: 170, numRuns: Number(process.env.FC_RUNS) || 100 });
+    });
+});
+
+describe('change of unit, the move month (RENT-13)', () => {
+    test('RENT-13: days in the old unit up to the day before the move, rounded to the rupee', () => {
+        // Independent count: walk the days.
+        const oracle = (full, from, date) => {
+            const [y, m, d] = date.split('-').map(Number);
+            let covered = 0;
+            let stayed = 0;
+            for (let day = from; new Date(y, m - 1, day).getMonth() === m - 1; day++) {
+                covered++;
+                if (day < d) stayed++;
+            }
+            return Math.round(full * stayed / covered);
+        };
+        expect(moveMonthRent(6000, { startMonth: '2026-01' }, '2026-10', '2026-10-16')).toBe(2903);
+        expect(moveMonthRent(5800, { startMonth: '2027-01' }, '2028-02', '2028-02-10')).toBe(1800);
+        expect(moveMonthRent(5000, { startMonth: '2026-01' }, '2026-10', '2026-10-01')).toBe(0);
+        // An old lease that started (pro-rated) in the move month: its charge covers the 11th–30th.
+        expect(moveMonthRent(4000, { startMonth: '2026-11', startDate: '2026-11-11', firstRent: 2667 }, '2026-11', '2026-11-21')).toBe(oracle(4000, 11, '2026-11-21'));
+        for (const [full, date] of [[5000, '2026-02-15'], [7777, '2026-09-30'], [12345, '2028-02-29'], [9000, '2026-12-02']]) {
+            expect(moveMonthRent(full, { startMonth: '2020-01' }, date.slice(0, 7), date)).toBe(oracle(full, 1, date));
+        }
+        // The two sides of a move add up to the month's rent (same rent, both rounded).
+        expect(moveMonthRent(6000, { startMonth: '2026-01' }, '2026-10', '2026-10-16') + firstMonthRent(6000, '2026-10-16', true)).toBe(6000);
     });
 });

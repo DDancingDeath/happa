@@ -716,12 +716,16 @@ service cloud.firestore {
       return get(profilePath(usersCol)).data;
     }
 
-    // 'owner' | 'manager' | 'member' | '' (no access)
+    // 'owner' | 'manager' | 'member' | '' (no access). The profile is read once
+    // (rules have an expression budget per request).
     function rentRoleIn(usersCol) {
-      return !(isSignedIn() && exists(profilePath(usersCol))) ? ''
-        : rentProfile(usersCol).get('status', '') in ['pending', 'rejected'] ? ''
-        : rentProfile(usersCol).get('role', '') == 'owner' ? 'owner'
-        : rentProfile(usersCol).get('rentRole', '') in ['manager', 'member'] ? rentProfile(usersCol).rentRole
+      return isSignedIn() && exists(profilePath(usersCol)) ? rentRoleOf(get(profilePath(usersCol)).data) : '';
+    }
+
+    function rentRoleOf(p) {
+      return p.get('status', '') in ['pending', 'rejected'] ? ''
+        : p.get('role', '') == 'owner' ? 'owner'
+        : p.get('rentRole', '') in ['manager', 'member'] ? p.rentRole
         : '';
     }
 
@@ -823,7 +827,7 @@ service cloud.firestore {
           : base == 'rent_leases'
           ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
                               'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken',
-                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo'].concat(rentMeta()))
+                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo', 'fromLeaseId', 'movedTo'].concat(rentMeta()))
             && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
             && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
             && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
@@ -841,6 +845,7 @@ service cloud.firestore {
             && (d.get('firstRent', null) == null || (d.firstRent is number && d.firstRent >= 0 && (resource != null || d.firstRent <= d.rent)))
             && d.get('elecMode', 'meter') in ['included', 'meter', 'own']
             && (d.get('meterNo', null) == null || rentStr(d, 'meterNo', 1, 40))
+            && (d.get('movedTo', null) == null || rentStr(d, 'movedTo', 1, 64))
           : false);
     }
 
@@ -865,16 +870,55 @@ service cloud.firestore {
         && (d.get('floor', null) == null || rentStr(d, 'floor', 1, 20));
     }
 
-    // New leases start active, with no charges and no tenant link, and take their unit in the same write.
-    function rentLeaseCreateOk(usersCol, docId) {
+    // New leases start active, with no charges and no tenant link (except one carried over
+    // on a change of unit), and take their unit in the same write.
+    // The lease's property is its unit's, and its tenant exists. Non-owners can't
+    // back-date the start more than 2 days (IST; the app's default edit window, fixed
+    // here because Roles & access days would cost reads past this write's limit).
+    function rentLeaseCreateOk(usersCol, docId, owner) {
       let d = request.resource.data;
-      return d.get('shareToken', null) == null
-        && d.get('status', '') == 'active' && d.get('endMonth', null) == null
+      let unit = getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data;
+      return d.get('status', '') == 'active' && d.get('endMonth', null) == null
+        && d.get('movedTo', null) == null
         // No charges yet, or the first month's charge written in the same batch (move-in).
         && (d.get('chargedThrough', null) == null
             || (d.chargedThrough == d.startMonth && d.startMonth <= rentThisMonth()
                 && existsAfter(rentChargePath(usersCol, docId, d.startMonth))))
-        && getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data.get('leaseId', null) == docId;
+        && unit.get('leaseId', null) == docId
+        && unit.get('propertyId', '') == d.propertyId
+        && existsAfter(rentPath(usersCol, 'rent_tenants', d.tenantId))
+        && (owner || d.get('startDate', '') >= rentDaysAgo(2))
+        && (d.get('fromLeaseId', null) == null ? d.get('shareToken', null) == null : rentUnitChangeOk(usersCol, docId, d));
+    }
+
+    // Change of unit (rent-unit.js): the same tenant's active lease (fromLeaseId)
+    // ends in this write on another unit, pointing here (movedTo), with the move
+    // month, or the month before when the move is on the 1st (that month isn't
+    // charged twice). Its tenant link moves here: only that lease's token, which it
+    // gives up in the same write.
+    function rentUnitChangeOk(usersCol, docId, d) {
+      let before = get(rentLeasePath(usersCol, d.fromLeaseId)).data;
+      let old = getAfter(rentLeasePath(usersCol, d.fromLeaseId)).data;
+      return rentStr(d, 'fromLeaseId', 1, 64)
+        && before.status == 'active'
+        && old.status == 'ended' && old.tenantId == d.tenantId && old.unitId != d.unitId
+        && old.get('movedTo', null) == docId
+        && (old.endMonth == d.startMonth
+            || (d.get('startDate', '').matches('^.{8}01$') && nextMonth(old.endMonth) == d.startMonth))
+        && (d.get('shareToken', null) == null
+            || (before.get('shareToken', null) == d.shareToken && old.get('shareToken', null) == null));
+    }
+
+    // The old lease of a change of unit points at the new lease created in the same write.
+    function rentMovedOk(usersCol, docId, to) {
+      return !exists(rentLeasePath(usersCol, to))
+        && getAfter(rentLeasePath(usersCol, to)).data.get('fromLeaseId', null) == docId;
+    }
+
+    // 'YYYY-MM-DD' n days ago in India (IST).
+    function rentDaysAgo(n) {
+      let ist = request.time + duration.value(330, 'm') - duration.value(n, 'd');
+      return string(ist.year()) + '-' + pad2(ist.month()) + '-' + pad2(ist.day());
     }
 
     // Lease changes (review of #10, High):
@@ -885,17 +929,26 @@ service cloud.firestore {
     //  - active -> ended only in the move-out write: endMonth (start..this month) =
     //    chargedThrough, its charge exists, the unit is freed in the same write.
     //    Ending before the last charged month deletes the later unpaid months and
-    //    is owner/manager only.
+    //    is owner/manager only, or one month back on a change of unit (movedTo; a
+    //    move on the 1st within the members' 2-day start window).
     function rentLeaseUpdateOk(usersCol, docId, mgr) {
       let d = request.resource.data;
       let r = resource.data;
       let before = r.get('chargedThrough', null);
       let next = d.get('chargedThrough', null);
-      return validRentDoc('rent_leases') && rentCreationKept()
-        && d.startMonth == r.startMonth && d.unitId == r.unitId && d.tenantId == r.tenantId
-        && d.get('startDate', null) == r.get('startDate', null) && d.get('firstRent', null) == r.get('firstRent', null)
-        && d.get('proRate', false) == r.get('proRate', false)
-        && (d.get('shareToken', null) == r.get('shareToken', null) || mgr)
+      let moved = r.status == 'active' && d.get('status', '') == 'ended' && d.get('movedTo', null) != null
+        && rentMovedOk(usersCol, docId, d.movedTo);
+      return (d.diff(r).affectedKeys().hasOnly(['status', 'endMonth', 'chargedThrough', 'movedTo', 'shareToken', 'updatedAt', 'updatedBy'])
+          ? rentLeaseStateOk(d)
+          : validRentDoc('rent_leases') && rentCreationKept()
+            && d.startMonth == r.startMonth && d.unitId == r.unitId && d.tenantId == r.tenantId
+            && d.get('startDate', null) == r.get('startDate', null) && d.get('firstRent', null) == r.get('firstRent', null)
+            && d.get('proRate', false) == r.get('proRate', false)
+            && d.get('fromLeaseId', null) == r.get('fromLeaseId', null))
+        && (d.get('movedTo', null) == r.get('movedTo', null) || moved)
+        && (d.get('shareToken', null) == r.get('shareToken', null) || mgr
+            || (moved && d.get('shareToken', null) == null
+                && getAfter(rentLeasePath(usersCol, d.movedTo)).data.get('shareToken', null) == r.get('shareToken', null)))
         && (r.status == 'ended'
           ? d.status == 'ended' && d.get('endMonth', null) == r.get('endMonth', null) && next == before
           : d.status == 'active'
@@ -910,8 +963,18 @@ service cloud.firestore {
               && existsAfter(rentChargePath(usersCol, docId, next))
               && getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data.get('leaseId', '') == null
               && (next == before
-                  || (next < before && mgr
+                  || (next < before && (mgr || (moved && nextMonth(next) == before))
                       && !existsAfter(rentChargePath(usersCol, docId, before)))));
+    }
+
+    // Only the lease's state changed (charging, move-out, change of unit, link): the
+    // other fields are as stored, so only these are checked (expression budget).
+    function rentLeaseStateOk(d) {
+      return rentWriterOk() && d.get('status', '') in ['active', 'ended']
+        && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
+        && (d.get('chargedThrough', null) == null || rentMonth(d.chargedThrough))
+        && (d.get('movedTo', null) == null || rentStr(d, 'movedTo', 1, 64))
+        && (d.get('shareToken', null) == null || rentShareToken(d.shareToken));
     }
 
     // A unit's lease link changes only with the lease: set by a new active lease
@@ -1074,6 +1137,47 @@ service cloud.firestore {
       return paid >= sum - 0.01 && paid <= sum + 0.01;
     }
 
+    // Change of unit, pro-rated (RENT-13): in the write that ends the lease with a
+    // move (movedTo), its last month's rent goes down to the old unit's days; the
+    // amount follows (rent + electricity), never below what is paid. Members: the
+    // computed value; owner/manager: any lower amount (they correct charges anyway).
+    function rentChargeMoveOk(usersCol, mgr) {
+      let d = request.resource.data;
+      let r = resource.data;
+      return d.get('rent', null) != r.get('rent', null)
+        && rentChargeMovedOk(usersCol, mgr, d, r, getAfter(rentLeasePath(usersCol, r.leaseId)).data);
+    }
+
+    function rentChargeMovedOk(usersCol, mgr, d, r, lease) {
+      let e = r.get('electricity', null) == null ? 0 : r.electricity.amount;
+      return d.diff(r).affectedKeys().hasOnly(['rent', 'amount', 'open', 'updatedAt', 'updatedBy'])
+        && rentWriterOk()
+        && lease.status == 'ended' && lease.get('movedTo', null) != null && lease.endMonth == r.month
+        && get(rentLeasePath(usersCol, r.leaseId)).data.status == 'active'
+        && d.get('rent', null) is number && d.rent >= 0 && d.rent <= r.rent
+        && (mgr || rentMoveRentOk(d.rent, r.rent, lease, r.month,
+              getAfter(rentLeasePath(usersCol, lease.movedTo)).data.get('startDate', '')))
+        && d.get('amount', null) is number
+        && d.amount >= d.rent + e - 0.01 && d.amount <= d.rent + e + 0.01
+        && d.amount >= r.paid - 0.01
+        && d.get('open', null) == (r.paid < d.amount - 0.001);
+    }
+
+    // RENT-13: rent × (days in the old unit: from the 1st, or the lease's start day when
+    // that month was pro-rated, to the day before the move) ÷ (days that charge covers),
+    // rounded to the rupee (either way on a .5).
+    function rentMoveRentOk(v, full, lease, month, date) {
+      let s = month == lease.startMonth && lease.get('firstRent', null) != null ? int(lease.startDate[8:10]) : 1;
+      let x = float(full) * (int(date[8:10]) - s) / (rentMonthDays(month) - s + 1);
+      return rentDate(date) && date[0:7] == month && v is int && v >= x - 0.5 && v <= x + 0.5;
+    }
+
+    function rentMonthDays(m) {
+      let y = int(m[0:4]);
+      let mo = int(m[5:7]);
+      return mo == 2 ? (y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) ? 29 : 28) : (mo in [4, 6, 9, 11] ? 30 : 31);
+    }
+
     // This year in India (IST = UTC+5:30): receipt numbers follow the server's clock.
     function rentIstYear() {
       return (request.time + duration.value(330, 'm')).year();
@@ -1226,20 +1330,23 @@ service cloud.firestore {
     }
 
     // Move-out removes unpaid months after the last month, only inside the
-    // move-out write (lease active before, ended after); owner/manager only.
-    function rentChargeDeleteOk(usersCol, mgr) {
+    // move-out write (lease active before, ended after); owner/manager, or the one
+    // month after on a change of unit (rentLeaseUpdateOk checks movedTo).
+    function rentChargeDeleteOk(usersCol, role) {
       let leaseBefore = get(rentLeasePath(usersCol, resource.data.leaseId)).data;
       let leaseAfter = getAfter(rentLeasePath(usersCol, resource.data.leaseId)).data;
-      return mgr
+      return (role in ['owner', 'manager']
+          || (role == 'member' && leaseAfter.get('movedTo', null) != null && resource.data.month == nextMonth(leaseAfter.endMonth)))
         && resource.data.get('paid', 0) == 0 && resource.data.get('payments', []).size() == 0
         && leaseBefore.status == 'active' && leaseAfter.status == 'ended'
         && resource.data.month > leaseAfter.endMonth;
     }
 
     function rentCreateOk(base, usersCol, docId) {
-      return canWriteRent(usersCol)
+      let role = rentRoleIn(usersCol);
+      return role != ''
         && (base == 'rent_charges' ? validRentChargeCreate(usersCol, docId)
-          : base == 'rent_leases' ? validRentDoc(base) && rentLeaseCreateOk(usersCol, docId)
+          : base == 'rent_leases' ? validRentDoc(base) && rentLeaseCreateOk(usersCol, docId, role == 'owner')
           : base == 'rent_units' ? validRentDoc(base) && rentUnitCreateLeaseOk(usersCol, docId)
             && request.resource.data.get('type', '') in ['flat', 'commercial', 'office', 'godown', 'other']
             && request.resource.data.get('meterCharge', null) == null
@@ -1266,19 +1373,22 @@ service cloud.firestore {
 
     function rentUpdateAs(base, usersCol, docId, mgr) {
       return base == 'rent_charges'
-          ? (rentCreationKept() && (rentPaymentOk(usersCol, docId) || rentChargeRnoOk(usersCol, docId) || rentMeterOk(usersCol, docId, mgr)))
+          ? (rentCreationKept() && (rentPaymentOk(usersCol, docId) || rentChargeRnoOk(usersCol, docId) || rentMeterOk(usersCol, docId, mgr)
+              || rentChargeMoveOk(usersCol, mgr)))
             || (mgr && (rentChargeEditOk(usersCol, docId) || rentChargeVoidOk(usersCol, docId)))
         : base == 'rent_leases'
           ? rentLeaseUpdateOk(usersCol, docId, mgr)
         : base == 'rent_units'
-          ? validRentDoc(base) && rentCreationKept()
-            && rentUnitLeaseOk(usersCol, docId) && rentUnitMeterOk(usersCol, docId, mgr)
+          ? (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['leaseId', 'updatedAt', 'updatedBy'])
+              ? rentWriterOk() && rentUnitLeaseOk(usersCol, docId)
+              : validRentDoc(base) && rentCreationKept()
+                && rentUnitLeaseOk(usersCol, docId) && rentUnitMeterOk(usersCol, docId, mgr))
         : validRentDoc(base) && rentCreationKept();
     }
 
     function rentDeleteOk(base, usersCol) {
       return isOwnerIn(usersCol)
-        || (base == 'rent_charges' && resource != null && rentChargeDeleteOk(usersCol, canManageRent(usersCol)));
+        || (base == 'rent_charges' && resource != null && rentChargeDeleteOk(usersCol, rentRoleIn(usersCol)));
     }
 
     // Tenant rent-history link (follow-up to #170): rent_public/{token} is a
@@ -1301,7 +1411,9 @@ service cloud.firestore {
         && d.get('ended', null) is bool && (d.get('endMonth', null) == null || rentMonth(d.endMonth))
         && d.get('months', null) is list && d.months.size() <= 36
         && d.get('updatedAt', null) is number
-        && (resource == null || resource.data.lid == d.lid);
+        // lid is fixed, except when the link moves with a change of unit (to the lease made from the old one).
+        && (resource == null || resource.data.lid == d.lid
+            || getAfter(rentLeasePath(usersCol, d.lid)).data.get('fromLeaseId', null) == resource.data.lid);
     }
 
     function rentPublicDeleteOk(usersCol, token) {

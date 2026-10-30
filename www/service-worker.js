@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v79';
+const CACHE_NAME = 'happa-v80';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -194,13 +194,15 @@ const STATIC_ASSETS = [
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
 ];
-// Not precached: loaded with import() only when used (rent receipts). The fetch
+// Not precached: loaded with import() only when used (rent receipts, unit picker, tenant link actions). The fetch
 // handler below caches them on first use, so they work offline after that.
 // eslint-disable-next-line no-unused-vars -- the list is read by scripts/check-sw-assets.js
 const LAZY_ASSETS = [
     '/css/rent-receipt.css',
+    '/js/rentals/rent-link.js',
     '/js/rentals/rent-receipt.js',
-    '/js/rentals/rent-receipt-store.js'
+    '/js/rentals/rent-receipt-store.js',
+    '/js/rentals/rent-unit.js'
 ];
 
 /**

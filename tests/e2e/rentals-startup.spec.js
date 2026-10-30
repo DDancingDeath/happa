@@ -64,7 +64,8 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.click('#rentalsBody .rent-form button');
     const row = page.locator('.rent-row', { hasText: `Ram ${stamp}` }).first();
     await row.locator('button', { hasText: 'Move in' }).click();
-    await page.selectOption('#rentLeaseUnit', { label: `Shop G${stamp}, Gali ${stamp}` });
+    // Units are grouped by property (optgroup), so the option is just the unit.
+    await page.selectOption('#rentLeaseUnit', { label: `Shop G${stamp}` });
     await expect(page.locator('#rentTDate')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
     await page.selectOption('#rentTElec', 'meter');
     await page.click('#rentDialog .rent-btn-primary');
@@ -84,6 +85,10 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.click('#rentDialog .rent-btn-primary');
     await expect(rent).toContainText('3,000');
     await expect(rent).toContainText('Part paid');
+    // The payment's receipt opens right after it (rent receipts): close it.
+    await expect(page.locator('#rentDialog h3')).toContainText('🧾', { timeout: 15000 });
+    await page.click('#rentDialog .rent-dialog-actions .rent-btn:not(.rent-btn-primary)');
+    await expect(page.locator('#rentDialog')).toBeHidden();
 
     await rent.locator('button', { hasText: 'Meter reading' }).click();
     await page.fill('#rentMeterPrev', '100');
