@@ -6,7 +6,7 @@
  */
 import fc from 'fast-check';
 import { monthsToCharge, newCharge, applyPayment, monthSummary, leaseDues, firstMonthRent } from '../../www/js/rentals/rent-math.js';
-import { moveMonthRent } from '../../www/js/rentals/rent-unit.js';
+import { moveMonthRent, oldMonth } from '../../www/js/rentals/rent-unit.js';
 
 jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: {} }));
 
@@ -111,5 +111,29 @@ describe('change of unit, the move month (RENT-13)', () => {
         }
         // The two sides of a move add up to the month's rent (same rent, both rounded).
         expect(moveMonthRent(6000, { startMonth: '2026-01' }, '2026-10', '2026-10-16') + firstMonthRent(6000, '2026-10-16', true)).toBe(6000);
+    });
+
+    test('RENT-13: more than the old share paid: the month closes at what is paid; fully paid stays as it is', () => {
+        // Independent: the old month owes max(share + electricity, paid), never more than the charge, and nothing stays open above the share.
+        const oracle = (ch, share) => {
+            const e = ch.electricity ? ch.electricity.amount : 0;
+            const amount = Math.min(ch.amount, Math.max(share + e, ch.paid));
+            return { amount, due: Math.max(0, amount - ch.paid), unchanged: amount === ch.amount };
+        };
+        const cases = [
+            [{ rent: 5000, amount: 5000, paid: 3000, electricity: null }, 2419],
+            [{ rent: 5000, amount: 5300, paid: 3500, electricity: { amount: 300 } }, 2419],
+            [{ rent: 5000, amount: 5000, paid: 5000, electricity: null }, 2419],
+            [{ rent: 5000, amount: 5000, paid: 1000, electricity: null }, 2419],
+            [{ rent: 5000, amount: 5000, paid: 0, electricity: null }, 2419]
+        ];
+        for (const [ch, share] of cases) {
+            const o = oldMonth(ch, share);
+            const want = oracle(ch, share);
+            const amount = o.kept ? ch.amount : o.amount;
+            expect({ amount, due: Math.max(0, amount - ch.paid), unchanged: o.kept || amount === ch.amount }).toEqual(want);
+        }
+        expect(oldMonth({ rent: 5000, amount: 5000, paid: 3000 }, 2419)).toMatchObject({ rent: 3000, amount: 3000, open: false, capped: true, kept: false });
+        expect(oldMonth({ rent: 5000, amount: 5000, paid: 5000 }, 2419)).toMatchObject({ kept: true, capped: false });
     });
 });

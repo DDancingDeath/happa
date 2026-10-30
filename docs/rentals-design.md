@@ -256,7 +256,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **128.0 KiB** (131,049 bytes) as served (LF), 2,071 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Not precached (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used and cached by the service worker then, so they work offline after first use in that app version: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 12.6 KiB) and the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway). The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 130 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again); lazy files: receipts ≤ 24 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
+| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **128.0 KiB** (131,049 bytes) as served (LF), 2,071 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Outside this budget (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used; the service worker's install also caches them, best effort (a failure never blocks the update), into the new version's cache, so they match the precached files and work offline right after a deploy: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 12.6 KiB) and the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway). The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 130 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again); lazy files: receipts ≤ 24 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -588,11 +588,18 @@ Owner: *"maybe we should have unit option in tenant page"*.
   rent), the old one written to that month's charge (`rent`, `amount`) in the same write. A move
   on the 1st ends the old lease with the month before, so there is no old-unit charge that
   month (also for a member when this month was already charged: that unpaid charge is removed
-  in the same write). Unticked: both units the full month. An amount below what is already paid
-  for the old month is refused ("untick, or ask the owner or a manager").
+  in the same write). Unticked: both units the full month. **Already paid more than the old
+  share** (+ that month's electricity): the old month closes at what is paid (rent = paid −
+  electricity, amount = paid, nothing more due there); fully paid, it stays as it is. The new
+  unit is still pro-rated either way. The dialog says which from the loaded charge; the
+  transaction applies the same rule to the charge it re-reads, so a payment made meanwhile is
+  handled too, and the success message says when it happened (also for an owner/manager amount
+  below what is paid).
   **Who may change the amounts:** members get the worked-out values only; the rules recompute
   the old month from the stored charge rent and the new lease's move date and accept exactly
-  that (± the rounding), only in the write that ends the lease with `movedTo`. Owners and
+  that (± the rounding), or, when more is paid, any rent from that share up with the amount
+  equal to what is paid and the month closed, only in the write that ends the lease with
+  `movedTo`. A member's pro-rated first month (move in or change) must be the RENT-11 value. Owners and
   managers may type any amount from 0 to the month's rent (rules: any lower amount, never below
   paid), as they can already correct a charge. Chosen over an owner/manager-only override
   because members do changes too, and the default must not charge them twice; and over an
@@ -635,7 +642,7 @@ Owner: *"maybe we should have unit option in tenant page"*.
   once per rule.
 - **Size:** `rent-unit.js` (picker, move in / change dialogs, `changeUnit`) and `rent-link.js`
   (make / share / replace / turn off a tenant link; needs the network anyway) are not precached:
-  `LAZY_ASSETS`, loaded with `import()` from `rentals.js` on first use and cached then (§4).
+  `LAZY_ASSETS`, loaded with `import()` from `rentals.js` on first use and cached by the service worker's install (§4).
 - **Not done:** a tenant `activeLeaseId` mirror for a rules-level "one lease per tenant"
   guarantee. It needs a migration of existing tenants, an extra checked document in move-in,
   move-out and change writes (the change is already at the limits). The transaction

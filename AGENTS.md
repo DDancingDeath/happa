@@ -145,7 +145,7 @@ In order:
 - **Service worker / cache bump**: every app JS/CSS/template file (and
   icon/manifest) must be listed in `STATIC_ASSETS` in `www/service-worker.js`
   (`npm run check:sw`; a test enforces it), or in `LAZY_ASSETS` for a file loaded only on use
-  (not precached; the fetch handler caches it on first use). Any PR that changes a shipped
+  (outside the precache budget; install caches it best effort, the fetch handler on use). Any PR that changes a shipped
   file under `www/` bumps all three together:
   1. every `?v=<token>` in `www/index.html` (one token for the whole file),
   2. `BUILD_ID` in `www/js/main.js`,
