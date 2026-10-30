@@ -946,6 +946,59 @@ function defineSuite(prefix) {
         await assertSucceeds(as('legacyOwner').collection(monthStats).doc('2026-10').delete());
     });
 
+    // firestore-service.js noteMonthWrite: a merge of { month, stale: true, staleAt }.
+    const mark = (month = '2026-10', extra = {}) => ({ month, stale: true, staleAt: 1760000000000, ...extra });
+
+    t('monthStats: any approved user marks a month stale (merge); a missing month gets a stub', async () => {
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(monthStats).doc('2026-10').set(snap()));
+        for (const uid of ['staff1', 'legacyStaff', 'manager1', 'legacyOwner']) {
+            await assertSucceeds(as(uid).collection(monthStats).doc('2026-10').set(mark('2026-10', { staleAt: Date.now() }), { merge: true }));
+        }
+        await assertSucceeds(as('staff1').collection(monthStats).doc('2026-03').set(mark('2026-03'), { merge: true }));
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            const kept = (await ctx.firestore().collection(monthStats).doc('2026-10').get()).data();
+            if (!kept.stale || kept.m.M1 !== 1000 || kept.v !== 1) throw new Error('stale mark changed the snapshot');
+            const stub = (await ctx.firestore().collection(monthStats).doc('2026-03').get()).data();
+            if (JSON.stringify(Object.keys(stub).sort()) !== '["month","stale","staleAt"]') throw new Error(`stub: ${JSON.stringify(stub)}`);
+        });
+        // A batch with a back-dated bill, as one device's writes.
+        const db = as('staff1');
+        const batch = db.batch();
+        batch.set(db.collection(`${prefix}purchases`).doc('late'), { userId: 'staff1', total: 10, clientVersion: 3 });
+        batch.set(db.collection(monthStats).doc('2026-04'), mark('2026-04'), { merge: true });
+        await assertSucceeds(batch.commit());
+    });
+
+    t('monthStats: a stale mark changes nothing else and needs an approved user', async () => {
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(monthStats).doc('2026-10').set(snap()));
+        const ref = (uid, id = '2026-10') => as(uid).collection(monthStats).doc(id);
+        await assertFails(ref('staff1').set(mark('2026-10', { m: { M1: 1 } }), { merge: true }));
+        await assertFails(ref('staff1').set(mark('2026-10', { builtAt: 1 }), { merge: true }));
+        await assertFails(ref('staff1').set(mark('2026-10', { stale: false }), { merge: true }));
+        await assertFails(ref('staff1').set(mark('2026-10', { staleAt: 'now' }), { merge: true }));
+        await assertFails(ref('staff1').set(mark('2026-10', { month: '2026-09' }), { merge: true }));
+        await assertFails(ref('staff1').set(mark('2026-10')));
+        await assertFails(ref('staff1', '2026-02').set(mark('2026-02', { extra: 1 }), { merge: true }));
+        await assertFails(ref('staff1', '2026-2').set(mark('2026-2'), { merge: true }));
+        await assertFails(ref('staff1', '2026-02').set({ month: '2026-02', stale: true }, { merge: true }));
+        await assertFails(ref('pending1').set(mark(), { merge: true }));
+        await assertFails(ref('rejected1').set(mark(), { merge: true }));
+        await assertFails(anon().collection(monthStats).doc('2026-10').set(mark(), { merge: true }));
+        await assertFails(ref('staff1').get());
+    });
+
+    t('monthStats: an owner or manager rebuild replaces a stale mark (and may carry staleAt)', async () => {
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(monthStats).doc('2026-10').set(mark()));
+        await assertFails(as('staff1').collection(monthStats).doc('2026-10').set(snap()));
+        await assertSucceeds(as('manager1').collection(monthStats).doc('2026-10').set(snap()));
+        await assertSucceeds(as('manager1').collection(monthStats).doc('2026-10').set(snap({ stale: true, staleAt: 1 })));
+        await assertSucceeds(as('legacyOwner').collection(monthStats).doc('2026-10').set(snap()));
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            const d = (await ctx.firestore().collection(monthStats).doc('2026-10').get()).data();
+            if (d.stale !== undefined) throw new Error('rebuild kept the stale mark');
+        });
+    });
+
     // Documents written by tools/migrate (#15), as its plan builds them from the synthetic backup.
     const migrated = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'tests', 'fixtures', 'migrate', 'migrated-docs.json'), 'utf8')).docs;
     const migratedDoc = (coll, id) => migrated.find(d => d.coll === coll && d.id === id).data;
@@ -977,9 +1030,10 @@ function defineSuite(prefix) {
         payment: { online: 0, cash: 0, due: 100, total: 0 }, dueAmount: 100, payments: [{ id: 'p0', amount: 0 }],
         openDue: true, clientVersion: 3 };
     // What outstanding.js applyPaymentTransaction writes for a cash payment.
+    const PAID_AT = 1760000100000;
     const paid = (cash, extra = {}) => ({
         payment: { online: 0, cash, due: 100 - cash, total: cash },
-        payments: [...dueBill.payments, { id: 'p1', amount: cash, cash, online: 0, at: 1 }],
+        payments: [...dueBill.payments, { id: 'p1', amount: cash, cash, online: 0, at: PAID_AT }],
         dueAmount: 100 - cash, openDue: 100 - cash > 0, clientVersion: 3, ...extra
     });
 
@@ -987,11 +1041,11 @@ function defineSuite(prefix) {
         for (const coll of bills) {
             await seedBill(coll, 'b', dueBill);
             const ref = as('staff1').collection(coll).doc('b');
-            await assertSucceeds(ref.update(paid(40, { paidAt: 1760000100000 })));
+            await assertSucceeds(ref.update(paid(40, { paidAt: PAID_AT })));
             // applyWriteOffTransaction: due to 0, writtenOff raised, one payments[] entry
             await assertSucceeds(ref.update({
                 payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, dueAmount: 0, openDue: false,
-                payments: [...paid(40).payments, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone' }],
+                payments: [...paid(40).payments, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone', at: 1760000200000 }],
                 cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3, paidAt: 1760000200000
             }));
         }
@@ -1004,6 +1058,28 @@ function defineSuite(prefix) {
             await assertFails(ref.update(paid(40, { paidAt: '2026-10-05' })));
             await assertFails(ref.update({ paidAt: 1760000100000, clientVersion: 3 }));
             await assertSucceeds(ref.update(paid(40)));
+        }
+    });
+
+    t('payment edits: paidAt equals the new payments[] entry\'s time; older apps may append without it', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'b', dueBill);
+            const ref = as('staff1').collection(coll).doc('b');
+            await assertFails(ref.update(paid(40, { paidAt: PAID_AT + 1 })));
+            await assertFails(ref.update(paid(40, { paidAt: 9999999999999 })));
+            await assertFails(ref.update(paid(40, { paidAt: 1 })));
+            const noAt = paid(40);
+            delete noAt.payments[noAt.payments.length - 1].at;
+            await assertFails(ref.update({ ...noAt, paidAt: PAID_AT }));
+            await assertSucceeds(ref.update(noAt));
+            // Write-off on top: its entry's `at` again.
+            const writeOff = (at, paidAt) => ({
+                payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, dueAmount: 0, openDue: false,
+                payments: [...noAt.payments, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone', at }],
+                cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3, paidAt
+            });
+            await assertFails(ref.update(writeOff(1760000200000, 1760000200001)));
+            await assertSucceeds(ref.update(writeOff(1760000200000, 1760000200000)));
         }
     });
 

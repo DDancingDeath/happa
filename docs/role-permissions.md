@@ -254,6 +254,9 @@ Rentals were already scoped and are unchanged; the matrix tests now check them f
 - No other query changed: members still read bills, items, expenses, stock adjustments, cash days
   and counters exactly as before, so billing, History (within `historyDays`), Rates and
   Outstanding work as they did.
+- `monthStats` writes: owners and managers write whole snapshots; any approved user may only
+  mark a month stale (`{ month, stale: true, staleAt }`, a merge; a missing month gets that stub)
+  when they save a record of an earlier month. Members still cannot read them.
 
 ### Read cost
 

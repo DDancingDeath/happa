@@ -650,6 +650,57 @@ function noteStockWrite(collKey, oldRec, newRec, opts = {}) {
     }
 }
 
+/** The last stale mark started by noteMonthWrite (tests wait for it). */
+let lastMonthMark = Promise.resolve([]);
+/** Local time this device started its last fresh read of all history (0 = none this session). */
+let fullHistoryFetchedAt = 0;
+
+/** The time a record counts in a month: BILL-TIME for bills / adjustments, its date for expenses / withdrawals. */
+function monthTimeOf(collKey, rec) {
+    if (!rec) return null;
+    if (collKey === 'expenses' || collKey === 'withdrawals') return parseAnyBillDate(rec.date)?.getTime() ?? null;
+    const t = eventTime(rec);
+    return t === Number.MAX_SAFE_INTEGER ? null : t;
+}
+
+/**
+ * Marks the month snapshots (monthStats) a write to a record dated before this month makes wrong
+ * as stale: one merge write per month (staleMonthsFor), issued after the record write, never
+ * blocking it. Owner/manager devices rebuild them (Money: rollSnapshots, Build month history).
+ * @private
+ * @returns {Promise<string[]>} the months marked
+ */
+function noteMonthWrite(collKey, oldRec, newRec) {
+    try {
+        const now = Date.now();
+        const d = new Date(now);
+        const current = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+        const times = [monthTimeOf(collKey, oldRec), monthTimeOf(collKey, newRec)];
+        if (!times.some(t => Number.isFinite(t) && t < current)) return (lastMonthMark = Promise.resolve([]));
+        const cascade = !!HISTORY_SPEC[collKey]?.stock && stockFingerprint(oldRec) !== stockFingerprint(newRec);
+        lastMonthMark = import('../utils/month-snapshots.js').then(({ staleMonthsFor, staleMark }) => {
+            const months = staleMonthsFor(times, { now, cascade });
+            if (!months.length) return months;
+            const db = getDb();
+            const ref = db.collection(col('monthStats'));
+            const batch = db.batch();
+            months.forEach(k => batch.set(ref.doc(k), staleMark(k, now), { merge: true }));
+            batch.commit().catch(e => console.error('Month snapshot stale mark failed:', e));
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('aadhat:monthstale', { detail: { months, at: now } }));
+            }
+            return months;
+        }).catch(e => {
+            console.error('Month snapshot stale mark failed:', e);
+            return [];
+        });
+        return lastMonthMark;
+    } catch (e) {
+        console.error('Month snapshot stale mark failed:', e);
+        return Promise.resolve([]);
+    }
+}
+
 /** Finds the in-memory version of a history record by document id or `id` field. */
 function findRecord(collKey, id) {
     if (id === undefined || id === null) return null;
@@ -765,6 +816,7 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     // Server acknowledgement (may come after settleWrite released the UI)
     write.then((r) => run.complete(r ? { supersededByRetry: true } : undefined), (error) => run.completeAndFail('write_rejected', { code: String(error?.code || 'unknown').slice(0, 40) }));
     noteStockWrite(collKey, previous, record);
+    noteMonthWrite(collKey, previous, record);
     noteLocalRecordWrite(collKey, String(record.id), record);
     await settleWrite(write, label);
     return record;
@@ -830,7 +882,10 @@ async function retryBillSave(collKey, record, ref, previous, key) {
     }
     sentBillPaymentSigs.set(key, paymentSignature(record));
     // An identical retry wrote nothing: stock and the checkpoint are unchanged
-    if (wrote) noteStockWrite(collKey, previous, record, { oldUnknown: true });
+    if (wrote) {
+        noteStockWrite(collKey, previous, record, { oldUnknown: true });
+        noteMonthWrite(collKey, previous, record);
+    }
     noteLocalRecordWrite(collKey, String(record.id), record);
     return record;
 }
@@ -861,6 +916,7 @@ async function updateBillChecked(collKey, record) {
     // The server now holds exactly this record: later edits must compare against it.
     record[LOADED_PAYMENT] = paymentSignature(record);
     noteStockWrite(collKey, previous, record, { oldUnknown: true });
+    noteMonthWrite(collKey, previous, record);
     noteLocalRecordWrite(collKey, String(record.id), record);
     return record;
 }
@@ -869,6 +925,7 @@ async function deleteBill(collKey, id) {
     const previous = findRecord(collKey, id);
     const write = getDb().collection(col(collKey)).doc(String(id)).delete();
     noteStockWrite(collKey, previous, null, { oldUnknown: true });
+    noteMonthWrite(collKey, previous, null);
     await write;
     forgetRecord(collKey, id);
 }
@@ -956,6 +1013,7 @@ async function extendHistory(target) {
     const ws = windowState;
     if (!ws) return;
     const gen = sessionGen;
+    const startedAt = Date.now();
     const upper = AppState.historyLoadedFrom;
     const full = target === 0;
     const db = getDb();
@@ -1001,6 +1059,7 @@ async function extendHistory(target) {
         if (full) {
             AppState.historyLoadedFrom = 0;
             ws.rawFull = true;
+            fullHistoryFetchedAt = startedAt;
         } else if (AppState.historyLoadedFrom !== 0 && target < AppState.historyLoadedFrom) {
             AppState.historyLoadedFrom = target;
         }
@@ -1028,6 +1087,7 @@ async function refreshOnDemand() {
     const from = AppState.historyLoadedFrom;
     if (from >= ws.liveFrom) return true;
     const gen = sessionGen;
+    const startedAt = Date.now();
     const full = from === 0;
     const db = getDb();
     const snaps = [];
@@ -1062,6 +1122,7 @@ async function refreshOnDemand() {
         publishCollection(c);
     });
     onDemandAsOf = Date.now();
+    if (full) fullHistoryFetchedAt = startedAt;
     markDirty(ALL_HISTORY_VIEWS, true);
     return true;
 }
@@ -1978,6 +2039,41 @@ const FirebaseService = {
     },
 
     /**
+     * Writes a rebuilt month snapshot over a stale one, in a transaction (1 read + 1 write):
+     * skipped when it was marked stale again since `staleAt` (that change may not be in this
+     * device's bills) or is no longer stale (another device rebuilt it).
+     * @param {Object} doc buildSnapshot() result
+     * @param {*} staleAt the `staleAt` of the stale mark this device saw
+     * @returns {Promise<{status: 'written'|'newer'|'fresh', doc: Object}>} doc = what is stored now
+     */
+    async rebuildMonthStat(doc, staleAt) {
+        const db = getDb();
+        const ref = db.collection(col('monthStats')).doc(doc.month);
+        return db.runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            const stored = snap.exists ? { ...snap.data(), month: doc.month } : null;
+            if (stored && !stored.stale) return { status: 'fresh', doc: stored };
+            if (stored && stored.staleAt !== staleAt) return { status: 'newer', doc: stored };
+            tx.set(ref, doc);
+            return { status: 'written', doc };
+        });
+    },
+
+    /**
+     * Local time this device started its last fresh server read of all history (0 = none this
+     * session); month snapshots marked stale before it can be rebuilt from the loaded bills.
+     * @returns {number}
+     */
+    getFullHistoryFetchedAt() {
+        return fullHistoryFetchedAt;
+    },
+
+    /** Resolves with the months of the last stale mark once it is issued (tests). */
+    monthMarksIssued() {
+        return lastMonthMark;
+    },
+
+    /**
      * Applies an item import plan with batched writes (merge updates + new
      * docs). Never deletes. One batch for typical catalogues, so a failure
      * leaves the catalogue unchanged; very large imports are chunked.
@@ -2289,6 +2385,7 @@ const FirebaseService = {
             if (i !== -1) AppState.expensesHistory.splice(i, 1);
             throw err;
         });
+        noteMonthWrite('expenses', null, record);
         return { record, committed };
     },
 
@@ -2301,6 +2398,7 @@ const FirebaseService = {
      * @returns {Promise<void>}
      */
     async deleteExpense(expenseId) {
+        const previous = findRecord('expenses', expenseId);
         // Handle both old numeric IDs and new Firebase document IDs
         if (typeof expenseId === 'number' || !isNaN(Number(expenseId))) {
             // Old expense with numeric ID - query by id field
@@ -2311,6 +2409,7 @@ const FirebaseService = {
             // New expense with Firebase document ID
             await getDb().collection(col('expenses')).doc(expenseId).delete();
         }
+        noteMonthWrite('expenses', previous, null);
         
         forgetRecord('expenses', expenseId);
         // Update local state
@@ -2341,6 +2440,7 @@ const FirebaseService = {
         refs.forEach(ref => {
             const prev = findRecord('expenses', ref.id) || findRecord('expenses', expenseId);
             if (prev) noteLocalRecordWrite('expenses', ref.id, { ...prev, ...fields });
+            noteMonthWrite('expenses', prev, prev ? { ...prev, ...fields } : fields);
         });
     },
 
@@ -2609,6 +2709,7 @@ const FirebaseService = {
         prepareStockRecord('stockAdjustments', adjustment, true);
         const write = getDb().collection(col('stockAdjustments')).add(adjustment);
         noteStockWrite('stockAdjustments', null, adjustment);
+        noteMonthWrite('stockAdjustments', null, adjustment);
         const docRef = await write;
         return { id: docRef.id, ...adjustment };
     },
@@ -2659,6 +2760,7 @@ const FirebaseService = {
             withdrawal.timestamp = Math.max(Date.now(), parseAnyBillDate(withdrawal.date)?.getTime() || 0);
         }
         const docRef = await getDb().collection(col('withdrawals')).add(withdrawal);
+        noteMonthWrite('withdrawals', null, withdrawal);
         return { id: docRef.id, ...withdrawal };
     },
 
@@ -3081,6 +3183,7 @@ const FirebaseService = {
             }
             windowState = { gen, liveFrom, rawFull: false, colls: {}, backfills: {} };
             onDemandAsOf = 0;
+            fullHistoryFetchedAt = 0;
             AppState.historyLoadedFrom = liveFrom;
             if (cp) adoptCheckpoint(checkpointDoc);
 
@@ -3444,6 +3547,7 @@ const FirebaseService = {
             withdrawal.timestamp = Math.max(Date.now(), parseAnyBillDate(withdrawal.date)?.getTime() || 0);
         }
         const docRef = await getDb().collection(col('withdrawals')).add(withdrawal);
+        noteMonthWrite('withdrawals', null, withdrawal);
         return { id: docRef.id, ...withdrawal };
     },
 

@@ -35,7 +35,7 @@ test in the same PR (see AGENTS.md → PR checklist).
 | OPENING | Opening record (old-app due) | A bill-shaped record written by the move from the old app (`tools/migrate`): it has an `openingBalance` object, no lines and a total of ₹0, and is dated with the old bill's date (which can be today). It is a **balance only**: it counts in dues — Outstanding, aging (from its original date), reminders, statements, the all-time "due to receive / pay" totals (F9, F10, R6, R7, A5, A6) — and in **no** period or activity figure: not in Today (T1–T16), Reports R1–R5 and R8, Finance F1–F8, Analytics A1–A4, bill counts, stock, rate trends, item frequency, anomaly scans or Number checks AC2 / AC4. Money paid on it later is a normal DUE-PAY on the day it is paid (cash flow, drawer, T13 / T14); writing it off is not a bad debt (its sale was never a sale here). In code: `isOpeningRecord()` / `activityBills()` in `utils/money.js`, the one filter every period figure uses (review rule `period-aggregation-without-activity-filter`). |
 | BILL-COUNT | "N bills", "N sales", average bill | Number of bills whose BILL-TIME is in the period that are activity: OPENING records are never counted (`billCount()` in `utils/business-metrics.js`). Today (T1/T2), Reports (R1/R2, Purchases / Sales tabs, Compare), Finance (F1 count) and Analytics use this one rule, so they agree; History lists opening records too, marked "Old app". |
 | BILL-TIME | When a bill counts | The bill's stock time: numeric `timestamp`, else its `date` read by `utils/dates.js` (ISO, `DD/MM/YYYY`, `D/M/YYYY, h:mm:ss am`; all local IST). Expenses, withdrawals and payments are read by the same parser (`recordTime`). No other date parsing is used by the calculation layer (#49). |
-| CMP | Comparisons | For a period: *previous* = the same days of the previous month for a calendar month, else the same length just before ("last 30 days" always uses the same length, even when it starts on the 1st); *last year* = the same dates one year earlier. The last day is counted inclusively and clipped to the shorter month (1–30 Oct vs 1–30 Sep, 1–28 Mar vs all of Feb); a month that has reached its last day compares with the whole other month. % change = (now − then) ÷ \|then\| × 100, rounded; "—" when `then` is 0 or not loaded; "about the same" under 2 % (`insights-config.js` `sameWithinPct`). |
+| CMP | Comparisons | For a period: *previous* = the same days of the previous month for a calendar month, else the same length just before ("last 30 days" always uses the same length, even when it starts on the 1st); *last year* = the same dates one year earlier. The last day is counted inclusively and clipped to the shorter month (1–30 Oct vs 1–30 Sep, 1–28 Mar vs all of Feb); a month that has reached its last day compares with the whole other month. % change = (now − then) ÷ \|then\| × 100, rounded; no % when `then` is 0; "about the same" under 2 % (`insights-config.js` `sameWithinPct`). When `then` is not known (bills not loaded and no month snapshot, or a stale one) each comparison says so, "vs Oct 2025: not known" (Money's `compareHtml`), never left out. |
 | PARTY | One party | Bills belong to the same party when their names match with case, extra spaces and Unicode form ignored ("test party" = "Test Party"). The name shown is the spelling used most; on a tie the one with more capitalised words. Outstanding, aging, reminders, Reports' customer filters and Analytics' customers group this way. |
 | MONEY-TEXT | How ₹ is written | Indian grouping everywhere: whole rupees (₹2,50,000); rates per kg in paise (₹1,234.50). Amounts below ₹100 that are averages show paise (₹0.40, not ₹0). One formatter: `formatRupees()` in `utils/money.js` (`Helpers.formatCurrency`). |
 | DATE-TEXT | How dates are written | "25 Oct 2026" for a date; "25 Oct, 8:59 pm" for a date and time (the year is added when it is not this year); Hindi month names and पूर्वाह्न / अपराह्न in Hindi. One formatter: `formatDay()` / `formatDayTime()` in `utils/dates.js`. |
@@ -255,6 +255,20 @@ year (from the bills when loaded, else from the month snapshots `monthStats/{YYY
 per month with M*, per-item and top-party totals and per-day sales and profit, built once by the
 owner and rolled for the current and previous month every 6 hours, `utils/month-snapshots.js`).
 
+**Stale month snapshots.** Saving, editing or deleting a bill, stock adjustment, expense or
+withdrawal dated before the current month marks the snapshot of its month (old and new date)
+`stale` with one merge write per month (`FirebaseService` `noteMonthWrite`; any approved user may
+write only `{ month, stale: true, staleAt }`, firestore.rules). When the bill's stock changes, every
+later month through the previous one is marked too, since its average cost (COGS, M2, M3, M6) moves.
+Only months the app reads (two years back) are marked. A payment or write-off is not: it counts on
+its own day, today. A stale snapshot gives no figures (`figuresFromSnapshot`, `partialFigures`,
+`snapshotCustomers` return null), so every comparison, chart month and "vs last year" from it is
+"not known" until it is rebuilt. An owner/manager device rebuilds it with no bill reads: the previous
+month on the next roll; an older month once that device has all bills loaded and read after it saw
+the mark (e.g. after the stock-checkpoint rebuild a stock change triggers), in a transaction that
+keeps a newer mark (1 read + 1 write); or with "Build month history", which reads the bills again
+if they are older than the mark.
+
 "Loaded bills" on a phone: bills from the 1st of the previous month, older bills that still owe
 (`openDue`), and older bills paid or written off since then (`paidAt` ≥ that day, stamped by every
 payment and write-off; bills paid by older app versions are pinned by the stock-checkpoint rebuild),
@@ -291,7 +305,7 @@ and close on the figure of the home page:
 | M8 | Personal expenses | Σ expenses tagged personal. Same as F5. |
 | M9 | Withdrawals | Σ withdrawals dated in the period. Same as F11. |
 | M10 | Kept in business | M6 − M8 − M9. |
-| M11 | Profit by month / day | M6 per calendar month (13 months, last year faint) and per day of a month; the days add up to M6. |
+| M11 | Profit by month / day | M6 per calendar month (13 months, last year faint) and per day of a month; the days add up to M6. A month from a stale snapshot has no bar until it is rebuilt; owners and managers see why and a "Build month history" button. |
 | M12 | Money in | BILL-AT-SAVE of the period's sales + DUE-PAYs received; split cash / online. |
 | M13 | Money out | BILL-AT-SAVE of the period's purchases + DUE-PAYs paid + all expenses (cash until #117); split cash / online. |
 | M14 | Net money in / out | M12 − M13. Same as F7. |
@@ -301,7 +315,7 @@ and close on the figure of the home page:
 | M18 | Labour to pay | T-LAB-2 for each day of the period (purchase bills by BILL-TIME, local day), each day rounded up on its own, summed (`labourToPayByDay()`). Money › Spending shows it under M7 with T-LAB-3's more / less / matches. |
 | I1 | Item sales and profit | Per catalogue item: Σ sale line totals, Σ their COGS, profit = sales − COGS, profit per ₹100 (AC10). |
 | I2 | Retail / wholesale | I1 split by bill type. |
-| I3 | Sales by customer | Per PARTY: Σ BILL-TOTAL, BILL-COUNT, last bill (AC11). "Stopped coming": bought in each of the same 3 calendar months last year, no bill for 60 days (`stoppedComingDays`). Months of last year that are not loaded use that month's snapshot customer list; when that list was cut to the top 50 customers (`m.Cc` = how many the month had; older snapshots with a full list count as cut), or with neither, the answer is unknown and the page asks to load older bills, never "every regular came". Item "vs last year" from snapshots only when both periods are whole months, else "—". |
+| I3 | Sales by customer | Per PARTY: Σ BILL-TOTAL, BILL-COUNT, last bill (AC11). "Stopped coming": bought in each of the same 3 calendar months last year, no bill for 60 days (`stoppedComingDays`). Months of last year that are not loaded use that month's snapshot customer list; when that list was cut to the top 50 customers (`m.Cc` = how many the month had; older snapshots with a full list count as cut), the snapshot is stale, or with neither, the answer is unknown and the page asks to load older bills, never "every regular came". Item "vs last year" from snapshots only when both periods are whole months, else "—". |
 | I4 | Purchases by supplier | Per PARTY: Σ BILL-TOTAL after labour, labour, kg, last bill. Item rows share each bill's labour by line value, so they add up to M16 (#47). |
 | I5 | Season index | Per item and calendar month: kg sold that month ÷ the item's average monthly kg (RT4 `rateStats` months); needs 12 months. ≥ 1.5 busy, ≤ 0.5 quiet. |
 | I6 | Biggest change | The item (or category) with the largest absolute change between two periods; used in takeaway sentences only. |

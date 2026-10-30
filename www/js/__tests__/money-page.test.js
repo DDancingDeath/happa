@@ -6,17 +6,18 @@
 import fs from 'fs';
 import path from 'path';
 import * as O from '../../../tests/oracle/oracle.js';
-import { MoneyManager, compareHtml, barsSvg, takeawayHtml } from '../modules/money.js';
+import { MoneyManager, compareHtml, vsItem, barsSvg, takeawayHtml } from '../modules/money.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { AppState } from '../utils/state.js';
 import { moneySummary, change, comparisonRanges, periodRange } from '../utils/business-metrics.js';
 import {
-    buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, rangeFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION
+    buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, rangeFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION,
+    snapshotCustomers
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { setInsightsContext, resetInsightsContextForTests, getInsightsContext, contextMonth } from '../utils/insights-context.js';
-import { t } from '../i18n/index.js';
+import { t, setLang } from '../i18n/index.js';
 import { formatAmount } from '../utils/money.js';
 
 const ROOT = path.resolve(__dirname, '../../..');
@@ -191,6 +192,48 @@ describe('comparisons and takeaways', () => {
         expect(compareHtml([{ c: { pct: 1, dir: 'same' }, label: 'Sep' }])).toContain('about the same as Sep');
         expect(compareHtml([{ c: null, label: 'Sep' }])).toContain('Nothing to compare with yet');
     });
+
+    test('a comparison that is not known is said for each period, never dropped', () => {
+        const html = compareHtml([vsItem(120, 100, 'Sep'), vsItem(120, null, 'Oct 2025')]);
+        expect(html).toContain('▲ 20% vs Sep');
+        expect(html).toContain('vs Oct 2025: not known');
+        expect(compareHtml([vsItem(120, undefined, 'Sep'), vsItem(120, null, 'Oct 2025')])).toBe(
+            '<span class="ins-cmp ins-cmp-none">vs Sep: not known</span><span class="ins-dot"> · </span><span class="ins-cmp ins-cmp-none">vs Oct 2025: not known</span>');
+        // Last year known but 0: no % is possible, as before.
+        expect(compareHtml([vsItem(120, 0, 'Oct 2025')])).toContain('Nothing to compare with yet');
+        setLang('hi');
+        try {
+            expect(compareHtml([vsItem(120, null, 'अक्टू 2025')])).toContain('अक्टू 2025 से तुलना: पता नहीं');
+        } finally {
+            setLang('en');
+        }
+    });
+
+    test('on screen: last year not loaded and no snapshot says "not known" next to "vs previous" (Profit, Cash, Spending, Worth; en + hi)', () => {
+        const sepStart = new Date(2026, 8, 1).getTime();
+        AppState.historyLoadedFrom = sepStart;
+        jest.spyOn(FirebaseService, 'getStockCheckpointState').mockReturnValue({ state: {}, asOf: sepStart });
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        AppState.expensesHistory.push({ id: 'eSep', date: '2026-09-10', amount: 100, category: 'business', type: 'rent' });
+        MoneyManager.init('profit');
+        const text = (id) => document.getElementById(id).textContent;
+        expect(text('moneyProfitCompare')).toContain('vs Oct 2025: not known');
+        MoneyManager.setSection('cash');
+        expect(text('moneyCashCompare')).toContain('vs Oct 2025: not known');
+        MoneyManager.setSection('spending');
+        expect(text('moneySpendCompare')).toMatch(/^[▲▼＝] .*(% vs Sep|about the same as Sep) · vs Oct 2025: not known$/);
+        MoneyManager.setSection('worth');
+        expect(text('moneyWorthCompare')).toBe('stock vs Oct 2025: not known');
+        setLang('hi');
+        try {
+            MoneyManager.setSection('spending');
+            expect(text('moneySpendCompare')).toContain('2025 से तुलना: पता नहीं');
+            expect(text('moneySpendCompare')).toMatch(/%/);
+            expect(text('moneySpendCompare')).not.toMatch(/[A-Za-z]/);
+        } finally {
+            setLang('en');
+        }
+    });
 });
 
 describe('taps, caveats and checks', () => {
@@ -364,6 +407,126 @@ describe('month snapshots', () => {
         expect(load).toHaveBeenCalledWith('2024-10', 40);
         expect(save).toHaveBeenCalledTimes(1);
         expect(save.mock.calls[0][0].map(d => d.month)).toEqual(['2026-09', '2026-10']);
+    });
+});
+
+describe('stale month snapshots (a bill of an older month changed after the snapshot was built)', () => {
+    const input = { ...data, base: { state: {}, from: -Infinity } };
+    const sep = { from: new Date(2026, 8, 1).getTime(), to: new Date(2026, 9, 1).getTime() };
+    const built = (month) => ({ ...buildSnapshot(month, moneySummary(input, sep, { detail: true }), data, NOW), month });
+    const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+
+    test('a stale snapshot gives no figures, days or customers: every comparison from it is not known', () => {
+        const doc = { ...built('2025-10'), stale: true, staleAt: 5 };
+        expect(figuresFromSnapshot(built('2025-10'))).not.toBeNull();
+        expect(figuresFromSnapshot(doc)).toBeNull();
+        expect(partialFigures(doc, 31)).toBeNull();
+        expect(snapshotCustomers(doc)).toBeNull();
+        const b = monthBounds('2025-10');
+        expect(rangeFigures({ '2025-10': doc }, b.from, b.to)).toBeNull();
+        expect(rangeFigures({ '2025-10': doc }, b.from, b.from + 10 * 86400000)).toBeNull();
+    });
+
+    test('on screen: vs last year from a stale snapshot is "not known" with the rebuild hint; rebuilt it is a %', () => {
+        const sepStart = new Date(2026, 8, 1).getTime();
+        AppState.historyLoadedFrom = sepStart;
+        jest.spyOn(FirebaseService, 'getStockCheckpointState').mockReturnValue({ state: {}, asOf: sepStart });
+        const doc = built('2025-10');
+        doc.days = { 3: { s: 500, p: 200 } };
+        MoneyManager.snapshots = { '2025-10': { ...doc, stale: true, staleAt: 5 } };
+        MoneyManager.init('profit');
+        const text = (id) => document.getElementById(id).textContent;
+        expect(text('moneyProfitCompare')).toContain('vs Oct 2025: not known');
+        expect(text('moneyBuildHistory')).toContain(t('ui.money.stale_hint'));
+        expect(document.querySelector('#moneyBuildHistory button')).not.toBeNull();
+        MoneyManager.snapshots = { '2025-10': doc };
+        MoneyManager.render();
+        expect(text('moneyProfitCompare')).toMatch(/% vs Oct 2025/);
+        expect(text('moneyBuildHistory')).not.toContain(t('ui.money.stale_hint'));
+    });
+
+    test('a stale mark written on this phone shows at once ("aadhat:monthstale")', () => {
+        const sepStart = new Date(2026, 8, 1).getTime();
+        AppState.historyLoadedFrom = sepStart;
+        jest.spyOn(FirebaseService, 'getStockCheckpointState').mockReturnValue({ state: {}, asOf: sepStart });
+        const doc = built('2025-10');
+        doc.days = { 3: { s: 500, p: 200 } };
+        MoneyManager.snapshots = { '2025-10': doc };
+        MoneyManager.staleSeen = {};
+        MoneyManager.listenSnapshots();
+        MoneyManager.init('profit');
+        expect(document.getElementById('moneyProfitCompare').textContent).toMatch(/% vs Oct 2025/);
+        window.dispatchEvent(new CustomEvent('aadhat:monthstale', { detail: { months: ['2025-10'], at: 77 } }));
+        expect(MoneyManager.snapshots['2025-10']).toMatchObject({ stale: true, staleAt: 77, m: doc.m });
+        expect(MoneyManager.staleSeen['2025-10']).toBe(NOW);
+        expect(document.getElementById('moneyProfitCompare').textContent).toContain('vs Oct 2025: not known');
+    });
+
+    test('rebuild: an older stale month is rebuilt from full history read after the mark was seen, clearing the flag', async () => {
+        jest.spyOn(FirebaseService, 'saveMonthStats').mockResolvedValue();
+        const rebuild = jest.spyOn(FirebaseService, 'rebuildMonthStat').mockImplementation(async (d) => ({ status: 'written', doc: d }));
+        const fetchedAt = jest.spyOn(FirebaseService, 'getFullHistoryFetchedAt');
+        const fresh = { v: SNAPSHOT_VERSION, builtAt: NOW };
+        const setup = () => {
+            MoneyManager.snapshots = { '2026-09': { ...fresh, month: '2026-09' }, '2026-10': { ...fresh, month: '2026-10' }, '2026-05': { month: '2026-05', stale: true, staleAt: 42 } };
+            MoneyManager.staleSeen = { '2026-05': NOW - 1000 };
+        };
+        // History read before the mark was seen here: it may not hold the change, so no rebuild.
+        setup();
+        fetchedAt.mockReturnValue(NOW - 5000);
+        await MoneyManager.rollSnapshots();
+        expect(rebuild).not.toHaveBeenCalled();
+        expect(MoneyManager.snapshots['2026-05'].stale).toBe(true);
+        // Read after: rebuilt from the loaded bills (no bill reads), flag gone.
+        fetchedAt.mockReturnValue(NOW - 500);
+        await MoneyManager.rollSnapshots();
+        expect(rebuild).toHaveBeenCalledTimes(1);
+        const [doc, staleAt] = rebuild.mock.calls[0];
+        expect(staleAt).toBe(42);
+        expect(doc.month).toBe('2026-05');
+        expect(doc.stale).toBeUndefined();
+        const may = { from: new Date(2026, 4, 1).getTime(), to: new Date(2026, 5, 1).getTime() };
+        expect(doc.m.M1).toBe(moneySummary(input, may).M1.total);
+        expect(MoneyManager.snapshots['2026-05'].stale).toBeUndefined();
+        expect(MoneyManager.staleSeen['2026-05']).toBeUndefined();
+        // Marked again meanwhile on another phone: kept stale, seen again now.
+        setup();
+        rebuild.mockImplementation(async () => ({ status: 'newer', doc: { month: '2026-05', stale: true, staleAt: 43 } }));
+        await MoneyManager.rollSnapshots();
+        expect(MoneyManager.snapshots['2026-05']).toMatchObject({ stale: true, staleAt: 43 });
+        expect(MoneyManager.staleSeen['2026-05']).toBe(NOW);
+    });
+
+    test('rebuild waits for full history: with only the recent window loaded the stale month stays', async () => {
+        AppState.historyLoadedFrom = new Date(2026, 8, 1).getTime();
+        const rebuild = jest.spyOn(FirebaseService, 'rebuildMonthStat');
+        jest.spyOn(FirebaseService, 'getFullHistoryFetchedAt').mockReturnValue(NOW);
+        MoneyManager.snapshots = { '2026-05': { month: '2026-05', stale: true, staleAt: 42 } };
+        MoneyManager.staleSeen = { '2026-05': NOW - 1000 };
+        expect(await MoneyManager.rebuildStale(NOW)).toBe(0);
+        expect(rebuild).not.toHaveBeenCalled();
+    });
+
+    test('Build month history reads the bills again when they predate a stale mark, and rebuilds that month guarded', async () => {
+        const save = jest.spyOn(FirebaseService, 'saveMonthStats').mockResolvedValue();
+        const rebuild = jest.spyOn(FirebaseService, 'rebuildMonthStat').mockImplementation(async (d) => ({ status: 'written', doc: d }));
+        let fetched = NOW - 5000;
+        jest.spyOn(FirebaseService, 'getFullHistoryFetchedAt').mockImplementation(() => fetched);
+        const refresh = jest.spyOn(FirebaseService, 'refreshOnDemandHistory').mockImplementation(async () => { fetched = NOW; return true; });
+        MoneyManager.snapshots = { '2026-05': { month: '2026-05', stale: true, staleAt: 42 } };
+        MoneyManager.staleSeen = { '2026-05': NOW - 1000 };
+        MoneyManager.building = false;
+        window.FirebaseService = FirebaseService;
+        try {
+            await MoneyManager.buildHistory();
+        } finally {
+            delete window.FirebaseService;
+        }
+        await flush();
+        expect(refresh).toHaveBeenCalledTimes(1);
+        expect(save.mock.calls[0][0].map(d => d.month)).not.toContain('2026-05');
+        expect(rebuild.mock.calls.map(c => c[0].month)).toEqual(['2026-05']);
+        expect(MoneyManager.snapshots['2026-05'].stale).toBeUndefined();
     });
 });
 

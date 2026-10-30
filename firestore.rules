@@ -171,9 +171,10 @@ service cloud.firestore {
 
     // Payment bookkeeping by someone who may not fully edit the bill: amounts are
     // numbers >= 0, the due never goes up, payment.due and dueAmount agree,
-    // payments[] is append-only and `paidAt` is a time in ms written with a new
-    // payments[] entry (outstanding.js applyPaymentTransaction / applyWriteOffTransaction,
-    // wholesale markSaleAsCleared).
+    // payments[] is append-only and `paidAt` is written only with a new payments[]
+    // entry and equals that entry's `at` (outstanding.js applyPaymentTransaction /
+    // applyWriteOffTransaction, wholesale markSaleAsCleared). Older apps append
+    // without `paidAt`; that stays allowed.
     function paymentEditOk() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let d = request.resource.data;
@@ -190,7 +191,9 @@ service cloud.firestore {
                 && (before == null || d.dueAmount <= before + 0.01)
                 && (!(d.get('payment', {}) is map) || !('due' in d.get('payment', {})) || d.payment.due == d.dueAmount)))
         && (!changed.hasAny(['payments']) || appendsOneEntry('payments'))
-        && (!changed.hasAny(['paidAt']) || (d.paidAt is number && changed.hasAny(['payments'])));
+        && (!changed.hasAny(['paidAt'])
+            || (d.paidAt is number && changed.hasAny(['payments'])
+                && d.paidAt == d.payments[d.payments.size() - 1].get('at', null)));
     }
 
     function canUpdateBill(usersCol, docId) {
@@ -1591,22 +1594,38 @@ service cloud.firestore {
       let d = request.resource.data;
       return isManagerIn(usersCol)
         && docId.matches('^[0-9]{4}-[0-9]{2}$')
-        && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale'])
+        && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale', 'staleAt'])
         && d.keys().hasAll(['month', 'v', 'm'])
         && d.month == docId
         && d.v is int
         && d.m is map;
     }
 
+    // Saving, editing or deleting a bill, expense or withdrawal dated in an earlier
+    // month marks that month stale (firestore-service.js noteMonthWrite, a merge
+    // write): any approved user, only `stale: true` and its time; a month without a
+    // snapshot gets a stub { month, stale, staleAt }.
+    function monthStaleMarkOnly(usersCol, docId) {
+      let d = request.resource.data;
+      return isApprovedIn(usersCol)
+        && docId.matches('^[0-9]{4}-[0-9]{2}$')
+        && d.get('stale', false) == true
+        && d.get('month', null) == docId
+        && d.get('staleAt', null) is number
+        && (resource == null
+            ? d.keys().hasOnly(['month', 'stale', 'staleAt'])
+            : d.diff(resource.data).affectedKeys().hasOnly(['stale', 'staleAt']));
+    }
+
     match /monthStats/{docId} {
       allow read: if isManagerIn('users');
-      allow create, update: if validMonthStats('users', docId);
+      allow create, update: if validMonthStats('users', docId) || monthStaleMarkOnly('users', docId);
       allow delete: if isOwnerIn('users');
     }
 
     match /dev_monthStats/{docId} {
       allow read: if isManagerIn('dev_users');
-      allow create, update: if validMonthStats('dev_users', docId);
+      allow create, update: if validMonthStats('dev_users', docId) || monthStaleMarkOnly('dev_users', docId);
       allow delete: if isOwnerIn('dev_users');
     }
 

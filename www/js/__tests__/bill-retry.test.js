@@ -52,6 +52,9 @@ test('a retry whose first attempt never reached the server creates the bill', as
 
 test('a retry after the first attempt succeeded, with nothing changed, writes nothing', async () => {
     await FirebaseService.savePurchase(bill(), { retry: false });
+    // A bill of an earlier month also marks its month snapshot stale (once the calendar moves on).
+    await FirebaseService.monthMarksIssued();
+    await fake.settle();
     const writes = fake.stats.writes;
     const saved = await FirebaseService.savePurchase(bill(), { retry: true });
     expect(fake.stats.writes).toBe(writes);

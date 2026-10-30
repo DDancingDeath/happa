@@ -692,10 +692,14 @@ two years of bills on open.
 - **Roll:** on open, the current and previous month are recomputed from the
   loaded window (no extra bill reads) and written when they changed, at most every
   6 hours (≤ 2 writes).
-- **Staleness:** an owner edit to a bill older than the previous month marks its
-  month `stale: true` (1 extra write in the save path); a stale month shows a
-  caveat and is rebuilt by a range query of that month (≤ its bills) on the next
-  owner open.
+- **Staleness:** saving, editing or deleting a bill, stock adjustment, expense or
+  withdrawal dated before the current month marks its month `stale: true` (and,
+  when its stock changed, every later month through the previous one): one merge
+  write per month, after the record write, by any approved user. A stale month
+  shows "not known" in comparisons and a "Build month history" hint, and is
+  rebuilt with no bill reads by an owner/manager device that has all bills loaded
+  (read after it saw the mark), in a transaction that keeps a newer mark
+  (docs/calculations.md, "Stale month snapshots").
 - **Rules:** new collection through `FirebaseService` (`getCollection`), read by
   `money`/`insights` holders, written by owner/manager; `rules-tests` cases added.
 - **Checks:** AC12 (snapshot of a closed month = live recompute from the same
