@@ -8,8 +8,8 @@
 # require.
 #
 # App paths (keep in sync with AGENTS.md): www/**, firestore.rules,
-# firestore.indexes.json, tests/e2e/**, playwright*.config.js, package.json,
-# package-lock.json, and this workflow.
+# firestore.indexes.json, firebase.json, scripts/happa-config.js, tests/e2e/**,
+# playwright*.config.js, package.json, package-lock.json, and this workflow.
 name: E2E
 
 on:
@@ -55,7 +55,7 @@ jobs:
             echo "run=true" >> "$GITHUB_OUTPUT"; echo "PR has the e2e label: run E2E."; exit 0
           fi
           files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
-          app=$(printf '%s\n' "$files" | grep -E '^(www/|tests/e2e/|firestore\.rules$|firestore\.indexes\.json$|playwright[^/]*\.config\.js$|package(-lock)?\.json$|\.github/workflows/e2e\.yml$)' || true)
+          app=$(printf '%s\n' "$files" | grep -E '^(www/|tests/e2e/|firestore\.rules$|firestore\.indexes\.json$|firebase\.json$|scripts/happa-config\.js$|playwright[^/]*\.config\.js$|package(-lock)?\.json$|\.github/workflows/e2e\.yml$)' || true)
           if [ -n "$app" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
             echo "App files changed: run E2E."; printf '%s\n' "$app" | head -n 20
@@ -132,6 +132,8 @@ jobs:
     # Stable name: this is the check to require in branch protection.
     name: Playwright E2E (emulators)
     needs: [changes, shard]
+    # always(), not !cancelled(): a skipped required check counts as passed, so a
+    # cancelled run must still run this job and fail it (Result step below).
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -170,6 +172,8 @@ jobs:
             e2e-results.json
           retention-days: 7
       - name: Result
+        # Runs even when the run was cancelled, so the required check fails instead of being skipped.
+        if: always()
         env:
           CHANGES: ${{ needs.changes.result }}
           RUN: ${{ needs.changes.outputs.run }}

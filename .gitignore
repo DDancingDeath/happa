@@ -115,6 +115,8 @@ rules-tests/node_modules/
 # Playwright E2E output
 test-results/
 playwright-report/
+# firebase.json with the test-time emulator ports (tests/e2e/support/emulator-target.js)
+/.*.firebase.json
 
 # Mutation testing (#216)
 reports/mutation/
