@@ -321,8 +321,9 @@ in `.github/review-rules-examples/`.
 - **`e2e.yml`**: the Playwright E2E suite (`tests/e2e`, Firebase emulators;
   every page × role × en/hi × phone/desktop). It runs on **every PR that changes
   the app**: `www/**`, `firestore.rules`, `firestore.indexes.json`,
-  `tests/e2e/**`, `playwright*.config.js`, `package.json` / `package-lock.json`
-  or `e2e.yml` itself. Docs-only and tools-only PRs skip it. It also runs
+  `firebase.json`, `scripts/happa-config.js`, `tests/e2e/**`,
+  `playwright*.config.js`, `package.json` / `package-lock.json` or `e2e.yml`
+  itself. Docs-only and tools-only PRs skip it. It also runs
   nightly, on manual dispatch and on any PR labelled `e2e`. Three shards
   (`npx playwright test --shard=N/3`, each with its own emulators), 1 retry on
   CI; the job summary lists flaky tests (failed, then passed on retry) and the
@@ -336,25 +337,37 @@ in `.github/review-rules-examples/`.
 - The every-page smoke (`tests/e2e/tabs-smoke.spec.js`) **fails** on page or
   console errors, NaN / undefined / raw keys, text mixing both languages, Hindi
   on an English screen, **English left on a Hindi screen**, pages stuck loading,
-  and pages over their **read budget**. The English-on-Hindi allow-list is in
+  and pages over their **read budget**. Each of its tests starts from a freshly
+  seeded emulator (`tests/e2e/support/seed.js`), so what the specs that add data
+  ran before it in the shard does not change its read counts. The English-on-Hindi allow-list is in
   `screenFindings` (brand names, units, user/test data, App health rule ids);
   fix real leftovers with `t()` keys in `en.js` + `hi.js`. Mark deliberate
   other-language text with `lang="en"` (e.g. an app name like **Files**) and
   codes with `lang="zxx" translate="no"` (device ids).
 - **Read budget**: each page's first-open Firestore reads (the app's read meter,
   `www/js/firebase/firestore-meter.js`; `startup` = login until ready) are
-  compared with `tests/e2e/read-baselines.json`. A page fails above its
-  baseline + 25% (at least + 2 reads, so one late listener update on a page that
-  reads almost nothing is not a failure) or above the hard cap (300 reads). If a change makes a page
+  compared with `tests/e2e/read-baselines.json`; each step waits for the meter
+  to be still (500 ms, at most 3 s) before counting, so a slow page's late reads
+  are not charged to the next page. A page fails above its baseline + 25% (at
+  least + `minSlack` = 1 read, for a listener update that still lands on the next
+  page) or above the hard cap (300 reads). If a change makes a page
   read more on purpose, run
   `E2E_RECORD_READS=1 npx playwright test tests/e2e/tabs-smoke.spec.js` (raises
   baselines, never lowers them; delete an entry first to lower it), check the
   diff and say why in the PR.
 - Run locally: Java 21 on `PATH`, `npm run test:e2e` (or one shard:
-  `npx playwright test --shard=1/3`). It needs ports 9099 and 8181; if another
-  emulator holds 8181, stop it, or switch the port temporarily in
-  `firebase.json`, `www/firebaseConfig.js`, `www/r/rent-history.js` and
-  `tests/e2e/support/emulator.js` and revert before committing.
+  `npx playwright test --shard=1/3`). The emulators run the demo project
+  `demo-happa-e2e` on ports 9099 (auth) and 8181 (firestore). If another emulator
+  holds a port, set `E2E_AUTH_PORT` / `E2E_FIRESTORE_PORT` (and `E2E_PORT` for the
+  static server, default 8099): the ports are set at test time, with a gitignored
+  `.e2e.firebase.json` (`--config`) for the emulators and the static server serving
+  `www/firebaseConfig.js` and `www/r/rent-history.js` rewritten to that project and
+  those ports (`tests/e2e/support/emulator-target.js`). Don't edit `firebase.json`
+  or those `www/` files for it. The migration E2E (`npm run test:migration-e2e`)
+  does the same with its own demo project `demo-happa-migration` on 9199 / 8281
+  (`MIGRATION_E2E_PROJECT`, `MIGRATION_E2E_AUTH_PORT`, `MIGRATION_E2E_FIRESTORE_PORT`),
+  so the two never share data. `tools/migrate --emulator` refuses any project id
+  that is not `demo-*`.
 
 ### Numbers on screen (#216)
 
@@ -454,7 +467,8 @@ and open `http://localhost:<port>/?emulator=1` (uses `dev_` collections;
 seed a `dev_users/<uid>` profile with a role).
 The move from the old app (old backup → `tools/migrate` → the app) has its
 own end-to-end test on the emulators: `npm run test:migration-e2e`
-(`tests/migration-e2e/`, see `tools/migrate/README.md`).
+(`tests/migration-e2e/`, see `tools/migrate/README.md`; it runs on every PR that
+changes `www/**`, the rules or the tool).
 
 **Bill edit window (#87, #84).** Everyone except the owner may edit or delete a
 bill only for the role's `editDays` (Settings → Roles & access,
