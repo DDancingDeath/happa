@@ -85,6 +85,10 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     await page.click('#rentDialog .rent-btn-primary');
     await expect(rent).toContainText('3,000');
     await expect(rent).toContainText('Part paid');
+    // The payment's receipt opens right after it (rent receipts): close it.
+    await expect(page.locator('#rentDialog h3')).toContainText('🧾', { timeout: 15000 });
+    await page.click('#rentDialog .rent-dialog-actions .rent-btn:not(.rent-btn-primary)');
+    await expect(page.locator('#rentDialog')).toBeHidden();
 
     await rent.locator('button', { hasText: 'Meter reading' }).click();
     await page.fill('#rentMeterPrev', '100');
