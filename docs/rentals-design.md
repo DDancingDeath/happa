@@ -501,8 +501,9 @@ WhatsApp messages and the read-only link; rent never goes into the Aadhat cash d
   **WhatsApp**, **Print**, **Image** and **PDF**. **Receipts** on a tenant (Tenants page, and each occupied
   unit on the Rent page) lists that tenant's receipts, newest first, to reprint any of them.
 - **Payments without a receipt:** if the receipt is refused (see below) the payment is still saved, and the
-  app says so — "Payment saved, but no receipt was issued — tap Issue receipt" (a warning, not the usual
-  success toast) — and opens that tenant's Receipts list. The list shows **Payments without a receipt**
+  app says so: "Payment saved, but no receipt was issued — tap Issue receipt" (a warning, not the usual
+  success toast). It also reports it to Diagnostics (telemetry warning "Rent receipt not issued" with the
+  error code) and opens that tenant's Receipts list. The list shows **Payments without a receipt**
   (this month, open months and the last 12 months of each current lease) with **Issue receipt**: the
   payment's writer, or an owner / Rentals manager for anyone's, issues it later
   (`rent-receipt-store.js issueReceipt`): the next number of the year, the receipt and the number on that
@@ -525,7 +526,8 @@ WhatsApp messages and the read-only link; rent never goes into the Aadhat cash d
   tenantName, place` (unit and property, without the type word) + `ut` (type id, so a reprint says
   "Flat" / "फ़्लैट" in the reader's language), `months` (`[month]`), `rent`, `elec` (the month's meter bill or
   `null`: only meter-billed leases have one), `total, paid, mode, ref, date, balance, by, byName,
-  createdAt, void` (+ `issuedBy` when issued later). Field allow-list in the rules; every amount is checked
+  createdAt` (the server's time: the rules require `request.time`, written as `serverTimestamp()`), `void`
+  (+ `issuedBy` when issued later). Field allow-list in the rules; every amount is checked
   against the charge after the write (RENT-12); `tenantName` must be the charge's and, with a payment,
   `byName` the writer's profile name (`users/{uid}.name`). The business name and address are **not
   stored**: every receipt shows the current Settings › Rentals header and address (`receiptHeader`, else
@@ -556,7 +558,7 @@ WhatsApp messages and the read-only link; rent never goes into the Aadhat cash d
 - **Backup:** `rent_receipts` and `rent_counters` are in `BACKUP_COLLECTIONS`.
 - **Tests:** rules (prod and `dev_`: number + receipt + counter in one write, no reuse or skip, a
   concurrent second claim refused, content checked against the charge (tenant name, writer's profile name,
-  server's IST year), electricity, issued later (writer or owner/manager, once, only the `rno` added),
+  server's IST year and time), electricity, issued later (writer or owner/manager, once, only the `rno` added),
   a cancel reason required, void only by
   owner/manager with the charge, never edited or deleted, read by rentals roles only, a manager payment with
   the tenant link snapshot fits the rules limits); Jest (store on an optimistic in-memory Firestore: numbers

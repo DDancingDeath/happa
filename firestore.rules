@@ -1302,7 +1302,7 @@ service cloud.firestore {
         && rentReceiptMatches(d, ch, ch.payments[d.pi]);
     }
 
-    // The receipt shows payment entry e and its charge exactly.
+    // The receipt shows payment entry e and its charge exactly; createdAt is the server's time.
     function rentReceiptMatches(d, ch, e) {
       return e.get('rno', '') == d.no && e.get('by', '') == d.get('by', '') && e.get('byName', '') == d.get('byName', '')
         && e.amount == d.get('paid', -1) && e.mode == d.get('mode', '') && e.date == d.get('date', '')
@@ -1315,7 +1315,7 @@ service cloud.firestore {
         && d.get('tenantName', null) == ch.get('tenantName', '')
         && rentStr(d, 'place', 0, 150) && rentStr(d, 'byName', 0, 80)
         && (!('ut' in d) || d.ut in ['flat', 'commercial', 'office', 'godown', 'other'])
-        && d.get('createdAt', null) is number;
+        && d.get('createdAt', null) == request.time;
     }
 
     // Cancel: void once, by owner/manager, nothing else changes; the charge marks it in the same write.

@@ -2521,7 +2521,7 @@ function defineRentSuite(prefix) {
         no: rno(seq), year: R_YEAR, seq, chargeId: `L1_${month}`, pi, leaseId: 'L1', tenantId: 'T1', unitId: 'U1', propertyId: 'P1',
         tenantName: 'Ram', place: 'G1, Gali 2', ut: 'flat', months: [month], rent: 5000, elec: null, total,
         paid: amount, mode: 'cash', ref: '', date: '2026-10-05', balance: total - paidAfter, by: uid, byName: NAME[uid],
-        createdAt: 2, void: false, ...over
+        createdAt: serverTimestamp(), void: false, ...over
     });
     // One payment write with its receipt and the year's counter (as rent-store.js recordPayment).
     const payReceipt = (uid, seq, { prior = [], amount = 2000, total = 5000, rcpt = {}, ent = {}, ctr = {}, noCounter = false, noReceipt = false, f = db(uid) } = {}) => {
@@ -2623,7 +2623,7 @@ function defineRentSuite(prefix) {
         await assertSucceeds(b.commit());
     });
 
-    t('receipts: the year is the server\'s (IST), not the device\'s', async () => {
+    t('receipts: the year is the server\'s (IST) and createdAt the server\'s time, not the device\'s', async () => {
         await seed('rent_charges', `L1_${CUR}`, charge(CUR));
         const y = R_YEAR + 1;
         const no = `R-${y}-0001`;
@@ -2633,6 +2633,8 @@ function defineRentSuite(prefix) {
         b.set(rctOn(f, `L1_${CUR}_0`), { ...receipt('rentMember', 1), year: y, no });
         b.set(ctrOn(f, y), { last: 1, rid: `L1_${CUR}_0`, updatedAt: 2, updatedBy: 'rentMember' });
         await assertFails(b.commit());
+        await assertFails(payReceipt('rentMember', 1, { rcpt: { createdAt: Date.now() } }));
+        await assertFails(payReceipt('rentMember', 1, { rcpt: { createdAt: Timestamp.now() } }));
         await assertSucceeds(payReceipt('rentMember', 1));
     });
 
@@ -2660,6 +2662,7 @@ function defineRentSuite(prefix) {
         await assertFails(later('rentOnly', 1, 1, { rcpt: { balance: 4000 } }));
         await assertFails(later('rentOnly', 1, 1, { rcpt: { byName: 'Owner' } }));
         await assertFails(later('rentOnly', 1, 1, { rcpt: { tenantName: 'Shyam' } }));
+        await assertFails(later('rentOnly', 1, 1, { rcpt: { createdAt: Date.now() } }));
         await assertFails(later('rentOnly', 1, 1, { payments: [{ ...paid1('rentMember', 2000), amount: 1 }, { ...paid1('rentOnly', 1000), rno: rno(1) }] }));
         await assertFails(later('rentOnly', 1, 1, { payments: [paid1('rentMember', 2000), { ...paid1('rentOnly', 1000), rno: rno(1), amount: 999 }] }));
         await assertSucceeds(later('rentOnly', 1, 1));
