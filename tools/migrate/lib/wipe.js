@@ -22,15 +22,16 @@ export function isTestLogin(user, domain = DEFAULT_TEST_DOMAIN) {
  * @param {Object} args
  * @param {string} args.project
  * @param {string} [args.keyProject]
+ * @param {boolean} [args.emulator] the Firebase emulators (no key)
  * @param {Object} args.db firebase-admin Firestore
  * @param {Object} args.auth firebase-admin Auth
  * @param {boolean} [args.dryRun=true]
  * @param {string} [args.testDomain]
  * @param {(line: string) => void} [args.log]
  */
-export async function wipeProject({ project, keyProject, db, auth, dryRun = true, testDomain = DEFAULT_TEST_DOMAIN, log = () => {} }) {
+export async function wipeProject({ project, keyProject, emulator = false, db, auth, dryRun = true, testDomain = DEFAULT_TEST_DOMAIN, log = () => {} }) {
     checkTarget({ project, keyProject });
-    if (!keyProject) throw new Error('wipe needs a service-account key for the project (--key)');
+    if (!keyProject && !emulator) throw new Error('wipe needs a service-account key for the project (--key)');
     const colls = (await db.listCollections()).map(c => c.id).sort();
     let docs = 0;
     for (const c of colls) {

@@ -403,6 +403,9 @@ To run the whole app against local emulators:
 `npx firebase-tools emulators:start --only auth,firestore`, serve `www/`
 and open `http://localhost:<port>/?emulator=1` (uses `dev_` collections;
 seed a `dev_users/<uid>` profile with a role).
+The move from the old app (old backup → `tools/migrate` → the app) has its
+own end-to-end test on the emulators: `npm run test:migration-e2e`
+(`tests/migration-e2e/`, see `tools/migrate/README.md`).
 
 **Bill edit window (#87, #84).** Everyone except the owner may edit or delete a
 bill only for the role's `editDays` (Settings → Roles & access,
