@@ -880,6 +880,8 @@ export default {
     'ui.health.p90': "धीमे वाले (p90)",
     'ui.health.device': "डिवाइस",
     'ui.health.platform': "प्रकार",
+    'ui.health.platform_android': "एंड्रॉइड ऐप",
+    'ui.health.platform_web': "वेब",
     'ui.health.version': "वर्ज़न",
     'ui.health.last_seen': "आख़िरी बार",
     'ui.health.runs': "बार चला",

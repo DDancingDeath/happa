@@ -71,7 +71,9 @@ function recordBaselines(role, counts) {
         if (n <= base.hardCap) r[pg] = Math.max(r[pg] ?? 0, n);
     }
     base.reads[role] = r;
-    fs.writeFileSync(FILE, JSON.stringify(base, null, 2) + '\n');
+    // Keep the file's line endings (a Windows checkout has CRLF).
+    const eol = fs.readFileSync(FILE, 'utf8').includes('\r\n') ? '\r\n' : '\n';
+    fs.writeFileSync(FILE, JSON.stringify(base, null, 2).replace(/\n/g, eol) + eol);
 }
 
 module.exports = { RECORD, readCount, settledReads, limitFor, overBudget, recordBaselines, loadBaselines };

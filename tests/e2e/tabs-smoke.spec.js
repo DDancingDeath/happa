@@ -19,6 +19,8 @@ const O = ['owner'];
 const M = ['staff']; // "Member"
 // showTabFromNav draws a page's default sub-tab in a setTimeout of this many ms.
 const NAV_TIMER_MS = 100;
+// Background reads after the app shows: AnomaliesManager.scheduleDailyScan() (8 s) and the legacy scan (>= 3 s).
+const START_UP_WORK_MS = 8500;
 
 // name, route (nav.showTab), page (.tab id that must show), act (JS run after the page opened), roles,
 // expect (selector that must be visible: the step's own section or active sub-tab), hidden (selectors that must stay hidden),
@@ -191,8 +193,14 @@ for (const role of A) {
             await login(page, role);
             await page.evaluate((l) => window.app.i18n.setLang(l), lang);
             await page.waitForTimeout(300);
-            // Start-up reads: login until the read meter has been still for a second.
-            let mark = await settledReads(page);
+            // Start-up reads: login until the read meter is still. Background start-up work reads too (legacy
+            // timestamp scan ~3-4 s, daily anomaly scan 8 s after the app shows): count it as start-up, not
+            // as whichever page happens to be open when it runs.
+            await page.waitForFunction((ms) => {
+                const shown = performance.getEntriesByName('aadhat:app-shown')[0];
+                return !!shown && performance.now() - shown.startTime > ms;
+            }, START_UP_WORK_MS, { polling: 250, timeout: 60000 });
+            let mark = await settledReads(page, { quiet: 1500 });
             expect(mark, 'the app exposes its read meter').not.toBeNull();
             const reads = { startup: mark };
             const all = { bad: [], mixed: [], wrongLang: [], english: [], stuck: [] };

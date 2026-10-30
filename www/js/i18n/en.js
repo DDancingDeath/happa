@@ -880,6 +880,8 @@ export default {
     'ui.health.p90': "Slow ones (p90)",
     'ui.health.device': "Device",
     'ui.health.platform': "Type",
+    'ui.health.platform_android': "Android app",
+    'ui.health.platform_web': "Web",
     'ui.health.version': "Version",
     'ui.health.last_seen': "Last seen",
     'ui.health.runs': "Runs",
