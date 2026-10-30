@@ -17,7 +17,7 @@ import { formatRupees, formatAmount, round2, normalizeLabourSettings } from '../
 import { labourSummary, labourToPayByDay, labourCalcText } from '../utils/labour.js';
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate } from '../utils/dates.js';
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
-import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
+import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom, refreshOnDemandHistory } from '../utils/history-window.js';
 import { lastCountedSession } from '../utils/cash-session.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth,
@@ -27,7 +27,7 @@ import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
 import {
     buildSnapshot, figuresFromSnapshot, rangeFigures, monthsToRoll, monthBounds,
-    monthKeysBetween, lastMonthKeys, monthKeyOf
+    monthKeysBetween, lastMonthKeys, monthKeyOf, snapshotsFrom, staleToRebuild
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { can } from '../utils/role-access.js';
@@ -71,14 +71,24 @@ export function takeawayHtml(list) {
     }).join('');
 }
 
-/** "▲ 12% vs Sep · ▼ 3% vs Oct 2025" (arrows and words, not only colour). */
+/**
+ * "▲ 12% vs Sep · ▼ 3% vs Oct 2025" (arrows and words, not only colour). A comparison whose other
+ * figure is not known (bills not loaded, no month snapshot, a stale one) is said: "vs Oct 2025: not known".
+ * @param {Array<{c: ?Object, label: string, unknown?: boolean, unknownText?: string}>} items
+ */
 export function compareHtml(items) {
-    const parts = (items || []).filter(x => x && x.c).map(({ c, label }) => {
+    const parts = (items || []).filter(x => x && (x.c || x.unknown)).map(({ c, label, unknownText }) => {
+        if (!c) return `<span class="ins-cmp ins-cmp-none">${esc(unknownText || t('ui.money.vs_not_known', { when: label }))}</span>`;
         const arrow = c.dir === 'up' ? '▲' : c.dir === 'down' ? '▼' : '＝';
         const text = c.dir === 'same' ? t('ui.money.same_as', { when: label }) : t('ui.money.pct_vs', { pct: Math.abs(c.pct), when: label });
         return `<span class="ins-cmp ins-cmp-${c.dir}">${arrow} ${esc(text)}</span>`;
     });
     return parts.length ? parts.join('<span class="ins-dot"> · </span>') : `<span class="ins-cmp ins-cmp-none">${esc(t('ui.money.no_comparison'))}</span>`;
+}
+
+/** One compareHtml item: the change from `then`, or "not known" when `then` is missing. */
+export function vsItem(now, then, label) {
+    return { c: change(now, then), label, unknown: !Number.isFinite(then) };
 }
 
 /** Simple inline-SVG bars; `faint` is an optional second series (last year). */
@@ -114,6 +124,7 @@ export const MoneyManager = {
     section: 'profit',
     snapshots: {},
     snapshotsLoaded: false,
+    staleSeen: {},
     sessionCache: new Map(),
     building: false,
     lastSummary: null,
@@ -390,7 +401,7 @@ export const MoneyManager = {
         const vsPrev = change(m.M6.total, prev?.M6 ?? null);
         const vsLy = change(m.M6.total, ly?.M6 ?? null);
         this.text('moneyProfitValue', money(m.M6.total));
-        this.html('moneyProfitCompare', compareHtml([{ c: vsPrev, label: labels.prev }, { c: vsLy, label: labels.ly }]));
+        this.html('moneyProfitCompare', compareHtml([vsItem(m.M6.total, prev?.M6, labels.prev), vsItem(m.M6.total, ly?.M6, labels.ly)]));
         const onProfit = this.section === 'profit';
         const driverRows = onProfit ? this.itemDriver(m, r) : null;
         this.html('moneyProfitTakeaway', takeawayHtml(profitTakeaways({
@@ -449,23 +460,24 @@ export const MoneyManager = {
             return figuresFromSnapshot(this.snapshots[k])?.M6 ?? null;
         };
         const vals = keys.map(valueOf);
-        const lyVals = keys.map(k => {
-            const [y, mo] = k.split('-').map(Number);
-            return figuresFromSnapshot(this.snapshots[`${y - 1}-${String(mo).padStart(2, '0')}`])?.M6 ?? null;
-        });
+        const lyKey = (k) => { const [y, mo] = k.split('-').map(Number); return `${y - 1}-${String(mo).padStart(2, '0')}`; };
+        const lyVals = keys.map(k => figuresFromSnapshot(this.snapshots[lyKey(k)])?.M6 ?? null);
         const labels = keys.map((k, i) => ({ key: k, tick: i % 3 === 0 || i === keys.length - 1 ? formatMonth(monthBounds(k).from, { lang, year: false }) : '', title: `${formatMonth(monthBounds(k).from, { lang })}: ${money(vals[i])}` }));
         this.html('moneyProfitChart', barsSvg(vals.map(v => (v === null ? NaN : v)), { faint: lyVals.map(v => (v === null ? NaN : v)), labels, onTap: 'data-month' }));
         this.html('moneyProfitLegend', `<span class="ins-key ins-key-bar"></span> ${esc(t('ui.money.this_year'))} <span class="ins-key ins-key-line"></span> ${esc(t('ui.money.last_year'))}`);
         const missing = keys.some((k, i) => vals[i] === null) || lyVals.every(v => v === null);
+        const cmpR = comparisonRanges(r);
+        const cmpKeys = [cmpR.previous, cmpR.lastYear].filter(x => x && !this.covered(x.from)).flatMap(x => monthKeysBetween(x.from, x.to));
+        const stale = [...keys, ...keys.map(lyKey), ...cmpKeys].some(k => this.snapshots[k]?.stale);
         const canBuild = AppState.userRole === 'owner' || AppState.userRole === 'manager';
-        this.html('moneyBuildHistory', missing && canBuild
-            ? `<p class="ins-hint">${esc(t('ui.money.build_hint'))}</p><button type="button" class="btn btn-secondary" ${this.building ? 'disabled' : ''} onclick="window.app.money.buildHistory()">${esc(t(this.building ? 'ui.money.building' : 'ui.money.build_history'))}</button>`
+        this.html('moneyBuildHistory', (missing || stale) && canBuild
+            ? `<p class="ins-hint">${esc(t(stale ? 'ui.money.stale_hint' : 'ui.money.build_hint'))}</p><button type="button" class="btn btn-secondary" ${this.building ? 'disabled' : ''} onclick="window.app.money.buildHistory()">${esc(t(this.building ? 'ui.money.building' : 'ui.money.build_history'))}</button>`
             : '');
     },
 
     renderCash({ m, prev, ly, labels, r }) {
         this.text('moneyNetCash', money(m.M14));
-        this.html('moneyCashCompare', compareHtml([{ c: change(m.M14, prev?.M14 ?? null), label: labels.prev }, { c: change(m.M14, ly?.M14 ?? null), label: labels.ly }]));
+        this.html('moneyCashCompare', compareHtml([vsItem(m.M14, prev?.M14, labels.prev), vsItem(m.M14, ly?.M14, labels.ly)]));
         this.html('moneyCashTakeaway', takeawayHtml(cashTakeaways({ net: m.M14, out: m.M13, profit: this.can('profit') ? m.M6.total : null, salesDue: m.M1.due })));
         this.html('moneyCashCaveats', this.caveatsHtml(m, ['M12', 'M14']));
         this.text('moneyIn', money(m.M12.total));
@@ -495,7 +507,7 @@ export const MoneyManager = {
     renderSpending({ m, prev, ly, labels, r }) {
         this.text('moneyBusiness', money(m.M4.total));
         const vsLy = change(m.M4.total, ly?.M4 ?? null);
-        this.html('moneySpendCompare', compareHtml([{ c: change(m.M4.total, prev?.M4 ?? null), label: labels.prev }, { c: vsLy, label: labels.ly }]));
+        this.html('moneySpendCompare', compareHtml([vsItem(m.M4.total, prev?.M4, labels.prev), vsItem(m.M4.total, ly?.M4, labels.ly)]));
         const cats = m.M4.byCategory || [];
         const catName = (k) => (k === 'untagged' ? t('ui.money.untagged') : k === 'other' ? t('ui.money.other') : k);
         this.html('moneySpendTakeaway', takeawayHtml(spendingTakeaways({
@@ -614,8 +626,8 @@ export const MoneyManager = {
         const lyClose = figuresFromSnapshot(this.snapshots[monthKeyOf(new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime())])?.closing;
         const sinceLabel = formatMonth(new Date(now.getFullYear() - 1, now.getMonth(), 1), { lang: getLang() });
         // Compared on the stock + dues part only (old dues and accounts are not kept per month).
-        const c = lyClose !== null && lyClose !== undefined && stock !== null ? change(stock, lyClose) : null;
-        this.html('moneyWorthCompare', c && seeStock ? compareHtml([{ c, label: t('ui.money.stock_vs', { when: sinceLabel }) }]) : '');
+        const cmp = { ...vsItem(stock, lyClose, t('ui.money.stock_vs', { when: sinceLabel })), unknownText: t('ui.money.stock_vs_not_known', { when: sinceLabel }) };
+        this.html('moneyWorthCompare', seeStock && Number.isFinite(stock) && (cmp.c || cmp.unknown) ? compareHtml([cmp]) : '');
         this.html('moneyWorthTakeaway', seeStock ? takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel })) : '');
         const term = (label, value, link, ref) => `<div class="ins-row"><span>${esc(t(label))}</span><span><span${ref ? ` data-metric-ref="${ref}"` : ''}>${money(value)}</span> <button type="button" class="ins-link" data-go="${link}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button></span></div>`;
         const cfg = this.cfg();
@@ -649,10 +661,10 @@ export const MoneyManager = {
         const role = AppState.userRole;
         if (role !== 'owner' && role !== 'manager') return;
         this.snapshotsLoaded = true;
+        this.listenSnapshots();
         try {
-            const now = new Date();
-            const from = monthKeyOf(new Date(now.getFullYear() - 2, now.getMonth(), 1).getTime());
-            this.snapshots = await FirebaseService.loadMonthStats(from, 40);
+            this.snapshots = await FirebaseService.loadMonthStats(snapshotsFrom(Date.now()), 40);
+            this.noteStaleSeen();
             await this.rollSnapshots();
             if (this.isOpen()) this.render();
         } catch (e) {
@@ -661,14 +673,74 @@ export const MoneyManager = {
         }
     },
 
+    /** When this device first saw each stale snapshot (its own clock; see staleToRebuild). */
+    noteStaleSeen(seen = Date.now()) {
+        Object.entries(this.snapshots || {}).forEach(([k, doc]) => {
+            if (doc?.stale && !Number.isFinite(this.staleSeen[k])) this.staleSeen[k] = seen;
+            if (!doc?.stale) delete this.staleSeen[k];
+        });
+    },
+
+    /** Stale marks written by this device, and full history arriving (a rebuild can then run). */
+    listenSnapshots() {
+        if (this.listening || typeof window === 'undefined') return;
+        this.listening = true;
+        window.addEventListener('aadhat:monthstale', (e) => this.onMonthStale(e.detail));
+        window.addEventListener('aadhat:historyextended', (e) => {
+            if (e.detail?.from !== 0 || !this.snapshotsLoaded) return;
+            this.rollSnapshots().then(() => { if (this.isOpen()) this.render(); })
+                .catch(err => console.error('Money: rebuilding month snapshots failed:', err));
+        });
+    },
+
+    onMonthStale({ months = [], at } = {}) {
+        if (!this.snapshotsLoaded) return;
+        const seen = Date.now();
+        months.forEach(k => {
+            this.snapshots[k] = { ...(this.snapshots[k] || { month: k }), stale: true, staleAt: at };
+            this.staleSeen[k] = seen;
+        });
+        if (this.isOpen()) this.render();
+    },
+
+    /** Rolls the current / previous month and rebuilds stale older months (one run at a time). */
+    rollSnapshots() {
+        const run = (this.rollChain || Promise.resolve()).then(() => this.rollNow());
+        this.rollChain = run.catch(() => {});
+        return run;
+    },
+
     /** Rebuilds the current / previous month snapshot from the loaded bills (≤ 2 writes, every 6 h). */
-    async rollSnapshots() {
+    async rollNow() {
         const now = Date.now();
         const keys = monthsToRoll(this.snapshots, { now, loadedFrom: isFullHistoryLoaded() ? 0 : historyLoadedFrom() });
         const docs = keys.map(k => this.snapshotFor(k, now)).filter(Boolean);
-        if (!docs.length) return;
-        docs.forEach(d => { this.snapshots[d.month] = d; });
-        await FirebaseService.saveMonthStats(docs);
+        if (docs.length) {
+            docs.forEach(d => { this.snapshots[d.month] = d; delete this.staleSeen[d.month]; });
+            await FirebaseService.saveMonthStats(docs);
+        }
+        await this.rebuildStale(now);
+    },
+
+    /**
+     * Stale months before the previous one, rebuilt from the full history when it was read after
+     * the stale mark was seen here (staleToRebuild): 1 read + 1 write each, no bill reads.
+     * @returns {Promise<number>} snapshots written
+     */
+    async rebuildStale(now = Date.now()) {
+        if (!isFullHistoryLoaded() || !FirebaseService.rebuildMonthStat) return 0;
+        const fetchedAt = FirebaseService.getFullHistoryFetchedAt?.() || 0;
+        let written = 0;
+        for (const k of staleToRebuild(this.snapshots, { now, fetchedAt, seenAt: this.staleSeen })) {
+            const doc = this.snapshotFor(k, now);
+            if (!doc) continue;
+            const res = await FirebaseService.rebuildMonthStat(doc, this.snapshots[k].staleAt);
+            this.snapshots[k] = res.doc;
+            if (res.status === 'newer') this.staleSeen[k] = Date.now();
+            else delete this.staleSeen[k];
+            if (res.status === 'written') written += 1;
+        }
+        return written;
     },
 
     snapshotFor(month, now = Date.now()) {
@@ -687,14 +759,39 @@ export const MoneyManager = {
         try {
             const ok = await ensureHistoryFrom(null);
             if (!ok) throw new Error('full history not loaded');
+            // Bills read before a stale mark was seen may miss the change behind it: read them again.
+            const seen = Object.values(this.staleSeen).filter(Number.isFinite);
+            if (seen.length && !((FirebaseService.getFullHistoryFetchedAt?.() || 0) > Math.max(...seen))) await refreshOnDemandHistory();
             const all = [...(AppState.purchaseHistory || []), ...(AppState.salesHistory || []), ...(AppState.retailSalesHistory || [])]
                 .map(b => parseAnyBillDate(b.timestamp ?? b.date)?.getTime()).filter(Number.isFinite);
             const now = Date.now();
-            const keys = monthKeysBetween(Math.min(...all, now), now + 1);
-            const docs = keys.map(k => this.snapshotFor(k, now)).filter(Boolean);
-            docs.forEach(d => { this.snapshots[d.month] = d; });
-            await FirebaseService.saveMonthStats(docs);
-            UIManager.showToast(t('msg.money.history_built', { count: docs.length }), 'success');
+            const fetchedAt = FirebaseService.getFullHistoryFetchedAt?.() || 0;
+            const d = new Date(now);
+            const prevFrom = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+            const floor = monthBounds(snapshotsFrom(now)).from;
+            // Months a stale mark can reach (read back, older than the two rolled ones) are written guarded.
+            const markable = (k) => { const f = monthBounds(k).from; return f >= floor && f < prevFrom; };
+            const docs = monthKeysBetween(Math.min(...all, now), now + 1).map(k => this.snapshotFor(k, now)).filter(Boolean);
+            const plain = docs.filter(x => !markable(x.month));
+            plain.forEach(x => { this.snapshots[x.month] = x; delete this.staleSeen[x.month]; });
+            await FirebaseService.saveMonthStats(plain);
+            const results = await Promise.all(docs.filter(x => markable(x.month)).map(x => {
+                const known = this.snapshots[x.month];
+                const handled = known?.stale && fetchedAt > this.staleSeen[x.month] ? { staleAt: known.staleAt } : null;
+                return FirebaseService.saveMonthStatGuarded(x, handled).then(res => ({ res, known }));
+            }));
+            let written = plain.length;
+            results.forEach(({ res, known }) => {
+                const k = res.doc.month;
+                this.snapshots[k] = res.doc;
+                if (res.status === 'written') {
+                    delete this.staleSeen[k];
+                    written += 1;
+                } else if (!Number.isFinite(this.staleSeen[k]) || res.doc.staleAt !== known?.staleAt) {
+                    this.staleSeen[k] = Date.now();
+                }
+            });
+            UIManager.showToast(t('msg.money.history_built', { count: written }), 'success');
         } catch (e) {
             console.error('Money: building month history failed:', e);
             UIManager.showToast(t('msg.money.could_not_load'));

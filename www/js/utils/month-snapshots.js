@@ -12,6 +12,8 @@ export const SNAPSHOT_VERSION = 1;
 /** Current / previous month snapshots older than this are rebuilt from the loaded bills. */
 export const SNAPSHOT_ROLL_MS = 6 * 60 * 60 * 1000;
 export const TOP_PARTIES = 50;
+/** Snapshots are read from this many years back (Money's loadSnapshots); older ones are never compared with. */
+export const SNAPSHOT_YEARS_BACK = 2;
 
 const pad = (x) => String(x).padStart(2, '0');
 
@@ -36,6 +38,12 @@ export function monthKeysBetween(from, to) {
         out.push(monthKeyOf(d.getTime()));
     }
     return out;
+}
+
+/** First month key read by loadSnapshots (SNAPSHOT_YEARS_BACK years before the month of `now`). */
+export function snapshotsFrom(now) {
+    const d = new Date(now);
+    return monthKeyOf(new Date(d.getFullYear() - SNAPSHOT_YEARS_BACK, d.getMonth(), 1).getTime());
 }
 
 /** The last `n` month keys ending with the month of `now`, oldest first. */
@@ -102,7 +110,7 @@ export function buildSnapshot(month, m, src, now = Date.now()) {
  * @returns {?Array<{key: string, name: string}>}
  */
 export function snapshotCustomers(doc) {
-    if (!doc || !Array.isArray(doc.customers)) return null;
+    if (!doc || doc.stale || !Array.isArray(doc.customers)) return null;
     const all = Number(doc.m?.Cc);
     const cut = Number.isFinite(all) ? all > doc.customers.length : doc.customers.length >= TOP_PARTIES;
     return cut ? null : doc.customers.map(p => ({ key: p.k, name: p.n }));
@@ -110,11 +118,12 @@ export function snapshotCustomers(doc) {
 
 /**
  * The figures a page compares with, from a snapshot (same names as moneySummary).
+ * A stale snapshot (a bill of its month changed after it was built) gives null: not known.
  * @param {?Object} doc
  * @returns {?Object}
  */
 export function figuresFromSnapshot(doc) {
-    if (!doc || !doc.m) return null;
+    if (!doc || !doc.m || doc.stale) return null;
     const m = doc.m;
     return {
         month: doc.month,
@@ -135,7 +144,7 @@ export function figuresFromSnapshot(doc) {
  * @returns {?{M1: number, M6: ?number}}
  */
 export function partialFigures(doc, uptoDay, fromDay = 1) {
-    if (!doc || !doc.days) return null;
+    if (!doc || !doc.days || doc.stale) return null;
     let s = 0;
     let p = 0;
     Object.entries(doc.days).forEach(([d, v]) => {
@@ -205,4 +214,48 @@ export function monthsToRoll(docs, { now, loadedFrom }) {
         const doc = docs[k];
         return !doc || doc.stale || doc.v !== SNAPSHOT_VERSION || now - (doc.builtAt || 0) > SNAPSHOT_ROLL_MS;
     });
+}
+
+/**
+ * The month snapshots a saved, edited or deleted record makes wrong: the months (before the
+ * current one, which is rolled from the loaded bills) of its date before and after the change.
+ * With `cascade` (its stock changed, so the average cost and the cost of goods sold of every later
+ * month move) also each month after the earliest one, through the previous month. Only months that
+ * loadSnapshots reads (snapshotsFrom).
+ * @param {Array<?number>} times the record's time (ms) before and after the change
+ * @param {{now: number, cascade?: boolean}} opts
+ * @returns {string[]} 'YYYY-MM' keys, oldest first
+ */
+export function staleMonthsFor(times, { now, cascade = false }) {
+    const d = new Date(now);
+    const current = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+    const floor = monthBounds(snapshotsFrom(now)).from;
+    const old = (times || []).filter(t => Number.isFinite(t) && t < current);
+    if (!old.length) return [];
+    const keys = cascade ? monthKeysBetween(Math.min(...old), current) : [...new Set(old.map(monthKeyOf))].sort();
+    return keys.filter(k => monthBounds(k).from >= floor);
+}
+
+/** The merge write that marks a month snapshot stale (firestore.rules: any approved user). */
+export function staleMark(month, at) {
+    return { month, stale: true, staleAt: at };
+}
+
+/** Stale snapshots older than the previous month (the previous and current one are rolled by monthsToRoll). */
+export function staleOlderMonths(docs, now) {
+    const d = new Date(now);
+    const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+    return Object.keys(docs || {}).filter(k => docs[k]?.stale && monthBounds(k).from < prev).sort();
+}
+
+/**
+ * Stale older snapshots (staleOlderMonths) that this device can rebuild from its full history:
+ * only when that history was read after this device first saw the stale mark (one clock), so the
+ * change behind it is in the bills.
+ * @param {Object<string, Object>} docs month → snapshot doc
+ * @param {{now: number, fetchedAt: number, seenAt: Object<string, number>}} ctx
+ * @returns {string[]}
+ */
+export function staleToRebuild(docs, { now, fetchedAt, seenAt }) {
+    return staleOlderMonths(docs, now).filter(k => Number.isFinite(seenAt?.[k]) && Number.isFinite(fetchedAt) && fetchedAt > seenAt[k]);
 }
