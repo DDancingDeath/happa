@@ -74,6 +74,11 @@ export function deviceLabel(dev, usersById = {}) {
     return { who: role || t('ui.health.unknown_user'), tag, role: '', code: tag };
 }
 
+const PLATFORM_LABEL_KEYS = { android: 'ui.health.platform_android', web: 'ui.health.platform_web' };
+
+/** Device type ('android' / 'web', from tip/report.js) in the app language; unknown values as stored. */
+export const platformLabel = (p) => (PLATFORM_LABEL_KEYS[p] ? t(PLATFORM_LABEL_KEYS[p]) : String(p || ''));
+
 function deviceCellHtml(dev, usersById) {
     const { who, role, code } = deviceLabel(dev, usersById);
     // The device id is a code, not words in either language (lang="zxx").
@@ -190,7 +195,7 @@ export const HealthManager = {
         set('healthDevices', `<table class="health-table"><thead><tr><th>${L('ui.health.device')}</th><th>${L('ui.health.platform')}</th>
             <th>${L('ui.health.version')}</th><th>${L('ui.health.last_seen')}</th><th>${L('ui.health.runs')}</th><th>${L('ui.health.failed')}</th></tr></thead>
             <tbody>${agg.devices.slice(0, 30).map(dev => `<tr class="${dev.failed ? 'health-row-bad' : ''}">
-                <td>${deviceCellHtml(dev, usersById)}</td><td>${esc(dev.platform)}</td><td>${esc(dev.appVersion)}</td>
+                <td>${deviceCellHtml(dev, usersById)}</td><td>${esc(platformLabel(dev.platform))}</td><td>${esc(dev.appVersion)}</td>
                 <td>${esc(dev.lastDay ? dayLabel(dev.lastDay) : '')}</td><td>${esc(dev.runs)}</td><td>${esc(dev.failed)}</td></tr>`).join('')}</tbody></table>`);
 
         set('healthFailures', this.failuresHtml(failures) || `<div class="health-empty">${L('ui.health.no_failures')}</div>`);
@@ -206,7 +211,7 @@ export const HealthManager = {
             const flags = Object.entries(f.flags || {}).map(([k, v]) => `${k}=${v}`).join(', ');
             return `<div class="health-failure">
                 <div><strong>${esc(testLabel(f.test))}</strong> · ${esc(resultKey ? t(resultKey) : f.result)} · ${esc(prettyReason(f.reasonName || reasonName(f.test, f.reason, reasons)))}</div>
-                <div class="health-muted">${esc(when)} · ${esc(f.appVersion)} · ${esc(f.platform || '')} · <code>${esc(f.deviceId)}</code>${flags ? ` · ${esc(flags)}` : ''}</div>
+                <div class="health-muted">${esc(when)} · ${esc(f.appVersion)} · ${esc(platformLabel(f.platform))} · <code>${esc(f.deviceId)}</code>${flags ? ` · ${esc(flags)}` : ''}</div>
             </div>`;
         }).join('')}</div>`;
     },

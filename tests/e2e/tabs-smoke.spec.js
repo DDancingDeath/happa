@@ -3,12 +3,15 @@
  * section they may see, in English and Hindi, on phone and desktop (the two
  * Playwright projects). Each screen must show no page or console error, no
  * NaN / undefined / null / [object Object] / Invalid Date / raw i18n key, and
- * no text that mixes English and Hindi (no Hindi on an English screen). Pages a
- * role may not open must redirect. Logged out: login, register, reset,
+ * no text that mixes English and Hindi, no Hindi on an English screen and no
+ * English on a Hindi screen (beyond the allow-list in screenFindings). Each page
+ * must stay inside its read budget (support/read-budget.js, read-baselines.json).
+ * Pages a role may not open must redirect. Logged out: login, register, reset,
  * /download and the tenant link page /r/<token>.
  */
 const { test, expect, login, openApp, showTab } = require('./support/app');
 const { TENANT_TOKEN } = require('./support/emulator');
+const { RECORD, readCount, settledReads, overBudget, recordBaselines } = require('./support/read-budget');
 
 const A = ['owner', 'manager', 'staff'];
 const OM = ['owner', 'manager'];
@@ -16,6 +19,8 @@ const O = ['owner'];
 const M = ['staff']; // "Member"
 // showTabFromNav draws a page's default sub-tab in a setTimeout of this many ms.
 const NAV_TIMER_MS = 100;
+// Background reads after the app shows: AnomaliesManager.scheduleDailyScan() (8 s) and the legacy scan (>= 3 s).
+const START_UP_WORK_MS = 8500;
 
 // name, route (nav.showTab), page (.tab id that must show), act (JS run after the page opened), roles,
 // expect (selector that must be visible: the step's own section or active sub-tab), hidden (selectors that must stay hidden),
@@ -112,7 +117,7 @@ function screenFindings({ lang, roots }) {
     const els = [];
     for (const sel of roots) document.querySelectorAll(sel).forEach(el => { if (vis(el) && !els.some(e => e.contains(el))) els.push(el); });
     // Test data, product names and code identifiers (App health policy keys) are the same in both languages.
-    const DATA = /happa|Tenant E2E|E2E (Shop|Bhawan)|\bE2E\b|\b(phone|desktop)\b|PEDIT-\w+|\b(Before|After) Edit\b|Gali \d+|Ram \d+|\bG\d+\b|Manager One|Staff One|Pending Person|\bOwner\b|Rice|Wheat|Mustard|चावल|गेहूं|सरसों|[\w.+-]+@[\w.-]+|https?:\/\/\S+|\b[\w-]+\.(web\.app|local)\b|\bkg\b|\bKG\b|WhatsApp|\bUPI\b|\bPDF\b|\bCSV\b|Excel|\bOK\b|\bID\b|\bGST\b|Bluetooth|Android|\bAPK\b|Google|GPay|Chrome|Edge|Safari|iPhone|iPad|Firebase|\bJSON\b|DEVELOPMENT|\b[a-z]+[A-Z]\w*\b|"[a-z]+(-[a-z]+)+"|"\w+":\s*(true|false)\b/g;
+    const DATA = /\b[\w-]+\.apk\b|\b[\w-]+\.(web\.app|local)\b(\/[\w./-]*)?|happa|Tenant E2E|E2E (Shop|Bhawan)|\bE2E\b|\b(phone|desktop)\b|PEDIT-\w+|\b(Before|After) Edit\b|Gali \d+|Ram \d+|\bG\d+\b|Manager One|Staff One|Pending Person|\bOwner\b|Rice|Wheat|Mustard|चावल|गेहूं|सरसों|[\w.+-]+@[\w.-]+|https?:\/\/\S+|\b[\w-]+\.(web\.app|local)\b|\bkg\b|\bKG\b|WhatsApp|\bUPI\b|\bPDF\b|\bCSV\b|Excel|\bOK\b|\bID\b|\bGST\b|Bluetooth|Android|\bAPK\b|Google|GPay|Chrome|Edge|Safari|iPhone|iPad|Firebase|\bJSON\b|DEVELOPMENT|\b[a-z]+[A-Z]\w*\b|"[a-z]+(-[a-z]+)+"|"\w+":\s*(true|false)\b/g;
     const dev = /[\u0900-\u097F]/;
     const latin = /[A-Za-z]{3,}/;
     const out = { bad: [], mixed: [], wrongLang: [], english: [] };
@@ -178,6 +183,9 @@ function record(all, step, f) {
     for (const k of Object.keys(all)) (f[k] || []).forEach(x => all[k].push(`${step}: ${x}`));
 }
 
+/** Read-budget bucket of a step: its page, else its name ("Notifications" -> "notifications"). */
+const bucketOf = (s) => s.page || s.name.toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
 for (const role of A) {
     for (const lang of ['en', 'hi']) {
         test(`${role} (${lang}) opens every page and section without errors`, async ({ page, problems }) => {
@@ -185,6 +193,16 @@ for (const role of A) {
             await login(page, role);
             await page.evaluate((l) => window.app.i18n.setLang(l), lang);
             await page.waitForTimeout(300);
+            // Start-up reads: login until the read meter is still. Background start-up work reads too (legacy
+            // timestamp scan ~3-4 s, daily anomaly scan 8 s after the app shows): count it as start-up, not
+            // as whichever page happens to be open when it runs.
+            await page.waitForFunction((ms) => {
+                const shown = performance.getEntriesByName('aadhat:app-shown')[0];
+                return !!shown && performance.now() - shown.startTime > ms;
+            }, START_UP_WORK_MS, { polling: 250, timeout: 60000 });
+            let mark = await settledReads(page, { quiet: 1500 });
+            expect(mark, 'the app exposes its read meter').not.toBeNull();
+            const reads = { startup: mark };
             const all = { bad: [], mixed: [], wrongLang: [], english: [], stuck: [] };
             const side = await page.evaluate(screenFindings, { lang, roots: ['.side-nav'] });
             record(all, 'Side menu', side);
@@ -212,6 +230,11 @@ for (const role of A) {
                         await page.evaluate(s.close);
                         await page.waitForTimeout(250);
                     }
+                    // Reads since the previous step belong to this step's page (first open: each test is a fresh session).
+                    const now = await readCount(page);
+                    const b = bucketOf(s);
+                    reads[b] = (reads[b] || 0) + (now - mark);
+                    mark = now;
                 });
             }
 
@@ -249,6 +272,10 @@ for (const role of A) {
             }
 
             if (all.english.length) console.log(`[${role} ${lang}] English text on the Hindi screen (${all.english.length}):\n  ${all.english.join('\n  ')}`);
+            test.info().annotations.push({ type: 'reads', description: JSON.stringify({ role, lang, reads }) });
+            recordBaselines(role, reads);
+            expect.soft(all.english, 'English text on the Hindi screen').toEqual([]);
+            expect.soft(overBudget(role, reads), `pages over their read budget${RECORD ? ' (record mode: hard cap only)' : ''}`).toEqual([]);
             expect(all.bad, 'NaN / undefined / null / [object Object] / raw keys').toEqual([]);
             expect(all.mixed, 'text mixing English and Hindi').toEqual([]);
             expect(all.wrongLang, 'Hindi text on the English screen').toEqual([]);
@@ -285,6 +312,7 @@ for (const lang of ['en', 'hi']) {
         record(all, '/r/<token>', await page.evaluate(screenFindings, { lang, roots: ['body'] }));
 
         if (all.english.length) console.log(`[logged out ${lang}] English text on the Hindi screen (${all.english.length}):\n  ${all.english.join('\n  ')}`);
+        expect.soft(all.english, 'English text on the Hindi screen').toEqual([]);
         expect(all.bad).toEqual([]);
         expect(all.mixed).toEqual([]);
         expect(all.wrongLang).toEqual([]);

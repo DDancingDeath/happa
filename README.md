@@ -289,7 +289,7 @@ The hosting workflows (`firebase-hosting-*.yml`) run Jest and deploy Hosting. `f
 
 ### End-to-end tests (Playwright)
 
-`tests/e2e/` holds Playwright specs: login gate, bill → History → due payment → cash close, edit a bill, open every page without errors. `npm run test:e2e` (needs Java 21; first time `npx playwright install chromium`) starts the auth/Firestore emulators (ports 9099/8181, as `www/firebaseConfig.js` expects with `?emulator=1`) and a static server on `E2E_PORT` (default 8099), then `tests/e2e/global-setup.js` wipes and seeds the emulator (owner/staff/pending users, items, bills). Run one spec with `npx playwright test tests/e2e/bill-flow.spec.js --project=phone`. Failure screenshots and traces land in `test-results/`.
+`tests/e2e/` holds Playwright specs: login gate, bill → History → due payment → cash close, edit a bill, open every page without errors. `npm run test:e2e` (needs Java 21; first time `npx playwright install chromium`) starts the auth/Firestore emulators (ports 9099/8181, as `www/firebaseConfig.js` expects with `?emulator=1`) and a static server on `E2E_PORT` (default 8099), then `tests/e2e/global-setup.js` wipes and seeds the emulator (owner/staff/pending users, items, bills). Run one spec with `npx playwright test tests/e2e/bill-flow.spec.js --project=phone`. Failure screenshots and traces land in `test-results/`. CI (`.github/workflows/e2e.yml`) runs the suite in 3 shards on every PR that changes the app (required check `Playwright E2E (emulators)`); the every-page smoke also fails on English left on a Hindi screen and on pages reading more Firestore documents than their baseline in `tests/e2e/read-baselines.json` (see AGENTS.md, "CI").
 
 ## Validation
 

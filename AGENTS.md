@@ -63,7 +63,9 @@ and is wrapped in **Capacitor** for Android distribution.
    `npm run test:rules` (Firestore emulator; needs Java and
    `cd rules-tests && npm install` once). `npm run lint` (ESLint) must
    stay at 0 errors. `.github/workflows/ci.yml` runs lint, `check:sw`,
-   `check:release`, Jest and the rules tests on every PR.
+   `check:release`, Jest and the rules tests on every PR, and
+   `.github/workflows/e2e.yml` runs the Playwright E2E suite on every PR that
+   changes the app (section 5, "CI").
 6. **Money-related changes get extra care.** Bills mix top-level
    `dueAmount` with nested `payment.due`. Both can drift; both must be
    read/written — use `readPayment()` / `round2()` from
@@ -311,6 +313,49 @@ existing violations. When the owner accepts a review finding that a regex
 could have caught, add a rule (with `learned_at`) and, ideally, an example
 in `.github/review-rules-examples/`.
 
+### CI: what runs on a pull request
+
+- **`ci.yml`** (every PR and push to `main`): *Lint, Jest, release checks* and
+  *Firestore rules tests*. Nightly it also runs the read-only production smoke
+  (`npm run test:smoke`).
+- **`e2e.yml`**: the Playwright E2E suite (`tests/e2e`, Firebase emulators;
+  every page × role × en/hi × phone/desktop). It runs on **every PR that changes
+  the app**: `www/**`, `firestore.rules`, `firestore.indexes.json`,
+  `tests/e2e/**`, `playwright*.config.js`, `package.json` / `package-lock.json`
+  or `e2e.yml` itself. Docs-only and tools-only PRs skip it. It also runs
+  nightly, on manual dispatch and on any PR labelled `e2e`. Three shards
+  (`npx playwright test --shard=N/3`, each with its own emulators), 1 retry on
+  CI; the job summary lists flaky tests (failed, then passed on retry) and the
+  reads per page. Browsers, firebase-tools and the emulator jars are cached.
+  On failure, download the `test-results-N` (traces) or `playwright-report`
+  artifacts.
+- **Required check name: `Playwright E2E (emulators)`** (the job that collects
+  the shards; it passes when E2E was not needed). Don't rename it: branch
+  protection matches it by name. The shard jobs (`E2E shard N/3`) are not stable
+  names to require.
+- The every-page smoke (`tests/e2e/tabs-smoke.spec.js`) **fails** on page or
+  console errors, NaN / undefined / raw keys, text mixing both languages, Hindi
+  on an English screen, **English left on a Hindi screen**, pages stuck loading,
+  and pages over their **read budget**. The English-on-Hindi allow-list is in
+  `screenFindings` (brand names, units, user/test data, App health rule ids);
+  fix real leftovers with `t()` keys in `en.js` + `hi.js`. Mark deliberate
+  other-language text with `lang="en"` (e.g. an app name like **Files**) and
+  codes with `lang="zxx" translate="no"` (device ids).
+- **Read budget**: each page's first-open Firestore reads (the app's read meter,
+  `www/js/firebase/firestore-meter.js`; `startup` = login until ready) are
+  compared with `tests/e2e/read-baselines.json`. A page fails above its
+  baseline + 25% (at least + 2 reads, so one late listener update on a page that
+  reads almost nothing is not a failure) or above the hard cap (300 reads). If a change makes a page
+  read more on purpose, run
+  `E2E_RECORD_READS=1 npx playwright test tests/e2e/tabs-smoke.spec.js` (raises
+  baselines, never lowers them; delete an entry first to lower it), check the
+  diff and say why in the PR.
+- Run locally: Java 21 on `PATH`, `npm run test:e2e` (or one shard:
+  `npx playwright test --shard=1/3`). It needs ports 9099 and 8181; if another
+  emulator holds 8181, stop it, or switch the port temporarily in
+  `firebase.json`, `www/firebaseConfig.js`, `www/r/rent-history.js` and
+  `tests/e2e/support/emulator.js` and revert before committing.
+
 ### Numbers on screen (#216)
 
 Every money/stock number the app shows has a plain-language definition with a
@@ -352,6 +397,7 @@ skipped with its issue while the bug is open, and give it a cause in
 ### PR checklist
 
 - [ ] Tests, `npm run lint` (0 errors), `check:review`, `check:sw`, `check:release` pass.
+- [ ] App change → the E2E check `Playwright E2E (emulators)` is green (section 5, "CI").
 - [ ] Shipped `www/` file changed → cache bump (section 4).
 - [ ] Added or changed a number shown on screen (or how it is calculated) →
       updated its entry in `docs/calculations.md` and its oracle test in
