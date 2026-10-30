@@ -431,6 +431,71 @@ export function metrics(data, range = [-Infinity, Infinity]) {
     };
 }
 
+/**
+ * I3 "Stopped coming": customers (PARTY) who bought in each of the same three
+ * calendar months last year (the month before, this month, the month after) and
+ * have no bill in the last `days` days. Unnamed customers are not parties.
+ * @returns {string[]} party keys, sorted
+ */
+export function stoppedComing(data, nowMs, days = 60) {
+    const now = new Date(nowMs);
+    const want = [-1, 0, 1].map(k => monthOf(new Date(now.getFullYear() - 1, now.getMonth() + k, 1).getTime()));
+    const by = {};
+    activity([...(data.retailSales || []), ...(data.wholesaleSales || [])]).forEach(b => {
+        const k = partyKey(b.customerName);
+        const t = eventTimeOf(b);
+        if (!k || !Number.isFinite(t)) return;
+        const r = by[k] || (by[k] = { months: new Set(), last: -Infinity });
+        r.months.add(monthOf(t));
+        r.last = Math.max(r.last, t);
+    });
+    const cutoff = nowMs - days * 86400000;
+    return Object.keys(by).filter(k => want.every(m => by[k].months.has(m)) && by[k].last < cutoff).sort();
+}
+
+/**
+ * I9 weekly kg: kg sold (retail + wholesale lines, any item key) in the last 8 weeks
+ * (56 days up to now) ÷ 8, per item key (catalogue id, else the line name).
+ */
+export function weeklySoldKg(data, nowMs) {
+    const items = data.items || [];
+    const keyOf = (line) => {
+        if (line.itemId && items.some(i => i.id === line.itemId)) return line.itemId;
+        const name = String(line.name ?? line.itemName ?? '').trim().toLowerCase();
+        const hit = items.find(i => String(i.name).trim().toLowerCase() === name || String(i.hindiName || '').trim().toLowerCase() === name);
+        return hit ? hit.id : name;
+    };
+    const range = [nowMs - 56 * 86400000, nowMs + 1];
+    const out = {};
+    activity([...(data.retailSales || []), ...(data.wholesaleSales || [])]).filter(b => inRange(eventTimeOf(b), range))
+        .forEach(b => (b.items || []).forEach(l => { const k = keyOf(l); out[k] = (out[k] || 0) + n(l.qty ?? l.quantity); }));
+    Object.keys(out).forEach(k => { out[k] = r2(out[k] / 8); });
+    return out;
+}
+
+/**
+ * I10 overdue parties: parties with an open BILL-DUE on a bill more than `days`
+ * local days old (bill day by its stock time), OPENING records included.
+ * @returns {{parties: number, total: number, oldestDays: number}}
+ */
+export function overdue(bills, nowMs, days = 30) {
+    const today = dayRange(nowMs)[0];
+    const parties = new Set();
+    let total = 0;
+    let oldest = 0;
+    (bills || []).forEach(b => {
+        const due = openDue(b);
+        const t = eventTimeOf(b);
+        if (!(due > 0.005) || !Number.isFinite(t)) return;
+        const age = Math.round((today - dayRange(t)[0]) / 86400000);
+        if (age <= days) return;
+        parties.add(partyKey(b.customerName));
+        total += due;
+        oldest = Math.max(oldest, age);
+    });
+    return { parties: parties.size, total: r2(total), oldestDays: oldest };
+}
+
 /** O3/O4 totals and bill counts over all bills (receivables include wholesale). */
 export function dueTotals(data) {
     const allSales = [...(data.wholesaleSales || []), ...(data.retailSales || [])];

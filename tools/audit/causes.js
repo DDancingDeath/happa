@@ -29,6 +29,8 @@ const OPENING = {
     known: 'known (PR #18, batch-B fix/opening-records-excluded)'
 };
 const SAME_ROOT = 'new spec ID (same root as PR #18)';
+/** Phone path rows whose value is the app's own full-history value: the full-history cause applies. */
+const onPhone = (base, what) => ({ ...base, cause: `${what} On the phone path this is the same number as the app gives with full history. ${base.cause}` });
 
 export const CAUSES = {
     // ---- real data
@@ -69,6 +71,14 @@ export const CAUSES = {
         known: 'expected (old drawer formula / edits after close)'
     },
     AC6_stored_part: { short: 'Drawer part that moved since close', cause: 'Which drawer part moved since close (see AC6_stored_vs_live).', known: 'expected (old drawer formula / edits after close)' },
+
+    // ---- phone path (tools/audit/phone.js): windowed history, month snapshots, checkpoint, rate history
+    I1_itemCogs: onPhone(NEGATIVE_STOCK, 'Cost of goods sold per item (I1); the items add up to M2.'),
+    M11_profitByMonth: onPhone(NEGATIVE_STOCK, 'Profit per month as drawn on Money (bars: the loaded bills, else the month snapshot M6).'),
+    M11_lastYearLine: onPhone(NEGATIVE_STOCK, 'Last year\'s profit line on Money, from month snapshots (M6).'),
+    SNAP_days_profit: onPhone(NEGATIVE_STOCK, 'Profit per day stored in a month snapshot (days add up to M6).'),
+    SNAP_close: onPhone(NEGATIVE_STOCK, 'Closing stock value stored in a month snapshot (M17 closing, = S4 at the month end).'),
+    CMP_M6_profit: onPhone(NEGATIVE_STOCK, 'The % change of profit shown on Money (now vs previous / last year), from M6 on both sides.'),
 
     // ---- migrated state (opening records + synthetic bills)
     'migrated:T15_dueToReceive': { ...OPENING, cause: `Today "Due to receive" adds the carried due of opening records dated that day. ${OPENING.cause}` },

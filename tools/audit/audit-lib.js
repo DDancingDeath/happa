@@ -90,21 +90,34 @@ export class Collector {
     constructor() {
         this.checked = {};
         this.mismatches = [];
+        this.unknowns = [];
     }
 
     /**
-     * @param {{spec: string, page: string, period: string, oracle: number, app: number, unit?: 'money'|'kg'|'count', scope?: string}} c
+     * @param {{spec: string, page: string, period: string, oracle: number, app: number, unit?: 'money'|'kg'|'count', scope?: string, extra?: Object}} c
+     *   extra: kept on a mismatch row (e.g. `full`, the app's value with full history, and `end`, the period end, as cause evidence)
      * @returns {boolean} true when they agree
      */
-    compare({ spec, page, period, oracle, app, unit = 'money', scope = 'real' }) {
+    compare({ spec, page, period, oracle, app, unit = 'money', scope = 'real', extra = null }) {
         const key = `${scope}|${spec}|${page}`;
         this.checked[key] = (this.checked[key] || 0) + 1;
         const a = Number(app);
         const o = Number(oracle);
         const diff = a - o;
         const ok = Number.isFinite(diff) ? Math.abs(diff) <= TOL[unit] + 1e-9 : (app === oracle);
-        if (!ok) this.mismatches.push({ scope, spec, page, period, oracle: o, app: Number.isFinite(a) ? a : app, diff: Number.isFinite(diff) ? O.r2(diff) : null, unit });
+        if (!ok) this.mismatches.push({ scope, spec, page, period, oracle: o, app: Number.isFinite(a) ? a : app, diff: Number.isFinite(diff) ? O.r2(diff) : null, unit, ...(extra || {}) });
         return ok;
+    }
+
+    /**
+     * A figure the app shows as unknown / approximate on purpose ("—", "not loaded",
+     * "no comparison"): counted, never a mismatch. `oracle` is what full history gives.
+     */
+    unknown({ spec, page, period, reason, oracle = null, unit = 'money', scope = 'real' }) {
+        if (!this.unknowns) this.unknowns = [];
+        const key = `${scope}|${spec}|${page}`;
+        this.checked[key] = (this.checked[key] || 0) + 1;
+        this.unknowns.push({ scope, spec, page, period, reason, oracle, unit });
     }
 
     /** A check with no app/oracle pair (identity or consistency): `ok` false records it. */
@@ -332,7 +345,8 @@ export function renderReport(r) {
     const L = [];
     const groups = groupMismatches(r.collector.mismatches);
     const real = groups.filter(g => g.scope === 'real');
-    const mig = groups.filter(g => g.scope !== 'real');
+    const mig = groups.filter(g => g.scope === 'migrated');
+    const phone = groups.filter(g => g.scope === 'phone');
     const totalChecks = Object.values(r.collector.checked).reduce((a, b) => a + b, 0);
     const causeOf = (g) => r.causes(g) || { cause: 'not yet explained', known: 'new' };
     const max = r.maxRows || 25;
@@ -365,6 +379,29 @@ export function renderReport(r) {
     };
     detail('Mismatches: real data', real);
     detail('Mismatches: migrated state (opening records + synthetic bills)', mig);
+
+    if (r.phone) {
+        L.push('## Phone path (windowed history, snapshots, checkpoint)', '');
+        L.push('Each date is opened as a phone that has been in use since the first bill: the window from the 1st of the previous month, '
+            + 'older bills with a due, the stock checkpoint, month snapshots rolled at every month end, the rate history and cash sessions, '
+            + 'all through the app\'s own loaders. Figures are compared with the oracle on the full data of that moment.', '');
+        L.push('| Date | Simulated | Loaded from | Checkpoint as of | Bills loaded / all | Snapshots | Rate-history docs |', '|---|---|---|---|---|---|---|');
+        r.phone.dates.forEach(d => L.push(`| ${d.label} | ${d.date} | ${d.loadedFrom} | ${d.checkpointAsOf || '—'} | ${d.bills.loaded} / ${d.bills.all} | ${d.snapshots} | ${d.rateStatsDocs} |`));
+        L.push('');
+        detail('Mismatches: phone path', phone);
+        const unk = new Map();
+        (r.collector.unknowns || []).filter(u => u.scope === 'phone').forEach(u => {
+            const k = `${u.spec}|${u.page}|${u.reason}`;
+            if (!unk.has(k)) unk.set(k, { ...u, n: 0 });
+            unk.get(k).n++;
+        });
+        L.push('## Phone path: shown as unknown / approximate (not mismatches)', '');
+        L.push('Figures the app leaves out on purpose and says so on screen; the oracle has a value for them.', '');
+        L.push('| Spec ID | Page | What the app shows | Count |', '|---|---|---|---|');
+        [...unk.values()].sort((a, b) => b.n - a.n).forEach(u => L.push(`| ${u.spec} | ${u.page} | ${u.reason} | ${u.n} |`));
+        if (!unk.size) L.push('| – | – | nothing | 0 |');
+        L.push('');
+    }
 
     if (r.migrated && r.migrated.length) {
         L.push('## Opening records and period figures', '');

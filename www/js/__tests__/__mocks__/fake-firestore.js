@@ -91,18 +91,27 @@ export function createFakeFirestore(options = {}) {
         metadata: { fromCache: false, hasPendingWrites: false }
     });
 
+    // orderBy(FieldPath.documentId()) orders by the document id.
+    const fieldOf = (row, field) => (field === '__name__' ? row[0] : getPath(row[1], field));
+
     const evaluate = (q) => {
         let rows = [...coll(q.coll).entries()].filter(([id, d]) => q.filters.every(f => matches(d, f, id)));
-        rows = rows.filter(([, d]) => q.order.every(o => getPath(d, o.field) !== undefined));
+        rows = rows.filter(row => q.order.every(o => fieldOf(row, o.field) !== undefined));
         const lastDir = q.order.length ? q.order[q.order.length - 1].dir : 'asc';
         rows.sort((a, b) => {
             for (const o of q.order) {
-                const c = compareFirestoreValues(getPath(a[1], o.field), getPath(b[1], o.field));
+                const c = compareFirestoreValues(fieldOf(a, o.field), fieldOf(b, o.field));
                 if (c) return o.dir === 'desc' ? -c : c;
             }
             const c = a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0;
             return lastDir === 'desc' ? -c : c;
         });
+        // startAt / endAt / endBefore(value) on the first orderBy field (cursor by value).
+        const o0 = q.order[0];
+        const cursor = (row, v) => (o0 ? compareFirestoreValues(fieldOf(row, o0.field), v) * (o0.dir === 'desc' ? -1 : 1) : 0);
+        if (q.startAtValue !== undefined) rows = rows.filter(row => cursor(row, q.startAtValue) >= 0);
+        if (q.endAtValue !== undefined) rows = rows.filter(row => cursor(row, q.endAtValue) <= 0);
+        if (q.endBeforeValue !== undefined) rows = rows.filter(row => cursor(row, q.endBeforeValue) < 0);
         if (q.after) {
             const at = rows.findIndex(([id]) => id === q.after);
             rows = at === -1 ? rows : rows.slice(at + 1);
@@ -222,7 +231,11 @@ export function createFakeFirestore(options = {}) {
             where: (field, op, value) => makeQuery({ ...q, filters: [...q.filters, { field, op, value }] }),
             orderBy: (field, dir = 'asc') => makeQuery({ ...q, order: [...q.order, { field, dir }] }),
             limit: (n) => makeQuery({ ...q, limitN: n }),
-            startAfter: (doc) => makeQuery({ ...q, after: doc.id }),
+            // A document snapshot, or a document id when ordered by FieldPath.documentId().
+            startAfter: (doc) => makeQuery({ ...q, after: typeof doc === 'string' ? doc : doc.id }),
+            startAt: (value) => makeQuery({ ...q, startAtValue: value }),
+            endAt: (value) => makeQuery({ ...q, endAtValue: value }),
+            endBefore: (value) => makeQuery({ ...q, endBeforeValue: value }),
             get: async () => {
                 stats.gets++;
                 stats.queryLog.push(q);

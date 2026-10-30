@@ -1,0 +1,1228 @@
+{
+  "description": "Phone path (tools/audit/phone.js): a phone loads bills from the 1st of the previous month, older bills that still owe, the stock checkpoint and month snapshots. Old bills settled inside that window (a due paid on 5 and 6 Oct with no cash session open, a write-off on 8 Oct) and stock-up weekly kg from fewer than 8 loaded weeks. Names and amounts are made up.",
+  "now": "2026-10-15T21:00:00",
+  "items": [
+    {
+      "id": "rice",
+      "name": "Rice",
+      "hindiName": "चावल",
+      "rates": [
+        30
+      ],
+      "wholesaleRates": [],
+      "saleRates": [
+        36
+      ]
+    },
+    {
+      "id": "wheat",
+      "name": "Wheat",
+      "hindiName": "गेहूं",
+      "rates": [
+        25
+      ],
+      "wholesaleRates": [],
+      "saleRates": [
+        30
+      ]
+    }
+  ],
+  "purchases": [
+    {
+      "id": "p-jul",
+      "billNumber": "P-JUL",
+      "customerName": "Test Supplier",
+      "date": "2026-07-02T04:30:00.000Z",
+      "timestamp": 1782966600000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 1000,
+          "rate": 30,
+          "total": 30000
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 600,
+          "rate": 25,
+          "total": 15000
+        }
+      ],
+      "billTotal": 45000,
+      "laborCharges": 0,
+      "grandTotal": 45000,
+      "amountPayable": 45000,
+      "cashPayment": 45000,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 45000,
+        "online": 0,
+        "due": 0,
+        "total": 45000
+      },
+      "openDue": false
+    },
+    {
+      "id": "p-aug-paid",
+      "billNumber": "P-AUG-PAID",
+      "customerName": "Test Supplier",
+      "date": "2026-08-03T04:30:00.000Z",
+      "timestamp": 1785731400000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 800,
+          "rate": 25,
+          "total": 20000
+        }
+      ],
+      "billTotal": 20000,
+      "laborCharges": 0,
+      "grandTotal": 20000,
+      "amountPayable": 20000,
+      "cashPayment": 20000,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 20000,
+        "online": 0,
+        "due": 0,
+        "total": 20000
+      },
+      "openDue": false,
+      "payments": [
+        {
+          "id": "pay-p1",
+          "amount": 5000,
+          "cash": 5000,
+          "online": 0,
+          "at": 1791268200000,
+          "date": "2026-10-06T06:30:00.000Z",
+          "recordedBy": "Test"
+        }
+      ]
+    },
+    {
+      "id": "p-sep",
+      "billNumber": "P-SEP",
+      "customerName": "Test Supplier",
+      "date": "2026-09-05T04:30:00.000Z",
+      "timestamp": 1788582600000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 500,
+          "rate": 32,
+          "total": 16000
+        }
+      ],
+      "billTotal": 16000,
+      "laborCharges": 0,
+      "grandTotal": 16000,
+      "amountPayable": 16000,
+      "cashPayment": 16000,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 16000,
+        "online": 0,
+        "due": 0,
+        "total": 16000
+      },
+      "openDue": false
+    },
+    {
+      "id": "p-oct",
+      "billNumber": "P-OCT",
+      "customerName": "Test Supplier",
+      "date": "2026-10-03T04:30:00.000Z",
+      "timestamp": 1791001800000,
+      "type": "purchase",
+      "isPurchase": true,
+      "items": [
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 300,
+          "rate": 26,
+          "total": 7800
+        }
+      ],
+      "billTotal": 7800,
+      "laborCharges": 0,
+      "grandTotal": 7800,
+      "amountPayable": 7800,
+      "cashPayment": 0,
+      "onlinePayment": 7800,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 0,
+        "online": 7800,
+        "due": 0,
+        "total": 7800
+      },
+      "openDue": false
+    }
+  ],
+  "wholesaleSales": [],
+  "retailSales": [
+    {
+      "id": "r-001",
+      "billNumber": "R-001",
+      "customerName": "Test Customer C",
+      "date": "2026-07-06T05:30:00.000Z",
+      "timestamp": 1783315800000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-002",
+      "billNumber": "R-002",
+      "customerName": "Test Customer C",
+      "date": "2026-07-10T05:30:00.000Z",
+      "timestamp": 1783661400000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-003",
+      "billNumber": "R-003",
+      "customerName": "",
+      "date": "2026-07-14T05:30:00.000Z",
+      "timestamp": 1784007000000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-004",
+      "billNumber": "R-004",
+      "customerName": "Test Customer C",
+      "date": "2026-07-18T05:30:00.000Z",
+      "timestamp": 1784352600000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-005",
+      "billNumber": "R-005",
+      "customerName": "Test Customer C",
+      "date": "2026-07-22T05:30:00.000Z",
+      "timestamp": 1784698200000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-006",
+      "billNumber": "R-006",
+      "customerName": "",
+      "date": "2026-07-26T05:30:00.000Z",
+      "timestamp": 1785043800000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-007",
+      "billNumber": "R-007",
+      "customerName": "Test Customer C",
+      "date": "2026-07-30T05:30:00.000Z",
+      "timestamp": 1785389400000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-008",
+      "billNumber": "R-008",
+      "customerName": "Test Customer C",
+      "date": "2026-08-03T05:30:00.000Z",
+      "timestamp": 1785735000000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-009",
+      "billNumber": "R-009",
+      "customerName": "",
+      "date": "2026-08-07T05:30:00.000Z",
+      "timestamp": 1786080600000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-010",
+      "billNumber": "R-010",
+      "customerName": "Test Customer C",
+      "date": "2026-08-11T05:30:00.000Z",
+      "timestamp": 1786426200000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-011",
+      "billNumber": "R-011",
+      "customerName": "Test Customer C",
+      "date": "2026-08-15T05:30:00.000Z",
+      "timestamp": 1786771800000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-012",
+      "billNumber": "R-012",
+      "customerName": "",
+      "date": "2026-08-19T05:30:00.000Z",
+      "timestamp": 1787117400000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-013",
+      "billNumber": "R-013",
+      "customerName": "Test Customer C",
+      "date": "2026-08-23T05:30:00.000Z",
+      "timestamp": 1787463000000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-014",
+      "billNumber": "R-014",
+      "customerName": "Test Customer C",
+      "date": "2026-08-27T05:30:00.000Z",
+      "timestamp": 1787808600000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-015",
+      "billNumber": "R-015",
+      "customerName": "",
+      "date": "2026-08-31T05:30:00.000Z",
+      "timestamp": 1788154200000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-016",
+      "billNumber": "R-016",
+      "customerName": "Test Customer C",
+      "date": "2026-09-04T05:30:00.000Z",
+      "timestamp": 1788499800000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-017",
+      "billNumber": "R-017",
+      "customerName": "Test Customer C",
+      "date": "2026-09-08T05:30:00.000Z",
+      "timestamp": 1788845400000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-018",
+      "billNumber": "R-018",
+      "customerName": "",
+      "date": "2026-09-12T05:30:00.000Z",
+      "timestamp": 1789191000000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-019",
+      "billNumber": "R-019",
+      "customerName": "Test Customer C",
+      "date": "2026-09-16T05:30:00.000Z",
+      "timestamp": 1789536600000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-020",
+      "billNumber": "R-020",
+      "customerName": "Test Customer C",
+      "date": "2026-09-20T05:30:00.000Z",
+      "timestamp": 1789882200000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-021",
+      "billNumber": "R-021",
+      "customerName": "",
+      "date": "2026-09-24T05:30:00.000Z",
+      "timestamp": 1790227800000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-022",
+      "billNumber": "R-022",
+      "customerName": "Test Customer C",
+      "date": "2026-09-28T05:30:00.000Z",
+      "timestamp": 1790573400000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-023",
+      "billNumber": "R-023",
+      "customerName": "Test Customer C",
+      "date": "2026-10-02T05:30:00.000Z",
+      "timestamp": 1790919000000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-024",
+      "billNumber": "R-024",
+      "customerName": "",
+      "date": "2026-10-06T05:30:00.000Z",
+      "timestamp": 1791264600000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-025",
+      "billNumber": "R-025",
+      "customerName": "Test Customer C",
+      "date": "2026-10-10T05:30:00.000Z",
+      "timestamp": 1791610200000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-026",
+      "billNumber": "R-026",
+      "customerName": "Test Customer C",
+      "date": "2026-10-14T05:30:00.000Z",
+      "timestamp": 1791955800000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 40,
+          "rate": 36,
+          "total": 1440
+        },
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 20,
+          "rate": 30,
+          "total": 600
+        }
+      ],
+      "total": 2040,
+      "cashPayment": 2040,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 2040,
+        "online": 0,
+        "due": 0,
+        "total": 2040
+      },
+      "openDue": false
+    },
+    {
+      "id": "r-aug-paid",
+      "billNumber": "R-AUG-PAID",
+      "customerName": "Test Customer A",
+      "date": "2026-08-12T04:30:00.000Z",
+      "timestamp": 1786509000000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 100,
+          "rate": 36,
+          "total": 3600
+        }
+      ],
+      "total": 3600,
+      "cashPayment": 3600,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 3600,
+        "online": 0,
+        "due": 0,
+        "total": 3600
+      },
+      "openDue": false,
+      "payments": [
+        {
+          "id": "pay-r1",
+          "amount": 3000,
+          "cash": 3000,
+          "online": 0,
+          "at": 1791178200000,
+          "date": "2026-10-05T05:30:00.000Z",
+          "recordedBy": "Test"
+        }
+      ]
+    },
+    {
+      "id": "r-aug-writeoff",
+      "billNumber": "R-AUG-WRITEOFF",
+      "customerName": "Test Customer B",
+      "date": "2026-08-20T04:30:00.000Z",
+      "timestamp": 1787200200000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "wheat",
+          "name": "Wheat",
+          "qty": 50,
+          "rate": 30,
+          "total": 1500
+        }
+      ],
+      "total": 1500,
+      "cashPayment": 0,
+      "onlinePayment": 0,
+      "dueAmount": 0,
+      "payment": {
+        "cash": 0,
+        "online": 0,
+        "due": 0,
+        "total": 0,
+        "writtenOff": 1500
+      },
+      "openDue": false,
+      "cleared": true,
+      "payments": [
+        {
+          "id": "wo-1",
+          "kind": "writeOff",
+          "amount": 1500,
+          "reason": "Test",
+          "at": 1791455400000,
+          "date": "2026-10-08T10:30:00.000Z",
+          "recordedBy": "Test"
+        }
+      ]
+    },
+    {
+      "id": "r-jul-due",
+      "billNumber": "R-JUL-DUE",
+      "customerName": "Test Customer A",
+      "date": "2026-07-20T04:30:00.000Z",
+      "timestamp": 1784521800000,
+      "type": "retail",
+      "items": [
+        {
+          "itemId": "rice",
+          "name": "Rice",
+          "qty": 50,
+          "rate": 36,
+          "total": 1800
+        }
+      ],
+      "total": 1800,
+      "cashPayment": 800,
+      "onlinePayment": 0,
+      "dueAmount": 1000,
+      "payment": {
+        "cash": 800,
+        "online": 0,
+        "due": 1000,
+        "total": 800
+      },
+      "openDue": true
+    }
+  ],
+  "stockAdjustments": [],
+  "expenses": [
+    {
+      "id": "e1",
+      "amount": 500,
+      "category": "business",
+      "type": "Rent",
+      "date": "2026-08-01T03:30:00.000Z",
+      "timestamp": 1785555000000
+    },
+    {
+      "id": "e2",
+      "amount": 300,
+      "category": "business",
+      "type": "Transport",
+      "date": "2026-09-10T03:30:00.000Z",
+      "timestamp": 1789011000000
+    },
+    {
+      "id": "e3",
+      "amount": 200,
+      "category": "personal",
+      "type": "Food",
+      "date": "2026-10-04T03:30:00.000Z",
+      "timestamp": 1791084600000
+    }
+  ],
+  "withdrawals": [],
+  "sessions": []
+}

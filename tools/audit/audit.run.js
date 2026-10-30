@@ -15,6 +15,7 @@ import path from 'path';
 import * as O from '../../tests/oracle/oracle.js';
 import { loadBackup, auditPeriods, Collector, dataQuality, renderReport, isoDay, negativeDips, withoutItems } from './audit-lib.js';
 import { CAUSES, causeFor } from './causes.js';
+import { auditPhone, phoneDates, parsePhoneDates } from './phone.js';
 import { DayManager } from '@app/modules/day.js';
 import { AnomaliesManager } from '@app/modules/anomalies.js';
 import { MoneyManager } from '@app/modules/money.js';
@@ -414,7 +415,7 @@ beforeEach(() => {
 
 const run = ENV.AUDIT_BACKUP ? test : test.skip;
 
-run('real-data number audit', () => {
+run('real-data number audit', async () => {
     const started = process.hrtime.bigint();
     const { exportedAt, data } = loadBackup(JSON.parse(fs.readFileSync(ENV.AUDIT_BACKUP, 'utf8')));
     const nowMs = ENV.AUDIT_NOW ? Date.parse(ENV.AUDIT_NOW) : exportedAt;
@@ -469,18 +470,34 @@ run('real-data number audit', () => {
         notes.push(`Migrated state audited from ${ENV.AUDIT_BUNDLE.replace(/^.*[\\/]/, '')}.`);
     }
 
+    // ---- The phone path: windowed history, month snapshots, stock checkpoint, rate history, cash sessions
+    let phone = null;
+    if (ENV.AUDIT_PHONE !== '0') {
+        const dips = negativeDips(data);
+        const stockEvidence = {
+            firstDip: Math.min(Infinity, ...Object.values(dips.firstDip)),
+            cleanAgrees: !C.mismatches.some(m => m.scope === 'real' && /_items_never_below_zero$/.test(m.spec))
+        };
+        const dates = ENV.AUDIT_PHONE_DATES ? parsePhoneDates(ENV.AUDIT_PHONE_DATES) : phoneDates(nowMs);
+        phone = await auditPhone({ C, data, dates, appRoot: ENV.AUDIT_APP_ROOT || process.cwd(), stockEvidence });
+        evidence.phone = phone.evidence;
+    }
+
     const ms = Number(process.hrtime.bigint() - started) / 1e6;
     const report = renderReport({
         title: 'Real-data number audit',
         appRef: ENV.AUDIT_APP_REF || 'working tree',
         compare: ENV.AUDIT_COMPARE && fs.existsSync(ENV.AUDIT_COMPARE) ? JSON.parse(fs.readFileSync(ENV.AUDIT_COMPARE, 'utf8')) : null,
-        exportedAt, ms, periods: opts, collector: C, causes: (g) => causeFor(g, CAUSES, evidence[g.scope]), quality, numberChecks, migrated, notes
+        exportedAt, ms, periods: opts, collector: C, causes: (g) => causeFor(g, CAUSES, evidence[g.scope]), quality, numberChecks, migrated, notes, phone
     });
     if (ENV.AUDIT_OUT) fs.writeFileSync(ENV.AUDIT_OUT, report);
     if (ENV.AUDIT_JSON) {
         fs.writeFileSync(ENV.AUDIT_JSON, JSON.stringify({
             exportedAt, ms, appRef: ENV.AUDIT_APP_REF || null, checked: C.checked,
-            mismatches: C.mismatches, quality: quality.map(({ id, count, of }) => ({ id, count, of })),
+            mismatches: C.mismatches.map(m => ({ ...m, cause: causeFor({ ...m, rows: [m] }, CAUSES, evidence[m.scope])?.known || 'new' })),
+            unknowns: C.unknowns,
+            phone: phone ? phone.dates : null,
+            quality: quality.map(({ id, count, of }) => ({ id, count, of })),
             numberChecks: numberChecks.map(({ id, status, checked, problems }) => ({ id, status, checked, problems })), migrated
         }, null, 1));
     }

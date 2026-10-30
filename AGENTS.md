@@ -335,7 +335,12 @@ state, `--app <checkout>` audits another branch's `www/`). It computes every
 spec number for each of the last 60 days, the last 24 months and all time twice,
 with the oracle and with the app's own screen code in jsdom, plus AC1–AC8,
 cross-page agreement and the number checks, and writes `NUMBER-AUDIT.md` next to
-the backup (it refuses to write inside the repo). Takes about a minute for ~7k
+the backup (it refuses to write inside the repo). It then audits the **phone
+path** (`tools/audit/phone.js`): the windowed history, dues listeners, stock
+checkpoint, month snapshots, rate history and cash sessions loaded by the app's
+own `FirebaseService` from an in-memory Firestore, for several "today"s
+(`--phone-dates`, `--no-phone`); figures the app shows as unknown / approximate
+are counted separately. Takes about two minutes for ~7k
 bills and reads only that file, no Firestore. Real data never goes into the repo,
 CI, an issue or a PR: turn each new mismatch class into an anonymised fixture in
 `tests/fixtures/calculations/` with an oracle test (`tests/oracle/real-shapes.test.js`),
