@@ -291,6 +291,11 @@ describe('round-2 review fixes', () => {
         expect(card()).toMatch(/Stock up/);
         expect(card()).toMatch(/last 4 weeks of bills loaded/);
 
+        // 7.9 weeks loaded reads as 8, not 7.
+        AppState.historyLoadedFrom = NOW - 55.3 * 86400000;
+        InsightsManager.renderStockUp();
+        expect(card()).toMatch(/last 8 weeks of bills loaded/);
+
         AppState.historyLoadedFrom = 0;
         InsightsManager.renderStockUp();
         expect(card()).toMatch(/Stock up/);
