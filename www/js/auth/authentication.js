@@ -514,32 +514,32 @@ const AuthManager = {
             const tabId = onclick?.match(/showTab\('([^']+)'/)?.[1];
             if (tabId) {
                 if (['money', 'insights', 'statements', 'wholesale-sales'].includes(tabId)) {
-                    item.style.display = mayOpen(tabId) ? 'block' : 'none';
+                    item.style.display = mayOpen(tabId) ? '' : 'none';
                 }
                 
                 // Anomalies (#187): owner/manager only until #84 decides otherwise
                 if (tabId === 'anomalies') {
-                    item.style.display = isOwnerOrManager ? 'block' : 'none';
+                    item.style.display = isOwnerOrManager ? '' : 'none';
                 }
                 
                 // App health / Test in Production (#217): owner/manager only
                 if (tabId === 'health') {
-                    item.style.display = isOwnerOrManager ? 'block' : 'none';
+                    item.style.display = isOwnerOrManager ? '' : 'none';
                 }
                 
                 // Diagnostics: owner; managers see only Number checks (#216)
                 if (tabId === 'diagnostics') {
-                    item.style.display = isOwnerOrManager ? 'block' : 'none';
+                    item.style.display = isOwnerOrManager ? '' : 'none';
                 }
                 
                 if (tabId === 'admin' && !isOwner) {
                     item.style.display = 'none';
                 } else if (tabId === 'admin' && isOwner) {
-                    item.style.display = 'block';
+                    item.style.display = '';
                 }
                 
                 if (tabId === 'sales') {
-                    item.style.display = mayOpen('wholesale-sales') ? 'block' : 'none';
+                    item.style.display = mayOpen('wholesale-sales') ? '' : 'none';
                 }
             }
         });

@@ -153,7 +153,7 @@ describe('Stock', () => {
         expect(text[0]).toContain('Rice');
         expect(text[0]).toContain('Rate: ₹32.00/kg');   // (100×30 + 50×36) / 150
         expect(text[0]).toContain('150.0 kg');
-        expect(text[0]).toContain('≈ ₹4800');
+        expect(text[0]).toContain('≈ ₹4,800');
         expect(text[1]).toContain('Wheat');
         expect(text[1]).toContain('40.0 kg');
         expect(text[2]).toContain('Old Bajra');

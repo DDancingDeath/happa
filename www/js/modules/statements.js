@@ -11,7 +11,7 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatRupees } from '../utils/money.js';
+import { formatRupees, formatAmount } from '../utils/money.js';
 import { formatDay, formatMonth, formatDayTime, toLocalISODate, parseLocalDate, todayLocalISO } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
@@ -266,7 +266,7 @@ export const StatementsManager = {
         const caveats = perms.profit ? m.caveats : m.caveats.filter(c => c.key === 'dues');
         const html = `<h3 class="st-title">${esc(title)}</h3>`
             + lines.map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="${perm}"` : ''}><span>${esc(t(k))}</span><span${id ? ` data-metric-export="${id}"` : ''}>${money(v)}</span></div>`).join('')
-            + caveats.map(c => `<div class="ins-caveat"${c.key === 'dues' ? '' : ' data-perm="profit"'}>⚠ ${esc(t(`ui.money.caveat_${c.key}`, { qty: c.qty, amount: Math.round(c.estimate ?? c.amount ?? c.gap ?? 0) }))}</div>`).join('');
+            + caveats.map(c => `<div class="ins-caveat"${c.key === 'dues' ? '' : ' data-perm="profit"'}>⚠ ${esc(t(`ui.money.caveat_${c.key}`, { qty: c.qty, amount: formatAmount(c.estimate ?? c.amount ?? c.gap ?? 0) }))}</div>`).join('');
         const share = [title, ...lines.map(([k, v]) => `${plainLabel(t(k))}: ${v === null ? '—' : formatRupees(v)}`)].join('\n');
         return { title, html, share, csvHeader: [t('ui.statements.what', null, cl), t('ui.money.amount', null, cl)], csvRows: lines.map(([k, v]) => [plainLabel(t(k, null, cl)), v === null ? '' : v]) };
     },

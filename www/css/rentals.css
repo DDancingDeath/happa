@@ -1,5 +1,5 @@
 /* Rentals (#170). Loaded on demand by js/rentals/rentals.js, not linked from index.html. */
-.rentals-tab { padding: 16px; max-width: 900px; margin: 0 auto; }
+.rentals-tab { max-width: 900px; }
 .rent-title { margin: 0 0 12px; font-size: 22px; }
 .rent-subnav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .rent-notice { background: #fff3cd; color: #664d03; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }

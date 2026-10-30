@@ -110,6 +110,11 @@
     height: 100dvh;
   }
 
+  /* rentals.css (loaded later) caps the phone width; desktop pages are full width */
+  .tab.rentals-tab {
+    max-width: none;
+  }
+
   /* Top-of-page segmented toggles (Purchase | Sale etc.) span the content
      width (no max-width) and match Today's .sub-tabs bar height. */
   .tab > .filter-buttons:first-child > .filter-btn {
@@ -178,6 +183,10 @@
   #billing .bill-col-entry > .bill-totals > .form-row:nth-child(1),
   #billing .bill-col-entry > .bill-totals > .form-row:nth-child(2) {
     grid-column: auto;
+  }
+
+  #billing .bill-col-entry > .bill-totals > .form-row:nth-child(2) label {
+    width: auto;
   }
 
   #billTable,
@@ -287,6 +296,16 @@
   /* ---------- Generic: wider grids and tables ---------- */
   .stats-grid-2:has(> :nth-child(3)) {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  /* Values stay level across the row when a label wraps to two lines */
+  .stats-grid-2:has(> :nth-child(3)) > .stat-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stats-grid-2:has(> :nth-child(3)) > .stat-card > .stat-label {
+    flex: 1 0 auto;
   }
 
   .tab table {
