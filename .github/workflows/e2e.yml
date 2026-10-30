@@ -132,8 +132,9 @@ jobs:
     # Stable name: this is the check to require in branch protection.
     name: Playwright E2E (emulators)
     needs: [changes, shard]
-    # Not on a cancelled run (a newer push supersedes it): that would post a red check.
-    if: ${{ !cancelled() }}
+    # always(), not !cancelled(): a skipped required check counts as passed, so a
+    # cancelled run must still run this job and fail it (Result step below).
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -171,6 +172,8 @@ jobs:
             e2e-results.json
           retention-days: 7
       - name: Result
+        # Runs even when the run was cancelled, so the required check fails instead of being skipped.
+        if: always()
         env:
           CHANGES: ${{ needs.changes.result }}
           RUN: ${{ needs.changes.outputs.run }}
