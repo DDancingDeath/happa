@@ -46,8 +46,6 @@ const MULTI_SESSION_DAYS = (() => {
  * out of "every other figure" and asserted in their own `test.failing` test.
  */
 const BUGS = {
-    // A comparison the app can't make (no snapshot / part month) next to one it can is left out without a word.
-    missingComparisonText: [(m) => /^CMP_.*_not_known_hidden$/.test(m.spec), 'PR #174 (fix/phone-path-gaps: money.js "vs {label}: not known")'],
     // Today keeps one cash session per day (day.js:loadTodaySession); on a day with two sessions, a leg in the other
     // session on a bill the phone hasn't loaded is missing from T6–T14 (the day book has it).
     todayOneSession: [(m) => /^T([6-9]|1[0-4])_/.test(m.spec) && m.page === 'Today (phone)' && MULTI_SESSION_DAYS.has(String(m.period).slice(0, 10)),
@@ -207,8 +205,9 @@ describe('what the screen says when a comparison can\'t be made', () => {
         expect(of(/^CMP_.*_none_hidden$/)).toEqual([]);
     });
 
-    bugTest('missingComparisonText')('"vs {label}: not known" next to the comparison that is shown (no snapshot / part month)', () => {
-        expect(rowsOf('missingComparisonText')).toEqual([]);
+    // Fixed by PR #174 (money.js compareHtml: "vs {label}: not known").
+    test('"vs {label}: not known" next to the comparison that is shown (no snapshot / part month)', () => {
+        expect(of(/^CMP_.*_not_known_hidden$/)).toEqual([]);
         expect(C.unknowns.some(u => /^CMP_/.test(u.spec) && /not known/.test(u.reason))).toBe(true);
     });
 });

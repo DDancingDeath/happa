@@ -86,13 +86,6 @@ export const CAUSES = {
     I8_belowCostTimes: onPhone(NEGATIVE_STOCK, 'Sold-below-cost lines (I8) use the cost of goods sold of each line.'),
     I8_belowCostKg: onPhone(NEGATIVE_STOCK, 'Sold-below-cost lines (I8) use the cost of goods sold of each line.'),
     I8_belowCostLost: onPhone(NEGATIVE_STOCK, 'Sold-below-cost lines (I8) use the cost of goods sold of each line.'),
-    // A comparison the app can't make (no snapshot, or a part month a snapshot can't split) shown next to one it can.
-    ...Object.fromEntries(['CMP_M6_profit', 'CMP_M14_net', 'CMP_M4_businessExpenses'].map(k => [`${k}_not_known_hidden`, {
-        short: 'Money leaves out a comparison it can\'t make without saying so (money.js:compareHtml)',
-        cause: 'www/js/modules/money.js:compareHtml drops a comparison whose figure is not known (no month snapshot, or a part month '
-            + 'a snapshot can\'t split: only sales and profit) and shows only the other one, so the screen does not say that one is not known.',
-        known: 'known (PR fix/phone-path-gaps: "vs {label}: not known")'
-    }])),
 
     // ---- migrated state (opening records + synthetic bills)
     'migrated:T15_dueToReceive': { ...OPENING, cause: `Today "Due to receive" adds the carried due of opening records dated that day. ${OPENING.cause}` },
