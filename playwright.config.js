@@ -5,6 +5,9 @@
  *   npm run test:smoke   read-only smoke of the live site (playwright.prod.config.js)
  * Needs Java 21 for the Firestore emulator. Ports: auth 9099, firestore 8181
  * (fixed by www/firebaseConfig.js), static server E2E_PORT (default 8099).
+ * CI (.github/workflows/e2e.yml) runs it in 3 shards (`--shard=N/3`, each with its
+ * own emulators) and merges their blob reports. FIREBASE_TOOLS_VERSION pins the
+ * firebase-tools version npx runs (CI sets it so its cache key matches).
  */
 const { defineConfig, devices } = require('@playwright/test');
 
@@ -20,11 +23,12 @@ module.exports = defineConfig({
     globalSetup: require.resolve('./tests/e2e/global-setup.js'),
     timeout: 120000,
     expect: { timeout: 15000 },
-    // Specs share one emulator: run serially.
+    // Specs share one emulator: one worker runs them one after another. fullyParallel
+    // only lets --shard split a spec file by test (tests still run serially).
     workers: 1,
-    fullyParallel: false,
+    fullyParallel: true,
     retries: process.env.CI ? 1 : 0,
-    reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+    reporter: process.env.CI ? [['list'], ['blob']] : 'list',
     use: {
         baseURL: BASE_URL,
         serviceWorkers: 'block',
@@ -37,7 +41,7 @@ module.exports = defineConfig({
     ],
     webServer: [
         {
-            command: `npx --yes firebase-tools@latest emulators:start --only auth,firestore --project ${PROJECT_ID}`,
+            command: `npx --yes firebase-tools@${process.env.FIREBASE_TOOLS_VERSION || 'latest'} emulators:start --only auth,firestore --project ${PROJECT_ID}`,
             url: 'http://127.0.0.1:9099/',
             reuseExistingServer: !process.env.CI,
             timeout: 180000,

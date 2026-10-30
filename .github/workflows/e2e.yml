@@ -1,0 +1,182 @@
+# Playwright E2E against the Firebase emulators (#127): every pull request that
+# changes the app, nightly, on manual dispatch, and any PR labelled "e2e".
+#
+# Required status check for branch protection: "Playwright E2E (emulators)"
+# (the `e2e` job below). It passes when the shards passed, or when the PR does
+# not change the app (docs-only / tools-only PRs skip the shards), so it can be
+# required on every PR. The shard jobs ("E2E shard N/3") are not stable names to
+# require.
+#
+# App paths (keep in sync with AGENTS.md): www/**, firestore.rules,
+# firestore.indexes.json, tests/e2e/**, playwright*.config.js, package.json,
+# package-lock.json, and this workflow.
+name: E2E
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    - cron: '30 21 * * *' # 03:00 IST nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One E2E run per PR: a newer push or label event cancels the older run, so the
+# latest "Playwright E2E (emulators)" result on the head commit is the real one.
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.event_name }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: E2E needed?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+    steps:
+      - name: Decide
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          LABELLED: ${{ contains(github.event.pull_request.labels.*.name, 'e2e') }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "$EVENT: run E2E."; exit 0
+          fi
+          if [ "$LABELLED" = "true" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"; echo "PR has the e2e label: run E2E."; exit 0
+          fi
+          files=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          app=$(printf '%s\n' "$files" | grep -E '^(www/|tests/e2e/|firestore\.rules$|firestore\.indexes\.json$|playwright[^/]*\.config\.js$|package(-lock)?\.json$|\.github/workflows/e2e\.yml$)' || true)
+          if [ -n "$app" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "App files changed: run E2E."; printf '%s\n' "$app" | head -n 20
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No app files changed (docs / tools only): skip E2E."
+          fi
+
+  shard:
+    name: E2E shard ${{ matrix.shard }}/3
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Tool versions (cache keys)
+        id: v
+        run: |
+          echo "playwright=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "firebase=$(npm view firebase-tools version)" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browser
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.v.outputs.playwright }}-chromium-shell
+      - name: Install Playwright browser
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps --only-shell chromium
+      - name: Install Playwright system packages
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Cache firebase-tools and the emulator jars
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm/_npx
+            ~/.cache/firebase/emulators
+          key: firebase-tools-${{ runner.os }}-${{ steps.v.outputs.firebase }}
+      - name: E2E against Firebase emulators (shard ${{ matrix.shard }}/3)
+        env:
+          FIREBASE_TOOLS_VERSION: ${{ steps.v.outputs.firebase }}
+        run: npx playwright test --shard=${{ matrix.shard }}/3
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report
+          retention-days: 3
+      - name: Upload traces and screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 7
+
+  e2e:
+    # Stable name: this is the check to require in branch protection.
+    name: Playwright E2E (emulators)
+    needs: [changes, shard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.changes.outputs.run == 'true'
+      - uses: actions/setup-node@v4
+        if: needs.changes.outputs.run == 'true'
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+        if: needs.changes.outputs.run == 'true'
+      - uses: actions/download-artifact@v4
+        if: needs.changes.outputs.run == 'true'
+        continue-on-error: true
+        with:
+          pattern: blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Merge shard reports and write the summary
+        if: needs.changes.outputs.run == 'true'
+        continue-on-error: true
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: e2e-results.json
+        run: |
+          npx playwright merge-reports --reporter=html,json all-blob-reports
+          node tools/ci/e2e-summary.js e2e-results.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Playwright report
+        if: needs.changes.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+      - name: Result
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          RUN: ${{ needs.changes.outputs.run }}
+          SHARDS_RESULT: ${{ needs.shard.result }}
+        run: |
+          echo "changes=$CHANGES run=$RUN shards=$SHARDS_RESULT"
+          if [ "$CHANGES" != "success" ]; then echo "::error::Could not decide whether E2E was needed."; exit 1; fi
+          if [ "$RUN" != "true" ]; then
+            echo "No app files changed: E2E not needed." | tee -a "$GITHUB_STEP_SUMMARY"; exit 0
+          fi
+          if [ "$SHARDS_RESULT" != "success" ]; then echo "::error::E2E shards: $SHARDS_RESULT"; exit 1; fi
+          echo "All E2E shards passed."
