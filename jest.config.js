@@ -36,7 +36,9 @@ module.exports = {
     
     // Module name mapper for path aliases
     moduleNameMapper: {
-        '^@/(.*)$': '<rootDir>/www/js/$1'
+        '^@/(.*)$': '<rootDir>/www/js/$1',
+        // tools/audit modules import the app as @app/ (the audit can point it at another checkout)
+        '^@app/(.*)$': '<rootDir>/www/js/$1'
     },
     
     // Coverage configuration - only collect from testable utility files

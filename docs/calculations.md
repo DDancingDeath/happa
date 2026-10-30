@@ -313,6 +313,20 @@ checks; `--bundle` adds a migration bundle's opening records. Shapes it finds be
 (`tests/fixtures/calculations/real-shapes.json`, `tests/oracle/real-shapes.test.js`), skipped with their
 issue while the app differs.
 
+It also runs the **phone path** (`tools/audit/phone.js`): what a phone actually has in memory. The app's
+own `FirebaseService` runs against an in-memory Firestore seeded with the backup as it stood at each of
+several "today"s (the backup's moment; the 1st, 2nd and 15th of a month; 31 March; 1 January;
+`--phone-dates` to choose, `--no-phone` to skip): the window from the 1st of the previous month, older
+bills that still owe, the stock checkpoint the owner's device builds, month snapshots (`monthStats`)
+rolled at every month end as a phone in use since the first bill would have rolled them, the rate
+history (`rateStats`, backfill + roll-forward) and cash sessions from their loaders. Every Money (period,
+previous period, last year, the 13-month chart, the stored snapshots, worth), Insights (items and
+"vs last year", parties, stopped coming, stock-up weekly kg, overdue, season kg), Statements (month
+statement, day book) and Today figure is then taken from the app's modules and compared with the oracle
+on the full data of that moment. A figure the app leaves out and says so ("not loaded", "—", "no
+comparison", approximate) is counted as *shown as unknown*, never as a number; a number that differs is
+a mismatch. Fixture: `tests/fixtures/calculations/phone-path.json`, `tests/oracle/phone-path.test.js`.
+
 - Opening records (`openingBalance`, written by `tools/migrate`, dated with the old bill's date) are
   left out of every period figure and count only in dues (F9, F10, R6, R7, A5, A6, O1–O4); a payment on
   one is a normal due payment on its day. The oracle follows this; ❌ the app counts them in Today

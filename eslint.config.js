@@ -95,7 +95,7 @@ module.exports = [
     },
     {
         // Real-data number audit: ES modules run through Jest + Babel (the CLI and its Jest config stay CommonJS).
-        files: ['tools/audit/audit-lib.js', 'tools/audit/audit.run.js', 'tools/audit/causes.js'],
+        files: ['tools/audit/audit-lib.js', 'tools/audit/audit.run.js', 'tools/audit/causes.js', 'tools/audit/phone.js'],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'module',

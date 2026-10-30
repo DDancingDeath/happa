@@ -60,7 +60,9 @@
         { "n": 68, "note": "Credit bills need a party" },
         { "n": 26, "note": "Totals from items, not screen text" },
         { "n": 14 },
-        { "n": 70, "note": "Idempotent save + payment double-tap guard" }
+        { "n": 70, "note": "Idempotent save + payment double-tap guard" },
+        { "n": 163, "note": "Phones miss payments on old bills settled in the window: rules (paidAt) first, then the app" },
+        { "n": 164, "note": "Stock-up weekly kg: say so when under 8 weeks are loaded" }
       ]
     },
     {
@@ -184,7 +186,6 @@
       "why": "Big features that need stable ids and the multi-business decision first.",
       "items": [
         { "n": 146, "note": "Stable party ids", "after": [130] },
-        { "n": 164, "note": "Spread a payment over bills", "after": [146] },
         { "n": 169, "after": [149] },
         { "n": 170, "after": [149] }
       ]
@@ -225,7 +226,6 @@
         { "n": 156 },
         { "n": 157 },
         { "n": 159 },
-        { "n": 163 },
         { "n": 167, "note": "Idea parking lot" }
       ]
     }
