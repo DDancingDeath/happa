@@ -111,14 +111,15 @@ service cloud.firestore {
     }
 
     // Everyone else may only touch payment/due bookkeeping written by the app:
-    // payments (outstanding.js applyPaymentTransaction), clearing (markAsCleared,
+    // payments (outstanding.js applyPaymentTransaction / applyWriteOffTransaction,
+    // which also stamp `paidAt`, the time of the payment, #163), clearing (markAsCleared,
     // wholesale markSaleAsCleared) and the legacy backfill (openDue, clientVersion,
     // a missing numeric timestamp). `timestamp` and `id` may only be filled in,
     // never changed.
     function bookkeepingOnly(docId) {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       return changed.hasOnly([
-          'payment', 'payments', 'dueAmount', 'openDue', 'clientVersion',
+          'payment', 'payments', 'dueAmount', 'openDue', 'clientVersion', 'paidAt',
           'cleared', 'clearedAt', 'clearedBy', 'clearedByName',
           'timestamp', 'id'
         ])
@@ -169,9 +170,10 @@ service cloud.firestore {
     }
 
     // Payment bookkeeping by someone who may not fully edit the bill: amounts are
-    // numbers >= 0, the due never goes up, payment.due and dueAmount agree, and
-    // payments[] is append-only (outstanding.js applyPaymentTransaction /
-    // applyWriteOffTransaction, wholesale markSaleAsCleared).
+    // numbers >= 0, the due never goes up, payment.due and dueAmount agree,
+    // payments[] is append-only and `paidAt` is a time in ms written with a new
+    // payments[] entry (outstanding.js applyPaymentTransaction / applyWriteOffTransaction,
+    // wholesale markSaleAsCleared).
     function paymentEditOk() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
       let d = request.resource.data;
@@ -187,7 +189,8 @@ service cloud.firestore {
             || (d.dueAmount is number && d.dueAmount >= 0
                 && (before == null || d.dueAmount <= before + 0.01)
                 && (!(d.get('payment', {}) is map) || !('due' in d.get('payment', {})) || d.payment.due == d.dueAmount)))
-        && (!changed.hasAny(['payments']) || appendsOneEntry('payments'));
+        && (!changed.hasAny(['payments']) || appendsOneEntry('payments'))
+        && (!changed.hasAny(['paidAt']) || (d.paidAt is number && changed.hasAny(['payments'])));
     }
 
     function canUpdateBill(usersCol, docId) {
