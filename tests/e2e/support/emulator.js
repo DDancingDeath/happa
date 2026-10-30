@@ -1,13 +1,16 @@
 /**
  * Firebase emulator helpers for the E2E suite (REST only, no SDK).
- * Ports match firebase.json and www/firebaseConfig.js (?emulator=1).
+ * Project and ports: support/emulator-target.js (E2E_PROJECT, E2E_AUTH_PORT,
+ * E2E_FIRESTORE_PORT), the same ones playwright.config.js starts the emulators with.
  */
-const { loadConfig, derive } = require('../../../scripts/happa-config.js');
+const { e2eTarget } = require('./emulator-target');
 
-const PROJECT = derive(loadConfig()).projectId;
+const EMU = e2eTarget();
+const PROJECT = EMU.project;
 const ROOT = `projects/${PROJECT}/databases/(default)/documents`;
-const FS = `http://127.0.0.1:8181/v1/${ROOT}`;
-const AUTH = 'http://127.0.0.1:9099';
+const FS_BASE = `http://127.0.0.1:${EMU.firestorePort}`;
+const FS = `${FS_BASE}/v1/${ROOT}`;
+const AUTH = `http://127.0.0.1:${EMU.authPort}`;
 // The Firestore emulator treats "Bearer owner" as an admin token that bypasses rules.
 const H = { Authorization: 'Bearer owner', 'Content-Type': 'application/json' };
 
@@ -50,16 +53,16 @@ async function waitForEmulators(timeoutMs = 120000) {
     const t0 = Date.now();
     for (;;) {
         try {
-            const [a, f] = await Promise.all([fetch(`${AUTH}/`), fetch('http://127.0.0.1:8181/')]);
+            const [a, f] = await Promise.all([fetch(`${AUTH}/`), fetch(`${FS_BASE}/`)]);
             if (a.ok && f.ok) return;
         } catch { /* not up yet */ }
-        if (Date.now() - t0 > timeoutMs) throw new Error('Firebase emulators did not start (auth 9099, firestore 8181)');
+        if (Date.now() - t0 > timeoutMs) throw new Error(`Firebase emulators did not start (auth ${EMU.authPort}, firestore ${EMU.firestorePort})`);
         await new Promise(r => setTimeout(r, 500));
     }
 }
 
 async function resetEmulators() {
-    await fetch(`http://127.0.0.1:8181/emulator/v1/${ROOT}`, { method: 'DELETE' });
+    await fetch(`${FS_BASE}/emulator/v1/${ROOT}`, { method: 'DELETE' });
     await fetch(`${AUTH}/emulator/v1/projects/${PROJECT}/accounts`, { method: 'DELETE' });
 }
 

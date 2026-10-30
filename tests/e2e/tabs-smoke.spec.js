@@ -8,10 +8,13 @@
  * must stay inside its read budget (support/read-budget.js, read-baselines.json).
  * Pages a role may not open must redirect. Logged out: login, register, reset,
  * /download and the tenant link page /r/<token>.
+ * Each test starts from a freshly seeded emulator (support/seed.js), so its read
+ * counts do not depend on which specs ran before it in the shard.
  */
 const { test, expect, login, openApp, showTab } = require('./support/app');
 const { TENANT_TOKEN } = require('./support/emulator');
-const { RECORD, readCount, settledReads, overBudget, recordBaselines } = require('./support/read-budget');
+const { seed } = require('./support/seed');
+const { RECORD, settledReads, overBudget, recordBaselines } = require('./support/read-budget');
 
 const A = ['owner', 'manager', 'staff'];
 const OM = ['owner', 'manager'];
@@ -21,6 +24,14 @@ const M = ['staff']; // "Member"
 const NAV_TIMER_MS = 100;
 // Background reads after the app shows: AnomaliesManager.scheduleDailyScan() (8 s) and the legacy scan (>= 3 s).
 const START_UP_WORK_MS = 8500;
+// A step's reads count once the read meter has been still this long (at most STEP_READS_TIMEOUT_MS).
+const STEP_READS_QUIET_MS = 500;
+const STEP_READS_TIMEOUT_MS = 3000;
+
+// The specs that add data (bill-flow, edit-bill, rentals) may run before this one in a shard: start every test from the seed.
+test.beforeEach(async () => {
+    await seed();
+});
 
 // name, route (nav.showTab), page (.tab id that must show), act (JS run after the page opened), roles,
 // expect (selector that must be visible: the step's own section or active sub-tab), hidden (selectors that must stay hidden),
@@ -117,7 +128,7 @@ function screenFindings({ lang, roots }) {
     const els = [];
     for (const sel of roots) document.querySelectorAll(sel).forEach(el => { if (vis(el) && !els.some(e => e.contains(el))) els.push(el); });
     // Test data, product names and code identifiers (App health policy keys) are the same in both languages.
-    const DATA = /\b[\w-]+\.apk\b|\b[\w-]+\.(web\.app|local)\b(\/[\w./-]*)?|happa|Tenant E2E|E2E (Shop|Bhawan)|\bE2E\b|\b(phone|desktop)\b|PEDIT-\w+|\b(Before|After) Edit\b|Gali \d+|Ram \d+|\bG\d+\b|Manager One|Staff One|Pending Person|\bOwner\b|Rice|Wheat|Mustard|चावल|गेहूं|सरसों|[\w.+-]+@[\w.-]+|https?:\/\/\S+|\b[\w-]+\.(web\.app|local)\b|\bkg\b|\bKG\b|WhatsApp|\bUPI\b|\bPDF\b|\bCSV\b|Excel|\bOK\b|\bID\b|\bGST\b|Bluetooth|Android|\bAPK\b|Google|GPay|Chrome|Edge|Safari|iPhone|iPad|Firebase|\bJSON\b|DEVELOPMENT|\b[a-z]+[A-Z]\w*\b|"[a-z]+(-[a-z]+)+"|"\w+":\s*(true|false)\b/g;
+    const DATA = /\b[\w-]+\.apk\b|\b[\w-]+\.(web\.app|local)\b(\/[\w./-]*)?|happa|Tenant E2E|E2E (Shop|Bhawan)|\bE2E\b|\b(phone|desktop)\b|PEDIT-\w+|\b(Before|After) Edit\b|Gali \d+|Ram \d+|\bG\d+\b|Manager One|Staff One|Pending Person|\bOwner\b|Rice|Wheat|Mustard|चावल|गेहूं|सरसों|[\w.+-]+@[\w.-]+|https?:\/\/\S+|\bkg\b|\bKG\b|WhatsApp|\bUPI\b|\bPDF\b|\bCSV\b|Excel|\bOK\b|\bID\b|\bGST\b|Bluetooth|Android|\bAPK\b|Google|GPay|Chrome|Edge|Safari|iPhone|iPad|Firebase|\bJSON\b|DEVELOPMENT|\b[a-z]+[A-Z]\w*\b|"[a-z]+(-[a-z]+)+"|"\w+":\s*(true|false)\b/g;
     const dev = /[\u0900-\u097F]/;
     const latin = /[A-Za-z]{3,}/;
     const out = { bad: [], mixed: [], wrongLang: [], english: [] };
@@ -231,7 +242,8 @@ for (const role of A) {
                         await page.waitForTimeout(250);
                     }
                     // Reads since the previous step belong to this step's page (first open: each test is a fresh session).
-                    const now = await readCount(page);
+                    // Wait for the page's reads to stop first, so a slow page's late reads do not land on the next page.
+                    const now = await settledReads(page, { quiet: STEP_READS_QUIET_MS, timeout: STEP_READS_TIMEOUT_MS });
                     const b = bucketOf(s);
                     reads[b] = (reads[b] || 0) + (now - mark);
                     mark = now;

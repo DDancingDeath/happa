@@ -15,6 +15,7 @@ import { billsOf, expectedCounters } from './expected.js';
 import { billsToYearDocs, MIGRATION_META_BY } from '../../www/js/utils/rate-trends.js';
 import { MIGRATION_DAILY_WRITES, OLD_PROJECT_ID } from '../../tools/migrate/lib/plan.js';
 import { parseHashParams } from '../../tools/migrate/lib/auth-import.js';
+import { checkEmulatorTarget } from '../../tools/migrate/lib/emulator.js';
 
 process.env.TZ = 'Asia/Kolkata';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -27,6 +28,8 @@ const { verifyFirebaseScrypt } = require('./firebase-scrypt.js');
 
 const DIR = process.env.MIGRATION_E2E_DIR;
 const ctx = JSON.parse(fs.readFileSync(path.join(DIR, 'context.json'), 'utf8'));
+// Abort before firebase-admin starts unless it can only reach local emulators and a demo-* project.
+checkEmulatorTarget({ emulator: true, auth: true, project: ctx.project, keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS });
 const backup = JSON.parse(fs.readFileSync(ctx.files.backup, 'utf8'));
 const bundle = JSON.parse(fs.readFileSync(path.join(ctx.planDir, 'bundle.json'), 'utf8'));
 const cutoff = Date.parse(backup.exportedAt);
@@ -130,7 +133,10 @@ test('opening dues equal the OLD Outstanding pages (totals, parties, age groups,
             { total: 0, items: [], openDue: true, cleared: false, cash: 0, online: 0, paid: 0 }, `${d.id}: a balance only, no sale`);
         assert.equal(o.fromProject, OLD_PROJECT_ID);
         assert.equal(o.asOf, cutoff);
-        assert.ok(o.billTotal >= 0 && Math.abs(o.billTotal - o.paidBefore - o.amount) < 0.01 || o.paidBefore === 0, `${d.id}: bill total = paid before + carried`);
+        assert.ok(Number.isFinite(o.billTotal) && o.billTotal >= 0, `${d.id}: bill total is a number ≥ 0`);
+        assert.ok(Number.isFinite(o.paidBefore) && o.paidBefore >= 0, `${d.id}: paid before is a number ≥ 0`);
+        if (o.paidBefore > 0) assert.ok(Math.abs(o.billTotal - o.paidBefore - o.amount) < 0.01, `${d.id}: bill total = paid before + carried`);
+        else assert.ok(o.billTotal <= o.amount + 0.01, `${d.id}: nothing paid before, so the carried due covers the bill total`);
         if (o.billType === 'wholesale') assert.equal(d.source, 'sales-tab', `${d.id}: on Wholesale › Outstanding`);
     });
     if (SYNTHETIC) {

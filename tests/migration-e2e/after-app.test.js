@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
+import { checkEmulatorTarget } from '../../tools/migrate/lib/emulator.js';
 
 process.env.TZ = 'Asia/Kolkata';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -20,6 +21,8 @@ const { getFirestore } = adminRequire('firebase-admin/firestore');
 
 const DIR = process.env.MIGRATION_E2E_DIR;
 const ctx = JSON.parse(fs.readFileSync(path.join(DIR, 'context.json'), 'utf8'));
+// Abort before firebase-admin starts unless it can only reach local emulators and a demo-* project.
+checkEmulatorTarget({ emulator: true, auth: true, project: ctx.project, keyFile: process.env.GOOGLE_APPLICATION_CREDENTIALS });
 const bundle = JSON.parse(fs.readFileSync(path.join(ctx.planDir, 'bundle.json'), 'utf8'));
 process.env.METADATA_SERVER_DETECTION = 'none';
 const app = initializeApp({ projectId: ctx.project }, 'migration-e2e-after');

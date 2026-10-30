@@ -14,7 +14,8 @@
  *        (--key service-account.json | --emulator) [--yes]
  *
  * `plan` and `convert` are offline. `apply`, `wipe` and `auth:import` are dry runs unless --yes is given.
- * `--emulator` uses the local Firebase emulators (FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST).
+ * `--emulator` uses the local Firebase emulators (FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST)
+ * and needs a demo-* --project (a real project id is refused).
  */
 import fs from 'fs';
 import path from 'path';
@@ -75,7 +76,7 @@ async function apply() {
     const dev = flag('--dev');
 
     const keyFile = arg('--key') || process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    const emulator = checkEmulatorTarget({ emulator: flag('--emulator'), keyFile });
+    const emulator = checkEmulatorTarget({ emulator: flag('--emulator'), project, keyFile });
     let key = null;
     if (keyFile) key = JSON.parse(fs.readFileSync(keyFile, 'utf8'));
     checkTarget({ project, keyProject: key?.project_id });
@@ -124,7 +125,7 @@ async function wipe() {
     const { wipeProject } = await import('./lib/wipe.js');
     const project = arg('--project');
     const keyFile = arg('--key') || process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    const emulator = checkEmulatorTarget({ emulator: flag('--emulator'), keyFile, auth: true });
+    const emulator = checkEmulatorTarget({ emulator: flag('--emulator'), project, keyFile, auth: true });
     if (!keyFile && !emulator) throw new Error('--key <service-account.json> for the project is required');
     const key = keyFile ? JSON.parse(fs.readFileSync(keyFile, 'utf8')) : null;
     const { checkTarget } = await import('./lib/apply.js');
@@ -147,7 +148,7 @@ async function authImport() {
     const paramsFile = arg('--hash-params');
     if (!usersFile || !paramsFile) throw new Error('--users <auth export .json> and --hash-params <file> are required');
     const keyFile = arg('--key') || process.env.GOOGLE_APPLICATION_CREDENTIALS;
-    const emulator = checkEmulatorTarget({ emulator: flag('--emulator'), keyFile, auth: true });
+    const emulator = checkEmulatorTarget({ emulator: flag('--emulator'), project, keyFile, auth: true });
     const key = keyFile ? JSON.parse(fs.readFileSync(keyFile, 'utf8')) : null;
     const { checkTarget } = await import('./lib/apply.js');
     checkTarget({ project, keyProject: key?.project_id });
