@@ -463,6 +463,17 @@ describe('recording a due payment (Outstanding)', () => {
         expect(doc.payment.due).toBe(0);
         expect(doc.dueAmount).toBe(0);
         expect(doc.openDue).toBe(false);
+        // Phones keep loading the settled bill while its payment is in their history window (#163).
+        expect(doc.paidAt).toBe(doc.payments[0].at);
+    });
+
+    test('a write-off stamps paidAt with the write-off time (#163)', async () => {
+        fake.seed('retailSales', [RETAIL]);
+        const written = await OutstandingManager.applyWriteOffTransaction('retail', { id: 'r1' }, 'gone away');
+        const doc = fake.raw('retailSales').get('r1');
+        expect(doc.payments).toEqual([expect.objectContaining({ kind: 'writeOff', amount: 495 })]);
+        expect(doc.paidAt).toBe(doc.payments[0].at);
+        expect(written.paidAt).toBe(doc.paidAt);
     });
 
     test('rejects more than the local due without writing', async () => {

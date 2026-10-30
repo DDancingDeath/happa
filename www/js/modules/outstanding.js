@@ -712,6 +712,8 @@ export class OutstandingManager {
             if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) {
                 update.dueAmount = newDue;
             }
+            // Phones keep loading an older bill paid inside their history window (#163).
+            update.paidAt = at;
             // "Mark as cleared" with cash/online: the payment settles the whole due
             if (clear && newDue === 0) Object.assign(update, this.clearedFields());
             update.openDue = FirebaseService.billHasOpenDue(COLLECTION_BY_TYPE[transactionType] || 'wholesaleSales', { ...fresh, ...update });
@@ -893,16 +895,19 @@ export class OutstandingManager {
             };
             if (amount > 0) {
                 const by = this.clearedFields();
+                const at = Date.now();
                 update.payments = [...(Array.isArray(fresh.payments) ? fresh.payments : []), {
                     id: Helpers.generateId(),
                     kind: 'writeOff',
                     amount,
                     reason,
                     date: by.clearedAt,
-                    at: Date.now(),
+                    at,
                     recordedBy: by.clearedByName,
                     recordedById: by.clearedBy
                 }];
+                // A write-off is a bad debt of this period: phones keep loading the bill (#163).
+                update.paidAt = at;
             }
             if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) update.dueAmount = 0;
             update.openDue = false;
