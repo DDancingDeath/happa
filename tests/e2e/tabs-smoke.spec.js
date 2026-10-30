@@ -136,7 +136,7 @@ function screenFindings({ lang, roots }) {
         while ((n = walker.nextNode())) {
             const p = n.parentElement;
             if (!p || p.closest('script,style,noscript,[data-lang-option],.auth-lang-links,#navLangToggle,.dev-banner') || !vis(p)) continue;
-            // Text marked as the other language on purpose (a language switch button).
+            // Text marked as the other language on purpose (a language switch button) or as no language (lang="zxx": a device id).
             const marked = p.closest('[lang]:not(html)');
             if (marked && marked.lang && marked.lang !== lang) continue;
             look(n.textContent, '');
