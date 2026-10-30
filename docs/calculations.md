@@ -351,7 +351,7 @@ the stored snapshots, M15 net worth with its drawer term C9 and accounts, M17 op
 item, parties, stopped coming, stock-up weekly kg, overdue, season kg), Statements (month statement, day
 book with each due payment once) and Today figure is then taken from the app's modules and compared with
 the oracle on the full data of that moment. Today's expected figures use the backup's session for that
-day; that the app loaded it (and its legs) is checked on its own, as are the sessions Money and the day
+day; that the app loaded every session of the day (and the drawer's legs) is checked on its own, as are the sessions Money and the day
 book load for a period. A figure the app leaves out and says so ("not loaded", "—", "Nothing to compare
 with yet", approximate) is counted as *shown as unknown*, never as a number; one it leaves out without
 saying so on screen is a mismatch (`*_hidden`), as is a number that differs. Fixture: the hand-made
