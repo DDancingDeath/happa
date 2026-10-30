@@ -265,7 +265,8 @@ describe('round-2 review fixes', () => {
         const weekly = InsightsManager.weeklySoldKg(new Date(NOW));
         const want = itemSummary(moneySummary(InsightsManager.input(from), { from, to: NOW + 1 }, { detail: true }));
         expect(want.some(r => r.qty > 0)).toBe(true);
-        want.forEach(r => expect(weekly.get(r.itemKey)).toBeCloseTo(r.qty / 4, 6));
+        expect(weekly.weeks).toBeCloseTo(4, 6);
+        want.forEach(r => expect(weekly.byItem.get(r.itemKey)).toBeCloseTo(r.qty / 4, 6));
 
         AppState.historyLoadedFrom = NOW - 10 * 86400000;
         expect(InsightsManager.weeklySoldKg(new Date(NOW))).toBeNull();
@@ -273,6 +274,27 @@ describe('round-2 review fixes', () => {
         document.getElementById('insightsActionsStock').innerHTML = '<p>old</p>';
         InsightsManager.renderStockUp();
         expect(document.getElementById('insightsActionsStock').innerHTML).toBe('');
+    });
+
+    test('a stock-up card says when the weekly sale comes from fewer than 8 loaded weeks (#164)', () => {
+        const id = FIX.items[0].id;
+        // Busy next month (index 4 there, 0.5 elsewhere), almost no stock: a card.
+        const busy = new Date(new Date(NOW).getFullYear(), new Date(NOW).getMonth() + 1, 1).getMonth();
+        const months = {};
+        for (let m = 0; m < 12; m++) months[`m2025-${String(m + 1).padStart(2, '0')}`] = { retail: { kg: m === busy ? 800 : 100 }, wholesale: { kg: 0 } };
+        InsightsManager.seasonDocs = [{ itemId: id, months }];
+        AppState.stock = { [id]: { quantity: 1, rate: 30 } };
+        const card = () => document.getElementById('insightsActionsStock').textContent;
+
+        AppState.historyLoadedFrom = NOW - 30 * 86400000;
+        InsightsManager.renderStockUp();
+        expect(card()).toMatch(/Stock up/);
+        expect(card()).toMatch(/last 4 weeks of bills loaded/);
+
+        AppState.historyLoadedFrom = 0;
+        InsightsManager.renderStockUp();
+        expect(card()).toMatch(/Stock up/);
+        expect(card()).not.toMatch(/weeks of bills loaded/);
     });
 
     test('"What you bought" shows what was paid only with the purchase rates permission', () => {

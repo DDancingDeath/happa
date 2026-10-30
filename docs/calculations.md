@@ -301,7 +301,7 @@ and close on the figure of the home page:
 | I6 | Biggest change | The item (or category) with the largest absolute change between two periods; used in takeaway sentences only. |
 | I7 | Low-profit items | Items with sales ≥ ₹5,000 in the period and profit per ₹100 under 3 (`lowMarginMinSales`, `lowMarginPer100`), or a loss. |
 | I8 | Sold below cost | Sale lines (bill × item) whose value is below their cost of goods sold, per item: times, kg, ₹ lost. |
-| I9 | Stock up before the season | Items whose busy month (I5) is within the next 8 weeks while the stock covers fewer weeks than it takes to get there + 4. Weekly kg = kg sold in the last 8 weeks ÷ the weeks of bills actually loaded (at most 8); no card under 2 loaded weeks. |
+| I9 | Stock up before the season | Items whose busy month (I5) is within the next 8 weeks while the stock covers fewer weeks than it takes to get there + 4. Weekly kg = kg sold in the last 8 weeks ÷ the weeks of bills actually loaded (at most 8); no card under 2 loaded weeks. With fewer than 8 weeks loaded (a phone's window starts on the 1st of the previous month) the card says it is an estimate "from the last N weeks of bills loaded" (#164). |
 | I10 | Overdue parties | Parties with an open BILL-DUE older than 30 days (`overdueDays`): count, total, oldest; customers and suppliers separately. |
 | I11 | Purchases by item | Per catalogue item: line value, labour share (labour × line value ÷ the bill's line value), amount after labour, kg. Rows add up to M16 (#47). |
 ## Checking real data

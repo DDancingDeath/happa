@@ -2028,6 +2028,7 @@ export default {
     'ui.insights.act_low_profit': "{item} earns only ₹{value} per ₹100 sold (sales {sales}).",
     'ui.insights.act_loss_item': "{item} is sold at a loss: ₹{value} per ₹100 (sales {sales}).",
     'ui.insights.act_stock_up': "Stock up {item}: {month} is busy in {weeks} weeks, stock lasts about {cover} weeks.",
+    'ui.insights.act_stock_up_basis': "(Weekly sales estimated from the last {weeks} weeks of bills loaded.)",
     'ui.insights.act_dead_stock': "{n} items have not sold for 30 days.",
     'ui.insights.act_anomalies': "Check open anomalies.",
     'ui.insights.nothing_urgent': "Nothing urgent this week.",

@@ -22,8 +22,7 @@ const ROOT = path.resolve(__dirname, '../..');
 
 /** Mismatch classes the app has today: spec pattern → issue. */
 const BUGS = {
-    paidInsideWindow: '#163',
-    weeklyKgApprox: '#164'
+    paidInsideWindow: '#163'
 };
 const bugTest = (k) => (BUGS[k] && !process.env.ORACLE_RUN_SKIPPED ? test.skip : test);
 
