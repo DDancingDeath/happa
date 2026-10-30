@@ -337,15 +337,18 @@ issues to work on, in order, with progress per phase. It is generated from
 - When you add an issue, place it in `tools/plan/order.json`; the plan issue
   regenerates automatically. Unplaced open issues show up in 🆕.
 - It skips (and succeeds) when the repo has no plan issue; `--create` opens one.
+  It never writes to the issues in `retiredPlanIssues` (the old repo's plan issue,
+  moved here as #158), and reads refs in moved issues through `imported.map`.
 - Preview locally: `GH_TOKEN=... node tools/plan/generate.js --dry-run`
   (`--write-docs` also writes `docs/PLAN.md`).
 
 ## Bugs, features and the plan
 
-[GitHub issues](https://github.com/DDancingDeath/AadhatManagementApp/issues)
-(still in the old repo for now) are the only bug/feature list (labels `P0`–`P3`, `type:*`, `area:*`,
-`owner-decision`; sprint milestones). The pinned plan issue
-([#171](https://github.com/DDancingDeath/AadhatManagementApp/issues/171))
+[GitHub issues](https://github.com/DDancingDeath/happa/issues)
+are the only bug/feature list (labels `P0`–`P3`, `type:*`, `area:*`,
+`owner-decision`; sprint milestones). The old repo's open issues were moved here
+on 30 Oct 2026 (old links redirect). The pinned plan issue
+**"[Plan] Roadmap: pick order (auto-updated)"**
 shows the pick order — see "Planning" below. The old staging clone and its
 `docs/REVIEW_ISSUES.md` are archived and no longer maintained.
 
