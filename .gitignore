@@ -135,3 +135,6 @@ backup*.json
 
 # backup verify test scratch folders
 tests/backup/.artifact-test-*/
+
+# tests/ci scratch dirs
+tests/ci/.work-*/

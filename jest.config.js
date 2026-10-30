@@ -17,7 +17,9 @@ module.exports = {
         '**/tests/oracle/**/*.test.js',
         '**/tests/property/**/*.test.js',
         // Firestore backup tooling (tools/backup)
-        '**/tests/backup/**/*.test.js'
+        '**/tests/backup/**/*.test.js',
+        // CI helper scripts (tools/ci)
+        '**/tests/ci/**/*.test.js'
     ],
     
     // Stryker's sandbox copies of the repo (#216)

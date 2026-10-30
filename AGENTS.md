@@ -389,7 +389,10 @@ permission list, defaults and which parts the rules enforce are in
    service account to have "Firebase Rules Admin" and "Cloud Datastore Index
    Admin"; if those are missing the job fails and names them. Manual fallback:
    `firebase deploy --only firestore:rules,firestore:indexes`. CI never
-   deletes indexes that exist only in the console (no `--force`).
+   deletes indexes that exist only in the console (no `--force`). The deploy
+   runs through `tools/ci/deploy-with-retry.js`, which retries transient
+   Google API errors (503/500/429, ECONNRESET, deadline) up to 4 attempts
+   (30s/60s/120s backoff) and fails at once on compile or permission errors.
 
 To run the whole app against local emulators:
 `npx firebase-tools emulators:start --only auth,firestore`, serve `www/`
