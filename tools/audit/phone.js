@@ -887,8 +887,10 @@ async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pas
     const daySessions = sessionOn(day);
     const session = daySessions[0] || null;
     const loaded = CashManagementManager.todaySession || null;
-    // loadTodaySession (loadCashSessionsForDate): the day's session, with its legs. With two sessions on the day
-    // the app keeps one (the open one); it must be one of the day's.
+    // loadTodaySession (loadCashSessionsForDate): every session of the day, whose legs Today counts; the drawer is
+    // one of them (the Cash page's pick, sessionForDate).
+    const all = DayManager.daySessions?.date === day ? DayManager.daySessions.list : [];
+    cmp('T_sessionsAll', 'Today (phone)', P('today'), daySessions.length, all.filter(s => daySessions.some(d => String(d.id) === String(s.id))).length, null, at + 1, 'count');
     const loadedOk = loaded ? (daySessions.length === 1 ? String(loaded.id) === String(session.id) : daySessions.some(s => String(s.id) === String(loaded.id))) : false;
     cmp('T_sessionLoaded', 'Today (phone)', P('today'), daySessions.length ? 1 : 0, loaded ? (loadedOk ? 1 : -1) : 0, null, at + 1, 'count');
     if (loaded && loadedOk) {

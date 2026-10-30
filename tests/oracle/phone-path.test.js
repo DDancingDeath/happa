@@ -45,12 +45,7 @@ const MULTI_SESSION_DAYS = (() => {
  * Mismatch classes the app has today: name → [row predicate, fix PR]. Their rows are left
  * out of "every other figure" and asserted in their own `test.failing` test.
  */
-const BUGS = {
-    // Today keeps one cash session per day (day.js:loadTodaySession); on a day with two sessions, a leg in the other
-    // session on a bill the phone hasn't loaded is missing from T6–T14 (the day book has it).
-    todayOneSession: [(m) => /^T([6-9]|1[0-4])_/.test(m.spec) && m.page === 'Today (phone)' && MULTI_SESSION_DAYS.has(String(m.period).slice(0, 10)),
-        'PR #176 (fix/today-all-sessions: day.js, Today counts the legs of every session of the day)']
-};
+const BUGS = {};
 /** A known bug's test fails today; `test.failing` turns red once the fix makes it pass. */
 const bugTest = (k) => (BUGS[k] ? test.failing : test);
 const isBug = (m) => Object.values(BUGS).some(([is]) => is(m));
@@ -168,8 +163,11 @@ describe('cash sessions, due-payment legs and Today', () => {
         expect(C.mismatches.filter(m => /^T(8|9|11|14)_/.test(m.spec)).map(m => `${m.spec} @ ${m.period}`)).toEqual([]);
     });
 
-    bugTest('todayOneSession')('Today counts the legs of every session of the day (T6–T14)', () => {
-        expect(rowsOf('todayOneSession')).toEqual([]);
+    // Fixed by PR #176 (day.js: Today counts the legs of every session of the day).
+    test('Today counts the legs of every session of the day (T6–T14)', () => {
+        expect([...MULTI_SESSION_DAYS]).toEqual(['2026-10-15']);
+        expect(compared('T_sessionsAll', 'Today (phone)')).toBe(6);
+        expect(of(/^T([6-9]|1[0-4])_/).filter(r => r.includes(' @ Today (phone) '))).toEqual([]);
     });
 });
 

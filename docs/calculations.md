@@ -26,7 +26,7 @@ test in the same PR (see AGENTS.md → PR checklist).
 | BILL-PAY | Cash / online / due on a bill | Taken from `payment.cash/online/due` when present (it is kept up to date when a due is paid later); otherwise from `cashPayment` / `onlinePayment` / `dueAmount`. Very old bills only have `amountPaid` (cash): their due is total − paid. |
 | BILL-AT-SAVE | Paid when the bill was saved | Cash / online on the bill minus every later due payment in `payments[]`. Later payments count on the day they were made, not on the bill's day. |
 | BILL-DUE | Still owed on a bill | BILL-PAY due, never below 0, and 0 when the bill is cleared or written off. |
-| DUE-PAY | Due payment | One entry in a bill's `payments[]` (cash and/or online; entries before #107 have only `amount`, which is cash), or the same payment as a leg in the cash session's `duePayments`. The same payment id is counted once. A write-off (`kind: 'writeOff'`) is never money. |
+| DUE-PAY | Due payment | One entry in a bill's `payments[]` (cash and/or online; entries before #107 have only `amount`, which is cash), or the same payment as a leg in a cash session's `duePayments` (every session of that day: legacy days can have more than one). The same payment id is counted once. A write-off (`kind: 'writeOff'`) is never money. |
 | EXP-KIND | Business or personal expense | Personal only when the expense is tagged personal. Anything else — including old expenses with no tag — is business and should be shown as "uncategorised" (owner decision #36). |
 | DAY | A day | Local (IST) calendar day, midnight to midnight, using the bill's own date (❓ open: #99 asks whether "Today" should follow the open cash session instead). Dates may be ISO, `DD/MM/YYYY` or `DD/MM/YYYY, h:mm:ss am`; all mean local time. |
 | PERIOD | This week / month / year | Calendar period up to now: week from Monday, month from the 1st, year from 1 January (owner decision #43, 2026-10-26: calendar month; `insights-config.js` `monthMode` / `yearStartMonth` can switch to the last 30 days or an April year). "Last 7 / 30 days" would be labelled so. |
@@ -49,7 +49,7 @@ as its own line, M7. `insights-config.js` `labourInCost` keeps the choice in one
 
 ## Today (`templates/day.html`, `modules/day.js`)
 
-All for DAY = today.
+All for DAY = today. Due payments (T6–T9, T13, T14) come from the loaded bills and the legs of every cash session of the day, read with one query (a legacy day can have two; the drawer is still the one the Cash page picks), each payment id once, as the day book (ST1).
 
 | ID | On screen | Definition |
 |---|---|---|
@@ -351,7 +351,7 @@ the stored snapshots, M15 net worth with its drawer term C9 and accounts, M17 op
 item, parties, stopped coming, stock-up weekly kg, overdue, season kg), Statements (month statement, day
 book with each due payment once) and Today figure is then taken from the app's modules and compared with
 the oracle on the full data of that moment. Today's expected figures use the backup's session for that
-day; that the app loaded it (and its legs) is checked on its own, as are the sessions Money and the day
+day; that the app loaded every session of the day (and the drawer's legs) is checked on its own, as are the sessions Money and the day
 book load for a period. A figure the app leaves out and says so ("not loaded", "—", "Nothing to compare
 with yet", approximate) is counted as *shown as unknown*, never as a number; one it leaves out without
 saying so on screen is a mismatch (`*_hidden`), as is a number that differs. Fixture: the hand-made
