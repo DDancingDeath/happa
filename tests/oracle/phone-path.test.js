@@ -51,7 +51,7 @@ const BUGS = {
     // Today keeps one cash session per day (day.js:loadTodaySession); on a day with two sessions, a leg in the other
     // session on a bill the phone hasn't loaded is missing from T6–T14 (the day book has it).
     todayOneSession: [(m) => /^T([6-9]|1[0-4])_/.test(m.spec) && m.page === 'Today (phone)' && MULTI_SESSION_DAYS.has(String(m.period).slice(0, 10)),
-        'fix PR from branch fix/today-all-sessions (day.js: Today counts the legs of every session of the day)']
+        'PR #176 (fix/today-all-sessions: day.js, Today counts the legs of every session of the day)']
 };
 /** A known bug's test fails today; `test.failing` turns red once the fix makes it pass. */
 const bugTest = (k) => (BUGS[k] ? test.failing : test);
