@@ -10,6 +10,7 @@ import { parseAnyBillDate, todayLocalISO, displayLocale } from '../utils/dates.j
 import { dueEvents, sumDueEvents, saleTimePayment } from '../utils/due-payments.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
+import { sessionForDate } from '../utils/cash-session.js';
 import { AnomaliesManager } from './anomalies.js';
 import { HealthManager } from './health.js';
 import { t, tn } from '../i18n/index.js';
@@ -30,20 +31,44 @@ export const DayManager = {
         this.loadTodaySession();
     },
 
+    /** Every cash session of `date` (usually one; legacy days can have more), from one query. */
+    daySessions: { date: null, list: [] },
+    daySessionsLoading: null,
+
     /**
-     * Today's cash session carries drawer legs of due payments whose bills may
-     * not be in memory (#95). Load it once if the Cash tab hasn't, then redraw.
+     * Today's cash sessions carry drawer legs of due payments whose bills may
+     * not be in memory (#95). Read all of the day's sessions (one query, as
+     * before: again only while there is no drawer session for today) and
+     * redraw; the drawer session, if the Cash tab hasn't picked one, is the
+     * one the Cash page would pick.
      */
     loadTodaySession() {
         const today = todayLocalISO();
-        if (CashManagementManager.todaySession?.date === today) return;
+        if (this.daySessionsLoading === today) return;
+        if (this.daySessions.date === today && CashManagementManager.todaySession?.date === today) return;
+        this.daySessionsLoading = today;
         FirebaseService.loadCashSessionsForDate(today)
             .then(sessions => {
-                if (CashManagementManager.todaySession?.date === today || sessions.length === 0) return;
-                CashManagementManager.todaySession = sessions.find(s => !s.signedOut) || sessions[0];
-                this.loadTodayData();
+                this.daySessions = { date: today, list: sessions || [] };
+                const pick = sessionForDate(sessions, today);
+                if (pick && CashManagementManager.todaySession?.date !== today) CashManagementManager.todaySession = pick;
+                if (this.daySessions.list.length > 0) this.loadTodayData();
             })
-            .catch(e => console.warn('Could not load today\'s cash session:', e?.message || e));
+            .catch(e => console.warn('Could not load today\'s cash sessions:', e?.message || e))
+            .finally(() => { if (this.daySessionsLoading === today) this.daySessionsLoading = null; });
+    },
+
+    /**
+     * Sessions whose due legs count on `date` (T6–T14): every session of the
+     * day, as the day book, plus the live one the Cash tab holds (it may have
+     * legs this phone just added). dueEvents counts each payment id once.
+     * @param {string} date YYYY-MM-DD
+     * @returns {Object[]}
+     */
+    sessionsOn(date) {
+        const live = CashManagementManager.todaySession;
+        const day = this.daySessions.date === date ? this.daySessions.list : [];
+        return live && live.date === date ? [live, ...day] : day;
     },
 
     /**
@@ -194,12 +219,12 @@ export const DayManager = {
         });
 
         // Due payments made today (#95): entries on any loaded bill plus the
-        // drawer legs in today's cash session, counted once (cash + online).
+        // drawer legs in every one of today's cash sessions, counted once (cash + online).
         const todayIso = todayLocalISO();
         const session = CashManagementManager.todaySession;
         const dues = sumDueEvents(dueEvents({
             bills: { retail: AppState.retailSalesHistory || [], wholesale: AppState.salesHistory || [], purchase: AppState.purchaseHistory || [] },
-            sessions: session && session.date === todayIso ? [session] : [],
+            sessions: this.sessionsOn(todayIso),
             from: today.getTime(),
             to: tomorrow.getTime()
         }));

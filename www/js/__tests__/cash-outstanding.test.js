@@ -522,6 +522,110 @@ describe('#95 Today shows dues and the hero equals the breakdown (fixture tests/
     });
 });
 
+describe('Today counts every cash session of the day (T6–T14; two sessions on one day)', () => {
+    const FIX = JSON.parse(fs.readFileSync(path.join(__dirname, '../../../tests/fixtures/today-dues.json'), 'utf8'));
+    const DAY_TEMPLATE = fs.readFileSync(path.join(__dirname, '../../templates/day.html'), 'utf8');
+    const amount = (id) => Number(document.getElementById(id).textContent.replace(/[^0-9.-]/g, ''));
+    // A legacy session of the same day (random id, closed at noon) with a ₹3,000 cash leg on a bill this
+    // phone has not loaded, the online ₹500 leg of a paid-out old purchase, and e2 again (once: same id).
+    const LEGACY = {
+        id: 'sess-legacy', date: '2026-10-21', openingBalance: 2500, signInTime: '2026-10-21T02:30:00.000Z',
+        signedOut: true, counted: true, closingBalance: 5600,
+        duePayments: [
+            { id: 'e7', billId: 'r-gone', type: 'received', amount: 3000, cash: 3000, online: 0, method: 'cash', timestamp: '2026-10-21T05:00:00.000Z' },
+            { id: 'e8', billId: 'p-gone', type: 'paid', amount: 500, cash: 0, online: 500, method: 'online', timestamp: '2026-10-21T05:30:00.000Z' },
+            FIX.session.duePayments[0]
+        ]
+    };
+    const DRAWER = { ...FIX.session, id: 'cash_2026-10-21', signInTime: '2026-10-21T07:30:00.000Z' };
+    let fake;
+    const flush = async () => { for (let i = 0; i < 20; i++) await Promise.resolve(); };
+
+    beforeEach(() => {
+        jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+        jest.setSystemTime(new Date(2026, 9, 21, 18, 0, 0));
+        document.body.innerHTML = DAY_TEMPLATE;
+        const copy = JSON.parse(JSON.stringify(FIX));
+        AppState.retailSalesHistory = copy.retailSales;
+        AppState.salesHistory = copy.wholesaleSales;
+        AppState.purchaseHistory = copy.purchases;
+        AppState.expensesHistory = copy.expenses;
+        fake = createFakeFirestore();
+        jest.spyOn(FirebaseService, 'db', 'get').mockReturnValue(fake.db);
+        window.getCollection = (n) => n;
+        fake.seed('cashManagement', [JSON.parse(JSON.stringify(DRAWER)), JSON.parse(JSON.stringify(LEGACY))]);
+        DayManager.daySessions = { date: null, list: [] };
+        DayManager.daySessionsLoading = null;
+    });
+    afterEach(() => {
+        jest.useRealTimers();
+        delete window.getCollection;
+        DayManager.daySessions = { date: null, list: [] };
+        ['salesHistory', 'retailSalesHistory', 'purchaseHistory', 'expensesHistory'].forEach(k => { AppState[k] = []; });
+    });
+
+    const expectBothSessions = () => {
+        const e = FIX.expected.today;
+        expect(amount('todayCashReceived')).toBe(e.cashIn + 3000);
+        expect(amount('todayOnlineReceived')).toBe(e.onlineIn);
+        expect(amount('todayOnlinePaid')).toBe(e.onlineOut + 500);
+        expect(amount('todayTotalIn')).toBe(e.totalIn + 3000);
+        expect(amount('todayTotalOut')).toBe(e.totalOut + 500);
+        expect(amount('todayDueReceived')).toBe(e.dueReceived + 3000);
+        expect(amount('todayDuePaid')).toBe(e.duePaid + 500);
+        expect(amount('todayNetCashFlow')).toBe(e.net + 2500);
+    };
+
+    test('legs on an unloaded bill in the day\'s other session count once, from one query', async () => {
+        CashManagementManager.todaySession = null;
+        DayManager.init();
+        await flush();
+        expectBothSessions();
+        const cashQueries = () => fake.stats.queryLog.filter(q => q.coll === 'cashManagement');
+        expect(cashQueries()).toHaveLength(1);
+        expect(cashQueries()[0].filters).toEqual([{ field: 'date', op: '==', value: '2026-10-21' }]);
+        // The drawer is the session the Cash page picks for the day (the per-day id).
+        expect(CashManagementManager.todaySession.id).toBe(sessionForDate([LEGACY, DRAWER], '2026-10-21').id);
+        expect(CashManagementManager.todaySession.id).toBe('cash_2026-10-21');
+
+        DayManager.init(); // opening Today again reads no session
+        await flush();
+        expect(cashQueries()).toHaveLength(1);
+        expectBothSessions();
+    });
+
+    test('with the drawer already loaded by the Cash tab, the other session is still read and counted', async () => {
+        CashManagementManager.todaySession = JSON.parse(JSON.stringify(DRAWER));
+        DayManager.loadTodayData();
+        expect(amount('todayDueReceived')).toBe(FIX.expected.today.dueReceived);
+        DayManager.loadTodaySession();
+        await flush();
+        expectBothSessions();
+        expect(fake.stats.queryLog.filter(q => q.coll === 'cashManagement')).toHaveLength(1);
+        expect(CashManagementManager.todaySession.id).toBe('cash_2026-10-21');
+    });
+
+    test('a leg this phone just added to the live drawer counts before any re-read', async () => {
+        CashManagementManager.todaySession = null;
+        DayManager.init();
+        await flush();
+        CashManagementManager.todaySession.duePayments.push({ id: 'e10', type: 'received', amount: 40, cash: 40, online: 0, method: 'cash', timestamp: '2026-10-21T12:00:00.000Z' });
+        DayManager.loadTodayData();
+        expect(amount('todayDueReceived')).toBe(FIX.expected.today.dueReceived + 3000 + 40);
+    });
+
+    test('yesterday\'s sessions do not count today', async () => {
+        fake.raw('cashManagement').clear();
+        fake.seed('cashManagement', [{ ...JSON.parse(JSON.stringify(LEGACY)), date: '2026-10-20' }]);
+        CashManagementManager.todaySession = null;
+        DayManager.init();
+        await flush();
+        expect(CashManagementManager.todaySession).toBeNull();
+        expect(DayManager.sessionsOn('2026-10-21')).toEqual([]);
+        expect(amount('todayDueReceived')).toBe(FIX.expected.today.dueReceived - 120 - 60);
+    });
+});
+
 describe('#104 "Mark as cleared" asks how and records it (no silent write-off)', () => {
     const ctx = useFakeShop();
     let dialogShown;
