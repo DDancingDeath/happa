@@ -4,7 +4,7 @@
  * Firestore request named a rent_* collection. Opening Rentals then loads both
  * (so the probe really sees them) and only after the app-shown timing mark.
  */
-const { test, expect, login, confirmModalIfOpen } = require('./support/app');
+const { test, expect, login } = require('./support/app');
 
 const RENT_RE = /(?<![a-z])rent_(properties|units|tenants|leases|charges)/;
 const RENTALS_FILE = /\/js\/rentals\/|\/templates\/rentals\.html|\/css\/rentals\.css/;
@@ -125,7 +125,9 @@ test('owner adds a property, unit and tenant, moves them in, records a part paym
     const linked = page.locator('.rent-row', { hasText: `Ram ${stamp}` }).filter({ hasText: 'Moved out' });
     await linked.locator('button', { hasText: 'Tenant link' }).click();
     await page.locator('#rentDialog button', { hasText: 'Turn off link' }).click();
-    await confirmModalIfOpen(page);
+    // The link actions load with import() (rent-link.js): wait for the confirm instead of checking once.
+    await expect(page.locator('#modalOverlay')).toHaveClass(/active/);
+    await page.click('#modalConfirm');
     await expect(page.locator('#toast')).toContainText('Link turned off', { timeout: 15000 });
     await tenantPage.reload();
     await expect(tenantPage.locator('#rh')).toContainText('not available');
