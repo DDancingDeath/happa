@@ -21,9 +21,7 @@ const NOW = O.timeOf(FIX.now);
 const ROOT = path.resolve(__dirname, '../..');
 
 /** Mismatch classes the app has today: spec pattern → issue. */
-const BUGS = {
-    paidInsideWindow: '#163'
-};
+const BUGS = {};
 const bugTest = (k) => (BUGS[k] && !process.env.ORACLE_RUN_SKIPPED ? test.skip : test);
 
 const data = () => JSON.parse(JSON.stringify({

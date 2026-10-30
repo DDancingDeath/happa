@@ -34,6 +34,7 @@ import { canReadWithdrawals } from '../utils/role-access.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { historyIdBound } from '../utils/rate-history.js';
 import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
+import { entryTime } from '../utils/due-payments.js';
 import { installFirestoreMeter, getQuotaStatus } from './firestore-meter.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
@@ -1139,6 +1140,16 @@ function hasDue(collKey, rec) {
 /** Whether the dues listener (openDue == true, numeric timestamp) returns this bill. */
 const dueVisibleToQueries = (rec) => rec.openDue === true && typeof rec.timestamp === 'number';
 
+/**
+ * An older bill (before `from`) with a payment or write-off at/after `from` that the
+ * `paidAt >= from` query does not return (paid by an app version without `paidAt`, #163).
+ */
+function paidUnseenSince(rec, from) {
+    if (!Number.isFinite(from) || !Array.isArray(rec.payments) || !(eventTime(rec) < from)) return false;
+    if (typeof rec.paidAt === 'number' && rec.paidAt >= from) return false;
+    return rec.payments.some(p => entryTime(p) >= from);
+}
+
 const legacyScanRef = () => getDb().collection(col(CHECKPOINT_COLLECTION)).doc(LEGACY_SCAN_DOC_ID);
 
 /** Whether a collection may still hold documents without a numeric timestamp (old clients). */
@@ -1316,7 +1327,13 @@ function scheduleLegacyScan(ws, gen) {
  * and listened to by id.
  * @private
  */
-function computePinned() {
+/**
+ * Bills the window and dues queries can't see but a phone needs, by document id:
+ * a due only derivable from totals (no `openDue`), or — older bills paid or
+ * written off at/after `asOf` by app versions that did not stamp `paidAt` (#163).
+ * @param {number} asOf the checkpoint's start (the window starts no later)
+ */
+function computePinned(asOf) {
     const ws = windowState;
     const pinned = {};
     HISTORY_COLLECTIONS.forEach(spec => {
@@ -1327,13 +1344,19 @@ function computePinned() {
         c.extended.forEach((rec, id) => all.set(id, rec));
         [c.live, ...c.dues].forEach(l => l.docs.forEach(rec => all.set(docIdOf(rec), rec)));
         const written = ws.backfillWritten?.[spec.key] || new Set();
+        const paid = [];
         all.forEach((rec, docId) => {
-            if (rec.date !== undefined && hasDue(spec.key, rec) && !dueVisibleToQueries(rec) && !written.has(docId)) {
+            if (rec.date === undefined) return;
+            if (hasDue(spec.key, rec) && !dueVisibleToQueries(rec) && !written.has(docId)) {
                 pinned[spec.key].push(docId);
+            } else if (!hasDue(spec.key, rec) && paidUnseenSince(rec, asOf)) {
+                paid.push(docId);
             }
         });
+        // Open dues first: over the cap, a settled bill's payment is dropped before a due.
+        pinned[spec.key].push(...paid);
         if (pinned[spec.key].length > PINNED_MAX) {
-            console.warn(`${pinned[spec.key].length} ${spec.key} bills have a due only derivable from totals; listening to the first ${PINNED_MAX}.`);
+            console.warn(`${pinned[spec.key].length} ${spec.key} bills need pinning (due only derivable from totals, or paid without paidAt); listening to the first ${PINNED_MAX}.`);
             pinned[spec.key] = pinned[spec.key].slice(0, PINNED_MAX);
         }
     });
@@ -1547,7 +1570,7 @@ async function rebuildCheckpointNow(gen) {
             items,
             staleCount: baseStaleCount,
             backfill,
-            extra: { pinned: computePinned(), fullBuiltAt: now }
+            extra: { pinned: computePinned(asOf), fullBuiltAt: now }
         });
         if (JSON.stringify(payload).length > CHECKPOINT_MAX_BYTES) {
             console.error('Stock checkpoint too large to store; stock keeps using full history.');
@@ -3086,8 +3109,15 @@ const FirebaseService = {
                 }, { optional: !!spec.optional }));
 
                 if (!spec.dues) return;
-                // Older bills with money due (in-window bills come from the window query).
-                const dueQueries = [['openDue', db.collection(col(spec.key)).where('openDue', '==', true).where('timestamp', '<', liveFrom)]];
+                // Older bills with money due (in-window bills come from the window query), and older
+                // bills paid or written off inside the window (#163): their payment counts in this
+                // window's money in / out, day book and month snapshots after the due is gone.
+                // Bills inside the window with a later payment come from both queries (published
+                // once, read twice): two range filters would need a composite index.
+                const dueQueries = [
+                    ['openDue', db.collection(col(spec.key)).where('openDue', '==', true).where('timestamp', '<', liveFrom)],
+                    ['paidAt', db.collection(col(spec.key)).where('paidAt', '>=', liveFrom)]
+                ];
                 const pinnedIds = Array.isArray(checkpointDoc?.pinned?.[spec.key]) ? checkpointDoc.pinned[spec.key].slice(0, PINNED_MAX) : [];
                 const docIdPath = typeof firebase !== 'undefined' && firebase.firestore?.FieldPath?.documentId
                     ? firebase.firestore.FieldPath.documentId() : null;

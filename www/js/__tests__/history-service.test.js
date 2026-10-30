@@ -804,7 +804,7 @@ describe('review fixes (2)', () => {
         expect(unfiltered()).toBe(0);
     });
 
-    it('#8 one dues listener per bill collection, bounded to before the window (no duplicate deliveries)', async () => {
+    it('#8 one dues listener per bill collection, bounded to before the window; older bills paid inside it once more (paidAt, #163)', async () => {
         install(34);
         await open();
         await rebuildSettled();
@@ -815,15 +815,40 @@ describe('review fixes (2)', () => {
         ['purchases', 'retailSales', 'wholesaleSales'].forEach(c => {
             const due = docsOf(c).filter(d => d.timestamp < W && d.openDue === true).length;
             const win = docsOf(c).filter(d => d.timestamp >= W).length;
-            counts[c] = { due, win };
+            const paid = docsOf(c).filter(d => typeof d.paidAt === 'number' && d.paidAt >= W).length;
+            counts[c] = { due, win, paid };
             // every bill delivered at most once: window + older open dues (+ empty-query minimum)
             const ids = new Set(AppState[STATE_KEY[c]].map(r => r.id));
             expect(ids.size).toBe(AppState[STATE_KEY[c]].length);
         });
         const expected = ITEMS.length + 1 /* checkpoint */ + 1 /* legacyScan */ +
-            Object.values(counts).reduce((n, x) => n + Math.max(1, x.due) + Math.max(1, x.win), 0) +
+            Object.values(counts).reduce((n, x) => n + Math.max(1, x.due) + Math.max(1, x.win) + Math.max(1, x.paid), 0) +
             ['expenses', 'stockAdjustments', 'withdrawals'].reduce((n, c) => n + Math.max(1, docsOf(c).filter(d => d.timestamp >= W).length), 0);
         expect(fake.stats.reads).toBeLessThanOrEqual(expected + 3);
+    });
+
+    it('#163 older bills paid or written off inside the window stay loaded on the next open (paidAt, or pinned when paid by an older app)', async () => {
+        install(37);
+        const DAY = 86400000;
+        const old = W - 20 * DAY;
+        const paidIn = W + 2 * DAY;
+        const bill = (id, extra) => ({ id, date: new Date(old).toISOString(), timestamp: old, customerName: 'Test Customer', items: [{ itemId: 'gehu', qty: 1, rate: 100, total: 100 }],
+            total: 100, payment: { cash: 100, online: 0, due: 0, total: 100 }, openDue: false, clientVersion: 3, ...extra });
+        fake.seed('retailSales', [
+            bill('paid-new-app', { payments: [{ id: 'p1', amount: 60, cash: 60, online: 0, at: paidIn }], paidAt: paidIn }),
+            bill('paid-old-app', { payments: [{ id: 'p2', amount: 60, cash: 60, online: 0, at: paidIn }] }),
+            bill('paid-long-ago', { payments: [{ id: 'p3', amount: 60, cash: 60, online: 0, at: old + DAY }], paidAt: old + DAY })
+        ]);
+        await open();
+        await rebuildSettled();
+        await quietScans();
+        expect(cpDoc().pinned.retailSales).toEqual(['paid-old-app']);
+        await open();
+        expect(FirebaseService.isFullHistoryLoaded()).toBe(false);
+        const ids = AppState.retailSalesHistory.map(r => r.id);
+        expect(ids).toEqual(expect.arrayContaining(['paid-new-app', 'paid-old-app']));
+        expect(ids).not.toContain('paid-long-ago');
+        expect(new Set(ids).size).toBe(ids.length);
     });
 
     it('#132 on-demand history reports its age and Refresh re-reads it (edits and deletes from other devices)', async () => {

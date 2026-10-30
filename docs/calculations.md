@@ -255,6 +255,12 @@ year (from the bills when loaded, else from the month snapshots `monthStats/{YYY
 per month with M*, per-item and top-party totals and per-day sales and profit, built once by the
 owner and rolled for the current and previous month every 6 hours, `utils/month-snapshots.js`).
 
+"Loaded bills" on a phone: bills from the 1st of the previous month, older bills that still owe
+(`openDue`), and older bills paid or written off since then (`paidAt` ≥ that day, stamped by every
+payment and write-off; bills paid by older app versions are pinned by the stock-checkpoint rebuild),
+so a due settled inside the window still counts in M5, M12–M14, the day book and the month snapshots
+rolled from it (#163).
+
 **Insights page** (`templates/insights.html`, `modules/insights.js`) is the home of I1–I9: a to-do
 list (overdue parties, sold below cost, low-profit items, stock up before the season, dead stock),
 items, parties and seasons. Seasons hosts the Rate trends and Product traffic views (RT*, PT*): the
