@@ -269,18 +269,21 @@ export const InsightsManager = {
         if (!weekly) { this.html('insightsActionsStock', ''); return; }
         const rows = this.seasonRows().map(r => {
             const st = AppState.stock?.[r.itemKey];
-            return { ...r, qty: Number(st?.quantity) || 0, weeklyKg: weekly.get(r.itemKey) || 0 };
+            return { ...r, qty: Number(st?.quantity) || 0, weeklyKg: weekly.byItem.get(r.itemKey) || 0 };
         });
         const list = stockUpItems(rows, now, {}, this.cfg()).slice(0, 3);
         const lang = getLang();
+        // Under 8 weeks of bills loaded the weekly sale is an estimate from those weeks: say so (#164).
+        const basis = weekly.weeks < 8 ? ` ${t('ui.insights.act_stock_up_basis', { weeks: Math.floor(weekly.weeks) })}` : '';
         this.html('insightsActionsStock', list.map(x => this.actionCard('🌾', t('ui.insights.act_stock_up', {
             item: x.name, month: formatMonth(new Date(now.getFullYear(), x.busyMonth, 1), { lang, year: false }), weeks: x.weeksToBusy, cover: Math.round(x.coverWeeks * 10) / 10
-        }), null, '', `<button type="button" class="btn btn-secondary" data-item="${esc(x.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
+        }) + basis, null, '', `<button type="button" class="btn btn-secondary" data-item="${esc(x.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
     },
 
     /**
      * kg sold per week over the last 8 weeks (or the weeks of bills loaded, if fewer),
      * per item key: one summary for all items. null under 2 loaded weeks.
+     * @returns {?{byItem: Map<string, number>, weeks: number}} weeks: the weeks of bills used (≤ 8)
      */
     weeklySoldKg(now) {
         const end = now.getTime();
@@ -288,7 +291,7 @@ export const InsightsManager = {
         const weeks = (end - from) / (7 * DAY_MS);
         if (!(weeks >= 2)) return null;
         const m = moneySummary(this.input(from), { from, to: end + 1 }, { detail: true });
-        return new Map(itemSummary(m).map(r => [r.itemKey, r.qty / weeks]));
+        return { byItem: new Map(itemSummary(m).map(r => [r.itemKey, r.qty / weeks])), weeks };
     },
 
     renderItems(m, r) {

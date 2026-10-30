@@ -2028,6 +2028,7 @@ export default {
     'ui.insights.act_low_profit': "{item} पर ₹100 की बिक्री में सिर्फ़ ₹{value} मुनाफ़ा (बिक्री {sales})।",
     'ui.insights.act_loss_item': "{item} घाटे में बिक रहा है: ₹100 पर ₹{value} (बिक्री {sales})।",
     'ui.insights.act_stock_up': "{item} का स्टॉक बढ़ाएँ: {weeks} हफ़्ते में {month} का मौसम, स्टॉक लगभग {cover} हफ़्ते का।",
+    'ui.insights.act_stock_up_basis': "(हफ़्ते की बिक्री लोड हुए पिछले {weeks} हफ़्तों के बिलों से अनुमानित।)",
     'ui.insights.act_dead_stock': "{n} माल 30 दिन से नहीं बिके।",
     'ui.insights.act_anomalies': "खुली गड़बड़ियाँ देखें।",
     'ui.insights.nothing_urgent': "इस हफ़्ते कुछ ज़रूरी नहीं।",
