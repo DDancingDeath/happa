@@ -120,9 +120,10 @@ export function openDue(bill) {
 /** Due payments (cash/online) made in `range` on the given bills plus session legs, each id once. */
 export function duePaymentsIn(bills, sessions, range) {
     const seen = new Set();
-    const out = { receivedCash: 0, receivedOnline: 0, paidCash: 0, paidOnline: 0, writtenOffReceivable: 0 };
+    const out = { receivedCash: 0, receivedOnline: 0, paidCash: 0, paidOnline: 0, writtenOffReceivable: 0, receivedCount: 0, paidCount: 0 };
     const add = (dir, cash, online) => {
         if (dir === 'paid') { out.paidCash += cash; out.paidOnline += online; } else { out.receivedCash += cash; out.receivedOnline += online; }
+        if (Math.abs(cash + online) >= 0.005) out[dir === 'paid' ? 'paidCount' : 'receivedCount'] += 1;
     };
     ['purchase', 'retail', 'wholesale'].forEach(type => (bills[type] || []).forEach(bill => {
         (bill.payments || []).forEach((p, i) => {
@@ -237,14 +238,15 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
     const ev = [];
     const qtyOf = (l) => n(l.qty ?? l.quantity);
     activity(data.purchases).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 0, k: keyOf(l), op: 'buy', q: qtyOf(l), rate: n(l.rate) })));
-    activity(data.wholesaleSales).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 1, k: keyOf(l), op: 'sell', q: qtyOf(l) })));
-    activity(data.retailSales).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 2, k: keyOf(l), op: 'sell', q: qtyOf(l) })));
+    activity(data.wholesaleSales).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 1, k: keyOf(l), op: 'sell', q: qtyOf(l), line: `wholesale|${b.id}|${keyOf(l)}` })));
+    activity(data.retailSales).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 2, k: keyOf(l), op: 'sell', q: qtyOf(l), line: `retail|${b.id}|${keyOf(l)}` })));
     (data.stockAdjustments || []).forEach(a => ev.push({ t: eventTimeOf(a), o: 3, k: keyOf({ itemId: a.itemId, name: a.itemName }), op: 'adj-' + a.adjustType, q: n(a.quantity), rate: n(a.rate) }));
     ev.sort((a, b) => a.t - b.t || a.o - b.o);
 
     const st = {};
     const totals = { opening: 0, purchases: 0, cogs: 0, adjustments: 0, closing: 0 };
     const cogsByItem = {};
+    const cogsByLine = {};
     const value = () => Object.values(st).reduce((a, s) => a + (s.q > 0 ? s.v : 0), 0);
     let openingTaken = false;
     for (const e of ev) {
@@ -271,7 +273,11 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
         const delta = s.v - before;
         if (e.t >= range[0]) {
             if (e.op === 'buy') totals.purchases += delta;
-            else if (e.op === 'sell') { totals.cogs -= delta; cogsByItem[e.k] = (cogsByItem[e.k] || 0) - delta; }
+            else if (e.op === 'sell') {
+                totals.cogs -= delta;
+                cogsByItem[e.k] = (cogsByItem[e.k] || 0) - delta;
+                cogsByLine[e.line] = (cogsByLine[e.line] || 0) - delta;
+            }
             else totals.adjustments += delta;
         }
     }
@@ -280,7 +286,7 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
     const perItem = {};
     Object.entries(st).forEach(([k, s]) => { perItem[k] = { qty: s.q, rate: s.q > 0 ? s.v / s.q : 0, value: s.q > 0 ? s.v : 0 }; });
     Object.keys(totals).forEach(k => { totals[k] = r2(totals[k]); });
-    return { ...totals, perItem, cogsByItem };
+    return { ...totals, perItem, cogsByItem, cogsByLine };
 }
 
 // ---------------------------------------------------------------- Finance (F*), new definitions from #215
@@ -393,13 +399,17 @@ export function metrics(data, range = [-Infinity, Infinity]) {
         return hit ? hit.id : name;
     };
     const itemSales = {};
-    sales.forEach(b => {
+    const byType = { retail: {}, wholesale: {} };
+    const addSales = (b, type) => {
         let lines = 0;
-        (b.items || []).forEach(l => { const k = keyOf(l); itemSales[k] = (itemSales[k] || 0) + lineTotal(l); lines += lineTotal(l); });
+        const put = (k, v) => { itemSales[k] = (itemSales[k] || 0) + v; byType[type][k] = (byType[type][k] || 0) + v; };
+        (b.items || []).forEach(l => { put(keyOf(l), lineTotal(l)); lines += lineTotal(l); });
         const rest = billValue(b) - lines;
-        if (Math.abs(rest) >= 0.005) itemSales[''] = (itemSales[''] || 0) + rest;
-    });
-    Object.keys(itemSales).forEach(k => { itemSales[k] = r2(itemSales[k]); });
+        if (Math.abs(rest) >= 0.005) put('', rest);
+    };
+    wholesale.forEach(b => addSales(b, 'wholesale'));
+    retail.forEach(b => addSales(b, 'retail'));
+    [itemSales, byType.retail, byType.wholesale].forEach(o => Object.keys(o).forEach(k => { o[k] = r2(o[k]); }));
     const itemCogs = {};
     Object.entries(stock.cogsByItem).forEach(([k, v]) => { itemCogs[k] = r2(v); });
 
@@ -426,7 +436,7 @@ export function metrics(data, range = [-Infinity, Infinity]) {
         M13_outCash: r2(bought.cash + dues.paidCash + expenseTotal), M13_outOnline: r2(bought.online + dues.paidOnline),
         M14_net: f.F7_cashFlow,
         M16_purchases: r2(sum(purchases, billValue)), M16_purchaseCount: purchases.length,
-        I1_itemSales: itemSales, I1_itemCogs: itemCogs,
+        I1_itemSales: itemSales, I1_itemCogs: itemCogs, I2_itemRetail: byType.retail, I2_itemWholesale: byType.wholesale,
         I3_customers: byParty(sales), I4_suppliers: byParty(purchases)
     };
 }
@@ -451,6 +461,114 @@ export function stoppedComing(data, nowMs, days = 60) {
     });
     const cutoff = nowMs - days * 86400000;
     return Object.keys(by).filter(k => want.every(m => by[k].months.has(m)) && by[k].last < cutoff).sort();
+}
+
+/**
+ * I7 low-profit items: catalogue items (not the '' bill-adjustment row) with sales of at
+ * least `minSales` in the range and profit per ₹100 sold under `per100` (a loss included).
+ * @returns {string[]} item keys, sorted
+ */
+export function lowProfitItems(data, range, { minSales = 5000, per100 = 3 } = {}) {
+    const m = metrics(data, range);
+    return Object.keys(m.I1_itemSales).filter(k => {
+        const sales = m.I1_itemSales[k];
+        if (!k || !(sales >= minSales)) return false;
+        return ((sales - (m.I1_itemCogs[k] || 0)) / sales) * 100 < per100;
+    }).sort();
+}
+
+/**
+ * I8 sold below cost: sale lines (bill × item) whose value is below their cost of goods
+ * sold by more than ₹0.50, per item: times, kg, ₹ lost.
+ * @returns {Object<string, {times: number, qty: number, lost: number}>}
+ */
+export function belowCost(data, range) {
+    const items = data.items || [];
+    const keyOf = (line) => {
+        if (line.itemId && items.some(i => i.id === line.itemId)) return line.itemId;
+        const name = String(line.name ?? line.itemName ?? '').trim().toLowerCase();
+        const hit = items.find(i => String(i.name).trim().toLowerCase() === name || String(i.hindiName || '').trim().toLowerCase() === name);
+        return hit ? hit.id : name;
+    };
+    const cogs = stockReplay(data, range).cogsByLine;
+    const lines = {};
+    [['wholesale', data.wholesaleSales], ['retail', data.retailSales]].forEach(([type, list]) => activity(list)
+        .filter(b => inRange(eventTimeOf(b), range))
+        .forEach(b => (b.items || []).forEach(l => {
+            const k = keyOf(l);
+            if (!k) return;
+            const x = lines[`${type}|${b.id}|${k}`] || (lines[`${type}|${b.id}|${k}`] = { k, sales: 0, qty: 0 });
+            x.sales += lineTotal(l);
+            x.qty += n(l.qty ?? l.quantity);
+        })));
+    const out = {};
+    Object.entries(lines).forEach(([key, x]) => {
+        const c = cogs[key] || 0;
+        if (!(c - x.sales > 0.5)) return;
+        const o = out[x.k] || (out[x.k] = { times: 0, qty: 0, lost: 0 });
+        o.times += 1;
+        o.qty = r2(o.qty + x.qty);
+        o.lost = r2(o.lost + c - x.sales);
+    });
+    return out;
+}
+
+/**
+ * I11 purchases by item: per item line value, labour share (the bill's labour × line
+ * value ÷ the bill's line value), amount after labour and kg; a bill whose lines don't
+ * add up to its total adds the difference to a '' row. Rows add up to M16.
+ * @returns {Object<string, {lineValue: number, labour: number, amount: number, qty: number}>}
+ */
+export function purchaseItems(data, range) {
+    const items = data.items || [];
+    const keyOf = (line) => {
+        if (line.itemId && items.some(i => i.id === line.itemId)) return line.itemId;
+        const name = String(line.name ?? line.itemName ?? '').trim().toLowerCase();
+        const hit = items.find(i => String(i.name).trim().toLowerCase() === name || String(i.hindiName || '').trim().toLowerCase() === name);
+        return hit ? hit.id : name;
+    };
+    const out = {};
+    const row = (k) => out[k] || (out[k] = { lineValue: 0, labour: 0, amount: 0, qty: 0 });
+    activity(data.purchases).filter(b => inRange(eventTimeOf(b), range)).forEach(b => {
+        const lines = b.items || [];
+        const value = sum(lines, lineTotal);
+        const labour = labourOf(b);
+        let used = 0;
+        lines.forEach(l => {
+            const share = value > 0 ? labour * lineTotal(l) / value : 0;
+            const r = row(keyOf(l));
+            r.lineValue += lineTotal(l);
+            r.labour += share;
+            r.amount += lineTotal(l) - share;
+            r.qty += n(l.qty ?? l.quantity);
+            used += lineTotal(l) - share;
+        });
+        const rest = billValue(b) - used;
+        if (Math.abs(rest) >= 0.005) row('').amount += rest;
+    });
+    Object.values(out).forEach(r => Object.keys(r).forEach(k => { r[k] = r2(r[k]); }));
+    return out;
+}
+
+/**
+ * C9 counted cash: closing balance of the last signed-out session with a real count
+ * (not "not counted": `counted: false`, or closed by the app with no count), latest day
+ * first, then latest sign-out. null when there is none.
+ */
+export function lastCountedCash(sessions) {
+    const counted = (sessions || []).filter(s => s && s.signedOut === true && s.counted !== false
+        && !(s.counted === undefined && s.autoSignedOut === true) && has(s.closingBalance));
+    counted.sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.signOutTime || '').localeCompare(String(a.signOutTime || '')));
+    return counted.length ? { date: counted[0].date, amount: n(counted[0].closingBalance) } : null;
+}
+
+/**
+ * M15 net worth: stock value (S4) + to receive (O4) + other accounts (owner-entered,
+ * liabilities negative) + last counted drawer cash (C9) − to pay (O3).
+ */
+export function netWorth(data, { accounts = 0, drawer = 0 } = {}) {
+    const d = dueTotals(data);
+    return r2(finance(data).F6_stockValue + d.receivable + accounts + drawer - d.payable);
 }
 
 /**

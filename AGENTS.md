@@ -386,8 +386,9 @@ the backup (it refuses to write inside the repo). It then audits the **phone
 path** (`tools/audit/phone.js`): the windowed history, dues listeners, stock
 checkpoint, month snapshots, rate history and cash sessions loaded by the app's
 own `FirebaseService` from an in-memory Firestore, for several "today"s
-(`--phone-dates`, `--no-phone`); figures the app shows as unknown / approximate
-are counted separately. Takes about two minutes for ~7k
+(`--phone-dates`, `--no-phone`), each opened by the owner with a fresh and with
+the month-end stock checkpoint and by a member; figures the app shows as unknown /
+approximate (and says so on screen) are counted separately. Takes about three minutes for ~7k
 bills and reads only that file, no Firestore. Real data never goes into the repo,
 CI, an issue or a PR: turn each new mismatch class into an anonymised fixture in
 `tests/fixtures/calculations/` with an oracle test (`tests/oracle/real-shapes.test.js`),

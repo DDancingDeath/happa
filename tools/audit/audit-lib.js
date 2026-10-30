@@ -384,9 +384,15 @@ export function renderReport(r) {
         L.push('## Phone path (windowed history, snapshots, checkpoint)', '');
         L.push('Each date is opened as a phone that has been in use since the first bill: the window from the 1st of the previous month, '
             + 'older bills with a due, the stock checkpoint, month snapshots rolled at every month end, the rate history and cash sessions, '
-            + 'all through the app\'s own loaders. Figures are compared with the oracle on the full data of that moment.', '');
-        L.push('| Date | Simulated | Loaded from | Checkpoint as of | Bills loaded / all | Snapshots | Rate-history docs |', '|---|---|---|---|---|---|---|');
-        r.phone.dates.forEach(d => L.push(`| ${d.label} | ${d.date} | ${d.loadedFrom} | ${d.checkpointAsOf || '—'} | ${d.bills.loaded} / ${d.bills.all} | ${d.snapshots} | ${d.rateStatsDocs} |`));
+            + 'all through the app\'s own loaders. Figures are compared with the oracle on the full data of that moment. Each date is opened '
+            + 'three ways: the owner with a checkpoint rebuilt that day, the owner with the checkpoint built at the previous month end, '
+            + 'and a member with that checkpoint.', '');
+        L.push('| Date | Simulated | Phone | Loaded from | Checkpoint as of | Bills loaded / all | Snapshots | Rate-history docs | Comparisons | Mismatches | Shown as unknown |',
+            '|---|---|---|---|---|---|---|---|---|---|---|');
+        r.phone.dates.forEach(d => L.push(d.skipped
+            ? `| ${d.label} | ${d.date} | ${d.pass} | skipped: ${d.skipped} | | | | | | | |`
+            : `| ${d.label} | ${d.date} | ${d.pass || 'owner'} | ${d.loadedFrom} | ${d.checkpointAsOf || '—'} | ${d.bills.loaded} / ${d.bills.all} | ${d.snapshots} | ${d.rateStatsDocs} | `
+                + `${d.counts ? d.counts.checked : '—'} | ${d.counts ? d.counts.mismatches : '—'} | ${d.counts ? d.counts.unknowns : '—'} |`));
         L.push('');
         detail('Mismatches: phone path', phone);
         const unk = new Map();
