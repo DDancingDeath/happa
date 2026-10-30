@@ -13,12 +13,14 @@ jest.mock('../rentals/rent-receipt.js', () => ({ showReceipt: jest.fn(), showHis
 jest.mock('../ui/business-switcher.js', () => ({ rentalsRole: jest.fn(() => 'member') }));
 jest.mock('../ui/ui-manager.js', () => ({ UIManager: { showToast: jest.fn(), showModal: jest.fn() } }));
 jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}) } }));
+jest.mock('../services/telemetry.js', () => ({ TelemetryService: { logWarning: jest.fn() } }));
 
 import * as store from '../rentals/rent-store.js';
 import * as receipt from '../rentals/rent-receipt.js';
 import { RentalsModule, _test } from '../rentals/rentals.js';
 import { normalizeRentSettings, monthKey } from '../rentals/rent-math.js';
 import { AuditService } from '../services/audit.js';
+import { TelemetryService } from '../services/telemetry.js';
 import { UIManager } from '../ui/ui-manager.js';
 
 const flush = () => new Promise(r => setTimeout(r));
@@ -55,6 +57,7 @@ test('a payment carries the receipt names, then the receipt opens (module loaded
     });
     expect(UIManager.showToast).toHaveBeenCalledWith('✓ Payment of ₹2,000 saved', 'success');
     expect(AuditService.log).toHaveBeenCalledWith('RENT_PAYMENT', expect.objectContaining({ amount: 2000, receipt: 'R-2026-0001' }));
+    expect(TelemetryService.logWarning).not.toHaveBeenCalled();
     expect(receipt.showReceipt).toHaveBeenCalledWith(expect.objectContaining({
         canVoid: false, head: { biz: 'Sharma Rentals', bizAddr: 'Main Road, Kanpur' }
     }), RECEIPT);
@@ -62,8 +65,8 @@ test('a payment carries the receipt names, then the receipt opens (module loaded
     expect(env.linkOf('L1')).toBe('');
 });
 
-test('saved without a receipt (refused): a distinct warning, then the Receipts list with Issue receipt', async () => {
-    store.recordPayment.mockResolvedValue({ amount: 2000, paid: 2000, open: true, receipt: null, noReceipt: true });
+test('saved without a receipt (refused): a distinct warning, reported, then the Receipts list with Issue receipt', async () => {
+    store.recordPayment.mockResolvedValue({ amount: 2000, paid: 2000, open: true, receipt: null, noReceipt: true, receiptError: 'permission-denied' });
     const done = _test.pay('L1');
     await flush();
     RentalsModule.api.dialogClose(true);
@@ -71,6 +74,7 @@ test('saved without a receipt (refused): a distinct warning, then the Receipts l
     await flush();
     expect(UIManager.showToast).toHaveBeenCalledWith('Payment saved, but no receipt was issued — tap Issue receipt', 'warning');
     expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.anything(), 'success');
+    expect(TelemetryService.logWarning).toHaveBeenCalledWith('Rent receipt not issued', { code: 'permission-denied', chargeId: CHARGE.id });
     expect(receipt.showReceipt).not.toHaveBeenCalled();
     expect(receipt.showHistory).toHaveBeenCalledWith(expect.objectContaining({ rcOf: expect.any(Function) }), 'T1');
     expect(receipt.showHistory.mock.calls[0][0].rcOf(CHARGE)).toEqual({ place: '2B, Gupta Bhawan', ut: 'flat' });

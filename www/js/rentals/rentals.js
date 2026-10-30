@@ -14,6 +14,7 @@ import { openExternal } from '../utils/open-external.js';
 import { formatINR, whatsAppReminderUrl } from '../utils/due-reminder.js';
 import { t, getLang, applyTranslations, LANG_CHANGE_EVENT } from '../i18n/index.js';
 import { AuditService } from '../services/audit.js';
+import { TelemetryService } from '../services/telemetry.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import * as store from './rent-store.js';
 import { AppState } from '../utils/state.js';
@@ -446,6 +447,7 @@ async function pay(leaseId) {
         const res = await store.recordPayment(id, { amount, mode, ref, date }, rcOf(charge));
         const no = res.noReceipt;
         UIManager.showToast(t(no ? 'msg.rent.payment_saved_no_receipt' : 'msg.rent.payment_saved', { amount: formatINR(res.amount) }), no ? 'warning' : 'success');
+        if (no) TelemetryService.logWarning('Rent receipt not issued', { code: res.receiptError || '', chargeId: id });
         AuditService.log('RENT_PAYMENT', {
             chargeId: id, month: charge?.month || '', amount: res.amount, mode, tenant: charge?.tenantName || '', receipt: res.receipt?.no || ''
         }).catch(auditWarn);
