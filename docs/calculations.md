@@ -267,7 +267,9 @@ its own day, today. A stale snapshot gives no figures (`figuresFromSnapshot`, `p
 month on the next roll; an older month once that device has all bills loaded and read after it saw
 the mark (e.g. after the stock-checkpoint rebuild a stock change triggers), in a transaction that
 keeps a newer mark (1 read + 1 write); or with "Build month history", which reads the bills again
-if they are older than the mark.
+if they are older than the mark and writes each month it can mark (the last two years before the
+previous month, ≤ 23 reads) in such a transaction: a mark this device has not handled, e.g. one set
+by another phone after the snapshots were loaded, is kept and shown "not known" until the next build.
 
 "Loaded bills" on a phone: bills from the 1st of the previous month, older bills that still owe
 (`openDue`), and older bills paid or written off since then (`paidAt` ≥ that day, stamped by every

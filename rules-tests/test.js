@@ -969,6 +969,17 @@ function defineSuite(prefix) {
         await assertSucceeds(batch.commit());
     });
 
+    t('monthStats: only real months (01-12) as ids, for snapshots and stale marks', async () => {
+        for (const id of ['2025-13', '2025-99', '2026-00', '0000-00']) {
+            await assertFails(as('staff1').collection(monthStats).doc(id).set(mark(id), { merge: true }));
+            await assertFails(as('manager1').collection(monthStats).doc(id).set(snap({ month: id })));
+        }
+        for (const id of ['2026-01', '2026-09', '2026-12']) {
+            await assertSucceeds(as('staff1').collection(monthStats).doc(id).set(mark(id), { merge: true }));
+            await assertSucceeds(as('manager1').collection(monthStats).doc(id).set(snap({ month: id })));
+        }
+    });
+
     t('monthStats: a stale mark changes nothing else and needs an approved user', async () => {
         await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(monthStats).doc('2026-10').set(snap()));
         const ref = (uid, id = '2026-10') => as(uid).collection(monthStats).doc(id);

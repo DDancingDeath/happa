@@ -27,7 +27,7 @@ import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
 import {
     buildSnapshot, figuresFromSnapshot, rangeFigures, monthsToRoll, monthBounds,
-    monthKeysBetween, lastMonthKeys, monthKeyOf, snapshotsFrom, staleToRebuild, staleOlderMonths
+    monthKeysBetween, lastMonthKeys, monthKeyOf, snapshotsFrom, staleToRebuild
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { can } from '../utils/role-access.js';
@@ -765,13 +765,33 @@ export const MoneyManager = {
             const all = [...(AppState.purchaseHistory || []), ...(AppState.salesHistory || []), ...(AppState.retailSalesHistory || [])]
                 .map(b => parseAnyBillDate(b.timestamp ?? b.date)?.getTime()).filter(Number.isFinite);
             const now = Date.now();
-            const guarded = new Set(staleOlderMonths(this.snapshots, now));
-            const keys = monthKeysBetween(Math.min(...all, now), now + 1).filter(k => !guarded.has(k));
-            const docs = keys.map(k => this.snapshotFor(k, now)).filter(Boolean);
-            docs.forEach(d => { this.snapshots[d.month] = d; delete this.staleSeen[d.month]; });
-            await FirebaseService.saveMonthStats(docs);
-            const rebuilt = await this.rebuildStale(now);
-            UIManager.showToast(t('msg.money.history_built', { count: docs.length + rebuilt }), 'success');
+            const fetchedAt = FirebaseService.getFullHistoryFetchedAt?.() || 0;
+            const d = new Date(now);
+            const prevFrom = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+            const floor = monthBounds(snapshotsFrom(now)).from;
+            // Months a stale mark can reach (read back, older than the two rolled ones) are written guarded.
+            const markable = (k) => { const f = monthBounds(k).from; return f >= floor && f < prevFrom; };
+            const docs = monthKeysBetween(Math.min(...all, now), now + 1).map(k => this.snapshotFor(k, now)).filter(Boolean);
+            const plain = docs.filter(x => !markable(x.month));
+            plain.forEach(x => { this.snapshots[x.month] = x; delete this.staleSeen[x.month]; });
+            await FirebaseService.saveMonthStats(plain);
+            const results = await Promise.all(docs.filter(x => markable(x.month)).map(x => {
+                const known = this.snapshots[x.month];
+                const handled = known?.stale && fetchedAt > this.staleSeen[x.month] ? { staleAt: known.staleAt } : null;
+                return FirebaseService.saveMonthStatGuarded(x, handled).then(res => ({ res, known }));
+            }));
+            let written = plain.length;
+            results.forEach(({ res, known }) => {
+                const k = res.doc.month;
+                this.snapshots[k] = res.doc;
+                if (res.status === 'written') {
+                    delete this.staleSeen[k];
+                    written += 1;
+                } else if (!Number.isFinite(this.staleSeen[k]) || res.doc.staleAt !== known?.staleAt) {
+                    this.staleSeen[k] = Date.now();
+                }
+            });
+            UIManager.showToast(t('msg.money.history_built', { count: written }), 'success');
         } catch (e) {
             console.error('Money: building month history failed:', e);
             UIManager.showToast(t('msg.money.could_not_load'));

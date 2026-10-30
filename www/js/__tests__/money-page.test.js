@@ -19,6 +19,7 @@ import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } fro
 import { setInsightsContext, resetInsightsContextForTests, getInsightsContext, contextMonth } from '../utils/insights-context.js';
 import { t, setLang } from '../i18n/index.js';
 import { formatAmount } from '../utils/money.js';
+import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const FIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/calculations/shop-month.json'), 'utf8'));
@@ -507,14 +508,16 @@ describe('stale month snapshots (a bill of an older month changed after the snap
         expect(rebuild).not.toHaveBeenCalled();
     });
 
-    test('Build month history reads the bills again when they predate a stale mark, and rebuilds that month guarded', async () => {
-        const save = jest.spyOn(FirebaseService, 'saveMonthStats').mockResolvedValue();
-        const rebuild = jest.spyOn(FirebaseService, 'rebuildMonthStat').mockImplementation(async (d) => ({ status: 'written', doc: d }));
-        let fetched = NOW - 5000;
-        jest.spyOn(FirebaseService, 'getFullHistoryFetchedAt').mockImplementation(() => fetched);
-        const refresh = jest.spyOn(FirebaseService, 'refreshOnDemandHistory').mockImplementation(async () => { fetched = NOW; return true; });
-        MoneyManager.snapshots = { '2026-05': { month: '2026-05', stale: true, staleAt: 42 } };
-        MoneyManager.staleSeen = { '2026-05': NOW - 1000 };
+    /** A March and a May sale, so Build month history has older months to write (on the in-memory Firestore). */
+    const withOlderMonths = () => {
+        AppState.salesHistory.push({ ...copy(FIX.wholesaleSales[0]), id: 'wMar', date: '2026-03-10T12:00:00' },
+            { ...copy(FIX.wholesaleSales[0]), id: 'wMay', date: '2026-05-10T12:00:00' });
+        const fake = createFakeFirestore();
+        const before = global.firebase;
+        global.firebase = fake.firebase;
+        return { fake, restore: () => { global.firebase = before; } };
+    };
+    const build = async () => {
         MoneyManager.building = false;
         window.FirebaseService = FirebaseService;
         try {
@@ -523,13 +526,56 @@ describe('stale month snapshots (a bill of an older month changed after the snap
             delete window.FirebaseService;
         }
         await flush();
-        expect(refresh).toHaveBeenCalledTimes(1);
-        expect(save.mock.calls[0][0].map(d => d.month)).not.toContain('2026-05');
-        expect(rebuild.mock.calls.map(c => c[0].month)).toEqual(['2026-05']);
-        expect(MoneyManager.snapshots['2026-05'].stale).toBeUndefined();
+    };
+
+    test('Build month history never overwrites a stale mark another phone set after this one loaded the snapshots', async () => {
+        const { fake, restore } = withOlderMonths();
+        try {
+            let fetched = NOW - 5000;
+            jest.spyOn(FirebaseService, 'getFullHistoryFetchedAt').mockImplementation(() => fetched);
+            const refresh = jest.spyOn(FirebaseService, 'refreshOnDemandHistory').mockImplementation(async () => { fetched = Date.now(); return true; });
+            // This phone loaded a good March; another phone then edits a March bill and marks it.
+            const march = { ...built('2026-03'), month: '2026-03' };
+            MoneyManager.snapshots = { '2026-03': march };
+            MoneyManager.staleSeen = {};
+            fake.seed('monthStats', [{ id: '2026-03', ...march, stale: true, staleAt: 99 }]);
+            await build();
+            expect(refresh).not.toHaveBeenCalled();
+            expect(fake.raw('monthStats').get('2026-03')).toEqual({ ...march, stale: true, staleAt: 99 });
+            expect(fake.raw('monthStats').get('2026-05').stale).toBeUndefined();
+            expect(fake.raw('monthStats').get('2026-10').month).toBe('2026-10');
+            expect(MoneyManager.snapshots['2026-03']).toMatchObject({ stale: true, staleAt: 99 });
+            expect(MoneyManager.staleSeen['2026-03']).toBe(NOW);
+            // Seen now: the next build reads the bills again, then rebuilds March over that mark.
+            jest.setSystemTime(new Date(NOW + 60000));
+            await build();
+            expect(refresh).toHaveBeenCalledTimes(1);
+            expect(fake.raw('monthStats').get('2026-03').stale).toBeUndefined();
+            expect(fake.raw('monthStats').get('2026-03').builtAt).toBe(NOW + 60000);
+            expect(MoneyManager.snapshots['2026-03'].stale).toBeUndefined();
+            expect(MoneyManager.staleSeen['2026-03']).toBeUndefined();
+        } finally {
+            restore();
+        }
+    });
+
+    test('Build month history: a mark this phone saw and re-read the bills for is replaced; one set meanwhile is kept', async () => {
+        const { fake, restore } = withOlderMonths();
+        try {
+            jest.spyOn(FirebaseService, 'getFullHistoryFetchedAt').mockReturnValue(NOW - 500);
+            MoneyManager.snapshots = { '2026-05': { month: '2026-05', stale: true, staleAt: 42 }, '2026-03': { month: '2026-03', stale: true, staleAt: 7 } };
+            MoneyManager.staleSeen = { '2026-05': NOW - 1000, '2026-03': NOW - 1000 };
+            fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', stale: true, staleAt: 42 }, { id: '2026-03', month: '2026-03', stale: true, staleAt: 8 }]);
+            await build();
+            expect(fake.raw('monthStats').get('2026-05').stale).toBeUndefined();
+            expect(fake.raw('monthStats').get('2026-03')).toEqual({ month: '2026-03', stale: true, staleAt: 8 });
+            expect(MoneyManager.snapshots['2026-03'].staleAt).toBe(8);
+            expect(MoneyManager.staleSeen['2026-03']).toBe(NOW);
+        } finally {
+            restore();
+        }
     });
 });
-
 describe('shared period', () => {
     test('contextMonth', () => {
         const now = new Date(2026, 9, 21);

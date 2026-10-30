@@ -2060,6 +2060,27 @@ const FirebaseService = {
     },
 
     /**
+     * Writes a month snapshot unless the stored one carries a stale mark this device has not
+     * handled (`handled` = { staleAt } of a mark whose change is in this device's bills), in a
+     * transaction (1 read + 1 write). Build month history writes older months this way, so a mark
+     * set by another phone after this one loaded the snapshots is never overwritten.
+     * @param {Object} doc buildSnapshot() result
+     * @param {?{staleAt: *}} handled
+     * @returns {Promise<{status: 'written'|'newer', doc: Object}>} doc = what is stored now
+     */
+    async saveMonthStatGuarded(doc, handled = null) {
+        const db = getDb();
+        const ref = db.collection(col('monthStats')).doc(doc.month);
+        return db.runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            const stored = snap.exists ? { ...snap.data(), month: doc.month } : null;
+            if (stored?.stale && !(handled && stored.staleAt === handled.staleAt)) return { status: 'newer', doc: stored };
+            tx.set(ref, doc);
+            return { status: 'written', doc };
+        });
+    },
+
+    /**
      * Local time this device started its last fresh server read of all history (0 = none this
      * session); month snapshots marked stale before it can be rebuilt from the loaded bills.
      * @returns {number}

@@ -150,4 +150,16 @@ describe('the guarded rebuild write', () => {
         expect(r).toEqual({ status: 'newer', doc: { month: '2026-05', stale: true, staleAt: 6 } });
         expect(fake.raw('monthStats').get('2026-05')).toEqual({ month: '2026-05', stale: true, staleAt: 6 });
     });
+
+    test('Build month history\'s write: over a fresh or missing month; over a stale one only when this phone handled that mark', async () => {
+        expect((await FirebaseService.saveMonthStatGuarded(doc)).status).toBe('written');
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect((await FirebaseService.saveMonthStatGuarded({ ...doc, builtAt: 1 })).status).toBe('written');
+        fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', stale: true, staleAt: 7 }]);
+        expect(await FirebaseService.saveMonthStatGuarded(doc)).toEqual({ status: 'newer', doc: { month: '2026-05', stale: true, staleAt: 7 } });
+        expect((await FirebaseService.saveMonthStatGuarded(doc, { staleAt: 6 })).status).toBe('newer');
+        expect(fake.raw('monthStats').get('2026-05')).toEqual({ month: '2026-05', stale: true, staleAt: 7 });
+        expect((await FirebaseService.saveMonthStatGuarded(doc, { staleAt: 7 })).status).toBe('written');
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+    });
 });
