@@ -1621,6 +1621,8 @@ export default {
     'msg.rent.change_unit_split': "{month} का किराया दिनों के हिसाब से बँटेगा: {from} {old}, {to} {new}।",
     'msg.rent.change_unit_old_paid': "{from} का {month} का किराया पहले ही चुकाया जा चुका है, इसलिए वह वैसा ही रहेगा; {to} के दिनों का {new} लगेगा।",
     'msg.rent.old_month_kept': "पुरानी यूनिट का महीना पहले ही चुकाया जा चुका था, इसलिए वह वैसा ही रहा; सिर्फ़ नई यूनिट का किराया दिनों के हिसाब से लगा।",
+    'msg.rent.change_unit_old_capped': "{from} का {month} पहले से चुकाए {old} पर बंद होगा (वहाँ और कुछ बाकी नहीं); {to} के दिनों का {new} लगेगा।",
+    'msg.rent.old_month_capped': "पुरानी यूनिट का महीना पहले से चुकाए {amount} पर बंद किया गया।",
     'msg.rent.bad_split': "रकम 0 से उस महीने के किराये तक डालें।",
     'ui.rent.unit_label': "यूनिट का नाम (जैसे भूतल, दुकान 2)",
     'ui.rent.vacant': "खाली",

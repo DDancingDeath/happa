@@ -1621,6 +1621,8 @@ export default {
     'msg.rent.change_unit_split': "{month} is split by days: {from} {old}, {to} {new}.",
     'msg.rent.change_unit_old_paid': "{month} at {from} is already paid, so it stays as it is; {to} is charged {new} for its days.",
     'msg.rent.old_month_kept': "The old unit's month was already paid, so it was left as it is; only the new unit is pro-rated.",
+    'msg.rent.change_unit_old_capped': "{month} at {from} is closed at the {old} already paid (nothing more is due there); {to} is charged {new} for its days.",
+    'msg.rent.old_month_capped': "The old unit's month was closed at the {amount} already paid.",
     'msg.rent.bad_split': "Enter amounts from 0 up to that month's rent.",
     'ui.rent.unit_label': "Unit name (e.g. Ground floor, Shop 2)",
     'ui.rent.vacant': "Vacant",

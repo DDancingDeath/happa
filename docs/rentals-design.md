@@ -586,11 +586,18 @@ Owner: *"maybe we should have unit option in tenant page"*.
   rent), the old one written to that month's charge (`rent`, `amount`) in the same write. A move
   on the 1st ends the old lease with the month before, so there is no old-unit charge that
   month (also for a member when this month was already charged: that unpaid charge is removed
-  in the same write). Unticked: both units the full month. An amount below what is already paid
-  for the old month is refused ("untick, or ask the owner or a manager").
+  in the same write). Unticked: both units the full month. **Already paid more than the old
+  share** (+ that month's electricity): the old month closes at what is paid (rent = paid −
+  electricity, amount = paid, nothing more due there); fully paid, it stays as it is. The new
+  unit is still pro-rated either way. The dialog says which from the loaded charge; the
+  transaction applies the same rule to the charge it re-reads, so a payment made meanwhile is
+  handled too, and the success message says when it happened (also for an owner/manager amount
+  below what is paid).
   **Who may change the amounts:** members get the worked-out values only; the rules recompute
   the old month from the stored charge rent and the new lease's move date and accept exactly
-  that (± the rounding), only in the write that ends the lease with `movedTo`. Owners and
+  that (± the rounding), or, when more is paid, any rent from that share up with the amount
+  equal to what is paid and the month closed, only in the write that ends the lease with
+  `movedTo`. A member's pro-rated first month (move in or change) must be the RENT-11 value. Owners and
   managers may type any amount from 0 to the month's rent (rules: any lower amount, never below
   paid), as they can already correct a charge. Chosen over an owner/manager-only override
   because members do changes too, and the default must not charge them twice; and over an

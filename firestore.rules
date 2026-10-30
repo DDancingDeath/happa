@@ -875,7 +875,8 @@ service cloud.firestore {
     // The lease's property is its unit's, and its tenant exists. Non-owners can't
     // back-date the start more than 2 days (IST; the app's default edit window, fixed
     // here because Roles & access days would cost reads past this write's limit).
-    function rentLeaseCreateOk(usersCol, docId, owner) {
+    // A member's pro-rated first month is the computed one (RENT-11).
+    function rentLeaseCreateOk(usersCol, docId, owner, mgr) {
       let d = request.resource.data;
       let unit = getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data;
       return d.get('status', '') == 'active' && d.get('endMonth', null) == null
@@ -888,6 +889,7 @@ service cloud.firestore {
         && unit.get('propertyId', '') == d.propertyId
         && existsAfter(rentPath(usersCol, 'rent_tenants', d.tenantId))
         && (owner || d.get('startDate', '') >= rentDaysAgo(2))
+        && (mgr || d.get('firstRent', null) == null || rentFirstRentOk(d))
         && (d.get('fromLeaseId', null) == null ? d.get('shareToken', null) == null : rentUnitChangeOk(usersCol, docId, d));
     }
 
@@ -1140,7 +1142,8 @@ service cloud.firestore {
     // Change of unit, pro-rated (RENT-13): in the write that ends the lease with a
     // move (movedTo), its last month's rent goes down to the old unit's days; the
     // amount follows (rent + electricity), never below what is paid. Members: the
-    // computed value; owner/manager: any lower amount (they correct charges anyway).
+    // computed value, or (more paid than that) closed at what is paid; owner/manager:
+    // any lower amount (they correct charges anyway).
     function rentChargeMoveOk(usersCol, mgr) {
       let d = request.resource.data;
       let r = resource.data;
@@ -1156,20 +1159,29 @@ service cloud.firestore {
         && get(rentLeasePath(usersCol, r.leaseId)).data.status == 'active'
         && d.get('rent', null) is number && d.rent >= 0 && d.rent <= r.rent
         && (mgr || rentMoveRentOk(d.rent, r.rent, lease, r.month,
-              getAfter(rentLeasePath(usersCol, lease.movedTo)).data.get('startDate', '')))
+              getAfter(rentLeasePath(usersCol, lease.movedTo)).data.get('startDate', ''),
+              d.get('amount', 0) >= r.paid - 0.01 && d.get('amount', 0) <= r.paid + 0.01 && d.get('open', true) == false))
         && d.get('amount', null) is number
         && d.amount >= d.rent + e - 0.01 && d.amount <= d.rent + e + 0.01
         && d.amount >= r.paid - 0.01
         && d.get('open', null) == (r.paid < d.amount - 0.001);
     }
 
+    // RENT-11: rent × days from the start date to the month's end ÷ days in that month, rounded.
+    function rentFirstRentOk(d) {
+      let days = rentMonthDays(d.startMonth);
+      let x = float(d.rent) * (days - int(d.startDate[8:10]) + 1) / days;
+      return d.firstRent >= x - 0.5 && d.firstRent <= x + 0.5;
+    }
+
     // RENT-13: rent × (days in the old unit: from the 1st, or the lease's start day when
     // that month was pro-rated, to the day before the move) ÷ (days that charge covers),
     // rounded to the rupee (either way on a .5).
-    function rentMoveRentOk(v, full, lease, month, date) {
+    // capped: closed at what is paid (more than the share): any rent from the share up.
+    function rentMoveRentOk(v, full, lease, month, date, capped) {
       let s = month == lease.startMonth && lease.get('firstRent', null) != null ? int(lease.startDate[8:10]) : 1;
       let x = float(full) * (int(date[8:10]) - s) / (rentMonthDays(month) - s + 1);
-      return rentDate(date) && date[0:7] == month && v is int && v >= x - 0.5 && v <= x + 0.5;
+      return rentDate(date) && date[0:7] == month && v >= x - 0.5 && (capped || (v is int && v <= x + 0.5));
     }
 
     function rentMonthDays(m) {
@@ -1346,7 +1358,7 @@ service cloud.firestore {
       let role = rentRoleIn(usersCol);
       return role != ''
         && (base == 'rent_charges' ? validRentChargeCreate(usersCol, docId)
-          : base == 'rent_leases' ? validRentDoc(base) && rentLeaseCreateOk(usersCol, docId, role == 'owner')
+          : base == 'rent_leases' ? validRentDoc(base) && rentLeaseCreateOk(usersCol, docId, role == 'owner', role in ['owner', 'manager'])
           : base == 'rent_units' ? validRentDoc(base) && rentUnitCreateLeaseOk(usersCol, docId)
             && request.resource.data.get('type', '') in ['flat', 'commercial', 'office', 'godown', 'other']
             && request.resource.data.get('meterCharge', null) == null

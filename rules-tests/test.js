@@ -2141,9 +2141,16 @@ function defineRentSuite(prefix) {
     });
 
     t('pro-rated first month: charge = firstRent (never above the rent); a future start has no charge yet', async () => {
-        await assertFails(moveInBatch('rentMember', { firstRent: 7000 }));
-        await assertFails(moveInBatch('rentMember', { firstRent: 3000, chargeAmount: 6000 }));
-        await assertSucceeds(moveInBatch('rentMember', { firstRent: 3000, chargeAmount: 3000 }));
+        await assertFails(moveInBatch('rentManager', { firstRent: 7000 }));
+        await assertFails(moveInBatch('rentManager', { firstRent: 3000, chargeAmount: 6000 }));
+        await assertSucceeds(moveInBatch('rentManager', { firstRent: 3000, chargeAmount: 3000 }));
+        await env.clearFirestore();
+        await seedUsers(prefix ? 'dev_users' : 'users');
+        // Members: the computed pro-rated value only (RENT-11), never e.g. 0.
+        const fr = proRated(6000, today);
+        await assertFails(moveInBatch('rentMember', { firstRent: 0, chargeAmount: 0 }));
+        if (fr !== 3000) await assertFails(moveInBatch('rentMember', { firstRent: 3000, chargeAmount: 3000 }));
+        await assertSucceeds(moveInBatch('rentMember', { firstRent: fr, chargeAmount: fr }));
         const next = istMonth(1);
         await env.clearFirestore();
         await seedUsers(prefix ? 'dev_users' : 'users');
@@ -2198,7 +2205,7 @@ function defineRentSuite(prefix) {
         b.update(leaseOn(f), { status: 'ended', endMonth: end, chargedThrough: end, ...(moved ? { movedTo: moved } : {}),
             ...(clear ? { shareToken: null } : {}), updatedAt: 2, updatedBy: uid });
         if (pub) b.set(pubOn(f, pub), carry ? snap({ lid: 'LN', place: 'Gali 2 · G2' }) : snap({ ended: true, endMonth: end }));
-        if (split) b.update(chargeOn(f, end), { rent: split.rent, amount: split.amount ?? split.rent, open: true, updatedAt: 2, updatedBy: uid });
+        if (split) b.update(chargeOn(f, end), { rent: split.rent, amount: split.amount ?? split.rent, open: split.open ?? true, updatedAt: 2, updatedBy: uid });
         if (freeOld) b.update(unitOn(f), { leaseId: null, updatedAt: 2, updatedBy: uid });
         b.set(f.collection(c('rent_leases')).doc('LN'), { unitId, propertyId, tenantId, rent: 6000, dueDay: 10, startMonth: month, startDate: date,
             proRate: false, endMonth: null, deposit: 0, increasePct: 5, rentSince: month, elecMode: 'included', status: 'active',
@@ -2211,7 +2218,8 @@ function defineRentSuite(prefix) {
         await seedChange(CUR);
         await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 5000, open: false, payments: [entry('rentMember', 5000)] }));
         await assertFails(changeUnit('rentMember', { first: 7000 }));
-        await assertSucceeds(changeUnit('rentMember', { first: 3000 }));
+        await assertFails(changeUnit('rentMember', { first: proRated(6000, today) - 2 }));
+        await assertSucceeds(changeUnit('rentMember', { first: proRated(6000, today) }));
     });
 
     t('change of unit: old lease ends and the new one starts in one write; fromLeaseId stays fixed', async () => {
@@ -2368,6 +2376,7 @@ function defineRentSuite(prefix) {
     // ---- RENT-13: the old unit's move month pro-rated in the change write ----
     const dim = (m) => new Date(Date.UTC(Number(m.slice(0, 4)), Number(m.slice(5, 7)), 0)).getUTCDate();
     const oldDays = (date, s = 1) => Math.round(5000 * (Number(date.slice(8, 10)) - s) / (dim(date.slice(0, 7)) - s + 1));
+    const proRated = (rent, date) => Math.round(rent * (dim(date.slice(0, 7)) - Number(date.slice(8, 10)) + 1) / dim(date.slice(0, 7)));
 
     t('RENT-13: members pro-rate the old unit\'s move month to the computed amount only, in the change write', async () => {
         await seedChange(CUR);
@@ -2403,6 +2412,19 @@ function defineRentSuite(prefix) {
         await assertFails(changeUnit('rentManager', { split: { rent: 6000 } }));
         await assertFails(changeUnit('rentManager', { split: { rent: 1000 } }));
         await assertSucceeds(changeUnit('rentManager', { split: { rent: 1600.5 } }));
+    });
+
+    t('RENT-13: more than its share paid: a member closes the old month at exactly what is paid, never another amount above the share', async () => {
+        const x = oldDays(today);
+        if (5000 - x < 4) return; // needs room between the share and the full rent
+        const paid = Math.round((x + 5000) / 2);
+        const above = Math.floor((paid + 5000) / 2);
+        await seedChange(CUR);
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid, open: true, payments: [entry('x', paid)] }));
+        await assertFails(changeUnit('rentMember', { split: { rent: above, amount: above, open: true } }));
+        await assertFails(changeUnit('rentMember', { split: { rent: above, amount: above, open: false } }));
+        await assertFails(changeUnit('rentMember', { split: { rent: x, amount: x, open: false } }));
+        await assertSucceeds(changeUnit('rentMember', { split: { rent: paid, amount: paid, open: false } }));
     });
 
     t('RENT-13: an old lease that started (pro-rated) in the move month counts from its start day', async () => {

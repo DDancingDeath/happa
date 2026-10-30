@@ -29,6 +29,20 @@ export function moveMonthRent(full, lease, month, moveDate) {
 }
 const toast = (key) => UIManager.showToast(t(key), 'error');
 
+/**
+ * RENT-13 on the old unit's charge `ch` for rent `rent`: when more than rent + electricity is
+ * already paid, the month closes at what is paid (rent = paid − electricity; capped), or stays
+ * as it is when that is the whole charge (kept).
+ */
+export function oldMonth(ch, rent) {
+    const e = Number(ch?.electricity?.amount) || 0;
+    const paid = Number(ch?.paid) || 0;
+    const over = paid > rent + e + 0.001;
+    const r = over ? round2(paid - e) : rent;
+    const amount = round2(r + e);
+    return { rent: r, amount, open: paid < amount - 0.001, capped: over && r < ch.rent, kept: over && r >= ch.rent };
+}
+
 /** Vacant units by property (`current`: the tenant's own unit, shown selected). */
 export function unitPickHtml(c, id, d, { current = '', none = true, attrs = '' } = {}) {
     const groups = vacantByProperty(d.properties, d.units, current).map(g => `<optgroup label="${c.esc(g.property.name)}">${g.units.map(u => {
@@ -118,6 +132,7 @@ async function changeDialog(c, { d, ix, from, unit, occ, defs, mgr, on, typed })
     const s = splitOf(from, d, lease.startDate, lease.rent);
     if (!mgr && from.chargedThrough > addMonths(s.endMonth, 1)) return toast('msg.rent.change_backdate');
     let oldRent = null;
+    let paidOld = null;
     if (on) {
         const next = mgr ? Number(typed.next) : s.next;
         const old = s.old === null ? null : mgr ? Number(typed.old) : s.old;
@@ -126,9 +141,8 @@ async function changeDialog(c, { d, ix, from, unit, occ, defs, mgr, on, typed })
         lease.firstRent = round2(next);
         // 'auto': worked out from the stored charge in the same transaction (members always).
         oldRent = old === null ? null : old === s.old ? 'auto' : round2(old);
-        // Already paid more than its share: the old month stays as it is; the new unit is still pro-rated.
         const ch = d.charges.find(x => x.leaseId === from.id && x.month === s.month);
-        if (old !== null && (Number(ch?.paid) || 0) > old + (Number(ch?.electricity?.amount) || 0) + 0.001) oldRent = null;
+        if (old !== null && ch) paidOld = oldMonth(ch, old);
     } else {
         lease.proRate = false;
         delete lease.firstRent;
@@ -142,8 +156,9 @@ async function changeDialog(c, { d, ix, from, unit, occ, defs, mgr, on, typed })
         month: monthLabel(s.endMonth, lang), dues: formatINR(leaseDues(d.charges, from.id).total)
     }) + (s.endMonth !== s.month ? ''
         : ` ${!on ? t('msg.rent.change_unit_both', { month })
-            : oldRent === null ? t('msg.rent.change_unit_old_paid', { month, from: place, to, new: formatINR(lease.firstRent) })
-                : t('msg.rent.change_unit_split', { month, from: place, old: formatINR(oldRent === 'auto' ? s.old : oldRent), to, new: formatINR(lease.firstRent) })}`);
+            : paidOld?.kept ? t('msg.rent.change_unit_old_paid', { month, from: place, to, new: formatINR(lease.firstRent) })
+                : paidOld?.capped ? t('msg.rent.change_unit_old_capped', { month, from: place, old: formatINR(paidOld.amount), to, new: formatINR(lease.firstRent) })
+                    : t('msg.rent.change_unit_split', { month, from: place, old: formatINR(oldRent === 'auto' ? s.old : oldRent), to, new: formatINR(lease.firstRent) })}`);
     if (!await UIManager.showModal(ask, t('ui.rent.change_unit'), true)) return;
     return c.saveMoveIn({
         unit, newUnit: false, occ, defs, from,
@@ -176,7 +191,8 @@ export function movedSnapshot(s, { leaseId, lease, endMonth, names, split = null
  * 'auto' = worked out here from the stored charge, null = left full); its tenant link
  * moves to the new lease (same token) with the history. The new lease's first month is
  * charged right after.
- * When more than the old unit's share is already paid, its month is left as it is (oldKept).
+ * More than the old unit's share already paid: its month closes at what is paid (oldCapped,
+ * the amount), or stays as it is when fully paid (oldKept) (oldMonth).
  * @throws {Error} 'bad_move_date' | 'tenant_changed' | 'later_paid' | 'unit_taken' | 'missing'
  */
 export async function changeUnit({ unitId, tenantId, tenantName, fromLeaseId, endMonth, lease, oldRent = 'auto', names = {}, currentMonth }) {
@@ -184,8 +200,10 @@ export async function changeUnit({ unitId, tenantId, tenantName, fromLeaseId, en
     await store.chargeLease(fromLeaseId, endMonth, { tenantName, unitLabel: names.oldLabel || '' });
     const month = lease.startDate.slice(0, 7);
     let kept = false;
+    let capped = null;
     const read = async (tx, leaseId) => {
         kept = false;
+        capped = null;
         const old = { id: fromLeaseId, ...(await tx.get(store.coll('rent_leases').doc(fromLeaseId))).data() };
         if (old.status !== 'active' || old.tenantId !== tenantId) throw new Error('tenant_changed');
         if (endMonth < old.startMonth) throw new Error('bad_move_date');
@@ -194,10 +212,10 @@ export async function changeUnit({ unitId, tenantId, tenantName, fromLeaseId, en
         const ch = oldRent !== null && endMonth === month ? (await tx.get(chRef)).data() : null;
         let split = null;
         if (Number.isFinite(ch?.rent)) {
-            const rent = oldRent === 'auto' ? moveMonthRent(ch.rent, old, month, lease.startDate) : oldRent;
-            const amount = round2(rent + (Number(ch.electricity?.amount) || 0));
-            if (amount < (Number(ch.paid) || 0) - 0.001) kept = true;
-            else if (rent < ch.rent) split = { ...ch, rent, amount, open: (Number(ch.paid) || 0) < amount - 0.001 };
+            const o = oldMonth(ch, oldRent === 'auto' ? moveMonthRent(ch.rent, old, month, lease.startDate) : oldRent);
+            kept = o.kept;
+            if (o.capped) capped = o.amount;
+            if (!o.kept && o.rent < ch.rent) split = { ...ch, rent: o.rent, amount: o.amount, open: o.open };
         }
         const token = isShareToken(old.shareToken) ? old.shareToken : null;
         return {
@@ -209,5 +227,5 @@ export async function changeUnit({ unitId, tenantId, tenantName, fromLeaseId, en
         };
     };
     const res = await store.moveIn({ unit: { id: unitId }, tenantId, tenantName, lease, currentMonth, change: { from: fromLeaseId, read } });
-    return { ...res, oldKept: kept };
+    return { ...res, oldKept: kept, oldCapped: capped };
 }

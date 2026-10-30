@@ -802,7 +802,7 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, save = null }
         const first = occ.lease.firstRent ?? firstMonthRent(occ.lease.rent, occ.lease.startDate, occ.lease.proRate);
         const moved = isShareToken(from?.shareToken);
         UIManager.showToast(t(`msg.rent.${from ? 'unit_changed' : 'moved_in'}${res.charged ? '_charged' : ''}`, { amount: formatINR(first) })
-            + (moved ? ` ${t('msg.rent.link_moved')}` : '') + (res.oldKept ? ` ${t('msg.rent.old_month_kept')}` : ''), 'success');
+            + (moved ? ` ${t('msg.rent.link_moved')}` : '') + (res.oldKept ? ` ${t('msg.rent.old_month_kept')}` : res.oldCapped != null ? ` ${t('msg.rent.old_month_capped', { amount: formatINR(res.oldCapped) })}` : ''), 'success');
         AuditService.log(from ? 'RENT_UNIT_CHANGE' : 'RENT_MOVE_IN', {
             tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate, fromLeaseId: from?.id || null
         }).catch(auditWarn);
