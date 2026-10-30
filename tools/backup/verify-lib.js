@@ -16,10 +16,14 @@ const PBKDF2_ITER = 200000;
 const MAGIC = Buffer.from('Salted__', 'latin1');
 const DECRYPT_FAILED = 'Decryption failed (wrong passphrase or damaged file)';
 
-/** Wrong passphrase or damaged file: bad padding, or the decrypted bytes are not gzipped JSON. */
+/**
+ * Wrong passphrase or damaged file: bad padding, or the decrypted bytes are
+ * not gzipped JSON. `detail` (safe to log: no data, no passphrase) is added to
+ * the message.
+ */
 class DecryptionError extends Error {
-    constructor(cause) {
-        super(DECRYPT_FAILED, cause ? { cause } : undefined);
+    constructor(cause, detail) {
+        super(detail ? `${DECRYPT_FAILED}: ${detail}` : DECRYPT_FAILED, cause ? { cause } : undefined);
         this.name = 'DecryptionError';
     }
 }
@@ -63,7 +67,8 @@ function decryptOpenssl(enc, passphrase, { iter = PBKDF2_ITER } = {}) {
 /**
  * Decrypts, gunzips and parses a `*.json.gz.enc` backup. A wrong passphrase
  * passes the PKCS#7 padding check by chance about 1 time in 256; the garbage
- * then fails gunzip or JSON.parse, which is reported like a padding failure.
+ * then fails gunzip or JSON.parse. That, and a file damaged before encryption,
+ * is a DecryptionError whose message names the step that failed.
  * @param {Buffer} enc
  * @param {string} passphrase
  * @param {{iter?: number}} [o]
@@ -71,10 +76,19 @@ function decryptOpenssl(enc, passphrase, { iter = PBKDF2_ITER } = {}) {
  */
 function decryptBackup(enc, passphrase, { iter = PBKDF2_ITER } = {}) {
     const gz = decryptOpenssl(enc, passphrase, { iter });
+    let text;
     try {
-        return JSON.parse(zlib.gunzipSync(gz).toString('utf8'));
+        text = zlib.gunzipSync(gz).toString('utf8');
     } catch (err) {
-        throw new DecryptionError(err);
+        // zlib messages are fixed strings ("incorrect header check", "unexpected end of file").
+        throw new DecryptionError(err, `gunzip: ${err.message}`);
+    }
+    try {
+        return JSON.parse(text);
+    } catch {
+        // JSON.parse messages quote the input, which is backup data: never log them.
+        const detail = 'the decompressed data is not valid JSON';
+        throw new DecryptionError(new Error(detail), detail);
     }
 }
 

@@ -60,9 +60,9 @@ function sampleBackup() {
 }
 
 /** Writes an artifact folder like the workflow: <name>.json.gz.enc, manifest.json, SHA256SUMS. */
-function writeArtifact(dir, backup, { manifest = buildManifest(backup), iter = ITER, salt = fixedSalt(0) } = {}) {
+function writeArtifact(dir, backup, { manifest = buildManifest(backup), iter = ITER, salt = fixedSalt(0), gz = gzBackup(backup) } = {}) {
     fs.mkdirSync(dir, { recursive: true });
-    const enc = encryptOpenssl(gzBackup(backup), PASS, { iter, salt });
+    const enc = encryptOpenssl(gz, PASS, { iter, salt });
     const files = { 'firestore-backup-nightly-2026-10-30_1345.json.gz.enc': enc, 'manifest.json': Buffer.from(JSON.stringify(manifest)) };
     const sums = Object.entries(files).map(([name, buf]) => {
         fs.writeFileSync(path.join(dir, name), buf);
@@ -89,7 +89,7 @@ describe('openssl-compatible encryption', () => {
         expect(() => decryptOpenssl(enc, WRONG, { iter: ITER })).toThrow(/passphrase|damaged/);
     });
 
-    test('a wrong passphrase that passes the padding check by chance is reported the same way', () => {
+    test('a wrong passphrase that passes the padding check by chance is still reported as wrong passphrase or damaged', () => {
         const gz = gzBackup(sampleBackup());
         const passes = encryptOpenssl(gz, PASS, { iter: ITER, salt: findSalt(gz, true) });
         const fails = encryptOpenssl(gz, PASS, { iter: ITER, salt: findSalt(gz, false) });
@@ -99,16 +99,22 @@ describe('openssl-compatible encryption', () => {
         const padding = errorOf(fails);
         expect(chance).toBeInstanceOf(DecryptionError);
         expect(padding).toBeInstanceOf(DecryptionError);
-        expect(chance.message).toBe(padding.message);
-        expect(chance.message).toMatch(/passphrase|damaged/);
+        expect(padding.message).toBe('Decryption failed (wrong passphrase or damaged file)');
+        expect(chance.message).toMatch(/^Decryption failed \(wrong passphrase or damaged file\): gunzip: /);
         expect(decryptBackup(passes, PASS, { iter: ITER })).toEqual(sampleBackup());
     });
 
-    test('decrypted bytes that are not gzipped JSON are reported as wrong passphrase or damaged', () => {
+    test('decrypted bytes that are not gzipped JSON are reported as wrong passphrase or damaged, with the step', () => {
         const notGzip = encryptOpenssl(Buffer.from('{"format":"x"}'), PASS, { iter: ITER, salt: fixedSalt(1) });
-        const notJson = encryptOpenssl(zlib.gzipSync(Buffer.from('{"format":')), PASS, { iter: ITER, salt: fixedSalt(1) });
+        const notJson = encryptOpenssl(zlib.gzipSync(Buffer.from('{"format":"secret-shop-data"')), PASS, { iter: ITER, salt: fixedSalt(1) });
         expect(() => decryptBackup(notGzip, PASS, { iter: ITER })).toThrow(DecryptionError);
-        expect(() => decryptBackup(notJson, PASS, { iter: ITER })).toThrow(/passphrase|damaged/);
+        expect(() => decryptBackup(notGzip, PASS, { iter: ITER })).toThrow('damaged file): gunzip: incorrect header check');
+        expect(() => decryptBackup(notJson, PASS, { iter: ITER })).toThrow(DecryptionError);
+        let err;
+        try { decryptBackup(notJson, PASS, { iter: ITER }); } catch (e) { err = e; }
+        expect(err.message).toBe('Decryption failed (wrong passphrase or damaged file): the decompressed data is not valid JSON');
+        // JSON.parse quotes the input; backup data must not reach the message or the cause.
+        expect(`${err.message} ${err.cause.message}`).not.toContain('secret-shop-data');
     });
 
     const openssl = spawnSync('openssl', ['version']).status === 0;
@@ -154,6 +160,20 @@ describe('offline backup check', () => {
             expect(() => verifyAt(dir, WRONG)).toThrow(DecryptionError);
             expect(() => verifyAt(dir, WRONG)).toThrow(/passphrase|damaged/);
         }
+    });
+
+    test('verify-backup.js names the cause of a gzip damaged before encryption, without the passphrase', () => {
+        const backup = sampleBackup();
+        const gz = gzBackup(backup);
+        // Real iteration count: the CLI always uses 200000.
+        const dir = writeArtifact(fresh(), backup, { gz: gz.subarray(0, gz.length - 10), iter: 200000 });
+        const r = spawnSync(process.execPath, [path.join(__dirname, '../../tools/backup/verify-backup.js'), '--dir', dir], {
+            env: { ...process.env, BACKUP_PASSPHRASE: PASS, GITHUB_STEP_SUMMARY: '' }
+        });
+        const out = `${r.stdout}${r.stderr}`;
+        expect(r.status).toBe(1);
+        expect(out).toContain('Backup check failed: Decryption failed (wrong passphrase or damaged file): gunzip: unexpected end of file');
+        expect(out).not.toContain(PASS);
     });
 
     test('counts that differ from manifest.json fail', () => {
