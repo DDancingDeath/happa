@@ -112,6 +112,29 @@ The app signs in with **email and password only** (`www/js/auth/authentication.j
 3. Sign in to Happa with one account first. Wrong parameters mean nobody can sign in (fix: re-import with the right ones, or "Forgot password").
 4. Delete `$D\users.json` (it holds password hashes). Never put it in the repo.
 
+The same import also runs through this tool, reading the parameters from the console's text block saved as a file (`hash_config { algorithm: SCRYPT, base64_signer_key: …, … }`) instead of pasting them on the command line. Dry run unless `--yes`; it refuses `aadhat-management` and a key for another project:
+
+```powershell
+node tools/migrate/migrate.js auth:import --users $D\users.json --hash-params $D\hash-params.txt --project happa-bfc07 --key $D\key.json --yes
+```
+
+## Rehearsing on the emulators: `--emulator`
+
+`apply`, `wipe` and `auth:import` take `--emulator` instead of `--key`: they then write to the local Firebase emulators named by `FIRESTORE_EMULATOR_HOST` / `FIREBASE_AUTH_EMULATOR_HOST` (`firebase emulators:exec` sets both). The flag refuses a key and any host that is not `127.0.0.1` / `localhost`, and a run without it refuses while those variables are set, so a rehearsal can never reach a real project. Its cursor file is separate (`….emulator.cursor.json`).
+
+`npm run test:migration-e2e` (`tests/migration-e2e/`, CI: `.github/workflows/migration-e2e.yml`, on PRs touching this tool or the opening-record code, and nightly) runs the whole move against the emulators: it makes an anonymised old-app backup and Auth export (SCRYPT hashes of known test passwords) at test time, runs `plan` → `wipe` → `apply` → `auth:import`, checks the data against the old backup (dues and age groups as the old Outstanding pages computed them, items, users and roles, settings, counters, `rateStats` = the app's `billsToYearDocs`, nothing from `dev_`, the write budget), then opens the app (Playwright) as a migrated owner and member with their original passwords. The Auth emulator does not check imported SCRYPT hashes, so the test checks the password against the imported hash with Firebase's scrypt itself, as production Auth does.
+
+On the real backup (local only; output outside the repo, nothing committed):
+
+```powershell
+$env:MIGRATION_E2E_BACKUP = "$D\backup-final\firestore-backup.json"; $env:MIGRATION_E2E_AUTH = "$D\backup-final\users.json"
+$env:MIGRATION_E2E_HASH_PARAMS = "$D\hash-params.txt"; $env:MIGRATION_E2E_OUT = "$D\e2e-out"
+$env:MIGRATION_E2E_EXPECT = '<bills>,<parties>,<total>'   # optional: the carried dues the report shows
+npm run test:migration-e2e
+```
+
+The real passwords are not known, so after the hash bytes are checked the run gives one owner and one member an emulator-only password to open the app.
+
 ## Cutover (data steps)
 
 The go-live runbook is **`docs/happa-go-live.md`** in the Happa PR (#231). It covers the project `happa-bfc07`, `happa.config.json`, signing (`HAPPA_*` secrets, `Happa.apk`), the workflow and `.firebaserc` switch, and the merge order. This section is only the data part: run it at that runbook's step 6 ("Stop billing in the old app and run the migration").

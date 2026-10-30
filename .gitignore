@@ -132,6 +132,8 @@ backup*.json
 *.enc
 # synthetic test data (no real shop data)
 !tests/fixtures/migrate/*.json
+# migration end-to-end output (generated at test time)
+tests/migration-e2e/.out/
 
 # backup verify test scratch folders
 tests/backup/.artifact-test-*/

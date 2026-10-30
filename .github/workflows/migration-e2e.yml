@@ -1,0 +1,89 @@
+# Migration end-to-end (#15): an anonymised old-app backup and Auth export made
+# at test time → tools/migrate plan, wipe, apply, auth:import into the Firebase
+# EMULATORS → data checks against the old backup → the app (Playwright) as a
+# migrated owner and member. Never touches a real project (migrate.js --emulator).
+# Runs on PRs that touch the tool or the opening-record code, nightly and on demand.
+name: Migration E2E
+
+on:
+  pull_request:
+    paths:
+      - 'tools/migrate/**'
+      - 'tools/backup/backup-lib.js'
+      - 'tests/migration-e2e/**'
+      - 'tests/fixtures/generator.js'
+      - 'tests/oracle/oracle.js'
+      # opening records: how the app reads, shows and leaves out the carried dues
+      - 'www/js/utils/money.js'
+      - 'www/js/utils/aging.js'
+      - 'www/js/utils/history-filters.js'
+      - 'www/js/utils/rate-trends.js'
+      - 'www/js/utils/business-metrics.js'
+      - 'www/js/utils/finance-calc.js'
+      - 'www/js/utils/statements.js'
+      - 'www/js/utils/due-payments.js'
+      - 'www/js/utils/helpers.js'
+      - 'www/js/ui/bill-row.js'
+      - 'www/js/modules/outstanding.js'
+      - 'www/js/modules/wholesale-sales.js'
+      - 'www/js/modules/history.js'
+      - 'www/js/modules/day.js'
+      - 'www/js/modules/money.js'
+      - 'www/js/modules/insights.js'
+      - 'www/js/modules/statements.js'
+      - 'www/js/modules/rate-trends.js'
+      - 'www/js/auth/**'
+      - 'firestore.rules'
+      - '.github/workflows/migration-e2e.yml'
+  schedule:
+    - cron: '0 22 * * *' # 03:30 IST nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  migration-e2e:
+    name: Migration end-to-end (emulators)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # tools/migrate imports the app's www/js ES modules: Node 22.12+
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tools/migrate/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Cache the emulator downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}-v1
+      - run: npm ci
+      - run: npm ci
+        working-directory: tools/migrate
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: Migration end-to-end
+        run: npm run test:migration-e2e
+      - name: Upload the report (synthetic data only)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-e2e
+          path: |
+            tests/migration-e2e/.out/plan/report.md
+            tests/migration-e2e/.out/playwright-report/
+            tests/migration-e2e/.out/test-results/
+          retention-days: 7
