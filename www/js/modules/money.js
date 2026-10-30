@@ -13,7 +13,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
-import { formatRupees, round2, normalizeLabourSettings } from '../utils/money.js';
+import { formatRupees, formatAmount, round2, normalizeLabourSettings } from '../utils/money.js';
 import { labourSummary, labourToPayByDay, labourCalcText } from '../utils/labour.js';
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate } from '../utils/dates.js';
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
@@ -52,10 +52,20 @@ export function routeAvailable(link) {
     return !!(document.getElementById(link) || document.getElementById(String(link).split('-')[0]));
 }
 
+const TAKEAWAY_RUPEES = ['amount', 'taken', 'kept'];
+
+/** Takeaway params with the ₹ amounts grouped like the cards ("4,927"). */
+export function takeawayParams(params) {
+    if (!params) return params;
+    const out = { ...params };
+    TAKEAWAY_RUPEES.forEach(k => { if (typeof out[k] === 'number') out[k] = formatAmount(out[k]); });
+    return out;
+}
+
 /** Renders takeaways as escaped sentences; a link becomes a small button. */
 export function takeawayHtml(list) {
     return (list || []).map(x => {
-        const text = esc(t(x.key, x.params));
+        const text = esc(t(x.key, takeawayParams(x.params)));
         const link = x.link && routeAvailable(x.link) ? ` <button type="button" class="ins-link" data-go="${esc(x.link)}">${esc(t('ui.money.open'))} ›</button>` : '';
         return `<p>${text}${link}</p>`;
     }).join('');
@@ -91,10 +101,12 @@ export function barsSvg(values, { faint = null, labels = [], height = 120, onTap
     let line = '';
     if (faint && faint.some(Number.isFinite)) {
         const pts = faint.map((v, i) => (Number.isFinite(v) ? `${((i + 0.5) * w).toFixed(2)},${(zero - v * scale).toFixed(1)}` : null)).filter(Boolean);
-        line = `<polyline class="ins-faint" points="${pts.join(' ')}" vector-effect="non-scaling-stroke"/>`;
+        line = `<svg width="100%" height="${height}" viewBox="0 0 100 ${height}" preserveAspectRatio="none">`
+            + `<polyline class="ins-faint" points="${pts.join(' ')}" vector-effect="non-scaling-stroke"/></svg>`;
     }
     const ticks = labels.map((l, i) => (l && l.tick ? `<text x="${((i + 0.5) * w).toFixed(2)}%" y="${height - 2}" class="ins-tick">${esc(l.tick)}</text>` : '')).join('');
-    return `<svg class="ins-svg" viewBox="0 0 100 ${height}" preserveAspectRatio="none" role="img" style="height:${height}px">`
+    // Only the last-year line is stretched; bars and labels use % / px so the text keeps its shape.
+    return `<svg class="ins-svg" width="100%" height="${height}" role="img" style="height:${height}px">`
         + `<line class="ins-axis" x1="0" x2="100%" y1="${zero}" y2="${zero}"/>${bars}${line}${ticks}</svg>`;
 }
 
@@ -177,7 +189,9 @@ export const MoneyManager = {
         const { preset } = getInsightsContext();
         if (r.month) {
             const label = formatMonth(r.from, { lang });
-            return preset === 'this-month' ? t('ui.money.month_to_date', { month: label, day: new Date().getDate() }) : label;
+            if (preset !== 'this-month') return label;
+            const day = new Date().getDate();
+            return day === 1 ? formatDay(r.from, { lang }) : t('ui.money.month_to_date', { month: label, day });
         }
         if (preset === 'last-30') return t('ui.money.p_last_30');
         if (/year$/.test(preset)) return String(new Date(r.from).getFullYear());
@@ -367,7 +381,7 @@ export const MoneyManager = {
     caveatsHtml(m, ids) {
         const list = (m.caveats || []).filter(c => c.ids.some(id => ids.includes(id)));
         return list.map(c => {
-            const params = { qty: c.qty, amount: Math.round(c.estimate ?? c.amount ?? c.gap ?? 0) };
+            const params = { qty: c.qty, amount: formatAmount(c.estimate ?? c.amount ?? c.gap ?? 0) };
             return `<div class="ins-caveat">⚠ ${esc(t(`ui.money.caveat_${c.key}`, params))}</div>`;
         }).join('');
     },
@@ -387,7 +401,7 @@ export const MoneyManager = {
         this.html('moneyProfitCaveats', this.caveatsHtml(m, ['M2', 'M6']));
         this.text('moneySales', money(m.M1.total));
         const splitLink = routeAvailable('insights-items')
-            ? ` · <button type="button" class="ins-link" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
+            ? ` <button type="button" class="ins-link" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
         this.html('moneySalesSplit', `<span data-metric-ref="M1">${esc(tn('ui.money.bills', m.M1.count))}</span>${splitLink}`);
         this.text('moneyCogs', money(m.M2));
         this.text('moneyGross', m.M3.total === null ? '—' : `${money(m.M3.total)}${m.M3.per100 !== null ? ` · ${t('ui.money.per100', { value: Math.round(m.M3.per100 * 10) / 10 })}` : ''}`);
@@ -420,7 +434,7 @@ export const MoneyManager = {
             + row('ui.money.cogs_minus', s.cogs, 'cogs')
             + row('ui.money.corrections', s.adjustments, 'stockAdjustments')
             + row('ui.money.closing_stock', s.closing, 'stockClosing')
-            + (Math.abs(s.gap) > 1 ? `<div class="ins-caveat ins-tap" data-breakdown="stockCheck" role="button" tabindex="0">⚠ ${esc(t('ui.money.caveat_gap', { amount: Math.round(s.gap) }))}</div>` : `<div class="ins-ok">✓ ${esc(t('ui.money.check_ok'))}</div>`));
+            + (Math.abs(s.gap) > 1 ? `<div class="ins-caveat ins-tap" data-breakdown="stockCheck" role="button" tabindex="0">⚠ ${esc(t('ui.money.caveat_gap', { amount: formatAmount(s.gap) }))}</div>` : `<div class="ins-ok">✓ ${esc(t('ui.money.check_ok'))}</div>`));
     },
 
     /** M11: 13 months of profit, last year as a faint line. */

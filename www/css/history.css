@@ -381,7 +381,7 @@
 }
 
 .bill-row .bill-row__items {
-  flex: 1 1 0;
+  flex: 1 1 4.5rem;
   min-width: 0;
   margin: 0;
   font-size: 12px;

@@ -171,7 +171,7 @@
   transform: scale(0.98);
 }
 
-/* Items page on a phone: action buttons fit the width (F28) */
+/* Items page on a phone: action buttons and the rates table fit the width (F28) */
 @media (max-width: 1023px) {
   #itemsActionButtons {
     flex-wrap: wrap;
@@ -181,5 +181,15 @@
     min-width: 0;
     padding: 12px 8px !important;
     white-space: nowrap;
+  }
+
+  #itemsViewTable th,
+  #itemsViewTable td {
+    padding: 12px 8px !important;
+  }
+
+  #itemsViewTable th {
+    font-size: 12px !important;
+    letter-spacing: 0 !important;
   }
 }

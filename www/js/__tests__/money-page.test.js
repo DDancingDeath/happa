@@ -17,6 +17,7 @@ import {
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { setInsightsContext, resetInsightsContextForTests, getInsightsContext, contextMonth } from '../utils/insights-context.js';
 import { t } from '../i18n/index.js';
+import { formatAmount } from '../utils/money.js';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const FIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/calculations/shop-month.json'), 'utf8'));
@@ -81,7 +82,7 @@ describe('figures on screen == oracle (this month)', () => {
         expect(shown('moneyGross')).toBe(rupee(w.M3_gross));
         expect(shown('moneyBadDebts')).toBe(rupee(w.M5_badDebts));
         expect(shown('moneyPurchases')).toBe(rupee(w.M16_purchases));
-        expect(document.getElementById('moneyPeriodLabel').textContent).toBe('Oct 2026 (to the 21)');
+        expect(document.getElementById('moneyPeriodLabel').textContent).toBe('1–21 Oct 2026');
     });
 
     test('Cash section: M12, M13, M14', () => {
@@ -210,6 +211,12 @@ describe('taps, caveats and checks', () => {
         document.body.insertAdjacentHTML('beforeend', '<div id="insights"></div>');
         MoneyManager.render();
         expect(document.querySelector('#moneySalesSplit [data-go="insights-items"]').dataset.metricRef).toBe('I2');
+    });
+
+    test('takeaway amounts are grouped like the cards (₹4,927, not ₹4927)', () => {
+        expect(takeawayHtml(profitTakeaways({ profit: -4927.4 }))).toContain('Loss of ₹4,927 in this period.');
+        expect(takeawayHtml(spendingTakeaways({ business: 0, withdrawn: 120000, personal: 500, kept: 2500, show: { profit: true, personal: true } })))
+            .toContain('₹1,20,500 went to personal use; ₹2,500 of the profit stays in the business.');
     });
 
     test('takeaway links to a page that is not in the app are hidden', () => {
@@ -373,6 +380,19 @@ describe('shared period', () => {
         expect((svg.match(/<rect/g) || []).length).toBe(3);
         expect(svg).toContain('polyline');
     });
+
+    test('barsSvg stretches only the last-year line, so the month labels keep their shape', () => {
+        const box = document.createElement('div');
+        box.innerHTML = barsSvg([1, 2], { faint: [1, 2], labels: [{ key: '2026-09', tick: 'Sep' }, { key: '2026-10', tick: 'Oct' }] });
+        const outer = box.firstElementChild;
+        expect(outer.getAttribute('viewBox')).toBeNull();
+        expect(outer.getAttribute('preserveAspectRatio')).toBeNull();
+        const stretched = outer.querySelector('svg');
+        expect(stretched.getAttribute('preserveAspectRatio')).toBe('none');
+        expect(stretched.querySelector('polyline')).not.toBeNull();
+        expect([...outer.querySelectorAll('text')].map(el => el.parentNode)).toEqual([outer, outer]);
+        expect([...outer.querySelectorAll('rect')].map(el => el.parentNode)).toEqual([outer, outer]);
+    });
 });
 
 describe('what each role sees (Roles & access)', () => {
@@ -382,16 +402,16 @@ describe('what each role sees (Roles & access)', () => {
     };
     const spendText = () => document.getElementById('moneySpendTakeaway').textContent;
     const w = () => O.metrics(data, OCT);
-    const amount = (v) => `₹${Math.abs(Math.round(v))}`;
+    const amount = (v) => `₹${formatAmount(Math.abs(v))}`;
 
     test('owner: the spending takeaway says what went to personal use and what stays of the profit', () => {
         MoneyManager.init('spending');
-        expect(spendText()).toContain(t('ui.tk.kept_negative', { taken: Math.round(w().M9_withdrawals + w().M8_personalExpenses), kept: Math.abs(Math.round(w().M10_kept)) }));
+        expect(spendText()).toContain(t('ui.tk.kept_negative', { taken: formatAmount(w().M9_withdrawals + w().M8_personalExpenses), kept: formatAmount(Math.abs(w().M10_kept)) }));
     });
     test('without profit: personal use only, nothing about the profit', () => {
         asMember({ profit: false });
         MoneyManager.init('spending');
-        expect(spendText()).toContain(t('ui.tk.taken', { taken: Math.round(w().M9_withdrawals + w().M8_personalExpenses) }));
+        expect(spendText()).toContain(t('ui.tk.taken', { taken: formatAmount(w().M9_withdrawals + w().M8_personalExpenses) }));
         expect(spendText()).not.toMatch(/profit/i);
         expect(spendText()).not.toContain(amount(w().M10_kept));
     });

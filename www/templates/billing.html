@@ -11,7 +11,7 @@
                 Save draft
             </button>
             <button onclick="window.app.billing.showDrafts()" class="draft-btn" style="background: #15803d !important; border-color: #15803d !important; color: white !important; display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;">
-                <span data-i18n="ui.billing.drafts">Drafts</span> (<span id="draftCount">0</span>)
+                <span data-i18n="ui.billing.drafts">Drafts</span> <span>(<span id="draftCount">0</span>)</span>
             </button>
             <button onclick="window.app.billing.clearBill()" class="draft-btn" style="background: #dc2626 !important; border-color: #dc2626 !important; color: white !important; display: flex; align-items: center; justify-content: center;" data-i18n="ui.billing.clear">
                 Clear
@@ -24,7 +24,7 @@
         <div class="form-row">
             <label style="width: 100px;" data-i18n="ui.common.customer">Customer:</label>
             <div style="display: flex; gap: 8px; flex: 1; align-items: center;">
-                <input type="text" id="customerName" list="customerOptions" placeholder="Enter customer name (Optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
+                <input type="text" id="customerName" list="customerOptions" placeholder="Name (optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
                 <button onclick="window.app.billing.pickContact()" style="padding: 8px 12px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 40px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
             </div>
             <datalist id="customerOptions"></datalist>
@@ -38,14 +38,14 @@
 
             <div class="form-row">
                 <label data-i18n="ui.billing.rate">Rate (₹):</label>
-                <input type="number" inputmode="decimal" id="billRate" list="rateOptions" step="any" placeholder="Select or enter rate"  data-i18n-placeholder="ui.billing.select_enter_rate"/>
+                <input type="number" inputmode="decimal" id="billRate" list="rateOptions" step="any" placeholder="Pick or type"  data-i18n-placeholder="ui.billing.select_enter_rate"/>
                 <datalist id="rateOptions"></datalist>
             </div>
 
             <div class="form-row">
                 <label data-i18n="ui.billing.weight_kg">Weight (kg):</label>
                 <div style="display: flex; gap: 8px; flex: 1;">
-                    <input type="number" inputmode="decimal" id="newWeight" placeholder="Enter weight" style="flex: 1;" onkeypress="if(event.key === 'Enter') { event.preventDefault(); window.app.billing.addWeight(true); }"  data-i18n-placeholder="ui.billing.enter_weight"/>
+                    <input type="number" inputmode="decimal" id="newWeight" placeholder="Weight" style="flex: 1;" onkeypress="if(event.key === 'Enter') { event.preventDefault(); window.app.billing.addWeight(true); }"  data-i18n-placeholder="ui.billing.enter_weight"/>
                     <button class="quick-add-btn-inline" onclick="window.app.billing.addWeight()" data-i18n="ui.billing.add">Add</button>
                 </div>
             </div>
@@ -164,7 +164,7 @@
         <div class="form-row">
             <label style="width: 100px;" data-i18n="ui.common.customer">Customer:</label>
             <div style="display: flex; gap: 8px; flex: 1; align-items: center;">
-                <input type="text" id="saleCustomerName" list="saleCustomerOptions" placeholder="Enter customer name (Optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
+                <input type="text" id="saleCustomerName" list="saleCustomerOptions" placeholder="Name (optional)" style="flex: 1;"  data-i18n-placeholder="ui.billing.enter_customer_name_optional"/>
                 <button onclick="window.app.billing.pickSaleContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 40px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
             </div>
             <datalist id="saleCustomerOptions"></datalist>
@@ -178,14 +178,14 @@
 
             <div class="form-row">
                 <label data-i18n="ui.billing.rate">Rate (₹):</label>
-                <input type="number" inputmode="decimal" id="saleRate" list="saleRateOptions" step="any" placeholder="Select or enter rate"  data-i18n-placeholder="ui.billing.select_enter_rate"/>
+                <input type="number" inputmode="decimal" id="saleRate" list="saleRateOptions" step="any" placeholder="Pick or type"  data-i18n-placeholder="ui.billing.select_enter_rate"/>
                 <datalist id="saleRateOptions"></datalist>
             </div>
 
             <div class="form-row">
                 <label data-i18n="ui.billing.weight_kg">Weight (kg):</label>
                 <div style="display: flex; gap: 8px; flex: 1;">
-                    <input type="number" inputmode="decimal" id="saleWeight" placeholder="Enter weight" style="flex: 1;" onkeypress="if(event.key === 'Enter') { event.preventDefault(); window.app.billing.addSaleWeight(); }"  data-i18n-placeholder="ui.billing.enter_weight"/>
+                    <input type="number" inputmode="decimal" id="saleWeight" placeholder="Weight" style="flex: 1;" onkeypress="if(event.key === 'Enter') { event.preventDefault(); window.app.billing.addSaleWeight(); }"  data-i18n-placeholder="ui.billing.enter_weight"/>
                     <button class="quick-add-btn-inline" onclick="window.app.billing.addSaleWeight()" style="background: #15803d; border-color: #15803d;" data-i18n="ui.billing.add">Add</button>
                 </div>
             </div>

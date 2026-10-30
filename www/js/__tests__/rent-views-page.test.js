@@ -96,3 +96,21 @@ test('Hindi: type words and counts in Hindi only', () => {
     expect(text).toContain('2 फ़्लैट · 1 कमर्शियल');
     expect(text).not.toMatch(/[A-Za-z]{3,}/);
 });
+
+test('no properties yet: the Rent page offers Add property, and the side menu marks only the open Rentals page', () => {
+    setLang('en');
+    _test.state.view = 'properties';
+    _test.state.openProperty = '';
+    const saved = global.__rentData;
+    global.__rentData = { ...DATA, properties: [], units: [], tenants: [], leases: [], charges: [] };
+    try {
+        show();
+        document.body.insertAdjacentHTML('afterbegin', '<nav class="nav-menu"><a data-biz="all" class="active">Settings</a><a data-biz="rentals" data-rent-nav="rent">Rent</a></nav>');
+        _test.render();
+        const add = document.querySelector('#rentalsBody button[onclick*="rentals.page(\'properties\')"]');
+        expect(add.textContent).toBe('Add property');
+        expect([...document.querySelectorAll('.nav-menu a.active')].map(a => a.textContent)).toEqual(['Rent']);
+    } finally {
+        global.__rentData = saved;
+    }
+});

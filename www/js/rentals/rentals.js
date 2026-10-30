@@ -174,7 +174,7 @@ function render() {
         btn.classList.toggle('active', page === state.page);
         if (page === 'access') btn.hidden = !owner;
     });
-    document.querySelectorAll('.nav-menu a[data-rent-nav]').forEach(a => {
+    document.querySelectorAll('.nav-menu a').forEach(a => {
         a.classList.toggle('active', a.getAttribute('data-rent-nav') === state.page);
     });
     const notice = document.getElementById('rentalsNotice');
@@ -300,8 +300,10 @@ function renderPropertyView(d, ix, rows) {
             </div>
             <div class="rent-sub">${esc(t('ui.rent.prop_month_line', { expected: formatINR(s.expected), collected: formatINR(s.collected) }))}</div>
         </button>`).join('');
+    const empty = `<p class="rent-empty">${esc(t('ui.rent.no_properties'))}</p>`
+        + (canWrite() ? `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.page('properties')">${esc(t('ui.rent.add_property'))}</button>` : '');
     return `<div class="rent-cards">${totalsCards(summarize(rows))}</div>
-        ${cards || `<p class="rent-empty">${esc(t('ui.rent.no_properties'))}</p>`}`;
+        ${cards || empty}`;
 }
 
 function renderPropertyDetail(d, ix, rows) {

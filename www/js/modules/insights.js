@@ -10,7 +10,7 @@ import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatRupees } from '../utils/money.js';
+import { formatRupees, formatAmount } from '../utils/money.js';
 import { formatMonth, formatDay } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
@@ -320,7 +320,7 @@ export const InsightsManager = {
         if (!profitKnown) tk += `<p>${esc(t('ui.tk.profit_unknown'))}</p>`;
         this.html('insightsItemsTakeaway', tk);
         const unc = m.caveats.find(c => c.key === 'uncosted');
-        this.html('insightsItemsCaveats', unc ? `<div class="ins-caveat">⚠ ${esc(t('ui.money.caveat_uncosted', { qty: unc.qty, amount: Math.round(unc.estimate) }))}</div>` : '');
+        this.html('insightsItemsCaveats', unc ? `<div class="ins-caveat">⚠ ${esc(t('ui.money.caveat_uncosted', { qty: unc.qty, amount: formatAmount(unc.estimate) }))}</div>` : '');
         const total = m.M1.total || 0;
         const pct = (v) => (total ? Math.round((v / total) * 100) : 0);
         this.html('insightsSplit', `<div class="ins-row"><span>${esc(t('ui.insights.retail'))}</span><span>${money(m.M1.retail.total)} · ${pct(m.M1.retail.total)}%</span></div>`

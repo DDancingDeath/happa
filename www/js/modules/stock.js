@@ -9,6 +9,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
+import { formatRupees } from '../utils/money.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { planStockAdjustment, adjustReasonText } from '../utils/stock-adjust.js';
@@ -20,6 +21,8 @@ import { t } from '../i18n/index.js';
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
+
+const stockKg = (q) => (Number(q) || 0).toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 const DEAD_STOCK_DAYS_KEY = 'aadhat.deadStockDays';
 
@@ -235,7 +238,7 @@ export class StockManager {
                         </div>
                         <div style="text-align: right;">
                             <div style="font-size: 18px; font-weight: 700; color: ${qtyColor};">
-                                ${item.quantity.toFixed(1)} kg
+                                ${stockKg(item.quantity)} kg
                             </div>
                             <div data-perm="profit" style="color: #666; font-size: 12px; margin-top: 4px;">
                                 ${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}
@@ -250,8 +253,8 @@ export class StockManager {
             // For staff: show "Available" if quantity > 100, otherwise show actual quantity
             // Rate is always shown, value is hidden when showing "Available"
             const showLimitedQty = isStaff && item.quantity > 100;
-            const quantityDisplay = showLimitedQty ? tx('ui.stock.available') : `${item.quantity.toFixed(1)} kg`;
-            const valueDisplay = showLimitedQty ? '' : `<div data-perm="stockValue" style="color: #666; font-size: 12px; margin-top: 4px;">≈ ₹${Math.round(item.quantity * (item.rate || 0))}</div>`;
+            const quantityDisplay = showLimitedQty ? tx('ui.stock.available') : `${stockKg(item.quantity)} kg`;
+            const valueDisplay = showLimitedQty ? '' : `<div data-perm="stockValue" style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${formatRupees(item.quantity * (item.rate || 0))}</div>`;
             
             div.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -503,8 +506,8 @@ export class StockManager {
                             <div style="color: #666; font-size: 12px; margin-top: 2px;">${e(t('ui.deadstock.last_purchase'))}: ${e(purchase)}</div>
                         </div>
                         <div style="text-align: right;">
-                            <div style="font-size: 18px; font-weight: 700; color: #dc3545;">${e(r.quantity.toFixed(1))} kg</div>
-                            <div style="color: #666; font-size: 12px; margin-top: 4px;">≈ ₹${e(Math.round(r.value).toLocaleString('en-IN'))}</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #dc3545;">${e(stockKg(r.quantity))} kg</div>
+                            <div style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${e(formatRupees(r.value))}</div>
                             <div style="color: #888; font-size: 12px;">avg ₹${e(r.rate.toFixed(2))}/kg</div>
                         </div>
                     </div>

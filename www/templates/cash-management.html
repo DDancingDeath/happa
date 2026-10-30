@@ -3,7 +3,7 @@
         
         <!-- Cash Status Card -->
         <div id="cashStatusCard" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
-            <h3 style="margin: 0 0 15px 0; font-size: 18px;" data-i18n="ui.cash.today_s_cash_status">Today's Cash Status</h3>
+            <h3 style="margin: 0 0 15px 0; font-size: 18px; color: #fff;" data-i18n="ui.cash.today_s_cash_status">Today's Cash Status</h3>
             <div id="statusCardsContainer" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 14px;">
                 <!-- For ongoing session: Opening Balance, Cash In, Cash Out, Available Cash -->
                 <div id="statusOpeningCard" style="background: rgba(255,255,255,0.15); padding: 12px; border-radius: 8px;">
@@ -60,7 +60,7 @@
             <h3 style="margin: 0 0 15px 0; color: #333;" data-i18n="ui.cash.cash_sign_in">Open cash</h3>
             <div class="form-row">
                 <label data-i18n="ui.cash.opening_cash_amount">Opening Cash Amount (₹):</label>
-                <input type="number" inputmode="decimal" min="0" id="cashSignInAmount" placeholder="Enter cash amount you have (0 if empty)" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.enter_cash_amount_you"/>
+                <input type="number" inputmode="decimal" min="0" id="cashSignInAmount" placeholder="0 if empty" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.enter_cash_amount_you"/>
                 <div id="cashSignInSuggestion" style="display: none; font-size: 12px; color: #6c757d; margin-top: 4px;"></div>
             </div>
             <div class="form-row">
@@ -180,7 +180,7 @@
 
             <div class="form-row" style="display: flex; align-items: center; gap: 10px;">
                 <label style="white-space: nowrap; margin: 0;" data-i18n="ui.cash.cash_in_hand">Cash in Hand (₹):</label>
-                <input type="number" inputmode="decimal" id="cashSignOutAmount" min="0" placeholder="Enter actual cash (0 if empty)" style="flex: 1; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.enter_actual_cash_0"/>
+                <input type="number" inputmode="decimal" id="cashSignOutAmount" min="0" placeholder="0 if empty" style="flex: 1; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.enter_actual_cash_0"/>
             </div>
             
             <div id="cashDifferenceAlert" style="display: none; padding: 12px; border-radius: 8px; margin: 10px 0; font-weight: 600;"></div>
