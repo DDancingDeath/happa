@@ -4,6 +4,7 @@
  * single pinned "[Plan] Roadmap" issue (and optionally docs/PLAN.md).
  *
  *   node tools/plan/generate.js              # upsert + pin the plan issue
+ *   node tools/plan/generate.js --create     # also open the plan issue when there is none
  *   node tools/plan/generate.js --dry-run    # print markdown only
  *   node tools/plan/generate.js --write-docs # also write docs/PLAN.md
  *
@@ -22,6 +23,7 @@ const PLAN_LABELS = ['type:docs', 'P0'];
 const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
 const MILESTONES = ['Sprint 1 - Safety', 'Sprint 2 - Trust', 'Sprint 3 - Speed & offline', 'Sprint 4 - Features', 'Later'];
 const OWNER_LABELS = ['owner-decision', 'owner-action'];
+const OBSOLETE_LABEL = 'obsolete?';
 const NEXT_UP = 5;
 const RECENT_DAYS = 14;
 
@@ -34,8 +36,37 @@ const isOwnerItem = (issue) => labelsOf(issue).some((l) => OWNER_LABELS.includes
 const isOpen = (issue) => String(issue.state).toLowerCase() === 'open';
 const milestoneOf = (issue) => (issue.milestone && issue.milestone.title) || '';
 
-function isPlanIssue(issue) {
+/** `retired` = old plan issues (e.g. the one moved from the old repo) that are never the plan page. */
+function isPlanIssue(issue, retired = []) {
+    if (retired.includes(issue.number)) return false;
     return issue.title === PLAN_TITLE || (issue.body || '').includes(MARKER);
+}
+
+/**
+ * order.json `imported`: issues moved from the old repo keep their bodies, so a bare `#N` or
+ * `OldRepo#N` in them is the old number. Returns { oldToNew: Map, newToOld: Map, repo, repoName, date }.
+ */
+function importInfo(order = {}) {
+    const imp = order.imported || {};
+    const oldToNew = new Map(Object.entries(imp.map || {}).map(([o, n]) => [Number(o), Number(n)]));
+    const newToOld = new Map([...oldToNew].map(([o, n]) => [n, o]));
+    const repo = String(imp.repo || '');
+    return { oldToNew, newToOld, repo, repoName: repo.split('/').pop(), date: imp.date || '' };
+}
+
+/**
+ * Rewrites issue refs in `text` to happa numbers. `OldRepo#N` is always an old number; a bare
+ * `#N` is one too when the text comes from a moved issue (`fromOldRepo`). Refs qualified with any
+ * other repo (the transfer rewrote some to `owner/happa#N`) are left alone. Old numbers that
+ * weren't moved (closed in the old repo) are dropped, so they can't point at an unrelated issue.
+ */
+function translateRefs(text, imp, fromOldRepo) {
+    if (!imp || !imp.oldToNew.size) return text || '';
+    return (text || '').replace(/(?:[\w.-]+\/)?([\w.-]+)?#(\d+)/g, (m, repo, n) => {
+        if (repo ? repo !== imp.repoName : !fromOldRepo) return m;
+        const to = imp.oldToNew.get(Number(n));
+        return to ? `#${to}` : '';
+    });
 }
 
 function parseEffort(body) {
@@ -53,11 +84,11 @@ function buildGapMap(issues) {
     return map;
 }
 
-function normaliseRefs(body, gapMap) {
-    return (body || '')
-        .replace(/<!--[\s\S]*?-->/g, '')
+function normaliseRefs(body, gapMap, translate = (s) => s) {
+    return translate((body || '').replace(/<!--[\s\S]*?-->/g, ''))
         .replace(/\bG-\d{3}\b/g, (g) => (gapMap[g] ? `#${gapMap[g]}` : g))
-        .replace(/\b(?:P\d|PR|WALK-?)\s*#\d+/gi, '');
+        // roadmap / PR refs ("P1 #17", "PR #12"); the transfer qualified some as "P1 owner/happa#63"
+        .replace(/\b(?:P\d|PR|WALK-?)\s*(?:[\w.-]+\/)?(?:[\w.-]+)?#\d+/gi, '');
 }
 
 const refsIn = (text) => [...text.matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
@@ -66,9 +97,10 @@ const refsIn = (text) => [...text.matchAll(/#(\d+)/g)].map((m) => Number(m[1]));
  * Dependencies stated in issue bodies:
  *  - "Depends on / Blocked by / Waits for / Do after #N" in issue X  => X waits for N
  *  - "Blocks #N" in a [Decision] issue D (not the non-blocking checklist) => N waits for D
+ * Bodies of issues moved from the old repo use old numbers; `imp` (importInfo) translates them.
  * Returns Map<number, Set<number>> of issue -> prerequisites.
  */
-function parseDependencies(issues) {
+function parseDependencies(issues, imp) {
     const gapMap = buildGapMap(issues);
     const deps = new Map();
     const add = (n, dep) => {
@@ -78,7 +110,9 @@ function parseDependencies(issues) {
     };
     for (const issue of issues) {
         const isDecision = /^\[Decision\]/i.test(issue.title) && !/non-blocking/i.test(issue.title);
-        for (const line of normaliseRefs(issue.body, gapMap).split('\n')) {
+        const fromOldRepo = Boolean(imp && imp.newToOld.has(issue.number));
+        const translate = (s) => translateRefs(s, imp, fromOldRepo);
+        for (const line of normaliseRefs(issue.body, gapMap, translate).split('\n')) {
             const dep = line.match(/\b(?:depends on|blocked by|waits for|do after)\b([^;]*)/i);
             if (dep) {
                 refsIn(dep[1]).forEach((r) => add(issue.number, r));
@@ -104,7 +138,8 @@ function compareUnplaced(a, b) {
 function buildModel(order, allIssues, now = new Date()) {
     const issues = allIssues.filter((i) => !i.pull_request && !isPlanIssue(i));
     const byNum = new Map(issues.map((i) => [i.number, i]));
-    const deps = parseDependencies(issues);
+    const imp = importInfo(order);
+    const deps = parseDependencies(issues, imp);
     const placed = new Set();
 
     const blockersOf = (n, extra = [], ignore = []) => {
@@ -127,6 +162,8 @@ function buildModel(order, allIssues, now = new Date()) {
             types: typesOf(issue),
             effort: parseEffort(issue.body),
             owner: isOwnerItem(issue),
+            obsolete: labelsOf(issue).includes(OBSOLETE_LABEL),
+            oldNumber: imp.newToOld.get(issue.number) || null,
             blockers,
             note,
             status: !open ? 'done' : blockers.length ? 'blocked' : 'open',
@@ -150,7 +187,7 @@ function buildModel(order, allIssues, now = new Date()) {
         .map((i) => toRow(i));
 
     const ordered = phases.flatMap((p) => p.rows);
-    const nextUp = ordered.filter((r) => r.status === 'open' && !r.owner).slice(0, NEXT_UP);
+    const nextUp = ordered.filter((r) => r.status === 'open' && !r.owner && !r.obsolete).slice(0, NEXT_UP);
     const ownerTodo = ordered.filter((r) => r.open && r.owner);
 
     const cutoff = now.getTime() - RECENT_DAYS * 86400000;
@@ -161,12 +198,16 @@ function buildModel(order, allIssues, now = new Date()) {
         .map((i) => ({ number: i.number, title: i.title, closedAt: i.closed_at }));
 
     const all = [...ordered, ...unplaced];
+    const moved = issues.filter((i) => imp.newToOld.has(i.number));
     return {
         phases,
         unplaced,
         nextUp,
         ownerTodo,
         closedRecently,
+        imported: imp.oldToNew.size ? {
+            repo: imp.repo, date: imp.date, total: imp.oldToNew.size, closed: moved.filter((i) => !isOpen(i)).length,
+        } : null,
         done: all.filter((r) => r.status === 'done').length,
         total: all.length,
         missing: order.phases.flatMap((p) => p.items.map((i) => i.n)).filter((n) => !byNum.has(n)),
@@ -191,9 +232,19 @@ function tableRows(rows) {
     const out = ['| # | Issue | Pri | Type | Effort | Status | Notes |', '|---|---|---|---|---|---|---|'];
     rows.forEach((r, idx) => {
         const title = r.status === 'done' ? `~~${esc(r.title)}~~` : esc(r.title);
-        out.push(`| ${idx + 1} | #${r.number} ${title} | ${r.priority} | ${r.types.join(', ')} | ${r.effort} | ${statusCell(r)} | ${esc(r.note)} |`);
+        const old = r.oldNumber ? ` _(old ${r.oldNumber})_` : '';
+        out.push(`| ${idx + 1} | #${r.number} ${title}${old} | ${r.priority} | ${r.types.join(', ')} | ${r.effort} | ${statusCell(r)} | ${esc(r.note)} |`);
     });
     return out;
+}
+
+function importedNote(imported) {
+    if (!imported) return [];
+    const src = imported.repo ? `[${imported.repo.split('/').pop()}](https://github.com/${imported.repo})` : 'the old repo';
+    return [
+        `> 📦 **Imported from the old app:** ${imported.total} issues were moved here from ${src}${imported.date ? ` on ${imported.date}` : ''}; ${imported.closed} of them are closed. _(old N)_ after a title is its old number: a bare \`#N\` or \`${imported.repo.split('/').pop() || 'old repo'}#N\` in their bodies means the old number, and \`imported.map\` in \`order.json\` translates. Rows labelled \`${OBSOLETE_LABEL}\` wait for the owner to confirm and are left out of Next up.`,
+        '',
+    ];
 }
 
 function renderMarkdown(model, now = new Date(), repo = DEFAULT_REPO) {
@@ -208,6 +259,7 @@ function renderMarkdown(model, now = new Date(), repo = DEFAULT_REPO) {
         '',
         '**Legend:** ⬜ open · ⛔ blocked (waits for the listed open issue) · ✅ done · Effort S/M/L from the issue body · 🆕 = not yet placed in the order',
         '',
+        ...importedNote(model.imported),
         '## ▶️ Next up',
         '',
     ];
@@ -299,7 +351,8 @@ async function main(argv = process.argv.slice(2)) {
         return;
     }
 
-    let plan = issues.find(isPlanIssue);
+    const retired = order.retiredPlanIssues || [];
+    let plan = issues.find((i) => isPlanIssue(i, retired));
     if (plan) {
         const patch = { body: md, title: PLAN_TITLE };
         if (!isOpen(plan)) patch.state = 'open';
@@ -328,4 +381,5 @@ if (require.main === module) {
 
 module.exports = {
     MARKER, PLAN_TITLE, parseEffort, buildGapMap, parseDependencies, compareUnplaced, buildModel, renderMarkdown, isPlanIssue,
+    importInfo, translateRefs,
 };

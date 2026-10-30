@@ -3,6 +3,7 @@
  */
 const {
     parseEffort, parseDependencies, buildModel, renderMarkdown, MARKER, PLAN_TITLE,
+    importInfo, translateRefs, isPlanIssue,
 } = require('../../../tools/plan/generate.js');
 
 const issue = (number, extra = {}) => ({
@@ -71,5 +72,54 @@ describe('plan generator', () => {
         expect(md).toContain('## 🆕 Unplaced issues');
         expect(md).toContain('Progress: 1/6 done');
         expect(md).toContain('IST');
+    });
+
+    describe('issues moved from the old repo', () => {
+        // old 12 -> 50, old 13 -> 51, old 14 -> 52; old 20 was closed there and not moved
+        const order = {
+            retiredPlanIssues: [53],
+            imported: { repo: 'DDancingDeath/AadhatManagementApp', date: '2026-10-30', map: { 12: 50, 13: 51, 14: 52, 171: 53 } },
+            phases: [{ title: 'A', items: [{ n: 50 }, { n: 51 }, { n: 52 }, { n: 7 }] }],
+        };
+        const imp = importInfo(order);
+
+        test('translateRefs: bare #N in a moved body is old; qualified happa refs and native bare refs stay', () => {
+            const body = 'Depends on #12 and #20; see DDancingDeath/happa#7 and AadhatManagementApp#13';
+            expect(translateRefs(body, imp, true)).toBe('Depends on #50 and ; see DDancingDeath/happa#7 and #51');
+            expect(translateRefs(body, imp, false)).toBe('Depends on #12 and #20; see DDancingDeath/happa#7 and #51');
+        });
+
+        test('dependencies in moved bodies resolve to happa numbers; roadmap refs the transfer qualified are ignored', () => {
+            const issues = [
+                issue(50, { body: '- Depends on #13\n- Blocked by DDancingDeath/happa#7' }),
+                issue(51, { title: '[Decision] Pick', body: 'Blocks: PeriodMath (P1 DDancingDeath/happa#52), #14' }),
+                issue(7, { body: 'Depends on #12' }),
+            ];
+            const deps = parseDependencies(issues, imp);
+            expect([...deps.get(50)].sort()).toEqual([51, 7]);
+            expect([...deps.get(52)]).toEqual([51]);
+            expect([...deps.get(7)]).toEqual([12]);
+        });
+
+        test('rows show the old number, obsolete? rows are not Next up, and the plan skips the retired plan issue', () => {
+            const issues = [
+                issue(50),
+                issue(51, { labels: [{ name: 'obsolete?' }] }),
+                issue(52, { state: 'closed', closed_at: '2026-10-30T00:00:00Z' }),
+                issue(7),
+                issue(53, { title: PLAN_TITLE, body: MARKER }),
+            ];
+            const m = buildModel(order, issues, new Date('2026-10-31T00:00:00Z'));
+            expect(m.nextUp.map((r) => r.number)).toEqual([50, 7]);
+            expect(m.imported).toEqual({ repo: 'DDancingDeath/AadhatManagementApp', date: '2026-10-30', total: 4, closed: 1 });
+            const md = renderMarkdown(m, new Date('2026-10-31T00:00:00Z'));
+            expect(md).toContain('| 1 | #50 Issue 50 _(old 12)_ |');
+            expect(md).toContain('| 4 | #7 Issue 7 |');
+            expect(md).toContain('**Imported from the old app:** 4 issues');
+
+            expect(issues.find((i) => isPlanIssue(i, order.retiredPlanIssues))).toBeUndefined();
+            const fresh = issue(60, { title: PLAN_TITLE, body: MARKER });
+            expect([...issues, fresh].find((i) => isPlanIssue(i, order.retiredPlanIssues))).toBe(fresh);
+        });
     });
 });

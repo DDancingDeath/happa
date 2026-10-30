@@ -28,10 +28,13 @@ and is wrapped in **Capacitor** for Android distribution.
   v1.6.1. No workflow may deploy to it; the CI guard
   (`scripts/happa-config.js guard`) fails if anything resolves to it. Its
   release notes are archived in `docs/aadhat-changelog-archive.json`.
-- **Bug / feature list**: GitHub issues (labels, milestones and the pinned
-  plan issue — see section 5). Existing issues, including the plan issue #171,
-  are still in `DDancingDeath/AadhatManagementApp` for now; refer to them as
-  `AadhatManagementApp#N`. There is no other master list.
+- **Bug / feature list**: GitHub issues in `DDancingDeath/happa` (labels,
+  milestones and the pinned plan issue — see section 5). The open issues of
+  `DDancingDeath/AadhatManagementApp` were moved here on 30 Oct 2026 (old URLs
+  redirect; `imported.map` in `tools/plan/order.json` maps old → new numbers).
+  In a moved issue's body a bare `#N` or `AadhatManagementApp#N` is the old
+  number. The old plan issue (old #171, now #158) is retired; the plan page
+  uses a new plan issue. There is no other master list.
 - **The staging clone (`AadhatManagementApp-staging`) is archived** —
   read-only reference only; nothing is developed or verified there any
   more. See section 6.
@@ -218,8 +221,7 @@ In order:
 
 ### Issues: the bug and feature list
 
-GitHub issues (for now still in `DDancingDeath/AadhatManagementApp`, code in
-`DDancingDeath/happa`) are the single list of
+GitHub issues (in `DDancingDeath/happa`, with the code) are the single list of
 bugs, features and decisions. (The staging clone's `docs/REVIEW_ISSUES.md`
 is archived history — don't add to it or cite it as the master list.)
 
@@ -236,7 +238,7 @@ is archived history — don't add to it or cite it as the master list.)
   click / secret / release only the owner can do.
 - **Milestones** — `Sprint 1 - Safety`, `Sprint 2 - Trust`,
   `Sprint 3 - Speed & offline`, `Sprint 4 - Features`, `Later`. The pick
-  order across all of them is the pinned plan issue #171 (next subsection).
+  order across all of them is the pinned plan issue (next subsection).
 - **Body** — problem, evidence (file:line), impact, proposed fix, acceptance
   criteria checkboxes. Read the whole body, including any "Additional
   findings" section, before starting, and re-check the problem still exists
