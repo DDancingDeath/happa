@@ -79,6 +79,20 @@ export const CAUSES = {
     SNAP_days_profit: onPhone(NEGATIVE_STOCK, 'Profit per day stored in a month snapshot (days add up to M6).'),
     SNAP_close: onPhone(NEGATIVE_STOCK, 'Closing stock value stored in a month snapshot (M17 closing, = S4 at the month end).'),
     CMP_M6_profit: onPhone(NEGATIVE_STOCK, 'The % change of profit shown on Money (now vs previous / last year), from M6 on both sides.'),
+    M17_opening: onPhone(NEGATIVE_STOCK, 'Opening stock value of the period on Money (M17, as F8).'),
+    M17_closing: onPhone(NEGATIVE_STOCK, 'Closing stock value of the period on Money (M17, as F8).'),
+    M15_netWorth: onPhone(NEGATIVE_STOCK, 'Net worth on Money › Worth: its stock term is S4.'),
+    I7_lowProfitItems: onPhone(NEGATIVE_STOCK, 'Low-profit items on the Insights to-do list (I7) use the item cost of goods sold (I1).'),
+    I8_belowCostTimes: onPhone(NEGATIVE_STOCK, 'Sold-below-cost lines (I8) use the cost of goods sold of each line.'),
+    I8_belowCostKg: onPhone(NEGATIVE_STOCK, 'Sold-below-cost lines (I8) use the cost of goods sold of each line.'),
+    I8_belowCostLost: onPhone(NEGATIVE_STOCK, 'Sold-below-cost lines (I8) use the cost of goods sold of each line.'),
+    // A comparison the app can't make (no snapshot, or a part month a snapshot can't split) shown next to one it can.
+    ...Object.fromEntries(['CMP_M6_profit', 'CMP_M14_net', 'CMP_M4_businessExpenses'].map(k => [`${k}_not_known_hidden`, {
+        short: 'Money leaves out a comparison it can\'t make without saying so (money.js:compareHtml)',
+        cause: 'www/js/modules/money.js:compareHtml drops a comparison whose figure is not known (no month snapshot, or a part month '
+            + 'a snapshot can\'t split: only sales and profit) and shows only the other one, so the screen does not say that one is not known.',
+        known: 'known (PR fix/phone-path-gaps: "vs {label}: not known")'
+    }])),
 
     // ---- migrated state (opening records + synthetic bills)
     'migrated:T15_dueToReceive': { ...OPENING, cause: `Today "Due to receive" adds the carried due of opening records dated that day. ${OPENING.cause}` },

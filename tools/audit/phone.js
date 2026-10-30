@@ -17,12 +17,14 @@
  * On each audited day the window, dues listeners, checkpoint, snapshots and cash
  * sessions are loaded the way a phone loads them, and every Money, Insights,
  * Statements and Today figure is taken from the app's modules and compared with
- * the oracle on the full data of that moment.
+ * the oracle on the full data of that moment. Each audited day is opened three
+ * ways (PHONE_PASSES): the owner with a checkpoint rebuilt that day, the owner with
+ * the checkpoint built at the previous month end, and a member with that one.
  *
  * A figure the app leaves out on purpose (not loaded, no snapshot, a part month a
  * snapshot can't split) is counted as "shown as unknown", never as a mismatch,
- * provided the screen says so. No party names leave this file: rows carry spec IDs,
- * dates, amounts and counts.
+ * provided the screen says so (else it is a `*_hidden` mismatch). No party names
+ * leave this file: rows carry spec IDs, dates, amounts and counts.
  */
 import fs from 'fs';
 import path from 'path';
@@ -40,7 +42,8 @@ import { RateTrendsManager } from '@app/modules/rate-trends.js';
 import { newCursor } from '@app/utils/rate-trends.js';
 import { outstandingDue } from '@app/utils/money.js';
 import {
-    moneySummary, comparisonRanges, change, itemSummary, partySummary, outstandingTotals, overdueParties, periodRange
+    moneySummary, comparisonRanges, change, itemSummary, partySummary, outstandingTotals, overdueParties, periodRange,
+    lowProfitItems, belowCostSales, purchaseItems
 } from '@app/utils/business-metrics.js';
 import { figuresFromSnapshot, monthBounds, monthKeyOf, lastMonthKeys } from '@app/utils/month-snapshots.js';
 import { dayBook } from '@app/utils/statements.js';
@@ -114,8 +117,29 @@ export function billAt(bill, at) {
     if (bill.onlinePayment !== undefined) out.onlinePayment = r2(num(bill.onlinePayment) - online);
     if (bill.dueAmount !== undefined) out.dueAmount = r2(num(bill.dueAmount) + cash + online + off);
     if (out.cleared) out.cleared = false;
-    // The app keeps `openDue` in step with the due on every payment write.
+    // The app keeps `openDue` in step with the due on every payment write, and `paidAt` on the last one (#163).
     if (bill.openDue !== undefined) out.openDue = outstandingDue(out) > 0.005;
+    if (bill.paidAt !== undefined) {
+        const kept = out.payments.map(p => p.at ?? O.timeOf(p.date)).filter(Number.isFinite);
+        if (kept.length) out.paidAt = Math.max(...kept);
+        else delete out.paidAt;
+    }
+    return out;
+}
+
+/** When a cash-session leg was recorded (`at`, else its `date`, else the ISO `timestamp` the app writes). */
+const legTime = (l) => l.at ?? O.timeOf(l.date ?? l.timestamp);
+
+/** A cash session as it stood at `at`: signed out later means still open then. */
+function sessionAt(s, at) {
+    const legs = (s.duePayments || []).filter(l => !(legTime(l) > at));
+    const out = { ...s, duePayments: legs };
+    const outAt = s.signOutTime ? O.timeOf(s.signOutTime) : NaN;
+    if (s.signedOut && Number.isFinite(outAt) && outAt > at) {
+        Object.assign(out, { signedOut: false, closingBalance: null });
+        delete out.signOutTime;
+        delete out.counted;
+    }
     return out;
 }
 
@@ -132,9 +156,7 @@ export function dataAt(data, at) {
         stockAdjustments: upTo(data.stockAdjustments),
         expenses: (data.expenses || []).filter(e => !(O.timeOf(e.date) > at)),
         withdrawals: (data.withdrawals || []).filter(w => !(O.timeOf(w.date) > at)),
-        sessions: (data.sessions || []).filter(s => String(s.date) <= day).map(s => ({
-            ...s, duePayments: (s.duePayments || []).filter(l => !((l.at ?? O.timeOf(l.date)) > at))
-        }))
+        sessions: (data.sessions || []).filter(s => String(s.date) <= day && !(s.signInTime && O.timeOf(s.signInTime) > at)).map(s => sessionAt(s, at))
     };
 }
 
@@ -147,12 +169,25 @@ const settle = async (fake, rounds = 12) => {
     }
 };
 
-/** Seeds the in-memory Firestore with the backup as it stood at `at` (app-written docs stay). */
+/** Deep copy of a stored document: plain objects and arrays copied, anything else (timestamps) kept. */
+const cloneDoc = (v) => {
+    if (Array.isArray(v)) return v.map(cloneDoc);
+    if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, cloneDoc(x)]));
+    return v;
+};
+
+/**
+ * Seeds the in-memory Firestore with the backup as it stood at `at` (app-written docs stay).
+ * A numeric `timestamp` the app gave an older document (checkpoint rebuild backfill) stays
+ * too: it is written once and kept, so later phones (a member's too) see that document.
+ */
 function seedAt(fake, data, at) {
     const now = dataAt(data, at);
     Object.keys(HISTORY).forEach(k => {
+        const stamped = new Map();
+        fake.raw(k).forEach((doc, id) => { if (typeof doc.timestamp === 'number') stamped.set(id, doc.timestamp); });
         fake.raw(k).clear();
-        fake.seed(k, now[k]);
+        fake.seed(k, now[k].map(r => (typeof r.timestamp !== 'number' && stamped.has(String(r.id)) ? { ...r, timestamp: stamped.get(String(r.id)) } : r)));
     });
     fake.raw('cashManagement').clear();
     fake.seed('cashManagement', now.sessions);
@@ -199,6 +234,39 @@ async function phoneOpen(fake, at) {
     return { rebuilt: rebuilt.status, loadedFrom: AppState.historyLoadedFrom, checkpoint: FirebaseService.getStockCheckpointState() };
 }
 
+/**
+ * Opens the app at `at` with an older stock checkpoint left in Firestore (the one the
+ * owner's device built at the previous month end) instead of a fresh one: a member's
+ * device uses it as it is (it may not rebuild or roll it forward); an owner's device
+ * rolls it forward or rebuilds it in its startup maintenance, as the app does.
+ */
+async function phoneOpenWith(fake, at, checkpointDoc) {
+    jest.setSystemTime(new Date(at));
+    fake.raw('stockCheckpoints').set('current', cloneDoc(checkpointDoc));
+    freshModules();
+    await openApp(fake);
+    await settle(fake, 30);
+    return { rebuilt: 'kept', loadedFrom: AppState.historyLoadedFrom, checkpoint: FirebaseService.getStockCheckpointState() };
+}
+
+/** Who opens the phone: the owner, or a member ('staff') whom the owner let see Money, Statements and Insights. */
+function setRole(role) {
+    AppState.currentUser = { uid: `audit-${role}` };
+    AppState.userRole = role;
+    AppState.settings = role === 'owner' ? { showHindi: false }
+        : { showHindi: false, roleAccess: { staff: { finance: true, reports: true, analytics: true } } };
+}
+
+/**
+ * The phone opened on each audited day: the owner with a checkpoint rebuilt that day,
+ * the owner with the checkpoint built at the previous month end, and a member with it.
+ */
+export const PHONE_PASSES = Object.freeze([
+    Object.freeze({ role: 'owner', checkpoint: 'fresh', tag: '' }),
+    Object.freeze({ role: 'owner', checkpoint: 'month-end', tag: 'owner, month-end checkpoint' }),
+    Object.freeze({ role: 'staff', checkpoint: 'month-end', tag: 'member, month-end checkpoint' })
+]);
+
 /** Owner's first day: "Build history" (month snapshots) and the rate-history backfill. */
 async function firstDay(fake) {
     await MoneyManager.buildHistory();
@@ -228,6 +296,29 @@ const tpl = (root, name) => fs.readFileSync(path.join(root, 'www', 'templates', 
 // ------------------------------------------------------------------ comparisons
 
 /**
+ * The oracle (and the app with full history) on one moment's data, each answer worked out
+ * once: the phones opened on the same day share them.
+ */
+function sameMoment(now) {
+    const cache = new Map();
+    const keyOf = (args) => JSON.stringify(args, (k, v) => (v === Infinity ? '+inf' : v === -Infinity ? '-inf'
+        : v && typeof v === 'object' && Array.isArray(v.duePayments) ? `session:${v.id}:${v.duePayments.length}` : v));
+    const memo = (name, fn) => (...args) => {
+        const key = `${name}|${keyOf(args)}`;
+        if (!cache.has(key)) cache.set(key, fn(...args));
+        return cache.get(key);
+    };
+    const fullBase = { state: {}, from: -Infinity };
+    const Om = {};
+    ['metrics', 'finance', 'today', 'stockReplay', 'lowProfitItems', 'belowCost', 'purchaseItems'].forEach(n => { Om[n] = memo(n, (...a) => O[n](now, ...a)); });
+    return {
+        now,
+        O: Om,
+        full: memo('full', (range, detail = true) => moneySummary({ ...now, sessions: [], base: fullBase }, { from: range.from, to: range.to }, { detail }))
+    };
+}
+
+/**
  * Audits the phone path for each date and records into the collector (scope 'phone').
  * @param {Object} args
  * @param {import('./audit-lib.js').Collector} args.C
@@ -235,20 +326,22 @@ const tpl = (root, name) => fs.readFileSync(path.join(root, 'www', 'templates', 
  * @param {Array<{label: string, ms: number}>} args.dates
  * @param {string} args.appRoot checkout whose www/ templates are used
  * @param {{firstDip: number, cleanAgrees: boolean}} args.stockEvidence from the full-history audit
+ * @param {ReadonlyArray<{role: string, checkpoint: 'fresh'|'month-end', tag: string}>} [args.passes] how each day is opened (PHONE_PASSES)
+ * @param {Array<{name: string, balance: number, type: 'asset'|'liability'}>} [args.accounts] other accounts entered on the device (M15)
  * @returns {Promise<{dates: Array<Object>, evidence: Object}>}
  */
-export async function auditPhone({ C, data, dates, appRoot, stockEvidence }) {
+export async function auditPhone({ C, data, dates, appRoot, stockEvidence, passes = PHONE_PASSES, accounts = [] }) {
     jest.useRealTimers();
     jest.useFakeTimers({ doNotFake: DO_NOT_FAKE });
     if (FirebaseService.loadCashSessionsBetween?.mockRestore) FirebaseService.loadCashSessionsBetween.mockRestore();
     const fake = createFakeFirestore();
     const savedFirebase = global.firebase;
     global.firebase = fake.firebase;
-    AppState.currentUser = { uid: 'audit-owner' };
-    AppState.userRole = 'owner';
+    setRole('owner');
     AppState.userName = 'Audit';
-    AppState.settings = { showHindi: false };
     localStorage.clear();
+    // Other accounts (M15) are owner-entered on the device.
+    if (accounts.length) localStorage.setItem('financeCustomAccounts', JSON.stringify(accounts));
 
     const T = { money: tpl(appRoot, 'money.html'), statements: tpl(appRoot, 'statements.html') };
     const scope = 'phone';
@@ -256,6 +349,8 @@ export async function auditPhone({ C, data, dates, appRoot, stockEvidence }) {
     const cmp = (spec, page, period, oracle, app, full, end, unit = 'money') =>
         C.compare({ spec, page, period, oracle, app, unit, scope, extra: { full: full === undefined ? null : full, end } });
     const unknown = (spec, page, period, reason, oracle, unit = 'money') => C.unknown({ spec, page, period, reason, oracle, unit, scope });
+    const tally = () => ({ checked: Object.entries(C.checked).filter(([k]) => k.startsWith(`${scope}|`)).reduce((a, [, n]) => a + n, 0),
+        mismatches: C.mismatches.filter(m => m.scope === scope).length, unknowns: (C.unknowns || []).filter(u => u.scope === scope).length });
 
     // Timeline: the first day, every month end in between, every audited day.
     const firstBill = Math.min(...['purchases', 'wholesaleSales', 'retailSales'].flatMap(k => (data[k] || []).map(evTime)).filter(Number.isFinite));
@@ -270,24 +365,44 @@ export async function auditPhone({ C, data, dates, appRoot, stockEvidence }) {
     events.sort((a, b) => a.ms - b.ms || (a.kind === 'first' ? -1 : b.kind === 'first' ? 1 : 0));
 
     const summary = [];
+    // The checkpoint the owner's device built at the last month end (or the first day), kept as it was.
+    let monthEnd = null;
     try {
         for (const ev of events) {
-            seedAt(fake, data, ev.ms);
-            const open = await phoneOpen(fake, ev.ms);
-            if (ev.kind === 'first') {
-                await firstDay(fake);
+            if (ev.kind !== 'audit') {
+                setRole('owner');
+                seedAt(fake, data, ev.ms);
+                await phoneOpen(fake, ev.ms);
+                const doc = fake.raw('stockCheckpoints').get('current');
+                if (doc) monthEnd = { at: ev.ms, doc: cloneDoc(doc) };
+                if (ev.kind === 'first') await firstDay(fake);
                 await rollEverything(fake);
-                if (!events.some(e => e.kind === 'audit' && e.ms === ev.ms)) continue;
+                continue;
             }
-            if (ev.kind === 'roll') { await rollEverything(fake); continue; }
-            if (ev.kind === 'first') continue;
-            await rollEverything(fake);
-            const info = await auditOneDay({ fake, data, at: ev.ms, label: ev.label, open, cmp, unknown, T });
-            summary.push(info);
+            const dayStart = new Date(new Date(ev.ms).getFullYear(), new Date(ev.ms).getMonth(), new Date(ev.ms).getDate()).getTime();
+            const moment = sameMoment(dataAt(data, ev.ms));
+            for (const pass of passes) {
+                if (pass.checkpoint !== 'fresh' && !(monthEnd && monthEnd.at < dayStart)) {
+                    summary.push({ label: ev.label, date: isoDay(ev.ms), role: pass.role, pass: pass.tag || 'owner', skipped: 'no checkpoint from an earlier day' });
+                    continue;
+                }
+                setRole(pass.role);
+                seedAt(fake, data, ev.ms);
+                const open = pass.checkpoint === 'fresh' ? await phoneOpen(fake, ev.ms) : await phoneOpenWith(fake, ev.ms, monthEnd.doc);
+                // Owners and managers roll the month snapshots and the rate history on opening Money / Rate trends.
+                if (pass.role === 'owner') await rollEverything(fake);
+                const before = tally();
+                const info = await auditOneDay({ fake, moment, at: ev.ms, label: ev.label, open, cmp, unknown, T, pass, accounts });
+                const after = tally();
+                info.counts = { checked: after.checked - before.checked, mismatches: after.mismatches - before.mismatches, unknowns: after.unknowns - before.unknowns };
+                summary.push(info);
+            }
+            setRole('owner');
         }
     } finally {
         FirebaseService.cleanup();
         global.firebase = savedFirebase;
+        setRole('owner');
         jest.useRealTimers();
     }
 
@@ -304,20 +419,20 @@ export async function auditPhone({ C, data, dates, appRoot, stockEvidence }) {
     };
 }
 
-async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
-    const now = dataAt(data, at);
+async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pass = PHONE_PASSES[0], accounts = [] }) {
+    const { now, O: Om, full } = moment;
     const day = isoDay(at);
     const fullBase = { state: {}, from: -Infinity };
-    const full = (range, detail = true) => moneySummary({ ...now, sessions: [], base: fullBase }, range, { detail });
     const sessionOn = (d) => now.sessions.filter(s => s.date === d);
+    const seesSeasons = pass.role === 'owner' || pass.role === 'manager';
     const info = {
-        label, date: day, loadedFrom: open.loadedFrom ? isoDay(open.loadedFrom) : 'all', rebuilt: open.rebuilt,
+        label, date: day, role: pass.role, pass: pass.tag || 'owner', loadedFrom: open.loadedFrom ? isoDay(open.loadedFrom) : 'all', rebuilt: open.rebuilt,
         checkpointAsOf: open.checkpoint ? isoDay(open.checkpoint.asOf) : null,
         bills: { loaded: ['purchaseHistory', 'salesHistory', 'retailSalesHistory'].reduce((a, k) => a + (AppState[k] || []).length, 0),
             all: now.purchases.length + now.wholesaleSales.length + now.retailSales.length },
-        snapshots: 0, rateStatsDocs: 0
+        snapshots: 0, rateStatsDocs: 0, sessions: { backup: now.sessions.length, legs: now.sessions.reduce((a, s) => a + (s.duePayments || []).length, 0) }
     };
-    const P = (what) => `${day} · ${what}`;
+    const P = (what) => `${day}${pass.tag ? ` [${pass.tag}]` : ''} · ${what}`;
 
     // ---------------- Money: each period, its previous period and last year
     document.body.innerHTML = T.money;
@@ -333,15 +448,24 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
         if (!MoneyManager.covered(r.from)) {
             const box = document.getElementById('moneyNotLoaded');
             const said = box && !box.hidden && /load/i.test(box.textContent);
-            const o = O.metrics(now, [r.from, r.to]);
+            const o = Om.metrics([r.from, r.to]);
             if (said) unknown('M1–M17', 'Money (phone)', P(preset), 'period not loaded: "load older bills" shown', o.M1_sales);
             else cmp('M1–M17_not_loaded_hidden', 'Money (phone)', P(preset), 1, 0, null, end, 'count');
             continue;
         }
         const sessions = MoneyManager.sessions(r);
+        if (sessions.complete && sessions.list.length + now.sessions.length > 0 && !MoneyManager.covered(-Infinity)) {
+            // Session loader (loadCashSessionsBetween): every session of the period's days, with its legs as they stood.
+            const a = isoDay(r.from);
+            const b = isoDay(Math.min(r.to, at + 1) - 1);
+            const want = now.sessions.filter(s => s.date >= a && s.date <= b);
+            const legs = (list) => list.reduce((n, s) => n + (s.duePayments || []).length, 0);
+            cmp('SESS_loaded', 'Money (phone)', P(preset), want.length, sessions.list.length, null, end, 'count');
+            cmp('SESS_legs', 'Money (phone)', P(preset), legs(want), legs(sessions.list), null, end, 'count');
+        }
         const m = MoneyManager.summary(r, { sessions, detail: true });
         const f = full(r);
-        const o = O.metrics(now, [r.from, r.to]);
+        const o = Om.metrics([r.from, r.to]);
         [['M1_sales', m.M1.total, f.M1.total], ['M2_cogs', m.M2, f.M2], ['M3_gross', m.M3.total, f.M3.total], ['M4_businessExpenses', m.M4.total, f.M4.total],
             ['M5_badDebts', m.M5, f.M5], ['M6_profit', m.M6.total, f.M6.total], ['M7_labour', m.M7, f.M7], ['M8_personalExpenses', m.M8.total, f.M8.total],
             ['M9_withdrawals', m.M9, f.M9], ['M10_kept', m.M10, f.M10], ['M12_inCash', m.M12.cash, f.M12.cash], ['M12_inOnline', m.M12.online, f.M12.online],
@@ -354,14 +478,30 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
         cmp('M16_purchaseCount', 'Money (phone)', P(preset), o.M16_purchaseCount, m.M16.count, f.M16.count, end, 'count');
         const dues = m.caveats.find(c => c.key === 'dues');
         if (dues) unknown('M12–M14', 'Money (phone)', P(preset), '"payments may be missing" shown (sessions not loaded)', o.M14_net);
-        // Screen headline figures.
+        // Screen headline figures, and the comparisons line under each (CMP) as shown.
         const scr = {};
+        const cmpShown = {};
+        const cmpOf = (id) => {
+            const el = document.getElementById(id);
+            const spans = [...(el?.querySelectorAll('.ins-cmp') || [])];
+            return {
+                none: spans.some(s => s.classList.contains('ins-cmp-none')),
+                // "vs {label}: not known" (PR fix/phone-path-gaps) for a comparison the app can't make.
+                notKnown: spans.filter(s => /not known/i.test(s.textContent)).length,
+                known: spans.filter(s => !s.classList.contains('ins-cmp-none') && !/not known/i.test(s.textContent)).length
+            };
+        };
         MoneyManager.init('profit');
         Object.assign(scr, { M1_sales: shown('moneySales'), M2_cogs: shown('moneyCogs'), M6_profit: shown('moneyProfitValue'), M16_purchases: shown('moneyPurchases') });
+        cmpShown.M6_profit = cmpOf('moneyProfitCompare');
+        const movement = [...document.querySelectorAll('#moneyStockMovement .ins-row span:last-child')].map(el => shownNumber(el.textContent));
+        const movementText = document.getElementById('moneyStockMovement')?.textContent || '';
         MoneyManager.init('cash');
         scr.M14_net = shown('moneyNetCash');
+        cmpShown.M14_net = cmpOf('moneyCashCompare');
         MoneyManager.init('spending');
         Object.assign(scr, { M4_businessExpenses: shown('moneyBusiness'), M8_personalExpenses: shown('moneyPersonal'), M9_withdrawals: shown('moneyWithdrawn'), M7_labour: shown('moneyLabour') });
+        cmpShown.M4_businessExpenses = cmpOf('moneySpendCompare');
         const fullOf = { M1_sales: f.M1.total, M2_cogs: f.M2, M6_profit: f.M6.total, M16_purchases: f.M16.total, M14_net: f.M14,
             M4_businessExpenses: f.M4.total, M8_personalExpenses: f.M8.total, M9_withdrawals: f.M9, M7_labour: f.M7 };
         Object.entries(scr).forEach(([k, v]) => {
@@ -369,21 +509,37 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
             cmp(k, 'Money screen (phone)', P(preset), Math.round(o[k]), v, fullOf[k] === null ? null : Math.round(fullOf[k]), end);
         });
 
+        // M17 stock movement check: opening and closing stock value of the period (as F8).
+        const f8 = Om.finance([r.from, r.to]).F8_check;
+        if (!m.M17) {
+            if (/older bills are not loaded|build month history/i.test(movementText)) unknown('M17', 'Money (phone)', P(preset), 'stock movement not known: "older bills are not loaded" shown', f8.closing);
+            else cmp('M17_unknown_hidden', 'Money (phone)', P(preset), 1, 0, null, end, 'count');
+        } else {
+            [['M17_opening', m.M17.opening, f.M17?.opening, f8.opening, movement[0]], ['M17_closing', m.M17.closing, f.M17?.closing, f8.closing, movement[4]]]
+                .forEach(([k, v, fv, w, onScreen]) => {
+                    cmp(k, 'Money (phone)', P(preset), w, v, fv, end);
+                    cmp(k, 'Money screen (phone)', P(preset), Math.round(w), onScreen, fv === undefined || fv === null ? null : Math.round(fv), end);
+                });
+        }
+
         // Previous period and last year (figuresFor: the loaded bills, else month snapshots).
         const cr = comparisonRanges(r);
+        const sides = { M6_profit: [], M14_net: [], M4_businessExpenses: [] };
         for (const [which, range] of [['previous', cr.previous], ['last year', cr.lastYear]]) {
-            if (!range) continue;
+            if (!range) { Object.values(sides).forEach(list => list.push({ which, a: null, w: null })); continue; }
             const fig = MoneyManager.figuresFor(range);
-            const oo = O.metrics(now, [range.from, range.to]);
+            const oo = Om.metrics([range.from, range.to]);
             const ff = full(range, false);
             const period = P(`${preset} vs ${which} (${isoDay(range.from)}…${isoDay(range.to - 1)})`);
             const source = MoneyManager.covered(range.from) ? 'bills' : 'snapshots';
             const page = `Money vs ${which} (phone, ${source})`;
+            // M4, M6 and M14 are shown only as a comparison (CMP, below); M1 and M16 of the other period are not shown.
             [['M1_sales', 'M1', ff.M1.total], ['M4_businessExpenses', 'M4', ff.M4.total], ['M6_profit', 'M6', ff.M6.total], ['M14_net', 'M14', ff.M14], ['M16_purchases', 'M16', ff.M16.total]]
                 .forEach(([k, key, fv]) => {
                     const v = fig ? fig[key] : null;
                     if (v === null || v === undefined) {
-                        if (Math.abs(oo[k]) > 0.5) unknown(k, page, period, fig ? 'part month from snapshots: only sales and profit' : 'no snapshot for a month: "no comparison"', oo[k]);
+                        if (k in sides) return;
+                        if (Math.abs(oo[k]) > 0.5) unknown(k, page, period, fig ? 'part month from snapshots: only sales and profit (not shown)' : 'no snapshot for a month (not shown)', oo[k]);
                         return;
                     }
                     cmp(k, page, period, oo[k], v, fv, range.to);
@@ -394,12 +550,29 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
                 const a = change(nowV, fig ? fig[key] ?? null : null);
                 const w = change(o[k], oo[k]);
                 const fa = change(fullNow, fullThen);
-                if (!a && !w) return;
-                if (!a) { unknown(`CMP_${k}`, page, period, '"no comparison" shown', w.pct, 'count'); return; }
+                const why = !fig ? 'no snapshot for a month' : fig[key] === null || fig[key] === undefined ? 'part month from snapshots: only sales and profit' : 'nothing to compare';
+                sides[k].push({ which, a, w, page, period, why });
+                if (!a) return;
                 // Whole-% rounding of numbers within ₹1 of each other may differ by 1.
                 cmp(`CMP_${k}`, page, period, w ? w.pct : null, w && Math.abs(a.pct - w.pct) <= 1 ? w.pct : a.pct, fa ? fa.pct : null, range.to, 'count');
             });
         }
+        // A comparison the oracle can make and the app can't must say so on screen: "Nothing to compare with
+        // yet" when neither can be made, else "vs {label}: not known" next to the one shown.
+        Object.entries(sides).forEach(([k, list]) => {
+            const shownCmp = cmpShown[k];
+            const bothMissing = list.every(x => !x.a);
+            list.filter(x => !x.a && x.w).forEach(x => {
+                if (bothMissing) {
+                    if (shownCmp.none || shownCmp.notKnown >= 2) unknown(`CMP_${k}`, x.page, x.period, `${x.why}: "Nothing to compare with yet" shown`, x.w.pct, 'count');
+                    else cmp(`CMP_${k}_none_hidden`, x.page, x.period, 1, 0, null, end, 'count');
+                } else if (shownCmp.notKnown >= 1) {
+                    unknown(`CMP_${k}`, x.page, x.period, `${x.why}: "vs …: not known" shown`, x.w.pct, 'count');
+                } else {
+                    cmp(`CMP_${k}_not_known_hidden`, x.page, x.period, 1, 0, null, end, 'count');
+                }
+            });
+        });
 
         if (preset === 'this-month') {
             // M11: 13 months of profit as drawn (bars), last year (faint line) from snapshots.
@@ -411,7 +584,7 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
             lastMonthKeys(at, 13).forEach(k => {
                 const b = monthBounds(k);
                 const to = Math.min(b.to, r.to);
-                const oo = O.metrics(now, [b.from, to]);
+                const oo = Om.metrics([b.from, to]);
                 const fromSnap = !MoneyManager.covered(b.from);
                 const page = `Money chart M11 (phone, ${fromSnap ? 'snapshots' : 'bills'})`;
                 if (!(k in bars)) {
@@ -423,7 +596,7 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
                 const lyKey = `${y - 1}-${String(mo).padStart(2, '0')}`;
                 const ly = figuresFromSnapshot(MoneyManager.snapshots[lyKey])?.M6;
                 const lyb = monthBounds(lyKey);
-                const lyo = O.metrics(now, [lyb.from, lyb.to]).M6_profit;
+                const lyo = Om.metrics([lyb.from, lyb.to]).M6_profit;
                 if (ly === null || ly === undefined) { if (Math.abs(lyo) > 0.5) unknown('M11_lastYearLine', 'Money chart M11 (phone, snapshots)', P(lyKey), 'no point drawn (no snapshot)', lyo); return; }
                 cmp('M11_lastYearLine', 'Money chart M11 (phone, snapshots)', P(lyKey), lyo, ly, null, lyb.to);
             });
@@ -433,7 +606,7 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
                 if (!doc || !doc.m) return;
                 const b = monthBounds(k);
                 const to = Math.min(b.to, (doc.builtAt || at) + 1);
-                const oo = O.metrics(now, [b.from, to]);
+                const oo = Om.metrics([b.from, to]);
                 const ff = full({ from: b.from, to }, false);
                 const page = 'Month snapshot (monthStats)';
                 const per = P(`snapshot ${k}${to < b.to ? ` (to ${isoDay(to - 1)})` : ''}`);
@@ -449,7 +622,7 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
                 const daySales = days.reduce((a, d) => a + (d.s || 0), 0);
                 cmp('SNAP_days_sales', page, per, oo.M1_sales, r2(daySales), ff.M1.total, to);
                 if (doc.m.M6 !== null) cmp('SNAP_days_profit', page, per, oo.M6_profit, r2(days.reduce((a, d) => a + (d.p || 0), 0)), ff.M6.total, to);
-                if (doc.m.close !== null && doc.m.close !== undefined) cmp('SNAP_close', page, per, O.finance(now, [b.from, to]).F8_check.closing, doc.m.close, ff.M17?.closing, to);
+                if (doc.m.close !== null && doc.m.close !== undefined) cmp('SNAP_close', page, per, Om.finance([b.from, to]).F8_check.closing, doc.m.close, ff.M17?.closing, to);
             });
         }
     }
@@ -465,17 +638,47 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
     const thisMonth = periodRange('this-month', new Date(at));
     const mNow = MoneyManager.summary(thisMonth, { sessions: MoneyManager.sessions(thisMonth), detail: false });
     const stockFull = full(thisMonth, false).stockNow;
-    if (mNow.stockNow === null) unknown('S4_total', 'Worth (phone)', P('now'), '"—" (stock value not known)', O.finance(now).F6_stockValue);
-    else cmp('S4_total', 'Worth (phone)', P('now'), O.finance(now).F6_stockValue, mNow.stockNow, stockFull, at + 1);
-    const stockWant = O.stockReplay(now).perItem;
+    if (mNow.stockNow === null) unknown('S4_total', 'Worth (phone)', P('now'), '"—" (stock value not known)', Om.finance().F6_stockValue);
+    else cmp('S4_total', 'Worth (phone)', P('now'), Om.finance().F6_stockValue, mNow.stockNow, stockFull, at + 1);
+    const stockWant = Om.stockReplay().perItem;
     Object.entries(stockWant).forEach(([k, v]) => {
         const a = (AppState.stock || {})[k] || { quantity: 0, rate: 0 };
         cmp('S1_quantity', 'Stock (phone)', P('item'), v.qty, a.quantity, null, at + 1, 'kg');
     });
 
-    // ---------------- Insights
+    // M15 net worth and its drawer term (C9: last counted cash, from the last 30 days of sessions), as shown on Money › Worth.
+    resetInsightsContextForTests();
+    setInsightsContext({ preset: 'this-month' });
+    MoneyManager.init('worth');
+    await settle(fake);
+    MoneyManager.render();
+    const ref = (id) => shownNumber(document.querySelector(`#moneyWorthTerms [data-metric-ref="${id}"]`)?.textContent);
+    const counted = O.lastCountedCash(now.sessions);
+    const recent = counted && counted.date >= isoDay(new Date(new Date(at).getFullYear(), new Date(at).getMonth(), new Date(at).getDate() - 30).getTime());
+    const drawerLabel = document.getElementById('moneyWorthTerms')?.textContent || '';
+    const accountsTotal = accounts.reduce((a, x) => a + (x.type === 'liability' ? -1 : 1) * Number(x.balance || 0), 0);
+    if (counted && !recent) {
+        if (/not counted lately/i.test(drawerLabel)) unknown('C9_drawer', 'Worth (phone)', P('now'), 'last count older than 30 days: "not counted lately" shown', counted.amount);
+        else cmp('C9_drawer_old_hidden', 'Worth (phone)', P('now'), 1, 0, null, at + 1, 'count');
+    } else {
+        cmp('C9_drawer', 'Worth (phone)', P('now'), Math.round(counted ? counted.amount : 0), ref('C9'), null, at + 1);
+    }
+    const drawerShown = counted && recent ? counted.amount : 0;
+    const worthWant = O.netWorth(now, { accounts: accountsTotal, drawer: drawerShown });
+    const worthFull = stockFull === null ? null : O.r2(stockFull + fullDues.receivable.total + accountsTotal + drawerShown - fullDues.payable.total);
+    if (mNow.stockNow === null) {
+        if (/—/.test(document.getElementById('moneyWorthValue')?.textContent || '')) unknown('M15_netWorth', 'Worth (phone)', P('now'), '"—" (stock value not known)', worthWant);
+        else cmp('M15_unknown_hidden', 'Worth (phone)', P('now'), 1, 0, null, at + 1, 'count');
+    } else {
+        cmp('M15_netWorth', 'Worth (phone)', P('now'), Math.round(worthWant), ref('M15'), worthFull === null ? null : Math.round(worthFull), at + 1);
+        cmp('M15_netWorth', 'Worth screen (phone)', P('now'), Math.round(worthWant), shown('moneyWorthValue'), worthFull === null ? null : Math.round(worthFull), at + 1);
+    }
+    cmp('O3_payableTotal', 'Worth screen (phone)', P('now'), -Math.round(wantDues.payable), ref('O3'), -Math.round(fullDues.payable.total), at + 1);
+    cmp('O4_receivableTotal', 'Worth screen (phone)', P('now'), Math.round(wantDues.receivable), ref('O4'), Math.round(fullDues.receivable.total), at + 1);
+
+    // ---------------- Insights (Seasons, with the season calendar and stock-up, is owner / manager only)
     InsightsManager.seasonDocs = null;
-    await InsightsManager.loadSeasons().catch(() => null);
+    if (seesSeasons) await InsightsManager.loadSeasons().catch(() => null);
     info.rateStatsDocs = (InsightsManager.seasonDocs || []).length;
     for (const preset of ['this-month', 'last-month']) {
         resetInsightsContextForTests();
@@ -485,12 +688,42 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
         if (!InsightsManager.covered(r.from)) { unknown('I1–I4', 'Insights (phone)', P(preset), 'period not loaded', 0); continue; }
         const m = moneySummary(InsightsManager.input(r.from), r, { detail: true });
         const f = full(r);
-        const o = O.metrics(now, [r.from, r.to]);
+        const o = Om.metrics([r.from, r.to]);
         const appItems = new Map(itemSummary(m).map(x => [x.itemKey, x]));
         const fullItems = new Map(itemSummary(f).map(x => [x.itemKey, x]));
         new Set([...Object.keys(o.I1_itemSales), ...appItems.keys()]).forEach(k => {
             cmp('I1_itemSales', 'Insights items (phone)', P(`${preset} item`), o.I1_itemSales[k] || 0, appItems.get(k)?.sales || 0, fullItems.get(k)?.sales || 0, end);
             if (k && m.M2 !== null) cmp('I1_itemCogs', 'Insights items (phone)', P(`${preset} item`), o.I1_itemCogs[k] || 0, appItems.get(k)?.cogs || 0, fullItems.get(k)?.cogs || 0, end);
+            // I2: the same rows split by bill type.
+            cmp('I2_itemRetail', 'Insights items (phone)', P(`${preset} item`), o.I2_itemRetail[k] || 0, appItems.get(k)?.retail || 0, fullItems.get(k)?.retail || 0, end);
+            cmp('I2_itemWholesale', 'Insights items (phone)', P(`${preset} item`), o.I2_itemWholesale[k] || 0, appItems.get(k)?.wholesale || 0, fullItems.get(k)?.wholesale || 0, end);
+        });
+        if (m.M2 === null) {
+            unknown('I7–I8', 'Insights to-do (phone)', P(preset), 'not listed (cost of goods sold not known)', 0, 'count');
+        } else {
+            // I7 low-profit items (as listed on the to-do list), I8 sale lines below cost per item.
+            const cfg = InsightsManager.cfg();
+            const low = lowProfitItems(itemSummary(m), cfg).map(x => x.itemKey);
+            const lowFull = lowProfitItems(itemSummary(f), cfg).map(x => x.itemKey);
+            const lowWant = Om.lowProfitItems([r.from, r.to], { minSales: cfg.lowMarginMinSales, per100: cfg.lowMarginPer100 });
+            new Set([...lowWant, ...low]).forEach(k => cmp('I7_lowProfitItems', 'Insights to-do (phone)', P(`${preset} item`),
+                lowWant.includes(k) ? 1 : 0, low.includes(k) ? 1 : 0, lowFull.includes(k) ? 1 : 0, end, 'count'));
+            const below = new Map(belowCostSales(m).map(x => [x.itemKey, x]));
+            const belowFull = new Map(belowCostSales(f).map(x => [x.itemKey, x]));
+            const belowWant = Om.belowCost([r.from, r.to]);
+            new Set([...Object.keys(belowWant), ...below.keys()]).forEach(k => {
+                cmp('I8_belowCostTimes', 'Insights to-do (phone)', P(`${preset} item`), belowWant[k]?.times || 0, below.get(k)?.times || 0, belowFull.get(k)?.times || 0, end, 'count');
+                cmp('I8_belowCostKg', 'Insights to-do (phone)', P(`${preset} item`), belowWant[k]?.qty || 0, below.get(k)?.qty || 0, belowFull.get(k)?.qty || 0, end, 'kg');
+                cmp('I8_belowCostLost', 'Insights to-do (phone)', P(`${preset} item`), belowWant[k]?.lost || 0, below.get(k)?.lost || 0, belowFull.get(k)?.lost || 0, end);
+            });
+        }
+        // I11 purchases by item (labour shared by line value), from the loaded purchases as Insights › Items shows them.
+        const bought = new Map(purchaseItems(AppState.purchaseHistory || [], AppState.items || [], r).map(x => [x.itemKey, x]));
+        const boughtFull = new Map(purchaseItems(now.purchases, now.items, r).map(x => [x.itemKey, x]));
+        const boughtWant = Om.purchaseItems([r.from, r.to]);
+        new Set([...Object.keys(boughtWant), ...bought.keys()]).forEach(k => {
+            [['I11_amount', 'amount', 'money'], ['I11_labour', 'labour', 'money'], ['I11_lineValue', 'lineValue', 'money'], ['I11_kg', 'qty', 'kg']].forEach(([spec, key, unit]) =>
+                cmp(spec, 'Insights items (phone)', P(`${preset} purchase item`), boughtWant[k]?.[key] || 0, bought.get(k)?.[key] || 0, boughtFull.get(k)?.[key] || 0, end, unit));
         });
         const src = { purchases: AppState.purchaseHistory || [], wholesaleSales: AppState.salesHistory || [], retailSales: AppState.retailSalesHistory || [] };
         [['sales', 'I3_customers'], ['purchases', 'I4_suppliers']].forEach(([kind, spec]) => {
@@ -501,7 +734,7 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
         // Item "vs last year" (from the bills when loaded, else whole-month snapshots).
         const ly = comparisonRanges(r).lastYear;
         const lyItems = InsightsManager.lastYearItems(r);
-        const lyWant = O.metrics(now, [ly.from, ly.to]).I1_itemSales;
+        const lyWant = Om.metrics([ly.from, ly.to]).I1_itemSales;
         const anyLy = Object.values(lyWant).some(v => Math.abs(v) > 0.5);
         if (!lyItems) {
             if (anyLy) unknown('I1_vsLastYear', 'Insights items (phone)', P(preset), 'item "vs last year" shown as "—"', Object.keys(lyWant).length, 'count');
@@ -515,6 +748,8 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
     const src = { purchases: AppState.purchaseHistory || [], wholesaleSales: AppState.salesHistory || [], retailSales: AppState.retailSalesHistory || [] };
     const stopped = InsightsManager.stoppedCheck(src, nowD);
     const stoppedWant = O.stoppedComing(now, at, InsightsManager.cfg().stoppedComingDays);
+    const lastYearFrom = new Date(nowD.getFullYear() - 1, nowD.getMonth() - 1, 1).getTime();
+    info.stopped = { known: stopped.known, from: MoneyManager.covered(lastYearFrom) ? 'bills' : 'snapshots', found: stopped.list.length };
     if (!stopped.known) {
         document.body.innerHTML = '<div id="insights" class="active"><div id="insightsPartiesTakeaway"></div><table id="insightsCustomersTable"></table><table id="insightsSuppliersTable"></table><div id="insightsStoppedCard"><div id="insightsStopped"></div></div></div>';
         InsightsManager.partyKind = 'sales';
@@ -529,7 +764,7 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
         const extra = [...got].filter(k => !stoppedWant.includes(k)).length;
         cmp('I3_stoppedComing', 'Insights parties (phone)', P('now'), stoppedWant.length, stoppedWant.length - missing + extra, null, at + 1, 'count');
     }
-    const weeklyRes = InsightsManager.weeklySoldKg(nowD);
+    const weeklyRes = seesSeasons ? InsightsManager.weeklySoldKg(nowD) : null;
     const weekly = weeklyRes instanceof Map ? weeklyRes : weeklyRes?.byItem || null;
     const weeksLoaded = weeklyRes && !(weeklyRes instanceof Map) ? weeklyRes.weeks : null;
     const weeklyWant = O.weeklySoldKg(now, at);
@@ -537,7 +772,9 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
         const m = moneySummary({ ...now, sessions: [], base: fullBase }, { from: at - 56 * DAY, to: at + 1 }, { detail: true });
         return new Map(itemSummary(m).map(x => [x.itemKey, x.qty / 8]));
     })();
-    if (!weekly) {
+    if (!seesSeasons) {
+        // Not shown to this role (the stock-up card needs Seasons).
+    } else if (!weekly) {
         if (Object.values(weeklyWant).some(v => v > 0)) unknown('I9_weeklyKg', 'Insights stock-up (phone)', P('now'), 'no stock-up card (under 2 weeks of bills loaded)', 0, 'kg');
     } else if (weeksLoaded !== null && weeksLoaded < 8 - 1e-9) {
         unknown('I9_weeklyKg', 'Insights stock-up (phone)', P('now'), 'approximate: "from the last N weeks" (under 8 weeks of bills loaded)', null, 'kg');
@@ -560,7 +797,7 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
     const kgDocs = soldKgByMonth(InsightsManager.seasonDocs || []);
     const kgWant = O.rateBuckets({ purchase: now.purchases, retail: now.retailSales, wholesale: now.wholesaleSales }, now.items, O.monthOf);
     const firstSeasonYear = String(nowD.getFullYear() - 2);
-    Object.entries(kgWant).forEach(([item, byM]) => Object.entries(byM).forEach(([mk, byK]) => {
+    Object.entries(seesSeasons ? kgWant : {}).forEach(([item, byM]) => Object.entries(byM).forEach(([mk, byK]) => {
         if (mk.slice(0, 4) < firstSeasonYear) return;
         const want = r2((byK.retail?.kg || 0) + (byK.wholesale?.kg || 0));
         if (!want) return;
@@ -578,12 +815,12 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
     for (const k of months) {
         Object.assign(StatementsManager, { month: k });
         StatementsManager.open('month');
-        await settle(fake);
+        await settle(fake, 3);
         StatementsManager.render();
         const b = monthBounds(k);
         const to = Math.min(b.to, at + 1);
         const doc = document.getElementById('statementsDoc');
-        const oo = O.metrics(now, [b.from, to]);
+        const oo = Om.metrics([b.from, to]);
         if (!StatementsManager.covered(b.from)) {
             if (/load/i.test(doc.textContent) && doc.querySelector('button')) {
                 if (Math.abs(oo.M1_sales) + Math.abs(oo.M16_purchases) > 0.5) unknown('ST2', 'Statements month (phone)', P(k), 'month not loaded: "load older bills" shown', oo.M1_sales);
@@ -606,29 +843,33 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
         const key = isoDay(d.getTime());
         StatementsManager.day = key;
         StatementsManager.open('day');
-        await settle(fake);
+        await settle(fake, 3);
         StatementsManager.render();
         const from = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
         const to = from + DAY;
         const noon = Math.min(from + 12 * 3600000, at);
         const sess = sessionOn(key);
-        const want = O.today(now, noon, sess[0] || null);
-        const wantW = O.finance(now, [from, to]).F11_withdrawals;
+        const want = Om.today(noon, sess[0] || null);
+        const wantW = Om.finance([from, to]).F11_withdrawals;
         const sessions = MoneyManager.sessions({ from, to });
-        const { totals } = dayBook(StatementsManager.src(), { from, to }, { personal: true, sessions: sessions.list });
+        const { totals, rows: bookRows } = dayBook(StatementsManager.src(), { from, to }, { personal: true, sessions: sessions.list });
         const page = 'Statements day book (phone)';
         const rows = [['ST1_sales', want.T2_sales, totals.sales], ['ST1_purchases', want.T1_purchases, totals.purchases],
             ['ST1_expenses', r2(want.T4_businessExpenses + want.T5_personalExpenses), totals.expenses], ['ST1_withdrawals', wantW, totals.withdrawals],
             ['ST1_dueReceived', want.T13_dueReceived, totals.dueReceived], ['ST1_duePaid', want.T14_duePaid, totals.duePaid]];
         rows.forEach(([spec, w, a]) => cmp(spec, page, P(key), w, a, null, to));
         cmp('ST1_saleCount', page, P(key), want.T2_saleCount, totals.salesCount, null, to, 'count');
+        // Each due payment of the day listed once: bill entries and every session's legs that day, de-duplicated by id.
+        const dues = O.duePaymentsIn({ purchase: now.purchases, retail: now.retailSales, wholesale: now.wholesaleSales }, sess, [from, to]);
+        cmp('ST1_duePaymentRows', page, P(key), dues.receivedCount + dues.paidCount, bookRows.filter(x => x.kind === 'dueReceived' || x.kind === 'duePaid').length, null, to, 'count');
+        if (sess.length && !MoneyManager.covered(-Infinity)) cmp('SESS_dayLoaded', page, P(key), sess.length, sessions.list.filter(s => s.date === key).length, null, to, 'count');
         if (key !== day) {
             const shownTotals = [...document.querySelectorAll('#statementsDoc .st-totals .ins-row span:last-child')].map(el => shownNumber(el.textContent));
             rows.forEach(([spec, w], i) => cmp(`${spec}_screen`, page, P(key), Math.round(w), shownTotals[i], null, to));
         }
     }
 
-    // ---------------- Today (its cash session from the app's own loader)
+    // ---------------- Today: expected from the backup's session for the day; the app's session loader checked on its own
     const todayIds = {
         T1_purchases: 'todayTotalPurchases', T2_sales: 'todayTotalSales', T3_labour: 'todayLaborCost',
         T4_businessExpenses: 'todayBusinessExpenses', T5_personalExpenses: 'todayPersonalExpenses',
@@ -643,8 +884,24 @@ async function auditOneDay({ fake, data, at, label, open, cmp, unknown, T }) {
     DayManager.loadTodaySession();
     await settle(fake);
     DayManager.loadTodayData();
-    const session = CashManagementManager.todaySession || null;
-    const want = O.today(now, at, session);
+    const daySessions = sessionOn(day);
+    const session = daySessions[0] || null;
+    const loaded = CashManagementManager.todaySession || null;
+    // loadTodaySession (loadCashSessionsForDate): the day's session, with its legs. With two sessions on the day
+    // the app keeps one (the open one); it must be one of the day's.
+    const loadedOk = loaded ? (daySessions.length === 1 ? String(loaded.id) === String(session.id) : daySessions.some(s => String(s.id) === String(loaded.id))) : false;
+    cmp('T_sessionLoaded', 'Today (phone)', P('today'), daySessions.length ? 1 : 0, loaded ? (loadedOk ? 1 : -1) : 0, null, at + 1, 'count');
+    if (loaded && loadedOk) {
+        const mine = daySessions.find(s => String(s.id) === String(loaded.id));
+        cmp('T_sessionLegs', 'Today (phone)', P('today'), (mine.duePayments || []).length, (loaded.duePayments || []).length, null, at + 1, 'count');
+    }
+    info.todaySessions = { backup: daySessions.length, loaded: loaded ? String(loaded.id) === String(session?.id) ? 'first' : 'other' : 'none' };
+    // Bills paid today that this phone has not loaded: their payments reach Today only through session legs.
+    const loadedIds = new Set(['purchaseHistory', 'salesHistory', 'retailSalesHistory'].flatMap(k => (AppState[k] || []).map(b => String(b.id))));
+    const [dayFrom, dayTo] = O.dayRange(at);
+    info.paidTodayNotLoaded = [...now.purchases, ...now.retailSales, ...now.wholesaleSales]
+        .filter(b => (b.payments || []).some(p => { const t = p.at ?? O.timeOf(p.date); return t >= dayFrom && t < dayTo; }) && !loadedIds.has(String(b.id))).length;
+    const want = Om.today(at, session);
     Object.entries(todayIds).forEach(([k, id]) => cmp(k, 'Today (phone)', P('today'), Math.round(want[k]), shown(id), null, at + 1));
     const net = shown('todayNetCashFlow');
     cmp('T12_net', 'Today (phone)', P('today'), Math.round(want.T12_net), /outflow/i.test(document.getElementById('todayCashFlowLabel').textContent) ? -net : net, null, at + 1);
