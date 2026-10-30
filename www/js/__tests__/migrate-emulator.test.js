@@ -12,18 +12,25 @@ import { importLogins, parseHashParams, toImportRecords } from '../../../tools/m
 import { wipeProject } from '../../../tools/migrate/lib/wipe.js';
 
 const LOCAL = { FIRESTORE_EMULATOR_HOST: '127.0.0.1:8181', FIREBASE_AUTH_EMULATOR_HOST: 'localhost:9099' };
+const DEMO = 'demo-happa-test';
 
 describe('--emulator', () => {
     test('needs local emulator hosts, and Auth ones when the command uses Auth', () => {
-        expect(checkEmulatorTarget({ emulator: true, env: LOCAL, auth: true })).toEqual({ firestore: '127.0.0.1:8181', auth: 'localhost:9099' });
-        expect(() => checkEmulatorTarget({ emulator: true, env: {} })).toThrow(/FIRESTORE_EMULATOR_HOST/);
-        expect(() => checkEmulatorTarget({ emulator: true, env: { FIRESTORE_EMULATOR_HOST: '127.0.0.1:8181' }, auth: true })).toThrow(/FIREBASE_AUTH_EMULATOR_HOST/);
-        expect(() => checkEmulatorTarget({ emulator: true, env: { FIRESTORE_EMULATOR_HOST: 'firestore.googleapis.com:443' } })).toThrow(/not a local emulator/);
-        expect(() => checkEmulatorTarget({ emulator: true, env: { FIRESTORE_EMULATOR_HOST: '10.0.0.5:8181' } })).toThrow(/not a local emulator/);
+        expect(checkEmulatorTarget({ emulator: true, project: DEMO, env: LOCAL, auth: true })).toEqual({ firestore: '127.0.0.1:8181', auth: 'localhost:9099' });
+        expect(() => checkEmulatorTarget({ emulator: true, project: DEMO, env: {} })).toThrow(/FIRESTORE_EMULATOR_HOST/);
+        expect(() => checkEmulatorTarget({ emulator: true, project: DEMO, env: { FIRESTORE_EMULATOR_HOST: '127.0.0.1:8181' }, auth: true })).toThrow(/FIREBASE_AUTH_EMULATOR_HOST/);
+        expect(() => checkEmulatorTarget({ emulator: true, project: DEMO, env: { FIRESTORE_EMULATOR_HOST: 'firestore.googleapis.com:443' } })).toThrow(/not a local emulator/);
+        expect(() => checkEmulatorTarget({ emulator: true, project: DEMO, env: { FIRESTORE_EMULATOR_HOST: '10.0.0.5:8181' } })).toThrow(/not a local emulator/);
+    });
+
+    test('only a demo-* project: real project ids are refused even on local emulators', () => {
+        ['happa-bfc07', 'aadhat-management', 'happa-x', 'demo', 'demo-', 'Demo-happa', 'my-demo-happa', undefined, ''].forEach(project =>
+            expect(() => checkEmulatorTarget({ emulator: true, project, env: LOCAL, auth: true })).toThrow(/demo-*/));
+        expect(checkEmulatorTarget({ emulator: true, project: 'demo-happa-migration', env: LOCAL })).toEqual({ firestore: '127.0.0.1:8181', auth: 'localhost:9099' });
     });
 
     test('never with a service-account key', () => {
-        expect(() => checkEmulatorTarget({ emulator: true, env: LOCAL, keyFile: 'key.json' })).toThrow(/no service-account key/);
+        expect(() => checkEmulatorTarget({ emulator: true, project: DEMO, env: LOCAL, keyFile: 'key.json' })).toThrow(/no service-account key/);
     });
 
     test('a real run refuses while emulator variables are set', () => {
@@ -84,5 +91,6 @@ describe('auth:import', () => {
         expect(r).toEqual({ imported: 1, failed: [{ index: 0, message: 'bad' }] });
         expect(calls[0].opts.hash).toMatchObject({ algorithm: 'SCRYPT', rounds: 8, memoryCost: 14 });
         expect(calls[0].opts.hash.key.equals(hash.key)).toBe(true);
+        expect(calls[0].opts.hash.saltSeparator).toEqual(Buffer.from([7]));
     });
 });

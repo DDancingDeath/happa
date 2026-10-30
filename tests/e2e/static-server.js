@@ -1,13 +1,24 @@
 /**
- * Minimal static file server for www/ (E2E only). Usage: node static-server.js <port>
+ * Minimal static file server for www/ (E2E only).
+ *   node static-server.js <port> [--project demo-<name> --auth-port <n> --firestore-port <n>]
  * Unknown paths fall back to index.html like Firebase Hosting's rewrite.
+ * With --project, www/firebaseConfig.js and www/r/rent-history.js are served
+ * rewritten to that demo project and those emulator ports (support/emulator-target.js),
+ * so the committed files keep their defaults.
  */
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const { target, servedText, REWRITTEN } = require('./support/emulator-target');
 
 const ROOT = path.resolve(__dirname, '..', '..', 'www');
-const PORT = Number(process.argv[2] || process.env.E2E_PORT || 8099);
+const args = process.argv.slice(2);
+const opt = (name) => {
+    const i = args.indexOf(name);
+    return i !== -1 ? args[i + 1] : undefined;
+};
+const PORT = Number(args[0] || process.env.E2E_PORT || 8099);
+const EMU = opt('--project') ? target({ project: opt('--project'), authPort: Number(opt('--auth-port') || 9099), firestorePort: Number(opt('--firestore-port') || 8181) }) : null;
 const TYPES = {
     '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
     '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json', '.png': 'image/png',
@@ -25,6 +36,22 @@ http.createServer((req, res) => {
         const index = path.join(file, 'index.html');
         file = fs.existsSync(index) ? index : path.join(ROOT, 'index.html');
     }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+    const type = TYPES[path.extname(file)] || 'application/octet-stream';
+    const rel = path.relative(ROOT, file).split(path.sep).join('/');
+    if (EMU && REWRITTEN.includes(rel)) {
+        let text;
+        try {
+            text = servedText(rel, fs.readFileSync(file, 'utf8'), EMU);
+        } catch (e) {
+            console.error(String(e.message || e));
+            res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end(String(e.message || e));
+            return;
+        }
+        res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+        res.end(text);
+        return;
+    }
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
     fs.createReadStream(file).pipe(res);
-}).listen(PORT, '127.0.0.1', () => console.log(`static www/ on http://127.0.0.1:${PORT}`));
+}).listen(PORT, '127.0.0.1', () => console.log(`static www/ on http://127.0.0.1:${PORT}${EMU ? ` (emulators: ${EMU.project}, auth ${EMU.authPort}, firestore ${EMU.firestorePort})` : ''}`));

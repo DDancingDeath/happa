@@ -4,7 +4,13 @@
  * apply, auth:import) into the Firebase EMULATORS → data checks → the app in a
  * browser (Playwright). Never touches a real project: the migration tool runs
  * with --emulator, which refuses unless FIRESTORE_EMULATOR_HOST and
- * FIREBASE_AUTH_EMULATOR_HOST point at 127.0.0.1.
+ * FIREBASE_AUTH_EMULATOR_HOST point at 127.0.0.1 and the project is a demo-* id.
+ *
+ * Emulators: project MIGRATION_E2E_PROJECT (default demo-happa-migration, not the
+ * one tests/e2e uses), auth MIGRATION_E2E_AUTH_PORT (9199), firestore
+ * MIGRATION_E2E_FIRESTORE_PORT (8281), set at test time: a gitignored
+ * .migration-e2e.firebase.json (--config) for the emulators and a rewritten served
+ * www/firebaseConfig.js for the app (tests/e2e/support/emulator-target.js).
  *
  *   npm run test:migration-e2e         synthetic, anonymised backup made at test time (CI)
  *
@@ -18,7 +24,8 @@
  * The real logins' passwords are not known, so after the hash bytes are checked
  * the run gives one owner and one member an emulator-only password to sign in.
  *
- * Without the emulators running, it starts them (firebase emulators:exec) and runs itself inside.
+ * Without the emulators running, it starts them (firebase emulators:exec) and runs itself inside;
+ * with FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST already set, it uses those (and wipes them).
  */
 import fs from 'fs';
 import path from 'path';
@@ -30,8 +37,10 @@ process.env.TZ = 'Asia/Kolkata';
 const require = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..', '..');
-const { loadConfig, derive } = require('../../scripts/happa-config.js');
-const PROJECT = process.env.MIGRATION_E2E_PROJECT || derive(loadConfig()).projectId;
+const { migrationTarget, writeEmulatorConfig } = require('../e2e/support/emulator-target.js');
+// Throws unless the project is a demo-* id: the run wipes the emulators' data for it.
+const EMU = migrationTarget();
+const PROJECT = EMU.project;
 const REAL = !!process.env.MIGRATION_E2E_BACKUP;
 const t0 = Date.now();
 const timings = [];
@@ -197,9 +206,13 @@ async function main() {
 if (!FS_HOST() || !AUTH_HOST()) {
     // Start the emulators and run this file inside them.
     const self = path.relative(ROOT, fileURLToPath(import.meta.url)).split(path.sep).join('/');
-    const child = spawn(`npx --yes firebase-tools@latest emulators:exec --only auth,firestore --project ${PROJECT} "node ${self}"`,
+    const config = writeEmulatorConfig('migration-e2e', EMU);
+    const child = spawn(`npx --yes firebase-tools@latest emulators:exec --only auth,firestore --project ${PROJECT} --config ${config} "node ${self}"`,
         { cwd: ROOT, stdio: 'inherit', shell: true });
-    child.on('exit', (code) => process.exit(code ?? 1));
+    child.on('exit', (code) => {
+        fs.rmSync(path.join(ROOT, config), { force: true });
+        process.exit(code ?? 1);
+    });
 } else {
     main().catch((err) => {
         console.error(`\nMigration E2E FAILED: ${err && err.message ? err.message : err}${err?.cause ? ` (${err.cause.code || err.cause.message || err.cause})` : ''}`);

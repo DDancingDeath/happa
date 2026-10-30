@@ -2,7 +2,7 @@
 # at test time → tools/migrate plan, wipe, apply, auth:import into the Firebase
 # EMULATORS → data checks against the old backup → the app (Playwright) as a
 # migrated owner and member. Never touches a real project (migrate.js --emulator).
-# Runs on PRs that touch the tool or the opening-record code, nightly and on demand.
+# Runs on PRs that touch the tool, the app (www/**) or the rules, nightly and on demand.
 name: Migration E2E
 
 on:
@@ -13,27 +13,13 @@ on:
       - 'tests/migration-e2e/**'
       - 'tests/fixtures/generator.js'
       - 'tests/oracle/oracle.js'
-      # opening records: how the app reads, shows and leaves out the carried dues
-      - 'www/js/utils/money.js'
-      - 'www/js/utils/aging.js'
-      - 'www/js/utils/history-filters.js'
-      - 'www/js/utils/rate-trends.js'
-      - 'www/js/utils/business-metrics.js'
-      - 'www/js/utils/finance-calc.js'
-      - 'www/js/utils/statements.js'
-      - 'www/js/utils/due-payments.js'
-      - 'www/js/utils/helpers.js'
-      - 'www/js/ui/bill-row.js'
-      - 'www/js/modules/outstanding.js'
-      - 'www/js/modules/wholesale-sales.js'
-      - 'www/js/modules/history.js'
-      - 'www/js/modules/day.js'
-      - 'www/js/modules/money.js'
-      - 'www/js/modules/insights.js'
-      - 'www/js/modules/statements.js'
-      - 'www/js/modules/rate-trends.js'
-      - 'www/js/auth/**'
+      # the static server and emulator project / ports the run shares with tests/e2e
+      - 'tests/e2e/static-server.js'
+      - 'tests/e2e/support/emulator-target.js'
+      # the app: the run opens it on the migrated data
+      - 'www/**'
       - 'firestore.rules'
+      - 'firebase.json'
       - '.github/workflows/migration-e2e.yml'
   schedule:
     - cron: '0 22 * * *' # 03:30 IST nightly

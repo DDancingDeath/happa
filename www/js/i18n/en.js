@@ -1512,7 +1512,7 @@ export default {
     'ui.diag.a_edit_item': "Edit Item",
     'ui.diag.a_clear_due': "Clear Due",
     'ui.diag.a_adjust_stock': "Adjust Stock",
-    'ui.diag.a_override_check': "Saved Past a Check",
+    'ui.diag.a_override_check': "Saved Despite a Warning",
     'ui.diag.a_record_withdrawal': "Record Withdrawal",
     'ui.diag.a_record_expense': "Record Expense",
     'ui.diag.a_edit_expense': "Edit Expense",
