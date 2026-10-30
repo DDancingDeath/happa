@@ -20,13 +20,13 @@ const loadBaselines = () => JSON.parse(fs.readFileSync(FILE, 'utf8'));
 /** Billed document reads since the page loaded (null before the app module ran). */
 const readCount = (page) => page.evaluate(() => window.FirebaseService?.getReadStats?.().reads ?? null);
 
-/** Waits until the count has not moved for `quiet` ms (at most `timeout`) and returns it. */
-async function settledReads(page, { quiet = 1000, timeout = 10000 } = {}) {
+/** Waits until the count has not moved for `quiet` ms (at most `timeout`; checked every `poll` ms) and returns it. */
+async function settledReads(page, { quiet = 1000, timeout = 10000, poll = 250 } = {}) {
     const t0 = Date.now();
     let last = await readCount(page);
     let since = Date.now();
     while (Date.now() - t0 < timeout) {
-        await page.waitForTimeout(250);
+        await page.waitForTimeout(poll);
         const now = await readCount(page);
         if (now !== last) {
             last = now;
@@ -38,9 +38,9 @@ async function settledReads(page, { quiet = 1000, timeout = 10000 } = {}) {
 
 /**
  * Most reads a page with `baseline` may cost: baseline + 25%, but at least
- * baseline + minSlack (a late listener update can land on the next page, so a
- * page that reads 0-4 documents would otherwise fail on one document), never
- * more than hardCap.
+ * baseline + minSlack (a listener update can still arrive after a step's reads
+ * settled and land on the next page, so a page that reads 0-3 documents would
+ * otherwise fail on one document), never more than hardCap.
  */
 const limitFor = (baseline, { tolerance, minSlack = 0, hardCap }) =>
     Math.min(hardCap, baseline + Math.max(Math.floor(baseline * tolerance), minSlack));

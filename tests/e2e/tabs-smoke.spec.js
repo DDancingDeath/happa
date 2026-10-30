@@ -243,7 +243,7 @@ for (const role of A) {
                     }
                     // Reads since the previous step belong to this step's page (first open: each test is a fresh session).
                     // Wait for the page's reads to stop first, so a slow page's late reads do not land on the next page.
-                    const now = await settledReads(page, { quiet: STEP_READS_QUIET_MS, timeout: STEP_READS_TIMEOUT_MS });
+                    const now = await settledReads(page, { quiet: STEP_READS_QUIET_MS, timeout: STEP_READS_TIMEOUT_MS, poll: 100 });
                     const b = bucketOf(s);
                     reads[b] = (reads[b] || 0) + (now - mark);
                     mark = now;

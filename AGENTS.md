@@ -349,7 +349,8 @@ in `.github/review-rules-examples/`.
   compared with `tests/e2e/read-baselines.json`; each step waits for the meter
   to be still (500 ms, at most 3 s) before counting, so a slow page's late reads
   are not charged to the next page. A page fails above its baseline + 25% (at
-  least + `minSlack` reads) or above the hard cap (300 reads). If a change makes a page
+  least + `minSlack` = 1 read, for a listener update that still lands on the next
+  page) or above the hard cap (300 reads). If a change makes a page
   read more on purpose, run
   `E2E_RECORD_READS=1 npx playwright test tests/e2e/tabs-smoke.spec.js` (raises
   baselines, never lowers them; delete an entry first to lower it), check the
