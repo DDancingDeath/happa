@@ -205,12 +205,33 @@ test('change of unit, pro-rated: the old month goes down to its days (+ electric
     expect(fake.raw('rent_charges').get(`${res.leaseId}_${M}`)).toMatchObject({ rent: next, amount: next });
 });
 
-test('change of unit: an owner/manager amount for the old month is used; never below what is already paid (nothing written)', async () => {
-    await expect(change({ lease: lease({ startDate: `${M}-16` }), oldRent: 1500 })).rejects.toThrow('split_below_paid');
-    expect(fake.raw('rent_leases').get('L1').status).toBe('active');
-    expect(fake.raw('rent_charges').get(`L1_${M}`).amount).toBe(5000);
+test('change of unit: an owner/manager amount for the old month is used; below what is already paid, the old month is left as it is', async () => {
+    const kept = await change({ lease: lease({ startDate: `${M}-16`, proRate: true, firstRent: 4000 }), oldRent: 1500 });
+    expect(kept.oldKept).toBe(true);
+    expect(fake.raw('rent_leases').get('L1').status).toBe('ended');
+    expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ rent: 5000, amount: 5000, paid: 2000 });
+    expect(fake.raw('rent_charges').get(`${kept.leaseId}_${M}`)).toMatchObject({ amount: 4000 });
+    seedAll();
     await change({ lease: lease({ startDate: `${M}-16` }), oldRent: 2100 });
     expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ rent: 2100, amount: 2100, open: true });
+});
+
+test('a member moves a tenant who already paid the move month: no error; the old month stays paid, the new unit is pro-rated', async () => {
+    at(16);
+    fake.seed('rent_charges', [{ ...fake.raw('rent_charges').get(`L1_${M}`), id: `L1_${M}`, paid: 5000, open: false, payments: [{ amount: 5000, mode: 'cash', date: `${M}-05` }] }]);
+    await showTenants();
+    const p = _test.toUnit({ id: 'T1', name: 'Ram' }, 'U3');
+    await waitFor('rentSplitOn');
+    expect(document.getElementById('rentSplitOn').checked).toBe(true);
+    RentalsModule.api.dialogClose(true);
+    await p;
+    const next = firstMonthRent(9000, `${M}-16`, true);
+    expect(UIManager.showModal).toHaveBeenCalledWith(expect.stringMatching(/already paid, so it stays as it is/), 'Change unit', true);
+    expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.anything(), 'error');
+    const lease2 = leases().find(l => l.fromLeaseId === 'L1');
+    expect(lease2).toMatchObject({ proRate: true, firstRent: next, unitId: 'U3' });
+    expect(fake.raw('rent_charges').get(`L1_${M}`)).toMatchObject({ rent: 5000, amount: 5000, paid: 5000, open: false });
+    expect(fake.raw('rent_charges').get(`${lease2.id}_${M}`)).toMatchObject({ amount: next });
 });
 
 test('change of unit with a tenant link: the new lease takes the same link; history of both units, receipts, no Moved out', async () => {

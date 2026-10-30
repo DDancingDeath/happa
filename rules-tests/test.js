@@ -2189,7 +2189,7 @@ function defineRentSuite(prefix) {
     // carry: the token the new lease takes (the old one clears its own unless clear=false; the snapshot moves to LN);
     // split: the old lease's move month {rent, amount} (RENT-13).
     const changeUnit = (uid, { date = today, unitId = 'U2', propertyId = 'P1', tenantId = 'T1', from = 'L1', freeOld = true, del = [], pub = '', endMonth = '',
-        moved = 'LN', carry = '', clear = !!carry, split = null } = {}) => {
+        moved = 'LN', carry = '', clear = !!carry, split = null, first = null } = {}) => {
         const f = db(uid);
         const b = f.batch();
         const month = date.slice(0, 7);
@@ -2202,10 +2202,17 @@ function defineRentSuite(prefix) {
         if (freeOld) b.update(unitOn(f), { leaseId: null, updatedAt: 2, updatedBy: uid });
         b.set(f.collection(c('rent_leases')).doc('LN'), { unitId, propertyId, tenantId, rent: 6000, dueDay: 10, startMonth: month, startDate: date,
             proRate: false, endMonth: null, deposit: 0, increasePct: 5, rentSince: month, elecMode: 'included', status: 'active',
-            chargedThrough: null, fromLeaseId: from, ...(carry ? { shareToken: carry } : {}), ...meta(uid) });
+            chargedThrough: null, fromLeaseId: from, ...(carry ? { shareToken: carry } : {}), ...(first != null ? { proRate: true, firstRent: first } : {}), ...meta(uid) });
         b.update(f.collection(c('rent_units')).doc(unitId), { leaseId: 'LN', updatedAt: 2, updatedBy: uid });
         return b.commit();
     };
+
+    t('change of unit by a member, the old month already paid: the old charge is untouched and the new lease is pro-rated', async () => {
+        await seedChange(CUR);
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 5000, open: false, payments: [entry('rentMember', 5000)] }));
+        await assertFails(changeUnit('rentMember', { first: 7000 }));
+        await assertSucceeds(changeUnit('rentMember', { first: 3000 }));
+    });
 
     t('change of unit: old lease ends and the new one starts in one write; fromLeaseId stays fixed', async () => {
         await seedChange(CUR);

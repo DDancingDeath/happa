@@ -194,9 +194,9 @@ const STATIC_ASSETS = [
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
 ];
-// Not precached: loaded with import() only when used (rent receipts, unit picker, tenant link actions). The fetch
-// handler below caches them on first use, so they work offline after that.
-// eslint-disable-next-line no-unused-vars -- the list is read by scripts/check-sw-assets.js
+// Loaded with import() only when used (rent receipts, unit picker, tenant link actions), so not in
+// the precache budget; install also caches them, best effort, so this version's copies (matching
+// the precached files) are there offline right after a deploy.
 const LAZY_ASSETS = [
     '/css/rent-receipt.css',
     '/js/rentals/rent-link.js',
@@ -217,7 +217,7 @@ self.addEventListener('install', (event) => {
                 // the whole precache (cache.addAll is all-or-nothing).
                 // cache:'reload' bypasses the HTTP cache so a new SW version
                 // doesn't precache stale copies.
-                return Promise.all(STATIC_ASSETS.map((url) =>
+                return Promise.all([...STATIC_ASSETS, ...LAZY_ASSETS].map((url) =>
                     cache.add(new Request(url, { cache: 'reload' }))
                         .catch((error) => console.warn('[SW] Failed to precache', url, error))
                 ));

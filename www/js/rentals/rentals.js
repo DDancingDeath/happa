@@ -802,7 +802,7 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, save = null }
         const first = occ.lease.firstRent ?? firstMonthRent(occ.lease.rent, occ.lease.startDate, occ.lease.proRate);
         const moved = isShareToken(from?.shareToken);
         UIManager.showToast(t(`msg.rent.${from ? 'unit_changed' : 'moved_in'}${res.charged ? '_charged' : ''}`, { amount: formatINR(first) })
-            + (moved ? ` ${t('msg.rent.link_moved')}` : ''), 'success');
+            + (moved ? ` ${t('msg.rent.link_moved')}` : '') + (res.oldKept ? ` ${t('msg.rent.old_month_kept')}` : ''), 'success');
         AuditService.log(from ? 'RENT_UNIT_CHANGE' : 'RENT_MOVE_IN', {
             tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate, fromLeaseId: from?.id || null
         }).catch(auditWarn);
@@ -816,7 +816,7 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, save = null }
         return false;
     }
 }
-const MOVE_ERRORS = ['unit_taken', 'tenant_changed', 'later_paid', 'bad_move_date', 'split_below_paid'];
+const MOVE_ERRORS = ['unit_taken', 'tenant_changed', 'later_paid', 'bad_move_date'];
 const EDIT_DAYS = 2;
 
 // ---------- Unit picker / change of unit (rent-unit.js) and link actions (rent-link.js), loaded on first use ----------
@@ -829,10 +829,15 @@ const unitCtx = () => ({
 
 /** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
 function lazyUi(file, fn, ...args) {
-    return (file === './rent-unit.js' ? unitMod() : import('./rent-link.js')).then(m => m[fn](unitCtx(), ...args)).catch((e) => {
-        console.error('Rentals file not loaded:', e);
-        UIManager.showToast(t('msg.rent.could_not_load'), 'error');
-    });
+    return (file === './rent-unit.js' ? unitMod() : import('./rent-link.js')).then(
+        (m) => Promise.resolve().then(() => m[fn](unitCtx(), ...args)).catch((e) => {
+            console.error(`Rentals ${fn} failed:`, e);
+            UIManager.showToast(t('msg.rent.save_failed'), 'error');
+        }),
+        (e) => {
+            console.error('Rentals file not loaded:', e);
+            UIManager.showToast(t('msg.rent.could_not_load'), 'error');
+        });
 }
 const unitUi = (fn, ...args) => lazyUi('./rent-unit.js', fn, ...args);
 
