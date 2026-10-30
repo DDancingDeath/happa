@@ -987,13 +987,23 @@ function defineSuite(prefix) {
         for (const coll of bills) {
             await seedBill(coll, 'b', dueBill);
             const ref = as('staff1').collection(coll).doc('b');
-            await assertSucceeds(ref.update(paid(40)));
+            await assertSucceeds(ref.update(paid(40, { paidAt: 1760000100000 })));
             // applyWriteOffTransaction: due to 0, writtenOff raised, one payments[] entry
             await assertSucceeds(ref.update({
                 payment: { online: 0, cash: 40, due: 0, total: 40, writtenOff: 60 }, dueAmount: 0, openDue: false,
                 payments: [...paid(40).payments, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone' }],
-                cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3
+                cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3, paidAt: 1760000200000
             }));
+        }
+    });
+
+    t('payment edits: paidAt (#163) is a time in ms, written with a new payments[] entry', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'b', dueBill);
+            const ref = as('staff1').collection(coll).doc('b');
+            await assertFails(ref.update(paid(40, { paidAt: '2026-10-05' })));
+            await assertFails(ref.update({ paidAt: 1760000100000, clientVersion: 3 }));
+            await assertSucceeds(ref.update(paid(40)));
         }
     });
 
