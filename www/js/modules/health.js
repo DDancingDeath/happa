@@ -61,8 +61,8 @@ function rateCell(n, test) {
 const ROLE_LABEL_KEYS = { owner: 'ui.health.role_owner', manager: 'ui.roles.manager', staff: 'ui.roles.member' };
 
 /**
- * Who uses a device (profile name, else role) and a short device tag (F34).
- * @returns {{who: string, tag: string}}
+ * Who uses a device (profile name, else role) and a short device tag (F34): `tag` = role (when named) and `code`.
+ * @returns {{who: string, tag: string, role: string, code: string}}
  */
 export function deviceLabel(dev, usersById = {}) {
     const user = dev?.uid ? usersById[dev.uid] : null;
@@ -70,13 +70,15 @@ export function deviceLabel(dev, usersById = {}) {
     const name = String(user?.name || '').trim();
     const id = String(dev?.deviceId || '');
     const tag = `#${id.slice(-4)}`;
-    if (name) return { who: name, tag: role ? `${role} · ${tag}` : tag };
-    return { who: role || t('ui.health.unknown_user'), tag };
+    if (name) return { who: name, tag: role ? `${role} · ${tag}` : tag, role, code: tag };
+    return { who: role || t('ui.health.unknown_user'), tag, role: '', code: tag };
 }
 
 function deviceCellHtml(dev, usersById) {
-    const { who, tag } = deviceLabel(dev, usersById);
-    return `<strong>${esc(who)}</strong><div class="health-muted" title="${esc(dev.deviceId)}">${esc(tag)}</div>`;
+    const { who, role, code } = deviceLabel(dev, usersById);
+    // The device id is a code, not words in either language (lang="zxx").
+    const codeHtml = `<span lang="zxx" translate="no">${esc(code)}</span>`;
+    return `<strong>${esc(who)}</strong><div class="health-muted" title="${esc(dev.deviceId)}">${role ? `${esc(role)} · ` : ''}${codeHtml}</div>`;
 }
 
 export const HealthManager = {
