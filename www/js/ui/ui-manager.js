@@ -9,6 +9,7 @@
 
 import { AppState } from '../utils/state.js';
 import { t } from '../i18n/index.js';
+import { emit, TOAST_ERROR } from '../utils/events.js';
 
 // #toast and #loadingOverlay are declared inside #appContent, which is hidden until login.
 // Move them to <body> so they are also visible on the login/register screen.
@@ -46,6 +47,21 @@ export function resolveToastOptions(durationOrType, maybeDuration) {
         duration = (type && TOAST_TYPE_DURATIONS[type]) || 2000;
     }
     return { type, duration };
+}
+
+/**
+ * Short id of an error message (#82): six digits, the same for the same text, so
+ * the user can read it out and it finds the Diagnostics entry (telemetry fingerprint).
+ * @param {string} message
+ * @returns {string}
+ */
+export function errorRef(message) {
+    const text = String(message ?? '');
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+        hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+    }
+    return String(Math.abs(hash) % 1000000).padStart(6, '0');
 }
 
 /**
@@ -147,7 +163,13 @@ const UIManager = {
         }
         
         attachToBody(toast);
-        toast.textContent = message;
+        if (type === 'error') {
+            const ref = errorRef(message);
+            toast.textContent = `${message} · ${t('msg.common.error_ref', { ref })}`;
+            emit(TOAST_ERROR, { message: String(message ?? ''), ref });
+        } else {
+            toast.textContent = message;
+        }
         toast.classList.remove(...TOAST_TYPES);
         if (type) toast.classList.add(type);
         toast.classList.add('show');

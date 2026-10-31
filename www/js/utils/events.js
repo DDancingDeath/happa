@@ -20,6 +20,9 @@ export const REFRESH = Object.freeze(Object.fromEntries([
 
 export const ITEM_FREQUENCY_CHANGED = 'itemFrequency:changed';
 
+/** An error toast was shown (ui-manager.js); payload `{ message, ref }`. Telemetry logs it under `ref`. */
+export const TOAST_ERROR = 'toast:error';
+
 const handlers = new Map();
 
 /**
