@@ -3,16 +3,20 @@
  * Decides whether a push to main must deploy the Firestore rules and indexes
  * before Hosting (.github/workflows/firebase-hosting-merge.yml, job "plan").
  *
- * The rules go first when any of RULES_FILES changed since the commit of the
- * last successful run of that workflow on main -- not just in this push --
- * so a rules change whose deploy failed (and so held Hosting back), or whose
- * queued run was replaced by a newer push, is still deployed before the next
- * Hosting deploy. If that run cannot be found, the push's `before` commit is
- * the base; if neither is in this checkout's history, the rules are deployed
- * (deploying unchanged rules is harmless: firebase-tools skips the upload).
+ * The rules go first when any of RULES_FILES changed since the last CONFIRMED
+ * deploy: the newest successful run of that workflow on main whose Hosting
+ * job really ran its "Deploy to Firebase Hosting" step (a run whose jobs were
+ * skipped as stale does not count) -- not just this push. So a rules change
+ * whose deploy failed (and so held Hosting back), or whose queued run was
+ * replaced by a newer push, is still deployed before the next Hosting deploy.
+ *
+ * Fail safe: with no confirmed base -- the GitHub API failed, no such run was
+ * found, or its commit is not an ancestor of this one -- the rules are
+ * deployed (deploying unchanged rules is harmless: firebase-tools skips the
+ * upload). The push's `before` is never used as a base.
  *
  * Env (set by the workflow): GITHUB_REPOSITORY, GITHUB_TOKEN, GITHUB_RUN_ID,
- * GITHUB_SHA, WORKFLOW_FILE, BEFORE (github.event.before). Writes
+ * GITHUB_SHA, WORKFLOW_FILE. Writes
  * rules=true|false, base=<sha> and files=<changed rules files> to
  * $GITHUB_OUTPUT and a line to $GITHUB_STEP_SUMMARY.
  * Needs the full history (actions/checkout fetch-depth: 0).
@@ -33,6 +37,9 @@ const RULES_FILES = [
     'tools/ci/live-rules.js'
 ];
 
+const HOSTING_JOB = 'Hosting';
+const HOSTING_STEP = 'Deploy to Firebase Hosting';
+
 const isSha = s => /^[0-9a-f]{7,40}$/i.test(s || '') && !/^0+$/.test(s);
 
 /** The changed paths that mean "deploy the rules first". */
@@ -41,40 +48,53 @@ function rulesFilesIn(changed) {
 }
 
 /**
- * @param {{ lastSuccessSha: string|null, before: string|null,
+ * @param {{ deployedSha: string|null,
  *   git: { isAncestor(sha: string): boolean, changedFiles(base: string): string[] } }} o
+ *   deployedSha: commit of the last confirmed deploy (null = unknown)
  * @returns {{ rules: boolean, base: string, files: string[], reason: string }}
  */
-function planDeploy({ lastSuccessSha, before, git }) {
-    const candidates = [
-        { sha: lastSuccessSha, what: 'the last successful deploy' },
-        { sha: before, what: "this push's previous head" }
-    ].filter(c => isSha(c.sha));
-    const base = candidates.find(c => git.isAncestor(c.sha));
-    if (!base) {
-        return { rules: true, base: '', files: [], reason: 'no earlier deployed commit in the history, so the rules are deployed to be safe' };
+function planDeploy({ deployedSha, git }) {
+    if (!isSha(deployedSha)) {
+        return { rules: true, base: '', files: [], reason: 'no confirmed earlier deploy, so the rules are deployed to be safe' };
     }
-    const files = rulesFilesIn(git.changedFiles(base.sha));
+    if (!git.isAncestor(deployedSha)) {
+        return { rules: true, base: '', files: [], reason: `the last deployed commit ${deployedSha.slice(0, 7)} is not an ancestor of this one, so the rules are deployed to be safe` };
+    }
+    const files = rulesFilesIn(git.changedFiles(deployedSha));
     return {
         rules: files.length > 0,
-        base: base.sha,
+        base: deployedSha,
         files,
         reason: files.length
-            ? `changed since ${base.what} (${base.sha.slice(0, 7)}): ${files.join(', ')}`
-            : `no rules, indexes or config change since ${base.what} (${base.sha.slice(0, 7)})`
+            ? `changed since the last deploy (${deployedSha.slice(0, 7)}): ${files.join(', ')}`
+            : `no rules, indexes or config change since the last deploy (${deployedSha.slice(0, 7)})`
     };
 }
 
-/** Head SHA of the newest successful run of `workflow` on main other than this one, or null. */
-async function lastSuccessfulSha({ repo, workflow, token, runId, fetchImpl = fetch }) {
-    const url = `https://api.github.com/repos/${repo}/actions/workflows/${encodeURIComponent(workflow)}/runs?branch=main&status=success&per_page=10`;
-    const res = await fetchImpl(url, {
-        headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' }
-    });
-    if (!res.ok) throw new Error(`GET ${url}: ${res.status}`);
-    const { workflow_runs: runs = [] } = await res.json();
-    const run = runs.find(r => String(r.id) !== String(runId));
-    return run ? run.head_sha : null;
+/** True when the run's Hosting job really deployed (not skipped as stale or after a failed rules deploy). */
+function hostingDeployed(jobs) {
+    return jobs.some(j => j.name === HOSTING_JOB && j.conclusion === 'success'
+        && (j.steps || []).some(st => st.name === HOSTING_STEP && st.conclusion === 'success'));
+}
+
+/**
+ * Head SHA of the newest successful run of `workflow` on main (other than
+ * this one) whose Hosting job deployed, or null. Throws on API errors.
+ */
+async function lastDeployedSha({ repo, workflow, token, runId, fetchImpl = fetch }) {
+    const get = async url => {
+        const res = await fetchImpl(`https://api.github.com${url}`, {
+            headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' }
+        });
+        if (!res.ok) throw new Error(`GET ${url}: ${res.status}`);
+        return res.json();
+    };
+    const { workflow_runs: runs = [] } = await get(`/repos/${repo}/actions/workflows/${encodeURIComponent(workflow)}/runs?branch=main&status=success&per_page=10`);
+    for (const run of runs.filter(r => String(r.id) !== String(runId))) {
+        const { jobs = [] } = await get(`/repos/${repo}/actions/runs/${run.id}/jobs?per_page=100`);
+        if (hostingDeployed(jobs)) return run.head_sha;
+    }
+    return null;
 }
 
 function realGit(head) {
@@ -91,14 +111,14 @@ function realGit(head) {
 
 async function main() {
     const env = process.env;
-    let lastSuccessSha = null;
+    let deployedSha = null;
     try {
-        lastSuccessSha = await lastSuccessfulSha({ repo: env.GITHUB_REPOSITORY, workflow: env.WORKFLOW_FILE, token: env.GITHUB_TOKEN, runId: env.GITHUB_RUN_ID });
-        console.log(`Last successful ${env.WORKFLOW_FILE} run on main: ${lastSuccessSha || 'none'}`);
+        deployedSha = await lastDeployedSha({ repo: env.GITHUB_REPOSITORY, workflow: env.WORKFLOW_FILE, token: env.GITHUB_TOKEN, runId: env.GITHUB_RUN_ID });
+        console.log(`Last confirmed deploy by ${env.WORKFLOW_FILE} on main: ${deployedSha || 'none'}`);
     } catch (err) {
-        console.log(`::warning::Could not look up the last successful deploy (${err.message}); using the push's previous head.`);
+        console.log(`::warning::Could not look up the last deploy (${err.message}); deploying the rules first to be safe.`);
     }
-    const plan = planDeploy({ lastSuccessSha, before: env.BEFORE, git: realGit(env.GITHUB_SHA || 'HEAD') });
+    const plan = planDeploy({ deployedSha, git: realGit(env.GITHUB_SHA || 'HEAD') });
     const line = plan.rules
         ? `Rules first: ${plan.reason}. Hosting waits for the rules deploy to succeed.`
         : `Rules unchanged: ${plan.reason}. Hosting deploys without a rules deploy.`;
@@ -114,4 +134,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { RULES_FILES, rulesFilesIn, planDeploy, lastSuccessfulSha };
+module.exports = { RULES_FILES, HOSTING_JOB, HOSTING_STEP, rulesFilesIn, planDeploy, hostingDeployed, lastDeployedSha };

@@ -5,7 +5,8 @@
 # calls it (workflow_call) BEFORE Hosting whenever the rules, indexes or config
 # changed, and deploys Hosting only if this succeeded -- the rules are
 # backward-compatible, so they must be live before the app that needs them.
-# workflow_dispatch deploys only the rules and indexes (no Hosting).
+# workflow_dispatch deploys only the rules and indexes (no Hosting), and only
+# from main's current head (tools/ci/current-head.sh skips a stale commit).
 #
 # Self-healing: tools/ci/deploy-with-retry.js retries Firebase API outages
 # (503/500/502/504/429/409, unavailable, ECONNRESET, deadline) up to 7 attempts
@@ -38,29 +39,42 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+      # A re-run of an old run, or a dispatch from another branch, must not
+      # roll the rules back: every later step needs this commit to be main's head.
+      - name: Is this commit still the head of main?
+        id: head
+        env:
+          JOB_LABEL: rules
+        run: bash tools/ci/current-head.sh
       - uses: actions/setup-node@v4
+        if: steps.head.outputs.current == 'true'
         with:
           node-version: '20'
       - uses: actions/setup-java@v4
+        if: steps.head.outputs.current == 'true'
         with:
           distribution: temurin
           java-version: '21'
       - name: Install rules-test dependencies
+        if: steps.head.outputs.current == 'true'
         working-directory: rules-tests
         run: npm ci
       - name: Rules tests (Firestore emulator)
+        if: steps.head.outputs.current == 'true'
         run: npm run test:rules
         env:
           # The rules tests once ran out of Node's default ~2 GB heap.
           NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Resolve Happa project (refuses aadhat-management)
+        if: steps.head.outputs.current == 'true'
         id: project
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
         run: node scripts/happa-config.js guard --require-ready --require-sa --sa-env SA_JSON
 
       - name: Write service account key
+        if: steps.head.outputs.current == 'true'
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
         run: |
@@ -76,6 +90,7 @@ jobs:
       # already exists" is accepted only if the live ruleset equals the repo's;
       # compile and permission errors fail at once with a hint.
       - name: Deploy rules and indexes
+        if: steps.head.outputs.current == 'true'
         env:
           PROJECT_ID: ${{ steps.project.outputs.project_id }}
         run: |
@@ -91,6 +106,7 @@ jobs:
       # Firebase Rules API and fails unless its source equals firestore.rules
       # (rechecked for ~2 minutes in case the release takes a moment to show).
       - name: Verify the live ruleset equals firestore.rules
+        if: steps.head.outputs.current == 'true'
         env:
           PROJECT_ID: ${{ steps.project.outputs.project_id }}
         run: node tools/ci/live-rules.js verify --project "$PROJECT_ID" --rules firestore.rules

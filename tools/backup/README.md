@@ -57,8 +57,8 @@ and the same counts as `manifest`. Timestamps are stored as `{__type: "timestamp
   credentials and no Firestore reads, checks SHA256SUMS, decrypts, gunzips, parses, checks every document (ids,
   duplicates, timestamps) and compares the counts with `manifest.json`. A failure turns the run red.
 - **Failure alert:** if the scheduled backup fails, is skipped, or fails the check **two nights running**, the
-  `alert` job opens an issue labelled `ops` in `DDancingDeath/happa` (or comments on the open one). It closes itself
-  when a later run succeeds. It never posts anywhere else.
+  `alert` job opens an issue labelled `ops` in `DDancingDeath/happa` (or updates the open one's `Last failure:` line;
+  it never comments). It closes itself when a later run succeeds. It never posts anywhere else.
 - **Monthly restore drill:** `.github/workflows/backup-restore-drill.yml` runs on the 3rd of each month (and on
   demand). It takes the newest weekly artifact (else the newest nightly), runs the offline check, restores everything
   into a **Firestore emulator** (`demo-happa-drill`, never a real project) and reads every document back to compare

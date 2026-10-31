@@ -10,11 +10,15 @@
 # live before the app that needs them. "plan" decides whether the rules must be
 # deployed (tools/ci/deploy-plan.js: any of firestore.rules,
 # firestore.indexes.json, happa.config.json, firebase.json or the rules deploy
-# tooling changed since the last successful run of this workflow); "rules"
+# tooling changed since the last confirmed deploy by this workflow, or no
+# such deploy can be confirmed); "rules"
 # runs firestore-rules-deploy.yml (tests, retried deploy, live-ruleset check);
 # Hosting runs only if the rules job succeeded or was not needed. A failed
 # rules deploy leaves the live app untouched, fails this run and opens the
-# [Ops] deploy alert issue; "Re-run failed jobs" retries rules, then Hosting.
+# [Ops] deploy alert issue; "Re-run failed jobs" on the LATEST failed run
+# retries rules, then Hosting. Each deploy job first checks that its commit is
+# still main's head (tools/ci/current-head.sh) and skips with a notice if not,
+# so re-running an OLD run cannot roll the site or the rules back.
 
 name: Deploy to Firebase on merge
 on:
@@ -50,7 +54,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           WORKFLOW_FILE: firebase-hosting-merge.yml
-          BEFORE: ${{ github.event.before }}
         run: node tools/ci/deploy-plan.js
 
   rules:
@@ -72,25 +75,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # A re-run of an old run, or a dispatch from another branch, must not
+      # roll the site back: every later step needs this commit to be main's head.
+      - name: Is this commit still the head of main?
+        id: head
+        env:
+          JOB_LABEL: Hosting
+        run: bash tools/ci/current-head.sh
       - uses: actions/setup-node@v4
+        if: steps.head.outputs.current == 'true'
         with:
           node-version: '20'
       - name: Install dependencies
+        if: steps.head.outputs.current == 'true'
         run: npm ci
       - name: Run tests
+        if: steps.head.outputs.current == 'true'
         run: npm test
       - name: Resolve Happa project (refuses aadhat-management)
+        if: steps.head.outputs.current == 'true'
         id: project
         env:
           SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
         run: node scripts/happa-config.js guard --require-ready --require-sa --sa-env SA_JSON
-      - uses: FirebaseExtended/action-hosting-deploy@v0
+      # tools/ci/deploy-plan.js looks for this step name to confirm a run deployed.
+      - name: Deploy to Firebase Hosting
+        if: steps.head.outputs.current == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
           channelId: live
           projectId: ${{ steps.project.outputs.project_id }}
       - name: Check the app site serves this build and the others redirect
+        if: steps.head.outputs.current == 'true'
         env:
           SITE: ${{ steps.project.outputs.site }}
           REDIRECT_SITES: ${{ steps.project.outputs.redirect_sites }}
@@ -124,10 +142,18 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v4
+      # A stale run (main moved on) neither opens nor closes the alert: the newer run decides.
+      - name: Is this commit still the head of main?
+        id: head
+        env:
+          JOB_LABEL: alert
+        run: bash tools/ci/current-head.sh
       - uses: actions/setup-node@v4
+        if: steps.head.outputs.current == 'true'
         with:
           node-version: '22'
       - name: Open / update / close the deploy alert issue
+        if: steps.head.outputs.current == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ALERT_KIND: deploy

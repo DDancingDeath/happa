@@ -395,19 +395,27 @@ backward-compatible by design, so they go live first):
 1. **Plan** (`tools/ci/deploy-plan.js`): the rules are deployed when any of
    `firestore.rules`, `firestore.indexes.json`, `happa.config.json`,
    `firebase.json`, `firestore-rules-deploy.yml`, `tools/ci/deploy-with-retry.js`
-   or `tools/ci/live-rules.js` changed since the commit of the **last successful
-   run of this workflow** (so a rules change whose deploy failed is redeployed
-   by the next push; falls back to the push's `before`, and deploys the rules
-   when neither is in the history).
+   or `tools/ci/live-rules.js` changed since the **last confirmed deploy**: the
+   newest successful run of this workflow whose Hosting job really ran its
+   "Deploy to Firebase Hosting" step (so a rules change whose deploy failed is
+   redeployed by the next push). **Fail safe:** if that can't be confirmed (GitHub
+   API error, no such run, or its commit isn't an ancestor of this one), the
+   rules are deployed first anyway.
 2. **Firestore rules + indexes**: calls `firestore-rules-deploy.yml`
    (`workflow_call`; section 7): rules tests, the retried deploy, and a check
    that the live ruleset equals `firestore.rules`.
 3. **Hosting**: runs only if step 2 **succeeded**, or was **not needed**. If the
    rules deploy fails, Hosting is not deployed (the live app keeps the old
    build), the run fails, and the **Deploy alert** job opens an `[Ops]` issue
-   (`tools/backup/alert.js`, kind `deploy`; it closes itself on the next good
-   run). Fix or wait out the cause, then **Re-run failed jobs**: the rules, then
-   Hosting, run again.
+   (`tools/backup/alert.js`, kind `deploy`; it never comments: a repeat failure
+   updates the issue's "Last failure:" line, and the next good run closes it).
+   Fix or wait out the cause, then **Re-run failed jobs on the LATEST failed
+   run**: the rules, then Hosting, run again.
+4. **Stale runs skip.** The rules, Hosting and alert jobs first check that
+   their commit is still the head of `main` (`tools/ci/current-head.sh`); if
+   not, they skip their deploy steps with a notice. So re-running an OLD run
+   (or dispatching the rules workflow from another branch) can't roll the site
+   or the rules back.
 
 Runs are serialized (`concurrency: deploy-main`, never cancelled). The
 `aadhat-management` guard runs before every deploy and `--force` is refused.
@@ -527,7 +535,8 @@ permission list, defaults and which parts the rules enforce are in
 3. Merge to `main`. `firebase-hosting-merge.yml` calls
    `.github/workflows/firestore-rules-deploy.yml` **before Hosting** when the
    rules, indexes or config changed (section 5, "CI: what runs on a merge to
-   `main`"); it also runs on manual dispatch (rules and indexes only). It
+   `main`"); it also runs on manual dispatch (rules and indexes only, from
+   `main`'s head). It
    reruns the rules tests and deploys `firestore.rules` +
    `firestore.indexes.json`. It needs the github-action
    service account to have "Firebase Rules Admin" and "Cloud Datastore Index
