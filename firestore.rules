@@ -1472,7 +1472,10 @@ service cloud.firestore {
     }
 
     // Electricity from a sub-meter (rent-store.js recordMeter): units = current −
-    // previous, amount = units × rate, charge = rent + electricity (rent unchanged).
+    // previous, amount = units × rate rounded to the rupee (#129; within half a
+    // rupee + a paisa for floating point, like the pro-rated rents, so the paise
+    // amount older app versions write is accepted too), charge = rent + electricity
+    // (rent unchanged).
     // Previous = the reading already on this charge, else the unit's last reading;
     // rate = the unit's rate unless owner/manager; replacing a saved reading is
     // owner/manager only; the unit stores the new reading in the same write.
@@ -1497,7 +1500,7 @@ service cloud.firestore {
         && unitAfter.get('meterCharge', null) == docId
         && unitAfter.get('lastReading', null) == e.curr && unitAfter.get('meterRate', null) == e.rate
         && e.units >= e.curr - e.prev - 0.01 && e.units <= e.curr - e.prev + 0.01
-        && e.amount >= e.units * e.rate - 0.01 && e.amount <= e.units * e.rate + 0.01
+        && e.amount >= e.units * e.rate - 0.51 && e.amount <= e.units * e.rate + 0.51
         && d.get('amount', null) is number
         && d.amount >= r.rent + e.amount - 0.01 && d.amount <= r.rent + e.amount + 0.01
         && d.amount >= r.paid - 0.01

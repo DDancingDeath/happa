@@ -227,6 +227,7 @@ test('receipts: part payment by UPI with a meter bill, paise, a moved-out tenant
     paid.push(await store.recordPayment(`L5_${M}`, { amount: 5432, mode: 'bank', ref: '', date: '2028-02-20' }, { place: '7, Arora Market', ut: 'office' }));
     paid.push(await store.recordPayment('L6_2027-11', { amount: 1500, mode: 'cash', ref: '', date: '2028-02-19' }, { place: '3C, Gupta Bhawan', ut: 'flat' }));
     paid.push(await store.recordPayment('L4_2028-01', { amount: 4494, mode: 'cheque', ref: 'CHQ 0042', date: '2028-02-18' }, { place: 'G1, Arora Market', ut: 'godown' }));
+    // #129: typed ₹1,000.50 is saved as ₹1,001 (whole rupees; the receipt was pinned with ₹1,000.5 before)
     paid.push(await store.recordPayment(`L2_${M}`, { amount: 1000.5, mode: 'cash', ref: '', date: '2028-02-20' }, null));
     const later = await rs.issueReceipt(`L2_${M}`, 1, { place: '2B, Gupta Bhawan', ut: 'flat' });
     const receipts = [...paid.map(p => p.receipt).filter(Boolean), later];
