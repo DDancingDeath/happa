@@ -779,6 +779,10 @@ function findRecord(collKey, id) {
     return arr.find(r => docIdOf(r) === sid) || arr.find(r => String(r?.id) === sid) || null;
 }
 
+/** A bill's edit records (#121): a sub-collection, so the bill's own (dev_-prefixed) collection sets the environment. */
+const BILL_EDITS = 'edits';
+const billEditsRef = (billRef) => billRef.collection(BILL_EDITS);
+
 /** Voided bills (#75) loaded for a bill collection, newest first (kept out of AppState). */
 const voidedOf = (collKey) => windowState?.colls?.[collKey]?.voided || [];
 
@@ -1091,7 +1095,7 @@ async function updateBillChecked(collKey, record, { reason = null } = {}) {
             const n = nextEditNumber(stored);
             record.editCount = n;
             tx.set(ref, record);
-            tx.set(ref.collection('edits').doc(String(n)), editRecord({
+            tx.set(billEditsRef(ref).doc(String(n)), editRecord({
                 n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName, reason: why, changes
             }));
             return;
@@ -1171,7 +1175,7 @@ async function deleteVoidedBillDoc(collKey, bill) {
     const ref = getDb().collection(col(collKey)).doc(String(docId));
     const batch = getDb().batch();
     if (editCountOf(bill)) {
-        const edits = await getWithRetry(ref.collection('edits'), 'Bill edits');
+        const edits = await getWithRetry(billEditsRef(ref), 'Bill edits');
         edits.docs.forEach(d => batch.delete(d.ref));
     }
     batch.delete(ref);
@@ -2708,7 +2712,7 @@ const FirebaseService = {
      */
     async loadBillEdits(collKey, bill) {
         if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
-        const ref = getDb().collection(col(collKey)).doc(String(docIdOf(bill))).collection('edits');
+        const ref = billEditsRef(getDb().collection(col(collKey)).doc(String(docIdOf(bill))));
         const snap = await getWithRetry(ref.orderBy('n'), 'Bill edits');
         return snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
     },
@@ -4321,7 +4325,7 @@ const FirebaseService = {
             // A bill's edit records (#121) live under it and stay when it goes: delete them after it (rules: owner, bill gone).
             const edited = HISTORY_SPEC[name]?.dues ? snapshot.docs.filter(doc => editCountOf(doc.data())) : [];
             await Promise.all(snapshot.docs.map(doc => doc.ref.delete()));
-            await Promise.all(edited.map(doc => doc.ref.collection('edits').get()
+            await Promise.all(edited.map(doc => billEditsRef(doc.ref).get()
                 .then(edits => Promise.all(edits.docs.map(e => e.ref.delete())))));
         }
         return snapshot.size;

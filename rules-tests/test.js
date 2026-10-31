@@ -3707,10 +3707,6 @@ async function main() {
             failed++;
             console.log(`  FAIL ${name}\n       ${e.message}`);
         }
-        // Every as() call makes a client app that the test environment keeps until
-        // cleanup(); free them after each test or the run runs out of memory (#75).
-        env.contexts.forEach(c => c.cleanup());
-        env.contexts.clear();
     }
 
     await env.cleanup();
