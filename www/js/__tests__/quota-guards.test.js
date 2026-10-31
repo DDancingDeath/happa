@@ -263,3 +263,27 @@ describe('member window start for a stale checkpoint (#129)', () => {
         expect(memberWindowStart(W, NaN)).toBe(W);
     });
 });
+
+describe('background read guard (#159)', () => {
+    const make = () => createQuotaGuard({ log: { warn: jest.fn() }, cap: 100, threshold: 50, doc: null });
+
+    test('allowed until the session cap, then off for the session', () => {
+        const guard = make();
+        guard.reads.add('purchases listen', 99);
+        expect(guard.backgroundAllowed()).toBe(true);
+        guard.reads.add('purchases listen', 1);
+        expect(guard.backgroundAllowed()).toBe(false);
+        expect(guard.backgroundAllowed()).toBe(false);
+        expect(guard.status()).toMatchObject({ overCap: true, backgroundPaused: false });
+    });
+
+    test('the owner\'s kill switch and a quota error stop it', () => {
+        const guard = make();
+        guard.setBackgroundPaused(true);
+        expect(guard.backgroundAllowed()).toBe(false);
+        guard.setBackgroundPaused('yes');
+        expect(guard.backgroundAllowed()).toBe(true);
+        guard.noteQuotaExhausted('items get');
+        expect(guard.backgroundAllowed()).toBe(false);
+    });
+});

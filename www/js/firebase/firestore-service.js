@@ -39,7 +39,7 @@ import { SyncStatus } from '../ui/sync-status.js';
 import { historyIdBound } from '../utils/rate-history.js';
 import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { entryTime } from '../utils/due-payments.js';
-import { installFirestoreMeter, getQuotaStatus } from './firestore-meter.js';
+import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed, pauseBackgroundReads } from './firestore-meter.js';
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
@@ -1668,7 +1668,9 @@ function scheduleLegacyScan(ws, gen) {
         if (!started) {
             cancel();
             started = legacyScanReadPromise
-                .then(() => (gen === sessionGen && windowState === ws ? scanLegacyCollections(ws, gen) : undefined))
+                // settings/app holds the kill switch; skipped under the read guards (#159), the next app open tries again
+                .then(() => FirebaseService.loadAppSettings().catch(() => null))
+                .then(() => (gen === sessionGen && windowState === ws && backgroundReadsAllowed() ? scanLegacyCollections(ws, gen) : undefined))
                 .catch(e => console.warn('Legacy timestamp scan failed:', e?.code || e))
                 .then(() => markStartup('legacy-scan'));
         }
@@ -3016,7 +3018,12 @@ const FirebaseService = {
     loadAppSettings({ refresh = false } = {}) {
         if (!appSettingsPromise || refresh) {
             appSettingsPromise = getWithRetry(getDb().collection(col('settings')).doc('app'), 'App settings', { attempts: 2, timeoutMs: 8000 })
-                .then(snap => (snap.exists ? snap.data() || {} : null));
+                .then(snap => (snap.exists ? snap.data() || {} : null))
+                .then(data => {
+                    // The owner's kill switch for optional background reads (#159)
+                    pauseBackgroundReads(data?.pauseBackgroundReads === true);
+                    return data;
+                });
             appSettingsPromise.catch(() => { appSettingsPromise = null; });
         }
         return appSettingsPromise;

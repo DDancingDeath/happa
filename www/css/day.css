@@ -611,3 +611,8 @@ body.dark-mode .today-cash-prompt {
   border-color: #a16207;
   color: #fde68a;
 }
+
+/* Today › Cash holds the Cash page's own body (#96); the day page already pads it */
+#dayCashManagementContainer > .cash-body {
+  padding: 0 !important;
+}
