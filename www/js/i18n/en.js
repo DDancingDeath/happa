@@ -165,6 +165,7 @@ export default {
     'msg.common.password_reset_email_sent': "Password reset email sent to {email}",
     'msg.common.payment_amount_exceeds_outstanding_amount': "Payment amount exceeds outstanding amount",
     'msg.common.payment_amount_exceeds_outstanding_amount_2': "Payment amount exceeds outstanding amount (₹{due})",
+    'msg.common.phone_clock_wrong_payment': "Your phone's time is wrong. Fix the date and time to record payments.",
     'msg.common.printer_disconnected': "Printer disconnected",
     'msg.common.reset_password': "Reset Password",
     'msg.common.sale_not_found': "Sale not found",

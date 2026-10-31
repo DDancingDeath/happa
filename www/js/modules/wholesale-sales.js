@@ -664,7 +664,7 @@ export class WholesaleSalesManager {
             } else if (OutstandingManager.isOfflineError(error)) {
                 UIManager.showToast(t('msg.common.internet_required_record_payment'));
             } else {
-                UIManager.showToast(t('msg.common.error', { message: error.message }));
+                UIManager.showToast(await OutstandingManager.paymentRefusedText(error));
             }
         }
     }

@@ -179,7 +179,9 @@ canDeleteBill    = owner || (creator && withinBillWindow)
     Opening records are capped by their carried amount the same way. The new entry's time (`at`, which
     puts the money on a day in the drawer and Today) must be within 10 minutes of the server's: payments
     and write-offs are transactions, so they never wait offline, and a back-dated entry would hide
-    drawer cash on another day. (A phone whose clock is more than 10 minutes off can't record payments.)
+    drawer cash on another day. (A phone whose clock is more than 10 minutes off can't record payments;
+    the app then says the phone's time is wrong, measured from a freshly issued sign-in token,
+    `utils/clock-skew.js`.)
   - **New bills** never carry `payments`, `paidAt` or `cleared` (the app doesn't send them; they come only
     with payments).
   - **Clearing** (`clearOk`): `cleared` only becomes true with the due settled (≤ 1 paisa) in the
@@ -435,14 +437,21 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | Collection | Create | Update | Delete |
 |---|---|---|---|
 | `expenses`, `withdrawals` | approved user, own `userId`, numeric amount | expenses: own for 24 h (some fields), managers any; withdrawals: managers | expenses: own for 24 h, managers; withdrawals: managers |
-| `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill) | managers |
-| `cashManagement` | approved user, own day `cash_<date>` | append entries, close, late count; a closed day stays closed | owner |
+| `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
+| `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
 | `items` | managers | managers | owner |
 | `counters` | approved user (bill numbers) | +1 per bill | owner |
-| `itemFrequency` | approved user (billing ranks items) | approved user | **owner** (#64) |
+| `itemFrequency` | approved user, `global` only (billing ranks items) | approved user: merges into `global.purchase` / `global.sale`, never removing an item | **owner** (#64) |
+| `stockCheckpoints` | `current`: managers (anyone approved: the stale mark); `legacyScan`: managers; no other ids, owner included | same | managers |
 | `settings/app` | owner | owner; managers only the Aadhat fields with `shopSettings` | owner |
 | other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
+
+Legacy timestamp backfill (`expenses`, `withdrawals`, `stockAdjustments`, `personalExpenses`; anyone
+approved): only fills a missing numeric `timestamp` (+ `clientVersion`), with the value the app derives
+(`eventTime`): never after the server's time, equal to an old Firestore Timestamp in `timestamp` or
+`date`, and within a day of the record's `YYYY-MM-DD` or `DD/MM/YYYY` date. `itemFrequency` items are
+not checked one by one (rules can't loop over map keys), so a member can still change an item's numbers.
 
 ## Settings sections (who sees what)
 
