@@ -21,7 +21,10 @@
                     </div>
                     <div class="form-group">
                         <label data-i18n="ui.auth.password">Password</label>
-                        <input type="password" id="loginPassword" placeholder="Enter your password" data-i18n-placeholder="ui.auth.enter_your_password" autocomplete="current-password" required>
+                        <div class="password-field">
+                            <input type="password" id="loginPassword" placeholder="Enter your password" data-i18n-placeholder="ui.auth.enter_your_password" autocomplete="current-password" required>
+                            <button type="button" class="password-toggle" data-password-toggle="loginPassword" aria-pressed="false" aria-label="Show password" title="Show password" data-i18n-aria-label="ui.auth.show_password" data-i18n-title="ui.auth.show_password" onclick="window.app.auth.togglePassword('loginPassword', this)">&#128065;</button>
+                        </div>
                     </div>
                     <div id="loginMessage" class="auth-message" role="alert" aria-live="assertive" aria-atomic="true"></div>
                     <button type="submit" class="auth-btn" data-i18n="ui.auth.login">Login</button>
@@ -50,11 +53,17 @@
                     </div>
                     <div class="form-group">
                         <label data-i18n="ui.auth.password">Password</label>
-                        <input type="password" id="registerPassword" placeholder="Create a password (min 6 characters)" data-i18n-placeholder="ui.auth.create_a_password_min_6" autocomplete="new-password" required minlength="6">
+                        <div class="password-field">
+                            <input type="password" id="registerPassword" placeholder="Create a password (min 6 characters)" data-i18n-placeholder="ui.auth.create_a_password_min_6" autocomplete="new-password" required minlength="6">
+                            <button type="button" class="password-toggle" data-password-toggle="registerPassword" aria-pressed="false" aria-label="Show password" title="Show password" data-i18n-aria-label="ui.auth.show_password" data-i18n-title="ui.auth.show_password" onclick="window.app.auth.togglePassword('registerPassword', this)">&#128065;</button>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label data-i18n="ui.auth.confirm_password">Confirm Password</label>
-                        <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" data-i18n-placeholder="ui.auth.confirm_your_password" autocomplete="new-password" required minlength="6">
+                        <div class="password-field">
+                            <input type="password" id="registerConfirmPassword" placeholder="Confirm your password" data-i18n-placeholder="ui.auth.confirm_your_password" autocomplete="new-password" required minlength="6">
+                            <button type="button" class="password-toggle" data-password-toggle="registerConfirmPassword" aria-pressed="false" aria-label="Show password" title="Show password" data-i18n-aria-label="ui.auth.show_password" data-i18n-title="ui.auth.show_password" onclick="window.app.auth.togglePassword('registerConfirmPassword', this)">&#128065;</button>
+                        </div>
                     </div>
                     <div id="registerMessage" class="auth-message" role="alert" aria-live="assertive" aria-atomic="true"></div>
                     <button type="submit" class="auth-btn" data-i18n="ui.auth.create_account">Create Account</button>
