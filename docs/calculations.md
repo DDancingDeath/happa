@@ -128,6 +128,8 @@ paise total.
 | WS-PROFIT | Wholesale "Profit" (live) and the saved `profit` | BF-TOTAL − cost − expenses (paise), cost = Σ kg × the item's **current** average rate in stock (lines whose rate is unknown cost ₹0). Shown to the rupee; the WhatsApp draft uses the shown figure. Can differ from I1 / M6 (AVG-COST at the moment of the sale) once an earlier-dated record is saved later. | `computeWholesaleTotals`, `wholesaleLiveProfit` |
 | WS-MARGIN | Wholesale "Profit %" and the saved `profitPercent` | WS-PROFIT ÷ BF-TOTAL × 100, one decimal (`ROUNDING.margin`); 0 when the total is 0. | `computeWholesaleTotals`, `wholesaleLiveProfit` |
 | DUE-CHECK | Recording a due payment (Outstanding, Wholesale › Outstanding) | Cash and online each in paise, neither negative, together > 0 and at most the bill's BILL-DUE + ₹0.01. | `validateDuePayment` |
+| BF-RECOVER | The "Unsaved bill" banner at start (#117): lines and total | The auto-save's form (purchase or retail sale, `mode`): its number of lines and its saved total (`billTotal` / `saleTotal`, else the lines' plain sum), to the rupee. | `autoSaveSummary` |
+| BF-NO | "Next bill no. (given on save)" above Save (#117) | One more than the highest `{P\|S}{YYYYMMDD}-NNN` among today's loaded bills of that type (001 when none). Only a hint: the shared counter sets the real number at save, which can be higher (voided bills, another phone); offline the bill gets a device number (#41). While editing: the bill's own number. | `nextBillNumberHint` |
 
 ## Finance (retired; `utils/finance-calc.js` stays as the engine of M*) — #215
 

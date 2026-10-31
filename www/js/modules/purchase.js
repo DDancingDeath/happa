@@ -237,6 +237,7 @@ const PurchaseManager = {
         const tbody = document.querySelector('#billTable tbody');
         const weightBreakdownSection = document.getElementById('weightBreakdownSection');
         if (!tbody) return;
+        this.billingManager?.renderBillNumber?.();
         
         const totalPacketsInBillSpan = document.getElementById('totalPacketsInBill');
         const billTotalSpan = document.getElementById('billTotal');
@@ -668,6 +669,7 @@ const PurchaseManager = {
         });
         
         this.updateTotals();
+        this.billingManager?.focusFirstItem?.();
     },
 
     /**

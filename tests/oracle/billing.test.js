@@ -7,7 +7,8 @@
 import fc from 'fast-check';
 import * as O from './oracle.js';
 import {
-    autoLabour, computeLine, computePurchaseTotals, computeRetailTotals, payableOnScreen, wholesaleLiveProfit
+    autoLabour, autoSaveSummary, computeLine, computePurchaseTotals, computeRetailTotals, nextBillNumberHint,
+    payableOnScreen, wholesaleLiveProfit
 } from '../../www/js/utils/calc/billing.js';
 import { PurchaseManager } from '../../www/js/modules/purchase.js';
 import { RetailSaleManager } from '../../www/js/modules/retail-sale.js';
@@ -163,5 +164,27 @@ describe('utils/calc/billing.js == oracle on generated bills', () => {
             expect({ total: got.total, profit: got.profit, shown: got.shownProfit, margin: got.profitPercent })
                 .toEqual({ total: want.BF_TOTAL, profit: want.WS_PROFIT, shown: want.WS_PROFIT_shown, margin: want.WS_MARGIN });
         }), { seed: 129, numRuns: RUNS });
+    });
+});
+
+describe('BF-RECOVER, BF-NO (#117)', () => {
+    test('unsaved-bill banner: lines and the saved total of the auto-saved form, to the rupee', () => {
+        fc.assert(fc.property(fc.constantFrom('purchase', 'sale'), fc.array(fc.integer({ min: 0, max: 100000 }).map(x => x / 100), { maxLength: 6 }),
+            (mode, totals) => {
+                const items = totals.map(total => ({ total }));
+                const sum = totals.reduce((a, b) => a + b, 0);
+                const form = mode === 'sale' ? { items, saleTotal: sum } : { items, billTotal: sum };
+                expect(autoSaveSummary({ mode, [mode]: form })).toEqual({ mode, lines: totals.length, total: Math.round(sum) });
+            }), { seed: 117, numRuns: RUNS });
+    });
+
+    test('next bill number: one more than the highest of today (counter format only)', () => {
+        const now = new Date(2026, 10, 1, 12);
+        fc.assert(fc.property(fc.array(fc.integer({ min: 1, max: 999 }), { maxLength: 8 }), (seqs) => {
+            const bills = seqs.map(n => ({ billNumber: 'P20261101-' + String(n).padStart(3, '0') }))
+                .concat([{ billNumber: 'P20261031-999' }, { billNumber: 'P20261101-XYZ-999' }]);
+            const want = 'P20261101-' + String((seqs.length ? Math.max(...seqs) : 0) + 1).padStart(3, '0');
+            expect(nextBillNumberHint('P', bills, now)).toBe(want);
+        }), { seed: 117, numRuns: RUNS });
     });
 });

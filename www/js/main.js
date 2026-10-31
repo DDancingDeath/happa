@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101r-repositories';
+const BUILD_ID = '20261101x-billing-ux';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -431,7 +431,7 @@ async function initializeUserData() {
         ExpensesManager.renderexpensesHistory();
 
         // TIP AppStart (#217): the first screen is usable now; the auto-save
-        // restore prompt below waits for the user and must not count as start time.
+        // restore banner below must not count as start time.
         appStart.complete();
         
         // Check for auto-saved bill
@@ -849,7 +849,8 @@ window.app = {
         
         // Auto-save management
         triggerAutoSave: () => BillingManager.triggerAutoSave(),
-        checkAutoSave: () => BillingManager.checkAutoSave()
+        checkAutoSave: () => BillingManager.checkAutoSave(),
+        resolveRecovery: (restore) => BillingManager.resolveRecovery(restore)
     },
     
     // Purchase (direct access to PurchaseManager)

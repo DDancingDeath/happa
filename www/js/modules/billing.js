@@ -23,6 +23,8 @@ import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KE
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
 import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
 import { askReason } from '../ui/bill-status.js';
+import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
+import { formatDateTimeIN } from '../utils/dates.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
 const EDIT_TIMEOUT_MS = 20000;
@@ -232,7 +234,45 @@ const BillingManager = {
             PurchaseManager.updateTotals();
         }
         
+        this.focusFirstItem();
         UIManager.hapticFeedback();
+    },
+
+    /**
+     * The bill number line above Save (#117, BF-NO): the edited bill's number, the
+     * number this bill already got on a failed save, or the likely next one.
+     */
+    renderBillNumber() {
+        const editingMode = this.editingBillIndex === undefined ? null
+            : (this.editingBillType === 'retail' ? 'sale' : 'purchase');
+        [['purchase', 'purchaseBillNo', PurchaseManager.getPendingBill(), 'P', AppState.purchaseHistory],
+            ['sale', 'saleBillNo', RetailSaleManager.getPendingBill(), 'S', AppState.retailSalesHistory]
+        ].forEach(([mode, id, pending, prefix, bills]) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const known = editingMode === mode ? this.getEditingBill()?.billNumber : pending?.billNumber;
+            const number = document.createElement('strong');
+            number.lang = 'zxx';
+            number.translate = false;
+            number.textContent = known || nextBillNumberHint(prefix, bills);
+            el.replaceChildren(document.createTextNode(`${t(known ? 'ui.billing.bill_no' : 'ui.billing.next_bill_no')} `), number);
+        });
+    },
+
+    /**
+     * A fresh bill starts on the Item box (#117), on a desktop only: on a phone the
+     * focus would open the keyboard over the form.
+     */
+    focusFirstItem() {
+        if (this.editingBillIndex !== undefined) return;
+        if (typeof window.matchMedia !== 'function' || !window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches) return;
+        if (!document.getElementById('billing')?.classList.contains('active')) return;
+        if (document.getElementById('modalOverlay')?.classList.contains('active')) return;
+        const purchase = this.currentMode === 'purchase';
+        if ((purchase ? PurchaseManager.getBillItems() : RetailSaleManager.getSaleItems()).length > 0) return;
+        const active = document.activeElement;
+        if (active && active.matches?.('input, select, textarea')) return;
+        document.getElementById(purchase ? 'billItem' : 'saleItem')?.focus({ preventScroll: true });
     },
 
     // -------------------- ITEM FREQUENCY --------------------
@@ -747,6 +787,8 @@ const BillingManager = {
     async autoSaveToCloud() {
         try {
             if (!AppState.currentUser) return;
+            // The unsaved bill on the banner stays until the user restores or discards it
+            if (this.pendingRecovery) return;
             
             const mode = this.currentMode;
             const billItems = PurchaseManager.getBillItems();
@@ -814,7 +856,7 @@ const BillingManager = {
      */
     async deleteAutoSave() {
         try {
-            if (!AppState.currentUser) return;
+            if (!AppState.currentUser || this.pendingRecovery) return;
             await BillDrafts.deleteAutoSave(AppState.currentUser.uid);
         } catch (error) {
             if (error.code !== 'not-found') {
@@ -824,7 +866,8 @@ const BillingManager = {
     },
 
     /**
-     * Check for auto-save on load
+     * Look for an auto-saved bill at start. Found: a banner offers Restore / Discard
+     * without blocking the app (#117); until the user picks, the auto-save is kept.
      * @async
      */
     async checkAutoSave() {
@@ -835,19 +878,44 @@ const BillingManager = {
             
             if (!autoSaveData) return;
             
-            const shouldRecover = confirm(
-                t(autoSaveData.mode === 'purchase' ? 'msg.billing.recover_purchase' : 'msg.billing.recover_sale', {
-                    when: autoSaveData.lastSaved ? new Date(autoSaveData.lastSaved.toDate()).toLocaleString('en-IN') : t('msg.billing.recover_earlier')
-                })
-            );
-            
-            if (shouldRecover) {
-                await this.recoverAutoSave(autoSaveData);
-            } else {
-                await this.deleteAutoSave();
-            }
+            this.pendingRecovery = autoSaveData;
+            this.showRecoveryBanner(autoSaveData);
         } catch (error) {
             console.error('Failed to check auto-save:', error);
+        }
+    },
+
+    /** Auto-save waiting for Restore / Discard on the banner; null when none. */
+    pendingRecovery: null,
+
+    showRecoveryBanner(data) {
+        const banner = document.getElementById('autoSaveBanner');
+        const text = document.getElementById('autoSaveBannerText');
+        if (!banner || !text) return;
+        const { mode, lines, total } = autoSaveSummary(data);
+        text.textContent = t(mode === 'purchase' ? 'ui.billing.recover_purchase' : 'ui.billing.recover_sale', {
+            when: formatDateTimeIN(data.lastSaved, undefined, t('msg.billing.recover_earlier')),
+            lines,
+            total: Helpers.formatCurrency(total)
+        });
+        banner.hidden = false;
+    },
+
+    /**
+     * The banner's Restore (true) or Discard (false).
+     * @async
+     * @param {boolean} restore
+     */
+    async resolveRecovery(restore) {
+        const data = this.pendingRecovery;
+        this.pendingRecovery = null;
+        const banner = document.getElementById('autoSaveBanner');
+        if (banner) banner.hidden = true;
+        if (!data) return;
+        if (restore) {
+            await this.recoverAutoSave(data);
+        } else {
+            await this.deleteAutoSave();
         }
     },
 

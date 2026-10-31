@@ -241,6 +241,7 @@ const RetailSaleManager = {
         const saleWeightBreakdownSection = document.getElementById('saleWeightBreakdownSection');
         
         if (!tbody) return;
+        this.billingManager?.renderBillNumber?.();
         
         if (saleItems.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #999; padding: 24px;" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
@@ -585,6 +586,7 @@ const RetailSaleManager = {
         
         const totalReceivedEl = document.getElementById('totalReceived');
         if (totalReceivedEl) totalReceivedEl.textContent = '0';
+        this.billingManager?.focusFirstItem?.();
     },
 
     /**
