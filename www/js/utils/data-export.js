@@ -54,6 +54,25 @@ export function buildBackup(collections, meta = {}) {
 export const DELETE_CONFIRM_WORD = 'DELETE';
 
 /**
+ * The business record. On the live data (not the test data) Clear Data can't delete
+ * these (#63): a wrong bill is voided, and a full wipe is a tools/migrate job.
+ */
+export const LEDGER_COLLECTIONS = Object.freeze([
+    'purchases', 'retailSales', 'wholesaleSales', 'expenses', 'stockAdjustments',
+    'withdrawals', 'cashManagement', 'items', 'users'
+]);
+
+/**
+ * Whether Clear Data may delete a collection.
+ * @param {string} id unprefixed collection name
+ * @param {'prod'|'dev'} env
+ * @returns {boolean}
+ */
+export function canClearCollection(id, env) {
+    return env === 'dev' || !LEDGER_COLLECTIONS.includes(id);
+}
+
+/**
  * True when the typed text confirms deletion (surrounding spaces ignored).
  * @param {*} text
  * @returns {boolean}

@@ -6,7 +6,8 @@
  */
 export default {
     'msg.admin.are_sure_want_reject_user': "क्या आप इस सदस्य को मना करना चाहते हैं?",
-    'msg.admin.backup_was_not_saved_delete': "बैकअप सेव नहीं हुआ। फिर भी हटाएँ?",
+    'msg.admin.backup_not_saved_nothing_deleted': "बैकअप सेव नहीं हुआ, इसलिए कुछ नहीं मिटाया गया।",
+    'msg.admin.clear_data_needs_website': "डेटा मिटाने के लिए वेबसाइट खोलें: फ़ोन ऐप बैकअप फ़ाइल सेव नहीं कर सकता।",
     'msg.admin.change_role': "भूमिका बदलें",
     'msg.admin.change_s_role_from': "{userName} की भूमिका {roleLabel} से {roleLabel2} करें?",
     'msg.admin.clear_data': "डेटा हटाएँ",
@@ -16,7 +17,6 @@ export default {
     'msg.admin.failed_load_storage_stats': "स्टोरेज की जानकारी लोड नहीं हुई",
     'msg.admin.final_confirmation': "आख़िरी पुष्टि",
     'msg.admin.must_type_nothing_was_deleted': "{DELETE_CONFIRM_WORD} लिखना ज़रूरी है — कुछ नहीं हटाया गया",
-    'msg.admin.no_backup': "बैकअप नहीं",
     'msg.admin.no_collections_selected': "कुछ नहीं चुना गया",
     'msg.admin.not_saved_everyone_check_internet': "सभी के लिए सहेजा नहीं गया — इंटरनेट देखकर फिर कोशिश करें",
     'msg.admin.only_owner_can_clear_data': "सिर्फ मालिक डेटा हटा सकते हैं",
@@ -1436,6 +1436,7 @@ export default {
     'ui.admin.cannot_undo': "यह वापस नहीं होगा! पहले बैकअप फ़ाइल सेव होगी।",
     'ui.admin.total_label': "कुल:",
     'ui.admin.backup_note': "पहले इस फ़ोन पर बैकअप फ़ाइल (JSON) सेव होगी।",
+    'ui.admin.live_data_locked': "चालू कारोबार के बिल, नकद, खर्च, स्टॉक, आइटम और सदस्य यहाँ से नहीं मिटाए जा सकते। गलत बिल को रद्द करें।",
     'ui.stock.no_stock': "कोई स्टॉक नहीं",
     'ui.stock.unmatched': "मेल नहीं — इस नाम का कोई आइटम सूची में नहीं",
     'ui.stock.rate_per_kg': "रेट: ₹{rate}/kg",

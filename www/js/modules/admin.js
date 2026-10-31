@@ -11,7 +11,7 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
-import { buildBackup, isDeleteConfirmed, DELETE_CONFIRM_WORD } from '../utils/data-export.js';
+import { buildBackup, isDeleteConfirmed, DELETE_CONFIRM_WORD, canClearCollection } from '../utils/data-export.js';
 import { t } from '../i18n/index.js';
 import { UserAdmin, isDisabledProfile } from '../services/user-admin.js';
 
@@ -487,7 +487,8 @@ const AdminManager = {
      * go to Drive/WhatsApp), a normal download elsewhere.
      * @param {Object} backup
      * @param {string} filename
-     * @returns {Promise<boolean>} false when the user cancelled sharing
+     * @returns {Promise<boolean>} false when the user cancelled sharing, or in the
+     *   Android app when sharing isn't available (its WebView drops downloads)
      */
     async saveJsonBackup(backup, filename) {
         const json = JSON.stringify(backup);
@@ -504,6 +505,7 @@ const AdminManager = {
                 }
             }
         }
+        if (window.Capacitor?.isNativePlatform?.()) return false;
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
@@ -517,14 +519,21 @@ const AdminManager = {
 
     /**
      * Clear Data (owner only). Nothing is pre-selected; the owner sees how many
-     * records will go, a JSON backup of the selected collections is saved
-     * first, and deletion needs the word DELETE typed in.
+     * records will go, a JSON backup of the selected collections must be saved
+     * first, and deletion needs the word DELETE typed in. On the live data the
+     * business record (bills, cash, items, users) can't be selected (#63).
      */
     async clearAllData() {
         if (AppState.userRole !== 'owner') {
             UIManager.showToast(t('msg.admin.only_owner_can_clear_data'));
             return;
         }
+        // The Android app can't save the backup file (no Web Share, downloads dropped)
+        if (window.Capacitor?.isNativePlatform?.() && !navigator.canShare) {
+            UIManager.showToast(t('msg.admin.clear_data_needs_website'));
+            return;
+        }
+        const env = (window.getCollection && window.getCollection('x') !== 'x') ? 'dev' : 'prod';
         // Show collection selection modal
         const collections = [
             { id: 'purchases', name: t('ui.admin.col_purchases') },
@@ -541,6 +550,7 @@ const AdminManager = {
             { id: 'users', name: t('ui.admin.col_users') + ' ⚠️' }
         ];
         const nameOf = (id) => collections.find(c => c.id === id)?.name || id;
+        const clearable = collections.filter(c => canClearCollection(c.id, env));
         
         const modalHTML = `
             <div style="text-align: left;">
@@ -550,13 +560,14 @@ const AdminManager = {
                     <span style="font-size: 14px;">${tx('ui.admin.select_all')}</span>
                 </label>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px;">
-                    ${collections.map((col, i) => `
+                    ${clearable.map(col => `
                         <label style="display: flex; align-items: center; gap: 6px; padding: 3px 0; cursor: pointer;">
                             <input type="checkbox" class="collection-checkbox" data-collection="${col.id}" style="width: 14px; height: 14px;">
-                            <span style="font-size: 13px; ${i >= 10 ? 'color: #e74c3c;' : ''}">${Helpers.escapeHtml(col.name)}</span>
+                            <span style="font-size: 13px; ${col.id === 'items' || col.id === 'users' ? 'color: #e74c3c;' : ''}">${Helpers.escapeHtml(col.name)}</span>
                         </label>
                     `).join('')}
                 </div>
+                ${clearable.length < collections.length ? `<p style="margin: 10px 0 0; font-size: 12px; color: #555;">🔒 ${tx('ui.admin.live_data_locked')}</p>` : ''}
             </div>
             <p style="color: #e74c3c; margin-top: 10px; font-size: 12px; text-align: center;">⚠️ ${tx('ui.admin.cannot_undo')}</p>
         `;
@@ -587,6 +598,8 @@ const AdminManager = {
         });
         
         if (!confirmed) return;
+        // Only what the list offered (the live business record is never in it)
+        selectedCollections = selectedCollections.filter(id => clearable.some(c => c.id === id));
         
         if (selectedCollections.length === 0) {
             UIManager.showToast(t('msg.admin.no_collections_selected'));
@@ -633,16 +646,11 @@ const AdminManager = {
             return;
         }
         
-        const env = (window.getCollection && window.getCollection('x') !== 'x') ? 'dev' : 'prod';
         const backup = buildBackup(data, { env, exportedBy: AppState.currentUser?.uid || null });
         const saved = await this.saveJsonBackup(backup, `aadhat_backup_${env}_${todayLocalISO()}_${Date.now()}.json`);
         if (!saved) {
-            const goAhead = await UIManager.showModal(
-                t('msg.admin.backup_was_not_saved_delete'),
-                t('msg.admin.no_backup'),
-                true
-            );
-            if (!goAhead) return;
+            UIManager.showToast(t('msg.admin.backup_not_saved_nothing_deleted'));
+            return;
         }
         
         UIManager.showLoading();

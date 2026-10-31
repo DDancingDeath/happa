@@ -26,7 +26,9 @@ import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { AdminManager } from '../modules/admin.js';
-import { serializeForBackup, buildBackup, isDeleteConfirmed } from '../utils/data-export.js';
+
+const realSaveJsonBackup = AdminManager.saveJsonBackup;
+import { serializeForBackup, buildBackup, isDeleteConfirmed, canClearCollection } from '../utils/data-export.js';
 
 describe('data-export helpers', () => {
     test('serializes Timestamps, Dates and refs to plain JSON', () => {
@@ -41,6 +43,15 @@ describe('data-export helpers', () => {
         });
         const backup = buildBackup({ items: [{ id: 'a', data: { name: 'Chana' } }] }, { now: new Date(0) });
         expect(backup).toMatchObject({ format: 'aadhat-backup-v1', collections: { items: [{ id: 'a', data: { name: 'Chana' } }] } });
+    });
+
+    test('the live business record can only be cleared on dev_ data (#63)', () => {
+        ['purchases', 'retailSales', 'wholesaleSales', 'expenses', 'stockAdjustments', 'withdrawals', 'cashManagement', 'items', 'users']
+            .forEach(id => {
+                expect(canClearCollection(id, 'prod')).toBe(false);
+                expect(canClearCollection(id, 'dev')).toBe(true);
+            });
+        ['drafts', 'autoSaves', 'itemFrequency'].forEach(id => expect(canClearCollection(id, 'prod')).toBe(true));
     });
 
     test('only the exact word DELETE confirms', () => {
@@ -81,10 +92,12 @@ describe('AdminManager.clearAllData', () => {
             return true;
         });
         jest.spyOn(Storage.prototype, 'clear');
+        window.getCollection = (name) => `dev_${name}`;
     });
     afterEach(() => {
         jest.useRealTimers();
         delete AdminManager.saveJsonBackup;
+        delete window.getCollection;
     });
 
     test('nothing is pre-ticked', async () => {
@@ -113,10 +126,59 @@ describe('AdminManager.clearAllData', () => {
         expect(Storage.prototype.clear).not.toHaveBeenCalled();
     });
 
-    test('backup cancelled and owner declines → nothing deleted', async () => {
+    test('backup not saved → nothing deleted, no way to go on without it', async () => {
         AdminManager.saveJsonBackup = jest.fn(async () => false);
-        UIManager.showModal.mockImplementationOnce(async () => false);
         await AdminManager.clearAllData();
+        expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
+        expect(AuditService.log).not.toHaveBeenCalled();
+        expect(UIManager.showModal).not.toHaveBeenCalled();
+        expect(UIManager.showToast).toHaveBeenCalledWith('The backup was not saved, so nothing was deleted.');
+    });
+
+    test('Android app without sharing: stops at once and says to use the website', async () => {
+        window.Capacitor = { isNativePlatform: () => true };
+        try {
+            await AdminManager.clearAllData();
+        } finally {
+            delete window.Capacitor;
+        }
+        expect(UIManager.showModalWithHtml).not.toHaveBeenCalled();
+        expect(UIManager.showToast).toHaveBeenCalledWith("Clear Data needs the website: the Android app can't save the backup file.");
+    });
+
+    test('Android app: a backup that could not be shared counts as not saved', async () => {
+        window.Capacitor = { isNativePlatform: () => true };
+        const click = jest.spyOn(HTMLAnchorElement.prototype, 'click');
+        try {
+            expect(await realSaveJsonBackup.call(AdminManager, { a: 1 }, 'b.json')).toBe(false);
+        } finally {
+            delete window.Capacitor;
+        }
+        expect(click).not.toHaveBeenCalled();
+    });
+
+    test('live data: bills, cash, items and users are not offered; drafts still can be cleared', async () => {
+        delete window.getCollection;
+        tickIds = ['drafts'];
+        await AdminManager.clearAllData();
+        const div = document.createElement('div');
+        div.innerHTML = firstModalHtml;
+        const offered = [...div.querySelectorAll('.collection-checkbox')].map(cb => cb.dataset.collection);
+        expect(offered).toEqual(['autoSaves', 'drafts', 'itemFrequency']);
+        expect(div.textContent).toMatch(/can't be deleted here/);
+        expect(order).toEqual(['backup', 'audit', 'delete:drafts']);
+    });
+
+    test('live data: a ledger collection slipped into the selection is ignored', async () => {
+        delete window.getCollection;
+        tickIds = ['drafts'];
+        UIManager.showModalWithHtml.mockImplementationOnce(async (html) => {
+            firstModalHtml = html;
+            document.getElementById('modalMessage').innerHTML = html + '<input type="checkbox" class="collection-checkbox" data-collection="purchases" checked>';
+            return true;
+        });
+        await AdminManager.clearAllData();
+        expect(FirebaseService.readCollectionForBackup).not.toHaveBeenCalledWith('purchases');
         expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
     });
 

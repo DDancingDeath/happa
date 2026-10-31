@@ -6,7 +6,8 @@
  */
 export default {
     'msg.admin.are_sure_want_reject_user': "Are you sure you want to reject this user?",
-    'msg.admin.backup_was_not_saved_delete': "The backup was not saved. Delete anyway?",
+    'msg.admin.backup_not_saved_nothing_deleted': "The backup was not saved, so nothing was deleted.",
+    'msg.admin.clear_data_needs_website': "Clear Data needs the website: the Android app can't save the backup file.",
     'msg.admin.change_role': "Change Role",
     'msg.admin.change_s_role_from': "Change {userName}'s role from {roleLabel} to {roleLabel2}?",
     'msg.admin.clear_data': "Clear Data",
@@ -16,7 +17,6 @@ export default {
     'msg.admin.failed_load_storage_stats': "Failed to load storage stats",
     'msg.admin.final_confirmation': "Final Confirmation",
     'msg.admin.must_type_nothing_was_deleted': "You must type {DELETE_CONFIRM_WORD} — nothing was deleted",
-    'msg.admin.no_backup': "No backup",
     'msg.admin.no_collections_selected': "No collections selected",
     'msg.admin.not_saved_everyone_check_internet': "Not saved for everyone — check the internet and try again",
     'msg.admin.only_owner_can_clear_data': "Only the owner can clear data",
@@ -1436,6 +1436,7 @@ export default {
     'ui.admin.cannot_undo': "Cannot be undone! A backup file is saved first.",
     'ui.admin.total_label': "Total:",
     'ui.admin.backup_note': "A backup file (JSON) is saved on this device first.",
+    'ui.admin.live_data_locked': "Bills, cash, expenses, stock, items and users of the live business can't be deleted here. Void a wrong bill instead.",
     'ui.stock.no_stock': "No stock available",
     'ui.stock.unmatched': "Unmatched — no catalogue item with this id/name",
     'ui.stock.rate_per_kg': "Rate: ₹{rate}/kg",
