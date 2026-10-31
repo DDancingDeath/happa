@@ -5,6 +5,10 @@
  */
 import { OutstandingManager } from '../modules/outstanding.js';
 import { WholesaleSalesManager } from '../modules/wholesale-sales.js';
+import { MoneyManager } from '../modules/money.js';
+import { ExpensesManager } from '../modules/miscellaneous.js';
+import { FirebaseService } from '../firebase/firestore-service.js';
+import { todayLocalISO, toLocalISODate } from '../utils/dates.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { setLang } from '../i18n/index.js';
@@ -98,5 +102,57 @@ describe('payment refused because of the phone clock', () => {
         user = userWithServerAt(30 * 1000);
         await OutstandingManager.recordDuePayment({ billType: 'retail', billId: 'r1', cash: 40 });
         expect(toast).toHaveBeenLastCalledWith('Error: Missing or insufficient permissions.');
+    });
+});
+
+describe('expenses and withdrawals (records may not be dated in the future)', () => {
+    let toast;
+    let user;
+    const flush = () => new Promise(r => setTimeout(r, 0));
+    const withdrawalForm = (date) => {
+        document.body.innerHTML = `<div id="moneyWithdrawalForm"></div>
+            <input id="moneyWdAmount" value="1000"><input id="moneyWdPerson" value="Owner">
+            <input id="moneyWdDate" value="${date}"><input id="moneyWdPurpose" value="">`;
+    };
+
+    beforeEach(() => {
+        toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+        jest.spyOn(MoneyManager, 'render').mockImplementation(() => {});
+        user = userWithServerAt(-40 * MIN);
+        global.firebase = window.firebase = { auth: () => ({ currentUser: user }) };
+        setLang('en', { store: null });
+    });
+
+    afterEach(() => {
+        delete global.firebase;
+        delete window.firebase;
+    });
+
+    test('a withdrawal dated tomorrow is not saved; the date box stops at today', async () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        withdrawalForm(toLocalISODate(tomorrow));
+        const start = jest.spyOn(FirebaseService, 'startSaveWithdrawal');
+        await MoneyManager.saveWithdrawal();
+        expect(start).not.toHaveBeenCalled();
+        expect(toast).toHaveBeenLastCalledWith("A withdrawal can't be dated in the future", 'error');
+        document.getElementById('moneyWithdrawalForm').hidden = true;
+        MoneyManager.toggleWithdrawalForm();
+        expect(document.getElementById('moneyWdDate').max).toBe(todayLocalISO());
+    });
+
+    test('a withdrawal or expense refused because of the phone clock says so', async () => {
+        withdrawalForm(todayLocalISO());
+        jest.spyOn(FirebaseService, 'startSaveWithdrawal').mockReturnValue({ record: {}, committed: Promise.reject(refused()) });
+        await MoneyManager.saveWithdrawal();
+        await flush();
+        expect(toast).toHaveBeenLastCalledWith("Your phone's time is wrong. Fix the date and time, then save again.", 'error');
+
+        jest.spyOn(ExpensesManager, 'refreshExpenseViews').mockImplementation(() => {});
+        jest.spyOn(FirebaseService, 'startSaveExpense').mockReturnValue({ record: { id: 'e1' }, committed: Promise.reject(refused()), stored: Promise.resolve(true) });
+        await ExpensesManager.persistExpense({ category: 'business', amount: 5 });
+        await flush();
+        expect(toast).toHaveBeenLastCalledWith("Your phone's time is wrong. Fix the date and time, then save again.", 'error');
     });
 });

@@ -440,7 +440,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 
 | Collection | Create | Update | Delete |
 |---|---|---|---|
-| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount | expenses: own for 24 h (some fields), managers any; withdrawals: managers | expenses: own for 24 h, managers; withdrawals: managers |
+| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date) | expenses: own for 24 h (some fields), managers any; withdrawals: managers | expenses: own for 24 h, managers; withdrawals: managers |
 | `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
 | `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
@@ -451,7 +451,8 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `settings/app` | owner | owner; managers only the Aadhat fields with `shopSettings` | owner |
 | other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
 
-Legacy timestamp backfill (`expenses`, `withdrawals`, `stockAdjustments`, `personalExpenses`; anyone
+Legacy timestamp backfill (`expenses`, `withdrawals`, `stockAdjustments`, `personalExpenses`, and bills
+through payment bookkeeping; anyone
 approved): only fills a missing numeric `timestamp` (+ `clientVersion`), with the value the app derives
 (`eventTime`): never after the server's time, equal to an old Firestore Timestamp in `timestamp` or
 `date`, and within a day of the record's `YYYY-MM-DD` or `DD/MM/YYYY` date. `itemFrequency` items are
