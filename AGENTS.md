@@ -286,7 +286,8 @@ open issues missing from `order.json` show up under 🆕 Unplaced.
 4. Commit with a message like
    `fix(stock): refresh current-stock pane after adjustment (#25)`.
 5. Open a PR (`Closes #N`). Don't merge to `main` directly — Firebase
-   Hosting auto-deploys on merge to `main`.
+   Hosting auto-deploys on merge to `main` (after the Firestore rules, when
+   they changed; section 5, "CI: what runs on a merge to `main`").
 
 ### "I want to add a new capability"
 
@@ -383,6 +384,43 @@ in `.github/review-rules-examples/`.
   (`MIGRATION_E2E_PROJECT`, `MIGRATION_E2E_AUTH_PORT`, `MIGRATION_E2E_FIRESTORE_PORT`),
   so the two never share data. `tools/migrate --emulator` refuses any project id
   that is not `demo-*`.
+
+### CI: what runs on a merge to `main` (deploy order)
+
+One workflow, **`firebase-hosting-merge.yml`** ("Deploy to Firebase on merge"),
+deploys every push to `main`, **rules first, then Hosting** (after #196 the new
+app ran ~25 minutes on the old rules and its writes were refused; the rules are
+backward-compatible by design, so they go live first):
+
+1. **Plan** (`tools/ci/deploy-plan.js`): the rules are deployed when any of
+   `firestore.rules`, `firestore.indexes.json`, `happa.config.json`,
+   `firebase.json`, `firestore-rules-deploy.yml`, `tools/ci/deploy-with-retry.js`
+   or `tools/ci/live-rules.js` changed since the **last confirmed deploy**: the
+   newest successful run of this workflow whose Hosting job really ran its
+   "Deploy to Firebase Hosting" step (so a rules change whose deploy failed is
+   redeployed by the next push). **Fail safe:** if that can't be confirmed (GitHub
+   API error, no such run, or its commit isn't an ancestor of this one), the
+   rules are deployed first anyway.
+2. **Firestore rules + indexes**: calls `firestore-rules-deploy.yml`
+   (`workflow_call`; section 7): rules tests, the retried deploy, and a check
+   that the live ruleset equals `firestore.rules`.
+3. **Hosting**: runs only if step 2 **succeeded**, or was **not needed**. If the
+   rules deploy fails, Hosting is not deployed (the live app keeps the old
+   build), the run fails, and the **Deploy alert** job opens an `[Ops]` issue
+   (`tools/backup/alert.js`, kind `deploy`; it never comments: a repeat failure
+   updates the issue's "Last failure:" line, and the next good run closes it).
+   Fix or wait out the cause, then **Re-run failed jobs on the LATEST failed
+   run**: the rules, then Hosting, run again.
+4. **Stale runs skip.** The rules, Hosting and alert jobs first check that
+   their commit is still the head of `main` (`tools/ci/current-head.sh`); if
+   not, they skip their deploy steps with a notice. So re-running an OLD run
+   (or dispatching the rules workflow from another branch) can't roll the site
+   or the rules back.
+
+Runs are serialized (`concurrency: deploy-main`, never cancelled). The
+`aadhat-management` guard runs before every deploy and `--force` is refused.
+`firestore-rules-deploy.yml` no longer runs on push by itself; a manual
+dispatch deploys only the rules and indexes.
 
 ### Numbers on screen (#216)
 
@@ -494,16 +532,26 @@ permission list, defaults and which parts the rules enforce are in
 2. Add/adjust cases in `rules-tests/test.js` and run `npm run test:rules`
    (Firestore emulator). Key cases: pending user denied, approved/legacy
    (no `status`) users allowed, no self-promotion of `role`/`status`.
-3. Merge to `main`. `.github/workflows/firestore-rules-deploy.yml` reruns
-   the rules tests and deploys `firestore.rules` + `firestore.indexes.json`
-   when either changes (or on manual dispatch). It needs the github-action
+3. Merge to `main`. `firebase-hosting-merge.yml` calls
+   `.github/workflows/firestore-rules-deploy.yml` **before Hosting** when the
+   rules, indexes or config changed (section 5, "CI: what runs on a merge to
+   `main`"); it also runs on manual dispatch (rules and indexes only, from
+   `main`'s head). It
+   reruns the rules tests and deploys `firestore.rules` +
+   `firestore.indexes.json`. It needs the github-action
    service account to have "Firebase Rules Admin" and "Cloud Datastore Index
    Admin"; if those are missing the job fails and names them. Manual fallback:
    `firebase deploy --only firestore:rules,firestore:indexes`. CI never
    deletes indexes that exist only in the console (no `--force`). The deploy
    runs through `tools/ci/deploy-with-retry.js`, which retries transient
-   Google API errors (503/500/429, ECONNRESET, deadline) up to 4 attempts
-   (30s/60s/120s backoff) and fails at once on compile or permission errors.
+   Google API errors (503/500/502/504/429/409, ECONNRESET, deadline) up to 7
+   attempts (15s/30s/60s/120s/180s/240s backoff) and fails at once on compile
+   or permission errors. A 409 "Release … already exists" counts as deployed
+   only if the live ruleset equals `firestore.rules`. The last step,
+   `tools/ci/live-rules.js verify`, reads the live `cloud.firestore` release's
+   ruleset from the Firebase Rules API (read-only, with the service account)
+   and fails unless its source equals the repo's, so Hosting never deploys on
+   rules that are not live.
 
 To run the whole app against local emulators:
 `npx firebase-tools emulators:start --only auth,firestore`, serve `www/`
