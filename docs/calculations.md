@@ -75,6 +75,8 @@ One pure function computes every figure: `todaySummary({ bills, expenses, sessio
 | T15 | Due to receive | Σ BILL-DUE of today's sales (new dues made today; OPENING records are not today's sales even when dated today). The all-time total is on Outstanding / Finance (F9). | `dueToReceive` |
 | T16 | Due to pay | Σ BILL-DUE of today's purchases (OPENING records left out, as T15). | `dueToPay` |
 | T17 | Item cards (Purchases / Sales by item) | The day's bill lines (purchases; wholesale + retail sales; OPENING records have none) grouped by item name (`item`, else `name`, else "Unknown"): lines, Σ kg (`qty`, else `quantity`), Σ value (`total`, else `amount`), average rate = value ÷ kg (2 decimals; ₹0 when there is no kg). Highest value first. | `purchaseItems`, `saleItems` (`itemRows()`) |
+| T18 | By bill type (Retail sale / Wholesale sale / Purchase) | For each type, today's bills of that type (OPENING records and voided bills left out, as T1/T2): count, Σ BILL-TOTAL, Σ BILL-AT-SAVE cash, Σ BILL-AT-SAVE online and Σ BILL-DUE still open. Retail + wholesale cash and online are the sale-time parts of T6 / T7 (purchase: of T8 / T9); retail + wholesale due = T15, purchase due = T16. Wholesale is hidden for a role that may not open the Wholesale page (#141). | `channels.retail`, `channels.wholesale`, `channels.purchase` (`channelSplit()`) |
+| T19 | Today's bills | The same bills as T18, newest first (bill date), each with its BILL-TOTAL; a row opens the bill's details (#141). The first 8 show, "Show all N" shows the rest. | `dayBills` (`dayBillRows()`) |
 
 ### Labour: deducted and to pay (`utils/labour.js`)
 

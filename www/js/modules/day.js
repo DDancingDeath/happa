@@ -13,11 +13,16 @@ import { sessionForDate } from '../utils/cash-session.js';
 import { AnomaliesManager } from './anomalies.js';
 import { HealthManager } from './health.js';
 import { t, tn } from '../i18n/index.js';
+import { canOpenPage } from '../utils/role-access.js';
+import { on, REFRESH } from '../utils/events.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
 const formatDate = (date) => Helpers.formatDate(date);
 const LABOUR_GAP_KEYS = { same: 'ui.today.labour_same', more: 'ui.today.labour_more', less: 'ui.today.labour_less' };
+const CHANNELS = { retail: 'Retail', wholesale: 'Wholesale', purchase: 'Purchase' };
+const BILL_KIND_KEYS = { retail: 'ui.finance.bill_retail', wholesale: 'ui.finance.bill_wholesale', purchase: 'ui.reports.pdf_purchase' };
+const BILLS_SHOWN = 8;
 
 export const DayManager = {
     currentSubTab: 'today',
@@ -52,7 +57,9 @@ export const DayManager = {
                 this.daySessions = { date: today, list: sessions || [] };
                 const pick = sessionForDate(sessions, today);
                 if (pick && CashManagementManager.todaySession?.date !== today) CashManagementManager.todaySession = pick;
+                // No session: only the prompt depends on it (a full redraw would repeat Today's other queries)
                 if (this.daySessions.list.length > 0) this.loadTodayData();
+                else this.renderCashPrompt(this.lastHasBills, today);
             })
             .catch(e => console.warn('Could not load today\'s cash sessions:', e?.message || e))
             .finally(() => { if (this.daySessionsLoading === today) this.daySessionsLoading = null; });
@@ -183,6 +190,12 @@ export const DayManager = {
         this.updateElement('todayDueToReceive', formatCurrency(s.dueToReceive));
         this.updateElement('todayDueToPay', formatCurrency(s.dueToPay));
 
+        const showWholesale = this.canSeeWholesale();
+        this.renderChannels(s.channels, showWholesale);
+        this.renderDayBills(showWholesale ? s.dayBills : s.dayBills.filter(r => r.type !== 'wholesale'));
+        this.lastHasBills = s.dayBills.length > 0;
+        this.renderCashPrompt(this.lastHasBills, todayIso);
+
         // Render item-wise details
         this.renderItemWiseDetails(s.purchaseItems, 'purchase');
         this.renderItemWiseDetails(s.saleItems, 'sale');
@@ -199,6 +212,80 @@ export const DayManager = {
 
         // App health banner (#217): a live check below its target today (owner/manager)
         HealthManager.renderTodayBanner().catch(e => console.warn('App health banner failed:', e));
+    },
+
+    /**
+     * T18: cash / online at save and due still open, per bill type.
+     * @param {Object} channels - todaySummary().channels
+     * @param {boolean} showWholesale - false hides the Wholesale card
+     */
+    renderChannels(channels, showWholesale = true) {
+        Object.entries(CHANNELS).forEach(([type, k]) => {
+            const c = channels[type];
+            const card = document.getElementById(`todayCh${k}`);
+            if (card) card.hidden = type === 'wholesale' && !showWholesale;
+            this.updateElement(`todayCh${k}Count`, tn('ui.today.bills_count', c.count));
+            this.updateElement(`todayCh${k}Total`, formatCurrency(c.total));
+            this.updateElement(`todayCh${k}Cash`, formatCurrency(c.cash));
+            this.updateElement(`todayCh${k}Online`, formatCurrency(c.online));
+            this.updateElement(`todayCh${k}Due`, formatCurrency(c.due));
+        });
+    },
+
+    /** Wholesale cards and bills only for roles that may open the Wholesale page. */
+    canSeeWholesale() {
+        const role = AppState.userRole;
+        return !role || canOpenPage('wholesale-sales', role, AppState.settings?.roleAccess);
+    },
+
+    showAllBills: false,
+    lastHasBills: false,
+
+    /**
+     * T19: today's bills, newest first; a row opens the bill (History's bill details).
+     * @param {Array<{type: string, bill: Object, at: number, total: number}>} rows - todaySummary().dayBills
+     */
+    renderDayBills(rows) {
+        const list = document.getElementById('todayBillsList');
+        if (!list) return;
+        const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
+        if (!rows.length) {
+            list.innerHTML = `<p class="empty-state">${esc(t('ui.today.no_bills_today'))}</p>`;
+        } else {
+            const shown = this.showAllBills ? rows : rows.slice(0, BILLS_SHOWN);
+            list.innerHTML = shown.map(({ type, bill, at, total }) => {
+                const party = bill.customerName || bill.seller || bill.buyer || (type === 'retail' ? t('ui.today.walk_in') : '');
+                const no = bill.billNumber ? `#${bill.billNumber}` : '';
+                const ref = Helpers.escapeJsAttr(`id:${bill.id}`);
+                return `<button type="button" class="today-bill-row today-bill-${type}" onclick="window.app.history.viewBill('${ref}', '${type}')" aria-label="${esc(t('ui.today.bill_open_aria', { bill: [t(BILL_KIND_KEYS[type]), no, party].filter(Boolean).join(' ') }))}">
+                    <span class="today-bill-time">${esc(at ? Helpers.formatTime(new Date(at)) : '')}</span>
+                    <span class="today-bill-main"><span class="today-bill-party">${esc(party || no)}</span><span class="today-bill-kind">${esc([t(BILL_KIND_KEYS[type]), party ? no : ''].filter(Boolean).join(' · '))}</span></span>
+                    <strong class="today-bill-total">${esc(formatCurrency(total))}</strong>
+                </button>`;
+            }).join('');
+        }
+        const more = document.getElementById('todayBillsMore');
+        if (more) {
+            more.hidden = rows.length <= BILLS_SHOWN;
+            more.textContent = this.showAllBills ? t('ui.today.bills_less') : t('ui.today.bills_more', { count: rows.length });
+        }
+    },
+
+    toggleAllBills() {
+        this.showAllBills = !this.showAllBills;
+        this.loadTodayData();
+    },
+
+    /**
+     * "Open cash" prompt (#141, Q41): today has bills and the day's sessions are loaded and none is open.
+     * @param {boolean} hasBills
+     * @param {string} todayIso
+     */
+    renderCashPrompt(hasBills, todayIso) {
+        const el = document.getElementById('todayCashPrompt');
+        if (!el) return;
+        const loaded = this.daySessions.date === todayIso;
+        el.hidden = !(hasBills && loaded && this.sessionsOn(todayIso).length === 0);
     },
 
     /**
@@ -426,3 +513,6 @@ export const DayManager = {
         }
     }
 };
+
+// Bills or expenses changed (another phone, a void): redraw Today while it shows.
+on(REFRESH.today, () => { if (DayManager.currentSubTab === 'today') DayManager.loadTodayData(); });

@@ -1,6 +1,6 @@
 /**
  * @fileoverview Every figure on the Today page for one local day
- * (docs/calculations.md T1–T17, T-LAB-1..3). Pure: no DOM, no AppState, no
+ * (docs/calculations.md T1–T19, T-LAB-1..3). Pure: no DOM, no AppState, no
  * Firestore; "today" is a parameter. modules/day.js gathers the inputs and
  * renders the result.
  * @module utils/calc/today
@@ -24,7 +24,9 @@ export const TODAY_SPEC = Object.freeze({
     net: 'T12', netOutflow: 'T12', netAmount: 'T12', isOutflow: 'T12',
     dueReceived: 'T13', duePaid: 'T14',
     dueToReceive: 'T15', dueToPay: 'T16',
-    purchaseItems: 'T17', saleItems: 'T17'
+    purchaseItems: 'T17', saleItems: 'T17',
+    channels: 'T18',
+    dayBills: 'T19'
 });
 
 const expenseAmount = (e) => Number(e.amount) || 0;
@@ -50,6 +52,33 @@ export function itemRows(bills) {
     return Object.values(byName)
         .sort((a, b) => b.totalValue - a.totalValue)
         .map(row => ({ ...row, avgRate: row.quantity > 0 ? row.totalValue / row.quantity : null }));
+}
+
+/**
+ * T18 one bill type's split: bills, BILL-TOTAL, BILL-AT-SAVE cash and online, BILL-DUE still open.
+ * @param {Object[]} bills today's bills of one type
+ * @returns {{count: number, total: number, cash: number, online: number, due: number}}
+ */
+export function channelSplit(bills) {
+    const paid = bills.map(b => saleTimePayment(b));
+    return {
+        count: bills.length,
+        total: round2(sumOf(bills, billTotal)),
+        cash: round2(sumOf(paid, p => p.cash)),
+        online: round2(sumOf(paid, p => p.online)),
+        due: round2(sumOf(bills, outstandingDue))
+    };
+}
+
+/**
+ * T19 today's bills, newest first, each with its BILL-TOTAL.
+ * @param {{purchase: Object[], wholesale: Object[], retail: Object[]}} byType
+ * @returns {Array<{type: string, bill: Object, at: number, total: number}>}
+ */
+export function dayBillRows(byType) {
+    return Object.entries(byType)
+        .flatMap(([type, list]) => list.map(bill => ({ type, bill, at: parseAnyBillDate(bill.date)?.getTime() || 0, total: billTotal(bill) })))
+        .sort((a, b) => b.at - a.at);
 }
 
 /**
@@ -143,6 +172,8 @@ export function todaySummary({ bills = {}, expenses = [], personalDay = null, se
         duePaid: round2(dues.paidCash + dues.paidOnline),
         dueToReceive, dueToPay,
         purchaseItems: itemRows(purchaseBills),
-        saleItems: itemRows(saleBills)
+        saleItems: itemRows(saleBills),
+        channels: { retail: channelSplit(retailBills), wholesale: channelSplit(wholesaleBills), purchase: channelSplit(purchaseBills) },
+        dayBills: dayBillRows({ purchase: purchaseBills, wholesale: wholesaleBills, retail: retailBills })
     };
 }
