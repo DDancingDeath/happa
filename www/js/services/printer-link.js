@@ -69,9 +69,12 @@ export function cordovaTransport(getPlugin = () => window.bluetoothSerial) {
     return {
         available: () => !!getPlugin(),
         canCheck: () => typeof getPlugin()?.isConnected === 'function',
+        canCheckEnabled: () => typeof getPlugin()?.isEnabled === 'function',
         connect: (deviceId, onDrop) => call('connect', [deviceId], onDrop),
         disconnect: () => call('disconnect', []),
         isConnected: () => call('isConnected', []).then(() => true, () => false),
+        isEnabled: () => call('isEnabled', []).then(() => true, () => false),
+        enable: () => call('enable', []),
         write: (bytes) => call('write', [bytes]),
         list: () => call('list', [])
     };
@@ -87,7 +90,7 @@ export class PrinterLink {
         this.deviceId = null;
         this.deviceName = null;
         this.lastDevice = null;
-        this.status = { checkedAt: null, lastError: null, lastJob: null };
+        this.status = { checkedAt: null, lastError: null, lastJob: null, bluetoothOff: false };
         this.onChange = null;
         this.stopped = false;
         this._queue = Promise.resolve();
@@ -114,6 +117,32 @@ export class PrinterLink {
 
     async list() {
         return withTimeout(this.transport.list(), this.timeouts.connectMs, 'timeout_list');
+    }
+
+    /** False when the phone's Bluetooth is off or missing; true when on or the plugin can't tell. */
+    async bluetoothOn() {
+        if (!this.transport.canCheckEnabled?.()) return true;
+        let on = true;
+        try {
+            on = await withTimeout(this.transport.isEnabled(), this.timeouts.checkMs, 'timeout_check');
+        } catch {
+            on = true;
+        }
+        this.status.bluetoothOff = !on;
+        return on;
+    }
+
+    /** Asks Android to turn Bluetooth on (the user answers a system dialog). */
+    async enableBluetooth() {
+        if (await this.bluetoothOn()) return true;
+        if (typeof this.transport.enable !== 'function') throw new PrinterLinkError('bluetooth_off', 'Bluetooth is off');
+        try {
+            await this.transport.enable();
+        } catch {
+            throw new PrinterLinkError('bluetooth_off', 'Bluetooth is off');
+        }
+        this.status.bluetoothOff = false;
+        return true;
     }
 
     async connect(deviceId, deviceName = null, timeoutMs = this.timeouts.connectMs) {
