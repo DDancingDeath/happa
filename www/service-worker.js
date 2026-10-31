@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v138';
+const CACHE_NAME = 'happa-v139';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -19,37 +19,8 @@ const STATIC_ASSETS = [
     '/icons/icon-192.png',
     '/icons/icon-512.png',
     '/icons/icon-maskable-512.png',
-    '/css/anomalies.css',
-    '/css/app-updates.css',
-    '/css/auth.css',
-    '/css/bill-checks.css',
-    '/css/billing.css',
-    '/css/buttons.css',
-    '/css/charts.css',
-    '/css/datefilter.css',
-    '/css/day.css',
-    '/css/desktop.css',
-    '/css/finance.css',
-    '/css/health.css',
-    '/css/hamburger.css',
-    '/css/history.css',
-    '/css/outstanding.css',
-    '/css/items.css',
-    '/css/loading.css',
-    '/css/navigation.css',
-    '/css/notifications.css',
-    '/css/overlay.css',
-    '/css/rate-trends.css',
-    '/css/reports.css',
+    '/css/app.css',
     '/css/rentals.css',
-    '/css/settings.css',
-    '/css/stock.css',
-    '/css/tables.css',
-    '/css/tabs.css',
-    '/css/toast.css',
-    '/css/totals.css',
-    '/css/variables.css',
-    '/css/insights.css',
     '/js/auth/authentication.js',
     '/js/firebase/firestore-service.js',
     '/js/firebase/firestore-meter.js',
@@ -346,29 +317,22 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
-    // For static assets - cache first, then network
+    // For static assets - cache first, then network. A deploy changes
+    // CACHE_NAME and precaches every file again, so a cached copy is never
+    // out of date: no background re-download on every open (#59).
     event.respondWith(
         caches.match(event.request)
             .then((cachedResponse) => {
                 // A non-OK entry (e.g. a stored error page) is treated as a
                 // miss so it gets refetched instead of replayed forever.
                 if (cachedResponse && cachedResponse.ok) {
-                    // Return cached version and update cache in background
-                    event.waitUntil(
-                        fetch(event.request)
-                            .then((response) => {
-                                if (response.ok) {
-                                    caches.open(CACHE_NAME)
-                                        .then((cache) => cache.put(event.request, response));
-                                }
-                            })
-                            .catch(() => {})
-                    );
                     return cachedResponse;
                 }
                 
-                // Not in cache - fetch from network
-                return fetch(event.request)
+                // Not in cache - fetch from network (revalidated: the HTTP cache
+                // may still hold the previous deploy's copy, and it would stay
+                // in this cache until the next deploy)
+                return fetch(event.request, { cache: 'no-cache' })
                     .then((response) => {
                         // Cache successful responses
                         if (response.ok) {
