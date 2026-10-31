@@ -213,18 +213,29 @@ describe('team directory settings/team (#87)', () => {
         expect(await FirebaseService.loadPeople()).toEqual([]);
     });
 
-    test("the owner's phone writes a missing directory once a day; managers never do", async () => {
+    test("once a day the owner's phone rebuilds the directory when it is missing or differs; managers never do", async () => {
         localStorage.clear();
         AppState.userRole = 'manager';
         expect(await FirebaseService.ensureTeamDirectory()).toBe(false);
         expect(team()).toBeUndefined();
         AppState.userRole = 'owner';
         expect(await FirebaseService.ensureTeamDirectory()).toBe(true);
-        await flush();
         expect(Object.keys(team().people).sort()).toEqual(['legacy', 'old']);
+        // the same day: nothing read
         FirebaseService.forgetPeopleCaches();
         const users = jest.spyOn(FirebaseService, 'loadUsers');
         expect(await FirebaseService.ensureTeamDirectory()).toBe(false);
         expect(users).not.toHaveBeenCalled();
+        users.mockRestore();
+        // next day, an existing but stale directory (a name changed in Settings › account) is rebuilt
+        localStorage.clear();
+        FirebaseService.forgetPeopleCaches();
+        fake.seed('dev_settings', [{ id: 'team', people: { old: { name: 'Old', role: 'staff' }, legacy: { name: 'Before', role: 'owner' } } }]);
+        expect(await FirebaseService.ensureTeamDirectory()).toBe(true);
+        expect(team().people.legacy).toEqual({ name: 'Legacy', role: 'owner' });
+        // up to date: read, nothing written
+        localStorage.clear();
+        FirebaseService.forgetPeopleCaches();
+        expect(await FirebaseService.ensureTeamDirectory()).toBe(false);
     });
 });

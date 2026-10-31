@@ -56,6 +56,12 @@ const as = (uid) => {
     if (!clients.has(uid)) clients.set(uid, env.authenticatedContext(uid).firestore());
     return clients.get(uid);
 };
+// A signed-in user whose ID token carries an email (registration checks it, #84).
+const asEmail = (uid, email) => {
+    const key = `${uid}|${email}`;
+    if (!clients.has(key)) clients.set(key, env.authenticatedContext(uid, { email }).firestore());
+    return clients.get(key);
+};
 const anon = () => env.unauthenticatedContext().firestore();
 
 function defineSuite(prefix) {
@@ -865,18 +871,23 @@ function defineSuite(prefix) {
     });
 
     t('registration as pending staff succeeds (server createdAt)', () =>
-        assertSucceeds(as('newbie').collection(users).doc('newbie').set({
+        assertSucceeds(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set({
             name: 'New', email: 'new@x.com', role: 'staff', status: 'pending', createdAt: serverTimestamp()
         })));
 
     t('registration carries only the fields the app writes, with the server time (#84)', async () => {
         const ok = { name: 'New', email: 'new@x.com', role: 'staff', status: 'pending', createdAt: serverTimestamp() };
-        await assertFails(as('newbie').collection(users).doc('newbie').set({ ...ok, createdAt: new Date(Date.now() - DAY) }));
-        await assertFails(as('newbie').collection(users).doc('newbie').set({ ...ok, approvedBy: 'legacyOwner' }));
-        await assertFails(as('newbie').collection(users).doc('newbie').set({ ...ok, devices: ['abc123'] }));
-        await assertFails(as('newbie').collection(users).doc('newbie').set({ ...ok, name: 'x'.repeat(101) }));
-        await assertFails(as('newbie').collection(users).doc('newbie').set({ ...ok, email: 5 }));
-        await assertSucceeds(as('newbie').collection(users).doc('newbie').set(ok));
+        await assertFails(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set({ ...ok, createdAt: new Date(Date.now() - DAY) }));
+        await assertFails(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set({ ...ok, approvedBy: 'legacyOwner' }));
+        await assertFails(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set({ ...ok, devices: ['abc123'] }));
+        await assertFails(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set({ ...ok, name: 'x'.repeat(101) }));
+        await assertFails(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set({ ...ok, email: 5 }));
+        // the email must be the signed-in account's (any case), not someone else's (#84)
+        await assertFails(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set({ ...ok, email: 'owner@x.com' }));
+        await assertFails(as('newbie').collection(users).doc('newbie').set(ok));
+        await assertSucceeds(asEmail('newbie', 'New@X.com').collection(users).doc('newbie').set(ok));
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(users).doc('newbie').delete());
+        await assertSucceeds(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set(ok));
     });
 
     t('a rejected or removed person keeps their profile, so they cannot register again as pending (#84)', async () => {
@@ -3619,8 +3630,8 @@ function defineRentSuite(prefix) {
     t('nobody sets their own rentRole; registration cannot carry one; the owner can grant it', async () => {
         const users = `${prefix}users`;
         await assertFails(as('staff1').collection(users).doc('staff1').update({ rentRole: 'manager' }));
-        await assertFails(as('newbie').collection(users).doc('newbie').set({ name: 'N', role: 'staff', status: 'pending', rentRole: 'member', createdAt: serverTimestamp() }));
-        await assertSucceeds(as('newbie').collection(users).doc('newbie').set({ name: 'N', role: 'staff', status: 'pending', createdAt: serverTimestamp() }));
+        await assertFails(asEmail('newbie', 'n@x.com').collection(users).doc('newbie').set({ name: 'N', email: 'n@x.com', role: 'staff', status: 'pending', rentRole: 'member', createdAt: serverTimestamp() }));
+        await assertSucceeds(asEmail('newbie', 'n@x.com').collection(users).doc('newbie').set({ name: 'N', email: 'n@x.com', role: 'staff', status: 'pending', createdAt: serverTimestamp() }));
         await assertSucceeds(as('legacyOwner').collection(users).doc('staff1').update({ rentRole: 'member' }));
     });
 

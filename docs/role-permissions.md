@@ -312,7 +312,7 @@ rejected / no profile / unknown role.
 | `drafts` | own only (`where('userId', '==', uid)`, get by id) | own |
 | `autoSaves/{uid}` | own doc | own |
 | `users` | own profile at start-up / login / registration; full list: Admin and Roles & access › People (owner only) | **own only**. Names shown on bills, payments and audit rows are stored on those records |
-| `settings/team` (#87) | names and roles of the approved people, written by the owner's phone whenever it reads the profiles (Admin, App health, notification fan-out; at start-up once a day when the doc is missing, 1 read) and by `tools/migrate`; one get for managers' App health device names and their notification fan-out on item and rate edits | no (managers only) |
+| `settings/team` (#87) | names and roles of the approved people, written by the owner's phone whenever it reads the profiles (Admin, App health, notification fan-out; and once a day 3 minutes after start-up, one read per profile + the doc; it writes only when a name or role differs) and by `tools/migrate`; one get for managers' App health device names and their notification fan-out on item and rate edits | no (managers only) |
 | `users/{uid}/preferences` | own | own |
 | `auditLogs`, `telemetry` | append by everyone; read in Settings/Diagnostics and the anomaly scan by the owner only | no |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | App health, Anomalies, Rates history, Insights › Seasons, Money snapshots (the app loads them for owner/manager only) | no |
@@ -551,7 +551,7 @@ not checked one by one (rules can't loop over map keys), so a member can still c
   owner approves them with a role like any new registration. Every approve, reject, role change, remove
   and restore writes an audit entry (`APPROVE_USER`, `REJECT_USER`, `CHANGE_USER_ROLE`, `REMOVE_USER`,
   `RESTORE_USER`).
-- **Own profile writes**: registration writes only `name`, `email`, `role: 'staff'`, `status: 'pending'`
+- **Own profile writes**: registration writes only `name`, `email` (the signed-in account's own, any case), `role: 'staff'`, `status: 'pending'`
   and the server `createdAt`; afterwards a person changes only their `name` (Settings › account) and
   `devices` (their phones, #124).
 - **Lost phone**: Admin › Users › Reset password. Changing the password ends every other sign-in of that

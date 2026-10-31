@@ -1030,6 +1030,8 @@ service cloud.firestore {
         && d.get('role', '') == 'staff'
         && d.get('name', '') is string && d.get('name', '').size() <= 100
         && d.get('email', '') is string && d.get('email', '').size() <= 254
+        && request.auth.token.get('email', '') is string
+        && d.get('email', '').lower() == request.auth.token.get('email', '').lower()
         && d.get('createdAt', null) == request.time;
     }
 

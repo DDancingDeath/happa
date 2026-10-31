@@ -2078,7 +2078,7 @@ const getUsersForNotifications = async () => {
         const snapshot = await getDb().collection(col('users')).get();
         const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         // Only from the server: a cached list could undo another owner device's change
-        if (!snapshot.metadata?.fromCache) syncTeamDirectory(profiles).catch(e => console.warn('Team directory not updated:', e?.code || e));
+        if (!snapshot.metadata?.fromCache) queueTeamSync(profiles);
         users = profiles.filter(isTeamMember).map(u => ({ id: u.id, role: u.role }));
     } else {
         users = teamPeople(await readTeamDirectory()).map(p => ({ id: p.id, role: p.role }));
@@ -2089,6 +2089,8 @@ const getUsersForNotifications = async () => {
 
 /** The team directory as last read or written on this phone (undefined: not read yet). */
 let knownTeam;
+/** Syncs run one after another, so two reads of the profiles never write twice. */
+let teamSync = Promise.resolve(false);
 
 /** Owner only: rewrites settings/team when the profiles say something else (#87). */
 async function syncTeamDirectory(users) {
@@ -2098,6 +2100,16 @@ async function syncTeamDirectory(users) {
     await writeTeamDirectory(next);
     knownTeam = next;
     return true;
+}
+
+/** Queues a sync after any running one; never rejects. @returns {Promise<boolean>} true when it wrote */
+function queueTeamSync(users) {
+    teamSync = teamSync.catch(() => false).then(() => syncTeamDirectory(users))
+        .catch(e => {
+            console.warn('Team directory not updated:', e?.code || e);
+            return false;
+        });
+    return teamSync;
 }
 
 /**
@@ -4337,7 +4349,7 @@ const FirebaseService = {
         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => createdMs(b) - createdMs(a));
         if (AppState.userRole === 'owner' && !snapshot.metadata?.fromCache) {
-            syncTeamDirectory(users).catch(e => console.warn('Team directory not updated:', e?.code || e));
+            queueTeamSync(users);
         }
         return users;
     },
@@ -4359,9 +4371,10 @@ const FirebaseService = {
     },
 
     /**
-     * Owner only, at most once a day per phone (one read): writes the team directory
-     * from the profiles when it is missing, e.g. right after the #87 rules go live.
-     * @returns {Promise<boolean>} true when it read the profiles to write it
+     * Owner only, at most once a day per phone: reads the profiles (one read each,
+     * plus the directory) and rewrites the team directory when it is missing or
+     * says something else, e.g. a name changed in Settings › account.
+     * @returns {Promise<boolean>} true when it wrote the directory
      */
     async ensureTeamDirectory() {
         const uid = AppState.currentUser?.uid;
@@ -4369,11 +4382,12 @@ const FirebaseService = {
         const key = 'happaTeamDirectoryDay';
         const mark = `${uid}|${localISODaysAgo(0)}`;
         if (localStorage.getItem(key) === mark) return false;
-        if (knownTeam === undefined) knownTeam = await readTeamDirectory();
-        const missing = !knownTeam;
-        if (missing) await this.loadUsers();
+        // Offline the profiles come from the cache, which must not overwrite the directory
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+        await this.loadUsers();
+        const wrote = await teamSync;
         safeSetItem(key, mark);
-        return missing;
+        return wrote;
     },
 
     /** Partial update of a user profile (role/status/approval fields). */
