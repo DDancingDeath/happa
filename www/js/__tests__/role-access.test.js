@@ -1,5 +1,5 @@
 import {
-    normalizeRoleAccess, accessFor, canOpenTab, canOpenSection, canOpenPage, canEditBillWith, canDeleteBillWith, historyCutoff,
+    normalizeRoleAccess, accessFor, canOpenTab, canOpenSection, canOpenPage, canEditBillWith, canDeleteBillWith, canVoidBillWith, historyCutoff,
     hiddenPermissionClasses, billCreatedMs, ROLE_ACCESS_DEFAULTS
 } from '../utils/role-access.js';
 import { NavigationManager } from '../ui/navigation.js';
@@ -67,14 +67,28 @@ describe('Roles & access settings (#84)', () => {
         expect(canEditBillWith(own, { ...member, raw: { staff: { editDays: 0 } } })).toBe(false);
     });
 
-    test('bill delete: own bill inside the window (managers too); owner any bill', () => {
+    test('bill void (#75): who could delete before — own bill inside the window (managers too), owner any bill; never twice', () => {
         const at = (ms) => ({ toMillis: () => ms });
         const others = { userId: 'u2', createdAt: at(NOW - DAY) };
-        expect(canDeleteBillWith(others, { uid: 'm', role: 'manager', now: NOW })).toBe(false);
-        expect(canDeleteBillWith({ ...others, userId: 'm' }, { uid: 'm', role: 'manager', now: NOW })).toBe(true);
-        expect(canDeleteBillWith({ userId: 'u1', createdAt: at(NOW - 3 * DAY) }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
-        expect(canDeleteBillWith({ userId: 'u1', timestamp: NOW }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
-        expect(canDeleteBillWith({ total: 1 }, { uid: 'o', role: 'owner', now: NOW })).toBe(true);
+        expect(canVoidBillWith(others, { uid: 'm', role: 'manager', now: NOW })).toBe(false);
+        expect(canVoidBillWith({ ...others, userId: 'm' }, { uid: 'm', role: 'manager', now: NOW })).toBe(true);
+        expect(canVoidBillWith({ userId: 'u1', createdAt: at(NOW - 3 * DAY) }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+        expect(canVoidBillWith({ userId: 'u1', timestamp: NOW }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+        expect(canVoidBillWith({ total: 1 }, { uid: 'o', role: 'owner', now: NOW })).toBe(true);
+        expect(canVoidBillWith({ total: 1, voided: true }, { uid: 'o', role: 'owner', now: NOW })).toBe(false);
+        expect(canVoidBillWith({ ...others, userId: 'u1', voided: true }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+    });
+
+    test('delete for good: the owner, and only a voided bill; a voided bill is never edited', () => {
+        const at = (ms) => ({ toMillis: () => ms });
+        const mine = { userId: 'u1', createdAt: at(NOW - DAY) };
+        expect(canDeleteBillWith(mine, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+        expect(canDeleteBillWith({ ...mine, voided: true }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+        expect(canDeleteBillWith({ ...mine, voided: true }, { uid: 'm', role: 'manager', now: NOW })).toBe(false);
+        expect(canDeleteBillWith(mine, { uid: 'o', role: 'owner', now: NOW })).toBe(false);
+        expect(canDeleteBillWith({ ...mine, voided: true }, { uid: 'o', role: 'owner', now: NOW })).toBe(true);
+        expect(canEditBillWith({ ...mine, voided: true }, { uid: 'o', role: 'owner', now: NOW })).toBe(false);
+        expect(canEditBillWith({ ...mine, voided: true }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
     });
 
     test('history cutoff: none by default, N days back when set', () => {

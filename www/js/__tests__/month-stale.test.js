@@ -8,6 +8,9 @@ import { AppState } from '../utils/state.js';
 import { staleMonthsFor, staleOlderMonths, staleToRebuild, snapshotsFrom } from '../utils/month-snapshots.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
+/** Bill edits carry a reason (#121). */
+const EDIT_REASON = { reason: 'Test edit' };
+
 const NOW = new Date(2026, 9, 21, 15).getTime();
 const at = (y, m, d = 10) => new Date(y, m - 1, d, 10).getTime();
 
@@ -97,7 +100,7 @@ describe('the stale mark on a late save, edit or delete', () => {
         const july = purchase(at(2026, 7));
         fake.seed('purchases', [july]);
         AppState.purchaseHistory = [{ ...july }];
-        await FirebaseService.updatePurchase(purchase(at(2026, 7), { cashPayment: 100, dueAmount: 0, payment: { cash: 100, online: 0, due: 0, total: 100 } }));
+        await FirebaseService.updatePurchase(purchase(at(2026, 7), { cashPayment: 100, dueAmount: 0, payment: { cash: 100, online: 0, due: 0, total: 100 } }), EDIT_REASON);
         expect(await marks()).toEqual(['2026-07']);
         expect(Object.keys(stats())).toEqual(['2026-07']);
         fake.raw('monthStats').clear();
@@ -109,7 +112,7 @@ describe('the stale mark on a late save, edit or delete', () => {
         const aug = purchase(at(2026, 8));
         fake.seed('purchases', [aug]);
         AppState.purchaseHistory = [{ ...aug }];
-        await FirebaseService.updatePurchase(purchase(NOW, { date: new Date(NOW).toISOString() }));
+        await FirebaseService.updatePurchase(purchase(NOW, { date: new Date(NOW).toISOString() }), EDIT_REASON);
         expect(await marks()).toEqual(['2026-08', '2026-09']);
     });
 

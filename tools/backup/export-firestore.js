@@ -128,13 +128,18 @@ async function main() {
         }
         backup.collections[name] = docs;
     }
-    // Sub-collections (e.g. users/{uid}/preferences): one collection-group
-    // query each, keeping only documents under the production parent.
+    // Sub-collections (e.g. users/{uid}/preferences, purchases/{id}/edits): one
+    // collection-group query per sub-collection name, keeping only documents
+    // under the production parent.
+    const groups = new Map();
     for (const key of SUBCOLLECTIONS) {
         const [parent, sub] = key.split('/');
-        const snap = await db.collectionGroup(sub).get();
-        reads += Math.max(1, snap.size);
-        backup.subcollections[key] = snap.docs
+        if (!groups.has(sub)) {
+            const snap = await db.collectionGroup(sub).get();
+            reads += Math.max(1, snap.size);
+            groups.set(sub, snap.docs);
+        }
+        backup.subcollections[key] = groups.get(sub)
             .filter(d => d.ref.path.split('/')[0] === parent && d.ref.path.split('/').length === 4)
             .map(d => ({ path: d.ref.path, data: serialize(d.data()) }));
     }

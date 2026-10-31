@@ -1,7 +1,8 @@
 # Roles & access: what each role may see and do (#84)
 
 Owner decision on #84: *"Give owners access to control this from the app itself. Role wise."*
-Owner decision on #87: *non-owner users may edit or delete a bill for 2 days.*
+Owner decision on #87: *non-owner users may edit or delete a bill for 2 days.* Since #75 bills are
+**voided** instead of deleted (same people, same window; see "Void and edit records").
 
 The owner sets, per role, which pages and numbers managers and members see, how far back
 History goes and for how many days bills can be changed. Screen: **Settings › Common › Roles & access**
@@ -43,10 +44,10 @@ setting is missing or invalid.
 | `purchaseRates` | See purchase rates | खरीद रेट देखें | on | on | client (Rates page only) |
 | `shopSettings` | Change Aadhat settings (labour, bill checks, business name) | आढ़त की सेटिंग बदलें | off | – (managers only) | **client + rules** |
 | `historyDays` | History: days back (0 = all) | इतिहास: कितने दिन पीछे तक (0 = सभी) | 0 | 0 | client only (see "Server-side read rules") |
-| `editDays` | Edit/delete bills for (days) | बिल बदलने/हटाने के दिन | 2 | 2 | **client + rules** |
+| `editDays` | Edit/void bills for (days) | बिल बदलने/हटाने के दिन | 2 | 2 | **client + rules** |
 
-- `editDays`: whole days, 0–30; 0 = never. Managers may edit any bill and delete their own;
-  members edit and delete only their own bills. Recording a payment, clearing or writing off
+- `editDays`: whole days, 0–30; 0 = never. Managers may edit any bill and void their own;
+  members edit and void only their own bills. Recording a payment, clearing or writing off
   a due is **not** limited (it is bookkeeping, not an edit). The owner has no limit.
   The same days limit how far back a new expense may be dated (#118): 2 = today, yesterday
   and the day before; 0 = today only (`utils/expense-entry.js`; the rules check it with 3
@@ -116,7 +117,7 @@ The owner's save writes the whole normalized map (`set(..., { merge: true })`) a
 ## How the client applies it
 
 Code: `www/js/utils/role-access.js` (pure: defaults, `normalizeRoleAccess`, `accessFor`,
-`canOpenTab`, `canEditBillWith`, `canDeleteBillWith`, `historyCutoff`,
+`canOpenTab`, `canEditBillWith`, `canVoidBillWith`, `canDeleteBillWith`, `historyCutoff`,
 `hiddenPermissionClasses`) and `www/js/modules/roles-access.js` (the Settings screen).
 
 - **Nav and pages**: `AuthManager.applyRoleBasedRestrictions()` (the existing role gating,
@@ -135,8 +136,8 @@ Code: `www/js/utils/role-access.js` (pure: defaults, `normalizeRoleAccess`, `acc
   "Not selling" also needs `profit` and `stockValue`; Cash history without `oldCashSessions`
   lists only today and days still waiting for a count (so a late count is still possible);
   History drops bills older than `historyDays`.
-- **Edit window**: `canEditBill()` (billing) and History's Edit/Delete buttons and delete
-  check use `canEditBillWith` / `canDeleteBillWith`, the same conditions as the rules. A refused
+- **Edit window**: `canEditBill()` (billing) and the bill details' Edit / Void buttons and the
+  void check use `canEditBillWith` / `canVoidBillWith`, the same conditions as the rules. A refused
   edit says the window has closed (with the number of days).
 
 ## How the rules enforce it
@@ -144,15 +145,16 @@ Code: `www/js/utils/role-access.js` (pure: defaults, `normalizeRoleAccess`, `acc
 `firestore.rules`:
 
 ```
-function billEditDays(usersCol) {   // roleAccess.<role>.editDays, int 0–30, else 2
-  ...get(profilePath(usersCol))...get(settingsAppPath(usersCol))...
+function billEditDaysFor(usersCol, role) {   // roleAccess.<role>.editDays, int 0–30, else 2
+  ...get(settingsAppPath(usersCol))...
 }
-function withinBillWindow(usersCol) {
+function withinBillWindowFor(usersCol, role) {
   let c = resource.data.get('createdAt', null);
-  c is timestamp && request.time < c + duration.value(billEditDays(usersCol), 'd')
+  c is timestamp && request.time < c + duration.value(billEditDaysFor(usersCol, role), 'd')
 }
-canFullyEditBill = (manager || creator) && withinBillWindow && createdAt unchanged
-canDeleteBill    = owner || (creator && withinBillWindow)
+canFullyEditBill = (manager || creator) && withinBillWindowFor && createdAt unchanged
+voidOk           = owner || (creator && withinBillWindowFor)   // + the void shape (#75)
+canDeleteBill    = owner
 ```
 
 - The clock is the bill's **server** `createdAt` (from #226 / #87): `saveBill()` writes
@@ -204,12 +206,57 @@ document is billed once per request; limit 10 docs per single write, 20 per batc
 | Request | Docs the rules read | Change |
 |---|---|---|
 | Bill create / payment / clear | profile, `settings/app` (clientVersion gate) | none |
-| Non-owner full bill edit | profile, `settings/app` | none (same docs) |
-| Non-owner bill delete | profile, `settings/app` | **+1 read** (delete did not read `settings/app` before) |
+| Non-owner full bill edit | profile, `settings/app` (+ its edit record, created in the same batch, #121) | the edit record write: 1 more write, rules check it with `getAfter` on the bill (same doc) |
+| Non-owner bill void | profile, `settings/app` | none (one update, like an edit) |
+| Bill delete (owner only since #75) | profile | none |
 | Owner writes | profile | none (owner short-circuits) |
 | Reads | profile (+ `settings/app` for withdrawals) | see "Server-side read rules" |
 
 The edit-window branch is only evaluated after `isOwnerIn` fails, so the owner never pays for it.
+
+## Void and edit records (#75, #121)
+
+**Void instead of delete.** The bill details show **Void** (रद्द करें) where Delete was. A void
+keeps the bill and sets `voided: true`, `voidedAt` (server time), `voidedBy` (the caller's uid),
+`voidedByName` and a required `voidReason` (3–300 characters), and turns `openDue` off, in one
+transaction (`FirebaseService.voidBill`). From then on the bill counts in no figure (VOID in
+docs/calculations.md); History and Wholesale › History hide it behind "Show voided bills (N)",
+greyed with a "Voided" chip and the reason, and its details show who voided it, when and why.
+
+- **Who:** the people who could delete a bill before: the owner any bill; anyone else only their
+  own bill inside the role's `editDays` (managers too: a manager may *edit* any bill in the window
+  but void only their own). Rules: `voidOk`.
+- **Not with later payments.** A bill with entries in `payments[]` (payments or write-offs recorded
+  after it was saved, owner included) can't be voided: each such payment is also a cash-session leg,
+  real money counted in the drawer on its own day, and a void never moves money. The app says so; the
+  owner decides what to do (the app has no "reverse a payment" yet). Paid-at-save money is part of the
+  bill and goes with the void (that day's drawer total drops, as it did for a delete).
+- **Final.** A voided bill never changes again, for anyone, the owner included: no un-void, edit,
+  payment or second void (rules: the first check of `billUpdateAs`; the app's edit and payment
+  transactions refuse it too). A mistaken void is fixed by entering the bill again.
+- **Delete for good: owner only.** Rules allow only the owner to delete a bill (Clear Data, repairs);
+  the app offers "Delete permanently" only on a voided bill (test data), together with its edit
+  records. Members and managers can no longer delete bills. An older app's Delete button now gets
+  "failed".
+- Every void is in the audit log (`VOID_BILL`, with the reason) and is flagged as an anomaly
+  ("Bill voided", medium).
+
+**Edit records.** Every change to a bill's items, totals, payment or party (and the notes) asks
+why and stores what changed: `<bills>/{id}/edits/{n}` with `n`, `at` (server time), `by` (uid),
+`byName`, `reason`, `fields` (changed fields only, `{before, after}`), `lines` (item lines added /
+removed / changed, by item) and `itemsChanged`. The bill's `editCount` goes up by one in the same
+transaction (`updateBillChecked`). The bill details show "Edited 2× · View changes"; the records are
+read only when tapped (one read each), never with the bill lists.
+
+- Rules (`validEditCreate`, `editCountOk`): created only with the bill update that raises
+  `editCount` to its number (`getAfter` on the bill), by the caller at the server time with a reason;
+  never updated; deleted only by the owner once the bill is gone. A non-owner change to a logged
+  field (`editLoggedFields()`) without its record is refused, so every such edit has one; the owner's
+  repairs may skip it. Approved users read them (same as bills).
+- Size: one small document per edit (only changed fields, at most 200 lines), so the bill itself
+  never grows; edits are rare.
+- Backups include them (`SUBCOLLECTIONS`: `purchases/edits`, `retailSales/edits`,
+  `wholesaleSales/edits`, one collection-group query for all three).
 
 ## Server-side read rules (#57, #18)
 

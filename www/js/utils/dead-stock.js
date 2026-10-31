@@ -8,6 +8,7 @@
  */
 
 import { createItemKeyResolver, eventTime } from './stock-replay.js';
+import { isActiveBill } from './money.js';
 import { startOfLocalDay } from './dates.js';
 import { itemValue } from './calc/stock.js';
 import { t } from '../i18n/index.js';
@@ -48,7 +49,7 @@ export function lastActivityByItem(sources, items) {
     const firstPurchase = {};
     const purchasedQty = {};
     const eachLine = (bills, fn) => (bills || []).forEach(bill => {
-        if (!bill || !Array.isArray(bill.items)) return;
+        if (!isActiveBill(bill) || !Array.isArray(bill.items)) return;
         const t = eventTime(bill);
         if (!Number.isFinite(t) || t === Number.MAX_SAFE_INTEGER) return;
         bill.items.forEach(line => {

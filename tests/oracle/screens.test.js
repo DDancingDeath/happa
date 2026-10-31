@@ -63,11 +63,24 @@ function shown(id) {
 }
 const rupee = (v) => Math.round(v);
 
+/**
+ * VOID (#75): screens-voided.test.js runs this file again with a voided copy of every bill
+ * (old-app dues included) in AppState. The oracle's data stays without them, so every
+ * figure below must be unchanged: a voided bill counts nowhere.
+ */
+const WITH_VOIDED = !!global.__ORACLE_WITH_VOIDED__;
+const withVoided = (list) => (WITH_VOIDED
+    ? [...list, ...list.map(b => ({
+        ...copy(b), id: `${b.id}-void`, billNumber: `${b.billNumber || b.id}-V`,
+        voided: true, voidedAt: NOW - 60000, voidedBy: 'u-void', voidedByName: 'Test', voidReason: 'Entered twice', openDue: false
+    }))]
+    : list);
+
 function loadAppState() {
     AppState.items = copy(FIX.items);
-    AppState.purchaseHistory = copy(FIX.purchases);
-    AppState.salesHistory = copy(FIX.wholesaleSales);
-    AppState.retailSalesHistory = copy(FIX.retailSales);
+    AppState.purchaseHistory = withVoided(copy(FIX.purchases));
+    AppState.salesHistory = withVoided(copy(FIX.wholesaleSales));
+    AppState.retailSalesHistory = withVoided(copy(FIX.retailSales));
     AppState.stockAdjustments = copy(FIX.stockAdjustments);
     AppState.expensesHistory = copy(FIX.expenses);
     AppState.withdrawalsHistory = copy(FIX.withdrawals);

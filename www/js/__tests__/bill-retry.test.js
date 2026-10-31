@@ -8,6 +8,9 @@ import { readPayment } from '../utils/money.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { tip } from '../tip/index.js';
 
+/** Bill edits carry a reason (#121). */
+const EDIT_REASON = { reason: 'Test edit' };
+
 let fake;
 
 beforeEach(() => {
@@ -103,13 +106,13 @@ describe('createdAt: server time of the first save (#87 edit window)', () => {
         expect(typeof created).toBe('number');
         await FirebaseService.savePurchase(bill({ createdAt: created + 99999 }), { retry: true });
         expect(doc().createdAt).toBe(created);
-        await FirebaseService.updatePurchase({ ...doc(), id: 'p1', comments: 'edited', createdAt: undefined });
+        await FirebaseService.updatePurchase({ ...doc(), id: 'p1', comments: 'edited', createdAt: undefined }, EDIT_REASON);
         expect(doc()).toMatchObject({ comments: 'edited', createdAt: created });
     });
 
     test('an edit of a bill saved before #87 does not add createdAt', async () => {
         fake.raw('purchases').set('p1', { ...bill() });
-        await FirebaseService.updatePurchase({ ...bill(), comments: 'edited', createdAt: Date.now() });
+        await FirebaseService.updatePurchase({ ...bill(), comments: 'edited', createdAt: Date.now() }, EDIT_REASON);
         expect(doc().comments).toBe('edited');
         expect(doc().createdAt).toBeUndefined();
     });

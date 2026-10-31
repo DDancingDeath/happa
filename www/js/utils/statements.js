@@ -7,7 +7,7 @@
  */
 
 import { billsInRange } from './finance-calc.js';
-import { activityBills, billLabour, billTotal, isOpeningRecord, isOnlineExpense, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
+import { activeBills, activityBills, billLabour, billTotal, isOpeningRecord, isOnlineExpense, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, entryParts, entryTime, dueEvents } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayWithValues, eventTime } from './stock-replay.js';
 import { normalizePartyName } from './aging.js';
@@ -87,7 +87,7 @@ export function dayBook(src, { from, to }, { personal = true, sessions = [] } = 
  *   due = Σ BILL-DUE of the party's bills (Outstanding's figure) to check `closing` against
  */
 export function partyLedger(src, partyKey, kind, { from = -Infinity, to = Infinity } = {}) {
-    const bills = (kind === 'supplier' ? (src.purchases || []) : [...(src.retailSales || []), ...(src.wholesaleSales || [])])
+    const bills = activeBills(kind === 'supplier' ? src.purchases : [...(src.retailSales || []), ...(src.wholesaleSales || [])])
         .filter(b => normalizePartyName(partyOf(b)) === partyKey);
     const entries = [];
     let name = '';
@@ -142,7 +142,7 @@ export function partyLedger(src, partyKey, kind, { from = -Infinity, to = Infini
  * @returns {Array<{key: string, name: string, count: number}>}
  */
 export function partyChoices(src, kind) {
-    const bills = kind === 'supplier' ? (src.purchases || []) : [...(src.retailSales || []), ...(src.wholesaleSales || [])];
+    const bills = activeBills(kind === 'supplier' ? src.purchases : [...(src.retailSales || []), ...(src.wholesaleSales || [])]);
     const map = new Map();
     bills.forEach(b => {
         const raw = partyOf(b);

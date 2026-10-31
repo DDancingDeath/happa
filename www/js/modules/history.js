@@ -21,17 +21,36 @@ import {
     validateCustomRange, olderMonthsToLoad, normalizeHistoryTab, isWholesaleHistoryLink,
     HISTORY_FILTER_KEY, HISTORY_TAB_KEY, WIDE_LOAD_MONTHS
 } from '../utils/history-filters.js';
-import { buildBillRow, buildOpeningGroup, addOpeningToggle, billTableHtml } from '../ui/bill-row.js';
-import { accessFor, canEditBillWith, canDeleteBillWith, historyCutoff, withinBillEditWindow } from '../utils/role-access.js';
+import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml } from '../ui/bill-row.js';
+import { accessFor, canDeleteBillWith, canVoidBillWith, historyCutoff, withinBillEditWindow } from '../utils/role-access.js';
+import { askReason, editsRowHtml, renderEditsList, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
+import { voidBlocker } from '../utils/bill-edits.js';
 import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, isOpeningRecord, outstandingDue, readPayment } from '../utils/money.js';
+import { billTotal, isActiveBill, isOpeningRecord, outstandingDue, readPayment } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
+/** Bill type → Firestore collection key and AppState list. */
+const BILL_COLLECTION = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
+const BILL_STATE = { purchase: 'purchaseHistory', retail: 'retailSalesHistory', wholesale: 'salesHistory' };
+
+/**
+ * The bills of a type that History can show and open: AppState's list (bills
+ * that count) plus the voided ones FirebaseService keeps aside (#75), each once.
+ * @param {'purchase'|'retail'|'wholesale'} type
+ * @returns {Array<Object>}
+ */
+export function billPool(type) {
+    const list = AppState[BILL_STATE[type]] || [];
+    const voided = BILL_COLLECTION[type] ? (FirebaseService.voidedBills?.(BILL_COLLECTION[type]) || []) : [];
+    if (!voided.length) return list;
+    const ids = new Set(list.map(b => String(b?.id)));
+    return [...list, ...voided.filter(b => !ids.has(String(b?.id)))];
+}
 
 /**
  * Stable reference to a bill for inline onclick handlers. Indices into the
@@ -74,6 +93,13 @@ export class HistoryManager {
     static showOpening = { purchase: false, sale: false };
     /** Old-app opening records matching the current tab, dates and search. */
     static openingCount = 0;
+
+    /** "Show voided bills" toggle, per tab (off by default, #75). */
+    static showVoided = { purchase: false, sale: false };
+    /** Voided bills of the last render (shown only when the toggle is on). */
+    static pageVoided = [];
+    /** Voided bills matching the current tab, dates and search. */
+    static voidedCount = 0;
 
     /** A saved filter from before asked for wholesale bills: open Wholesale › History once. */
     static pendingWholesaleRedirect = false;
@@ -140,8 +166,6 @@ export class HistoryManager {
      * @param {string} [searchTerm=''] - Optional search term to filter by
      */
     static renderHistory(type, searchTerm = '') {
-        const purchaseHistory = AppState.purchaseHistory || [];
-        const retailSalesHistory = AppState.retailSalesHistory || [];
         const container = document.getElementById("historyList");
         if (!container) return;
 
@@ -180,25 +204,30 @@ export class HistoryManager {
         
         // Purchases or retail sales (wholesale bills are on the Wholesale page)
         const tabBills = type === 'sale'
-            ? retailSalesHistory.map(s => ({ ...s, type: 'retail', isPurchase: false }))
-            : purchaseHistory.map(b => ({ ...b, type: 'purchase', isPurchase: true }));
+            ? billPool('retail').map(s => ({ ...s, type: 'retail', isPurchase: false }))
+            : billPool('purchase').map(b => ({ ...b, type: 'purchase', isPurchase: true }));
         const cutoff = historyCutoff(AppState.userRole, AppState.settings?.roleAccess);
         const allHistory = tabBills.filter(b => cutoff === null || billTimeMs(b) >= cutoff);
         
         const matched = filterHistoryBills(allHistory, { type, range, search: searchTerm });
-        // Old-app carried dues are not happa bills: hidden unless the toggle is on (Outstanding always lists them).
-        const openings = matched.filter(b => isOpeningRecord(b));
-        const sortedBills = matched.filter(b => !isOpeningRecord(b));
+        // Voided bills (#75) and old-app carried dues are hidden unless their toggle is on.
+        const voided = matched.filter(b => !isActiveBill(b));
+        const live = matched.filter(isActiveBill);
+        const openings = live.filter(b => isOpeningRecord(b));
+        const sortedBills = live.filter(b => !isOpeningRecord(b));
         const showOpenings = !!this.showOpening[type] && openings.length > 0;
+        const showVoided = !!this.showVoided[type] && voided.length > 0;
         this.pageOpenings = showOpenings ? openings : [];
         this.openingCount = openings.length;
-        this.updateRangeLabel(range, sortedBills.length + this.pageOpenings.length);
+        this.pageVoided = showVoided ? voided : [];
+        this.voidedCount = voided.length;
+        this.updateRangeLabel(range, sortedBills.length + this.pageOpenings.length + this.pageVoided.length);
         
         // Check view mode and render accordingly
         this.activeSearch = (searchTerm || '').trim();
         // Only the first PAGE_SIZE bills go into the DOM; live refreshes keep
         // how many are shown, a new filter/search/view starts over (#24).
-        const pageKey = `${type}|${filter.preset}|${range.from}|${range.to}|${this.activeSearch}|${this.viewMode}|${showOpenings}`;
+        const pageKey = `${type}|${filter.preset}|${range.from}|${range.to}|${this.activeSearch}|${this.viewMode}|${showOpenings}|${showVoided}`;
         if (pageKey !== this.pageKey) {
             this.pageKey = pageKey;
             this.visibleCount = this.PAGE_SIZE;
@@ -212,7 +241,7 @@ export class HistoryManager {
             return;
         }
 
-        if (sortedBills.length === 0 && !showOpenings) {
+        if (sortedBills.length === 0 && !showOpenings && !showVoided) {
             container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
             this.renderShowMore(container);
             this.updateOlderHistoryUi();
@@ -222,6 +251,7 @@ export class HistoryManager {
         container.innerHTML = "";
         const fragment = document.createDocumentFragment();
         if (showOpenings) fragment.appendChild(buildOpeningGroup(openings, bill => this.buildHistoryCard(bill)));
+        if (showVoided) fragment.appendChild(buildOpeningGroup(voided, bill => this.buildHistoryCard(bill), 'voided'));
         sortedBills.slice(0, this.visibleCount).forEach(bill => fragment.appendChild(this.buildHistoryCard(bill)));
         container.appendChild(fragment);
         this.renderShowMore(container);
@@ -297,6 +327,13 @@ export class HistoryManager {
         this.refreshHistory();
     }
 
+    /** "Show voided bills" chip for the current tab (#75). */
+    static toggleVoided() {
+        const tab = this.getFilter().type;
+        this.showVoided = { ...this.showVoided, [tab]: !this.showVoided[tab] };
+        this.refreshHistory();
+    }
+
     /**
      * Empty-list message; mentions the loaded window when older bills may exist.
      * @param {string} type
@@ -328,6 +365,10 @@ export class HistoryManager {
         const list = document.getElementById('historyList');
         if (!list) return;
 
+        addVoidedToggle(list, {
+            id: 'historyVoidedToggle', count: this.voidedCount, on: this.pageVoided.length > 0,
+            onToggle: () => this.toggleVoided()
+        });
         addOpeningToggle(list, {
             id: 'historyOpeningToggle', count: this.openingCount, on: this.pageOpenings.length > 0,
             onToggle: () => this.toggleOpenings()
@@ -340,7 +381,7 @@ export class HistoryManager {
             onLoaded: () => this.refreshHistory()
         });
         // Only while bills older than the live window are on screen.
-        const shown = [...this.pageOpenings, ...this.pageBills.slice(0, this.visibleCount)];
+        const shown = [...this.pageOpenings, ...this.pageVoided, ...this.pageBills.slice(0, this.visibleCount)];
         renderStaleHistoryHint(list, {
             id: 'historyStaleHint',
             onRefreshed: () => this.refreshHistory(),
@@ -410,18 +451,12 @@ export class HistoryManager {
     }
 
     static async viewBill(ref, type = 'purchase') {
-        // Determine which history array to use based on type
-        let history;
-        if (type === 'purchase') {
-            history = AppState.purchaseHistory;
-        } else if (type === 'retail') {
-            history = AppState.retailSalesHistory;
-        } else if (type === 'wholesale') {
-            history = AppState.salesHistory;
-        } else {
+        if (!BILL_STATE[type]) {
             UIManager.showModal(t('msg.history.unknown_bill_type', { type }));
             return;
         }
+        // Bills that count and voided ones (#75)
+        const history = billPool(type);
         const index = this.resolveBillIndex(history, ref);
         const bill = history[index];
         
@@ -497,6 +532,7 @@ export class HistoryManager {
         
         const content = `
             <div style="padding: 16px; max-width: 100%;">
+                ${voidedBannerHtml(bill)}
                 <div class="bill-info-section">
                     <div class="bill-info-row">
                         <div class="bill-info-label">${L('ui.history.bill_no')}</div>
@@ -580,18 +616,16 @@ export class HistoryManager {
                 </div>
                 
                 ${paymentHTML}
+                ${editsRowHtml(bill, 'window.app.history.showEdits()')}
             </div>
         `;
         
         document.getElementById('billDetailsContent').innerHTML = content;
         
-        // Edit/Delete only when this user may still change the bill (#87 edit window, #84)
-        const editBtn = document.getElementById('billEditBtn');
-        const deleteBtn = document.getElementById('billDeleteBtn');
+        // Edit / Void only while this user may still change the bill (#87 edit window, #84, #75)
         const who = { uid: AppState.currentUser?.uid, role: AppState.userRole, raw: AppState.settings?.roleAccess };
-        if (editBtn) editBtn.style.display = canEditBillWith(bill, who) ? '' : 'none';
-        if (deleteBtn) deleteBtn.style.display = canDeleteBillWith(bill, who) ? '' : 'none';
-        if (AppState.userRole !== 'owner' && !withinBillEditWindow(bill, who)) {
+        setBillActions(bill, who, { editable: type !== 'wholesale' });
+        if (isActiveBill(bill) && AppState.userRole !== 'owner' && !withinBillEditWindow(bill, who)) {
             document.getElementById('billDetailsContent').insertAdjacentHTML('beforeend',
                 `<div class="bill-window-note" style="margin: 0 16px 16px; padding: 10px; background: #f8f9fa; border-radius: 8px; color: #6c757d; font-size: 13px;">🔒 ${L('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })}</div>`);
         }
@@ -603,105 +637,143 @@ export class HistoryManager {
         document.getElementById('billDetailsOverlay').classList.remove('active');
     }
 
-    static async confirmDeleteBill(index) {
-        const confirmed = await UIManager.showModal(
-            t('msg.history.are_sure_want_delete_bill'),
-            t('msg.history.delete_bill'),
-            true
-        );
-        
-        if (confirmed) {
-            await this.deleteBill(index);
+    /**
+     * "View changes" in the bill details (#121): reads the open bill's edit records
+     * (one read each) the first time, then shows / hides them.
+     */
+    static async showEdits() {
+        const list = document.getElementById('billEditsList');
+        const toggle = document.getElementById('billEditsToggle');
+        const current = this.currentBill();
+        if (!list || !current) return;
+        if (!list.hidden) {
+            list.hidden = true;
+            if (toggle) toggle.textContent = t('ui.edits.view_changes');
+            return;
+        }
+        list.hidden = false;
+        if (toggle) toggle.textContent = t('ui.edits.hide_changes');
+        if (list.dataset.loaded === String(current.bill.id)) return;
+        list.textContent = t('ui.edits.loading');
+        try {
+            const edits = await FirebaseService.loadBillEdits(BILL_COLLECTION[current.type], current.bill);
+            renderEditsList(list, edits);
+            list.dataset.loaded = String(current.bill.id);
+        } catch (error) {
+            console.error('Loading bill edits failed:', error);
+            list.textContent = t('ui.edits.load_failed');
         }
     }
 
-    static async deleteBill(index) {
-        // Use the stored bill type from viewBill, or fall back to filter button
-        const billType = window.currentBillType;
-        
-        // Get the correct history array based on bill type
-        let history;
-        let collectionName;
-        
-        if (billType === 'purchase') {
-            history = AppState.purchaseHistory;
-            collectionName = 'purchases';
-        } else if (billType === 'retail') {
-            history = AppState.retailSalesHistory;
-            collectionName = 'retailSales';
-        } else if (billType === 'wholesale') {
-            history = AppState.salesHistory;
-            collectionName = 'wholesaleSales';
-        } else {
-            // viewBill always records the type; without it we can't tell which
-            // collection the bill is in, so don't guess on a delete.
+    /**
+     * Void the open bill (#75): who may (canVoidBillWith), not with later payments
+     * (voidBlocker), needs the internet and a reason. The bill stays in History
+     * marked Voided and stops counting everywhere.
+     */
+    static async confirmVoidBill() {
+        if (Helpers.isBusy('bill-void')) return;
+        const current = this.currentBill();
+        if (!current) {
             this.closeBillDetails();
             UIManager.showToast(t('msg.common.bill_not_found'));
             return;
         }
-        
-        const billIndex = findBillIndex(history, window.currentBillId, index);
-        const bill = history[billIndex];
-        
-        if (!bill) {
-            this.closeBillDetails();
-            UIManager.showToast(t('msg.common.bill_not_found'));
-            return;
-        }
-
-        try {
-            // Owner any bill; anyone else only their own bill within the role's edit
-            // window (firestore.rules canDeleteBill; legacy bills are owner-only)
-            const uid = AppState.currentUser?.uid;
-            const who = { uid, role: AppState.userRole, raw: AppState.settings?.roleAccess };
-            if (!canDeleteBillWith(bill, who)) {
-                this.closeBillDetails();
-                const mine = !!bill.userId && bill.userId === uid;
-                UIManager.showToast(mine
-                    ? t('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })
+        const { bill, type } = current;
+        const uid = AppState.currentUser?.uid;
+        const who = { uid, role: AppState.userRole, raw: AppState.settings?.roleAccess };
+        if (!canVoidBillWith(bill, who)) {
+            const mine = !!bill.userId && bill.userId === uid;
+            UIManager.showToast(!isActiveBill(bill) ? t('msg.void.already')
+                : mine ? t('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })
                     : t('msg.history.only_person_who_created_bill'));
-                return;
-            }
+            return;
+        }
+        if (voidBlocker(bill) === 'payments') {
+            UIManager.showModal(t('msg.void.has_payments'), t('ui.void.title'));
+            return;
+        }
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.void.needs_internet'));
+            return;
+        }
+        const reason = await askReason({ titleKey: 'ui.void.title', explainKey: 'ui.void.explain', labelKey: 'ui.void.reason_label' });
+        if (!reason) return;
+        await Helpers.runExclusive('bill-void', '#billVoidBtn', () => this.voidBill(type, bill, reason));
+    }
 
+    /** @private */
+    static async voidBill(type, bill, reason) {
+        try {
             UIManager.showLoading();
-            
-            // Delete from Firebase by document id (the old query also ignored the dev_ prefix)
-            await FirebaseService.deleteHistoryBill(collectionName, bill);
-            
-            // Remove from local state (re-resolve: the array may have changed during the await)
-            const currentIndex = history.indexOf(bill);
-            if (currentIndex !== -1) history.splice(currentIndex, 1);
-            
-            // Log audit entry
-            const isSale = billType !== 'purchase';
-            const auditAction = isSale ? AuditService.ACTIONS.DELETE_SALE : AuditService.ACTIONS.DELETE_BILL;
-            await AuditService.log(auditAction, {
+            await FirebaseService.voidBill(BILL_COLLECTION[type], bill, reason);
+            AuditService.log(AuditService.ACTIONS.VOID_BILL, {
                 billNumber: bill.billNumber || 'N/A',
-                amount: bill.total || bill.grandTotal || 0,
-                customer: bill.customer || bill.supplier || 'N/A'
-            });
-            
-            // Recalculate stock after deletion
-            AppState.stock = await FirebaseService.calculateStock();
-            
-            // Update finance overview if on Finance tab
-            if (typeof window.app.finance?.calculateOverview === 'function') {
-                window.app.finance.calculateOverview();
-            }
-            
-            // Update outstanding payments
-            if (typeof window.app.outstanding?.renderDue === 'function') {
-                window.app.outstanding.renderDue();
-            }
-            
-            // Close the details overlay
-            this.closeBillDetails();
-            
-            // Refresh the history view (keeps filter and search)
-            this.refreshHistory();
-            
+                billType: type,
+                amount: billTotal(bill),
+                customer: bill.customerName || 'N/A',
+                reason
+            }).catch(e => console.warn('Audit log failed:', e));
+            this.afterBillRemoved();
             UIManager.hideLoading();
-            UIManager.showToast(t('msg.history.bill_deleted_successfully'));
+            UIManager.showToast(t('msg.void.done'));
+        } catch (error) {
+            console.error('Error voiding bill:', error);
+            UIManager.hideLoading();
+            const key = error?.code === 'has-payments' ? 'msg.void.has_payments'
+                : error?.code === 'already-voided' ? 'msg.void.already'
+                    : (error?.code === 'unavailable' || (typeof navigator !== 'undefined' && navigator.onLine === false)) ? 'msg.void.needs_internet'
+                        : 'msg.void.failed';
+            UIManager.showToast(t(key));
+        }
+    }
+
+    /** Closes the details and refreshes what a voided or deleted bill changes. @private */
+    static afterBillRemoved() {
+        this.closeBillDetails();
+        this.refreshHistory();
+        window.app?.wholesaleSales?.renderHistory?.();
+        window.app?.wholesaleSales?.renderOutstanding?.();
+        FirebaseService.calculateStock()
+            .then(stock => { AppState.stock = stock; })
+            .catch(error => console.error('Stock recalculation after void failed:', error));
+        window.app?.outstanding?.renderDue?.();
+    }
+
+    /** Owner only: delete a voided bill for good (test data, mistakes). */
+    static async confirmDeleteBill() {
+        const current = this.currentBill();
+        if (!current || !canDeleteBillWith(current.bill, { role: AppState.userRole })) {
+            UIManager.showToast(t('msg.common.bill_not_found'));
+            return;
+        }
+        const confirmed = await UIManager.showModal(
+            t('msg.void.delete_confirm'),
+            t('msg.history.delete_bill'),
+            true
+        );
+        if (confirmed) await this.deleteBill();
+    }
+
+    static async deleteBill() {
+        const current = this.currentBill();
+        if (!current || !canDeleteBillWith(current.bill, { role: AppState.userRole })) {
+            this.closeBillDetails();
+            UIManager.showToast(t('msg.common.bill_not_found'));
+            return;
+        }
+        const { bill, type } = current;
+        try {
+            UIManager.showLoading();
+            await FirebaseService.deleteVoidedBill(BILL_COLLECTION[type], bill);
+            AuditService.log(type === 'purchase' ? AuditService.ACTIONS.DELETE_BILL : AuditService.ACTIONS.DELETE_SALE, {
+                billNumber: bill.billNumber || 'N/A',
+                amount: billTotal(bill),
+                customer: bill.customerName || 'N/A',
+                voided: true
+            }).catch(e => console.warn('Audit log failed:', e));
+            this.afterBillRemoved();
+            UIManager.hideLoading();
+            UIManager.showToast(t('msg.void.deleted'));
         } catch (error) {
             console.error('Error deleting bill:', error);
             UIManager.hideLoading();
@@ -900,10 +972,8 @@ export class HistoryManager {
      */
     static currentBill() {
         const type = window.currentBillType;
-        const history = type === 'purchase' ? AppState.purchaseHistory
-            : type === 'retail' ? AppState.retailSalesHistory
-                : type === 'wholesale' ? AppState.salesHistory : null;
-        if (!Array.isArray(history)) return null;
+        if (!BILL_STATE[type]) return null;
+        const history = billPool(type);
         const index = findBillIndex(history, window.currentBillId, window.currentBillIndex);
         const bill = history[index];
         return bill ? { bill, type } : null;
@@ -950,7 +1020,7 @@ export class HistoryManager {
     static renderHistoryTable(bills, type) {
         const container = document.getElementById("historyList");
         
-        if (bills.length === 0 && this.pageOpenings.length === 0) {
+        if (bills.length === 0 && this.pageOpenings.length === 0 && this.pageVoided.length === 0) {
             const searchInput = document.getElementById('historySearch');
             const searchTerm = searchInput ? searchInput.value : '';
             container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
@@ -959,6 +1029,7 @@ export class HistoryManager {
 
         container.innerHTML = billTableHtml(bills, {
             openings: this.pageOpenings,
+            voided: this.pageVoided,
             onclickFor: (bill) => `window.app.history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
         });
     }

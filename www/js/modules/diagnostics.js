@@ -449,6 +449,7 @@ const DiagnosticsManager = {
                     <option value="DELETE_BILL" ${this.auditFilter === 'DELETE_BILL' ? 'selected' : ''}>${tx('ui.diag.a_delete_bill')}</option>
                     <option value="CREATE_SALE" ${this.auditFilter === 'CREATE_SALE' ? 'selected' : ''}>${tx('ui.diag.a_create_sale')}</option>
                     <option value="DELETE_SALE" ${this.auditFilter === 'DELETE_SALE' ? 'selected' : ''}>${tx('ui.diag.a_delete_sale')}</option>
+                    <option value="VOID_BILL" ${this.auditFilter === 'VOID_BILL' ? 'selected' : ''}>${tx('ui.diag.a_void_bill')}</option>
                     <option value="DELETE_ITEM" ${this.auditFilter === 'DELETE_ITEM' ? 'selected' : ''}>${tx('ui.diag.a_delete_item')}</option>
                     <option value="UPDATE_PAYMENT" ${this.auditFilter === 'UPDATE_PAYMENT' ? 'selected' : ''}>${tx('ui.diag.a_update_payment')}</option>
                     <option value="CLEAR_DATA" ${this.auditFilter === 'CLEAR_DATA' ? 'selected' : ''}>${tx('ui.diag.a_clear_data')}</option>
@@ -512,6 +513,7 @@ const DiagnosticsManager = {
             'DELETE_BILL': '🗑️',
             'CREATE_SALE': '📤',
             'DELETE_SALE': '🗑️',
+            'VOID_BILL': '🚫',
             'DELETE_ITEM': '🗑️',
             'UPDATE_PAYMENT': '💰',
             'RECORD_PAYMENT': '💰',

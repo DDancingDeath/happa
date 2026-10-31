@@ -10,7 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { formatAmount, formatRupees, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2 } from '../utils/money.js';
+import { activeBills, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2 } from '../utils/money.js';
 import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
 import { directionFor } from '../utils/due-payments.js';
 import { validateDuePayment } from '../utils/calc/billing.js';
@@ -123,9 +123,10 @@ export class OutstandingManager {
      */
     static renderDue() {
         const currentDueFilter = AppState.currentDueFilter;
-        const purchaseHistory = AppState.purchaseHistory || [];
-        const salesHistory = AppState.salesHistory || [];  // wholesale
-        const retailSalesHistory = AppState.retailSalesHistory || [];  // retail
+        // Voided bills (#75) owe nothing; AppState never holds them, this keeps any other caller honest.
+        const purchaseHistory = activeBills(AppState.purchaseHistory);
+        const salesHistory = activeBills(AppState.salesHistory);  // wholesale
+        const retailSalesHistory = activeBills(AppState.retailSalesHistory);  // retail
         const container = document.getElementById("dueList");
         
         const dueTransactions = [];
@@ -600,6 +601,7 @@ export class OutstandingManager {
      * @returns {Promise<string>}
      */
     static async paymentRefusedText(error) {
+        if (error?.code === 'voided') return t('msg.void.bill_was_voided');
         if (await refusedForClock(error)) return t('msg.common.phone_clock_wrong_payment');
         return t('msg.common.error', { message: error?.message });
     }
@@ -688,6 +690,7 @@ export class OutstandingManager {
             const sessionSnap = sessionRef ? await tx.get(sessionRef) : null;
             if (!snap.exists) return null;
             const fresh = snap.data() || {};
+            if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
             const pay = readPayment(fresh);
             const entries = Array.isArray(fresh.payments) ? fresh.payments : [];
             const openSession = sessionSnap && sessionSnap.exists ? sessionSnap.data() : null;
@@ -900,6 +903,7 @@ export class OutstandingManager {
             const snap = await tx.get(ref);
             if (!snap.exists) return null;
             const fresh = snap.data() || {};
+            if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
             const pay = readPayment(fresh);
             const amount = pay.due > PAYMENT_TOLERANCE ? pay.due : 0;
             const base = fresh.payment && typeof fresh.payment === 'object' ? fresh.payment : {};

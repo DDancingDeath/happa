@@ -679,6 +679,7 @@ export class SettingsManager {
             'DELETE_BILL': '🗑️',
             'CREATE_SALE': '📤',
             'DELETE_SALE': '🗑️',
+            'VOID_BILL': '🚫',
             'DELETE_ITEM': '🗑️',
             'UPDATE_PAYMENT': '💰',
             'RECORD_PAYMENT': '💰',

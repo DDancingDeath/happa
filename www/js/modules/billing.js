@@ -19,6 +19,8 @@ import { RetailSaleManager } from './retail-sale.js';
 import { t } from '../i18n/index.js';
 import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
+import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
+import { askReason } from '../ui/bill-status.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
 const EDIT_TIMEOUT_MS = 20000;
@@ -50,6 +52,16 @@ export function editRefusedMessage(bill) {
 const editCheckContext = (bill) => ({
     isEdit: true, id: bill.id, editingBill: bill, date: bill.date, enteredAt: bill.timestamp
 });
+
+/**
+ * The reason for an edit (#121), asked only when the edit changes something
+ * that is recorded: '' when nothing recorded changes, null when cancelled.
+ * @returns {Promise<?string>}
+ */
+async function askEditReason(bill, updated) {
+    if (!hasEditChanges(billEditChanges(bill, updated))) return '';
+    return askReason({ titleKey: 'ui.edits.reason_title', explainKey: 'ui.edits.reason_explain', labelKey: 'ui.edits.reason_label' });
+}
 
 // Per-bill "Print comments" toggle: carried through edit, drafts and autosave.
 const readPrintComments = (id) => !!document.getElementById(id)?.checked;
@@ -1182,8 +1194,10 @@ const BillingManager = {
                 };
 
                 // Wait for the server: only a committed edit is printed, kept and cleared from the editor.
+                const reason = await askEditReason(bill, updatedBill);
+                if (reason === null) return undefined;
                 FirebaseService.withLoadedPaymentSignature(updatedBill, this.editingBillPaymentSig);
-                await commitBillEdit(FirebaseService.updatePurchase(updatedBill));
+                await commitBillEdit(FirebaseService.updatePurchase(updatedBill, { reason }));
                 if (typeof options.onWriteIssued === 'function') options.onWriteIssued(updatedBill);
                 const savedIndex = findBillIndex(AppState.purchaseHistory, bill.id, currentIndex);
                 if (savedIndex !== -1) AppState.purchaseHistory[savedIndex] = updatedBill;
@@ -1242,8 +1256,10 @@ const BillingManager = {
                     ...BillChecksUI.billFields(checks, bill)
                 };
 
+                const reason = await askEditReason(bill, updatedSale);
+                if (reason === null) return undefined;
                 FirebaseService.withLoadedPaymentSignature(updatedSale, this.editingBillPaymentSig);
-                await commitBillEdit(FirebaseService.updateRetailSale(updatedSale));
+                await commitBillEdit(FirebaseService.updateRetailSale(updatedSale, { reason }));
                 if (typeof options.onWriteIssued === 'function') options.onWriteIssued(updatedSale);
                 const saleIndex = AppState.retailSalesHistory.findIndex(s => s.id === bill.id);
                 if (saleIndex !== -1) {
@@ -1276,8 +1292,12 @@ const BillingManager = {
                 UIManager.showToast(t(STORAGE_FULL_KEY), 'error');
                 return undefined;
             }
-            if (error?.code === 'conflict' || error?.code === 'edit-timeout') {
-                UIManager.showToast(t(error.code === 'conflict' ? 'msg.billing.edit_conflict' : 'msg.billing.edit_timeout'));
+            if (error?.code === 'conflict' || error?.code === 'edit-timeout' || error?.code === 'reason-required') {
+                UIManager.showToast(t(error.code === 'edit-timeout' ? 'msg.billing.edit_timeout' : 'msg.billing.edit_conflict'));
+                return undefined;
+            }
+            if (error?.code === 'voided') {
+                UIManager.showToast(t('msg.billing.edit_voided'));
                 return undefined;
             }
             if (error?.code === 'unavailable' || (typeof navigator !== 'undefined' && navigator.onLine === false)) {

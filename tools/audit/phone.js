@@ -380,7 +380,8 @@ export async function auditPhone({ C, data, dates, appRoot, stockEvidence, passe
                 continue;
             }
             const dayStart = new Date(new Date(ev.ms).getFullYear(), new Date(ev.ms).getMonth(), new Date(ev.ms).getDate()).getTime();
-            const moment = sameMoment(dataAt(data, ev.ms));
+            // The oracle's data has no voided bills (#75); the phone is seeded with them (seedAt).
+            const moment = sameMoment(O.withoutVoided(dataAt(data, ev.ms)));
             for (const pass of passes) {
                 if (pass.checkpoint !== 'fresh' && !(monthEnd && monthEnd.at < dayStart)) {
                     summary.push({ label: ev.label, date: isoDay(ev.ms), role: pass.role, pass: pass.tag || 'owner', skipped: 'no checkpoint from an earlier day' });
@@ -909,6 +910,11 @@ async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pas
     cmp('T12_net', 'Today (phone)', P('today'), Math.round(want.T12_net), /outflow/i.test(document.getElementById('todayCashFlowLabel').textContent) ? -net : net, null, at + 1);
     cmp('T1_purchaseCount', 'Today (phone)', P('today'), want.T1_purchaseCount, shown('todayPurchaseCount'), null, at + 1, 'count');
     cmp('T2_saleCount', 'Today (phone)', P('today'), want.T2_saleCount, shown('todaySaleCount'), null, at + 1, 'count');
+    // Voided bills (#75) never reach the bill lists; History gets them from voidedBills().
+    info.voided = {
+        inAppState: ['purchaseHistory', 'salesHistory', 'retailSalesHistory'].flatMap(k => AppState[k] || []).filter(b => b && b.voided === true).length,
+        listed: ['purchases', 'retailSales', 'wholesaleSales'].reduce((a, k) => a + (FirebaseService.voidedBills?.(k)?.length || 0), 0)
+    };
     document.body.innerHTML = '';
     return info;
 }

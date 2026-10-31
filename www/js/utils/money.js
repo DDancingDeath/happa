@@ -146,7 +146,7 @@ export function readPayment(bill) {
  * @returns {number}
  */
 export function outstandingDue(bill) {
-    if (!bill || bill.cleared) return 0;
+    if (!isActiveBill(bill) || bill.cleared) return 0;
     const due = readPayment(bill).due;
     return due > 0 ? due : 0;
 }
@@ -209,13 +209,38 @@ export function isOpeningRecord(bill) {
 }
 
 /**
- * Bills that count as activity: drops opening records (isOpeningRecord).
- * Every period / activity aggregation filters its bills through this.
+ * VOID (#75): the one rule for which bills count anywhere. A voided bill
+ * (`voided: true`, with voidedAt / voidedBy / voidReason) stays stored so
+ * History can show it, but counts in no figure: stock, dues, Today, the cash
+ * drawer, Money, Insights, Statements, rate stats, month snapshots, labour.
+ * FirebaseService keeps voided bills out of AppState's bill lists, and every
+ * calculation that reads bills checks this too.
+ * @param {Object} bill
+ * @returns {boolean}
+ */
+export function isActiveBill(bill) {
+    return !!bill && typeof bill === 'object' && bill.voided !== true;
+}
+
+/**
+ * The bills of a list that count (isActiveBill).
+ * @param {Array<Object>} bills
+ * @returns {Array<Object>}
+ */
+export function activeBills(bills) {
+    return (Array.isArray(bills) ? bills : []).filter(isActiveBill);
+}
+
+/**
+ * Bills that count as activity: drops voided bills (isActiveBill) and opening
+ * records (isOpeningRecord). Every period / activity aggregation filters its
+ * bills through this.
  * @param {Array<Object>} bills
  * @returns {Array<Object>}
  */
 export function activityBills(bills) {
-    return (Array.isArray(bills) ? bills : []).filter(b => !isOpeningRecord(b));
+    // Missing entries pass through as before (callers skip them); voided and opening records do not.
+    return (Array.isArray(bills) ? bills : []).filter(b => (b == null || isActiveBill(b)) && !isOpeningRecord(b));
 }
 
 /**
