@@ -54,7 +54,7 @@ export function buildBackup(collections, meta = {}) {
 export const DELETE_CONFIRM_WORD = 'DELETE';
 
 /**
- * The business record. On the live data (not `dev_`) Clear Data can't delete
+ * The business record. On the live data (not the test data) Clear Data can't delete
  * these (#63): a wrong bill is voided, and a full wipe is a tools/migrate job.
  */
 export const LEDGER_COLLECTIONS = Object.freeze([
