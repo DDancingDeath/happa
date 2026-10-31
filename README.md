@@ -358,6 +358,7 @@ shows the pick order — see "Planning" below. The old staging clone and its
 - **[docs/architecture.md](docs/architecture.md)** — layers, which function owns each number, refactor plan, architecture ratchet test
 - **[ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md)** — `dev_` collection prefix, switching environments
 - **[docs/release-checklist.md](docs/release-checklist.md)** — manual checks before every release (printer, offline bills, cash, APK upgrade, timings)
+- **[docs/performance-budget.md](docs/performance-budget.md)** — start-up, save and read budgets and where each is measured
 - **[docs/error-reporting.md](docs/error-reporting.md)** — how errors and crashes on the phones are found (telemetry, TIP) and why there is no crash SDK
 - **[www/js/README.md](www/js/README.md)** — module layout
 - **[scripts/README.md](scripts/README.md)** — Playwright inspection helpers
