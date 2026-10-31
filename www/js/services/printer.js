@@ -982,13 +982,14 @@ const PrinterService = {
 
     /** The sample bill used by Test Print and the receipt preview in Settings. */
     sampleBill() {
+        const lang = receiptLang(this.settings());
         return {
             type: 'TEST',
             billNumber: 'TEST-1',
             date: new Date().toISOString(),
-            customerName: t('ui.print.test_customer'),
+            customerName: t('ui.print.test_customer', undefined, lang),
             items: [
-                { name: t('ui.print.test_item'), qty: 10, rate: 100, total: 1000, weights: [10] }
+                { name: t('ui.print.test_item', undefined, lang), qty: 10, rate: 100, total: 1000, weights: [10] }
             ],
             billTotal: 1000,
             laborCharges: 6,
@@ -1598,7 +1599,7 @@ const PrinterService = {
         const billData = {
             id: saleData.id || Date.now(),
             billNumber: saleData.billNumber,
-            customerName: saleData.customerName || t('ui.print.walk_in_customer'),
+            customerName: saleData.customerName || t('ui.print.walk_in_customer', undefined, receiptLang(this.settings())),
             items: saleData.items.map(item => ({
                 name: item.name,
                 rate: item.rate,
