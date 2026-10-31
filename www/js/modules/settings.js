@@ -36,7 +36,9 @@ export const CHECK_THRESHOLD_FIELDS = [
     ['backdateDays', 'ui.checks.backdate_days'],
     ['cashOkRs', 'ui.checks.cash_ok'],
     ['cashHighRs', 'ui.checks.cash_high'],
-    ['stockAdjustFlagKg', 'ui.checks.stock_adjust_flag']
+    ['stockAdjustFlagKg', 'ui.checks.stock_adjust_flag'],
+    ['deniedCount', 'ui.checks.denied_count'],
+    ['deniedWindowMin', 'ui.checks.denied_window']
 ];
 const MAX_BUSINESS_NAME = 80;
 const MAX_BUSINESS_DETAILS = 120;
