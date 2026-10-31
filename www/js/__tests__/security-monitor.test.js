@@ -181,9 +181,15 @@ describe('SecurityMonitor on the phone', () => {
         expect(await SecurityMonitor.checkDevice('u1', { devices: ['x:20200101'] })).toBe(false);
     });
 
-    test('a try on an old bill is recorded for everyone but the owner', () => {
+    test('a try on an old bill is recorded for everyone but the owner, once per bill and action, never with editDays 0', () => {
+        AppState.settings = { roleAccess: {} };
         SecurityMonitor.noteOldBillTry({ id: 'b1', billNumber: 'P7' }, 'purchase', 'edit');
+        SecurityMonitor.noteOldBillTry({ id: 'b1', billNumber: 'P7' }, 'purchase', 'edit');
+        expect(note).toHaveBeenCalledTimes(1);
         expect(note).toHaveBeenCalledWith('OLD_BILL_EDIT_TRY', { what: 'edit', billType: 'purchase', billId: 'b1', billNumber: 'P7' });
+        AppState.settings = { roleAccess: { staff: { editDays: 0 } } };
+        SecurityMonitor.noteOldBillTry({ id: 'b3' }, 'purchase', 'edit');
+        AppState.settings = { roleAccess: {} };
         AppState.userRole = 'owner';
         SecurityMonitor.noteOldBillTry({ id: 'b2' }, 'purchase', 'edit');
         expect(note).toHaveBeenCalledTimes(1);
@@ -203,6 +209,9 @@ describe('Edit / Void past the edit window (#124)', () => {
         setBillActions(old, { uid: 'u2', role: 'manager', raw: {} });
         expect([shown('billEditBtn'), shown('billVoidBtn')]).toEqual([true, false]);
         setBillActions({ ...old, voided: true }, { uid: 'u1', role: 'staff', raw: {} });
+        expect([shown('billEditBtn'), shown('billVoidBtn')]).toEqual([false, false]);
+        // editDays 0 = never: nothing to try, the buttons stay hidden
+        setBillActions(old, { uid: 'u1', role: 'staff', raw: { staff: { editDays: 0 } } });
         expect([shown('billEditBtn'), shown('billVoidBtn')]).toEqual([false, false]);
     });
 });

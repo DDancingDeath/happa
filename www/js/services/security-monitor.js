@@ -20,6 +20,7 @@ import { AuditService } from './audit.js';
 import { addOwnDevice } from '../firebase/repos/users.js';
 import { tipDeviceId } from '../tip/index.js';
 import { todayLocalISO } from '../utils/dates.js';
+import { accessFor } from '../utils/role-access.js';
 import { SECURITY_ACTIONS, deniedWriteSource, deviceCheck, planDeniedNote } from '../utils/security-flags.js';
 
 /** Time for the caller to mark a refusal as expected (the clock check takes up to 5 s). */
@@ -28,6 +29,8 @@ export const DENIED_DECIDE_MS = 8000;
 let recentDenied = [];
 let stopListening = null;
 const timers = new Set();
+/** Old-bill tries already recorded this session (`billId:what`). */
+const triedBills = new Set();
 
 const record = (action, details) => AuditService.log(action, details)
     .catch(e => console.warn('Audit entry not written:', e?.code || e));
@@ -46,6 +49,7 @@ export const SecurityMonitor = {
         stopListening = null;
         timers.forEach(clearTimeout);
         timers.clear();
+        triedBills.clear();
         recentDenied = [];
     },
 
@@ -105,6 +109,11 @@ export const SecurityMonitor = {
      */
     noteOldBillTry(bill, billType, what) {
         if (!bill || AppState.userRole === 'owner' || !writesAudit()) return;
+        // No window at all (editDays 0 = never): nothing to try past; one entry per bill and action
+        if (!(accessFor(AppState.userRole, AppState.settings?.roleAccess).editDays > 0)) return;
+        const key = `${bill.id}:${what}`;
+        if (triedBills.has(key)) return;
+        triedBills.add(key);
         record(SECURITY_ACTIONS.OLD_BILL_TRY, {
             what, billType: String(billType || ''), billId: String(bill.id || ''), billNumber: bill.billNumber || null
         });

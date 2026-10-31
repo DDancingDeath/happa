@@ -1,8 +1,7 @@
-/* ==================== AADHAT BILLING APP - MAIN STYLES ==================== */
-/* LEGACY: index.html now links each css/*.css file directly (in this same
-   order) so they download in parallel instead of via a serial @import chain.
-   This file is no longer referenced by index.html; it is kept only so an old
-   cached index.html still renders. Add new stylesheets to index.html, not here. */
+/* ==================== HAPPA STYLES: THE STYLESHEET LIST ==================== */
+/* The app's stylesheets in cascade order. `npm run build:css` joins them into
+   css/app.css, the only stylesheet index.html links (#66). Add a new stylesheet
+   here, then rebuild. */
 /* Modular CSS Architecture - Import all component styles */
 
 /* Core Variables & Theme */

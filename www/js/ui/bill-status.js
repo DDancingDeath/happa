@@ -11,7 +11,7 @@ import { t } from '../i18n/index.js';
 import { isActiveBill } from '../utils/money.js';
 import { cleanReason, describeEdit, editCountOf, editHeading, REASON_MAX } from '../utils/bill-edits.js';
 import { formatDayTime } from '../utils/dates.js';
-import { canDeleteBillWith, canEditBillWith, canVoidBillWith } from '../utils/role-access.js';
+import { accessFor, canDeleteBillWith, canEditBillWith, canVoidBillWith } from '../utils/role-access.js';
 import { UIManager } from './ui-manager.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -109,8 +109,10 @@ export function setBillActions(bill, who, { editable = true } = {}) {
     // a tap then explains the window (and is recorded for the owner's review)
     const role = who?.role;
     const mine = !!bill?.userId && bill.userId === who?.uid;
-    show('billEditBtn', editable && (canEditBillWith(bill, who) || (active && (role === 'manager' || mine))));
-    show('billVoidBtn', canVoidBillWith(bill, who) || (active && mine));
+    // Only when the role has a window at all (editDays 0 = never: the buttons stay hidden)
+    const hasWindow = accessFor(role, who?.raw).editDays > 0;
+    show('billEditBtn', editable && (canEditBillWith(bill, who) || (active && hasWindow && (role === 'manager' || mine))));
+    show('billVoidBtn', canVoidBillWith(bill, who) || (active && hasWindow && mine));
     show('billDeleteBtn', canDeleteBillWith(bill, who));
     show('billReprintBtn', active);
     show('billShareBtn', active);
