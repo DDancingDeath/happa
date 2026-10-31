@@ -266,9 +266,9 @@
                   "id": "gen-1",
                   "type": "received",
                   "customer": "Walk-in 2",
-                  "amount": 175.5,
+                  "amount": 176,
                   "method": "cash",
-                  "cash": 175.5,
+                  "cash": 176,
                   "online": 0,
                   "unlinked": true,
                   "notes": "cash on account",
@@ -281,23 +281,23 @@
         }
       ],
       "toasts": [
-        "✓ Recorded ₹175.5 received from Walk-in 2"
+        "✓ Recorded ₹176 received from Walk-in 2"
       ],
       "tx": {
         "cashSales": 2570.85,
         "cashPurchases": 1800.5,
         "businessExpenses": 250.5,
         "personalExpenses": 105,
-        "dueReceived": 995.5,
+        "dueReceived": 996,
         "duePaid": 450.25,
         "cashDeposits": 620.5
       },
       "screen": {
         "text": {
           "statusOpeningBalance": "₹2000.1",
-          "statusCashIn": "₹6186.95",
+          "statusCashIn": "₹6187.45",
           "statusCashOut": "₹2606.25",
-          "statusAvailable": "₹3580.7",
+          "statusAvailable": "₹3581.2",
           "statusCashAdded": "₹0",
           "statusBuy": "₹0",
           "statusSale": "₹0",
@@ -310,12 +310,12 @@
           "cashPurchasesTotal": "₹1800.5",
           "cashBusinessExpensesTotal": "₹250.5",
           "cashPersonalExpensesTotal": "₹105",
-          "dueReceivedTotal": "₹995.5",
+          "dueReceivedTotal": "₹996",
           "duePaidTotal": "₹450.25",
           "cashDepositsTotal": "₹620.5",
-          "totalCashIn": "₹6186.95",
+          "totalCashIn": "₹6187.45",
           "totalCashOut": "₹2606.25",
-          "expectedCashAmount": "₹3580.7"
+          "expectedCashAmount": "₹3581.2"
         },
         "shown": {
           "statusOpeningCard": "block",
@@ -349,9 +349,9 @@
                   "id": "gen-2",
                   "type": "paid",
                   "customer": "Mandi 2",
-                  "amount": 42.25,
+                  "amount": 42,
                   "method": "cash",
-                  "cash": 42.25,
+                  "cash": 42,
                   "online": 0,
                   "unlinked": true,
                   "notes": "",
@@ -364,7 +364,7 @@
         }
       ],
       "toasts": [
-        "✓ Recorded ₹42.25 paid to Mandi 2"
+        "✓ Recorded ₹42 paid to Mandi 2"
       ],
       "tx": {
         "cashSales": 2570.85,
@@ -372,15 +372,15 @@
         "businessExpenses": 250.5,
         "personalExpenses": 105,
         "dueReceived": 820,
-        "duePaid": 492.5,
+        "duePaid": 492.25,
         "cashDeposits": 620.5
       },
       "screen": {
         "text": {
           "statusOpeningBalance": "₹2000.1",
           "statusCashIn": "₹6011.45",
-          "statusCashOut": "₹2648.5",
-          "statusAvailable": "₹3362.95",
+          "statusCashOut": "₹2648.25",
+          "statusAvailable": "₹3363.2",
           "statusCashAdded": "₹0",
           "statusBuy": "₹0",
           "statusSale": "₹0",
@@ -394,11 +394,11 @@
           "cashBusinessExpensesTotal": "₹250.5",
           "cashPersonalExpensesTotal": "₹105",
           "dueReceivedTotal": "₹820",
-          "duePaidTotal": "₹492.5",
+          "duePaidTotal": "₹492.25",
           "cashDepositsTotal": "₹620.5",
           "totalCashIn": "₹6011.45",
-          "totalCashOut": "₹2648.5",
-          "expectedCashAmount": "₹3362.95"
+          "totalCashOut": "₹2648.25",
+          "expectedCashAmount": "₹3363.2"
         },
         "shown": {
           "statusOpeningCard": "block",

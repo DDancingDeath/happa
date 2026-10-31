@@ -20,8 +20,13 @@ const ALLOW = [
     /^\s*हिंदी\s*\/\s*English\s*$/
 ];
 
+// Units written the same in both languages: Hindi text says "50 kg", "₹/kg" (owner decision).
+const UNITS = /(?<![A-Za-z])kg(?![A-Za-z])/g;
+
 function isMixed(text) {
-    if (!text || !LATIN.test(text) || !DEVANAGARI.test(text)) return false;
+    if (!text) return false;
+    const rest = String(text).replace(UNITS, ' ');
+    if (!LATIN.test(rest) || !DEVANAGARI.test(rest)) return false;
     return !ALLOW.some(re => re.test(String(text).trim()));
 }
 

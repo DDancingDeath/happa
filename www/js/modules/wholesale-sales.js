@@ -560,7 +560,7 @@ export class WholesaleSalesManager {
         
         const customerName = Helpers.getInputText('wholesaleCustomerName');
         const total = draftLineSum(wholesaleSaleItems);
-        const expenses = Helpers.getInputInt('salesExpensesAmount');
+        const expenses = typedAmount(Helpers.getInputNumber('salesExpensesAmount'));
         const profit = shownProfit;
         const comments = Helpers.getInputText('salesComments');
         

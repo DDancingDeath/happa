@@ -29,6 +29,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          # HEAD^1 = the base the PR merge commit was built on (cache-bump check)
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -46,6 +49,9 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
         run: git fetch --no-tags --depth=1 origin "+$BASE:refs/remotes/origin/$BASE"
+      - name: Cache bump (cached www/ files changed)
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-cache-bump.js HEAD^1
       - name: Jest
         run: npx jest --ci
         env:
