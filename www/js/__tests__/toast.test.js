@@ -68,6 +68,7 @@ describe('showToast (#51)', () => {
         expect(TelemetryService.createFingerprint({ type: 'toast', message: 'Failed to delete user', ref })).toBe(ref);
         expect(TelemetryService.errorBuffer).toEqual([expect.objectContaining({ type: 'toast', message: 'Failed to delete user', fingerprint: ref })]);
         TelemetryService.errorBuffer = [];
+        clearTimeout(TelemetryService.syncTimer);
     });
 
     test('other toasts have no ref and are not reported', () => {
