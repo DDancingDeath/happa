@@ -13,6 +13,7 @@
  */
 const fs = require('fs');
 const path = require('path');
+const { cssSources } = require('./build-css.js');
 
 const WWW = path.join(__dirname, '..', 'www');
 const SW_PATH = path.join(WWW, 'service-worker.js');
@@ -30,6 +31,8 @@ function toUrl(file) {
 }
 
 function expectedAssets() {
+    // The stylesheets joined into css/app.css (scripts/build-css.js) are not loaded on their own.
+    const joined = new Set(cssSources().map((rel) => '/' + rel));
     const files = [
         ...walk(path.join(WWW, 'js')).filter((f) => f.endsWith('.js')),
         ...walk(path.join(WWW, 'css')).filter((f) => f.endsWith('.css')),
@@ -37,7 +40,7 @@ function expectedAssets() {
         ...(fs.existsSync(path.join(WWW, 'img')) ? walk(path.join(WWW, 'img')) : []),
         ...walk(path.join(WWW, 'icons')).filter((f) => f.endsWith('.png')),
         ...(fs.existsSync(path.join(WWW, 'vendor')) ? walk(path.join(WWW, 'vendor')).filter((f) => f.endsWith('.js')) : []),
-    ].map(toUrl).sort();
+    ].map(toUrl).filter((u) => !joined.has(u)).sort();
     return [
         '/', '/index.html', '/firebaseConfig.js', '/download.html', '/changelog.json', '/manifest.webmanifest',
         ...files,
