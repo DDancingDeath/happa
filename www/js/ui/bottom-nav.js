@@ -86,7 +86,11 @@ export const BottomNav = {
         if (!fn) return Promise.resolve(false);
         return Promise.resolve()
             .then(fn)
-            .then(() => { this.onRefreshed?.(); return true; })
+            .then((ok) => {
+                if (ok === false) return false;
+                this.onRefreshed?.();
+                return true;
+            })
             .catch(e => { console.warn('Pull-to-refresh failed:', e); return false; });
     },
 

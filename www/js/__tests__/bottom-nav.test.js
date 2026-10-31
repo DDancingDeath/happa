@@ -62,3 +62,10 @@ test('pull-to-refresh runs only the page\'s own data reload; pages without one d
     await expect(BottomNav.refreshPage('billing')).resolves.toBe(false);
     expect(done).toHaveBeenCalledTimes(1);
 });
+test('a reload that says it failed shows no "Updated"', async () => {
+    const done = jest.fn();
+    BottomNav.refreshers = { history: () => false };
+    BottomNav.onRefreshed = done;
+    await expect(BottomNav.refreshPage('history')).resolves.toBe(false);
+    expect(done).not.toHaveBeenCalled();
+});

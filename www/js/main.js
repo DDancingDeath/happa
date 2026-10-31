@@ -4,7 +4,6 @@ import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
 import { BottomNav } from './ui/bottom-nav.js';
-import { refreshOnDemandHistory } from './utils/history-window.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
@@ -413,11 +412,22 @@ async function initializeUserData() {
         BottomNav.init({
             showTab: (tab) => NavigationManager.showTabFromNav(tab),
             // Pull-to-refresh reloads data only: filters, the bill being entered and forms stay as they are
+            // (older on-demand bills keep History's own Refresh button: re-reading them costs reads)
             refreshers: {
-                day: () => DayManager.init(),
-                history: () => refreshOnDemandHistory().then(() => HistoryManager.refreshHistory()),
-                due: () => OutstandingManager.renderDue(),
-                stock: () => StockManager.renderStock()
+                day: () => (DayManager.currentSubTab === 'cash' ? CashManagementManager.init() : DayManager.init()),
+                history: () => HistoryManager.refreshHistory(),
+                due: () => {
+                    OutstandingManager.renderDue();
+                    if (document.getElementById('outstandingSearchInput')?.value.trim()) OutstandingManager.searchOutstanding();
+                },
+                stock: () => {
+                    const shown = (id) => document.getElementById(id)?.style.display !== 'none';
+                    if (shown('stockAdjustmentSection')) return StockManager.renderAdjustmentHistory();
+                    if (shown('deadStockSection')) return StockManager.renderDeadStock();
+                    return Promise.resolve(StockManager.renderStock()).then(() => {
+                        if (document.getElementById('stockSearchInput')?.value.trim()) StockManager.searchStock();
+                    });
+                }
             },
             onRefreshed: () => UIManager.showToast(t('msg.nav.refreshed'))
         });
