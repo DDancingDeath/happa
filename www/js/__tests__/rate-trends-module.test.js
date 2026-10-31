@@ -18,6 +18,16 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { aggregateBills, finalizeStats, istMonthKey } from '../utils/rate-trends.js';
 
+// A fixed day, mid-month and mid-week (IST). Weeks are stored under their Monday's year, so on
+// 1–3 January a bill's week goes to last year's doc and "one doc for the item" would depend on today.
+jest.useFakeTimers({
+    now: new Date('2026-10-21T12:00:00+05:30'),
+    doNotFake: ['hrtime', 'nextTick', 'performance', 'queueMicrotask', 'requestAnimationFrame', 'cancelAnimationFrame',
+        'requestIdleCallback', 'cancelIdleCallback', 'setImmediate', 'clearImmediate', 'setInterval', 'clearInterval',
+        'setTimeout', 'clearTimeout']
+});
+afterAll(() => jest.useRealTimers());
+
 const now = Date.now();
 const month = istMonthKey(now);
 const id = `wheat_${month.slice(0, 4)}`;
