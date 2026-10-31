@@ -869,7 +869,9 @@ export class OutstandingManager {
         const recordedById = AppState.currentUser ? AppState.currentUser.uid : 'unknown';
         const ids = bills.map(() => Helpers.generateId());
         const cleared = this.clearedFields();
-        const result = await updateBillsInTransaction(collKey, bills.map(b => b.id), (freshList) => {
+        // The document id, not the id field: a legacy doc may carry a different one
+        const docIds = bills.map(b => (FirebaseService.documentIdOf ? FirebaseService.documentIdOf(b) : String(b.id)));
+        const result = await updateBillsInTransaction(collKey, docIds, (freshList) => {
             const updates = [];
             const settled = [];
             freshList.forEach((fresh, i) => {

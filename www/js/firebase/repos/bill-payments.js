@@ -52,10 +52,10 @@ export async function updateBillInTransaction(collKey, billId, sessionId, change
 
 /**
  * Several bills of one collection read and updated in ONE transaction (all or
- * nothing): "Complete all due" (#150). Bills are read at doc(String(id)); a bill
+ * nothing): "Complete all due" (#150). Bills are read at their document ids; a bill
  * that is not there aborts the whole transaction.
  * @param {string} collKey - 'purchases' | 'retailSales' | 'wholesaleSales'
- * @param {Array<string|number>} billIds
+ * @param {Array<string|number>} billIds - document ids (FirebaseService.documentIdOf)
  * @param {function(Object[]): {result: *, bills: Array<?Object>}} change
  *   fresh bill data (same order) → `bills`: fields to update per bill (null = no write),
  *   `result`: what the transaction returns. May run more than once and may throw to abort.
@@ -67,8 +67,7 @@ export async function updateBillsInTransaction(collKey, billIds, change) {
     const coll = db.collection(colName(collKey));
     const refs = billIds.map(id => coll.doc(String(id)));
     return db.runTransaction(async (tx) => {
-        const snaps = [];
-        for (const ref of refs) snaps.push(await tx.get(ref));
+        const snaps = await Promise.all(refs.map(ref => tx.get(ref)));
         const missing = billIds.filter((id, i) => !snaps[i].exists);
         if (missing.length) throw Object.assign(new Error('Bill not found'), { code: 'not-found', ids: missing });
         const out = change(snaps.map(s => s.data() || {}));

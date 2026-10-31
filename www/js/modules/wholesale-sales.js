@@ -742,6 +742,8 @@ export class WholesaleSalesManager {
             console.error('Complete all due failed:', error);
             if (OutstandingManager.isOfflineError(error)) {
                 UIManager.showToast(t('msg.common.internet_required_record_payment'));
+            } else if (error?.code === 'not-found') {
+                UIManager.showToast(t('msg.outstanding.error_transaction_not_found'));
             } else {
                 UIManager.showToast(await OutstandingManager.paymentRefusedText(error));
             }

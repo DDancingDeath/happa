@@ -10,7 +10,8 @@ jest.mock('../firebase/firestore-service.js', () => ({
         keptServerPayment: jest.fn(() => false),
         savedOnPhoneOnly: jest.fn(() => false),
         saveUnconfirmed: jest.fn(() => false),
-        billHasOpenDue: jest.fn((coll, bill) => !bill.cleared && (bill.payment?.due || 0) > 0)
+        billHasOpenDue: jest.fn((coll, bill) => !bill.cleared && (bill.payment?.due || 0) > 0),
+        documentIdOf: jest.fn(bill => bill.docId || String(bill.id))
     }
 }));
 jest.mock('../firebase/repos/bill-payments.js', () => ({
@@ -130,6 +131,16 @@ describe('OutstandingManager.settleAllDues', () => {
         serverTx(voided);
         await expect(OutstandingManager.settleAllDues('wholesale', [voided.w3, voided.w4], 'cash')).rejects.toMatchObject({ code: 'voided' });
         expect(voided.w3.payments).toEqual([]);
+    });
+
+    test('a legacy bill is written at its document id, not its `id` field', async () => {
+        const legacy = { ...bill('w9', 'Gupta', 30), docId: 'doc-9' };
+        const server = { 'doc-9': bill('w9', 'Gupta', 30) };
+        serverTx(server);
+        const { total } = await OutstandingManager.settleAllDues('wholesale', [legacy], 'cash');
+        expect(updateBillsInTransaction.mock.calls[0][1]).toEqual(['doc-9']);
+        expect(total).toBe(30);
+        expect(readPayment(server['doc-9']).due).toBe(0);
     });
 });
 
