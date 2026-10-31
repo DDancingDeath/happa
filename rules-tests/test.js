@@ -83,7 +83,7 @@ function defineSuite(prefix) {
         assertFails(as('noRole').collection(purchases).get()));
 
     t('approved staff can write and read purchases', async () => {
-        await assertSucceeds(as('staff1').collection(purchases).doc('b1').set({ total: 10, clientVersion: 3 }));
+        await assertSucceeds(as('staff1').collection(purchases).doc('b1').set({ total: 10, clientVersion: 3, createdAt: serverTimestamp() }));
         await assertSucceeds(as('staff1').collection(purchases).doc('b1').get());
         await assertSucceeds(as('staff1').collection(purchases).orderBy('total').get());
     });
@@ -257,9 +257,9 @@ function defineSuite(prefix) {
 
     t('members can\'t create a bill that is voided or has an edit count', async () => {
         const c = as('staff1').collection(purchases);
-        await assertFails(c.doc('n1').set({ userId: 'staff1', total: 5, ...voidFields('staff1') }));
-        await assertFails(c.doc('n2').set({ userId: 'staff1', total: 5, editCount: 1 }));
-        await assertSucceeds(c.doc('n3').set({ userId: 'staff1', total: 5 }));
+        await assertFails(c.doc('n1').set({ userId: 'staff1', total: 5, createdAt: serverTimestamp(), ...voidFields('staff1') }));
+        await assertFails(c.doc('n2').set({ userId: 'staff1', total: 5, createdAt: serverTimestamp(), editCount: 1 }));
+        await assertSucceeds(c.doc('n3').set({ userId: 'staff1', total: 5, createdAt: serverTimestamp() }));
     });
 
     // ---- edit records (#121): <bills>/{id}/edits/{n} ----
@@ -607,7 +607,7 @@ function defineSuite(prefix) {
         for (const coll of bills) {
             const db = as('staff1').collection(coll);
             await assertSucceeds(db.doc('n1').set({ userId: 'staff1', total: 5, clientVersion: 3, createdAt: serverTimestamp() }));
-            await assertSucceeds(db.doc('n2').set({ userId: 'staff1', total: 5, clientVersion: 3 }));
+            await assertFails(db.doc('n2').set({ userId: 'staff1', total: 5, clientVersion: 3 }));
             await assertFails(db.doc('n3').set({ userId: 'staff1', total: 5, clientVersion: 3, createdAt: Timestamp.fromMillis(Date.now() + 30 * DAY) }));
         }
     });
@@ -641,7 +641,8 @@ function defineSuite(prefix) {
             const db = as('staff1').collection(coll);
             // made-up createdAt on create is refused; a future client timestamp opens nothing
             await assertFails(db.doc('n3').set({ userId: 'staff1', total: 5, clientVersion: 3, createdAt: Timestamp.fromMillis(Date.now() + 30 * DAY) }));
-            await assertSucceeds(db.doc('n4').set({ userId: 'staff1', total: 5, clientVersion: 3, timestamp: Date.now() + 365 * DAY }));
+            await assertFails(db.doc('n4').set({ userId: 'staff1', total: 5, clientVersion: 3, timestamp: Date.now() + 365 * DAY }));
+            await seedBill(coll, 'n4', { userId: 'staff1', total: 5, clientVersion: 3, timestamp: Date.now() + 365 * DAY });
             await assertFails(db.doc('n4').update({ total: 6, clientVersion: 3 }));
             await assertFails(db.doc('n4').delete());
             // old-app bill (no createdAt) stays owner-only, even with a fresh timestamp
@@ -789,8 +790,9 @@ function defineSuite(prefix) {
     t('clientVersion gate is off until the owner enables it (old apps keep working)', async () => {
         await setClientGate(false);
         const coll = as('staff1').collection(`${prefix}purchases`);
-        await assertSucceeds(coll.doc('legacyApp1').set({ total: 1, userId: 'staff1' }));
-        // An old app's bill has no createdAt: outside the #87 edit window, so owner-only afterwards
+        // An old app's bill has no createdAt: refused on create (#115); one already stored is owner-only (#87)
+        await assertFails(coll.doc('legacyApp1').set({ total: 1, userId: 'staff1' }));
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}purchases`).doc('legacyApp1').set({ total: 1, userId: 'staff1' }));
         await assertFails(coll.doc('legacyApp1').update({ total: 2 }));
         await assertSucceeds(coll.doc('legacyApp2').set({ total: 1, userId: 'staff1', createdAt: serverTimestamp() }));
         await assertSucceeds(logged('staff1', `${prefix}purchases`, 'legacyApp2', 1, { total: 2 }));
@@ -804,7 +806,7 @@ function defineSuite(prefix) {
             const coll = (c === 'stockAdjustments' ? as('manager1') : db).collection(`${prefix}${c}`);
             const valid = c === 'stockAdjustments'
                 ? { itemId: 'i1', adjustType: 'add', quantity: 1, userId: 'manager1' }
-                : { total: 1 };
+                : { total: 1, createdAt: serverTimestamp() };
             await assertFails(coll.doc('old1').set({ ...valid }));
             await assertFails(coll.doc('old2').set({ ...valid, clientVersion: 2 }));
             await assertSucceeds(coll.doc('new1').set({ ...valid, clientVersion: 3 }));
@@ -919,10 +921,23 @@ function defineSuite(prefix) {
             status: 'disabled', disabledAt: new Date(), disabledBy: 'legacyOwner'
         })));
 
-    t('approved user can access own preferences only', async () => {
-        await assertSucceeds(as('staff1').collection(users).doc('staff1').collection('preferences').doc('ui').set({ a: 1 }));
+    t('nobody writes users/{uid}/preferences (the app never uses it, #64); its user may read it', async () => {
+        await assertFails(as('staff1').collection(users).doc('staff1').collection('preferences').doc('ui').set({ a: 1 }));
+        await assertFails(as('legacyOwner').collection(users).doc('legacyOwner').collection('preferences').doc('ui').set({ a: 1 }));
+        await assertSucceeds(as('staff1').collection(users).doc('staff1').collection('preferences').doc('ui').get());
         await assertFails(as('staff1').collection(users).doc('manager1').collection('preferences').doc('ui').get());
         await assertFails(as('pending1').collection(users).doc('pending1').collection('preferences').doc('ui').get());
+    });
+
+    t('a new bill carries createdAt = the server time; only the owner may leave it out (#115)', async () => {
+        const bill = (extra = {}) => ({ total: 10, clientVersion: 4, userId: 'staff1', ...extra });
+        for (const coll of bills) {
+            await assertFails(as('staff1').collection(coll).doc('n1').set(bill()));
+            await assertFails(as('staff1').collection(coll).doc('n2').set(bill({ createdAt: savedAgo(MIN) })));
+            await assertSucceeds(as('staff1').collection(coll).doc('n3').set(bill({ createdAt: serverTimestamp() })));
+            await assertFails(as('manager1').collection(coll).doc('n4').set(bill({ userId: 'manager1' })));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('n5').set(bill({ userId: 'legacyOwner' })));
+        }
     });
 
     // ---- audit logs (#55): append-only, caller's uid, server time ----
@@ -1290,7 +1305,7 @@ function defineSuite(prefix) {
         // A batch with a back-dated bill, as one device's writes.
         const db = as('staff1');
         const batch = db.batch();
-        batch.set(db.collection(`${prefix}purchases`).doc('late'), { userId: 'staff1', total: 10, clientVersion: 3 });
+        batch.set(db.collection(`${prefix}purchases`).doc('late'), { userId: 'staff1', total: 10, clientVersion: 3, createdAt: serverTimestamp() });
         batch.set(db.collection(monthStats).doc('2026-04'), mark('2026-04'), { merge: true });
         await assertSucceeds(batch.commit());
     });
@@ -1657,25 +1672,25 @@ function defineSuite(prefix) {
     t('bill create (#65): paid + due at most the total + Rs 1; money in paise; no opening records', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
-            const bill = (payment, extra = {}) => ({ userId: 'staff1', total: 99.6, payment, clientVersion: 3, ...extra });
+            const bill = (payment, extra = {}) => ({ userId: 'staff1', total: 99.6, payment, clientVersion: 3, createdAt: serverTimestamp(), ...extra });
             await assertSucceeds(c.doc('rounded').set(bill({ cash: 100, online: 0, due: 0, total: 100 }, { cashPayment: 100, onlinePayment: 0, dueAmount: 0 })));
             await assertSucceeds(c.doc('split').set(bill({ cash: 50, online: 20.6, due: 29, total: 99.6 })));
             await assertFails(c.doc('over').set(bill({ cash: 101, online: 0, due: 0, total: 101 })));
             await assertFails(c.doc('overDue').set(bill({ cash: 0, online: 0, due: 500, total: 500 })));
-            await assertFails(c.doc('flatOver').set({ userId: 'staff1', total: 10, cashPayment: 0, dueAmount: 50, clientVersion: 3 }));
+            await assertFails(c.doc('flatOver').set({ userId: 'staff1', total: 10, cashPayment: 0, dueAmount: 50, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('paise').set(bill({ cash: 10.005, online: 0, due: 0 })));
             await assertFails(c.doc('neg').set(bill({ cash: 120, online: -20, due: 0 })));
             await assertFails(c.doc('nan').set(bill({ cash: NaN, online: 0, due: 0 })));
-            await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3 }));
+            await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('opening').set({ ...bill({ cash: 0, online: 0, due: 0 }), openingBalance: { amount: 5000 } }));
-            await assertFails(c.doc('amountPaid').set({ userId: 'staff1', total: 100, amountPaid: 5000, clientVersion: 3 }));
-            await assertFails(c.doc('legacyDue').set({ userId: 'staff1', total: 100, due: 5000, clientVersion: 3 }));
+            await assertFails(c.doc('amountPaid').set({ userId: 'staff1', total: 100, amountPaid: 5000, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('legacyDue').set({ userId: 'staff1', total: 100, due: 5000, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('payable').set({ userId: 'staff1', amountPayable: 100, total: 1000000,
-                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3 }));
-            await assertFails(c.doc('payableText').set({ userId: 'staff1', amountPayable: '100', total: 100, clientVersion: 3 }));
+                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('payableText').set({ userId: 'staff1', amountPayable: '100', total: 100, clientVersion: 3, createdAt: serverTimestamp() }));
             // purchase: the total is after labour (grandTotal)
             await assertSucceeds(c.doc('p').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
-                payment: { cash: 90, online: 0, due: 0, total: 90 }, clientVersion: 3 }));
+                payment: { cash: 90, online: 0, due: 0, total: 90 }, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('p2').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
                 payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 3 }));
             await assertSucceeds(as('legacyOwner').collection(coll).doc('restored').set(bill({ cash: 500, online: 0, due: 0 })));
@@ -1685,7 +1700,7 @@ function defineSuite(prefix) {
     t('bill create (#65): no payments[], paidAt or cleared on a new bill (non-owners)', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
-            const bill = { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, clientVersion: 3 };
+            const bill = { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, clientVersion: 3, createdAt: serverTimestamp() };
             await assertSucceeds(c.doc('ok').set(bill));
             await assertFails(c.doc('p').set({ ...bill, payment: { cash: 100, online: 0, due: 0, total: 100 }, dueAmount: 0,
                 payments: [{ id: 'x', amount: 100, cash: 100, online: 0, at: Date.now() - 5 * DAY }] }));
@@ -1730,11 +1745,11 @@ function defineSuite(prefix) {
     t('bill create: a member may only create bills as themselves, with numeric money fields', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
-            await assertSucceeds(c.doc('own').set({ userId: 'staff1', total: 10, payment: { cash: 10, online: 0, due: 0 }, clientVersion: 3 }));
-            await assertFails(c.doc('other').set({ userId: 'manager1', total: 10, clientVersion: 3 }));
-            await assertFails(c.doc('text').set({ userId: 'staff1', total: '10', clientVersion: 3 }));
-            await assertFails(c.doc('textPay').set({ userId: 'staff1', total: 10, payment: { cash: 'ten' }, clientVersion: 3 }));
-            await assertFails(c.doc('textDue').set({ userId: 'staff1', total: 10, dueAmount: 'x', clientVersion: 3 }));
+            await assertSucceeds(c.doc('own').set({ userId: 'staff1', total: 10, payment: { cash: 10, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('other').set({ userId: 'manager1', total: 10, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('text').set({ userId: 'staff1', total: '10', clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('textPay').set({ userId: 'staff1', total: 10, payment: { cash: 'ten' }, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('textDue').set({ userId: 'staff1', total: 10, dueAmount: 'x', clientVersion: 3, createdAt: serverTimestamp() }));
             await assertSucceeds(as('legacyOwner').collection(coll).doc('restored').set({ userId: 'staff1', total: 10, clientVersion: 3 }));
         }
     });
@@ -2312,6 +2327,8 @@ function defineSuite(prefix) {
         await assertSucceeds(as('manager1').collection(withdrawals).doc('w1').set(w));
         await assertFails(as('manager1').collection(withdrawals).doc('w2').set({ ...w, amount: '500' }));
         await assertFails(as('staff1').collection(withdrawals).doc('w3').set(w));
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app')
+            .set({ roleAccess: { staff: { finance: true } } }));
         await assertSucceeds(as('staff1').collection(withdrawals).doc('w4').set({ ...w, userId: 'staff1' }));
         await assertFails(as('staff1').collection(withdrawals).doc('w1').update({ amount: 1 }));
         await assertFails(as('staff1').collection(withdrawals).doc('w1').delete());
@@ -2319,7 +2336,26 @@ function defineSuite(prefix) {
         await assertSucceeds(as('manager1').collection(withdrawals).doc('w1').delete());
     });
 
+    t('withdrawals are created only by roles with Money on (#64): members by default no, managers by default yes', async () => {
+        const w = (uid) => ({ amount: 500, person: 'O', purpose: 'Personal Use', date: '2026-10-22', userId: uid, timestamp: Date.now() });
+        const app = (roleAccess) => env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app').set({ roleAccess }));
+        await assertFails(as('staff1').collection(withdrawals).doc('m1').set(w('staff1')));
+        await assertFails(as('legacyStaff').collection(withdrawals).doc('m2').set(w('legacyStaff')));
+        await assertSucceeds(as('manager1').collection(withdrawals).doc('m3').set(w('manager1')));
+        await assertSucceeds(as('legacyOwner').collection(withdrawals).doc('m4').set(w('legacyOwner')));
+        // Statements / Insights on (they show withdrawals) does not open recording them
+        await app({ staff: { reports: true, analytics: true }, manager: { finance: false } });
+        await assertFails(as('staff1').collection(withdrawals).doc('m5').set(w('staff1')));
+        await assertFails(as('manager1').collection(withdrawals).doc('m6').set(w('manager1')));
+        await assertSucceeds(as('legacyOwner').collection(withdrawals).doc('m7').set(w('legacyOwner')));
+        await app({ staff: { finance: true } });
+        await assertSucceeds(as('staff1').collection(withdrawals).doc('m8').set(w('staff1')));
+    });
+
     t('expenses / withdrawals / personal expenses: created with a numeric timestamp, not in the future', async () => {
+        // members record withdrawals only with Money on (#64)
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app')
+            .set({ roleAccess: { staff: { finance: true } } }));
         const rec = (uid, extra = {}) => ({ amount: 50, type: 'Tea', date: onDay(istDay(0)), userId: uid, timestamp: Date.now(), ...extra });
         const colls = [[`${prefix}expenses`, {}], [withdrawals, { person: 'O', purpose: 'x' }]];
         for (const [coll, extra] of colls) {

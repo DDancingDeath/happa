@@ -519,7 +519,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 
 | Collection | Create | Update | Delete |
 |---|---|---|---|
-| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date) | expenses: own for 24 h (some fields), managers any; withdrawals: managers | expenses: own for 24 h, managers; withdrawals: managers |
+| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date); withdrawals only by roles with **Money** (`finance`) on, the only page that records them (#64; managers by default, members not; +1 read of `settings/app`) | expenses: own for 24 h (some fields), managers any; withdrawals: managers | expenses: own for 24 h, managers; withdrawals: managers |
 | `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
 | `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
@@ -529,6 +529,8 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `stockCheckpoints` | `current`: managers (anyone approved: the stale mark); `legacyScan`: managers; no other ids, owner included | same | managers |
 | `settings/app` | owner | owner; managers only the Aadhat fields with `shopSettings` | owner |
 | other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
+| `users/{uid}/preferences` (never used by the app) | nobody (#64) | nobody | nobody |
+| bills (`purchases`, `retailSales`, `wholesaleSales`) | approved user, own `userId`, and `createdAt` = the server time (#115: every happa version sends it; the edit window counts from it) | see "Bill edit window" | owner |
 
 Legacy timestamp backfill (`expenses`, `withdrawals`, `stockAdjustments`, `personalExpenses`, and bills
 through payment bookkeeping; anyone
