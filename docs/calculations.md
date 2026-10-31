@@ -169,7 +169,7 @@ month); the "in loss" suggestion only shows when the month has sales.
 | O3 | Payables total (aging panel) | Σ O1. |
 | O4 | Receivables total (aging panel) | Σ O2. |
 
-**Wholesale › Outstanding** (`modules/wholesale-sales.js`, until #130 moves wholesale dues here) lists
+**Wholesale › Outstanding** (`modules/wholesale-sales.js`; wholesale dues are listed there, see O2) lists
 the Wholesale page's bills (`source: 'sales-tab'`, OPENING records included) with BILL-DUE > 0. Each
 shows BILL-DUE, the BILL-TOTAL (an OPENING record: its carried amount) and the cash + online received
 (BILL-PAY), the same rule as this page and Money (Σ = the wholesale part of O4 / M15's "to receive").
