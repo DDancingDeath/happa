@@ -161,7 +161,26 @@ canDeleteBill    = owner || (creator && withinBillWindow)
 - Bills without a server `createdAt` (saved before #87 or by old apps) can be fully edited or
   deleted only by the owner. Backfilling a legacy `timestamp` (still allowed for ordering) does not
   unlock them, and nobody but the owner can add a `createdAt`.
-- Payment bookkeeping (`bookkeepingOnly` + `paymentEditOk`) is unchanged and not time-limited.
+- Payment bookkeeping (`bookkeepingOnly` + `paymentEditOk`) is not time-limited.
+- Money on bills (#65), for everyone but the owner:
+  - **Creates and full edits** (`changedMoneyOk`): payment amounts (`payment.cash|online|due|writtenOff|total`,
+    `cashPayment`, `onlinePayment`, `dueAmount`) are numbers ≥ 0 in whole paise (no NaN or Infinity),
+    totals are finite numbers, and cash + online + written off + due is at most the bill total + ₹1
+    (the bill screen's own split check, `SPLIT_TOLERANCE`; "Cash"/"Due" fill in the total rounded to
+    the rupee). The total is read as `billTotal()` reads it (`grandTotal`, else `total`, else
+    `billTotal`/`saleTotal`). Only `tools/migrate` writes opening records (`openingBalance`).
+  - **Payments and write-offs** (`paymentMoneyOk`): the write sets `payment.cash`, `online` and `due`
+    (as `applyPaymentTransaction` / `applyWriteOffTransaction` do); cash, online and written off never
+    go down, each goes up by exactly what the new `payments[]` entry says (`entryParts`), and the due
+    goes down by the same, within 1 paisa (`PAYMENT_TOLERANCE`). No entry, no money. So nobody pays
+    more than the due, and with the split check above, never more than the bill total (+ ₹1 rounding).
+    Opening records are capped by their carried amount the same way.
+  - **Clearing** (`clearOk`): `cleared` only becomes true with the due settled (≤ 1 paisa) in the
+    same write, `clearedBy` is the caller, and `openDue` goes false only when cleared or settled.
+  - Limits: bills with no due field at all (very old shapes) take no member payments; the owner
+    corrects them. The checks follow the app's write shape because a bill write already uses most
+    of the 1,000 expressions rules may evaluate per request (the bill update reads the caller's role
+    once, `billUpdateAs`); no extra document reads.
 - `settings/app` writes stay owner-only (`appSettingsGuard`), apart from the Aadhat fields a
   manager with `shopSettings` may update (`managerShopSettingsOk`; reads `roleAccess` from the
   current doc, so it costs no extra read).
