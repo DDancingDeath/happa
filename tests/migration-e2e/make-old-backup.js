@@ -44,6 +44,8 @@ export const LOGINS = [
     { key: 'legacyMember', uid: 'old-member-04', email: 'helper@old-shop.test', name: 'Helper', role: 'staff', password: 'Helper#old-2024' },
     { key: 'pending', uid: 'old-pending-05', email: 'new@old-shop.test', name: 'New Person', role: 'staff', status: 'pending', password: 'Pending#old-2024' }
 ];
+/** The archived staging clone's login (#101): in the old data, never carried (tools/migrate/lib/service-accounts.js). */
+export const SERVICE_LOGIN = { uid: 'old-staging-ro-07', email: 'staging-readonly@aadhat.local', name: 'Staging read-only', role: 'staff', status: 'active', password: 'Staging#old-2024' };
 
 function args(argv) {
     const get = (n) => { const i = argv.indexOf(n); return i === -1 ? undefined : argv[i + 1]; };
@@ -182,7 +184,7 @@ export function makeOldBackup({ now = Date.now(), seed = 7 } = {}) {
             wholesaleRates: [Math.round(i.cost * 1.1)], unit: 'kg', createdAt: ts(start.getTime() + k * 60000), updatedAt: ts(now - (k + 1) * DAY)
         }
     }));
-    const users = LOGINS.map(u => ({
+    const users = [...LOGINS, SERVICE_LOGIN].map(u => ({
         id: u.uid,
         data: {
             name: u.name, email: u.email, role: u.role, ...(u.status ? { status: u.status } : {}), ...(u.rentRole ? { rentRole: u.rentRole } : {}),
@@ -222,7 +224,7 @@ export function makeOldBackup({ now = Date.now(), seed = 7 } = {}) {
             { id: `W${compact(new Date(daysAgo(25)))}`, data: { next: 91, initialized: true, prefix: 'W', date: compact(new Date(daysAgo(25))) } }
         ],
         rateHistory: ITEMS.slice(0, 3).map((i, k) => ({ id: `rh-${k}`, data: { itemId: i.id, itemName: i.name, rateType: 'saleRates', oldRate: i.cost, newRate: i.cost + 2, changedAt: ts(now - (k + 3) * DAY), changedBy: 'old-owner-01' } })),
-        itemFrequency: [{ id: 'old-owner-01', data: Object.fromEntries(ITEMS.map((i, k) => [i.id, 50 - k * 7])) }],
+        itemFrequency: [{ id: 'old-owner-01', data: Object.fromEntries(ITEMS.map((i, k) => [i.id, 50 - k * 7])) }, { id: SERVICE_LOGIN.uid, data: { [ITEMS[0].id]: 3 } }],
         // the old app's own rate stats: replaced by the ones built from every old bill
         rateStats: [{ id: '_meta', data: { backfillDone: true, backfillAt: now - 100 * DAY, bills: 12, reads: 900, months: 3, by: 'owner', byUserId: 'old-owner-01' } }],
         stockCheckpoints: [{ id: 'cp-1', data: { at: now - 30 * DAY, qty: { [wheat.id]: 100 } } }],
@@ -247,7 +249,7 @@ export function makeOldBackup({ now = Date.now(), seed = 7 } = {}) {
 
     // ---- Auth export with SCRYPT hashes (test signer key, not the shop's)
     const params = { key: crypto.randomBytes(64), saltSeparator: Buffer.from('Bw==', 'base64'), rounds: 8, memoryCost: 14 };
-    const authUsers = LOGINS.map((u, i) => {
+    const authUsers = [...LOGINS, SERVICE_LOGIN].map((u, i) => {
         const salt = crypto.randomBytes(12).toString('base64');
         return {
             localId: u.uid, email: u.email, emailVerified: i === 0, passwordHash: firebaseScrypt(u.password, salt, params), salt,

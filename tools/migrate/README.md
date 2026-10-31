@@ -40,7 +40,18 @@ node tools/migrate/migrate.js wipe --project happa-bfc07 --key $D\key.json      
 node tools/migrate/migrate.js wipe --project happa-bfc07 --key $D\key.json --yes    # deletes
 ```
 
-It deletes **every document in every root collection** (subcollections included) and the Auth users whose email ends with `--test-domain` (default `@happa.local`, the test logins); other Auth users (the imported logins) are kept. Cost: one delete and one read per document (Spark: 20,000 deletes and 50,000 reads a day). It refuses `aadhat-management` and a key for another project. Then run `plan`/`apply` again (`--restart`).
+It deletes **every document in every root collection** (subcollections included), the Auth users whose email ends with `--test-domain` (default `@happa.local`, the test logins) and the **service-account logins on the denylist** (below; the 26 Oct rehearsal imported them into `happa-bfc07`); other Auth users (the imported logins) are kept. Cost: one delete and one read per document (Spark: 20,000 deletes and 50,000 reads a day). It refuses `aadhat-management` and a key for another project. Then run `plan`/`apply` again (`--restart`).
+
+### Service accounts (#101)
+
+The old project has two logins that belong to the archived staging clone, not to people: `staging-readonly@aadhat.local` (an ordinary approved member with write access; no rule ever limited it) and `staging-owner@aadhat.local` (role owner). They must not exist in Happa. The denylist is `SERVICE_ACCOUNT_EMAILS` in `lib/service-accounts.js`, matched **by email** (trimmed, any case), never by name:
+
+- `plan` leaves their `users/{uid}` docs and their per-user `itemFrequency/{uid}` docs out of the bundle, in every mode. The report says **"Skipped N service accounts"** (2 on the real backup).
+- `auth:import` leaves their logins out and prints "Skipped N service accounts".
+- `auth:filter` writes the Auth export without them, for the plain `firebase auth:import` (below).
+- `wipe` deletes them from the new project's Auth.
+
+Disabling them in the old project is an owner action in the Firebase console (`aadhat-management` is never changed by this tool).
 
 ## What is carried
 
@@ -48,7 +59,7 @@ It deletes **every document in every root collection** (subcollections included)
 |---|---|---|
 | History | **Fresh start**: old bills are not copied; the old project and the encrypted backup are the archive | `--mode fresh` / `full` (copies every bill as is, no opening balances) |
 | Rates page | `items` copied as is, same ids | `--copy items,users,rateHistory,itemFrequency` |
-| Users | `users` profile docs as is (roles, status), same uids; logins move with `auth:import` below | (part of `--copy`) |
+| Users | `users` profile docs as is (roles, status), same uids; logins move with `auth:import` below. **Service and test accounts are never carried** (see "Service accounts" below) | (part of `--copy`) |
 | Outstanding (retail) and Wholesale → Outstanding | one **opening record per old unpaid bill**, see below | always in `fresh` mode |
 | Wholesale dues that no page shows (bills not made on the Wholesale page) | **not carried**; the report lists their count and total under "Not carried (owner to decide)" | `--include-hidden-wholesale-dues` carries them to Wholesale → Outstanding |
 | Supplier payables | **checked only**: the report shows the total (should be ₹0) and warns otherwise | `--carry-payables` to carry them like receivables |
@@ -102,17 +113,19 @@ A new `plan` makes a new bundle; continue with `--restart` (idempotent). Opening
 The app signs in with **email and password only** (`www/js/auth/authentication.js`). Move the accounts with the same uids (the `users/{uid}` docs depend on them). This reads Auth, not Firestore, so it does not touch the Firestore quota.
 
 1. Old project console → Authentication → Users → ⋮ (top right of the table) → **Password hash parameters**. Copy `base64_signer_key`, `base64_salt_separator`, `rounds`, `mem_cost`.
-2. Export and import:
+2. Export, leave out the service accounts (above), and import the filtered file:
    ```powershell
    firebase auth:export $D\users.json --format=json --project aadhat-management
-   firebase auth:import $D\users.json --hash-algo=SCRYPT `
+   node tools/migrate/migrate.js auth:filter --users $D\users.json --out $D\users-filtered.json   # "Skipped 2 service accounts"
+   firebase auth:import $D\users-filtered.json --hash-algo=SCRYPT `
      --hash-key=<base64_signer_key> --salt-separator=<base64_salt_separator> `
      --rounds=<rounds> --mem-cost=<mem_cost> --project happa-bfc07
    ```
+   Never pass the unfiltered `users.json` to `firebase auth:import`.
 3. Sign in to Happa with one account first. Wrong parameters mean nobody can sign in (fix: re-import with the right ones, or "Forgot password").
-4. Delete `$D\users.json` (it holds password hashes). Never put it in the repo.
+4. Delete `$D\users.json` and `$D\users-filtered.json` (they hold password hashes). Never put them in the repo.
 
-The same import also runs through this tool, reading the parameters from the console's text block saved as a file (`hash_config { algorithm: SCRYPT, base64_signer_key: …, … }`) instead of pasting them on the command line. Dry run unless `--yes`; it refuses `aadhat-management` and a key for another project:
+The same import also runs through this tool, reading the parameters from the console's text block saved as a file (`hash_config { algorithm: SCRYPT, base64_signer_key: …, … }`) instead of pasting them on the command line. It skips the service accounts itself (the unfiltered export is fine here). Dry run unless `--yes`; it refuses `aadhat-management` and a key for another project:
 
 ```powershell
 node tools/migrate/migrate.js auth:import --users $D\users.json --hash-params $D\hash-params.txt --project happa-bfc07 --key $D\key.json --yes
@@ -122,7 +135,7 @@ node tools/migrate/migrate.js auth:import --users $D\users.json --hash-params $D
 
 `apply`, `wipe` and `auth:import` take `--emulator` instead of `--key`: they then write to the local Firebase emulators named by `FIRESTORE_EMULATOR_HOST` / `FIREBASE_AUTH_EMULATOR_HOST` (`firebase emulators:exec` sets both). The flag needs a `demo-*` `--project` (it refuses `happa-bfc07`, `aadhat-management` and any other real project id), refuses a key and any host that is not `127.0.0.1` / `localhost`, and a run without it refuses while those variables are set, so a rehearsal can never reach a real project. Its cursor file is separate (`….emulator.cursor.json`).
 
-`npm run test:migration-e2e` (`tests/migration-e2e/`, CI: `.github/workflows/migration-e2e.yml`, on PRs touching this tool, the app (`www/**`) or the rules, and nightly) runs the whole move against the emulators of the demo project `demo-happa-migration` (auth 9199, firestore 8281; not the project or ports `tests/e2e` uses; override with `MIGRATION_E2E_PROJECT`, `MIGRATION_E2E_AUTH_PORT`, `MIGRATION_E2E_FIRESTORE_PORT`): it makes an anonymised old-app backup and Auth export (SCRYPT hashes of known test passwords) at test time, runs `plan` → `wipe` → `apply` → `auth:import`, checks the data against the old backup (dues and age groups as the old Outstanding pages computed them, items, users and roles, settings, counters, `rateStats` = the app's `billsToYearDocs`, nothing from `dev_`, the write budget), then opens the app (Playwright) as a migrated owner and member with their original passwords. The Auth emulator does not check imported SCRYPT hashes, so the test checks the password against the imported hash with Firebase's scrypt itself, as production Auth does.
+`npm run test:migration-e2e` (`tests/migration-e2e/`, CI: `.github/workflows/migration-e2e.yml`, on PRs touching this tool, the app (`www/**`) or the rules, and nightly) runs the whole move against the emulators of the demo project `demo-happa-migration` (auth 9199, firestore 8281; not the project or ports `tests/e2e` uses; override with `MIGRATION_E2E_PROJECT`, `MIGRATION_E2E_AUTH_PORT`, `MIGRATION_E2E_FIRESTORE_PORT`): it makes an anonymised old-app backup and Auth export (SCRYPT hashes of known test passwords, plus a fake `staging-readonly@aadhat.local` profile, item-order doc and login) at test time, runs `plan` → `wipe` → `apply` → `auth:import`, checks the data against the old backup (dues and age groups as the old Outstanding pages computed them, items, users and roles, settings, counters, `rateStats` = the app's `billsToYearDocs`, nothing from `dev_`, the write budget, and that no service account reached Firestore or Auth: `plan` and `auth:import` must print "Skipped 1 service accounts", and `wipe` must remove a service-account login left by a rehearsal), then opens the app (Playwright) as a migrated owner and member with their original passwords. The Auth emulator does not check imported SCRYPT hashes, so the test checks the password against the imported hash with Firebase's scrypt itself, as production Auth does.
 
 On the real backup (local only; output outside the repo, nothing committed):
 
@@ -144,7 +157,7 @@ The go-live runbook is **`docs/happa-go-live.md`** in the Happa PR (#231). It co
 3. At the cut-off: close the cash session in the old app. From then on **the shop stops billing in the old app**: a bill saved there does not appear in Happa. Take the final backup (go-live step 6.2), download, check and decrypt it (`tools/backup/README.md`) **into `$D` (`Q:\aadhat-data\`), not into the repo**.
 4. **Migrate**:
    ```powershell
-   node tools/migrate/migrate.js plan --in $D\backup.json --out-dir $D\out     # read $D\out\report.md: totals, "Not carried", warnings, writes
+   node tools/migrate/migrate.js plan --in $D\backup.json --out-dir $D\out     # read $D\out\report.md: totals, "Not carried", "Skipped 2 service accounts", warnings, writes
    node tools/migrate/migrate.js apply --bundle $D\out\bundle.json --project happa-bfc07                           # dry run
    node tools/migrate/migrate.js apply --bundle $D\out\bundle.json --project happa-bfc07 --key $D\key.json --yes
    ```
@@ -152,7 +165,7 @@ The go-live runbook is **`docs/happa-go-live.md`** in the Happa PR (#231). It co
    Then move the logins (above). `plan`/`apply` can be **rerun just before go-live** (add `--restart` for a new bundle) to pick up the latest items, dues, settings and patterns. Rerun only before Happa is in use: a rerun rewrites items, users, settings and rate patterns.
 5. **Set opening stock** per item in Happa: Stock → Stock Adjustment → type **Set**, the counted kg, and **Rate (₹/kg)** = the average cost. The stock replay uses that rate as the cost of the stock, so cost of goods sold and profit work from the first sale.
 6. **Re-enter shop name and UPI id in Happa Settings on each device.** They live on the phone, not in Firestore, so they are not carried. Printer, language, dark mode and the Hindi-names option are per phone too.
-7. **Check** in Happa: sign in as each role; Rates item count; Outstanding and Wholesale → Outstanding totals and age groups equal the report; a reminder and a statement for one party; Reports › Trends shows the history; a test bill gets the next number.
+7. **Check** in Happa: sign in as each role; Rates item count; Outstanding and Wholesale → Outstanding totals and age groups equal the report; a reminder and a statement for one party; Reports › Trends shows the history; a test bill gets the next number; Authentication → Users lists no `staging-*@aadhat.local` login.
 8. Keep the final backup archive (encrypted, as the workflow made it) and the passphrase in the password manager. The old app, site and project stay as they are; nothing in this tool changes them.
 
 Optional: the owner can send a notice with the Happa download link from the old app's inbox.

@@ -9,6 +9,7 @@
  */
 import { checkEmulatorTarget } from '../../../tools/migrate/lib/emulator.js';
 import { importLogins, parseHashParams, toImportRecords } from '../../../tools/migrate/lib/auth-import.js';
+import { filterAuthExport } from '../../../tools/migrate/lib/service-accounts.js';
 import { wipeProject } from '../../../tools/migrate/lib/wipe.js';
 
 const LOCAL = { FIRESTORE_EMULATOR_HOST: '127.0.0.1:8181', FIREBASE_AUTH_EMULATOR_HOST: 'localhost:9099' };
@@ -72,7 +73,7 @@ describe('auth:import', () => {
                 providerUserInfo: [{ providerId: 'password', rawId: 'a@x.test' }] },
             { localId: 'u2', email: 'b@x.test', disabled: true, providerUserInfo: [{ providerId: 'google.com', rawId: 'g-1', email: 'b@x.test' }] }
         ] });
-        expect(summary).toEqual({ users: 2, withPassword: 1, disabled: 1, otherProviders: 1 });
+        expect(summary).toEqual({ users: 2, withPassword: 1, disabled: 1, otherProviders: 1, skippedServiceAccounts: 0 });
         expect(records[0]).toMatchObject({ uid: 'u1', email: 'a@x.test', emailVerified: true, metadata: { creationTime: new Date(1700000000000).toUTCString() } });
         expect(records[0].passwordHash.equals(Buffer.from([0xab, 0xcd, 0xef, 0xfb, 0xff]))).toBe(true);
         expect(records[0].passwordSalt.equals(Buffer.from([0, 1, 2]))).toBe(true);
@@ -80,6 +81,27 @@ describe('auth:import', () => {
         expect(records[1]).toMatchObject({ uid: 'u2', disabled: true, providerData: [{ uid: 'g-1', providerId: 'google.com', email: 'b@x.test' }] });
         expect(() => toImportRecords({ users: [{ localId: 'u1' }, { localId: 'u1' }] })).toThrow(/duplicate/);
         expect(() => toImportRecords([])).toThrow(/Auth export/);
+    });
+
+    test('service accounts on the denylist (#101) are never imported; auth:filter writes the same list', async () => {
+        const exported = { users: [
+            { localId: 'u1', email: 'a@x.test', passwordHash: 'AA==', salt: 'AA==' },
+            { localId: 'svc-ro', email: 'staging-readonly@aadhat.local', passwordHash: 'AA==', salt: 'AA==' },
+            { localId: 'svc-owner', email: 'Staging-Owner@Aadhat.Local', passwordHash: 'AA==', salt: 'AA==' },
+            { localId: 'u2', email: 'staging-readonly@aadhat.local.example', displayName: 'staging-readonly' }
+        ] };
+        const { records, summary } = toImportRecords(exported);
+        expect(records.map(r => r.uid)).toEqual(['u1', 'u2']);
+        expect(summary).toMatchObject({ users: 2, skippedServiceAccounts: 2 });
+        const calls = [];
+        const auth = { importUsers: async (users) => { calls.push(users); return { successCount: users.length, errors: [] }; } };
+        await importLogins({ auth, records, hash: parseHashParams(CONSOLE_TEXT) });
+        expect(calls.flat().map(u => u.uid)).toEqual(['u1', 'u2']);
+        const filtered = filterAuthExport(exported);
+        expect(filtered.skipped).toBe(2);
+        expect(filtered.exported.users.map(u => u.localId)).toEqual(['u1', 'u2']);
+        expect(exported.users).toHaveLength(4);
+        expect(() => filterAuthExport({})).toThrow(/Auth export/);
     });
 
     test('imports with the SCRYPT parameters and reports failures', async () => {
