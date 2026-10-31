@@ -165,7 +165,7 @@ describe('comparisons and takeaways', () => {
         const list = profitTakeaways({ profit: -110.96, vsLastYear: null, vsPrevious: null, uncosted: { qty: 12, estimate: 360 } });
         expect(list.map(x => x.key)).toEqual(['ui.tk.loss', 'ui.tk.gut_uncosted']);
         expect(t(list[0].key, list[0].params)).toBe('Loss of ₹111 in this period.');
-        expect(t(list[1].key, list[1].params, 'hi')).toContain('12 किलो');
+        expect(t(list[1].key, list[1].params, 'hi')).toContain('12 kg');
     });
 
     test('profit takeaways prefer last year, name the biggest item change and flag sales up / profit down', () => {
