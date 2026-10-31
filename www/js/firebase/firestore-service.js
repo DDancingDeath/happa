@@ -872,6 +872,28 @@ function keepStoredCreatedAt(record, stored) {
     if (stored && stored.createdAt !== undefined && stored.createdAt !== null) record.createdAt = stored.createdAt;
     else delete record.createdAt;
 }
+
+/** Keeps the bill's stored edit count on an overwrite (#121: it only moves with an edit record). */
+function keepEditCount(record, stored) {
+    if (editCountOf(stored)) record.editCount = editCountOf(stored);
+    else delete record.editCount;
+}
+
+/**
+ * A retried new bill that changes what its unconfirmed first save stored is an edit (#121):
+ * its record goes into the same transaction, with a fixed reason in the app language.
+ * Sets `target.editCount`. @private
+ */
+function logRetryEdit(tx, ref, server, after, target) {
+    const changes = billEditChanges(server, after);
+    if (!hasEditChanges(changes)) return;
+    const n = nextEditNumber(server);
+    target.editCount = n;
+    tx.set(billEditsRef(ref).doc(String(n)), editRecord({
+        n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName,
+        reason: t('ui.edits.retry_reason'), changes
+    }));
+}
 /** Payment signature of the last new-bill write this device sent, by `${collKey}/${id}` (#70). */
 const sentBillPaymentSigs = new Map();
 /** Bills whose retry kept the server's money fields (a payment was recorded meanwhile). */
@@ -1028,18 +1050,26 @@ async function retryBillSave(collKey, record, ref, previous, key) {
             return;
         }
         const server = snap.data() || {};
+        // Voided meanwhile on another phone (#75): never written over.
+        if (!isActiveBill(server)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
         keepStoredCreatedAt(record, server);
+        keepEditCount(record, server);
         const serverPayments = Array.isArray(server.payments) ? server.payments : [];
         if (serverPayments.length > 0 || paymentSignature(server) !== sentSig) {
             const nonMoney = { ...record };
             BILL_MONEY_FIELDS.forEach(k => delete nonMoney[k]);
+            logRetryEdit(tx, ref, server, { ...server, ...nonMoney }, nonMoney);
+            if (nonMoney.editCount !== undefined) record.editCount = nonMoney.editCount;
             tx.set(ref, nonMoney, { merge: true });
             serverMoney = server;
             kept = true;
             return;
         }
         wrote = !Object.keys(record).every(k => stableJson(server[k]) === stableJson(record[k]));
-        if (wrote) tx.set(ref, record);
+        if (wrote) {
+            logRetryEdit(tx, ref, server, record, record);
+            tx.set(ref, record);
+        }
     });
     if (pendingFirstSaves.has(key)) retriedBillSaves.add(key);
     if (kept) {
@@ -1100,7 +1130,7 @@ async function updateBillChecked(collKey, record, { reason = null } = {}) {
             }));
             return;
         }
-        if (stored && editCountOf(stored)) record.editCount = editCountOf(stored);
+        if (stored) keepEditCount(record, stored);
         else delete record.editCount;
         tx.set(ref, record);
     });
@@ -1143,7 +1173,9 @@ async function voidBillDoc(collKey, bill, reason) {
         voidedBy: AppState.currentUser?.uid || null,
         voidedByName: String(AppState.userName || '').slice(0, 200),
         voidReason: why,
-        openDue: false
+        openDue: false,
+        // Bills are stock records: the clientVersion gate checks every write (firestore.rules writesCurrentClient)
+        clientVersion: CLIENT_VERSION
     };
     let stored = null;
     await getDb().runTransaction(async tx => {

@@ -2252,5 +2252,6 @@ export default {
     'ui.edits.reason_explain': "बदलाव और कारण बिल के साथ रखे जाते हैं।",
     'ui.edits.reason_label': "कारण (ज़रूरी)",
     'msg.edits.reason_required': "कारण लिखें (कम से कम 3 अक्षर)।",
-    'ui.diag.a_void_bill': "बिल रद्द"
+    'ui.diag.a_void_bill': "बिल रद्द",
+    'ui.edits.retry_reason': "पहली बार सहेजने की पुष्टि से पहले बदला गया"
 };

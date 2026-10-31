@@ -65,10 +65,22 @@ test('a retry after the first attempt succeeded, with nothing changed, writes no
     expect(FirebaseService.keptServerPayment(saved)).toBe(false);
 });
 
-test('a retry with changes made on this phone (no payment elsewhere) overwrites the bill', async () => {
+test('a retry with changes made on this phone (no payment elsewhere) overwrites the bill, recorded as an edit (#121)', async () => {
     await FirebaseService.savePurchase(bill(), { retry: false });
     await FirebaseService.savePurchase(bill({ cashPayment: 100, dueAmount: 0, payment: { cash: 100, online: 0, due: 0, total: 100 } }), { retry: true });
-    expect(doc()).toMatchObject({ cashPayment: 100, dueAmount: 0, payment: { due: 0 }, openDue: false });
+    expect(doc()).toMatchObject({ cashPayment: 100, dueAmount: 0, payment: { due: 0 }, openDue: false, editCount: 1 });
+    // Non-owners may not change money or items without the record (firestore.rules editCountOk)
+    expect(fake.raw('purchases/p1/edits').get('1')).toMatchObject({
+        n: 1, by: 'u1', reason: 'Changed before the first save was confirmed', itemsChanged: false,
+        fields: { cashPayment: { before: 40, after: 100 }, dueAmount: { before: 60, after: 0 } }
+    });
+});
+
+test('a retry of a bill voided meanwhile on another phone writes nothing (#75)', async () => {
+    await FirebaseService.savePurchase(bill(), { retry: false });
+    fake.raw('purchases').set('p1', { ...doc(), voided: true, voidReason: 'Entered twice', openDue: false });
+    await expect(FirebaseService.savePurchase(bill({ comments: 'later' }), { retry: true })).rejects.toMatchObject({ code: 'voided' });
+    expect(doc()).toMatchObject({ voided: true, comments: '' });
 });
 
 test('a retry after another device recorded a due payment keeps that payment', async () => {

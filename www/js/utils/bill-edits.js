@@ -32,6 +32,7 @@ export const MAX_EDIT_LINES = 200;
 export const VOID_FIELDS = Object.freeze(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason', 'openDue']);
 
 const canonical = (v) => {
+    if (v === undefined) return 'undefined';
     if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
     if (v && typeof v === 'object') {
         if (typeof v.toMillis === 'function') return String(v.toMillis());

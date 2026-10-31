@@ -118,13 +118,15 @@ service cloud.firestore {
       return r is string && r.trim().size() >= 3 && r.size() <= 300;
     }
 
-    // A void: only the void fields change (and openDue to false); by the caller, at the server
-    // time, with a reason; never with payments recorded after the bill was saved (their cash
-    // legs would be left without a bill); the owner any bill, anyone else their own bill inside
-    // the edit window (who could delete a bill before #75). A voided bill never changes again.
+    // A void: only the void fields change (and openDue to false, clientVersion for the gate); by
+    // the caller, at the server time, with a reason; never with payments recorded after the bill
+    // was saved (their cash legs would be left without a bill); the owner any bill, anyone else
+    // their own bill inside the edit window (who could delete a bill before #75). A voided bill
+    // never changes again.
     function voidOk(usersCol, role, changed) {
       let d = request.resource.data;
-      return changed.hasOnly(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason', 'openDue'])
+      return changed.hasOnly(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason', 'openDue', 'clientVersion'])
+        && (!changed.hasAny(['clientVersion']) || (d.clientVersion is int && d.clientVersion >= 3))
         && d.get('voided', false) == true
         && d.get('voidedAt', null) == request.time
         && d.get('voidedBy', null) == request.auth.uid
@@ -144,21 +146,26 @@ service cloud.firestore {
     }
 
     // An edit record: append-only and immutable; by the caller at the server time with a
-    // reason; numbered with the bill's new editCount, which the same write raises by one.
+    // reason; numbered with the bill's new editCount, which the same write raises by one;
+    // it names every logged field the write changed (items through itemsChanged).
     function validEditCreate(usersCol, base, billId, editId) {
       let d = request.resource.data;
-      let n = getAfter(billPath(usersCol, base, billId)).data.get('editCount', null);
+      let after = getAfter(billPath(usersCol, base, billId)).data;
+      let before = get(billPath(usersCol, base, billId)).data;
+      let n = after.get('editCount', null);
+      let moved = after.diff(before).affectedKeys().intersection(editLoggedFields().toSet());
       return isApprovedIn(usersCol)
         && d.keys().hasOnly(['n', 'at', 'by', 'byName', 'reason', 'fields', 'lines', 'itemsChanged'])
         && n is int && editId == string(n) && d.get('n', null) == n
-        && n == get(billPath(usersCol, base, billId)).data.get('editCount', 0) + 1
+        && n == before.get('editCount', 0) + 1
         && d.get('by', null) == request.auth.uid
         && d.get('at', null) == request.time
         && reasonOk(d.get('reason', null))
         && (!('byName' in d) || (d.byName is string && d.byName.size() <= 200))
         && d.get('fields', {}) is map && d.get('fields', {}).size() <= 20
-        && d.get('lines', []) is list && d.get('lines', []).size() <= 200
-        && (!('itemsChanged' in d) || d.itemsChanged is bool);
+        && d.get('fields', {}).keys().toSet().hasAll(moved.difference(['items'].toSet()))
+        && d.get('itemsChanged', false) == moved.hasAny(['items'])
+        && d.get('lines', []) is list && d.get('lines', []).size() <= 200;
     }
 
     // Full edits (the owner is handled in canUpdateBill): a manager, or the bill's
@@ -351,7 +358,8 @@ service cloud.firestore {
     }
 
     // A voided bill never changes (owner included); a void is voidOk; editCount moves only
-    // with its edit record; full edits by non-owners that change a logged field need one (#121).
+    // with its edit record; full edits by non-owners that change a logged field need one (#121)
+    // and never touch payments / paidAt (only bookkeeping appends to them).
     function billUpdateAs(usersCol, base, docId, role, changed) {
       // Ternaries keep the expensive checks off the paths that don't need them.
       return resource.data.get('voided', false) == true ? false
@@ -359,7 +367,7 @@ service cloud.firestore {
         : changed.hasAny(['editCount']) && !editCountOk(usersCol, base, docId) ? false
         : role == 'owner' ? true
         : changed.hasAny(['userId']) ? false
-        : canFullyEditBill(usersCol, role)
+        : canFullyEditBill(usersCol, role) && !changed.hasAny(['payments', 'paidAt'])
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount'])) ? changedMoneyOk(changed)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;

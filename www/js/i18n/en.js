@@ -2252,5 +2252,6 @@ export default {
     'ui.edits.reason_explain': "The change and the reason are kept with the bill.",
     'ui.edits.reason_label': "Reason (required)",
     'msg.edits.reason_required': "Write a reason (at least 3 letters).",
-    'ui.diag.a_void_bill': "Void Bill"
+    'ui.diag.a_void_bill': "Void Bill",
+    'ui.edits.retry_reason': "Changed before the first save was confirmed"
 };

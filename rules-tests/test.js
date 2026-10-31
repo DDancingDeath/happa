@@ -98,7 +98,17 @@ function defineSuite(prefix) {
     const fresh = () => ({ createdAt: savedAgo(HOUR) });
 
     // A full edit as the app writes it (#121): the bill change with editCount n and its
-    // edit record edits/{n} in one batch (firestore-service.js updateBillChecked).
+    // edit record edits/{n} in one batch (firestore-service.js updateBillChecked). The record
+    // names the logged fields the change touches (validEditCreate checks it).
+    const LOGGED = ['items', 'customerName', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal',
+        'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount'];
+    const recFor = (fields) => {
+        const keys = [...new Set(Object.keys(fields).map(k => k.split('.')[0]))].filter(k => LOGGED.includes(k));
+        return {
+            fields: Object.fromEntries(keys.filter(k => k !== 'items').map(k => [k, { before: null, after: null }])),
+            itemsChanged: keys.includes('items')
+        };
+    };
     const editRec = (uid, n, over = {}) => ({ n, at: serverTimestamp(), by: uid, byName: 'S', reason: 'Wrong rate',
         fields: { total: { before: 5, after: 6 } }, lines: [], itemsChanged: false, ...over });
     const logged = (uid, coll, id, n, fields, { set = false, rec = {}, recId = String(n) } = {}) => {
@@ -107,7 +117,7 @@ function defineSuite(prefix) {
         const b = db.batch();
         if (set) b.set(ref, { ...fields, editCount: n });
         else b.update(ref, { ...fields, editCount: n });
-        b.set(ref.collection('edits').doc(recId), editRec(uid, n, rec));
+        b.set(ref.collection('edits').doc(recId), editRec(uid, n, { ...recFor(fields), ...rec }));
         return b.commit();
     };
     // A void as the app writes it (#75: firestore-service.js voidBillDoc).
@@ -183,10 +193,23 @@ function defineSuite(prefix) {
     t('void: refused while payments recorded after the save exist, for the owner too (their cash legs stay)', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'paid', { userId: 'staff1', total: 100, payment: { cash: 40, online: 0, due: 60 },
-                payments: [{ id: 'p1', amount: 40, cash: 40, online: 0, at: Date.now() }], ...fresh() });
+                payments: [{ id: 'p1', amount: 40, cash: 40, online: 0, at: Date.now() }], paidAt: Date.now(), ...fresh() });
             await assertFails(as('staff1').collection(coll).doc('paid').update(voidFields('staff1')));
             await assertFails(as('legacyOwner').collection(coll).doc('paid').update(voidFields('legacyOwner')));
+            // nor can the creator empty payments[] first (a full edit never touches payments / paidAt)
+            await assertFails(as('staff1').collection(coll).doc('paid').update({ payments: [], paidAt: FieldValue.delete() }));
+            await assertFails(as('manager1').collection(coll).doc('paid').update({ payments: [] }));
         }
+    });
+
+    t('void with the clientVersion gate on: the void carries clientVersion, so old-app bills can be voided too', async () => {
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app').set({ enforceClientVersion: true }, { merge: true }));
+        await seedBill(purchases, 'oldApp', { total: 5 });
+        await seedBill(purchases, 'mine', { userId: 'staff1', total: 5, ...fresh() });
+        await assertFails(as('legacyOwner').collection(purchases).doc('oldApp').update(voidFields('legacyOwner')));
+        await assertFails(as('legacyOwner').collection(purchases).doc('oldApp').update(voidFields('legacyOwner', { clientVersion: 2 })));
+        await assertSucceeds(as('legacyOwner').collection(purchases).doc('oldApp').update(voidFields('legacyOwner', { clientVersion: 3 })));
+        await assertSucceeds(as('staff1').collection(purchases).doc('mine').update(voidFields('staff1', { clientVersion: 3 })));
     });
 
     t('a voided bill never changes again: no un-void, edit, payment or second void, the owner included; only the owner deletes it', async () => {
@@ -230,6 +253,10 @@ function defineSuite(prefix) {
             await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { n: 2 } }));
             await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { recId: '7' }));
             await assertFails(logged('staff1', coll, 'e', 2, { total: 6 }));
+            // the record names what changed: no hiding a field or an item change
+            await assertFails(logged('staff1', coll, 'e', 1, { total: 6, customerName: 'X' }, { rec: { fields: { total: { before: 5, after: 6 } } } }));
+            await assertFails(logged('staff1', coll, 'e', 1, { items: [{ name: 'y', qty: 1 }] }, { rec: { itemsChanged: false } }));
+            await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { itemsChanged: true } }));
             await assertSucceeds(logged('staff1', coll, 'e', 1, { total: 6 }));
             await assertSucceeds(logged('manager1', coll, 'e', 2, { total: 7 }));
             await assertSucceeds(logged('legacyOwner', coll, 'e', 3, { total: 8 }));

@@ -249,10 +249,18 @@ transaction (`updateBillChecked`). The bill details show "Edited 2× · View cha
 read only when tapped (one read each), never with the bill lists.
 
 - Rules (`validEditCreate`, `editCountOk`): created only with the bill update that raises
-  `editCount` to its number (`getAfter` on the bill), by the caller at the server time with a reason;
-  never updated; deleted only by the owner once the bill is gone. A non-owner change to a logged
-  field (`editLoggedFields()`) without its record is refused, so every such edit has one; the owner's
-  repairs may skip it. Approved users read them (same as bills).
+  `editCount` to its number (`getAfter` on the bill), by the caller at the server time with a reason,
+  naming every logged field that write changed (`fields` keys, and `itemsChanged` exactly when the
+  items changed); never updated; deleted only by the owner once the bill is gone. A non-owner change
+  to a logged field (`editLoggedFields()`) without its record is refused, so every such edit has one;
+  the owner's repairs may skip it. A full edit never touches `payments` / `paidAt` (those change only
+  as bookkeeping, one appended entry at a time), so nobody can empty `payments[]` to get round the
+  void check. Approved users read the records (same as bills). `by` is the verified editor;
+  `byName` is the display name the phone sends, like a bill's `createdByName`.
+- A retried new bill whose first, unconfirmed save already reached the server and that was changed
+  since is recorded as an edit too, with the reason "Changed before the first save was confirmed".
+- A void also writes `clientVersion` (bills are stock records: with the clientVersion gate on, every
+  write needs it), so old-app bills can be voided too.
 - Size: one small document per edit (only changed fields, at most 200 lines), so the bill itself
   never grows; edits are rare.
 - Backups include them (`SUBCOLLECTIONS`: `purchases/edits`, `retailSales/edits`,
