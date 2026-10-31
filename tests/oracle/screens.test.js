@@ -23,6 +23,7 @@ import { FirebaseService } from '../../www/js/firebase/firestore-service.js';
 import { AppState } from '../../www/js/utils/state.js';
 import { sessionTotals } from '../../www/js/utils/cash-session.js';
 import { todaySummary } from '../../www/js/utils/calc/today.js';
+import { drawerDay, expectedCash, savedDifference } from '../../www/js/utils/calc/cash.js';
 import { itemValue, stockValue } from '../../www/js/utils/calc/stock.js';
 import { StockManager } from '../../www/js/modules/stock.js';
 import { InsightsManager } from '../../www/js/modules/insights.js';
@@ -378,6 +379,17 @@ describe('Cash drawer == oracle', () => {
         CashManagementManager.todayTransactions = tx;
         expect(CashManagementManager.calculateExpectedCash()).toBe(want.C7_expected);
     });
+    test('calc/cash drawerDay() alone == oracle C1–C7, C8 = counted − C7', () => {
+        const day = drawerDay({
+            date: FIX.session.date,
+            bills: { wholesale: copy(FIX.wholesaleSales), retail: copy(FIX.retailSales), purchase: copy(FIX.purchases) },
+            expenses: copy(FIX.expenses),
+            session: copy(FIX.session)
+        });
+        Object.entries(MAP).forEach(([id, field]) => expect([id, day[field]]).toEqual([id, want[id]]));
+        expect(expectedCash(FIX.session, day)).toBe(want.C7_expected);
+        expect(savedDifference(want.C7_expected - 12.5, want.C7_expected)).toBe(-12.5);
+    });
 });
 
 // ------------------------------------------------- a role that can't read personal expenses (#98)
@@ -402,6 +414,15 @@ describe('Cash drawer and Today without the personal expense rows (#98) == oracl
         expect(tx.personalExpenses).toBe(want.C3_personalExpenses);
         expect(tx.businessExpenses).toBe(want.C3_businessExpenses);
         expect(sessionTotals(FIX.session, tx).expected).toBe(want.C7_expected);
+        const day = drawerDay({
+            date: FIX.session.date,
+            bills: { wholesale: FIX.wholesaleSales, retail: FIX.retailSales, purchase: FIX.purchases },
+            expenses: copy(FIX.expenses).filter(e => !isPersonalExpense(e)),
+            session: copy(FIX.session),
+            personalReadable: false,
+            personalDay: days[FIX.session.date]
+        });
+        expect(day).toEqual(tx);
     });
 
     test('T5 personal expenses and T11 total out on Today', () => {

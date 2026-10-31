@@ -1,0 +1,1046 @@
+{
+  "busy": {
+    "drawers": [
+      {
+        "id": "cash_2026-10-21",
+        "tx": {
+          "cashSales": 2570.85,
+          "cashPurchases": 1800.5,
+          "businessExpenses": 250.5,
+          "personalExpenses": 105,
+          "dueReceived": 820,
+          "duePaid": 450.25,
+          "cashDeposits": 620.5
+        }
+      },
+      {
+        "id": "cash_2026-10-20",
+        "tx": {
+          "cashSales": 400,
+          "cashPurchases": 0,
+          "businessExpenses": 999,
+          "personalExpenses": 0,
+          "dueReceived": 0,
+          "duePaid": 0,
+          "cashDeposits": 0
+        }
+      }
+    ],
+    "drawerNoSession": {
+      "cashSales": 2570.85,
+      "cashPurchases": 1800.5,
+      "businessExpenses": 250.5,
+      "personalExpenses": 105,
+      "dueReceived": 500,
+      "duePaid": 350,
+      "cashDeposits": 0
+    },
+    "liveSession": "cash_2026-10-21",
+    "expected": 3405.2,
+    "screen": {
+      "text": {
+        "statusOpeningBalance": "₹2000.1",
+        "statusCashIn": "₹6011.45",
+        "statusCashOut": "₹2606.25",
+        "statusAvailable": "₹3405.2",
+        "statusCashAdded": "₹0",
+        "statusBuy": "₹0",
+        "statusSale": "₹0",
+        "statusOthers": "₹0",
+        "statusExpected": "₹0",
+        "statusActual": "-",
+        "statusDiff": "-",
+        "openingBalanceTotal": "₹2000.1",
+        "cashSalesTotal": "₹2570.85",
+        "cashPurchasesTotal": "₹1800.5",
+        "cashBusinessExpensesTotal": "₹250.5",
+        "cashPersonalExpensesTotal": "₹105",
+        "dueReceivedTotal": "₹820",
+        "duePaidTotal": "₹450.25",
+        "cashDepositsTotal": "₹620.5",
+        "totalCashIn": "₹6011.45",
+        "totalCashOut": "₹2606.25",
+        "expectedCashAmount": "₹3405.2"
+      },
+      "shown": {
+        "statusOpeningCard": "block",
+        "statusCashInCard": "block",
+        "statusCashOutCard": "block",
+        "statusAvailableCard": "block",
+        "statusCashAddedCard": "none",
+        "statusBuyCard": "none",
+        "statusSaleCard": "none",
+        "statusOthersCard": "none",
+        "statusExpectedCard": "none",
+        "statusActualCard": "none",
+        "statusDiffCard": "none",
+        "cashSignInSection": "none",
+        "cashSignOutSection": "block",
+        "cashDepositSection": "block"
+      },
+      "diffColor": "",
+      "signInAmount": "",
+      "signInHint": ""
+    },
+    "checks": [
+      {
+        "counted": 3405.2,
+        "text": "✓ Cash matches expected amount!",
+        "display": "block",
+        "background": "rgb(209, 244, 224)",
+        "color": "rgb(15, 81, 50)"
+      },
+      {
+        "counted": 3405.7,
+        "text": "✓ Cash matches expected amount!",
+        "display": "block",
+        "background": "rgb(209, 244, 224)",
+        "color": "rgb(15, 81, 50)"
+      },
+      {
+        "counted": 3404.21,
+        "text": "✓ Cash matches expected amount!",
+        "display": "block",
+        "background": "rgb(209, 244, 224)",
+        "color": "rgb(15, 81, 50)"
+      },
+      {
+        "counted": 3406.2,
+        "text": "⚠ Extra ₹1.00 - Please verify",
+        "display": "block",
+        "background": "rgb(255, 243, 205)",
+        "color": "rgb(153, 116, 4)"
+      },
+      {
+        "counted": 3406.21,
+        "text": "⚠ Extra ₹1.01 - Please verify",
+        "display": "block",
+        "background": "rgb(255, 243, 205)",
+        "color": "rgb(153, 116, 4)"
+      },
+      {
+        "counted": 3403.7,
+        "text": "⚠ Short ₹1.50 - Please verify",
+        "display": "block",
+        "background": "rgb(248, 215, 218)",
+        "color": "rgb(132, 32, 41)"
+      },
+      {
+        "counted": 3480.45,
+        "text": "⚠ Extra ₹75.25 - Please verify",
+        "display": "block",
+        "background": "rgb(255, 243, 205)",
+        "color": "rgb(153, 116, 4)"
+      },
+      {
+        "counted": 3345.2,
+        "text": "⚠ Short ₹60.00 - Please verify",
+        "display": "block",
+        "background": "rgb(248, 215, 218)",
+        "color": "rgb(132, 32, 41)"
+      },
+      {
+        "counted": 2605.2,
+        "text": "⚠ Short ₹800.00 - Please verify\n⚠ Cash is ₹800 short — big difference, count again",
+        "display": "block",
+        "background": "rgb(248, 215, 218)",
+        "color": "rgb(132, 32, 41)"
+      },
+      {
+        "counted": 5905.2,
+        "text": "⚠ Extra ₹2500.00 - Please verify\n⚠ Cash is ₹2,500 extra — big difference, count again",
+        "display": "block",
+        "background": "rgb(255, 243, 205)",
+        "color": "rgb(153, 116, 4)"
+      },
+      {
+        "counted": 0,
+        "text": "⚠ Short ₹3405.20 - Please verify\n⚠ Cash is ₹3,405.2 short — big difference, count again",
+        "display": "block",
+        "background": "rgb(248, 215, 218)",
+        "color": "rgb(132, 32, 41)"
+      }
+    ],
+    "history": "\n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-21')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Wed, 21 Oct</strong>\n                        <span style=\"color: #22c55e; font-weight: 600;\">● Active</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹2000.1</strong></div>\n                        <div>In Progress...</div>\n                    </div>\n                    \n                        <div style=\"margin-top: 8px; font-size: 13px; color: #6c757d;\">\n                            6 due payments recorded\n                        </div>\n                    \n                </div>\n            \n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-20')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Tue, 20 Oct</strong>\n                        <span style=\"color: #6c757d;\">✓ Closed</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹1500</strong></div>\n                        \n                            <div>Closing: <strong>₹2101</strong></div>\n                            \n                            <div>Expected: <strong>₹2100</strong></div>\n                            <div>Diff: <strong style=\"color: #22c55e;\">+₹1.00</strong></div>\n                            \n                    </div>\n                    \n                </div>\n            ",
+    "details": {
+      "2026-10-21": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Opening Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Opening Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹2000.1</div>\n                    </div>\n                    \n                    <!-- Cash In -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Cash In</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹4011.35</div>\n                    </div>\n                    \n                    <!-- Cash Out -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Cash Out</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹2606.25</div>\n                    </div>\n                    \n                    <!-- Expected Cash -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Cash</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹3405.2</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹2000.1</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹620.5</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹2570.85</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹820</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹6011.45</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹1800.5</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹450.25</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹250.5</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹105</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹2606.25</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n                    <div style=\"background: #f0fdf4; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #86efac;\">\n                        <h3 style=\"margin: 0 0 8px 0; font-size: 13px; color: #166534;\">💵 Cash Deposits (2)</h3>\n                        <div style=\"display: grid; gap: 6px;\">\n                            \n                                <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #10b981;\">\n                                    <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                        <strong style=\"color: #333; font-size: 12px;\">From bank</strong>\n                                        <strong style=\"color: #10b981; font-size: 13px;\">₹500</strong>\n                                    </div>\n                                    <div style=\"color: #6c757d; font-size: 10px;\">\n                                        Added by Owner\n                                    </div>\n                                </div>\n                            \n                                <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #10b981;\">\n                                    <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                        <strong style=\"color: #333; font-size: 12px;\">Cash Added</strong>\n                                        <strong style=\"color: #10b981; font-size: 13px;\">₹120.5</strong>\n                                    </div>\n                                    <div style=\"color: #6c757d; font-size: 10px;\">\n                                        Added by Manager\n                                    </div>\n                                </div>\n                            \n                        </div>\n                    </div>\n                \n\n                \n                    <div style=\"background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 12px;\">\n                        <h3 style=\"margin: 0 0 8px 0; font-size: 13px; color: #495057;\">💰 Due Payments (6)</h3>\n                        <div style=\"display: grid; gap: 6px;\">\n                            \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #3b82f6;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Received from Suresh</strong>\n                                            <strong style=\"color: #3b82f6; font-size: 13px;\">+₹</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                             • No notes\n                                        </div>\n                                    </div>\n                                \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #3b82f6;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Received from Walk-in</strong>\n                                            <strong style=\"color: #3b82f6; font-size: 13px;\">+₹250</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                            cash • old dues\n                                        </div>\n                                    </div>\n                                \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #ef4444;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Paid to Mandi</strong>\n                                            <strong style=\"color: #ef4444; font-size: 13px;\">-₹100.25</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                            cash • No notes\n                                        </div>\n                                    </div>\n                                \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #3b82f6;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Received from Online Ltd</strong>\n                                            <strong style=\"color: #3b82f6; font-size: 13px;\">+₹500</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                            online • No notes\n                                        </div>\n                                    </div>\n                                \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #3b82f6;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Received from Legacy</strong>\n                                            <strong style=\"color: #3b82f6; font-size: 13px;\">+₹70</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                            cash • No notes\n                                        </div>\n                                    </div>\n                                \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #3b82f6;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Received from Yesterday</strong>\n                                            <strong style=\"color: #3b82f6; font-size: 13px;\">+₹</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                             • No notes\n                                        </div>\n                                    </div>\n                                \n                        </div>\n                    </div>\n                \n\n                \n                <!-- Notes -->\n                <div style=\"background: #fffbeb; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;\">\n                    <h4 style=\"margin: 0 0 8px 0; font-size: 13px; color: #92400e;\">📝 Notes</h4>\n                    <div style=\"font-size: 12px; color: #78350f; margin-bottom: 6px;\"><strong>Opened:</strong> Counted twice</div>\n                    \n                </div>\n                \n            </div>\n        ",
+      "2026-10-20": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Expenses & Others -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expenses &amp; Others</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹999</div>\n                    </div>\n                    \n                    <!-- Expected Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹2100</div>\n                    </div>\n                    \n                    <!-- Actual Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Actual Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹2101</div>\n                    </div>\n                    \n                    <!-- Difference -->\n                    <div style=\"background: rgba(34, 197, 94, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #22c55e; margin-bottom: 4px; font-weight: 600;\">Difference</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #22c55e;\">+₹1.00</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹1500</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹600</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹999</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹3099</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹999</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹999</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n\n                \n\n                \n            </div>\n        "
+    },
+    "close": {
+      "writes": [
+        {
+          "id": "cash_2026-10-21",
+          "fields": {
+            "closingBalance": 3345.2,
+            "expectedBalance": 3405.2,
+            "difference": -60,
+            "signOutTime": "2026-10-21T13:00:00.000Z",
+            "signedOut": true,
+            "counted": true,
+            "closedBy": "u1",
+            "transactions": {
+              "cashSales": 2570.85,
+              "cashPurchases": 1800.5,
+              "businessExpenses": 250.5,
+              "personalExpenses": 105,
+              "dueReceived": 820,
+              "duePaid": 450.25,
+              "cashDeposits": 620.5
+            },
+            "closingNotes": "Short, checked",
+            "flags": [
+              {
+                "rule": "cash-mismatch",
+                "en": "Cash is ₹60 short",
+                "hi": "नकद ₹60 कम है",
+                "by": "u1",
+                "at": 1792587600000
+              }
+            ]
+          }
+        }
+      ],
+      "modals": [
+        {
+          "message": "You are SHORT by ₹60.00.\n\nExpected: ₹3405.2\nActual: ₹3345.2\n\nClose cash anyway?",
+          "title": "Close cash for today?"
+        }
+      ],
+      "toasts": [
+        "✓ Cash closed"
+      ],
+      "screen": {
+        "text": {
+          "statusOpeningBalance": "₹2000.1",
+          "statusCashIn": "₹6011.45",
+          "statusCashOut": "₹2606.25",
+          "statusAvailable": "₹3405.2",
+          "statusCashAdded": "₹620.5",
+          "statusBuy": "₹1800.5",
+          "statusSale": "₹2570.85",
+          "statusOthers": "₹805.75",
+          "statusExpected": "₹3405.2",
+          "statusActual": "₹3345.2",
+          "statusDiff": "₹-60.00",
+          "openingBalanceTotal": "₹2000.1",
+          "cashSalesTotal": "₹2570.85",
+          "cashPurchasesTotal": "₹1800.5",
+          "cashBusinessExpensesTotal": "₹250.5",
+          "cashPersonalExpensesTotal": "₹105",
+          "dueReceivedTotal": "₹820",
+          "duePaidTotal": "₹450.25",
+          "cashDepositsTotal": "₹620.5",
+          "totalCashIn": "₹6011.45",
+          "totalCashOut": "₹2606.25",
+          "expectedCashAmount": "₹3405.2"
+        },
+        "shown": {
+          "statusOpeningCard": "block",
+          "statusCashInCard": "none",
+          "statusCashOutCard": "none",
+          "statusAvailableCard": "none",
+          "statusCashAddedCard": "block",
+          "statusBuyCard": "block",
+          "statusSaleCard": "block",
+          "statusOthersCard": "block",
+          "statusExpectedCard": "block",
+          "statusActualCard": "block",
+          "statusDiffCard": "block",
+          "cashSignInSection": "none",
+          "cashSignOutSection": "none",
+          "cashDepositSection": "none"
+        },
+        "diffColor": "rgb(245, 158, 11)",
+        "signInAmount": "",
+        "signInHint": ""
+      }
+    },
+    "noBill": {
+      "writes": [
+        {
+          "id": "cash_2026-10-21",
+          "fields": {
+            "duePayments": {
+              "arrayUnion": [
+                {
+                  "id": "gen-1",
+                  "type": "received",
+                  "customer": "Walk-in 2",
+                  "amount": 175.5,
+                  "method": "cash",
+                  "cash": 175.5,
+                  "online": 0,
+                  "unlinked": true,
+                  "notes": "cash on account",
+                  "timestamp": "2026-10-21T13:00:00.000Z",
+                  "recordedBy": "Owner"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "toasts": [
+        "✓ Recorded ₹175.5 received from Walk-in 2"
+      ],
+      "tx": {
+        "cashSales": 2570.85,
+        "cashPurchases": 1800.5,
+        "businessExpenses": 250.5,
+        "personalExpenses": 105,
+        "dueReceived": 995.5,
+        "duePaid": 450.25,
+        "cashDeposits": 620.5
+      },
+      "screen": {
+        "text": {
+          "statusOpeningBalance": "₹2000.1",
+          "statusCashIn": "₹6186.95",
+          "statusCashOut": "₹2606.25",
+          "statusAvailable": "₹3580.7",
+          "statusCashAdded": "₹0",
+          "statusBuy": "₹0",
+          "statusSale": "₹0",
+          "statusOthers": "₹0",
+          "statusExpected": "₹0",
+          "statusActual": "-",
+          "statusDiff": "-",
+          "openingBalanceTotal": "₹2000.1",
+          "cashSalesTotal": "₹2570.85",
+          "cashPurchasesTotal": "₹1800.5",
+          "cashBusinessExpensesTotal": "₹250.5",
+          "cashPersonalExpensesTotal": "₹105",
+          "dueReceivedTotal": "₹995.5",
+          "duePaidTotal": "₹450.25",
+          "cashDepositsTotal": "₹620.5",
+          "totalCashIn": "₹6186.95",
+          "totalCashOut": "₹2606.25",
+          "expectedCashAmount": "₹3580.7"
+        },
+        "shown": {
+          "statusOpeningCard": "block",
+          "statusCashInCard": "block",
+          "statusCashOutCard": "block",
+          "statusAvailableCard": "block",
+          "statusCashAddedCard": "none",
+          "statusBuyCard": "none",
+          "statusSaleCard": "none",
+          "statusOthersCard": "none",
+          "statusExpectedCard": "none",
+          "statusActualCard": "none",
+          "statusDiffCard": "none",
+          "cashSignInSection": "none",
+          "cashSignOutSection": "block",
+          "cashDepositSection": "block"
+        },
+        "diffColor": "",
+        "signInAmount": "",
+        "signInHint": ""
+      }
+    },
+    "noBillPaid": {
+      "writes": [
+        {
+          "id": "cash_2026-10-21",
+          "fields": {
+            "duePayments": {
+              "arrayUnion": [
+                {
+                  "id": "gen-2",
+                  "type": "paid",
+                  "customer": "Mandi 2",
+                  "amount": 42.25,
+                  "method": "cash",
+                  "cash": 42.25,
+                  "online": 0,
+                  "unlinked": true,
+                  "notes": "",
+                  "timestamp": "2026-10-21T13:00:00.000Z",
+                  "recordedBy": "Owner"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "toasts": [
+        "✓ Recorded ₹42.25 paid to Mandi 2"
+      ],
+      "tx": {
+        "cashSales": 2570.85,
+        "cashPurchases": 1800.5,
+        "businessExpenses": 250.5,
+        "personalExpenses": 105,
+        "dueReceived": 820,
+        "duePaid": 492.5,
+        "cashDeposits": 620.5
+      },
+      "screen": {
+        "text": {
+          "statusOpeningBalance": "₹2000.1",
+          "statusCashIn": "₹6011.45",
+          "statusCashOut": "₹2648.5",
+          "statusAvailable": "₹3362.95",
+          "statusCashAdded": "₹0",
+          "statusBuy": "₹0",
+          "statusSale": "₹0",
+          "statusOthers": "₹0",
+          "statusExpected": "₹0",
+          "statusActual": "-",
+          "statusDiff": "-",
+          "openingBalanceTotal": "₹2000.1",
+          "cashSalesTotal": "₹2570.85",
+          "cashPurchasesTotal": "₹1800.5",
+          "cashBusinessExpensesTotal": "₹250.5",
+          "cashPersonalExpensesTotal": "₹105",
+          "dueReceivedTotal": "₹820",
+          "duePaidTotal": "₹492.5",
+          "cashDepositsTotal": "₹620.5",
+          "totalCashIn": "₹6011.45",
+          "totalCashOut": "₹2648.5",
+          "expectedCashAmount": "₹3362.95"
+        },
+        "shown": {
+          "statusOpeningCard": "block",
+          "statusCashInCard": "block",
+          "statusCashOutCard": "block",
+          "statusAvailableCard": "block",
+          "statusCashAddedCard": "none",
+          "statusBuyCard": "none",
+          "statusSaleCard": "none",
+          "statusOthersCard": "none",
+          "statusExpectedCard": "none",
+          "statusActualCard": "none",
+          "statusDiffCard": "none",
+          "cashSignInSection": "none",
+          "cashSignOutSection": "block",
+          "cashDepositSection": "block"
+        },
+        "diffColor": "",
+        "signInAmount": "",
+        "signInHint": ""
+      }
+    },
+    "deposit": {
+      "writes": [
+        {
+          "id": "cash_2026-10-21",
+          "fields": {
+            "cashDeposits": {
+              "arrayUnion": [
+                {
+                  "id": "gen-3",
+                  "amount": 300,
+                  "reason": "Change",
+                  "timestamp": "2026-10-21T13:00:00.000Z",
+                  "addedBy": "Owner"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "toasts": [
+        "✓ Added ₹300 to cash drawer"
+      ],
+      "tx": {
+        "cashSales": 2570.85,
+        "cashPurchases": 1800.5,
+        "businessExpenses": 250.5,
+        "personalExpenses": 105,
+        "dueReceived": 820,
+        "duePaid": 450.25,
+        "cashDeposits": 920.5
+      },
+      "screen": {
+        "text": {
+          "statusOpeningBalance": "₹2000.1",
+          "statusCashIn": "₹6311.45",
+          "statusCashOut": "₹2606.25",
+          "statusAvailable": "₹3705.2",
+          "statusCashAdded": "₹0",
+          "statusBuy": "₹0",
+          "statusSale": "₹0",
+          "statusOthers": "₹0",
+          "statusExpected": "₹0",
+          "statusActual": "-",
+          "statusDiff": "-",
+          "openingBalanceTotal": "₹2000.1",
+          "cashSalesTotal": "₹2570.85",
+          "cashPurchasesTotal": "₹1800.5",
+          "cashBusinessExpensesTotal": "₹250.5",
+          "cashPersonalExpensesTotal": "₹105",
+          "dueReceivedTotal": "₹820",
+          "duePaidTotal": "₹450.25",
+          "cashDepositsTotal": "₹920.5",
+          "totalCashIn": "₹6311.45",
+          "totalCashOut": "₹2606.25",
+          "expectedCashAmount": "₹3705.2"
+        },
+        "shown": {
+          "statusOpeningCard": "block",
+          "statusCashInCard": "block",
+          "statusCashOutCard": "block",
+          "statusAvailableCard": "block",
+          "statusCashAddedCard": "none",
+          "statusBuyCard": "none",
+          "statusSaleCard": "none",
+          "statusOthersCard": "none",
+          "statusExpectedCard": "none",
+          "statusActualCard": "none",
+          "statusDiffCard": "none",
+          "cashSignInSection": "none",
+          "cashSignOutSection": "block",
+          "cashDepositSection": "block"
+        },
+        "diffColor": "",
+        "signInAmount": "",
+        "signInHint": ""
+      }
+    }
+  },
+  "twoSessions": {
+    "drawers": [
+      {
+        "id": "legacy-22b",
+        "tx": {
+          "cashSales": 1000,
+          "cashPurchases": 400,
+          "businessExpenses": 35,
+          "personalExpenses": 0,
+          "dueReceived": 0,
+          "duePaid": 50,
+          "cashDeposits": 40
+        }
+      },
+      {
+        "id": "cash_2026-10-22",
+        "tx": {
+          "cashSales": 1000,
+          "cashPurchases": 400,
+          "businessExpenses": 35,
+          "personalExpenses": 0,
+          "dueReceived": 200,
+          "duePaid": 0,
+          "cashDeposits": 100
+        }
+      }
+    ],
+    "drawerNoSession": {
+      "cashSales": 1000,
+      "cashPurchases": 400,
+      "businessExpenses": 35,
+      "personalExpenses": 0,
+      "dueReceived": 0,
+      "duePaid": 0,
+      "cashDeposits": 0
+    },
+    "liveSession": "cash_2026-10-22",
+    "expected": 1365,
+    "screen": {
+      "text": {
+        "statusOpeningBalance": "₹500",
+        "statusCashIn": "₹1800",
+        "statusCashOut": "₹435",
+        "statusAvailable": "₹1365",
+        "statusCashAdded": "₹0",
+        "statusBuy": "₹0",
+        "statusSale": "₹0",
+        "statusOthers": "₹0",
+        "statusExpected": "₹0",
+        "statusActual": "-",
+        "statusDiff": "-",
+        "openingBalanceTotal": "₹500",
+        "cashSalesTotal": "₹1000",
+        "cashPurchasesTotal": "₹400",
+        "cashBusinessExpensesTotal": "₹35",
+        "cashPersonalExpensesTotal": "₹0",
+        "dueReceivedTotal": "₹200",
+        "duePaidTotal": "₹0",
+        "cashDepositsTotal": "₹100",
+        "totalCashIn": "₹1800",
+        "totalCashOut": "₹435",
+        "expectedCashAmount": "₹1365"
+      },
+      "shown": {
+        "statusOpeningCard": "block",
+        "statusCashInCard": "block",
+        "statusCashOutCard": "block",
+        "statusAvailableCard": "block",
+        "statusCashAddedCard": "none",
+        "statusBuyCard": "none",
+        "statusSaleCard": "none",
+        "statusOthersCard": "none",
+        "statusExpectedCard": "none",
+        "statusActualCard": "none",
+        "statusDiffCard": "none",
+        "cashSignInSection": "none",
+        "cashSignOutSection": "block",
+        "cashDepositSection": "block"
+      },
+      "diffColor": "",
+      "signInAmount": "",
+      "signInHint": ""
+    },
+    "checks": [
+      {
+        "counted": 1365,
+        "text": "✓ Cash matches expected amount!",
+        "display": "block",
+        "background": "rgb(209, 244, 224)",
+        "color": "rgb(15, 81, 50)"
+      },
+      {
+        "counted": 1375,
+        "text": "⚠ Extra ₹10.00 - Please verify",
+        "display": "block",
+        "background": "rgb(255, 243, 205)",
+        "color": "rgb(153, 116, 4)"
+      },
+      {
+        "counted": 1355,
+        "text": "⚠ Short ₹10.00 - Please verify",
+        "display": "block",
+        "background": "rgb(248, 215, 218)",
+        "color": "rgb(132, 32, 41)"
+      }
+    ],
+    "history": "\n            <div style=\"background: #fef2f2; border: 1px solid #fca5a5; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #991b1b;\">\n                <strong>⚠ 1 day has more than one cash session. Check it:</strong>\n                <div style=\"margin-top: 4px;\">Thu, 22 Oct</div>\n            </div>\n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-22')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Thu, 22 Oct</strong>\n                        <span style=\"color: #22c55e; font-weight: 600;\">● Active</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹800</strong></div>\n                        <div>In Progress...</div>\n                    </div>\n                    \n                        <div style=\"margin-top: 8px; font-size: 13px; color: #6c757d;\">\n                            1 due payment recorded\n                        </div>\n                    \n                </div>\n            \n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-22')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Thu, 22 Oct</strong>\n                        <span style=\"color: #22c55e; font-weight: 600;\">● Active</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹500</strong></div>\n                        <div>In Progress...</div>\n                    </div>\n                    \n                        <div style=\"margin-top: 8px; font-size: 13px; color: #6c757d;\">\n                            1 due payment recorded\n                        </div>\n                    \n                </div>\n            ",
+    "details": {
+      "2026-10-22": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Opening Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Opening Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹500</div>\n                    </div>\n                    \n                    <!-- Cash In -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Cash In</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1300</div>\n                    </div>\n                    \n                    <!-- Cash Out -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Cash Out</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹435</div>\n                    </div>\n                    \n                    <!-- Expected Cash -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Cash</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1365</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹500</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹100</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹1000</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹200</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹1800</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹400</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹35</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹435</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n                    <div style=\"background: #f0fdf4; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #86efac;\">\n                        <h3 style=\"margin: 0 0 8px 0; font-size: 13px; color: #166534;\">💵 Cash Deposits (1)</h3>\n                        <div style=\"display: grid; gap: 6px;\">\n                            \n                                <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #10b981;\">\n                                    <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                        <strong style=\"color: #333; font-size: 12px;\">A</strong>\n                                        <strong style=\"color: #10b981; font-size: 13px;\">₹100</strong>\n                                    </div>\n                                    <div style=\"color: #6c757d; font-size: 10px;\">\n                                        Added by Owner\n                                    </div>\n                                </div>\n                            \n                        </div>\n                    </div>\n                \n\n                \n                    <div style=\"background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 12px;\">\n                        <h3 style=\"margin: 0 0 8px 0; font-size: 13px; color: #495057;\">💰 Due Payments (1)</h3>\n                        <div style=\"display: grid; gap: 6px;\">\n                            \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #3b82f6;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Received from Ramesh</strong>\n                                            <strong style=\"color: #3b82f6; font-size: 13px;\">+₹</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                             • No notes\n                                        </div>\n                                    </div>\n                                \n                        </div>\n                    </div>\n                \n\n                \n            </div>\n        "
+    }
+  },
+  "closedDay": {
+    "drawers": [
+      {
+        "id": "cash_2026-10-20",
+        "tx": {
+          "cashSales": 900,
+          "cashPurchases": 0,
+          "businessExpenses": 0,
+          "personalExpenses": 75.5,
+          "dueReceived": 0,
+          "duePaid": 0,
+          "cashDeposits": 100
+        }
+      },
+      {
+        "id": "cash_2026-10-19",
+        "tx": {
+          "cashSales": 300.3,
+          "cashPurchases": 0,
+          "businessExpenses": 0,
+          "personalExpenses": 0,
+          "dueReceived": 0,
+          "duePaid": 0,
+          "cashDeposits": 0
+        }
+      },
+      {
+        "id": "cash_2026-10-18",
+        "tx": {
+          "cashSales": 0,
+          "cashPurchases": 0,
+          "businessExpenses": 0,
+          "personalExpenses": 0,
+          "dueReceived": 0,
+          "duePaid": 0,
+          "cashDeposits": 0
+        }
+      },
+      {
+        "id": "cash_2026-10-17",
+        "tx": {
+          "cashSales": 0,
+          "cashPurchases": 0,
+          "businessExpenses": 0,
+          "personalExpenses": 0,
+          "dueReceived": 0,
+          "duePaid": 0,
+          "cashDeposits": 0
+        }
+      }
+    ],
+    "drawerNoSession": {
+      "cashSales": 900,
+      "cashPurchases": 0,
+      "businessExpenses": 0,
+      "personalExpenses": 75.5,
+      "dueReceived": 0,
+      "duePaid": 0,
+      "cashDeposits": 0
+    },
+    "liveSession": "cash_2026-10-20",
+    "expected": 1924.5,
+    "screen": {
+      "text": {
+        "statusOpeningBalance": "₹1000",
+        "statusCashIn": "₹0",
+        "statusCashOut": "₹0",
+        "statusAvailable": "₹0",
+        "statusCashAdded": "₹100",
+        "statusBuy": "₹0",
+        "statusSale": "₹900",
+        "statusOthers": "₹75.5",
+        "statusExpected": "₹1924.5",
+        "statusActual": "₹1424.5",
+        "statusDiff": "₹-500.00",
+        "openingBalanceTotal": "₹0",
+        "cashSalesTotal": "₹0",
+        "cashPurchasesTotal": "₹0",
+        "cashBusinessExpensesTotal": "₹0",
+        "cashPersonalExpensesTotal": "₹0",
+        "dueReceivedTotal": "₹0",
+        "duePaidTotal": "₹0",
+        "cashDepositsTotal": "₹0",
+        "totalCashIn": "₹0",
+        "totalCashOut": "₹0",
+        "expectedCashAmount": "₹0"
+      },
+      "shown": {
+        "statusOpeningCard": "block",
+        "statusCashInCard": "none",
+        "statusCashOutCard": "none",
+        "statusAvailableCard": "none",
+        "statusCashAddedCard": "block",
+        "statusBuyCard": "block",
+        "statusSaleCard": "block",
+        "statusOthersCard": "block",
+        "statusExpectedCard": "block",
+        "statusActualCard": "block",
+        "statusDiffCard": "block",
+        "cashSignInSection": "none",
+        "cashSignOutSection": "none",
+        "cashDepositSection": "none"
+      },
+      "diffColor": "rgb(239, 68, 68)",
+      "signInAmount": "",
+      "signInHint": ""
+    },
+    "checks": [],
+    "history": "\n            <div style=\"background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #9a3412;\">\n                <strong>⚠ 1 day closed without a cash count</strong>\n                <div style=\"margin-top: 4px;\">Tap a day to record the real count: <a href=\"#\" onclick=\"window.app.cashManagement.showDetails('2026-10-19'); return false;\" style=\"color: #9a3412; font-weight: 600;\">Mon, 19 Oct</a></div>\n            </div>\n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-20')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Tue, 20 Oct</strong>\n                        <span style=\"color: #6c757d;\">✓ Closed</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹1000</strong></div>\n                        \n                            <div>Closing: <strong>₹1424.5</strong></div>\n                            <div>Added: <strong style=\"color: #10b981;\">+₹100</strong></div>\n                            <div>Expected: <strong>₹1500</strong></div>\n                            <div>Diff: <strong style=\"color: #f59e0b;\">-₹75.50</strong></div>\n                            \n                    </div>\n                    \n                        <div style=\"margin-top: 8px; font-size: 13px; color: #6c757d;\">\n                            1 due payment recorded\n                        </div>\n                    \n                </div>\n            \n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-19')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Mon, 19 Oct</strong>\n                        <span style=\"color: #c2410c; font-weight: 600;\">⚠ Not counted</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹600</strong></div>\n                        \n                            <div>Closing: <strong style=\"color: #c2410c;\">Not counted</strong></div>\n                            <div>Expected: <strong>₹900.3</strong></div>\n                            \n                    </div>\n                    \n                </div>\n            \n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-18')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Sun, 18 Oct</strong>\n                        <span style=\"color: #6c757d;\">✓ Closed</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹400</strong></div>\n                        \n                            <div>Closing: <strong>₹1020</strong></div>\n                            \n                            <div>Expected: <strong>₹400</strong></div>\n                            <div>Diff: <strong style=\"color: #ef4444;\">+₹620.00</strong></div>\n                            \n                    </div>\n                    \n                </div>\n            \n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-17')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Sat, 17 Oct</strong>\n                        <span style=\"color: #6c757d;\">✓ Closed</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹380</strong></div>\n                        \n                            <div>Closing: <strong>₹399.5</strong></div>\n                            \n                            <div>Expected: <strong>₹380</strong></div>\n                            <div>Diff: <strong style=\"color: #22c55e;\">+₹19.50</strong></div>\n                            \n                    </div>\n                    \n                </div>\n            ",
+    "details": {
+      "2026-10-20": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Expenses & Others -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expenses &amp; Others</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹75.5</div>\n                    </div>\n                    \n                    <!-- Expected Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1500</div>\n                    </div>\n                    \n                    <!-- Actual Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Actual Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1424.5</div>\n                    </div>\n                    \n                    <!-- Difference -->\n                    <div style=\"background: rgba(245, 158, 11, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #f59e0b; margin-bottom: 4px; font-weight: 600;\">Difference</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #f59e0b;\">₹-75.50</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹1000</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹100</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹900</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹2000</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹75.5</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹75.5</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n                    <div style=\"background: #f0fdf4; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #86efac;\">\n                        <h3 style=\"margin: 0 0 8px 0; font-size: 13px; color: #166534;\">💵 Cash Deposits (1)</h3>\n                        <div style=\"display: grid; gap: 6px;\">\n                            \n                                <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #10b981;\">\n                                    <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                        <strong style=\"color: #333; font-size: 12px;\">Float</strong>\n                                        <strong style=\"color: #10b981; font-size: 13px;\">₹100</strong>\n                                    </div>\n                                    <div style=\"color: #6c757d; font-size: 10px;\">\n                                        Added by Owner\n                                    </div>\n                                </div>\n                            \n                        </div>\n                    </div>\n                \n\n                \n                    <div style=\"background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 12px;\">\n                        <h3 style=\"margin: 0 0 8px 0; font-size: 13px; color: #495057;\">💰 Due Payments (1)</h3>\n                        <div style=\"display: grid; gap: 6px;\">\n                            \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #ef4444;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Paid to Legacy &lt;b&gt;</strong>\n                                            <strong style=\"color: #ef4444; font-size: 13px;\">-₹0</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                            cash • No notes\n                                        </div>\n                                    </div>\n                                \n                        </div>\n                    </div>\n                \n\n                \n                <!-- Notes -->\n                <div style=\"background: #fffbeb; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;\">\n                    <h4 style=\"margin: 0 0 8px 0; font-size: 13px; color: #92400e;\">📝 Notes</h4>\n                    \n                    <div style=\"font-size: 12px; color: #78350f;\"><strong>Closed:</strong> Took some home</div>\n                </div>\n                \n            </div>\n        ",
+      "2026-10-19": "\n            <div style=\"padding: 0;\">\n                \n                <div style=\"background: #fff7ed; border: 1px solid #fdba74; padding: 10px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; color: #9a3412;\">\n                    <strong>This day was closed by the app without a cash count.</strong>\n                    <div style=\"margin: 6px 0;\">If you know how much cash was in the drawer, record it:</div>\n                    <div style=\"display: flex; gap: 6px;\">\n                        <input type=\"number\" inputmode=\"decimal\" min=\"0\" id=\"lateCountAmount\" placeholder=\"Cash counted (₹)\" style=\"flex: 1; padding: 8px; border: 1px solid #fdba74; border-radius: 6px;\" />\n                        <button type=\"button\" onclick=\"window.app.cashManagement.recordLateCount('cash_2026-10-19')\" data-cash-save=\"count\" style=\"background: #ea580c; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600;\">Save count</button>\n                    </div>\n                </div>\n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Expenses & Others -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expenses &amp; Others</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹0</div>\n                    </div>\n                    \n                    <!-- Expected Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹900.3</div>\n                    </div>\n                    \n                    <!-- Actual Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Actual Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">Not counted</div>\n                    </div>\n                    \n                    <!-- Difference -->\n                    <div style=\"background: rgba(34, 197, 94, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #64748b; margin-bottom: 4px; font-weight: 600;\">Difference</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #64748b;\">Not counted</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹600</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹300.3</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹900.3</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n\n                \n\n                \n            </div>\n        ",
+      "2026-10-18": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Expenses & Others -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expenses &amp; Others</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹0</div>\n                    </div>\n                    \n                    <!-- Expected Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹400</div>\n                    </div>\n                    \n                    <!-- Actual Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Actual Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1020</div>\n                    </div>\n                    \n                    <!-- Difference -->\n                    <div style=\"background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #ef4444; margin-bottom: 4px; font-weight: 600;\">Difference</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #ef4444;\">+₹620.00</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹400</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹400</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n\n                \n\n                \n            </div>\n        ",
+      "2026-10-17": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Expenses & Others -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expenses &amp; Others</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹0</div>\n                    </div>\n                    \n                    <!-- Expected Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹380</div>\n                    </div>\n                    \n                    <!-- Actual Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Actual Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹399.5</div>\n                    </div>\n                    \n                    <!-- Difference -->\n                    <div style=\"background: rgba(34, 197, 94, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #22c55e; margin-bottom: 4px; font-weight: 600;\">Difference</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #22c55e;\">+₹19.50</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹380</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹380</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n\n                \n\n                \n            </div>\n        "
+    },
+    "lateCount": {
+      "writes": [
+        {
+          "id": "cash_2026-10-19",
+          "fields": {
+            "closingBalance": 880,
+            "difference": -20.3,
+            "counted": true,
+            "countedLate": true,
+            "countedAt": "2026-10-20T15:30:00.000Z",
+            "countedBy": "u1",
+            "countedByName": "Owner"
+          }
+        }
+      ],
+      "toasts": [
+        "✓ Count of ₹880 saved"
+      ]
+    },
+    "signIn": {
+      "modals": [
+        {
+          "message": "Last counted closing (2026-10-20) was ₹1424.5, but you're opening with ₹1400.\nDifference: ₹24.50\n\nDo you want to continue?",
+          "title": "Cash Mismatch Warning"
+        }
+      ],
+      "toasts": []
+    }
+  },
+  "member": {
+    "drawers": [
+      {
+        "id": "cash_2026-10-21",
+        "tx": {
+          "cashSales": 1200,
+          "cashPurchases": 0,
+          "businessExpenses": 150,
+          "personalExpenses": 310.5,
+          "dueReceived": 0,
+          "duePaid": 0,
+          "cashDeposits": 0
+        }
+      }
+    ],
+    "drawerNoSession": {
+      "cashSales": 1200,
+      "cashPurchases": 0,
+      "businessExpenses": 150,
+      "personalExpenses": 310.5,
+      "dueReceived": 0,
+      "duePaid": 0,
+      "cashDeposits": 0
+    },
+    "liveSession": "cash_2026-10-21",
+    "expected": 1239.5,
+    "screen": {
+      "text": {
+        "statusOpeningBalance": "₹500",
+        "statusCashIn": "₹1700",
+        "statusCashOut": "₹460.5",
+        "statusAvailable": "₹1239.5",
+        "statusCashAdded": "₹0",
+        "statusBuy": "₹0",
+        "statusSale": "₹0",
+        "statusOthers": "₹0",
+        "statusExpected": "₹0",
+        "statusActual": "-",
+        "statusDiff": "-",
+        "openingBalanceTotal": "₹500",
+        "cashSalesTotal": "₹1200",
+        "cashPurchasesTotal": "₹0",
+        "cashBusinessExpensesTotal": "₹150",
+        "cashPersonalExpensesTotal": "₹310.5",
+        "dueReceivedTotal": "₹0",
+        "duePaidTotal": "₹0",
+        "cashDepositsTotal": "₹0",
+        "totalCashIn": "₹1700",
+        "totalCashOut": "₹460.5",
+        "expectedCashAmount": "₹1239.5"
+      },
+      "shown": {
+        "statusOpeningCard": "block",
+        "statusCashInCard": "block",
+        "statusCashOutCard": "block",
+        "statusAvailableCard": "block",
+        "statusCashAddedCard": "none",
+        "statusBuyCard": "none",
+        "statusSaleCard": "none",
+        "statusOthersCard": "none",
+        "statusExpectedCard": "none",
+        "statusActualCard": "none",
+        "statusDiffCard": "none",
+        "cashSignInSection": "none",
+        "cashSignOutSection": "block",
+        "cashDepositSection": "block"
+      },
+      "diffColor": "",
+      "signInAmount": "",
+      "signInHint": ""
+    },
+    "checks": [
+      {
+        "counted": 1239.5,
+        "text": "✓ Cash matches expected amount!",
+        "display": "block",
+        "background": "rgb(209, 244, 224)",
+        "color": "rgb(15, 81, 50)"
+      },
+      {
+        "counted": 1209,
+        "text": "⚠ Short ₹30.50 - Please verify",
+        "display": "block",
+        "background": "rgb(248, 215, 218)",
+        "color": "rgb(132, 32, 41)"
+      }
+    ],
+    "history": "\n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-21')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Wed, 21 Oct</strong>\n                        <span style=\"color: #22c55e; font-weight: 600;\">● Active</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹500</strong></div>\n                        <div>In Progress...</div>\n                    </div>\n                    \n                </div>\n            ",
+    "details": {
+      "2026-10-21": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Opening Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Opening Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹500</div>\n                    </div>\n                    \n                    <!-- Cash In -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Cash In</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1200</div>\n                    </div>\n                    \n                    <!-- Cash Out -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Cash Out</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹460.5</div>\n                    </div>\n                    \n                    <!-- Expected Cash -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Cash</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1239.5</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹500</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹1200</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹1700</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹150</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹310.5</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹460.5</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n\n                \n\n                \n            </div>\n        "
+    }
+  },
+  "noSession": {
+    "drawers": [
+      {
+        "id": "cash_2026-10-22",
+        "tx": {
+          "cashSales": 0,
+          "cashPurchases": 0,
+          "businessExpenses": 0,
+          "personalExpenses": 0,
+          "dueReceived": 0,
+          "duePaid": 0,
+          "cashDeposits": 0
+        }
+      }
+    ],
+    "drawerNoSession": {
+      "cashSales": 60,
+      "cashPurchases": 0,
+      "businessExpenses": 0,
+      "personalExpenses": 0,
+      "dueReceived": 0,
+      "duePaid": 0,
+      "cashDeposits": 0
+    },
+    "liveSession": null,
+    "expected": 0,
+    "screen": {
+      "text": {
+        "statusOpeningBalance": "₹0",
+        "statusCashIn": "₹0",
+        "statusCashOut": "₹0",
+        "statusAvailable": "₹0",
+        "statusCashAdded": "₹0",
+        "statusBuy": "₹0",
+        "statusSale": "₹0",
+        "statusOthers": "₹0",
+        "statusExpected": "₹0",
+        "statusActual": "-",
+        "statusDiff": "-",
+        "openingBalanceTotal": "₹0",
+        "cashSalesTotal": "₹0",
+        "cashPurchasesTotal": "₹0",
+        "cashBusinessExpensesTotal": "₹0",
+        "cashPersonalExpensesTotal": "₹0",
+        "dueReceivedTotal": "₹0",
+        "duePaidTotal": "₹0",
+        "cashDepositsTotal": "₹0",
+        "totalCashIn": "₹0",
+        "totalCashOut": "₹0",
+        "expectedCashAmount": "₹0"
+      },
+      "shown": {
+        "statusOpeningCard": "block",
+        "statusCashInCard": "block",
+        "statusCashOutCard": "block",
+        "statusAvailableCard": "block",
+        "statusCashAddedCard": "none",
+        "statusBuyCard": "none",
+        "statusSaleCard": "none",
+        "statusOthersCard": "none",
+        "statusExpectedCard": "none",
+        "statusActualCard": "none",
+        "statusDiffCard": "none",
+        "cashSignInSection": "block",
+        "cashSignOutSection": "none",
+        "cashDepositSection": "none"
+      },
+      "diffColor": "",
+      "signInAmount": "1250.75",
+      "signInHint": "Suggested from the last count (2026-10-22): ₹1250.75. Change it if the drawer has a different amount."
+    },
+    "checks": [],
+    "history": "\n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-22')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Thu, 22 Oct</strong>\n                        <span style=\"color: #6c757d;\">✓ Closed</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹500</strong></div>\n                        \n                            <div>Closing: <strong>₹1250.75</strong></div>\n                            \n                            <div>Expected: <strong>₹1250</strong></div>\n                            <div>Diff: <strong style=\"color: #22c55e;\">Matched</strong></div>\n                            \n                    </div>\n                    \n                </div>\n            ",
+    "details": {
+      "2026-10-22": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Expenses & Others -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expenses &amp; Others</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹0</div>\n                    </div>\n                    \n                    <!-- Expected Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1250</div>\n                    </div>\n                    \n                    <!-- Actual Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Actual Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹1250.75</div>\n                    </div>\n                    \n                    <!-- Difference -->\n                    <div style=\"background: rgba(34, 197, 94, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #22c55e; margin-bottom: 4px; font-weight: 600;\">Difference</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #22c55e;\">Matched</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹500</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹750</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹1250</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n\n                \n\n                \n            </div>\n        "
+    },
+    "signIn": {
+      "modals": [],
+      "toasts": [
+        "Could not open cash: not opened in this test"
+      ]
+    }
+  },
+  "autoClose": {
+    "drawers": [
+      {
+        "id": "cash_2026-10-22",
+        "tx": {
+          "cashSales": 650.25,
+          "cashPurchases": 300,
+          "businessExpenses": 20,
+          "personalExpenses": 45.5,
+          "dueReceived": 90,
+          "duePaid": 0,
+          "cashDeposits": 10
+        }
+      }
+    ],
+    "drawerNoSession": {
+      "cashSales": 0,
+      "cashPurchases": 0,
+      "businessExpenses": 0,
+      "personalExpenses": 0,
+      "dueReceived": 0,
+      "duePaid": 0,
+      "cashDeposits": 0
+    },
+    "liveSession": null,
+    "expected": 0,
+    "screen": {
+      "text": {
+        "statusOpeningBalance": "₹0",
+        "statusCashIn": "₹0",
+        "statusCashOut": "₹0",
+        "statusAvailable": "₹0",
+        "statusCashAdded": "₹0",
+        "statusBuy": "₹0",
+        "statusSale": "₹0",
+        "statusOthers": "₹0",
+        "statusExpected": "₹0",
+        "statusActual": "-",
+        "statusDiff": "-",
+        "openingBalanceTotal": "₹0",
+        "cashSalesTotal": "₹0",
+        "cashPurchasesTotal": "₹0",
+        "cashBusinessExpensesTotal": "₹0",
+        "cashPersonalExpensesTotal": "₹0",
+        "dueReceivedTotal": "₹0",
+        "duePaidTotal": "₹0",
+        "cashDepositsTotal": "₹0",
+        "totalCashIn": "₹0",
+        "totalCashOut": "₹0",
+        "expectedCashAmount": "₹0"
+      },
+      "shown": {
+        "statusOpeningCard": "block",
+        "statusCashInCard": "block",
+        "statusCashOutCard": "block",
+        "statusAvailableCard": "block",
+        "statusCashAddedCard": "none",
+        "statusBuyCard": "none",
+        "statusSaleCard": "none",
+        "statusOthersCard": "none",
+        "statusExpectedCard": "none",
+        "statusActualCard": "none",
+        "statusDiffCard": "none",
+        "cashSignInSection": "block",
+        "cashSignOutSection": "none",
+        "cashDepositSection": "none"
+      },
+      "diffColor": "",
+      "signInAmount": "",
+      "signInHint": ""
+    },
+    "checks": [],
+    "history": "\n                <div onclick=\"window.app.cashManagement.showDetails('2026-10-22')\" style=\"border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;\" onmouseover=\"this.style.background='#f8f9fa'\" onmouseout=\"this.style.background='white'\">\n                    <div style=\"display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;\">\n                        <strong style=\"font-size: 15px;\">Thu, 22 Oct</strong>\n                        <span style=\"color: #22c55e; font-weight: 600;\">● Active</span>\n                    </div>\n                    <div style=\"display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;\">\n                        <div>Opening: <strong>₹700</strong></div>\n                        <div>In Progress...</div>\n                    </div>\n                    \n                        <div style=\"margin-top: 8px; font-size: 13px; color: #6c757d;\">\n                            1 due payment recorded\n                        </div>\n                    \n                </div>\n            ",
+    "details": {
+      "2026-10-22": "\n            <div style=\"padding: 0;\">\n                \n                <!-- Summary Card -->\n                \n                <div style=\"display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px;\">\n                    <!-- Opening Balance -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Opening Balance</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹700</div>\n                    </div>\n                    \n                    <!-- Cash In -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Cash In</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹0</div>\n                    </div>\n                    \n                    <!-- Cash Out -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Cash Out</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹0</div>\n                    </div>\n                    \n                    <!-- Expected Cash -->\n                    <div style=\"background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;\">\n                        <div style=\"font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;\">Expected Cash</div>\n                        <div style=\"font-size: 20px; font-weight: 700; color: #6d28d9;\">₹0</div>\n                    </div>\n                </div>\n                \n                \n                <!-- Cash In Group -->\n                <div style=\"background: #d1fae5; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #166534;\">Cash In</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Opening Balance:</span>\n                            <strong style=\"color: #6366f1;\">₹700</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Added:</span>\n                            <strong style=\"color: #10b981;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Sales:</span>\n                            <strong style=\"color: #22c55e;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Received:</span>\n                            <strong style=\"color: #3b82f6;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash In:</span>\n                            <strong style=\"color: #059669;\">₹700</strong>\n                        </div>\n                    </div>\n                </div>\n                \n                <!-- Cash Out Group -->\n                <div style=\"background: #fee2e2; padding: 10px; border-radius: 8px; margin-bottom: 8px;\">\n                    <h3 style=\"margin: 0 0 6px 0; font-size: 13px; color: #991b1b;\">Cash Out</h3>\n                    <div style=\"display: grid; gap: 6px; font-size: 13px;\">\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Cash Purchases:</span>\n                            <strong style=\"color: #ef4444;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Due Paid:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Business Expenses:</span>\n                            <strong style=\"color: #f97316;\">₹0</strong>\n                        </div>\n                        <div style=\"display: flex; justify-content: space-between;\">\n                            <span>Personal Expenses:</span>\n                            <strong style=\"color: #f59e0b;\">₹0</strong>\n                        </div>\n                        <div style=\"border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;\">\n                            <span>Total Cash Out:</span>\n                            <strong style=\"color: #dc2626;\">₹0</strong>\n                        </div>\n                    </div>\n                </div>\n\n                \n                    <div style=\"background: #f0fdf4; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #86efac;\">\n                        <h3 style=\"margin: 0 0 8px 0; font-size: 13px; color: #166534;\">💵 Cash Deposits (1)</h3>\n                        <div style=\"display: grid; gap: 6px;\">\n                            \n                                <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #10b981;\">\n                                    <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                        <strong style=\"color: #333; font-size: 12px;\">Cash Added</strong>\n                                        <strong style=\"color: #10b981; font-size: 13px;\">₹10</strong>\n                                    </div>\n                                    <div style=\"color: #6c757d; font-size: 10px;\">\n                                        Added by Manager\n                                    </div>\n                                </div>\n                            \n                        </div>\n                    </div>\n                \n\n                \n                    <div style=\"background: #f8f9fa; padding: 10px; border-radius: 8px; margin-bottom: 12px;\">\n                        <h3 style=\"margin: 0 0 8px 0; font-size: 13px; color: #495057;\">💰 Due Payments (1)</h3>\n                        <div style=\"display: grid; gap: 6px;\">\n                            \n                                    <div style=\"background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #3b82f6;\">\n                                        <div style=\"display: flex; justify-content: space-between; margin-bottom: 3px;\">\n                                            <strong style=\"color: #333; font-size: 12px;\">Received from Walk-in</strong>\n                                            <strong style=\"color: #3b82f6; font-size: 13px;\">+₹90</strong>\n                                        </div>\n                                        <div style=\"color: #6c757d; font-size: 10px;\">\n                                            cash • No notes\n                                        </div>\n                                    </div>\n                                \n                        </div>\n                    </div>\n                \n\n                \n            </div>\n        "
+    },
+    "autoClose": {
+      "writes": [
+        {
+          "id": "cash_2026-10-22",
+          "fields": {
+            "closingBalance": null,
+            "expectedBalance": 1084.75,
+            "difference": null,
+            "counted": false,
+            "signOutTime": "2026-10-22T18:29:59.000Z",
+            "signedOut": true,
+            "autoSignedOut": true,
+            "autoClosed": true,
+            "autoSignOutReason": "Session not closed by end of day",
+            "transactions": {
+              "cashSales": 650.25,
+              "cashPurchases": 300,
+              "businessExpenses": 20,
+              "personalExpenses": 45.5,
+              "dueReceived": 90,
+              "duePaid": 0,
+              "cashDeposits": 10
+            }
+          }
+        }
+      ],
+      "toasts": [
+        "Auto-closed 1 previous session(s)"
+      ],
+      "sessions": [
+        {
+          "id": "cash_2026-10-22",
+          "expectedBalance": 1084.75,
+          "signedOut": true
+        }
+      ]
+    }
+  }
+}

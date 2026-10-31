@@ -133,6 +133,7 @@ const STATIC_ASSETS = [
     '/js/utils/calc/billing.js',
     '/js/utils/calc/today.js',
     '/js/utils/calc/stock.js',
+    '/js/utils/calc/cash.js',
     '/js/utils/number-checks.js',
     '/js/utils/notification-format.js',
     '/js/utils/record-permissions.js',

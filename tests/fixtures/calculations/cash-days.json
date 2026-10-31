@@ -1,0 +1,210 @@
+{
+  "name": "cash-days",
+  "description": "Synthetic days for the cash drawer (docs/calculations.md C1-C9). 'busy' is an open day with sales, purchases (one paid later in cash and online), an old-app opening record paid today, business, untagged and personal expenses (category and type-only, a business expense typed 'personal', one with only `total`), due legs (a leg that repeats a bill payment, 'No bill' legs received and paid, an online leg, a legacy leg with no time, a leg from another day), deposits (one stored as text) and paise everywhere. 'twoSessions' is a legacy day with two sessions. 'closedDay' is a counted closed day, with an uncounted day before it and a big difference the day before that. 'member' is a role without the personal expense rows: the day's personal total comes from personalExpenseDays. 'noSession' has no session today. Expected output: cash-days.expected.json (written from modules/cash-management.js before the move to utils/calc/cash.js).",
+  "cases": {
+    "busy": {
+      "now": "2026-10-21T18:30:00",
+      "role": "owner",
+      "personalRows": true,
+      "personalDays": { "2026-10-21": { "total": 999, "count": 9 } },
+      "wholesaleSales": [
+        { "id": "w1", "billNumber": "W-1", "customerName": "Ramesh", "date": "2026-10-21T10:00:00", "total": 5000,
+          "cashPayment": 2000.1, "onlinePayment": 1000, "dueAmount": 1999.9,
+          "payment": { "cash": 2300.1, "online": 1000, "due": 1699.9 },
+          "payments": [ { "id": "pw1", "date": "2026-10-21T15:00:00", "cash": 300, "online": 0 } ] },
+        { "id": "w2", "billNumber": "W-2", "customerName": "Suresh", "date": "2026-10-20T11:00:00", "total": 1000,
+          "payment": { "cash": 600, "online": 0, "due": 400 },
+          "payments": [ { "id": "pw2", "date": "2026-10-21T12:00:00", "amount": 200 } ] }
+      ],
+      "retailSales": [
+        { "id": "r1", "billNumber": "R-1", "customerName": "Walk-in", "date": "21/10/2026, 9:15:00 am", "total": 450.75,
+          "payment": { "cash": 450.75, "online": 0, "due": 0 } },
+        { "id": "r2", "billNumber": "R-2", "customerName": "Walk-in", "date": "21/10/2026", "total": 120, "cashPayment": 120 },
+        { "id": "r3", "billNumber": "R-3", "customerName": "Tomorrow", "date": "2026-10-22T00:10:00", "total": 999,
+          "payment": { "cash": 999, "online": 0, "due": 0 } }
+      ],
+      "purchases": [
+        { "id": "p1", "billNumber": "P-1", "supplierName": "Kisan A", "date": "2026-10-21T08:00:00", "grandTotal": 3000,
+          "payment": { "cash": 1200.5, "online": 800, "due": 999.5 },
+          "payments": [ { "id": "pp1", "date": "2026-10-21T17:00:00", "cash": 100, "online": 50 } ] },
+        { "id": "p2", "billNumber": "P-2", "supplierName": "Kisan B", "date": "2026-10-21T09:00:00", "grandTotal": 700, "cashPayment": 700 },
+        { "id": "opening-purchase-o1", "billNumber": "P-OLD-1", "supplierName": "Old Kisan", "date": "2026-10-21",
+          "items": [], "total": 0, "dueAmount": 650,
+          "payment": { "cash": 250, "online": 0, "due": 650, "total": 0 },
+          "openingBalance": { "migrated": true, "kind": "payable", "billType": "purchase", "amount": 900 },
+          "payments": [ { "id": "po1", "date": "2026-10-21T16:00:00", "cash": 250, "online": 0 } ] }
+      ],
+      "expenses": [
+        { "id": "e1", "date": "2026-10-21", "amount": 150, "category": "business", "type": "Tea" },
+        { "id": "e2", "date": "2026-10-21T13:00:00", "amount": 40.5 },
+        { "id": "e3", "date": "2026-10-21", "amount": 80, "category": "personal", "type": "Home" },
+        { "id": "e4", "date": "2026-10-21", "amount": 25, "type": "personal" },
+        { "id": "e5", "date": "2026-10-21", "amount": 60, "category": "business", "type": "personal" },
+        { "id": "e6", "date": "2026-10-20", "amount": 999, "category": "business", "type": "Yesterday" },
+        { "id": "e7", "date": "2026-10-21", "total": 33, "category": "business", "type": "Total only" }
+      ],
+      "sessions": [
+        { "id": "cash_2026-10-21", "date": "2026-10-21", "openingBalance": 2000.1, "signInTime": "2026-10-21T07:30:00.000Z",
+          "userName": "Owner", "signedOut": false, "openingNotes": "Counted twice",
+          "duePayments": [
+            { "id": "pw2", "type": "received", "customer": "Suresh", "billId": "w2", "cash": 200, "online": 0, "timestamp": "2026-10-21T12:00:00" },
+            { "id": "nb1", "type": "received", "customer": "Walk-in", "amount": 250, "method": "cash", "cash": 250, "online": 0, "unlinked": true, "notes": "old dues", "timestamp": "2026-10-21T14:00:00" },
+            { "id": "nb2", "type": "paid", "customer": "Mandi", "amount": 100.25, "method": "cash", "cash": 100.25, "online": 0, "unlinked": true, "notes": "", "timestamp": "2026-10-21T14:30:00" },
+            { "id": "ol1", "type": "received", "customer": "Online Ltd", "amount": 500, "method": "online", "cash": 0, "online": 500, "timestamp": "2026-10-21T15:30:00" },
+            { "type": "received", "customer": "Legacy", "amount": 70, "method": "cash" },
+            { "id": "old", "type": "received", "customer": "Yesterday", "cash": 999, "online": 0, "timestamp": "2026-10-20T15:00:00" }
+          ],
+          "cashDeposits": [
+            { "id": "d1", "amount": 500, "reason": "From bank", "addedBy": "Owner" },
+            { "id": "d2", "amount": "120.5", "reason": "", "addedBy": "Manager" }
+          ] },
+        { "id": "cash_2026-10-20", "date": "2026-10-20", "openingBalance": 1500, "signInTime": "2026-10-20T07:30:00.000Z",
+          "signedOut": true, "counted": true, "closingBalance": 2101, "expectedBalance": 2100, "difference": 1,
+          "transactions": { "cashSales": 600, "cashPurchases": 0, "businessExpenses": 999, "personalExpenses": 0, "dueReceived": 999, "duePaid": 0, "cashDeposits": 0 } }
+      ],
+      "counts": [0, 0.5, -0.99, 1, 1.01, -1.5, 75.25, -60, -800, 2500],
+      "absoluteCounts": [0],
+      "close": { "delta": -60, "notes": "Short, checked" },
+      "noBill": { "type": "received", "party": "Walk-in 2", "amount": "175.5", "notes": "cash on account" },
+      "noBillPaid": { "type": "paid", "party": "Mandi 2", "amount": "42.25", "notes": "" },
+      "deposit": { "amount": "300", "notes": "Change" }
+    },
+    "twoSessions": {
+      "now": "2026-10-22T19:00:00",
+      "role": "owner",
+      "personalRows": true,
+      "personalDays": {},
+      "wholesaleSales": [
+        { "id": "w22", "billNumber": "W-22", "customerName": "Ramesh", "date": "2026-10-22T10:00:00", "total": 1000,
+          "payment": { "cash": 1000, "online": 0, "due": 0 } }
+      ],
+      "retailSales": [],
+      "purchases": [
+        { "id": "p22", "billNumber": "P-22", "supplierName": "Kisan C", "date": "2026-10-22T09:00:00", "grandTotal": 400,
+          "payment": { "cash": 400, "online": 0, "due": 0 } }
+      ],
+      "expenses": [ { "id": "e22", "date": "2026-10-22", "amount": 35, "category": "business", "type": "Tea" } ],
+      "sessions": [
+        { "id": "legacy-22b", "date": "2026-10-22", "openingBalance": 800, "signInTime": "2026-10-22T07:00:00.000Z", "userName": "Manager",
+          "signedOut": false,
+          "duePayments": [ { "id": "b1", "type": "paid", "customer": "Kisan C", "cash": 50, "online": 0, "timestamp": "2026-10-22T11:00:00" } ],
+          "cashDeposits": [ { "id": "db", "amount": 40, "reason": "B", "addedBy": "Manager" } ] },
+        { "id": "cash_2026-10-22", "date": "2026-10-22", "openingBalance": 500, "signInTime": "2026-10-22T08:00:00.000Z", "userName": "Owner",
+          "signedOut": false,
+          "duePayments": [ { "id": "a1", "type": "received", "customer": "Ramesh", "cash": 200, "online": 0, "timestamp": "2026-10-22T12:00:00" } ],
+          "cashDeposits": [ { "id": "da", "amount": 100, "reason": "A", "addedBy": "Owner" } ] }
+      ],
+      "counts": [0, 10],
+      "absoluteCounts": [1355]
+    },
+    "closedDay": {
+      "now": "2026-10-20T21:00:00",
+      "role": "owner",
+      "personalRows": true,
+      "personalDays": {},
+      "wholesaleSales": [
+        { "id": "w20", "billNumber": "W-20", "customerName": "Ramesh", "date": "2026-10-20T10:00:00", "total": 900,
+          "payment": { "cash": 900, "online": 0, "due": 0 } }
+      ],
+      "retailSales": [
+        { "id": "r19", "billNumber": "R-19", "customerName": "Walk-in", "date": "19/10/2026", "total": 300.3,
+          "payment": { "cash": 300.3, "online": 0, "due": 0 } }
+      ],
+      "purchases": [],
+      "expenses": [ { "id": "e20", "date": "2026-10-20", "amount": 75.5, "category": "personal" } ],
+      "sessions": [
+        { "id": "cash_2026-10-20", "date": "2026-10-20", "openingBalance": 1000, "signInTime": "2026-10-20T07:30:00.000Z", "userName": "Owner",
+          "signedOut": true, "counted": true, "closingBalance": 1424.5, "expectedBalance": 1500, "difference": -75.5,
+          "signOutTime": "2026-10-20T14:30:00.000Z", "closingNotes": "Took some home",
+          "transactions": { "cashSales": 900, "cashPurchases": 0, "businessExpenses": 0, "personalExpenses": 75.5, "dueReceived": 0, "duePaid": 0, "cashDeposits": 100 },
+          "cashDeposits": [ { "id": "d20", "amount": 100, "reason": "Float", "addedBy": "Owner" } ],
+          "duePayments": [ { "type": "paid", "customer": "Legacy <b>", "amount": 0, "method": "cash" } ] },
+        { "id": "cash_2026-10-19", "date": "2026-10-19", "openingBalance": 600, "signInTime": "2026-10-19T07:30:00.000Z",
+          "signedOut": true, "counted": false, "autoSignedOut": true, "closingBalance": null, "expectedBalance": 900.3, "difference": null,
+          "signOutTime": "2026-10-19T18:29:59.000Z",
+          "transactions": { "cashSales": 300.3, "cashPurchases": 0, "businessExpenses": 0, "personalExpenses": 0, "dueReceived": 0, "duePaid": 0, "cashDeposits": 0 } },
+        { "id": "cash_2026-10-18", "date": "2026-10-18", "openingBalance": 400, "signInTime": "2026-10-18T07:30:00.000Z",
+          "signedOut": true, "closingBalance": 1020, "expectedBalance": 400, "difference": 620,
+          "signOutTime": "2026-10-18T14:30:00.000Z",
+          "transactions": { "cashSales": 0, "cashPurchases": 0, "businessExpenses": 0, "personalExpenses": 0, "dueReceived": 0, "duePaid": 0, "cashDeposits": 0 } },
+        { "id": "cash_2026-10-17", "date": "2026-10-17", "openingBalance": 380, "signInTime": "2026-10-17T07:30:00.000Z",
+          "signedOut": true, "counted": true, "closingBalance": 399.5, "expectedBalance": 380, "difference": 19.5,
+          "transactions": { "cashSales": 0, "cashPurchases": 0, "businessExpenses": 0, "personalExpenses": 0, "dueReceived": 0, "duePaid": 0, "cashDeposits": 0 } }
+      ],
+      "counts": [],
+      "absoluteCounts": [],
+      "lateCount": { "sessionId": "cash_2026-10-19", "amount": "880" },
+      "signIn": { "amount": "1400" }
+    },
+    "member": {
+      "now": "2026-10-21T18:30:00",
+      "role": "staff",
+      "roleAccess": { "staff": { "personalExpenses": false } },
+      "personalRows": false,
+      "personalDays": { "2026-10-21": { "total": 230.5, "count": 3 } },
+      "wholesaleSales": [
+        { "id": "w1", "billNumber": "W-1", "customerName": "Ramesh", "date": "2026-10-21T10:00:00", "total": 1200,
+          "payment": { "cash": 1200, "online": 0, "due": 0 } }
+      ],
+      "retailSales": [],
+      "purchases": [],
+      "expenses": [
+        { "id": "e1", "date": "2026-10-21", "amount": 150, "category": "business", "type": "Tea" },
+        { "id": "e3", "date": "2026-10-21", "amount": 80, "category": "personal", "type": "Legacy row in expenses" }
+      ],
+      "sessions": [
+        { "id": "cash_2026-10-21", "date": "2026-10-21", "openingBalance": 500, "signInTime": "2026-10-21T07:30:00.000Z", "userName": "Owner",
+          "signedOut": false, "duePayments": [], "cashDeposits": [] }
+      ],
+      "counts": [0, -30.5],
+      "absoluteCounts": []
+    },
+    "noSession": {
+      "now": "2026-10-23T10:00:00",
+      "role": "owner",
+      "personalRows": true,
+      "personalDays": {},
+      "wholesaleSales": [],
+      "retailSales": [
+        { "id": "r23", "billNumber": "R-23", "customerName": "Walk-in", "date": "2026-10-23T09:00:00", "total": 60,
+          "payment": { "cash": 60, "online": 0, "due": 0 } }
+      ],
+      "purchases": [],
+      "expenses": [],
+      "sessions": [
+        { "id": "cash_2026-10-22", "date": "2026-10-22", "openingBalance": 500, "signInTime": "2026-10-22T07:30:00.000Z",
+          "signedOut": true, "counted": true, "closingBalance": 1250.75, "expectedBalance": 1250, "difference": 0.75,
+          "signOutTime": "2026-10-22T14:30:00.000Z",
+          "transactions": { "cashSales": 750, "cashPurchases": 0, "businessExpenses": 0, "personalExpenses": 0, "dueReceived": 0, "duePaid": 0, "cashDeposits": 0 } }
+      ],
+      "counts": [],
+      "absoluteCounts": [],
+      "signIn": { "amount": "1250" }
+    },
+    "autoClose": {
+      "now": "2026-10-23T09:00:00",
+      "role": "manager",
+      "roleAccess": { "manager": { "personalExpenses": false, "oldCashSessions": true } },
+      "personalRows": false,
+      "personalDays": { "2026-10-22": { "total": 45.5, "count": 1 } },
+      "wholesaleSales": [
+        { "id": "w22", "billNumber": "W-22", "customerName": "Ramesh", "date": "2026-10-22T10:00:00", "total": 800,
+          "payment": { "cash": 650.25, "online": 149.75, "due": 0 } }
+      ],
+      "retailSales": [],
+      "purchases": [
+        { "id": "p22", "billNumber": "P-22", "supplierName": "Kisan C", "date": "2026-10-22T09:00:00", "grandTotal": 300, "cashPayment": 300 }
+      ],
+      "expenses": [ { "id": "e22", "date": "2026-10-22", "amount": 20, "type": "Tea" } ],
+      "sessions": [
+        { "id": "cash_2026-10-22", "date": "2026-10-22", "openingBalance": 700, "signInTime": "2026-10-22T07:30:00.000Z", "userName": "Manager",
+          "signedOut": false,
+          "duePayments": [ { "id": "nb9", "type": "received", "customer": "Walk-in", "amount": 90, "method": "cash", "cash": 90, "online": 0, "unlinked": true, "timestamp": "2026-10-22T15:00:00" } ],
+          "cashDeposits": [ { "id": "d9", "amount": 10, "reason": "", "addedBy": "Manager" } ] }
+      ],
+      "counts": [],
+      "absoluteCounts": [],
+      "autoCloseRun": true
+    }
+  }
+}

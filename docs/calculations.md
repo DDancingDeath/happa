@@ -228,17 +228,19 @@ Quantities and average costs come from the stock replay (`utils/stock-replay.js`
 
 For one cash session's DAY. Only cash counts.
 
-| ID | On screen | Definition |
-|---|---|---|
-| C1 | Cash sales | BILL-AT-SAVE cash of that day's wholesale + retail sales. |
-| C2 | Cash purchases | BILL-AT-SAVE cash of that day's purchases. |
-| C3 | Expenses | That day's expenses, business and personal (untagged = business). Personal ones a role can't read come from that day's `personalExpenseDays` total (#98). |
-| C4 | Due received | Cash part of DUE-PAYs received that day (bill entries and session legs, each id once). |
-| C5 | Due paid | Cash part of DUE-PAYs paid that day. |
-| C6 | Deposits | Σ cash added to the drawer that day (❓ open: #103, what a deposit means). |
-| C7 | Expected cash | Opening + C1 + C4 + C6 − C2 − C5 − C3. |
-| C8 | Difference | Counted cash − C7 (shown as short / extra). |
-| C9 | Counted cash | Closing balance of the last signed-out, counted session (not "not counted"); the drawer term of M15. |
+One pure module computes every figure and rule of the drawer: `www/js/utils/calc/cash.js` (field → ID in `CASH_SPEC`); `modules/cash-management.js` only gathers its inputs (loaded bills, expenses, the session, whether this phone has the personal rows and else the day's `personalExpenseDays` total), calls it and renders. Rounding is as before the move: C1–C6 in paise, the saved difference in paise; the status card, the check under the count box and the day details add with plain JS addition. Tests: `www/js/__tests__/cash-characterisation.test.js` (screen text, history, day details and what closing, a late count, a "No bill" entry, a deposit, auto-close and opening write, pinned for `tests/fixtures/calculations/cash-days.json`) and `tests/oracle/screens.test.js` (page and `drawerDay()` vs the oracle).
+
+| ID | On screen | Definition | Owner (`utils/calc/cash.js`) |
+|---|---|---|---|
+| C1 | Cash sales | BILL-AT-SAVE cash of that day's wholesale + retail sales. | `drawerDay().cashSales` |
+| C2 | Cash purchases | BILL-AT-SAVE cash of that day's purchases. | `drawerDay().cashPurchases` |
+| C3 | Expenses | That day's expenses, business and personal (untagged = business; an expense's `amount`). Personal ones a role can't read come from that day's `personalExpenseDays` total (#98). | `drawerDay().businessExpenses`, `personalExpenses` |
+| C4 | Due received | Cash part of DUE-PAYs received that day (bill entries and session legs, each id once). A "No bill" entry is a cash-only leg (`noBillLeg()`). | `drawerDay().dueReceived` |
+| C5 | Due paid | Cash part of DUE-PAYs paid that day. | `drawerDay().duePaid` |
+| C6 | Deposits | Σ cash added to the drawer that day (❓ open: #103, what a deposit means). | `drawerDay().cashDeposits` |
+| C7 | Expected cash | Opening + C1 + C4 + C6 − C2 − C5 − C3 (0 without a session). Status card: cash in = opening + C6 + C1 + C4, cash out = C2 + C5 + C3, others = C3 + C5. | `expectedCash()` (`sessionTotals()`), `drawerStatus()`, `signOutSummary()`, `sessionDetail()` |
+| C8 | Difference | Counted cash − C7 (shown as short / extra). Under the count box: "matches" within ₹1, plus the Q19 bands (a big gap, a negative expected drawer); closing asks first when more than ₹1 off and saves it in paise (also a late count); colour: under ₹50 ok, under ₹500 warn, else high. Opening asks first when more than ₹1 from C9. | `countCheck()`, `closeCheck()`, `savedDifference()`, `differenceBand()`, `openingCheck()` |
+| C9 | Counted cash | Closing balance of the last signed-out, counted session (not "not counted"); the drawer term of M15. | `lastCountedSession()` |
 
 ## Insights › Seasons: Trends and Product traffic (`templates/rate-trends.html`, `modules/rate-trends.js`) — #65
 
