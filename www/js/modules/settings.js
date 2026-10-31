@@ -9,7 +9,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
-import { changedFields, formatAuditDetails } from '../utils/audit-changes.js';
+import { changedFields, formatAuditDetails, auditWho, auditWhoText, peopleById } from '../utils/audit-changes.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -620,6 +620,7 @@ export class SettingsManager {
 
     // Audit Logs Methods
     static auditLogs = [];
+    static auditPeople = new Map();
     
     static async loadAuditLogs() {
         if (AppState.userRole !== 'owner') {
@@ -629,7 +630,16 @@ export class SettingsManager {
         
         UIManager.showLoading();
         try {
-            this.auditLogs = await AuditService.getRecentLogs(100);
+            // Profiles name the writer: an entry's stored name and role are whatever the phone sent (#85)
+            const [logs, people] = await Promise.all([
+                AuditService.getRecentLogs(100),
+                FirebaseService.loadUsers().catch(e => {
+                    console.warn('Audit: profiles not read:', e?.code || e);
+                    return [];
+                })
+            ]);
+            this.auditLogs = logs;
+            this.auditPeople = peopleById(people);
             this.renderAuditLogs();
             UIManager.hideLoading();
         } catch (error) {
@@ -666,6 +676,7 @@ export class SettingsManager {
             const actionIcon = this.getActionIcon(log.action);
             const actionColor = this.getActionColor(log.action);
             const details = this.formatDetails(log.details);
+            const who = auditWhoText(auditWho(log, this.auditPeople), Helpers.roleLabel);
             
             return `
                 <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; gap: 12px; align-items: flex-start;">
@@ -676,7 +687,7 @@ export class SettingsManager {
                             <span style="font-size: 11px; color: #888;">${formattedDate}</span>
                         </div>
                         <div style="font-size: 12px; color: #666;">
-                            <strong>${Helpers.escapeHtml(log.userName)}</strong> (${Helpers.escapeHtml(Helpers.roleLabel(log.userRole))})
+                            <strong>${Helpers.escapeHtml(who.main)}</strong>${who.note ? ` · ${Helpers.escapeHtml(who.note)}` : ''}
                         </div>
                         ${details ? `<div style="font-size: 11px; color: #888; margin-top: 4px;">${Helpers.escapeHtml(details)}</div>` : ''}
                     </div>

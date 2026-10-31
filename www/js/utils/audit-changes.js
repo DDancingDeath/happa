@@ -65,3 +65,49 @@ export function formatAuditDetails(details) {
     if (has(d.device)) parts.push(t('ui.settings.audit_device', { value: d.device }));
     return parts.join(' • ');
 }
+
+/**
+ * Profiles by user id: `{id, name, role}` list (or a Map) → Map(id → {name, role}).
+ * @param {Array<Object>|Map} people
+ * @returns {Map<string, {name: string, role: string}>}
+ */
+export function peopleById(people) {
+    if (people instanceof Map) return people;
+    const m = new Map();
+    (Array.isArray(people) ? people : []).forEach(p => {
+        if (p && p.id) m.set(String(p.id), { name: String(p.name || '').trim(), role: String(p.role || '') });
+    });
+    return m;
+}
+
+/**
+ * Who wrote an audit entry. The rules make `userId` the writer's own uid, but the
+ * stored `userName` / `userRole` are whatever the phone sent (#85): the profile's
+ * name and role are shown; the stored ones only when they differ or there is no profile.
+ * @param {Object} log
+ * @param {Map<string, {name: string, role: string}>} people
+ * @returns {{name: string, role: string, verified: boolean, sent: string}} `sent`: the
+ *   stored name when it is not the profile's ('' otherwise)
+ */
+export function auditWho(log, people) {
+    const stored = String(log?.userName || '').trim();
+    const profile = people instanceof Map ? people.get(String(log?.userId || '')) : null;
+    if (profile) {
+        return { name: profile.name || stored, role: profile.role, verified: true, sent: stored && stored !== profile.name ? stored : '' };
+    }
+    return { name: stored, role: String(log?.userRole || ''), verified: false, sent: stored };
+}
+
+/**
+ * The "who" line of an audit card as plain text (escape it): `main` = profile name
+ * (role), or the stored name marked as not checked; `note` = the stored name when it
+ * differs from the profile's.
+ * @param {{name: string, role: string, verified: boolean, sent: string}} who - auditWho()
+ * @param {function(string): string} roleLabel
+ * @returns {{main: string, note: string}}
+ */
+export function auditWhoText(who, roleLabel) {
+    const role = roleLabel(who.role);
+    if (!who.verified) return { main: t('ui.settings.audit_unverified', { name: `${who.name || '—'} (${role})` }), note: '' };
+    return { main: `${who.name} (${role})`, note: who.sent ? t('ui.settings.audit_unverified', { name: who.sent }) : '' };
+}

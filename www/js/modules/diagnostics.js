@@ -14,7 +14,8 @@ import { getStartupTimings, startupRows } from '../utils/startup-timings.js';
 import { getQuotaStatus } from '../firebase/firestore-meter.js';
 import { t } from '../i18n/index.js';
 import { auditActionLabel } from '../i18n/localize.js';
-import { formatAuditDetails } from '../utils/audit-changes.js';
+import { formatAuditDetails, auditWho, auditWhoText, peopleById } from '../utils/audit-changes.js';
+import { FirebaseService } from '../firebase/firestore-service.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { runNumberChecks } from '../utils/number-checks.js';
@@ -41,6 +42,7 @@ const DiagnosticsManager = {
      * @type {Array}
      */
     auditLogs: [],
+    auditPeople: new Map(),
 
     /**
      * Current error filter
@@ -419,7 +421,16 @@ const DiagnosticsManager = {
         
         UIManager.showLoading();
         try {
-            this.auditLogs = await AuditService.getRecentLogs(100);
+            // Profiles name the writer: an entry's stored name and role are whatever the phone sent (#85)
+            const [logs, people] = await Promise.all([
+                AuditService.getRecentLogs(100),
+                FirebaseService.loadUsers().catch(e => {
+                    console.warn('Audit: profiles not read:', e?.code || e);
+                    return [];
+                })
+            ]);
+            this.auditLogs = logs;
+            this.auditPeople = peopleById(people);
             this.renderAuditLogs();
         } catch (error) {
             console.error('Error loading audit logs:', error);
@@ -487,6 +498,7 @@ const DiagnosticsManager = {
         const actionIcon = this.getActionIcon(log.action);
         const actionColor = this.getActionColor(log.action);
         const details = this.formatDetails(log.details);
+        const who = auditWhoText(auditWho(log, this.auditPeople), Helpers.roleLabel);
 
         return `
             <div class="diag-audit-card" style="border-left: 4px solid ${actionColor};">
@@ -496,7 +508,7 @@ const DiagnosticsManager = {
                     <span class="diag-audit-time">${formattedDate}</span>
                 </div>
                 <div class="diag-audit-user">
-                    <strong>${Helpers.escapeHtml(log.userName)}</strong> (${Helpers.escapeHtml(Helpers.roleLabel(log.userRole))})
+                    <strong>${Helpers.escapeHtml(who.main)}</strong>${who.note ? ` · <small>${Helpers.escapeHtml(who.note)}</small>` : ''}
                 </div>
                 ${details ? `<div class="diag-audit-details">${Helpers.escapeHtml(details)}</div>` : ''}
             </div>

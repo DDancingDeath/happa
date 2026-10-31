@@ -150,7 +150,11 @@ so rules stay the priority.
   adjustments (before → after), withdrawals, cash day open / close (counted vs expected),
   Settings › Aadhat changes (labour, bill checks, business name: before → after), Roles &
   access, accounts (approve, reject, role change, remove, restore), rentals actions,
-  Clear Data and hiding error reports. Print / export of the log is #103.
+  Clear Data and hiding error reports. Print / export of the log is #103. An entry's stored
+  `userName` / `userRole` are whatever the phone sent (kept for history): Settings, Diagnostics
+  and the anomaly flags name the **profile** behind `userId` (the owner's phone reads the
+  profiles), and show a stored name that differs, or one with no profile, as "name as sent by
+  the phone, not checked".
 - **Error reports** (`telemetry`): before a report is stored, `utils/scrub.js` replaces
   emails, Indian mobile numbers, rupee amounts, tokens and keys (JWTs, `AIza…`,
   `token=` / `key=` / `oobCode=` values, long opaque strings) with placeholders, drops
