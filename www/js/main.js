@@ -3,6 +3,7 @@
 import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
+import { BottomNav } from './ui/bottom-nav.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
@@ -47,7 +48,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzut-today-cash-dom';
+const BUILD_ID = '20261101zzuzid-a11y-text-targets';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -429,6 +430,28 @@ async function initializeUserData() {
         }
         
         // Show the billing tab by default
+        BottomNav.init({
+            showTab: (tab) => NavigationManager.showTabFromNav(tab),
+            // Pull-to-refresh reloads data only: filters, the bill being entered and forms stay as they are
+            // (older on-demand bills keep History's own Refresh button: re-reading them costs reads)
+            refreshers: {
+                day: () => (DayManager.currentSubTab === 'cash' ? CashManagementManager.init() : DayManager.init()),
+                history: () => HistoryManager.refreshHistory(),
+                due: () => {
+                    OutstandingManager.renderDue();
+                    if (document.getElementById('outstandingSearchInput')?.value.trim()) OutstandingManager.searchOutstanding();
+                },
+                stock: () => {
+                    const shown = (id) => document.getElementById(id)?.style.display !== 'none';
+                    if (shown('stockAdjustmentSection')) return StockManager.renderAdjustmentHistory();
+                    if (shown('deadStockSection')) return StockManager.renderDeadStock();
+                    return Promise.resolve(StockManager.renderStock()).then(() => {
+                        if (document.getElementById('stockSearchInput')?.value.trim()) StockManager.searchStock();
+                    });
+                }
+            },
+            onRefreshed: () => UIManager.showToast(t('msg.nav.refreshed'))
+        });
         NavigationManager.showTab('billing');
         NavigationManager.setActiveNavLink('billing');
         NavigationManager.initBackNavigation();
@@ -744,6 +767,11 @@ window.app = {
         closeMenu: () => NavigationManager.closeMenu(),
         showTab: (tabId, evt) => NavigationManager.showTabFromNav(tabId, evt),
         noteRoute: (routeId) => NavigationManager.noteRoute(routeId)
+    },
+
+    // Phone bottom bar (#142): Settings › swipe between pages
+    bottomNav: {
+        setSwipe: (on) => BottomNav.setSwipe(on)
     },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
@@ -1153,6 +1181,7 @@ window.app = {
         toggleDarkMode: () => SettingsManager.toggleDarkMode(),
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
+        togglePrintPreview: () => SettingsManager.togglePrintPreview(),
         scanBluetoothDevices: () => SettingsManager.scanBluetoothDevices(),
         connectToPrinter: (id, name) => SettingsManager.connectToPrinter(id, name),
         disconnectPrinter: () => SettingsManager.disconnectPrinter(),
