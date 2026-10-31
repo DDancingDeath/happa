@@ -8,6 +8,7 @@ import { copyMark, receiptDateTime } from '../utils/bill-share.js';
 import { billTotal, outstandingDue, readPayment } from '../utils/money.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
+import { recordPrint } from '../utils/print-status.js';
 
 /** Dots darker than this (average of R,G,B) print black */
 const RASTER_THRESHOLD = 128;
@@ -1001,6 +1002,7 @@ const PrinterService = {
         if (this.canPrint()) {
             const key = jobKey('bill', billData.billNumber || billData.id);
             const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
+            if (outcome !== 'cancelled') recordPrint(billData, outcome, outcome === 'failed' ? { errorKind: error?.kind, error: error?.message } : {});
             if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
