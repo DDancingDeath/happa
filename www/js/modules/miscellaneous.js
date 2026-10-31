@@ -18,6 +18,9 @@ import { t } from '../i18n/index.js';
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
 
+/** Expense save / print buttons, disabled while one is being saved (#95). */
+const EXPENSE_BUTTONS = '[data-expense-save]';
+
 /** The signed-in user, as canChangeExpense expects it. */
 const currentUserInfo = () => ({ uid: AppState.currentUser?.uid, role: AppState.userRole });
 
@@ -153,7 +156,11 @@ export class ExpensesManager {
      * @async
      * @returns {Promise<void>}
      */
-    static async saveBusinessExpense() {
+    static saveBusinessExpense() {
+        return Helpers.runExclusive('expense', EXPENSE_BUTTONS, () => this._saveBusinessExpense());
+    }
+
+    static async _saveBusinessExpense() {
         const type = document.getElementById('businessExpenseType').value.trim();
         const personName = document.getElementById('businessExpensePerson').value.trim();
         const amount = Number(document.getElementById('businessExpenseAmount').value);
@@ -214,7 +221,11 @@ export class ExpensesManager {
      * @async
      * @returns {Promise<void>}
      */
-    static async savePersonalExpense() {
+    static savePersonalExpense() {
+        return Helpers.runExclusive('expense', EXPENSE_BUTTONS, () => this._savePersonalExpense());
+    }
+
+    static async _savePersonalExpense() {
         const type = document.getElementById('personalExpenseType').value.trim();
         const amount = Number(document.getElementById('personalExpenseAmount').value);
         const personName = document.getElementById('personalExpensePerson').value.trim();
@@ -401,7 +412,11 @@ export class ExpensesManager {
         }
     }
 
-    static async saveAndPrintBusiness() {
+    static saveAndPrintBusiness() {
+        return Helpers.runExclusive('expense', EXPENSE_BUTTONS, () => this._saveAndPrintBusiness());
+    }
+
+    static async _saveAndPrintBusiness() {
         const type = document.getElementById('businessExpenseType').value.trim();
         const personName = document.getElementById('businessExpensePerson').value.trim();
         const amount = Number(document.getElementById('businessExpenseAmount').value);
@@ -701,7 +716,11 @@ export class ExpensesManager {
         }
     }
 
-    static async saveAndPrintPersonal() {
+    static saveAndPrintPersonal() {
+        return Helpers.runExclusive('expense', EXPENSE_BUTTONS, () => this._saveAndPrintPersonal());
+    }
+
+    static async _saveAndPrintPersonal() {
         const type = document.getElementById('personalExpenseType').value.trim();
         const amount = Number(document.getElementById('personalExpenseAmount').value);
         const personName = document.getElementById('personalExpensePerson').value.trim();

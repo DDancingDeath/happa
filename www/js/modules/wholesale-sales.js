@@ -613,7 +613,7 @@ export class WholesaleSalesManager {
     }
 
     static async recordPayment(saleId) {
-        return Helpers.runExclusive('due-payment', '[data-record-payment]', () => this._recordPayment(saleId));
+        return Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared]', () => this._recordPayment(saleId));
     }
 
     static async _recordPayment(saleId) {
@@ -776,7 +776,7 @@ export class WholesaleSalesManager {
                                 <button data-record-payment onclick="window.app.wholesaleSales.recordPayment('${Helpers.escapeJsAttr(sale.id)}')" style="padding: 6px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.record')}</button>
                             </div>
                             <div style="display: flex; align-items: center;">
-                                <input type="checkbox" id="clear_${Helpers.escapeHtml(sale.id)}" onchange="window.app.wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />
+                                <input type="checkbox" data-mark-cleared id="clear_${Helpers.escapeHtml(sale.id)}" onchange="window.app.wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />
                                 <label for="clear_${Helpers.escapeHtml(sale.id)}" style="cursor: pointer; font-weight: 500;">${L('ui.wholesale.mark_as_cleared')}</label>
                             </div>
                         </div>

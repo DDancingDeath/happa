@@ -446,7 +446,11 @@ const BillingManager = {
      * Save current bill as draft
      * @async
      */
-    async saveDraft() {
+    saveDraft() {
+        return Helpers.runExclusive('draft', '#saveDraftBtn', () => this._saveDraft());
+    },
+
+    async _saveDraft() {
         const mode = this.currentMode;
         
         const currentUser = firebase.auth().currentUser;

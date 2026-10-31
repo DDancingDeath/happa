@@ -137,6 +137,24 @@ describe('StockManager.applyStockAdjustment', () => {
         await StockManager.applyStockAdjustment();
         expect(spy).toHaveBeenCalled();
     });
+
+    test('a double tap on Apply (also Set opening stock) saves one adjustment (#95)', async () => {
+        document.body.insertAdjacentHTML('beforeend', '<button id="applyBtn" data-stock-adjust></button>');
+        const btn = document.getElementById('applyBtn');
+        btn.addEventListener('click', () => { StockManager.applyStockAdjustment(); });
+        let release;
+        FirebaseService.saveStockAdjustment.mockImplementationOnce(() => new Promise(r => { release = r; }));
+        fill('set', '40', 'count');
+        btn.click();
+        btn.click();
+        await Promise.resolve();
+        expect(btn.disabled).toBe(true);
+        await StockManager.applyStockAdjustment();
+        expect(FirebaseService.saveStockAdjustment).toHaveBeenCalledTimes(1);
+        release();
+        await new Promise(r => setTimeout(r));
+        expect(btn.disabled).toBe(false);
+    });
 });
 
 describe('StockManager.renderStock while stock is not ready (#194)', () => {

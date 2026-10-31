@@ -181,6 +181,12 @@ In order:
 - **Money fields**: bills sometimes store `dueAmount` at top level *and*
   `payment.due` inside a nested object. Both can exist; both can drift.
   Read both, write both, treat the nested one as canonical when present.
+- **One tap = one write (#70, #95)**: every button that saves money or stock
+  runs its write through `Helpers.runExclusive(key, buttonSelector, fn)`, which
+  ignores a second tap and disables the buttons (`aria-busy`) until the save
+  ends. Put confirm dialogs *before* the lock (check `Helpers.isBusy(key)` first).
+  A write the app retries itself keeps a client-made id (bills: `pendingBill`,
+  due payments: the payment entry `id`).
 - **State**: a single `AppState` object lives in `state.js`. Never invent
   a parallel cache.
 - **Businesses / Rentals (#149, #170)**: one app, an `Aadhat | Rentals` switch

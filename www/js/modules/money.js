@@ -562,7 +562,11 @@ export const MoneyManager = {
         if (d && !d.value) d.value = toLocalISODate(new Date());
     },
 
-    async saveWithdrawal() {
+    saveWithdrawal() {
+        return Helpers.runExclusive('withdrawal', '[data-withdrawal-save]', () => this._saveWithdrawal());
+    },
+
+    async _saveWithdrawal() {
         const val = (id) => (document.getElementById(id)?.value || '').trim();
         const amount = parseFloat(val('moneyWdAmount'));
         const person = val('moneyWdPerson');

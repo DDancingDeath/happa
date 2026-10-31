@@ -341,7 +341,7 @@ function unitRowHtml(r, d, { showProperty = true } = {}) {
             <button type="button" class="rent-btn rent-btn-small" onclick="window.app.rentals.editLease('${js(lease.id)}')">${esc(t('ui.rent.update_rent'))}</button></div>`
         : '';
     const actions = lease ? ((dues.total > 0
-        ? `<button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.pay('${js(lease.id)}')">${esc(t('ui.rent.record_payment'))}</button>
+        ? `<button type="button" class="rent-btn rent-btn-primary" data-rent-pay onclick="window.app.rentals.pay('${js(lease.id)}')">${esc(t('ui.rent.record_payment'))}</button>
            <button type="button" class="rent-btn rent-btn-wa" onclick="window.app.rentals.remind('${js(lease.id)}')">${esc(t('ui.rent.whatsapp_reminder'))}</button>`
         : '') + (current && elecMode(lease) === 'meter' && (!current.electricity || isManager())
         ? `<button type="button" class="rent-btn" onclick="window.app.rentals.meter('${js(lease.id)}')">⚡ ${esc(t('ui.rent.meter_reading'))}</button>`
@@ -394,7 +394,7 @@ function renderMovedOut(d, ix) {
             <div class="rent-row-right"><div class="rent-due">${money(a.dues.total)}</div></div></div>
         <ul class="rent-months">${a.dues.charges.map(c => monthLine(c, getLang())).join('')}</ul>
         <div class="rent-actions">
-            <button type="button" class="rent-btn rent-btn-primary" onclick="window.app.rentals.pay('${js(a.leaseId)}')">${esc(t('ui.rent.record_payment'))}</button>
+            <button type="button" class="rent-btn rent-btn-primary" data-rent-pay onclick="window.app.rentals.pay('${js(a.leaseId)}')">${esc(t('ui.rent.record_payment'))}</button>
             <button type="button" class="rent-btn rent-btn-wa" onclick="window.app.rentals.remind('${js(a.leaseId)}')">${esc(t('ui.rent.whatsapp_reminder'))}</button>
         </div></div>`).join('')}`;
 }
@@ -423,6 +423,7 @@ function filterUnits(field, value) {
 }
 
 async function pay(leaseId) {
+    if (Helpers.isBusy('rent-pay')) return;
     const dues = leaseDues(store.snapshot().charges, leaseId);
     if (!dues.charges.length) return;
     const lang = getLang();
@@ -445,6 +446,10 @@ async function pay(leaseId) {
     const mode = PAYMENT_MODES.includes(val('rentPayMode')) ? val('rentPayMode') : 'cash';
     const ref = val('rentPayRef');
     const date = val('rentPayDate') || todayLocalISO();
+    await Helpers.runExclusive('rent-pay', '[data-rent-pay]', () => savePayment(id, charge, { amount, mode, ref, date }));
+}
+
+async function savePayment(id, charge, { amount, mode, ref, date }) {
     try {
         const res = await store.recordPayment(id, { amount, mode, ref, date }, rcOf(charge));
         const no = res.noReceipt;

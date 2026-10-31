@@ -615,6 +615,7 @@ export class StockManager {
     }
 
     static async applyStockAdjustment() {
+        if (Helpers.isBusy('stock-adjust')) return;
         const itemId = Helpers.getInputText('adjustItem');
         const adjustType = Helpers.getInputText('adjustType');
         // NaN when blank, so an empty box can't become "set stock to 0"
@@ -628,7 +629,6 @@ export class StockManager {
             UIManager.showToast(t('msg.common.select_item'));
             return;
         }
-        const itemName = item.name;
 
         const currentStock = AppState.stock[item.id]?.quantity || 0;
         const plan = planStockAdjustment({ adjustType, quantity, currentStock, reasonCode, reasonNote, rate });
@@ -644,6 +644,11 @@ export class StockManager {
             );
             if (!ok) return;
         }
+        await Helpers.runExclusive('stock-adjust', '[data-stock-adjust]', () => this._saveAdjustment(item, plan, currentStock, { adjustType, rate, reasonCode }));
+    }
+
+    static async _saveAdjustment(item, plan, currentStock, { adjustType, rate, reasonCode }) {
+        const itemName = item.name;
         const newStock = plan.newStock;
         const reason = plan.reason;
 

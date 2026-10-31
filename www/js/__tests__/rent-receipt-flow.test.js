@@ -99,3 +99,21 @@ test('the receipt dialog has no Save button; form dialogs keep it', async () => 
     expect(document.querySelector('#rentDialog .rent-btn-primary').hidden).toBe(false);
     RentalsModule.api.dialogClose(false);
 });
+
+test('a second Record payment while one is saving is ignored: one payment (#95)', async () => {
+    document.body.insertAdjacentHTML('beforeend', '<button id="payBtn" data-rent-pay></button>');
+    const btn = document.getElementById('payBtn');
+    let release;
+    store.recordPayment.mockImplementationOnce(() => new Promise(r => { release = r; }));
+    const done = _test.pay('L1');
+    await flush();
+    RentalsModule.api.dialogClose(true);
+    await flush();
+    expect(btn.disabled).toBe(true);
+    await _test.pay('L1');
+    expect(document.getElementById('rentDialog').hidden).toBe(true);
+    release({ amount: 5000, paid: 5000, open: false, receipt: null });
+    await done;
+    expect(store.recordPayment).toHaveBeenCalledTimes(1);
+    expect(btn.disabled).toBe(false);
+});
