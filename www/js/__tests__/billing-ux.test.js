@@ -114,6 +114,19 @@ describe('unsaved-bill banner (#117)', () => {
         await BillingManager.deleteAutoSave();
         expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
         expect(BillDrafts.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(BillDrafts.deleteAutoSave.mock.invocationCallOrder[0]);
+        expect(UIManager.showToast).not.toHaveBeenCalled();
+    });
+
+    test('an unfinished edit of a saved bill never becomes a draft (it would save as a second bill)', async () => {
+        BillDrafts.getAutoSave.mockResolvedValue({ ...saved, editingBillId: 'p9' });
+        await BillingManager.checkAutoSave();
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 1, total: 1 }]);
+        await BillingManager.autoSaveToCloud();
+        expect(BillDrafts.saveDraft).not.toHaveBeenCalled();
+        BillingManager.editingBillIndex = 0;
+        BillingManager.editingBillId = 'p1';
+        await BillingManager.autoSaveToCloud();
+        expect(BillDrafts.saveAutoSave.mock.calls.at(-1)[1].editingBillId).toBe('p1');
     });
 
     test('Restore never replaces a bill on screen or one opened for editing', async () => {

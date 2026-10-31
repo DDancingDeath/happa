@@ -234,6 +234,7 @@ const BillingManager = {
             PurchaseManager.updateTotals();
         }
         
+        if (this.pendingRecovery) this.showRecoveryBanner(this.pendingRecovery);
         this.focusFirstItem();
         UIManager.hapticFeedback();
     },
@@ -813,7 +814,8 @@ const BillingManager = {
                 userId: AppState.currentUser.uid,
                 userName: AppState.userName,
                 mode: mode,
-                deviceInfo: navigator.userAgent
+                deviceInfo: navigator.userAgent,
+                ...(this.editingBillIndex !== undefined ? { editingBillId: this.editingBillId || 'unknown' } : {})
             };
 
             autoSaveData.purchase = {
@@ -862,7 +864,8 @@ const BillingManager = {
     async deleteAutoSave() {
         try {
             if (!AppState.currentUser) return;
-            this.keepRecoveryAsDrafts();
+            // After a save the save's own toast stays on screen
+            this.keepRecoveryAsDrafts({ quiet: true });
             await BillDrafts.deleteAutoSave(AppState.currentUser.uid);
         } catch (error) {
             if (error.code !== 'not-found') {
@@ -927,9 +930,10 @@ const BillingManager = {
      * lines or weights) and hides the banner. The draft writes are queued at once
      * (also offline), before the auto-save is overwritten or deleted.
      */
-    keepRecoveryAsDrafts() {
+    keepRecoveryAsDrafts({ quiet = false } = {}) {
         const data = this.takeRecovery();
-        if (!data) return;
+        // An unfinished edit of a saved bill is not a new bill: it is dropped, as before
+        if (!data || data.editingBillId) return;
         const now = Date.now();
         const drafts = ['purchase', 'sale'].map(mode => {
             const form = data[mode] || (data.mode === mode && !data.purchase && !data.sale ? data : null);
@@ -964,7 +968,7 @@ const BillingManager = {
                 console.error('Failed to keep the unsaved bill as a draft:', e);
             }
         });
-        UIManager.showToast(t('msg.billing.unsaved_moved_to_drafts'), 'info');
+        if (!quiet) UIManager.showToast(t('msg.billing.unsaved_moved_to_drafts'), 'info');
         this.updateDraftCount().catch(e => console.error('Draft count refresh failed:', e));
     },
 
@@ -981,7 +985,10 @@ const BillingManager = {
                 return;
             }
             const data = this.takeRecovery();
-            if (data) await this.recoverAutoSave(data);
+            if (data) {
+                await this.recoverAutoSave(data);
+                this.triggerAutoSave();
+            }
             return;
         }
         if (this.takeRecovery()) await BillDrafts.deleteAutoSave(AppState.currentUser.uid).catch(e => console.error('Failed to delete auto-save:', e));
