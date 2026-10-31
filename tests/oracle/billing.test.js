@@ -105,9 +105,16 @@ describe('the forms show the oracle\'s figures', () => {
         const want = O.billForm('wholesale', entries, { stock: AppState.stock, expenses: 20.5 });
         expect(lineAmounts('#salesTable')).toEqual(want.BF_LINE);
         expect(Number(text('salesTotalAmount'))).toBe(want.BF_TOTAL_shown);
-        expect(Number(text('salesProfitAmount'))).toBe(want.WS_PROFIT_shown);
-        expect(Number(text('salesProfitPercent'))).toBe(want.WS_MARGIN);
-        expect(WholesaleSalesManager.computeTotals()).toMatchObject({ total: want.BF_TOTAL, profit: want.WS_PROFIT, profitPercent: want.WS_MARGIN });
+        expect(want.WS_PROFIT).toBeNull();
+        expect([text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['—', '—']);
+        expect(WholesaleSalesManager.computeTotals()).toMatchObject({ total: want.BF_TOTAL, profit: null, profitPercent: null });
+
+        AppState.stock['item-wheat'].rate = 30;
+        WholesaleSalesManager.updateProfitCalculation();
+        const known = O.billForm('wholesale', entries, { stock: AppState.stock, expenses: 20.5 });
+        expect(Number(text('salesProfitAmount'))).toBe(known.WS_PROFIT_shown);
+        expect(Number(text('salesProfitPercent'))).toBe(known.WS_MARGIN);
+        expect(WholesaleSalesManager.computeTotals()).toMatchObject({ total: known.BF_TOTAL, profit: known.WS_PROFIT, profitPercent: known.WS_MARGIN });
     });
 });
 

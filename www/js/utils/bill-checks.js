@@ -17,7 +17,7 @@
 import {
     billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney
 } from './money.js';
-import { validatePaymentSplit } from './calc/billing.js';
+import { validatePaymentSplit, wholesaleCostRate } from './calc/billing.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
 import { t } from '../i18n/index.js';
 import { computeShortfallsFrom, stockKeyFor, approxStockNote, stockedItemKeys } from './stock-check.js';
@@ -198,6 +198,24 @@ function oversellIssues(items, ctx, extraLine) {
     });
 }
 
+/**
+ * Q58 (#102): a new wholesale line whose item has no average cost in stock (never
+ * bought, no opening stock, unknown item) would count its cost as ₹0 and its whole
+ * value as profit. Blocks the save; an owner / manager may save it with a reason
+ * (the bill is then marked costUnknown and shows no profit). Skipped while stock loads.
+ */
+function costUnknownIssues(items, ctx, draft) {
+    if (ctx.kind !== 'wholesale' || draft.isEdit || !ctx.stockReady) return [];
+    return items.flatMap((line, i) => {
+        if (wholesaleCostRate(line, ctx.stock, ctx.catalogue) !== null) return [];
+        const name = readLineItem(line).name || '?';
+        return [issue('cost-unknown', `items.${i}`, 'block',
+            `${name}: average cost not known (not bought yet, no opening stock) — the profit cannot be worked out`,
+            `${name}: औसत लागत पता नहीं (अभी खरीदा नहीं, शुरुआती स्टॉक नहीं) — मुनाफ़ा नहीं निकल सकता`,
+            { line: i })];
+    });
+}
+
 /** Multiset signature of bill lines for duplicate detection. */
 function itemsSignature(items) {
     return (Array.isArray(items) ? items : [])
@@ -314,6 +332,7 @@ export function evaluateBill(draft, ctx) {
             out.push(...rateIssues(line, `items.${i}`, c, rates, { line: i }));
         });
         out.push(...oversellIssues(items, c));
+        out.push(...costUnknownIssues(items, c, draft));
         const dup = duplicateIssue({ ...draft, items }, c);
         if (dup) out.push(dup);
         out.push(...dateIssues(draft, c));

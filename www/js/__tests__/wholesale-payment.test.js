@@ -16,7 +16,7 @@ jest.mock('../firebase/firestore-service.js', () => ({
     }
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: {} }));
-jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(), ACTIONS: {} } }));
+jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: {} } }));
 jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn() }));
 
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -172,6 +172,27 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
             payment: { cash: 2000, online: 1000, due: 1025, total: 4025 }
         });
         expect(readPayment(sale)).toEqual({ total: 4025, cash: 2000, online: 1000, due: 1025, paid: 3000 });
+        expect(saved).toHaveLength(1);
+    });
+
+    test('unknown average cost (#102, Q58): a member is blocked; an owner saves with a reason, no profit, lines marked', async () => {
+        AppState.stock = { rice: { quantity: 500 } };
+        setVal('wholesaleCashPayment', 4025);
+        AppState.userRole = 'staff';
+        expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
+        expect(toast()).toContain('Rice: average cost not known');
+        expect(saved).toHaveLength(0);
+
+        AppState.userRole = 'owner';
+        jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => {
+            expect(html).toContain('average cost not known');
+            document.body.insertAdjacentHTML('beforeend', '<input id="billCheckOverrideReason" value="opening stock not entered yet">');
+            return true;
+        });
+        const sale = await WholesaleSalesManager.completeSale();
+        expect(sale).toMatchObject({ total: 4025, profit: null, profitPercent: null, costUnknown: true });
+        expect(sale.items[0].costUnknown).toBe(true);
+        expect(sale.overrides).toEqual([expect.objectContaining({ rule: 'cost-unknown', reason: 'opening stock not entered yet' })]);
         expect(saved).toHaveLength(1);
     });
 

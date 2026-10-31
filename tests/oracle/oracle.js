@@ -864,12 +864,14 @@ export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, s
         });
     }
     if (kind === 'wholesale') {
+        // WS-COST: the item's average rate in stock; a line without one makes the profit unknown (#102)
+        const unknown = lines.some(l => !(n(stock[l.itemId]?.rate) > 0));
         const cost = r2(sum(lines, l => (n(stock[l.itemId]?.rate) > 0 ? n(stock[l.itemId].rate) * l.qty : 0)));
-        const profit = r2(total - cost - n(expenses));
+        const profit = unknown ? null : r2(total - cost - n(expenses));
         Object.assign(out, {
             WS_PROFIT: profit,
-            WS_PROFIT_shown: Math.round(profit) || 0,
-            WS_MARGIN: total > 0 ? Math.round((profit / total) * 1000) / 10 : 0
+            WS_PROFIT_shown: unknown ? null : Math.round(profit) || 0,
+            WS_MARGIN: unknown ? null : total > 0 ? Math.round((profit / total) * 1000) / 10 : 0
         });
     }
     return out;

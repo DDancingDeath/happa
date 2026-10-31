@@ -69,6 +69,7 @@ export const ANOMALY_TYPES = Object.freeze({
     'rate-round': { en: 'Round-number line', hi: 'गोल रकम वाली लाइन', severity: 'low' },
     'qty-invalid': { en: 'Zero weight/quantity', hi: 'शून्य वज़न/मात्रा', severity: 'high' },
     'below-cost': { en: 'Sold below cost', hi: 'लागत से कम में बिक्री', severity: 'medium' },
+    'cost-unknown': { en: 'Sold with cost not known', hi: 'लागत पता नहीं, फिर भी बिक्री', severity: 'medium' },
     'oversell': { en: 'Sold more than stock', hi: 'स्टॉक से ज़्यादा बिक्री', severity: 'medium' },
     'payment-split': { en: 'Payment does not match total', hi: 'भुगतान कुल से मेल नहीं खाता', severity: 'high' },
     'payment-none': { en: 'No payment recorded', hi: 'कोई भुगतान नहीं लिखा', severity: 'high' },
