@@ -4457,22 +4457,6 @@ const FirebaseService = {
     async countDocuments(name) {
         const snapshot = await getDb().collection(col(name)).get();
         return snapshot.size;
-    },
-
-    /**
-     * Deletes every document of a collection (Admin → Clear Data).
-     * @returns {Promise<number>} documents deleted
-     */
-    async clearCollection(name) {
-        const snapshot = await getDb().collection(col(name)).get();
-        if (snapshot.size > 0) {
-            // A bill's edit records (#121) live under it and stay when it goes: delete them after it (rules: owner, bill gone).
-            const edited = HISTORY_SPEC[name]?.dues ? snapshot.docs.filter(doc => editCountOf(doc.data())) : [];
-            await Promise.all(snapshot.docs.map(doc => doc.ref.delete()));
-            await Promise.all(edited.map(doc => billEditsRef(doc.ref).get()
-                .then(edits => Promise.all(edits.docs.map(e => e.ref.delete())))));
-        }
-        return snapshot.size;
     }
 };
 
