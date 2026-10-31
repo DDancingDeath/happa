@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Fake `firebase deploy` for tests/ci/deploy-with-retry.test.js. FAKE_OUTCOMES
-// lists one outcome per call (ok | 503 | 500 | 429 | reset | compile |
+// lists one outcome per call (ok | 503 | 500 | 429 | 409 | reset | compile |
 // permission | weird); FAKE_STATE is a file that counts the calls so far. Its
 // own arguments are appended to FAKE_ARGS_LOG.
 const fs = require('fs');
@@ -21,6 +21,7 @@ const errors = {
     503: 'Error: Request to https://firebaserules.googleapis.com/v1/projects/happa-test:test had HTTP Error: 503, The service is currently unavailable.',
     500: 'Error: Request to https://firebaserules.googleapis.com/v1/projects/happa-test:test had HTTP Error: 500, Internal error encountered.',
     429: 'Error: HTTP Error: 429, Quota exceeded for quota metric.',
+    409: 'Error: Request to https://firebaserules.googleapis.com/v1/projects/happa-test/releases had HTTP Error: 409, Release projects/happa-test/releases/cloud.firestore already exists.',
     reset: 'Error: read ECONNRESET',
     compile: `${ESC}[33m⚠  [E] 12:5 - Missing 'match' keyword before path.${ESC}[39m\nError: Compilation errors in ${ESC}[1mfirestore.rules${ESC}[22m.`,
     permission: 'Error: Request to https://firebaserules.googleapis.com/v1/projects/happa-test:test had HTTP Error: 403, The caller does not have permission',

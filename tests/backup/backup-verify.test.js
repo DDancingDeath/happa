@@ -12,7 +12,7 @@ const zlib = require('zlib');
 const { spawnSync } = require('child_process');
 const { buildManifest } = require('../../tools/backup/backup-lib.js');
 const { encryptOpenssl, decryptOpenssl, decryptBackup, verifyArtifact, checkBackup, DecryptionError } = require('../../tools/backup/verify-lib.js');
-const { decideAlert, runWasGood } = require('../../tools/backup/alert.js');
+const { decideAlert, runWasGood, runAlert, withLastFailure } = require('../../tools/backup/alert.js');
 
 const PASS = 'correct horse battery staple';
 const WRONG = 'nope';
@@ -204,9 +204,78 @@ describe('backup failure alert', () => {
         expect(decideAlert({ kind: 'drill', event: 'schedule', currentGood: false, previousGood: null })).toBe('open');
     });
 
+    test('a failed deploy of main opens the alert at once (no second strike); a good one closes it', () => {
+        expect(decideAlert({ kind: 'deploy', event: 'push', currentGood: false, previousGood: null })).toBe('open');
+        expect(decideAlert({ kind: 'deploy', event: 'push', currentGood: true, previousGood: null })).toBe('resolve');
+    });
+
     test('a successful run without a backup artifact (size guard skip) counts as bad', () => {
         expect(runWasGood({ conclusion: 'success' }, [{ name: 'firestore-backup-nightly-2026-10-30_1345' }])).toBe(true);
         expect(runWasGood({ conclusion: 'success' }, [])).toBe(false);
         expect(runWasGood({ conclusion: 'failure' }, [{ name: 'firestore-backup-weekly-x' }])).toBe(false);
+    });
+});
+
+describe('alert issue: never a comment', () => {
+    const NOW = () => new Date('2026-10-31T14:00:00.123Z');
+    const MARKERS = { backup: '<!-- backup-alert:backup -->', drill: '<!-- backup-alert:drill -->', deploy: '<!-- deploy-alert:main -->' };
+
+    /** Fake GitHub API: `openIssue` is the open alert issue (or null); records every call. */
+    function fakeGitHub(openIssue, { previousRunGood = false } = {}) {
+        const calls = [];
+        const request = async (method, url, body) => {
+            calls.push({ method, url, body });
+            if (method === 'GET' && url.includes('/issues?')) return openIssue ? [openIssue] : [];
+            if (method === 'GET' && url.includes('/runs?')) return { workflow_runs: [{ id: 1, conclusion: previousRunGood ? 'success' : 'failure', html_url: 'https://github.com/r/runs/1' }] };
+            if (method === 'GET' && url.includes('/artifacts')) return { artifacts: [] };
+            return {};
+        };
+        return { calls, request };
+    }
+    const env = (kind, good, event = 'push') => ({
+        GITHUB_REPOSITORY: 'DDancingDeath/happa', GITHUB_RUN_ID: '42', ALERT_KIND: kind, EVENT_NAME: event, CURRENT_GOOD: String(good)
+    });
+    const writes = calls => calls.filter(c => c.method !== 'GET');
+
+    beforeEach(() => { jest.spyOn(console, 'log').mockImplementation(() => {}); });
+
+    test.each([['backup', 'schedule'], ['drill', 'schedule'], ['deploy', 'push']])('%s: no open issue -> opens one with the Last failure line', async (kind, event) => {
+        const gh = fakeGitHub(null);
+        await runAlert({ env: env(kind, false, event), request: gh.request, now: NOW });
+        const posted = writes(gh.calls).find(c => c.url === '/repos/DDancingDeath/happa/issues');
+        expect(posted.body.body).toContain(MARKERS[kind]);
+        expect(posted.body.body).toMatch(/Last failure: https:\/\/github\.com\/DDancingDeath\/happa\/actions\/runs\/42 at 2026-10-31T14:00:00Z/);
+        expect(gh.calls.some(c => /comments/.test(c.url))).toBe(false);
+    });
+
+    test.each([['backup', 'schedule'], ['drill', 'schedule'], ['deploy', 'push']])('%s: repeat failure updates the open issue body, no comment', async (kind, event) => {
+        const open = { number: 9, body: `${MARKERS[kind]}\nThe deploy failed.\n\nLast failure: https://github.com/DDancingDeath/happa/actions/runs/41 at 2026-10-30T10:00:00Z` };
+        const gh = fakeGitHub(open);
+        await runAlert({ env: env(kind, false, event), request: gh.request, now: NOW });
+        expect(writes(gh.calls)).toEqual([{ method: 'PATCH', url: '/repos/DDancingDeath/happa/issues/9', body: { body: expect.stringMatching(/runs\/42 at 2026-10-31T14:00:00Z/) } }]);
+        expect(writes(gh.calls)[0].body.body).not.toMatch(/runs\/41/);
+        expect(gh.calls.some(c => /comments/.test(c.url))).toBe(false);
+    });
+
+    test.each([['backup'], ['drill'], ['deploy']])('%s: recovery closes the issue with one PATCH, no comment', async kind => {
+        const gh = fakeGitHub({ number: 9, body: `${MARKERS[kind]}\nfailed` });
+        await runAlert({ env: env(kind, true), request: gh.request, now: NOW });
+        expect(writes(gh.calls)).toEqual([{
+            method: 'PATCH',
+            url: '/repos/DDancingDeath/happa/issues/9',
+            body: expect.objectContaining({ state: 'closed', state_reason: 'completed', body: expect.stringMatching(/Recovered: .*runs\/42 succeeded/) })
+        }]);
+        expect(gh.calls.some(c => /comments/.test(c.url))).toBe(false);
+    });
+
+    test('the deploy alert says to re-run the LATEST failed run', async () => {
+        const gh = fakeGitHub(null);
+        await runAlert({ env: env('deploy', false), request: gh.request, now: NOW });
+        expect(writes(gh.calls).find(c => c.url.endsWith('/issues')).body.body).toMatch(/LATEST failed run/);
+    });
+
+    test('withLastFailure replaces the line, or appends it', () => {
+        expect(withLastFailure('a\n\nLast failure: x at 1\n\nb', 'Last failure: y at 2')).toBe('a\n\nLast failure: y at 2\n\nb');
+        expect(withLastFailure('a\n', 'Last failure: y at 2')).toBe('a\n\nLast failure: y at 2');
     });
 });
