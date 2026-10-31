@@ -81,7 +81,8 @@ describe('happa.config.json', () => {
             redirects: [
                 { source: '/', destination: 'https://happa-app.web.app/', type: 301 },
                 { source: '/:path*', destination: 'https://happa-app.web.app/:path', type: 301 }
-            ] });
+            ],
+            headers: [{ source: '**', headers: expect.arrayContaining([{ key: 'X-Frame-Options', value: 'DENY' }]) }] });
         expect(hostingProblems(json, d)).toEqual([]);
         expect(files['www/download.html']).toContain('href="https://happa-app.web.app"');
         expect(configProblems(raw)).toEqual([]);

@@ -9,11 +9,13 @@ const APP_VERSION = require('../../../package.json').version;
 
 const test = base.test.extend({
     problems: async ({ page }, use) => {
-        const problems = { pageErrors: [], consoleErrors: [], prodRequests: [] };
+        const problems = { pageErrors: [], consoleErrors: [], prodRequests: [], cspReports: [] };
         page.on('pageerror', e => problems.pageErrors.push(String(e.message || e)));
         page.on('console', m => {
             // The service worker is blocked in tests; its registration failure is expected.
             if (m.type() === 'error' && !/service ?worker|\[SW\]/i.test(m.text())) problems.consoleErrors.push(m.text());
+            // The static server sends Hosting's report-only CSP (#89); Chrome logs each report (as info).
+            if (/violates the following Content Security Policy directive/.test(m.text())) problems.cspReports.push(m.text());
         });
         page.on('request', r => {
             if (/googleapis\.com/.test(r.url()) && !/127\.0\.0\.1|localhost/.test(r.url())) problems.prodRequests.push(r.url());
@@ -21,6 +23,7 @@ const test = base.test.extend({
         page.on('dialog', d => d.accept());
         await use(problems);
         base.expect(problems.prodRequests, 'no request may reach production Firebase').toEqual([]);
+        base.expect(problems.cspReports, 'the report-only CSP in firebase.json must not report anything (#89)').toEqual([]);
     }
 });
 
