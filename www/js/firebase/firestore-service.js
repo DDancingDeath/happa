@@ -2418,19 +2418,9 @@ const FirebaseService = {
         }
 
         ensureTimestamp(expense, true);
-        const ref = getDb().collection(col('expenses')).doc();
-        const record = { id: ref.id, ...expense };
-        noteLocalRecordWrite('expenses', ref.id, record);
-        const list = AppState.expensesHistory || (AppState.expensesHistory = []);
-        if (!list.some(e => String(e.id) === ref.id)) list.unshift(record);
-        const committed = ref.set(expense).catch(err => {
-            forgetRecord('expenses', ref.id);
-            const i = (AppState.expensesHistory || []).findIndex(e => String(e.id) === ref.id);
-            if (i !== -1) AppState.expensesHistory.splice(i, 1);
-            throw err;
-        });
-        noteMonthWrite('expenses', null, record);
-        return { record, committed };
+        const started = startCreate('expenses', expense);
+        noteMonthWrite('expenses', null, started.record);
+        return started;
     },
 
     /**
