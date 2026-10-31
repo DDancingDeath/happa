@@ -9,6 +9,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
+import { changedFields } from '../utils/audit-changes.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -41,6 +42,12 @@ export const CHECK_THRESHOLD_FIELDS = [
 const MAX_BUSINESS_NAME = 80;
 const MAX_BUSINESS_DETAILS = 120;
 const MAX_UPI = 60;
+
+/** Audit entry for a shared setting saved for everyone, with before → after (#85); nothing when unchanged. */
+function noteSettingsChange(section, before, after) {
+    const changes = changedFields(before, after);
+    if (changes.length) AuditService.note(AuditService.ACTIONS.SETTINGS_CHANGE, { section, changes: changes.join('; ').slice(0, 900) });
+}
 
 /** Set an input's value / checked state when it is on the page. */
 function setField(id, prop, value) {
@@ -217,6 +224,7 @@ export class SettingsManager {
         this.applyLabourLocally(next);
         try {
             await FirebaseService.saveSharedLabourSettings(next);
+            noteSettingsChange('labour', current, next);
             return true;
         } catch (error) {
             console.error('Saving shared labour settings failed:', error);
@@ -374,11 +382,13 @@ export class SettingsManager {
         const typed = {};
         CHECK_THRESHOLD_FIELDS.forEach(([key]) => { typed[key] = document.getElementById(`settingCheck_${key}`)?.value; });
         const next = normalizeThresholds(typed);
+        const previous = normalizeThresholds(AppState.settings?.checkThresholds);
         AppState.settings.checkThresholds = next;
         storeLocalSettings();
         CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', next[key]));
         try {
             await FirebaseService.saveSharedCheckThresholds(next);
+            noteSettingsChange('bill_checks', previous, next);
             UIManager.showToast(t('msg.admin.settings_saved_everyone'));
             return true;
         } catch (error) {
@@ -396,11 +406,13 @@ export class SettingsManager {
         }
         const clean = (id, max) => String(document.getElementById(id)?.value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
         const details = { businessName: clean('settingBusinessName', MAX_BUSINESS_NAME), businessDetails: clean('settingBusinessDetails', MAX_BUSINESS_DETAILS) };
+        const previous = { businessName: AppState.settings.shopName || '', businessDetails: AppState.settings.businessDetails || '' };
         AppState.settings.shopName = details.businessName;
         AppState.settings.businessDetails = details.businessDetails;
         storeLocalSettings();
         try {
             await FirebaseService.saveBusinessDetails(details);
+            noteSettingsChange('business', previous, details);
             UIManager.showToast(t('msg.admin.settings_saved_everyone'));
             return true;
         } catch (error) {

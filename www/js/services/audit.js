@@ -37,6 +37,13 @@ export class AuditService {
         // Finance
         RECORD_WITHDRAWAL: 'RECORD_WITHDRAWAL',
         RECORD_EXPENSE: 'RECORD_EXPENSE',
+        // Cash day opened / counted and closed (#85)
+        CASH_OPEN: 'CASH_OPEN',
+        CASH_CLOSE: 'CASH_CLOSE',
+        // Shared settings (Settings › Aadhat) with before → after (#85)
+        SETTINGS_CHANGE: 'SETTINGS_CHANGE',
+        // Owner hid error reports in Diagnostics (#116; kept in Firestore)
+        HIDE_ERRORS: 'HIDE_ERRORS',
         
         // Data Management
         CLEAR_DATA: 'CLEAR_DATA',
@@ -73,6 +80,11 @@ export class AuditService {
             // Don't let audit failures break the app
             console.error('[AUDIT ERROR]', error);
         }
+    }
+
+    /** Fire-and-forget log for an action that already succeeded; never throws or blocks. */
+    static note(action, details = {}) {
+        this.log(action, details).catch(e => console.warn('Audit entry not written:', e?.code || e));
     }
 
     static async getRecentLogs(limit = 50) {

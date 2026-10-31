@@ -511,14 +511,13 @@
       "t1"
     ],
     [
-      "batch.delete",
-      "ref(dev_telemetry/t1)"
-    ],
-    [
-      "batch.commit"
-    ],
-    [
-      "batch"
+      "batch.update",
+      "ref(dev_telemetry/t1)",
+      {
+        "hidden": true,
+        "hiddenBy": "u1",
+        "hiddenAt": "SERVER_TIME"
+      }
     ],
     [
       "collection",
@@ -529,25 +528,13 @@
       "t2"
     ],
     [
-      "batch.delete",
-      "ref(dev_telemetry/t2)"
-    ],
-    [
-      "batch.commit"
-    ],
-    [
-      "collection",
-      "dev_telemetry"
-    ],
-    [
-      "get"
-    ],
-    [
-      "batch"
-    ],
-    [
-      "batch.delete",
-      "ref(dev_telemetry/t3)"
+      "batch.update",
+      "ref(dev_telemetry/t2)",
+      {
+        "hidden": true,
+        "hiddenBy": "u1",
+        "hiddenAt": "SERVER_TIME"
+      }
     ],
     [
       "batch.commit"
@@ -891,6 +878,28 @@
           "duePaid": 0,
           "cashDeposits": 200
         }
+      }
+    ],
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "add",
+      {
+        "action": "CASH_CLOSE",
+        "userId": "u1",
+        "userName": "Owner",
+        "userRole": "owner",
+        "details": {
+          "date": "2026-10-21",
+          "counted": 1250,
+          "expected": 1250,
+          "difference": 0
+        },
+        "timestamp": 1792557000000,
+        "date": "2026-10-21T04:30:00.000Z",
+        "serverTime": "SERVER_TIME"
       }
     ]
   ],

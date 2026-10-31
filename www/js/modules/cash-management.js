@@ -6,6 +6,7 @@
  */
 
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { AuditService } from '../services/audit.js';
 import { updateSessionChecked, updateSession, addSessionEntry } from '../firebase/repos/cash-sessions.js';
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
@@ -782,6 +783,7 @@ export class CashManagementManager {
 
             await withCashLock('open', async () => {
                 const { session: opened, joined } = await FirebaseService.openCashSession(session);
+                if (!joined) AuditService.note(AuditService.ACTIONS.CASH_OPEN, { date: opened.date, openingBalance: opened.openingBalance });
                 this.todaySession = opened;
                 await this.calculateTodayTransactions();
                 this.updateUI();
@@ -868,6 +870,9 @@ export class CashManagementManager {
             await updateSession(this.todaySession.id, closingFields);
             clearTimeout(waiting);
             run.complete();
+            AuditService.note(AuditService.ACTIONS.CASH_CLOSE, {
+                date: this.todaySession.date, counted: actualAmount, expected, difference
+            });
             this.todaySession = updatedSession;
             this.updateUI();
             this.renderHistory();

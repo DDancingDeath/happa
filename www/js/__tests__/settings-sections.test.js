@@ -14,6 +14,7 @@ import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { NavigationManager, resolveRoute } from '../ui/navigation.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
+import { AuditService } from '../services/audit.js';
 import { t, setLang, resetLangForTests, applyTranslations } from '../i18n/index.js';
 
 const TEMPLATES = path.join(__dirname, '..', '..', 'templates');
@@ -163,11 +164,19 @@ describe('Settings page sections (jsdom)', () => {
         as('owner');
         SettingsManager.open();
         const save = jest.spyOn(FirebaseService, 'saveBusinessDetails').mockResolvedValue();
+        const note = jest.spyOn(AuditService, 'note').mockImplementation(() => {});
+        AppState.settings.shopName = 'Old Name';
+        AppState.settings.businessDetails = 'Mandi road';
         document.getElementById('settingBusinessName').value = '  Sharma   Aadhat ';
         document.getElementById('settingBusinessDetails').value = 'Mandi road';
         expect(await SettingsManager.saveBusinessDetails()).toBe(true);
         expect(save).toHaveBeenCalledWith({ businessName: 'Sharma Aadhat', businessDetails: 'Mandi road' });
         expect(AppState.settings.shopName).toBe('Sharma Aadhat');
+        // #85: the change is audited with before → after, only the changed field
+        expect(note).toHaveBeenCalledWith('SETTINGS_CHANGE', { section: 'business', changes: 'businessName: Old Name → Sharma Aadhat' });
+        note.mockClear();
+        expect(await SettingsManager.saveBusinessDetails()).toBe(true);
+        expect(note).not.toHaveBeenCalled();
         as('manager');
         save.mockClear();
         expect(await SettingsManager.saveBusinessDetails()).toBe(false);

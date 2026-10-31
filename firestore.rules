@@ -1050,7 +1050,7 @@ service cloud.firestore {
       let now = request.time.toMillis();
       return d.keys().hasOnly(['action', 'userId', 'userName', 'userRole', 'details', 'timestamp', 'date', 'serverTime'])
         && d.get('userId', null) == request.auth.uid
-        && d.get('action', null) is string && d.action.size() <= 64
+        && d.get('action', null) is string && d.action.matches('^[A-Z][A-Z0-9_]{0,63}$')
         && d.get('timestamp', null) is number
         && d.timestamp <= now + 600000
         && (d.get('serverTime', null) == request.time
@@ -1069,6 +1069,15 @@ service cloud.firestore {
 
     function shortStringOrAbsent(d, key, max) {
       return !(key in d) || (d[key] is string && d[key].size() <= max);
+    }
+
+    // The owner hides a report (#116): only these fields, by the caller, at the server time.
+    function telemetryHideOnly() {
+      let d = request.resource.data;
+      return d.diff(resource.data).affectedKeys().hasOnly(['hidden', 'hiddenBy', 'hiddenAt'])
+        && d.get('hidden', null) == true
+        && d.get('hiddenBy', null) == request.auth.uid
+        && d.get('hiddenAt', null) == request.time;
     }
 
     // One document per sync of a grouped error (telemetry.js syncToFirestore).
@@ -2153,10 +2162,11 @@ service cloud.firestore {
       allow delete: if isAdmin() && isExpiredAuditEntry();
     }
 
-    // Telemetry - append-only error reports; only owners read/delete (Clear All).
+    // Telemetry - append-only error reports; only owners read them, and hide them
+    // (Diagnostics, #116: hidden, never deleted by the app; delete stays for repairs).
     match /telemetry/{docId} {
       allow create: if isApproved() && validTelemetryEntry();
-      allow update: if false;
+      allow update: if isAdmin() && telemetryHideOnly();
       allow read, delete: if isAdmin();
     }
 
@@ -2314,7 +2324,7 @@ service cloud.firestore {
 
     match /dev_telemetry/{docId} {
       allow create: if isApprovedIn('dev_users') && validTelemetryEntry();
-      allow update: if false;
+      allow update: if isOwnerIn('dev_users') && telemetryHideOnly();
       allow read, delete: if isOwnerIn('dev_users');
     }
   }

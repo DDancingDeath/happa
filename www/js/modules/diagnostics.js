@@ -334,7 +334,7 @@ const DiagnosticsManager = {
                     <option value="manual" ${this.filter === 'manual' ? 'selected' : ''}>${tx('ui.diag.manual')}</option>
                 </select>
                 <button onclick="window.app.diagnostics.loadData()" class="diag-btn refresh">🔄</button>
-                <button onclick="window.app.diagnostics.clearAll()" class="diag-btn danger">🗑️</button>
+                <button onclick="window.app.diagnostics.clearAll()" class="diag-btn danger" title="${tx('msg.diagnostics.clear_all_diagnostics')}" aria-label="${tx('msg.diagnostics.clear_all_diagnostics')}">🙈</button>
             </div>
 
             <!-- Error List -->
@@ -379,7 +379,7 @@ const DiagnosticsManager = {
                 <div class="diag-error-header">
                     <span class="diag-error-type">${typeLabels[error.type] || Helpers.escapeHtml(error.type)}</span>
                     <span class="diag-error-count">${Helpers.escapeHtml(error.count || 1)}×</span>
-                    <button onclick="window.app.diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn">×</button>
+                    <button onclick="window.app.diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn" title="${tx('msg.diagnostics.hide_error_title')}" aria-label="${tx('msg.diagnostics.hide_error_title')}">×</button>
                 </div>
                 <div class="diag-error-message">${this.escapeHtml(error.message || t('ui.diag.no_message'))}</div>
                 ${error.source ? `<div class="diag-error-source">📍 ${Helpers.escapeHtml(error.source)}:${Helpers.escapeHtml(error.line || '?')}</div>` : ''}
@@ -594,12 +594,13 @@ const DiagnosticsManager = {
      * @param {string} errorId - Error ID
      */
     async deleteError(errorId) {
-        const confirmed = await UIManager.showModal(t('msg.diagnostics.delete_error'), t('msg.common.confirm_delete'), true);
+        const confirmed = await UIManager.showModal(t('msg.diagnostics.delete_error'), t('msg.diagnostics.hide_error_title'), true);
         if (!confirmed) return;
 
         try {
             const entry = this.data.find(d => d.id === errorId);
-            await TelemetryService.deleteError(errorId, entry?.docIds);
+            const count = await TelemetryService.hideErrors(entry?.docIds?.length ? entry.docIds : [errorId]);
+            AuditService.note(AuditService.ACTIONS.HIDE_ERRORS, { reports: count, all: false });
             this.data = this.data.filter(d => d.id !== errorId);
             this.renderErrors();
             UIManager.showToast(t('msg.diagnostics.error_deleted'));
@@ -609,7 +610,7 @@ const DiagnosticsManager = {
     },
 
     /**
-     * Clear all errors
+     * Hide every listed error (#116): kept in Firestore, recorded in the audit log
      */
     async clearAll() {
         const confirmed = await UIManager.showModal(
@@ -621,7 +622,8 @@ const DiagnosticsManager = {
 
         try {
             UIManager.showLoading();
-            await TelemetryService.clearTelemetryData();
+            const count = await TelemetryService.hideErrors((this.data || []).flatMap(d => (d.docIds?.length ? d.docIds : [d.id])));
+            AuditService.note(AuditService.ACTIONS.HIDE_ERRORS, { reports: count, all: true });
             this.data = [];
             this.renderErrors();
             UIManager.showToast(t('msg.diagnostics.all_diagnostics_cleared'));

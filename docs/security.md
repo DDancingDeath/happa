@@ -138,3 +138,24 @@ about 2 assessments a day); (2) ship the SDK (web + native plugin) in
 then Firestore, only when the App Check metrics show > 95% verified requests
 for two weeks. Until then the Firestore rules remain the only data protection,
 so rules stay the priority.
+
+## Audit log and error reports (#85, #116)
+
+- **Audit log** (`auditLogs`, owner reads in Settings and Diagnostics): every entry is
+  created by an approved user **as themselves** (`userId` = caller), with the server time
+  (`serverTime`) and an UPPER_CASE action code (`^[A-Z][A-Z0-9_]{0,63}$`, no free text);
+  nobody edits an entry; the owner's phone deletes entries older than 90 days
+  (`cleanupOldLogs`, allowed by the rules). Logged: bills (create, edit, void, delete),
+  payments and write-offs, expenses (edit, delete), items (create, edit, delete, import), stock
+  adjustments (before → after), withdrawals, cash day open / close (counted vs expected),
+  Settings › Aadhat changes (labour, bill checks, business name: before → after), Roles &
+  access, accounts (approve, reject, role change, remove, restore), rentals actions,
+  Clear Data and hiding error reports. Print / export of the log is #103.
+- **Error reports** (`telemetry`): before a report is stored, `utils/scrub.js` replaces
+  emails, Indian mobile numbers, rupee amounts, tokens and keys (JWTs, `AIza…`,
+  `token=` / `key=` / `oobCode=` values, long opaque strings) with placeholders, drops
+  the page address's query string, and keeps only the error code of objects logged with
+  `console.error` (data objects hold names and amounts). Only the owner reads reports
+  (Diagnostics › Errors; managers see Number checks only). **Hide** / **Hide all** mark
+  reports `hidden` (owner only, nothing else may change) instead of deleting them, and
+  write a `HIDE_ERRORS` audit entry.

@@ -260,19 +260,19 @@ describe('telemetry (services/telemetry.js)', () => {
         expect(fake.raw('dev_telemetry').size).toBe(2);
     });
 
-    test('owner reads, clears and deletes reports', async () => {
+    test('owner reads and hides reports (#116: never deleted)', async () => {
         fake.seed('dev_telemetry', [
             { id: 't1', fingerprint: 'fp1', message: 'a', lastSeen: 2, count: 1 },
-            { id: 't2', fingerprint: 'fp2', message: 'b', lastSeen: 1, count: 1 }
+            { id: 't2', fingerprint: 'fp2', message: 'b', lastSeen: 1, count: 1 },
+            { id: 't0', fingerprint: 'fp0', message: 'z', lastSeen: 3, count: 1, hidden: true }
         ]);
         const data = await TelemetryService.getTelemetryData();
-        await TelemetryService.deleteError('fp1', ['t1']);
-        await TelemetryService.deleteError('t2');
-        fake.seed('dev_telemetry', [{ id: 't3', fingerprint: 'fp3', message: 'c', lastSeen: 3, count: 1 }]);
-        await TelemetryService.clearTelemetryData();
+        await TelemetryService.hideErrors(['t1', 't2', 't1']);
         pin('telemetry.owner', rec.log);
-        expect(data.length).toBe(2);
-        expect(fake.raw('dev_telemetry').size).toBe(0);
+        expect(data.map(d => d.id)).toEqual(['fp1', 'fp2']);
+        expect(fake.raw('dev_telemetry').size).toBe(3);
+        expect(fake.raw('dev_telemetry').get('t1')).toMatchObject({ hidden: true, message: 'a' });
+        expect((await TelemetryService.getTelemetryData()).length).toBe(0);
     });
 });
 
