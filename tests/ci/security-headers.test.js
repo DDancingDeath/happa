@@ -104,7 +104,6 @@ describe('app site CSP (report-only until the inline handlers are gone, #89)', (
         expect(csp['default-src']).toEqual(["'self'"]);
         expect(csp['object-src']).toEqual(["'none'"]);
         expect(csp['base-uri']).toEqual(["'self'"]);
-        expect(csp['frame-src']).toEqual(["'none'"]);
         // Report-only ignores frame-ancestors; it is enforced in Content-Security-Policy instead.
         expect(csp['frame-ancestors']).toBeUndefined();
         for (const sources of Object.values(csp)) {
@@ -114,8 +113,15 @@ describe('app site CSP (report-only until the inline handlers are gone, #89)', (
         }
     });
 
-    test("script-src allows only our files, the pinned SheetJS CDN and (for now) inline handlers", () => {
-        expect(csp['script-src']).toEqual(["'self'", "'unsafe-inline'", new URL(XLSX_URL).origin]);
+    test("script-src allows only our files, Auth's gapi loader, the pinned SheetJS CDN and (for now) inline handlers", () => {
+        expect(csp['script-src']).toEqual(["'self'", "'unsafe-inline'", 'https://apis.google.com', new URL(XLSX_URL).origin]);
+    });
+
+    test("frame-src is only Firebase Auth's iframe on the project's authDomain", () => {
+        // On phones the compat Auth SDK loads gapi and frames <authDomain>/__/auth/iframe at start-up.
+        const config = fs.readFileSync(path.join(ROOT, 'www', 'firebaseConfig.js'), 'utf8');
+        const authDomain = config.match(/"authDomain":\s*"([^"]+)"/)[1];
+        expect(csp['frame-src']).toEqual([`https://${authDomain}`]);
     });
 
     test('connect-src allows the Firebase APIs the SDK calls and the release check', () => {
@@ -124,6 +130,7 @@ describe('app site CSP (report-only until the inline handlers are gone, #89)', (
             'https://firestore.googleapis.com',
             'https://identitytoolkit.googleapis.com',
             'https://securetoken.googleapis.com',
+            'https://apis.google.com',
             new URL(APP_IDENTITY.latestReleaseApi).origin
         ]));
     });

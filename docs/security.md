@@ -32,14 +32,14 @@ what it *would* block (DevTools console, "[Report Only]") and block nothing.
 
 ```
 default-src 'self';
-script-src 'self' 'unsafe-inline' https://cdn.sheetjs.com;
+script-src 'self' 'unsafe-inline' https://apis.google.com https://cdn.sheetjs.com;
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob:;
 font-src 'self' data:;
 connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.googleapis.com
             https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com
-            https://api.github.com;
-worker-src 'self'; manifest-src 'self'; frame-src 'none';
+            https://apis.google.com https://www.google.com https://api.github.com;
+worker-src 'self'; manifest-src 'self'; frame-src https://happa-bfc07.firebaseapp.com;
 object-src 'none'; base-uri 'self'; form-action 'self'
 ```
 
@@ -49,6 +49,7 @@ object-src 'none'; base-uri 'self'; form-action 'self'
 | `https://cdn.sheetjs.com` (script) | Excel export (`ensureXLSX()`, pinned with SRI) |
 | `firestore.googleapis.com` | Firestore SDK and the tenant page's single REST read |
 | `identitytoolkit.googleapis.com`, `securetoken.googleapis.com` | Firebase Auth sign-in and token refresh |
+| `apis.google.com` (script, connect), `www.google.com` (connect), `happa-bfc07.firebaseapp.com` (frame) | Firebase Auth (compat) on **phones** (and Safari) loads Google's `gapi` loader at start-up and frames `<authDomain>/__/auth/iframe` (its popup/redirect helper), even though the app only signs in with email + password. Found by the E2E phone runs. These scripts can't carry SRI; dropping them needs Auth without the popup/redirect resolver (modular SDK), a separate change |
 | `firebaseinstallations.googleapis.com` | not called today; listed for the Firebase SDKs that use it (App Check, see below) |
 | `api.github.com` | the "Update available" check |
 | `data:` / `blob:` images | receipts and bill images drawn on a canvas, the inline favicon, downloads |
@@ -61,10 +62,11 @@ navigation, which CSP does not cover.
 **Keeping it right.** `tests/ci/security-headers.test.js` fails when a site loses
 a header, or when code under `www/` names an `https://` origin that is neither
 in the CSP nor in its short "only linked to" list. The E2E static server sends
-the same `**` headers (plus the emulator ports in `connect-src`), and the E2E
+the same `**` headers (plus the emulator ports in `connect-src` / `frame-src`), and the E2E
 fixture fails on any CSP report, so every page × role is checked against the
 policy on each PR. When you add a new external origin, add it to the CSP in
-`firebase.json` in the same PR.
+`firebase.json` in the same PR. `frame-src` must name the project's `authDomain`
+(the test reads it from `www/firebaseConfig.js`), so a project change updates it too.
 
 **Enforcing.** There is no report endpoint (the project has no Cloud Functions or
 other server to receive reports), so reports are only visible in the browser
@@ -79,7 +81,10 @@ console and in E2E. Switch
   checks the hashes.
 - The only CDN script, SheetJS, is loaded on demand with a pinned version,
   `integrity` and `crossorigin="anonymous"` (`www/js/utils/lazy-scripts.js`).
-- Everything else is same-origin. No further SRI work is needed.
+- Everything else the app's own code loads is same-origin, so no further SRI
+  work is needed. The one exception is not ours: on phones the Firebase Auth SDK
+  itself injects Google's `gapi` loader from `apis.google.com` (versioned URLs,
+  no SRI possible); see the CSP table.
 
 ## App Check: assessment (not enabled)
 

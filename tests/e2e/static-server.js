@@ -22,7 +22,7 @@ const EMU = opt('--project') ? target({ project: opt('--project'), authPort: Num
 
 // The app site's '**' security headers from firebase.json (#89), so every E2E page runs
 // under the same report-only CSP as Hosting; the fixture fails on any CSP report.
-// The emulators are extra connect-src origins only here.
+// The auth emulator stands in for the API hosts and the authDomain iframe only here.
 function securityHeaders() {
     const hosting = JSON.parse(fs.readFileSync(path.resolve(ROOT, '..', 'firebase.json'), 'utf8')).hosting;
     const app = (Array.isArray(hosting) ? hosting : [hosting]).find((h) => h.public === 'www');
@@ -31,7 +31,9 @@ function securityHeaders() {
     for (const { key, value } of all) {
         if (key === 'Strict-Transport-Security') continue;
         out[key] = (key === 'Content-Security-Policy-Report-Only' && EMU)
-            ? value.replace(/connect-src ([^;]*)/, `connect-src $1 http://127.0.0.1:${EMU.authPort} http://127.0.0.1:${EMU.firestorePort}`)
+            ? value
+                .replace(/connect-src ([^;]*)/, `connect-src $1 http://127.0.0.1:${EMU.authPort} http://127.0.0.1:${EMU.firestorePort}`)
+                .replace(/frame-src ([^;]*)/, `frame-src $1 http://127.0.0.1:${EMU.authPort}`)
             : value;
     }
     return out;
