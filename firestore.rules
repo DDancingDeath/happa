@@ -161,10 +161,11 @@ service cloud.firestore {
     // online + written off + due is at most the bill total + Rs 1 (the bill
     // screen's split check, money.js SPLIT_TOLERANCE: "Cash" or "Due" fills in the
     // total rounded to the rupee). The total is read as billTotal() reads it
-    // (grandTotal, else total, else billTotal / saleTotal). Only tools/migrate
-    // writes opening records.
+    // (grandTotal, amountPayable, total, then billTotal / saleTotal). Only
+    // tools/migrate writes opening records; the app never writes the legacy
+    // amountPaid / due that readPayment() would also read.
     function changedMoneyOk(keys) {
-      return !keys.hasAny(['openingBalance'])
+      return !keys.hasAny(['openingBalance', 'amountPaid', 'due'])
         && (keys.hasAny(['total', 'grandTotal', 'amountPayable', 'billTotal', 'saleTotal',
                          'payment', 'cashPayment', 'onlinePayment', 'dueAmount'])
             ? billMoneyOk(request.resource.data, request.resource.data.get('payment', {}))
@@ -176,12 +177,15 @@ service cloud.firestore {
         && moneyOrAbsent(p, 'cash') && moneyOrAbsent(p, 'online') && moneyOrAbsent(p, 'due')
         && moneyOrAbsent(p, 'writtenOff') && moneyOrAbsent(p, 'total')
         && moneyOrAbsent(d, 'cashPayment') && moneyOrAbsent(d, 'onlinePayment') && moneyOrAbsent(d, 'dueAmount')
-        && totalOk(d, 'total') && totalOk(d, 'grandTotal')
+        && totalOk(d, 'total') && totalOk(d, 'grandTotal') && totalOk(d, 'amountPayable')
+        && totalOk(d, 'billTotal') && totalOk(d, 'saleTotal')
         && p.get('cash', d.get('cashPayment', 0)) + p.get('online', d.get('onlinePayment', 0))
            + p.get('writtenOff', 0) + p.get('due', d.get('dueAmount', 0))
            <= (d.get('grandTotal', 0) != 0 ? d.grandTotal
+               : d.get('amountPayable', 0) != 0 ? d.amountPayable
                : d.get('total', 0) != 0 ? d.total
-               : d.get('billTotal', d.get('saleTotal', 0))) + 1.0101;
+               : d.get('billTotal', 0) != 0 ? d.billTotal
+               : d.get('saleTotal', 0)) + 1.0101;
     }
 
     // payments[] may only grow by one entry; existing entries stay unchanged and
@@ -199,12 +203,14 @@ service cloud.firestore {
 
     // Money moves only with the due (#65). A payment or write-off writes
     // payment.cash, online and due as money; cash, online and written off never
-    // go down, each goes up by exactly what the new payments[] entry says
+    // go down, each goes up by what the new payments[] entry (amount > 0) says
     // (due-payments.js entryParts: a write-off, else its cash / online parts,
-    // else all cash; nothing without an entry), and the due goes down by the same
-    // (1 paisa either way, outstanding.js PAYMENT_TOLERANCE). So a member can
-    // neither take money off a bill nor lower a due without money, and with the
-    // split check on creates and edits nobody pays more than the bill total.
+    // else all cash; half a paisa for round2 of older values), and the due goes
+    // down by the same (1 paisa either way, outstanding.js PAYMENT_TOLERANCE).
+    // Without an entry no money moves and the due only drops when a due under
+    // 1 paisa is written off to 0. So a member can neither take money off a bill
+    // nor lower a due without money, and with the split check on creates and
+    // edits nobody pays more than the bill total.
     function paymentMoneyOk(changed, p, rp, before) {
       return moneyOk(p.get('cash', null)) && moneyOk(p.get('online', null)) && moneyOk(p.get('due', null))
         && moneyOrAbsent(p, 'writtenOff') && moneyOrAbsent(p, 'total')
@@ -218,16 +224,19 @@ service cloud.firestore {
     }
 
     function entryMatches(cash, online, wo, settled, e) {
-      return cash >= -0.0101 && online >= -0.0101 && wo >= -0.0101
-        && math.abs(cash + online + wo - settled) <= 0.0101
-        && (e.get('kind', '') == 'writeOff'
-            ? cash <= 0.0101 && online <= 0.0101 && math.abs(wo - e.amount) <= 0.0101
-            : wo <= 0.0101 && partsMatch(cash, online, e.get('amount', 0),
-                ('cash' in e || 'online' in e) ? e.get('cash', 0) : e.get('amount', 0), e.get('online', 0)));
+      return !('amount' in e)
+        ? math.abs(cash) <= 0.005 && math.abs(online) <= 0.005 && math.abs(wo) <= 0.005
+          && (math.abs(settled) <= 0.000001 || (settled <= 0.0101 && request.resource.data.payment.due == 0))
+        : e.amount > 0 && math.abs(cash + online + wo - settled) <= 0.0101
+          && (e.get('kind', '') == 'writeOff'
+              ? math.abs(cash) <= 0.005 && math.abs(online) <= 0.005 && math.abs(wo - e.amount) <= 0.005
+              : math.abs(wo) <= 0.005 && partsMatch(cash, online, e.amount,
+                  ('cash' in e || 'online' in e) ? e.get('cash', 0) : e.amount, e.get('online', 0)));
     }
 
     function partsMatch(cash, online, amount, ec, eo) {
-      return math.abs(cash - ec) <= 0.0101 && math.abs(online - eo) <= 0.0101 && math.abs(amount - ec - eo) <= 0.0101;
+      return ec >= 0 && eo >= 0
+        && math.abs(cash - ec) <= 0.005 && math.abs(online - eo) <= 0.005 && math.abs(amount - ec - eo) <= 0.005;
     }
 
     // A due is cleared only when it is settled in the same write (#104: paid or

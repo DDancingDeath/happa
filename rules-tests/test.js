@@ -1199,6 +1199,30 @@ function defineSuite(prefix) {
         }
     });
 
+    t('payment edits (#65): no money moves without an entry, not even a paisa at a time', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'b', { ...dueBill, payment: { online: 0, cash: 20, due: 80, total: 20 }, dueAmount: 80 });
+            const ref = as('staff1').collection(coll).doc('b');
+            await assertFails(ref.update({ 'payment.due': 79.99, dueAmount: 79.99, clientVersion: 3 }));
+            await assertFails(ref.update({ 'payment.cash': 19.99, clientVersion: 3 }));
+            await assertFails(ref.update({ payment: { online: 0.01, cash: 20.01, due: 79.98, total: 20.02 }, dueAmount: 79.98, clientVersion: 3 }));
+            await assertFails(ref.update({
+                payment: { online: 0, cash: 20, due: 79.99, total: 20 }, dueAmount: 79.99, clientVersion: 3,
+                payments: [...dueBill.payments, { id: 'z', amount: 0, cash: 0, online: 0 }]
+            }));
+            await assertFails(ref.update({
+                payment: { online: 50, cash: 10, due: 40, total: 60 }, dueAmount: 40, clientVersion: 3,
+                payments: [...dueBill.payments, { id: 'n', amount: 40, cash: -10, online: 50 }]
+            }));
+            // a due under 1 paisa is written off to 0 without an entry (applyWriteOffTransaction)
+            await seedBill(coll, 't', { ...dueBill, payment: { online: 0, cash: 99.99, due: 0.01, total: 99.99 }, dueAmount: 0.01 });
+            await assertSucceeds(as('staff1').collection(coll).doc('t').update({
+                payment: { online: 0, cash: 99.99, due: 0, total: 99.99, writtenOff: 0 }, dueAmount: 0, openDue: false,
+                cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3
+            }));
+        }
+    });
+
     t('payment edits (#65): cash, online and written off never go down', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'b', { ...dueBill, payment: { online: 30, cash: 20, due: 50, total: 50 }, dueAmount: 50 });
@@ -1296,6 +1320,11 @@ function defineSuite(prefix) {
             await assertFails(c.doc('nan').set(bill({ cash: NaN, online: 0, due: 0 })));
             await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3 }));
             await assertFails(c.doc('opening').set({ ...bill({ cash: 0, online: 0, due: 0 }), openingBalance: { amount: 5000 } }));
+            await assertFails(c.doc('amountPaid').set({ userId: 'staff1', total: 100, amountPaid: 5000, clientVersion: 3 }));
+            await assertFails(c.doc('legacyDue').set({ userId: 'staff1', total: 100, due: 5000, clientVersion: 3 }));
+            await assertFails(c.doc('payable').set({ userId: 'staff1', amountPayable: 100, total: 1000000,
+                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3 }));
+            await assertFails(c.doc('payableText').set({ userId: 'staff1', amountPayable: '100', total: 100, clientVersion: 3 }));
             // purchase: the total is after labour (grandTotal)
             await assertSucceeds(c.doc('p').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
                 payment: { cash: 90, online: 0, due: 0, total: 90 }, clientVersion: 3 }));
