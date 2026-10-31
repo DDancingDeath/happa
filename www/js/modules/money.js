@@ -587,6 +587,7 @@ export const MoneyManager = {
         // Saved on the phone at once (also offline); a refused write is taken out again
         committed.catch(e => {
             failed(e);
+            AuditService.note(AuditService.ACTIONS.RECORD_WITHDRAWAL, { amount, person, date, refused: true });
             this.render();
         });
         AuditService.note(AuditService.ACTIONS.RECORD_WITHDRAWAL, { amount, person, date });

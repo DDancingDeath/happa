@@ -13,24 +13,28 @@ const RULES = [
     // secrets in query strings or "key: value" text
     [/\b(access_token|id_token|refresh_token|token|apiKey|api_key|key|oobCode|password|auth|sig|signature)(=|:\s*)[^&\s"',;)]+/gi, '$1$2<redacted>'],
     [/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer <token>'],
-    // emails
-    [/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '<email>'],
+    // emails (the lookbehind keeps a long run without "@" linear)
+    [/(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '<email>'],
     // Indian mobile numbers (optional +91 / 0), with or without spaces/dashes in the middle
     [/(?:\+91[\s-]?|\b0|\b)[6-9]\d{4}[\s-]?\d{5}\b/g, '<phone>'],
     // rupee amounts
     [/(₹|\bRs\.?|\bINR)\s?-?[\d,]+(?:\.\d+)?/gi, '₹<amount>'],
-    // long opaque strings (tokens, keys); file paths and ordinary ids are shorter or contain "/"
-    [/\b[A-Za-z0-9_-]{32,}\b/g, '<token>']
+    // long opaque strings (tokens, keys); file paths and ordinary ids are shorter or contain "/".
+    // A Firestore "create index" link describes the index, not a secret: kept.
+    [/(?<!create_composite=)\b[A-Za-z0-9_-]{32,}\b/g, '<token>']
 ];
+
+/** Longest text scrubbed (callers keep at most 4,000 characters anyway). */
+const MAX_SCRUB = 8000;
 
 /**
  * The text with personal data and secrets replaced by placeholders.
  * @param {*} value
- * @returns {*} strings scrubbed; other values unchanged
+ * @returns {*} strings scrubbed (and cut to MAX_SCRUB first); other values unchanged
  */
 export function scrubText(value) {
     if (typeof value !== 'string' || !value) return value;
-    return RULES.reduce((s, [re, to]) => s.replace(re, to), value);
+    return RULES.reduce((s, [re, to]) => s.replace(re, to), value.slice(0, MAX_SCRUB));
 }
 
 /** A page address without its query string (where tokens and codes travel); the #route is kept. */

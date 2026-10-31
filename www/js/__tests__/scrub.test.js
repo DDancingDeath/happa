@@ -3,7 +3,7 @@
  * entries name what changed (#85).
  */
 import { scrubText, scrubUrl, describeLogArg } from '../utils/scrub.js';
-import { changedFields } from '../utils/audit-changes.js';
+import { changedFields, formatAuditDetails } from '../utils/audit-changes.js';
 import { buildTelemetryDoc, TelemetryService } from '../services/telemetry.js';
 
 describe('scrubText (#116)', () => {
@@ -35,6 +35,18 @@ describe('scrubText (#116)', () => {
     test('scrubUrl drops query strings, keeps the route', () => {
         expect(scrubUrl('https://myhappa.web.app/?emulator=1&token=abc#outstanding?x=1')).toBe('https://myhappa.web.app/#outstanding');
         expect(scrubUrl('https://myhappa.web.app/r/tok?mode=x')).toBe('https://myhappa.web.app/r/tok');
+    });
+
+    test('long text stays fast (no backtracking blow-up) and is cut', () => {
+        const started = Date.now();
+        ['a', '1', 'a-', 'a.'].forEach(s => scrubText(s.repeat(100000)));
+        expect(Date.now() - started).toBeLessThan(1000);
+        expect(scrubText('x '.repeat(10000)).length).toBe(8000);
+    });
+
+    test('a Firestore "create index" link is kept', () => {
+        const link = 'https://console.firebase.google.com/v1/r/project/p/firestore/indexes?create_composite=ClBwcm9qZWN0cy9oYXBwYS1iZmMwNy9kYXRhYmFzZXMv';
+        expect(scrubText(`The query requires an index: ${link}`)).toBe(`The query requires an index: ${link}`);
     });
 
     test('console.error arguments: objects give only their code', () => {
@@ -72,6 +84,15 @@ describe('stored error reports are scrubbed', () => {
 });
 
 describe('changedFields (#85)', () => {
+    test('formatAuditDetails shows the new details (cash, stock, settings, hidden reports, refused)', () => {
+        expect(formatAuditDetails({ date: '2026-10-21', counted: 1250, expected: 1300, difference: -50 }))
+            .toBe('Day: 2026-10-21 • Counted ₹1250, expected ₹1300');
+        expect(formatAuditDetails({ itemName: 'Wheat', from: 10, to: 5, reason: 'Damaged', refused: true }))
+            .toBe('Refused by the server, not saved • Item: Wheat • 10 → 5 • Reason: Damaged');
+        expect(formatAuditDetails({ section: 'labour', changes: 'laborRate: 6 → 7' })).toBe('Changes: laborRate: 6 → 7');
+        expect(formatAuditDetails({ reports: 3, all: true })).toBe('Reports: 3');
+        expect(formatAuditDetails(null)).toBe('');
+    });
     test('lists only changed fields as before → after', () => {
         expect(changedFields({ laborRate: 6, heavyWeightThreshold: 30 }, { laborRate: 7, heavyWeightThreshold: 30 }))
             .toEqual(['laborRate: 6 → 7']);

@@ -14,6 +14,7 @@ import { getStartupTimings, startupRows } from '../utils/startup-timings.js';
 import { getQuotaStatus } from '../firebase/firestore-meter.js';
 import { t } from '../i18n/index.js';
 import { auditActionLabel } from '../i18n/localize.js';
+import { formatAuditDetails } from '../utils/audit-changes.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { runNumberChecks } from '../utils/number-checks.js';
@@ -542,18 +543,7 @@ const DiagnosticsManager = {
      * @returns {string} Formatted string
      */
     formatDetails(details) {
-        if (!details || typeof details !== 'object') return '';
-        
-        const parts = [];
-        if (details.billNumber) parts.push(t('ui.settings.audit_bill', { value: details.billNumber }));
-        if (details.amount) parts.push(t('ui.settings.audit_amount', { value: details.amount }));
-        if (details.customer) parts.push(t('ui.settings.audit_customer', { value: details.customer }));
-        if (details.itemName) parts.push(t('ui.settings.audit_item', { value: details.itemName }));
-        if (details.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: details.paymentAmount }));
-        if (details.collections) parts.push(t('ui.settings.audit_collections', { value: details.collections.join(', ') }));
-        if (details.recordsDeleted) parts.push(t('ui.settings.audit_records', { value: details.recordsDeleted }));
-        
-        return parts.join(' • ');
+        return formatAuditDetails(details);
     },
 
     /**

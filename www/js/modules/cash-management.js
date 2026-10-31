@@ -696,6 +696,9 @@ export class CashManagementManager {
                 UIManager.showToast(t('msg.cash.day_already_has_count'));
                 return;
             }
+            AuditService.note(AuditService.ACTIONS.CASH_CLOSE, {
+                date: updated.date || null, counted: amount, expected: updated.expectedBalance ?? null, difference: updated.difference ?? null, late: true
+            });
             const idx = (this.cachedSessions || []).findIndex(s => s.id === sessionId);
             if (idx !== -1) this.cachedSessions[idx] = updated;
             UIManager.closeModal(true);

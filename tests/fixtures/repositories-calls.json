@@ -508,6 +508,24 @@
     ],
     [
       "doc",
+      "t9"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_telemetry/t9)"
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "doc",
       "t1"
     ],
     [
@@ -782,6 +800,29 @@
         "countedAt": "2026-10-21T04:30:00.000Z",
         "countedBy": "u1",
         "countedByName": "Owner"
+      }
+    ],
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "add",
+      {
+        "action": "CASH_CLOSE",
+        "userId": "u1",
+        "userName": "Owner",
+        "userRole": "owner",
+        "details": {
+          "date": "2026-10-20",
+          "counted": 1450,
+          "expected": 1500,
+          "difference": -50,
+          "late": true
+        },
+        "timestamp": 1792557000000,
+        "date": "2026-10-21T04:30:00.000Z",
+        "serverTime": "SERVER_TIME"
       }
     ]
   ],

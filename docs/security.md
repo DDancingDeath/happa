@@ -158,4 +158,5 @@ so rules stay the priority.
   `console.error` (data objects hold names and amounts). Only the owner reads reports
   (Diagnostics › Errors; managers see Number checks only). **Hide** / **Hide all** mark
   reports `hidden` (owner only, nothing else may change) instead of deleting them, and
-  write a `HIDE_ERRORS` audit entry.
+  write a `HIDE_ERRORS` audit entry. Like the audit log, a report hidden for more than 90
+  days is then deleted by the owner's phone when Diagnostics loads (no extra reads).

@@ -6,7 +6,7 @@
 
 import { AppState } from '../utils/state.js';
 import { noteTipError } from '../tip/index.js';
-import { saveTelemetryReport, recentTelemetryReports, hideTelemetryReports } from '../firebase/repos/telemetry.js';
+import { saveTelemetryReport, recentTelemetryReports, hideTelemetryReports, deleteTelemetryReports } from '../firebase/repos/telemetry.js';
 import { describeLogArg, scrubText, scrubUrl } from '../utils/scrub.js';
 
 /**
@@ -46,6 +46,9 @@ const TELEMETRY_TEXT_LIMITS = {
 const clip = (value, max) => (value === undefined || value === null ? undefined : String(value).slice(0, max));
 
 const SCRUBBED_FIELDS = new Set(['message', 'stack', 'context']);
+
+/** How long a hidden error report is kept before the owner's phone deletes it (#116). */
+const HIDDEN_KEEP_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
  * The telemetry document for one grouped error, holding only the fields the
@@ -385,7 +388,13 @@ const TelemetryService = {
         }
 
         try {
-            return mergeTelemetryReports((await recentTelemetryReports(300)).filter(d => d.hidden !== true));
+            const docs = await recentTelemetryReports(300);
+            // Hidden reports are kept 90 days (as the audit log), then the owner's phone deletes them
+            const cutoff = Date.now() - HIDDEN_KEEP_MS;
+            const hiddenMs = (d) => (d.hiddenAt?.toMillis ? d.hiddenAt.toMillis() : Number(d.hiddenAt) || 0);
+            const expired = docs.filter(d => d.hidden === true && hiddenMs(d) < cutoff).map(d => d.id);
+            if (expired.length) deleteTelemetryReports(expired).catch(e => console.warn('Old hidden reports not deleted:', e?.code || e));
+            return mergeTelemetryReports(docs.filter(d => d.hidden !== true));
         } catch (error) {
             console.warn('Failed to get telemetry data:', error.message);
             return [];

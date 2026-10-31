@@ -9,7 +9,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
-import { changedFields } from '../utils/audit-changes.js';
+import { changedFields, formatAuditDetails } from '../utils/audit-changes.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -710,17 +710,6 @@ export class SettingsManager {
     }
     
     static formatDetails(details) {
-        if (!details || typeof details !== 'object') return '';
-        
-        const parts = [];
-        if (details.billNumber) parts.push(t('ui.settings.audit_bill', { value: details.billNumber }));
-        if (details.amount) parts.push(t('ui.settings.audit_amount', { value: details.amount }));
-        if (details.customer) parts.push(t('ui.settings.audit_customer', { value: details.customer }));
-        if (details.itemName) parts.push(t('ui.settings.audit_item', { value: details.itemName }));
-        if (details.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: details.paymentAmount }));
-        if (details.collections) parts.push(t('ui.settings.audit_collections', { value: details.collections.join(', ') }));
-        if (details.recordsDeleted) parts.push(t('ui.settings.audit_records', { value: details.recordsDeleted }));
-        
-        return parts.join(' • ');
+        return formatAuditDetails(details);
     }
 }
