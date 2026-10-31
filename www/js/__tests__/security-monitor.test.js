@@ -204,6 +204,16 @@ describe('SecurityMonitor on the phone', () => {
         localStorage.removeItem('happaDeviceKnown');
         AppState.userRole = 'none';
         expect(await SecurityMonitor.checkDevice('u1')).toBe(false);
+        // a refused deviceLog write records nothing and is tried again only the next day
+        AppState.userRole = 'staff';
+        note.mockClear();
+        read.mockClear();
+        save.mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+        await expect(SecurityMonitor.checkDevice('u1')).rejects.toThrow('denied');
+        expect(note).not.toHaveBeenCalled();
+        expect(await SecurityMonitor.checkDevice('u1')).toBe(false);
+        expect(read).toHaveBeenCalledTimes(1);
+        localStorage.removeItem('happaDeviceTried');
     });
 
     test('a try on an old bill is recorded for everyone but the owner, once per bill and action, never with editDays 0', () => {

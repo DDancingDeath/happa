@@ -26,6 +26,7 @@ import { SECURITY_ACTIONS, deniedWriteSource, deviceCheck, planDeniedNote } from
 
 /** This phone already recorded for the person ("uid|deviceId"). */
 const DEVICE_KEY = 'happaDeviceKnown';
+const DEVICE_TRIED_KEY = 'happaDeviceTried';
 
 /** Time for the caller to mark a refusal as expected (the clock check takes up to 5 s). */
 export const DENIED_DECIDE_MS = 8000;
@@ -97,14 +98,22 @@ export const SecurityMonitor = {
         if (!uid || !writesAudit()) return false;
         const deviceId = tipDeviceId(uid);
         const known = `${uid}|${deviceId}`;
+        const today = todayLocalISO();
         try {
             if (localStorage.getItem(DEVICE_KEY) === known) return false;
+            // A refused write (e.g. a phone clock days ahead) is tried again the next day, not on every start
+            if (localStorage.getItem(DEVICE_TRIED_KEY) === `${known}|${today}`) return false;
         } catch (_) { /* no storage: check with the server */ }
-        const check = deviceCheck(await readOwnDevices(uid), deviceId, todayLocalISO());
+        const check = deviceCheck(await readOwnDevices(uid), deviceId, today);
         if (check.isNew) {
-            if (check.flag) record(SECURITY_ACTIONS.NEW_DEVICE, { device: deviceId.slice(0, 10) });
             // Added with arrayUnion (another phone may add itself meanwhile); a full list is replaced
-            await addOwnDevice(uid, check.entry, check.full ? check.next : null);
+            try {
+                await addOwnDevice(uid, check.entry, check.full ? check.next : null);
+            } catch (e) {
+                safeSetItem(DEVICE_TRIED_KEY, `${known}|${today}`);
+                throw e;
+            }
+            if (check.flag) record(SECURITY_ACTIONS.NEW_DEVICE, { device: deviceId.slice(0, 10) });
         }
         safeSetItem(DEVICE_KEY, known);
         return check.isNew;
