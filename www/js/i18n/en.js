@@ -859,6 +859,7 @@ export default {
     'ui.wholesale.enter_selling_rate': "Enter selling rate",
     'ui.wholesale.expenses': "Expenses (₹):",
     'ui.wholesale.mark_as_cleared': "Mark as Cleared",
+    'msg.wholesale.complete_all_due_changed': "A bill's due changed meanwhile; nothing saved. Check and try again",
     'msg.wholesale.complete_all_due_done': "{count} bills settled, {total} received",
     'msg.wholesale.complete_all_due_oldest': "The oldest {count} of {all} bills are settled now; do it again for the rest",
     'msg.wholesale.complete_all_due_summary': "{count} bills due, {total} in all",

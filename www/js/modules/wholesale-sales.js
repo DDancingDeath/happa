@@ -710,7 +710,8 @@ export class WholesaleSalesManager {
             UIManager.showToast(t('msg.common.internet_required_record_payment'));
             return;
         }
-        const bills = group.bills.slice(0, COMPLETE_ALL_MAX).map(x => x.bill);
+        const chosen = group.bills.slice(0, COMPLETE_ALL_MAX);
+        const bills = chosen.map(x => x.bill);
         const shown = bills.length < group.bills.length ? partyDues(bills, normalizePartyName(name), normalizePartyName) : group;
         const esc = (v) => Helpers.escapeHtml(v);
         const amount = Helpers.formatCurrency(shown.total);
@@ -731,17 +732,19 @@ export class WholesaleSalesManager {
             return;
         }
         await Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared], [data-complete-all]',
-            () => this._completeAllDue(String(name).trim(), bills, method));
+            () => this._completeAllDue(String(name).trim(), bills, method, chosen.map(x => x.due)));
     }
 
-    static async _completeAllDue(name, bills, method) {
+    static async _completeAllDue(name, bills, method, confirmed) {
         let result;
         try {
-            result = await OutstandingManager.settleAllDues('wholesale', bills, method);
+            result = await OutstandingManager.settleAllDues('wholesale', bills, method, confirmed);
         } catch (error) {
             console.error('Complete all due failed:', error);
             if (OutstandingManager.isOfflineError(error)) {
                 UIManager.showToast(t('msg.common.internet_required_record_payment'));
+            } else if (error?.code === 'due-changed') {
+                UIManager.showToast(t('msg.wholesale.complete_all_due_changed'));
             } else if (error?.code === 'not-found') {
                 UIManager.showToast(t('msg.outstanding.error_transaction_not_found'));
             } else {

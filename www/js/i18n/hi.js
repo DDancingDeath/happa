@@ -859,6 +859,7 @@ export default {
     'ui.wholesale.enter_selling_rate': "बिक्री रेट लिखें",
     'ui.wholesale.expenses': "खर्च (₹):",
     'ui.wholesale.mark_as_cleared': "चुकता करें",
+    'msg.wholesale.complete_all_due_changed': "इस बीच किसी बिल का बकाया बदल गया; कुछ सेव नहीं हुआ। देखकर फिर करें",
     'msg.wholesale.complete_all_due_done': "{count} बिल पूरे, {total} मिले",
     'msg.wholesale.complete_all_due_oldest': "अभी {all} में से सबसे पुराने {count} बिल पूरे होंगे; बाकी के लिए फिर करें",
     'msg.wholesale.complete_all_due_summary': "{count} बिल बाकी, कुल {total}",

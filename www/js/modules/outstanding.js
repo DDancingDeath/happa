@@ -860,9 +860,11 @@ export class OutstandingManager {
      * @param {'purchase'|'retail'|'wholesale'} billType
      * @param {Object[]} bills - the bills (with `id`)
      * @param {'cash'|'online'} method
+     * @param {number[]} [confirmed] - each bill's due the user confirmed: a higher due on the
+     *   server (an edit meanwhile) aborts with code 'due-changed', so no more money is recorded
      * @returns {Promise<{settled: Array<{bill: Object, amount: number, fields: Object}>, total: number}>}
      */
-    static async settleAllDues(billType, bills, method) {
+    static async settleAllDues(billType, bills, method, confirmed = []) {
         const collKey = COLLECTION_BY_TYPE[billType] || 'wholesaleSales';
         const at = Date.now();
         const recordedBy = AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown');
@@ -878,7 +880,8 @@ export class OutstandingManager {
                 if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
                 const part = settleDueUpdate(fresh, method, {
                     id: ids[i], at, date: Helpers.getCurrentDateTime(), recordedBy, recordedById, settlesDue: true, bulk: true
-                }, PAYMENT_TOLERANCE);
+                }, PAYMENT_TOLERANCE, confirmed[i] ?? Infinity);
+                if (part?.changed) throw Object.assign(new Error('A due changed'), { code: 'due-changed' });
                 if (!part) {
                     updates.push(null);
                     return;

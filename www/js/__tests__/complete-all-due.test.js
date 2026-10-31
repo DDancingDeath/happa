@@ -142,6 +142,16 @@ describe('OutstandingManager.settleAllDues', () => {
         expect(total).toBe(30);
         expect(readPayment(server['doc-9']).due).toBe(0);
     });
+
+    test('a due raised on the server after the confirm aborts all: never more money than confirmed', async () => {
+        const server = { w1: bill('w1', 'Gupta', 120), w2: bill('w2', 'Gupta', 95) };
+        serverTx(server);
+        await expect(OutstandingManager.settleAllDues('wholesale', [bill('w1', 'Gupta', 120), bill('w2', 'Gupta', 80)], 'cash', [120, 80]))
+            .rejects.toMatchObject({ code: 'due-changed' });
+        expect(server.w1.payments).toEqual([]);
+        const { total } = await OutstandingManager.settleAllDues('wholesale', [server.w1, server.w2], 'cash', [120, 95]);
+        expect(total).toBe(215);
+    });
 });
 
 describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () => {

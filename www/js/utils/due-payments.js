@@ -247,11 +247,13 @@ export function partyDues(bills, partyKey, keyOf) {
  * @param {'cash'|'online'} method
  * @param {Object} entry - entry fields without the amounts (id, at, …)
  * @param {number} [tolerance=0.01]
- * @returns {?{amount: number, update: Object}}
+ * @param {number} [confirmed=Infinity] - the due the user confirmed; more now = `changed`
+ * @returns {?{amount: number, update?: Object, changed?: true}}
  */
-export function settleDueUpdate(fresh, method, entry, tolerance = 0.01) {
+export function settleDueUpdate(fresh, method, entry, tolerance = 0.01, confirmed = Infinity) {
     const due = round2(readPayment(fresh).due);
     if (!(due > 0) || fresh?.cleared) return null;
+    if (due > confirmed + tolerance) return { amount: due, changed: true };
     const parts = method === 'online' ? { cash: 0, online: due } : { cash: due, online: 0 };
     const { update } = duePaymentUpdate(fresh, parts, { ...entry, amount: due, ...parts }, tolerance);
     return { amount: due, update };
