@@ -15,9 +15,10 @@ import { AppStartTest } from './scenarios/app-start.js';
 import { BillSaveTest } from './scenarios/bill-save.js';
 import { PaymentRecordTest } from './scenarios/payment-record.js';
 import { CashCloseTest } from './scenarios/cash-close.js';
+import { SessionReadsTest } from './scenarios/session-reads.js';
 import { APP_VERSION } from '../version.js';
 
-export const SCENARIOS = [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest];
+export const SCENARIOS = [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest, SessionReadsTest];
 
 const KEYS = {
     lastFlush: 'aadhat.tip.lastFlush',
