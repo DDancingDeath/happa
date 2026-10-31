@@ -24,8 +24,9 @@ import { AuditService } from '../services/audit.js';
 import { openExternal } from '../utils/open-external.js';
 import { setLang, resetLangForTests } from '../i18n/index.js';
 import {
-    buildReceiptText, receiptRows, drawReceipt, pdfFromJpeg, showReceipt, showHistory, action, paidEarlier
+    buildReceiptText, receiptRows, drawReceipt, pdfFromJpeg, showReceipt, showHistory, action
 } from '../rentals/rent-receipt.js';
+import { paidEarlier } from '../rentals/rent-math.js';
 
 const base = (over = {}) => ({
     id: 'L1_2026-10_0', no: 'R-2026-0007', year: 2026, seq: 7, chargeId: 'L1_2026-10', pi: 0, leaseId: 'L1', tenantId: 'T1',

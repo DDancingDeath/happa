@@ -26,11 +26,16 @@ import { RentalsModule, _test } from '../rentals/rentals.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import { setLang, resetLangForTests } from '../i18n/index.js';
-import { receiptRows, buildReceiptText, paidEarlier } from '../rentals/rent-receipt.js';
+import { receiptRows, buildReceiptText } from '../rentals/rent-receipt.js';
 import { unitRows, summarize, propertySummaries } from '../rentals/rent-views.js';
-import { leaseDues, chargeDue, chargeStatus, monthSummary } from '../rentals/rent-math.js';
+import { leaseDues, chargeDue, chargeStatus, rentTotals, paidEarlier } from '../rentals/rent-math.js';
 
 const M = '2028-02';
+// RENT-1 … RENT-4 in the shape recorded before rentTotals replaced monthSummary.
+const monthSummary = (charges, month) => {
+    const { expected, collected, pending, due } = rentTotals(charges, month);
+    return { expected, collected, pending, outstanding: due };
+};
 const meta = { archived: false, createdAt: 1, createdBy: 'x', updatedAt: 1, updatedBy: 'x' };
 const at = (day) => jest.useFakeTimers({
     now: new Date(`${M}-${String(day).padStart(2, '0')}T12:00:00`),

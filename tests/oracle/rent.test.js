@@ -2,11 +2,10 @@
  * Rent oracle (#170, docs/calculations.md RENT-1 … RENT-5): an independent,
  * deliberately simple recomputation of the rentals numbers from leases and
  * payments, compared with rentals/rent-math.js on generated histories; RENT-13
- * (change of unit, the move month) against rentals/rent-unit.js.
+ * (change of unit, the move month) against the same module.
  */
 import fc from 'fast-check';
-import { monthsToCharge, newCharge, applyPayment, monthSummary, leaseDues, firstMonthRent } from '../../www/js/rentals/rent-math.js';
-import { moveMonthRent, oldMonth } from '../../www/js/rentals/rent-unit.js';
+import { monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, moveMonthRent, oldMonth } from '../../www/js/rentals/rent-math.js';
 
 jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: {} }));
 
@@ -49,7 +48,7 @@ function app(leases, payments, month) {
         Object.assign(c, { paid: next.paid, open: next.open });
     }
     const list = [...charges.values()];
-    return { summary: monthSummary(list, month), dues: (id) => leaseDues(list, id).total };
+    return { summary: rentTotals(list, month), dues: (id) => leaseDues(list, id).total };
 }
 
 const historyArb = fc.array(
@@ -82,7 +81,7 @@ describe('rent oracle (RENT-1 … RENT-5)', () => {
             }
             const want = oracle(leases, payments, month);
             const got = app(leases, payments, month);
-            expect(got.summary).toEqual({ expected: want.expected, collected: want.collected, pending: want.pending, outstanding: want.outstanding });
+            expect(got.summary).toEqual({ expected: want.expected, collected: want.collected, pending: want.pending, due: want.outstanding });
             for (const l of leases) expect(got.dues(l.id)).toBe(want.perLease[l.id]);
         }), { seed: 170, numRuns: Number(process.env.FC_RUNS) || 100 });
     });
