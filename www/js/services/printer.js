@@ -851,7 +851,7 @@ const PrinterService = {
      */
     async runJob(key, send, mode = 'quick') {
         let release = UIManager.holdLoading();
-        const confirm = async () => {
+        const confirmReprint = async () => {
             if (!key || !this.uncertainJobs()[key]) return true;
             release();
             const again = await UIManager.showModal(t('msg.printer.confirm_print_again'), t('ui.print.may_have_printed_title'), true);
@@ -862,7 +862,7 @@ const PrinterService = {
             const result = await send({
                 target: this.target(),
                 mode,
-                confirm,
+                confirmReprint,
                 onUncertain: () => this.setUncertain(key, true),
                 onPrinted: () => this.setUncertain(key, false)
             });

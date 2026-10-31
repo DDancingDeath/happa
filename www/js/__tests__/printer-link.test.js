@@ -164,14 +164,14 @@ describe('PrinterLink', () => {
         await link.connectNow('AA:BB');
         let release;
         transport.write = jest.fn(() => new Promise((resolve) => { release = resolve; }));
-        const confirm = jest.fn(async () => true);
+        const confirmReprint = jest.fn(async () => true);
         const first = link.send(BYTES);
         const connect = link.connectNow('CC:DD');
-        const second = link.send(BYTES, {}, { confirm });
+        const second = link.send(BYTES, {}, { confirmReprint });
         await flush();
         expect(transport.write).toHaveBeenCalledTimes(1);
         expect(transport.calls.connect).toBe(1);
-        expect(confirm).not.toHaveBeenCalled();
+        expect(confirmReprint).not.toHaveBeenCalled();
 
         release();
         await first;
@@ -179,7 +179,7 @@ describe('PrinterLink', () => {
         expect(transport.calls.connect).toBe(2);
         expect(link.deviceId).toBe('CC:DD');
         await flush();
-        expect(confirm).toHaveBeenCalledTimes(1);
+        expect(confirmReprint).toHaveBeenCalledTimes(1);
         release();
         await second;
     });

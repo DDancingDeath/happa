@@ -212,10 +212,10 @@ export class PrinterLink {
      * Sends one job; jobs run one at a time.
      * mode 'quick' (bills): a 3 s check when linked, else one short connect.
      * mode 'full' (Test Print): check/connect retried with backoff.
-     * confirm() runs inside the queue, before anything is sent; false cancels.
+     * confirmReprint() runs inside the queue, before anything is sent; false cancels.
      * @param {Uint8Array} bytes
      * @param {{deviceId?: string, deviceName?: string}} [target] printer to reconnect to
-     * @param {{mode?: 'quick'|'full', confirm?: () => Promise<boolean>}} [options]
+     * @param {{mode?: 'quick'|'full', confirmReprint?: () => Promise<boolean>}} [options]
      * @returns {Promise<{outcome: 'printed'|'cancelled', attempts?: number}>}
      * @throws {PrinterLinkError} outcome 'failed' or 'uncertain'
      */
@@ -231,8 +231,8 @@ export class PrinterLink {
         return error;
     }
 
-    async _job(bytes, target, { mode = 'quick', confirm, onUncertain, onPrinted } = {}) {
-        if (confirm && !(await confirm())) return { outcome: 'cancelled' };
+    async _job(bytes, target, { mode = 'quick', confirmReprint, onUncertain, onPrinted } = {}) {
+        if (confirmReprint && !(await confirmReprint())) return { outcome: 'cancelled' };
         if (!this.transport.available()) {
             throw this._finish('failed', new PrinterLinkError('unavailable', 'Bluetooth Serial plugin not available'));
         }
