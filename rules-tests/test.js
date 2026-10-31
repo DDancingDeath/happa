@@ -644,9 +644,9 @@ function defineSuite(prefix) {
             await assertSucceeds(db.doc('d0').set(bill('staff1', now, now)));
             await assertSucceeds(db.doc('d2').set(bill('staff1', now - 2 * DAY - HOUR, now)));
             await assertFails(db.doc('d4').set(bill('staff1', now - 3 * DAY - HOUR, now)));
-            // never after its entry; the entry not in the future
+            // never after its entry; a fast phone clock (entry ahead of the server) is not refused
             await assertFails(db.doc('d5').set(bill('staff1', now + HOUR, now)));
-            await assertFails(db.doc('d6').set(bill('staff1', now + 2 * HOUR, now + 2 * HOUR)));
+            await assertSucceeds(db.doc('d6').set(bill('staff1', now + 2 * HOUR, now + 2 * HOUR)));
             await assertFails(db.doc('d7').set(bill('staff1', now, 'today')));
             // queued offline days ago: entered then, synced now
             await assertSucceeds(db.doc('d8').set(bill('staff1', now - 5 * DAY, now - 5 * DAY)));

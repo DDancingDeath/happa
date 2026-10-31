@@ -408,14 +408,13 @@ service cloud.firestore {
     // A bill's date (#147): `timestamp` is the time it counts at (BILL-TIME), `enteredAt`
     // when this app entered it. Anyone but the owner may date a bill back at most the
     // role's editDays (+ 1 day: the window is in calendar days) before it was entered, and
-    // never after; `enteredAt` is not after the server time (10 minutes for a fast phone
-    // clock) and has no lower bound (a bill queued offline arrives later). Bills without
-    // `enteredAt` (apps before #147) are not limited, as before.
+    // never after (10 minutes). `enteredAt` itself is the phone's clock and is not bounded:
+    // a bill queued offline arrives later, and a phone whose clock is fast must not lose its
+    // bills. Bills without `enteredAt` (apps before #147) are not limited, as before.
     function billTimeOk(usersCol) {
       let d = request.resource.data;
       return !('enteredAt' in d)
         || (d.enteredAt is number && d.get('timestamp', null) is number
-            && d.enteredAt <= request.time.toMillis() + 600000
             && d.timestamp <= d.enteredAt + 600000
             && d.timestamp >= d.enteredAt - (billEditDays(usersCol) + 1) * 86400000);
     }
