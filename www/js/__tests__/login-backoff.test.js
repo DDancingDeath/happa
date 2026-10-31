@@ -1,7 +1,7 @@
 /**
  * @fileoverview Sign-in backoff on this phone (#105): free tries, doubling waits, cap, forgetting.
  */
-import { afterLoginFailure, loginWaitMs, waitParts, LOGIN_BACKOFF } from '../utils/login-backoff.js';
+import { afterLoginFailure, isStaleBackoff, loginWaitMs, waitParts, LOGIN_BACKOFF } from '../utils/login-backoff.js';
 
 const fail = (state, now, code = 'auth/wrong-password') => afterLoginFailure(state, now, code);
 
@@ -32,8 +32,12 @@ test('only wrong email/password (or Firebase\'s own limit) counts; a quiet hour 
     s = fail(s, 1000 + LOGIN_BACKOFF.forgetAfterMs + 1);
     expect(s.fails).toBe(1);
     expect(loginWaitMs({ until: 'x' }, 5)).toBe(0);
-    // a phone clock moved back never locks longer than the longest wait, and starts the count again
-    expect(loginWaitMs({ fails: 9, last: 10 * 86400000, until: 10 * 86400000 + 900000 }, 1000)).toBe(LOGIN_BACKOFF.maxWaitMs);
+    // a phone clock moved back: the saved state is stale, sign-in is allowed again and the count restarts
+    expect(loginWaitMs({ fails: 9, last: 10 * 86400000, until: 10 * 86400000 + 900000 }, 1000)).toBe(0);
+    expect(isStaleBackoff({ fails: 9, last: 10 * 86400000, until: 10 * 86400000 + 900000 }, 1000)).toBe(true);
+    expect(isStaleBackoff({ fails: 6, last: 1000, until: 1000 + 2 * LOGIN_BACKOFF.maxWaitMs }, 1000)).toBe(true);
+    expect(isStaleBackoff({ fails: 6, last: 1000, until: 1000 + 60000 }, 2000)).toBe(false);
+    expect(loginWaitMs({ fails: 6, last: 1000, until: 1000 + 60000 }, 2000)).toBe(59000);
     expect(fail({ fails: 9, last: 10 * 86400000, until: 0 }, 1000).fails).toBe(1);
 });
 

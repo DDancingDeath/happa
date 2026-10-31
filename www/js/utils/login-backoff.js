@@ -29,15 +29,28 @@ const clean = (state) => ({
 });
 
 /**
- * Milliseconds left before the next try is allowed (0 = allowed now).
+ * A saved state the phone clock has moved back past (the last try is in the
+ * future, or the wait ends later than the longest wait from now): not to be trusted.
+ * @param {{fails?: number, last?: number, until?: number}|null} state
+ * @param {number} now
+ * @returns {boolean}
+ */
+export function isStaleBackoff(state, now) {
+    const s = clean(state);
+    return now < s.last || s.until - now > LOGIN_BACKOFF.maxWaitMs;
+}
+
+/**
+ * Milliseconds left before the next try is allowed (0 = allowed now; also for a
+ * stale state, which the caller then clears).
  * @param {{fails?: number, last?: number, until?: number}|null} state
  * @param {number} now
  * @returns {number}
  */
 export function loginWaitMs(state, now) {
     const s = clean(state);
-    // Capped: a phone clock moved back must not lock sign-in for longer than the longest wait
-    return s.until > now ? Math.min(s.until - now, LOGIN_BACKOFF.maxWaitMs) : 0;
+    if (isStaleBackoff(s, now)) return 0;
+    return s.until > now ? s.until - now : 0;
 }
 
 /**

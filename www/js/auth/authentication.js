@@ -7,21 +7,28 @@ import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { canOpenPage, hiddenPermissionClasses } from '../utils/role-access.js';
 import { userProfile, createProfileIfMissing } from '../firebase/repos/users.js';
-import { afterLoginFailure, loginWaitMs, waitParts } from '../utils/login-backoff.js';
+import { afterLoginFailure, isStaleBackoff, loginWaitMs, waitParts } from '../utils/login-backoff.js';
 import { safeSetItem } from '../utils/storage-full.js';
 
 const BACKOFF_KEY = 'happaLoginBackoff';
 
+const clearBackoff = () => {
+    try { localStorage.removeItem(BACKOFF_KEY); } catch (_) { /* nothing stored */ }
+};
+
+/** The stored backoff; one the phone clock has moved back past is cleared, not obeyed. */
 const readBackoff = () => {
+    let state = null;
     try {
-        return JSON.parse(localStorage.getItem(BACKOFF_KEY) || 'null');
+        state = JSON.parse(localStorage.getItem(BACKOFF_KEY) || 'null');
     } catch (_) {
         return null;
     }
-};
-
-const clearBackoff = () => {
-    try { localStorage.removeItem(BACKOFF_KEY); } catch (_) { /* nothing stored */ }
+    if (state && isStaleBackoff(state, Date.now())) {
+        clearBackoff();
+        return null;
+    }
+    return state;
 };
 
 /** "Try again in N s / N min" for a sign-in wait (#105). */

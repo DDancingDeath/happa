@@ -303,6 +303,17 @@ describe('wrong-try backoff, show password, Enter (#105)', () => {
         expect(auth.signInWithEmailAndPassword).toHaveBeenCalledTimes(5);
     });
 
+    test('after the phone clock moves back, sign-in is allowed again and the stale wait is cleared', async () => {
+        // saved while the clock ran a day fast: the last try and the wait are in the future now
+        const ahead = Date.now() + 86400000;
+        localStorage.setItem('happaLoginBackoff', JSON.stringify({ fails: 8, last: ahead, until: ahead + 240000 }));
+        fake.seed('users', [{ id: 'u1', name: 'A', email: 'a@x.com', role: 'staff', status: 'active' }]);
+        await AuthManager.handleLogin();
+        expect(auth.signInWithEmailAndPassword).toHaveBeenCalledTimes(1);
+        expect($('loginMessage').textContent).not.toMatch(/Try again/);
+        expect(localStorage.getItem('happaLoginBackoff')).toBeNull();
+    });
+
     test('the Hindi wait message', async () => {
         setLang('hi', { store: null });
         localStorage.setItem('happaLoginBackoff', JSON.stringify({ fails: 6, last: Date.now(), until: Date.now() + 120000 }));
