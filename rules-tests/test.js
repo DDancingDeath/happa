@@ -128,9 +128,29 @@ function defineSuite(prefix) {
             payments: [{ amount: 40, cash: 40, online: 0, at: PAID_AT }], openDue: true, clientVersion: 3 }));
     });
 
-    t('non-bill business docs stay deletable by approved staff', async () => {
-        await seedBill(`${prefix}itemFrequency`, 'd', { userId: 'manager1' });
-        await assertSucceeds(as('staff1').collection(`${prefix}itemFrequency`).doc('d').delete());
+    t('item frequency: everyone approved keeps it up to date; only the owner deletes it (#64)', async () => {
+        await seedBill(`${prefix}itemFrequency`, 'global', { items: {} });
+        await assertSucceeds(as('staff1').collection(`${prefix}itemFrequency`).doc('global')
+            .set({ items: { i1: { score: FieldValue.increment(1), count: FieldValue.increment(1) } } }, { merge: true }));
+        await assertFails(as('staff1').collection(`${prefix}itemFrequency`).doc('global').delete());
+        await assertFails(as('manager1').collection(`${prefix}itemFrequency`).doc('global').delete());
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}itemFrequency`).doc('global').delete());
+    });
+
+    t('settings docs other than app and the legacy cashSessions: owner only (#64)', async () => {
+        await seedBill(`${prefix}settings`, 'other', { a: 1 });
+        await seedBill(`${prefix}cashSessions`, 's1', { userId: 'staff1', openingBalance: 5, signedOut: false });
+        for (const uid of ['staff1', 'manager1']) {
+            await assertFails(as(uid).collection(`${prefix}settings`).doc('new').set({ a: 1 }));
+            await assertFails(as(uid).collection(`${prefix}settings`).doc('other').update({ a: 2 }));
+            await assertFails(as(uid).collection(`${prefix}settings`).doc('other').delete());
+            await assertFails(as(uid).collection(`${prefix}cashSessions`).doc('s2')
+                .set({ openingBalance: 5, signedOut: false, userId: uid, date: '2026-10-22' }));
+            await assertFails(as(uid).collection(`${prefix}cashSessions`).doc('s1').update({ duePayments: [{ amount: 1 }] }));
+        }
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}settings`).doc('other').update({ a: 2 }));
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}settings`).doc('other').delete());
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}cashSessions`).doc('s1').update({ note: 'x' }));
     });
 
     t('staff cannot change userId on another user\'s bill (update or full set)', async () => {
@@ -413,7 +433,7 @@ function defineSuite(prefix) {
 
     // ---- settings/app (minClientVersion): owner only ----
 
-    t('only the owner can write settings/app; other settings docs unchanged', async () => {
+    t('only the owner can write settings/app or other settings docs (#64)', async () => {
         const settings = as('staff1').collection(`${prefix}settings`);
         await assertFails(settings.doc('app').set({ minClientVersion: 99 }));
         await assertFails(as('manager1').collection(`${prefix}settings`).doc('app').set({ minClientVersion: 99 }));
@@ -421,7 +441,8 @@ function defineSuite(prefix) {
         await assertSucceeds(settings.doc('app').get());
         await assertFails(settings.doc('app').update({ minClientVersion: 99 }));
         await assertFails(settings.doc('app').delete());
-        await assertSucceeds(settings.doc('other').set({ a: 1 }));
+        await assertFails(settings.doc('other').set({ a: 1 }));
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}settings`).doc('other').set({ a: 1 }));
     });
 
     t('approved manager can write counters', () =>
@@ -494,9 +515,10 @@ function defineSuite(prefix) {
         await setClientGate(true);
         const db = as('staff1');
         for (const c of ['purchases', 'retailSales', 'wholesaleSales', 'stockAdjustments']) {
-            const coll = db.collection(`${prefix}${c}`);
+            // stock adjustments are recorded by owners/managers (#64)
+            const coll = (c === 'stockAdjustments' ? as('manager1') : db).collection(`${prefix}${c}`);
             const valid = c === 'stockAdjustments'
-                ? { itemId: 'i1', adjustType: 'add', quantity: 1, userId: 'staff1' }
+                ? { itemId: 'i1', adjustType: 'add', quantity: 1, userId: 'manager1' }
                 : { total: 1 };
             await assertFails(coll.doc('old1').set({ ...valid }));
             await assertFails(coll.doc('old2').set({ ...valid, clientVersion: 2 }));
@@ -1695,13 +1717,16 @@ function defineSuite(prefix) {
         await assertSucceeds(as('manager1').collection(withdrawals).doc('w1').delete());
     });
 
-    t('stock adjustments: anyone approved records one; only owner/manager change or delete it', async () => {
-        await assertSucceeds(as('staff1').collection(adjustments).doc('a1').set(adjustment('staff1')));
-        await assertSucceeds(as('legacyStaff').collection(adjustments).doc('a2').set(adjustment('legacyStaff', { adjustType: 'set', quantity: 0 })));
-        await assertFails(as('staff1').collection(adjustments).doc('a3').set(adjustment('manager1')));
-        await assertFails(as('staff1').collection(adjustments).doc('a4').set(adjustment('staff1', { quantity: -5 })));
-        await assertFails(as('staff1').collection(adjustments).doc('a5').set(adjustment('staff1', { quantity: '5' })));
-        await assertFails(as('staff1').collection(adjustments).doc('a6').set(adjustment('staff1', { adjustType: 'steal' })));
+    t('stock adjustments: owner/manager record them (#64); only they change or delete them', async () => {
+        await assertFails(as('staff1').collection(adjustments).doc('m1').set(adjustment('staff1')));
+        await assertFails(as('legacyStaff').collection(adjustments).doc('m2').set(adjustment('legacyStaff', { adjustType: 'set', quantity: 0 })));
+        await assertFails(as('rentMember').collection(adjustments).doc('m3').set(adjustment('rentMember')));
+        await assertSucceeds(as('manager1').collection(adjustments).doc('a1').set(adjustment('manager1')));
+        await assertSucceeds(as('legacyOwner').collection(adjustments).doc('a2').set(adjustment('legacyOwner', { adjustType: 'set', quantity: 0 })));
+        await assertFails(as('manager1').collection(adjustments).doc('a3').set(adjustment('staff1')));
+        await assertFails(as('manager1').collection(adjustments).doc('a4').set(adjustment('manager1', { quantity: -5 })));
+        await assertFails(as('manager1').collection(adjustments).doc('a5').set(adjustment('manager1', { quantity: '5' })));
+        await assertFails(as('manager1').collection(adjustments).doc('a6').set(adjustment('manager1', { adjustType: 'steal' })));
         await assertFails(as('staff1').collection(adjustments).doc('a1').update({ quantity: 50, clientVersion: 3 }));
         await assertFails(as('staff1').collection(adjustments).doc('a1').delete());
         await assertSucceeds(as('manager1').collection(adjustments).doc('a1').update({ reason: 'Counted', clientVersion: 3 }));

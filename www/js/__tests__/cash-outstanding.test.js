@@ -11,7 +11,8 @@ import { DayManager } from '../modules/day.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { readPayment } from '../utils/money.js';
-import { dueEvents, sumDueEvents, saleTimePayment, entryParts, legParts, checkPaymentSplit, sameParty } from '../utils/due-payments.js';
+import { dueEvents, sumDueEvents, saleTimePayment, entryParts, legParts, sameParty } from '../utils/due-payments.js';
+import { validateDuePayment } from '../utils/calc/billing.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
@@ -389,8 +390,8 @@ describe('due-payment helpers', () => {
         [100, 396, 495, { ok: false, error: 'exceeds-due' }],
         [0, 0, 495, { ok: false, error: 'empty' }],
         [-5, 10, 495, { ok: false, error: 'negative' }]
-    ])('checkPaymentSplit(%p, %p, due %p)', (cash, online, due, expected) => {
-        expect(checkPaymentSplit(cash, online, due)).toEqual(expected);
+    ])('validateDuePayment(%p, %p, due %p)', (cash, online, due, expected) => {
+        expect(validateDuePayment(cash, online, due)).toEqual(expected);
     });
 });
 

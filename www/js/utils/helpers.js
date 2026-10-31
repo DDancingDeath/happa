@@ -435,7 +435,7 @@ export class Helpers {
     /**
      * Show how much of a bill is not yet split into Cash / Online / Due.
      * @param {string} elementId
-     * @param {{ok: boolean, difference: number}} check - result of checkPaymentSplit
+     * @param {{ok: boolean, difference: number}} check - result of validatePaymentSplit (utils/calc/billing.js)
      */
     static showSplitRemaining(elementId, check) {
         const el = typeof document !== 'undefined' ? document.getElementById(elementId) : null;
@@ -451,6 +451,25 @@ export class Helpers {
             el.textContent = t('ui.billing.split_extra', { amount });
             el.style.color = '#dc2626';
         }
+    }
+
+    /**
+     * Ticking Online / Cash / Due on a bill form: when that box is ticked, write
+     * the amounts from prefillPayment() (utils/calc/billing.js) and untick the others.
+     * @param {'online'|'cash'|'due'} type
+     * @param {{online: *, cash: *, due: *}} values
+     * @param {{online: string[], cash: string[], due: string[]}} ids - [input id, checkbox id] per kind
+     */
+    static applyPaymentPrefill(type, values, ids) {
+        if (!ids[type] || !document.getElementById(ids[type][1])?.checked) return;
+        Object.entries(ids).forEach(([key, [inputId, checkboxId]]) => {
+            const input = document.getElementById(inputId);
+            if (input) input.value = values[key];
+            if (key !== type) {
+                const box = document.getElementById(checkboxId);
+                if (box) box.checked = false;
+            }
+        });
     }
 
     /**

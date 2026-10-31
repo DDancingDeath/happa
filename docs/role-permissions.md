@@ -387,6 +387,22 @@ client-only (below).
 7. Rules validation of the whole `roleAccess` shape on write (today: owner-only write, client
    normalization, rules fallback for `editDays`).
 
+## Writes to shared records (#18, #64)
+
+The owner may write any of these (repairs, backup restore). Everyone else:
+
+| Collection | Create | Update | Delete |
+|---|---|---|---|
+| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount | expenses: own for 24 h (some fields), managers any; withdrawals: managers | expenses: own for 24 h, managers; withdrawals: managers |
+| `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill) | managers |
+| `cashManagement` | approved user, own day `cash_<date>` | append entries, close, late count; a closed day stays closed | owner |
+| `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
+| `items` | managers | managers | owner |
+| `counters` | approved user (bill numbers) | +1 per bill | owner |
+| `itemFrequency` | approved user (billing ranks items) | approved user | **owner** (#64) |
+| `settings/app` | owner | owner; managers only the Aadhat fields with `shopSettings` | owner |
+| other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
+
 ## Settings sections (who sees what)
 
 Settings shows **Common** to everyone, plus the section of the business open in the switcher, with a

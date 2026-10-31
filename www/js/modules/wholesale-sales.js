@@ -25,9 +25,12 @@ import { lineItemIdentity } from '../utils/item-catalog.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
-    checkPaymentSplit, computeWholesaleTotals, KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, round2,
-    openingAmount, openingOldTotals, outstandingDue, isOpeningRecord
+    KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, openingAmount, openingOldTotals, outstandingDue, isOpeningRecord
 } from '../utils/money.js';
+import {
+    buildPaymentSplit, computeLine, computeWholesaleTotals, draftLineSum, paidOnScreen, paymentSplit, prefillPayment,
+    restInDue, shownAmount, typedAmount, validateDuePayment, validatePaymentSplit, wholesaleLiveProfit
+} from '../utils/calc/billing.js';
 
 /** Wholesale bills shown under the entry form (the rest are in Wholesale › History). */
 const RECENT_SALES = 5;
@@ -38,6 +41,9 @@ const PAYMENT_TOLERANCE = 0.01;
 const WHOLESALE_BUTTONS = '[onclick*="wholesaleSales.completeSale"], [onclick*="wholesaleSales.printWholesaleSale"]';
 
 let wholesaleSaleItems = [];
+
+/** Live profit last shown on the form (WS-PROFIT), used by the WhatsApp text. */
+let shownProfit = 0;
 
 /**
  * Id (and bill number, once issued) of the wholesale sale being entered, reused
@@ -213,7 +219,7 @@ export class WholesaleSalesManager {
             UIManager.showToast(t('msg.wholesale.approx_stock_warning', { itemName, available: short.available.toFixed(1), note: getLang() === 'hi' ? approx.hi : approx.en }), 6000);
         }
         
-        const total = Math.round(quantity * rate);
+        const { total } = computeLine({ rate, qty: quantity });
         ensurePendingBill();
         
         wholesaleSaleItems.push({
@@ -248,6 +254,7 @@ export class WholesaleSalesManager {
             if (expensesInput) expensesInput.value = '0';
             if (profitEl) profitEl.textContent = '0';
             if (profitPercentEl) profitPercentEl.textContent = '0';
+            shownProfit = 0;
             this.updatePaymentTotal();
             return;
         }
@@ -258,14 +265,13 @@ export class WholesaleSalesManager {
                     <td>${Helpers.escapeHtml(lineItemIdentity(item, AppState.items, AppState.settings.showHindi).label)}</td>
                     <td>₹${item.rate.toFixed(2)}</td>
                     <td>${item.qty.toFixed(1)} kg</td>
-                    <td>₹${Math.round(item.total)}</td>
+                    <td>₹${shownAmount(item.total)}</td>
                     <td><button onclick="window.app.wholesaleSales.removeWholesaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
                 </tr>
             `;
         }).join('');
         
-        const { total: saleTotal } = this.computeTotals();
-        totalEl.textContent = Math.round(saleTotal);
+        totalEl.textContent = shownAmount(this.computeTotals().total);
         
         this.updateProfitCalculation();
     }
@@ -282,10 +288,11 @@ export class WholesaleSalesManager {
     static updateProfitCalculation() {
         const profitEl = document.getElementById('salesProfitAmount');
         const profitPercentEl = document.getElementById('salesProfitPercent');
-        const { profit, profitPercent } = this.computeTotals();
+        const live = wholesaleLiveProfit(wholesaleSaleItems, AppState.stock, Helpers.getInputNumber('salesExpensesAmount'));
         
-        if (profitEl) profitEl.textContent = Math.round(profit);
-        if (profitPercentEl) profitPercentEl.textContent = profitPercent.toFixed(1);
+        if (profitEl) profitEl.textContent = live.shownProfit;
+        shownProfit = profitEl ? live.shownProfit : 0;
+        if (profitPercentEl) profitPercentEl.textContent = live.profitPercent.toFixed(1);
         this.updatePaymentTotal();
     }
 
@@ -294,19 +301,19 @@ export class WholesaleSalesManager {
      * @returns {{cash: number, online: number, due: number}}
      */
     static readPaymentSplit() {
-        return {
-            online: round2(Helpers.getInputNumber('wholesaleOnlinePayment')),
-            cash: round2(Helpers.getInputNumber('wholesaleCashPayment')),
-            due: round2(Helpers.getInputNumber('wholesaleDueAmount'))
-        };
+        return paymentSplit({
+            online: Helpers.getInputNumber('wholesaleOnlinePayment'),
+            cash: Helpers.getInputNumber('wholesaleCashPayment'),
+            due: Helpers.getInputNumber('wholesaleDueAmount')
+        });
     }
 
     /** Refresh "Total Received" and what is not split yet. */
     static updatePaymentTotal() {
         const split = this.readPaymentSplit();
         const receivedEl = document.getElementById('wholesaleTotalReceived');
-        if (receivedEl) receivedEl.textContent = Math.round(split.cash + split.online);
-        Helpers.showSplitRemaining('wholesaleSplitRemaining', checkPaymentSplit(this.computeTotals().total, split));
+        if (receivedEl) receivedEl.textContent = paidOnScreen(split);
+        Helpers.showSplitRemaining('wholesaleSplitRemaining', validatePaymentSplit(this.computeTotals().total, split));
         BillChecksUI.schedule('wholesale');
     }
 
@@ -316,35 +323,25 @@ export class WholesaleSalesManager {
      * @param {'online'|'cash'|'due'} type
      */
     static fillReceivableAmount(type) {
-        const { total } = this.computeTotals();
-        const fields = { online: 'wholesaleOnlinePayment', cash: 'wholesaleCashPayment', due: 'wholesaleDueAmount' };
-        const boxes = { online: 'wholesaleOnlineCheckbox', cash: 'wholesaleCashCheckbox', due: 'wholesaleDueCheckbox' };
-        if (document.getElementById(boxes[type])?.checked) {
-            Object.keys(fields).forEach(key => {
-                const input = document.getElementById(fields[key]);
-                if (input) input.value = key === type ? Math.round(total) : '0';
-                if (key !== type) {
-                    const box = document.getElementById(boxes[key]);
-                    if (box) box.checked = false;
-                }
-            });
-        }
+        Helpers.applyPaymentPrefill(type, prefillPayment(type, this.computeTotals().total), {
+            online: ['wholesaleOnlinePayment', 'wholesaleOnlineCheckbox'],
+            cash: ['wholesaleCashPayment', 'wholesaleCashCheckbox'],
+            due: ['wholesaleDueAmount', 'wholesaleDueCheckbox']
+        });
         this.updatePaymentTotal();
     }
 
     /** One tap: put whatever is not yet received (total − cash − online) in Due. */
     static putRestInDue() {
-        const { total } = this.computeTotals();
-        const { cash, online } = this.readPaymentSplit();
-        const rest = round2(total - cash - online);
-        if (rest < 0) {
-            UIManager.showToast(paymentSplitMessage(checkPaymentSplit(total, { cash, online })));
+        const rest = restInDue(this.computeTotals().total, this.readPaymentSplit());
+        if (!rest.ok) {
+            UIManager.showToast(paymentSplitMessage(rest.check));
             return;
         }
         const dueInput = document.getElementById('wholesaleDueAmount');
-        if (dueInput) dueInput.value = rest;
+        if (dueInput) dueInput.value = rest.due;
         const dueCheckbox = document.getElementById('wholesaleDueCheckbox');
-        if (dueCheckbox) dueCheckbox.checked = rest > 0;
+        if (dueCheckbox) dueCheckbox.checked = rest.dueTicked;
         this.updatePaymentTotal();
     }
 
@@ -416,11 +413,12 @@ export class WholesaleSalesManager {
 
         const customerName = Helpers.getInputText('wholesaleCustomerName');
         const comments = Helpers.getInputText('salesComments');
-        const expenses = round2(Helpers.getInputNumber('salesExpensesAmount'));
+        const expenses = typedAmount(Helpers.getInputNumber('salesExpensesAmount'));
         
         // Total and profit come from the bill lines, never from the text on screen
         const { total, profit, profitPercent } = this.computeTotals();
-        const { cash, online, due } = this.readPaymentSplit();
+        const split = this.readPaymentSplit();
+        const { cash, online, due } = split;
         
         // Payment, name-for-Due, stock and the other bill checks (#23, #68, #37)
         this.updatePaymentTotal();
@@ -457,12 +455,7 @@ export class WholesaleSalesManager {
                 onlinePayment: online,
                 cashPayment: cash,
                 dueAmount: due,
-                payment: {
-                    online,
-                    cash,
-                    due,
-                    total: round2(online + cash + due)
-                },
+                payment: buildPaymentSplit(split),
                 date: pending.date,
                 timestamp: pending.timestamp,
                 createdBy: AppState.currentUser?.uid || 'unknown',
@@ -563,9 +556,9 @@ export class WholesaleSalesManager {
         }
         
         const customerName = Helpers.getInputText('wholesaleCustomerName');
-        const total = wholesaleSaleItems.reduce((sum, item) => sum + item.total, 0);
+        const total = draftLineSum(wholesaleSaleItems);
         const expenses = Helpers.getInputInt('salesExpensesAmount');
-        const profit = Helpers.getElementInt('salesProfitAmount');
+        const profit = shownProfit;
         const comments = Helpers.getInputText('salesComments');
         
         const message = buildDraftShareText({
@@ -632,19 +625,12 @@ export class WholesaleSalesManager {
         }
         
         const paymentInput = document.getElementById(`payment_${saleId}`);
-        const paymentAmount = round2(Number(paymentInput?.value) || 0);
-        
-        if (paymentAmount <= 0) {
-            UIManager.showToast(t('msg.common.enter_valid_payment_amount'));
+        const check = validateDuePayment(paymentInput?.value, 0, readPayment(sale).due, PAYMENT_TOLERANCE);
+        if (!check.ok) {
+            UIManager.showToast(t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'msg.common.enter_valid_payment_amount'));
             return;
         }
-        
-        const outstanding = readPayment(sale).due;
-        
-        if (paymentAmount > outstanding + PAYMENT_TOLERANCE) {
-            UIManager.showToast(t('msg.common.payment_amount_exceeds_outstanding_amount'));
-            return;
-        }
+        const paymentAmount = check.total;
         
         if (typeof navigator !== 'undefined' && navigator.onLine === false) {
             UIManager.showToast(t('msg.common.internet_required_record_payment'));
