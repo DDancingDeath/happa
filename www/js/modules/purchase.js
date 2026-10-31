@@ -787,6 +787,9 @@ const PurchaseManager = {
             timestamp: pending.timestamp || null,
             enteredAt: pending.enteredAt || null
         } : null;
+        // A restored attempt keeps its day, shown locked; otherwise the box starts again
+        if (pendingBill?.timestamp) lockBillDate('billDate', pendingBill.timestamp);
+        else resetBillDate('billDate');
     },
 
     /**

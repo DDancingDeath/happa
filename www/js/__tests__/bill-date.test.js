@@ -98,6 +98,18 @@ describe('the Date box after a first save attempt', () => {
         resetBillDate('saleDate');
         expect(input.disabled).toBe(false);
     });
+
+    test('a restored attempt (draft / auto-save) shows its day locked; a restored fresh bill starts on today', async () => {
+        const { RetailSaleManager } = await import('../modules/retail-sale.js');
+        document.body.innerHTML = '<input type="date" id="saleDate">';
+        prepareBillDate('saleDate');
+        RetailSaleManager.setPendingBill({ id: 'p1', timestamp: new Date(2026, 9, 31, 9).getTime() });
+        const input = document.getElementById('saleDate');
+        expect([input.value, input.disabled]).toEqual(['2026-10-31', true]);
+        RetailSaleManager.setPendingBill({ id: 'p2' });
+        expect([input.value, input.disabled]).toEqual([toLocalISODate(new Date()), false]);
+        RetailSaleManager.setPendingBill(null);
+    });
 });
 
 describe('saving a back-dated bill', () => {

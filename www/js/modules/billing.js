@@ -577,6 +577,8 @@ const BillingManager = {
         } else {
             RetailSaleManager.clearSale();
         }
+        // Still editing (Clear keeps edit mode): the box stays on the bill's own day
+        this.prepareBillDates();
         this.deleteAutoSave().catch(e => console.warn('Auto-save cleanup failed:', e));
     },
 
