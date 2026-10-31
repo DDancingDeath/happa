@@ -155,9 +155,13 @@ In order:
   "staff"/"स्टाफ". Escape `t()` output that goes into `innerHTML`. Show one
   language at a time, never "English / हिंदी" together:
   `single-language-guard.test.js` (scanner: `node scripts/mixed-language-scan.js`)
-  fails on any literal, template or template text mixing Latin and Devanagari.
+  fails on any literal, template or template text mixing Latin and Devanagari
+  (the unit `kg` is allowed: in Hindi the weight unit is always "kg", e.g.
+  "50 kg", "₹/kg", "प्रति kg", never the Hindi word for kilo; `hindi-kg-unit.test.js`
+  checks `hi.js` and every shipped `www/` file).
   Records that carry both languages (`{ en, hi }`, stored anomalies/flags) are shown
-  with `pickLang()` from `i18n/localize.js`; old stored "English / Hindi" sentences
+  with `pickLang()` from `i18n/localize.js` (in Hindi it also shows an old stored
+  weight unit as "kg"); old stored "English / Hindi" sentences
   fall back to `splitBilingual()`.
 - **Service worker / cache bump**: every app JS/CSS/template file (and
   icon/manifest) must be listed in `STATIC_ASSETS` in `www/service-worker.js`
@@ -328,11 +332,16 @@ section 7) before pushing; don't commit one-off probe scripts.
 2. `npm run release -- <x.y.z> --code <n>` (updates `package.json`,
    `www/js/version.js`, `android/app/build.gradle`), then
    `npm run check:release`.
-3. Merge to `main` (web deploys automatically), then push tag `v<x.y.z>`.
+3. Merge to `main` after shop hours (web deploys automatically), then push a
+   release-candidate tag `v<x.y.z>-rc<n>` (a prerelease, never offered by the
+   update banner) and run the manual checks in `docs/release-checklist.md` with
+   its APK (real printer, 5 bills offline, cash open/close, install over the
+   previous APK, timings).
+4. All good: push tag `v<x.y.z>` on the same commit, after shop hours.
    The tag-driven Android release workflow (#92 / PR #173) builds and signs
    the APK (Happa key, `HAPPA_*` secrets, pinned to `HAPPA_CERT_SHA256`) and
    publishes a GitHub Release with `happa.apk`.
-4. Installed apps see the "Update available" banner (checks
+5. Installed apps see the "Update available" banner (checks
    `releases/latest`, at most every 12 h); `/download` always links to the
    latest APK; users get a one-time "What's new" sheet.
 
@@ -350,7 +359,9 @@ in `.github/review-rules-examples/`.
 ### CI: what runs on a pull request
 
 - **`ci.yml`** (every PR and push to `main`): *Lint, Jest, release checks* and
-  *Firestore rules tests*. Nightly it also runs the read-only production smoke
+  *Firestore rules tests*. Jest includes a docs link check
+  (`tests/ci/docs-links.test.js`: every relative link in a `.md` file must point
+  to a file that exists). Nightly it also runs the read-only production smoke
   (`npm run test:smoke`).
 - **`e2e.yml`**: the Playwright E2E suite (`tests/e2e`, Firebase emulators;
   every page × role × en/hi × phone/desktop). It runs on **every PR that changes
@@ -364,6 +375,9 @@ in `.github/review-rules-examples/`.
   reads per page. Browsers, firebase-tools and the emulator jars are cached.
   On failure, download the `test-results-N` (traces) or `playwright-report`
   artifacts.
+- **`firebase-hosting-pull-request.yml`**: a preview channel per PR (test data)
+  on each hosting site, expiring after 2 days; when the PR closes its channels
+  are deleted on every site (Firebase limits the channels per site).
 - **Required check name: `Playwright E2E (emulators)`** (the job that collects
   the shards; it passes when E2E was not needed). Don't rename it: branch
   protection matches it by name. The shard jobs (`E2E shard N/3`) are not stable
