@@ -159,19 +159,6 @@ export const MockFirebaseService = {
         return [...mockDataStore.cashSessions];
     },
 
-    async saveCashSession(session) {
-        if (session.id) {
-            const index = mockDataStore.cashSessions.findIndex(s => s.id === session.id);
-            if (index >= 0) {
-                mockDataStore.cashSessions[index] = session;
-            }
-        } else {
-            session.id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-            mockDataStore.cashSessions.push(session);
-        }
-        return session;
-    },
-
     // Retail Sales
     async loadRetailSales() {
         return [...mockDataStore.retailSales];

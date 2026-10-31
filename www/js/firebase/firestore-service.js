@@ -4014,26 +4014,6 @@ const FirebaseService = {
     },
 
     /**
-     * Saves a cash management session to Firestore.
-     * @async
-     * @param {Object} session - The cash session to save
-     * @param {string} [session.id] - Session ID (if updating existing)
-     * @param {string} session.date - Session date
-     * @param {number} session.openingCash - Opening cash amount
-     * @param {number} [session.closingCash] - Closing cash amount
-     * @returns {Promise<Object>} The saved session with ID
-     */
-    async saveCashSession(session) {
-        if (session.id) {
-            await getDb().collection(col('cashManagement')).doc(session.id).set(session);
-        } else {
-            const docRef = await getDb().collection(col('cashManagement')).add(session);
-            session.id = docRef.id;
-        }
-        return session;
-    },
-
-    /**
      * Updates an existing cash management session in Firestore.
      * @async
      * @param {Object} session - The session to update
