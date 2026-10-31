@@ -11,7 +11,7 @@ import { AppState } from '../utils/state.js';
 import { APP_CONFIG } from '../utils/constants.js';
 import { Helpers } from '../utils/helpers.js';
 import { outstandingDue } from '../utils/money.js';
-import { parseAnyBillDate } from '../utils/dates.js';
+import { localISODaysAgo, parseAnyBillDate } from '../utils/dates.js';
 import { planNotificationDocs, newEventId } from '../utils/notification-format.js';
 import {
     STOCK_REPLAY_FORMAT,
@@ -31,6 +31,7 @@ import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart
 import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_MS } from '../utils/background-tasks.js';
 import { markStartup } from '../utils/startup-timings.js';
 import { canReadWithdrawals } from '../utils/role-access.js';
+import { canReadPersonalExpenses, dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { isStorageFullError, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { SyncStatus } from '../ui/sync-status.js';
@@ -302,6 +303,9 @@ const HISTORY_COLLECTIONS = [
         views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
     { key: 'expenses', stateKey: 'expensesHistory', label: 'Expenses',
         views: ['expensesHistory', 'money', 'insights', 'statements'] },
+    // Shares AppState.expensesHistory with `expenses` (publishCollection merges them, #98)
+    { key: 'personalExpenses', stateKey: 'expensesHistory', label: 'Personal expenses', optional: true, timestamped: true,
+        views: ['expensesHistory', 'money', 'insights', 'statements'] },
     { key: 'stockAdjustments', stateKey: 'stockAdjustments', label: 'Stock adjustments', stock: true,
         views: ['stockAdjustmentHistory', 'stockView', 'money', 'insights', 'statements'] },
     { key: 'withdrawals', stateKey: 'withdrawalsHistory', label: 'Withdrawals', optional: true,
@@ -316,7 +320,9 @@ const ALL_HISTORY_VIEWS = [...new Set(HISTORY_COLLECTIONS.flatMap(s => s.views))
  * known Roles & access, so a change applies from the next app start.
  */
 function historySpecReadable(spec, role = AppState.userRole, roleAccess = AppState.settings?.roleAccess) {
-    return spec.key !== 'withdrawals' || canReadWithdrawals(role, roleAccess);
+    if (spec.key === 'withdrawals') return canReadWithdrawals(role, roleAccess);
+    if (spec.key === 'personalExpenses') return canReadPersonalExpenses(role, roleAccess);
+    return true;
 }
 
 /** Firestore document id of each mapped record (the data may carry its own `id`). */
@@ -475,10 +481,60 @@ function publishCollection(c) {
         const id = docIdOf(rec);
         if (c.extended.get(id) === rec) c.publishedExtended.add(id);
     });
-    AppState[c.spec.stateKey] = list;
+    c.published = list;
+    AppState[c.spec.stateKey] = withSharedState(c, list);
     AppState.dataVersion = ++dataVersion;
     if (c.spec.stock) stockChangeGen++;
 }
+
+/** The published lists of every collection sharing c's AppState key (expenses + personal expenses), newest first. */
+function withSharedState(c, list) {
+    const others = Object.values(windowState?.colls || {})
+        .filter(o => o !== c && o.spec.stateKey === c.spec.stateKey && Array.isArray(o.published));
+    if (!others.length) return list;
+    return [...list, ...others.flatMap(o => o.published)].sort(byDateDesc);
+}
+
+/**
+ * Where an expense lives (#98): personalExpenses when that collection's state holds it, by
+ * document id or by its own `id` field (old-app rows carry a numeric one), else expenses.
+ * @returns {{collKey: string, rec: ?Object, docId: string}}
+ */
+function locateExpense(id) {
+    const c = windowState?.colls?.personalExpenses;
+    const sid = String(id);
+    if (c) {
+        const recs = [...c.extended.values(), ...c.live.docs, ...c.dues.flatMap(l => l.docs), ...(c.published || [])];
+        const rec = recs.find(r => docIdOf(r) === sid) || recs.find(r => String(r?.id) === sid);
+        if (rec) return { collKey: 'personalExpenses', rec, docId: docIdOf(rec) };
+    }
+    return { collKey: 'expenses', rec: null, docId: sid };
+}
+
+const personalDayOf = (rec) => rec?.day || personalDayKey(rec?.date);
+
+/**
+ * One key of personalExpenseDays/{day}: the expense's amount, or removed (amount null).
+ * `last` names the key for firestore.rules (validPersonalDay).
+ */
+function personalDayWrite(day, id, amount) {
+    const fv = typeof firebase !== 'undefined' ? firebase.firestore?.FieldValue : null;
+    const value = amount === null ? (typeof fv?.delete === 'function' ? fv.delete() : undefined) : amount;
+    return [getDb().collection(col(PERSONAL_DAYS_COLLECTION)).doc(day), { amounts: { [id]: value }, last: id }, { merge: true }];
+}
+
+/** Adds the day-doc key of a personal expense write to a batch: set to its amount, or removed (#98). */
+function addPersonalDayWrites(batch, id, before, after) {
+    const from = before ? personalDayOf(before) : null;
+    const to = after ? personalDayOf(after) : null;
+    if (from && from !== to) batch.set(...personalDayWrite(from, String(id), null));
+    if (to && !(from === to && Number(before.amount) === Number(after.amount))) {
+        batch.set(...personalDayWrite(to, String(id), Number(after.amount) || 0));
+    }
+}
+
+/** Personal expense day totals read on this device: { [YYYY-MM-DD]: {total, count, at} }. */
+const personalDayCache = new Map();
 
 /**
  * Bill numbers already warned about this session (#41): pre-fix offline
@@ -662,7 +718,7 @@ let fullHistoryFetchedAt = 0;
 /** The time a record counts in a month: BILL-TIME for bills / adjustments, its date for expenses / withdrawals. */
 function monthTimeOf(collKey, rec) {
     if (!rec) return null;
-    if (collKey === 'expenses' || collKey === 'withdrawals') return parseAnyBillDate(rec.date)?.getTime() ?? null;
+    if (collKey === 'expenses' || collKey === 'personalExpenses' || collKey === 'withdrawals') return parseAnyBillDate(rec.date)?.getTime() ?? null;
     const t = eventTime(rec);
     return t === Number.MAX_SAFE_INTEGER ? null : t;
 }
@@ -723,10 +779,11 @@ function forgetRecord(collKey, id) {
  * (works offline; the listener later replaces it, same doc id). A refused
  * write removes it again and rejects `committed`. `id`: save again over this
  * not-yet-confirmed record; `sent` is the raw write (for whenStoredLocally).
+ * `withBatch(batch, docId)` adds writes that must land with it (one batch).
  * @private
  * @returns {{record: Object, committed: Promise<void>, sent: Promise<void>}}
  */
-function startCreate(collKey, data, id = null) {
+function startCreate(collKey, data, id = null, withBatch = null) {
     const coll = getDb().collection(col(collKey));
     const ref = id ? coll.doc(String(id)) : coll.doc();
     const record = { id: ref.id, ...data };
@@ -736,7 +793,15 @@ function startCreate(collKey, data, id = null) {
     const at = list.findIndex(r => String(r.id) === ref.id);
     if (at === -1) list.unshift(record);
     else list[at] = record;
-    const sent = ref.set(data);
+    let sent;
+    if (withBatch) {
+        const batch = getDb().batch();
+        batch.set(ref, data);
+        withBatch(batch, ref.id);
+        sent = batch.commit();
+    } else {
+        sent = ref.set(data);
+    }
     SyncStatus.trackWrite(ref.path, sent);
     const committed = sent.catch(err => {
         forgetRecord(collKey, ref.id);
@@ -1412,7 +1477,7 @@ async function backfillLegacyTimestampsNow(spec, docs, gen) {
  */
 async function scanLegacyCollections(ws, gen) {
     for (const spec of HISTORY_COLLECTIONS) {
-        if (!needsLegacyScan(spec.key) || !historySpecReadable(spec)) continue;
+        if (spec.timestamped || !needsLegacyScan(spec.key) || !historySpecReadable(spec)) continue;
         const db = getDb();
         let snap;
         try {
@@ -2549,8 +2614,12 @@ const FirebaseService = {
         }
 
         ensureTimestamp(expense, true);
-        const { record, committed, sent } = startCreate('expenses', expense, id);
-        noteMonthWrite('expenses', null, record);
+        // Personal expenses go to their own collection, with their key in the day doc (#98)
+        const collKey = expenseCollectionFor(expense);
+        if (collKey !== 'expenses' && !expense.day) expense.day = personalDayKey(expense.date);
+        const { record, committed, sent } = startCreate(collKey, expense, id,
+            collKey === 'expenses' ? null : (batch, docId) => addPersonalDayWrites(batch, docId, null, expense));
+        noteMonthWrite(collKey, null, record);
         return { record, committed, stored: whenStoredLocally(sent, EXPENSE_STORE_WAIT_MS) };
     },
 
@@ -2563,9 +2632,17 @@ const FirebaseService = {
      * @returns {Promise<void>}
      */
     async deleteExpense(expenseId) {
-        const previous = findRecord('expenses', expenseId);
-        // Handle both old numeric IDs and new Firebase document IDs
-        if (typeof expenseId === 'number' || !isNaN(Number(expenseId))) {
+        // The Expenses page takes the row off the screen before this runs, so look in the collection state
+        const where = locateExpense(expenseId);
+        const collKey = where.collKey;
+        const previous = where.rec || findRecord(collKey, expenseId);
+        if (collKey === 'personalExpenses') {
+            const batch = getDb().batch();
+            batch.delete(getDb().collection(col(collKey)).doc(where.docId));
+            addPersonalDayWrites(batch, where.docId, previous, null);
+            await batch.commit();
+        } else if (typeof expenseId === 'number' || !isNaN(Number(expenseId))) {
+            // Handle both old numeric IDs and new Firebase document IDs
             // Old expense with numeric ID - query by id field
             const snapshot = await getDb().collection(col('expenses')).where('id', '==', Number(expenseId)).get();
             const deletePromises = snapshot.docs.map(doc => doc.ref.delete());
@@ -2574,9 +2651,9 @@ const FirebaseService = {
             // New expense with Firebase document ID
             await getDb().collection(col('expenses')).doc(expenseId).delete();
         }
-        noteMonthWrite('expenses', previous, null);
+        noteMonthWrite(collKey, previous, null);
         
-        forgetRecord('expenses', expenseId);
+        forgetRecord(collKey, collKey === 'personalExpenses' ? where.docId : expenseId);
         // Update local state
         const index = AppState.expensesHistory.findIndex(e => e.id == expenseId);
         if (index !== -1) {
@@ -2592,6 +2669,19 @@ const FirebaseService = {
      * @returns {Promise<void>}
      */
     async updateExpense(expenseId, fields) {
+        const where = locateExpense(expenseId);
+        const collKey = where.collKey;
+        if (collKey === 'personalExpenses') {
+            const ref = getDb().collection(col(collKey)).doc(where.docId);
+            const prev = where.rec;
+            const batch = getDb().batch();
+            batch.update(ref, fields);
+            if (prev) addPersonalDayWrites(batch, where.docId, prev, { ...prev, ...fields });
+            await batch.commit();
+            if (prev) noteLocalRecordWrite(collKey, ref.id, { ...prev, ...fields });
+            noteMonthWrite(collKey, prev, prev ? { ...prev, ...fields } : fields);
+            return;
+        }
         const coll = getDb().collection(col('expenses'));
         let refs;
         if (typeof expenseId === 'number' || !isNaN(Number(expenseId))) {
@@ -2607,6 +2697,74 @@ const FirebaseService = {
             if (prev) noteLocalRecordWrite('expenses', ref.id, { ...prev, ...fields });
             noteMonthWrite('expenses', prev, prev ? { ...prev, ...fields } : fields);
         });
+    },
+
+    /**
+     * A day's personal expense total and count (personalExpenseDays, #98), for
+     * phones whose role can't read the expenses themselves. One read, reused for
+     * `maxAgeMs`; personalExpenseDay() returns the last value read, for sync readers.
+     * @param {string} day YYYY-MM-DD
+     * @param {{maxAgeMs?: number}} [opts]
+     * @returns {Promise<?{total: number, count: number}>} null when unknown (missing or unreadable)
+     */
+    async loadPersonalExpenseDay(day, { maxAgeMs = 60000 } = {}) {
+        const cached = personalDayCache.get(day);
+        if (cached && Date.now() - cached.at < maxAgeMs) return cached.value;
+        let value = null;
+        try {
+            const snap = await getWithRetry(getDb().collection(col(PERSONAL_DAYS_COLLECTION)).doc(day), 'Personal expense day', { attempts: 2, timeoutMs: 8000 });
+            value = dayDocTotals(snap.exists ? snap.data() : null);
+        } catch (e) {
+            console.warn('Personal expense day total not loaded:', e?.code || e);
+            return cached ? cached.value : null;
+        }
+        personalDayCache.set(day, { value, at: Date.now() });
+        return value;
+    },
+
+    /**
+     * The last personal expense total read for a day (loadPersonalExpenseDay), or null.
+     * @param {string} day YYYY-MM-DD
+     * @returns {?{total: number, count: number}}
+     */
+    personalExpenseDay(day) {
+        return personalDayCache.get(day)?.value ?? null;
+    },
+
+    /**
+     * Whether this phone has the personal expense rows: their listener started
+     * and delivered its first snapshot (not just what Roles & access says now).
+     * When false, the cash count and Today use the day totals and the shared
+     * month snapshots are not written (#98).
+     * @returns {boolean}
+     */
+    personalRowsLoaded() {
+        const live = windowState?.colls?.personalExpenses?.live;
+        return !!(live && live.delivered && !live.failed);
+    },
+
+    /**
+     * Owner/manager: makes personalExpenseDays of these days match the loaded
+     * personal rows (one read per day, one write per wrong key; none when right).
+     * @param {string[]} days YYYY-MM-DD, inside the loaded history
+     * @returns {Promise<number>} keys written
+     */
+    async rebuildPersonalExpenseDays(days) {
+        if (!canManageCheckpoint() || !this.personalRowsLoaded()) return 0;
+        const rows = (windowState.colls.personalExpenses.published || []).map(r => ({ ...r, id: docIdOf(r) }));
+        const want = personalDaysFromRows(rows);
+        let written = 0;
+        for (const day of days) {
+            const snap = await getWithRetry(getDb().collection(col(PERSONAL_DAYS_COLLECTION)).doc(day), 'Personal expense day', { attempts: 2 });
+            const fixes = personalDayFixes(want[day] || {}, snap.exists ? snap.data() : null);
+            for (const f of fixes) {
+                const [ref, data, opts] = personalDayWrite(day, f.id, f.amount);
+                await ref.set(data, opts);
+                written++;
+            }
+            personalDayCache.delete(day);
+        }
+        return written;
     },
 
     /**
@@ -3305,6 +3463,7 @@ const FirebaseService = {
                 SyncStatus.noteSnapshot(syncId, snapshot);
                 const { changed, changes } = applySnapshot(live, snapshot, mapFn);
                 if (!snapshot.metadata.fromCache) live.server = true;
+                live.delivered = true;
                 // Before startup is ready only AppState is updated; startup
                 // computes stock and renders the initial views itself.
                 if (changed) onData(changes, ready);
@@ -3327,6 +3486,7 @@ const FirebaseService = {
                 }
             }, error => {
                 console.error(`${label} listener error:`, error);
+                live.failed = true;
                 clearTimeout(readyTimer);
                 if (!ready) {
                     ready = true;
@@ -3442,6 +3602,13 @@ const FirebaseService = {
                 if (gen !== sessionGen) return;
                 if (shouldScheduleLegacyScan({ canManage: canManageCheckpoint(), hasCheckpoint: !!cp, online: navigator.onLine })) {
                     scheduleLegacyScan(ws, gen);
+                }
+                // Owner/manager phones keep the last week's personal day totals in step with the rows (#98)
+                if (canManageCheckpoint() && FirebaseService.personalRowsLoaded() && navigator.onLine !== false) {
+                    whenIdle(() => (gen === sessionGen
+                        ? FirebaseService.rebuildPersonalExpenseDays([0, 1, 2, 3, 4, 5, 6].map(localISODaysAgo))
+                            .catch(e => console.warn('Personal expense day totals not checked:', e?.code || e))
+                        : undefined), { minDelayMs: LEGACY_SCAN_DELAY_MS });
                 }
             });
         });

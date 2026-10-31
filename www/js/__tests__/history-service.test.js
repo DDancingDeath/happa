@@ -156,7 +156,8 @@ describe('recent history window + stock checkpoint', () => {
         const b = FirebaseService.ensureHistoryFrom(new Date(from));
         await Promise.all([a, b]);
         expect(FirebaseService.getHistoryWindowStart()).toBe(from);
-        expect(fake.stats.gets).toBe(6);
+        // one range query per history collection (personal expenses too, #98)
+        expect(fake.stats.gets).toBe(7);
         expect(events).toEqual([from]);
 
         COLLS.forEach(c => {
@@ -169,7 +170,7 @@ describe('recent history window + stock checkpoint', () => {
         });
 
         await FirebaseService.ensureHistoryFrom(from + 1000);
-        expect(fake.stats.gets).toBe(6);
+        expect(fake.stats.gets).toBe(7);
 
         // Infinite scroll to the end: month-aligned steps, then full history.
         let res;

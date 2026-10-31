@@ -27,6 +27,8 @@ import { itemValue, stockValue } from '../../www/js/utils/calc/stock.js';
 import { StockManager } from '../../www/js/modules/stock.js';
 import { InsightsManager } from '../../www/js/modules/insights.js';
 import { UIManager } from '../../www/js/ui/ui-manager.js';
+import { isPersonalExpense } from '../../www/js/utils/money.js';
+import { dayDocTotals, personalDaysFromRows } from '../../www/js/utils/personal-expenses.js';
 
 const FIX = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/calculations/shop-month.json'), 'utf8'));
 const NOW = O.timeOf(FIX.now);
@@ -375,5 +377,54 @@ describe('Cash drawer == oracle', () => {
         CashManagementManager.todaySession = copy(FIX.session);
         CashManagementManager.todayTransactions = tx;
         expect(CashManagementManager.calculateExpectedCash()).toBe(want.C7_expected);
+    });
+});
+
+// ------------------------------------------------- a role that can't read personal expenses (#98)
+
+describe('Cash drawer and Today without the personal expense rows (#98) == oracle', () => {
+    // The phone has only the business rows; personalExpenseDays holds each day's total as the
+    // app's own rebuild (personalDaysFromRows) makes it. The figures must not change.
+    const docs = personalDaysFromRows(FIX.expenses.filter(isPersonalExpense).map((e, i) => ({ id: `p${i}`, ...e })));
+    const days = Object.fromEntries(Object.entries(docs).map(([d, amounts]) => [d, dayDocTotals({ amounts })]));
+    beforeEach(() => {
+        AppState.userRole = 'staff';
+        AppState.settings = { showHindi: false, roleAccess: { staff: { personalExpenses: false } } };
+        AppState.expensesHistory = copy(FIX.expenses).filter(e => !isPersonalExpense(e));
+        jest.spyOn(FirebaseService, 'personalRowsLoaded').mockReturnValue(false);
+        jest.spyOn(FirebaseService, 'personalExpenseDay').mockImplementation(d => days[d] || null);
+        jest.spyOn(FirebaseService, 'loadPersonalExpenseDay').mockResolvedValue(null);
+    });
+
+    test('C3 personal and C7 expected', () => {
+        const want = O.drawer(data, FIX.session);
+        const tx = CashManagementManager.calculateTransactionsForDate(FIX.session.date, copy(FIX.session));
+        expect(tx.personalExpenses).toBe(want.C3_personalExpenses);
+        expect(tx.businessExpenses).toBe(want.C3_businessExpenses);
+        expect(sessionTotals(FIX.session, tx).expected).toBe(want.C7_expected);
+    });
+
+    test('T5 personal expenses and T11 total out on Today', () => {
+        const want = O.today(data, NOW, FIX.session);
+        document.body.innerHTML = ['todayPersonalExpenses', 'todayPersonalExpenseCount', 'todayBusinessExpenses', 'todayTotalOut']
+            .map(id => `<div id="${id}"></div>`).join('');
+        jest.spyOn(AnomaliesManager, 'renderDayReport').mockImplementation(() => {});
+        CashManagementManager.todaySession = copy(FIX.session);
+        DayManager.loadTodayData();
+        expect(shown('todayPersonalExpenses')).toBe(rupee(want.T5_personalExpenses));
+        expect(shown('todayTotalOut')).toBe(rupee(want.T11_totalOut));
+    });
+
+    test('todaySummary with the day total == oracle T5, T8, T11', () => {
+        const want = O.today(data, NOW, FIX.session);
+        const s = todaySummary({
+            bills: { purchase: FIX.purchases, wholesale: FIX.wholesaleSales, retail: FIX.retailSales },
+            expenses: copy(FIX.expenses).filter(e => !isPersonalExpense(e)),
+            personalDay: days[FIX.now.slice(0, 10)],
+            sessions: [copy(FIX.session)], settings: {}, today: new Date(NOW)
+        });
+        expect(s.personalExpenses).toBe(want.T5_personalExpenses);
+        expect(s.cashOut).toBe(want.T8_cashOut);
+        expect(s.totalOut).toBe(want.T11_totalOut);
     });
 });

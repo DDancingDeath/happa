@@ -36,7 +36,7 @@ setting is missing or invalid.
 | `reports` | Statements page (stored id of the old Reports page) | बही-खाता पेज | on | off | client; **rules** for withdrawals |
 | `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule, and `reports` opens Seasons too; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client; **rules** for withdrawals |
 | `wholesale` | Wholesale page | थोक पेज | on | off | client |
-| `personalExpenses` | Personal expenses | निजी खर्च | on | on | client (rules: phase 2, see "Server-side read rules") |
+| `personalExpenses` | Personal expenses | निजी खर्च | on | on | client + **rules** (#98, see "Personal expenses") |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
 | `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client (rules: phase 2) |
@@ -224,7 +224,9 @@ rejected / no profile / unknown role.
 |---|---|---|
 | `purchases`, `retailSales`, `wholesaleSales` | window listeners (`timestamp >= liveFrom`), due listeners (`openDue == true`, `timestamp < liveFrom`; pinned ids), one-shot older history, oldest-timestamp probe, re-read after a due is paid, bill-number seed (`helpers.js`), Rates trends paging (owner/manager) | **yes, all ages**: stock = checkpoint + bills since its `asOf` (up to ~3 months back for members), Outstanding needs old bills with a due, History within `historyDays`, billing checks |
 | `items`, `itemFrequency/global`, `counters`, `stockCheckpoints` (`current`, `legacyScan`) | listeners / gets at start-up, billing transaction | yes |
-| `expenses` | window/older-history queries (business and personal rows together) | business: yes (Expenses, Today); personal: only with `personalExpenses`, **but** the cash count's expected balance subtracts today's personal expenses |
+| `expenses` | window/older-history queries (business rows; personal rows saved before #98) | yes (Expenses, Today, cash count) |
+| `personalExpenses` (#98) | window/older-history queries, only when `canReadPersonalExpenses(role, roleAccess)` | only with `personalExpenses` (default on) |
+| `personalExpenseDays/{YYYY-MM-DD}` (#98) | one get of a day (Today, the cash count, auto-closing a past day), only on phones that can't read `personalExpenses`; reused for a minute | yes, the day's total and count only |
 | `stockAdjustments` | history queries (stock) | yes |
 | `cashManagement` | Cash page (latest page, last counted day, open past days, uncounted days, by date, between dates), Today, Outstanding (cash leg), Money, Anomalies | today, the last counted day (carry-forward, any age) and uncounted days; other past days only with `oldCashSessions` |
 | `withdrawals` | history queries; shown only on Money, Statements, Insights | only with `finance`, `reports` or `analytics` (default off) |
@@ -250,6 +252,8 @@ except `rent_public` get.
 |---|---|---|---|---|---|
 | bills, `items`, `expenses`, `stockAdjustments`, `cashManagement`, `itemFrequency`, `counters`, `stockCheckpoints` | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ |
 | `withdrawals` | ✓ → ✓ | ✓ → ✓ while Money, Statements or Insights is on for managers (default) | ✓ → ✗; ✓ while one of them is on for members | ✗ → ✗ | ✗ → ✗ |
+| `personalExpenses` (#98; were in `expenses`) | ✓ | ✓ while Personal expenses is on for managers (default) | ✓ while it is on for members (default) | ✗ | ✗ |
+| `personalExpenseDays` (#98) | ✓ | ✓ | ✓ | ✗ | ✗ |
 | `cashSessions` (legacy) | ✓ → ✓ | ✓ → ✓ | ✓ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `settings/app` (G) | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ |
 | other `settings` docs, `settings` (L) | ✓ → ✓ | ✓ → ✗ | ✓ → ✗ | ✗ → ✗ | ✗ → ✗ |
@@ -298,6 +302,9 @@ profile was already read for every business read; `isOwnerIn` / `isManagerIn` re
 | Withdrawals, owner | profile → profile | none |
 | Withdrawals, manager or member allowed by Roles & access | profile → profile + `settings/app` | **+1 read** per listener start, per change to the withdrawals it shows and per reconnect; +1 per older-history query |
 | Withdrawals, member without Money/Statements/Insights | listener + queries → not sent | **saves** the whole withdrawals window and older-history reads |
+| Personal expenses (#98), owner | profile | none (new collection; the rows used to come with `expenses`) |
+| Personal expenses, manager or member with the switch on | profile + `settings/app` | **+1 read** per listener start, per change and per reconnect; +1 per older-history query; an empty listener costs 1 read |
+| Personal expenses, switch off | not sent; one `personalExpenseDays` get per day shown (Today, cash count), reused for a minute | **saves** the personal rows; +1 read per day total |
 
 At most two documents are read by any read rule (profile, `settings/app`), well inside the limit
 of 10. Members keep reading bills with no extra rule read, which is why `historyDays` stays
@@ -305,14 +312,7 @@ client-only (below).
 
 ### Not enforced in the rules (phase 2), and why
 
-1. **Personal expenses** (`personalExpenses`). Personal rows share `expenses` with business rows
-   (`category: 'personal'`, older rows `type`; untagged rows count as business), and members'
-   expense queries don't filter on it. A rule on the field would refuse their whole query; a
-   `category != 'personal'` filter drops every row without the field and needs a new index. The
-   cash count also needs today's personal expenses for the expected balance. Plan: a
-   `personalExpenses` (+ `dev_`) collection with an owner-run batched migration, the cash day
-   keeping its own running personal total, and `allow read` checking
-   `roleAccess.<role>.personalExpenses` (+1 read for managers/members per query).
+1. **Personal expenses**: enforced since #98, see "Personal expenses" below.
 2. **History age** (`historyDays`). The bills behind stock (back to the checkpoint's `asOf`) and
    Outstanding (any age while a due is open; some are listened to by id) are older than a short
    history window, so the rules can't refuse old bills without breaking stock and dues. Checking
@@ -340,6 +340,48 @@ client-only (below).
    who a notification goes to (wholesale rate changes go only to owners/managers, item edits
    only to owners) — that would cost one profile read per recipient. No extra rule reads
    (the sender's profile is already read). Tests: "per-user records" in `rules-tests/test.js`.
+
+## Personal expenses (#98)
+
+- **Where**: new personal expenses are saved in `personalExpenses` (+ `dev_`) with the `day` they
+  count on. `personalExpenseDays/{YYYY-MM-DD}` = `{ amounts: { <expense id>: amount }, last }` (no names
+  or notes) gets that expense's key in the same batch (also offline): set on create and edit, removed
+  on delete. The day's total is the sum of the map, so a repeated delete, a late queued write or two
+  phones editing at once can't make it drift. Business expenses stay in `expenses`.
+- **Rules**: `personalExpenses` is read and written only by the owner and by roles whose
+  `roleAccess.<role>.personalExpenses` is on (default on; one read of `settings/app`, never for the
+  owner). Creates: own `userId`, numeric amount, `category: 'personal'`; edits and deletes follow
+  the expense rules (creator for 24 hours, managers any, owner anything); `day` never changes.
+  `personalExpenseDays` is readable by every approved user and written only by those who may write
+  personal expenses: one key per write (`last`), set to that expense's amount after the write on
+  its `day`, or removed when the expense is gone. Members only touch the key of an expense written
+  in the same batch; managers may also correct a key to the stored amount. Nobody but the owner can
+  zero the map, add a key for an expense that doesn't exist or delete the doc.
+- **Rebuild**: owner/manager phones that have the rows compare the last 7 days' docs with them once
+  a session, when idle (one read per day; one write per wrong key, none when right).
+- **Who sees the totals (accepted)**: a role with the switch off can't read the entries or their
+  notes, but still sees personal expense *totals*: the day total in the cash drawer and on Today, and
+  the month total in the shared month snapshots (`monthStats`, M8). The drawer needs them to add up,
+  and the month total is the sum of the days anyway. The Roles & access screen says so next to the
+  switch.
+- **App**: `FirebaseService` starts the `personalExpenses` listener only when
+  `canReadPersonalExpenses()` says the rules allow it (last known Roles & access, like withdrawals)
+  and merges it into `AppState.expensesHistory`, so Money, Statements, Insights, Today, the cash
+  count and the Expenses page read it as before. Whether a phone *has* the rows is
+  `personalRowsLoaded()`: the listener started and delivered its first snapshot (not what Roles &
+  access says now). Without them, Today (T5) and the cash count (C3/C7) add the day total instead,
+  so the drawer still adds up; auto-closing a past day skips (retries later) a day whose total
+  couldn't be loaded rather than store a guess; Money / Statements / Insights leave personal
+  expenses out (their personal lines are hidden for that role anyway), and the phone never writes
+  the shared month snapshots (`monthStats`).
+- **Old rows**: personal expenses saved before #98 stay in `expenses` and are still read with it.
+  The rules refuse *new* `expenses` rows tagged personal (`category`, trimmed, any case) and edits
+  that tag one personal, so older app versions can't put personal rows where members read them
+  (they get a save error). happa's data is test data that is wiped at go-live; `tools/migrate`
+  (`--mode full`) writes the old app's personal expenses (`category: 'personal'`) into
+  `personalExpenses` with their `day`, a numeric `timestamp` from their date and their day docs,
+  built the same way as the rebuild (idempotent: same ids and values). The default fresh start
+  copies no expenses.
 
 ## Caching (≤ 1 read per app start)
 
@@ -374,8 +416,7 @@ client-only (below).
 
 ## Phase 2 (not in the first PR)
 
-1. **Personal expenses in rules**: see "Server-side read rules" (separate collection, migration,
-   cash-day personal total).
+1. **Personal expenses in rules**: done in #98 (see "Personal expenses").
 2. **Profit / average cost and stock ₹ value**: client-only by design. Both come from purchase
    rates that members need for billing and stock; hiding them in rules would need owner-only copies
    of purchase rates.

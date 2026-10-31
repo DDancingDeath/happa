@@ -7,10 +7,12 @@
  * numbers match what the Outstanding, Wholesale and Rate trends pages show.
  */
 import backupLib from '../../backup/backup-lib.js';
-import { readPayment, round2, wholesaleOutstanding } from '../../../www/js/utils/money.js';
+import { isPersonalExpense, readPayment, round2, wholesaleOutstanding } from '../../../www/js/utils/money.js';
 import { buildAging } from '../../../www/js/utils/aging.js';
+import { parseAnyBillDate } from '../../../www/js/utils/dates.js';
 import { addBillToAcc, createCatalogueResolver, istDayKey, lineKg, lineRate, RATE_KINDS } from '../../../www/js/utils/rate-trends.js';
 import { buildRateStatsDocs, rateStatsMeta } from './rate-stats.js';
+import { personalDayKey, personalDaysFromRows, PERSONAL_COLLECTION, PERSONAL_DAYS_COLLECTION } from '../../../www/js/utils/personal-expenses.js';
 import { PER_USER_COLLECTIONS, serviceAccountUids } from './service-accounts.js';
 
 export const BUNDLE_FORMAT = 'aadhat-migration-bundle-v1';
@@ -64,6 +66,40 @@ export function revive(value) {
 }
 
 const compactDay = (dayKey) => dayKey.replace(/-/g, '');
+
+/**
+ * Personal expenses (#98) go to their own collection (same id, tagged
+ * category 'personal', with the `day` they count on and a numeric `timestamp`
+ * from their date, as the app writes them), and each day's amounts to
+ * personalExpenseDays ({ amounts: { id: amount } }, as the app's rebuild
+ * makes them); business ones stay in `expenses`. Idempotent: the same backup
+ * always gives the same documents.
+ * @param {Array<{id: string, data: Object}>} docs backup docs of `expenses`
+ * @returns {{business: Array, personal: Array, days: Array}} bundle writes
+ */
+export function splitPersonalExpenses(docs) {
+    const business = [];
+    const personal = [];
+    (docs || []).forEach(d => {
+        const data = d.data || {};
+        if (!isPersonalExpense(data)) {
+            business.push({ coll: 'expenses', id: d.id, data });
+            return;
+        }
+        // The old app's numeric `id` field would hide the document id in the app (mapDoc)
+        const rest = { ...data };
+        delete rest.id;
+        const when = parseAnyBillDate(revive(data).date);
+        const row = { ...rest, category: 'personal', day: personalDayKey(revive(data).date) };
+        if (typeof row.timestamp !== 'number' && when) row.timestamp = when.getTime();
+        if (!row.day) delete row.day;
+        personal.push({ coll: PERSONAL_COLLECTION, id: d.id, data: row });
+    });
+    const days = personalDaysFromRows(personal.map(w => ({ id: w.id, ...w.data })));
+    const dayDocs = Object.keys(days).sort()
+        .map(day => ({ coll: PERSONAL_DAYS_COLLECTION, id: day, data: { amounts: days[day] } }));
+    return { business, personal, days: dayDocs };
+}
 
 export function parseOptions(raw = {}) {
     const o = { ...DEFAULT_OPTIONS, ...Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== undefined)) };
@@ -281,6 +317,14 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
             const kept = docs.filter(d => !skippedUids.has(String(d.id)));
             if (kept.length !== docs.length) skippedDocs[name] = docs.length - kept.length;
             docs = kept;
+        }
+        if (name === 'expenses') {
+            const split = splitPersonalExpenses(docs);
+            copied.expenses = split.business.length;
+            copied[PERSONAL_COLLECTION] = split.personal.length;
+            add('copy:expenses', split.business);
+            add(`copy:${PERSONAL_COLLECTION}`, [...split.personal, ...split.days]);
+            return;
         }
         copied[name] = docs.length;
         add(`copy:${name}`, docs.map(d => ({ coll: name, id: d.id, data: d.data })));

@@ -34,7 +34,9 @@ const PERMISSION_LABEL_KEYS = {
 };
 const DAY_LIMITS = { historyDays: MAX_HISTORY_DAYS, editDays: MAX_EDIT_DAYS };
 // Applied by the app only; the database rules don't enforce these yet (docs/role-permissions.md).
-const CLIENT_ONLY = new Set(['personalExpenses', 'historyDays']);
+const CLIENT_ONLY = new Set(['historyDays']);
+// Notes next to switches (#98: personal expense totals stay in the drawer and month summaries).
+const NOTE_KEYS = { historyDays: 'ui.roles.client_only_note', personalExpenses: 'ui.roles.personal_totals_note' };
 
 const fieldId = (role, permission) => `ra-${role}-${permission}`;
 
@@ -69,7 +71,7 @@ export class RolesAccessManager {
         const access = this.current();
         const head = `<tr><th>${e(t('ui.roles.permission'))}</th>${CONFIGURABLE_ROLES.map(r => `<th>${e(t(ROLE_LABEL_KEYS[r]))}</th>`).join('')}</tr>`;
         const group = (key) => `<tr class="role-access-group"><td colspan="${CONFIGURABLE_ROLES.length + 1}">${e(t(key))}</td></tr>`;
-        const label = (p) => `<td>${e(t(PERMISSION_LABEL_KEYS[p]))}${CLIENT_ONLY.has(p) ? `<small class="role-access-note">${e(t('ui.roles.client_only_note'))}</small>` : ''}</td>`;
+        const label = (p) => `<td>${e(t(PERMISSION_LABEL_KEYS[p]))}${NOTE_KEYS[p] ? `<small class="role-access-note">${e(t(NOTE_KEYS[p]))}</small>` : ''}</td>`;
         const switchRow = (p) => `<tr>${label(p)}${CONFIGURABLE_ROLES.map(r => `
             <td><input type="checkbox" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – ${t(ROLE_LABEL_KEYS[r])}`)}"${access[r][p] ? ' checked' : ''}></td>`).join('')}</tr>`;
         // Settings switches are for managers only (members never see the Aadhat settings).

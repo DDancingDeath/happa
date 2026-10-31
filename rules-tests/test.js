@@ -1630,7 +1630,7 @@ function defineSuite(prefix) {
 
     t('expenses: approved users record their own expense with a numeric amount', async () => {
         await assertSucceeds(as('staff1').collection(expenses).doc('e1').set(expense('staff1')));
-        await assertSucceeds(as('legacyStaff').collection(expenses).doc('e2').set(expense('legacyStaff', { category: 'personal' })));
+        await assertFails(as('legacyStaff').collection(expenses).doc('e2').set(expense('legacyStaff', { category: 'personal' })));
         await assertFails(as('staff1').collection(expenses).doc('e3').set(expense('manager1')));
         await assertFails(as('staff1').collection(expenses).doc('e4').set(expense('staff1', { amount: '50' })));
         await assertFails(as('staff1').collection(expenses).doc('e5').set(expense('staff1', { amount: -50 })));
@@ -1666,8 +1666,125 @@ function defineSuite(prefix) {
         await assertSucceeds(as('manager1').collection(expenses).doc('a').update(edit({ updatedBy: 'manager1' })));
         await assertFails(as('manager1').collection(expenses).doc('a').update({ amount: 'x' }));
         await assertSucceeds(as('manager1').collection(expenses).doc('a').delete());
-        await assertSucceeds(as('legacyOwner').collection(expenses).doc('b').update({ amount: 1, category: 'personal' }));
+        await assertSucceeds(as('legacyOwner').collection(expenses).doc('b').update({ amount: 1, category: 'other' }));
         await assertSucceeds(as('legacyOwner').collection(expenses).doc('b').delete());
+    });
+
+    // ---- personal expenses: own collection, Roles & access › Personal expenses (#98) ----
+
+    const personal = `${prefix}personalExpenses`;
+    const personalDays = `${prefix}personalExpenseDays`;
+    const setPersonalAccess = (roleAccess) => env.withSecurityRulesDisabled(ctx =>
+        ctx.firestore().collection(`${prefix}settings`).doc('app').set({ roleAccess }));
+    const pexp = (uid, extra = {}) => expense(uid, { category: 'personal', day: '2026-10-22', ...extra });
+    const dayKey = (id, amount) => ({ amounts: { [id]: amount === null ? FieldValue.delete() : amount }, last: id });
+
+    t('personal expenses (#98): owner always; managers and members while their switch is on (default)', async () => {
+        await seedBill(personal, 'p1', pexp('legacyOwner'));
+        await seedBill(personalDays, '2026-10-22', { amounts: { p1: 50 }, last: 'p1' });
+        for (const uid of ['legacyOwner', 'manager1', 'staff1', 'legacyStaff']) {
+            await assertSucceeds(as(uid).collection(personal).get());
+            await assertSucceeds(as(uid).collection(personal).doc('p1').get());
+        }
+        await setPersonalAccess({ staff: { personalExpenses: false }, manager: { personalExpenses: true } });
+        await assertFails(as('staff1').collection(personal).get());
+        await assertFails(as('staff1').collection(personal).doc('p1').get());
+        await assertFails(as('staff1').collection(personal).doc('p2').set(pexp('staff1')));
+        await assertSucceeds(as('manager1').collection(personal).get());
+        await assertSucceeds(as('legacyOwner').collection(personal).get());
+        // the day totals stay readable, so the cash count and Today still add them up
+        await assertSucceeds(as('staff1').collection(personalDays).doc('2026-10-22').get());
+        await assertFails(as('staff1').collection(personalDays).doc('2026-10-22').set(dayKey('p1', 50), { merge: true }));
+        await setPersonalAccess({ manager: { personalExpenses: false } });
+        await assertFails(as('manager1').collection(personal).get());
+        await assertSucceeds(as('staff1').collection(personal).get());
+        for (const uid of ['pending1', 'rejected1', 'noRole', 'rentOnly', 'ghost']) {
+            await assertFails(as(uid).collection(personal).get());
+            await assertFails(as(uid).collection(personalDays).doc('2026-10-22').get());
+        }
+        await assertFails(anon().collection(personal).get());
+    });
+
+    t('personal expenses (#98): own personal rows only; the 24-hour edit rules of expenses', async () => {
+        const c = as('staff1').collection(personal);
+        await assertSucceeds(c.doc('mine').set(pexp('staff1')));
+        await assertFails(c.doc('noDay').set(expense('staff1', { category: 'personal' })));
+        await assertFails(c.doc('biz').set(expense('staff1')));
+        await assertFails(c.doc('other').set(pexp('manager1')));
+        await assertFails(c.doc('text').set(pexp('staff1', { amount: '50' })));
+        await assertSucceeds(c.doc('mine').update(edit()));
+        await assertFails(c.doc('mine').update(edit({ category: 'business' })));
+        await assertFails(as('manager1').collection(personal).doc('mine').update({ day: '2026-10-23' }));
+        await seedBill(personal, 'theirs', pexp('manager1'));
+        await seedBill(personal, 'old', pexp('staff1', { timestamp: Date.now() - 25 * HOUR }));
+        await assertFails(c.doc('theirs').update(edit()));
+        await assertFails(c.doc('theirs').delete());
+        await assertFails(c.doc('old').delete());
+        await assertSucceeds(c.doc('mine').delete());
+        await assertSucceeds(as('manager1').collection(personal).doc('old').update(edit({ updatedBy: 'manager1' })));
+        await assertSucceeds(as('manager1').collection(personal).doc('old').delete());
+        await assertSucceeds(as('legacyOwner').collection(personal).doc('theirs').delete());
+    });
+
+    t('personal expenses (#98): a day doc key follows its expense, written in the same batch', async () => {
+        const db = as('staff1');
+        const D = '2026-10-22';
+        const dayDoc = async () => {
+            let data;
+            await env.withSecurityRulesDisabled(async ctx => { data = (await ctx.firestore().collection(personalDays).doc(D).get()).data(); });
+            return data;
+        };
+        // create: expense + its key
+        let b = db.batch();
+        b.set(db.collection(personal).doc('b1'), pexp('staff1', { amount: 50 }));
+        b.set(db.collection(personalDays).doc(D), dayKey('b1', 50), { merge: true });
+        await assertSucceeds(b.commit());
+        // a wrong amount, another day, an extra field or a second key are refused
+        for (const [id, data, day] of [['b2', dayKey('b2', 99), D], ['b3', dayKey('b3', 50), '2026-10-23'],
+            ['b4', { ...dayKey('b4', 50), note: 'x' }, D], ['b5', { amounts: { b5: 50, b1: 0 }, last: 'b5' }, D]]) {
+            b = db.batch();
+            b.set(db.collection(personal).doc(id), pexp('staff1', { amount: 50 }));
+            b.set(db.collection(personalDays).doc(day), data, { merge: true });
+            await assertFails(b.commit());
+        }
+        // a key for an expense that doesn't exist, or zeroing the map
+        await assertFails(db.collection(personalDays).doc(D).set(dayKey('ghost', 10), { merge: true }));
+        await assertFails(db.collection(personalDays).doc(D).set({ amounts: {}, last: 'b1' }));
+        await assertFails(db.collection(personalDays).doc(D).set(dayKey('b1', null), { merge: true }));
+        // a member can't rewrite a key without writing its expense; a manager may correct it to the stored amount
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(personalDays).doc(D).set({ amounts: { b1: 5 }, last: 'b1' }));
+        await assertFails(db.collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
+        await assertFails(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 7), { merge: true }));
+        await assertSucceeds(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
+        // edit: new amount
+        b = db.batch();
+        b.update(db.collection(personal).doc('b1'), edit({ amount: 65 }));
+        b.set(db.collection(personalDays).doc(D), dayKey('b1', 65), { merge: true });
+        await assertSucceeds(b.commit());
+        // delete, then the same delete again: harmless
+        for (let i = 0; i < 2; i++) {
+            b = db.batch();
+            b.delete(db.collection(personal).doc('b1'));
+            b.set(db.collection(personalDays).doc(D), dayKey('b1', null), { merge: true });
+            await assertSucceeds(b.commit());
+        }
+        if (Object.keys((await dayDoc()).amounts).length) throw new Error('the deleted key is still there');
+        await assertFails(db.collection(personalDays).doc(D).delete());
+        await assertFails(as('manager1').collection(personalDays).doc(D).delete());
+        await assertSucceeds(as('legacyOwner').collection(personalDays).doc(D).delete());
+    });
+
+    t('personal expenses (#98): new expenses tagged personal are refused in `expenses` (older apps)', async () => {
+        await assertFails(as('staff1').collection(expenses).doc('x1').set(expense('staff1', { category: 'personal' })));
+        await assertFails(as('staff1').collection(expenses).doc('x2').set(expense('staff1', { category: ' Personal ' })));
+        await assertFails(as('legacyOwner').collection(expenses).doc('x3').set(expense('legacyOwner', { category: 'PERSONAL' })));
+        await assertSucceeds(as('staff1').collection(expenses).doc('x4').set(expense('staff1', { type: 'Personal' })));
+        await seedBill(expenses, 'biz', expense('staff1'));
+        await assertFails(as('manager1').collection(expenses).doc('biz').update({ category: 'personal' }));
+        await assertFails(as('legacyOwner').collection(expenses).doc('biz').update({ category: 'personal' }));
+        // rows saved before #98 stay editable
+        await seedBill(expenses, 'old', expense('staff1', { category: 'personal' }));
+        await assertSucceeds(as('staff1').collection(expenses).doc('old').update(edit()));
     });
 
     // ---- legacy timestamp backfill (any approved device) ----
@@ -2007,12 +2124,23 @@ function defineReadMatrix(prefix) {
     const add = (name, spec) => cases.push({ name, ...spec });
 
     const shared = ['purchases', 'retailSales', 'wholesaleSales', 'items', 'expenses', 'stockAdjustments',
-        'cashManagement', 'itemFrequency', 'counters', 'stockCheckpoints'];
+        'cashManagement', 'itemFrequency', 'counters', 'stockCheckpoints', 'personalExpenseDays'];
     shared.forEach(name => add(name, {
         seed: [[`${c(name)}/d1`, { userId: 'manager1', timestamp: 1, date: '2026-10-01' }]],
         get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: APPROVED,
         list: (db) => db.collection(c(name)).get(), listAllowed: APPROVED
     }));
+    const personalRow = [`${c('personalExpenses')}/d1`, { userId: 'manager1', timestamp: 1, date: '2026-10-01', category: 'personal' }];
+    add('personalExpenses (switch on, the default)', {
+        seed: [personalRow],
+        get: (db) => db.collection(c('personalExpenses')).doc('d1').get(), getAllowed: APPROVED,
+        list: (db) => db.collection(c('personalExpenses')).get(), listAllowed: APPROVED
+    });
+    add('personalExpenses (members switched off)', {
+        seed: [personalRow, [`${c('settings')}/app`, { roleAccess: { staff: { personalExpenses: false } } }]],
+        get: (db) => db.collection(c('personalExpenses')).doc('d1').get(), getAllowed: MANAGERS,
+        list: (db) => db.collection(c('personalExpenses')).get(), listAllowed: MANAGERS
+    });
     add('settings/app', {
         seed: [[`${c('settings')}/app`, { minClientVersion: 3 }], [`${c('settings')}/other`, { a: 1 }]],
         get: (db) => db.collection(c('settings')).doc('app').get(), getAllowed: APPROVED,

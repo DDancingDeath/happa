@@ -57,11 +57,13 @@ export function itemRows(bills) {
  * @param {Object} src
  * @param {{purchase?: Object[], wholesale?: Object[], retail?: Object[]}} src.bills All loaded bills (due payments on older bills count too)
  * @param {?Object[]} [src.expenses]
+ * @param {?{total?: number, count?: number}} [src.personalDay] Today's personal expense total and count
+ *   (personalExpenseDays) when this phone's role can't read the personal rows (#98)
  * @param {Object[]} [src.sessions] Cash sessions of the day whose due legs count (each payment id once)
  * @param {Object} [src.settings] Labour settings (laborRate, labourPackageKg)
  * @param {*} [src.today=new Date()] Any instant of the day (Date, ms or a bill date)
  */
-export function todaySummary({ bills = {}, expenses = [], sessions = [], settings = {}, today = new Date() } = {}) {
+export function todaySummary({ bills = {}, expenses = [], personalDay = null, sessions = [], settings = {}, today = new Date() } = {}) {
     const from = startOfLocalDay(today);
     const to = endOfLocalDayExclusive(today);
     const onDay = (record) => {
@@ -78,10 +80,11 @@ export function todaySummary({ bills = {}, expenses = [], sessions = [], setting
     const purchases = sumOf(purchaseBills, billTotal);
     const sales = sumOf(wholesaleBills, billTotal) + sumOf(retailBills, billTotal);
 
+    // EXP-KIND (#219); personal ones this role can't read come as the day total (#98)
     const business = dayExpenses.filter(e => !isPersonalExpense(e));
     const personal = dayExpenses.filter(isPersonalExpense);
     const businessExpenses = sumOf(business, expenseAmount);
-    const personalExpenses = sumOf(personal, expenseAmount);
+    const personalExpenses = round2(sumOf(personal, expenseAmount) + (Number(personalDay?.total) || 0));
     const expensesTotal = businessExpenses + personalExpenses;
 
     // BILL-AT-SAVE: money paid on a bill later is a due payment, counted on the day it was paid.
@@ -124,7 +127,7 @@ export function todaySummary({ bills = {}, expenses = [], sessions = [], setting
         sales, saleCount: saleBills.length,
         labour: { ...labour, gap: labourGap(labour.difference), packets: sumOf(labour.rows, r => r.packets) },
         businessExpenses, businessExpenseCount: business.length,
-        personalExpenses, personalExpenseCount: personal.length,
+        personalExpenses, personalExpenseCount: personal.length + (Number(personalDay?.count) || 0),
         expenses: expensesTotal,
         cashIn, onlineIn, cashOut, onlineOut,
         totalIn, totalOut,

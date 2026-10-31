@@ -69,6 +69,23 @@ function applyFields(target, fields, { dotted }) {
     return out;
 }
 
+/** set(..., { merge: true }): nested maps merge key by key, as in Firestore (sentinels apply at any depth). */
+function mergeFields(target, fields) {
+    let out = applyFields(target, {}, { dotted: false });
+    Object.entries(fields).forEach(([key, value]) => {
+        const plain = value && typeof value === 'object' && !Array.isArray(value)
+            && !value[DEL] && value[INC] === undefined && Object.getPrototypeOf(value) === Object.prototype;
+        if (plain && out[key] && typeof out[key] === 'object' && !Array.isArray(out[key])) {
+            out[key] = mergeFields(out[key], value);
+        } else if (plain) {
+            out[key] = mergeFields({}, value);
+        } else {
+            out = applyFields(out, { [key]: value }, { dotted: false });
+        }
+    });
+    return out;
+}
+
 export function createFakeFirestore(options = {}) {
     const store = new Map();
     const listeners = new Set();
@@ -262,7 +279,7 @@ export function createFakeFirestore(options = {}) {
             },
             set: async (data, opts = {}) => {
                 const prev = coll(collName).get(id);
-                write(collName, id, opts.merge ? applyFields(prev, data, { dotted: false }) : applyFields({}, data, { dotted: false }));
+                write(collName, id, opts.merge ? mergeFields(prev, data) : applyFields({}, data, { dotted: false }));
             },
             update: async (fields) => {
                 const prev = coll(collName).get(id);

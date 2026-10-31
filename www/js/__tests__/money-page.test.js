@@ -57,6 +57,8 @@ beforeEach(() => {
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
     jest.setSystemTime(new Date(NOW));
     jest.spyOn(console, 'error').mockImplementation(() => {});
+    // an owner phone whose personal expense listener delivered its rows (#98)
+    jest.spyOn(FirebaseService, 'personalRowsLoaded').mockReturnValue(true);
     load();
     resetInsightsContextForTests();
     document.body.innerHTML = TEMPLATE;

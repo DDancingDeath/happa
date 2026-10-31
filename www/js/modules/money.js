@@ -472,7 +472,7 @@ export const MoneyManager = {
         const cmpR = comparisonRanges(r);
         const cmpKeys = [cmpR.previous, cmpR.lastYear].filter(x => x && !this.covered(x.from)).flatMap(x => monthKeysBetween(x.from, x.to));
         const stale = [...keys, ...keys.map(lyKey), ...cmpKeys].some(k => this.snapshots[k]?.stale);
-        const canBuild = AppState.userRole === 'owner' || AppState.userRole === 'manager';
+        const canBuild = this.writesSnapshots();
         this.html('moneyBuildHistory', (missing || stale) && canBuild
             ? `<p class="ins-hint">${esc(t(stale ? 'ui.money.stale_hint' : 'ui.money.build_hint'))}</p><button type="button" class="btn btn-secondary" ${this.building ? 'disabled' : ''} onclick="window.app.money.buildHistory()">${esc(t(this.building ? 'ui.money.building' : 'ui.money.build_history'))}</button>`
             : '');
@@ -717,8 +717,18 @@ export const MoneyManager = {
         return run;
     },
 
+    /**
+     * Owner/manager phones that load every expense write the shared month snapshots; a phone
+     * that didn't load the personal expense rows (#98) would store them without, so it only reads.
+     */
+    writesSnapshots() {
+        const role = AppState.userRole;
+        return (role === 'owner' || role === 'manager') && !!FirebaseService.personalRowsLoaded?.();
+    },
+
     /** Rebuilds the current / previous month snapshot from the loaded bills (≤ 2 writes, every 6 h). */
     async rollNow() {
+        if (!this.writesSnapshots()) return;
         const now = Date.now();
         const keys = monthsToRoll(this.snapshots, { now, loadedFrom: isFullHistoryLoaded() ? 0 : historyLoadedFrom() });
         const docs = keys.map(k => this.snapshotFor(k, now)).filter(Boolean);
@@ -760,7 +770,7 @@ export const MoneyManager = {
 
     /** Owner/manager: load all bills once and write one snapshot per month. */
     async buildHistory() {
-        if (this.building) return;
+        if (this.building || !this.writesSnapshots()) return;
         this.building = true;
         this.render();
         try {

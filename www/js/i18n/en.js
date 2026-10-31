@@ -937,6 +937,7 @@ export default {
     'ui.roles.hint': "Choose what managers and members may see and do. The owner always sees everything.",
     'ui.roles.history_days_hint': "History shows only bills from the last this-many days for that role. 0 = all bills.",
     'ui.roles.client_only_note': "Hidden in the app; full database protection comes later.",
+    'ui.roles.personal_totals_note': "Totals still count in the cash drawer and month summaries; individual entries and notes are hidden.",
     'ui.roles.manager': "Manager",
     'ui.roles.member': "Member",
     'ui.roles.perm_analytics': "Insights page",

@@ -8,7 +8,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { buildPlan, parseOptions, revive, CLIENT_VERSION } from '../../../tools/migrate/lib/plan.js';
+import { buildPlan, parseOptions, revive, splitPersonalExpenses, CLIENT_VERSION } from '../../../tools/migrate/lib/plan.js';
 import { formatReport } from '../../../tools/migrate/lib/report.js';
 import { isServiceAccountEmail } from '../../../tools/migrate/lib/service-accounts.js';
 import { buildAging } from '../utils/aging.js';
@@ -194,6 +194,31 @@ describe('plan: copies, settings, counters, dev_', () => {
         expect(writesOf(full, 'opening')).toHaveLength(0);
         expect(writesOf(full, 'copy:retailSales')).toHaveLength(7);
         expect(full.writes.some(w => w.coll === 'stockCheckpoints' || w.coll === 'telemetry')).toBe(false);
+    });
+
+    test('full mode puts personal expenses in personalExpenses with their day totals (#98)', () => {
+        const backup = load();
+        backup.collections.expenses = [
+            ...backup.collections.expenses,
+            { id: 'p1', data: { id: 1761020000000, category: 'personal', type: 'Food', amount: 80, date: '21/10/2026, 10:00:00 am' } },
+            { id: 'p2', data: { category: 'personal', type: 'Fuel', amount: 20.5, date: '21/10/2026, 6:00:00 pm' } },
+            { id: 'p3', data: { type: 'personal', amount: 5, date: '2026-10-02' } }
+        ];
+        const full = plan({ mode: 'full' }, backup).bundle;
+        expect(writesOf(full, 'copy:expenses').map(w => w.id)).toEqual(['e1']);
+        const moved = writesOf(full, 'copy:personalExpenses');
+        expect(moved.filter(w => w.coll === 'personalExpenses').map(w => [w.id, w.data.category, w.data.amount]))
+            .toEqual([['p1', 'personal', 80], ['p2', 'personal', 20.5], ['p3', 'personal', 5]]);
+        expect(moved.filter(w => w.coll === 'personalExpenseDays').map(w => [w.id, w.data]))
+            .toEqual([['2026-10-02', { amounts: { p3: 5 } }], ['2026-10-21', { amounts: { p1: 80, p2: 20.5 } }]]);
+        // as the app writes them: the day they count on and a numeric timestamp from the date
+        const p1 = moved.find(w => w.id === 'p1').data;
+        expect(p1.day).toBe('2026-10-21');
+        expect(p1.timestamp).toBe(new Date(2026, 9, 21, 10, 0, 0).getTime());
+        expect(moved.find(w => w.id === 'p3').data).toMatchObject({ day: '2026-10-02', timestamp: new Date(2026, 9, 2).getTime() });
+        expect(moved.find(w => w.id === 'p1').data).not.toHaveProperty('id');
+        expect(plan({ mode: 'full' }, backup).bundle.writes).toEqual(full.writes);
+        expect(splitPersonalExpenses([]).personal).toEqual([]);
     });
 
     test('bad options and non-backups are refused', () => {
