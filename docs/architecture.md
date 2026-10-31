@@ -1,6 +1,8 @@
 # Architecture: layers, calculation map and migration plan
 
-Status: Phase 0 (review + ratchet), 31 Oct 2026, `main` at `ca6f2ba`.
+Status: Phase 0 (review + ratchet), 31 Oct 2026, `main` at `ca6f2ba`; phases 2a–2i (calc) and
+4 (repositories: no Firestore call outside the data layer, which emits events
+instead of calling pages) done since.
 Owner's goal: core logic decoupled from the UI, and every calculation in one
 place where it can be reviewed. This page says where we are, where we are going,
 which function owns each number in [calculations.md](calculations.md), and the
@@ -16,8 +18,9 @@ templates/*.html  ── 297 inline onclick="window.app.*" handlers
 main.js           ── wires every module onto window.app
      │
 modules/*.js      ── 24 page modules (~19k lines) and rentals/rentals.js:
-(pages)              read the DOM, apply rules, do arithmetic, call Firestore,
-                     write AppState, call other pages through window.app
+(pages)              read the DOM, apply rules, write AppState, call other pages
+                     through window.app; Firestore only through FirebaseService or
+                     a repository (phase 4), redraw on data events (utils/events.js)
      │        ╲
      │         utils/*.js  ── pure calculation, mostly tested by the oracle:
      │                        money, business-metrics, finance-calc, labour,
@@ -27,10 +30,16 @@ modules/*.js      ── 24 page modules (~19k lines) and rentals/rentals.js:
      │                        month-snapshots; rentals/rent-math, rent-views,
      │                        rent-public
      │
-firebase/firestore-service.js ── 3,859 lines / 173 KB: listeners, retries,
+firebase/firestore-service.js ── ~4,370 lines / 195 KB: listeners, retries,
                      cache, transactions, stock checkpoint, month snapshots,
-                     notifications, and it re-renders pages via window.app
-                     (VIEWS table, firestore-service.js:149-160)
+                     notifications; says which views' data changed by emitting
+                     `refresh:<view>` / `itemFrequency:changed` (utils/events.js),
+                     never calls a page (phase 4)
+firebase/repos/*.js ── repositories (phase 4): bill-drafts (drafts, auto-save,
+                     item order), bill-payments (due-payment / write-off
+                     transactions), cash-sessions, counters, users, audit-logs,
+                     telemetry. Rentals: rentals/rent-store.js and
+                     rent-receipt-store.js (loaded only with Rentals)
 utils/state.js    ── AppState: one global mutable object, written in 83 lines of
                      12 files (firestore-service 25, settings.js 19, stock.js 8, …)
 ```
@@ -74,7 +83,8 @@ in `www/js/utils/calc/`.
 |---|---|
 | UI never does arithmetic on money or quantity (no `Math.round(qty * rate)`, no `reduce` of amounts, no `a - b` of amounts); only calc (`utils/`, pure rentals files) does. | ratchet `moneyMath` (all of www/js except calc) |
 | UI never reads a number back from the screen (`Number(el.textContent)`, `Helpers.getElementInt`); it recomputes from data. | ratchet `domNumber` (everywhere, calc included) |
-| UI never calls Firestore (`.collection(`, `db.doc(`, `runTransaction`, `batch`); it calls a service or repository. Only `firebase/` talks to Firestore. | ratchet `firestore` (all but firebase/), review rule FirebaseService bypass |
+| UI never calls Firestore (`.collection(`, `db.doc(`, `runTransaction`, `batch`, `where`, `onSnapshot`, transaction / batch operations, `firebase.firestore.FieldValue`); it calls a service or repository and gets plain data back. Only the repositories (`firebase/**`, `rentals/rent-store.js`, `rentals/rent-receipt-store.js`) talk to Firestore; each owns its collection names (env prefix), queries, transactions and offline patterns. | ratchet `firestore`: absolute 0 outside the repositories, no baseline entry allowed (phase 4); review rule FirebaseService bypass |
+| The data layer never calls a page: it emits events (`utils/events.js`: `refresh:<view>`, `itemFrequency:changed`) and pages subscribe (`on(REFRESH.x, …)`; the lazy Money / Insights / Statements through their loaders in main.js). | `data-events.test.js` (no `window.app` in firebase/, every event has a subscriber, each page method) |
 | UI never assigns `AppState.<x>` or mutates its arrays; services update state through a store API. | ratchet `appStateWrite` (everywhere; today's writers are baselined) |
 | Calendar arithmetic only in `utils/dates.js` (or calc that imports it). | ratchet `dateMath` (all but calc) |
 | Every displayed number comes from a function in `www/js/utils/calc/` or `business-metrics` / `money` / `labour` / `dates` / `rent-math`, with a spec ID in calculations.md and an oracle test. | review (`displayed-number-spec`), oracle, `metric-registry.test.js` |
@@ -216,8 +226,8 @@ call `billTotal()`), cash-session difference / shortfall ❌ (C8; the bands are
 
 | Claim | Verdict | Evidence |
 |---|---|---|
-| firestore-service.js is a god data layer that calls UI | ✅ | 3,859 lines / 173 KB; `VIEWS` re-renders pages via `window.app` (:149-160). |
-| Direct Firestore in UI: billing.js (231 … 804), cash-management.js:50, outstanding.js:763, rent-store.js:35 | ✅ | billing.js has 11 lines (also :668); cash-management.js :50, :271, :730; outstanding.js :670, :763, :879; rent-store.js 12 (it is the rentals repository), rent-receipt-store.js :46, :67. Outside pages: `Helpers.generateBillNumber` (helpers.js:303-307), telemetry.js:438. |
+| firestore-service.js is a god data layer that calls UI | ✅ | 3,859 lines / 173 KB; `VIEWS` re-renders pages via `window.app` (:149-160). **Phase 4:** it emits events instead; the split is phase 5. |
+| Direct Firestore in UI: billing.js (231 … 804), cash-management.js:50, outstanding.js:763, rent-store.js:35 | ✅ | billing.js has 11 lines (also :668); cash-management.js :50, :271, :730; outstanding.js :670, :763, :879; rent-store.js 12 (it is the rentals repository), rent-receipt-store.js :46, :67. Outside pages: `Helpers.generateBillNumber` (helpers.js:303-307), telemetry.js:438. **Phase 4:** all moved into repositories (section 5). |
 | UI mutates AppState: billing.js:1154-1216, 1261-1268; cash-management 177-178, 336-350, 742-832 | ◐ | billing.js :1155, :1216, :1261 ✅. cash-management ❌: those lines only **read** AppState. Real writers: settings.js 19 lines, stock.js 8, items.js 6, billing.js 3, history.js 3, roles-access.js 2, outstanding.js 1, miscellaneous.js 1. |
 | Cross-module `window.app` calls, inline handlers, templates/day.html:45 | ✅ | billing.js:1264-1268; 297 inline `onclick=`; day.html:45 inline keydown logic. |
 | Rules inside UI handlers | ◐ | `validateSignOut` (cash-management.js:763) composes `evaluateCashCount` (utils/bill-checks.js:443) and computes C8 inline. rentals.js:792-794 re-checks only "not negative"; `meterBill` (rent-math.js:268-275) owns the full rule (phase 2i: both checks share one rule in rent-math, `moveInError`). Payment-split tick / "rest in Due" logic is triplicated: purchase.js:445-500, retail-sale.js:414-470, wholesale-sales.js:295-345 (one copy in `calc/billing` since 2f). |
@@ -284,11 +294,11 @@ on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js
 | 2i | ✅ Rentals: all rent maths and rules in rent-math (`moveMonthRent` / `moveMonthSplit` / `oldMonth` / `changeUnitPlan`, `rentTotals` for rent-views and the totals, `moveInError`, receipt amounts); `moveTarget` in rent-views | S | ⚠ #181 (rentals.js) |
 | 2j | Bug fixes from section 4, one PR each after the owner answers | S each | ⚠ #181, #182 (wholesale-sales, cash, expenses) |
 | 2k | Receipt amounts (services/printer.js:350-431) from `readPayment` / `billTotal`; move main.js's debug stock replay (`debugStockForName`, main.js:527-695) onto `stock-replay` | S | main.js (#181, #182) |
-| 3 | Services: `bills` (save/edit/delete), `payments` (record, write-off: outstanding.js:670-900), `cash` (open/close), `stock` (adjust), `rent` | L | ⚠ every save handler, #181, #182 |
-| 4 | Repositories: drafts / autosave / itemFrequency (billing.js 11 sites), cash sessions, bill refs, counters (helpers.js), audit / telemetry, rentals (rent-store, rent-receipt-store) under `firebase/repos/` | M each | ⚠ #182 (billing, firestore-service), security (#64 rules) |
-| 5 | Split firestore-service: realtime coordinator, retry, cache, checkpoint, snapshots, notifications; replace `VIEWS` / `window.app` with change events | L | ⚠ #182 |
-| 6 | AppState store API (`setStock`, `upsertItem`, `setSettings`, `setUser`); settings.js and firestore-service first | M | ⚠ #182 (settings.js), security |
-| 7 | Inline handlers → delegated listeners; prove the layering with one alternative UI | L | later |
+| 3 | Services / use cases: `bills` (save/edit/void/delete), `payments` (record, write-off: the rules now inside outstanding.js's `updateBillInTransaction` callbacks), `cash` (open/close/count), `stock` (adjust), `rent`; pages stop building documents | L | every save handler |
+| 4 | ✅ Repositories (`www/js/firebase/repos/`): `bill-drafts` (drafts, auto-save, item order: billing.js's 11 sites), `bill-payments` (the due-payment and write-off transactions with the legacy-id retry: outstanding.js), `cash-sessions` (auto-close / late-count transactions, close, deposits and "No bill" legs: cash-management.js), `counters` (bill numbers: helpers.js), `users` (profile read and pending profile: authentication.js, main.js), `audit-logs`, `telemetry` (services). Rentals keep their repository in `rentals/rent-store.js` + `rent-receipt-store.js` (lazy, #170); `coll()` is no longer exported, rent-unit.js uses `leaseInTx` / `chargeInTx` / `updateChargeInTx`. The sync pill gets `FirebaseService.pendingWritesWaiter` instead of the db. Calls, queries, limits, transaction shapes and payloads unchanged, pinned first (`repositories-characterisation.test.js`, `tests/fixtures/repositories-calls.json`). Also from phase 5: `VIEWS` / the item-order listener emit events (`utils/events.js`) instead of calling `window.app`. Ratchet firestore 57 → 0, now absolute | M | done |
+| 5 | Split firestore-service.js (~4,370 lines): realtime coordinator, retry, cache, checkpoint, snapshots, notifications; its remaining collection code (cash sessions, users, settings…) into `firebase/repos/` | L | firestore-service |
+| 6 | AppState store API (`setStock`, `upsertItem`, `setSettings`, `setUser`); settings.js and firestore-service first | M | settings.js, security |
+| 7 | Inline handlers → delegated listeners (and page-to-page calls through events or services); prove the layering with one alternative UI | L | later |
 
 ## 6. The ratchet
 
@@ -300,29 +310,38 @@ only from what it owns:
 
 | Files | Exempt from | Still checked |
 |---|---|---|
-| `firebase/**` | firestore | moneyMath, domNumber, appStateWrite, dateMath |
+| `firebase/**` (with `firebase/repos/`), `rentals/rent-store.js`, `rentals/rent-receipt-store.js` (repositories) | firestore | moneyMath, domNumber, appStateWrite, dateMath |
 | `utils/**`, `rentals/rent-math.js`, `rent-views.js`, `rent-public.js` (calc) | moneyMath, dateMath | firestore, domNumber, appStateWrite |
 | everything else (`modules/`, `rentals/`, `ui/`, `services/`, `auth/`, `main.js`, …) | nothing | all five |
 
 So moving maths from a page into `ui/` or `services/` raises that file's count
-and fails; moving it into `utils/` lowers it. `tests/architecture-baseline.json`
+and fails; moving it into `utils/` lowers it. Since phase 4 `firestore` is
+absolute: any hit outside the repositories fails, and the baseline may not hold a
+firestore entry (no baseline, no exception can let it back). `tests/architecture-baseline.json`
 holds the counts over all of `www/js`; at Phase 0 (`ca6f2ba`) and after 2c / 2e / 2h
 (Stock, Insights, Money and dates into calc / utils):
 
-| Category | Phase 0 | After 2c/2e/2h | After 2f/2g/2i | Largest now |
-|---|---|---|---|---|
-| firestore | 57 | 57 | 57 | rent-store 12, billing 11, audit 11, telemetry 7 |
-| moneyMath | 205 | 111 | 45 | wholesale-sales 11, history 7, printer 6, billing 5, outstanding 5 |
-| domNumber | 4 | 3 | 2 | utils/helpers.js 2 (`getElementNumber` / `getElementInt`) |
-| appStateWrite | 83 | 81 | 81 | firestore-service 25, settings 19, stock 8 |
-| dateMath | 22 | 5 | 3 | anomalies 2, history 1 |
+| Category | Phase 0 | After 2c/2e/2h | After 2f/2g/2i | After 4 | Largest now |
+|---|---|---|---|---|---|
+| firestore | 57 | 57 | 57 | 0 (absolute) | none outside the repositories |
+| moneyMath | 205 | 111 | 45 | 45 | wholesale-sales 11, history 7, printer 6, billing 5, outstanding 5 |
+| domNumber | 4 | 3 | 2 | 2 | utils/helpers.js 2 (`getElementNumber` / `getElementInt`) |
+| appStateWrite | 83 | 81 | 81 | 81 | firestore-service 25, settings 19, stock 8 |
+| dateMath | 22 | 5 | 3 | 3 | anomalies 2, history 1 |
+
+Phase 4's firestore 57 → 0: 43 lines moved into `firebase/repos/` (billing 11,
+audit 11, telemetry 7, authentication 4, cash-management 3, outstanding 3,
+helpers 3, main 1) and 14 are the Rentals repository (rent-store 12,
+rent-receipt-store 2), now exempt as repositories. The detector also counts
+`where(a, op, b)`, `onSnapshot`, transaction / batch operations and
+`firebase.firestore.FieldValue` since phase 4.
 
 (Insights, Money and Statements now have no hits; stock.js keeps one moneyMath line,
 the unused `StockManager.updateStock`.)
 
-`utils/helpers.js` is in the calc folder but is not pure: it calls Firestore
-(`generateBillNumber`, 3 lines) and reads the screen (2); `utils/state.js` has no
-hits.
+`utils/helpers.js` is in the calc folder but is not pure: `generateBillNumber`
+asks the counters repository (phase 4; it was 3 Firestore lines) and it reads the
+screen (2); `utils/state.js` has no hits.
 
 - A count that goes **up**, or a new file with any count, fails the test with the
   file and category.

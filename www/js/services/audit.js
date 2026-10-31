@@ -1,5 +1,6 @@
 // Audit Logging Service
 import { AppState } from '../utils/state.js';
+import { addAuditLog, recentAuditLogs, deleteAuditLogsBefore } from '../firebase/repos/audit-logs.js';
 
 export class AuditService {
     // Retention period in days
@@ -49,7 +50,6 @@ export class AuditService {
 
     static async log(action, details = {}) {
         try {
-            const db = firebase.firestore();
             const user = firebase.auth().currentUser;
             
             const auditEntry = {
@@ -59,15 +59,14 @@ export class AuditService {
                 userRole: String(AppState.userRole || 'unknown').slice(0, 32),
                 details: typeof details === 'string' ? { message: details } : details,
                 timestamp: Date.now(),
-                date: new Date().toISOString(),
-                // Trusted time of the write: firestore.rules require it to equal the
-                // server's request time (#55); `timestamp` stays for ordering.
-                serverTime: firebase.firestore.FieldValue.serverTimestamp()
+                date: new Date().toISOString()
             };
             
             // Fire-and-forget: the entry is queued locally (offline persistence)
             // and synced in the background, so callers never wait on the network.
-            db.collection(window.getCollection ? window.getCollection('auditLogs') : 'auditLogs').add(auditEntry)
+            // The repository adds serverTime (trusted time of the write, #55);
+            // `timestamp` stays for ordering.
+            addAuditLog(auditEntry)
                 .catch(error => console.error('[AUDIT ERROR]', error));
             
         } catch (error) {
@@ -78,16 +77,7 @@ export class AuditService {
 
     static async getRecentLogs(limit = 50) {
         try {
-            const db = firebase.firestore();
-            const snapshot = await db.collection(window.getCollection ? window.getCollection('auditLogs') : 'auditLogs')
-                .orderBy('timestamp', 'desc')
-                .limit(limit)
-                .get();
-            
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            return await recentAuditLogs({ limit });
         } catch (error) {
             console.error('Error fetching audit logs:', error);
             return [];
@@ -96,17 +86,7 @@ export class AuditService {
 
     static async getLogsByUser(userId, limit = 50) {
         try {
-            const db = firebase.firestore();
-            const snapshot = await db.collection(window.getCollection ? window.getCollection('auditLogs') : 'auditLogs')
-                .where('userId', '==', userId)
-                .orderBy('timestamp', 'desc')
-                .limit(limit)
-                .get();
-            
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            return await recentAuditLogs({ userId, limit });
         } catch (error) {
             console.error('Error fetching user audit logs:', error);
             return [];
@@ -115,17 +95,7 @@ export class AuditService {
 
     static async getLogsByAction(action, limit = 50) {
         try {
-            const db = firebase.firestore();
-            const snapshot = await db.collection(window.getCollection ? window.getCollection('auditLogs') : 'auditLogs')
-                .where('action', '==', action)
-                .orderBy('timestamp', 'desc')
-                .limit(limit)
-                .get();
-            
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
+            return await recentAuditLogs({ action, limit });
         } catch (error) {
             console.error('Error fetching action audit logs:', error);
             return [];
@@ -151,29 +121,13 @@ export class AuditService {
             }
             localStorage.setItem(CLEANUP_KEY, String(Date.now()));
             
-            const db = firebase.firestore();
             // One spare day so a phone clock running ahead never asks for a
             // log the rules still protect (they allow deleting > 90 days).
             const cutoffDate = Date.now() - ((this.RETENTION_DAYS + 1) * 24 * 60 * 60 * 1000);
             
-            // Get logs older than retention period
-            const snapshot = await db.collection(window.getCollection ? window.getCollection('auditLogs') : 'auditLogs')
-                .where('timestamp', '<', cutoffDate)
-                .limit(100) // Process in batches to avoid timeout
-                .get();
-            
-            if (snapshot.empty) {
-                return { deleted: 0 };
-            }
-            
-            // Delete in batch
-            const batch = db.batch();
-            snapshot.docs.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-            
-            return { deleted: snapshot.size };
+            // Logs older than the retention period, at most 100 per run (one batch)
+            const deleted = await deleteAuditLogsBefore(cutoffDate, 100);
+            return { deleted };
             
         } catch (error) {
             console.error('[AUDIT] Cleanup error:', error);

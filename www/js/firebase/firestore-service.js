@@ -40,6 +40,7 @@ import { historyIdBound } from '../utils/rate-history.js';
 import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { entryTime } from '../utils/due-payments.js';
 import { installFirestoreMeter, getQuotaStatus } from './firestore-meter.js';
+import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
 import { billSaveProps } from '../tip/scenarios/bill-save.js';
@@ -149,24 +150,25 @@ const isTabActive = (tabId) => !!document.getElementById(tabId)?.classList.conta
 /**
  * Views refreshed after data changes. `tab` is the tab the view lives in
  * (null = always refresh). Views in hidden tabs stay pending until that
- * tab is shown.
+ * tab is shown. Refreshing a view emits its event (utils/events.js REFRESH);
+ * the pages subscribe, this layer never calls them.
  * @private
  */
 const VIEWS = {
-    itemsList: { tab: null, run: () => window.app?.items?.render?.() },
-    itemsTable: { tab: 'items', run: () => window.app?.items?.refreshTable?.() },
-    billingDropdown: { tab: 'billing', run: () => window.app?.billing?.loadItemsDropdown?.() },
-    salesDropdown: { tab: 'wholesale-sales', run: () => window.app?.sales?.loadItemsDropdown?.() },
-    wholesaleHistory: { tab: 'wholesale-sales', run: () => window.app?.wholesaleSales?.renderHistory?.() },
-    wholesaleOutstanding: { tab: 'wholesale-sales', run: () => window.app?.wholesaleSales?.renderOutstanding?.() },
-    history: { tab: 'history', run: () => window.app?.history?.refresh?.() },
-    due: { tab: 'due', run: () => window.app?.outstanding?.render?.() },
-    stockAdjustmentHistory: { tab: 'stock', run: () => window.app?.stock?.renderAdjustmentHistory?.() },
-    stockView: { tab: 'stock', run: () => window.app?.stock?.render?.() },
-    expensesHistory: { tab: 'expenses', run: () => window.app?.expenses?.renderHistory?.() },
-    money: { tab: 'money', run: () => window.app?.money?.render?.() },
-    insights: { tab: 'insights', run: () => window.app?.insights?.render?.() },
-    statements: { tab: 'statements', run: () => window.app?.statements?.render?.() }
+    itemsList: { tab: null },
+    itemsTable: { tab: 'items' },
+    billingDropdown: { tab: 'billing' },
+    salesDropdown: { tab: 'wholesale-sales' },
+    wholesaleHistory: { tab: 'wholesale-sales' },
+    wholesaleOutstanding: { tab: 'wholesale-sales' },
+    history: { tab: 'history' },
+    due: { tab: 'due' },
+    stockAdjustmentHistory: { tab: 'stock' },
+    stockView: { tab: 'stock' },
+    expensesHistory: { tab: 'expenses' },
+    money: { tab: 'money' },
+    insights: { tab: 'insights' },
+    statements: { tab: 'statements' }
 };
 
 /** Debounce window that coalesces bursts of snapshot events (ms). */
@@ -185,11 +187,7 @@ let stockDirty = false;
 let flushTimer = null;
 
 const runView = (name) => {
-    try {
-        VIEWS[name].run();
-    } catch (e) {
-        console.error(`View refresh error (${name}):`, e);
-    }
+    emit(REFRESH[name]);
 };
 
 const runPendingViews = (shouldRun) => {
@@ -2105,6 +2103,16 @@ const FirebaseService = {
     },
 
     /**
+     * For the sync pill (ui/sync-status.js): a function that resolves once the SDK
+     * has sent every queued write, or null when Firestore or that call isn't there.
+     * @returns {?function(): Promise<void>}
+     */
+    pendingWritesWaiter() {
+        const db = getDb();
+        return typeof db.waitForPendingWrites === 'function' ? () => db.waitForPendingWrites() : null;
+    },
+
+    /**
      * Cleans up all active real-time listeners.
      * Should be called when user logs out or app is destroyed.
      * @returns {void}
@@ -3821,23 +3829,9 @@ const FirebaseService = {
         // Global item frequency (dropdown order) for signed-in users
         if (AppState.currentUser?.uid) {
             // Listen to global item frequency changes to update dropdown order in real-time
+            // The bill and wholesale pages reload their item dropdowns (utils/events.js).
             const unsubItemFrequency = getDb().collection(col('itemFrequency')).doc('global').onSnapshot(doc => {
-                if (doc.exists && window.app?.billing) {
-                    // Update the billing manager's item frequency data
-                    window.app.billing.billingManager?.itemFrequency && 
-                        Object.assign(window.app.billing.billingManager.itemFrequency, doc.data());
-                    
-                    // Reload dropdowns to reflect new order
-                    if (window.app.billing.loadItemsDropdown) {
-                        window.app.billing.loadItemsDropdown();
-                    }
-                    if (window.app.billing.loadSaleItemsDropdown) {
-                        window.app.billing.loadSaleItemsDropdown();
-                    }
-                    if (window.app.sales?.loadItemsDropdown) {
-                        window.app.sales.loadItemsDropdown();
-                    }
-                }
+                if (doc.exists) emit(ITEM_FREQUENCY_CHANGED, doc.data());
             }, error => {
                 console.error('Item frequency listener error:', error);
             });

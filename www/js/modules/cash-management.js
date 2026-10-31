@@ -6,6 +6,7 @@
  */
 
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { updateSessionChecked, updateSession, addSessionEntry } from '../firebase/repos/cash-sessions.js';
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
@@ -56,11 +57,6 @@ const CLOSE_WAIT_MS = 8000;
 const RECENT_SESSIONS = 2;
 const OLDER_SESSIONS_PAGE = 30;
 const DUPLICATE_CHECK_DAYS = 31;
-
-const sessionRef = (sessionId) => {
-    const name = window.getCollection ? window.getCollection('cashManagement') : 'cashManagement';
-    return FirebaseService.db.collection(name).doc(String(sessionId));
-};
 
 const billTime = (value) => {
     const d = parseAnyBillDate(value);
@@ -282,21 +278,15 @@ export class CashManagementManager {
             // Update all unclosed sessions in parallel
             const updatePromises = unclosedSessions.map(async (session) => {
                 try {
-                    const ref = sessionRef(session.id);
                     // Re-read inside a transaction so we never clobber a session that was
                     // signed out (or otherwise changed) on another device after we loaded it.
-                    const updatedSession = await FirebaseService.db.runTransaction(async (tx) => {
-                        const snap = await tx.get(ref);
-                        if (!snap.exists) return null;
-                        const fresh = { id: snap.id, ...snap.data() };
+                    const updatedSession = await updateSessionChecked(session.id, (fresh) => {
                         if (fresh.signedOut || fresh.date !== session.date) return null;
 
                         // Calculate transactions for that specific date
                         const transactions = this.calculateTransactionsForDate(fresh.date, fresh);
                         // Nobody counted the drawer: record "not counted", never a fake ₹0 count (#101)
-                        const closingFields = autoCloseFields(fresh, transactions);
-                        tx.update(ref, closingFields);
-                        return { ...fresh, ...closingFields };
+                        return autoCloseFields(fresh, transactions);
                     });
                     if (!updatedSession) return false;
 
@@ -689,13 +679,9 @@ export class CashManagementManager {
             return;
         }
         try {
-            const ref = sessionRef(sessionId);
-            const updated = await FirebaseService.db.runTransaction(async (tx) => {
-                const snap = await tx.get(ref);
-                if (!snap.exists) return null;
-                const fresh = { id: snap.id, ...snap.data() };
+            const updated = await updateSessionChecked(sessionId, (fresh) => {
                 if (!isNotCounted(fresh)) return null;
-                const fields = {
+                return {
                     closingBalance: amount,
                     difference: savedDifference(amount, Number(fresh.expectedBalance) || 0),
                     counted: true,
@@ -704,8 +690,6 @@ export class CashManagementManager {
                     countedBy: AppState.currentUser?.uid || 'unknown',
                     countedByName: AppState.userName || 'Unknown'
                 };
-                tx.update(ref, fields);
-                return { ...fresh, ...fields };
             });
             if (!updated) {
                 UIManager.showToast(t('msg.cash.day_already_has_count'));
@@ -881,7 +865,7 @@ export class CashManagementManager {
         const waiting = setTimeout(() => UIManager.showToast(t('msg.cash.close_waiting'), 'warning'), CLOSE_WAIT_MS);
         try {
             // Field-level update: never overwrite deposits/due payments added on another device
-            await sessionRef(this.todaySession.id).update(closingFields);
+            await updateSession(this.todaySession.id, closingFields);
             clearTimeout(waiting);
             run.complete();
             this.todaySession = updatedSession;
@@ -948,9 +932,7 @@ export class CashManagementManager {
             const session = this.todaySession;
             try {
                 // Queued offline like the "No bill" entry below: show it now, don't wait for the server
-                const write = sessionRef(session.id).update({
-                    cashDeposits: firebase.firestore.FieldValue.arrayUnion(deposit)
-                });
+                const write = addSessionEntry(session.id, 'cashDeposits', deposit);
                 session.cashDeposits = [...(session.cashDeposits || []), deposit];
                 write.catch(error => {
                     console.error('Add deposit error:', error);
@@ -1026,9 +1008,7 @@ export class CashManagementManager {
             const session = this.todaySession;
             try {
                 // arrayUnion is queued offline: show it now, don't wait for the server
-                const write = sessionRef(session.id).update({
-                    duePayments: firebase.firestore.FieldValue.arrayUnion(payment)
-                });
+                const write = addSessionEntry(session.id, 'duePayments', payment);
                 session.duePayments = [...(session.duePayments || []), payment];
                 write.catch(error => {
                     console.error('Record payment error:', error);

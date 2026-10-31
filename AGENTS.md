@@ -46,11 +46,13 @@ and is wrapped in **Capacitor** for Android distribution.
 1. **This repo is production.** Real users in the field are using the live
    site and the Android build. Treat every change like a security patch:
    small, reviewed, reversible.
-2. **Never bypass `FirebaseService`.** All Firestore reads/writes must go
-   through the wrapper (or `window.getCollection(name)`) so collection
-   prefixing stays correct: production uses unprefixed names (`purchases`),
-   development (localhost) uses `dev_` (`dev_purchases`). Several existing modules bypass it — those are bugs, not
-   patterns to copy.
+2. **Never bypass `FirebaseService` / the repositories.** All Firestore reads/writes
+   go through `FirebaseService` or a repository in `www/js/firebase/repos/`
+   (Rentals: `rentals/rent-store.js`, `rent-receipt-store.js`), which resolve
+   names with `window.getCollection(name)` so collection prefixing stays correct:
+   production uses unprefixed names (`purchases`), development (localhost) uses
+   `dev_` (`dev_purchases`). Pages, `ui/`, `services/`, `auth/`, `main.js` and
+   `utils/` have no Firestore call at all (the architecture guard enforces 0).
 3. **Don't add a build step or framework.** No webpack, no Vite, no React.
    Inline `<script>` tags + `window.app` globals are a deliberate choice;
    files under `www/` are served exactly as written.
@@ -87,8 +89,9 @@ In order:
 4. `www/js/main.js` — wires every module onto `window.app.*`.
 5. `www/firebaseConfig.js` — initializes Firebase, exposes `firebase.*`
    compat globals.
-6. `www/js/firebase/firestore-service.js` — every read/write should go
-   through here.
+6. `www/js/firebase/firestore-service.js` and `www/js/firebase/repos/` — every
+   read/write goes through here; the data layer tells pages what changed with
+   events (`www/js/utils/events.js`), never by calling them.
 
 ---
 
@@ -120,8 +123,17 @@ In order:
   `let app = firebase.initializeApp(...)` at top level, which shadowed
   `window.app` for inline handlers; it is now `firebaseApp` and
   `firebase-app-shadow.test.js` guards against regressions.)
-- **All Firestore access goes through `FirebaseService`** so collection
-  names get the env prefix.
+- **All Firestore access goes through `FirebaseService` or a repository**
+  (`firebase/repos/*.js`: one per collection family, owning its names, queries,
+  transactions and offline patterns; pages get plain data back) so collection
+  names get the env prefix. A new collection or query gets a repository
+  function, never a `.collection(` in a page.
+- **Data changes → pages: events, not calls.** `firestore-service.js` emits
+  `refresh:<view>` (`REFRESH` in `utils/events.js`, after its debounce and only
+  for the open tab) and `itemFrequency:changed`; each page subscribes with
+  `on(REFRESH.x, () => Manager.render())` at the end of its module (Money,
+  Insights, Statements in main.js through their lazy loaders). Never call
+  `window.app.*` from `firebase/` (`data-events.test.js`).
 - **Templates live in `www/templates/`**. They are loaded by
   `template-loader.js` on demand and inserted into the SPA shell.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
@@ -473,8 +485,11 @@ services → repositories → UI. Anywhere in `www/js` (`modules/`, `rentals/`,
   and the pure `rent-math` / `rent-views` / `rent-public` are exempt);
 - no numbers read back from the screen (`Number(el.textContent)`,
   `Helpers.getElementInt`), calc included;
-- no Firestore calls (`.collection(`, `db.doc(`, `runTransaction`, `batch`)
-  outside `firebase/`, calc included;
+- no Firestore calls (`.collection(`, `db.doc(`, `runTransaction`, `batch`,
+  `where`, `onSnapshot`, transaction / batch operations, `firebase.firestore.FieldValue`)
+  outside the repositories (`firebase/**`, `rentals/rent-store.js`,
+  `rentals/rent-receipt-store.js`), calc included. This one is absolute: no
+  baseline entry, no exception; add a repository function instead;
 - no `AppState.<x> = …` or `AppState.<list>.push(…)`, calc included;
 - no calendar arithmetic (`new Date(y, m, d + 1)`, `n * DAY_MS`) outside calc:
   use `utils/dates.js`.
@@ -592,9 +607,9 @@ only from the bill details (`loadBillEdits`). Details: docs/role-permissions.md
 
 ## 8. Common pitfalls
 
-- **`firebase.firestore()` calls outside `FirebaseService`** — bypass the
-  collection-prefix wrapper. Will write to the wrong collection in
-  environment. Always resolve names with `window.getCollection(name)`.
+- **`firebase.firestore()` calls outside `FirebaseService` / a repository** —
+  bypass the collection-prefix wrapper and fail the architecture guard. Put the
+  call in `firebase/repos/` and resolve names with `window.getCollection(name)`.
 - **`new Date(billDate)` where `billDate` is `DD/MM/YYYY`** — JS parses
   this as `MM/DD/YYYY` on most browsers and silently produces a wrong
   date. Use `parseAnyBillDate()` (`utils/dates.js`) or `Helpers.parseDate()`.

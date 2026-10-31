@@ -6,6 +6,7 @@
 
 import { AppState } from '../utils/state.js';
 import { noteTipError } from '../tip/index.js';
+import { saveTelemetryReport, recentTelemetryReports, deleteAllTelemetryReports, deleteTelemetryReports } from '../firebase/repos/telemetry.js';
 
 /**
  * Maximum number of errors to store locally before syncing
@@ -139,23 +140,6 @@ const TelemetryService = {
      * @type {number}
      */
     backoffMs: 0,
-
-    /**
-     * Get Firestore database reference
-     * @returns {firebase.firestore.Firestore}
-     */
-    getDb() {
-        return firebase.firestore();
-    },
-
-    /**
-     * Get collection name with environment prefix
-     * @param {string} name - Collection name
-     * @returns {string}
-     */
-    col(name) {
-        return window.getCollection ? window.getCollection(name) : name;
-    },
 
     /**
      * Initialize telemetry service
@@ -316,8 +300,6 @@ const TelemetryService = {
         this.errorBuffer = [];
 
         try {
-            const db = this.getDb();
-
             // Group errors by fingerprint
             const grouped = {};
             errorsToSync.forEach(error => {
@@ -348,7 +330,7 @@ const TelemetryService = {
             const entries = Object.entries(grouped);
             const results = await Promise.allSettled(entries.map(([fingerprint, errorData]) => {
                 const id = `${fingerprint}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-                return db.collection(this.col('telemetry')).doc(id).set(buildTelemetryDoc(errorData, uid));
+                return saveTelemetryReport(id, buildTelemetryDoc(errorData, uid));
             }));
 
             const failedFingerprints = new Set(entries
@@ -408,16 +390,7 @@ const TelemetryService = {
         }
 
         try {
-            const db = this.getDb();
-            const snapshot = await db.collection(this.col('telemetry'))
-                .orderBy('lastSeen', 'desc')
-                .limit(300)
-                .get();
-
-            return mergeTelemetryReports(snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })));
+            return mergeTelemetryReports(await recentTelemetryReports(300));
         } catch (error) {
             console.warn('Failed to get telemetry data:', error.message);
             return [];
@@ -434,15 +407,7 @@ const TelemetryService = {
         }
 
         try {
-            const db = this.getDb();
-            const snapshot = await db.collection(this.col('telemetry')).get();
-            
-            const batch = db.batch();
-            snapshot.docs.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            
-            await batch.commit();
+            await deleteAllTelemetryReports();
         } catch (error) {
             console.warn('Failed to clear telemetry data:', error.message);
             throw error;
@@ -461,11 +426,8 @@ const TelemetryService = {
         }
 
         try {
-            const db = this.getDb();
             const ids = docIds && docIds.length ? docIds : [errorId];
-            const batch = db.batch();
-            ids.slice(0, 450).forEach(id => batch.delete(db.collection(this.col('telemetry')).doc(id)));
-            await batch.commit();
+            await deleteTelemetryReports(ids);
         } catch (error) {
             console.warn('Failed to delete error:', error.message);
             throw error;

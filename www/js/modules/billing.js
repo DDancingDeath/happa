@@ -5,8 +5,10 @@
  */
 
 import { AppState } from '../utils/state.js';
+import { on, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
+import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
@@ -242,12 +244,8 @@ const BillingManager = {
     async loadItemFrequency() {
         try {
             // Use a global document instead of per-user to ensure all users see same order
-            const doc = await db.collection(window.getCollection ? window.getCollection('itemFrequency') : 'itemFrequency').doc('global').get();
-            if (doc.exists) {
-                this.itemFrequency = doc.data();
-            } else {
-                this.itemFrequency = { purchase: {}, sale: {} };
-            }
+            const data = await BillDrafts.loadItemFrequency();
+            this.itemFrequency = data || { purchase: {}, sale: {} };
         } catch (error) {
             console.error('Failed to load item frequency:', error);
             this.itemFrequency = { purchase: {}, sale: {} };
@@ -279,8 +277,7 @@ const BillingManager = {
                 deltas[itemId].count += 1;
             });
             
-            const FieldValue = firebase.firestore.FieldValue;
-            const modeUpdate = {};
+            const added = {};
             Object.entries(deltas).forEach(([itemId, delta]) => {
                 // Optimistic local update so dropdown ordering reflects the sale immediately
                 const existing = this.itemFrequency[mode][itemId];
@@ -291,21 +288,18 @@ const BillingManager = {
                 local.effectiveScore = local.score;
                 this.itemFrequency[mode][itemId] = local;
                 
-                // Atomic increments: concurrent devices no longer overwrite each other.
-                // effectiveScore is only a ranking hint (decay is applied on read).
-                modeUpdate[itemId] = {
-                    score: FieldValue.increment(delta.score),
-                    count: FieldValue.increment(delta.count),
+                // Score and count are added atomically by the repository; effectiveScore
+                // is only a ranking hint (decay is applied on read).
+                added[itemId] = {
+                    score: delta.score,
+                    count: delta.count,
                     lastUsed: now,
                     effectiveScore: local.score
                 };
             });
-            if (Object.keys(modeUpdate).length === 0) return;
+            if (Object.keys(added).length === 0) return;
             
-            // Nested object + merge (not dotted update paths) so item IDs containing
-            // '.', '/', etc. are treated as literal map keys.
-            await db.collection(window.getCollection ? window.getCollection('itemFrequency') : 'itemFrequency').doc('global')
-                .set({ [mode]: modeUpdate }, { merge: true });
+            await BillDrafts.addItemFrequency(mode, added);
         } catch (error) {
             console.error('Failed to update item frequency:', error);
         }
@@ -535,11 +529,10 @@ const BillingManager = {
             draft.saleTotal = sumMoney(saleItems, item => item.total);
         }
 
-        const drafts = window.getCollection ? window.getCollection('drafts') : 'drafts';
         let write;
         try {
             // Saved on the phone at once (also offline); if the server refuses it, the bill comes back
-            write = db.collection(drafts).doc(draft.id).set(draft);
+            write = BillDrafts.saveDraft(draft);
         } catch (error) {
             console.error('Failed to save draft:', error);
             UIManager.showToast(saveFailedText(error, t('msg.billing.failed_save_draft')), 'error');
@@ -593,12 +586,7 @@ const BillingManager = {
                 return;
             }
 
-            const snapshot = await db.collection(window.getCollection ? window.getCollection('drafts') : 'drafts')
-                .where('userId', '==', currentUser.uid)
-                .get();
-            
-            const drafts = snapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() }))
+            const drafts = (await BillDrafts.listDrafts(currentUser.uid))
                 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
             if (drafts.length === 0) {
@@ -677,19 +665,17 @@ const BillingManager = {
      */
     async loadDraft(draftId) {
         try {
-            const draftDoc = await db.collection(window.getCollection ? window.getCollection('drafts') : 'drafts').doc(draftId).get();
+            const draft = await BillDrafts.getDraft(draftId);
             
-            if (!draftDoc.exists) {
+            if (!draft) {
                 UIManager.showToast(t('msg.billing.draft_not_found'));
                 return;
             }
 
-            const draft = draftDoc.data();
-
             this.applyDraft(draft);
             this.closeDrafts();
 
-            await db.collection(window.getCollection ? window.getCollection('drafts') : 'drafts').doc(draftId).delete();
+            await BillDrafts.deleteDraft(draftId);
             await this.updateDraftCount();
 
             UIManager.showToast(t('msg.billing.draft_loaded'));
@@ -707,7 +693,7 @@ const BillingManager = {
      */
     async deleteDraft(draftId) {
         try {
-            await db.collection(window.getCollection ? window.getCollection('drafts') : 'drafts').doc(draftId).delete();
+            await BillDrafts.deleteDraft(draftId);
             await this.updateDraftCount();
             await this.showDrafts();
             UIManager.showToast(t('msg.billing.draft_deleted'));
@@ -726,13 +712,11 @@ const BillingManager = {
             const currentUser = firebase.auth().currentUser;
             if (!currentUser) return;
             
-            const snapshot = await db.collection(window.getCollection ? window.getCollection('drafts') : 'drafts')
-                .where('userId', '==', currentUser.uid)
-                .get();
+            const count = await BillDrafts.countDrafts(currentUser.uid);
             
             const countElement = document.getElementById('draftCount');
             if (countElement) {
-                countElement.textContent = snapshot.size;
+                countElement.textContent = count;
             }
         } catch (error) {
             console.error('Failed to update draft count:', error);
@@ -782,7 +766,6 @@ const BillingManager = {
                 userId: AppState.currentUser.uid,
                 userName: AppState.userName,
                 mode: mode,
-                lastSaved: firebase.firestore.FieldValue.serverTimestamp(),
                 deviceInfo: navigator.userAgent
             };
 
@@ -813,7 +796,8 @@ const BillingManager = {
                 saleTotal: sumMoney(saleItems, item => item.total)
             };
 
-            await db.collection(window.getCollection ? window.getCollection('autoSaves') : 'autoSaves').doc(AppState.currentUser.uid).set(autoSaveData);
+            // lastSaved: the server time, added by the repository
+            await BillDrafts.saveAutoSave(AppState.currentUser.uid, autoSaveData);
             
         } catch (error) {
             console.error('Auto-save failed:', error);
@@ -831,7 +815,7 @@ const BillingManager = {
     async deleteAutoSave() {
         try {
             if (!AppState.currentUser) return;
-            await db.collection(window.getCollection ? window.getCollection('autoSaves') : 'autoSaves').doc(AppState.currentUser.uid).delete();
+            await BillDrafts.deleteAutoSave(AppState.currentUser.uid);
         } catch (error) {
             if (error.code !== 'not-found') {
                 console.error('Failed to delete auto-save:', error);
@@ -847,11 +831,9 @@ const BillingManager = {
         try {
             if (!AppState.currentUser) return;
             
-            const autoSaveDoc = await db.collection(window.getCollection ? window.getCollection('autoSaves') : 'autoSaves').doc(AppState.currentUser.uid).get();
+            const autoSaveData = await BillDrafts.getAutoSave(AppState.currentUser.uid);
             
-            if (!autoSaveDoc.exists) return;
-            
-            const autoSaveData = autoSaveDoc.data();
+            if (!autoSaveData) return;
             
             const shouldRecover = confirm(
                 t(autoSaveData.mode === 'purchase' ? 'msg.billing.recover_purchase' : 'msg.billing.recover_sale', {
@@ -1377,3 +1359,10 @@ const BillingManager = {
 // Note: BillingManager.init() is called from main.js after all modules are loaded
 
 export { BillingManager, PurchaseManager, RetailSaleManager };
+
+// Data changes re-render this page (firestore-service.js emits, utils/events.js).
+on(REFRESH.billingDropdown, () => BillingManager.loadItemsDropdown());
+on(ITEM_FREQUENCY_CHANGED, () => {
+    BillingManager.loadItemsDropdown();
+    BillingManager.loadSaleItemsDropdown();
+});

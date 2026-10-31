@@ -6,8 +6,7 @@ import { Helpers } from '../utils/helpers.js';
 import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { canOpenPage, hiddenPermissionClasses } from '../utils/role-access.js';
-
-const usersCollection = () => (window.getCollection ? window.getCollection('users') : 'users');
+import { userProfile, createProfileIfMissing } from '../firebase/repos/users.js';
 
 const FORM_IDS = { login: 'loginForm', register: 'registerForm', reset: 'resetForm' };
 
@@ -116,21 +115,11 @@ const AuthManager = {
     // so an existing - possibly already approved - profile is never overwritten.
     // Returns true if a profile was created, false if one already existed.
     async createPendingProfile(user, name, email) {
-        const db = firebase.firestore();
-        const ref = db.collection(usersCollection()).doc(user.uid);
-        return db.runTransaction(async (tx) => {
-            const snap = await tx.get(ref);
-            if (snap.exists) {
-                return false;
-            }
-            tx.set(ref, {
-                name: name || email.split('@')[0],
-                email: email,
-                role: 'staff', // Default role for new registrations - can be changed by admin
-                status: 'pending',
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            return true;
+        return createProfileIfMissing(user.uid, {
+            name: name || email.split('@')[0],
+            email: email,
+            role: 'staff', // Default role for new registrations - can be changed by admin
+            status: 'pending'
         });
     },
 
@@ -244,8 +233,8 @@ const AuthManager = {
             const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
             
             const userId = userCredential.user.uid;
-            const userRef = firebase.firestore().collection(usersCollection()).doc(userId);
-            let userDoc = await userRef.get();
+            const profile = userProfile(userId);
+            let userDoc = await profile.read();
             
             if (!userDoc.exists) {
                 // Orphaned auth account (interrupted registration): create the pending profile
@@ -257,15 +246,15 @@ const AuthManager = {
                     return;
                 }
                 // The profile exists on the server; the first read came from a stale cache.
-                userDoc = await userRef.get({ source: 'server' });
+                userDoc = await profile.read({ source: 'server' });
             }
             
-            if (userDoc.data().status === 'pending') {
+            if (userDoc.data.status === 'pending') {
                 // Re-check the server so a stale cached copy can't hide a recent approval
-                userDoc = await userRef.get({ source: 'server' }).catch(() => userDoc);
+                userDoc = await profile.read({ source: 'server' }).catch(() => userDoc);
             }
             
-            const userData = userDoc.data();
+            const userData = userDoc.data;
             
             if (userData.status === 'pending') {
                 await firebase.auth().signOut();

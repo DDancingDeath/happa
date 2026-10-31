@@ -6,6 +6,7 @@
  */
 
 import { AppState } from '../utils/state.js';
+import { on, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
@@ -1035,3 +1036,6 @@ export class HistoryManager {
         });
     }
 }
+
+// Data changes re-render this page (firestore-service.js emits, utils/events.js).
+on(REFRESH.history, () => HistoryManager.refreshHistory());

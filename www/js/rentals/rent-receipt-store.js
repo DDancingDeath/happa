@@ -10,7 +10,9 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { receiptNo } from './rent-math.js';
 import { withMonth } from './rent-public.js';
-import { coll, uid, clip, readPublic, receiptRetry, nextSeq, putReceipt, latestCharges, snapshot } from './rent-store.js';
+import { rentCol, uid, clip, readPublic, receiptRetry, nextSeq, putReceipt, latestCharges, snapshot } from './rent-store.js';
+
+const coll = (name) => FirebaseService.db.collection(rentCol(name));
 
 /** Months of each current lease searched for payments without a receipt. */
 export const ISSUE_MONTHS = 12;

@@ -8,8 +8,12 @@
  * file, the source LINES that break a layering rule:
  *
  *   firestore     direct Firestore access: `.collection(` / `.collectionGroup(`,
- *                 `firebase.firestore(`, and `.doc(` / `.runTransaction(` /
- *                 `.batch(` called on `db`, `<x>.db` or `getDb()`.
+ *                 `firebase.firestore(` and `firebase.firestore.<x>` (FieldValue…),
+ *                 `.doc(` / `.runTransaction(` / `.batch(` called on `db`, `<x>.db`
+ *                 or `getDb()`, `.where(a, op, b)`, `.onSnapshot(`,
+ *                 `.waitForPendingWrites(`, and get/set/update/delete on a
+ *                 transaction (`tx` / `transaction`) or commit/set/update/delete on
+ *                 a `batch`.
  *   moneyMath     arithmetic on money or quantity: `Math.round/floor/ceil/trunc(...)`
  *                 of an expression that names an amount; `Math.round(x * 100) / 100`
  *                 (hand-made paise rounding); `*`, `/`, `%` with an amount on either
@@ -37,10 +41,15 @@
  *                 defining `DAY_MS = 24 * 60 * 60 * 1000` is fine).
  *                 Elapsed-time checks (`Date.now() - x.at < TTL`) do not count.
  *
- * Exemptions (the layer that owns the thing): firebase/** may call Firestore;
+ * Exemptions (the layer that owns the thing): the repositories may call Firestore
+ * (firebase/**, with firebase/repos/, and the Rentals repository rent-store.js /
+ * rent-receipt-store.js, kept in rentals/ because they load only with Rentals);
  * utils/** and the pure rentals files (rent-math, rent-views, rent-public) may
  * do money and date arithmetic. Every other check still applies there, so the
  * calc layer stays free of Firestore, AppState writes and DOM reads.
+ *
+ * firestore is absolute (phase 4): outside the repositories the count must be 0
+ * and the baseline may hold no firestore entry, so it can never come back.
  *
  * It is a heuristic over the parsed AST (acorn), so comments and strings never
  * count, nor do sort comparators (`b.total - a.total`), text built with `+`
@@ -75,10 +84,17 @@ const PURE_RENTALS = new Set([
     'www/js/rentals/rent-views.js',
     'www/js/rentals/rent-public.js'
 ]);
+/** Repositories outside firebase/: the Rentals data access, loaded only with Rentals (#170). */
+const RENTALS_REPOSITORIES = new Set([
+    'www/js/rentals/rent-store.js',
+    'www/js/rentals/rent-receipt-store.js'
+]);
+/** Files that may talk to Firestore (docs/architecture.md: repositories). */
+const isRepository = (file) => file.startsWith('www/js/firebase/') || RENTALS_REPOSITORIES.has(file);
 
 /** Categories a file is allowed to have (its layer owns them). */
 function exemptCategories(file) {
-    if (file.startsWith('www/js/firebase/')) return ['firestore'];
+    if (isRepository(file)) return ['firestore'];
     if (file.startsWith('www/js/utils/') || PURE_RENTALS.has(file)) return ['moneyMath', 'dateMath'];
     return [];
 }
@@ -147,6 +163,10 @@ function rootName(node) {
     while (n && (n.type === 'MemberExpression' || n.type === 'ChainExpression')) n = unchain(n.type === 'MemberExpression' ? n.object : n);
     return n && n.type === 'Identifier' ? n.name : null;
 }
+
+const TX_NAMES = new Set(['tx', 'transaction']);
+const TX_OPS = new Set(['get', 'set', 'update', 'delete']);
+const BATCH_OPS = new Set(['set', 'update', 'delete', 'commit']);
 
 const calleeProp = (call) => {
     const c = unchain(call.callee);
@@ -249,6 +269,9 @@ function scanSource(source) {
                 if (prop === 'collection' || prop === 'collectionGroup') hit('firestore', node);
                 else if (prop === 'firestore' && rootName(callee) === 'firebase') hit('firestore', node);
                 else if ((prop === 'doc' || prop === 'runTransaction' || prop === 'batch') && isDbObject(callee.object)) hit('firestore', node);
+                else if (prop === 'onSnapshot' || prop === 'waitForPendingWrites' || (prop === 'where' && node.arguments.length === 3)) hit('firestore', node);
+                else if (prop && TX_OPS.has(prop) && callee.object.type === 'Identifier' && TX_NAMES.has(callee.object.name)) hit('firestore', node);
+                else if (prop && BATCH_OPS.has(prop) && callee.object.type === 'Identifier' && callee.object.name === 'batch') hit('firestore', node);
                 // moneyMath: Math.round(amount)
                 if (isMathRounding(node) && node.arguments.some(namesMoney)) hit('moneyMath', node);
                 // moneyMath: list.reduce((s, x) => s + x.amount, 0)
@@ -271,6 +294,11 @@ function scanSource(source) {
                 if (prop && DATE_SETTERS.has(prop) && hasArithmetic(node.arguments)) hit('dateMath', node);
                 break;
             }
+            case 'MemberExpression':
+                // firebase.firestore.FieldValue / .Timestamp / .FieldPath
+                if (!node.computed && node.object.type === 'MemberExpression' && !node.object.computed
+                    && node.object.property.name === 'firestore' && rootName(node.object) === 'firebase') hit('firestore', node);
+                break;
             case 'NewExpression':
                 if (node.callee.type === 'Identifier' && node.callee.name === 'Date' && hasArithmetic(node.arguments)) hit('dateMath', node);
                 break;
@@ -479,6 +507,15 @@ describe('architecture ratchet (docs/architecture.md)', () => {
         }
     });
 
+    test('no Firestore access outside the repositories, ever (absolute: no baseline entries)', () => {
+        const outside = Object.entries(current)
+            .filter(([file, row]) => !isRepository(file) && row.firestore > 0)
+            .map(([file, row]) => `${file}: ${row.firestore}`);
+        expect(outside).toEqual([]);
+        expect(Object.entries(base).filter(([, row]) => row.firestore).map(([file]) => file)).toEqual([]);
+        expect((baseline.exceptions || []).filter(e => e && e.category === 'firestore')).toEqual([]);
+    });
+
     test('baseline totals match its file rows', () => {
         expect(baseline.totals).toEqual(totalsOf(base));
         expect(Array.isArray(baseline.exceptions)).toBe(true);
@@ -505,6 +542,12 @@ describe('architecture ratchet (docs/architecture.md)', () => {
         ['const total = Number(document.getElementById("billTotal").textContent);', { domNumber: 1 }],
         ['db.collection(col("drafts")).doc(id).get();', { firestore: 1 }],
         ['FirebaseService.db.runTransaction(async tx => {});', { firestore: 1 }],
+        ['const snap = await tx.get(ref);\ntx.update(ref, { a: 1 });', { firestore: 2 }],
+        ['batch.delete(doc.ref);\nawait batch.commit();', { firestore: 2 }],
+        ['const q = ref.where("userId", "==", uid);', { firestore: 1 }],
+        ['const off = query.onSnapshot(fn);', { firestore: 1 }],
+        ['const at = firebase.firestore.FieldValue.serverTimestamp();', { firestore: 1 }],
+        ['const kept = rows.where(x => x.ok); map.set("a", 1); list.delete(0);', {}],
         ['AppState.stock = stock; AppState.items.push(x);', { appStateWrite: 1 }],
         ['const end = new Date(y, m, d + 1);', { dateMath: 1 }],
         ['tomorrow.setDate(tomorrow.getDate() + 1);', { dateMath: 1 }],
@@ -536,7 +579,11 @@ describe('architecture ratchet (docs/architecture.md)', () => {
             ['www/js/utils/new-repo.js', write, ['firestore']],
             ['www/js/utils/new-store.js', state, ['appStateWrite']],
             ['www/js/utils/new-calc.js', maths, []],
-            ['www/js/firebase/new-repo.js', write, []]
+            ['www/js/firebase/new-repo.js', write, []],
+            ['www/js/firebase/repos/new-repo.js', write, []],
+            ['www/js/rentals/rent-store.js', write, []],
+            ['www/js/rentals/rentals.js', write, ['firestore']],
+            ['www/js/modules/new-page.js', write, ['firestore']]
         ])('%s', (file, src, failing) => {
             const raised = raisedEntries({ [file]: scanFile(file, src) }, base);
             expect(raised.map(r => r.category)).toEqual(failing);
