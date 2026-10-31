@@ -68,11 +68,28 @@ policy on each PR. When you add a new external origin, add it to the CSP in
 `firebase.json` in the same PR. `frame-src` must name the project's `authDomain`
 (the test reads it from `www/firebaseConfig.js`), so a project change updates it too.
 
-**Enforcing.** There is no report endpoint (the project has no Cloud Functions or
-other server to receive reports), so reports are only visible in the browser
-console and in E2E. Switch
-`Content-Security-Policy-Report-Only` to `Content-Security-Policy` once
-`'unsafe-inline'` is gone from `script-src` and E2E has been clean on it.
+`tests/e2e/external-origins.spec.js` covers the two non-Firebase loads that no
+page does on its own: the Excel export (real script load from `cdn.sheetjs.com`,
+SRI checked) and the Android update check (`api.github.com`, answered by a route;
+the CSP check runs in the browser before the request is routed).
+
+**No field data.** The policy has no `report-uri` / `report-to`: the project is on
+the Spark plan with no Cloud Functions or other server to receive reports. So
+report-only mode tells us **nothing from real phones**; violations only show in
+the DevTools console of whoever is looking. **E2E is the signal**: every page ×
+role × language, `/download` and `/r/` run under this exact policy on each PR.
+Gaps E2E can't see: browsers / WebViews other than Chromium, flows E2E doesn't
+drive, and Google's own scripts changing what they load.
+
+**Enforcing.** Switch `Content-Security-Policy-Report-Only` to
+`Content-Security-Policy` only after the inline-handlers removal has taken
+`'unsafe-inline'` out of `script-src` and E2E has been clean on it. Before that
+switch, pick one:
+1. add a free `report-to` collector (a hosted CSP-report service's free tier,
+   with `report-uri` for older browsers) and run report-only in the field for
+   a couple of weeks, checking it shows nothing new; or
+2. rely on E2E plus the inline-handlers removal, and enforce with a quick
+   rollback ready (one `firebase.json` header change, redeployed on merge).
 
 ## Script integrity (SRI)
 

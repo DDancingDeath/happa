@@ -80,6 +80,15 @@ describe('security headers on every Hosting site (#89)', () => {
         }
     });
 
+    test.each(sites.map((s) => [s.site, s]))('%s never restricts the features the app uses', (_, site) => {
+        // Bluetooth (printers), clipboard-write (copy tenant link), web-share (bills, receipts)
+        // and fullscreen must stay at the browser default.
+        const features = everyPathHeaders(site)['Permissions-Policy'].split(',').map((p) => p.trim().split('=')[0]);
+        for (const used of ['bluetooth', 'clipboard-write', 'web-share', 'fullscreen']) {
+            expect(features).not.toContain(used);
+        }
+    });
+
     test('every site sends the same values for the shared headers', () => {
         const shared = Object.keys(REQUIRED).filter((k) => k !== 'Content-Security-Policy');
         const pick = (site) => Object.fromEntries(shared.map((k) => [k, everyPathHeaders(site)[k]]));
