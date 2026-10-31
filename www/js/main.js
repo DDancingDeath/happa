@@ -47,7 +47,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuy-complete-all-due';
+const BUILD_ID = '20261101zzuze-complete-all-due';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1110,7 +1110,8 @@ window.app = {
         showSubTab: (tab) => DayManager.showSubTab(tab),
         loadTodayData: () => DayManager.loadTodayData(),
         filterTransactions: () => DayManager.filterTransactions(),
-        showLabourBreakdown: () => DayManager.showLabourBreakdown()
+        showLabourBreakdown: () => DayManager.showLabourBreakdown(),
+        returnCashBody: () => DayManager.returnCashBody()
     },
     
     // Cash Management

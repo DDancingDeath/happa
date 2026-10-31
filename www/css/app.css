@@ -5695,6 +5695,10 @@ body.dark-mode .today-labour-hint {
 body.dark-mode .today-labour-diff {
   color: #e5e7eb;
 }
+/* Today › Cash holds the Cash page's own body (#96); the day page already pads it */
+#dayCashManagementContainer > .cash-body {
+  padding: 0 !important;
+}
 
 /* ---- css/anomalies.css ---- */
 /* ==================== ANOMALIES (#187, #40) ==================== */
