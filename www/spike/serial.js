@@ -10,6 +10,7 @@ const $ = (id) => document.getElementById(id);
 const transport = webSerialTransport();
 let link = new PrinterLink({ transport });
 let chosen = null;
+let printing = false;
 
 function log(line) {
     const stamp = new Date().toTimeString().slice(0, 8);
@@ -51,6 +52,7 @@ function slipBytes(canvas) {
 }
 
 async function choose() {
+    if (printing) return;
     try {
         const picked = await transport.request();
         if (picked.id !== chosen?.id) {
@@ -68,8 +70,10 @@ async function choose() {
 }
 
 async function printSerial() {
-    if (!chosen) return;
+    if (!chosen || printing) return;
+    printing = true;
     $('print').disabled = true;
+    $('choose').disabled = true;
     const started = performance.now();
     try {
         const bytes = slipBytes(await drawSlip());
@@ -79,7 +83,9 @@ async function printSerial() {
     } catch (error) {
         log(`print ${error.outcome || 'failed'} (${error.kind || error.name || ''}) after ${Math.round(performance.now() - started)} ms: ${error.message || error}`);
     } finally {
+        printing = false;
         $('print').disabled = false;
+        $('choose').disabled = false;
     }
 }
 
