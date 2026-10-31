@@ -162,6 +162,7 @@ function refreshForLanguage(lang) {
         money: () => money?.render(),
         insights: () => insights?.render(),
         statements: () => { statements?.renderControls(); statements?.render(); },
+        billing: () => BillingManager.refreshForLanguage(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
@@ -436,6 +437,8 @@ async function initializeUserData() {
         
         // Check for auto-saved bill
         await BillingManager.checkAutoSave();
+        BillingManager.renderBillNumber();
+        BillingManager.focusFirstItem();
         if (outdatedBlocked) {
             notShown();
             blockOutdatedApp();

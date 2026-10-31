@@ -99,6 +99,8 @@ export default {
     'ui.billing.discard': "हटाएँ",
     'ui.billing.bill_no': "बिल नं.:",
     'ui.billing.next_bill_no': "अगला बिल नं. (सेव पर मिलेगा):",
+    'msg.billing.unsaved_moved_to_drafts': "सेव न हुआ बिल ड्राफ्ट में रख दिया गया",
+    'msg.billing.restore_needs_empty_form': "पहले स्क्रीन वाला बिल सेव करें या साफ़ करें, फिर वापस खोलें",
     'msg.billing.sale_updated_successfully': "✓ बिक्री अपडेट हो गई!",
     'msg.billing.unknown_bill_type': "अनजान बिल प्रकार: {billType}",
     'msg.cash.added_cash_drawer': "✓ गल्ले में ₹{amount} जोड़े",

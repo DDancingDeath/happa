@@ -14,7 +14,9 @@ import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
 jest.mock('../firebase/repos/bill-drafts.js', () => ({
     getAutoSave: jest.fn(),
     saveAutoSave: jest.fn().mockResolvedValue(undefined),
-    deleteAutoSave: jest.fn().mockResolvedValue(undefined)
+    deleteAutoSave: jest.fn().mockResolvedValue(undefined),
+    saveDraft: jest.fn().mockResolvedValue(undefined),
+    countDrafts: jest.fn().mockResolvedValue(0)
 }));
 
 const DOM = `
@@ -55,6 +57,7 @@ beforeEach(() => {
     BillingManager.pendingRecovery = null;
     BillDrafts.saveAutoSave.mockClear();
     BillDrafts.deleteAutoSave.mockClear();
+    BillDrafts.saveDraft.mockClear();
     desktop(false);
 });
 
@@ -86,14 +89,55 @@ describe('unsaved-bill banner (#117)', () => {
         expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
     });
 
-    test('while it waits, typing a new bill neither overwrites nor deletes the saved one', async () => {
+    test('nothing typed: auto-save keeps the unsaved bill; typing a new one moves it to Drafts first', async () => {
+        BillDrafts.getAutoSave.mockResolvedValue(saved);
+        await BillingManager.checkAutoSave();
+        await BillingManager.autoSaveToCloud();
+        expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
+        expect(BillingManager.pendingRecovery).not.toBeNull();
+
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 1, total: 1 }]);
+        await BillingManager.autoSaveToCloud();
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.saveDraft.mock.calls[0][0]).toMatchObject({
+            userId: 'u1', mode: 'purchase', billTotal: 1250, items: saved.purchase.items
+        });
+        expect(BillDrafts.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(BillDrafts.saveAutoSave.mock.invocationCallOrder[0]);
+        expect(BillDrafts.saveAutoSave.mock.calls[0][1].purchase.items.map(i => i.name)).toEqual(['Maize']);
+        expect(document.getElementById('autoSaveBanner').hidden).toBe(true);
+        expect(BillingManager.pendingRecovery).toBeNull();
+    });
+
+    test('saving or clearing a bill before picking also keeps it in Drafts', async () => {
+        BillDrafts.getAutoSave.mockResolvedValue(saved);
+        await BillingManager.checkAutoSave();
+        await BillingManager.deleteAutoSave();
+        expect(BillDrafts.saveDraft).toHaveBeenCalledTimes(1);
+        expect(BillDrafts.saveDraft.mock.invocationCallOrder[0]).toBeLessThan(BillDrafts.deleteAutoSave.mock.invocationCallOrder[0]);
+    });
+
+    test('Restore never replaces a bill on screen or one opened for editing', async () => {
         BillDrafts.getAutoSave.mockResolvedValue(saved);
         await BillingManager.checkAutoSave();
         PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 1, total: 1 }]);
+        await BillingManager.resolveRecovery(true);
+        expect(PurchaseManager.getBillItems().map(i => i.name)).toEqual(['Maize']);
+        expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringMatching(/Save or clear/), 'warning');
+        PurchaseManager.setBillItems([]);
+        BillingManager.editingBillIndex = 0;
+        await BillingManager.resolveRecovery(true);
+        expect(BillingManager.pendingRecovery).not.toBeNull();
+        expect(document.getElementById('autoSaveBanner').hidden).toBe(false);
+    });
+
+    test("another user's banner is dropped, never restored or kept as their draft", async () => {
+        BillDrafts.getAutoSave.mockResolvedValue(saved);
+        await BillingManager.checkAutoSave();
+        AppState.currentUser = { uid: 'u2' };
+        PurchaseManager.setBillItems([{ name: 'Maize', qty: 1, rate: 1, total: 1 }]);
         await BillingManager.autoSaveToCloud();
-        await BillingManager.deleteAutoSave();
-        expect(BillDrafts.saveAutoSave).not.toHaveBeenCalled();
-        expect(BillDrafts.deleteAutoSave).not.toHaveBeenCalled();
+        expect(BillDrafts.saveDraft).not.toHaveBeenCalled();
+        expect(BillingManager.pendingRecovery).toBeNull();
     });
 
     test('Discard deletes the auto-save and hides the banner', async () => {
@@ -131,13 +175,17 @@ describe('bill number before save (#117, BF-NO)', () => {
     });
 
     test('an edited bill shows its own number', () => {
-        AppState.retailSalesHistory = [{ id: 'r1', billNumber: 'S20261020-002' }];
+        AppState.retailSalesHistory = [{ id: 'r1', billNumber: 'S20261020-002' }, { id: 'r2' }];
         BillingManager.editingBillIndex = 0;
         BillingManager.editingBillId = 'r1';
         BillingManager.editingBillType = 'retail';
         RetailSaleManager.renderSalesBill();
         expect(document.getElementById('saleBillNo').textContent).toBe('Bill no.: S20261020-002');
         expect(document.getElementById('purchaseBillNo').textContent).toBe(`Next bill no. (given on save): P${day}-001`);
+        BillingManager.editingBillIndex = 1;
+        BillingManager.editingBillId = 'r2';
+        RetailSaleManager.renderSalesBill();
+        expect(document.getElementById('saleBillNo').textContent).toBe('');
     });
 });
 

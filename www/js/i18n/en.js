@@ -99,6 +99,8 @@ export default {
     'ui.billing.discard': "Discard",
     'ui.billing.bill_no': "Bill no.:",
     'ui.billing.next_bill_no': "Next bill no. (given on save):",
+    'msg.billing.unsaved_moved_to_drafts': "The unsaved bill was kept in Drafts",
+    'msg.billing.restore_needs_empty_form': "Save or clear the bill on screen first, then restore",
     'msg.billing.sale_updated_successfully': "✓ Sale updated successfully!",
     'msg.billing.unknown_bill_type': "Unknown bill type: {billType}",
     'msg.cash.added_cash_drawer': "✓ Added ₹{amount} to cash drawer",

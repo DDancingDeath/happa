@@ -528,6 +528,7 @@ const RetailSaleManager = {
             // Not confirmed even on this phone: keep the form (a retry reuses the same id) (#153)
             if (FirebaseService.saveUnconfirmed(sale)) {
                 UIManager.hideLoading();
+                this.billingManager?.renderBillNumber?.();
                 UIManager.showToast(t(SAVE_UNCONFIRMED_KEY), 'warning');
                 return undefined;
             }
@@ -563,6 +564,7 @@ const RetailSaleManager = {
             
         } catch (error) {
             UIManager.hideLoading();
+            this.billingManager?.renderBillNumber?.();
             UIManager.showToast(saveFailedText(error, t('msg.retail.failed_complete_sale', { message: error.message })), 'error');
             console.error('Complete sale error:', error);
             throw error;
