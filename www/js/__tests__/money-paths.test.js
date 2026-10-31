@@ -280,7 +280,7 @@ describe('new purchase save', () => {
         savePurchase.mockRejectedValue(new Error('quota'));
         await expect(PurchaseManager.saveBillToHistory()).rejects.toThrow('quota');
         expect(PurchaseManager.getBillItems()).toHaveLength(2);
-        expect(toast).toHaveBeenCalledWith('Failed to save bill: quota');
+        expect(toast).toHaveBeenCalledWith('Failed to save bill: quota', 'error');
     });
 });
 

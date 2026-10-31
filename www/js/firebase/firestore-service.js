@@ -32,6 +32,8 @@ import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_
 import { markStartup } from '../utils/startup-timings.js';
 import { canReadWithdrawals } from '../utils/role-access.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
+import { isStorageFullError, STORAGE_FULL_KEY } from '../utils/storage-full.js';
+import { SyncStatus } from '../ui/sync-status.js';
 import { historyIdBound } from '../utils/rate-history.js';
 import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { entryTime } from '../utils/due-payments.js';
@@ -83,6 +85,8 @@ const col = (name) => {
 
 /** @type {Function[]} Array of unsubscribe functions for real-time listeners */
 const unsubscribeFunctions = [];
+/** Numbers the data listeners for the sync pill (#70). */
+let listenSeq = 0;
 
 /** @type {Array<{resolve: Function}>} First-snapshot waiters of active listeners */
 const pendingFirstSnapshots = [];
@@ -761,10 +765,40 @@ function keepStoredCreatedAt(record, stored) {
 const sentBillPaymentSigs = new Map();
 /** Bills whose retry kept the server's money fields (a payment was recorded meanwhile). */
 const keptServerPaymentBills = new WeakSet();
+/** Bills that were stored on this phone while offline and are waiting to sync. */
+const savedOnPhoneBills = new WeakSet();
+/** Bills whose write this phone had not confirmed storing when the save gave up waiting. */
+const unconfirmedBills = new WeakSet();
 /** `${collKey}/${id}` of new bills whose first set() hasn't settled yet. */
 const pendingFirstSaves = new Set();
 /** Of those, the ones a retry has saved meanwhile. */
 const retriedBillSaves = new Set();
+/** First set() of new bills not yet confirmed on this phone, by key: { sent, json } (#153). */
+const unconfirmedFirstSaves = new Map();
+
+/** A bill's content as compared between save attempts (createdAt is set by the server). */
+const billAttemptJson = (record) => {
+    const rest = { ...record };
+    delete rest.createdAt;
+    return stableJson(rest);
+};
+
+/**
+ * An offline re-save of a bill whose first attempt was not confirmed (#153): a
+ * transaction needs the server, so instead check that first write on this phone.
+ * 'stored' - stored, same content: nothing to write; 'resend' - this phone
+ * refused it: save it again as new; 'unconfirmed' - still unknown, or changed
+ * since (no write: re-sending could clash with the queued first write).
+ * @private
+ */
+async function offlineRetryOutcome(key, record) {
+    const first = unconfirmedFirstSaves.get(key);
+    if (!first) return 'unconfirmed';
+    const stored = await whenStoredLocally(first.sent, LOCAL_STORE_WAIT_MS);
+    if (stored === false) return 'resend';
+    if (stored === true && first.json === billAttemptJson(record)) return 'stored';
+    return 'unconfirmed';
+}
 
 /**
  * Creates a bill (or overwrites by id) and keeps memory/checkpoint in step.
@@ -780,9 +814,25 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     const docRef = getDb().collection(col(collKey)).doc(String(record.id));
     const key = `${collKey}/${record.id}`;
     const run = startBillSaveRun(collKey, record, retry);
-    if (retry) {
+    let resend = false;
+    if (retry && typeof navigator !== 'undefined' && navigator.onLine === false) {
+        const outcome = await offlineRetryOutcome(key, record);
+        if (outcome !== 'resend') {
+            if (outcome === 'stored') {
+                unconfirmedFirstSaves.delete(key);
+                savedOnPhoneBills.add(record);
+            } else {
+                unconfirmedBills.add(record);
+            }
+            run.complete();
+            return record;
+        }
+        resend = true;
+    }
+    if (retry && !resend) {
         try {
             const saved = await retryBillSave(collKey, record, docRef, previous, key);
+            unconfirmedFirstSaves.delete(key);
             run.complete();
             return saved;
         } catch (error) {
@@ -792,7 +842,7 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     }
     sentBillPaymentSigs.set(key, paymentSignature(record));
     let payload = record;
-    if (previous) {
+    if (previous && !resend) {
         if (record.createdAt === undefined && previous.createdAt !== undefined) record.createdAt = previous.createdAt;
     } else {
         // Local estimate until the listener brings the server time
@@ -801,6 +851,8 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     }
     pendingFirstSaves.add(key);
     const sent = docRef.set(payload);
+    SyncStatus.trackWrite(docRef.path, sent);
+    unconfirmedFirstSaves.set(key, { sent, json: billAttemptJson(record) });
     // A #70 retry may already have created this bill; this first attempt then arrives later as an
     // update that changes createdAt, which the rules refuse for non-owners (#87). Nothing is lost.
     const settled = () => {
@@ -818,7 +870,13 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     noteStockWrite(collKey, previous, record);
     noteMonthWrite(collKey, previous, record);
     noteLocalRecordWrite(collKey, String(record.id), record);
-    await settleWrite(write, label);
+    const { pending, stored } = await settleWrite(write, label);
+    if (!stored) {
+        unconfirmedBills.add(record);
+        return record;
+    }
+    unconfirmedFirstSaves.delete(key);
+    if (pending && typeof navigator !== 'undefined' && navigator.onLine === false) savedOnPhoneBills.add(record);
     return record;
 }
 
@@ -1669,37 +1727,71 @@ async function rebuildCheckpointNow(gen) {
 
 /** Max time a bill save waits for the server to acknowledge a write. */
 const WRITE_ACK_TIMEOUT_MS = 1500;
+/** Max time a bill save waits for this phone to confirm it stored the write. */
+const LOCAL_STORE_WAIT_MS = 10000;
+/** Same for a new expense (shown at once, so a shorter wait behind the spinner). */
+const EXPENSE_STORE_WAIT_MS = 4000;
+
+/**
+ * Resolves true once a write issued before this call is in this device's local
+ * cache, false if the device refused it (e.g. storage full, #153), null if that
+ * is still unknown after `timeoutMs`. The SDK runs its operations in order, so a
+ * cache-only read queued after the write ends only after the write was stored.
+ * Reads nothing from the server.
+ * @param {Promise} writePromise
+ * @param {number} [timeoutMs]
+ * @returns {Promise<boolean|null>}
+ */
+function whenStoredLocally(writePromise, timeoutMs = LOCAL_STORE_WAIT_MS) {
+    let refused = false;
+    let timer = null;
+    const outcome = Promise.resolve(writePromise).then(() => true, () => { refused = true; return false; });
+    let barrier;
+    try {
+        barrier = Promise.resolve(getDb().collection(col('items')).doc('__localWriteBarrier').get({ source: 'cache' }));
+    } catch (e) {
+        barrier = Promise.reject(e);
+    }
+    const afterBarrier = barrier.catch(() => null).then(() => !refused);
+    const timeout = new Promise(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); });
+    return Promise.race([outcome, afterBarrier, timeout]).finally(() => clearTimeout(timer));
+}
 
 /**
  * Waits for a Firestore write without blocking the UI on the server round trip.
  * With offline persistence the write is applied to the local cache and queued as
- * soon as it is issued, so this resolves when the server acknowledges it, right
- * away when offline, or after WRITE_ACK_TIMEOUT_MS (the write keeps syncing in
- * the background). Errors before that point reject; errors after it are logged
- * and surfaced as a toast so a rejected write is never silent.
+ * soon as it is issued, so this resolves when the server acknowledges it, or once
+ * this device has confirmed it stored the write: offline at once, online after
+ * WRITE_ACK_TIMEOUT_MS (the write keeps syncing in the background). If that is
+ * not confirmed within LOCAL_STORE_WAIT_MS it resolves with stored=false, and
+ * the caller must not report the write as saved. Errors before resolving reject
+ * (a write the device refused is never reported as saved); errors after it are
+ * logged and surfaced as a toast so a rejected write is never silent.
  * @param {Promise<void>} writePromise - Promise returned by set()/update()/add()
  * @param {string} label - Name used in logs
- * @returns {Promise<{pending: boolean}>} pending=true if not yet acknowledged
+ * @returns {Promise<{pending: boolean, stored: boolean}>} pending=true if not yet
+ *   acknowledged; stored=false if not even confirmed on this device
  */
 function settleWrite(writePromise, label = 'write') {
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
     return new Promise((resolve, reject) => {
         let released = false;
-        let timer = null;
-        const release = () => {
+        let storedHere = false;
+        let ackWindowOver = offline;
+        let ackTimer = null;
+        const finish = (result) => {
             if (released) return;
             released = true;
-            resolve({ pending: true });
+            clearTimeout(ackTimer);
+            resolve(result);
+        };
+        const releaseIfStored = () => {
+            if (ackWindowOver && storedHere) finish({ pending: true, stored: true });
         };
         writePromise.then(
-            () => {
-                if (timer) clearTimeout(timer);
-                if (!released) {
-                    released = true;
-                    resolve({ pending: false });
-                }
-            },
+            () => finish({ pending: false, stored: true }),
             (error) => {
-                if (timer) clearTimeout(timer);
+                clearTimeout(ackTimer);
                 if (!released) {
                     released = true;
                     reject(error);
@@ -1708,15 +1800,27 @@ function settleWrite(writePromise, label = 'write') {
                 console.error(`[${label}] write failed after it was queued:`, error);
                 // The quota banner already explains this one (#194).
                 if (isQuotaExhaustedError(error)) return;
+                const text = isStorageFullError(error)
+                    ? t(STORAGE_FULL_KEY)
+                    : t('msg.sync.save_failed_on_server', { value: error?.message || error });
                 import('../ui/ui-manager.js')
-                    .then(({ UIManager }) => UIManager.showToast(t('msg.sync.save_failed_on_server', { value: error?.message || error })))
+                    .then(({ UIManager }) => UIManager.showToast(text, 'error'))
                     .catch(() => {});
             }
         );
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-            release();
-        } else {
-            timer = setTimeout(release, WRITE_ACK_TIMEOUT_MS);
+        whenStoredLocally(writePromise, LOCAL_STORE_WAIT_MS).then(stored => {
+            if (stored) {
+                storedHere = true;
+                releaseIfStored();
+            } else if (stored === null) {
+                finish({ pending: true, stored: false });
+            }
+        });
+        if (!offline) {
+            ackTimer = setTimeout(() => {
+                ackWindowOver = true;
+                releaseIfStored();
+            }, WRITE_ACK_TIMEOUT_MS);
         }
     });
 }
@@ -1780,6 +1884,7 @@ const FirebaseService = {
             }
         });
         unsubscribeFunctions.length = 0;
+        SyncStatus.clearListeners();
         pendingFirstSnapshots.forEach(settle => settle.resolve());
         pendingFirstSnapshots.length = 0;
         if (flushTimer) {
@@ -2165,11 +2270,12 @@ const FirebaseService = {
     },
 
     /**
-     * See settleWrite(): resolves when a write is acknowledged, queued offline,
-     * or after a short timeout, so bill saves don't block on the network.
+     * See settleWrite(): resolves when a write is acknowledged, or stored on this
+     * device (offline at once, online after a short timeout), so bill saves don't
+     * block on the network; stored=false if that was not confirmed in time.
      * @param {Promise<void>} writePromise
      * @param {string} [label]
-     * @returns {Promise<{pending: boolean}>}
+     * @returns {Promise<{pending: boolean, stored: boolean}>}
      */
     settleWrite(writePromise, label) {
         return settleWrite(writePromise, label);
@@ -2318,6 +2424,27 @@ const FirebaseService = {
     },
 
     /**
+     * True when a new bill was stored on this phone while offline and has not
+     * reached the server yet (#153: "Saved on this phone, will sync").
+     * @param {Object} record - The bill passed to savePurchase/saveRetailSale/saveWholesaleSale
+     * @returns {boolean}
+     */
+    savedOnPhoneOnly(record) {
+        return !!record && savedOnPhoneBills.has(record);
+    },
+
+    /**
+     * True when a new bill's write was neither acknowledged nor confirmed stored on
+     * this phone in time (#153): it may still be saved, so it must not be reported
+     * as saved or cleared from the form.
+     * @param {Object} record - The bill passed to savePurchase/saveRetailSale/saveWholesaleSale
+     * @returns {boolean}
+     */
+    saveUnconfirmed(record) {
+        return !!record && unconfirmedBills.has(record);
+    },
+
+    /**
      * Payment-state signature of a bill as it was loaded. Bill editors capture it when they
      * open so a later save can detect payments recorded on another device in the meantime.
      * @param {Object} record
@@ -2382,11 +2509,14 @@ const FirebaseService = {
      * Starts saving a new expense and shows it in AppState.expensesHistory
      * straight away (#89), without waiting for the server (works offline).
      * The listener later replaces the local copy (same doc id, no duplicate);
-     * if the write fails the local copy is removed again.
+     * if the write fails the local copy is removed again. `stored` resolves true
+     * once the write is on this device, false when this device refused it (e.g.
+     * storage full, #153), null if still unconfirmed after EXPENSE_STORE_WAIT_MS.
      * @param {Object} expense
-     * @returns {{record: Object, committed: Promise<void>}}
+     * @param {{id?: string}} [options] - id: save again over this not-yet-confirmed expense
+     * @returns {{record: Object, committed: Promise<void>, stored: Promise<boolean|null>}}
      */
-    startSaveExpense(expense) {
+    startSaveExpense(expense, { id } = {}) {
         if (!expense.userId && AppState.currentUser) {
             expense.userId = AppState.currentUser.uid;
         }
@@ -2395,19 +2525,24 @@ const FirebaseService = {
         }
 
         ensureTimestamp(expense, true);
-        const ref = getDb().collection(col('expenses')).doc();
+        const coll = getDb().collection(col('expenses'));
+        const ref = id ? coll.doc(String(id)) : coll.doc();
         const record = { id: ref.id, ...expense };
         noteLocalRecordWrite('expenses', ref.id, record);
         const list = AppState.expensesHistory || (AppState.expensesHistory = []);
-        if (!list.some(e => String(e.id) === ref.id)) list.unshift(record);
-        const committed = ref.set(expense).catch(err => {
+        const at = list.findIndex(e => String(e.id) === ref.id);
+        if (at === -1) list.unshift(record);
+        else list[at] = record;
+        const sent = ref.set(expense);
+        SyncStatus.trackWrite(ref.path, sent);
+        const committed = sent.catch(err => {
             forgetRecord('expenses', ref.id);
             const i = (AppState.expensesHistory || []).findIndex(e => String(e.id) === ref.id);
             if (i !== -1) AppState.expensesHistory.splice(i, 1);
             throw err;
         });
         noteMonthWrite('expenses', null, record);
-        return { record, committed };
+        return { record, committed, stored: whenStoredLocally(sent, EXPENSE_STORE_WAIT_MS) };
     },
 
     /**
@@ -3130,10 +3265,12 @@ const FirebaseService = {
                 clearTimeout(readyTimer);
                 settle.resolve();
             };
+            const syncId = `listen-${++listenSeq}`;
             // includeMetadataChanges so the cache -> server transition is seen
             // even when the cached data was already up to date.
             const unsubscribe = query.onSnapshot({ includeMetadataChanges: true }, snapshot => {
                 if (gen !== sessionGen) return;
+                SyncStatus.noteSnapshot(syncId, snapshot);
                 const { changed, changes } = applySnapshot(live, snapshot, mapFn);
                 if (!snapshot.metadata.fromCache) live.server = true;
                 // Before startup is ready only AppState is updated; startup
