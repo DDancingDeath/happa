@@ -7,13 +7,14 @@ import { AppStartTest, APP_START_FAIL_MS } from '../tip/scenarios/app-start.js';
 import { BillSaveTest, billSaveProps, AUTO_ROLLBACK_REASON } from '../tip/scenarios/bill-save.js';
 import { PaymentRecordTest, paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/payment-record.js';
 import { CashCloseTest, cashCloseProps } from '../tip/scenarios/cash-close.js';
+import { SessionReadsTest, STARTUP_READS_WARN, STARTUP_READS_FAIL } from '../tip/scenarios/session-reads.js';
 
 const T0 = new Date(2026, 9, 23, 11, 0, 0).getTime();
 
 function harness({ online = true } = {}) {
     let now = T0;
     const tip = createTip({ now: () => now, isOnline: () => online, appVersion: '1.6.0' });
-    [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest].forEach(d => tip.declareTest(d));
+    [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest, SessionReadsTest].forEach(d => tip.declareTest(d));
     const outcome = (test) => {
         const c = tip.takeDelta()[dayKeyOf(now)]['1_6_0'][test];
         return { result: Object.keys(c.n)[0], reason: c.r ? Number(Object.keys(c.r)[0].replace(/^[a-z]+/, '')) : 0 };
@@ -178,5 +179,25 @@ describe('CashClose', () => {
         const h = harness();
         h.tip.start('CashClose', { props: cashCloseProps({ session, expected: 1, counted: 1, difference: 0 }) }).completeAndFail('write_failed');
         expect(h.outcome('CashClose')).toEqual({ result: 'f', reason: CashCloseTest.reasons.write_failed });
+    });
+});
+
+describe('SessionReads (#159)', () => {
+    const record = (props) => {
+        const h = harness();
+        h.tip.start('SessionReads').complete(props);
+        return h.outcome('SessionReads');
+    };
+    const { reasons } = SessionReadsTest;
+
+    it('passes a normal start, warns on a heavy one, fails a very heavy one', () => {
+        expect(record({ startupReads: 450 })).toEqual({ result: 's', reason: 0 });
+        expect(record({ startupReads: STARTUP_READS_WARN + 1 })).toEqual({ result: 'w', reason: reasons.heavy_startup });
+        expect(record({ startupReads: STARTUP_READS_FAIL + 1 })).toEqual({ result: 'f', reason: reasons.heavy_startup });
+    });
+
+    it('read meter alerts are failures', () => {
+        expect(record({ heavy: true, reads: 3001 })).toEqual({ result: 'f', reason: reasons.heavy_session });
+        expect(record({ quota: true, reads: 10 })).toEqual({ result: 'f', reason: reasons.quota_exhausted });
     });
 });

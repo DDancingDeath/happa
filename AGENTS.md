@@ -134,8 +134,16 @@ In order:
   `on(REFRESH.x, () => Manager.render())` at the end of its module (Money,
   Insights, Statements in main.js through their lazy loaders). Never call
   `window.app.*` from `firebase/` (`data-events.test.js`).
-- **Templates live in `www/templates/`**. They are loaded by
-  `template-loader.js` on demand and inserted into the SPA shell.
+- **Templates live in `www/templates/`**. `template-loader.js` puts the
+  login screen, side menu and dialogs (`SHELL_TEMPLATES`) in first; the pages
+  (`PAGE_TEMPLATES`) load while Firebase restores the sign-in (#66), and
+  `main.js` runs nothing that touches them (event listeners, the signed-in
+  start) before `pagesReady`. A new page template goes into `PAGE_TEMPLATES`.
+- **Stylesheets**: edit the files in `www/css/`, but `index.html` links only
+  `css/app.css`, which `npm run build:css` joins from the list in
+  `www/styles.css` (cascade order; a new stylesheet is added there). Commit the
+  rebuilt `app.css` with your change: `check:sw` and `load-perf.test.js` fail
+  while it is out of date. The joined files are not precached on their own.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw
@@ -155,15 +163,21 @@ In order:
   "staff"/"स्टाफ". Escape `t()` output that goes into `innerHTML`. Show one
   language at a time, never "English / हिंदी" together:
   `single-language-guard.test.js` (scanner: `node scripts/mixed-language-scan.js`)
-  fails on any literal, template or template text mixing Latin and Devanagari.
+  fails on any literal, template or template text mixing Latin and Devanagari
+  (the unit `kg` is allowed: in Hindi the weight unit is always "kg", e.g.
+  "50 kg", "₹/kg", "प्रति kg", never the Hindi word for kilo; `hindi-kg-unit.test.js`
+  checks `hi.js` and every shipped `www/` file).
   Records that carry both languages (`{ en, hi }`, stored anomalies/flags) are shown
-  with `pickLang()` from `i18n/localize.js`; old stored "English / Hindi" sentences
+  with `pickLang()` from `i18n/localize.js` (in Hindi it also shows an old stored
+  weight unit as "kg"); old stored "English / Hindi" sentences
   fall back to `splitBilingual()`.
 - **Service worker / cache bump**: every app JS/CSS/template file (and
   icon/manifest) must be listed in `STATIC_ASSETS` in `www/service-worker.js`
   (`npm run check:sw`; a test enforces it), or in `LAZY_ASSETS` for a file loaded only on use
   (outside the precache budget; install caches it best effort, the fetch handler on use). Any PR that changes a shipped
-  file under `www/` bumps all three together:
+  file under `www/` bumps all three together (the service worker serves cached
+  files without asking the network again, so without the `CACHE_NAME` bump phones
+  keep the old files; CI's `scripts/check-cache-bump.js` fails a PR that forgets):
   1. every `?v=<token>` in `www/index.html` (one token for the whole file),
   2. `BUILD_ID` in `www/js/main.js`,
   3. `CACHE_NAME` (`happa-vN`) in `www/service-worker.js`.
@@ -371,6 +385,9 @@ in `.github/review-rules-examples/`.
   reads per page. Browsers, firebase-tools and the emulator jars are cached.
   On failure, download the `test-results-N` (traces) or `playwright-report`
   artifacts.
+- **`firebase-hosting-pull-request.yml`**: a preview channel per PR (test data)
+  on each hosting site, expiring after 2 days; when the PR closes its channels
+  are deleted on every site (Firebase limits the channels per site).
 - **Required check name: `Playwright E2E (emulators)`** (the job that collects
   the shards; it passes when E2E was not needed). Don't rename it: branch
   protection matches it by name. The shard jobs (`E2E shard N/3`) are not stable

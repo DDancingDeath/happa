@@ -69,3 +69,26 @@ describe('rentals.js lazy files', () => {
         expect(toast).toHaveBeenCalledWith(expect.stringMatching(/could not be loaded/), 'error');
     });
 });
+
+test('a cached asset is served without a network request (#59)', async () => {
+    const handlers = {};
+    const cached = { ok: true, body: 'cached' };
+    const fetchMock = jest.fn(async () => ({ ok: true, body: 'network', clone() { return this; } }));
+    const self = { addEventListener: (name, fn) => { handlers[name] = fn; }, location: { origin: 'https://app.test' }, skipWaiting: jest.fn(), clients: { claim: jest.fn() } };
+    vm.runInNewContext(fs.readFileSync(SW, 'utf8'), {
+        self, URL, fetch: fetchMock, Response: class { constructor(b, o) { Object.assign(this, o); } },
+        caches: { match: async (req) => (req.url.endsWith('/js/main.js') ? cached : undefined), open: async () => ({ put: jest.fn() }) },
+        console: { log() {}, warn() {}, error() {} }
+    });
+    const serve = async (url) => {
+        let response;
+        const waits = [];
+        handlers.fetch({ request: { url, method: 'GET', mode: 'cors', headers: { get: () => '' } }, respondWith: (p) => { response = p; }, waitUntil: (p) => waits.push(p) });
+        await Promise.all(waits);
+        return response;
+    };
+    expect(await serve('https://app.test/js/main.js')).toBe(cached);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect((await serve('https://app.test/js/other.js')).body).toBe('network');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+});
