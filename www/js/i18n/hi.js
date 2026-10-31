@@ -165,6 +165,7 @@ export default {
     'msg.common.password_reset_email_sent': "पासवर्ड बदलने का ईमेल {email} पर भेजा गया",
     'msg.common.payment_amount_exceeds_outstanding_amount': "भुगतान बाकी रकम से ज़्यादा है",
     'msg.common.payment_amount_exceeds_outstanding_amount_2': "भुगतान बाकी रकम (₹{due}) से ज़्यादा है",
+    'msg.common.phone_clock_wrong_payment': "आपके फ़ोन का समय गलत है। भुगतान दर्ज करने के लिए फ़ोन की तारीख और समय ठीक करें।",
     'msg.common.printer_disconnected': "प्रिंटर हट गया",
     'msg.common.reset_password': "पासवर्ड बदलें",
     'msg.common.sale_not_found': "बिक्री नहीं मिली",

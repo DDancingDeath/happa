@@ -113,6 +113,7 @@ const STATIC_ASSETS = [
     '/js/utils/due-reminder.js',
     '/js/utils/open-external.js',
     '/js/utils/cash-session.js',
+    '/js/utils/clock-skew.js',
     '/js/utils/constants.js',
     '/js/utils/data-export.js',
     '/js/utils/dates.js',

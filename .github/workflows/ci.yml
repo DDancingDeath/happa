@@ -70,6 +70,9 @@ jobs:
         run: npm ci
       - name: Rules tests (Firestore emulator)
         run: npm run test:rules
+        env:
+          # The rules tests once ran out of Node's default ~2 GB heap.
+          NODE_OPTIONS: --max-old-space-size=4096
 
   prod-smoke:
     name: Production smoke (read-only)

@@ -16,6 +16,8 @@ const serverTimestamp = () => FieldValue.serverTimestamp();
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
+// 01/10/2025 00:00 in India: the app reads a DD/MM/YYYY bill date as the phone's local time.
+const IST_OCT_1 = Date.UTC(2025, 8, 30, 18, 30);
 
 // Expected PERMISSION_DENIED errors would otherwise flood the output.
 setLogLevel('silent');
@@ -129,12 +131,41 @@ function defineSuite(prefix) {
     });
 
     t('item frequency: everyone approved keeps it up to date; only the owner deletes it (#64)', async () => {
-        await seedBill(`${prefix}itemFrequency`, 'global', { items: {} });
+        await seedBill(`${prefix}itemFrequency`, 'global', { sale: {} });
         await assertSucceeds(as('staff1').collection(`${prefix}itemFrequency`).doc('global')
-            .set({ items: { i1: { score: FieldValue.increment(1), count: FieldValue.increment(1) } } }, { merge: true }));
+            .set({ sale: { i1: { score: FieldValue.increment(1), count: FieldValue.increment(1) } } }, { merge: true }));
         await assertFails(as('staff1').collection(`${prefix}itemFrequency`).doc('global').delete());
         await assertFails(as('manager1').collection(`${prefix}itemFrequency`).doc('global').delete());
         await assertSucceeds(as('legacyOwner').collection(`${prefix}itemFrequency`).doc('global').delete());
+    });
+
+    t('item frequency: only merges into global/purchase|sale; no other doc, key or removed item', async () => {
+        const ref = (uid, id = 'global') => as(uid).collection(`${prefix}itemFrequency`).doc(id);
+        // billing.js updateItemFrequency
+        const bump = (mode = 'sale', item = 'i1') => ({ [mode]: { [item]: {
+            score: FieldValue.increment(101), count: FieldValue.increment(1), lastUsed: Date.now(), effectiveScore: 101
+        } } });
+        await assertSucceeds(ref('staff1').set(bump('sale'), { merge: true }));
+        await assertSucceeds(ref('legacyStaff').set(bump('purchase', 'i2'), { merge: true }));
+        await assertSucceeds(ref('manager1').set(bump('sale', 'i.3/x'), { merge: true }));
+        await assertSucceeds(ref('staff1').set(bump('sale'), { merge: true }));
+        for (const uid of ['staff1', 'manager1']) {
+            await assertFails(ref(uid, uid).set(bump(), { merge: true }));
+            await assertFails(ref(uid, 'other').set(bump()));
+            // replacing global without merge drops the other items
+            await assertFails(ref(uid).set(bump('sale', 'i9')));
+            await assertFails(ref(uid).set({ purchase: {}, sale: {} }));
+            await assertFails(ref(uid).update({ sale: { i1: { score: 1, count: 1 } } }));
+            await assertFails(ref(uid).update({ ['sale.i1']: FieldValue.delete() }));
+            await assertFails(ref(uid).update({ purchase: FieldValue.delete() }));
+            await assertFails(ref(uid).set({ items: { i1: { score: 1 } } }, { merge: true }));
+            await assertFails(ref(uid).set({ sale: 5 }, { merge: true }));
+            await assertFails(ref(uid).set({ sale: 'x', ...bump('purchase') }, { merge: true }));
+        }
+        await assertFails(ref('pending1').set(bump(), { merge: true }));
+        // the owner repairs it freely
+        await assertSucceeds(ref('legacyOwner').set({ sale: {} }));
+        await assertSucceeds(ref('legacyOwner', 'other').set({ x: 1 }));
     });
 
     t('settings docs other than app and the legacy cashSessions: owner only (#64)', async () => {
@@ -490,6 +521,18 @@ function defineSuite(prefix) {
         await assertSucceeds(doc('legacyOwner').set({ purchases: { v: 2, complete: true, foundAt: 0, at: 1 } }, { merge: true }));
         await assertFails(doc('staff1').set({ expenses: { v: 2, complete: true } }, { merge: true }));
         await assertSucceeds(doc('staff1').get());
+    });
+
+    t('stock checkpoint: no doc ids but current and legacyScan, for anyone', async () => {
+        for (const uid of ['staff1', 'manager1', 'legacyOwner']) {
+            await assertFails(as(uid).collection(checkpoints).doc('other').set({ asOf: 1, state: [] }));
+            await assertFails(as(uid).collection(checkpoints).doc('current2').set({ stale: true, staleCount: 1 }, { merge: true }));
+        }
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(checkpoints).doc('junk').set({ stale: false }));
+        await assertFails(as('staff1').collection(checkpoints).doc('junk').set({ stale: true }, { merge: true }));
+        await assertFails(as('legacyOwner').collection(checkpoints).doc('junk').update({ asOf: 2 }));
+        await assertFails(as('staff1').collection(checkpoints).doc('junk').delete());
+        await assertSucceeds(as('manager1').collection(checkpoints).doc('junk').delete());
     });
 
     t('pending/rejected/unauthenticated users cannot touch the stock checkpoint', async () => {
@@ -1439,13 +1482,46 @@ function defineSuite(prefix) {
     });
 
     t('cash: members (incl. legacy no-status) sign in as themselves with a valid opening amount', async () => {
-        await assertSucceeds(as('staff1').collection(cash).doc('s1').set(session()));
-        await assertSucceeds(as('legacyStaff').collection(cash).doc('s2').set(session({ id: 's2', userId: 'legacyStaff', openingBalance: 0 })));
-        await assertFails(as('staff1').collection(cash).doc('s3').set(session({ userId: 'manager1' })));
-        await assertFails(as('staff1').collection(cash).doc('s4').set(session({ openingBalance: -1 })));
-        await assertFails(as('staff1').collection(cash).doc('s5').set(session({ openingBalance: '500' })));
-        await assertFails(as('staff1').collection(cash).doc('s6').set(session({ signedOut: true })));
-        await assertFails(as('pending1').collection(cash).doc('s7').set(session({ userId: 'pending1' })));
+        const day = (extra = {}) => session({ id: 'cash_2026-10-22', ...extra });
+        const ref = (uid, id = 'cash_2026-10-22') => as(uid).collection(cash).doc(id);
+        await assertFails(ref('staff1').set(day({ userId: 'manager1' })));
+        await assertFails(ref('staff1').set(day({ openingBalance: -1 })));
+        await assertFails(ref('staff1').set(day({ openingBalance: '500' })));
+        await assertFails(ref('staff1').set(day({ signedOut: true })));
+        await assertFails(ref('pending1').set(day({ userId: 'pending1' })));
+        await assertSucceeds(ref('staff1').set(day({ openingNotes: 'float from bank' })));
+        await assertSucceeds(ref('legacyStaff', 'cash_2026-10-23').set(
+            day({ id: 'cash_2026-10-23', date: '2026-10-23', userId: 'legacyStaff', openingBalance: 0 })));
+    });
+
+    t('cash: a new session needs the cash_<date> id and the signIn shape (no random ids)', async () => {
+        for (const uid of ['staff1', 'manager1']) {
+            // a random id (the removed FirebaseService.saveCashSession .add())
+            await assertFails(as(uid).collection(cash).doc('s1').set(session({ userId: uid })));
+            await assertFails(as(uid).collection(cash).doc('Xy12ab').set(session({ id: 'Xy12ab', userId: uid })));
+            const day = session({ id: 'cash_2026-10-22', userId: uid });
+            const db = as(uid);
+            const ref = db.collection(cash).doc('cash_2026-10-22');
+            const without = (key) => { const d = { ...day }; delete d[key]; return d; };
+            await assertFails(ref.set({ ...day, id: 'cash_2026-10-21' }));
+            await assertFails(ref.set({ ...day, cashDeposits: [deposit()] }));
+            await assertFails(ref.set({ ...day, duePayments: [{ id: 'p1', amount: 40 }] }));
+            await assertFails(ref.set({ ...day, closingBalance: 500, counted: true }));
+            await assertFails(ref.set({ ...day, secret: 1 }));
+            await assertFails(ref.set({ ...day, openingNotes: 5 }));
+            await assertFails(ref.set(without('signedOut')));
+            await assertFails(as(uid).collection(cash).doc('cash_2026-1-5').set({ ...day, id: 'cash_2026-1-5', date: '2026-1-5' }));
+            await assertSucceeds(ref.set(without('id')));
+            await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(cash).doc('cash_2026-10-22').delete());
+            // firestore-service.js openCashSession: in a transaction
+            await assertSucceeds(db.runTransaction(async tx => {
+                const snap = await tx.get(ref);
+                if (!snap.exists) tx.set(ref, day);
+            }));
+            await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(cash).doc('cash_2026-10-22').delete());
+        }
+        // the owner may still write any id (repairs, restore)
+        await assertSucceeds(as('legacyOwner').collection(cash).doc('s9').set(session({ id: 's9', userId: 'legacyOwner' })));
     });
 
     t('cash: one session per day at cash_<date> (#38); a second phone cannot overwrite it', async () => {
@@ -1866,12 +1942,51 @@ function defineSuite(prefix) {
     t('backfill: members may fill a missing timestamp on expenses/withdrawals/adjustments, never change one', async () => {
         for (const c of ['expenses', 'withdrawals', 'stockAdjustments']) {
             const coll = `${prefix}${c}`;
-            await seedBill(coll, 'old', { amount: 5, quantity: 5, date: '01/10/2026', userId: 'manager1' });
-            await seedBill(coll, 'new', { amount: 5, quantity: 5, date: '01/10/2026', userId: 'manager1', timestamp: 1 });
-            const update = c === 'stockAdjustments' ? { timestamp: 1759276800000, clientVersion: 3 } : { timestamp: 1759276800000 };
+            await seedBill(coll, 'old', { amount: 5, quantity: 5, date: '01/10/2025', userId: 'manager1' });
+            await seedBill(coll, 'new', { amount: 5, quantity: 5, date: '01/10/2025', userId: 'manager1', timestamp: 1 });
+            const update = c === 'stockAdjustments' ? { timestamp: IST_OCT_1, clientVersion: 3 } : { timestamp: IST_OCT_1 };
             await assertSucceeds(as('staff1').collection(coll).doc('old').update(update));
             await assertFails(as('staff1').collection(coll).doc('new').update(update));
             await assertFails(as('staff1').collection(coll).doc('old').update({ amount: 0 }));
+        }
+    });
+
+    t('backfill: the timestamp comes from the record (its date or old Timestamp), never the future', async () => {
+        const old = Date.now() - 40 * DAY;
+        for (const c of ['expenses', 'withdrawals', 'stockAdjustments']) {
+            const coll = `${prefix}${c}`;
+            const fill = (id, timestamp) => as('staff1').collection(coll).doc(id)
+                .update(c === 'stockAdjustments' ? { timestamp, clientVersion: 3 } : { timestamp });
+            const seed = (id, extra) => seedBill(coll, id, { amount: 5, quantity: 5, userId: 'manager1', ...extra });
+            // DD/MM/YYYY[, time] (local time on the phone)
+            await seed('dmy', { date: '01/10/2025, 7:55:07 pm' });
+            await assertFails(fill('dmy', Date.now()));
+            await assertFails(fill('dmy', Date.now() + DAY));
+            await assertFails(fill('dmy', Date.UTC(2025, 9, 5)));
+            await assertFails(fill('dmy', Date.UTC(2024, 9, 1)));
+            await assertSucceeds(fill('dmy', IST_OCT_1 + 19 * HOUR + 55 * MIN));
+            // YYYY-MM-DD (UTC midnight) and YYYY-MM-DDTHH:mm
+            await seed('iso', { date: '2025-10-01' });
+            await assertFails(fill('iso', Date.UTC(2025, 9, 1) + 3 * DAY));
+            await assertSucceeds(fill('iso', Date.UTC(2025, 9, 1)));
+            await seed('isoTime', { date: '2025-10-01T14:30:00' });
+            await assertSucceeds(fill('isoTime', Date.UTC(2025, 9, 1, 9)));
+            // an old Firestore Timestamp in `timestamp` (or `date`): its own millis only
+            await seed('ts', { date: '2025-10-01', timestamp: Timestamp.fromMillis(old) });
+            await assertFails(fill('ts', old + MIN));
+            await assertSucceeds(fill('ts', old));
+            await seed('tsDate', { date: Timestamp.fromMillis(old) });
+            await assertFails(fill('tsDate', old - HOUR));
+            await assertSucceeds(fill('tsDate', old));
+            // a date the rules don't read: any past time, never the future or the "no time" marker
+            await seed('odd', { date: 'Oct 1 2025' });
+            await assertFails(fill('odd', Date.now() + HOUR));
+            await assertFails(fill('odd', Number.MAX_SAFE_INTEGER));
+            await assertSucceeds(fill('odd', Date.UTC(2025, 9, 1)));
+            // managers correct records freely
+            await seed('m', { date: '2025-10-01' });
+            await assertSucceeds(as('manager1').collection(coll).doc('m')
+                .update(c === 'stockAdjustments' ? { timestamp: old, clientVersion: 3 } : { timestamp: old }));
         }
     });
 
@@ -1882,8 +1997,8 @@ function defineSuite(prefix) {
         const db = as('staff1');
         const batch = db.batch();
         for (const id of ['a', 'b', 'c', 'd']) {
-            await seedBill(coll, id, { quantity: 1, date: '01/10/2026', userId: 'manager1' });
-            batch.update(db.collection(coll).doc(id), { timestamp: 1759276800000, clientVersion: 3 });
+            await seedBill(coll, id, { quantity: 1, date: '01/10/2025', userId: 'manager1' });
+            batch.update(db.collection(coll).doc(id), { timestamp: IST_OCT_1, clientVersion: 3 });
         }
         await assertSucceeds(batch.commit());
     });

@@ -21,6 +21,7 @@ import { billDateOf } from '../utils/history-filters.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
 import { paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/payment-record.js';
+import { refusedForClock } from '../utils/clock-skew.js';
 
 /** i18n key + params for a bill age in days (null = unknown). */
 function ageKey(days) {
@@ -585,10 +586,22 @@ export class OutstandingManager {
             } else if (OutstandingManager.isOfflineError(error)) {
                 UIManager.showToast(t('msg.common.internet_required_record_payment'));
             } else {
-                UIManager.showToast(t('msg.common.error', { message: error.message }));
+                UIManager.showToast(await this.paymentRefusedText(error));
             }
             return false;
         }
+    }
+
+    /**
+     * Toast text for a payment or write-off the server refused. The rules refuse an
+     * entry whose time is 10 minutes or more off the server's (#184): a phone with a
+     * wrong clock is told so instead of a bare permission error.
+     * @param {*} error
+     * @returns {Promise<string>}
+     */
+    static async paymentRefusedText(error) {
+        if (await refusedForClock(error)) return t('msg.common.phone_clock_wrong_payment');
+        return t('msg.common.error', { message: error?.message });
     }
 
     /** Re-render every screen that shows dues or today's money. */
@@ -861,7 +874,7 @@ export class OutstandingManager {
             return true;
         } catch (error) {
             console.error('Error writing off due:', error);
-            UIManager.showToast(OutstandingManager.isOfflineError(error) ? t('msg.outstanding.internet_required_clear_due') : t('msg.common.error', { message: error.message }));
+            UIManager.showToast(OutstandingManager.isOfflineError(error) ? t('msg.outstanding.internet_required_clear_due') : await this.paymentRefusedText(error));
             return false;
         }
     }
