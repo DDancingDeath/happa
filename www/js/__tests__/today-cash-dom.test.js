@@ -5,6 +5,7 @@
 import fs from 'fs';
 import path from 'path';
 import { DayManager } from '../modules/day.js';
+import { CashManagementManager } from '../modules/cash-management.js';
 
 const tpl = (name) => fs.readFileSync(path.resolve(__dirname, `../../templates/${name}.html`), 'utf8');
 const duplicateIds = () => {
@@ -43,4 +44,26 @@ test('the Cash page takes the body back; Today › Cash takes it again when Toda
     DayManager.init();
     expect(document.querySelector('#dayCashManagementContainer > .cash-body')).not.toBeNull();
     expect(duplicateIds()).toEqual([]);
+});
+
+test('a second tap while init runs shares it', async () => {
+    const first = DayManager.loadCashManagement();
+    DayManager.loadCashManagement();
+    expect(window.app.cashManagement.init).toHaveBeenCalledTimes(1);
+    await first;
+    DayManager.loadCashManagement();
+    expect(window.app.cashManagement.init).toHaveBeenCalledTimes(2);
+});
+
+test('the moved fields get their listeners once, however often init runs', async () => {
+    for (const m of ['loadRecentSessions', 'autoSignOutPreviousDays', 'loadTodaySessionFromCache', 'calculateTodayTransactions',
+        'updateUI', 'loadCustomerOptions', 'renderHistoryFromCache', 'loadDuplicateDays', 'updateTransactionForm']) {
+        jest.spyOn(CashManagementManager, m).mockImplementation(() => Promise.resolve([]));
+    }
+    const due = jest.spyOn(CashManagementManager, 'populateDueBills').mockImplementation(() => {});
+    await CashManagementManager.init();
+    DayManager.showSubTab('cash');
+    await CashManagementManager.init();
+    document.getElementById('partyName').dispatchEvent(new Event('input'));
+    expect(due).toHaveBeenCalledTimes(1);
 });

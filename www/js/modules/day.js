@@ -411,8 +411,11 @@ export const DayManager = {
         const body = document.querySelector('#cash-management .cash-body, #dayCashManagementContainer .cash-body');
         if (!container || !body) return;
         if (body.parentElement !== container) container.appendChild(body);
-        window.app?.cashManagement?.init()
-            ?.catch(e => console.error('Cash management init failed:', e));
+        if (this.cashInit) return this.cashInit;
+        this.cashInit = Promise.resolve(window.app?.cashManagement?.init())
+            .catch(e => console.error('Cash management init failed:', e))
+            .finally(() => { this.cashInit = null; });
+        return this.cashInit;
     },
 
     /** Moves the cash body back to the Cash page before that page opens. */
