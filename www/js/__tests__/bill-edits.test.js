@@ -88,7 +88,7 @@ describe('what an edit records (#121)', () => {
         ]);
         expect(describeEdit(edit, 'hi')).toEqual([
             'पार्टी: Ramesh → Shyam', 'कुल: ₹500 → ₹450', 'नकद: ₹500 → ₹400', 'ऑनलाइन: ₹0 → ₹50',
-            'Wheat: 10 किलो × ₹50 → 9 किलो × ₹50'
+            'Wheat: 10 kg × ₹50 → 9 kg × ₹50'
         ]);
         expect(editHeading(edit, 'en')).toMatch(/^#2 · 31 Oct.* · Ravi$/);
         expect(describeEdit({ fields: { items: { before: BILL.items, after: [line('Wheat', 10, 50, { weights: [5, 5] })] } } }, 'en')).toEqual(['Item details changed']);
