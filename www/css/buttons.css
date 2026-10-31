@@ -196,7 +196,7 @@
 
 .split-rest-btn {
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
@@ -262,4 +262,49 @@
 
 .print-btn:active {
   transform: scale(0.98);
+}
+
+/* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
+.filter-btn,
+.sub-tab,
+.save-btn,
+.draft-btn,
+.split-rest-btn,
+.contact-pick-btn,
+.anomaly-btn,
+.aging-btn,
+.aging-sort-btn,
+.history-stale-refresh,
+[data-record-payment],
+[data-mark-cleared] {
+  min-height: 44px;
+}
+
+.contact-pick-btn {
+  min-width: 44px;
+}
+
+[data-record-payment],
+[data-mark-cleared] {
+  font-size: 14px;
+}
+
+/* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */
+@supports (-webkit-touch-callout: none) {
+  body input:not([type]),
+  body input[type="text"],
+  body input[type="number"],
+  body input[type="search"],
+  body input[type="tel"],
+  body input[type="email"],
+  body input[type="password"],
+  body input[type="date"],
+  body select,
+  body textarea {
+    font-size: 16px !important;
+  }
+}
+
+#dueList input[type="number"] {
+  min-height: 44px;
 }
