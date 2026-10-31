@@ -412,23 +412,27 @@ skipped with its issue while the bug is open, and give it a cause in
 
 Target layers and the order of the refactor are in
 [docs/architecture.md](docs/architecture.md): calc (pure, `www/js/utils/`) →
-services → repositories → UI. In page code (`www/js/modules/**`,
-`www/js/rentals/**` except the pure `rent-math` / `rent-views` / `rent-public`):
+services → repositories → UI. Anywhere in `www/js` (`modules/`, `rentals/`,
+`ui/`, `services/`, `auth/`, `main.js`, …):
 
 - no arithmetic on money or quantity, no `Math.round(qty * rate)`, no `reduce` of
-  amounts: call (or add) a function in `utils/` with a spec ID;
+  amounts: call (or add) a function in `utils/` with a spec ID (calc: `utils/**`
+  and the pure `rent-math` / `rent-views` / `rent-public` are exempt);
 - no numbers read back from the screen (`Number(el.textContent)`,
-  `Helpers.getElementInt`);
-- no Firestore calls (`.collection(`, `db.doc(`, `runTransaction`, `batch`);
-- no `AppState.<x> = …` or `AppState.<list>.push(…)`;
-- no calendar arithmetic (`new Date(y, m, d + 1)`): use `utils/dates.js`.
+  `Helpers.getElementInt`), calc included;
+- no Firestore calls (`.collection(`, `db.doc(`, `runTransaction`, `batch`)
+  outside `firebase/`, calc included;
+- no `AppState.<x> = …` or `AppState.<list>.push(…)`, calc included;
+- no calendar arithmetic (`new Date(y, m, d + 1)`, `n * DAY_MS`) outside calc:
+  use `utils/dates.js`.
 
 `www/js/__tests__/architecture-guard.test.js` counts these per file against
 `tests/architecture-baseline.json` and fails when a count goes up or a new file
 has one. When your change lowers a count, run
 `ARCH_BASELINE=lower npx jest architecture-guard` and commit the baseline. Never
-raise it to get a PR green; move the logic instead (or explain the exception in
-the PR).
+raise it to get a PR green; move the logic instead. A raise against the PR base
+fails unless the baseline's `exceptions` records it
+(`{file, category, from, to, reason, issue}`, reviewed in the PR).
 
 ### PR checklist
 

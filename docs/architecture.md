@@ -31,8 +31,8 @@ firebase/firestore-service.js ── 3,859 lines / 173 KB: listeners, retries,
                      cache, transactions, stock checkpoint, month snapshots,
                      notifications, and it re-renders pages via window.app
                      (VIEWS table, firestore-service.js:149-160)
-utils/state.js    ── AppState: one global mutable object, written by 8 page
-                     modules (43 lines, mostly settings.js / stock.js / items.js)
+utils/state.js    ── AppState: one global mutable object, written in 83 lines of
+                     12 files (firestore-service 25, settings.js 19, stock.js 8, …)
 ```
 
 What is already right: Money, Insights and Statements take every figure from
@@ -70,11 +70,11 @@ in `www/js/utils/calc/`.
 
 | Rule | Checked by |
 |---|---|
-| UI never does arithmetic on money or quantity (no `Math.round(qty * rate)`, no `reduce` of amounts, no `a - b` of amounts). | ratchet `moneyMath` |
-| UI never reads a number back from the screen (`Number(el.textContent)`, `Helpers.getElementInt`); it recomputes from data. | ratchet `domNumber` |
-| UI never calls Firestore (`.collection(`, `db.doc(`, `runTransaction`, `batch`); it calls a service or repository. | ratchet `firestore`, review rule FirebaseService bypass |
-| UI never assigns `AppState.<x>` or mutates its arrays; services update state. | ratchet `appStateWrite` |
-| Calendar arithmetic only in `utils/dates.js` (or calc that imports it). | ratchet `dateMath` |
+| UI never does arithmetic on money or quantity (no `Math.round(qty * rate)`, no `reduce` of amounts, no `a - b` of amounts); only calc (`utils/`, pure rentals files) does. | ratchet `moneyMath` (all of www/js except calc) |
+| UI never reads a number back from the screen (`Number(el.textContent)`, `Helpers.getElementInt`); it recomputes from data. | ratchet `domNumber` (everywhere, calc included) |
+| UI never calls Firestore (`.collection(`, `db.doc(`, `runTransaction`, `batch`); it calls a service or repository. Only `firebase/` talks to Firestore. | ratchet `firestore` (all but firebase/), review rule FirebaseService bypass |
+| UI never assigns `AppState.<x>` or mutates its arrays; services update state through a store API. | ratchet `appStateWrite` (everywhere; today's writers are baselined) |
+| Calendar arithmetic only in `utils/dates.js` (or calc that imports it). | ratchet `dateMath` (all but calc) |
 | Every displayed number comes from a function in `www/js/utils/calc/` or `business-metrics` / `money` / `labour` / `dates` / `rent-math`, with a spec ID in calculations.md and an oracle test. | review (`displayed-number-spec`), oracle, `metric-registry.test.js` |
 | One rounding rule per quantity, applied in calc: line totals, bill totals, payments, stock values (owner decision pending, see F-R1). | oracle + property tests |
 | Pages talk to other pages through events or a service, not `window.app.x.y()`. | review (Phase 6) |
@@ -175,7 +175,7 @@ Each claim of the combined review checked against `main` `ca6f2ba`.
 | 4 | day.js:154-196, 231-240, 339-369 | ✅ | T1/T2 with their own field order :154-165; EXP-KIND inline :169-178; kg :186-198; in/out :231-244; item cards :339-361. |
 | 5 | stock.js:480-511, 754-765 | ◐ | :480 is the dead-stock total (rows from `utils/dead-stock`), not S4. :754 adjustment value confirmed (no spec ID). Missed: stock.js:150-193 re-derives the per-item average rate when merging keys, and :257, :583 compute `quantity × rate` (S3). |
 | 6 | outstanding.js:211, 892 | ✅ | :211 `new Date()` for display ages; :892 write-off accumulates `payment.writtenOff` inside the page's transaction (no `applyWriteOff` in utils yet). |
-| 7 | history.js:145-150 reads billTotal from DOM | ◐ | True, history.js:146 `Number(document.getElementById("billTotal").textContent)`, but `HistoryManager.saveBillToHistory` (:139) is **dead**: wired as `window.app.history.saveBillToHistory` (main.js:1060) and called by nothing. The live purchase save is `PurchaseManager._saveBill` (purchase.js:576, totals from the items). Also dead: `viewRetailSale` (:532), which shows `saleTotal ‖ amountReceivable` (:600) that current retail bills don't store (they save `total`, retail-sale.js:545). Live `viewBill` (:759, :770, :776) uses three field orders that differ from `money.billTotal`. Action: delete the dead code; give viewBill a view-model. |
+| 7 | history.js:145-150 reads billTotal from DOM | ◐ | True, history.js:146 `Number(document.getElementById("billTotal").textContent)`, but `HistoryManager.saveBillToHistory` (:139) is **dead**: wired as `window.app.history.saveBillToHistory` (main.js:1060) and called by nothing. The live purchase save is `PurchaseManager._saveBill` (purchase.js:576, totals from the items). `viewRetailSale` (:532-609, with its `saleTotal ‖ amountReceivable` total at :600) is already commented out (`/* Removed … */`, history.js:531-610), so it is not live code; the comment block can go. Live `viewBill` (:759, :770, :776) uses three field orders that differ from `money.billTotal`. Action: delete `saveBillToHistory` and the commented-out block; give viewBill a view-model. |
 | 8 | insights.js:232-335, 377-381, 454, 112-119, 414, 492-497 | ✅ | All present; :112-120 month step is a copy of modules/money.js:167-176. |
 | 9 | money.js (module):168-175, 498-501, 594, 650 | ✅ | Step copy, day loop, accounts sum (M15 term), AC10 check sum. |
 | 10 | cash-management.js:320, 627-875 (difference/shortfall, no spec ID) | ◐ | :320 manual end of day confirmed (`dates.endOfLocalDayExclusive` exists). Expected cash is already pure (`cash-session.sessionTotals`, :653, :678). The difference **has** a spec ID (C8); it is computed inline at :766 and in the status card (~:612). C1–C6 are summed inline in `calculateTransactionsForDate` :317-361. |
@@ -194,6 +194,7 @@ Each claim of the combined review checked against `main` `ca6f2ba`.
 | Stock value | ✅ stock.js:159-191, 257, 583 vs `stock-replay` / `moneySummary().stockNow` | Same inputs today; two code paths. |
 | Rent totals | ◐ rent-views.js:33-40 vs `rent-math.monthSummary` | Agree (same rounding). |
 | Other copies found | `checkPaymentSplit` exists twice with different signatures (money.js:292, due-payments.js:194); `normalizeParty` = `normalizePartyName` (due-payments.js:28, aging.js:54); `istDayKey` (anomalies.js:103, rate-trends.js:52); month step (insights / money) | Identical today; one copy should go. |
+| Found by the full-scope ratchet | firestore-service.js:1197-1198 repeats `wholesaleOutstanding`'s `payment.due ‖ total − received`; main.js:527-695 (`debugStockForName`) re-implements AVG-COST; services/printer.js:398-479 recomputes payable (its own field order, then `subtotal − labour`), received and due for the receipt, with `‖` so `payment.cash: 0` falls back to the top-level `cashPayment` (`readPayment` keeps the 0) | The first disagrees with BILL-DUE as above; the receipt rounds to the rupee (₹988 for the ₹987.50 bill above) and can show a stale cash figure. |
 
 "No spec ID" list: wholesale live profit / margin ✅, stock adjustment value ✅,
 Insights top-5 ✅, history legacy totals ◐ (BILL-TOTAL exists; history doesn't
@@ -247,51 +248,80 @@ Rules for every refactor PR:
    paise, #129).
 5. A shipped `www/` change needs the cache bump (AGENTS.md section 4).
 
-Order (S/M/L = size; ⚠ = conflicts with in-flight work, wait for it to merge):
+Order (S/M/L = size; ⚠ = conflicts with in-flight work, wait for it to merge).
+In flight on 31 Oct: **#181** double-tap locks (billing, cash-management,
+miscellaneous, modules/money, outstanding, stock, wholesale-sales, rentals.js,
+main.js), **#182** offline sync indicator (firestore-service, billing,
+miscellaneous, purchase, retail-sale, settings, wholesale-sales, main.js, new
+ui/sync-status.js and utils/storage-full.js), **#180** printer timeouts
+(services/printer.js, settings.js, main.js), plus security work on
+firestore.rules and the save handlers. Every PR that changes `www/` also collides
+on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js).
 
 | Phase | PR | Size | Conflicts |
 |---|---|---|---|
-| 0 | This PR: doc, ratchet, baseline | S | none |
-| 1 | Characterisation tests: bill forms (draft totals, labour, prefill, split), Today item cards, cash drawer C1–C8, history viewBill; BUG fixtures for the 4 disagreements | M | tests only; rebase on #181 |
-| 2a | Delete dead `HistoryManager.saveBillToHistory` / `viewRetailSale` (+ main.js wiring) | S | main.js cache lines only |
+| 0 | This PR: doc, ratchet, baseline | S | none (ratchet: #180 adds no counted line; #181, #182 change no counts) |
+| 1 | Characterisation tests: bill forms (draft totals, labour, prefill, split), Today item cards, cash drawer C1–C8, history viewBill; BUG fixtures for the 4 disagreements | M | tests only; rebase on #181, #182 |
+| 2a | Delete the dead `HistoryManager.saveBillToHistory` and its `window.app.history.saveBillToHistory` wiring (main.js:1060), and the commented-out `viewRetailSale` block (history.js:531-610) | S | ⚠ main.js (#181, #182, #180) |
 | 2b | `calc/today.todaySummary` (T1–T16) out of day.js | M | none (day.js not in flight) |
 | 2c | Periods: month step, day loops and day ends into `dates.js` (insights, money, statements, cash :320, day :126) | S | ⚠ modules/money.js, cash-management.js (#181) |
 | 2d | History `viewBill` view-model on `billTotal` / `readPayment` | S | none |
 | 2e | Insights top-5 share and per-₹100 into business-metrics with spec IDs | S | none |
-| 2f | `calc/billing`: `lineTotal`, draft totals, labour, payment prefill / rest-in-Due (one copy for purchase / retail / wholesale) | M | ⚠ purchase / retail / wholesale save handlers, #181 |
+| 2f | `calc/billing`: `lineTotal`, draft totals, labour, payment prefill / rest-in-Due (one copy for purchase / retail / wholesale) | M | ⚠ #181, #182, save handlers |
 | 2g | `calc/cash.drawerDay` (C1–C6, C8) out of cash-management | M | ⚠ #181, cash save handlers, offline cash close (#143) |
 | 2h | `calc/stock-value` (S2/S3 consolidation, adjustment value) out of stock.js | S | ⚠ #181 (stock.js) |
 | 2i | Rentals: `moveMonthRent` / `oldMonth` into rent-math; rent-views on `monthSummary` | S | ⚠ #181 (rentals.js) |
-| 2j | Bug fixes from section 4, one PR each after the owner answers | S each | ⚠ wholesale-sales / cash / expenses work |
-| 3 | Services: `bills` (save/edit/delete), `payments` (record, write-off: outstanding.js:670-900), `cash` (open/close), `stock` (adjust), `rent` | L | ⚠ every save handler, #181, offline |
-| 4 | Repositories: drafts / autosave / itemFrequency (billing.js 11 sites), cash sessions, bill refs, counters, rentals (rent-store, rent-receipt-store) under `firebase/repos/` | M each | ⚠ offline, security (#64 rules) |
-| 5 | Split firestore-service: realtime coordinator, retry, cache, checkpoint, snapshots, notifications; replace `VIEWS` / `window.app` with change events | L | ⚠ offline |
-| 6 | AppState store API (`setStock`, `upsertItem`, `setSettings`); settings.js first | M | ⚠ printer #180 (settings.js), security |
+| 2j | Bug fixes from section 4, one PR each after the owner answers | S each | ⚠ #181, #182 (wholesale-sales, cash, expenses) |
+| 2k | Receipt amounts (services/printer.js:398-479) from `readPayment` / `billTotal`; move main.js's debug stock replay (`debugStockForName`, main.js:527-695) onto `stock-replay` | S | ⚠ #180 (printer.js), main.js |
+| 3 | Services: `bills` (save/edit/delete), `payments` (record, write-off: outstanding.js:670-900), `cash` (open/close), `stock` (adjust), `rent` | L | ⚠ every save handler, #181, #182 |
+| 4 | Repositories: drafts / autosave / itemFrequency (billing.js 11 sites), cash sessions, bill refs, counters (helpers.js), audit / telemetry, rentals (rent-store, rent-receipt-store) under `firebase/repos/` | M each | ⚠ #182 (billing, firestore-service), security (#64 rules) |
+| 5 | Split firestore-service: realtime coordinator, retry, cache, checkpoint, snapshots, notifications; replace `VIEWS` / `window.app` with change events | L | ⚠ #182 |
+| 6 | AppState store API (`setStock`, `upsertItem`, `setSettings`, `setUser`); settings.js and firestore-service first | M | ⚠ #180, #182 (settings.js), security |
 | 7 | Inline handlers → delegated listeners; prove the layering with one alternative UI | L | later |
 
 ## 6. The ratchet
 
-`www/js/__tests__/architecture-guard.test.js` parses `www/js/modules/**` and
-`www/js/rentals/**` (not `rent-math`, `rent-views`, `rent-public`) with acorn and
-counts, per file, the source lines that break a rule: `firestore`, `moneyMath`,
-`domNumber`, `appStateWrite`, `dateMath` (the exact heuristics are in the test's
-header). `tests/architecture-baseline.json` holds the counts on `main`:
+`www/js/__tests__/architecture-guard.test.js` parses every file under `www/js`
+(except `__tests__/` and `tip/`) with acorn and counts, per file, the source
+lines that break a rule: `firestore`, `moneyMath`, `domNumber`, `appStateWrite`,
+`dateMath` (the exact heuristics are in the test's header). Each layer is exempt
+only from what it owns:
 
-| Category | Lines on `ca6f2ba` |
-|---|---|
-| firestore | 31 |
-| moneyMath | 151 |
-| domNumber | 2 |
-| appStateWrite | 43 |
-| dateMath | 20 |
+| Files | Exempt from | Still checked |
+|---|---|---|
+| `firebase/**` | firestore | moneyMath, domNumber, appStateWrite, dateMath |
+| `utils/**`, `rentals/rent-math.js`, `rent-views.js`, `rent-public.js` (calc) | moneyMath, dateMath | firestore, domNumber, appStateWrite |
+| everything else (`modules/`, `rentals/`, `ui/`, `services/`, `auth/`, `main.js`, …) | nothing | all five |
+
+So moving maths from a page into `ui/` or `services/` raises that file's count
+and fails; moving it into `utils/` lowers it. `tests/architecture-baseline.json`
+holds the counts on `main` (`ca6f2ba`), over all of `www/js`:
+
+| Category | Lines | Largest |
+|---|---|---|
+| firestore | 57 | rent-store 12, billing 11, audit 11, telemetry 7 |
+| moneyMath | 205 | day 36, retail-sale 23, wholesale-sales 21, main.js / cash-management / insights / purchase 17 |
+| domNumber | 4 | utils/helpers.js 2 (`getElementNumber` / `getElementInt`), history 1, wholesale-sales 1 |
+| appStateWrite | 83 | firestore-service 25, settings 19, stock 8 |
+| dateMath | 22 | modules/money 9, insights 4, statements 3 |
+
+`utils/helpers.js` is in the calc folder but is not pure: it calls Firestore
+(`generateBillNumber`, 3 lines) and reads the screen (2); `utils/state.js` has no
+hits.
 
 - A count that goes **up**, or a new file with any count, fails the test with the
   file and category.
 - A count that goes **down** passes and prints what to lower;
   `ARCH_BASELINE=lower npx jest architecture-guard` rewrites the baseline (it
   never raises a number).
-- Raising a number by hand (or `ARCH_BASELINE=reset`) is for a reviewed
-  exception only; say why in the PR.
+- **Raising is recorded.** The test also reads the baseline on the PR base
+  (`git show origin/<base>:tests/architecture-baseline.json`; ci.yml fetches the
+  base and sets `ARCH_REQUIRE_BASE=1`) and fails on any number above it unless
+  `exceptions` has a matching `{file, category, from, to, reason, issue}`.
+  `ARCH_BASELINE=reset` (local only; refused when `CI` is set) writes the exact
+  counts and adds exception stubs with `reason: "TODO"`, which fail until filled
+  in. Without git or the base ref (shallow clone, hosting workflows) that check is
+  skipped with a note.
 - It is a heuristic: it misses maths on names without a money word
   (rent-unit.js:28 `full × days`) and writes through an alias, and it counts some
   harmless lines (`totalDocs += count`). Treat it as a floor, not proof.
