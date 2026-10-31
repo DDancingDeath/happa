@@ -38,8 +38,9 @@ utils/state.js    ── AppState: one global mutable object, written in 83 line
 What is already right: Money, Insights and Statements take every figure from
 `utils/business-metrics.js` (M*, I*, ST*), with one home per figure
 (`utils/metric-registry.js`) and an independent oracle (`tests/oracle/`). Rentals
-maths is pure (`rent-math`, `rent-views`, `rent-public`). The weak parts are the
-bill forms (purchase, retail, wholesale), Today, the cash drawer, Stock and
+maths is pure (`rent-math`, `rent-views`, `rent-public`). Today (`calc/today`,
+#185) and the bill forms (purchase, retail, wholesale: `calc/billing`, #189)
+now only render calc results. The weak parts are the cash drawer, Stock and
 History, which still calculate inside the page.
 
 ## 2. Target layers
@@ -92,8 +93,8 @@ the migration. **Inline** = computed inside a page module.
 | BILL-DUE | `money.outstandingDue` everywhere, incl. Wholesale › Outstanding, `openDue`, History, receipts (#186); `wholesaleOutstanding` only in tools/migrate (old app's page rule) | same |
 | DUE-PAY | `due-payments.dueEvents`, `sumDueEvents`, `entryParts`, `legParts` | same |
 | EXP-KIND | `money.isPersonalExpense(e)` everywhere: Today, drawer, Money, Statements, finance-calc, Expenses lists (#186) | same |
-| DAY | `dates.startOfLocalDay`, `endOfLocalDayExclusive`, `todayLocalISO`; inline in cash-management.js:320, statements.js:216, 334 | `dates.*` only |
-| PERIOD | `business-metrics.periodRange` (+ `insights-config`) | same |
+| DAY | `dates.startOfLocalDay`, `endOfLocalDayExclusive`, `addLocalDays`, `localDayKeys`, `periodBounds`, `endUpToNow`, `todayLocalISO` (Money, Statements, Outstanding ages via `startOfLocalDay`); inline in cash-management.js:320 | `dates.*` only |
+| PERIOD | `business-metrics.periodRange` (+ `insights-config`); month steps `dates.monthStart`, `monthRange`, `addMonths`, `latestMonthStart` (Insights / Money ‹ ›, Statements month list, Insights calendar tap and "load older", Money last-year worth label) | same |
 | AVG-COST | `stock-replay.replayEvents` / `computeStock` | same |
 | COGS | `finance-calc.computeFinanceSummary` (via `replayWithValues`) | same |
 | OPENING | `money.isOpeningRecord`, `activityBills` | same |
@@ -104,6 +105,12 @@ the migration. **Inline** = computed inside a page module.
 | MONEY-TEXT | `money.formatRupees` / `formatAmount`; pages also print raw `₹${x}` (cash-management.js:619-694) and `Math.round` | `money.formatRupees` |
 | DATE-TEXT | `dates.formatDay`, `formatDayTime` | same |
 | T1, T2, T4, T5, T6, T7, T8, T9, T10, T11, T12, T15, T16, T17 | `calc/today.todaySummary` (#185) on top of `saleTimePayment`, `outstandingDue`; day.js only renders | same |
+| BF-KG, BF-LINE | `calc/billing.sumWeights`, `computeLine`, `weightsForEdit` (step 2f); purchase / retail / wholesale forms only render | same |
+| BF-TOTAL | `calc/billing.computePurchaseTotals`, `computeRetailTotals`, `computeWholesaleTotals`, `draftLineSum` (moved from money.js) | same |
+| BF-LAB, BF-PAYABLE | `calc/billing.autoLabour`, `computePurchaseTotals`, `payableOnScreen` | same |
+| BF-PAID, BF-SPLIT, BF-FILL, BF-SAVE | `calc/billing.paidOnScreen`, `validatePaymentSplit` (was `money.checkPaymentSplit`), `prefillPayment`, `restInDue`, `paymentSplit`, `buildPaymentSplit`; one copy for the three forms (`Helpers.applyPaymentPrefill` writes the ticks) | same |
+| WS-PROFIT, WS-MARGIN | `calc/billing.computeWholesaleTotals`, `wholesaleLiveProfit` (the WhatsApp draft no longer reads the profit back from the screen) | same |
+| DUE-CHECK | `calc/billing.validateDuePayment` (was `due-payments.checkPaymentSplit`): Outstanding and Wholesale › Outstanding | same |
 | T13, T14 | `due-payments.dueEvents` + `sumDueEvents`, inside `todaySummary` | same |
 | T3, T-LAB-1, T-LAB-2, T-LAB-3 | `labour.labourSummary` | same |
 | F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11 (retired page) | `finance-calc.computeFinanceSummary` | same (engine of M*) |
@@ -111,9 +118,11 @@ the migration. **Inline** = computed inside a page module.
 | R1, R2, R3, R4, R5, R6, R7, R8, A1, A2, A3, A4, A5, A6, A7 (retired pages) | no screen; same figures as F*/M* (`finance-calc`, `business-metrics`) | keep as aliases of M* or drop |
 | O1, O2 | `aging.buildAging` over `money.readPayment` (outstanding.js:274) | same |
 | O3, O4 | `business-metrics.outstandingTotals` (Money); `buildAging` totals (Outstanding) | `outstandingTotals` |
-| S1, S2 | `stock-replay.computeStock` (via `FirebaseService.calculateStock`); stock.js:150-193 re-derives per-item rate when merging keys | `stock-replay` + `calc/stock-value` (new) |
-| S3 | inline stock.js:257, 583 (`quantity × rate`) | `calc/stock-value.itemValue` |
-| S4 | `business-metrics.moneySummary().stockNow` (finance-calc `stateValue`); registry home `stock.html` renders no total | same; tag it on its home |
+| S1, S2 | `stock-replay.computeStock` (via `FirebaseService.calculateStock`); merged onto the catalogue with the weighted rate by `calc/stock.stockRows` (rate via `stock-replay.finalizeStock`), adjustment form `calc/stock.adjustItemStock` | same |
+| S3 | `calc/stock.itemValue` (Stock rows, `dead-stock.findDeadStock` rows) | same |
+| S4 | `calc/stock.stockValue` (on the replay state through `stock-replay.stateValue`): `finance-calc` opening / closing / now → `moneySummary().stockNow` (M15 term, M17); registry home `stock.html` renders no total | same; tag it on its home |
+| S5 | `calc/stock.adjustmentValue` (Stock › Adjustments card) | same |
+| S6 | `calc/stock.deadStockValue` (= `stockValue` of the dead-stock rows) | same |
 | C1, C2, C3, C4, C5, C6 | inline `CashManagementManager.calculateTransactionsForDate` (cash-management.js:317-361) + `dueEvents` | `calc/cash.drawerDay` (new) |
 | C7 | `cash-session.sessionTotals` | same (`calc/cash` re-exports) |
 | C8 | inline cash-management.js:766 and the status card (~600-628) | `calc/cash.difference` |
@@ -135,30 +144,29 @@ the migration. **Inline** = computed inside a page module.
 | RENT-13 | `rent-math.moveMonthRent`, `moveMonthSplit`, `oldMonth`, `changeUnitPlan` (`proRateRent`); rent-unit.js only shows and saves them | same |
 | ST1, ST3, ST4, ST5 | `statements.dayBook`, `partyLedger`, `itemLedger`, `exportLines` / `toCsv` | same |
 | ST2 | `business-metrics.moneySummary` for one month (modules/statements.js) | same |
-| M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M12, M13, M14, M16, M17 | `business-metrics.moneySummary` | same |
+| M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M12, M13, M14, M16, M17 | `business-metrics.moneySummary`; M14 per day (Money › Cash chart) `business-metrics.netMoneyByDay`; per-₹100 display rounding `roundTo` | same |
 | M11 | `business-metrics.profitPerDay` + `month-snapshots.figuresFromSnapshot` | same |
-| M15 | `business-metrics.netWorth`; accounts term summed inline (modules/money.js:594) | `netWorth` + `calc` accounts total |
-| M18 | `labour.labourToPayByDay` | same |
-| I1, I2 | `business-metrics.itemSummary` | same |
+| M15 | `business-metrics.netWorth`, accounts term `business-metrics.accountsTotal` | same |
+| M18 | `labour.labourToPayByDay`; more / less than M7 `labour.periodLabourGap` | same |
+| I1, I2 | `business-metrics.itemSummary`, split % `sharePct`; "vs last year" from snapshots `month-snapshots.snapshotItemSales` | same |
 | I3, I4 | `business-metrics.partySummary`, `stoppedComingCheck` | same |
-| I5 | `business-metrics.seasonIndex` (kg per month summed in insights.js:454) | same, sum moved in |
+| I5 | `business-metrics.soldKgByMonth`, `seasonKgTotal`, `seasonIndex` | same |
 | I6 | `business-metrics.biggestChange` | same |
 | I7 | `business-metrics.lowProfitItems` | same |
 | I8 | `business-metrics.belowCostSales` | same |
-| I9 | `business-metrics.stockUpItems` | same |
+| I9 | `business-metrics.stockUpItems`, weekly kg `weeklyKgWindow`, `weeklyKgByItem` | same |
 | I10 | `business-metrics.overdueParties` | same |
 | I11 | `business-metrics.purchaseItems` | same |
+| I12 | `business-metrics.topShare` (Insights › Parties takeaway) | same |
 | AC1, AC8 | `number-checks.checkStock` | same |
 | AC2, AC3, AC4, AC5, AC6 | `number-checks.checkBillSplit`, `checkPayments`, `checkDates`, `checkDueFields`, `checkDrawer` | same |
-| AC7, AC9, AC10, AC11, AC12, AC14 | tests only (`tests/property`, `tests/oracle`); AC10 also inline in modules/money.js:650 | tests + `number-checks` |
+| AC7, AC9, AC10, AC11, AC12, AC14 | tests only (`tests/property`, `tests/oracle`); the AC10 / AC11 check line on Money and Insights uses `business-metrics.addsUp` | tests + `number-checks` |
 | AC13 | `metric-registry.registryProblems` | same |
 
-Numbers on screen with **no spec ID** today (add one when they move): wholesale
-live profit / margin (`money.computeWholesaleTotals`, shown at
-wholesale-sales.js:286-287), stock adjustment value (stock.js:754), Insights
-top-5 share (insights.js:377-381),
-bill-form draft totals before save (purchase, retail,
-wholesale).
+Numbers on screen with **no spec ID** today: none known. Wholesale live profit /
+margin and the bill-form draft figures got theirs in step 2f (WS-PROFIT,
+WS-MARGIN, BF-*); the stock adjustment value is now S5, the dead-stock total S6
+and the Insights top-5 share I12.
 
 ## 4. Verified findings (review of 31 Oct 2026)
 
@@ -193,7 +201,7 @@ Each claim of the combined review checked against `main` `ca6f2ba`.
 | Profit / margin | ◐ live profit is pure (`computeWholesaleTotals`, current average rate from `AppState.stock`) | Differs from I1/M6 (AVG-COST at the moment of sale) once an earlier-dated record is saved later. No spec ID. |
 | Stock value | ✅ stock.js:159-191, 257, 583 vs `stock-replay` / `moneySummary().stockNow` | Same inputs today; two code paths. |
 | Rent totals | ◐ rent-views.js:33-40 vs `rent-math.monthSummary` | Agree (same rounding). One copy since phase 2i: `rent-math.rentTotals`. |
-| Other copies found | `checkPaymentSplit` exists twice with different signatures (money.js:292, due-payments.js:194); `normalizeParty` = `normalizePartyName` (due-payments.js:28, aging.js:54); `istDayKey` (anomalies.js:103, rate-trends.js:52); month step (insights / money) | Identical today; one copy should go. |
+| Other copies found | `checkPaymentSplit` exists twice with different signatures (money.js:292, due-payments.js:194; since 2f `calc/billing.validatePaymentSplit` / `validateDuePayment`); `normalizeParty` = `normalizePartyName` (due-payments.js:28, aging.js:54); `istDayKey` (anomalies.js:103, rate-trends.js:52); month step (insights / money) | Identical today; one copy should go. |
 | Found by the full-scope ratchet | firestore-service.js:1197-1198 repeats `wholesaleOutstanding`'s `payment.due ‖ total − received`; main.js:527-695 (`debugStockForName`) re-implements AVG-COST; services/printer.js:350-431 recomputes payable (its own field order, then `subtotal − labour`), received and due for the receipt, with `‖` so `payment.cash: 0` falls back to the top-level `cashPayment` (`readPayment` keeps the 0) | The first disagrees with BILL-DUE as above; the receipt rounds to the rupee (₹988 for the ₹987.50 bill above) and can show a stale cash figure. |
 
 "No spec ID" list: wholesale live profit / margin ✅, stock adjustment value ✅,
@@ -209,7 +217,7 @@ call `billTotal()`), cash-session difference / shortfall ❌ (C8; the bands are
 | Direct Firestore in UI: billing.js (231 … 804), cash-management.js:50, outstanding.js:763, rent-store.js:35 | ✅ | billing.js has 11 lines (also :668); cash-management.js :50, :271, :730; outstanding.js :670, :763, :879; rent-store.js 12 (it is the rentals repository), rent-receipt-store.js :46, :67. Outside pages: `Helpers.generateBillNumber` (helpers.js:303-307), telemetry.js:438. |
 | UI mutates AppState: billing.js:1154-1216, 1261-1268; cash-management 177-178, 336-350, 742-832 | ◐ | billing.js :1155, :1216, :1261 ✅. cash-management ❌: those lines only **read** AppState. Real writers: settings.js 19 lines, stock.js 8, items.js 6, billing.js 3, history.js 3, roles-access.js 2, outstanding.js 1, miscellaneous.js 1. |
 | Cross-module `window.app` calls, inline handlers, templates/day.html:45 | ✅ | billing.js:1264-1268; 297 inline `onclick=`; day.html:45 inline keydown logic. |
-| Rules inside UI handlers | ◐ | `validateSignOut` (cash-management.js:763) composes `evaluateCashCount` (utils/bill-checks.js:443) and computes C8 inline. rentals.js:792-794 re-checks only "not negative"; `meterBill` (rent-math.js:268-275) owns the full rule (phase 2i: both checks share one rule in rent-math, `moveInError`). Payment-split tick / "rest in Due" logic is triplicated: purchase.js:445-500, retail-sale.js:414-470, wholesale-sales.js:295-345. |
+| Rules inside UI handlers | ◐ | `validateSignOut` (cash-management.js:763) composes `evaluateCashCount` (utils/bill-checks.js:443) and computes C8 inline. rentals.js:792-794 re-checks only "not negative"; `meterBill` (rent-math.js:268-275) owns the full rule (phase 2i: both checks share one rule in rent-math, `moveInError`). Payment-split tick / "rest in Due" logic is triplicated: purchase.js:445-500, retail-sale.js:414-470, wholesale-sales.js:295-345 (one copy in `calc/billing` since 2f). |
 
 ### Design risks checked
 
@@ -264,12 +272,12 @@ on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js
 | 1 | Characterisation tests: bill forms (draft totals, labour, prefill, split), Today item cards, cash drawer C1–C8, history viewBill; BUG fixtures for the 4 disagreements | M | tests only; rebase on #181, #182 |
 | 2a | ✅ #185: delete the dead `HistoryManager.saveBillToHistory` and its `window.app.history.saveBillToHistory` wiring (main.js:1060), and the commented-out `viewRetailSale` block (history.js:531-610) | S | ⚠ main.js (#181, #182) |
 | 2b | ✅ #185: `calc/today.todaySummary` (T1–T17) out of day.js | M | none (day.js not in flight) |
-| 2c | Periods: month step, day loops and day ends into `dates.js` (insights, money, statements, cash :320, day :126) | S | ⚠ modules/money.js, cash-management.js (#181) |
+| 2c | ◐ #190: month steps, day loops and day ends of Insights, Money, Statements and Outstanding into `dates.js` (`monthStart`, `addMonths`, `monthRange`, `addLocalDays`, `localDayKeys`, `periodBounds`, `endUpToNow`, `latestMonthStart`); left: cash :320 (security PRs in flight), day :126 | S | ⚠ cash-management.js (#181) |
 | 2d | History `viewBill` view-model on `billTotal` / `readPayment` | S | none |
-| 2e | Insights top-5 share and per-₹100 into business-metrics with spec IDs | S | none |
-| 2f | `calc/billing`: `lineTotal`, draft totals, labour, payment prefill / rest-in-Due (one copy for purchase / retail / wholesale) | M | ⚠ #181, #182, save handlers |
+| 2e | ✅ #190: Insights top-5 share (I12), per-₹100 / season / cover rounding, retail-wholesale %, weekly kg, season sums, last-year item sales and the add-up check, and Money's leftovers (accounts total, M14 per day, labour gap, add-up check) into business-metrics / labour / month-snapshots | S | none |
+| 2f | ✅ #189: `calc/billing`: lines, draft totals, labour, payable, payment split / prefill / Rest → Due, split checks (one copy for purchase / retail / wholesale; both `checkPaymentSplit`s are now `validatePaymentSplit` / `validateDuePayment`), wholesale live profit / margin; rounding unchanged, one named policy per figure (`ROUNDING`, #129). Characterised first (`bill-forms-characterisation.test.js`); moneyMath 147 → 100, domNumber 3 → 2 | M | done |
 | 2g | `calc/cash.drawerDay` (C1–C6, C8) out of cash-management | M | ⚠ #181, cash save handlers, offline cash close (#143) |
-| 2h | `calc/stock-value` (S2/S3 consolidation, adjustment value) out of stock.js | S | ⚠ #181 (stock.js) |
+| 2h | ✅ #190: `calc/stock` (S1/S2 merge, S3 `itemValue`, S4 `stockValue` shared with finance-calc / Money, S5 adjustment value, S6 dead-stock value) out of stock.js | S | none |
 | 2i | ✅ Rentals: all rent maths and rules in rent-math (`moveMonthRent` / `moveMonthSplit` / `oldMonth` / `changeUnitPlan`, `rentTotals` for rent-views and the totals, `moveInError`, receipt amounts); `moveTarget` in rent-views | S | ⚠ #181 (rentals.js) |
 | 2j | Bug fixes from section 4, one PR each after the owner answers | S each | ⚠ #181, #182 (wholesale-sales, cash, expenses) |
 | 2k | Receipt amounts (services/printer.js:350-431) from `readPayment` / `billTotal`; move main.js's debug stock replay (`debugStockForName`, main.js:527-695) onto `stock-replay` | S | main.js (#181, #182) |
@@ -295,15 +303,19 @@ only from what it owns:
 
 So moving maths from a page into `ui/` or `services/` raises that file's count
 and fails; moving it into `utils/` lowers it. `tests/architecture-baseline.json`
-holds the counts on `main` (`ca6f2ba`), over all of `www/js`:
+holds the counts over all of `www/js`; at Phase 0 (`ca6f2ba`) and after 2c / 2e / 2h
+(Stock, Insights, Money and dates into calc / utils):
 
-| Category | Lines | Largest |
-|---|---|---|
-| firestore | 57 | rent-store 12, billing 11, audit 11, telemetry 7 |
-| moneyMath | 205 | day 36, retail-sale 23, wholesale-sales 21, main.js / cash-management / insights / purchase 17 |
-| domNumber | 4 | utils/helpers.js 2 (`getElementNumber` / `getElementInt`), history 1, wholesale-sales 1 |
-| appStateWrite | 83 | firestore-service 25, settings 19, stock 8 |
-| dateMath | 22 | modules/money 9, insights 4, statements 3 |
+| Category | Phase 0 | After 2c/2e/2h | Largest now |
+|---|---|---|---|
+| firestore | 57 | 57 | rent-store 12, billing 11, audit 11, telemetry 7 |
+| moneyMath | 205 | 111 | retail-sale 23, wholesale-sales 20, purchase 17, cash-management 17, history 7 |
+| domNumber | 4 | 3 | utils/helpers.js 2 (`getElementNumber` / `getElementInt`), wholesale-sales 1 |
+| appStateWrite | 83 | 81 | firestore-service 25, settings 19, stock 8 |
+| dateMath | 22 | 5 | anomalies 2, cash-management 1, history 1, rent-unit 1 |
+
+(Insights, Money and Statements now have no hits; stock.js keeps one moneyMath line,
+the unused `StockManager.updateStock`.)
 
 `utils/helpers.js` is in the calc folder but is not pure: it calls Firestore
 (`generateBillNumber`, 3 lines) and reads the screen (2); `utils/state.js` has no

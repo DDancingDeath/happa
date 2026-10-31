@@ -389,7 +389,7 @@ in `.github/review-rules-examples/`.
 Every money/stock number the app shows has a plain-language definition with a
 spec ID in `docs/calculations.md`. Money, insight and statement figures (M*, I*)
 come from one pure module, `www/js/utils/business-metrics.js` (owner choices in
-`utils/insights-config.js`), and Today's (T*) from `todaySummary()` in `www/js/utils/calc/today.js`; pages only render them, and each figure has one home
+`utils/insights-config.js`), Today's (T*) from `todaySummary()` in `www/js/utils/calc/today.js`, the bill forms' (BF-*, WS-*) from `www/js/utils/calc/billing.js` (rounding: one named policy per figure, `ROUNDING`) and Stock's (S*) from `www/js/utils/calc/stock.js` (`stockValue()` is the one stock value, also Money's); calendar steps (days, months, periods) only through `utils/dates.js`; pages only render them, and each figure has one home
 page (`utils/metric-registry.js`, checked by `metric-registry.test.js`). `tests/oracle/` recomputes each one with an
 independent, simple implementation and compares it with the screen;
 `tests/property/` runs the accounting checks (stock value adds up, bill split,
@@ -400,7 +400,7 @@ A number the app gets wrong today is listed in `BUGS` in
 `tests/oracle/screens.test.js` (or a `test.skip` with `// BUG: see #N`); remove
 the entry when you fix that issue. `npm run test:mutation` (Stryker, local or
 the weekly non-blocking `mutation.yml` job) shows how many deliberate small
-bugs in `money.js`, `stock-replay.js`, `bill-checks.js`, `dates.js` and
+bugs in `money.js`, `calc/billing.js`, `stock-replay.js`, `bill-checks.js`, `dates.js` and
 `release-info.js` the tests catch. Owners and managers can run the same checks
 on real loaded data in Diagnostics → Number checks.
 

@@ -12,7 +12,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
 import { formatRupees, formatAmount } from '../utils/money.js';
-import { formatDay, formatMonth, formatDayTime, toLocalISODate, parseLocalDate, todayLocalISO } from '../utils/dates.js';
+import { formatDay, formatMonth, formatDayTime, toLocalISODate, parseLocalDate, todayLocalISO, monthStart, endOfLocalDayExclusive } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
 import { openExternal } from '../utils/open-external.js';
@@ -68,7 +68,7 @@ export const StatementsManager = {
             this.month = m ? m[1] : monthKeyOf(now.getTime());
         }
         if (!this.itemKey) this.itemKey = getInsightsContext().itemId;
-        if (!this.csvFrom) this.csvFrom = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1));
+        if (!this.csvFrom) this.csvFrom = toLocalISODate(monthStart(now));
         if (!this.csvTo) this.csvTo = todayLocalISO();
         this.renderControls();
         this.renderCsvOption();
@@ -149,7 +149,7 @@ export const StatementsManager = {
             html = `<label>${esc(t('ui.statements.pick_day'))} <input type="date" class="form-control" value="${esc(this.day)}" onchange="window.app.statements.set('day', this.value)"></label>`;
         } else if (this.kind === 'month') {
             const now = new Date();
-            const opts = Array.from({ length: 24 }, (_, i) => monthKeyOf(new Date(now.getFullYear(), now.getMonth() - i, 1).getTime()));
+            const opts = Array.from({ length: 24 }, (_, i) => monthKeyOf(monthStart(now, -i).getTime()));
             html = `<label>${esc(t('ui.statements.pick_month'))} <select class="form-control" onchange="window.app.statements.set('month', this.value)">${opts.map(k => `<option value="${k}"${k === this.month ? ' selected' : ''}>${esc(formatMonth(monthBounds(k).from, { lang }))}</option>`).join('')}</select></label>`;
         } else if (this.kind === 'party') {
             const parties = partyChoices(this.src(), this.partyKind);
@@ -213,7 +213,7 @@ export const StatementsManager = {
         const lang = getLang();
         const d = parseLocalDate(this.day) || new Date();
         const from = d.getTime();
-        const to = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime();
+        const to = endOfLocalDayExclusive(d).getTime();
         const title = `${t('ui.statements.day_book')} · ${formatDay(d, { lang })}`;
         if (!this.covered(from)) return this.notLoaded(formatDay(d, { lang }), from);
         const perms = this.perms();
@@ -331,7 +331,7 @@ export const StatementsManager = {
         const lang = getLang();
         const from = (parseLocalDate(this.csvFrom) || new Date()).getTime();
         const toD = parseLocalDate(this.csvTo) || new Date();
-        const to = new Date(toD.getFullYear(), toD.getMonth(), toD.getDate() + 1).getTime();
+        const to = endOfLocalDayExclusive(toD).getTime();
         const label = `${formatDay(from, { lang })} – ${formatDay(toD, { lang })}`;
         const title = `${t('ui.statements.csv')} · ${label}`;
         if (!this.covered(from)) return this.notLoaded(label, from);

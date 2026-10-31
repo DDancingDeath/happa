@@ -127,6 +127,17 @@ export function labourGap(difference) {
 }
 
 /**
+ * T-LAB-3 for a period (Money › Spending, M7 vs M18): labourGap of to pay −
+ * deducted, to paise.
+ * @param {number} toPay M18 amount
+ * @param {number} deducted M7 amount
+ * @returns {{amount: number, kind: 'same'|'more'|'less'}}
+ */
+export function periodLabourGap(toPay, deducted) {
+    return labourGap(round2(toPay - deducted));
+}
+
+/**
  * Both labour figures for the Today card, the day report and Money › Spending.
  * @param {Array<Object>} bills - purchase bills of the period (opening records are left out here)
  * @param {Object} [settings]

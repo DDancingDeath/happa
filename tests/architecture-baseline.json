@@ -2,10 +2,10 @@
   "_readme": "Architecture ratchet baseline (www/js/__tests__/architecture-guard.test.js, docs/architecture.md section 6). Counts may only go down: lower them with ARCH_BASELINE=lower npx jest architecture-guard. A raise needs an entry in exceptions: {file, category, from, to, reason, issue}.",
   "totals": {
     "firestore": 57,
-    "moneyMath": 145,
-    "domNumber": 3,
+    "moneyMath": 62,
+    "domNumber": 2,
     "appStateWrite": 81,
-    "dateMath": 20
+    "dateMath": 4
   },
   "files": {
     "www/js/auth/authentication.js": {
@@ -46,19 +46,11 @@
       "appStateWrite": 1,
       "dateMath": 1
     },
-    "www/js/modules/insights.js": {
-      "moneyMath": 17,
-      "dateMath": 4
-    },
     "www/js/modules/items.js": {
       "appStateWrite": 6
     },
     "www/js/modules/miscellaneous.js": {
       "appStateWrite": 1
-    },
-    "www/js/modules/money.js": {
-      "moneyMath": 7,
-      "dateMath": 9
     },
     "www/js/modules/outstanding.js": {
       "firestore": 3,
@@ -66,13 +58,13 @@
       "appStateWrite": 1
     },
     "www/js/modules/purchase.js": {
-      "moneyMath": 17
+      "moneyMath": 1
     },
     "www/js/modules/rate-trends.js": {
       "moneyMath": 2
     },
     "www/js/modules/retail-sale.js": {
-      "moneyMath": 23
+      "moneyMath": 1
     },
     "www/js/modules/roles-access.js": {
       "appStateWrite": 2
@@ -80,16 +72,12 @@
     "www/js/modules/settings.js": {
       "appStateWrite": 19
     },
-    "www/js/modules/statements.js": {
-      "dateMath": 3
-    },
     "www/js/modules/stock.js": {
-      "moneyMath": 13,
+      "moneyMath": 1,
       "appStateWrite": 8
     },
     "www/js/modules/wholesale-sales.js": {
-      "moneyMath": 20,
-      "domNumber": 1
+      "moneyMath": 11
     },
     "www/js/rentals/rent-receipt-store.js": {
       "firestore": 2

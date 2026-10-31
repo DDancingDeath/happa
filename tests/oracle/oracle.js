@@ -595,6 +595,34 @@ export function netWorth(data, { accounts = 0, drawer = 0 } = {}) {
 }
 
 /**
+ * I12 top-5 share: the five biggest named parties' (PARTY) share of all parties'
+ * BILL-TOTAL in the period, rounded %. null when the total is not above 0.
+ * @param {'sales'|'purchases'} kind
+ */
+export function topShare(data, range, kind = 'sales', n5 = 5) {
+    const bills = kind === 'sales' ? [...activity(data.wholesaleSales), ...activity(data.retailSales)] : activity(data.purchases);
+    const byParty = {};
+    bills.filter(b => inRange(eventTimeOf(b), range)).forEach(b => {
+        const k = partyKey(b.customerName ?? b.supplierName);
+        byParty[k] = (byParty[k] || 0) + billValue(b);
+    });
+    const totals = Object.entries(byParty).sort((a, b) => b[1] - a[1]);
+    const all = totals.reduce((a, [, v]) => a + v, 0);
+    const top = totals.filter(([k]) => k).slice(0, n5).reduce((a, [, v]) => a + v, 0);
+    return all > 0 ? Math.round((top / all) * 100) : null;
+}
+
+/**
+ * S5 stock adjustment value: its quantity × its own rate, else the item's
+ * average cost now (S2); null without a quantity or a rate.
+ */
+export function adjustmentValue(adj, avgCostNow) {
+    if (adj.quantity === undefined) return null;
+    const rate = n(adj.rate) > 0 ? n(adj.rate) : n(avgCostNow);
+    return rate > 0 ? n(adj.quantity) * rate : null;
+}
+
+/**
  * I9 weekly kg: kg sold (retail + wholesale lines, any item key) in the last 8 weeks
  * (56 days up to now) ÷ 8, per item key (catalogue id, else the line name).
  */
@@ -783,6 +811,51 @@ export function dailyKg(sources, items, itemId, month) {
             s.kg = r2(s.kg + kg);
             s.bills += 1;
         }
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------- Bill forms (BF-*, WS-*)
+
+/**
+ * The figures a bill form shows while a bill is entered, and the money of the
+ * bill it saves. Lines: BF-LINE = qty × rate in whole rupees (#129 open), qty =
+ * Σ packet weights (BF-KG). Purchase: BF-TOTAL = Σ lines (paise); BF-LAB =
+ * labour rate × packets above the heavy weight, whole rupees in the box;
+ * BF-PAYABLE = BF-TOTAL − labour (saved in paise, shown in rupees). Retail:
+ * BF-TOTAL = Σ lines. Wholesale: WS-PROFIT = total − Σ qty × average rate
+ * (lines with no known rate cost nothing) − expenses; WS-MARGIN = profit ÷
+ * total × 100, one decimal (0 with no total).
+ * @param {'purchase'|'retail'|'wholesale'} kind
+ * @param {Array<{rate: number, qty?: number, weights?: number[], itemId?: string}>} entries
+ * @param {{laborRate?: number, heavyKg?: number, labour?: number, stock?: Object, expenses?: number}} [opts]
+ *   labour: typed labour (default: the suggested one)
+ */
+export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, stock = {}, expenses = 0 } = {}) {
+    const lines = entries.map(e => {
+        const qty = e.weights ? sum(e.weights, w => w) : n(e.qty);
+        return { ...e, qty, amount: Math.round(qty * e.rate) };
+    });
+    const total = r2(sum(lines, l => l.amount));
+    const out = { BF_LINE: lines.map(l => l.amount), BF_KG: lines.map(l => l.qty), BF_TOTAL: total, BF_TOTAL_shown: Math.round(total) };
+    if (kind === 'purchase') {
+        const heavy = sum(lines, l => (l.weights || []).filter(w => w > heavyKg).length);
+        const suggested = Math.round(laborRate * heavy);
+        const typed = labour === undefined ? suggested : labour;
+        Object.assign(out, {
+            BF_LAB: suggested,
+            BF_PAYABLE: r2(total - r2(typed)),
+            BF_PAYABLE_shown: Math.round(total - typed)
+        });
+    }
+    if (kind === 'wholesale') {
+        const cost = r2(sum(lines, l => (n(stock[l.itemId]?.rate) > 0 ? n(stock[l.itemId].rate) * l.qty : 0)));
+        const profit = r2(total - cost - n(expenses));
+        Object.assign(out, {
+            WS_PROFIT: profit,
+            WS_PROFIT_shown: Math.round(profit) || 0,
+            WS_MARGIN: total > 0 ? Math.round((profit / total) * 1000) / 10 : 0
+        });
     }
     return out;
 }

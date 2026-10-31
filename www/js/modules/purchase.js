@@ -10,9 +10,11 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
+import { KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage } from '../utils/money.js';
 import {
-    checkPaymentSplit, computePurchaseTotals, KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage, round2
-} from '../utils/money.js';
+    autoLabour, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, paidOnScreen, payableOnScreen,
+    paymentSplit, prefillPayment, restInDue, shownAmount, sumWeights, validatePaymentSplit
+} from '../utils/calc/billing.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
@@ -111,7 +113,7 @@ const PurchaseManager = {
             return;
         }
         
-        const total = weights.reduce((sum, w) => sum + w, 0);
+        const total = sumWeights(weights);
         
         if (totalWeightsSpan) totalWeightsSpan.textContent = total.toFixed(1);
         if (totalPacketsSpan) totalPacketsSpan.textContent = weights.length;
@@ -196,8 +198,7 @@ const PurchaseManager = {
         }
         this.ensurePendingBill();
         
-        const qty = weights.reduce((sum, w) => sum + w, 0);
-        const total = Math.round(qty * rate);
+        const { qty, total } = computeLine({ rate, weights });
         
         // Bill lines keep the catalogue name; Hindi is only for display (#143, Reports group by item).
         const displayName = lineLabel(item);
@@ -285,7 +286,7 @@ const PurchaseManager = {
                     <td>${Helpers.escapeHtml(lineLabel(item))}</td>
                     <td>₹${item.rate.toFixed(2)}</td>
                     <td>${item.qty.toFixed(1)} kg</td>
-                    <td>₹${Math.round(item.total)}</td>
+                    <td>₹${shownAmount(item.total)}</td>
                     <td><button onclick="event.stopPropagation(); window.app.purchase.deleteBillItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
                 </tr>
             `;
@@ -294,7 +295,7 @@ const PurchaseManager = {
         // Update totals
         const { billTotal, totalPackets } = this.computeTotals(0);
         
-        if (billTotalSpan) billTotalSpan.textContent = Math.round(billTotal);
+        if (billTotalSpan) billTotalSpan.textContent = shownAmount(billTotal);
         if (totalPacketsInBillSpan) totalPacketsInBillSpan.textContent = totalPackets;
         
         // Don't clear manually set flag when in edit mode
@@ -383,11 +384,10 @@ const PurchaseManager = {
         let laborCharges = 0;
         if (autoLaborCheckbox?.checked) {
             // Shared rate for every device (#20); blank/invalid falls back to ₹6
-            const { laborRate } = normalizeLabourSettings(AppState.settings);
-            const autoCalculatedLabor = laborRate * heavyPacketsCount;
+            const suggested = autoLabour(AppState.settings, heavyPacketsCount);
             
             if (laborChargesInput && !laborChargesInput.dataset.manuallySet && this.billingManager?.editingBillIndex === undefined) {
-                laborChargesInput.value = autoCalculatedLabor.toFixed(0);
+                laborChargesInput.value = suggested.box;
             }
             
             if (laborChargesInput) {
@@ -396,7 +396,7 @@ const PurchaseManager = {
                 laborChargesInput.style.cursor = 'text';
             }
             if (laborCalculationSpan) {
-                laborCalculationSpan.textContent = `${laborRate} × ${heavyPacketsCount}`;
+                laborCalculationSpan.textContent = suggested.working;
             }
             
             laborCharges = parseFloat(laborChargesInput?.value || 0);
@@ -413,11 +413,9 @@ const PurchaseManager = {
             laborCharges = 0;
         }
         
-        const grandTotal = billTotal - laborCharges;
-        
         const grandTotalElement = document.getElementById('amountPayable');
         if (grandTotalElement) {
-            grandTotalElement.textContent = Math.round(grandTotal);
+            grandTotalElement.textContent = payableOnScreen(billTotal, laborCharges);
         }
         
         this.updatePaymentTotal();
@@ -429,13 +427,11 @@ const PurchaseManager = {
     updatePaymentTotal() {
         const split = this.readPaymentSplit();
         
-        const totalPaid = split.online + split.cash;
-        
         const totalPaymentElement = document.getElementById('totalPayment');
         if (totalPaymentElement) {
-            totalPaymentElement.textContent = Math.round(totalPaid);
+            totalPaymentElement.textContent = paidOnScreen(split);
         }
-        Helpers.showSplitRemaining('purchaseSplitRemaining', checkPaymentSplit(this.computeTotals().grandTotal, split));
+        Helpers.showSplitRemaining('purchaseSplitRemaining', validatePaymentSplit(this.computeTotals().grandTotal, split));
         BillChecksUI.schedule('purchase');
     },
 
@@ -444,27 +440,26 @@ const PurchaseManager = {
      * @returns {{cash: number, online: number, due: number}}
      */
     readPaymentSplit() {
-        return {
-            online: round2(Helpers.getInputNumber('onlinePayment')),
-            cash: round2(Helpers.getInputNumber('cashPayment')),
-            due: round2(Helpers.getInputNumber('dueAmount'))
-        };
+        return paymentSplit({
+            online: Helpers.getInputNumber('onlinePayment'),
+            cash: Helpers.getInputNumber('cashPayment'),
+            due: Helpers.getInputNumber('dueAmount')
+        });
     },
 
     /**
      * One tap: put whatever is not yet paid (total − cash − online) in Due.
      */
     putRestInDue() {
-        const { cash, online } = this.readPaymentSplit();
-        const rest = round2(this.computeTotals().grandTotal - cash - online);
-        if (rest < 0) {
-            UIManager.showToast(paymentSplitMessage(checkPaymentSplit(this.computeTotals().grandTotal, { cash, online })));
+        const rest = restInDue(this.computeTotals().grandTotal, this.readPaymentSplit());
+        if (!rest.ok) {
+            UIManager.showToast(paymentSplitMessage(rest.check));
             return;
         }
         const dueInput = document.getElementById('dueAmount');
-        if (dueInput) dueInput.value = rest;
+        if (dueInput) dueInput.value = rest.due;
         const dueCheckbox = document.getElementById('dueCheckbox');
-        if (dueCheckbox) dueCheckbox.checked = rest > 0;
+        if (dueCheckbox) dueCheckbox.checked = rest.dueTicked;
         this.updatePaymentTotal();
     },
 
@@ -473,34 +468,11 @@ const PurchaseManager = {
      * @param {'online'|'cash'|'due'} type - Payment type
      */
     fillPayableAmount(type) {
-        const { grandTotal } = this.computeTotals();
-        const onlineInput = document.getElementById('onlinePayment');
-        const cashInput = document.getElementById('cashPayment');
-        const dueInput = document.getElementById('dueAmount');
-        const onlineCheckbox = document.getElementById('onlineCheckbox');
-        const cashCheckbox = document.getElementById('cashCheckbox');
-        const dueCheckbox = document.getElementById('dueCheckbox');
-        
-        if (type === 'online' && onlineCheckbox?.checked) {
-            if (onlineInput) onlineInput.value = Math.round(grandTotal);
-            if (cashInput) cashInput.value = '0';
-            if (dueInput) dueInput.value = '0';
-            if (cashCheckbox) cashCheckbox.checked = false;
-            if (dueCheckbox) dueCheckbox.checked = false;
-        } else if (type === 'cash' && cashCheckbox?.checked) {
-            if (cashInput) cashInput.value = Math.round(grandTotal);
-            if (onlineInput) onlineInput.value = '0';
-            if (dueInput) dueInput.value = '0';
-            if (onlineCheckbox) onlineCheckbox.checked = false;
-            if (dueCheckbox) dueCheckbox.checked = false;
-        } else if (type === 'due' && dueCheckbox?.checked) {
-            if (dueInput) dueInput.value = Math.round(grandTotal);
-            if (onlineInput) onlineInput.value = '0';
-            if (cashInput) cashInput.value = '0';
-            if (onlineCheckbox) onlineCheckbox.checked = false;
-            if (cashCheckbox) cashCheckbox.checked = false;
-        }
-        
+        Helpers.applyPaymentPrefill(type, prefillPayment(type, this.computeTotals().grandTotal), {
+            online: ['onlinePayment', 'onlineCheckbox'],
+            cash: ['cashPayment', 'cashCheckbox'],
+            due: ['dueAmount', 'dueCheckbox']
+        });
         this.updatePaymentTotal();
     },
 
@@ -575,9 +547,8 @@ const PurchaseManager = {
         
         // Totals come from the items, never from the (rounded) text on screen
         const { billTotal, laborCharges, totalPackets, grandTotal } = this.computeTotals();
-        const onlinePayment = round2(Helpers.getInputNumber('onlinePayment'));
-        const cashPayment = round2(Helpers.getInputNumber('cashPayment'));
-        const dueAmount = round2(Helpers.getInputNumber('dueAmount'));
+        const split = this.readPaymentSplit();
+        const { online: onlinePayment, cash: cashPayment, due: dueAmount } = split;
         const customerName = Helpers.getInputText('customerName');
         const comments = Helpers.getInputText('billComments');
         const printComments = document.getElementById('billPrintComments')?.checked || false;
@@ -625,12 +596,7 @@ const PurchaseManager = {
                 date: pending.date,
                 userId: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
                 timestamp: pending.timestamp,
-                payment: {
-                    online: onlinePayment,
-                    cash: cashPayment,
-                    due: dueAmount,
-                    total: round2(onlinePayment + cashPayment + dueAmount)
-                },
+                payment: buildPaymentSplit(split),
                 ...BillChecksUI.billFields(checks)
             };
             
@@ -729,7 +695,7 @@ const PurchaseManager = {
             return;
         }
         
-        const total = billItems.reduce((sum, item) => sum + item.total, 0);
+        const total = draftLineSum(billItems);
         const laborCharges = Helpers.getInputInt('manualLaborCharges');
         const message = buildDraftShareText({
             kind: 'purchase', customer: Helpers.getInputText('customerName'), items: billItems, total, labour: laborCharges

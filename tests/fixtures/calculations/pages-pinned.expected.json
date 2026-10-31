@@ -1,0 +1,2960 @@
+{
+  "stock.owner": {
+    "list": [
+      "Dal Rate: ₹0.00/kg 0.0 kg ≈ ₹0",
+      "Rice Rate: ₹31.54/kg 132.9 kg ≈ ₹4,191",
+      "Salt Rate: ₹7.78/kg 3.3 kg ≈ ₹26",
+      "Wheat Rate: ₹26.00/kg 40.0 kg ≈ ₹1,040",
+      "ghost item ⚠ Unmatched — no catalogue item with this id/name -3.5 kg Rate: ₹0.00/kg",
+      "old name ⚠ Unmatched — no catalogue item with this id/name 7.3 kg Rate: ₹12.75/kg"
+    ],
+    "adjustments": [
+      "Rice Added 10 kg 31/01/2027, 10:00:00 am • By: Owner Rate: ₹30.00/kg • Value: ₹300 110.5 kg → 120.5 kg found",
+      "Wheat Removed 2 kg 30/01/2027 42.0 kg → 40.0 kg spoiled",
+      "Dal Set to 2026-12-01 0.0 kg → 0.0 kg No reason provided",
+      "Rice Set to 0.01 kg 2026-11-30 Rate: ₹30.00/kg • Value: ₹0 0.0 kg → 0.0 kg count",
+      "Dal Removed 5 kg 2026-11-29 5.0 kg → 0.0 kg (asked 8 kg, capped at stock) No reason provided",
+      "old name Added 3 kg 2026-11-28 Rate: ₹12.75/kg • Value: ₹38 4.3 kg → 7.3 kg No reason provided",
+      "Salt Added 1.111 kg 2026-11-27 Rate: ₹7.78/kg • Value: ₹9 2.2 kg → 3.3 kg No reason provided"
+    ],
+    "dead": {
+      "summary": "3 items · ≈ ₹3,802 in stockUsing all bills.",
+      "rows": [
+        "Rice Last sale: never Last purchase: never 120.5 kg ≈ ₹3,776 avg ₹31.33/kg",
+        "Salt Last sale: never Last purchase: never 3.3 kg ≈ ₹26 avg ₹7.78/kg",
+        "Dal Last sale: never Last purchase: never 0.0 kg ≈ ₹0 avg ₹0.00/kg"
+      ]
+    },
+    "current": {
+      "i-rice": {
+        "stock": "120.5",
+        "avgRate": "₹31.33/kg"
+      },
+      "i-wheat": {
+        "stock": "0.0",
+        "avgRate": null
+      },
+      "i-dal": {
+        "stock": "0.0",
+        "avgRate": null
+      },
+      "i-zero": {
+        "stock": "0.0",
+        "avgRate": null
+      },
+      "i-salt": {
+        "stock": "3.3",
+        "avgRate": "₹7.78/kg"
+      },
+      "(none)": {
+        "stock": "",
+        "avgRate": null
+      }
+    }
+  },
+  "stock.staff": [
+    "Dal Rate: ₹0.00/kg 0.0 kg ≈ ₹0",
+    "Rice Rate: ₹31.54/kg Available",
+    "Salt Rate: ₹7.78/kg 3.3 kg ≈ ₹26",
+    "Wheat Rate: ₹26.00/kg 40.0 kg ≈ ₹1,040",
+    "ghost item ⚠ Unmatched — no catalogue item with this id/name -3.5 kg Rate: ₹0.00/kg",
+    "old name ⚠ Unmatched — no catalogue item with this id/name 7.3 kg Rate: ₹12.75/kg"
+  ],
+  "stock.first": {
+    "list": [
+      "Gram Rate: ₹47.58/kg 3,748.5 kg ≈ ₹1,78,371",
+      "Maize Rate: ₹19.72/kg 2,394.5 kg ≈ ₹47,221",
+      "Mustard Rate: ₹53.41/kg 3,573.0 kg ≈ ₹1,90,822",
+      "Rice Rate: ₹32.75/kg 4,999.5 kg ≈ ₹1,63,711",
+      "Wheat Rate: ₹24.79/kg 6,123.0 kg ≈ ₹1,51,811"
+    ],
+    "dead": {
+      "summary": "Using all bills.",
+      "rows": []
+    },
+    "adjustments": [
+      "Rice Removed 7 kg 2026-04-12T21:30:16 Rate: ₹32.75/kg • Value: ₹229 0.0 kg → 0.0 kg spoiled",
+      "Maize Removed 6 kg 2026-03-26T21:12:12 Rate: ₹19.72/kg • Value: ₹118 0.0 kg → 0.0 kg spoiled",
+      "Maize Removed 4 kg 2026-03-14T21:13:24 Rate: ₹19.72/kg • Value: ₹79 0.0 kg → 0.0 kg spoiled",
+      "Wheat Removed 5 kg 2026-02-21T21:50:50 Rate: ₹24.79/kg • Value: ₹124 0.0 kg → 0.0 kg spoiled",
+      "Gram Added 19 kg 2025-10-21T21:02:41 Rate: ₹48.00/kg • Value: ₹912 0.0 kg → 0.0 kg found",
+      "Wheat Removed 4 kg 2025-09-09T21:37:59 Rate: ₹24.79/kg • Value: ₹99 0.0 kg → 0.0 kg spoiled",
+      "Wheat Added 19 kg 2025-08-11T21:29:42 Rate: ₹24.00/kg • Value: ₹456 0.0 kg → 0.0 kg found",
+      "Mustard Added 8 kg 2025-08-01T21:39:13 Rate: ₹55.00/kg • Value: ₹440 0.0 kg → 0.0 kg found"
+    ]
+  },
+  "stock.jan31": {
+    "list": [
+      "Gram Rate: ₹47.50/kg 3,835.5 kg ≈ ₹1,82,180",
+      "Maize Rate: ₹19.02/kg 1,875.5 kg ≈ ₹35,678",
+      "Mustard Rate: ₹54.89/kg 6,023.5 kg ≈ ₹3,30,631",
+      "Rice Rate: ₹32.25/kg 6,284.0 kg ≈ ₹2,02,637",
+      "Wheat Rate: ₹24.07/kg 4,134.5 kg ≈ ₹99,523"
+    ],
+    "dead": {
+      "summary": "Using all bills.",
+      "rows": []
+    },
+    "adjustments": [
+      "Rice Removed 4 kg 2026-09-22T21:04:51 Rate: ₹32.25/kg • Value: ₹129 0.0 kg → 0.0 kg spoiled",
+      "Mustard Added 13 kg 2026-09-09T21:03:49 Rate: ₹55.00/kg • Value: ₹715 0.0 kg → 0.0 kg found",
+      "Maize Removed 9 kg 2026-08-22T21:11:56 Rate: ₹19.02/kg • Value: ₹171 0.0 kg → 0.0 kg spoiled",
+      "Maize Removed 7 kg 2026-08-20T21:13:55 Rate: ₹19.02/kg • Value: ₹133 0.0 kg → 0.0 kg spoiled",
+      "Maize Added 8 kg 2026-06-29T21:40:57 Rate: ₹19.00/kg • Value: ₹152 0.0 kg → 0.0 kg found",
+      "Wheat Removed 3 kg 2026-04-02T21:53:01 Rate: ₹24.07/kg • Value: ₹72 0.0 kg → 0.0 kg spoiled",
+      "Mustard Removed 3 kg 2026-02-04T21:51:37 Rate: ₹54.89/kg • Value: ₹165 0.0 kg → 0.0 kg spoiled",
+      "Rice Removed 4 kg 2025-11-21T21:42:23 Rate: ₹32.25/kg • Value: ₹129 0.0 kg → 0.0 kg spoiled"
+    ]
+  },
+  "stock.leapDay": {
+    "list": [
+      "Gram Rate: ₹48.37/kg 6,738.0 kg ≈ ₹3,25,921",
+      "Maize Rate: ₹18.88/kg 5,889.0 kg ≈ ₹1,11,211",
+      "Mustard Rate: ₹55.11/kg 6,707.5 kg ≈ ₹3,69,682",
+      "Rice Rate: ₹31.66/kg 5,720.5 kg ≈ ₹1,81,119",
+      "Wheat Rate: ₹24.06/kg 7,447.0 kg ≈ ₹1,79,185"
+    ],
+    "dead": {
+      "summary": "Using all bills.",
+      "rows": []
+    },
+    "adjustments": [
+      "Rice Removed 1 kg 2027-10-21T21:50:14 Rate: ₹31.66/kg • Value: ₹32 0.0 kg → 0.0 kg spoiled",
+      "Maize Added 12 kg 2027-10-20T21:51:25 Rate: ₹19.00/kg • Value: ₹228 0.0 kg → 0.0 kg found",
+      "Rice Removed 3 kg 2027-09-29T21:54:02 Rate: ₹31.66/kg • Value: ₹95 0.0 kg → 0.0 kg spoiled",
+      "Gram Added 8 kg 2027-08-10T21:30:12 Rate: ₹48.00/kg • Value: ₹384 0.0 kg → 0.0 kg found",
+      "Gram Added 17 kg 2027-08-08T21:57:19 Rate: ₹48.00/kg • Value: ₹816 0.0 kg → 0.0 kg found",
+      "Wheat Removed 2 kg 2027-08-02T21:59:49 Rate: ₹24.06/kg • Value: ₹48 0.0 kg → 0.0 kg spoiled",
+      "Rice Added 6 kg 2027-07-24T21:50:05 Rate: ₹32.00/kg • Value: ₹192 0.0 kg → 0.0 kg found",
+      "Mustard Added 2 kg 2027-05-18T21:41:10 Rate: ₹55.00/kg • Value: ₹110 0.0 kg → 0.0 kg found"
+    ]
+  },
+  "stock.mar31": {
+    "list": [
+      "Gram Rate: ₹47.21/kg 2,831.5 kg ≈ ₹1,33,666",
+      "Maize Rate: ₹19.66/kg 2,106.0 kg ≈ ₹41,394",
+      "Mustard Rate: ₹54.85/kg 5,133.0 kg ≈ ₹2,81,559",
+      "Rice Rate: ₹32.16/kg 7,005.0 kg ≈ ₹2,25,247",
+      "Wheat Rate: ₹23.99/kg 4,645.0 kg ≈ ₹1,11,434"
+    ],
+    "dead": {
+      "summary": "Using all bills.",
+      "rows": []
+    },
+    "adjustments": [
+      "Wheat Added 13 kg 2027-03-17T21:25:40 Rate: ₹24.00/kg • Value: ₹312 0.0 kg → 0.0 kg found",
+      "Wheat Removed 6 kg 2027-03-03T21:36:20 Rate: ₹23.99/kg • Value: ₹144 0.0 kg → 0.0 kg spoiled",
+      "Rice Removed 4 kg 2026-12-07T21:04:51 Rate: ₹32.16/kg • Value: ₹129 0.0 kg → 0.0 kg spoiled",
+      "Rice Removed 8 kg 2026-10-22T21:43:30 Rate: ₹32.16/kg • Value: ₹257 0.0 kg → 0.0 kg spoiled",
+      "Maize Removed 7 kg 2026-05-28T21:37:37 Rate: ₹19.66/kg • Value: ₹138 0.0 kg → 0.0 kg spoiled",
+      "Maize Removed 8 kg 2026-05-09T21:39:34 Rate: ₹19.66/kg • Value: ₹157 0.0 kg → 0.0 kg spoiled",
+      "Rice Added 14 kg 2026-04-08T21:12:52 Rate: ₹32.00/kg • Value: ₹448 0.0 kg → 0.0 kg found",
+      "Rice Added 10 kg 2025-11-25T21:42:57 Rate: ₹32.00/kg • Value: ₹320 0.0 kg → 0.0 kg found"
+    ]
+  },
+  "stock.jan1": {
+    "list": [
+      "Gram Rate: ₹46.81/kg 2,785.0 kg ≈ ₹1,30,361",
+      "Maize Rate: ₹18.44/kg 1,053.5 kg ≈ ₹19,429",
+      "Mustard Rate: ₹54.64/kg 5,996.5 kg ≈ ₹3,27,624",
+      "Rice Rate: ₹32.00/kg 7,329.0 kg ≈ ₹2,34,504",
+      "Wheat Rate: ₹23.83/kg 5,148.0 kg ≈ ₹1,22,655"
+    ],
+    "dead": {
+      "summary": "Using all bills.",
+      "rows": []
+    },
+    "adjustments": [
+      "Rice Removed 3 kg 2026-09-02T21:54:02 Rate: ₹32.00/kg • Value: ₹96 0.0 kg → 0.0 kg spoiled",
+      "Maize Removed 9 kg 2026-08-15T21:22:32 Rate: ₹18.44/kg • Value: ₹166 0.0 kg → 0.0 kg spoiled",
+      "Wheat Added 3 kg 2026-07-25T21:25:44 Rate: ₹24.00/kg • Value: ₹72 0.0 kg → 0.0 kg found",
+      "Wheat Removed 3 kg 2026-07-23T21:41:37 Rate: ₹23.83/kg • Value: ₹71 0.0 kg → 0.0 kg spoiled",
+      "Maize Added 3 kg 2026-05-15T21:24:06 Rate: ₹19.00/kg • Value: ₹57 0.0 kg → 0.0 kg found",
+      "Rice Added 1 kg 2026-04-18T21:06:40 Rate: ₹32.00/kg • Value: ₹32 0.0 kg → 0.0 kg found",
+      "Mustard Added 4 kg 2026-04-04T21:06:20 Rate: ₹55.00/kg • Value: ₹220 0.0 kg → 0.0 kg found",
+      "Rice Removed 5 kg 2026-02-23T21:11:04 Rate: ₹32.00/kg • Value: ₹160 0.0 kg → 0.0 kg spoiled"
+    ]
+  },
+  "insights.first": {
+    "actions": {
+      "insightsPeriodLabel": "Nov 2026",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹41,439 for more than 30 days.Open Outstanding ›📤You owe 7 parties ₹1,52,097 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": {
+      "insightsPeriodLabel": "Nov 2026",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹41,439 for more than 30 days.Open Outstanding ›📤You owe 7 parties ₹1,52,097 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTable": "No sales in this period.",
+      "insightsSplit": "Retail₹0 · 0%Wholesale₹0 · 0%",
+      "insightsBoughtTable": "No purchases in this period.",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "itemsRetail": "No sales in this period.",
+    "customers": {
+      "insightsPeriodLabel": "Nov 2026",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹41,439 for more than 30 days.Open Outstanding ›📤You owe 7 parties ₹1,52,097 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTable": "No sales in this period.",
+      "insightsSplit": "Retail₹0 · 0%Wholesale₹0 · 0%",
+      "insightsBoughtTable": "No purchases in this period.",
+      "insightsCustomersTable": "No bills in this period.",
+      "insightsStopped": "Every regular buyer came recently.",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "suppliers": {
+      "table": "No bills in this period.",
+      "takeaway": ""
+    },
+    "seasons": {
+      "calendar": "<table class=\"ins-heat\"><thead><tr><th></th><th>Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th class=\"ins-now\">Nov</th><th>Dec</th></tr></thead><tbody><tr><th scope=\"row\">Gram</th><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"0\" title=\"Gram · Jan: 0.31×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"1\" title=\"Gram · Feb: 0.21×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"2\" title=\"Gram · Mar: 0.33×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"3\" title=\"Gram · Apr: 0.63×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"4\" title=\"Gram · May: 1.03×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"5\" title=\"Gram · Jun: 1.42×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"6\" title=\"Gram · Jul: 1.7×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"7\" title=\"Gram · Aug: 1.79×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"8\" title=\"Gram · Sep: 1.67×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"9\" title=\"Gram · Oct: 1.37×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"10\" title=\"Gram · Nov: 0.97×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"11\" title=\"Gram · Dec: 0.57×\"></td></tr><tr><th scope=\"row\">Maize</th><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"0\" title=\"Maize · Jan: 0.99×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"1\" title=\"Maize · Feb: 0.61×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"2\" title=\"Maize · Mar: 0.34×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"3\" title=\"Maize · Apr: 0.25×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"4\" title=\"Maize · May: 0.36×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"5\" title=\"Maize · Jun: 0.64×\"></td><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"6\" title=\"Maize · Jul: 1.02×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"7\" title=\"Maize · Aug: 1.4×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"8\" title=\"Maize · Sep: 1.66×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"9\" title=\"Maize · Oct: 1.75×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"10\" title=\"Maize · Nov: 1.63×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"11\" title=\"Maize · Dec: 1.34×\"></td></tr><tr><th scope=\"row\">Mustard</th><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"0\" title=\"Mustard · Jan: 1.59×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"1\" title=\"Mustard · Feb: 1.33×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"2\" title=\"Mustard · Mar: 0.99×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"3\" title=\"Mustard · Apr: 0.64×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"4\" title=\"Mustard · May: 0.39×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"5\" title=\"Mustard · Jun: 0.31×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"6\" title=\"Mustard · Jul: 0.41×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"7\" title=\"Mustard · Aug: 0.67×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"8\" title=\"Mustard · Sep: 1.02×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"9\" title=\"Mustard · Oct: 1.36×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"10\" title=\"Mustard · Nov: 1.61×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"11\" title=\"Mustard · Dec: 1.69×\"></td></tr><tr><th scope=\"row\">Rice</th><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"0\" title=\"Rice · Jan: 1.52×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"1\" title=\"Rice · Feb: 1.6×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"2\" title=\"Rice · Mar: 1.52×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"3\" title=\"Rice · Apr: 1.29×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"4\" title=\"Rice · May: 0.99×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"5\" title=\"Rice · Jun: 0.69×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"6\" title=\"Rice · Jul: 0.47×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"7\" title=\"Rice · Aug: 0.4×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"8\" title=\"Rice · Sep: 0.49×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"9\" title=\"Rice · Oct: 0.72×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"10\" title=\"Rice · Nov: 1.02×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"11\" title=\"Rice · Dec: 1.32×\"></td></tr><tr><th scope=\"row\">Wheat</th><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"0\" title=\"Wheat · Jan: 1×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"1\" title=\"Wheat · Feb: 1.21×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"2\" title=\"Wheat · Mar: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"3\" title=\"Wheat · Apr: 1.43×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"4\" title=\"Wheat · May: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"5\" title=\"Wheat · Jun: 1.21×\"></td><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"6\" title=\"Wheat · Jul: 1×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"7\" title=\"Wheat · Aug: 0.78×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"8\" title=\"Wheat · Sep: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"9\" title=\"Wheat · Oct: 0.57×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"10\" title=\"Wheat · Nov: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"11\" title=\"Wheat · Dec: 0.8×\"></td></tr></tbody></table>",
+      "takeaway": "Mustard usually sells 1.7× its average in Dec."
+    },
+    "items.last-30": {
+      "label": "Last 30 days",
+      "split": "Retail₹11,582 · 100%Wholesale₹0 · 0%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.this-year": {
+      "label": "2026",
+      "split": "Retail₹1,45,140 · 72%Wholesale₹56,412 · 28%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.last-year": {
+      "label": "2025",
+      "split": "Retail₹1,70,619 · 69%Wholesale₹77,931 · 31%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    }
+  },
+  "insights.jan31": {
+    "actions": {
+      "insightsPeriodLabel": "Jan 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹48,112 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,29,448 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": {
+      "insightsPeriodLabel": "Jan 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹48,112 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,29,448 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTakeaway": "Mustard earned the most profit (₹921).Wheat sold well but earned only ₹11.6 per ₹100.",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Wheat₹7,704₹89211.6▲ 89%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%",
+      "insightsSplit": "Retail₹17,501 · 76%Wholesale₹5,618 · 24%",
+      "insightsBoughtTable": "ItemkgPaidMustard61₹3,532Rice92₹3,208",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%Wheat₹2,086₹37718.1▼ 49%",
+    "customers": {
+      "insightsPeriodLabel": "Jan 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹48,112 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,29,448 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTakeaway": "Mustard earned the most profit (₹921).",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹5,914₹92115.6▲ 2%Rice₹3,582₹63217.6▲ 15%Gram₹3,524₹46013.1▼ 49%Maize₹2,395₹45519▲ 172%Wheat₹2,086₹37718.1▼ 49%",
+      "insightsSplit": "Retail₹17,501 · 76%Wholesale₹5,618 · 24%",
+      "insightsBoughtTable": "ItemkgPaidMustard61₹3,532Rice92₹3,208",
+      "insightsPartiesTakeaway": "Top 5 customers gave 85% of sales.",
+      "insightsCustomersTable": "PartySalesBillsLast billSita₹7,980424 JanMohan₹3,999218 JanShyam Lal₹2,808215 JanKamla Devi₹2,499230 JanGupta Traders₹2,360212 Janराम लाल₹1,633227 JanRavi₹1,215121 JanSharma Stores₹625122 Jan",
+      "insightsStopped": "Every regular buyer came recently.",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "suppliers": {
+      "table": "PartyPaidBillsLast billMohan₹6,740221 Jan",
+      "takeaway": "Top 5 suppliers got 100% of what you paid."
+    },
+    "seasons": {
+      "calendar": "<table class=\"ins-heat\"><thead><tr><th></th><th class=\"ins-now\">Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th></tr></thead><tbody><tr><th scope=\"row\">Gram</th><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"0\" title=\"Gram · Jan: 0.31×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"1\" title=\"Gram · Feb: 0.21×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"2\" title=\"Gram · Mar: 0.33×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"3\" title=\"Gram · Apr: 0.63×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"4\" title=\"Gram · May: 1.03×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"5\" title=\"Gram · Jun: 1.42×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"6\" title=\"Gram · Jul: 1.7×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"7\" title=\"Gram · Aug: 1.79×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"8\" title=\"Gram · Sep: 1.67×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"9\" title=\"Gram · Oct: 1.37×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"10\" title=\"Gram · Nov: 0.97×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"11\" title=\"Gram · Dec: 0.57×\"></td></tr><tr><th scope=\"row\">Maize</th><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"0\" title=\"Maize · Jan: 0.99×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"1\" title=\"Maize · Feb: 0.61×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"2\" title=\"Maize · Mar: 0.34×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"3\" title=\"Maize · Apr: 0.25×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"4\" title=\"Maize · May: 0.36×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"5\" title=\"Maize · Jun: 0.64×\"></td><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"6\" title=\"Maize · Jul: 1.02×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"7\" title=\"Maize · Aug: 1.4×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"8\" title=\"Maize · Sep: 1.66×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"9\" title=\"Maize · Oct: 1.75×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"10\" title=\"Maize · Nov: 1.63×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"11\" title=\"Maize · Dec: 1.34×\"></td></tr><tr><th scope=\"row\">Mustard</th><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"0\" title=\"Mustard · Jan: 1.59×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"1\" title=\"Mustard · Feb: 1.33×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"2\" title=\"Mustard · Mar: 0.99×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"3\" title=\"Mustard · Apr: 0.64×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"4\" title=\"Mustard · May: 0.39×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"5\" title=\"Mustard · Jun: 0.31×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"6\" title=\"Mustard · Jul: 0.41×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"7\" title=\"Mustard · Aug: 0.67×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"8\" title=\"Mustard · Sep: 1.02×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"9\" title=\"Mustard · Oct: 1.36×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"10\" title=\"Mustard · Nov: 1.61×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"11\" title=\"Mustard · Dec: 1.69×\"></td></tr><tr><th scope=\"row\">Rice</th><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"0\" title=\"Rice · Jan: 1.52×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"1\" title=\"Rice · Feb: 1.6×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"2\" title=\"Rice · Mar: 1.52×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"3\" title=\"Rice · Apr: 1.29×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"4\" title=\"Rice · May: 0.99×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"5\" title=\"Rice · Jun: 0.69×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"6\" title=\"Rice · Jul: 0.47×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"7\" title=\"Rice · Aug: 0.4×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"8\" title=\"Rice · Sep: 0.49×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"9\" title=\"Rice · Oct: 0.72×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"10\" title=\"Rice · Nov: 1.02×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"11\" title=\"Rice · Dec: 1.32×\"></td></tr><tr><th scope=\"row\">Wheat</th><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"0\" title=\"Wheat · Jan: 1×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"1\" title=\"Wheat · Feb: 1.21×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"2\" title=\"Wheat · Mar: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"3\" title=\"Wheat · Apr: 1.43×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"4\" title=\"Wheat · May: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"5\" title=\"Wheat · Jun: 1.21×\"></td><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"6\" title=\"Wheat · Jul: 1×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"7\" title=\"Wheat · Aug: 0.78×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"8\" title=\"Wheat · Sep: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"9\" title=\"Wheat · Oct: 0.57×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"10\" title=\"Wheat · Nov: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"11\" title=\"Wheat · Dec: 0.8×\"></td></tr></tbody></table>",
+      "takeaway": "Rice usually sells 1.6× its average in Feb."
+    },
+    "items.last-30": {
+      "label": "Last 30 days",
+      "split": "Retail₹16,723 · 75%Wholesale₹5,618 · 25%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.this-year": {
+      "label": "2027",
+      "split": "Retail₹17,501 · 76%Wholesale₹5,618 · 24%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.last-year": {
+      "label": "2026",
+      "split": "Retail₹2,05,106 · 76%Wholesale₹63,713 · 24%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    }
+  },
+  "insights.leapDay": {
+    "actions": {
+      "insightsPeriodLabel": "Feb 2028",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹35,876 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,75,361 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": {
+      "insightsPeriodLabel": "Feb 2028",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹35,876 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,75,361 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTakeaway": "Mustard earned the most profit (₹1,646).",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearMustard₹20,710₹1,6468▲ 313%Rice₹5,788₹69111.9▲ 254%Gram₹3,886₹59815.4▲ 87%Maize₹6,117₹5749.4▲ 199%Wheat₹1,399₹19614▼ 68%",
+      "insightsSplit": "Retail₹9,665 · 26%Wholesale₹28,235 · 74%",
+      "insightsBoughtTable": "ItemkgPaidMustard681₹35,507Gram86₹4,331Maize53₹922",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹59815.4▲ 87%Maize₹2,157₹35416.4▲ 6%Rice₹1,238₹25720.7▼ 24%Wheat₹1,399₹19614▼ 68%Mustard₹985₹18318.6▼ 80%",
+    "customers": {
+      "insightsPeriodLabel": "Feb 2028",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹35,876 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,75,361 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTakeaway": "Gram earned the most profit (₹598).",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹3,886₹59815.4▲ 87%Maize₹2,157₹35416.4▲ 6%Rice₹1,238₹25720.7▼ 24%Wheat₹1,399₹19614▼ 68%Mustard₹985₹18318.6▼ 80%",
+      "insightsSplit": "Retail₹9,665 · 26%Wholesale₹28,235 · 74%",
+      "insightsBoughtTable": "ItemkgPaidMustard681₹35,507Gram86₹4,331Maize53₹922",
+      "insightsPartiesTakeaway": "Top 5 customers gave 88% of sales.",
+      "insightsCustomersTable": "PartySalesBillsLast billMohan₹12,976326 FebRavi₹8,531328 FebKamla Devi₹5,531216 Febराम लाल₹3,960119 FebSharma Stores₹2,37125 FebSita₹2,227329 FebShyam Lal₹1,351122 FebGupta Traders₹953223 Feb",
+      "insightsStopped": "Every regular buyer came recently.",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "suppliers": {
+      "table": "PartyPaidBillsLast billराम लाल₹22,14614 FebSharma Stores₹13,36111 FebGupta Traders₹4,331116 FebMohan₹92212 Feb",
+      "takeaway": "Top 5 suppliers got 100% of what you paid."
+    },
+    "seasons": {
+      "calendar": "<table class=\"ins-heat\"><thead><tr><th></th><th>Jan</th><th class=\"ins-now\">Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th></tr></thead><tbody><tr><th scope=\"row\">Gram</th><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"0\" title=\"Gram · Jan: 0.31×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"1\" title=\"Gram · Feb: 0.21×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"2\" title=\"Gram · Mar: 0.33×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"3\" title=\"Gram · Apr: 0.63×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"4\" title=\"Gram · May: 1.03×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"5\" title=\"Gram · Jun: 1.42×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"6\" title=\"Gram · Jul: 1.7×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"7\" title=\"Gram · Aug: 1.79×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"8\" title=\"Gram · Sep: 1.67×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"9\" title=\"Gram · Oct: 1.37×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"10\" title=\"Gram · Nov: 0.97×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"11\" title=\"Gram · Dec: 0.57×\"></td></tr><tr><th scope=\"row\">Maize</th><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"0\" title=\"Maize · Jan: 0.99×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"1\" title=\"Maize · Feb: 0.61×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"2\" title=\"Maize · Mar: 0.34×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"3\" title=\"Maize · Apr: 0.25×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"4\" title=\"Maize · May: 0.36×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"5\" title=\"Maize · Jun: 0.64×\"></td><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"6\" title=\"Maize · Jul: 1.02×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"7\" title=\"Maize · Aug: 1.4×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"8\" title=\"Maize · Sep: 1.66×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"9\" title=\"Maize · Oct: 1.75×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"10\" title=\"Maize · Nov: 1.63×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"11\" title=\"Maize · Dec: 1.34×\"></td></tr><tr><th scope=\"row\">Mustard</th><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"0\" title=\"Mustard · Jan: 1.59×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"1\" title=\"Mustard · Feb: 1.33×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"2\" title=\"Mustard · Mar: 0.99×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"3\" title=\"Mustard · Apr: 0.64×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"4\" title=\"Mustard · May: 0.39×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"5\" title=\"Mustard · Jun: 0.31×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"6\" title=\"Mustard · Jul: 0.41×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"7\" title=\"Mustard · Aug: 0.67×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"8\" title=\"Mustard · Sep: 1.02×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"9\" title=\"Mustard · Oct: 1.36×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"10\" title=\"Mustard · Nov: 1.61×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"11\" title=\"Mustard · Dec: 1.69×\"></td></tr><tr><th scope=\"row\">Rice</th><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"0\" title=\"Rice · Jan: 1.52×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"1\" title=\"Rice · Feb: 1.6×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"2\" title=\"Rice · Mar: 1.52×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"3\" title=\"Rice · Apr: 1.29×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"4\" title=\"Rice · May: 0.99×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"5\" title=\"Rice · Jun: 0.69×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"6\" title=\"Rice · Jul: 0.47×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"7\" title=\"Rice · Aug: 0.4×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"8\" title=\"Rice · Sep: 0.49×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"9\" title=\"Rice · Oct: 0.72×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"10\" title=\"Rice · Nov: 1.02×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"11\" title=\"Rice · Dec: 1.32×\"></td></tr><tr><th scope=\"row\">Wheat</th><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"0\" title=\"Wheat · Jan: 1×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"1\" title=\"Wheat · Feb: 1.21×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"2\" title=\"Wheat · Mar: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"3\" title=\"Wheat · Apr: 1.43×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"4\" title=\"Wheat · May: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"5\" title=\"Wheat · Jun: 1.21×\"></td><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"6\" title=\"Wheat · Jul: 1×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"7\" title=\"Wheat · Aug: 0.78×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"8\" title=\"Wheat · Sep: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"9\" title=\"Wheat · Oct: 0.57×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"10\" title=\"Wheat · Nov: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"11\" title=\"Wheat · Dec: 0.8×\"></td></tr></tbody></table>",
+      "takeaway": "Rice usually sells 1.5× its average in Mar."
+    },
+    "items.last-30": {
+      "label": "Last 30 days",
+      "split": "Retail₹11,862 · 30%Wholesale₹28,235 · 70%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.this-year": {
+      "label": "2028",
+      "split": "Retail₹29,028 · 50%Wholesale₹29,033 · 50%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.last-year": {
+      "label": "2027",
+      "split": "Retail₹2,05,213 · 70%Wholesale₹89,088 · 30%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    }
+  },
+  "insights.mar31": {
+    "actions": {
+      "insightsPeriodLabel": "Mar 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹44,473 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,43,474 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": {
+      "insightsPeriodLabel": "Mar 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹44,473 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,43,474 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTakeaway": "Gram earned the most profit (₹1,129).Mustard sold well but earned only ₹10.9 per ₹100.",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹8,166₹1,12913.8▲ 36%Mustard₹8,873₹96310.9▲ 143%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▼ 56%Maize₹1,870₹28915.5▲ 50%",
+      "insightsSplit": "Retail₹17,718 · 71%Wholesale₹7,259 · 29%",
+      "insightsBoughtTable": "ItemkgPaidMustard1590₹85,450Gram1262₹60,122Maize92₹1,874",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹94616▼ 2%Mustard₹3,858₹61716▲ 6%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▼ 56%Maize₹1,870₹28915.5▲ 50%",
+    "customers": {
+      "insightsPeriodLabel": "Mar 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹44,473 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,43,474 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTakeaway": "Gram earned the most profit (₹946).",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹5,922₹94616▼ 2%Mustard₹3,858₹61716▲ 6%Rice₹4,242₹49611.7▲ 130%Wheat₹1,826₹31517.2▼ 56%Maize₹1,870₹28915.5▲ 50%",
+      "insightsSplit": "Retail₹17,718 · 71%Wholesale₹7,259 · 29%",
+      "insightsBoughtTable": "ItemkgPaidMustard1590₹85,450Gram1262₹60,122Maize92₹1,874",
+      "insightsPartiesTakeaway": "Top 5 customers gave 89% of sales.",
+      "insightsCustomersTable": "PartySalesBillsLast billSharma Stores₹7,983431 MarKamla Devi₹5,338530 Marराम लाल₹4,889421 MarShyam Lal₹2,124329 MarRavi₹2,000115 MarSita₹1,068222 MarMohan₹1,035117 MarGupta Traders₹540119 Mar",
+      "insightsStopped": "Every regular buyer came recently.",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "suppliers": {
+      "table": "PartyPaidBillsLast billSharma Stores₹61,458327 MarMohan₹26,989223 MarGupta Traders₹25,93515 Marराम लाल₹18,13713 MarShyam Lal₹14,927130 Mar",
+      "takeaway": "Top 5 suppliers got 100% of what you paid."
+    },
+    "seasons": {
+      "calendar": "<table class=\"ins-heat\"><thead><tr><th></th><th>Jan</th><th>Feb</th><th class=\"ins-now\">Mar</th><th>Apr</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th></tr></thead><tbody><tr><th scope=\"row\">Gram</th><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"0\" title=\"Gram · Jan: 0.31×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"1\" title=\"Gram · Feb: 0.21×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"2\" title=\"Gram · Mar: 0.33×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"3\" title=\"Gram · Apr: 0.63×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"4\" title=\"Gram · May: 1.03×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"5\" title=\"Gram · Jun: 1.42×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"6\" title=\"Gram · Jul: 1.7×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"7\" title=\"Gram · Aug: 1.79×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"8\" title=\"Gram · Sep: 1.67×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"9\" title=\"Gram · Oct: 1.37×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"10\" title=\"Gram · Nov: 0.97×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"11\" title=\"Gram · Dec: 0.57×\"></td></tr><tr><th scope=\"row\">Maize</th><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"0\" title=\"Maize · Jan: 0.99×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"1\" title=\"Maize · Feb: 0.61×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"2\" title=\"Maize · Mar: 0.34×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"3\" title=\"Maize · Apr: 0.25×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"4\" title=\"Maize · May: 0.36×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"5\" title=\"Maize · Jun: 0.64×\"></td><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"6\" title=\"Maize · Jul: 1.02×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"7\" title=\"Maize · Aug: 1.4×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"8\" title=\"Maize · Sep: 1.66×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"9\" title=\"Maize · Oct: 1.75×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"10\" title=\"Maize · Nov: 1.63×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"11\" title=\"Maize · Dec: 1.34×\"></td></tr><tr><th scope=\"row\">Mustard</th><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"0\" title=\"Mustard · Jan: 1.59×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"1\" title=\"Mustard · Feb: 1.33×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"2\" title=\"Mustard · Mar: 0.99×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"3\" title=\"Mustard · Apr: 0.64×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"4\" title=\"Mustard · May: 0.39×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"5\" title=\"Mustard · Jun: 0.31×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"6\" title=\"Mustard · Jul: 0.41×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"7\" title=\"Mustard · Aug: 0.67×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"8\" title=\"Mustard · Sep: 1.02×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"9\" title=\"Mustard · Oct: 1.36×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"10\" title=\"Mustard · Nov: 1.61×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"11\" title=\"Mustard · Dec: 1.69×\"></td></tr><tr><th scope=\"row\">Rice</th><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"0\" title=\"Rice · Jan: 1.52×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"1\" title=\"Rice · Feb: 1.6×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"2\" title=\"Rice · Mar: 1.52×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"3\" title=\"Rice · Apr: 1.29×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"4\" title=\"Rice · May: 0.99×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"5\" title=\"Rice · Jun: 0.69×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"6\" title=\"Rice · Jul: 0.47×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"7\" title=\"Rice · Aug: 0.4×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"8\" title=\"Rice · Sep: 0.49×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"9\" title=\"Rice · Oct: 0.72×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"10\" title=\"Rice · Nov: 1.02×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"11\" title=\"Rice · Dec: 1.32×\"></td></tr><tr><th scope=\"row\">Wheat</th><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"0\" title=\"Wheat · Jan: 1×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"1\" title=\"Wheat · Feb: 1.21×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"2\" title=\"Wheat · Mar: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"3\" title=\"Wheat · Apr: 1.43×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"4\" title=\"Wheat · May: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"5\" title=\"Wheat · Jun: 1.21×\"></td><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"6\" title=\"Wheat · Jul: 1×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"7\" title=\"Wheat · Aug: 0.78×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"8\" title=\"Wheat · Sep: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"9\" title=\"Wheat · Oct: 0.57×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"10\" title=\"Wheat · Nov: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"11\" title=\"Wheat · Dec: 0.8×\"></td></tr></tbody></table>",
+      "takeaway": "No item has a busy month in the next 8 weeks."
+    },
+    "items.last-30": {
+      "label": "Last 30 days",
+      "split": "Retail₹17,718 · 71%Wholesale₹7,259 · 29%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.this-year": {
+      "label": "2027",
+      "split": "Retail₹48,897 · 77%Wholesale₹14,641 · 23%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.last-year": {
+      "label": "2026",
+      "split": "Retail₹1,76,796 · 63%Wholesale₹1,02,310 · 37%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    }
+  },
+  "insights.jan1": {
+    "actions": {
+      "insightsPeriodLabel": "Jan 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹34,678 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,34,230 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": {
+      "insightsPeriodLabel": "Jan 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹34,678 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,34,230 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTakeaway": "Gram earned the most profit (₹177).",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹17714.9▲ 225%Wheat₹644₹9614.9—",
+      "insightsSplit": "Retail₹1,827 · 100%Wholesale₹0 · 0%",
+      "insightsBoughtTable": "No purchases in this period.",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "itemsRetail": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹17714.9▲ 225%Wheat₹644₹9614.9—",
+    "customers": {
+      "insightsPeriodLabel": "Jan 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹34,678 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,34,230 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsItemsTakeaway": "Gram earned the most profit (₹177).",
+      "insightsItemsTable": "ItemSalesProfit₹ per ₹100vs last yearGram₹1,183₹17714.9▲ 225%Wheat₹644₹9614.9—",
+      "insightsSplit": "Retail₹1,827 · 100%Wholesale₹0 · 0%",
+      "insightsBoughtTable": "No purchases in this period.",
+      "insightsPartiesTakeaway": "Top 5 customers gave 100% of sales.",
+      "insightsCustomersTable": "PartySalesBillsLast billShyam Lal₹1,82711 Jan",
+      "insightsStopped": "Every regular buyer came recently.",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "suppliers": {
+      "table": "No bills in this period.",
+      "takeaway": ""
+    },
+    "seasons": {
+      "calendar": "<table class=\"ins-heat\"><thead><tr><th></th><th class=\"ins-now\">Jan</th><th>Feb</th><th>Mar</th><th>Apr</th><th>May</th><th>Jun</th><th>Jul</th><th>Aug</th><th>Sep</th><th>Oct</th><th>Nov</th><th>Dec</th></tr></thead><tbody><tr><th scope=\"row\">Gram</th><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"0\" title=\"Gram · Jan: 0.31×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"1\" title=\"Gram · Feb: 0.21×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"2\" title=\"Gram · Mar: 0.33×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"3\" title=\"Gram · Apr: 0.63×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"4\" title=\"Gram · May: 1.03×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"5\" title=\"Gram · Jun: 1.42×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"6\" title=\"Gram · Jul: 1.7×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"7\" title=\"Gram · Aug: 1.79×\"></td><td class=\"h4\" data-item=\"i-gram\" data-cal-month=\"8\" title=\"Gram · Sep: 1.67×\"></td><td class=\"h3\" data-item=\"i-gram\" data-cal-month=\"9\" title=\"Gram · Oct: 1.37×\"></td><td class=\"h2\" data-item=\"i-gram\" data-cal-month=\"10\" title=\"Gram · Nov: 0.97×\"></td><td class=\"h1\" data-item=\"i-gram\" data-cal-month=\"11\" title=\"Gram · Dec: 0.57×\"></td></tr><tr><th scope=\"row\">Maize</th><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"0\" title=\"Maize · Jan: 0.99×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"1\" title=\"Maize · Feb: 0.61×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"2\" title=\"Maize · Mar: 0.34×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"3\" title=\"Maize · Apr: 0.25×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"4\" title=\"Maize · May: 0.36×\"></td><td class=\"h1\" data-item=\"i-maize\" data-cal-month=\"5\" title=\"Maize · Jun: 0.64×\"></td><td class=\"h2\" data-item=\"i-maize\" data-cal-month=\"6\" title=\"Maize · Jul: 1.02×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"7\" title=\"Maize · Aug: 1.4×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"8\" title=\"Maize · Sep: 1.66×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"9\" title=\"Maize · Oct: 1.75×\"></td><td class=\"h4\" data-item=\"i-maize\" data-cal-month=\"10\" title=\"Maize · Nov: 1.63×\"></td><td class=\"h3\" data-item=\"i-maize\" data-cal-month=\"11\" title=\"Maize · Dec: 1.34×\"></td></tr><tr><th scope=\"row\">Mustard</th><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"0\" title=\"Mustard · Jan: 1.59×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"1\" title=\"Mustard · Feb: 1.33×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"2\" title=\"Mustard · Mar: 0.99×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"3\" title=\"Mustard · Apr: 0.64×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"4\" title=\"Mustard · May: 0.39×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"5\" title=\"Mustard · Jun: 0.31×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"6\" title=\"Mustard · Jul: 0.41×\"></td><td class=\"h1\" data-item=\"i-mustard\" data-cal-month=\"7\" title=\"Mustard · Aug: 0.67×\"></td><td class=\"h2\" data-item=\"i-mustard\" data-cal-month=\"8\" title=\"Mustard · Sep: 1.02×\"></td><td class=\"h3\" data-item=\"i-mustard\" data-cal-month=\"9\" title=\"Mustard · Oct: 1.36×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"10\" title=\"Mustard · Nov: 1.61×\"></td><td class=\"h4\" data-item=\"i-mustard\" data-cal-month=\"11\" title=\"Mustard · Dec: 1.69×\"></td></tr><tr><th scope=\"row\">Rice</th><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"0\" title=\"Rice · Jan: 1.52×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"1\" title=\"Rice · Feb: 1.6×\"></td><td class=\"h4\" data-item=\"i-rice\" data-cal-month=\"2\" title=\"Rice · Mar: 1.52×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"3\" title=\"Rice · Apr: 1.29×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"4\" title=\"Rice · May: 0.99×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"5\" title=\"Rice · Jun: 0.69×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"6\" title=\"Rice · Jul: 0.47×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"7\" title=\"Rice · Aug: 0.4×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"8\" title=\"Rice · Sep: 0.49×\"></td><td class=\"h1\" data-item=\"i-rice\" data-cal-month=\"9\" title=\"Rice · Oct: 0.72×\"></td><td class=\"h2\" data-item=\"i-rice\" data-cal-month=\"10\" title=\"Rice · Nov: 1.02×\"></td><td class=\"h3\" data-item=\"i-rice\" data-cal-month=\"11\" title=\"Rice · Dec: 1.32×\"></td></tr><tr><th scope=\"row\">Wheat</th><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"0\" title=\"Wheat · Jan: 1×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"1\" title=\"Wheat · Feb: 1.21×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"2\" title=\"Wheat · Mar: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"3\" title=\"Wheat · Apr: 1.43×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"4\" title=\"Wheat · May: 1.37×\"></td><td class=\"h3\" data-item=\"i-wheat\" data-cal-month=\"5\" title=\"Wheat · Jun: 1.21×\"></td><td class=\"h2\" data-item=\"i-wheat\" data-cal-month=\"6\" title=\"Wheat · Jul: 1×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"7\" title=\"Wheat · Aug: 0.78×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"8\" title=\"Wheat · Sep: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"9\" title=\"Wheat · Oct: 0.57×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"10\" title=\"Wheat · Nov: 0.63×\"></td><td class=\"h1\" data-item=\"i-wheat\" data-cal-month=\"11\" title=\"Wheat · Dec: 0.8×\"></td></tr></tbody></table>",
+      "takeaway": "Rice usually sells 1.6× its average in Feb."
+    },
+    "items.last-30": {
+      "label": "Last 30 days",
+      "split": "Retail₹15,938 · 100%Wholesale₹0 · 0%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.this-year": {
+      "label": "2027",
+      "split": "Retail₹1,827 · 100%Wholesale₹0 · 0%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    },
+    "items.last-year": {
+      "label": "2026",
+      "split": "Retail₹2,05,850 · 81%Wholesale₹47,282 · 19%",
+      "checks": "✓ Items and parties add up to Money's sales"
+    }
+  },
+  "insights.first.dates": {
+    "steps": [
+      "month:2026-10",
+      "month:2026-09",
+      "month:2026-08",
+      "month:2026-09",
+      "month:2026-10",
+      "this-month",
+      "this-month",
+      "last-year"
+    ],
+    "taps": [
+      "month:2026-01",
+      "month:2026-02",
+      "month:2026-03",
+      "month:2026-04",
+      "month:2026-05",
+      "month:2026-06",
+      "month:2026-07",
+      "month:2026-08",
+      "month:2026-09",
+      "month:2026-10",
+      "this-month",
+      "month:2025-12"
+    ],
+    "loadOlder": [
+      "Wed Oct 01 2025 00:00:00 GMT+0530 (India Standard Time)"
+    ]
+  },
+  "insights.jan31.dates": {
+    "steps": [
+      "month:2026-12",
+      "month:2026-11",
+      "month:2026-10",
+      "month:2026-11",
+      "month:2026-12",
+      "this-month",
+      "this-month",
+      "last-year"
+    ],
+    "taps": [
+      "this-month",
+      "month:2026-02",
+      "month:2026-03",
+      "month:2026-04",
+      "month:2026-05",
+      "month:2026-06",
+      "month:2026-07",
+      "month:2026-08",
+      "month:2026-09",
+      "month:2026-10",
+      "month:2026-11",
+      "month:2026-12"
+    ],
+    "loadOlder": [
+      "Mon Dec 01 2025 00:00:00 GMT+0530 (India Standard Time)"
+    ]
+  },
+  "insights.leapDay.dates": {
+    "steps": [
+      "month:2028-01",
+      "month:2027-12",
+      "month:2027-11",
+      "month:2027-12",
+      "month:2028-01",
+      "this-month",
+      "this-month",
+      "last-year"
+    ],
+    "taps": [
+      "month:2028-01",
+      "this-month",
+      "month:2027-03",
+      "month:2027-04",
+      "month:2027-05",
+      "month:2027-06",
+      "month:2027-07",
+      "month:2027-08",
+      "month:2027-09",
+      "month:2027-10",
+      "month:2027-11",
+      "month:2027-12"
+    ],
+    "loadOlder": [
+      "Fri Jan 01 2027 00:00:00 GMT+0530 (India Standard Time)"
+    ]
+  },
+  "insights.mar31.dates": {
+    "steps": [
+      "month:2027-02",
+      "month:2027-01",
+      "month:2026-12",
+      "month:2027-01",
+      "month:2027-02",
+      "this-month",
+      "this-month",
+      "last-year"
+    ],
+    "taps": [
+      "month:2027-01",
+      "month:2027-02",
+      "this-month",
+      "month:2026-04",
+      "month:2026-05",
+      "month:2026-06",
+      "month:2026-07",
+      "month:2026-08",
+      "month:2026-09",
+      "month:2026-10",
+      "month:2026-11",
+      "month:2026-12"
+    ],
+    "loadOlder": [
+      "Sun Feb 01 2026 00:00:00 GMT+0530 (India Standard Time)"
+    ]
+  },
+  "insights.jan1.dates": {
+    "steps": [
+      "month:2026-12",
+      "month:2026-11",
+      "month:2026-10",
+      "month:2026-11",
+      "month:2026-12",
+      "this-month",
+      "this-month",
+      "last-year"
+    ],
+    "taps": [
+      "this-month",
+      "month:2026-02",
+      "month:2026-03",
+      "month:2026-04",
+      "month:2026-05",
+      "month:2026-06",
+      "month:2026-07",
+      "month:2026-08",
+      "month:2026-09",
+      "month:2026-10",
+      "month:2026-11",
+      "month:2026-12"
+    ],
+    "loadOlder": [
+      "Mon Dec 01 2025 00:00:00 GMT+0530 (India Standard Time)"
+    ]
+  },
+  "insights.first.window": {
+    "actions": {
+      "insightsPeriodLabel": "Nov 2026",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹41,439 for more than 30 days.Open Outstanding ›📤You owe 7 parties ₹1,52,097 for more than 30 days.Open Outstanding ›",
+      "insightsActionsStock": "🌾Stock up Rice: Jan is busy in 9 weeks, stock lasts about 0.7 weeks. (Weekly sales estimated from the last 4 weeks of bills loaded.)See rate trend ›🌾Stock up Mustard: Dec is busy in 4 weeks, stock lasts about 1.2 weeks. (Weekly sales estimated from the last 4 weeks of bills loaded.)See rate trend ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": "ItemSalesvs last yearRice₹4,279▲ 152%Gram₹2,858▲ 5%Mustard₹2,512▼ 81%Wheat₹1,524▲ 7%Maize₹1,453＝ 0%",
+    "parties": {
+      "takeaway": "Top 5 customers gave 96% of sales.",
+      "stopped": "⚠ Last year's bills for these months are not loaded, so regular buyers who stopped coming can't be checked. Load older bills to check.Load older bills"
+    }
+  },
+  "insights.jan31.window": {
+    "actions": {
+      "insightsPeriodLabel": "Jan 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹48,112 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,29,448 for more than 30 days.Open Outstanding ›",
+      "insightsActionsStock": "🌾Stock up Rice: Feb is busy in 0 weeks, stock lasts about 1.6 weeks.See rate trend ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": "ItemSalesvs last yearMustard₹5,964▼ 52%Gram₹1,913▼ 47%Maize₹1,641▼ 29%Rice₹1,457▼ 60%Wheat₹1,428▼ 26%",
+    "parties": {
+      "takeaway": "Top 5 customers gave 94% of sales.",
+      "stopped": "Every regular buyer came recently."
+    }
+  },
+  "insights.leapDay.window": {
+    "actions": {
+      "insightsPeriodLabel": "Feb 2028",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹35,876 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,75,361 for more than 30 days.Open Outstanding ›",
+      "insightsActionsStock": "🌾Stock up Rice: Mar is busy in 0 weeks, stock lasts about 1.1 weeks.See rate trend ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": "ItemSalesvs last yearGram₹6,914▲ 135%Mustard₹4,287▼ 35%Rice₹3,129▲ 13%Maize₹2,995▲ 108%Wheat₹2,836▼ 59%",
+    "parties": {
+      "takeaway": "Top 5 customers gave 85% of sales.",
+      "stopped": "⚠ Last year's bills for these months are not loaded, so regular buyers who stopped coming can't be checked. Load older bills to check.Load older bills"
+    }
+  },
+  "insights.mar31.window": {
+    "actions": {
+      "insightsPeriodLabel": "Mar 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹44,473 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,43,474 for more than 30 days.Open Outstanding ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": "ItemSalesvs last yearMustard₹7,528▲ 278%Wheat₹4,139▲ 195%Gram₹3,193▲ 36%Rice₹2,413▲ 164%Maize₹1,129▼ 47%",
+    "parties": {
+      "takeaway": "Top 5 customers gave 95% of sales.",
+      "stopped": "⚠ Last year's bills for these months are not loaded, so regular buyers who stopped coming can't be checked. Load older bills to check.Load older bills"
+    }
+  },
+  "insights.jan1.window": {
+    "actions": {
+      "insightsPeriodLabel": "Jan 2027",
+      "insightsPreset": "This month Last month This year Last year Last 30 days",
+      "insightsActionsDues": "⏰8 parties owe you ₹34,678 for more than 30 days.Open Outstanding ›📤You owe 8 parties ₹1,34,230 for more than 30 days.Open Outstanding ›",
+      "insightsActionsStock": "🌾Stock up Rice: Feb is busy in 4 weeks, stock lasts about 1.5 weeks. (Weekly sales estimated from the last 4 weeks of bills loaded.)See rate trend ›",
+      "insightsActionsLinks": "🔎Check open anomalies.Open Anomalies ›",
+      "insightsChecks": "✓ Items and parties add up to Money's sales"
+    },
+    "items": "ItemSalesvs last yearMustard₹4,912▼ 49%Gram₹3,691▲ 57%Maize₹3,035▲ 115%Rice₹3,006▲ 148%Wheat₹1,262▼ 66%",
+    "parties": {
+      "takeaway": "Top 5 customers gave 91% of sales.",
+      "stopped": "⚠ Last year's bills for these months are not loaded, so regular buyers who stopped coming can't be checked. Load older bills to check.Load older bills"
+    }
+  },
+  "money.first": {
+    "texts": {
+      "moneyPeriodLabel": "1 Nov 2026",
+      "moneyPreset": "This month Last month This year Last year Last 30 days",
+      "moneyProfitValue": "₹0",
+      "moneyProfitCompare": "▲ 100% vs Oct · ▲ 100% vs Nov 2025",
+      "moneyProfitTakeaway": "Profit ₹0, 100% more than Nov 2025.",
+      "moneySales": "₹0",
+      "moneySalesSplit": "0 bills",
+      "moneyCogs": "₹0",
+      "moneyGross": "₹0",
+      "moneyBusinessTerm": "₹0",
+      "moneyBadDebts": "₹0",
+      "moneyProfitTerm": "₹0",
+      "moneyProfitChart": "Nov 2025: -₹6,612Dec 2025: -₹11,430Jan 2026: -₹6,927Feb 2026: -₹12,009Mar 2026: -₹9,462Apr 2026: -₹12,230May 2026: -₹13,440Jun 2026: -₹9,013Jul 2026: -₹12,438Aug 2026: -₹7,759Sep 2026: -₹8,368Oct 2026: -₹11,506Nov 2026: ₹0NovFebMayAugNov",
+      "moneyProfitLegend": "This year Last year",
+      "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
+      "moneyStockMovement": "Stock at the start₹7,31,936+ Bought (at line rate)₹0− Cost of goods sold₹0± Stock corrections₹0= Stock at the end₹7,31,936✓ Stock adds up",
+      "moneyPurchases": "₹0 · 0 bills",
+      "moneyNetCash": "₹0",
+      "moneyCashCompare": "▲ 100% vs Oct · ▼ 100% vs Nov 2025",
+      "moneyCashTakeaway": "₹0 more came in than went out.",
+      "moneyIn": "₹0",
+      "moneyInSplit": "cash ₹0 · online ₹0",
+      "moneyOut": "₹0",
+      "moneyOutSplit": "cash ₹0 · online ₹0",
+      "moneyCashChart": "1 Nov: ₹01",
+      "moneyBusiness": "₹0",
+      "moneySpendCompare": "▼ 100% vs Oct · ▼ 100% vs Nov 2025",
+      "moneySpendTakeaway": "No business expenses in this period.₹0 went to personal use; ₹0 of the profit stays in the business.",
+      "moneyCategories": "No business expenses in this period.",
+      "moneyLabourBills": "(0 bills)",
+      "moneyLabour": "₹0",
+      "moneyLabourCalc": "0 kg ÷ 35 kg, each day rounded up = 0 packages × ₹6",
+      "moneyLabourToPay": "₹0",
+      "moneyLabourDiff": "To pay matches what was deducted",
+      "moneyPersonal": "₹0",
+      "moneyWithdrawn": "₹0",
+      "moneyKept": "₹0",
+      "moneyWithdrawalList": "No withdrawals in this period.",
+      "moneyWorthValue": "₹6,29,882",
+      "moneyWorthCompare": "stock vs Nov 2025: not known",
+      "moneyWorthTakeaway": "You are worth ₹6,29,882.₹42,698 of it is still with customers.",
+      "moneyWorthTerms": "Stock value₹7,31,936 Stock ›To receive₹42,698 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,52,097 Outstanding ›Net worth₹6,29,882",
+      "moneyAccounts": "Bank₹12,346 ✕ Loan−₹5,001 ✕ Odd₹0 ✕",
+      "moneyAccType": "I have this I owe this",
+      "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
+    },
+    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"106\" y2=\"106\"></line><rect class=\"ins-bar \" x=\"15.00%\" y=\"105.0\" width=\"70.00%\" height=\"1.0\" data-day=\"2026-11-01\"><title>1 Nov: ₹0</title></rect><text x=\"50.00%\" y=\"118\" class=\"ins-tick\">1</text></svg>",
+    "profitChart": "Nov 2025: -₹6,612Dec 2025: -₹11,430Jan 2026: -₹6,927Feb 2026: -₹12,009Mar 2026: -₹9,462Apr 2026: -₹12,230May 2026: -₹13,440Jun 2026: -₹9,013Jul 2026: -₹12,438Aug 2026: -₹7,759Sep 2026: -₹8,368Oct 2026: -₹11,506Nov 2026: ₹0NovFebMayAugNov",
+    "accountsTotal": 7345.18,
+    "sessionsAsked": [
+      "2026-10-02|2026-11-01"
+    ]
+  },
+  "money.jan31": {
+    "texts": {
+      "moneyPeriodLabel": "1–31 Jan 2027",
+      "moneyPreset": "This month Last month This year Last year Last 30 days",
+      "moneyProfitValue": "-₹13,184",
+      "moneyProfitCompare": "▼ 20% vs Dec · ▼ 26% vs Jan 2026",
+      "moneyProfitTakeaway": "Loss of ₹13,184 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
+      "moneySales": "₹23,119",
+      "moneySalesSplit": "16 bills",
+      "moneyCogs": "₹19,759",
+      "moneyGross": "₹3,360 · ₹14.5 per ₹100 sold",
+      "moneyBusinessTerm": "₹16,100",
+      "moneyBadDebts": "₹444",
+      "moneyProfitTerm": "-₹13,184",
+      "moneyProfitChart": "Jan 2026: -₹10,487Feb 2026: -₹11,638Mar 2026: -₹10,276Apr 2026: -₹9,715May 2026: -₹10,621Jun 2026: -₹7,526Jul 2026: -₹6,231Aug 2026: -₹9,431Sep 2026: -₹10,059Oct 2026: -₹9,253Nov 2026: -₹11,333Dec 2026: -₹11,017Jan 2027: -₹13,184JanAprJulOctJan",
+      "moneyProfitLegend": "This year Last year",
+      "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
+      "moneyStockMovement": "Stock at the start₹8,63,649+ Bought (at line rate)₹6,758− Cost of goods sold₹19,759± Stock corrections₹0= Stock at the end₹8,50,648✓ Stock adds up",
+      "moneyPurchases": "₹6,740 · 2 bills",
+      "moneyNetCash": "-₹7,679",
+      "moneyCashCompare": "▲ 80% vs Dec · ▲ 8% vs Jan 2026",
+      "moneyCashTakeaway": "₹7,679 more went out than came in.Biggest outflow: expenses (₹18,100).",
+      "moneyIn": "₹17,865",
+      "moneyInSplit": "cash ₹17,098 · online ₹767",
+      "moneyOut": "₹25,544",
+      "moneyOutSplit": "cash ₹22,336 · online ₹3,208",
+      "moneyCashChart": "1 Jan: -₹3712 Jan: ₹1,3103 Jan: ₹04 Jan: -₹1,2005 Jan: -₹3,2086 Jan: ₹07 Jan: -₹9758 Jan: ₹1809 Jan: ₹91910 Jan: ₹011 Jan: -₹1,82512 Jan: -₹1,02613 Jan: -₹1,75014 Jan: ₹31115 Jan: ₹87216 Jan: -₹40017 Jan: ₹018 Jan: ₹6,00419 Jan: -₹75020 Jan: -₹1,67921 Jan: -₹2,46722 Jan: ₹7523 Jan: -₹69824 Jan: -₹71225 Jan: -₹72526 Jan: ₹75627 Jan: ₹1,10628 Jan: -₹1,00029 Jan: -₹1,50030 Jan: ₹1,07431 Jan: ₹018152229",
+      "moneyBusiness": "₹16,100",
+      "moneySpendCompare": "▲ 23% vs Dec · ▲ 17% vs Jan 2026",
+      "moneySpendTakeaway": "Business expenses 17% more than last year, mostly Other.₹2,000 went to personal use, ₹15,184 more than the profit.",
+      "moneySpendCaveats": "⚠ ₹1,050 of expenses have no type; they count as business.",
+      "moneyCategories": "Other₹15,050No type₹1,050",
+      "moneyLabourBills": "(2 bills)",
+      "moneyLabour": "₹18",
+      "moneyLabourCalc": "153 kg ÷ 35 kg, each day rounded up = 5 packages × ₹6",
+      "moneyLabourToPay": "₹30",
+      "moneyLabourDiff": "To pay is ₹12 more than deducted",
+      "moneyPersonal": "₹2,000",
+      "moneyWithdrawn": "₹0",
+      "moneyKept": "-₹15,184",
+      "moneyWithdrawalList": "No withdrawals in this period.",
+      "moneyWorthValue": "₹7,81,989",
+      "moneyWorthCompare": "stock vs Jan 2026: not known",
+      "moneyWorthTakeaway": "You are worth ₹7,81,989.₹53,444 of it is still with customers.",
+      "moneyWorthTerms": "Stock value₹8,50,648 Stock ›To receive₹53,444 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,29,448 Outstanding ›Net worth₹7,81,989",
+      "moneyAccounts": "Bank₹12,346 ✕ Loan−₹5,001 ✕ Odd₹0 ✕",
+      "moneyAccType": "I have this I owe this",
+      "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
+    },
+    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.48%\" y=\"60.0\" width=\"2.26%\" height=\"3.5\" data-day=\"2027-01-01\"><title>1 Jan: -₹371</title></rect><rect class=\"ins-bar \" x=\"3.71%\" y=\"47.8\" width=\"2.26%\" height=\"12.2\" data-day=\"2027-01-02\"><title>2 Jan: ₹1,310</title></rect><rect class=\"ins-bar \" x=\"6.94%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-03\"><title>3 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"10.16%\" y=\"60.0\" width=\"2.26%\" height=\"11.2\" data-day=\"2027-01-04\"><title>4 Jan: -₹1,200</title></rect><rect class=\"ins-bar neg\" x=\"13.39%\" y=\"60.0\" width=\"2.26%\" height=\"29.9\" data-day=\"2027-01-05\"><title>5 Jan: -₹3,208</title></rect><rect class=\"ins-bar \" x=\"16.61%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-06\"><title>6 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"19.84%\" y=\"60.0\" width=\"2.26%\" height=\"9.1\" data-day=\"2027-01-07\"><title>7 Jan: -₹975</title></rect><rect class=\"ins-bar \" x=\"23.06%\" y=\"58.3\" width=\"2.26%\" height=\"1.7\" data-day=\"2027-01-08\"><title>8 Jan: ₹180</title></rect><rect class=\"ins-bar \" x=\"26.29%\" y=\"51.4\" width=\"2.26%\" height=\"8.6\" data-day=\"2027-01-09\"><title>9 Jan: ₹919</title></rect><rect class=\"ins-bar \" x=\"29.52%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-10\"><title>10 Jan: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"32.74%\" y=\"60.0\" width=\"2.26%\" height=\"17.0\" data-day=\"2027-01-11\"><title>11 Jan: -₹1,825</title></rect><rect class=\"ins-bar neg\" x=\"35.97%\" y=\"60.0\" width=\"2.26%\" height=\"9.6\" data-day=\"2027-01-12\"><title>12 Jan: -₹1,026</title></rect><rect class=\"ins-bar neg\" x=\"39.19%\" y=\"60.0\" width=\"2.26%\" height=\"16.3\" data-day=\"2027-01-13\"><title>13 Jan: -₹1,750</title></rect><rect class=\"ins-bar \" x=\"42.42%\" y=\"57.1\" width=\"2.26%\" height=\"2.9\" data-day=\"2027-01-14\"><title>14 Jan: ₹311</title></rect><rect class=\"ins-bar \" x=\"45.65%\" y=\"51.9\" width=\"2.26%\" height=\"8.1\" data-day=\"2027-01-15\"><title>15 Jan: ₹872</title></rect><rect class=\"ins-bar neg\" x=\"48.87%\" y=\"60.0\" width=\"2.26%\" height=\"3.7\" data-day=\"2027-01-16\"><title>16 Jan: -₹400</title></rect><rect class=\"ins-bar \" x=\"52.10%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-17\"><title>17 Jan: ₹0</title></rect><rect class=\"ins-bar \" x=\"55.32%\" y=\"4.0\" width=\"2.26%\" height=\"56.0\" data-day=\"2027-01-18\"><title>18 Jan: ₹6,004</title></rect><rect class=\"ins-bar neg\" x=\"58.55%\" y=\"60.0\" width=\"2.26%\" height=\"7.0\" data-day=\"2027-01-19\"><title>19 Jan: -₹750</title></rect><rect class=\"ins-bar neg\" x=\"61.77%\" y=\"60.0\" width=\"2.26%\" height=\"15.7\" data-day=\"2027-01-20\"><title>20 Jan: -₹1,679</title></rect><rect class=\"ins-bar neg\" x=\"65.00%\" y=\"60.0\" width=\"2.26%\" height=\"23.0\" data-day=\"2027-01-21\"><title>21 Jan: -₹2,467</title></rect><rect class=\"ins-bar \" x=\"68.23%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-22\"><title>22 Jan: ₹75</title></rect><rect class=\"ins-bar neg\" x=\"71.45%\" y=\"60.0\" width=\"2.26%\" height=\"6.5\" data-day=\"2027-01-23\"><title>23 Jan: -₹698</title></rect><rect class=\"ins-bar neg\" x=\"74.68%\" y=\"60.0\" width=\"2.26%\" height=\"6.6\" data-day=\"2027-01-24\"><title>24 Jan: -₹712</title></rect><rect class=\"ins-bar neg\" x=\"77.90%\" y=\"60.0\" width=\"2.26%\" height=\"6.8\" data-day=\"2027-01-25\"><title>25 Jan: -₹725</title></rect><rect class=\"ins-bar \" x=\"81.13%\" y=\"52.9\" width=\"2.26%\" height=\"7.1\" data-day=\"2027-01-26\"><title>26 Jan: ₹756</title></rect><rect class=\"ins-bar \" x=\"84.35%\" y=\"49.7\" width=\"2.26%\" height=\"10.3\" data-day=\"2027-01-27\"><title>27 Jan: ₹1,106</title></rect><rect class=\"ins-bar neg\" x=\"87.58%\" y=\"60.0\" width=\"2.26%\" height=\"9.3\" data-day=\"2027-01-28\"><title>28 Jan: -₹1,000</title></rect><rect class=\"ins-bar neg\" x=\"90.81%\" y=\"60.0\" width=\"2.26%\" height=\"14.0\" data-day=\"2027-01-29\"><title>29 Jan: -₹1,500</title></rect><rect class=\"ins-bar \" x=\"94.03%\" y=\"50.0\" width=\"2.26%\" height=\"10.0\" data-day=\"2027-01-30\"><title>30 Jan: ₹1,074</title></rect><rect class=\"ins-bar \" x=\"97.26%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-01-31\"><title>31 Jan: ₹0</title></rect><text x=\"1.61%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"24.19%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"46.77%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"69.35%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"91.94%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
+    "profitChart": "Jan 2026: -₹10,487Feb 2026: -₹11,638Mar 2026: -₹10,276Apr 2026: -₹9,715May 2026: -₹10,621Jun 2026: -₹7,526Jul 2026: -₹6,231Aug 2026: -₹9,431Sep 2026: -₹10,059Oct 2026: -₹9,253Nov 2026: -₹11,333Dec 2026: -₹11,017Jan 2027: -₹13,184JanAprJulOctJan",
+    "accountsTotal": 7345.18,
+    "sessionsAsked": [
+      "2027-01-01|2027-01-31"
+    ]
+  },
+  "money.leapDay": {
+    "texts": {
+      "moneyPeriodLabel": "1–29 Feb 2028",
+      "moneyPreset": "This month Last month This year Last year Last 30 days",
+      "moneyProfitValue": "-₹7,263",
+      "moneyProfitCompare": "▲ 21% vs Jan · ▼ 91% vs Feb 2027",
+      "moneyProfitTakeaway": "Loss of ₹7,263 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
+      "moneySales": "₹37,900",
+      "moneySalesSplit": "17 bills",
+      "moneyCogs": "₹34,195",
+      "moneyGross": "₹3,705 · ₹9.8 per ₹100 sold",
+      "moneyBusinessTerm": "₹10,750",
+      "moneyBadDebts": "₹218",
+      "moneyProfitTerm": "-₹7,263",
+      "moneyProfitChart": "Feb 2027: -₹3,812Mar 2027: -₹11,697Apr 2027: -₹11,356May 2027: -₹5,924Jun 2027: -₹7,124Jul 2027: -₹7,404Aug 2027: -₹8,307Sep 2027: -₹8,911Oct 2027: -₹9,471Nov 2027: -₹10,306Dec 2027: -₹11,293Jan 2028: -₹9,204Feb 2028: -₹7,263FebMayAugNovFeb",
+      "moneyProfitLegend": "This year Last year",
+      "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
+      "moneyStockMovement": "Stock at the start₹11,60,453+ Bought (at line rate)₹40,861− Cost of goods sold₹34,195± Stock corrections₹0= Stock at the end₹11,67,119✓ Stock adds up",
+      "moneyPurchases": "₹40,760 · 4 bills",
+      "moneyNetCash": "-₹15,854",
+      "moneyCashCompare": "▲ 22% vs Jan · ▲ 84% vs Feb 2027",
+      "moneyCashTakeaway": "₹15,854 more went out than came in.Biggest outflow: paying for purchases (₹40,760).Money in is below profit because ₹1,797 of these sales is still owed to you.",
+      "moneyIn": "₹37,056",
+      "moneyInSplit": "cash ₹29,274 · online ₹7,782",
+      "moneyOut": "₹52,910",
+      "moneyOutSplit": "cash ₹50,674 · online ₹2,236",
+      "moneyCashChart": "1 Feb: -₹7482 Feb: -₹1,7173 Feb: ₹3834 Feb: -₹22,7135 Feb: ₹6296 Feb: ₹07 Feb: -₹7508 Feb: -₹7259 Feb: ₹1,39610 Feb: -₹20011 Feb: -₹70212 Feb: -₹1,57513 Feb: ₹13814 Feb: -₹12815 Feb: -₹7516 Feb: ₹21917 Feb: -₹15018 Feb: -₹99719 Feb: ₹3,86020 Feb: -₹50021 Feb: ₹022 Feb: ₹1,35123 Feb: ₹45624 Feb: ₹96325 Feb: -₹65826 Feb: -₹10727 Feb: ₹028 Feb: ₹6,66529 Feb: -₹16918152229",
+      "moneyBusiness": "₹10,750",
+      "moneySpendCompare": "▼ 17% vs Jan · ▲ 72% vs Feb 2027",
+      "moneySpendTakeaway": "Business expenses 72% more than last year, mostly Other.₹18,400 went to personal use, ₹25,663 more than the profit.",
+      "moneySpendCaveats": "⚠ ₹250 of expenses have no type; they count as business.",
+      "moneyCategories": "Other₹10,500No type₹250",
+      "moneyLabourBills": "(4 bills)",
+      "moneyLabour": "₹102",
+      "moneyLabourCalc": "820 kg ÷ 35 kg, each day rounded up = 25 packages × ₹6",
+      "moneyLabourToPay": "₹150",
+      "moneyLabourDiff": "To pay is ₹48 more than deducted",
+      "moneyPersonal": "₹1,400",
+      "moneyWithdrawn": "₹17,000",
+      "moneyKept": "-₹25,663",
+      "moneyWithdrawalList": "—1 Feb 2028₹17,000",
+      "moneyWorthValue": "₹10,36,776",
+      "moneyWorthCompare": "stock vs Feb 2027: not known",
+      "moneyWorthTakeaway": "You are worth ₹10,36,776.₹37,673 of it is still with customers.",
+      "moneyWorthTerms": "Stock value₹11,67,119 Stock ›To receive₹37,673 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,75,361 Outstanding ›Net worth₹10,36,776",
+      "moneyAccounts": "Bank₹12,346 ✕ Loan−₹5,001 ✕ Odd₹0 ✕",
+      "moneyAccType": "I have this I owe this",
+      "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
+    },
+    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.52%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-01\"><title>1 Feb: -₹748</title></rect><rect class=\"ins-bar neg\" x=\"3.97%\" y=\"60.0\" width=\"2.41%\" height=\"4.2\" data-day=\"2028-02-02\"><title>2 Feb: -₹1,717</title></rect><rect class=\"ins-bar \" x=\"7.41%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-03\"><title>3 Feb: ₹383</title></rect><rect class=\"ins-bar neg\" x=\"10.86%\" y=\"60.0\" width=\"2.41%\" height=\"56.0\" data-day=\"2028-02-04\"><title>4 Feb: -₹22,713</title></rect><rect class=\"ins-bar \" x=\"14.31%\" y=\"58.4\" width=\"2.41%\" height=\"1.6\" data-day=\"2028-02-05\"><title>5 Feb: ₹629</title></rect><rect class=\"ins-bar \" x=\"17.76%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-06\"><title>6 Feb: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"21.21%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-07\"><title>7 Feb: -₹750</title></rect><rect class=\"ins-bar neg\" x=\"24.66%\" y=\"60.0\" width=\"2.41%\" height=\"1.8\" data-day=\"2028-02-08\"><title>8 Feb: -₹725</title></rect><rect class=\"ins-bar \" x=\"28.10%\" y=\"56.6\" width=\"2.41%\" height=\"3.4\" data-day=\"2028-02-09\"><title>9 Feb: ₹1,396</title></rect><rect class=\"ins-bar neg\" x=\"31.55%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-10\"><title>10 Feb: -₹200</title></rect><rect class=\"ins-bar neg\" x=\"35.00%\" y=\"60.0\" width=\"2.41%\" height=\"1.7\" data-day=\"2028-02-11\"><title>11 Feb: -₹702</title></rect><rect class=\"ins-bar neg\" x=\"38.45%\" y=\"60.0\" width=\"2.41%\" height=\"3.9\" data-day=\"2028-02-12\"><title>12 Feb: -₹1,575</title></rect><rect class=\"ins-bar \" x=\"41.90%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-13\"><title>13 Feb: ₹138</title></rect><rect class=\"ins-bar neg\" x=\"45.34%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-14\"><title>14 Feb: -₹128</title></rect><rect class=\"ins-bar neg\" x=\"48.79%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-15\"><title>15 Feb: -₹75</title></rect><rect class=\"ins-bar \" x=\"52.24%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-16\"><title>16 Feb: ₹219</title></rect><rect class=\"ins-bar neg\" x=\"55.69%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-17\"><title>17 Feb: -₹150</title></rect><rect class=\"ins-bar neg\" x=\"59.14%\" y=\"60.0\" width=\"2.41%\" height=\"2.5\" data-day=\"2028-02-18\"><title>18 Feb: -₹997</title></rect><rect class=\"ins-bar \" x=\"62.59%\" y=\"50.5\" width=\"2.41%\" height=\"9.5\" data-day=\"2028-02-19\"><title>19 Feb: ₹3,860</title></rect><rect class=\"ins-bar neg\" x=\"66.03%\" y=\"60.0\" width=\"2.41%\" height=\"1.2\" data-day=\"2028-02-20\"><title>20 Feb: -₹500</title></rect><rect class=\"ins-bar \" x=\"69.48%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-21\"><title>21 Feb: ₹0</title></rect><rect class=\"ins-bar \" x=\"72.93%\" y=\"56.7\" width=\"2.41%\" height=\"3.3\" data-day=\"2028-02-22\"><title>22 Feb: ₹1,351</title></rect><rect class=\"ins-bar \" x=\"76.38%\" y=\"58.9\" width=\"2.41%\" height=\"1.1\" data-day=\"2028-02-23\"><title>23 Feb: ₹456</title></rect><rect class=\"ins-bar \" x=\"79.83%\" y=\"57.6\" width=\"2.41%\" height=\"2.4\" data-day=\"2028-02-24\"><title>24 Feb: ₹963</title></rect><rect class=\"ins-bar neg\" x=\"83.28%\" y=\"60.0\" width=\"2.41%\" height=\"1.6\" data-day=\"2028-02-25\"><title>25 Feb: -₹658</title></rect><rect class=\"ins-bar neg\" x=\"86.72%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-26\"><title>26 Feb: -₹107</title></rect><rect class=\"ins-bar \" x=\"90.17%\" y=\"59.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-27\"><title>27 Feb: ₹0</title></rect><rect class=\"ins-bar \" x=\"93.62%\" y=\"43.6\" width=\"2.41%\" height=\"16.4\" data-day=\"2028-02-28\"><title>28 Feb: ₹6,665</title></rect><rect class=\"ins-bar neg\" x=\"97.07%\" y=\"60.0\" width=\"2.41%\" height=\"1.0\" data-day=\"2028-02-29\"><title>29 Feb: -₹169</title></rect><text x=\"1.72%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"25.86%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"50.00%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"74.14%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"98.28%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
+    "profitChart": "Feb 2027: -₹3,812Mar 2027: -₹11,697Apr 2027: -₹11,356May 2027: -₹5,924Jun 2027: -₹7,124Jul 2027: -₹7,404Aug 2027: -₹8,307Sep 2027: -₹8,911Oct 2027: -₹9,471Nov 2027: -₹10,306Dec 2027: -₹11,293Jan 2028: -₹9,204Feb 2028: -₹7,263FebMayAugNovFeb",
+    "accountsTotal": 7345.18,
+    "sessionsAsked": [
+      "2028-01-30|2028-02-29"
+    ]
+  },
+  "money.mar31": {
+    "texts": {
+      "moneyPeriodLabel": "1–31 Mar 2027",
+      "moneyPreset": "This month Last month This year Last year Last 30 days",
+      "moneyProfitValue": "-₹14,255",
+      "moneyProfitCompare": "▼ 121% vs Feb · ▼ 130% vs Mar 2026",
+      "moneyProfitTakeaway": "Loss of ₹14,255 in this period.Sales went up but profit went down: goods cost more. Check item margins.",
+      "moneySales": "₹24,977",
+      "moneySalesSplit": "21 bills",
+      "moneyCogs": "₹21,785",
+      "moneyGross": "₹3,192 · ₹12.8 per ₹100 sold",
+      "moneyBusinessTerm": "₹16,775",
+      "moneyBadDebts": "₹672",
+      "moneyProfitTerm": "-₹14,255",
+      "moneyProfitChart": "Mar 2026: -₹6,206Apr 2026: -₹5,146May 2026: -₹11,104Jun 2026: -₹4,224Jul 2026: -₹8,849Aug 2026: -₹10,678Sep 2026: -₹7,209Oct 2026: -₹14,105Nov 2026: -₹4,105Dec 2026: -₹9,083Jan 2027: -₹10,097Feb 2027: -₹6,454Mar 2027: -₹14,255MarJunSepDecMar",
+      "moneyProfitLegend": "This year Last year",
+      "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
+      "moneyStockMovement": "Stock at the start₹6,67,232+ Bought (at line rate)₹1,47,685− Cost of goods sold₹21,785± Stock corrections₹168= Stock at the end₹7,93,300✓ Stock adds up",
+      "moneyPurchases": "₹1,47,446 · 8 bills",
+      "moneyNetCash": "-₹1,18,222",
+      "moneyCashCompare": "▼ 4% vs Feb · ▲ 5% vs Mar 2026",
+      "moneyCashTakeaway": "₹1,18,222 more went out than came in.Biggest outflow: paying for purchases (₹1,11,206).Money in is below profit because ₹4,877 of these sales is still owed to you.",
+      "moneyIn": "₹22,020",
+      "moneyInSplit": "cash ₹13,520 · online ₹8,500",
+      "moneyOut": "₹1,40,242",
+      "moneyOutSplit": "cash ₹1,13,602 · online ₹26,640",
+      "moneyCashChart": "1 Mar: -₹7302 Mar: ₹7053 Mar: -₹19,8624 Mar: -₹3005 Mar: -₹18,6596 Mar: -₹3057 Mar: ₹08 Mar: -₹8009 Mar: -₹24,19710 Mar: -₹8,91511 Mar: -₹55012 Mar: -₹87513 Mar: -₹2,60214 Mar: -₹62515 Mar: ₹2,00016 Mar: -₹90117 Mar: -₹4,39218 Mar: -₹27219 Mar: -₹26,05020 Mar: ₹31821 Mar: ₹85822 Mar: ₹2523 Mar: -₹1,10924 Mar: -₹1,77525 Mar: -₹1,27526 Mar: ₹5,01827 Mar: -₹10,18028 Mar: ₹029 Mar: ₹46730 Mar: -₹3,81731 Mar: ₹57818152229",
+      "moneyBusiness": "₹16,775",
+      "moneySpendCompare": "▲ 80% vs Feb · ▲ 92% vs Mar 2026",
+      "moneySpendTakeaway": "Business expenses 92% more than last year, mostly Other.₹20,400 went to personal use, ₹34,655 more than the profit.",
+      "moneySpendCaveats": "⚠ ₹1,000 of expenses have no type; they count as business.",
+      "moneyCategories": "Other₹15,775No type₹1,000",
+      "moneyLabourBills": "(5 bills)",
+      "moneyLabour": "₹240",
+      "moneyLabourCalc": "2,944 kg ÷ 35 kg, each day rounded up = 88 packages × ₹6",
+      "moneyLabourToPay": "₹528",
+      "moneyLabourDiff": "To pay is ₹288 more than deducted",
+      "moneyPersonal": "₹5,400",
+      "moneyWithdrawn": "₹15,000",
+      "moneyKept": "-₹34,655",
+      "moneyWithdrawalList": "—1 Mar 2027₹15,000",
+      "moneyWorthValue": "₹6,70,281",
+      "moneyWorthCompare": "stock vs Mar 2026: not known",
+      "moneyWorthTakeaway": "You are worth ₹6,70,281.₹49,350 of it is still with customers.",
+      "moneyWorthTerms": "Stock value₹7,93,300 Stock ›To receive₹49,350 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,79,714 Outstanding ›Net worth₹6,70,281",
+      "moneyAccounts": "Bank₹12,346 ✕ Loan−₹5,001 ✕ Odd₹0 ✕",
+      "moneyAccType": "I have this I owe this",
+      "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
+    },
+    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"60\" y2=\"60\"></line><rect class=\"ins-bar neg\" x=\"0.48%\" y=\"60.0\" width=\"2.26%\" height=\"1.6\" data-day=\"2027-03-01\"><title>1 Mar: -₹730</title></rect><rect class=\"ins-bar \" x=\"3.71%\" y=\"58.5\" width=\"2.26%\" height=\"1.5\" data-day=\"2027-03-02\"><title>2 Mar: ₹705</title></rect><rect class=\"ins-bar neg\" x=\"6.94%\" y=\"60.0\" width=\"2.26%\" height=\"42.7\" data-day=\"2027-03-03\"><title>3 Mar: -₹19,862</title></rect><rect class=\"ins-bar neg\" x=\"10.16%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-04\"><title>4 Mar: -₹300</title></rect><rect class=\"ins-bar neg\" x=\"13.39%\" y=\"60.0\" width=\"2.26%\" height=\"40.1\" data-day=\"2027-03-05\"><title>5 Mar: -₹18,659</title></rect><rect class=\"ins-bar neg\" x=\"16.61%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-06\"><title>6 Mar: -₹305</title></rect><rect class=\"ins-bar \" x=\"19.84%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-07\"><title>7 Mar: ₹0</title></rect><rect class=\"ins-bar neg\" x=\"23.06%\" y=\"60.0\" width=\"2.26%\" height=\"1.7\" data-day=\"2027-03-08\"><title>8 Mar: -₹800</title></rect><rect class=\"ins-bar neg\" x=\"26.29%\" y=\"60.0\" width=\"2.26%\" height=\"52.0\" data-day=\"2027-03-09\"><title>9 Mar: -₹24,197</title></rect><rect class=\"ins-bar neg\" x=\"29.52%\" y=\"60.0\" width=\"2.26%\" height=\"19.2\" data-day=\"2027-03-10\"><title>10 Mar: -₹8,915</title></rect><rect class=\"ins-bar neg\" x=\"32.74%\" y=\"60.0\" width=\"2.26%\" height=\"1.2\" data-day=\"2027-03-11\"><title>11 Mar: -₹550</title></rect><rect class=\"ins-bar neg\" x=\"35.97%\" y=\"60.0\" width=\"2.26%\" height=\"1.9\" data-day=\"2027-03-12\"><title>12 Mar: -₹875</title></rect><rect class=\"ins-bar neg\" x=\"39.19%\" y=\"60.0\" width=\"2.26%\" height=\"5.6\" data-day=\"2027-03-13\"><title>13 Mar: -₹2,602</title></rect><rect class=\"ins-bar neg\" x=\"42.42%\" y=\"60.0\" width=\"2.26%\" height=\"1.3\" data-day=\"2027-03-14\"><title>14 Mar: -₹625</title></rect><rect class=\"ins-bar \" x=\"45.65%\" y=\"55.7\" width=\"2.26%\" height=\"4.3\" data-day=\"2027-03-15\"><title>15 Mar: ₹2,000</title></rect><rect class=\"ins-bar neg\" x=\"48.87%\" y=\"60.0\" width=\"2.26%\" height=\"1.9\" data-day=\"2027-03-16\"><title>16 Mar: -₹901</title></rect><rect class=\"ins-bar neg\" x=\"52.10%\" y=\"60.0\" width=\"2.26%\" height=\"9.4\" data-day=\"2027-03-17\"><title>17 Mar: -₹4,392</title></rect><rect class=\"ins-bar neg\" x=\"55.32%\" y=\"60.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-18\"><title>18 Mar: -₹272</title></rect><rect class=\"ins-bar neg\" x=\"58.55%\" y=\"60.0\" width=\"2.26%\" height=\"56.0\" data-day=\"2027-03-19\"><title>19 Mar: -₹26,050</title></rect><rect class=\"ins-bar \" x=\"61.77%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-20\"><title>20 Mar: ₹318</title></rect><rect class=\"ins-bar \" x=\"65.00%\" y=\"58.2\" width=\"2.26%\" height=\"1.8\" data-day=\"2027-03-21\"><title>21 Mar: ₹858</title></rect><rect class=\"ins-bar \" x=\"68.23%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-22\"><title>22 Mar: ₹25</title></rect><rect class=\"ins-bar neg\" x=\"71.45%\" y=\"60.0\" width=\"2.26%\" height=\"2.4\" data-day=\"2027-03-23\"><title>23 Mar: -₹1,109</title></rect><rect class=\"ins-bar neg\" x=\"74.68%\" y=\"60.0\" width=\"2.26%\" height=\"3.8\" data-day=\"2027-03-24\"><title>24 Mar: -₹1,775</title></rect><rect class=\"ins-bar neg\" x=\"77.90%\" y=\"60.0\" width=\"2.26%\" height=\"2.7\" data-day=\"2027-03-25\"><title>25 Mar: -₹1,275</title></rect><rect class=\"ins-bar \" x=\"81.13%\" y=\"49.2\" width=\"2.26%\" height=\"10.8\" data-day=\"2027-03-26\"><title>26 Mar: ₹5,018</title></rect><rect class=\"ins-bar neg\" x=\"84.35%\" y=\"60.0\" width=\"2.26%\" height=\"21.9\" data-day=\"2027-03-27\"><title>27 Mar: -₹10,180</title></rect><rect class=\"ins-bar \" x=\"87.58%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-28\"><title>28 Mar: ₹0</title></rect><rect class=\"ins-bar \" x=\"90.81%\" y=\"59.0\" width=\"2.26%\" height=\"1.0\" data-day=\"2027-03-29\"><title>29 Mar: ₹467</title></rect><rect class=\"ins-bar neg\" x=\"94.03%\" y=\"60.0\" width=\"2.26%\" height=\"8.2\" data-day=\"2027-03-30\"><title>30 Mar: -₹3,817</title></rect><rect class=\"ins-bar \" x=\"97.26%\" y=\"58.8\" width=\"2.26%\" height=\"1.2\" data-day=\"2027-03-31\"><title>31 Mar: ₹578</title></rect><text x=\"1.61%\" y=\"118\" class=\"ins-tick\">1</text><text x=\"24.19%\" y=\"118\" class=\"ins-tick\">8</text><text x=\"46.77%\" y=\"118\" class=\"ins-tick\">15</text><text x=\"69.35%\" y=\"118\" class=\"ins-tick\">22</text><text x=\"91.94%\" y=\"118\" class=\"ins-tick\">29</text></svg>",
+    "profitChart": "Mar 2026: -₹6,206Apr 2026: -₹5,146May 2026: -₹11,104Jun 2026: -₹4,224Jul 2026: -₹8,849Aug 2026: -₹10,678Sep 2026: -₹7,209Oct 2026: -₹14,105Nov 2026: -₹4,105Dec 2026: -₹9,083Jan 2027: -₹10,097Feb 2027: -₹6,454Mar 2027: -₹14,255MarJunSepDecMar",
+    "accountsTotal": 7345.18,
+    "sessionsAsked": [
+      "2027-03-01|2027-03-31"
+    ]
+  },
+  "money.jan1": {
+    "texts": {
+      "moneyPeriodLabel": "1 Jan 2027",
+      "moneyPreset": "This month Last month This year Last year Last 30 days",
+      "moneyProfitValue": "-₹643",
+      "moneyProfitCompare": "▼ 616% vs Dec · ▲ 52% vs Jan 2026",
+      "moneyProfitTakeaway": "Loss of ₹643 in this period.",
+      "moneySales": "₹1,827",
+      "moneySalesSplit": "1 bill",
+      "moneyCogs": "₹1,554",
+      "moneyGross": "₹273 · ₹14.9 per ₹100 sold",
+      "moneyBusinessTerm": "₹750",
+      "moneyBadDebts": "₹166",
+      "moneyProfitTerm": "-₹643",
+      "moneyProfitChart": "Jan 2026: -₹14,266Feb 2026: -₹10,472Mar 2026: -₹5,611Apr 2026: -₹11,299May 2026: -₹5,753Jun 2026: -₹12,326Jul 2026: -₹9,102Aug 2026: -₹7,756Sep 2026: -₹9,847Oct 2026: -₹9,043Nov 2026: -₹10,210Dec 2026: -₹8,539Jan 2027: -₹643JanAprJulOctJan",
+      "moneyProfitLegend": "This year Last year",
+      "moneyBuildHistory": "Older months are not saved yet, so comparisons with last year are missing.Build month history",
+      "moneyStockMovement": "Stock at the start₹8,36,126+ Bought (at line rate)₹0− Cost of goods sold₹1,554± Stock corrections₹0= Stock at the end₹8,34,572✓ Stock adds up",
+      "moneyPurchases": "₹0 · 0 bills",
+      "moneyNetCash": "₹1,077",
+      "moneyCashCompare": "▲ 349% vs Dec · ▲ 127% vs Jan 2026",
+      "moneyCashTakeaway": "₹1,077 more came in than went out.Biggest outflow: expenses (₹750).",
+      "moneyIn": "₹1,827",
+      "moneyInSplit": "cash ₹1,827 · online ₹0",
+      "moneyOut": "₹750",
+      "moneyOutSplit": "cash ₹750 · online ₹0",
+      "moneyCashChart": "1 Jan: ₹1,0771",
+      "moneyBusiness": "₹750",
+      "moneySpendCompare": "▼ 50% vs Jan 2026",
+      "moneySpendTakeaway": "Business expenses 50% less than last year, mostly Other.₹11,500 went to personal use, ₹12,143 more than the profit.",
+      "moneyCategories": "Other₹750",
+      "moneyLabourBills": "(0 bills)",
+      "moneyLabour": "₹0",
+      "moneyLabourCalc": "0 kg ÷ 35 kg, each day rounded up = 0 packages × ₹6",
+      "moneyLabourToPay": "₹0",
+      "moneyLabourDiff": "To pay matches what was deducted",
+      "moneyPersonal": "₹0",
+      "moneyWithdrawn": "₹11,500",
+      "moneyKept": "-₹12,143",
+      "moneyWithdrawalList": "—1 Jan 2027₹11,500",
+      "moneyWorthValue": "₹7,38,148",
+      "moneyWorthCompare": "stock vs Jan 2026: not known",
+      "moneyWorthTakeaway": "You are worth ₹7,38,148.₹36,925 of it is still with customers.",
+      "moneyWorthTerms": "Stock value₹8,34,572 Stock ›To receive₹36,925 Outstanding ›Cash in drawer (not counted lately)₹0 Cash drawer ›Bank, savings and other accounts₹7,345To pay-₹1,40,694 Outstanding ›Net worth₹7,38,148",
+      "moneyAccounts": "Bank₹12,346 ✕ Loan−₹5,001 ✕ Odd₹0 ✕",
+      "moneyAccType": "I have this I owe this",
+      "moneyChecks": "✓ Numbers match Outstanding, the cash drawer and Stock"
+    },
+    "cashChart": "<svg class=\"ins-svg\" width=\"100%\" height=\"120\" role=\"img\" style=\"height:120px\"><line class=\"ins-axis\" x1=\"0\" x2=\"100%\" y1=\"106\" y2=\"106\"></line><rect class=\"ins-bar \" x=\"15.00%\" y=\"4.0\" width=\"70.00%\" height=\"102.0\" data-day=\"2027-01-01\"><title>1 Jan: ₹1,077</title></rect><text x=\"50.00%\" y=\"118\" class=\"ins-tick\">1</text></svg>",
+    "profitChart": "Jan 2026: -₹14,266Feb 2026: -₹10,472Mar 2026: -₹5,611Apr 2026: -₹11,299May 2026: -₹5,753Jun 2026: -₹12,326Jul 2026: -₹9,102Aug 2026: -₹7,756Sep 2026: -₹9,847Oct 2026: -₹9,043Nov 2026: -₹10,210Dec 2026: -₹8,539Jan 2027: -₹643JanAprJulOctJan",
+    "accountsTotal": 7345.18,
+    "sessionsAsked": [
+      "2026-12-02|2027-01-01"
+    ]
+  },
+  "money.first.periods": {
+    "presets": {
+      "last-30": {
+        "label": "Last 30 days",
+        "net": "-₹39,034",
+        "chart": ""
+      },
+      "this-year": {
+        "label": "2026",
+        "net": "-₹3,64,915",
+        "chart": ""
+      },
+      "last-year": {
+        "label": "2025",
+        "net": "-₹5,06,977",
+        "chart": ""
+      },
+      "last-month": {
+        "label": "Oct 2026",
+        "net": "-₹54,633",
+        "chart": "1 Oct: -₹7,2152 Oct: -₹8,3843 Oct: ₹7374 Oct: ₹05 Oct: -₹4256 Oct: ₹4357 Oct: ₹08 Oct: -₹5,1069 Oct: -₹27510 Oct: -₹26211 Oct: ₹012 Oct: -₹48813 Oct: -₹30014 Oct: -₹1,47515 Oct: -₹12,57016 Oct: -₹3,32117 Oct: -₹1,26318 Oct: ₹33719 Oct: ₹4220 Oct: -₹18421 Oct: ₹022 Oct: -₹6923 Oct: -₹65024 Oct: -₹77125 Oct: ₹52526 Oct: -₹15927 Oct: ₹66828 Oct: -₹88729 Oct: -₹72530 Oct: -₹13,13631 Oct: ₹28818152229"
+      }
+    },
+    "steps": [
+      "month:2026-10",
+      "month:2026-09",
+      "month:2026-08",
+      "month:2026-09",
+      "month:2026-10",
+      "this-month",
+      "this-month"
+    ],
+    "windowed": {
+      "net": "₹0",
+      "in": "₹0"
+    },
+    "sessionsAsked": [
+      "2026-11-01|2026-11-01"
+    ]
+  },
+  "money.jan31.periods": {
+    "presets": {
+      "last-30": {
+        "label": "Last 30 days",
+        "net": "-₹7,308",
+        "chart": ""
+      },
+      "this-year": {
+        "label": "2027",
+        "net": "-₹7,679",
+        "chart": ""
+      },
+      "last-year": {
+        "label": "2026",
+        "net": "-₹6,04,471",
+        "chart": ""
+      },
+      "last-month": {
+        "label": "Dec 2026",
+        "net": "-₹39,109",
+        "chart": "1 Dec: -₹5002 Dec: ₹703 Dec: -₹8754 Dec: -₹6695 Dec: -₹7506 Dec: ₹07 Dec: ₹1718 Dec: -₹3009 Dec: ₹1,59410 Dec: ₹64411 Dec: -₹62512 Dec: -₹89613 Dec: ₹1414 Dec: -₹9,15515 Dec: -₹58616 Dec: ₹90017 Dec: ₹46518 Dec: ₹2119 Dec: -₹8720 Dec: ₹6821 Dec: -₹12,02622 Dec: -₹9,86423 Dec: ₹53624 Dec: -₹5,60525 Dec: ₹55126 Dec: -₹70027 Dec: ₹028 Dec: -₹72829 Dec: -₹57730 Dec: ₹031 Dec: -₹20018152229"
+      }
+    },
+    "steps": [
+      "month:2026-12",
+      "month:2026-11",
+      "month:2026-10",
+      "month:2026-11",
+      "month:2026-12",
+      "this-month",
+      "this-month"
+    ],
+    "windowed": {
+      "net": "-₹7,679",
+      "in": "₹17,865"
+    },
+    "sessionsAsked": [
+      "2027-01-01|2027-01-31"
+    ]
+  },
+  "money.leapDay.periods": {
+    "presets": {
+      "last-30": {
+        "label": "Last 30 days",
+        "net": "-₹16,569",
+        "chart": ""
+      },
+      "this-year": {
+        "label": "2028",
+        "net": "-₹36,148",
+        "chart": ""
+      },
+      "last-year": {
+        "label": "2027",
+        "net": "-₹6,67,239",
+        "chart": ""
+      },
+      "last-month": {
+        "label": "Jan 2028",
+        "net": "-₹20,294",
+        "chart": "1 Jan: -₹6282 Jan: -₹1143 Jan: -₹1,7894 Jan: ₹5225 Jan: -₹5,8196 Jan: ₹237 Jan: -₹5508 Jan: -₹8759 Jan: ₹010 Jan: -₹42511 Jan: -₹1,80812 Jan: -₹13713 Jan: -₹7,28114 Jan: -₹2,75815 Jan: -₹1,49516 Jan: -₹42517 Jan: ₹1,49418 Jan: ₹89619 Jan: -₹1,05020 Jan: -₹32521 Jan: ₹53122 Jan: -₹19023 Jan: ₹024 Jan: ₹1,63925 Jan: -₹27426 Jan: ₹1,16627 Jan: -₹17528 Jan: -₹62529 Jan: ₹96230 Jan: -₹6931 Jan: -₹71518152229"
+      }
+    },
+    "steps": [
+      "month:2028-01",
+      "month:2027-12",
+      "month:2027-11",
+      "month:2027-12",
+      "month:2028-01",
+      "this-month",
+      "this-month"
+    ],
+    "windowed": {
+      "net": "-₹15,854",
+      "in": "₹37,056"
+    },
+    "sessionsAsked": [
+      "2028-02-01|2028-02-29"
+    ]
+  },
+  "money.mar31.periods": {
+    "presets": {
+      "last-30": {
+        "label": "Last 30 days",
+        "net": "-₹1,17,492",
+        "chart": ""
+      },
+      "this-year": {
+        "label": "2027",
+        "net": "-₹2,33,866",
+        "chart": ""
+      },
+      "last-year": {
+        "label": "2026",
+        "net": "-₹4,26,109",
+        "chart": ""
+      },
+      "last-month": {
+        "label": "Feb 2027",
+        "net": "-₹1,13,305",
+        "chart": "1 Feb: -₹3752 Feb: ₹2883 Feb: -₹28,7454 Feb: ₹3845 Feb: ₹166 Feb: -₹1257 Feb: -₹3,0828 Feb: -₹7929 Feb: -₹55010 Feb: -₹12,97911 Feb: -₹72112 Feb: -₹96713 Feb: ₹55514 Feb: -₹15015 Feb: ₹1,25016 Feb: -₹29,95517 Feb: -₹43718 Feb: -₹2,66419 Feb: -₹1,25020 Feb: -₹4,17321 Feb: ₹022 Feb: -₹32,77423 Feb: ₹54624 Feb: ₹2,35725 Feb: ₹2,26526 Feb: -₹75027 Feb: -₹47728 Feb: ₹0181522"
+      }
+    },
+    "steps": [
+      "month:2027-02",
+      "month:2027-01",
+      "month:2026-12",
+      "month:2027-01",
+      "month:2027-02",
+      "this-month",
+      "this-month"
+    ],
+    "windowed": {
+      "net": "-₹1,18,222",
+      "in": "₹22,020"
+    },
+    "sessionsAsked": [
+      "2027-03-01|2027-03-31"
+    ]
+  },
+  "money.jan1.periods": {
+    "presets": {
+      "last-30": {
+        "label": "Last 30 days",
+        "net": "-₹61,921",
+        "chart": ""
+      },
+      "this-year": {
+        "label": "2027",
+        "net": "₹1,077",
+        "chart": ""
+      },
+      "last-year": {
+        "label": "2026",
+        "net": "-₹6,67,083",
+        "chart": ""
+      },
+      "last-month": {
+        "label": "Dec 2026",
+        "net": "-₹62,359",
+        "chart": "1 Dec: -₹4322 Dec: ₹1,0713 Dec: ₹3664 Dec: -₹4115 Dec: -₹7,9646 Dec: ₹07 Dec: ₹3888 Dec: -₹6509 Dec: ₹97010 Dec: -₹2,36011 Dec: ₹1,38912 Dec: ₹1,34313 Dec: ₹014 Dec: -₹9,39415 Dec: ₹13716 Dec: ₹017 Dec: -₹17,31918 Dec: ₹73719 Dec: ₹020 Dec: -₹9,37721 Dec: ₹022 Dec: -₹5,20123 Dec: -₹27524 Dec: -₹40025 Dec: -₹48826 Dec: -₹30027 Dec: ₹028 Dec: -₹1,82529 Dec: -₹10,61430 Dec: -₹1,10031 Dec: -₹65018152229"
+      }
+    },
+    "steps": [
+      "month:2026-12",
+      "month:2026-11",
+      "month:2026-10",
+      "month:2026-11",
+      "month:2026-12",
+      "this-month",
+      "this-month"
+    ],
+    "windowed": {
+      "net": "₹1,077",
+      "in": "₹1,827"
+    },
+    "sessionsAsked": [
+      "2027-01-01|2027-01-01"
+    ]
+  },
+  "outstanding.first": {
+    "purchase": {
+      "aging": "Payables by age ₹1,52,097 0–30 days ₹0 0 bills 31–60 days ₹3,147 1 bill 61–90 days ₹0 0 bills 90+ days ₹1,48,950 32 bills By party (7) Sort: Amount Oldest Shyam Lal Long overdue 6 bills · oldest 681 days ₹40,878 🧾 Statement Sharma Stores Long overdue 7 bills · oldest 622 days ₹39,589 🧾 Statement Kamla Devi Long overdue 5 bills · oldest 608 days ₹22,926 🧾 Statement Ravi Long overdue 5 bills · oldest 554 days ₹20,579 🧾 Statement Mohan Long overdue 6 bills · oldest 570 days ₹16,813 🧾 Statement राम लाल Long overdue 1 bill · oldest 528 days ₹6,899 🧾 Statement Sita Long overdue 3 bills · oldest 651 days ₹4,413 🧾 Statement Bills",
+      "ages": [
+        "#p142 Sita Due: ₹3,147 | 32 days",
+        "#pyo Shyam Lal Due: ₹1,465 | 134 days",
+        "#pyg Mohan Due: ₹3,174 | 136 days",
+        "#pxq Kamla Devi Due: ₹1,469 | 145 days",
+        "#pxf Shyam Lal Due: ₹217 | 151 days",
+        "#pv1 Mohan Due: ₹896 | 193 days",
+        "#puu Mohan Due: ₹7,041 | 197 days",
+        "#pth Sharma Stores Due: ₹3,177 | 214 days",
+        "#ppi Ravi Due: ₹2,125 | 283 days",
+        "#pp0 Kamla Devi Due: ₹509 | 297 days",
+        "#pno Ravi Due: ₹120 | 324 days",
+        "#pmd Sita Due: ₹897 | 349 days",
+        "#plp Sharma Stores Due: ₹1,385 | 359 days",
+        "#pks Kamla Devi Due: ₹2,797 | 376 days",
+        "#pjl Kamla Devi Due: ₹1,277 | 393 days",
+        "#OLD-2 Old app Ravi Due: ₹11,603 | 436 days",
+        "#OLD-1 Old app Shyam Lal Due: ₹19,474 | 457 days",
+        "#pfo Sharma Stores Due: ₹699 | 467 days",
+        "#pff Ravi Due: ₹3,077 | 471 days",
+        "#pcl Mohan Due: ₹3,468 | 516 days",
+        "#pc0 राम लाल Due: ₹6,899 | 528 days",
+        "#pbm Shyam Lal Due: ₹4,973 | 534 days",
+        "#pb4 Sharma Stores Due: ₹10,757 | 540 days",
+        "#paw Mohan Due: ₹66 | 542 days",
+        "#pab Ravi Due: ₹3,654 | 554 days",
+        "#p9p Shyam Lal Due: ₹4,792 | 563 days",
+        "#p9d Mohan Due: ₹2,168 | 570 days",
+        "#p8p Sharma Stores Due: ₹9,383 | 580 days",
+        "#p81 Sharma Stores Due: ₹11,612 | 591 days",
+        "#p6x Kamla Devi Due: ₹16,874 | 608 days",
+        "#p5q Sharma Stores Due: ₹2,576 | 622 days",
+        "#p4b Sita Due: ₹369 | 651 days",
+        "#p2o Shyam Lal Due: ₹9,957 | 681 days"
+      ]
+    },
+    "sale": {
+      "aging": "Receivables by age ₹33,460 0–30 days ₹1,259 4 bills 31–60 days ₹2,456 5 bills 61–90 days ₹3,154 5 bills 90+ days ₹26,591 68 bills Who to chase first Kamla Devi — ₹6,391 oldest 694 days Sharma Stores — ₹6,300 oldest 703 days Shyam Lal — ₹5,407 oldest 627 days Mohan — ₹4,438 oldest 593 days Gupta Traders — ₹3,714 oldest 629 days By party (8) Sort: Amount Oldest Kamla Devi Long overdue 15 bills · oldest 694 days ₹6,391 💬 Remind 🧾 Statement Sharma Stores Long overdue 10 bills · oldest 703 days ₹6,300 💬 Remind 🧾 Statement Shyam Lal Long overdue 11 bills · oldest 627 days ₹5,407 💬 Remind 🧾 Statement Mohan Long overdue 9 bills · oldest 593 days ₹4,438 💬 Remind 🧾 Statement Gupta Traders Long overdue 12 bills · oldest 629 days ₹3,714 💬 Remind 🧾 Statement Ravi Long overdue 9 bills · oldest 717 days ₹2,861 💬 Remind 🧾 Statement Sita Long overdue 9 bills · oldest 588 days ₹2,306 💬 Remind 🧾 Statement राम लाल Long overdue 7 bills · oldest 538 days ₹2,043 💬 Remind 🧾 Statement Bills",
+      "ages": [
+        "#r154 Ravi Due: ₹266 | 12 days",
+        "#r152 Shyam Lal Due: ₹386 | 13 days",
+        "#r14y Mohan Due: ₹287 | 15 days",
+        "#r14k Sharma Stores Due: ₹320 | 24 days",
+        "#r143 Gupta Traders Due: ₹709 | 32 days",
+        "#r13v Gupta Traders Due: ₹215 | 34 days",
+        "#r13a Sita Due: ₹81 | 50 days",
+        "#r133 Kamla Devi Due: ₹1,343 | 54 days",
+        "#r12s Shyam Lal Due: ₹108 | 60 days",
+        "#r127 Sita Due: ₹226 | 69 days",
+        "#r11z Gupta Traders Due: ₹93 | 72 days",
+        "#r11s Mohan Due: ₹705 | 75 days",
+        "#r114 Kamla Devi Due: ₹700 | 88 days",
+        "#r112 Kamla Devi Due: ₹1,430 | 89 days",
+        "#r10x Kamla Devi Due: ₹307 | 92 days",
+        "#r10s Gupta Traders Due: ₹129 | 93 days",
+        "#r10d Sita Due: ₹450 | 100 days",
+        "#r10b Ravi Due: ₹1,052 | 102 days",
+        "#rzz Sita Due: ₹592 | 111 days",
+        "#rz4 Sharma Stores Due: ₹1,681 | 125 days",
+        "#ryz Gupta Traders Due: ₹90 | 128 days",
+        "#ryl Kamla Devi Due: ₹78 | 135 days",
+        "#rxc Ravi Due: ₹241 | 152 days",
+        "#rx3 Kamla Devi Due: ₹212 | 156 days",
+        "#rwx Shyam Lal Due: ₹1,231 | 160 days",
+        "#rwr Mohan Due: ₹538 | 163 days",
+        "#rwk Sita Due: ₹226 | 167 days",
+        "#rvj Kamla Devi Due: ₹161 | 184 days",
+        "#rvg Gupta Traders Due: ₹559 | 186 days",
+        "#rus Gupta Traders Due: ₹576 | 198 days",
+        "#ruj राम लाल Due: ₹284 | 202 days",
+        "#rtz Shyam Lal Due: ₹111 | 209 days",
+        "#rts Ravi Due: ₹798 | 211 days",
+        "#rtq Sharma Stores Due: ₹586 | 212 days",
+        "#rrw Shyam Lal Due: ₹52 | 238 days",
+        "#rri राम लाल Due: ₹529 | 248 days",
+        "#rr6 Shyam Lal Due: ₹49 | 255 days",
+        "#rqw Mohan Due: ₹468 | 260 days",
+        "#rq6 Sita Due: ₹223 | 271 days",
+        "#rpn राम लाल Due: ₹314 | 278 days",
+        "#rpj Sita Due: ₹50 | 283 days",
+        "#rpe Sharma Stores Due: ₹675 | 285 days",
+        "#rp4 राम लाल Due: ₹518 | 295 days",
+        "#rok राम लाल Due: ₹182 | 307 days",
+        "#ro5 Mohan Due: ₹916 | 315 days",
+        "#rny Mohan Due: ₹270 | 320 days",
+        "#rnt Kamla Devi Due: ₹308 | 323 days",
+        "#rnl Shyam Lal Due: ₹772 | 326 days",
+        "#rml Sharma Stores Due: ₹131 | 347 days",
+        "#rkv Gupta Traders Due: ₹281 | 376 days",
+        "#rkn Ravi Due: ₹53 | 377 days",
+        "#rkh Sita Due: ₹328 | 380 days",
+        "#rk0 Shyam Lal Due: ₹650 | 388 days",
+        "#rjj Gupta Traders Due: ₹176 | 394 days",
+        "#rit Mohan Due: ₹152 | 403 days",
+        "#rhi राम लाल Due: ₹205 | 427 days",
+        "#rfj Gupta Traders Due: ₹40 | 469 days",
+        "#rfg Sharma Stores Due: ₹581 | 471 days",
+        "#rf9 Ravi Due: ₹153 | 472 days",
+        "#rep Kamla Devi Due: ₹688 | 483 days",
+        "#rec Sharma Stores Due: ₹764 | 488 days",
+        "#re6 Kamla Devi Due: ₹204 | 489 days",
+        "#rdi Ravi Due: ₹5 | 502 days",
+        "#rd5 Kamla Devi Due: ₹198 | 507 days",
+        "#rca Mohan Due: ₹995 | 522 days",
+        "#rb9 राम लाल Due: ₹11 | 538 days",
+        "#r9z Sharma Stores Due: ₹1,356 | 559 days",
+        "#r9u Shyam Lal Due: ₹849 | 562 days",
+        "#r9j Gupta Traders Due: ₹754 | 566 days",
+        "#r8k Shyam Lal Due: ₹250 | 583 days",
+        "#r88 Sita Due: ₹130 | 588 days",
+        "#r7u Mohan Due: ₹107 | 593 days",
+        "#r5t Kamla Devi Due: ₹60 | 621 days",
+        "#r5c Shyam Lal Due: ₹949 | 627 days",
+        "#r5b Gupta Traders Due: ₹92 | 629 days",
+        "#r47 Sharma Stores Due: ₹184 | 654 days",
+        "#r3y Kamla Devi Due: ₹571 | 660 days",
+        "#r3o Kamla Devi Due: ₹128 | 665 days",
+        "#r3i Ravi Due: ₹49 | 668 days",
+        "#r1x Kamla Devi Due: ₹3 | 694 days",
+        "#r1d Sharma Stores Due: ₹22 | 703 days",
+        "#ri Ravi Due: ₹244 | 717 days"
+      ]
+    }
+  },
+  "outstanding.jan31": {
+    "purchase": {
+      "aging": "Payables by age ₹1,29,448 0–30 days ₹0 0 bills 31–60 days ₹0 0 bills 61–90 days ₹0 0 bills 90+ days ₹1,29,448 29 bills By party (8) Sort: Amount Oldest Mohan Long overdue 4 bills · oldest 619 days ₹31,377 🧾 Statement Shyam Lal Long overdue 3 bills · oldest 562 days ₹24,465 🧾 Statement राम लाल Long overdue 3 bills · oldest 706 days ₹20,082 🧾 Statement Ravi Long overdue 7 bills · oldest 580 days ₹18,175 🧾 Statement Sita Long overdue 4 bills · oldest 622 days ₹16,093 🧾 Statement Sharma Stores Long overdue 5 bills · oldest 465 days ₹15,247 🧾 Statement Kamla Devi Long overdue 2 bills · oldest 282 days ₹3,685 🧾 Statement Gupta Traders Long overdue 1 bill · oldest 392 days ₹324 🧾 Statement Bills",
+      "ages": [
+        "#p10o Ravi Due: ₹1,879 | 101 days",
+        "#pzx Sita Due: ₹5,866 | 113 days",
+        "#pyu Kamla Devi Due: ₹53 | 127 days",
+        "#pv8 Ravi Due: ₹510 | 181 days",
+        "#ps4 Sita Due: ₹5,191 | 234 days",
+        "#pq8 Sharma Stores Due: ₹11,377 | 269 days",
+        "#pq1 Mohan Due: ₹3,984 | 272 days",
+        "#ppu Ravi Due: ₹791 | 276 days",
+        "#ppt Sharma Stores Due: ₹742 | 277 days",
+        "#pph Kamla Devi Due: ₹3,632 | 282 days",
+        "#pp0 Mohan Due: ₹17,507 | 293 days",
+        "#pnf राम लाल Due: ₹377 | 318 days",
+        "#pj3 Gupta Traders Due: ₹324 | 392 days",
+        "#OLD-2 Old app Ravi Due: ₹11,603 | 436 days",
+        "#pgm Ravi Due: ₹1,903 | 436 days",
+        "#OLD-1 Old app Shyam Lal Due: ₹19,474 | 457 days",
+        "#pfi Sharma Stores Due: ₹312 | 458 days",
+        "#pf7 Sharma Stores Due: ₹2,684 | 460 days",
+        "#pfb राम लाल Due: ₹78 | 460 days",
+        "#per Sharma Stores Due: ₹132 | 465 days",
+        "#pel Shyam Lal Due: ₹3,726 | 468 days",
+        "#pdv Ravi Due: ₹1,284 | 481 days",
+        "#pdn Mohan Due: ₹4,704 | 485 days",
+        "#p9b Shyam Lal Due: ₹1,265 | 562 days",
+        "#p83 Ravi Due: ₹205 | 580 days",
+        "#p7q Sita Due: ₹217 | 585 days",
+        "#p64 Mohan Due: ₹5,182 | 619 days",
+        "#p5w Sita Due: ₹4,819 | 622 days",
+        "#p18 राम लाल Due: ₹19,627 | 706 days"
+      ]
+    },
+    "sale": {
+      "aging": "Receivables by age ₹42,448 0–30 days ₹3,333 5 bills 31–60 days ₹857 2 bills 61–90 days ₹4,996 6 bills 90+ days ₹33,262 70 bills Who to chase first Sita — ₹7,224 oldest 668 days Ravi — ₹7,069 oldest 719 days Sharma Stores — ₹7,000 oldest 708 days Mohan — ₹5,276 oldest 695 days Gupta Traders — ₹4,657 oldest 662 days By party (8) Sort: Amount Oldest Sita Long overdue 12 bills · oldest 668 days ₹7,224 💬 Remind 🧾 Statement Ravi Long overdue 12 bills · oldest 719 days ₹7,069 💬 Remind 🧾 Statement Sharma Stores Long overdue 13 bills · oldest 708 days ₹7,000 💬 Remind 🧾 Statement Mohan Long overdue 9 bills · oldest 695 days ₹5,276 💬 Remind 🧾 Statement Gupta Traders Long overdue 11 bills · oldest 662 days ₹4,657 💬 Remind 🧾 Statement Kamla Devi Long overdue 7 bills · oldest 667 days ₹4,280 💬 Remind 🧾 Statement Shyam Lal Long overdue 12 bills · oldest 572 days ₹3,892 💬 Remind 🧾 Statement राम लाल Long overdue 7 bills · oldest 558 days ₹3,050 💬 Remind 🧾 Statement Bills",
+      "ages": [
+        "#r15p Sita Due: ₹304 | 7 days",
+        "#r14y Gupta Traders Due: ₹1,546 | 19 days",
+        "#r14u Mohan Due: ₹779 | 22 days",
+        "#r14t Sita Due: ₹280 | 23 days",
+        "#r14j Gupta Traders Due: ₹424 | 30 days",
+        "#r140 Gupta Traders Due: ₹108 | 41 days",
+        "#r13s Mohan Due: ₹749 | 46 days",
+        "#r12k Sharma Stores Due: ₹1,880 | 71 days",
+        "#r12b Kamla Devi Due: ₹453 | 74 days",
+        "#r11y Gupta Traders Due: ₹93 | 78 days",
+        "#r11r Mohan Due: ₹705 | 81 days",
+        "#r11d Shyam Lal Due: ₹267 | 87 days",
+        "#r11b Shyam Lal Due: ₹1,598 | 88 days",
+        "#r109 राम लाल Due: ₹73 | 106 days",
+        "#rzb Shyam Lal Due: ₹45 | 121 days",
+        "#rz2 Sharma Stores Due: ₹137 | 123 days",
+        "#ryt Sharma Stores Due: ₹1,278 | 128 days",
+        "#ryg Ravi Due: ₹64 | 131 days",
+        "#ry2 राम लाल Due: ₹609 | 138 days",
+        "#rww Shyam Lal Due: ₹45 | 153 days",
+        "#rvy Kamla Devi Due: ₹1,035 | 169 days",
+        "#rvw राम लाल Due: ₹435 | 170 days",
+        "#rvn Ravi Due: ₹7 | 173 days",
+        "#rvf Kamla Devi Due: ₹424 | 178 days",
+        "#rv4 Sharma Stores Due: ₹679 | 183 days",
+        "#rur Ravi Due: ₹1,299 | 190 days",
+        "#ruc Sharma Stores Due: ₹328 | 199 days",
+        "#rti Sharma Stores Due: ₹21 | 215 days",
+        "#rt2 Shyam Lal Due: ₹30 | 222 days",
+        "#rsw Shyam Lal Due: ₹49 | 223 days",
+        "#rse Kamla Devi Due: ₹136 | 228 days",
+        "#rsc Sita Due: ₹447 | 229 days",
+        "#rrx राम लाल Due: ₹1,249 | 238 days",
+        "#rrb Gupta Traders Due: ₹52 | 248 days",
+        "#rr4 Shyam Lal Due: ₹326 | 251 days",
+        "#rr3 Sita Due: ₹141 | 253 days",
+        "#rqh Sharma Stores Due: ₹37 | 264 days",
+        "#rq5 Ravi Due: ₹1,576 | 270 days",
+        "#rp9 Sita Due: ₹710 | 286 days",
+        "#rny Kamla Devi Due: ₹1,407 | 310 days",
+        "#rn6 Sita Due: ₹1,098 | 321 days",
+        "#rn4 Sharma Stores Due: ₹1,215 | 323 days",
+        "#rmp Sita Due: ₹951 | 328 days",
+        "#rm5 Mohan Due: ₹738 | 335 days",
+        "#rlg Ravi Due: ₹294 | 347 days",
+        "#rkr Shyam Lal Due: ₹64 | 362 days",
+        "#rkg Shyam Lal Due: ₹523 | 368 days",
+        "#rk2 राम लाल Due: ₹95 | 376 days",
+        "#riy Mohan Due: ₹115 | 394 days",
+        "#ris Gupta Traders Due: ₹6 | 396 days",
+        "#ri8 Sita Due: ₹447 | 410 days",
+        "#rha राम लाल Due: ₹163 | 423 days",
+        "#rgo Ravi Due: ₹322 | 436 days",
+        "#rgd Mohan Due: ₹792 | 443 days",
+        "#rf2 Gupta Traders Due: ₹40 | 462 days",
+        "#rez Sharma Stores Due: ₹338 | 464 days",
+        "#rew Ravi Due: ₹1,405 | 465 days",
+        "#rea Ravi Due: ₹83 | 475 days",
+        "#re4 Sita Due: ₹1,749 | 479 days",
+        "#rdr Gupta Traders Due: ₹544 | 484 days",
+        "#rdi Shyam Lal Due: ₹184 | 487 days",
+        "#rd2 Gupta Traders Due: ₹448 | 494 days",
+        "#ras Shyam Lal Due: ₹425 | 534 days",
+        "#r9q Mohan Due: ₹634 | 554 days",
+        "#r9l राम लाल Due: ₹426 | 558 days",
+        "#r9j Sharma Stores Due: ₹609 | 559 days",
+        "#r90 Gupta Traders Due: ₹754 | 566 days",
+        "#r8t Mohan Due: ₹279 | 570 days",
+        "#r8o Shyam Lal Due: ₹336 | 572 days",
+        "#r88 Sita Due: ₹251 | 579 days",
+        "#r7z Sharma Stores Due: ₹256 | 583 days",
+        "#r7g Sita Due: ₹162 | 591 days",
+        "#r6a Ravi Due: ₹235 | 616 days",
+        "#r5j Ravi Due: ₹1,105 | 629 days",
+        "#r4m Kamla Devi Due: ₹253 | 643 days",
+        "#r3h Gupta Traders Due: ₹642 | 662 days",
+        "#r32 Kamla Devi Due: ₹572 | 667 days",
+        "#r30 Sita Due: ₹684 | 668 days",
+        "#r2f Ravi Due: ₹435 | 678 days",
+        "#r1q Mohan Due: ₹485 | 695 days",
+        "#r1h Sharma Stores Due: ₹177 | 701 days",
+        "#r12 Sharma Stores Due: ₹45 | 708 days",
+        "#rg Ravi Due: ₹244 | 719 days"
+      ]
+    }
+  },
+  "outstanding.leapDay": {
+    "purchase": {
+      "aging": "Payables by age ₹1,75,361 0–30 days ₹0 0 bills 31–60 days ₹0 0 bills 61–90 days ₹1,945 1 bill 90+ days ₹1,73,416 33 bills By party (8) Sort: Amount Oldest Shyam Lal Long overdue 6 bills · oldest 698 days ₹64,613 🧾 Statement Gupta Traders Long overdue 6 bills · oldest 707 days ₹25,169 🧾 Statement Sharma Stores Long overdue 4 bills · oldest 603 days ₹21,427 🧾 Statement Kamla Devi Long overdue 6 bills · oldest 671 days ₹20,778 🧾 Statement राम लाल Long overdue 3 bills · oldest 347 days ₹14,963 🧾 Statement Ravi Long overdue 4 bills · oldest 463 days ₹14,584 🧾 Statement Sita Long overdue 2 bills · oldest 678 days ₹11,606 🧾 Statement Mohan Long overdue 3 bills · oldest 640 days ₹2,221 🧾 Statement Bills",
+      "ages": [
+        "#p12e Kamla Devi Due: ₹1,945 | 84 days",
+        "#p110 Ravi Due: ₹684 | 111 days",
+        "#p107 Mohan Due: ₹49 | 126 days",
+        "#pyh राम लाल Due: ₹3,649 | 153 days",
+        "#px2 Ravi Due: ₹1,248 | 172 days",
+        "#pwg Gupta Traders Due: ₹2,678 | 181 days",
+        "#ppu Kamla Devi Due: ₹3,632 | 291 days",
+        "#pp7 Sharma Stores Due: ₹5,036 | 300 days",
+        "#poc Kamla Devi Due: ₹906 | 311 days",
+        "#po3 Sharma Stores Due: ₹9,455 | 314 days",
+        "#pnl Kamla Devi Due: ₹2,249 | 322 days",
+        "#png Gupta Traders Due: ₹2,577 | 325 days",
+        "#pms राम लाल Due: ₹6,661 | 332 days",
+        "#plu राम लाल Due: ₹4,653 | 347 days",
+        "#plh Sharma Stores Due: ₹6,883 | 351 days",
+        "#pk2 Kamla Devi Due: ₹8,919 | 377 days",
+        "#pjl Shyam Lal Due: ₹18,497 | 385 days",
+        "#pjg Shyam Lal Due: ₹13,830 | 391 days",
+        "#pjc Sita Due: ₹9,746 | 392 days",
+        "#pid Gupta Traders Due: ₹2,545 | 409 days",
+        "#OLD-2 Old app Ravi Due: ₹11,603 | 436 days",
+        "#OLD-1 Old app Shyam Lal Due: ₹19,474 | 457 days",
+        "#pfi Ravi Due: ₹1,049 | 463 days",
+        "#pff Shyam Lal Due: ₹1,878 | 465 days",
+        "#pec Mohan Due: ₹1,776 | 484 days",
+        "#pa2 Shyam Lal Due: ₹1,462 | 560 days",
+        "#p7p Sharma Stores Due: ₹53 | 603 days",
+        "#p5e Mohan Due: ₹396 | 640 days",
+        "#p53 Gupta Traders Due: ₹7,216 | 644 days",
+        "#p3s Kamla Devi Due: ₹3,127 | 671 days",
+        "#p33 Sita Due: ₹1,860 | 678 days",
+        "#p1v Shyam Lal Due: ₹9,472 | 698 days",
+        "#pz Gupta Traders Due: ₹3,772 | 707 days",
+        "#p10 Gupta Traders Due: ₹6,381 | 707 days"
+      ]
+    },
+    "sale": {
+      "aging": "Receivables by age ₹33,120 0–30 days ₹1,797 5 bills 31–60 days ₹1,668 4 bills 61–90 days ₹3,268 4 bills 90+ days ₹26,387 60 bills Who to chase first Sharma Stores — ₹10,898 oldest 710 days Mohan — ₹6,383 oldest 699 days Sita — ₹4,254 oldest 706 days Kamla Devi — ₹3,656 oldest 512 days राम लाल — ₹2,742 oldest 536 days By party (8) Sort: Amount Oldest Sharma Stores Long overdue 17 bills · oldest 710 days ₹10,898 💬 Remind 🧾 Statement Mohan Long overdue 14 bills · oldest 699 days ₹6,383 💬 Remind 🧾 Statement Sita Long overdue 9 bills · oldest 706 days ₹4,254 💬 Remind 🧾 Statement Kamla Devi Long overdue 7 bills · oldest 512 days ₹3,656 💬 Remind 🧾 Statement राम लाल Long overdue 6 bills · oldest 536 days ₹2,742 💬 Remind 🧾 Statement Gupta Traders Long overdue 9 bills · oldest 568 days ₹2,098 💬 Remind 🧾 Statement Ravi Long overdue 6 bills · oldest 619 days ₹1,834 💬 Remind 🧾 Statement Shyam Lal Long overdue 5 bills · oldest 621 days ₹1,255 💬 Remind 🧾 Statement Bills",
+      "ages": [
+        "#r16p Mohan Due: ₹362 | 3 days",
+        "#r16n Mohan Due: ₹69 | 4 days",
+        "#r15x Sharma Stores Due: ₹755 | 24 days",
+        "#r15m Sharma Stores Due: ₹381 | 27 days",
+        "#r15i Ravi Due: ₹230 | 28 days",
+        "#r155 Sharma Stores Due: ₹248 | 35 days",
+        "#r150 राम लाल Due: ₹282 | 38 days",
+        "#r145 Gupta Traders Due: ₹24 | 55 days",
+        "#r13r Mohan Due: ₹1,114 | 60 days",
+        "#r13o Mohan Due: ₹295 | 61 days",
+        "#r13k Sita Due: ₹53 | 62 days",
+        "#r134 राम लाल Due: ₹1,040 | 70 days",
+        "#r12s Sharma Stores Due: ₹1,880 | 76 days",
+        "#r127 राम लाल Due: ₹370 | 92 days",
+        "#r11r राम लाल Due: ₹449 | 99 days",
+        "#r10w Sita Due: ₹1,255 | 113 days",
+        "#r10q Shyam Lal Due: ₹87 | 117 days",
+        "#r104 Shyam Lal Due: ₹149 | 127 days",
+        "#rzr Kamla Devi Due: ₹298 | 132 days",
+        "#rys Sita Due: ₹218 | 150 days",
+        "#ryn Mohan Due: ₹177 | 151 days",
+        "#rxl Gupta Traders Due: ₹228 | 165 days",
+        "#rxi Kamla Devi Due: ₹1,085 | 166 days",
+        "#rxc Ravi Due: ₹241 | 168 days",
+        "#rvl Sharma Stores Due: ₹679 | 195 days",
+        "#rv8 Gupta Traders Due: ₹66 | 200 days",
+        "#ru6 Sita Due: ₹118 | 218 days",
+        "#rsl Gupta Traders Due: ₹189 | 243 days",
+        "#rqz Sharma Stores Due: ₹717 | 267 days",
+        "#rpk Gupta Traders Due: ₹226 | 295 days",
+        "#rpg Sharma Stores Due: ₹862 | 296 days",
+        "#rog Sita Due: ₹791 | 311 days",
+        "#ro0 Ravi Due: ₹292 | 316 days",
+        "#rnc Sharma Stores Due: ₹467 | 326 days",
+        "#rmi Mohan Due: ₹738 | 336 days",
+        "#rlt Sharma Stores Due: ₹448 | 348 days",
+        "#rlc Kamla Devi Due: ₹127 | 354 days",
+        "#rl2 Sharma Stores Due: ₹1,728 | 358 days",
+        "#rkk Gupta Traders Due: ₹281 | 367 days",
+        "#rju Sharma Stores Due: ₹295 | 381 days",
+        "#rjj Sharma Stores Due: ₹235 | 390 days",
+        "#rj1 Sita Due: ₹65 | 395 days",
+        "#rip Mohan Due: ₹1,008 | 402 days",
+        "#rii Ravi Due: ₹212 | 405 days",
+        "#rgl Shyam Lal Due: ₹550 | 441 days",
+        "#rgd राम लाल Due: ₹491 | 444 days",
+        "#rg5 Kamla Devi Due: ₹399 | 448 days",
+        "#rf1 Kamla Devi Due: ₹409 | 473 days",
+        "#rev Ravi Due: ₹847 | 476 days",
+        "#reh Sharma Stores Due: ₹431 | 482 days",
+        "#rea Mohan Due: ₹124 | 486 days",
+        "#rdo Gupta Traders Due: ₹885 | 495 days",
+        "#rdl Kamla Devi Due: ₹878 | 496 days",
+        "#rcx Gupta Traders Due: ₹121 | 505 days",
+        "#rcu Shyam Lal Due: ₹346 | 508 days",
+        "#rci Kamla Devi Due: ₹460 | 512 days",
+        "#rbf राम लाल Due: ₹110 | 536 days",
+        "#rb4 Mohan Due: ₹553 | 541 days",
+        "#ran Mohan Due: ₹128 | 548 days",
+        "#rai Mohan Due: ₹563 | 552 days",
+        "#r9t Gupta Traders Due: ₹78 | 568 days",
+        "#r9o Mohan Due: ₹102 | 569 days",
+        "#r9k Sita Due: ₹235 | 570 days",
+        "#r7e Sharma Stores Due: ₹240 | 609 days",
+        "#r6u Ravi Due: ₹12 | 619 days",
+        "#r6m Shyam Lal Due: ₹123 | 621 days",
+        "#r6f Sita Due: ₹1,491 | 626 days",
+        "#r46 Mohan Due: ₹1,054 | 663 days",
+        "#r2u Sharma Stores Due: ₹1,023 | 682 days",
+        "#r1s Mohan Due: ₹96 | 699 days",
+        "#r1j Sharma Stores Due: ₹177 | 703 days",
+        "#r18 Sita Due: ₹28 | 706 days",
+        "#rv Sharma Stores Due: ₹332 | 710 days"
+      ]
+    }
+  },
+  "outstanding.mar31": {
+    "purchase": {
+      "aging": "Payables by age ₹1,79,714 0–30 days ₹36,240 3 bills 31–60 days ₹6,466 2 bills 61–90 days ₹0 0 bills 90+ days ₹1,37,008 23 bills By party (8) Sort: Amount Oldest Shyam Lal Long overdue 7 bills · oldest 466 days ₹48,641 🧾 Statement Sharma Stores Long overdue 4 bills · oldest 567 days ₹37,924 🧾 Statement Mohan Long overdue 3 bills · oldest 531 days ₹28,344 🧾 Statement Sita Long overdue 4 bills · oldest 574 days ₹27,456 🧾 Statement Ravi Long overdue 4 bills · oldest 532 days ₹24,191 🧾 Statement Kamla Devi Long overdue 3 bills · oldest 110 days ₹6,519 🧾 Statement Gupta Traders Long overdue 2 bills · oldest 309 days ₹6,339 🧾 Statement राम लाल Long overdue 1 bill · oldest 154 days ₹300 🧾 Statement Bills",
+      "ages": [
+        "#p14v Shyam Lal Due: ₹11,054 | 1 day",
+        "#p13j Sharma Stores Due: ₹18,951 | 21 days",
+        "#p137 Gupta Traders Due: ₹6,235 | 26 days",
+        "#p11r Kamla Devi Due: ₹6,062 | 49 days",
+        "#p11k Kamla Devi Due: ₹404 | 52 days",
+        "#pyk Kamla Devi Due: ₹53 | 110 days",
+        "#py1 Shyam Lal Due: ₹4,819 | 117 days",
+        "#pvx राम लाल Due: ₹300 | 154 days",
+        "#ppi Sharma Stores Due: ₹742 | 253 days",
+        "#pp1 Ravi Due: ₹1,073 | 263 days",
+        "#pnv Sita Due: ₹6,385 | 287 days",
+        "#pmt Gupta Traders Due: ₹104 | 309 days",
+        "#pkw Shyam Lal Due: ₹822 | 344 days",
+        "#pje Shyam Lal Due: ₹10,443 | 372 days",
+        "#pjb Shyam Lal Due: ₹1,382 | 373 days",
+        "#piu Mohan Due: ₹20,207 | 385 days",
+        "#phu Sita Due: ₹20,745 | 407 days",
+        "#OLD-2 Old app Ravi Due: ₹11,603 | 436 days",
+        "#pf7 Ravi Due: ₹8,684 | 456 days",
+        "#OLD-1 Old app Shyam Lal Due: ₹19,474 | 457 days",
+        "#pek Shyam Lal Due: ₹647 | 466 days",
+        "#pck Sita Due: ₹164 | 499 days",
+        "#paw Sharma Stores Due: ₹14,499 | 527 days",
+        "#pan Mohan Due: ₹2,889 | 531 days",
+        "#pal Mohan Due: ₹5,248 | 531 days",
+        "#pag Ravi Due: ₹2,831 | 532 days",
+        "#p8i Sharma Stores Due: ₹3,732 | 567 days",
+        "#p81 Sita Due: ₹162 | 574 days"
+      ]
+    },
+    "sale": {
+      "aging": "Receivables by age ₹31,569 0–30 days ₹3,773 8 bills 31–60 days ₹2,144 5 bills 61–90 days ₹2,199 3 bills 90+ days ₹23,453 67 bills Who to chase first Sharma Stores — ₹7,446 oldest 715 days Ravi — ₹4,418 oldest 723 days Kamla Devi — ₹4,412 oldest 692 days राम लाल — ₹4,269 oldest 674 days Shyam Lal — ₹4,196 oldest 687 days By party (8) Sort: Amount Oldest Sharma Stores Long overdue 17 bills · oldest 715 days ₹7,446 💬 Remind 🧾 Statement Ravi Long overdue 9 bills · oldest 723 days ₹4,418 💬 Remind 🧾 Statement Kamla Devi Long overdue 12 bills · oldest 692 days ₹4,412 💬 Remind 🧾 Statement राम लाल Long overdue 11 bills · oldest 674 days ₹4,269 💬 Remind 🧾 Statement Shyam Lal Long overdue 7 bills · oldest 687 days ₹4,196 💬 Remind 🧾 Statement Mohan Long overdue 8 bills · oldest 659 days ₹3,072 💬 Remind 🧾 Statement Gupta Traders Long overdue 11 bills · oldest 585 days ₹2,801 💬 Remind 🧾 Statement Sita Long overdue 8 bills · oldest 680 days ₹955 💬 Remind 🧾 Statement Bills",
+      "ages": [
+        "#r14y Sharma Stores Due: ₹304 | today",
+        "#r14w Kamla Devi Due: ₹294 | 1 day",
+        "#r14q Kamla Devi Due: ₹476 | 4 days",
+        "#r14l Kamla Devi Due: ₹126 | 5 days",
+        "#r14e Kamla Devi Due: ₹695 | 8 days",
+        "#r148 राम लाल Due: ₹653 | 11 days",
+        "#r13u Sita Due: ₹44 | 15 days",
+        "#r13k Kamla Devi Due: ₹1,181 | 21 days",
+        "#r123 Sharma Stores Due: ₹1,880 | 44 days",
+        "#r120 Gupta Traders Due: ₹177 | 46 days",
+        "#r11y राम लाल Due: ₹20 | 47 days",
+        "#r11t Gupta Traders Due: ₹39 | 48 days",
+        "#r11n Mohan Due: ₹28 | 52 days",
+        "#r110 Shyam Lal Due: ₹267 | 63 days",
+        "#r10y Shyam Lal Due: ₹1,598 | 64 days",
+        "#r10j राम लाल Due: ₹334 | 72 days",
+        "#rzg राम लाल Due: ₹305 | 95 days",
+        "#ryj Sharma Stores Due: ₹1,278 | 111 days",
+        "#ry7 Ravi Due: ₹64 | 114 days",
+        "#rxu राम लाल Due: ₹609 | 120 days",
+        "#rxj Kamla Devi Due: ₹86 | 128 days",
+        "#rxa Sharma Stores Due: ₹47 | 132 days",
+        "#rwz Ravi Due: ₹664 | 135 days",
+        "#rw6 Kamla Devi Due: ₹329 | 152 days",
+        "#rw4 Sita Due: ₹56 | 153 days",
+        "#rvr Ravi Due: ₹194 | 158 days",
+        "#rur Gupta Traders Due: ₹66 | 168 days",
+        "#rt0 Gupta Traders Due: ₹496 | 193 days",
+        "#rsk Gupta Traders Due: ₹407 | 200 days",
+        "#rsd Sita Due: ₹60 | 202 days",
+        "#rru Shyam Lal Due: ₹894 | 211 days",
+        "#rrq Gupta Traders Due: ₹24 | 212 days",
+        "#rrl Mohan Due: ₹503 | 215 days",
+        "#rra Sita Due: ₹306 | 221 days",
+        "#rqp Sharma Stores Due: ₹156 | 233 days",
+        "#rqd Sharma Stores Due: ₹717 | 237 days",
+        "#rq6 Gupta Traders Due: ₹471 | 240 days",
+        "#rq0 Gupta Traders Due: ₹695 | 243 days",
+        "#rps Mohan Due: ₹11 | 246 days",
+        "#rpn Shyam Lal Due: ₹848 | 250 days",
+        "#rov Ravi Due: ₹4 | 265 days",
+        "#rou Shyam Lal Due: ₹413 | 266 days",
+        "#roq Sharma Stores Due: ₹110 | 270 days",
+        "#rok राम लाल Due: ₹267 | 273 days",
+        "#ro5 Mohan Due: ₹170 | 281 days",
+        "#ro0 राम लाल Due: ₹487 | 284 days",
+        "#rny Kamla Devi Due: ₹178 | 286 days",
+        "#rmy Sharma Stores Due: ₹467 | 307 days",
+        "#rmx राम लाल Due: ₹162 | 309 days",
+        "#rm5 Sita Due: ₹180 | 320 days",
+        "#rlf Sharma Stores Due: ₹10 | 335 days",
+        "#rks Mohan Due: ₹321 | 347 days",
+        "#rk7 राम लाल Due: ₹771 | 361 days",
+        "#rjt Mohan Due: ₹93 | 366 days",
+        "#rj5 Sharma Stores Due: ₹235 | 378 days",
+        "#rj4 Sharma Stores Due: ₹643 | 379 days",
+        "#rib Ravi Due: ₹212 | 398 days",
+        "#ri0 राम लाल Due: ₹289 | 404 days",
+        "#rgb Sita Due: ₹32 | 434 days",
+        "#rfm Gupta Traders Due: ₹186 | 448 days",
+        "#rdi Kamla Devi Due: ₹23 | 483 days",
+        "#rda Kamla Devi Due: ₹616 | 488 days",
+        "#rcs Ravi Due: ₹2,304 | 496 days",
+        "#rco Gupta Traders Due: ₹121 | 498 days",
+        "#rax Mohan Due: ₹950 | 527 days",
+        "#ra4 Sharma Stores Due: ₹24 | 539 days",
+        "#r9f Sita Due: ₹183 | 549 days",
+        "#r8o Shyam Lal Due: ₹134 | 564 days",
+        "#r80 Sharma Stores Due: ₹183 | 575 days",
+        "#r7x Ravi Due: ₹193 | 576 days",
+        "#r7j Gupta Traders Due: ₹119 | 585 days",
+        "#r76 Sharma Stores Due: ₹250 | 594 days",
+        "#r6y Ravi Due: ₹37 | 600 days",
+        "#r6r Kamla Devi Due: ₹159 | 604 days",
+        "#r6g Sharma Stores Due: ₹458 | 610 days",
+        "#r41 Mohan Due: ₹996 | 659 days",
+        "#r2u राम लाल Due: ₹372 | 674 days",
+        "#r2i Sita Due: ₹94 | 680 days",
+        "#r2a Shyam Lal Due: ₹42 | 687 days",
+        "#r20 Kamla Devi Due: ₹249 | 692 days",
+        "#r1d Sharma Stores Due: ₹268 | 707 days",
+        "#ry Sharma Stores Due: ₹416 | 715 days",
+        "#rk Ravi Due: ₹746 | 723 days"
+      ]
+    }
+  },
+  "outstanding.jan1": {
+    "purchase": {
+      "aging": "Payables by age ₹1,40,694 0–30 days ₹6,464 1 bill 31–60 days ₹333 1 bill 61–90 days ₹0 0 bills 90+ days ₹1,33,897 29 bills By party (8) Sort: Amount Oldest Ravi Long overdue 8 bills · oldest 603 days ₹37,697 🧾 Statement Shyam Lal Long overdue 6 bills · oldest 671 days ₹36,641 🧾 Statement Sharma Stores Long overdue 6 bills · oldest 451 days ₹22,635 🧾 Statement Mohan Long overdue 3 bills · oldest 302 days ₹21,390 🧾 Statement Sita Long overdue 2 bills · oldest 585 days ₹11,209 🧾 Statement राम लाल Long overdue 3 bills · oldest 668 days ₹7,750 🧾 Statement Gupta Traders Long overdue 1 bill · oldest 380 days ₹1,861 🧾 Statement Kamla Devi Long overdue 2 bills · oldest 556 days ₹1,511 🧾 Statement Bills",
+      "ages": [
+        "#p13h Mohan Due: ₹6,464 | 22 days",
+        "#p11b Shyam Lal Due: ₹333 | 60 days",
+        "#pvc Ravi Due: ₹220 | 170 days",
+        "#puf Mohan Due: ₹2,888 | 185 days",
+        "#pt3 Ravi Due: ₹817 | 210 days",
+        "#pr0 Sharma Stores Due: ₹6,182 | 249 days",
+        "#pq1 Ravi Due: ₹791 | 267 days",
+        "#pq0 Sharma Stores Due: ₹742 | 268 days",
+        "#ppl Sharma Stores Due: ₹3,455 | 275 days",
+        "#ppj Sharma Stores Due: ₹10,028 | 276 days",
+        "#ppg Ravi Due: ₹10,411 | 279 days",
+        "#poi Shyam Lal Due: ₹2,945 | 294 days",
+        "#po2 Mohan Due: ₹12,038 | 302 days",
+        "#pmn राम लाल Due: ₹4,127 | 331 days",
+        "#pmh Kamla Devi Due: ₹212 | 333 days",
+        "#plg Sharma Stores Due: ₹1,385 | 346 days",
+        "#pl5 Shyam Lal Due: ₹2,089 | 350 days",
+        "#pjb Gupta Traders Due: ₹1,861 | 380 days",
+        "#ph4 Ravi Due: ₹1,911 | 424 days",
+        "#pgf Shyam Lal Due: ₹5,319 | 435 days",
+        "#OLD-2 Old app Ravi Due: ₹11,603 | 436 days",
+        "#pfh Sharma Stores Due: ₹843 | 451 days",
+        "#OLD-1 Old app Shyam Lal Due: ₹19,474 | 457 days",
+        "#pef Sita Due: ₹8,532 | 470 days",
+        "#pak राम लाल Due: ₹455 | 539 days",
+        "#p9h Kamla Devi Due: ₹1,299 | 556 days",
+        "#p8q Ravi Due: ₹10,490 | 569 days",
+        "#p7i Sita Due: ₹2,677 | 585 days",
+        "#p6h Ravi Due: ₹1,454 | 603 days",
+        "#p2h राम लाल Due: ₹3,168 | 668 days",
+        "#p2c Shyam Lal Due: ₹6,481 | 671 days"
+      ]
+    },
+    "sale": {
+      "aging": "Receivables by age ₹33,943 0–30 days ₹2,247 4 bills 31–60 days ₹2,184 3 bills 61–90 days ₹400 4 bills 90+ days ₹29,112 67 bills Who to chase first Sharma Stores — ₹6,009 oldest 720 days Mohan — ₹5,491 oldest 624 days Shyam Lal — ₹5,360 oldest 569 days Ravi — ₹5,013 oldest 640 days Sita — ₹4,855 oldest 658 days By party (8) Sort: Amount Oldest Sharma Stores Long overdue 12 bills · oldest 720 days ₹6,009 💬 Remind 🧾 Statement Mohan Long overdue 12 bills · oldest 624 days ₹5,491 💬 Remind 🧾 Statement Shyam Lal Long overdue 16 bills · oldest 569 days ₹5,360 💬 Remind 🧾 Statement Ravi Long overdue 7 bills · oldest 640 days ₹5,013 💬 Remind 🧾 Statement Sita Long overdue 9 bills · oldest 658 days ₹4,855 💬 Remind 🧾 Statement राम लाल Long overdue 10 bills · oldest 718 days ₹3,889 💬 Remind 🧾 Statement Kamla Devi Long overdue 7 bills · oldest 629 days ₹2,087 💬 Remind 🧾 Statement Gupta Traders Long overdue 5 bills · oldest 588 days ₹1,239 💬 Remind 🧾 Statement Bills",
+      "ages": [
+        "#r144 Sharma Stores Due: ₹320 | 10 days",
+        "#r140 Mohan Due: ₹637 | 12 days",
+        "#r13a राम लाल Due: ₹1,031 | 27 days",
+        "#r137 राम लाल Due: ₹259 | 28 days",
+        "#r131 Sharma Stores Due: ₹606 | 31 days",
+        "#r12s Ravi Due: ₹1,125 | 36 days",
+        "#r11v Kamla Devi Due: ₹453 | 53 days",
+        "#r111 Shyam Lal Due: ₹204 | 65 days",
+        "#r10t Mohan Due: ₹102 | 66 days",
+        "#r10l Mohan Due: ₹38 | 68 days",
+        "#r106 Sita Due: ₹56 | 76 days",
+        "#ryu राम लाल Due: ₹1,220 | 107 days",
+        "#ryn Sharma Stores Due: ₹1,681 | 111 days",
+        "#ryg Gupta Traders Due: ₹273 | 113 days",
+        "#ry5 Sita Due: ₹218 | 118 days",
+        "#rxk Kamla Devi Due: ₹86 | 128 days",
+        "#rx3 Ravi Due: ₹689 | 139 days",
+        "#rwz Sharma Stores Due: ₹749 | 140 days",
+        "#rwc Mohan Due: ₹625 | 151 days",
+        "#rvj Kamla Devi Due: ₹424 | 167 days",
+        "#rve Gupta Traders Due: ₹274 | 170 days",
+        "#rul Shyam Lal Due: ₹68 | 183 days",
+        "#ru9 राम लाल Due: ₹302 | 189 days",
+        "#rtj Shyam Lal Due: ₹88 | 203 days",
+        "#rtf Ravi Due: ₹798 | 204 days",
+        "#rtd Sharma Stores Due: ₹586 | 205 days",
+        "#rsk Mohan Due: ₹151 | 219 days",
+        "#rs7 Shyam Lal Due: ₹894 | 225 days",
+        "#rrg Kamla Devi Due: ₹549 | 239 days",
+        "#rra राम लाल Due: ₹529 | 244 days",
+        "#rr1 Mohan Due: ₹37 | 249 days",
+        "#rqp Shyam Lal Due: ₹32 | 253 days",
+        "#rpp Shyam Lal Due: ₹29 | 273 days",
+        "#rph Sita Due: ₹50 | 279 days",
+        "#rpc Sharma Stores Due: ₹675 | 281 days",
+        "#ros Mohan Due: ₹222 | 290 days",
+        "#rnq Ravi Due: ₹189 | 309 days",
+        "#rnm Ravi Due: ₹486 | 311 days",
+        "#rl6 Ravi Due: ₹1,487 | 350 days",
+        "#rk9 Sita Due: ₹328 | 366 days",
+        "#rjv Shyam Lal Due: ₹690 | 372 days",
+        "#rjm Mohan Due: ₹1,374 | 376 days",
+        "#ris Shyam Lal Due: ₹533 | 392 days",
+        "#ric Sita Due: ₹447 | 401 days",
+        "#ri1 Shyam Lal Due: ₹420 | 405 days",
+        "#rgx Shyam Lal Due: ₹570 | 427 days",
+        "#rgg Shyam Lal Due: ₹322 | 435 days",
+        "#rg8 Shyam Lal Due: ₹277 | 437 days",
+        "#rf8 Gupta Traders Due: ₹27 | 455 days",
+        "#rek राम लाल Due: ₹13 | 468 days",
+        "#reg Gupta Traders Due: ₹455 | 470 days",
+        "#rdj Mohan Due: ₹473 | 483 days",
+        "#rcj Shyam Lal Due: ₹622 | 498 days",
+        "#rcd Sharma Stores Due: ₹551 | 504 days",
+        "#rbm Shyam Lal Due: ₹77 | 517 days",
+        "#ray Mohan Due: ₹950 | 531 days",
+        "#ral Mohan Due: ₹761 | 539 days",
+        "#rag Sita Due: ₹490 | 541 days",
+        "#ra9 राम लाल Due: ₹233 | 543 days",
+        "#ra4 Kamla Devi Due: ₹279 | 548 days",
+        "#r9o Shyam Lal Due: ₹518 | 555 days",
+        "#r92 राम लाल Due: ₹295 | 562 days",
+        "#r8r Shyam Lal Due: ₹16 | 569 days",
+        "#r8l Sharma Stores Due: ₹422 | 571 days",
+        "#r8c Kamla Devi Due: ₹50 | 576 days",
+        "#r7r Sharma Stores Due: ₹104 | 583 days",
+        "#r7f Gupta Traders Due: ₹210 | 588 days",
+        "#r5x Sita Due: ₹1,418 | 611 days",
+        "#r5m Sharma Stores Due: ₹185 | 613 days",
+        "#r56 Mohan Due: ₹121 | 624 days",
+        "#r4v Kamla Devi Due: ₹246 | 629 days",
+        "#r4j राम लाल Due: ₹6 | 633 days",
+        "#r49 Sita Due: ₹736 | 638 days",
+        "#r42 Ravi Due: ₹239 | 640 days",
+        "#r3b Sharma Stores Due: ₹99 | 652 days",
+        "#r2x Sita Due: ₹1,112 | 658 days",
+        "#rk राम लाल Due: ₹1 | 718 days",
+        "#rh Sharma Stores Due: ₹31 | 720 days"
+      ]
+    }
+  },
+  "statements.first": {
+    "day": {
+      "title": "Day book · 1 Nov 2026",
+      "share": "Day book · 1 Nov 2026",
+      "text": "For today, see Today ›Day book · 1 Nov 2026TimeWhatDetailsAmountDueNothing in this period.",
+      "rows": 0,
+      "first": [],
+      "last": []
+    },
+    "dayFeb28": {
+      "title": "Day book · 28 Feb 2027",
+      "share": "Day book · 28 Feb 2027\nSales: ₹0\nPurchases: ₹0\nExpenses: ₹0\nWithdrawals: ₹0\nOld dues received: ₹0\nOld dues paid: ₹0",
+      "text": "Day book · 28 Feb 2027TimeWhatDetailsAmountDueNothing in this period.Sales (0)₹0Purchases (0)₹0Expenses₹0Withdrawals₹0Old dues received₹0Old dues paid₹0",
+      "rows": 0,
+      "first": [],
+      "last": []
+    },
+    "month": {
+      "title": "Month statement · Nov 2026",
+      "share": "Month statement · Nov 2026\nSales: ₹0\nCost of goods sold: ₹0\nGross profit: ₹0\nBusiness expenses: ₹0\nBad debts: ₹0\nProfit: ₹0\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹0\nKept in business: ₹0\nMoney in: ₹0\nMoney out: ₹0\nNet money in: ₹0\nBought: ₹0\nStock at the start: ₹7,31,936\nStock at the end: ₹7,31,936",
+      "text": "Month statement · Nov 2026Sales₹0− Cost of goods sold₹0= Gross profit₹0− Business expenses₹0− Bad debts₹0= Profit₹0Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹0Kept in business₹0Money in₹0Money out₹0Net money in₹0Bought₹0Stock at the start₹7,31,936= Stock at the end₹7,31,936",
+      "rows": 16,
+      "first": [
+        [
+          "Sales",
+          0
+        ],
+        [
+          "Cost of goods sold",
+          0
+        ],
+        [
+          "Gross profit",
+          0
+        ]
+      ],
+      "last": [
+        [
+          "Bought",
+          0
+        ],
+        [
+          "Stock at the start",
+          731935.94
+        ],
+        [
+          "Stock at the end",
+          731935.94
+        ]
+      ]
+    },
+    "monthOptions": [
+      "2026-11=Nov 2026",
+      "2026-10=Oct 2026",
+      "2026-09=Sep 2026",
+      "2026-08=Aug 2026",
+      "2026-07=Jul 2026",
+      "2026-06=Jun 2026",
+      "2026-05=May 2026",
+      "2026-04=Apr 2026",
+      "2026-03=Mar 2026",
+      "2026-02=Feb 2026",
+      "2026-01=Jan 2026",
+      "2025-12=Dec 2025",
+      "2025-11=Nov 2025",
+      "2025-10=Oct 2025",
+      "2025-09=Sep 2025",
+      "2025-08=Aug 2025",
+      "2025-07=Jul 2025",
+      "2025-06=Jun 2025",
+      "2025-05=May 2025",
+      "2025-04=Apr 2025",
+      "2025-03=Mar 2025",
+      "2025-02=Feb 2025",
+      "2025-01=Jan 2025",
+      "2024-12=Dec 2024"
+    ],
+    "csv": {
+      "title": "Export CSV · 1 Nov 2026 – 1 Nov 2026",
+      "share": "Export CSV · 1 Nov 2026 – 1 Nov 2026\n0 lines from 0 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 1 Nov 2026 – 1 Nov 20260 lines from 0 bills are ready. Tap CSV to download.",
+      "rows": 0,
+      "first": [],
+      "last": []
+    },
+    "csvRange": [
+      "2026-11-01",
+      "2026-11-01"
+    ],
+    "csvJanToMar": {
+      "title": "Export CSV · 31 Jan 2027 – 1 Mar 2027",
+      "share": "Export CSV · 31 Jan 2027 – 1 Mar 2027\n0 lines from 0 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 31 Jan 2027 – 1 Mar 20270 lines from 0 bills are ready. Tap CSV to download.",
+      "rows": 0,
+      "first": [],
+      "last": []
+    }
+  },
+  "statements.jan31": {
+    "day": {
+      "title": "Day book · 31 Jan 2027",
+      "share": "Day book · 31 Jan 2027",
+      "text": "For today, see Today ›Day book · 31 Jan 2027TimeWhatDetailsAmountDueNothing in this period.",
+      "rows": 0,
+      "first": [],
+      "last": []
+    },
+    "dayFeb28": {
+      "title": "Day book · 28 Feb 2027",
+      "share": "Day book · 28 Feb 2027\nSales: ₹0\nPurchases: ₹0\nExpenses: ₹0\nWithdrawals: ₹0\nOld dues received: ₹0\nOld dues paid: ₹0",
+      "text": "Day book · 28 Feb 2027TimeWhatDetailsAmountDueNothing in this period.Sales (0)₹0Purchases (0)₹0Expenses₹0Withdrawals₹0Old dues received₹0Old dues paid₹0",
+      "rows": 0,
+      "first": [],
+      "last": []
+    },
+    "month": {
+      "title": "Month statement · Jan 2027",
+      "share": "Month statement · Jan 2027\nSales: ₹23,119\nCost of goods sold: ₹19,759\nGross profit: ₹3,360\nBusiness expenses: ₹16,100\nBad debts: ₹0\nProfit: -₹12,740\nLabour on purchases (not in cost): ₹18\nPersonal expenses: ₹2,000\nWithdrawals: ₹0\nKept in business: -₹14,740\nMoney in: ₹17,865\nMoney out: ₹25,544\nNet money in: -₹7,679\nBought: ₹6,740\nStock at the start: ₹8,63,649\nStock at the end: ₹8,50,648",
+      "text": "Month statement · Jan 2027Sales₹23,119− Cost of goods sold₹19,759= Gross profit₹3,360− Business expenses₹16,100− Bad debts₹0= Profit-₹12,740Labour on purchases (not in cost)₹18Personal expenses₹2,000Withdrawals₹0Kept in business-₹14,740Money in₹17,865Money out₹25,544Net money in-₹7,679Bought₹6,740Stock at the start₹8,63,649= Stock at the end₹8,50,648⚠ ₹1,050 of expenses have no type; they count as business.",
+      "rows": 16,
+      "first": [
+        [
+          "Sales",
+          23119
+        ],
+        [
+          "Cost of goods sold",
+          19759.21
+        ],
+        [
+          "Gross profit",
+          3359.79
+        ]
+      ],
+      "last": [
+        [
+          "Bought",
+          6740
+        ],
+        [
+          "Stock at the start",
+          863649.23
+        ],
+        [
+          "Stock at the end",
+          850648.02
+        ]
+      ]
+    },
+    "monthOptions": [
+      "2027-01=Jan 2027",
+      "2026-12=Dec 2026",
+      "2026-11=Nov 2026",
+      "2026-10=Oct 2026",
+      "2026-09=Sep 2026",
+      "2026-08=Aug 2026",
+      "2026-07=Jul 2026",
+      "2026-06=Jun 2026",
+      "2026-05=May 2026",
+      "2026-04=Apr 2026",
+      "2026-03=Mar 2026",
+      "2026-02=Feb 2026",
+      "2026-01=Jan 2026",
+      "2025-12=Dec 2025",
+      "2025-11=Nov 2025",
+      "2025-10=Oct 2025",
+      "2025-09=Sep 2025",
+      "2025-08=Aug 2025",
+      "2025-07=Jul 2025",
+      "2025-06=Jun 2025",
+      "2025-05=May 2025",
+      "2025-04=Apr 2025",
+      "2025-03=Mar 2025",
+      "2025-02=Feb 2025"
+    ],
+    "csv": {
+      "title": "Export CSV · 1 Jan 2027 – 31 Jan 2027",
+      "share": "Export CSV · 1 Jan 2027 – 31 Jan 2027\n33 lines from 18 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 1 Jan 2027 – 31 Jan 202733 lines from 18 bills are ready. Tap CSV to download.",
+      "rows": 33,
+      "first": [
+        [
+          "2027-01-01 13:35",
+          "Retail sale",
+          "",
+          "Gupta Traders",
+          "Wheat",
+          23,
+          28,
+          644,
+          0,
+          644,
+          778,
+          354,
+          0,
+          424
+        ],
+        [
+          "2027-01-01 13:35",
+          "Retail sale",
+          "",
+          "Gupta Traders",
+          "Mustard",
+          2,
+          67,
+          134,
+          0,
+          134,
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "2027-01-02 11:50",
+          "Retail sale",
+          "",
+          "Sita",
+          "Rice",
+          10,
+          38,
+          380,
+          0,
+          380,
+          1560,
+          1560,
+          0,
+          0
+        ]
+      ],
+      "last": [
+        [
+          "2027-01-27 15:55",
+          "Retail sale",
+          "",
+          "राम लाल",
+          "Maize",
+          16.5,
+          24,
+          396,
+          0,
+          396,
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "2027-01-30 00:00",
+          "Retail sale",
+          "",
+          "Kamla Devi",
+          "Mustard",
+          22,
+          65,
+          1430,
+          0,
+          1430,
+          1518,
+          1074,
+          0,
+          444
+        ],
+        [
+          "2027-01-30 00:00",
+          "Retail sale",
+          "",
+          "Kamla Devi",
+          "Maize",
+          4,
+          22,
+          88,
+          0,
+          88,
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    "csvRange": [
+      "2027-01-01",
+      "2027-01-31"
+    ],
+    "csvJanToMar": {
+      "title": "Export CSV · 31 Jan 2027 – 1 Mar 2027",
+      "share": "Export CSV · 31 Jan 2027 – 1 Mar 2027\n0 lines from 0 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 31 Jan 2027 – 1 Mar 20270 lines from 0 bills are ready. Tap CSV to download.",
+      "rows": 0,
+      "first": [],
+      "last": []
+    }
+  },
+  "statements.leapDay": {
+    "day": {
+      "title": "Day book · 29 Feb 2028",
+      "share": "Day book · 29 Feb 2028\n12:00 am · Expense · ₹575\n12:11 pm · Retail sale · Sita · ₹406",
+      "text": "For today, see Today ›Day book · 29 Feb 2028TimeWhatDetailsAmountDue12:00 amExpense₹57512:11 pmRetail saleSita₹406",
+      "rows": 2,
+      "first": [
+        [
+          "2028-02-29 00:00",
+          "Expense",
+          "",
+          "",
+          "",
+          575,
+          575,
+          0,
+          0
+        ],
+        [
+          "2028-02-29 12:11",
+          "Retail sale",
+          "",
+          "Sita",
+          "",
+          406,
+          406,
+          0,
+          0
+        ]
+      ],
+      "last": [
+        [
+          "2028-02-29 00:00",
+          "Expense",
+          "",
+          "",
+          "",
+          575,
+          575,
+          0,
+          0
+        ],
+        [
+          "2028-02-29 12:11",
+          "Retail sale",
+          "",
+          "Sita",
+          "",
+          406,
+          406,
+          0,
+          0
+        ]
+      ]
+    },
+    "dayFeb28": {
+      "title": "Day book · 28 Feb 2027",
+      "share": "Day book · 28 Feb 2027\nSales: ₹0\nPurchases: ₹0\nExpenses: ₹0\nWithdrawals: ₹0\nOld dues received: ₹0\nOld dues paid: ₹0",
+      "text": "Day book · 28 Feb 2027TimeWhatDetailsAmountDueNothing in this period.Sales (0)₹0Purchases (0)₹0Expenses₹0Withdrawals₹0Old dues received₹0Old dues paid₹0",
+      "rows": 0,
+      "first": [],
+      "last": []
+    },
+    "month": {
+      "title": "Month statement · Feb 2028",
+      "share": "Month statement · Feb 2028\nSales: ₹37,494\nCost of goods sold: ₹33,846\nGross profit: ₹3,648\nBusiness expenses: ₹10,750\nBad debts: ₹218\nProfit: -₹7,320\nLabour on purchases (not in cost): ₹102\nPersonal expenses: ₹1,400\nWithdrawals: ₹17,000\nKept in business: -₹25,720\nMoney in: ₹36,650\nMoney out: ₹52,910\nNet money in: -₹16,260\nBought: ₹40,760\nStock at the start: ₹11,60,453\nStock at the end: ₹11,67,468",
+      "text": "Month statement · Feb 2028Sales₹37,494− Cost of goods sold₹33,846= Gross profit₹3,648− Business expenses₹10,750− Bad debts₹218= Profit-₹7,320Labour on purchases (not in cost)₹102Personal expenses₹1,400Withdrawals₹17,000Kept in business-₹25,720Money in₹36,650Money out₹52,910Net money in-₹16,260Bought₹40,760Stock at the start₹11,60,453= Stock at the end₹11,67,468⚠ ₹250 of expenses have no type; they count as business.",
+      "rows": 16,
+      "first": [
+        [
+          "Sales",
+          37494
+        ],
+        [
+          "Cost of goods sold",
+          33846.31
+        ],
+        [
+          "Gross profit",
+          3647.69
+        ]
+      ],
+      "last": [
+        [
+          "Bought",
+          40760
+        ],
+        [
+          "Stock at the start",
+          1160453.33
+        ],
+        [
+          "Stock at the end",
+          1167468.01
+        ]
+      ]
+    },
+    "monthOptions": [
+      "2028-02=Feb 2028",
+      "2028-01=Jan 2028",
+      "2027-12=Dec 2027",
+      "2027-11=Nov 2027",
+      "2027-10=Oct 2027",
+      "2027-09=Sep 2027",
+      "2027-08=Aug 2027",
+      "2027-07=Jul 2027",
+      "2027-06=Jun 2027",
+      "2027-05=May 2027",
+      "2027-04=Apr 2027",
+      "2027-03=Mar 2027",
+      "2027-02=Feb 2027",
+      "2027-01=Jan 2027",
+      "2026-12=Dec 2026",
+      "2026-11=Nov 2026",
+      "2026-10=Oct 2026",
+      "2026-09=Sep 2026",
+      "2026-08=Aug 2026",
+      "2026-07=Jul 2026",
+      "2026-06=Jun 2026",
+      "2026-05=May 2026",
+      "2026-04=Apr 2026",
+      "2026-03=Mar 2026"
+    ],
+    "csv": {
+      "title": "Export CSV · 1 Feb 2028 – 29 Feb 2028",
+      "share": "Export CSV · 1 Feb 2028 – 29 Feb 2028\n29 lines from 21 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 1 Feb 2028 – 29 Feb 202829 lines from 21 bills are ready. Tap CSV to download.",
+      "rows": 29,
+      "first": [
+        [
+          "2028-02-01 10:25",
+          "Purchase",
+          "",
+          "Sharma Stores",
+          "Mustard",
+          237,
+          56.5,
+          13391,
+          30,
+          13361,
+          13361,
+          13361,
+          0,
+          0
+        ],
+        [
+          "2028-02-01 14:32",
+          "Retail sale",
+          "",
+          "Ravi",
+          "Gram",
+          9,
+          62,
+          558,
+          0,
+          558,
+          558,
+          328,
+          0,
+          230
+        ],
+        [
+          "2028-02-01 18:01",
+          "Wholesale",
+          "",
+          "Mohan",
+          "Mustard",
+          210,
+          58.5,
+          12285,
+          0,
+          12285,
+          12285,
+          12285,
+          0,
+          0
+        ]
+      ],
+      "last": [
+        [
+          "2028-02-26 20:41",
+          "Retail sale",
+          "",
+          "Mohan",
+          "Rice",
+          9.5,
+          40,
+          380,
+          0,
+          380,
+          380,
+          18,
+          0,
+          362
+        ],
+        [
+          "2028-02-28 15:33",
+          "Wholesale",
+          "",
+          "Ravi",
+          "Mustard",
+          120,
+          62,
+          7440,
+          0,
+          7440,
+          7440,
+          1992,
+          5448,
+          0
+        ],
+        [
+          "2028-02-29 12:11",
+          "Retail sale",
+          "",
+          "Sita",
+          "Wheat",
+          14.5,
+          28,
+          406,
+          0,
+          406,
+          406,
+          406,
+          0,
+          0
+        ]
+      ]
+    },
+    "csvRange": [
+      "2028-02-01",
+      "2028-02-29"
+    ],
+    "csvJanToMar": {
+      "title": "Export CSV · 31 Jan 2027 – 1 Mar 2027",
+      "share": "Export CSV · 31 Jan 2027 – 1 Mar 2027\n35 lines from 25 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 31 Jan 2027 – 1 Mar 202735 lines from 25 bills are ready. Tap CSV to download.",
+      "rows": 35,
+      "first": [
+        [
+          "2027-02-01 20:35",
+          "Retail sale",
+          "",
+          "Shyam Lal",
+          "Maize",
+          8,
+          21,
+          168,
+          0,
+          168,
+          168,
+          168,
+          0,
+          0
+        ],
+        [
+          "2027-02-02 09:29",
+          "Purchase",
+          "",
+          "Sita",
+          "Mustard",
+          318,
+          53,
+          16854,
+          0,
+          16854,
+          16854,
+          330,
+          6778,
+          9746
+        ],
+        [
+          "2027-02-02 14:14",
+          "Retail sale",
+          "",
+          "Ravi",
+          "Rice",
+          15.5,
+          41,
+          636,
+          0,
+          636,
+          636,
+          636,
+          0,
+          0
+        ]
+      ],
+      "last": [
+        [
+          "2027-02-27 10:11",
+          "Purchase",
+          "",
+          "Kamla Devi",
+          "Mustard",
+          296,
+          56.5,
+          16724,
+          36,
+          16688,
+          16688,
+          16688,
+          0,
+          0
+        ],
+        [
+          "2027-02-27 10:12",
+          "Purchase",
+          "",
+          "Shyam Lal",
+          "Gram",
+          46,
+          44.5,
+          2047,
+          0,
+          2047,
+          2047,
+          15,
+          918,
+          1114
+        ],
+        [
+          "2027-02-27 19:56",
+          "Retail sale",
+          "",
+          "Gupta Traders",
+          "Maize",
+          23.5,
+          21,
+          494,
+          0,
+          494,
+          494,
+          213,
+          0,
+          281
+        ]
+      ]
+    }
+  },
+  "statements.mar31": {
+    "day": {
+      "title": "Day book · 31 Mar 2027",
+      "share": "Day book · 31 Mar 2027\n8:59 pm · Retail sale · Sharma Stores · ₹882",
+      "text": "For today, see Today ›Day book · 31 Mar 2027TimeWhatDetailsAmountDue8:59 pmRetail saleSharma Stores₹882₹304",
+      "rows": 1,
+      "first": [
+        [
+          "2027-03-31 20:59",
+          "Retail sale",
+          "",
+          "Sharma Stores",
+          "",
+          882,
+          578,
+          0,
+          304
+        ]
+      ],
+      "last": [
+        [
+          "2027-03-31 20:59",
+          "Retail sale",
+          "",
+          "Sharma Stores",
+          "",
+          882,
+          578,
+          0,
+          304
+        ]
+      ]
+    },
+    "dayFeb28": {
+      "title": "Day book · 28 Feb 2027",
+      "share": "Day book · 28 Feb 2027\nSales: ₹0\nPurchases: ₹0\nExpenses: ₹0\nWithdrawals: ₹0\nOld dues received: ₹0\nOld dues paid: ₹0",
+      "text": "Day book · 28 Feb 2027TimeWhatDetailsAmountDueNothing in this period.Sales (0)₹0Purchases (0)₹0Expenses₹0Withdrawals₹0Old dues received₹0Old dues paid₹0",
+      "rows": 0,
+      "first": [],
+      "last": []
+    },
+    "month": {
+      "title": "Month statement · Mar 2027",
+      "share": "Month statement · Mar 2027\nSales: ₹24,095\nCost of goods sold: ₹20,997\nGross profit: ₹3,098\nBusiness expenses: ₹16,775\nBad debts: ₹0\nProfit: -₹13,677\nLabour on purchases (not in cost): ₹240\nPersonal expenses: ₹5,400\nWithdrawals: ₹15,000\nKept in business: -₹34,077\nMoney in: ₹21,442\nMoney out: ₹1,40,242\nNet money in: -₹1,18,800\nBought: ₹1,47,446\nStock at the start: ₹6,67,232\nStock at the end: ₹7,94,087",
+      "text": "Month statement · Mar 2027Sales₹24,095− Cost of goods sold₹20,997= Gross profit₹3,098− Business expenses₹16,775− Bad debts₹0= Profit-₹13,677Labour on purchases (not in cost)₹240Personal expenses₹5,400Withdrawals₹15,000Kept in business-₹34,077Money in₹21,442Money out₹1,40,242Net money in-₹1,18,800Bought₹1,47,446Stock at the start₹6,67,232= Stock at the end₹7,94,087⚠ ₹1,000 of expenses have no type; they count as business.",
+      "rows": 16,
+      "first": [
+        [
+          "Sales",
+          24095
+        ],
+        [
+          "Cost of goods sold",
+          20997.49
+        ],
+        [
+          "Gross profit",
+          3097.51
+        ]
+      ],
+      "last": [
+        [
+          "Bought",
+          147446
+        ],
+        [
+          "Stock at the start",
+          667231.82
+        ],
+        [
+          "Stock at the end",
+          794087.39
+        ]
+      ]
+    },
+    "monthOptions": [
+      "2027-03=Mar 2027",
+      "2027-02=Feb 2027",
+      "2027-01=Jan 2027",
+      "2026-12=Dec 2026",
+      "2026-11=Nov 2026",
+      "2026-10=Oct 2026",
+      "2026-09=Sep 2026",
+      "2026-08=Aug 2026",
+      "2026-07=Jul 2026",
+      "2026-06=Jun 2026",
+      "2026-05=May 2026",
+      "2026-04=Apr 2026",
+      "2026-03=Mar 2026",
+      "2026-02=Feb 2026",
+      "2026-01=Jan 2026",
+      "2025-12=Dec 2025",
+      "2025-11=Nov 2025",
+      "2025-10=Oct 2025",
+      "2025-09=Sep 2025",
+      "2025-08=Aug 2025",
+      "2025-07=Jul 2025",
+      "2025-06=Jun 2025",
+      "2025-05=May 2025",
+      "2025-04=Apr 2025"
+    ],
+    "csv": {
+      "title": "Export CSV · 1 Mar 2027 – 31 Mar 2027",
+      "share": "Export CSV · 1 Mar 2027 – 31 Mar 2027\n42 lines from 29 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 1 Mar 2027 – 31 Mar 202742 lines from 29 bills are ready. Tap CSV to download.",
+      "rows": 42,
+      "first": [
+        [
+          "2027-03-02 00:00",
+          "Retail sale",
+          "",
+          "Shyam Lal",
+          "Gram",
+          5,
+          53,
+          265,
+          0,
+          265,
+          265,
+          265,
+          0,
+          0
+        ],
+        [
+          "2027-03-02 10:18",
+          "Wholesale",
+          "",
+          "राम लाल",
+          "Gram",
+          44,
+          51,
+          2244,
+          0,
+          2244,
+          2244,
+          536,
+          604,
+          1104
+        ],
+        [
+          "2027-03-03 07:16",
+          "Purchase",
+          "",
+          "राम लाल",
+          "Mustard",
+          371,
+          49,
+          18179,
+          42,
+          18137,
+          18137,
+          18137,
+          0,
+          0
+        ]
+      ],
+      "last": [
+        [
+          "2027-03-30 13:33",
+          "Retail sale",
+          "",
+          "Kamla Devi",
+          "Wheat",
+          7.5,
+          29,
+          218,
+          0,
+          218,
+          425,
+          131,
+          0,
+          294
+        ],
+        [
+          "2027-03-30 13:33",
+          "Retail sale",
+          "",
+          "Kamla Devi",
+          "Gram",
+          3.5,
+          59,
+          207,
+          0,
+          207,
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "2027-03-31 20:59",
+          "Retail sale",
+          "",
+          "Sharma Stores",
+          "Rice",
+          24.5,
+          36,
+          882,
+          0,
+          882,
+          882,
+          578,
+          0,
+          304
+        ]
+      ]
+    },
+    "csvRange": [
+      "2027-03-01",
+      "2027-03-31"
+    ],
+    "csvJanToMar": {
+      "title": "Export CSV · 31 Jan 2027 – 1 Mar 2027",
+      "share": "Export CSV · 31 Jan 2027 – 1 Mar 2027\n32 lines from 22 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 31 Jan 2027 – 1 Mar 202732 lines from 22 bills are ready. Tap CSV to download.",
+      "rows": 32,
+      "first": [
+        [
+          "2027-02-02 15:49",
+          "Retail sale",
+          "",
+          "Mohan",
+          "Mustard",
+          15.5,
+          61,
+          946,
+          0,
+          946,
+          946,
+          168,
+          120,
+          658
+        ],
+        [
+          "2027-02-03 08:14",
+          "Purchase",
+          "",
+          "Ravi",
+          "Mustard",
+          519,
+          55.5,
+          28805,
+          60,
+          28745,
+          28745,
+          28745,
+          0,
+          0
+        ],
+        [
+          "2027-02-04 05:30",
+          "Retail sale",
+          "",
+          "Ravi",
+          "Wheat",
+          15.5,
+          28,
+          434,
+          0,
+          434,
+          1302,
+          1302,
+          0,
+          0
+        ]
+      ],
+      "last": [
+        [
+          "2027-02-24 15:42",
+          "Retail sale",
+          "",
+          "Mohan",
+          "Gram",
+          22,
+          61,
+          1342,
+          0,
+          1342,
+          "",
+          "",
+          "",
+          ""
+        ],
+        [
+          "2027-02-25 10:36",
+          "Retail sale",
+          "",
+          "Sharma Stores",
+          "Mustard",
+          22.5,
+          63,
+          1418,
+          0,
+          1418,
+          2573,
+          1806,
+          767,
+          0
+        ],
+        [
+          "2027-02-25 10:36",
+          "Retail sale",
+          "",
+          "Sharma Stores",
+          "Gram",
+          21,
+          55,
+          1155,
+          0,
+          1155,
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    }
+  },
+  "statements.jan1": {
+    "day": {
+      "title": "Day book · 1 Jan 2027",
+      "share": "Day book · 1 Jan 2027\n12:00 am · Expense · ₹300\n12:00 am · Expense · ₹450\n12:00 am · Withdrawal · ₹11,500\n11:05 am · Retail sale · Shyam Lal · ₹1,827",
+      "text": "For today, see Today ›Day book · 1 Jan 2027TimeWhatDetailsAmountDue12:00 amExpense₹30012:00 amExpense₹45012:00 amWithdrawal₹11,50011:05 amRetail saleShyam Lal₹1,827",
+      "rows": 4,
+      "first": [
+        [
+          "2027-01-01 00:00",
+          "Expense",
+          "",
+          "",
+          "",
+          300,
+          300,
+          0,
+          0
+        ],
+        [
+          "2027-01-01 00:00",
+          "Expense",
+          "",
+          "",
+          "",
+          450,
+          450,
+          0,
+          0
+        ],
+        [
+          "2027-01-01 00:00",
+          "Withdrawal",
+          "",
+          "",
+          "",
+          11500,
+          11500,
+          0,
+          0
+        ]
+      ],
+      "last": [
+        [
+          "2027-01-01 00:00",
+          "Expense",
+          "",
+          "",
+          "",
+          450,
+          450,
+          0,
+          0
+        ],
+        [
+          "2027-01-01 00:00",
+          "Withdrawal",
+          "",
+          "",
+          "",
+          11500,
+          11500,
+          0,
+          0
+        ],
+        [
+          "2027-01-01 11:05",
+          "Retail sale",
+          "",
+          "Shyam Lal",
+          "",
+          1827,
+          1827,
+          0,
+          0
+        ]
+      ]
+    },
+    "dayFeb28": {
+      "title": "Day book · 28 Feb 2027",
+      "share": "Day book · 28 Feb 2027\nSales: ₹0\nPurchases: ₹0\nExpenses: ₹0\nWithdrawals: ₹0\nOld dues received: ₹0\nOld dues paid: ₹0",
+      "text": "Day book · 28 Feb 2027TimeWhatDetailsAmountDueNothing in this period.Sales (0)₹0Purchases (0)₹0Expenses₹0Withdrawals₹0Old dues received₹0Old dues paid₹0",
+      "rows": 0,
+      "first": [],
+      "last": []
+    },
+    "month": {
+      "title": "Month statement · Jan 2027",
+      "share": "Month statement · Jan 2027\nSales: ₹0\nCost of goods sold: ₹0\nGross profit: ₹0\nBusiness expenses: ₹750\nBad debts: ₹0\nProfit: -₹750\nLabour on purchases (not in cost): ₹0\nPersonal expenses: ₹0\nWithdrawals: ₹11,500\nKept in business: -₹12,250\nMoney in: ₹0\nMoney out: ₹750\nNet money in: -₹750\nBought: ₹0\nStock at the start: ₹8,36,126\nStock at the end: ₹8,36,126",
+      "text": "Month statement · Jan 2027Sales₹0− Cost of goods sold₹0= Gross profit₹0− Business expenses₹750− Bad debts₹0= Profit-₹750Labour on purchases (not in cost)₹0Personal expenses₹0Withdrawals₹11,500Kept in business-₹12,250Money in₹0Money out₹750Net money in-₹750Bought₹0Stock at the start₹8,36,126= Stock at the end₹8,36,126",
+      "rows": 16,
+      "first": [
+        [
+          "Sales",
+          0
+        ],
+        [
+          "Cost of goods sold",
+          0
+        ],
+        [
+          "Gross profit",
+          0
+        ]
+      ],
+      "last": [
+        [
+          "Bought",
+          0
+        ],
+        [
+          "Stock at the start",
+          836126.3
+        ],
+        [
+          "Stock at the end",
+          836126.3
+        ]
+      ]
+    },
+    "monthOptions": [
+      "2027-01=Jan 2027",
+      "2026-12=Dec 2026",
+      "2026-11=Nov 2026",
+      "2026-10=Oct 2026",
+      "2026-09=Sep 2026",
+      "2026-08=Aug 2026",
+      "2026-07=Jul 2026",
+      "2026-06=Jun 2026",
+      "2026-05=May 2026",
+      "2026-04=Apr 2026",
+      "2026-03=Mar 2026",
+      "2026-02=Feb 2026",
+      "2026-01=Jan 2026",
+      "2025-12=Dec 2025",
+      "2025-11=Nov 2025",
+      "2025-10=Oct 2025",
+      "2025-09=Sep 2025",
+      "2025-08=Aug 2025",
+      "2025-07=Jul 2025",
+      "2025-06=Jun 2025",
+      "2025-05=May 2025",
+      "2025-04=Apr 2025",
+      "2025-03=Mar 2025",
+      "2025-02=Feb 2025"
+    ],
+    "csv": {
+      "title": "Export CSV · 1 Jan 2027 – 1 Jan 2027",
+      "share": "Export CSV · 1 Jan 2027 – 1 Jan 2027\n2 lines from 1 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 1 Jan 2027 – 1 Jan 20272 lines from 1 bills are ready. Tap CSV to download.",
+      "rows": 2,
+      "first": [
+        [
+          "2027-01-01 11:05",
+          "Retail sale",
+          "",
+          "Shyam Lal",
+          "Wheat",
+          23,
+          28,
+          644,
+          0,
+          644,
+          1827,
+          1827,
+          0,
+          0
+        ],
+        [
+          "2027-01-01 11:05",
+          "Retail sale",
+          "",
+          "Shyam Lal",
+          "Gram",
+          21.5,
+          55,
+          1183,
+          0,
+          1183,
+          "",
+          "",
+          "",
+          ""
+        ]
+      ],
+      "last": [
+        [
+          "2027-01-01 11:05",
+          "Retail sale",
+          "",
+          "Shyam Lal",
+          "Wheat",
+          23,
+          28,
+          644,
+          0,
+          644,
+          1827,
+          1827,
+          0,
+          0
+        ],
+        [
+          "2027-01-01 11:05",
+          "Retail sale",
+          "",
+          "Shyam Lal",
+          "Gram",
+          21.5,
+          55,
+          1183,
+          0,
+          1183,
+          "",
+          "",
+          "",
+          ""
+        ]
+      ]
+    },
+    "csvRange": [
+      "2027-01-01",
+      "2027-01-01"
+    ],
+    "csvJanToMar": {
+      "title": "Export CSV · 31 Jan 2027 – 1 Mar 2027",
+      "share": "Export CSV · 31 Jan 2027 – 1 Mar 2027\n0 lines from 0 bills are ready. Tap CSV to download.",
+      "text": "Export CSV · 31 Jan 2027 – 1 Mar 20270 lines from 0 bills are ready. Tap CSV to download.",
+      "rows": 0,
+      "first": [],
+      "last": []
+    }
+  }
+}

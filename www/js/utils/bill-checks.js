@@ -15,8 +15,9 @@
  */
 
 import {
-    billTotal, checkPaymentSplit, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney
+    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney
 } from './money.js';
+import { validatePaymentSplit } from './calc/billing.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
 import { t } from '../i18n/index.js';
 import { computeShortfallsFrom, stockKeyFor, approxStockNote, stockedItemKeys } from './stock-check.js';
@@ -263,7 +264,7 @@ function paymentIssues(draft) {
         out.push(issue('party-required', 'party', 'block', en, hi));
     }
     if (!out.some(i => i.id === 'payment-none')) {
-        const split = checkPaymentSplit(draft.total, { cash, online, due });
+        const split = validatePaymentSplit(draft.total, { cash, online, due });
         if (!split.ok) {
             const en = paymentSplitMessage(split, 'en');
             const hi = paymentSplitMessage(split, 'hi');

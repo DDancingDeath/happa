@@ -12,8 +12,82 @@ import {
     endOfLocalDayExclusive,
     localISODaysAgo,
     toJsDate,
-    formatDateTimeIN
+    formatDateTimeIN,
+    addLocalDays,
+    daysInMonth,
+    monthStart,
+    addMonths,
+    monthRange,
+    latestMonthStart,
+    periodBounds,
+    localDayKeys,
+    endUpToNow
 } from '../utils/dates.js';
+
+const at = (y, m, d, h = 0, mi = 0) => new Date(y, m - 1, d, h, mi);
+const day = (d) => toLocalISODate(d);
+
+describe('calendar steps (IST month ends and leap years)', () => {
+    test('addMonths keeps the date and time, clipped to the target month', () => {
+        expect(addMonths(at(2027, 1, 31, 15, 30), 1)).toEqual(at(2027, 2, 28, 15, 30));
+        expect(addMonths(at(2028, 1, 31), 1)).toEqual(at(2028, 2, 29));
+        expect(addMonths(at(2028, 2, 29), 12)).toEqual(at(2029, 2, 28));
+        expect(addMonths(at(2027, 3, 31), -1)).toEqual(at(2027, 2, 28));
+        expect(addMonths(at(2028, 3, 31), -1)).toEqual(at(2028, 2, 29));
+        expect(addMonths(at(2027, 1, 1), -1)).toEqual(at(2026, 12, 1));
+        expect(addMonths(at(2026, 12, 31), 2)).toEqual(at(2027, 2, 28));
+        expect(addMonths('31/01/2027', 1)).toEqual(at(2027, 2, 28));
+        expect(addMonths('not a date', 1)).toBeNull();
+    });
+
+    test('monthStart steps whole months from the 1st (no 31st overflow)', () => {
+        expect(monthStart(at(2027, 1, 31, 15), 1)).toEqual(at(2027, 2, 1));
+        expect(monthStart(at(2027, 3, 31), -1)).toEqual(at(2027, 2, 1));
+        expect(monthStart(at(2027, 1, 1, 9), -1)).toEqual(at(2026, 12, 1));
+        expect(monthStart(at(2026, 12, 15), 1)).toEqual(at(2027, 1, 1));
+        expect(monthStart(at(2027, 1, 1), -13)).toEqual(at(2025, 12, 1));
+        expect(monthStart(at(2028, 2, 29))).toEqual(at(2028, 2, 1));
+        expect(monthStart(null)).toBeNull();
+    });
+
+    test('daysInMonth and monthRange know leap February', () => {
+        expect([daysInMonth(at(2028, 2, 10)), daysInMonth(at(2027, 2, 10)), daysInMonth(at(2027, 1, 31)), daysInMonth(at(2027, 4, 1))]).toEqual([29, 28, 31, 30]);
+        expect(daysInMonth('')).toBeNaN();
+        expect(monthRange(at(2028, 2, 29, 12))).toEqual({ from: at(2028, 2, 1).getTime(), to: at(2028, 3, 1).getTime() });
+        expect(monthRange(at(2027, 1, 1), -1)).toEqual({ from: at(2026, 12, 1).getTime(), to: at(2027, 1, 1).getTime() });
+        expect(monthRange(undefined, 0)).toEqual(monthRange(new Date()));
+        expect(monthRange('x')).toBeNull();
+    });
+
+    test('addLocalDays crosses month and year ends at local midnight', () => {
+        expect(addLocalDays(at(2028, 3, 1, 10), -1)).toEqual(at(2028, 2, 29));
+        expect(addLocalDays(at(2028, 2, 29, 12), -30)).toEqual(at(2028, 1, 30));
+        expect(addLocalDays(at(2026, 12, 31, 23, 59), 1)).toEqual(at(2027, 1, 1));
+        expect(addLocalDays('nope', 1)).toBeNull();
+    });
+
+    test('latestMonthStart: a month not started yet this year is last year\'s', () => {
+        expect(latestMonthStart(11, at(2027, 1, 1))).toEqual(at(2026, 12, 1));
+        expect(latestMonthStart(0, at(2027, 1, 31))).toEqual(at(2027, 1, 1));
+        expect(latestMonthStart(1, at(2028, 2, 29))).toEqual(at(2028, 2, 1));
+        expect(latestMonthStart(2, at(2028, 2, 29))).toEqual(at(2027, 3, 1));
+        expect(latestMonthStart(0, null)).toBeNull();
+    });
+
+    test('periodBounds, localDayKeys and endUpToNow', () => {
+        const feb = monthRange(at(2028, 2, 1));
+        expect(periodBounds(feb.from, feb.to)).toEqual({ first: '2028-02-01', last: '2028-02-29' });
+        expect(periodBounds(feb.from, feb.from)).toEqual({ first: '2028-02-01', last: '2028-02-01' });
+        const keys = localDayKeys(feb.from, feb.to);
+        expect([keys.length, keys[0], keys[28]]).toEqual([29, '2028-02-01', '2028-02-29']);
+        expect(localDayKeys(at(2027, 3, 31, 18).getTime(), at(2027, 4, 2, 1).getTime())).toEqual(['2027-03-31', '2027-04-01', '2027-04-02']);
+        expect(localDayKeys(at(2027, 1, 1).getTime(), at(2027, 1, 1).getTime())).toEqual([]);
+        const now = at(2027, 1, 31, 15, 30);
+        expect(endUpToNow(at(2027, 2, 1).getTime(), now)).toBe(now.getTime() + 1);
+        expect(endUpToNow(at(2027, 1, 1).getTime(), now)).toBe(at(2027, 1, 1).getTime());
+        expect(day(new Date(endUpToNow(Infinity, now.getTime()) - 1))).toBe('2027-01-31');
+    });
+});
 
 describe('todayLocalISO (IST)', () => {
     afterEach(() => jest.useRealTimers());

@@ -10,7 +10,7 @@ import { MoneyManager, compareHtml, vsItem, barsSvg, takeawayHtml } from '../mod
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { AppState } from '../utils/state.js';
-import { moneySummary, change, comparisonRanges, periodRange } from '../utils/business-metrics.js';
+import { moneySummary, change, comparisonRanges, periodRange, netMoneyByDay, accountsTotal } from '../utils/business-metrics.js';
 import {
     buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, rangeFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION,
     snapshotCustomers
@@ -725,5 +725,25 @@ describe('render cost', () => {
         AppState.dataVersion = (AppState.dataVersion || 0) + 1;
         MoneyManager.setSection('cash');
         expect(MoneyManager.summaryCache.computed).toBeGreaterThan(afterProfit);
+    });
+});
+describe('Money calc helpers (M14 per day, M15 accounts)', () => {
+    test('netMoneyByDay: in − out of each local day, to the paise, in key order', () => {
+        const t = (d, h) => new Date(2028, 1, d, h).getTime();
+        const detail = {
+            receivedAtSale: [{ t: t(28, 10), amount: 100.25 }, { t: t(29, 23), amount: 50 }],
+            dueReceived: [{ t: t(29, 0), amount: '20' }, { t: NaN, amount: 999 }],
+            paidAtPurchase: [{ t: t(28, 11), amount: 30 }],
+            duePaid: [{ t: t(29, 9), amount: 5 }],
+            business: [{ t: t(1, 9), amount: 7 }],
+            personal: [{ t: t(29, 9), amount: 'x' }]
+        };
+        expect(netMoneyByDay(detail, ['2028-02-01', '2028-02-28', '2028-02-29', '2028-03-01'])).toEqual([-7, 70.25, 65, 0]);
+        expect(netMoneyByDay(undefined, ['2028-02-01'])).toEqual([0]);
+    });
+
+    test('accountsTotal: assets − liabilities, unreadable balances count 0', () => {
+        expect(accountsTotal([{ balance: 12345.678, type: 'asset' }, { balance: 5000.5, type: 'liability' }, { balance: 'x' }])).toBe(7345.18);
+        expect(accountsTotal(null)).toBe(0);
     });
 });

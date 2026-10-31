@@ -7,7 +7,8 @@
  * @module tip/scenarios/bill-save
  */
 
-import { readPayment, SPLIT_TOLERANCE } from '../../utils/money.js';
+import { readPayment } from '../../utils/money.js';
+import { SPLIT_TOLERANCE } from '../../utils/calc/billing.js';
 
 /** An override recorded this recently was made for the bill being saved. */
 const RECENT_OVERRIDE_MS = 15 * 60 * 1000;

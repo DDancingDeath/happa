@@ -23,6 +23,10 @@ import { FirebaseService } from '../../www/js/firebase/firestore-service.js';
 import { AppState } from '../../www/js/utils/state.js';
 import { sessionTotals } from '../../www/js/utils/cash-session.js';
 import { todaySummary } from '../../www/js/utils/calc/today.js';
+import { itemValue, stockValue } from '../../www/js/utils/calc/stock.js';
+import { StockManager } from '../../www/js/modules/stock.js';
+import { InsightsManager } from '../../www/js/modules/insights.js';
+import { UIManager } from '../../www/js/ui/ui-manager.js';
 
 const FIX = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/calculations/shop-month.json'), 'utf8'));
 const NOW = O.timeOf(FIX.now);
@@ -177,8 +181,51 @@ describe('Stock == oracle', () => {
         Object.entries(want.perItem).forEach(([k, v]) => expect(stock[k].rate).toBeCloseTo(v.rate, 6));
     });
     test('S3/S4 stock value (Stock total, Money › Worth term)', () => {
-        const value = Object.values(stock).reduce((a, x) => a + (x.quantity > 0 ? x.quantity * x.rate : 0), 0);
-        expect(O.r2(value)).toBe(want.closing);
+        expect(O.r2(stockValue(stock))).toBe(want.closing);
+        expect(O.r2(Object.values(stock).reduce((a, x) => a + itemValue(x), 0))).toBe(want.closing);
+    });
+});
+
+describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
+    const want = O.stockReplay(data);
+    const TEMPLATE = fs.readFileSync(path.resolve(__dirname, '../../www/templates/stock.html'), 'utf8');
+    beforeEach(async () => {
+        document.body.innerHTML = TEMPLATE;
+        const stock = await FirebaseService.calculateStock();
+        AppState.stock = stock;
+        AppState.stockReady = true;
+        jest.spyOn(FirebaseService, 'getStock').mockImplementation(async () => copy(stock));
+        jest.spyOn(UIManager, 'withLoading').mockImplementation(async (fn) => fn());
+    });
+    const rows = () => [...document.querySelectorAll('#stockList .stock-item')].map(el => el.textContent.replace(/\s+/g, ' '));
+    const itemOf = (id) => FIX.items.find(i => i.id === id);
+
+    test('each row: kg (S1), rate per kg (S2) and value (S3)', async () => {
+        await StockManager.renderStock();
+        const shownRows = rows();
+        const held = Object.entries(want.perItem).filter(([, v]) => v.qty > 0);
+        expect(shownRows).toHaveLength(held.length);
+        held.forEach(([id, v]) => {
+            const row = shownRows.find(r => r.includes(itemOf(id).name));
+            expect(row).toContain(`₹${v.rate.toFixed(2)}/kg`);
+            expect(row).toContain(`${v.qty.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`);
+            expect(row).toContain(`≈ ₹${rupee(v.value).toLocaleString('en-IN')}`);
+        });
+    });
+
+    test('adjustment cards: value = quantity × its rate, else the average cost now (S5)', async () => {
+        AppState.stockAdjustments = [
+            ...copy(FIX.stockAdjustments),
+            { id: 'a9', itemId: 'i-rice', itemName: 'Rice', adjustType: 'add', quantity: 3, rate: 31.5, previousStock: 60, newStock: 63, date: '2026-10-21T08:00:00', timestamp: NOW - 1 }
+        ];
+        await StockManager.renderAdjustmentHistory();
+        const cards = [...document.querySelectorAll('#adjustmentHistory .history-item')];
+        expect(cards).toHaveLength(AppState.stockAdjustments.length);
+        AppState.stockAdjustments.forEach(adj => {
+            const card = cards.find(c => c.textContent.includes(itemOf(adj.itemId).name) && c.textContent.includes(`${adj.quantity} kg`));
+            const value = O.adjustmentValue(adj, want.perItem[adj.itemId]?.rate);
+            expect(card.textContent).toContain(`Value: ₹${rupee(value)}`);
+        });
     });
 });
 
@@ -225,6 +272,62 @@ describe('Money page (all time) == oracle', () => {
             .map(el => [el.dataset.metricRef, Number(el.textContent.replace(/[^\d.-]/g, ''))]);
         expect(Object.fromEntries(terms.filter(([id]) => ['S4', 'O3', 'O4'].includes(id)).map(([id, v]) => [id, Math.abs(v)])))
             .toEqual({ S4: rupee(O.stockReplay(data).closing), O3: rupee(dues.payable), O4: rupee(dues.receivable) });
+    });
+    test('Worth: other accounts (M15 term) = assets − liabilities', () => {
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 2500.4, type: 'asset' }, { name: 'Loan', balance: 1000, type: 'liability' }]));
+        MoneyManager.init('worth');
+        const row = [...document.querySelectorAll('#moneyWorthTerms .ins-row')].find(el => el.querySelector('[data-input]'));
+        expect(Number(row.querySelector('[data-input]').textContent.replace(/[^\d.-]/g, ''))).toBe(rupee(2500.4 - 1000));
+        localStorage.removeItem('financeCustomAccounts');
+    });
+});
+
+describe('Money › Cash day chart (this month) == oracle (M14 per day)', () => {
+    const TEMPLATE = fs.readFileSync(path.resolve(__dirname, '../../www/templates/money.html'), 'utf8');
+    test('each day\'s bar is that day\'s net money in, and the days add up to the month', () => {
+        resetInsightsContextForTests();
+        setInsightsContext({ preset: 'this-month' });
+        document.body.innerHTML = TEMPLATE;
+        document.getElementById('money').classList.add('active');
+        Object.assign(MoneyManager, { snapshots: {}, snapshotsLoaded: true, sessionCache: new Map(), drawerCache: null, summaryCache: { sig: null, map: new Map(), computed: 0 } });
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        MoneyManager.init('cash');
+        const bars = [...document.querySelectorAll('#moneyCashChart rect')];
+        const [from] = O.monthRange(NOW);
+        const days = [];
+        for (let t = from; t <= NOW; t = O.dayRange(t)[1]) days.push(O.finance(data, O.dayRange(t)).F7_cashFlow);
+        expect(bars).toHaveLength(days.length);
+        bars.forEach((rect, i) => expect(Number(rect.textContent.split(': ')[1].replace(/[^\d.-]/g, ''))).toBe(rupee(days[i]) || 0));
+        expect(O.r2(days.reduce((a, v) => a + v, 0))).toBe(O.metrics(data, [from, O.dayRange(NOW)[1]]).M14_net);
+    });
+});
+
+describe('Insights shares == oracle (I2 split, I12 top-5 share)', () => {
+    const TEMPLATE = fs.readFileSync(path.resolve(__dirname, '../../www/templates/insights.html'), 'utf8');
+    const OCT = [O.monthRange(NOW)[0], O.dayRange(NOW)[1]];
+    beforeEach(() => {
+        resetInsightsContextForTests();
+        document.body.innerHTML = TEMPLATE;
+        document.getElementById('insights').classList.add('active');
+        Object.assign(MoneyManager, { snapshots: {} });
+        jest.spyOn(MoneyManager, 'loadSnapshots').mockResolvedValue();
+        Object.assign(InsightsManager, { section: 'items', seasonView: 'calendar', itemsType: 'both', partyKind: 'sales', seasonDocs: null, seasonLoading: null });
+    });
+
+    test('I2: retail / wholesale % of sales', () => {
+        InsightsManager.init('items');
+        const w = O.metrics(data, OCT);
+        const pcts = [...document.querySelectorAll('#insightsSplit .ins-row span:last-child')].map(el => Number(el.textContent.split('·')[1].replace(/[^\d]/g, '')));
+        expect(pcts).toEqual([Math.round((w.M1_retail / w.M1_sales) * 100), Math.round((w.M1_wholesale / w.M1_sales) * 100)]);
+    });
+
+    test.each(['sales', 'purchases'])('I12: top-5 %s share', (kind) => {
+        InsightsManager.init('parties');
+        InsightsManager.setPartyKind(kind);
+        const want = O.topShare(data, OCT, kind);
+        const text = document.getElementById('insightsPartiesTakeaway').textContent;
+        expect(want).not.toBeNull();
+        expect(text).toContain(`${want}%`);
     });
 });
 
