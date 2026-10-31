@@ -13,7 +13,7 @@
  * @module utils/due-payments
  */
 
-import { isActiveBill, isOpeningRecord, readPayment, round2 } from './money.js';
+import { isActiveBill, isOpeningRecord, outstandingDue, readPayment, round2 } from './money.js';
 import { parseAnyBillDate } from './dates.js';
 
 /** Bill type → collection key. */
@@ -183,4 +183,76 @@ export function sumDueEvents(events) {
     });
     Object.keys(t).forEach(k => { t[k] = round2(t[k]); });
     return t;
+}
+
+/**
+ * The bill fields a due payment writes, from the bill as just read on the server
+ * (outstanding.js applyPaymentTransaction and "Complete all due"): cash and online
+ * go up by the payment, the due goes down by it (to 0 under `tolerance`), the entry
+ * is appended to `payments[]` and `paidAt` is its time (#163, rules: = entry.at).
+ * `dueAmount` is written only when the bill has it. Refused when the payment is
+ * more than the due + tolerance.
+ * @param {Object} fresh - bill data
+ * @param {{cash: number, online: number}} parts - already in paise
+ * @param {Object} entry - the full payments[] entry (with `at`)
+ * @param {number} [tolerance=0.01]
+ * @returns {{ok: true, update: Object, due: number}|{ok: false, error: 'exceeds-due', due: number}}
+ */
+export function duePaymentUpdate(fresh, { cash, online }, entry, tolerance = 0.01) {
+    const pay = readPayment(fresh);
+    const total = round2(cash + online);
+    if (total > pay.due + tolerance) return { ok: false, error: 'exceeds-due', due: pay.due };
+    const newCash = round2(pay.cash + cash);
+    const newOnline = round2(pay.online + online);
+    let newDue = round2(pay.due - total);
+    if (newDue < tolerance) newDue = 0;
+    const update = {
+        payment: {
+            ...(fresh.payment && typeof fresh.payment === 'object' ? fresh.payment : {}),
+            online: newOnline,
+            cash: newCash,
+            due: newDue,
+            total: round2(newOnline + newCash)
+        },
+        payments: [...(Array.isArray(fresh.payments) ? fresh.payments : []), entry],
+        paidAt: entry.at
+    };
+    if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) update.dueAmount = newDue;
+    return { ok: true, update, due: newDue };
+}
+
+/**
+ * DUE-ALL: what "Complete all due" settles for one party: every open bill whose
+ * party is `partyKey` (by `keyOf`, e.g. aging.js normalizePartyName) with its
+ * BILL-DUE, oldest first, and the total.
+ * @param {Object[]} bills
+ * @param {string} partyKey
+ * @param {function(string): string} keyOf
+ * @returns {{bills: Array<{bill: Object, due: number}>, total: number}}
+ */
+export function partyDues(bills, partyKey, keyOf) {
+    const list = (bills || [])
+        .filter(b => partyKey && keyOf(b?.customerName) === partyKey)
+        .map(bill => ({ bill, due: outstandingDue(bill) }))
+        .filter(x => x.due > 0)
+        .sort((a, b) => (Number(a.bill.timestamp) || 0) - (Number(b.bill.timestamp) || 0));
+    return { bills: list, total: round2(list.reduce((sum, x) => sum + x.due, 0)) };
+}
+
+/**
+ * DUE-ALL: one bill's part of "Complete all due": its whole BILL-DUE (paise) received
+ * in cash or online, as a payments[] entry with that amount (duePaymentUpdate).
+ * Null when nothing is due any more (paid or cleared meanwhile).
+ * @param {Object} fresh - bill data
+ * @param {'cash'|'online'} method
+ * @param {Object} entry - entry fields without the amounts (id, at, …)
+ * @param {number} [tolerance=0.01]
+ * @returns {?{amount: number, update: Object}}
+ */
+export function settleDueUpdate(fresh, method, entry, tolerance = 0.01) {
+    const due = round2(readPayment(fresh).due);
+    if (!(due > 0) || fresh?.cleared) return null;
+    const parts = method === 'online' ? { cash: 0, online: due } : { cash: due, online: 0 };
+    const { update } = duePaymentUpdate(fresh, parts, { ...entry, amount: due, ...parts }, tolerance);
+    return { amount: due, update };
 }

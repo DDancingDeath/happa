@@ -9,12 +9,12 @@ import { AppState } from '../utils/state.js';
 import { on, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
-import { updateBillInTransaction } from '../firebase/repos/bill-payments.js';
+import { updateBillInTransaction, updateBillsInTransaction } from '../firebase/repos/bill-payments.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { activeBills, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2 } from '../utils/money.js';
+import { activeBills, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2, sumMoney } from '../utils/money.js';
 import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
-import { directionFor } from '../utils/due-payments.js';
+import { directionFor, duePaymentUpdate, settleDueUpdate } from '../utils/due-payments.js';
 import { validateDuePayment } from '../utils/calc/billing.js';
 import { CashManagementManager } from './cash-management.js';
 import { PrinterService } from '../services/printer.js';
@@ -708,26 +708,8 @@ export class OutstandingManager {
                 throw err;
             }
 
-            const newCash = round2(pay.cash + cash);
-            const newOnline = round2(pay.online + online);
-            let newDue = round2(pay.due - total);
-            if (newDue < PAYMENT_TOLERANCE) newDue = 0;
-
-            const update = {
-                payment: {
-                    ...(fresh.payment && typeof fresh.payment === 'object' ? fresh.payment : {}),
-                    online: newOnline,
-                    cash: newCash,
-                    due: newDue,
-                    total: round2(newOnline + newCash)
-                },
-                payments: [...(Array.isArray(fresh.payments) ? fresh.payments : []), fullEntry]
-            };
-            if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) {
-                update.dueAmount = newDue;
-            }
-            // Phones keep loading an older bill paid inside their history window (#163).
-            update.paidAt = at;
+            // Phones keep loading an older bill paid inside their history window (#163): paidAt.
+            const { update, due: newDue } = duePaymentUpdate(fresh, { cash, online }, fullEntry, PAYMENT_TOLERANCE);
             // "Mark as cleared" with cash/online: the payment settles the whole due
             if (clear && newDue === 0) Object.assign(update, this.clearedFields());
             update.openDue = FirebaseService.billHasOpenDue(collKey, { ...fresh, ...update });
@@ -864,6 +846,51 @@ export class OutstandingManager {
             clearedBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
             clearedByName: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
         };
+    }
+
+    /**
+     * "Complete all due" (#150): settles the whole due of every given bill in ONE
+     * transaction (all or none), received in cash or online. Each bill gets its own
+     * payments[] entry at the same time `at` (now; the rules allow ±10 min, #184), its
+     * due goes to 0 and it is marked cleared, exactly as a single "Mark as cleared"
+     * payment writes it. The due is re-read on the server: a bill paid meanwhile is
+     * skipped, a part-paid one settles what is left. No cash-session legs: the
+     * session takes one leg per write (rules), and the drawer counts the bill
+     * entries (due-payments.js dueEvents).
+     * @param {'purchase'|'retail'|'wholesale'} billType
+     * @param {Object[]} bills - the bills (with `id`)
+     * @param {'cash'|'online'} method
+     * @returns {Promise<{settled: Array<{bill: Object, amount: number, fields: Object}>, total: number}>}
+     */
+    static async settleAllDues(billType, bills, method) {
+        const collKey = COLLECTION_BY_TYPE[billType] || 'wholesaleSales';
+        const at = Date.now();
+        const recordedBy = AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown');
+        const recordedById = AppState.currentUser ? AppState.currentUser.uid : 'unknown';
+        const ids = bills.map(() => Helpers.generateId());
+        const cleared = this.clearedFields();
+        const result = await updateBillsInTransaction(collKey, bills.map(b => b.id), (freshList) => {
+            const updates = [];
+            const settled = [];
+            freshList.forEach((fresh, i) => {
+                if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
+                const part = settleDueUpdate(fresh, method, {
+                    id: ids[i], at, date: Helpers.getCurrentDateTime(), recordedBy, recordedById, settlesDue: true, bulk: true
+                }, PAYMENT_TOLERANCE);
+                if (!part) {
+                    updates.push(null);
+                    return;
+                }
+                const update = { ...part.update, ...cleared };
+                update.openDue = FirebaseService.billHasOpenDue(collKey, { ...fresh, ...update });
+                update.clientVersion = FirebaseService.CLIENT_VERSION;
+                updates.push(update);
+                settled.push({ index: i, amount: part.amount, fields: update });
+            });
+            return { bills: updates, result: settled };
+        });
+        const settled = result.map(s => ({ bill: bills[s.index], amount: s.amount, fields: s.fields }));
+        return { settled, total: sumMoney(settled, s => s.amount) };
     }
 
     /**

@@ -1427,6 +1427,34 @@ function defineSuite(prefix) {
         }
     });
 
+    t('payment edits: "Complete all due" (#150) settles several bills in one write, each with its own entry at now', async () => {
+        const settle = (at, extra = {}) => ({
+            payment: { online: 0, cash: 100, due: 0, total: 100 },
+            payments: [...dueBill.payments, { id: `s${at}`, amount: 100, cash: 100, online: 0, at, settlesDue: true, bulk: true }],
+            dueAmount: 0, openDue: false, paidAt: at,
+            cleared: true, clearedAt: 'x', clearedBy: 'manager1', clearedByName: 'M', clientVersion: 4, ...extra
+        });
+        for (const coll of bills) {
+            await seedBill(coll, 'all1', dueBill);
+            await seedBill(coll, 'all2', dueBill);
+            const db = as('manager1');
+            const ok = db.batch();
+            ok.update(db.collection(coll).doc('all1'), settle(PAID_AT));
+            ok.update(db.collection(coll).doc('all2'), settle(PAID_AT));
+            await assertSucceeds(ok.commit());
+
+            // All or none: one entry dated 20 minutes back refuses the whole write
+            await seedBill(coll, 'all3', dueBill);
+            await seedBill(coll, 'all4', dueBill);
+            const bad = db.batch();
+            bad.update(db.collection(coll).doc('all3'), settle(PAID_AT));
+            bad.update(db.collection(coll).doc('all4'), settle(PAID_AT - 1200000));
+            await assertFails(bad.commit());
+            const left = await as('legacyOwner').collection(coll).doc('all3').get();
+            if (left.data().payment.due !== 100) throw new Error('a refused batch must leave every bill unchanged');
+        }
+    });
+
     t('payment edits: paidAt (#163) is a time in ms, written with a new payments[] entry', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'b', dueBill);
