@@ -1513,6 +1513,7 @@ export default {
     'ui.settings.audit_changes': "बदलाव: {value}",
     'ui.settings.audit_reports': "रिपोर्ट: {value}",
     'ui.settings.audit_source': "मना हुआ: {value}",
+    'ui.settings.audit_from': "स्रोत: {value}",
     'ui.settings.audit_tried_edit': "बदलने की कोशिश",
     'ui.settings.audit_tried_void': "रद्द करने की कोशिश",
     'ui.settings.audit_device': "फ़ोन: {value}",

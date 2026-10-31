@@ -517,23 +517,24 @@ describe('Settings', () => {
             { action: 'CREATE_SALE', timestamp: Date.now(), userId: 'gone', userName: 'Who', userRole: 'owner', details: {} }
         ]);
         jest.spyOn(FirebaseService, 'loadUsers').mockResolvedValue([
-            { id: 'm1', name: 'Manoj', role: 'manager' }, { id: 's1', name: 'Sita', role: 'staff' }
+            { id: 'm1', name: 'Manoj', role: 'manager', email: 'manoj@x.in' }, { id: 's1', name: 'Sita', role: 'staff' }, { id: 'gone', role: 'owner' }
         ]);
         document.getElementById('auditFilterAction').value = '';
         await SettingsManager.loadAuditLogs();
         const rows = [...document.getElementById('auditLogsList').children].map(r => r.textContent.replace(/\s+/g, ' '));
         // a forged name and role: the profile's are shown, the stored name marked
-        expect(rows[0]).toContain('Manoj (Manager) · Owner Ji (name as sent by the phone, not checked)');
+        // (names can be changed by their owner; the email can't, so it is shown too)
+        expect(rows[0]).toContain('Manoj (Manager) manoj@x.in · Owner Ji (name as sent by the phone, not checked)');
         expect(rows[1]).toContain('Sita (Member)');
         expect(rows[1]).not.toContain('not checked');
-        // no profile (removed): only the stored name and role, marked
+        // a profile without a name: only the stored name and role, marked
         expect(rows[2]).toContain('Who (Owner) (name as sent by the phone, not checked)');
 
         DiagnosticsManager.auditFilter = '';
         document.body.innerHTML += '<div id="diagnosticsContainer"></div>';
         await DiagnosticsManager.loadAuditLogs();
         const cards = document.querySelectorAll('#diagnosticsContainer .diag-audit-user');
-        expect(cards[0].textContent.replace(/\s+/g, ' ')).toContain('Manoj (Manager) · Owner Ji (name as sent by the phone, not checked)');
+        expect(cards[0].textContent.replace(/\s+/g, ' ')).toContain('Manoj (Manager) manoj@x.in · Owner Ji (name as sent by the phone, not checked)');
     });
 
     test('Roles & access (#84): owner-only grid; saving writes settings/app and applies at once', async () => {

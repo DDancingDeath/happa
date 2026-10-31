@@ -1513,6 +1513,7 @@ export default {
     'ui.settings.audit_changes': "Changes: {value}",
     'ui.settings.audit_reports': "Reports: {value}",
     'ui.settings.audit_source': "Refused: {value}",
+    'ui.settings.audit_from': "Source: {value}",
     'ui.settings.audit_tried_edit': "Tried to change it",
     'ui.settings.audit_tried_void': "Tried to void it",
     'ui.settings.audit_device': "Phone: {value}",

@@ -675,7 +675,7 @@ export class SettingsManager {
             
             const actionIcon = this.getActionIcon(log.action);
             const actionColor = this.getActionColor(log.action);
-            const details = this.formatDetails(log.details);
+            const details = this.formatDetails(log.details, log.action);
             const who = auditWhoText(auditWho(log, this.auditPeople), Helpers.roleLabel);
             
             return `
@@ -720,7 +720,7 @@ export class SettingsManager {
         return '#333';
     }
     
-    static formatDetails(details) {
-        return formatAuditDetails(details);
+    static formatDetails(details, action) {
+        return formatAuditDetails(details, action);
     }
 }

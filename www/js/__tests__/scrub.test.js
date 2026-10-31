@@ -16,6 +16,9 @@ describe('scrubText (#116)', () => {
         ['Call +91 987 654 3210 now', 'Call <phone> now'],
         ['Pay ramesh.k@okaxis today', 'Pay <upi> today'],
         ['Pay 9876543210@ybl', 'Pay <upi>'],
+        // Safari / Firefox stack frames keep their function names and hosts
+        ['render@https://myhappa.web.app/js/modules/money.js:585:12', 'render@https://myhappa.web.app/js/modules/money.js:585:12'],
+        ['Object.loadAuditLogs@http://localhost:5000/js/a.js:1:2', 'Object.loadAuditLogs@http://localhost:5000/js/a.js:1:2'],
         ['Due ₹5,866.50 left', 'Due ₹<amount> left'],
         ['paid Rs. 1200', 'paid ₹<amount>'],
         ['Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcDEF123_-xyz', 'Bearer <token>'],
@@ -99,7 +102,9 @@ describe('changedFields (#85)', () => {
         expect(formatAuditDetails({ reports: 3, all: true })).toBe('Reports: 3');
         expect(formatAuditDetails({ amount: 500, outcome: 'refused' })).toBe('Refused by the server, not saved • Amount: ₹500');
         expect(formatAuditDetails({ amount: 500, outcome: 'saved' })).toBe('Amount: ₹500');
-        expect(formatAuditDetails({ source: 'purchases update' })).toBe('Refused: purchases update');
+        expect(formatAuditDetails({ source: 'purchases update' }, 'PERMISSION_DENIED')).toBe('Refused: purchases update');
+        // other entries' source (an item added from the list, an Excel import) is no refusal
+        expect(formatAuditDetails({ source: 'excel-import' }, 'EDIT_ITEM')).toBe('Source: excel-import');
         expect(formatAuditDetails({ what: 'void', billId: 'b1' })).toBe('Tried to void it • Bill: b1');
         expect(formatAuditDetails({ device: 'abc123' })).toBe('Phone: abc123');
         expect(formatAuditDetails(null)).toBe('');

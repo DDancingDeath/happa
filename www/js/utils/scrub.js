@@ -16,7 +16,7 @@ const RULES = [
     // emails (the lookbehind keeps a long run without "@" linear)
     [/(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '<email>'],
     // UPI ids (name@bank, no dot after the @)
-    [/(?<![\w.-])[\w.-]{2,}@[a-z]{2,}\b/gi, '<upi>'],
+    [/(?<![\w.-])[\w.-]{2,}@[a-z]{2,}\b(?!:\/\/|\.[a-z])/gi, '<upi>'],
     // Indian mobile numbers: +91 / 91 / 0 or nothing before, 98765 43210 or 987 654 3210 grouping.
     // Digits inside a longer run (13-digit times) or inside ids (letters and digits) never match.
     [/(?:\+91[\s-]?|\b91(?=[6-9]\d{9}\b)|\b0|\b)(?:[6-9]\d{4}[\s-]?\d{5}|[6-9]\d{2}[\s-]\d{3}[\s-]\d{4})\b/g, '<phone>'],
