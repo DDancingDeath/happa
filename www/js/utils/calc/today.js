@@ -27,7 +27,7 @@ export const TODAY_SPEC = Object.freeze({
     purchaseItems: 'T17', saleItems: 'T17'
 });
 
-const expenseAmount = (e) => Number(e.amount) || Number(e.total) || 0;
+const expenseAmount = (e) => Number(e.amount) || 0;
 
 const sumOf = (list, valueOf) => list.reduce((sum, x) => sum + valueOf(x), 0);
 

@@ -78,7 +78,7 @@
       "expenses": [
         { "id": "e1", "date": "2026-10-31T08:00:00", "amount": 250, "category": "business", "description": "Tea" },
         { "id": "e2", "date": "2026-10-31T09:00:00", "amount": 120.5, "category": "personal", "description": "Medicine" },
-        { "id": "e3", "date": "2026-10-31T10:00:00", "total": 80, "description": "Untagged" },
+        { "id": "e3", "date": "2026-10-31T10:00:00", "amount": 80, "description": "Untagged" },
         { "id": "e4", "date": "2026-10-31T11:00:00", "amount": 60, "type": "Personal" },
         { "id": "e5", "date": "2026-10-30T11:00:00", "amount": 999, "category": "business" },
         { "id": "e6", "date": "31/10/2026, 4:30:00 pm", "amount": "45.25", "category": "Transport" }
