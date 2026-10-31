@@ -12,6 +12,12 @@ import { t } from '../i18n/index.js';
 /** Warn once when a single app session has read more documents than this. */
 export const HEAVY_SESSION_READS = 3000;
 
+/**
+ * Past this many reads in one session (a fifth of the shared 50,000/day), the
+ * optional background reads stop for the rest of the session (#159).
+ */
+export const SESSION_READ_CAP = 10000;
+
 const QUOTA_TEXT_PATTERN = /resource[-_ ]exhausted|quota exceeded/i;
 
 /**
@@ -115,7 +121,10 @@ export function createQuotaGuard(env = {}) {
     const storage = env.storage !== undefined ? env.storage : (typeof sessionStorage !== 'undefined' ? sessionStorage : null);
     const log = env.log || console;
     const quota = { count: 0, firstAt: 0, lastAt: 0, lastSource: '' };
+    const cap = env.cap || SESSION_READ_CAP;
     let bannerShown = false;
+    let backgroundPaused = false;
+    let capNoted = false;
 
     const reads = createReadCounter({
         threshold: env.threshold || HEAVY_SESSION_READS,
@@ -174,13 +183,32 @@ export function createQuotaGuard(env = {}) {
         },
         /** Retries the banner (e.g. once document.body exists). */
         showBanner,
+        /**
+         * Whether optional background reads (scans, roll-forwards) may run now:
+         * not while the owner's kill switch is on (settings/app.pauseBackgroundReads),
+         * after a quota error, or once this session read SESSION_READ_CAP documents.
+         * @returns {boolean}
+         */
+        backgroundAllowed() {
+            if (reads.total >= cap && !capNoted) {
+                capNoted = true;
+                log.warn(`[Aadhat] This session has read about ${reads.total} documents; background reads stop until the app is opened again.`);
+            }
+            return !backgroundPaused && quota.count === 0 && reads.total < cap;
+        },
+        /** settings/app.pauseBackgroundReads (set by the owner in the Firebase console). */
+        setBackgroundPaused(value) {
+            backgroundPaused = value === true;
+        },
         status() {
             return {
                 reads: reads.total,
                 since: reads.since,
                 top: reads.top(5),
                 heavy: reads.warned,
-                quota: { ...quota }
+                quota: { ...quota },
+                backgroundPaused,
+                overCap: reads.total >= cap
             };
         }
     };
