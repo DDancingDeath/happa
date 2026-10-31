@@ -205,6 +205,24 @@ export function today(data, nowMs, session = null) {
     };
 }
 
+/** T18: per bill type, today's count, value, cash and online at save, and what is still due. T19: those bills newest first. */
+export function todayChannels(data, nowMs) {
+    const range = dayRange(nowMs);
+    const split = (bills) => ({
+        count: bills.length,
+        total: r2(sum(bills, billValue)),
+        cash: r2(sum(bills, b => paidAtSave(b).cash)),
+        online: r2(sum(bills, b => paidAtSave(b).online)),
+        due: r2(sum(bills, openDue))
+    });
+    const retail = datedBills(data.retailSales, range);
+    const wholesale = datedBills(data.wholesaleSales, range);
+    const purchase = datedBills(data.purchases, range);
+    const order = [...retail, ...wholesale, ...purchase]
+        .map(b => ({ id: String(b.id), total: r2(billValue(b)), at: timeOf(b.date) }))
+        .sort((a, b) => b.at - a.at);
+    return { T18: { retail: split(retail), wholesale: split(wholesale), purchase: split(purchase) }, T19: order };
+}
 /** T17: the day's bill lines by item name (lines, kg, value, average rate), highest value first. */
 export function todayItems(data, nowMs) {
     const range = dayRange(nowMs);

@@ -556,3 +556,17 @@
   .ins-section > .ins-wide { grid-column: 1 / -1; }
   .ins-hero-value { font-size: 40px; }
 }
+
+/* Today (#141): the cash prompt (now before the day report), bill types and the bills list span both columns; bill types side by side */
+@media (min-width: 1024px) {
+  #dayTodayContent > #todayCashPrompt,
+  #dayTodayContent > #dayReportCard,
+  #dayTodayContent > #todayChannelsCard,
+  #dayTodayContent > #todayBillsCard {
+    grid-column: 1 / -1;
+  }
+
+  .today-channels {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+}
