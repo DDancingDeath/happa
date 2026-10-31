@@ -19,10 +19,10 @@ import { RentalsModule, _test } from '../rentals/rentals.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
 import { rentalsRole } from '../ui/business-switcher.js';
-import { monthKey, addMonths, firstMonthRent } from '../rentals/rent-math.js';
+import { monthKey, addMonths, firstMonthRent, moveMonthRent } from '../rentals/rent-math.js';
 import { vacantByProperty } from '../rentals/rent-views.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
-import { changeUnit, moveMonthRent } from '../rentals/rent-unit.js';
+import { changeUnit } from '../rentals/rent-unit.js';
 import { buildPublicSnapshot } from '../rentals/rent-public.js';
 
 const M = monthKey();

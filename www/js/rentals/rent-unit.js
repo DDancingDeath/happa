@@ -2,46 +2,21 @@
  * @fileoverview Unit on the tenant form (owner, 2026-10-30): the vacant-unit picker,
  * move in and change of unit. A change ends the old lease and starts the new one in
  * one transaction, pro-rates the move month on both units by default (RENT-13) and
- * carries the tenant link over. Loaded with import() by rentals.js only when used.
+ * carries the tenant link over. The amounts and checks are in rent-math (moveMonthSplit,
+ * changeUnitPlan, oldMonth); this file shows and saves them. Loaded with import() by rentals.js only when used.
  * @module rentals/rent-unit
  */
 
 import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
 import { formatINR } from '../utils/due-reminder.js';
-import { round2 } from '../utils/money.js';
 import * as store from './rent-store.js';
 import { isShareToken, withLease, withMonth, PUBLIC_MONTHS } from './rent-public.js';
-import { vacantByProperty, typedPlace } from './rent-views.js';
-import { addMonths, monthLabel, dateLabel, leaseDues, chargeId, firstMonthRent, isDate, elecMode } from './rent-math.js';
+import { vacantByProperty, typedPlace, moveTarget } from './rent-views.js';
+import { monthLabel, dateLabel, leaseDues, chargeId, isDate, moveMonthRent, oldMonth, moveMonthSplit, changeUnitPlan, keptTerms } from './rent-math.js';
 
 const el = (id) => document.getElementById(id);
-
-/**
- * RENT-13: the old unit's move month on a change of unit: `full` (that charge's rent) × days
- * in the old unit (from the 1st, or the lease's start day when that month was pro-rated, to
- * the day before the move) ÷ days that charge covers, rounded to the rupee (rules: the same).
- */
-export function moveMonthRent(full, lease, month, moveDate) {
-    const s = month === lease?.startMonth && lease?.firstRent != null && isDate(lease.startDate) ? Number(lease.startDate.slice(8)) : 1;
-    const [y, m, d] = moveDate.split('-').map(Number);
-    return Math.max(0, Math.round((Number(full) || 0) * (d - s) / (new Date(y, m, 0).getDate() - s + 1)));
-}
 const toast = (key) => UIManager.showToast(t(key), 'error');
-
-/**
- * RENT-13 on the old unit's charge `ch` for rent `rent`: when more than rent + electricity is
- * already paid, the month closes at what is paid (rent = paid − electricity; capped), or stays
- * as it is when that is the whole charge (kept).
- */
-export function oldMonth(ch, rent) {
-    const e = Number(ch?.electricity?.amount) || 0;
-    const paid = Number(ch?.paid) || 0;
-    const over = paid > rent + e + 0.001;
-    const r = over ? round2(paid - e) : rent;
-    const amount = round2(r + e);
-    return { rent: r, amount, open: paid < amount - 0.001, capped: over && r < ch.rent, kept: over && r >= ch.rent };
-}
 
 /** Vacant units by property (`current`: the tenant's own unit, shown selected). */
 export function unitPickHtml(c, id, d, { current = '', none = true, attrs = '' } = {}) {
@@ -59,16 +34,6 @@ export function fillPicker(c, boxId, id) {
     if (box && !el(id)) box.innerHTML = unitPickHtml(c, id, store.snapshot());
 }
 
-/** RENT-13 for a move on `date`: the old unit's last month (null on the 1st) and the new unit's first month. */
-function splitOf(from, d, date, rent) {
-    const month = date.slice(0, 7);
-    const prev = addMonths(month, -1);
-    const endMonth = date.endsWith('-01') && prev >= from.startMonth ? prev : month;
-    const ch = d.charges.find(x => x.leaseId === from.id && x.month === month);
-    const full = Number.isFinite(ch?.rent) ? ch.rent : month === from.startMonth && from.firstRent != null ? from.firstRent : from.rent;
-    return { month, endMonth, full, old: endMonth === month ? moveMonthRent(full, from, month, date) : null, next: firstMonthRent(rent, date, true) };
-}
-
 const splitHtml = (c, mgr) => {
     const input = (id) => `<input id="${id}" type="number" inputmode="decimal" min="0" step="1"${mgr ? '' : ' readonly'}>`;
     return `<div class="rent-tenant-section">
@@ -84,33 +49,29 @@ const splitHtml = (c, mgr) => {
 function fillSplit(from, d) {
     const date = el('rentTDate')?.value || '';
     if (!el('rentSplitBox') || !isDate(date)) return;
-    const s = splitOf(from, d, date, Number(el('rentTRent').value) || 0);
+    const s = moveMonthSplit(from, d.charges, date, Number(el('rentTRent').value) || 0);
     const month = monthLabel(s.month, getLang());
     el('rentSplitBox').hidden = !el('rentSplitOn').checked;
     el('rentSplitOldL').hidden = s.old === null;
-    el('rentSplitOldL').firstChild.textContent = s.old === null ? '' : t('ui.rent.split_old', { month, date: dateLabel(`${s.month}-${String(Number(date.slice(8)) - 1).padStart(2, '0')}`) });
+    el('rentSplitOldL').firstChild.textContent = s.old === null ? '' : t('ui.rent.split_old', { month, date: dateLabel(s.oldEnd) });
     el('rentSplitNewL').firstChild.textContent = t('ui.rent.split_new', { month, date: dateLabel(date) });
     el('rentSplitOld').value = s.old ?? '';
     el('rentSplitNew').value = s.next;
     el('rentSplitHelp').textContent = s.old === null ? t('ui.rent.split_first', { month }) : t('ui.rent.split_help');
 }
 
-/** A change of unit keeps the old lease's due day, yearly %, deposit and electricity mode (the rent is the new unit's). */
-const keepTerms = (l, defs) => ({ defs: { ...defs, dueDay: l.dueDay, increasePct: l.increasePct ?? defs.increasePct }, deposit: l.deposit || 0, elec: elecMode(l) });
-
 /** Move in or change unit (asks first); tenant: new, {id, name} or null (picked here); no unitId: picked here. */
 export async function toUnit(c, tenant, unitId = '') {
     const d = store.snapshot();
     const ix = c.index(d);
-    const pick = unitId ? null : vacantByProperty(d.properties, d.units)[0]?.units[0];
-    const shown = pick || ix.units.get(unitId);
-    if (!shown || shown.leaseId) return toast(unitId ? 'msg.rent.unit_taken' : 'msg.rent.no_vacant_unit');
+    const { unit: shown, pick, error } = moveTarget(d.properties, d.units, unitId);
+    if (error) return toast(error);
     const from = d.leases.find(l => tenant?.id && l.tenantId === tenant.id);
     const mgr = c.isManager;
     const defs = await c.defaults();
     const open = c.dialog(`<h3>${c.esc(t(from ? 'ui.rent.change_unit' : tenant ? 'ui.rent.move_in' : 'ui.rent.add_tenant'))}${pick ? '' : `: ${c.esc(c.placeOf(ix, unitId))}`}</h3>
         ${pick ? unitPickHtml(c, 'rentLeaseUnit', d, { none: false, attrs: ' onchange="window.app.rentals.fillRent(this)"' }) : ''}
-        ${c.tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keepTerms(from, defs) : { defs }) })}
+        ${c.tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keptTerms(from, defs) : { defs }) })}
         ${from ? splitHtml(c, mgr) : ''}`);
     if (from) {
         el('rentTProRate')?.closest('label')?.setAttribute('hidden', '');
@@ -129,24 +90,13 @@ export async function toUnit(c, tenant, unitId = '') {
 
 async function changeDialog(c, { d, ix, from, unit, occ, defs, mgr, on, typed }) {
     const { lease } = occ;
-    const s = splitOf(from, d, lease.startDate, lease.rent);
-    if (!mgr && from.chargedThrough > addMonths(s.endMonth, 1)) return toast('msg.rent.change_backdate');
-    let oldRent = null;
-    let paidOld = null;
-    if (on) {
-        const next = mgr ? Number(typed.next) : s.next;
-        const old = s.old === null ? null : mgr ? Number(typed.old) : s.old;
-        if (!Number.isFinite(next) || next < 0 || next > lease.rent || (old !== null && !(old >= 0 && old <= s.full))) return toast('msg.rent.bad_split');
-        lease.proRate = true;
-        lease.firstRent = round2(next);
-        // 'auto': worked out from the stored charge in the same transaction (members always).
-        oldRent = old === null ? null : old === s.old ? 'auto' : round2(old);
-        const ch = d.charges.find(x => x.leaseId === from.id && x.month === s.month);
-        if (old !== null && ch) paidOld = oldMonth(ch, old);
-    } else {
-        lease.proRate = false;
-        delete lease.firstRent;
-    }
+    const plan = changeUnitPlan(from, d.charges, lease, { mgr, on, typed });
+    if (plan.error) return toast(plan.error);
+    // oldRent 'auto': worked out from the stored charge in the same transaction (members always).
+    const { s, oldRent, paidOld } = plan;
+    lease.proRate = on;
+    if (on) lease.firstRent = plan.firstRent;
+    else delete lease.firstRent;
     const lang = getLang();
     const place = c.placeOf(ix, from.unitId);
     const to = c.placeOf(ix, unit.id);

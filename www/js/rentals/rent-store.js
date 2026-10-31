@@ -7,10 +7,9 @@
 
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
-import { round2 } from '../utils/money.js';
 import {
     applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
-    receiptNo, istYear, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
+    receiptNo, receiptAmounts, istYear, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
 import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth, withNames, PUBLIC_MONTHS } from './rent-public.js';
 
@@ -426,8 +425,7 @@ export function putReceipt(tx, id, ch, pi, rc, year, seq, extra = {}) {
         no: e.rno, year, seq, chargeId: id, pi,
         leaseId: ch.leaseId, tenantId: ch.tenantId, unitId: ch.unitId, propertyId: ch.propertyId,
         tenantName: ch.tenantName || '', place: clip(rc.place, 150), ...(rc.ut ? { ut: rc.ut } : {}),
-        months: [ch.month], rent: ch.rent, elec: ch.electricity || null, total: ch.amount,
-        paid: e.amount, mode: e.mode, ref: e.ref || '', date: e.date, balance: Math.max(0, round2(ch.amount - ch.paid)),
+        ...receiptAmounts(ch, e), mode: e.mode, ref: e.ref || '', date: e.date,
         by: e.by, byName: e.byName || '', ...extra, createdAt: FirebaseService.serverTimestamp(), void: false
     };
     tx.set(coll('rent_receipts').doc(rid), r);

@@ -7,7 +7,7 @@
  */
 
 import { round2 } from '../utils/money.js';
-import { chargeDue, chargeStatus } from './rent-math.js';
+import { chargeDue, chargeStatus, rentTotals } from './rent-math.js';
 
 export const UNIT_TYPES = ['flat', 'commercial', 'office', 'godown', 'other'];
 export const MAX_UNIT_AREA = 1000000;
@@ -29,17 +29,13 @@ export function unitRows({ properties = [], units = [], leases = [], tenants = [
     return units.filter(u => !u.archived).map(u => {
         const lease = leaseByUnit.get(u.id) || null;
         const mine = charges.filter(c => c.unitId === u.id && c.month <= month);
-        const thisMonth = mine.filter(c => c.month === month);
-        const expected = round2(thisMonth.reduce((s, c) => s + (Number(c.amount) || 0), 0));
-        const collected = round2(thisMonth.reduce((s, c) => s + (Number(c.paid) || 0), 0));
-        const open = mine.filter(c => chargeDue(c) > 0);
         // due keeps everything owed on the unit (also a former tenant's months);
         // Late / Paid / Part paid describe only the tenant living there now.
-        const due = round2(open.reduce((s, c) => s + chargeDue(c), 0));
-        const ownOpen = lease ? open.filter(c => c.leaseId === lease.id) : [];
-        const ownDue = round2(ownOpen.reduce((s, c) => s + chargeDue(c), 0));
+        const { expected, collected, pending, due } = rentTotals(mine, month);
+        const ownOpen = lease ? mine.filter(c => c.leaseId === lease.id && chargeDue(c) > 0) : [];
+        const ownDue = rentTotals(ownOpen).due;
         const late = ownOpen.some(c => chargeStatus(c, today).late);
-        const current = lease ? thisMonth.find(c => c.leaseId === lease.id) || null : null;
+        const current = lease ? mine.find(c => c.month === month && c.leaseId === lease.id) || null : null;
         const status = !lease ? 'vacant'
             : late ? 'late'
             : ownDue <= 0 ? (current ? 'paid' : 'due')
@@ -60,7 +56,7 @@ export function unitRows({ properties = [], units = [], leases = [], tenants = [
             late,
             expected,
             collected,
-            pending: round2(Math.max(0, expected - collected)),
+            pending,
             due
         };
     });
@@ -135,6 +131,13 @@ export function vacantByProperty(properties = [], units = [], keep = '') {
     return [...properties].sort(az('name'))
         .map(property => ({ property, units: units.filter(u => u.propertyId === property.id && !u.archived && (!u.leaseId || u.id === keep)).sort(az('label')) }))
         .filter(g => g.units.length);
+}
+
+/** Unit to move into: `unitId`, else the first vacant one (pick); {error} when taken or none is vacant. */
+export function moveTarget(properties, units, unitId = '') {
+    const pick = unitId ? null : vacantByProperty(properties, units)[0]?.units[0];
+    const unit = pick || units.find(u => u.id === unitId);
+    return !unit || unit.leaseId ? { error: unitId ? 'msg.rent.unit_taken' : 'msg.rent.no_vacant_unit' } : { unit, pick };
 }
 
 /**

@@ -1,8 +1,8 @@
 import fc from 'fast-check';
 import {
-    unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, placeText, unitType, unitExtraError, UNIT_TYPES
+    unitRows, summarize, propertySummaries, groupByType, filterRows, typedPlace, placeText, unitType, unitExtraError, UNIT_TYPES, moveTarget
 } from '../rentals/rent-views.js';
-import { monthSummary } from '../rentals/rent-math.js';
+import { rentTotals } from '../rentals/rent-math.js';
 
 const MONTH = '2026-10';
 const TODAY = new Date(2026, 9, 20);
@@ -67,10 +67,10 @@ describe('unit rows (RENT-10)', () => {
         for (const k of ['units', 'occupied', 'vacant', 'late', 'expected', 'collected', 'due']) {
             expect(cards.reduce((s, c) => s + c[k], 0)).toBeCloseTo(all[k], 2);
         }
-        const rent = monthSummary(d.charges, MONTH);
+        const rent = rentTotals(d.charges, MONTH);
         expect(all.expected).toBe(rent.expected);
         expect(all.collected).toBe(rent.collected);
-        expect(all.due).toBe(rent.outstanding);
+        expect(all.due).toBe(rent.due);
     });
 
     test('property detail groups by type in a fixed order', () => {
@@ -134,9 +134,9 @@ test('property totals always equal the sum of their unit rows (generated data)',
         for (const k of ['units', 'occupied', 'late', 'expected', 'collected', 'due']) {
             if (Math.abs(cards.reduce((s, c) => s + c[k], 0) - all[k]) > 0.01) return false;
         }
-        const rent = monthSummary(data.charges, '2026-10');
+        const rent = rentTotals(data.charges, '2026-10');
         return Math.abs(all.expected - rent.expected) < 0.01 && Math.abs(all.collected - rent.collected) < 0.01
-            && Math.abs(all.due - rent.outstanding) < 0.01;
+            && Math.abs(all.due - rent.due) < 0.01;
     }), { seed: 909, numRuns: Number(process.env.FC_RUNS) || 100 });
 });
 
@@ -149,4 +149,14 @@ test('places: "Flat 2B, Gupta Bhawan"; no double type word; size and floor check
     expect(unitExtraError({ type: 'castle' })).toBe('msg.rent.bad_unit_type');
     expect(unitExtraError({ type: 'flat', area: 0 })).toBe('msg.rent.bad_area');
     expect(unitExtraError({ type: 'flat', area: null, floor: 'x'.repeat(21) })).toBe('msg.rent.too_long');
+});
+
+test('the unit to move into: the one asked for, else the first vacant (properties A–Z); taken or none vacant is refused', () => {
+    const props = [{ id: 'P1', name: 'Gupta Bhawan' }, { id: 'P2', name: 'Arora Market' }];
+    const units = [{ id: 'a', propertyId: 'P1', label: '1A', leaseId: 'L1' }, { id: 'b', propertyId: 'P1', label: '2B' }, { id: 'c', propertyId: 'P2', label: '9' }];
+    expect(moveTarget(props, units, 'b')).toEqual({ unit: units[1], pick: null });
+    expect(moveTarget(props, units)).toEqual({ unit: units[2], pick: units[2] });
+    expect(moveTarget(props, units, 'a')).toEqual({ error: 'msg.rent.unit_taken' });
+    expect(moveTarget(props, units, 'zz')).toEqual({ error: 'msg.rent.unit_taken' });
+    expect(moveTarget(props, units.slice(0, 1))).toEqual({ error: 'msg.rent.no_vacant_unit' });
 });

@@ -1,7 +1,8 @@
 import {
     monthKey, addMonths, monthRange, monthLabel, monthsToCharge, newCharge, chargeDue, chargeStatus,
-    applyPayment, monthSummary, leaseDues, buildRentReminderText, leaseError, tenantError, unitError,
-    propertyError, increaseDue, meterBill, applyMeter, MAX_BACKFILL_MONTHS, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT
+    applyPayment, rentTotals, leaseDues, buildRentReminderText, leaseError, tenantError, unitError,
+    propertyError, increaseDue, meterBill, applyMeter, MAX_BACKFILL_MONTHS, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT,
+    proRateRent, firstMonthRent, moveMonthRent, moveMonthSplit, changeUnitPlan, moveInError, receiptAmounts, paidEarlier
 } from '../rentals/rent-math.js';
 
 const lease = (over = {}) => ({
@@ -91,8 +92,9 @@ describe('totals', () => {
         { leaseId: 'B', month: '2026-11', amount: 3000, paid: 0 }
     ];
 
-    test('month summary (RENT-1..4) ignores later months', () => {
-        expect(monthSummary(charges, '2026-10')).toEqual({ expected: 8000, collected: 3000, pending: 5000, outstanding: 9000 });
+    test('month totals (RENT-1..4) ignore later months; without a month, due is over all charges', () => {
+        expect(rentTotals(charges, '2026-10')).toEqual({ expected: 8000, collected: 3000, pending: 5000, due: 9000 });
+        expect(rentTotals(charges)).toEqual({ expected: 0, collected: 0, pending: 0, due: 12000 });
     });
 
     test('lease dues are oldest first (RENT-5)', () => {
@@ -172,5 +174,90 @@ describe('form checks', () => {
         expect(leaseError({ rent: 5000, dueDay: 5, startMonth: '2026-13' })).toBe('msg.rent.bad_month');
         expect(leaseError({ rent: 5000, dueDay: 5, startMonth: '2026-10', deposit: 10000 })).toBe('');
         expect(leaseError({ rent: 5000, dueDay: 10, startMonth: '2026-10', increasePct: 101 })).toBe('msg.rent.bad_percent');
+    });
+});
+
+describe('pro-rating: first month (RENT-11) and the move month (RENT-13)', () => {
+    const from = { id: 'L1', rent: 6000, startMonth: '2027-06', startDate: '2027-06-01', chargedThrough: '2028-02' };
+
+    test('proRateRent rounds rent × days ÷ days to the rupee', () => {
+        expect(proRateRent(6000, 15, 31)).toBe(2903);
+        expect(proRateRent(5000, 0, 29)).toBe(0);
+        expect(proRateRent(4000, 30, 30)).toBe(4000);
+    });
+
+    test('leap February has 29 days, a common one 28', () => {
+        expect(firstMonthRent(5800, '2028-02-29', true)).toBe(200);
+        expect(firstMonthRent(5600, '2027-02-28', true)).toBe(200);
+        expect(moveMonthRent(5800, from, '2028-02', '2028-02-15')).toBe(2800);
+        expect(moveMonthRent(5600, from, '2027-02', '2027-02-15')).toBe(2800);
+    });
+
+    test('a move on the 1st: the old lease ends the month before and the new unit pays the full month', () => {
+        expect(moveMonthSplit(from, [], '2028-03-01', 9000)).toMatchObject({ month: '2028-03', endMonth: '2028-02', old: null, next: 9000 });
+        expect(firstMonthRent(9000, '2028-03-01', true)).toBe(9000);
+    });
+
+    test('a move on the 31st: 30 days in the old unit, 1 in the new one', () => {
+        expect(moveMonthSplit(from, [], '2028-01-31', 3100)).toEqual({
+            month: '2028-01', endMonth: '2028-01', ch: undefined, full: 6000, old: 5806, oldEnd: '2028-01-30', next: 100
+        });
+    });
+
+    test('the share is of the month\'s charge (rent changed, electricity kept apart) or a pro-rated first month from its start day', () => {
+        const ch = { leaseId: 'L1', month: '2028-02', rent: 5000, electricity: { amount: 480 }, amount: 5480 };
+        expect(moveMonthSplit(from, [ch], '2028-02-19', 15000)).toMatchObject({ ch, full: 5000, old: 3103, oldEnd: '2028-02-18', next: 5690 });
+        const late = { id: 'L2', rent: 7000, startMonth: '2028-02', startDate: '2028-02-10', firstRent: 4828 };
+        // 10 Feb – 19 Feb of the 20 days 10 – 29 Feb the first charge covers.
+        expect(moveMonthSplit(late, [], '2028-02-20', 6000)).toMatchObject({ full: 4828, old: 2414 });
+    });
+});
+
+describe('change of unit plan (RENT-13)', () => {
+    const from = { id: 'L1', rent: 5000, startMonth: '2027-06', startDate: '2027-06-01', chargedThrough: '2028-02' };
+    const lease = { rent: 15000, startDate: '2028-02-19' };
+    const ch = { leaseId: 'L1', month: '2028-02', rent: 5000, electricity: null, amount: 5000, paid: 4000 };
+
+    test('members get the worked-out amounts; the old month is capped at what is paid', () => {
+        const p = changeUnitPlan(from, [ch], lease);
+        expect(p).toMatchObject({ firstRent: 5690, oldRent: 'auto', paidOld: { rent: 4000, amount: 4000, open: false, capped: true } });
+        expect(changeUnitPlan(from, [ch], lease, { typed: { old: '1', next: '1' } }).firstRent).toBe(5690);
+    });
+
+    test('owner / manager amounts: within 0 … the rent; an own old amount is kept as typed', () => {
+        expect(changeUnitPlan(from, [], lease, { mgr: true, typed: { old: '2500.505', next: '15000' } })).toMatchObject({ firstRent: 15000, oldRent: 2500.51, paidOld: null });
+        expect(changeUnitPlan(from, [], lease, { mgr: true, typed: { old: '3103', next: '15001' } })).toEqual({ error: 'msg.rent.bad_split' });
+        expect(changeUnitPlan(from, [], lease, { mgr: true, typed: { old: '5001', next: '1' } })).toEqual({ error: 'msg.rent.bad_split' });
+        expect(changeUnitPlan(from, [], lease, { mgr: true, typed: { old: '', next: '' } })).toMatchObject({ firstRent: 0, oldRent: 0 });
+    });
+
+    test('not pro-rated: no amounts; members can\'t move back into a month charged ahead', () => {
+        expect(changeUnitPlan(from, [ch], lease, { on: false })).toMatchObject({ oldRent: null, paidOld: null });
+        expect(changeUnitPlan({ ...from, chargedThrough: '2028-03' }, [], { rent: 9000, startDate: '2028-02-01' })).toEqual({ error: 'msg.rent.change_backdate' });
+        expect(changeUnitPlan({ ...from, chargedThrough: '2028-03' }, [], { rent: 9000, startDate: '2028-02-01' }, { mgr: true, on: false }).error).toBeUndefined();
+    });
+});
+
+describe('move-in checks', () => {
+    const lease = { rent: 6500, dueDay: 10, startDate: '2028-02-20', startMonth: '2028-02', increasePct: 5, elecMode: 'meter' };
+
+    test('lease first, then the start-date window, then the opening meter (empty = not given)', () => {
+        expect(moveInError(lease, null, '2028-02')).toBe('');
+        expect(moveInError({ ...lease, dueDay: 29 }, { reading: -1, rate: 8 }, '2028-02', '2028-02-21')).toBe('msg.rent.bad_due_day');
+        expect(moveInError(lease, { reading: -1, rate: 8 }, '2028-02', '2028-02-21')).toBe('msg.rent.move_date_window');
+        expect(moveInError(lease, { reading: -1, rate: 8 }, '2028-02', '2028-02-18')).toBe('msg.rent.bad_reading');
+        expect(moveInError(lease, { reading: 300, rate: NaN }, '2028-02')).toBe('msg.rent.bad_reading');
+        expect(moveInError(lease, { reading: null, rate: null }, '2028-02')).toBe('');
+        expect(moveInError(lease, { reading: 0, rate: 7.5 }, '2028-02')).toBe('');
+    });
+});
+
+describe('receipt amounts (RENT-12)', () => {
+    test('from the charge as written with the payment: total, paid now, balance after it, paid earlier', () => {
+        const ch = { month: '2028-02', rent: 9000, electricity: { amount: 432.25 }, amount: 9432.25, paid: 9432.25 };
+        const r = receiptAmounts(ch, { amount: 5432 });
+        expect(r).toEqual({ months: ['2028-02'], rent: 9000, elec: { amount: 432.25 }, total: 9432.25, paid: 5432, balance: 0 });
+        expect(paidEarlier(r)).toBe(4000.25);
+        expect(receiptAmounts({ month: '2028-02', rent: 5000, amount: 5000, paid: 2000 }, { amount: 2000 })).toMatchObject({ elec: null, balance: 3000 });
     });
 });

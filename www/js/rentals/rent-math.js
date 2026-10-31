@@ -1,7 +1,7 @@
 /**
  * @fileoverview Rentals (#170) pure logic: months, monthly charges, payment
- * checks, totals and the WhatsApp reminder text. No DOM, Firestore or AppState.
- * Number definitions: docs/calculations.md (RENT-1 … RENT-5).
+ * checks, totals, pro-rating, form checks and the WhatsApp reminder text. No DOM,
+ * Firestore or AppState. Number definitions: docs/calculations.md (RENT-*).
  * @module rentals/rent-math
  */
 
@@ -88,6 +88,11 @@ export function mobile10(v) {
     return /^[6-9]\d{9}$/.test(d) ? d : '';
 }
 
+const daysIn = (y, m) => new Date(y, m, 0).getDate();
+
+/** RENT-11, RENT-13: rent × days ÷ the days it is for, rounded to the rupee. */
+export const proRateRent = (rent, days, of) => Math.round(rent * days / of);
+
 /**
  * RENT-11: first month's rent. Full rent by default (the usual practice); with
  * "pro-rate first month", rent × days from the start date to the month's end ÷
@@ -97,9 +102,51 @@ export function firstMonthRent(rent, startDate, proRate) {
     const r = round2(Number(rent) || 0);
     if (!proRate || !isDate(startDate)) return r;
     const [y, m, d] = startDate.split('-').map(Number);
-    const days = new Date(y, m, 0).getDate();
-    return Math.round(r * (days - d + 1) / days);
+    const days = daysIn(y, m);
+    return proRateRent(r, days - d + 1, days);
 }
+
+/** RENT-13: old unit's move month = full × (move day − s) ÷ (days in month − s + 1); s = 1, or a pro-rated first month's start day. */
+export function moveMonthRent(full, lease, month, moveDate) {
+    const s = month === lease?.startMonth && lease?.firstRent != null && isDate(lease.startDate) ? Number(lease.startDate.slice(8)) : 1;
+    const [y, m, d] = moveDate.split('-').map(Number);
+    return Math.max(0, proRateRent(Number(full) || 0, d - s, daysIn(y, m) - s + 1));
+}
+
+/** RENT-13: old month `ch` at rent `rent`; more than rent + electricity paid closes it at what is paid (capped), fully paid stays (kept). */
+export function oldMonth(ch, rent) {
+    const e = Number(ch?.electricity?.amount) || 0;
+    const paid = Number(ch?.paid) || 0;
+    const over = paid > rent + e + 0.001;
+    const r = over ? round2(paid - e) : rent;
+    const amount = round2(r + e);
+    return { rent: r, amount, open: paid < amount - 0.001, capped: over && r < ch.rent, kept: over && r >= ch.rent };
+}
+
+/** RENT-13, move on `date`: old unit's last month, its charge, full rent and share (null on the 1st) till oldEnd; new unit's first month. */
+export function moveMonthSplit(from, charges, date, rent) {
+    const month = date.slice(0, 7);
+    const prev = addMonths(month, -1);
+    const endMonth = date.endsWith('-01') && prev >= from.startMonth ? prev : month;
+    const ch = charges.find(x => x.leaseId === from.id && x.month === month);
+    const full = Number.isFinite(ch?.rent) ? ch.rent : month === from.startMonth && from.firstRent != null ? from.firstRent : from.rent;
+    const old = endMonth === month ? moveMonthRent(full, from, month, date) : null;
+    return { month, endMonth, ch, full, old, oldEnd: `${month}-${pad2(Number(date.slice(8)) - 1)}`, next: firstMonthRent(rent, date, true) };
+}
+
+/** Change of unit (RENT-13): {error}, or split s, firstRent, oldRent ('auto': worked out when saved; null: full) and paidOld. Members: worked-out amounts. */
+export function changeUnitPlan(from, charges, lease, { mgr = false, on = true, typed = {} } = {}) {
+    const s = moveMonthSplit(from, charges, lease.startDate, lease.rent);
+    if (!mgr && from.chargedThrough > addMonths(s.endMonth, 1)) return { error: 'msg.rent.change_backdate' };
+    if (!on) return { s, oldRent: null, paidOld: null };
+    const next = mgr ? Number(typed.next) : s.next;
+    const old = s.old === null ? null : mgr ? Number(typed.old) : s.old;
+    if (!Number.isFinite(next) || next < 0 || next > lease.rent || (old !== null && !(old >= 0 && old <= s.full))) return { error: 'msg.rent.bad_split' };
+    return { s, firstRent: round2(next), oldRent: old === null ? null : old === s.old ? 'auto' : round2(old), paidOld: old !== null && s.ch ? oldMonth(s.ch, old) : null };
+}
+
+/** A change of unit keeps the old lease's due day, yearly %, deposit and electricity mode. */
+export const keptTerms = (l, defs) => ({ defs: { ...defs, dueDay: l.dueDay, increasePct: l.increasePct ?? defs.increasePct }, deposit: l.deposit || 0, elec: elecMode(l) });
 
 /** 'YYYY-MM' of a date in local time. */
 export function monthKey(date = new Date()) {
@@ -172,6 +219,25 @@ export function newCharge(lease, month, { tenantName = '', unitLabel = '', now =
 
 export const chargeDue = (c) => Math.max(0, round2((Number(c?.amount) || 0) - (Number(c?.paid) || 0)));
 
+/** RENT-1 … RENT-4: Σ amount (expected), Σ paid (collected) of `month`'s charges, pending, Σ due up to `month` (of all without one). */
+export function rentTotals(charges, month = '') {
+    let expected = 0; let collected = 0; let due = 0;
+    for (const c of charges) {
+        if (c.month === month) {
+            expected += Number(c.amount) || 0;
+            collected += Number(c.paid) || 0;
+        }
+        if (!month || c.month <= month) due += chargeDue(c);
+    }
+    return { expected: round2(expected), collected: round2(collected), pending: round2(Math.max(0, expected - collected)), due: round2(due) };
+}
+
+/** RENT-12: receipt amounts of payment `e` on charge `ch` as written (balance = due after it). */
+export const receiptAmounts = (ch, e) => ({ months: [ch.month], rent: ch.rent, elec: ch.electricity || null, total: ch.amount, paid: e.amount, balance: chargeDue(ch) });
+
+/** RENT-12: paid before this payment = total − paid now − balance (never below 0). */
+export const paidEarlier = (r) => Math.max(0, round2((Number(r.total) || 0) - (Number(r.paid) || 0) - (Number(r.balance) || 0)));
+
 /** Local date the month's rent falls due. */
 export function dueDate(month, dueDay = DEFAULT_DUE_DAY) {
     const [y, m] = month.split('-').map(Number);
@@ -201,34 +267,11 @@ export function applyPayment(charge, amount) {
     return { amount: amt, paid, open: paid < total - 0.001 };
 }
 
-/**
- * RENT-1 … RENT-4 for `month` over the loaded charges.
- * @returns {{expected: number, collected: number, pending: number, outstanding: number}}
- */
-export function monthSummary(charges, month) {
-    let expected = 0;
-    let collected = 0;
-    let outstanding = 0;
-    for (const c of charges) {
-        if (c.month === month) {
-            expected += Number(c.amount) || 0;
-            collected += Number(c.paid) || 0;
-        }
-        if (c.month <= month) outstanding += chargeDue(c);
-    }
-    return {
-        expected: round2(expected),
-        collected: round2(collected),
-        pending: round2(Math.max(0, expected - collected)),
-        outstanding: round2(outstanding)
-    };
-}
-
 /** Open charges of one lease, oldest first, and their total (RENT-5). */
 export function leaseDues(charges, leaseId) {
     const open = charges.filter(c => c.leaseId === leaseId && chargeDue(c) > 0)
         .sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
-    return { charges: open, total: round2(open.reduce((s, c) => s + chargeDue(c), 0)) };
+    return { charges: open, total: rentTotals(open).due };
 }
 
 /**
@@ -260,6 +303,8 @@ export function increaseDue(lease, month, today = new Date()) {
     return { due: month >= from && pct > 0, pct, newRent, from };
 }
 
+const okNum = (v) => Number.isFinite(v) && v >= 0;
+
 /**
  * Electricity from a sub-meter reading (RENT-7): units = current − previous,
  * amount = units × rate per unit.
@@ -269,7 +314,7 @@ export function meterBill({ prev, curr, rate }) {
     const p = Number(prev);
     const c = Number(curr);
     const r = Number(rate);
-    if (![p, c, r].every(Number.isFinite) || p < 0 || r < 0 || c < p) throw new Error('reading');
+    if (![p, c, r].every(okNum) || c < p) throw new Error('reading');
     const units = round2(c - p);
     return { prev: p, curr: c, rate: r, units, amount: round2(units * r) };
 }
@@ -326,6 +371,11 @@ export function leaseError(l, currentMonth = '') {
     return '';
 }
 
+/** Error key for a move-in ('' when fine): lease, opening meter {reading, rate} (or null) and a start not before `earliest` (when set). */
+export const moveInError = (lease, meter, currentMonth, earliest = '') => leaseError(lease, currentMonth)
+    || (earliest && lease.startDate < earliest ? 'msg.rent.move_date_window' : '')
+    || (meter && ![meter.reading, meter.rate].every(v => v === null || okNum(v)) ? 'msg.rent.bad_reading' : '');
+
 const REMINDER_TEXT = {
     en: {
         hello: (n) => (n ? `Namaste ${n} ji 🙏` : 'Namaste 🙏'),
@@ -363,7 +413,7 @@ export function buildRentReminderText({ tenantName, place = '', charges = [], la
     const L = REMINDER_TEXT[lang === 'hi' ? 'hi' : 'en'];
     const rows = charges.filter(c => chargeDue(c) > 0 && (!isMonth(lastMonth) || c.month <= lastMonth))
         .sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));
-    const total = round2(rows.reduce((s, c) => s + chargeDue(c), 0));
+    const total = rentTotals(rows).due;
     const where = cleanText(place);
     const lines = [L.hello(cleanText(tenantName)), L.intro];
     if (where) lines.push(`🏠 ${where}`);
