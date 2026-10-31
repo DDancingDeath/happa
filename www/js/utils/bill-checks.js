@@ -201,11 +201,11 @@ function oversellIssues(items, ctx, extraLine) {
 /**
  * Q58 (#102): a new wholesale line whose item has no average cost in stock would
  * count its cost as ₹0 and its whole value as profit; the bill is saved without a
- * profit (costUnknown). An item never seen in stock (never bought, no opening
- * stock, unknown item) blocks the save; an owner / manager may save it with a
- * reason. An item that was stocked but is sold out (the replay drops its average
- * to 0), or any item while stock is approximate, only warns: selling it is the
- * oversell rule's call. Skipped while stock loads.
+ * profit (costUnknown). Stock on hand without a rate (opening stock added with no
+ * rate) or an item never seen in stock (never bought, unknown item) blocks the save;
+ * an owner / manager may save it with a reason. A sold-out item (the replay drops its
+ * average to 0 at quantity <= 0), or any item while stock is approximate, only
+ * warns: selling it is the oversell rule's call. Skipped while stock loads.
  */
 function costUnknownIssues(items, ctx, draft) {
     if (ctx.kind !== 'wholesale' || draft.isEdit || !ctx.stockReady) return [];
@@ -213,16 +213,19 @@ function costUnknownIssues(items, ctx, draft) {
         if (wholesaleCostRate(line, ctx.stock, ctx.catalogue) !== null) return [];
         const name = readLineItem(line).name || '?';
         const key = stockKeyFor(line, ctx.catalogue);
-        const seen = !!ctx.stocked?.has(key) || [key, line?.itemId, readLineItem(line).name].some(k => k && ctx.stock?.[k]);
-        if (seen || ctx.stockApproximate) {
+        const entry = [key, line?.itemId, readLineItem(line).name].map(k => k && ctx.stock?.[k]).find(Boolean) || null;
+        const soldOut = (!!entry || !!ctx.stocked?.has(key)) && !((Number(entry?.quantity) || 0) > 0);
+        if (soldOut || ctx.stockApproximate) {
             return [issue('cost-unknown', `items.${i}`, 'warn',
-                `${name}: average cost not known (out of stock) — this bill is saved without a profit`,
-                `${name}: औसत लागत पता नहीं (स्टॉक खत्म) — यह बिल बिना मुनाफ़े के सेव होगा`,
+                soldOut ? `${name}: average cost not known (out of stock) — this bill is saved without a profit`
+                    : `${name}: average cost not known — this bill is saved without a profit`,
+                soldOut ? `${name}: औसत लागत पता नहीं (स्टॉक खत्म) — यह बिल बिना मुनाफ़े के सेव होगा`
+                    : `${name}: औसत लागत पता नहीं — यह बिल बिना मुनाफ़े के सेव होगा`,
                 { line: i })];
         }
         return [issue('cost-unknown', `items.${i}`, 'block',
-            `${name}: average cost not known (not bought yet, no opening stock) — the profit cannot be worked out`,
-            `${name}: औसत लागत पता नहीं (अभी खरीदा नहीं, शुरुआती स्टॉक नहीं) — मुनाफ़ा नहीं निकल सकता`,
+            `${name}: average cost not known (no purchase or opening stock with a rate) — the profit cannot be worked out`,
+            `${name}: औसत लागत पता नहीं (रेट वाली कोई खरीद या शुरुआती स्टॉक नहीं) — मुनाफ़ा नहीं निकल सकता`,
             { line: i })];
     });
 }

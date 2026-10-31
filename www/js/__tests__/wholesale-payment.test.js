@@ -182,6 +182,11 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
         expect(toast()).toContain('Rice: average cost not known');
         expect(saved).toHaveLength(0);
+        // Opening stock added without a rate: stock on hand, cost still unknown → also blocked
+        AppState.stock = { rice: { quantity: 500, rate: 0 } };
+        expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
+        expect(toast()).toContain('Rice: average cost not known');
+        expect(saved).toHaveLength(0);
 
         AppState.userRole = 'owner';
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => {

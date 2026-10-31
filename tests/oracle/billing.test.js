@@ -172,3 +172,26 @@ describe('utils/calc/billing.js == oracle on generated bills', () => {
         }), { seed: 129, numRuns: RUNS });
     });
 });
+
+describe('WS-COST lookup by name (#102)', () => {
+    test('stock keyed by id or by name, lines found by Hindi name or an old id: app == oracle', () => {
+        const catalogue = [{ id: 'r', name: 'Rice', hindiName: 'चावल' }, { id: 'w', name: 'Wheat' }, { id: 'm', name: 'Maize' }];
+        const entry = fc.record({
+            itemId: fc.constantFrom('r', 'w', 'm', 'old-id', undefined),
+            name: fc.constantFrom('Rice', 'चावल', 'Wheat', 'Maize', 'Ghost'),
+            rate: fc.integer({ min: 1, max: 10000 }).map(x => x / 100),
+            qty: fc.integer({ min: 1, max: 5000 }).map(x => x / 100)
+        });
+        const stock = fc.record({
+            r: fc.constantFrom(undefined, { rate: 25 }),
+            Wheat: fc.constantFrom(undefined, { rate: 31.5 }, { rate: 0 }),
+            m: fc.constantFrom(undefined, { quantity: 4 })
+        });
+        fc.assert(fc.property(fc.array(entry, { minLength: 1, maxLength: 5 }), stock, (entries, st) => {
+            const want = O.billForm('wholesale', entries, { stock: st, catalogue });
+            const lines = entries.map(e => ({ itemId: e.itemId, name: e.name, qty: e.qty, total: computeLine(e).total }));
+            const got = wholesaleLiveProfit(lines, st, 0, catalogue);
+            expect({ profit: got.profit, margin: got.profitPercent }).toEqual({ profit: want.WS_PROFIT, margin: want.WS_MARGIN });
+        }), { seed: 102, numRuns: RUNS });
+    });
+});
