@@ -238,8 +238,8 @@ greyed with a "Voided" chip and the reason, and its details show who voided it, 
   data, repairs); on the live data Admin › Clear Data offers only drafts, auto-saves and item
   frequency (an allow-list, `LIVE_CLEARABLE_COLLECTIONS`: a new collection is never offered),
   never bills, cash, expenses, stock adjustments, withdrawals, items or users. It deletes
-  nothing until its JSON backup download (or share) was started and the owner confirmed
-  "I have saved the backup file"; the app can't check the file itself. The audit entry
+  nothing until its JSON backup download (or share) was started and the owner ticked
+  "I have saved the backup file" and tapped OK; the app can't check the file itself. The audit entry
   records `backupOffered` and `ownerConfirmedBackup` (#63);
   the app offers "Delete permanently" only on a voided bill (test data), together with its edit
   records. Members and managers can no longer delete bills; a delete the rules refuse shows "Bills

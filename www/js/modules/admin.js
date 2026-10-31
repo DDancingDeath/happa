@@ -653,12 +653,21 @@ const AdminManager = {
             UIManager.showToast(t('msg.admin.backup_not_saved_nothing_deleted'));
             return;
         }
-        // The browser can't tell whether the file was kept: the owner confirms it (no dialog = no)
-        const ownerConfirmedBackup = !!document.getElementById('modalOverlay') && await UIManager.showModal(
-            t('msg.admin.confirm_backup_saved_text'),
-            t('msg.admin.confirm_backup_saved_title'),
-            true
-        ) === true;
+        // The browser can't tell whether the file was kept: the owner ticks a box to confirm it
+        // (a box, so a double tap on the previous dialog's OK can't confirm by accident)
+        let backupTicked = false;
+        const confirmedDialog = await UIManager.showModalWithHtml(`
+            <div style="text-align: left;">
+                <p style="margin: 0 0 10px; font-size: 13px;">${tx('msg.admin.confirm_backup_saved_text')}</p>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold;">
+                    <input type="checkbox" id="clearDataBackupSaved" style="width: 18px; height: 18px;">
+                    <span>${tx('msg.admin.confirm_backup_saved_title')}</span>
+                </label>
+            </div>`, t('msg.admin.final_confirmation'), true).then((result) => {
+            backupTicked = document.getElementById('clearDataBackupSaved')?.checked === true;
+            return result;
+        });
+        const ownerConfirmedBackup = confirmedDialog === true && backupTicked;
         if (!ownerConfirmedBackup) {
             UIManager.showToast(t('msg.admin.backup_not_saved_nothing_deleted'));
             return;

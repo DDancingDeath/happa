@@ -72,13 +72,18 @@ describe('AdminManager.clearAllData', () => {
     let typedWord;
     let tickIds;
     let firstModalHtml;
+    let backupHtml;
+    let backupTick;
+    let backupResult;
     const order = [];
 
     beforeEach(() => {
         jest.useFakeTimers();
         order.length = 0;
         document.body.innerHTML = '<div id="modalOverlay"></div><div id="modalMessage"></div>';
-        UIManager.showModal.mockImplementation(async () => { order.push('confirmed'); return true; });
+        backupHtml = null;
+        backupTick = true;
+        backupResult = true;
         AppState.userRole = 'owner';
         AppState.currentUser = { uid: 'owner1' };
         typedWord = 'DELETE';
@@ -94,6 +99,11 @@ describe('AdminManager.clearAllData', () => {
             if (!firstModalHtml) {
                 firstModalHtml = html;
                 tickIds.forEach(id => { document.querySelector(`[data-collection="${id}"]`).checked = true; });
+            } else if (html.includes('clearDataBackupSaved')) {
+                backupHtml = html;
+                document.getElementById('clearDataBackupSaved').checked = backupTick;
+                order.push('confirmed');
+                return backupResult;
             } else {
                 document.getElementById('clearDataConfirmInput').value = typedWord;
             }
@@ -128,7 +138,8 @@ describe('AdminManager.clearAllData', () => {
     test('DELETE: backup, owner confirms it, then audit, then batched delete; localStorage kept', async () => {
         await AdminManager.clearAllData();
         expect(order).toEqual(['backup', 'confirmed', 'audit', 'delete:purchases']);
-        expect(UIManager.showModal).toHaveBeenCalledWith(expect.stringMatching(/I have saved the backup file/), 'I have saved the backup file', true);
+        expect(backupHtml).toMatch(/I have saved the backup file/);
+        expect(backupHtml).not.toMatch(/checked/);
         expect(AuditService.log.mock.calls[0][1]).toMatchObject({ backupOffered: true, ownerConfirmedBackup: true });
         expect(AuditService.log.mock.calls[0][1]).not.toHaveProperty('backupSaved');
         const [backup] = AdminManager.saveJsonBackup.mock.calls[0];
@@ -137,18 +148,20 @@ describe('AdminManager.clearAllData', () => {
         expect(Storage.prototype.clear).not.toHaveBeenCalled();
     });
 
-    test('owner does not confirm the backup was saved → nothing deleted', async () => {
-        UIManager.showModal.mockImplementation(async () => false);
+    test('owner cancels the backup confirmation → nothing deleted', async () => {
+        backupResult = false;
         await AdminManager.clearAllData();
         expect(AdminManager.saveJsonBackup).toHaveBeenCalled();
         expect(AuditService.log).not.toHaveBeenCalled();
         expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
     });
 
-    test('no dialog to confirm in → nothing deleted', async () => {
-        document.getElementById('modalOverlay').remove();
+    test('OK without ticking the box (e.g. a double tap) → nothing deleted', async () => {
+        backupTick = false;
         await AdminManager.clearAllData();
+        expect(AuditService.log).not.toHaveBeenCalled();
         expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
+        expect(UIManager.showToast).toHaveBeenCalledWith('The backup was not saved, so nothing was deleted.');
     });
 
     test('backup not saved → nothing deleted, no way to go on without it', async () => {

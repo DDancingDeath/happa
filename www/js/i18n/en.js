@@ -8,7 +8,7 @@ export default {
     'msg.admin.are_sure_want_reject_user': "Are you sure you want to reject this user?",
     'msg.admin.backup_not_saved_nothing_deleted': "The backup was not saved, so nothing was deleted.",
     'msg.admin.confirm_backup_saved_title': "I have saved the backup file",
-    'msg.admin.confirm_backup_saved_text': "The app can't check that the backup file was kept. Tap OK only if this is true: I have saved the backup file. Cancel deletes nothing.",
+    'msg.admin.confirm_backup_saved_text': "The app can't check that the backup file was kept. Tick the box only if it is true, then tap OK. Cancel deletes nothing.",
     'msg.admin.clear_data_needs_website': "Clear Data needs the website: the Android app can't save the backup file.",
     'msg.admin.change_role': "Change Role",
     'msg.admin.change_s_role_from': "Change {userName}'s role from {roleLabel} to {roleLabel2}?",
