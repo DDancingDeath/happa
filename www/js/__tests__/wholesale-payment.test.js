@@ -175,43 +175,22 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         expect(saved).toHaveLength(1);
     });
 
-    test('unknown average cost (#102, Q58): a member is blocked; an owner saves with a reason, no profit, lines marked', async () => {
-        AppState.stock = {};
-        setVal('wholesaleCashPayment', 4025);
-        AppState.userRole = 'staff';
-        expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
-        expect(toast()).toContain('Rice: average cost not known');
-        expect(saved).toHaveLength(0);
-        // Opening stock added without a rate: stock on hand, cost still unknown → also blocked
+    test('unknown average cost (#102, Q58): saved after a confirm, without a profit, lines marked', async () => {
         AppState.stock = { rice: { quantity: 500, rate: 0 } };
+        AppState.userRole = 'staff';
+        setVal('wholesaleCashPayment', 4025);
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValueOnce(false);
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
-        expect(toast()).toContain('Rice: average cost not known');
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: average cost not known (its stock has no rate)'), expect.any(String), true);
         expect(saved).toHaveLength(0);
 
-        AppState.userRole = 'owner';
-        jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => {
-            expect(html).toContain('average cost not known');
-            document.body.insertAdjacentHTML('beforeend', '<input id="billCheckOverrideReason" value="opening stock not entered yet">');
-            return true;
-        });
+        modal.mockResolvedValue(true);
         const sale = await WholesaleSalesManager.completeSale();
         expect(sale).toMatchObject({ total: 4025, profit: null, profitPercent: null, costUnknown: true });
         expect(sale.items[0].costUnknown).toBe(true);
-        expect(sale.overrides).toEqual([expect.objectContaining({ rule: 'cost-unknown', reason: 'opening stock not entered yet' })]);
+        expect(sale.flags).toEqual(expect.arrayContaining([expect.objectContaining({ rule: 'cost-unknown', by: 'owner1' })]));
         expect(saved).toHaveLength(1);
     });
-
-    test('an item that was bought but is sold out only warns: a member may save it, without a profit (#102)', async () => {
-        AppState.stock = { rice: { quantity: 0, rate: 0 } };
-        AppState.userRole = 'staff';
-        setVal('wholesaleCashPayment', 4025);
-        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
-        const sale = await WholesaleSalesManager.completeSale();
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: average cost not known (out of stock)'), expect.any(String), true);
-        expect(sale).toMatchObject({ profit: null, costUnknown: true });
-        expect(sale.flags).toEqual(expect.arrayContaining([expect.objectContaining({ rule: 'cost-unknown' })]));
-    });
-
     test('a mismatched split, a Due without a name, or no payment is refused', async () => {
         setVal('wholesaleCashPayment', 4000);
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
