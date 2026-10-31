@@ -10,7 +10,8 @@
 import { AppState } from '../utils/state.js';
 import { APP_CONFIG } from '../utils/constants.js';
 import { Helpers } from '../utils/helpers.js';
-import { isOnlineExpense, outstandingDue } from '../utils/money.js';
+import { isActiveBill, isOnlineExpense, outstandingDue } from '../utils/money.js';
+import { billEditChanges, cleanReason, editCountOf, editRecord, hasEditChanges, nextEditNumber, voidBlocker } from '../utils/bill-edits.js';
 import { localISODaysAgo, parseAnyBillDate } from '../utils/dates.js';
 import { planNotificationDocs, newEventId } from '../utils/notification-format.js';
 import {
@@ -364,8 +365,8 @@ const mapDoc = (doc) => {
     return rec;
 };
 
-/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). */
-const CLIENT_VERSION = 3;
+/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). 4: knows voided bills (#75). */
+const CLIENT_VERSION = 4;
 const STOCK_COLLECTION_KEYS = ['purchases', 'retailSales', 'wholesaleSales', 'stockAdjustments'];
 /** Only owners/managers write checkpoint state (firestore.rules); staff devices never rebuild/roll forward. */
 const canManageCheckpoint = () => ['owner', 'manager'].includes(AppState.userRole);
@@ -472,10 +473,16 @@ function publishCollection(c) {
     c.dues.forEach(l => l.docs.forEach(rec => merged.set(docIdOf(rec), rec)));
     c.live.docs.forEach(rec => merged.set(docIdOf(rec), rec));
     const list = [];
+    const voided = [];
     merged.forEach(rec => {
-        if (rec.date !== undefined) list.push(rec);
+        if (rec.date === undefined) return;
+        // Voided bills (#75) never reach AppState's bill lists, so no figure counts them; History asks for them.
+        if (c.spec.dues && !isActiveBill(rec)) voided.push(rec);
+        else list.push(rec);
     });
     list.sort(byDateDesc);
+    voided.sort(byDateDesc);
+    c.voided = voided;
     c.publishedExtended = new Set();
     list.forEach(rec => {
         const id = docIdOf(rec);
@@ -772,6 +779,13 @@ function findRecord(collKey, id) {
     return arr.find(r => docIdOf(r) === sid) || arr.find(r => String(r?.id) === sid) || null;
 }
 
+/** A bill's edit records (#121): a sub-collection, so the bill's own (dev_-prefixed) collection sets the environment. */
+const BILL_EDITS = 'edits';
+const billEditsRef = (billRef) => billRef.collection(BILL_EDITS);
+
+/** Voided bills (#75) loaded for a bill collection, newest first (kept out of AppState). */
+const voidedOf = (collKey) => windowState?.colls?.[collKey]?.voided || [];
+
 /** Drops a deleted record from memory so it is not resurrected. */
 function forgetRecord(collKey, id) {
     noteLocalRecordWrite(collKey, id, null);
@@ -853,10 +867,42 @@ function serverCreatedAt() {
 }
 const withServerCreatedAt = (record) => ({ ...record, createdAt: serverCreatedAt() });
 
+/**
+ * Fields on every write of a figure built from bills (stock checkpoint, month snapshots, rate
+ * stats): this app's version and the server time of the write. firestore.rules accept such a
+ * write only from clientVersion >= 4 (knows voided bills, #75), stamped by that same write, so
+ * an older app can't write one (not even a merge riding on a newer app's stored version).
+ */
+function voidAwareStamp() {
+    return { clientVersion: CLIENT_VERSION, writtenAt: serverCreatedAt() };
+}
+
 /** Keeps the bill's stored `createdAt` on an overwrite (the rules refuse a change). */
 function keepStoredCreatedAt(record, stored) {
     if (stored && stored.createdAt !== undefined && stored.createdAt !== null) record.createdAt = stored.createdAt;
     else delete record.createdAt;
+}
+
+/** Keeps the bill's stored edit count on an overwrite (#121: it only moves with an edit record). */
+function keepEditCount(record, stored) {
+    if (editCountOf(stored)) record.editCount = editCountOf(stored);
+    else delete record.editCount;
+}
+
+/**
+ * A retried new bill that changes what its unconfirmed first save stored is an edit (#121):
+ * its record goes into the same transaction, with a fixed reason in the app language.
+ * Sets `target.editCount`. @private
+ */
+function logRetryEdit(tx, ref, server, after, target) {
+    const changes = billEditChanges(server, after);
+    if (!hasEditChanges(changes)) return;
+    const n = nextEditNumber(server);
+    target.editCount = n;
+    tx.set(billEditsRef(ref).doc(String(n)), editRecord({
+        n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName,
+        reason: t('ui.edits.retry_reason'), changes
+    }));
 }
 /** Payment signature of the last new-bill write this device sent, by `${collKey}/${id}` (#70). */
 const sentBillPaymentSigs = new Map();
@@ -1014,18 +1060,26 @@ async function retryBillSave(collKey, record, ref, previous, key) {
             return;
         }
         const server = snap.data() || {};
+        // Voided meanwhile on another phone (#75): never written over.
+        if (!isActiveBill(server)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
         keepStoredCreatedAt(record, server);
+        keepEditCount(record, server);
         const serverPayments = Array.isArray(server.payments) ? server.payments : [];
         if (serverPayments.length > 0 || paymentSignature(server) !== sentSig) {
             const nonMoney = { ...record };
             BILL_MONEY_FIELDS.forEach(k => delete nonMoney[k]);
+            logRetryEdit(tx, ref, server, { ...server, ...nonMoney }, nonMoney);
+            if (nonMoney.editCount !== undefined) record.editCount = nonMoney.editCount;
             tx.set(ref, nonMoney, { merge: true });
             serverMoney = server;
             kept = true;
             return;
         }
         wrote = !Object.keys(record).every(k => stableJson(server[k]) === stableJson(record[k]));
-        if (wrote) tx.set(ref, record);
+        if (wrote) {
+            logRetryEdit(tx, ref, server, record, record);
+            tx.set(ref, record);
+        }
     });
     if (pendingFirstSaves.has(key)) retriedBillSaves.add(key);
     if (kept) {
@@ -1049,23 +1103,45 @@ async function retryBillSave(collKey, record, ref, previous, key) {
  * Overwrites an existing bill only if its payments did not change on the
  * server since this device loaded it (a full set() would otherwise erase a
  * payment recorded elsewhere). Runs in a transaction, so it needs a connection.
+ * A change to a recorded field (bill-edits EDIT_FIELDS or the items) also
+ * writes its edit record `edits/{n}` in the same transaction (#121): the
+ * changed fields before/after, the editor and `reason` (required then).
+ * A voided bill is never changed (#75).
  * @private
  */
-async function updateBillChecked(collKey, record) {
+async function updateBillChecked(collKey, record, { reason = null } = {}) {
     if (!record.id) throw new Error('Bill ID is required for update');
     const previous = findRecord(collKey, record.id);
     prepareStockRecord(collKey, record, false);
     const base = record[LOADED_PAYMENT] ?? previous?.[LOADED_PAYMENT] ?? null;
     const ref = getDb().collection(col(collKey)).doc(String(record.id));
+    const why = cleanReason(reason);
     await getDb().runTransaction(async tx => {
         const snap = await tx.get(ref);
-        if (base !== null && (!snap.exists || paymentSignature(snap.data()) !== base)) {
+        const stored = snap.exists ? snap.data() : null;
+        if (stored && !isActiveBill(stored)) {
+            throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
+        }
+        if (base !== null && (!snap.exists || paymentSignature(stored) !== base)) {
             throw Object.assign(
                 new Error('This bill was changed on another device — reopen it and try again'),
                 { code: 'conflict' }
             );
         }
-        if (snap.exists) keepStoredCreatedAt(record, snap.data());
+        if (stored) keepStoredCreatedAt(record, stored);
+        const changes = stored ? billEditChanges(stored, record) : null;
+        if (changes && hasEditChanges(changes)) {
+            if (!why) throw Object.assign(new Error('A reason is needed to change this bill'), { code: 'reason-required' });
+            const n = nextEditNumber(stored);
+            record.editCount = n;
+            tx.set(ref, record);
+            tx.set(billEditsRef(ref).doc(String(n)), editRecord({
+                n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName, reason: why, changes
+            }));
+            return;
+        }
+        if (stored) keepEditCount(record, stored);
+        else delete record.editCount;
         tx.set(ref, record);
     });
     // The server now holds exactly this record: later edits must compare against it.
@@ -1083,6 +1159,70 @@ async function deleteBill(collKey, id) {
     noteMonthWrite(collKey, previous, null);
     await write;
     forgetRecord(collKey, id);
+}
+
+/**
+ * Voids a bill (#75): one update in a transaction that sets voided, voidedAt
+ * (server time), voidedBy, voidedByName, voidReason and openDue = false. The
+ * bill stays stored; from then on it counts in no figure (money.isActiveBill),
+ * so stock, month snapshots and the checkpoint are marked as for a delete.
+ * Refused (code) when it is already voided ('already-voided') or has payments
+ * recorded after it was saved ('has-payments', bill-edits.voidBlocker).
+ * Needs a connection.
+ * @private
+ */
+async function voidBillDoc(collKey, bill, reason) {
+    const why = cleanReason(reason);
+    if (!why) throw Object.assign(new Error('A reason is needed to void a bill'), { code: 'reason-required' });
+    const docId = docIdOf(bill);
+    const previous = findRecord(collKey, docId);
+    const ref = getDb().collection(col(collKey)).doc(String(docId));
+    const fields = {
+        voided: true,
+        voidedAt: serverCreatedAt(),
+        voidedBy: AppState.currentUser?.uid || null,
+        voidedByName: String(AppState.userName || '').slice(0, 200),
+        voidReason: why,
+        openDue: false,
+        // Bills are stock records: the clientVersion gate checks every write (firestore.rules writesCurrentClient)
+        clientVersion: CLIENT_VERSION
+    };
+    let stored = null;
+    await getDb().runTransaction(async tx => {
+        const snap = await tx.get(ref);
+        if (!snap.exists) throw Object.assign(new Error('Bill not found'), { code: 'not-found' });
+        stored = snap.data();
+        const blocked = voidBlocker(stored);
+        if (blocked) {
+            throw Object.assign(new Error(`This bill can't be voided (${blocked})`),
+                { code: blocked === 'voided' ? 'already-voided' : 'has-payments' });
+        }
+        tx.update(ref, fields);
+    });
+    const voided = { id: docId, ...stored, ...fields, voidedAt: Date.now() };
+    noteStockWrite(collKey, previous, voided, { oldUnknown: true });
+    noteMonthWrite(collKey, previous || stored, voided);
+    noteLocalRecordWrite(collKey, docId, voided);
+    return voided;
+}
+
+/**
+ * Deletes a voided bill for good, with its edit records (owner only in the
+ * rules; test data and mistakes). It counted in nothing, so no figure changes.
+ * @private
+ */
+async function deleteVoidedBillDoc(collKey, bill) {
+    if (isActiveBill(bill)) throw Object.assign(new Error('Only a voided bill can be deleted'), { code: 'not-voided' });
+    const docId = docIdOf(bill);
+    const ref = getDb().collection(col(collKey)).doc(String(docId));
+    const batch = getDb().batch();
+    if (editCountOf(bill)) {
+        const edits = await getWithRetry(billEditsRef(ref), 'Bill edits');
+        edits.docs.forEach(d => batch.delete(d.ref));
+    }
+    batch.delete(ref);
+    await batch.commit();
+    noteLocalRecordWrite(collKey, docId, null);
 }
 
 /**
@@ -1705,7 +1845,7 @@ async function rollForwardCheckpoint(cp, newAsOf) {
                 extra: { rolledForwardFrom: cp.asOf, pinned: d.pinned || null, fullBuiltAt: d.fullBuiltAt || d.builtAt || 0 }
             });
             if (JSON.stringify(payload).length > CHECKPOINT_MAX_BYTES) return 'too-large';
-            tx.set(ref, payload);
+            tx.set(ref, { ...payload, ...voidAwareStamp() });
             return 'rolled';
         });
     } catch (e) {
@@ -1742,7 +1882,7 @@ async function rebuildCheckpointNow(gen) {
             const ownLease = !!AppState.currentUser?.uid && leaseOwnerUid(d?.rebuildingBy) === AppState.currentUser.uid;
             if (d && (d.rebuildingUntil || 0) > Date.now() && !ownLease) return 'leased';
             baseStaleCount = d?.staleCount || 0;
-            tx.set(ref, { rebuildingUntil: Date.now() + REBUILD_LEASE_MS, rebuildingBy: token }, { merge: true });
+            tx.set(ref, { rebuildingUntil: Date.now() + REBUILD_LEASE_MS, rebuildingBy: token, ...voidAwareStamp() }, { merge: true });
             return 'acquired';
         });
     } catch (e) {
@@ -1791,7 +1931,7 @@ async function rebuildCheckpointNow(gen) {
             const snap = await tx.get(ref);
             const d = snap.exists ? snap.data() : null;
             if (!d || d.rebuildingBy !== token || (d.staleCount || 0) !== baseStaleCount) return false;
-            tx.set(ref, payload);
+            tx.set(ref, { ...payload, ...voidAwareStamp() });
             return true;
         });
         if (!committed) return (result = { status: 'conflict' });
@@ -1809,7 +1949,7 @@ async function rebuildCheckpointNow(gen) {
             db.runTransaction(async tx => {
                 const snap = await tx.get(ref);
                 if (snap.exists && snap.data().rebuildingBy === token) {
-                    tx.update(ref, { rebuildingUntil: 0, rebuildingBy: null });
+                    tx.update(ref, { rebuildingUntil: 0, rebuildingBy: null, ...voidAwareStamp() });
                 }
             }).catch(() => {});
         }
@@ -2176,7 +2316,7 @@ const FirebaseService = {
         const updatedAt = Date.now();
         for (let i = 0; i < writes.length; i += 400) {
             const batch = db.batch();
-            writes.slice(i, i + 400).forEach(w => batch.set(ref.doc(w.id), { ...w.data, updatedAt }));
+            writes.slice(i, i + 400).forEach(w => batch.set(ref.doc(w.id), { ...w.data, updatedAt, ...voidAwareStamp() }));
             await batch.commit();
         }
     },
@@ -2197,7 +2337,7 @@ const FirebaseService = {
      * @returns {Promise<void>}
      */
     async saveRateStatsMeta(data) {
-        await getDb().collection(col('rateStats')).doc('_meta').set(data, { merge: true });
+        await getDb().collection(col('rateStats')).doc('_meta').set({ ...data, ...voidAwareStamp() }, { merge: true });
     },
 
     // ---- Month snapshots (redesign §7.6): monthStats/{YYYY-MM}, owner/manager only (rules) ----
@@ -2230,7 +2370,7 @@ const FirebaseService = {
         const ref = db.collection(col('monthStats'));
         for (let i = 0; i < docs.length; i += 400) {
             const batch = db.batch();
-            docs.slice(i, i + 400).forEach(d => batch.set(ref.doc(d.month), d));
+            docs.slice(i, i + 400).forEach(d => batch.set(ref.doc(d.month), { ...d, ...voidAwareStamp() }));
             await batch.commit();
         }
     },
@@ -2251,7 +2391,7 @@ const FirebaseService = {
             const stored = snap.exists ? { ...snap.data(), month: doc.month } : null;
             if (stored && !stored.stale) return { status: 'fresh', doc: stored };
             if (stored && stored.staleAt !== staleAt) return { status: 'newer', doc: stored };
-            tx.set(ref, doc);
+            tx.set(ref, { ...doc, ...voidAwareStamp() });
             return { status: 'written', doc };
         });
     },
@@ -2272,7 +2412,7 @@ const FirebaseService = {
             const snap = await tx.get(ref);
             const stored = snap.exists ? { ...snap.data(), month: doc.month } : null;
             if (stored?.stale && !(handled && stored.staleAt === handled.staleAt)) return { status: 'newer', doc: stored };
-            tx.set(ref, doc);
+            tx.set(ref, { ...doc, ...voidAwareStamp() });
             return { status: 'written', doc };
         });
     },
@@ -2397,8 +2537,8 @@ const FirebaseService = {
      * @returns {Promise<Object>} The updated purchase
      * @throws {Error} If purchase.id is not provided
      */
-    async updatePurchase(purchase) {
-        return updateBillChecked('purchases', purchase);
+    async updatePurchase(purchase, options) {
+        return updateBillChecked('purchases', purchase, options);
     },
 
     /**
@@ -2444,8 +2584,8 @@ const FirebaseService = {
      * @returns {Promise<Object>} The updated sale
      * @throws {Error} If sale.id is not provided
      */
-    async updateWholesaleSale(sale) {
-        return updateBillChecked('wholesaleSales', sale);
+    async updateWholesaleSale(sale, options) {
+        return updateBillChecked('wholesaleSales', sale, options);
     },
 
     /**
@@ -2481,8 +2621,8 @@ const FirebaseService = {
      * @returns {Promise<Object>} The updated sale
      * @throws {Error} If sale.id is not provided
      */
-    async updateRetailSale(sale) {
-        return updateBillChecked('retailSales', sale);
+    async updateRetailSale(sale, options) {
+        return updateBillChecked('retailSales', sale, options);
     },
 
     /**
@@ -2569,6 +2709,54 @@ const FirebaseService = {
         if (collKey === 'retailSales') return this.deleteRetailSale(docId);
         if (collKey === 'wholesaleSales') return this.deleteWholesaleSale(docId);
         throw new Error(`Unknown history collection: ${collKey}`);
+    },
+
+    /**
+     * Voids a bill shown in History (#75): kept, marked who / when / why, left out of
+     * every figure. Throws with `code` 'reason-required' | 'not-found' | 'already-voided' |
+     * 'has-payments' (payments recorded after it was saved), or the Firestore error.
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {Object} bill
+     * @param {string} reason 3–300 characters
+     * @returns {Promise<Object>} the voided bill
+     */
+    async voidBill(collKey, bill, reason) {
+        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
+        return voidBillDoc(collKey, bill, reason);
+    },
+
+    /**
+     * Owner only: deletes a voided bill for good, with its edit records.
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {Object} bill a voided bill
+     */
+    async deleteVoidedBill(collKey, bill) {
+        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
+        return deleteVoidedBillDoc(collKey, bill);
+    },
+
+    /**
+     * Voided bills loaded for a bill collection (History's "Show voided bills"),
+     * newest first. They are never in AppState's bill lists.
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @returns {Array<Object>}
+     */
+    voidedBills(collKey) {
+        return voidedOf(collKey).slice();
+    },
+
+    /**
+     * The edit records of one bill (#121), oldest first: read only when the user
+     * opens them in the bill details (one read per edit).
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {Object} bill
+     * @returns {Promise<Array<Object>>}
+     */
+    async loadBillEdits(collKey, bill) {
+        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
+        const ref = billEditsRef(getDb().collection(col(collKey)).doc(String(docIdOf(bill))));
+        const snap = await getWithRetry(ref.orderBy('n'), 'Bill edits');
+        return snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
     },
 
     /**
@@ -4176,7 +4364,11 @@ const FirebaseService = {
     async clearCollection(name) {
         const snapshot = await getDb().collection(col(name)).get();
         if (snapshot.size > 0) {
+            // A bill's edit records (#121) live under it and stay when it goes: delete them after it (rules: owner, bill gone).
+            const edited = HISTORY_SPEC[name]?.dues ? snapshot.docs.filter(doc => editCountOf(doc.data())) : [];
             await Promise.all(snapshot.docs.map(doc => doc.ref.delete()));
+            await Promise.all(edited.map(doc => billEditsRef(doc.ref).get()
+                .then(edits => Promise.all(edits.docs.map(e => e.ref.delete())))));
         }
         return snapshot.size;
     }

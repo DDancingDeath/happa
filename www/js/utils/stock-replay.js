@@ -13,10 +13,10 @@
  */
 
 import { Helpers } from './helpers.js';
-import { isOpeningRecord } from './money.js';
+import { isActiveBill, isOpeningRecord } from './money.js';
 
 /** Bump when the replay rules or the checkpoint layout change. */
-export const STOCK_REPLAY_FORMAT = 3;
+export const STOCK_REPLAY_FORMAT = 4;
 
 const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
 
@@ -100,7 +100,7 @@ export function collectEvents(sources, { from = -Infinity, to = Infinity } = {})
     const events = [];
     const inRange = (t) => t >= from && t < to;
     const addBills = (bills, kind, source) => (bills || []).forEach(bill => {
-        if (!Array.isArray(bill.items) || isOpeningRecord(bill)) return;
+        if (!isActiveBill(bill) || !Array.isArray(bill.items) || isOpeningRecord(bill)) return;
         const t = eventTime(bill);
         if (!inRange(t)) return;
         bill.items.forEach(item => events.push({ t, kind, item, bill, source }));
@@ -390,12 +390,13 @@ export function deserializeState(entries) {
 
 /**
  * Stock-relevant fingerprint of a bill/adjustment: its event time and the
- * fields the replay reads. Payment-only edits keep the same fingerprint.
+ * fields the replay reads. Payment-only edits keep the same fingerprint; a
+ * voided bill (isActiveBill) has none, as if deleted.
  * @param {Object|null} record
  * @returns {string|null}
  */
 export function stockFingerprint(record) {
-    if (!record) return null;
+    if (!isActiveBill(record)) return null;
     const pick = (o) => o && typeof o === 'object'
         ? [o.itemId ?? null, o.name ?? null, o.qty ?? null, o.quantity ?? null, o.rate ?? null]
         : null;

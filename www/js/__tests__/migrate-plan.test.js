@@ -12,7 +12,7 @@ import { buildPlan, parseOptions, revive, splitPersonalExpenses, CLIENT_VERSION 
 import { formatReport } from '../../../tools/migrate/lib/report.js';
 import { isServiceAccountEmail } from '../../../tools/migrate/lib/service-accounts.js';
 import { buildAging } from '../utils/aging.js';
-import { billTotal, outstandingDue, readPayment, wholesaleOutstanding } from '../utils/money.js';
+import { billTotal, isActiveBill, outstandingDue, readPayment, wholesaleOutstanding } from '../utils/money.js';
 import { computeFinanceSummary } from '../utils/finance-calc.js';
 import {
     aggregateBills, billsToYearDocs, clampWindowToMigration, finalizeStats, monthBuckets, planRollForward, rollForwardWindow, weekBuckets
@@ -63,6 +63,18 @@ describe('plan: receivables as Outstanding shows them', () => {
             expect(d.openDue).toBe(true);
             expect(typeof d.timestamp).toBe('number');
         });
+    });
+
+    test('void (#75): nothing to migrate; every carried record counts (none is voided or has an edit count)', () => {
+        // The old app deleted bills outright (no record left) and had no void, so the move
+        // writes no voided bills and no edit records.
+        const bills = bundle.writes.filter(w => ['purchases', 'retailSales', 'wholesaleSales'].includes(w.coll));
+        expect(bills.length).toBeGreaterThan(0);
+        bills.forEach(w => {
+            expect(isActiveBill(revive(w.data))).toBe(true);
+            expect(Object.keys(w.data).filter(k => /^void|^editCount$/.test(k))).toEqual([]);
+        });
+        expect(bundle.writes.some(w => /\/edits/.test(String(w.coll)))).toBe(false);
     });
 
     test('opening records add no sales or profit to Finance', () => {

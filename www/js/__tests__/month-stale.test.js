@@ -8,6 +8,9 @@ import { AppState } from '../utils/state.js';
 import { staleMonthsFor, staleOlderMonths, staleToRebuild, snapshotsFrom } from '../utils/month-snapshots.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
+/** Bill edits carry a reason (#121). */
+const EDIT_REASON = { reason: 'Test edit' };
+
 const NOW = new Date(2026, 9, 21, 15).getTime();
 const at = (y, m, d = 10) => new Date(y, m - 1, d, 10).getTime();
 
@@ -97,7 +100,7 @@ describe('the stale mark on a late save, edit or delete', () => {
         const july = purchase(at(2026, 7));
         fake.seed('purchases', [july]);
         AppState.purchaseHistory = [{ ...july }];
-        await FirebaseService.updatePurchase(purchase(at(2026, 7), { cashPayment: 100, dueAmount: 0, payment: { cash: 100, online: 0, due: 0, total: 100 } }));
+        await FirebaseService.updatePurchase(purchase(at(2026, 7), { cashPayment: 100, dueAmount: 0, payment: { cash: 100, online: 0, due: 0, total: 100 } }), EDIT_REASON);
         expect(await marks()).toEqual(['2026-07']);
         expect(Object.keys(stats())).toEqual(['2026-07']);
         fake.raw('monthStats').clear();
@@ -109,7 +112,7 @@ describe('the stale mark on a late save, edit or delete', () => {
         const aug = purchase(at(2026, 8));
         fake.seed('purchases', [aug]);
         AppState.purchaseHistory = [{ ...aug }];
-        await FirebaseService.updatePurchase(purchase(NOW, { date: new Date(NOW).toISOString() }));
+        await FirebaseService.updatePurchase(purchase(NOW, { date: new Date(NOW).toISOString() }), EDIT_REASON);
         expect(await marks()).toEqual(['2026-08', '2026-09']);
     });
 
@@ -138,13 +141,15 @@ describe('the stale mark on a late save, edit or delete', () => {
 
 describe('the guarded rebuild write', () => {
     const doc = { month: '2026-05', v: 1, m: { M1: 1000 }, builtAt: NOW };
+    // as stored: stamped by an app that knows voided bills (#75)
+    const written = { ...doc, clientVersion: 4, writtenAt: NOW };
 
     test('replaces the stale mark it saw; keeps a newer mark; skips a month already rebuilt', async () => {
         fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', v: 1, m: { M1: 900 }, stale: true, staleAt: 5 }]);
         expect(await FirebaseService.rebuildMonthStat(doc, 5)).toEqual({ status: 'written', doc });
-        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(written);
         expect((await FirebaseService.rebuildMonthStat({ ...doc, m: { M1: 1 } }, 5)).status).toBe('fresh');
-        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(written);
         fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', stale: true, staleAt: 6 }]);
         const r = await FirebaseService.rebuildMonthStat(doc, 5);
         expect(r).toEqual({ status: 'newer', doc: { month: '2026-05', stale: true, staleAt: 6 } });
@@ -153,13 +158,13 @@ describe('the guarded rebuild write', () => {
 
     test('Build month history\'s write: over a fresh or missing month; over a stale one only when this phone handled that mark', async () => {
         expect((await FirebaseService.saveMonthStatGuarded(doc)).status).toBe('written');
-        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(written);
         expect((await FirebaseService.saveMonthStatGuarded({ ...doc, builtAt: 1 })).status).toBe('written');
         fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', stale: true, staleAt: 7 }]);
         expect(await FirebaseService.saveMonthStatGuarded(doc)).toEqual({ status: 'newer', doc: { month: '2026-05', stale: true, staleAt: 7 } });
         expect((await FirebaseService.saveMonthStatGuarded(doc, { staleAt: 6 })).status).toBe('newer');
         expect(fake.raw('monthStats').get('2026-05')).toEqual({ month: '2026-05', stale: true, staleAt: 7 });
         expect((await FirebaseService.saveMonthStatGuarded(doc, { staleAt: 7 })).status).toBe('written');
-        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(written);
     });
 });

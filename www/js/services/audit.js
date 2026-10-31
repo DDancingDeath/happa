@@ -10,6 +10,8 @@ export class AuditService {
         CREATE_BILL: 'CREATE_BILL',
         DELETE_BILL: 'DELETE_BILL',
         EDIT_BILL: 'EDIT_BILL',
+        // A bill kept but left out of every figure (#75); details.billType says which
+        VOID_BILL: 'VOID_BILL',
         
         // Sales
         CREATE_SALE: 'CREATE_SALE',

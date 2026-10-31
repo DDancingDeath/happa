@@ -13,6 +13,18 @@ import { t } from '../i18n/index.js';
 
 const BILL = { id: 'b1', userId: 'creator', items: [{ itemId: 'x', qty: 1, rate: 1 }], payment: { due: 0 } };
 
+/** Answers the edit-reason dialog (#121) with 	ext; null = Cancel. */
+function answerReason(text = 'Typo fix') {
+    return jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => {
+        if (text === null) return false;
+        const box = document.createElement('div');
+        box.innerHTML = html;
+        document.body.appendChild(box);
+        document.getElementById('reasonInput').value = text;
+        return true;
+    });
+}
+
 function startEditing() {
     AppState.purchaseHistory = [{ ...BILL }];
     BillingManager.currentMode = 'purchase';
@@ -31,6 +43,7 @@ describe('saveEditedBill', () => {
         jest.spyOn(PurchaseManager, 'clearBill').mockImplementation(() => {});
         jest.spyOn(BillingManager, '_refreshAfterEdit').mockImplementation(() => {});
         onLine = jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+        answerReason();
         startEditing();
     });
 
@@ -87,8 +100,7 @@ describe('saveEditedBill', () => {
         const onWriteIssued = jest.fn();
         jest.spyOn(FirebaseService, 'updatePurchase').mockImplementation(b => new Promise(r => { commit = () => r(b); }));
         const saving = BillingManager.saveEditedBill({ onWriteIssued });
-        await Promise.resolve();
-        await Promise.resolve();
+        for (let i = 0; i < 20 && !commit; i++) await Promise.resolve();
         expect(onWriteIssued).not.toHaveBeenCalled();
         expect(PurchaseManager.clearBill).not.toHaveBeenCalled();
         commit();
@@ -97,6 +109,31 @@ describe('saveEditedBill', () => {
         expect(PurchaseManager.clearBill).toHaveBeenCalled();
         expect(AppState.purchaseHistory[0]).toBe(saved);
         expect(BillingManager.editingBillIndex).toBeUndefined();
+    });
+
+    it('asks for a reason and passes it with the edit (#121)', async () => {
+        const update = jest.spyOn(FirebaseService, 'updatePurchase').mockImplementation(async b => b);
+        expect(await BillingManager.saveEditedBill()).toBeDefined();
+        expect(UIManager.showModalWithHtml).toHaveBeenCalledWith(expect.stringContaining('reasonInput'), t('ui.edits.reason_title'), true);
+        expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: 'b1' }), { reason: 'Typo fix' });
+    });
+
+    it('a cancelled or too short reason saves nothing and keeps the editor', async () => {
+        const update = jest.spyOn(FirebaseService, 'updatePurchase');
+        answerReason(null);
+        expect(await BillingManager.saveEditedBill()).toBeUndefined();
+        answerReason('no');
+        expect(await BillingManager.saveEditedBill()).toBeUndefined();
+        expect(toast).toHaveBeenCalledWith(t('msg.edits.reason_required'));
+        expect(update).not.toHaveBeenCalled();
+        expect(BillingManager.editingBillIndex).toBe(0);
+    });
+
+    it('a bill voided on another phone is not changed', async () => {
+        jest.spyOn(FirebaseService, 'updatePurchase').mockRejectedValue(Object.assign(new Error('This bill was voided'), { code: 'voided' }));
+        expect(await BillingManager.saveEditedBill()).toBeUndefined();
+        expect(toast).toHaveBeenCalledWith(t('msg.billing.edit_voided'));
+        expect(BillingManager.editingBillIndex).toBe(0);
     });
 });
 
@@ -172,6 +209,7 @@ describe('Print comments toggle survives edit (#86)', () => {
         jest.spyOn(PurchaseManager, 'clearBill').mockImplementation(() => {});
         jest.spyOn(BillingManager, '_refreshAfterEdit').mockImplementation(() => {});
         jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+        answerReason();
         window.app = { nav: { showTab: jest.fn() } };
         AppState.currentUser = { uid: 'creator' };
         AppState.userRole = 'owner';

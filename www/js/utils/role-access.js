@@ -8,6 +8,8 @@
  * @module utils/role-access
  */
 
+import { isActiveBill } from './money.js';
+
 /** Roles the owner configures ('staff' is shown as "Member"). The owner always has full access. */
 export const CONFIGURABLE_ROLES = ['manager', 'staff'];
 
@@ -195,19 +197,30 @@ export function withinBillEditWindow(bill, { role, now = Date.now(), raw } = {})
     return created !== null && now < created + days * DAY_MS;
 }
 
-/** Full edit: owner; manager any bill, member own bill, both inside the window. */
+/** Full edit: owner; manager any bill, member own bill, both inside the window. Never a voided bill (#75). */
 export function canEditBillWith(bill, { uid, role, now, raw } = {}) {
+    if (bill && !isActiveBill(bill)) return false;
     if (role === 'owner') return true;
     if (!bill) return false;
     const mayTouch = role === 'manager' || (!!uid && !!bill.userId && bill.userId === uid);
     return mayTouch && withinBillEditWindow(bill, { role, now, raw });
 }
 
-/** Delete: owner; anyone else only their own bill, inside the window. */
-export function canDeleteBillWith(bill, { uid, role, now, raw } = {}) {
+/**
+ * Void (#75), who could delete a bill before: the owner any bill; anyone else
+ * only their own bill, inside the window. Not a bill that is already voided.
+ * Payments recorded later block it too (bill-edits.voidBlocker), for everyone.
+ */
+export function canVoidBillWith(bill, { uid, role, now, raw } = {}) {
+    if (!isActiveBill(bill)) return false;
     if (role === 'owner') return true;
-    if (!bill || !uid || !bill.userId || bill.userId !== uid) return false;
+    if (!uid || !bill.userId || bill.userId !== uid) return false;
     return withinBillEditWindow(bill, { role, now, raw });
+}
+
+/** Delete for good: the owner only, and in the app only a voided bill (test data, mistakes). */
+export function canDeleteBillWith(bill, { role } = {}) {
+    return role === 'owner' && !!bill && !isActiveBill(bill);
 }
 
 /**

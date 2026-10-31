@@ -54,6 +54,26 @@ const rowsOf = (k) => C.mismatches.filter(BUGS[k][0]).map(m => `${m.spec} @ ${m.
 const core = () => JSON.parse(JSON.stringify(Object.fromEntries(KEYS.map(k => [k, CORE[k]]))));
 const data = () => JSON.parse(JSON.stringify(Object.fromEntries(KEYS.map(k => [k, [...CORE[k], ...HISTORY[k]]]))));
 
+/**
+ * VOID (#75): the phone's Firestore also holds a voided copy of every hand-made bill (no
+ * later payments: a void is refused with them). The oracle never sees them (the audit
+ * compares with O.withoutVoided), so every figure the phone shows must leave them out:
+ * the window and dues listeners, the stock checkpoint, month snapshots and rate history.
+ */
+const VOID_KEYS = ['purchases', 'retailSales', 'wholesaleSales'];
+const voidedCopy = (b) => {
+    const v = JSON.parse(JSON.stringify(b));
+    delete v.payments;
+    delete v.paidAt;
+    return { ...v, id: `${b.id}-void`, billNumber: `${b.billNumber || b.id}-V`, voided: true, voidedBy: 'audit-void',
+        voidedByName: 'Test', voidReason: 'Entered twice', voidedAt: b.timestamp ?? O.timeOf(b.date), openDue: false };
+};
+const withVoided = () => {
+    const d = data();
+    VOID_KEYS.forEach(k => { d[k] = [...d[k], ...CORE[k].map(voidedCopy)]; });
+    return d;
+};
+
 let C;
 let R;
 beforeAll(async () => {
@@ -62,7 +82,7 @@ beforeAll(async () => {
     jest.spyOn(console, 'info').mockImplementation(() => {});
     jest.spyOn(console, 'log').mockImplementation(() => {});
     C = new Collector();
-    R = await auditPhone({ C, data: data(), dates: [{ label: '2nd', ms: SECOND }, { label: 'fixture', ms: NOW }], appRoot: ROOT,
+    R = await auditPhone({ C, data: withVoided(), dates: [{ label: '2nd', ms: SECOND }, { label: 'fixture', ms: NOW }], appRoot: ROOT,
         stockEvidence: { firstDip: Infinity, cleanAgrees: true }, accounts: ACCOUNTS });
 }, 600000);
 
@@ -99,6 +119,14 @@ describe('phone path (windowed history) on the fixture', () => {
 
     test('every other figure equals the oracle or is shown as unknown', () => {
         expect(C.mismatches.filter(m => !isBug(m)).map(m => `${m.spec} @ ${m.page} ${m.period}: oracle ${m.oracle}, app ${m.app}`)).toEqual([]);
+    });
+
+    test('the phone held voided bills (#75): none reached its bill lists, all are listed for History', () => {
+        const copies = VOID_KEYS.reduce((a, k) => a + CORE[k].length, 0);
+        expect(copies).toBeGreaterThan(5);
+        expect(withVoided().retailSales.filter(b => b.voided).length).toBe(CORE.retailSales.length);
+        R.dates.forEach(d => expect(d.voided).toEqual({ inAppState: 0, listed: expect.any(Number) }));
+        expect(R.dates.some(d => d.voided.listed > 0)).toBe(true);
     });
 
     test('months before the window are shown as "not loaded", never as numbers', () => {

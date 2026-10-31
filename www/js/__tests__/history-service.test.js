@@ -13,6 +13,9 @@ import { computeStock, eventTime, buildCheckpointState, serializeState, itemsSig
 import { outstandingDue } from '../utils/money.js';
 import { LEASE_MAX_WAIT_MS } from '../utils/rebuild-lease.js';
 
+/** Bill edits carry a reason (#121). */
+const EDIT_REASON = { reason: 'Test edit' };
+
 const NOW = Date.now();
 const W = defaultWindowStart(NOW);
 const COLLS = ['purchases', 'wholesaleSales', 'retailSales', 'stockAdjustments', 'expenses', 'withdrawals'];
@@ -96,7 +99,7 @@ describe('recent history window + stock checkpoint', () => {
 
         await rebuildSettled();
         const cp = cpDoc();
-        expect(cp).toMatchObject({ stale: false, asOf: W, formatVersion: 3 });
+        expect(cp).toMatchObject({ stale: false, asOf: W, formatVersion: 4 });
         expect(cp.backfill.complete).toBe(true);
         // Every dated stock document now has a numeric timestamp.
         ['purchases', 'wholesaleSales', 'retailSales', 'stockAdjustments'].forEach(c => {
@@ -200,14 +203,14 @@ describe('recent history window + stock checkpoint', () => {
         const old = AppState.purchaseHistory.find(p => p.timestamp < W - 40 * 86400000 && Array.isArray(p.items) && p.items.length);
         expect(old).toBeTruthy();
 
-        await FirebaseService.updatePurchase({ ...old, payment: { online: 0, cash: 1, due: 0, total: 1 } });
+        await FirebaseService.updatePurchase({ ...old, payment: { online: 0, cash: 1, due: 0, total: 1 } }, EDIT_REASON);
         await settle();
         expect(cpDoc().stale).toBe(false);
 
         const builtBefore = cpDoc().builtAt;
         const current = AppState.purchaseHistory.find(p => p.id === old.id);
         const edited = { ...current, items: [...old.items, { itemId: 'gehu', name: 'Gehu', qty: 777, rate: 3 }] };
-        await FirebaseService.updatePurchase(edited);
+        await FirebaseService.updatePurchase(edited, EDIT_REASON);
         await settle(3);
         expect(cpDoc().staleCount).toBe(1);
 
@@ -343,7 +346,7 @@ describe('review fixes', () => {
         const old = AppState.purchaseHistory.find(p => p.timestamp < W - 60 * 86400000 && !(p.payment?.due > 0) && !(p.dueAmount > 0) && p.items?.length);
         expect(old).toBeTruthy();
         const edited = { ...old, items: [...old.items, { name: 'Zeera Edit', qty: 555, rate: 7 }] };
-        await FirebaseService.updatePurchase(edited);
+        await FirebaseService.updatePurchase(edited, EDIT_REASON);
         await nudgeWindow();
         expect(AppState.purchaseHistory.find(p => p.id === old.id).items).toHaveLength(edited.items.length);
         await rebuildSettled();
@@ -465,7 +468,7 @@ describe('review fixes', () => {
 
         await FirebaseService.ensureHistoryFrom(monthsBefore(W, 3));
         const bill = AppState.purchaseHistory.find(p => p.timestamp < W && p.items?.length && !(p.payment?.due > 0) && !(p.dueAmount > 0));
-        await FirebaseService.updatePurchase({ ...bill, items: [...bill.items, { name: 'Zeera Own', qty: 77, rate: 1 }] });
+        await FirebaseService.updatePurchase({ ...bill, items: [...bill.items, { name: 'Zeera Own', qty: 77, rate: 1 }] }, EDIT_REASON);
         await settle();
         expect(await FirebaseService.getStock()).toEqual(fullStock());
         expect(AppState.stockApprox).toBeNull();
@@ -565,9 +568,9 @@ describe('review fixes (2)', () => {
         await FirebaseService.saveStockAdjustment({ itemId: 'gehu', itemName: 'Gehu', adjustType: 'add', quantity: 1, rate: 0, date: new Date().toISOString() });
         await settle();
         const sale = [...fake.raw('retailSales').values()].find(d => d.total === 5 && d.payment?.due === 3);
-        expect(sale).toMatchObject({ clientVersion: 3, openDue: true });
+        expect(sale).toMatchObject({ clientVersion: 4, openDue: true });
         expect(typeof sale.timestamp).toBe('number');
-        expect([...fake.raw('stockAdjustments').values()].some(d => d.clientVersion === 3 && d.quantity === 1 && d.itemName === 'Gehu')).toBe(true);
+        expect([...fake.raw('stockAdjustments').values()].some(d => d.clientVersion === 4 && d.quantity === 1 && d.itemName === 'Gehu')).toBe(true);
     });
 
     it('#6 an edit based on a stale copy does not overwrite a payment recorded elsewhere', async () => {
@@ -582,11 +585,11 @@ describe('review fixes (2)', () => {
         // Another device records a payment.
         await fake.db.collection('purchases').doc(bill.id).update({ 'payment.due': 0, payments: [{ amount: bill.payment.due }], openDue: false, clientVersion: 3 });
         await settle();
-        await expect(FirebaseService.updatePurchase(editCopy)).rejects.toThrow('changed on another device');
+        await expect(FirebaseService.updatePurchase(editCopy, EDIT_REASON)).rejects.toThrow('changed on another device');
         expect(fake.raw('purchases').get(bill.id).payment.due).toBe(0);
         // Starting from the current copy works.
         const fresh = AppState.purchaseHistory.find(p => p.id === bill.id);
-        await FirebaseService.updatePurchase({ ...fresh, comments: 'edited' });
+        await FirebaseService.updatePurchase({ ...fresh, comments: 'edited' }, EDIT_REASON);
         expect(fake.raw('purchases').get(bill.id)).toMatchObject({ comments: 'edited', payment: { due: 0 } });
     });
 
@@ -607,7 +610,7 @@ describe('review fixes (2)', () => {
         expect(live.payment.due).toBe(1);
         // Save builds the update from the live copy (as saveEditedBill does) with the form's old payment values.
         const updated = FirebaseService.withLoadedPaymentSignature({ ...live, comments: 'edited', payment: { ...bill.payment } }, openedSig);
-        await expect(FirebaseService.updatePurchase(updated)).rejects.toThrow('changed on another device');
+        await expect(FirebaseService.updatePurchase(updated, EDIT_REASON)).rejects.toThrow('changed on another device');
         expect(fake.raw('purchases').get(bill.id).payment.due).toBe(1);
     });
 
@@ -621,13 +624,13 @@ describe('review fixes (2)', () => {
         const bill = AppState.purchaseHistory.find(p => typeof p.payment?.due === 'number' && p.items?.length);
         // billing.js: updatedBill = {...bill}; after success it replaces the AppState entry with updatedBill.
         const first = { ...bill, comments: 'first' };
-        const saved = await FirebaseService.updatePurchase(first);
+        const saved = await FirebaseService.updatePurchase(first, EDIT_REASON);
         const idx = AppState.purchaseHistory.findIndex(p => p.id === bill.id);
         AppState.purchaseHistory[idx] = saved;
         const second = { ...AppState.purchaseHistory[idx], comments: 'second', payment: { ...saved.payment, cash: (saved.payment.cash || 0) + 1 } };
-        await FirebaseService.updatePurchase(second);
+        await FirebaseService.updatePurchase(second, EDIT_REASON);
         const third = { ...second, comments: 'third' };
-        await FirebaseService.updatePurchase(third);
+        await FirebaseService.updatePurchase(third, EDIT_REASON);
         expect(fake.raw('purchases').get(bill.id).comments).toBe('third');
     });
 
@@ -719,7 +722,8 @@ describe('review fixes (2)', () => {
         await open();
         await rebuildSettled();
         const built = { ...cpDoc() };
-        await fake.db.collection('stockCheckpoints').doc('current').set({ ...built, formatVersion: 2, rebuildingUntil, rebuildingBy });
+        // rc1's format (3): written before voids existed (#75), so this phone rebuilds it once
+        await fake.db.collection('stockCheckpoints').doc('current').set({ ...built, formatVersion: 3, clientVersion: 3, rebuildingUntil, rebuildingBy });
         FirebaseService.cleanup();
         await FirebaseService.setupRealtimeListeners();
     };
@@ -746,7 +750,7 @@ describe('review fixes (2)', () => {
         await settle();
         expect(AppState.stockReady).toBe(true);
         expect(AppState.stock).toEqual(fullStock());
-        expect(cpDoc()).toMatchObject({ formatVersion: 3, rebuildingUntil: 0, stale: false });
+        expect(cpDoc()).toMatchObject({ formatVersion: 4, clientVersion: 4, writtenAt: expect.any(Number), rebuildingUntil: 0, stale: false });
     }, 30000);
 
     it('#13 deferred stock: not ready at the first screen, computed right after the first paint', async () => {

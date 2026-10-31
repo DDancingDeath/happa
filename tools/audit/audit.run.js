@@ -139,13 +139,15 @@ function wholesaleDue(data) {
  * Every comparison for one data set.
  * @param {Collector} C
  * @param {string} scope 'real' | 'migrated'
- * @param {Object} data loadBackup().data shape
+ * @param {Object} raw loadBackup().data shape (voided bills included)
  * @param {Array} periods auditPeriods()
  * @param {number} nowMs
  * @returns {{negativeStock: (row: Object) => boolean}} evidence for causeFor()
  */
-function auditDataset(C, scope, data, periods, nowMs) {
-    load(data);
+function auditDataset(C, scope, raw, periods, nowMs) {
+    // The app's screens get the backup as it is; the oracle's data has no voided bills (#75).
+    load(raw);
+    const data = O.withoutVoided(raw);
     const cmp = (spec, page, period, oracle, app, unit = 'money') => C.compare({ spec, page, period, oracle, app, unit, scope });
     const chk = (spec, page, period, ok, expected = null, actual = null, unit = 'money') => C.check({ spec, page, period, ok, expected, actual, unit, scope });
     const sessionOn = (day) => (data.sessions || []).find(s => s.date === day) || null;

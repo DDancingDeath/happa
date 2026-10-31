@@ -6,7 +6,7 @@
  * @module utils/number-checks
  */
 
-import { readPayment, billTotal, round2, isOpeningRecord } from './money.js';
+import { readPayment, billTotal, round2, isOpeningRecord, activeBills } from './money.js';
 import { saleTimePayment, entryParts } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayEvents } from './stock-replay.js';
 import { parseAnyBillDate } from './dates.js';
@@ -31,7 +31,7 @@ function result(id, key, rows, checked, extra = {}) {
     return { id, key, status: rows.length ? 'fail' : 'pass', checked, problems: rows.length, rows: rows.slice(0, MAX_ROWS), ...extra };
 }
 
-const eachBill = (data, fn) => BILL_KINDS.forEach(([field, kind]) => (data[field] || []).forEach(b => fn(b, kind)));
+const eachBill = (data, fn) => BILL_KINDS.forEach(([field, kind]) => activeBills(data[field]).forEach(b => fn(b, kind)));
 /** Bills that are activity: opening records (old-app dues, no total) are balances only. */
 const eachActivityBill = (data, fn) => eachBill(data, (b, kind) => { if (!isOpeningRecord(b)) fn(b, kind); });
 

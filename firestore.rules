@@ -85,22 +85,116 @@ service cloud.firestore {
       return (d is int && d >= 0 && d <= 30) ? d : 2;
     }
 
-    function withinBillWindow(usersCol) {
-      let c = resource.data.get('createdAt', null);
-      return c is timestamp && request.time < c + duration.value(billEditDays(usersCol), 'd');
-    }
-
     function withinBillWindowFor(usersCol, role) {
       let c = resource.data.get('createdAt', null);
       return c is timestamp && request.time < c + duration.value(billEditDaysFor(usersCol, role), 'd');
     }
 
     function canDeleteBill(usersCol) {
-      // resource is null when deleting a doc that is already gone (no-op).
-      return isOwnerIn(usersCol)
-        || (isApprovedIn(usersCol)
-            && (resource == null
-                || (resource.data.get('userId', null) == request.auth.uid && withinBillWindow(usersCol))));
+      // Bills are voided, not deleted (#75): only the owner deletes (test data, a voided bill
+      // for good, Clear Data). resource is null when deleting a doc that is already gone (no-op).
+      return isOwnerIn(usersCol) || (isApprovedIn(usersCol) && resource == null);
+    }
+
+    // --- void (#75) and edit records (#121) ---
+
+    function voidFields() {
+      return ['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'];
+    }
+
+    // Changing these on a bill needs its edit record (edits/{editCount}) in the same write
+    // (firestore-service.js updateBillChecked; bill-edits.js EDIT_FIELDS). The notes are not logged.
+    function editLoggedFields() {
+      return ['items', 'customerName', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal',
+              'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount', 'date', 'timestamp'];
+    }
+
+    // An app that knows voided bills (#75) writes clientVersion >= 4 (firestore-service.js
+    // CLIENT_VERSION). Older apps (rc1 has its www inside the APK) must not edit or void bills.
+    function voidAwareBill() {
+      return request.resource.data.get('clientVersion', 0) is int && request.resource.data.get('clientVersion', 0) >= 4;
+    }
+
+    // Figures built from bills (stock checkpoint, month snapshots, rate stats) are written only by
+    // such an app, stamped by this very write (writtenAt = server time: a merge from an older app
+    // can't ride on the version a newer one stored). firestore-service.js voidAwareStamp().
+    function voidAwareWriter() {
+      return voidAwareBill() && request.resource.data.get('writtenAt', null) == request.time;
+    }
+
+    function billPath(usersCol, base, docId) {
+      return /databases/$(database)/documents/$(usersCol == 'users' ? base : 'dev_' + base)/$(docId);
+    }
+
+    // A void or edit reason: 3 to 300 characters (bill-edits.js REASON_MIN / REASON_MAX).
+    function reasonOk(r) {
+      return r is string && r.trim().size() >= 3 && r.size() <= 300;
+    }
+
+    // A void: only the void fields change (and openDue to false, clientVersion for the gate); by
+    // the caller, at the server time, with a reason; never with payments recorded after the bill
+    // was saved (their cash legs would be left without a bill); the owner any bill, anyone else
+    // their own bill inside the edit window (who could delete a bill before #75). A voided bill
+    // never changes again.
+    function voidOk(usersCol, role, changed) {
+      let d = request.resource.data;
+      return changed.hasOnly(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason', 'openDue', 'clientVersion'])
+        && voidAwareBill()
+        && d.get('voided', false) == true
+        && d.get('voidedAt', null) == request.time
+        && d.get('voidedBy', null) == request.auth.uid
+        && reasonOk(d.get('voidReason', null))
+        && (!('voidedByName' in d) || (d.voidedByName is string && d.voidedByName.size() <= 200))
+        && d.get('openDue', false) == false
+        && resource.data.get('payments', []).size() == 0
+        && (role == 'owner'
+            || (resource.data.get('userId', null) == request.auth.uid && withinBillWindowFor(usersCol, role)));
+    }
+
+    // editCount only goes up by one, together with the creation of its record edits/{n}.
+    function editCountOk(usersCol, base, docId) {
+      let n = request.resource.data.get('editCount', null);
+      return n is int && n == resource.data.get('editCount', 0) + 1
+        && voidAwareBill()
+        && existsAfter(/databases/$(database)/documents/$(usersCol == 'users' ? base : 'dev_' + base)/$(docId)/edits/$(string(n)));
+    }
+
+    // One field of an edit record: absent, or exactly its value on the bill before and after.
+    function editFieldOk(f, before, after, k) {
+      return !(k in f)
+        || (f[k] is map && f[k].keys().hasOnly(['before', 'after'])
+            && f[k].get('before', null) == before.get(k, null)
+            && f[k].get('after', null) == after.get(k, null));
+    }
+
+    // An edit record: append-only and immutable; by the caller at the server time with a
+    // reason; numbered with the bill's new editCount, which the same write raises by one.
+    // Its fields are exactly the logged fields that write changed (at least one), each with
+    // its true value before and after (the item list compared whole), so it can't be faked.
+    function validEditCreate(usersCol, base, billId, editId) {
+      let d = request.resource.data;
+      let after = getAfter(billPath(usersCol, base, billId)).data;
+      let before = get(billPath(usersCol, base, billId)).data;
+      let n = after.get('editCount', null);
+      let f = d.get('fields', null);
+      let moved = after.diff(before).affectedKeys().intersection(editLoggedFields().toSet());
+      return isApprovedIn(usersCol)
+        && d.keys().hasOnly(['n', 'at', 'by', 'byName', 'reason', 'fields'])
+        && n is int && editId == string(n) && d.get('n', null) == n
+        && n == before.get('editCount', 0) + 1
+        && d.get('by', null) == request.auth.uid
+        && d.get('at', null) == request.time
+        && reasonOk(d.get('reason', null))
+        && (!('byName' in d) || (d.byName is string && d.byName.size() <= 200))
+        && f is map && moved.size() > 0
+        && f.keys().hasOnly(editLoggedFields()) && f.keys().toSet().hasAll(moved)
+        && editFieldOk(f, before, after, 'items') && editFieldOk(f, before, after, 'customerName')
+        && editFieldOk(f, before, after, 'grandTotal') && editFieldOk(f, before, after, 'amountPayable')
+        && editFieldOk(f, before, after, 'total') && editFieldOk(f, before, after, 'billTotal')
+        && editFieldOk(f, before, after, 'saleTotal') && editFieldOk(f, before, after, 'laborCharges')
+        && editFieldOk(f, before, after, 'payment') && editFieldOk(f, before, after, 'cashPayment')
+        && editFieldOk(f, before, after, 'onlinePayment') && editFieldOk(f, before, after, 'dueAmount')
+        && editFieldOk(f, before, after, 'date') && editFieldOk(f, before, after, 'timestamp');
     }
 
     // Full edits (the owner is handled in canUpdateBill): a manager, or the bill's
@@ -287,27 +381,34 @@ service cloud.firestore {
     // The caller is approved (businessAccess); their role is read once and the
     // changed keys worked out once (rules allow 1000 expressions per request).
     // Only an owner may change userId.
-    function canUpdateBill(usersCol, docId) {
-      return billUpdateAs(usersCol, docId, get(profilePath(usersCol)).data.get('role', ''),
+    function canUpdateBill(usersCol, base, docId) {
+      return billUpdateAs(usersCol, base, docId, get(profilePath(usersCol)).data.get('role', ''),
         request.resource.data.diff(resource.data).affectedKeys());
     }
 
-    function billUpdateAs(usersCol, docId, role, changed) {
+    // A voided bill never changes (owner included); a void is voidOk; editCount moves only
+    // with its edit record; full edits by non-owners that change a logged field need one (#121)
+    // and never touch payments / paidAt (only bookkeeping appends to them).
+    function billUpdateAs(usersCol, base, docId, role, changed) {
       // Ternaries keep the expensive checks off the paths that don't need them.
-      return role == 'owner' ? true
+      return resource.data.get('voided', false) == true ? false
+        : changed.hasAny(voidFields()) ? voidOk(usersCol, role, changed)
+        : changed.hasAny(['editCount']) && !editCountOk(usersCol, base, docId) ? false
+        : role == 'owner' ? (!changed.hasAny(editLoggedFields()) || voidAwareBill() || bookkeepingOnly(docId, changed))
         : changed.hasAny(['userId']) ? false
-        : canFullyEditBill(usersCol, role) ? changedMoneyOk(changed)
+        : canFullyEditBill(usersCol, role) && !changed.hasAny(['payments', 'paidAt'])
+          && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount'])) ? changedMoneyOk(changed)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;
     }
 
     // New bills: the creator's own uid (when set), well-formed money (changedMoneyOk),
-    // no payment history or cleared state (the app never sends them on a new bill;
-    // they come only with payments, paymentEditOk) and, when sent, createdAt = the
-    // server time of this write (older apps don't send it).
+    // no payment history, cleared state, edit count or void (the app never sends them on a
+    // new bill), and, when sent, createdAt = the server time of this write (older apps don't send it).
     function validBillCreate() {
       return request.resource.data.get('userId', request.auth.uid) == request.auth.uid
-        && !request.resource.data.keys().hasAny(['payments', 'paidAt', 'cleared'])
+        && !request.resource.data.keys().hasAny(['payments', 'paidAt', 'cleared', 'editCount',
+             'voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'])
         && changedMoneyOk(request.resource.data.keys())
         && (!('createdAt' in request.resource.data) || request.resource.data.createdAt == request.time);
     }
@@ -751,7 +852,7 @@ service cloud.firestore {
     }
 
     function canUpdateRecord(base, u, docId) {
-      return base in billCollections() ? canUpdateBill(u, docId)
+      return base in billCollections() ? canUpdateBill(u, base, docId)
         : base in ['cashManagement', 'cashSessions'] && !cashStaysClosed() ? false
         : base == 'autoSaves' ? ownAutoSaveWrite(docId)
         : base == 'drafts' ? draftUpdateOk()
@@ -885,7 +986,7 @@ service cloud.firestore {
     // Only the two docs the app uses (firestore-service.js checkpointRef / legacyScanRef).
     function checkpointRules(usersCol, docId) {
       return docId == 'current'
-        ? (isManagerIn(usersCol) || (isApprovedIn(usersCol) && staleMarkOnly()))
+        ? ((isManagerIn(usersCol) && voidAwareWriter()) || (isApprovedIn(usersCol) && staleMarkOnly()))
         : docId == 'legacyScan' && isManagerIn(usersCol);
     }
 
@@ -1772,14 +1873,58 @@ service cloud.firestore {
         && (appSettingsGuard(collection, docId) || managerShopSettingsOk(collection, docId))
         && (!(collection in stockCollections()) || writesCurrentClient(collection))
         && canUpdateRecord(baseName(collection), usersOf(collection), docId);
-      // Bills can only be deleted by an owner or by the user who created them
-      // (matches the client check in history.js deleteBill). Cash sessions,
+      // Bills: only an owner deletes them (#75: everyone else voids). Cash sessions,
       // items, counters, item frequency and settings: owner only. Expenses: owner/manager, or the creator
       // within 24 hours. Withdrawals/stock adjustments: owner/manager. Auto-saves,
       // drafts, notifications: their own user, or the owner (Clear Data).
       allow delete: if businessAccess(collection)
         && appSettingsGuard(collection, docId)
         && canDeleteRecord(baseName(collection), usersOf(collection), docId);
+    }
+
+    // Bill edit records (#121, validEditCreate): approved users read them (opened from the bill
+    // details); created only with the bill update that raises its editCount; never changed;
+    // the owner deletes them only once their bill is gone (delete for good, Clear Data).
+    match /purchases/{billId}/edits/{editId} {
+      allow read: if isApproved();
+      allow create: if validEditCreate('users', 'purchases', billId, editId);
+      allow update: if false;
+      allow delete: if isAdmin() && !existsAfter(billPath('users', 'purchases', billId));
+    }
+
+    match /retailSales/{billId}/edits/{editId} {
+      allow read: if isApproved();
+      allow create: if validEditCreate('users', 'retailSales', billId, editId);
+      allow update: if false;
+      allow delete: if isAdmin() && !existsAfter(billPath('users', 'retailSales', billId));
+    }
+
+    match /wholesaleSales/{billId}/edits/{editId} {
+      allow read: if isApproved();
+      allow create: if validEditCreate('users', 'wholesaleSales', billId, editId);
+      allow update: if false;
+      allow delete: if isAdmin() && !existsAfter(billPath('users', 'wholesaleSales', billId));
+    }
+
+    match /dev_purchases/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('dev_users');
+      allow create: if validEditCreate('dev_users', 'purchases', billId, editId);
+      allow update: if false;
+      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'purchases', billId));
+    }
+
+    match /dev_retailSales/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('dev_users');
+      allow create: if validEditCreate('dev_users', 'retailSales', billId, editId);
+      allow update: if false;
+      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'retailSales', billId));
+    }
+
+    match /dev_wholesaleSales/{billId}/edits/{editId} {
+      allow read: if isApprovedIn('dev_users');
+      allow create: if validEditCreate('dev_users', 'wholesaleSales', billId, editId);
+      allow update: if false;
+      allow delete: if isOwnerIn('dev_users') && !existsAfter(billPath('dev_users', 'wholesaleSales', billId));
     }
 
     // State/lease writes: owner or manager only; anyone approved may mark it stale.
@@ -1845,9 +1990,10 @@ service cloud.firestore {
     function validRateStats(usersCol, docId) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
+        && voidAwareWriter()
         && (docId == '_meta'
-          ? d.keys().hasOnly(['backfillDone', 'backfillAt', 'bills', 'reads', 'months', 'by', 'byUserId', 'startedAt'])
-          : d.keys().hasOnly(['itemId', 'year', 'weeks', 'months', 'updatedAt'])
+          ? d.keys().hasOnly(['backfillDone', 'backfillAt', 'bills', 'reads', 'months', 'by', 'byUserId', 'startedAt', 'clientVersion', 'writtenAt'])
+          : d.keys().hasOnly(['itemId', 'year', 'weeks', 'months', 'updatedAt', 'clientVersion', 'writtenAt'])
             && d.keys().hasAll(['itemId', 'year', 'weeks', 'months'])
             && d.itemId is string && d.itemId.size() > 0
             && d.year is string && d.year.matches('^[0-9]{4}$')
@@ -1875,8 +2021,9 @@ service cloud.firestore {
     function validMonthStats(usersCol, docId) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
+        && voidAwareWriter()
         && docId.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
-        && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale', 'staleAt'])
+        && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale', 'staleAt', 'clientVersion', 'writtenAt'])
         && d.keys().hasAll(['month', 'v', 'm'])
         && d.month == docId
         && d.v is int

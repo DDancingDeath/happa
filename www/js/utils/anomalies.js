@@ -87,6 +87,7 @@ export const ANOMALY_TYPES = Object.freeze({
     'bill-old-edit': { en: 'Old bill edited', hi: 'पुराना बिल बदला', severity: 'medium' },
     'bill-edit-after-payment': { en: 'Bill edited after payment', hi: 'भुगतान के बाद बिल बदला', severity: 'medium' },
     'bill-deleted': { en: 'Bill deleted', hi: 'बिल मिटाया', severity: 'high' },
+    'bill-voided': { en: 'Bill voided', hi: 'बिल रद्द किया', severity: 'medium' },
     'expense-deleted': { en: 'Expense deleted', hi: 'खर्च मिटाया', severity: 'medium' },
     'night-entry': { en: 'Night-time entry', hi: 'रात में एंट्री', severity: 'low' }
 });
@@ -435,11 +436,18 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         }
     });
 
-    const AUDIT_TYPES = { DELETE_BILL: 'bill-deleted', DELETE_SALE: 'bill-deleted', DELETE_EXPENSE: 'expense-deleted' };
+    const AUDIT_TYPES = { DELETE_BILL: 'bill-deleted', DELETE_SALE: 'bill-deleted', DELETE_EXPENSE: 'expense-deleted', VOID_BILL: 'bill-voided' };
+    const AUDIT_TEXT = {
+        'bill-deleted': (no, amount) => ({ en: `Bill${no} deleted (₹${amount})`, hi: `बिल${no} मिटाया (₹${amount})` }),
+        'bill-voided': (no, amount) => ({ en: `Bill${no} voided (₹${amount})`, hi: `बिल${no} रद्द किया (₹${amount})` }),
+        'expense-deleted': (no, amount) => ({ en: `Expense deleted (₹${amount})`, hi: `खर्च मिटाया (₹${amount})` })
+    };
     (auditLogs || []).forEach(log => {
         const type = AUDIT_TYPES[log?.action];
         if (!type || log.id == null) return;
         const d = log.details && typeof log.details === 'object' ? log.details : {};
+        // Deleting a bill that was already voided (flagged then) changes nothing.
+        if (type === 'bill-deleted' && d.voided === true) return;
         const amount = round2(Number(d.amount) || 0);
         const no = d.billNumber && d.billNumber !== 'N/A' ? ` #${d.billNumber}` : '';
         add(makeAnomaly(type, {
@@ -448,8 +456,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
             user: nameOf(log.userId, log.userName === 'Unknown User' ? '' : log.userName), amount
         }, {
             at: Number(log.timestamp),
-            en: type === 'bill-deleted' ? `Bill${no} deleted (₹${amount})` : `Expense deleted (₹${amount})`,
-            hi: type === 'bill-deleted' ? `बिल${no} मिटाया (₹${amount})` : `खर्च मिटाया (₹${amount})`
+            ...AUDIT_TEXT[type](no, amount)
         }));
     });
 

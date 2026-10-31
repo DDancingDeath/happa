@@ -44,7 +44,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101p-ledger-time';
+const BUILD_ID = '20261101q-void-edit-history';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -951,6 +951,8 @@ window.app = {
         closeBillDetails: () => HistoryManager.closeBillDetails(),
         confirmDeleteBill: (index) => HistoryManager.confirmDeleteBill(index),
         deleteBill: (index) => HistoryManager.deleteBill(index),
+        confirmVoidBill: () => HistoryManager.confirmVoidBill(),
+        showEdits: () => HistoryManager.showEdits(),
         filterHistory: (type, event) => HistoryManager.filterHistory(type, event),
         searchHistory: (searchTerm) => HistoryManager.searchHistory(searchTerm),
         toggleView: () => HistoryManager.toggleView(),

@@ -6,7 +6,7 @@
  * @module utils/aging
  */
 
-import { readPayment, round2 } from './money.js';
+import { outstandingDue, round2 } from './money.js';
 import { billDateOf } from './history-filters.js';
 
 /** Days after which a due counts as "long overdue" (badge). */
@@ -127,8 +127,8 @@ export function buildAging(bills, { today = new Date() } = {}) {
     let count = 0;
 
     (bills || []).forEach(bill => {
-        if (!bill || bill.cleared) return;
-        const due = round2(readPayment(bill).due);
+        // BILL-DUE: 0 for cleared and voided bills (#75)
+        const due = round2(outstandingDue(bill));
         if (!(due > DUE_EPSILON)) return;
         const date = billDateOf(bill);
         const days = date ? ageInDays(date, today) : null;

@@ -35,7 +35,7 @@ describe('backup covers every collection in firestore.rules', () => {
 
     test('the rules parser finds the collections', () => {
         expect(roots).toEqual(expect.arrayContaining(['purchases', 'counters', 'users', 'auditLogs', 'rent_leases']));
-        expect(subs).toEqual(['users/preferences']);
+        expect(subs).toEqual(['purchases/edits', 'retailSales/edits', 'users/preferences', 'wholesaleSales/edits']);
     });
 
     test('every rules collection is in BACKUP_COLLECTIONS (add new ones there)', () => {

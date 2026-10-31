@@ -10,7 +10,7 @@
 
 import { Helpers } from '../utils/helpers.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, formatAmount, formatRupees, isOpeningRecord, openingAmount, outstandingDue, readPayment } from '../utils/money.js';
+import { billTotal, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, outstandingDue, readPayment } from '../utils/money.js';
 import { billDateOf } from '../utils/history-filters.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -78,8 +78,9 @@ export function billItemsText(bill) {
 export function buildBillRow(bill, { onclick, kind } = {}) {
     const div = document.createElement('div');
     const opening = isOpeningRecord(bill);
+    const voided = !isActiveBill(bill);
     const type = kind || bill?.type || 'purchase';
-    div.className = `history-item bill-row${opening ? ' is-opening' : ''}`;
+    div.className = `history-item bill-row${opening ? ' is-opening' : ''}${voided ? ' is-voided' : ''}`;
     div.setAttribute('data-type', type);
     const number = billNumberOf(bill);
     const party = bill?.customerName ? String(bill.customerName) : '';
@@ -93,27 +94,50 @@ export function buildBillRow(bill, { onclick, kind } = {}) {
         <span class="bill-row__meta">
             <span class="bill-row__date">${Helpers.escapeHtml(date)}${by ? `<span class="bill-row__by"> • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(by)}</strong></span>` : ''}</span>
             <span class="bill-row__items history-summary" title="${Helpers.escapeHtml(items)}">${Helpers.escapeHtml(items)}</span>
-            <span class="bill-row__chips history-payment">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${paymentChipsHtml(bill)}</span>
+            <span class="bill-row__chips history-payment">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${voidedChipHtml(bill)}${paymentChipsHtml(bill)}</span>
         </span>
     `;
     return div;
 }
 
 /**
- * Heading + container for the old-app dues group (shown only when the toggle is on).
- * @param {Array<Object>} bills - opening records
+ * "Voided" chip with the reason (#75); '' for a bill that counts.
+ * @param {Object} bill
+ * @returns {string} HTML
+ */
+export function voidedChipHtml(bill) {
+    if (isActiveBill(bill)) return '';
+    const reason = String(bill.voidReason || '');
+    return `<span class="voided-chip" title="${Helpers.escapeHtml(reason)}">${L('ui.void.chip')}</span>${reason ? `<span class="voided-reason">${Helpers.escapeHtml(reason)}</span>` : ''}`;
+}
+
+/**
+ * Heading + container for a group of rows shown only when its toggle is on:
+ * old-app dues ('opening') or voided bills ('voided').
+ * @param {Array<Object>} bills
  * @param {(bill: Object) => HTMLElement} build
+ * @param {'opening'|'voided'} [kind]
  * @returns {HTMLElement}
  */
-export function buildOpeningGroup(bills, build) {
+export function buildOpeningGroup(bills, build, kind = 'opening') {
     const group = document.createElement('section');
-    group.className = 'bill-group bill-group--opening';
+    group.className = `bill-group bill-group--${kind}`;
     const heading = document.createElement('div');
     heading.className = 'bill-group__title';
-    heading.textContent = t('ui.history.old_dues_group');
+    heading.textContent = t(kind === 'voided' ? 'ui.void.group' : 'ui.history.old_dues_group');
     group.appendChild(heading);
     bills.forEach(bill => group.appendChild(build(bill)));
     return group;
+}
+
+/**
+ * The "Show voided bills (N)" chip (#75), placed first in `list`. None when count is 0.
+ * @param {HTMLElement} list
+ * @param {{id: string, count: number, on: boolean, onToggle: Function}} opts
+ * @returns {?HTMLElement}
+ */
+export function addVoidedToggle(list, opts) {
+    return addToggleChip(list, { ...opts, cls: 'voided-toggle-chip', showKey: 'ui.void.show', hideKey: 'ui.void.hide' });
 }
 
 /**
@@ -127,16 +151,20 @@ export function buildOpeningGroup(bills, build) {
  * @param {Function} opts.onToggle
  * @returns {?HTMLElement}
  */
-export function addOpeningToggle(list, { id, count, on, onToggle }) {
+export function addOpeningToggle(list, opts) {
+    return addToggleChip(list, { ...opts, cls: 'opening-toggle-chip', showKey: 'ui.history.show_old_dues', hideKey: 'ui.history.hide_old_dues' });
+}
+
+function addToggleChip(list, { id, count, on, onToggle, cls, showKey, hideKey }) {
     if (!list || !id) return null;
     document.getElementById(id)?.remove();
     if (!count) return null;
     const chip = document.createElement('button');
     chip.type = 'button';
     chip.id = id;
-    chip.className = `opening-toggle-chip${on ? ' active' : ''}`;
+    chip.className = `${cls}${on ? ' active' : ''}`;
     chip.setAttribute('aria-pressed', on ? 'true' : 'false');
-    chip.textContent = t(on ? 'ui.history.hide_old_dues' : 'ui.history.show_old_dues', { count });
+    chip.textContent = t(on ? hideKey : showKey, { count });
     chip.addEventListener('click', () => onToggle?.());
     list.prepend(chip);
     return chip;
@@ -166,25 +194,28 @@ function tableItemsHtml(bill) {
  * @param {Array<Object>} [opts.openings] - opening records shown as a separate group on top
  * @returns {string} HTML
  */
-export function billTableHtml(bills, { onclickFor, openings = [] } = {}) {
+export function billTableHtml(bills, { onclickFor, openings = [], voided = [] } = {}) {
     const row = (bill) => {
         const opening = isOpeningRecord(bill);
+        const isVoided = !isActiveBill(bill);
         const number = billNumberOf(bill);
         const by = bill?.createdByName || bill?.userName;
         const date = Helpers.formatDateTime(billDateOf(bill) || bill?.date);
         return `
-            <tr class="bill-table__row${opening ? ' is-opening' : ''}" data-type="${Helpers.escapeHtml(bill?.type || '')}" onclick="${onclickFor(bill)}">
+            <tr class="bill-table__row${opening ? ' is-opening' : ''}${isVoided ? ' is-voided' : ''}" data-type="${Helpers.escapeHtml(bill?.type || '')}" onclick="${onclickFor(bill)}">
                 <td class="bill-table__no" title="#${Helpers.escapeHtml(number)}">#${Helpers.escapeHtml(number)}</td>
                 <td class="bill-table__party">${Helpers.escapeHtml(bill?.customerName || '—')}</td>
                 <td class="bill-table__amount">${Helpers.escapeHtml(formatRupees(billListAmount(bill)))}</td>
                 <td class="bill-table__date">${Helpers.escapeHtml(date)}${by ? `<div class="bill-table__by">${L('ui.outstanding.by')} ${Helpers.escapeHtml(by)}</div>` : ''}</td>
                 <td class="bill-table__items">${tableItemsHtml(bill)}</td>
-                <td class="bill-table__chips">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${paymentChipsHtml(bill)}</td>
+                <td class="bill-table__chips">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${voidedChipHtml(bill)}${paymentChipsHtml(bill)}</td>
             </tr>`;
     };
-    const openingRows = openings.length ? `
-            <tr class="bill-table__group"><th colspan="6" scope="rowgroup">${L('ui.history.old_dues_group')}</th></tr>
-            ${openings.map(row).join('')}` : '';
+    const group = (list, key) => (list.length ? `
+            <tr class="bill-table__group"><th colspan="6" scope="rowgroup">${L(key)}</th></tr>
+            ${list.map(row).join('')}` : '');
+    const openingRows = group(openings, 'ui.history.old_dues_group');
+    const voidedRows = group(voided, 'ui.void.group');
     return `
         <div class="bill-table-wrap">
             <table class="bill-table">
@@ -198,7 +229,7 @@ export function billTableHtml(bills, { onclickFor, openings = [] } = {}) {
                         <th class="bill-table__chips">${L('ui.history.col_payment')}</th>
                     </tr>
                 </thead>
-                <tbody>${openingRows}${bills.map(row).join('')}</tbody>
+                <tbody>${openingRows}${voidedRows}${bills.map(row).join('')}</tbody>
             </table>
         </div>`;
 }

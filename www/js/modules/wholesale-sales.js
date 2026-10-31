@@ -13,7 +13,9 @@ import {
     isFullHistoryLoaded, historyLoadedFrom, formatWindowDate, rangeStatus, retryRange, applyRangeState, renderStaleHistoryHint
 } from '../utils/history-window.js';
 import { filterHistoryBills, resolveHistoryRange, validateCustomRange, billTimeMs } from '../utils/history-filters.js';
-import { buildBillRow, buildOpeningGroup, addOpeningToggle, billTableHtml } from '../ui/bill-row.js';
+import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml } from '../ui/bill-row.js';
+import { editsRowHtml, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
+import { billPool } from './history.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { historyCutoff } from '../utils/role-access.js';
 import { OutstandingManager } from './outstanding.js';
@@ -25,7 +27,7 @@ import { lineItemIdentity } from '../utils/item-catalog.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
-    KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, openingAmount, openingOldTotals, outstandingDue, isOpeningRecord
+    KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, openingAmount, openingOldTotals, outstandingDue, isOpeningRecord, isActiveBill
 } from '../utils/money.js';
 import {
     buildPaymentSplit, computeLine, computeWholesaleTotals, draftLineSum, paidOnScreen, paymentSplit, prefillPayment,
@@ -794,7 +796,8 @@ export class WholesaleSalesManager {
      */
     static wholesaleBills() {
         const cutoff = this.historyCutoff();
-        return (AppState.salesHistory || [])
+        // Voided bills (#75) come along for the "Show voided bills" toggle; callers split them off.
+        return billPool('wholesale')
             .filter(s => cutoff === null || billTimeMs(s) >= cutoff)
             .map(s => ({ ...s, type: 'wholesale', isPurchase: false }));
     }
@@ -810,7 +813,7 @@ export class WholesaleSalesManager {
     static renderRecentSales() {
         const container = document.getElementById('salesRecentList');
         if (!container) return;
-        const recent = filterHistoryBills(this.wholesaleBills().filter(b => !isOpeningRecord(b)), {}).slice(0, RECENT_SALES);
+        const recent = filterHistoryBills(this.wholesaleBills().filter(b => isActiveBill(b) && !isOpeningRecord(b)), {}).slice(0, RECENT_SALES);
         if (recent.length === 0) {
             const message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
             container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
@@ -828,6 +831,9 @@ export class WholesaleSalesManager {
     static historyView = 'card';
     static showOpening = false;
     static historyOpenings = [];
+    /** "Show voided bills" toggle (#75) and the voided bills of the last render. */
+    static showVoided = false;
+    static historyVoided = [];
 
     /**
      * Wholesale › History: every wholesale bill (not only outstanding), newest
@@ -851,14 +857,24 @@ export class WholesaleSalesManager {
         this.syncHistoryUi();
 
         const matched = filterHistoryBills(this.wholesaleBills(), { type: 'wholesale', range, search: this.historySearch });
-        const openings = matched.filter(b => isOpeningRecord(b));
-        const bills = matched.filter(b => !isOpeningRecord(b));
+        const voided = matched.filter(b => !isActiveBill(b));
+        const live = matched.filter(isActiveBill);
+        const openings = live.filter(b => isOpeningRecord(b));
+        const bills = live.filter(b => !isOpeningRecord(b));
         const showOpenings = this.showOpening && openings.length > 0;
+        const showVoided = this.showVoided && voided.length > 0;
         this.historyOpenings = showOpenings ? openings : [];
-        const placeToggle = () => addOpeningToggle(container, {
-            id: 'wholesaleOpeningToggle', count: openings.length, on: showOpenings,
-            onToggle: () => { this.showOpening = !this.showOpening; this.renderWholesaleHistory(); }
-        });
+        this.historyVoided = showVoided ? voided : [];
+        const placeToggle = () => {
+            addVoidedToggle(container, {
+                id: 'wholesaleVoidedToggle', count: voided.length, on: showVoided,
+                onToggle: () => { this.showVoided = !this.showVoided; this.renderWholesaleHistory(); }
+            });
+            addOpeningToggle(container, {
+                id: 'wholesaleOpeningToggle', count: openings.length, on: showOpenings,
+                onToggle: () => { this.showOpening = !this.showOpening; this.renderWholesaleHistory(); }
+            });
+        };
 
         const ranged = range.from !== null || range.to !== null;
         // Older months load one at a time as the user scrolls (all dates, no search).
@@ -867,14 +883,14 @@ export class WholesaleSalesManager {
             enabled: () => !this.historySearch && !ranged && cutoff === null,
             onLoaded: () => this.renderSalesHistory()
         });
-        const shown = [...this.historyOpenings, ...bills];
+        const shown = [...this.historyOpenings, ...this.historyVoided, ...bills];
         renderStaleHistoryHint(container, {
             id: 'wholesaleStaleHint',
             onRefreshed: () => this.renderSalesHistory(),
             isRelevant: (info) => shown.some(b => { const ms = billTimeMs(b); return ms !== null && ms < info.liveFrom; })
         });
 
-        if (bills.length === 0 && !showOpenings) {
+        if (bills.length === 0 && !showOpenings && !showVoided) {
             let message;
             if (this.historySearch) message = t('ui.history.no_results_for', { searchTerm: this.historySearch });
             else if (ranged) message = t('ui.history.none_in_period', { noun: t('ui.history.noun_wholesale') });
@@ -887,6 +903,7 @@ export class WholesaleSalesManager {
         if (this.historyView === 'table') {
             container.innerHTML = billTableHtml(bills, {
                 openings: this.historyOpenings,
+                voided: this.historyVoided,
                 onclickFor: (sale) => `window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')`
             });
             placeToggle();
@@ -895,6 +912,7 @@ export class WholesaleSalesManager {
         container.innerHTML = '';
         const fragment = document.createDocumentFragment();
         if (showOpenings) fragment.appendChild(buildOpeningGroup(openings, sale => this.buildSaleRow(sale)));
+        if (showVoided) fragment.appendChild(buildOpeningGroup(voided, sale => this.buildSaleRow(sale), 'voided'));
         bills.forEach(sale => fragment.appendChild(this.buildSaleRow(sale)));
         container.appendChild(fragment);
         placeToggle();
@@ -954,7 +972,8 @@ export class WholesaleSalesManager {
     }
 
     static async reprintSale(index) {
-        const salesHistory = AppState.salesHistory;
+        // Bills that count and voided ones (#75); index into this list
+        const salesHistory = billPool('wholesale');
         const sale = salesHistory[index];
         if (!sale) {
             UIManager.showModal(t('msg.common.sale_not_found'));
@@ -1020,6 +1039,7 @@ export class WholesaleSalesManager {
         
         const content = `
             <div style="padding: 16px; max-width: 100%;">
+                ${voidedBannerHtml(sale)}
                 <div class="bill-info-section">
                     <div class="bill-info-row">
                         <div class="bill-info-label">${L('ui.history.bill_no')}</div>
@@ -1074,15 +1094,18 @@ export class WholesaleSalesManager {
                 
                 ${paymentHTML}
                 ${paymentsHistoryHTML}
+                ${editsRowHtml(sale, 'window.app.history.showEdits()')}
             </div>
         `;
         
         document.getElementById('billDetailsContent').innerHTML = content;
+        // Wholesale bills are not edited here; Void / Delete permanently as in History (#75)
+        setBillActions(sale, { uid: AppState.currentUser?.uid, role: AppState.userRole, raw: AppState.settings?.roleAccess }, { editable: false });
         document.getElementById('billDetailsOverlay').classList.add('active');
     }
 
     static async reprintSaleById(saleId) {
-        const salesHistory = AppState.salesHistory;
+        const salesHistory = billPool('wholesale');
         const index = salesHistory.findIndex(s => String(s.id) === String(saleId));
         if (index === -1) {
             UIManager.showModal(t('msg.common.sale_not_found'));

@@ -8,6 +8,9 @@ import { readPayment } from '../utils/money.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { tip } from '../tip/index.js';
 
+/** Bill edits carry a reason (#121). */
+const EDIT_REASON = { reason: 'Test edit' };
+
 let fake;
 
 beforeEach(() => {
@@ -39,7 +42,7 @@ const doc = () => fake.raw('purchases').get('p1');
 test('first save creates the bill', async () => {
     const saved = await FirebaseService.savePurchase(bill(), { retry: false });
     expect(fake.raw('purchases').size).toBe(1);
-    expect(doc()).toMatchObject({ dueAmount: 60, payment: { due: 60, cash: 40 }, openDue: true, clientVersion: 3 });
+    expect(doc()).toMatchObject({ dueAmount: 60, payment: { due: 60, cash: 40 }, openDue: true, clientVersion: 4 });
     expect(FirebaseService.keptServerPayment(saved)).toBe(false);
 });
 
@@ -62,10 +65,22 @@ test('a retry after the first attempt succeeded, with nothing changed, writes no
     expect(FirebaseService.keptServerPayment(saved)).toBe(false);
 });
 
-test('a retry with changes made on this phone (no payment elsewhere) overwrites the bill', async () => {
+test('a retry with changes made on this phone (no payment elsewhere) overwrites the bill, recorded as an edit (#121)', async () => {
     await FirebaseService.savePurchase(bill(), { retry: false });
     await FirebaseService.savePurchase(bill({ cashPayment: 100, dueAmount: 0, payment: { cash: 100, online: 0, due: 0, total: 100 } }), { retry: true });
-    expect(doc()).toMatchObject({ cashPayment: 100, dueAmount: 0, payment: { due: 0 }, openDue: false });
+    expect(doc()).toMatchObject({ cashPayment: 100, dueAmount: 0, payment: { due: 0 }, openDue: false, editCount: 1 });
+    // Non-owners may not change money or items without the record (firestore.rules editCountOk)
+    expect(fake.raw('purchases/p1/edits').get('1')).toMatchObject({
+        n: 1, by: 'u1', reason: 'Changed before the first save was confirmed',
+        fields: { cashPayment: { before: 40, after: 100 }, dueAmount: { before: 60, after: 0 } }
+    });
+});
+
+test('a retry of a bill voided meanwhile on another phone writes nothing (#75)', async () => {
+    await FirebaseService.savePurchase(bill(), { retry: false });
+    fake.raw('purchases').set('p1', { ...doc(), voided: true, voidReason: 'Entered twice', openDue: false });
+    await expect(FirebaseService.savePurchase(bill({ comments: 'later' }), { retry: true })).rejects.toMatchObject({ code: 'voided' });
+    expect(doc()).toMatchObject({ voided: true, comments: '' });
 });
 
 test('a retry after another device recorded a due payment keeps that payment', async () => {
@@ -103,13 +118,13 @@ describe('createdAt: server time of the first save (#87 edit window)', () => {
         expect(typeof created).toBe('number');
         await FirebaseService.savePurchase(bill({ createdAt: created + 99999 }), { retry: true });
         expect(doc().createdAt).toBe(created);
-        await FirebaseService.updatePurchase({ ...doc(), id: 'p1', comments: 'edited', createdAt: undefined });
+        await FirebaseService.updatePurchase({ ...doc(), id: 'p1', comments: 'edited', createdAt: undefined }, EDIT_REASON);
         expect(doc()).toMatchObject({ comments: 'edited', createdAt: created });
     });
 
     test('an edit of a bill saved before #87 does not add createdAt', async () => {
         fake.raw('purchases').set('p1', { ...bill() });
-        await FirebaseService.updatePurchase({ ...bill(), comments: 'edited', createdAt: Date.now() });
+        await FirebaseService.updatePurchase({ ...bill(), comments: 'edited', createdAt: Date.now() }, EDIT_REASON);
         expect(doc().comments).toBe('edited');
         expect(doc().createdAt).toBeUndefined();
     });

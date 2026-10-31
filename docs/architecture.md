@@ -100,6 +100,7 @@ the migration. **Inline** = computed inside a page module.
 | AVG-COST | `stock-replay.replayEvents` / `computeStock` | same |
 | COGS | `finance-calc.computeFinanceSummary` (via `replayWithValues`) | same |
 | OPENING | `money.isOpeningRecord`, `activityBills` | same |
+| VOID | `money.isActiveBill` / `activeBills` (in `activityBills`, `outstandingDue`, `due-payments.saleTimePayment` / `dueEvents`, `aging.buildAging`, `stock-replay.collectEvents` / `stockFingerprint`, `stock-check.firstStockTimes`, `statements.partyLedger` / `partyChoices`, rate trends, product traffic, dead stock, number checks); `FirebaseService.publishCollection` keeps voided bills out of AppState (`voidedBills()` for History); bill edit records `utils/bill-edits.js` (#75, #121) | same |
 | BILL-COUNT | `business-metrics.billCount`; Today counts with `.length` (calc/today.js) | `billCount` |
 | BILL-TIME | `business-metrics.billTime`, `recordTime`; copy in `anomalies.billTime` | `business-metrics.billTime` |
 | CMP | `business-metrics.comparisonRanges`, `change` | same |

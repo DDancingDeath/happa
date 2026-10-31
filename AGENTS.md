@@ -514,16 +514,31 @@ own end-to-end test on the emulators: `npm run test:migration-e2e`
 (`tests/migration-e2e/`, see `tools/migrate/README.md`; it runs on every PR that
 changes `www/**`, the rules or the tool).
 
-**Bill edit window (#87, #84).** Everyone except the owner may edit or delete a
+**Bill edit window (#87, #84).** Everyone except the owner may edit or void a
 bill only for the role's `editDays` (Settings → Roles & access,
 `settings/app.roleAccess.<role>.editDays`, default **2**) after it was first
-saved (managers: any bill; others: their own; delete: own bill only). The
+saved (managers: edit any bill; others: their own; void: own bill only). The
 clock is the bill's `createdAt`, the server time written by `saveBill()` on
 the first save; rules compare it with `request.time` and refuse any change to
 it. The client-written `timestamp` is never used for this. Bills saved before
 this (no `createdAt`) count as outside the window: only the owner can change
-or delete them. Recording payments / clearing dues is not limited. The client
-mirrors this in `utils/role-access.js` (`canEditBillWith` / `canDeleteBillWith`).
+or void them. Recording payments / clearing dues is not limited. The client
+mirrors this in `utils/role-access.js` (`canEditBillWith` / `canVoidBillWith`).
+
+**Void, never delete; every edit keeps a record (#75, #121).** A bill is voided
+(`voided`, `voidedAt`, `voidedBy`, `voidReason`; `FirebaseService.voidBill`), not
+deleted: only the owner deletes bills (the app offers it only for a voided bill).
+Whether a bill counts anywhere is one predicate, `isActiveBill()` in
+`utils/money.js`: FirebaseService keeps voided bills out of AppState's bill
+lists (History gets them from `FirebaseService.voidedBills()`), and every
+calculation that reads bills checks it too (`activeBills()` / `activityBills()`,
+`outstandingDue()`, `saleTimePayment()`, the stock replay). A void is refused
+while the bill has later payments; a voided bill never changes again. Every
+change to a bill's items, money or party writes `<bills>/{id}/edits/{n}`
+(before/after of the changed fields, the editor, a required reason) in the same
+transaction (`updateBillChecked(collKey, record, { reason })`); records are read
+only from the bill details (`loadBillEdits`). Details: docs/role-permissions.md
+"Void and edit records".
 
 ---
 

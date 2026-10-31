@@ -15,6 +15,7 @@
 import { AppState } from '../utils/state.js';
 import { formatDayTime } from './dates.js';
 import { eventTime } from './stock-replay.js';
+import { isActiveBill } from './money.js';
 
 /**
  * "≈ approximate stock (updated <time>)" label (member device, stale stock
@@ -212,7 +213,7 @@ export function firstStockTimes({ purchases = [], stockAdjustments = [] } = {}, 
         if (!out.has(key) || ms < out.get(key)) out.set(key, ms);
     };
     (purchases || []).forEach(bill => {
-        if (!bill || bill.openingBalance) return;
+        if (!isActiveBill(bill) || bill.openingBalance) return;
         const t = eventTime(bill);
         (Array.isArray(bill.items) ? bill.items : []).forEach(line => {
             if (line && lineQty(line) > 0) note(resolveKey(line, catalogue), t);

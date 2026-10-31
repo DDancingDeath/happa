@@ -21,7 +21,7 @@
   incremental chain would lose the oldest audit logs when its first artifact expires. A full weekly copy is always
   restorable on its own.
 - **Every business collection is in the nightly export**: bills, items, stock, cash, expenses, `counters`,
-  `settings`, `users` (+ `users/{uid}/preferences`), `rateStats`, `rateHistory`, `monthStats`, `anomalies`,
+  `settings`, `users` (+ `users/{uid}/preferences`), the bills' edit records (`<bills>/{id}/edits`), `rateStats`, `rateHistory`, `monthStats`, `anomalies`,
   `stockCheckpoints`, and all `rent_*` collections. `BACKUP_COLLECTIONS` in `backup-lib.js` lists every collection
   in `firestore.rules`; `tests/backup/backup-collections.test.js` fails if the rules gain a collection that isn't
   listed, and the export also backs up any collection Firestore has that the list doesn't name (with a warning in the
@@ -166,5 +166,7 @@ also check a migration bundle's opening records. Never commit the report or run 
 
 - Firebase **Auth** accounts are not part of Firestore and aren't exported (see "fresh project" above). User
   profiles in `users` are.
-- Sub-collections: only those in `SUBCOLLECTIONS` (`users/preferences`). A new one in `firestore.rules` fails
+- Sub-collections: only those in `SUBCOLLECTIONS` (`users/preferences`, and the bill edit records
+  `purchases/edits`, `retailSales/edits`, `wholesaleSales/edits`, #121; one collection-group query per
+  sub-collection name). A new one in `firestore.rules` fails
   `tests/backup/backup-collections.test.js` until it is added there.

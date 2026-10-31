@@ -15,7 +15,7 @@
  */
 
 import { createItemKeyResolver, eventTime } from './stock-replay.js';
-import { isOpeningRecord } from './money.js';
+import { isActiveBill, isOpeningRecord } from './money.js';
 import { t, getLang } from '../i18n/index.js';
 
 export const RATE_KINDS = ['purchase', 'retail', 'wholesale'];
@@ -138,7 +138,7 @@ export function createCatalogueResolver(items) {
     };
 }
 
-const isDeletedBill = (bill) => bill?.deleted === true || bill?.isDeleted === true;
+const isDeletedBill = (bill) => bill?.deleted === true || bill?.isDeleted === true || !isActiveBill(bill);
 
 /**
  * Adds one bill to a plain-object accumulator (serialisable and compact, so

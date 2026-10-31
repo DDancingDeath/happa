@@ -27,8 +27,8 @@ const BACKUP_COLLECTIONS = [
     'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters'
 ];
 
-/** Sub-collections named in firestore.rules, as `<parent collection>/<sub-collection>`. */
-const SUBCOLLECTIONS = ['users/preferences'];
+/** Sub-collections named in firestore.rules, as `<parent collection>/<sub-collection>` (bill edit records: #121). */
+const SUBCOLLECTIONS = ['users/preferences', 'purchases/edits', 'retailSales/edits', 'wholesaleSales/edits'];
 
 /**
  * Left out of the nightly export to save reads (logs and test-in-production

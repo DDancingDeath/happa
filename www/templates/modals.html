@@ -21,7 +21,8 @@
                 <!-- Bill content will be inserted here -->
             </div>
             <div class="bill-details-footer">
-                <button class="bill-action-btn btn-delete" id="billDeleteBtn" onclick="window.app.history.confirmDeleteBill(window.currentBillIndex)" data-i18n="ui.modals.delete">Delete</button>
+                <button class="bill-action-btn btn-delete" id="billVoidBtn" onclick="window.app.history.confirmVoidBill()" data-i18n="ui.void.button">Void</button>
+                <button class="bill-action-btn btn-delete" id="billDeleteBtn" style="display: none;" onclick="window.app.history.confirmDeleteBill()" data-i18n="ui.void.delete_permanently">Delete permanently</button>
                 <button class="bill-action-btn btn-edit" id="billEditBtn" onclick="window.app.history.editBillDetails(window.currentBillIndex)" data-i18n="ui.modals.edit">Edit</button>
                 <button class="bill-action-btn btn-reprint" id="billReprintBtn" onclick="window.app.history.reprintBill()" title="Print a copy with the bill's date" data-i18n="ui.modals.reprint" data-i18n-title="ui.modals.print_copy_with_bill">Reprint</button>
                 <button class="bill-action-btn btn-share" id="billShareBtn" onclick="window.app.history.shareBill()" title="Share on WhatsApp" data-i18n="ui.modals.share" data-i18n-title="ui.modals.share_on_whatsapp">Share</button>

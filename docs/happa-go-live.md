@@ -267,6 +267,29 @@ no update banner, because 1.0.0 is lower than 1.6.1. Once happa reaches a
 version above 1.6.1, old installs would offer a broken update, so remove the
 old app from the phones before that.
 
+**After the next RC: lock out rc1 (`minClientVersion: 4`).** rc1 (and any APK
+built before #75/#121) has its web code inside the APK and writes
+`clientVersion: 3`; it doesn't know voided bills. Since #196 the rules refuse a
+`clientVersion` below 4 on everything built from bills (the stock checkpoint,
+month snapshots `monthStats`, rate patterns `rateStats`) and on bill voids and
+edits, so rc1 can't write a wrong figure. Its screens still count voided bills,
+though, its Delete and Edit buttons now end in its own "failed" message (the
+server refuses them, and rc1's text can't be changed), and it still saves new
+bills and payments. So:
+
+1. Tag the next RC (`v1.0.0-rc2`) or v1.0.0 from a main that has #196.
+2. Every rc1 tester installs it over rc1 (same signing key, nothing to remove).
+3. Then the owner sets `minClientVersion: 4` on `settings/app` (Firebase
+   console → Firestore → `settings` → `app`). rc1 then shows "Please update"
+   at start and does nothing else. (`enforceClientVersion` only refuses writes
+   below version 3; the figures, voids and edits need 4 regardless.)
+
+The first phone with the new code rebuilds the stock checkpoint once (format 4:
+one full read of the bill history, like the weekly rebuild) and re-rolls the
+current and last month's snapshots (2 writes, version 2). Older month
+snapshots stay in use: no bill was voided before #196, and rc1 can't write
+them any more.
+
 ## 12. Install on the phones
 
 On each phone, open `https://myhappa.web.app/download`, download `happa.apk`

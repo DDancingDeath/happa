@@ -287,7 +287,9 @@ export function createFakeFirestore(options = {}) {
                 write(collName, id, applyFields(prev, fields, { dotted: true }));
             },
             delete: async () => write(collName, id, undefined),
-            onSnapshot: (...args) => listen({ kind: 'doc', coll: collName, id }, args)
+            onSnapshot: (...args) => listen({ kind: 'doc', coll: collName, id }, args),
+            // Sub-collection (e.g. a bill's edits): stored as collection "<coll>/<id>/<sub>".
+            collection: (sub) => collection(`${collName}/${id}/${sub}`)
         };
     }
 
@@ -323,8 +325,8 @@ export function createFakeFirestore(options = {}) {
                 const tx = {
                     get: async (ref) => {
                         stats.reads++;
-                        const [c, id] = ref.path.split('/');
-                        seen.set(ref.path, coll(c).get(id));
+                        const at = ref.path.lastIndexOf('/');
+                        seen.set(ref.path, coll(ref.path.slice(0, at)).get(ref.path.slice(at + 1)));
                         return ref.get().then(s => { stats.reads--; stats.docGets--; return s; });
                     },
                     set: (ref, data, opts) => ops.push(() => ref.set(data, opts)),
@@ -333,7 +335,7 @@ export function createFakeFirestore(options = {}) {
                 };
                 const result = await fn(tx);
                 if (options.occ) {
-                    const stale = [...seen].some(([p, v]) => { const [c, id] = p.split('/'); return coll(c).get(id) !== v; });
+                    const stale = [...seen].some(([p, v]) => { const at = p.lastIndexOf('/'); return coll(p.slice(0, at)).get(p.slice(at + 1)) !== v; });
                     if (stale) {
                         stats.retries = (stats.retries || 0) + 1;
                         if (attempt >= 5) throw Object.assign(new Error('aborted'), { code: 'aborted' });

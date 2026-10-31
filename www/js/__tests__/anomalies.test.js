@@ -172,6 +172,16 @@ describe('cash, stock and audit rules', () => {
             ['bill-deleted', 'l1', 'P7', 'Shyam'], ['expense-deleted', 'l3', null, '']
         ]);
     });
+
+    test('a void is flagged (#75); deleting the voided bill afterwards is not flagged again', () => {
+        const logs = [
+            { id: 'l4', action: 'VOID_BILL', userId: 'u1', userName: 'Amit', timestamp: T(13), details: { billNumber: 'R9', billType: 'retail', amount: 500, customer: 'Shyam', reason: 'Entered twice' } },
+            { id: 'l5', action: 'DELETE_SALE', userId: 'o', timestamp: T(14), details: { billNumber: 'R9', amount: 500, voided: true } }
+        ];
+        const list = run({ auditLogs: logs });
+        expect(list.map(a => [a.type, a.refId, a.billNumber, a.party, a.severity])).toEqual([['bill-voided', 'l4', 'R9', 'Shyam', 'medium']]);
+        expect([list[0].en, list[0].hi]).toEqual(['Bill #R9 voided (₹500)', 'बिल #R9 रद्द किया (₹500)']);
+    });
 });
 
 describe('storage: idempotent ids and daily scan dedupe', () => {

@@ -619,3 +619,144 @@
     font-size: 13px;
   }
 }
+/* Voided bills (#75): hidden by default, greyed with a chip and the reason when shown */
+.voided-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e9ecef;
+  color: #495057;
+  vertical-align: middle;
+}
+
+.voided-reason {
+  margin-left: 6px;
+  font-size: 12px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.history-item.bill-row.is-voided,
+.bill-table__row.is-voided {
+  opacity: 0.6;
+}
+
+.history-item.bill-row.is-voided .bill-row__amount,
+.bill-table__row.is-voided .bill-table__amount {
+  text-decoration: line-through;
+}
+
+.voided-toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 8px 10px 0;
+  padding: 4px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 999px;
+  background: #fff;
+  color: #495057;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.voided-toggle-chip.active {
+  background: #e9ecef;
+}
+
+.bill-group--voided {
+  margin: 0 0 14px;
+  padding: 8px 0 2px;
+  border: 1px dashed #ced4da;
+  border-radius: var(--radius-lg);
+  background: #f8f9fa;
+}
+
+.bill-group--voided .bill-group__title {
+  color: #495057;
+}
+
+/* Bill details: voided banner, edit history (#121), reason dialog */
+.bill-voided-banner {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 4px solid #6c757d;
+  background: #f1f3f5;
+  font-size: 14px;
+  color: #343a40;
+}
+
+.bill-voided-banner__reason {
+  margin-top: 6px;
+}
+
+.bill-voided-banner__by {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.bill-edits {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.bill-edits__view {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--primary-color, #007bff);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.bill-edits__list {
+  margin-top: 8px;
+}
+
+.bill-edit {
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #f8f9fa;
+  color: #212529;
+}
+
+.bill-edit__head {
+  font-weight: 600;
+}
+
+.bill-edit__reason {
+  margin-top: 2px;
+  color: #495057;
+}
+
+.bill-edit__changes {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.reason-dialog {
+  text-align: left;
+}
+
+.reason-dialog__explain {
+  margin: 0 0 10px;
+}
+
+.reason-dialog__label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.reason-dialog__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+}

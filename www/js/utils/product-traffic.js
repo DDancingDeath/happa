@@ -11,6 +11,7 @@ import {
     lineKg, lineRate, monthBuckets, rollForwardWindow
 } from './rate-trends.js';
 import { eventTime } from './stock-replay.js';
+import { isActiveBill } from './money.js';
 
 export const TRAFFIC_KINDS = ['purchase', 'wholesale', 'retail'];
 
@@ -122,7 +123,7 @@ const daysInMonth = (month) => {
 
 const emptyDay = (day) => ({ day, purchase: { kg: 0, bills: 0 }, wholesale: { kg: 0, bills: 0 }, retail: { kg: 0, bills: 0 } });
 
-const isDeleted = (bill) => bill?.deleted === true || bill?.isDeleted === true;
+const isDeleted = (bill) => bill?.deleted === true || bill?.isDeleted === true || !isActiveBill(bill);
 
 /**
  * Day-by-day kg and bills of one item in one IST month, with week totals

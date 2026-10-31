@@ -8,7 +8,7 @@
 
 import { itemSummary, partySummary, profitPerDay } from './business-metrics.js';
 
-export const SNAPSHOT_VERSION = 1;
+export const SNAPSHOT_VERSION = 2;
 /** Current / previous month snapshots older than this are rebuilt from the loaded bills. */
 export const SNAPSHOT_ROLL_MS = 6 * 60 * 60 * 1000;
 export const TOP_PARTIES = 50;
