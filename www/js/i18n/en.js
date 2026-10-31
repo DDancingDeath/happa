@@ -312,6 +312,8 @@ export default {
     'msg.sync.save_failed_on_server': "⚠️ Save failed on server: {value}",
     'msg.sync.storage_full': "Save failed — storage full. Free some space on this phone and try again.",
     'msg.sync.saved_on_phone': "Saved on this phone, will sync",
+    'msg.sync.save_unconfirmed': "Saving… not confirmed on this phone yet. Check History before entering this bill again.",
+    'msg.sync.expense_unconfirmed': "Saving… not confirmed on this phone yet. Check the expense list before entering it again.",
     'ui.sync.offline': "Offline",
     'ui.sync.waiting_one': "1 change waiting to sync",
     'ui.sync.waiting': "{count} changes waiting to sync",

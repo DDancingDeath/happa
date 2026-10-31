@@ -15,7 +15,7 @@ import {
 } from '../utils/money.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
-import { saveFailedText, SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
+import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
@@ -641,6 +641,12 @@ const PurchaseManager = {
                 options.onWriteIssued(bill);
             }
             await writePromise;
+            // Not confirmed even on this phone: keep the form (a retry reuses the same id) (#153)
+            if (FirebaseService.saveUnconfirmed(bill)) {
+                UIManager.hideLoading();
+                UIManager.showToast(t(SAVE_UNCONFIRMED_KEY), 'warning');
+                return undefined;
+            }
             
             const savedItems = bill.items;
             const billingManager = this.billingManager;

@@ -298,4 +298,94 @@ describe('a save the phone refused is never reported as saved (#153)', () => {
         SettingsManager.saveUpi();
         expect(toastTexts()).toEqual([t('msg.sync.storage_full')]);
     });
+
+    describe('a slow local store (review of #182)', () => {
+        /** Holds `collName` writes and this phone's local-store confirmation until the test releases them. */
+        function holdWrites(collName) {
+            let storeLocally;
+            const barrier = new Promise(r => { storeLocally = () => r({ exists: false, metadata: { fromCache: true } }); });
+            let refuse;
+            const write = jest.fn(() => new Promise((_, reject) => { refuse = reject; }));
+            const collection = fake.db.collection;
+            fake.db.collection = (name) => {
+                const c = collection(name);
+                if (name === 'items') {
+                    return { ...c, doc: (id) => ({ ...c.doc(id), get: (opts) => (opts?.source === 'cache' ? barrier : c.doc(id).get(opts)) }) };
+                }
+                return name === collName ? { ...c, doc: (id) => ({ ...c.doc(id), set: write }) } : c;
+            };
+            return { write, storeLocally: () => storeLocally(), refuse: (e) => refuse(e) };
+        }
+        const saved = () => [t('msg.purchase.bill_saved_successfully'), t('msg.sync.saved_on_phone')];
+
+        afterEach(() => jest.useRealTimers());
+
+        test('offline: "Saved on this phone" and a cleared form only once the phone confirms storing it', async () => {
+            await fillBill();
+            const held = holdWrites('purchases');
+            jest.useFakeTimers();
+            let result = 'waiting';
+            PurchaseManager.saveBillToHistory().then(r => { result = r; });
+            await jest.advanceTimersByTimeAsync(3000);
+            expect(result).toBe('waiting');
+            expect(toastTexts().filter(x => saved().includes(x))).toEqual([]);
+            expect(PurchaseManager.getBillItems()).toHaveLength(1);
+
+            held.storeLocally();
+            await jest.advanceTimersByTimeAsync(0);
+            expect(FirebaseService.savedOnPhoneOnly(result)).toBe(true);
+            expect(toastTexts()).toContain(t('msg.sync.saved_on_phone'));
+            expect(PurchaseManager.getBillItems()).toHaveLength(0);
+        });
+
+        test('offline: refused by the phone after 2 s (past the old 1.5 s release) → storage full, bill kept', async () => {
+            await fillBill();
+            const held = holdWrites('purchases');
+            jest.useFakeTimers();
+            let error = null;
+            PurchaseManager.saveBillToHistory().catch(e => { error = e; });
+            await jest.advanceTimersByTimeAsync(2000);
+            held.refuse(persistFull());
+            await jest.advanceTimersByTimeAsync(0);
+            expect(isStorageFullError(error)).toBe(true);
+            expect(toastTexts()).toContain(t('msg.sync.storage_full'));
+            expect(toastTexts().filter(x => saved().includes(x))).toEqual([]);
+            expect(PurchaseManager.getBillItems()).toHaveLength(1);
+        });
+
+        test('offline: still unconfirmed after 10 s → "Saving… check before re-entering", form kept, retry reuses the id', async () => {
+            await fillBill();
+            const held = holdWrites('purchases');
+            jest.useFakeTimers();
+            let result = 'waiting';
+            PurchaseManager.saveBillToHistory().then(r => { result = r; });
+            await jest.advanceTimersByTimeAsync(9999);
+            expect(result).toBe('waiting');
+            await jest.advanceTimersByTimeAsync(1);
+            expect(result).toBeUndefined();
+            expect(toastTexts()).toContain(t('msg.sync.save_unconfirmed'));
+            expect(toastTexts().filter(x => saved().includes(x))).toEqual([]);
+            expect(PurchaseManager.getBillItems()).toHaveLength(1);
+            expect(held.write).toHaveBeenCalledTimes(1);
+            expect(PurchaseManager.getPendingBill()).toMatchObject({ id: expect.any(String), attempted: true });
+        });
+
+        test('expense: the save never hangs; unconfirmed after a few seconds → no "saved", form kept', async () => {
+            online = true;
+            document.body.innerHTML = `<input id="businessExpenseType" value="Tea"><input id="businessExpensePerson" value="">
+                <input id="businessExpenseAmount" value="50"><input id="businessExpenseRemarks" value=""><div id="toast"></div>`;
+            jest.spyOn(UIManager, 'withLoading').mockImplementation(async (fn) => fn());
+            jest.spyOn(ExpensesManager, 'refreshExpenseViews').mockImplementation(() => {});
+            AppState.expensesHistory = [];
+            holdWrites('expenses');
+            jest.useFakeTimers();
+            let done = false;
+            ExpensesManager.saveBusinessExpense().then(() => { done = true; });
+            await jest.advanceTimersByTimeAsync(4000);
+            expect(done).toBe(true);
+            expect(toastTexts()).toContain(t('msg.sync.expense_unconfirmed'));
+            expect(toastTexts()).not.toContain(t('msg.expenses.business_expense_saved'));
+            expect(document.getElementById('businessExpenseAmount').value).toBe('50');
+        });
+    });
 });

@@ -14,7 +14,7 @@ import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { canChangeExpense, EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
-import { saveFailedText } from '../utils/storage-full.js';
+import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
@@ -38,7 +38,7 @@ export class ExpensesManager {
      * Create a new expense, or update the one being edited (same doc, no delete).
      * @param {Object} expense - Expense built from the form
      * @returns {Promise<boolean|null>} true if an existing expense was updated,
-     *   null if that update, or this phone (storage full), refused it (message already shown)
+     *   null if that update or this phone refused it, or this phone has not confirmed storing it (message already shown)
      */
     static async persistExpense(expense) {
         const editing = this.editingExpense;
@@ -51,9 +51,12 @@ export class ExpensesManager {
                 this.refreshExpenseViews();
             });
             this.refreshExpenseViews();
-            // A write this phone refused (storage full) is not reported as saved (#153)
-            if (stored && !(await stored)) return null;
-            return false;
+            // Not "saved" unless this phone stored it: refused (storage full, #153) or
+            // still unconfirmed after a few seconds keeps the form
+            const ok = stored ? await stored : true;
+            if (ok === true) return false;
+            if (ok === null) UIManager.showToast(t(EXPENSE_UNCONFIRMED_KEY), 'warning');
+            return null;
         }
 
         const original = (AppState.expensesHistory || []).find(e => String(e.id) === String(editing.id)) || {};

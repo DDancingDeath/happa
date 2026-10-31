@@ -19,7 +19,7 @@ import { historyCutoff } from '../utils/role-access.js';
 import { OutstandingManager } from './outstanding.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { getLang, t } from '../i18n/index.js';
-import { saveFailedText, SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
+import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
@@ -478,6 +478,11 @@ export class WholesaleSalesManager {
                 options.onWriteIssued(saleData);
             }
             await writePromise;
+            // Not confirmed even on this phone: keep the form (a retry reuses the same id) (#153)
+            if (FirebaseService.saveUnconfirmed(saleData)) {
+                UIManager.showToast(t(SAVE_UNCONFIRMED_KEY), 'warning');
+                return undefined;
+            }
             
             Helpers.runInBackground([
                 () => AuditService.log(AuditService.ACTIONS.CREATE_SALE, {

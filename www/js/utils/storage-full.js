@@ -11,6 +11,9 @@ import { t } from '../i18n/index.js';
 export const STORAGE_FULL_KEY = 'msg.sync.storage_full';
 /** Shown instead of "Saved" for a bill stored on this phone while offline. */
 export const SAVED_ON_PHONE_KEY = 'msg.sync.saved_on_phone';
+/** Shown when a save could not be confirmed even on this phone: it may still arrive. */
+export const SAVE_UNCONFIRMED_KEY = 'msg.sync.save_unconfirmed';
+export const EXPENSE_UNCONFIRMED_KEY = 'msg.sync.expense_unconfirmed';
 
 const FULL_TEXT = /QuotaExceededError|NS_ERROR_DOM_QUOTA_REACHED|quota has been exceeded|exceeded the quota/i;
 

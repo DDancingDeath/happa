@@ -11,6 +11,7 @@ jest.mock('../firebase/firestore-service.js', () => ({
         CLIENT_VERSION: 3,
         keptServerPayment: jest.fn(() => false),
         savedOnPhoneOnly: jest.fn(() => false),
+        saveUnconfirmed: jest.fn(() => false),
         billHasOpenDue: jest.fn((coll, bill) => !bill.cleared && (bill.payment?.due || 0) > 0)
     }
 }));

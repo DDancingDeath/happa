@@ -312,6 +312,8 @@ export default {
     'msg.sync.save_failed_on_server': "⚠️ सर्वर पर सेव नहीं हुआ: {value}",
     'msg.sync.storage_full': "सेव नहीं हुआ — फ़ोन की जगह भर गई है। फ़ोन में कुछ जगह खाली करके फिर से कोशिश करें।",
     'msg.sync.saved_on_phone': "इस फ़ोन में सेव हो गया, इंटरनेट आने पर सिंक होगा",
+    'msg.sync.save_unconfirmed': "सेव हो रहा है… अभी इस फ़ोन में पक्का नहीं हुआ। यह बिल दोबारा डालने से पहले इतिहास देखें।",
+    'msg.sync.expense_unconfirmed': "सेव हो रहा है… अभी इस फ़ोन में पक्का नहीं हुआ। दोबारा डालने से पहले खर्च की सूची देखें।",
     'ui.sync.offline': "ऑफ़लाइन",
     'ui.sync.waiting_one': "1 बदलाव सिंक होना बाकी है",
     'ui.sync.waiting': "{count} बदलाव सिंक होने बाकी हैं",
