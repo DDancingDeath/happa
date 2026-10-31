@@ -10,7 +10,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { defaultWindowStart } from '../utils/history-range.js';
-import { itemsSignature } from '../utils/stock-replay.js';
+import { itemsSignature, STOCK_REPLAY_FORMAT } from '../utils/stock-replay.js';
 import { on, REFRESH } from '../utils/events.js';
 
 const NOW = Date.now();
@@ -23,7 +23,7 @@ function install(options) {
     global.firebase = fake.firebase;
     fake.seed('items', ITEMS);
     fake.seed('stockCheckpoints', [{
-        id: 'current', formatVersion: 4, asOf: defaultWindowStart(NOW), state: [], resolutions: [],
+        id: 'current', formatVersion: STOCK_REPLAY_FORMAT, asOf: defaultWindowStart(NOW), state: [], resolutions: [],
         itemsSignature: itemsSignature(ITEMS), stale: false, staleCount: 0, builtAt: Date.now(), fullBuiltAt: Date.now()
     }]);
     fake.seed('stockCheckpoints', [{ id: 'legacyScan', ...Object.fromEntries(['purchases', 'retailSales', 'wholesaleSales', 'expenses', 'stockAdjustments', 'withdrawals'].map(c => [c, { v: 2, complete: true, foundAt: 0 }])) }]);
