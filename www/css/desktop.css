@@ -578,6 +578,15 @@
   /* Four stat cards in a half-width card wrapped their amounts mid-number */
   #dayTodayContent .stats-grid-2:has(> :nth-child(3)) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+}
+
+/* Phone bottom bar and its settings (#142): the sidebar is permanent here */
+@media (min-width: 1024px) {
+  .bottom-nav,
+  .pull-refresh,
+  .phone-only-setting {
+    display: none !important;
   }
 }
 
