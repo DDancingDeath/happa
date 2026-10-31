@@ -6,6 +6,7 @@
  */
 
 import { round2 } from '../utils/money.js';
+import { meterAmount, validateDuePayment } from '../utils/calc/billing.js';
 import { cleanText, formatINR } from '../utils/due-reminder.js';
 
 /** Oldest start month allowed (months back) and most months charged per visit. */
@@ -254,14 +255,16 @@ export function chargeStatus(charge, today = new Date()) {
 }
 
 /**
- * Validates a payment against a charge and returns the new totals.
+ * Validates a payment against a charge and returns the new totals. Whole
+ * rupees, except exactly a due with paise (DUE-CHECK, #129).
  * @throws {Error} message 'amount' (not > 0) or 'over' (more than is due)
  */
 export function applyPayment(charge, amount) {
-    const amt = round2(Number(amount));
-    if (!Number.isFinite(amt) || amt <= 0) throw new Error('amount');
+    const check = validateDuePayment(amount, 0, chargeDue(charge), 0.001);
+    if (!check.ok && check.error !== 'exceeds-due') throw new Error('amount');
     if ((charge.payments || []).length >= MAX_PAYMENTS_PER_CHARGE) throw new Error('too_many');
-    if (amt > chargeDue(charge) + 0.001) throw new Error('over');
+    if (!check.ok) throw new Error('over');
+    const amt = check.total;
     const total = round2(Number(charge.amount) || 0);
     const paid = round2((Number(charge.paid) || 0) + amt);
     return { amount: amt, paid, open: paid < total - 0.001 };
@@ -307,7 +310,7 @@ const okNum = (v) => Number.isFinite(v) && v >= 0;
 
 /**
  * Electricity from a sub-meter reading (RENT-7): units = current − previous,
- * amount = units × rate per unit.
+ * amount = units × rate per unit, whole rupees (#129).
  * @throws {Error} 'reading' when a number is missing/negative or current < previous
  */
 export function meterBill({ prev, curr, rate }) {
@@ -316,7 +319,7 @@ export function meterBill({ prev, curr, rate }) {
     const r = Number(rate);
     if (![p, c, r].every(okNum) || c < p) throw new Error('reading');
     const units = round2(c - p);
-    return { prev: p, curr: c, rate: r, units, amount: round2(units * r) };
+    return { prev: p, curr: c, rate: r, units, amount: meterAmount(units, r) };
 }
 
 /**

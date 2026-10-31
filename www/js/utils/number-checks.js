@@ -8,7 +8,7 @@
 
 import { readPayment, billTotal, round2, isOpeningRecord, activeBills } from './money.js';
 import { saleTimePayment, entryParts } from './due-payments.js';
-import { collectEvents, createItemKeyResolver, replayEvents } from './stock-replay.js';
+import { collectEvents, createItemKeyResolver, purchaseLineValue, replayEvents } from './stock-replay.js';
 import { parseAnyBillDate } from './dates.js';
 import { sessionTotals } from './cash-session.js';
 
@@ -70,8 +70,8 @@ export function checkPayments(data) {
 }
 
 /**
- * AC1 + AC8: replays all loaded records. Per item, purchases (qty × rate) −
- * cost of goods sold (qty × average cost at the time) ± adjustments must equal
+ * AC1 + AC8: replays all loaded records. Per item, purchases (their saved line
+ * amounts, AVG-COST) − cost of goods sold (qty × average cost at the time) ± adjustments must equal
  * the closing stock value; a gap means stock went below zero (goods sold
  * before their purchase was recorded). Needs the full history: without it the
  * replay starts mid-way and every item would look wrong.
@@ -99,7 +99,7 @@ export function checkStock(data, { fullHistory = true } = {}) {
         const qty = ev.kind === 'adjustment' ? 0 : (parseFloat(ev.item.qty || ev.item.quantity) || 0);
         replayEvents(state, [ev], getKey);
         const after = state[key].quantity > 0 ? state[key].totalValue : 0;
-        if (ev.kind === 'purchase') f(key).purchases += qty * (parseFloat(ev.item.rate) || 0);
+        if (ev.kind === 'purchase') f(key).purchases += purchaseLineValue(ev.item).value;
         else if (ev.kind === 'sale') f(key).cogs += qty * avg;
         else f(key).adjustments += after - before;
     }
