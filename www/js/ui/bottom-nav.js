@@ -36,22 +36,34 @@ function ownGesture(el, tabEl) {
     return false;
 }
 
+const NO_KEYBOARD = /^(checkbox|radio|range|button|submit|reset|file|color|image)$/;
+/** Text fields bring up the on-screen keyboard; checkboxes, selects and buttons don't. */
+export const opensKeyboard = (el) => !!el && (el.tagName === 'TEXTAREA' || el.isContentEditable === true
+    || (el.tagName === 'INPUT' && !NO_KEYBOARD.test(String(el.type || 'text').toLowerCase())));
+
 const somethingOpen = () => !!document.querySelector('.side-nav.active, .modal-overlay.active, .bill-details-overlay.active, #notifPanel:not([hidden])');
 
 export const BottomNav = {
     swipeOn: false,
 
-    init({ showTab, refresh }) {
+    /**
+     * @param {Object} opts
+     * @param {function(string)} opts.showTab - open a page (swipe)
+     * @param {Object<string, Function>} opts.refreshers - tab id → its data-only reload (pull-to-refresh); pages without one don't pull
+     * @param {Function} [opts.onRefreshed]
+     */
+    init({ showTab, refreshers = {}, onRefreshed } = {}) {
         if (this.bound) return;
         this.bound = true;
         this.showTab = showTab;
-        this.refresh = refresh;
+        this.refreshers = refreshers;
+        this.onRefreshed = onRefreshed;
         try { this.swipeOn = localStorage.getItem(SWIPE_KEY) === '1'; } catch { this.swipeOn = false; }
         const box = document.getElementById('settingSwipeTabs');
         if (box) box.checked = this.swipeOn;
         window.addEventListener('aadhat:tabshown', (e) => this.markActive(e.detail?.tabId));
         // The on-screen keyboard would push the bar over the field being typed in
-        document.addEventListener('focusin', (e) => { if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName)) document.body.classList.add('typing'); });
+        document.addEventListener('focusin', (e) => document.body.classList.toggle('typing', opensKeyboard(e.target)));
         document.addEventListener('focusout', () => document.body.classList.remove('typing'));
         this.bindGestures();
     },
@@ -68,6 +80,16 @@ export const BottomNav = {
         });
     },
 
+    /** Pull-to-refresh: the page's own data reload (no filter or form reset). */
+    refreshPage(tab) {
+        const fn = this.refreshers?.[tab];
+        if (!fn) return Promise.resolve(false);
+        return Promise.resolve()
+            .then(fn)
+            .then(() => { this.onRefreshed?.(); return true; })
+            .catch(e => { console.warn('Pull-to-refresh failed:', e); return false; });
+    },
+
     setSwipe(on) {
         this.swipeOn = !!on;
         safeSetItem(SWIPE_KEY, on ? '1' : '0');
@@ -81,7 +103,7 @@ export const BottomNav = {
             const tabEl = e.target?.closest?.('.tab.active');
             const touch = e.touches?.[0];
             if (!tabEl || !touch || e.touches.length > 1 || !phone() || somethingOpen() || ownGesture(e.target, tabEl)) { start = null; return; }
-            start = { x: touch.clientX, y: touch.clientY, top: tabEl.scrollTop <= 0, tab: tabEl.id, pulled: 0 };
+            start = { x: touch.clientX, y: touch.clientY, top: tabEl.scrollTop <= 0 && !!this.refreshers?.[tabEl.id], tab: tabEl.id, pulled: 0 };
         }, { passive: true });
         document.addEventListener('touchmove', (e) => {
             const touch = e.touches?.[0];
@@ -109,7 +131,7 @@ export const BottomNav = {
             if (!s || !touch) return;
             const dx = touch.clientX - s.x;
             const dy = touch.clientY - s.y;
-            if (s.top && s.pulled && dy >= PULL_REFRESH_PX) { this.refresh?.(); return; }
+            if (s.top && s.pulled && dy >= PULL_REFRESH_PX) { this.refreshPage(s.tab); return; }
             if (!this.swipeOn) return;
             const to = swipeTarget(s.tab, dx, dy);
             if (to) this.showTab?.(to);

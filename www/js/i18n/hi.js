@@ -1493,6 +1493,7 @@ export default {
     'ui.nav.release_refresh': "↻ छोड़ें, ताज़ा होगा",
     'ui.settings.swipe_tabs': "पेज बदलने के लिए बाएँ या दाएँ स्वाइप करें",
     'ui.settings.swipe_tabs_hint': "बिलिंग, आज, इतिहास और बकाया के बीच जाता है। इसी फ़ोन पर सेव होता है।",
+    'msg.nav.refreshed': "ताज़ा हो गया",
     'ui.today.walk_in': "सीधा ग्राहक",
     'ui.today.expense': "खर्च",
     'ui.today.misc': "अन्य",

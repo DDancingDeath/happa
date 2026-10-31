@@ -4,6 +4,7 @@ import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
 import { BottomNav } from './ui/bottom-nav.js';
+import { refreshOnDemandHistory } from './utils/history-window.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
@@ -411,8 +412,14 @@ async function initializeUserData() {
         // Show the billing tab by default
         BottomNav.init({
             showTab: (tab) => NavigationManager.showTabFromNav(tab),
-            // Pull-to-refresh: the open page runs its own load again, as when its menu item is tapped
-            refresh: () => NavigationManager.showTabFromNav(NavigationManager.currentTab || 'billing', null, { fromHistory: true })
+            // Pull-to-refresh reloads data only: filters, the bill being entered and forms stay as they are
+            refreshers: {
+                day: () => DayManager.init(),
+                history: () => refreshOnDemandHistory().then(() => HistoryManager.refreshHistory()),
+                due: () => OutstandingManager.renderDue(),
+                stock: () => StockManager.renderStock()
+            },
+            onRefreshed: () => UIManager.showToast(t('msg.nav.refreshed'))
         });
         NavigationManager.showTab('billing');
         NavigationManager.setActiveNavLink('billing');

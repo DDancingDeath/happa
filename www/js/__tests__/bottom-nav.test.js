@@ -1,7 +1,7 @@
 /** Phone bottom bar (#142): active item, swipe targets, the swipe setting. */
 import fs from 'fs';
 import path from 'path';
-import { BAR_TABS, BottomNav, swipeTarget } from '../ui/bottom-nav.js';
+import { BAR_TABS, BottomNav, opensKeyboard, swipeTarget } from '../ui/bottom-nav.js';
 
 const NAV = fs.readFileSync(path.resolve(__dirname, '../../templates/navigation.html'), 'utf8');
 
@@ -37,4 +37,28 @@ test('the swipe setting is saved on this phone', () => {
     BottomNav.setSwipe(false);
     expect(BottomNav.swipeOn).toBe(false);
     expect(localStorage.getItem('aadhat.swipeTabs')).toBe('0');
+});
+
+test('only text fields count as typing (the bar stays for checkboxes, selects and buttons)', () => {
+    const el = (html) => { document.body.innerHTML = html; return document.body.firstElementChild; };
+    expect(opensKeyboard(el('<input type="text">'))).toBe(true);
+    expect(opensKeyboard(el('<input>'))).toBe(true);
+    expect(opensKeyboard(el('<input type="number">'))).toBe(true);
+    expect(opensKeyboard(el('<textarea></textarea>'))).toBe(true);
+    expect(opensKeyboard(el('<input type="checkbox">'))).toBe(false);
+    expect(opensKeyboard(el('<input type="radio">'))).toBe(false);
+    expect(opensKeyboard(el('<select><option>a</option></select>'))).toBe(false);
+    expect(opensKeyboard(el('<button>b</button>'))).toBe(false);
+});
+
+test('pull-to-refresh runs only the page\'s own data reload; pages without one do nothing', async () => {
+    const day = jest.fn();
+    const done = jest.fn();
+    BottomNav.refreshers = { day };
+    BottomNav.onRefreshed = done;
+    await expect(BottomNav.refreshPage('day')).resolves.toBe(true);
+    expect(day).toHaveBeenCalledTimes(1);
+    expect(done).toHaveBeenCalledTimes(1);
+    await expect(BottomNav.refreshPage('billing')).resolves.toBe(false);
+    expect(done).toHaveBeenCalledTimes(1);
 });

@@ -1493,6 +1493,7 @@ export default {
     'ui.nav.release_refresh': "↻ Release to refresh",
     'ui.settings.swipe_tabs': "Swipe left or right to change page",
     'ui.settings.swipe_tabs_hint': "Moves between Billing, Today, History and Outstanding. Saved on this phone.",
+    'msg.nav.refreshed': "Updated",
     'ui.today.walk_in': "Walk-in",
     'ui.today.expense': "Expense",
     'ui.today.misc': "Misc",
