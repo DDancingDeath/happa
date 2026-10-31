@@ -66,6 +66,13 @@
                 <div id="printerStatus" style="padding: 12px; background: #f5f5f5; border-radius: 8px; margin-bottom: 12px;">
                     <strong data-i18n="ui.settings.status">Status:</strong> <span id="printerStatusText"><span data-i18n="ui.settings.printer_not_connected">Not connected</span></span>
                 </div>
+
+                <label class="checkbox-label">
+                    <input type="checkbox" id="settingPrintPreview" onchange="window.app.settings.togglePrintPreview()">
+                    <span data-i18n="ui.settings.print_preview_first">Show the bill before printing</span>
+                </label>
+
+                <div id="savedPrintersList"></div>
                 
                 <button class="add-item-btn" id="scanPrintersBtn" onclick="window.app.settings.scanBluetoothDevices()" style="margin-bottom: 8px;" data-i18n="ui.settings.scan_printers">
                     🔍 Scan for Printers
