@@ -8,7 +8,8 @@
 
 import { itemSummary, partySummary, profitPerDay } from './business-metrics.js';
 
-export const SNAPSHOT_VERSION = 2;
+/** 3: stock and cost of goods sold at the saved line amounts (#129); older months are rebuilt once (outdatedOlderMonths). */
+export const SNAPSHOT_VERSION = 3;
 /** Current / previous month snapshots older than this are rebuilt from the loaded bills. */
 export const SNAPSHOT_ROLL_MS = 6 * 60 * 60 * 1000;
 export const TOP_PARTIES = 50;
@@ -257,6 +258,19 @@ export function staleOlderMonths(docs, now) {
     const d = new Date(now);
     const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
     return Object.keys(docs || {}).filter(k => docs[k]?.stale && monthBounds(k).from < prev).sort();
+}
+
+/**
+ * Snapshots older than the previous month built by another version (not stale): rebuilt once
+ * from the full history by an owner / manager phone, shown as they are until then.
+ * @param {Object<string, Object>} docs month → snapshot doc
+ * @param {number} now
+ * @returns {string[]}
+ */
+export function outdatedOlderMonths(docs, now) {
+    const d = new Date(now);
+    const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+    return Object.keys(docs || {}).filter(k => docs[k] && !docs[k].stale && docs[k].v !== SNAPSHOT_VERSION && monthBounds(k).from < prev).sort();
 }
 
 /**
