@@ -12,7 +12,8 @@ import { MoneyManager } from '../modules/money.js';
 import { RateTrendsManager } from '../modules/rate-trends.js';
 import { AppState } from '../utils/state.js';
 import { getInsightsContext, setInsightsContext, resetInsightsContextForTests } from '../utils/insights-context.js';
-import { seasonIndex } from '../utils/business-metrics.js';
+import { seasonIndex, seasonKgTotal, weeklyKgWindow, weeklyKgByItem, sharePct, topShare, roundTo, addsUp } from '../utils/business-metrics.js';
+import { snapshotItemSales } from '../utils/month-snapshots.js';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const FIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/calculations/shop-month.json'), 'utf8'));
@@ -226,6 +227,25 @@ describe('Seasons: one Rate trends view, two entry points', () => {
         expect(kg).toEqual({ '2025-01': 12 });
         expect([heatLevel(null), heatLevel(0.3), heatLevel(1), heatLevel(1.3), heatLevel(2)]).toEqual([0, 1, 2, 3, 4]);
         expect(seasonIndex(kg)).toBeNull();
+    });
+
+    test('season totals, weekly kg, shares and display rounding (I5, I9, I2, I12)', () => {
+        expect(seasonKgTotal({ '2025-01': 12, '2025-02': 3.5 })).toBe(15.5);
+        expect(seasonKgTotal(null)).toBe(0);
+        const now = new Date(2028, 1, 29, 12).getTime();
+        expect(weeklyKgWindow(now)).toEqual({ from: now - 56 * 86400000, to: now + 1, weeks: 8 });
+        const loaded = new Date(2028, 1, 1).getTime();
+        expect(weeklyKgWindow(now, loaded).weeks).toBeCloseTo((now - loaded) / (7 * 86400000), 10);
+        expect(weeklyKgWindow(now, now - 13 * 86400000)).toBeNull();
+        expect(weeklyKgByItem([{ itemKey: 'a', qty: 80 }, { itemKey: '', qty: 4 }], 8)).toEqual(new Map([['a', 10], ['', 0.5]]));
+        expect([sharePct(1, 3), sharePct(2, 3), sharePct(5, 0)]).toEqual([33, 67, 0]);
+        expect(topShare([{ key: 'a', total: 50 }, { key: '', total: 30 }, { key: 'b', total: 10 }, { key: 'c', total: 10 }], 2)).toEqual({ total: 100, top: 60, pct: 60 });
+        expect(topShare([], 5)).toEqual({ total: 0, top: 0, pct: null });
+        expect([roundTo(15.649, 1), roundTo(-2.25, 1), roundTo(91.5), roundTo(3.333, 2)]).toEqual([15.6, -2.2, 92, 3.33]);
+        expect(addsUp([{ sales: 10.4 }, { sales: 5 }], 'sales', 16.4)).toBe(true);
+        expect(addsUp([{ sales: 10.4 }, { sales: 5 }], 'sales', 16.5)).toBe(false);
+        expect(snapshotItemSales([{ items: [{ key: 'a', sales: 10 }, { key: 'b', sales: 1 }] }, { items: [{ key: 'a', sales: 5 }] }]))
+            .toEqual([{ key: 'a', sales: 15 }, { key: 'b', sales: 1 }]);
     });
 });
 

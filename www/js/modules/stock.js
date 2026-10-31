@@ -10,7 +10,8 @@ import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
 import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
-import { formatRupees } from '../utils/money.js';
+import { formatAmount, formatRupees } from '../utils/money.js';
+import { stockRows, itemValue, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { planStockAdjustment, adjustReasonText } from '../utils/stock-adjust.js';
@@ -105,78 +106,10 @@ export class StockManager {
 
             container.innerHTML = "";
 
-            // Consolidate stock by itemId to prevent duplicates.
-            //
-            // Buckets may be keyed by either a real catalogue id or a legacy
-            // name-based fallback (now normalized lower-case/trimmed by
-            // FirebaseService.getItemKey). We match each bucket back to the
-            // catalogue using the same normalization so that "Piyar Dana" and
-            // "piyar dana" collapse to one row.
-            //
-            // Buckets with no catalogue match are NOT silently dropped — they
-            // surface as their own row tagged "Unmatched" so the user can spot
-            // data discrepancies (e.g. a sale stored under a deleted item, or
-            // a name typo) instead of seeing wrong totals.
-            const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
-            // Index the catalogue once; a key resolves to the first item (in
-            // array order) whose id equals the key or whose normalized
-            // name/hindiName equals the normalized key — same as the former
-            // per-key AppState.items.find().
-            const indexById = new Map();
-            const indexByName = new Map();
-            AppState.items.forEach((i, idx) => {
-                if (!indexById.has(i.id)) indexById.set(i.id, idx);
-                const n = normalize(i.name);
-                if (!indexByName.has(n)) indexByName.set(n, idx);
-                const h = normalize(i.hindiName);
-                if (!indexByName.has(h)) indexByName.set(h, idx);
-            });
-            const findCatalogueItem = (key) => {
-                const byId = indexById.has(key) ? indexById.get(key) : Infinity;
-                const nk = normalize(key);
-                const byName = indexByName.has(nk) ? indexByName.get(nk) : Infinity;
-                const idx = Math.min(byId, byName);
-                return idx === Infinity ? undefined : AppState.items[idx];
-            };
-            const consolidatedStock = {};
-            const orphanKeys = [];
-            Object.keys(stock).forEach(key => {
-                const item = findCatalogueItem(key);
-
-                if (!item) {
-                    // Orphan: render under its raw key so the data stays visible.
-                    if (!consolidatedStock[`__orphan__${key}`]) {
-                        consolidatedStock[`__orphan__${key}`] = {
-                            itemId: `__orphan__${key}`,
-                            name: key,
-                            hindiName: '',
-                            quantity: 0,
-                            totalValue: 0,
-                            rate: 0,
-                            isOrphan: true
-                        };
-                    }
-                    consolidatedStock[`__orphan__${key}`].quantity += stock[key].quantity || 0;
-                    consolidatedStock[`__orphan__${key}`].totalValue += (stock[key].quantity || 0) * (stock[key].rate || 0);
-                    orphanKeys.push(key);
-                    return;
-                }
-
-                const itemId = item.id;
-                if (!consolidatedStock[itemId]) {
-                    consolidatedStock[itemId] = {
-                        itemId: item.id,
-                        name: item.name,
-                        hindiName: item.hindiName,
-                        quantity: 0,
-                        totalValue: 0,
-                        rate: 0
-                    };
-                }
-
-                consolidatedStock[itemId].quantity += stock[key].quantity || 0;
-                consolidatedStock[itemId].totalValue += (stock[key].quantity || 0) * (stock[key].rate || 0);
-            });
+            // Buckets keyed by a catalogue id or a legacy name collapse to one row per
+            // item with a weighted average rate; buckets with no catalogue match stay
+            // visible as "Unmatched" rows (utils/calc/stock.js stockRows, S1/S2).
+            const { rows: stockWithDetails, orphanKeys } = stockRows(stock, AppState.items);
 
             if (orphanKeys.length > 0) {
                 console.warn(
@@ -185,28 +118,6 @@ export class StockManager {
                     orphanKeys
                 );
             }
-        
-        // Calculate weighted average rates
-        Object.values(consolidatedStock).forEach(item => {
-            if (item.quantity > 0 && item.totalValue > 0) {
-                item.rate = item.totalValue / item.quantity;
-            }
-            delete item.totalValue;
-        });
-
-        // Filter and sort.
-        //
-        // Real catalogue rows are hidden when quantity rounds to 0 kg (the
-        // historical behavior). Orphan rows are kept whenever they carry any
-        // non-zero quantity — including negative ones — because that's exactly
-        // the case the user needs to see: a sale recorded under a different
-        // name/id than the catalogue knows about.
-        const stockWithDetails = Object.values(consolidatedStock)
-            .filter(item => item.isOrphan ? Math.abs(item.quantity) > 0.001 : item.quantity > 0)
-            .sort((a, b) => {
-                if (a.isOrphan !== b.isOrphan) return a.isOrphan ? 1 : -1;
-                return a.name.localeCompare(b.name);
-            });
         
         if (stockWithDetails.length === 0) {
             container.innerHTML = this.emptyStockHtml();
@@ -255,7 +166,7 @@ export class StockManager {
             // Rate is always shown, value is hidden when showing "Available"
             const showLimitedQty = isStaff && item.quantity > 100;
             const quantityDisplay = showLimitedQty ? tx('ui.stock.available') : `${stockKg(item.quantity)} kg`;
-            const valueDisplay = showLimitedQty ? '' : `<div data-perm="stockValue" style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${formatRupees(item.quantity * (item.rate || 0))}</div>`;
+            const valueDisplay = showLimitedQty ? '' : `<div data-perm="stockValue" style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${formatRupees(itemValue(item))}</div>`;
             
             div.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -478,14 +389,14 @@ export class StockManager {
             });
             const windowDays = windowStart > 0 ? localDaysBetween(windowStart, now) : Infinity;
             const e = (v) => Helpers.escapeHtml(v);
-            const totalValue = rows.reduce((s, r) => s + r.value, 0);
+            const totalValue = deadStockValue(rows);
 
             if (summary) {
                 const windowNote = windowStart > 0
                     ? t('ui.deadstock.window_note', { date: formatWindowDate(windowStart), days: windowDays })
                     : t('ui.deadstock.all_bills');
                 summary.innerHTML = rows.length
-                    ? `${e(t('ui.deadstock.summary', { n: rows.length, value: Math.round(totalValue).toLocaleString('en-IN') }))}<br>${e(windowNote)}`
+                    ? `${e(t('ui.deadstock.summary', { n: rows.length, value: formatAmount(totalValue) }))}<br>${e(windowNote)}`
                     : e(windowNote);
             }
 
@@ -579,15 +490,12 @@ export class StockManager {
 
         // Stock is keyed by catalogue id: the replay resolves legacy name-only
         // lines to the id, so a name lookup would only find stale entries.
-        const stockData = AppState.stock[item.id] || {};
-        const quantity = stockData.quantity || 0;
-        const totalValue = quantity * (stockData.rate || 0);
+        const { quantity, avgRate } = adjustItemStock(AppState.stock[item.id]);
         display.textContent = quantity.toFixed(1);
         
-        // Calculate and display average rate
+        // Average rate (S2)
         if (avgRateDisplay && avgRateValue) {
-            if (quantity > 0 && totalValue > 0) {
-                const avgRate = totalValue / quantity;
+            if (avgRate !== null) {
                 avgRateValue.textContent = `₹${avgRate.toFixed(2)}/kg`;
                 avgRateDisplay.style.display = "block";
             } else {
@@ -765,14 +673,8 @@ export class StockManager {
                 const item = AppState.items.find(i => i.id === adj.itemId || i.name === adj.itemName);
                 const displayName = (AppState.settings.showHindi && item?.hindiName) ? item.hindiName : (item?.name || adj.itemName || t('ui.stock.unknown_item'));
                 
-                // Use adjustment rate if available, otherwise fall back to current stock rate
-                const adjustmentRate = adj.rate || 0;
-                const stockKey = adj.itemId || adj.itemName;
-                const currentStockRate = AppState.stock[stockKey]?.rate || 0;
-                const displayRate = adjustmentRate > 0 ? adjustmentRate : currentStockRate;
-                
-                // Calculate value impact if rate is available
-                const valueImpact = (quantity !== 'Unknown' && displayRate > 0) ? quantity * displayRate : null;
+                // Rate shown and value (S5): the adjustment's own rate, else the item's current average rate
+                const { rate: displayRate, value: valueImpact, rounded: valueShown } = adjustmentValue(adj, AppState.stock);
                 
                 div.innerHTML = `
                     <div class="history-header">
@@ -783,7 +685,7 @@ export class StockManager {
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(adj.date || t('ui.stock.unknown_date'))}${adj.createdByName ? ` • ${tx('ui.stock.by', { name: adj.createdByName })}` : ''}</div>
                     <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-                        ${displayRate > 0 ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">${tx('ui.stock.rate_per_kg', { rate: displayRate.toFixed(2) })}${valueImpact ? ` • ${tx('ui.stock.value', { amount: Math.round(valueImpact) })}` : ''}</div>` : ''}
+                        ${displayRate > 0 ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">${tx('ui.stock.rate_per_kg', { rate: displayRate.toFixed(2) })}${valueImpact ? ` • ${tx('ui.stock.value', { amount: valueShown })}` : ''}</div>` : ''}
                         <div style="font-size: 13px; color: #666;">
                             ${(adj.previousStock || 0).toFixed(1)} kg → ${(adj.newStock || 0).toFixed(1)} kg
                             ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: adj.rawQuantity })}` : ''}

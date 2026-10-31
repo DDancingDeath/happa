@@ -9,6 +9,7 @@
 
 import { createItemKeyResolver, eventTime } from './stock-replay.js';
 import { startOfLocalDay } from './dates.js';
+import { itemValue } from './calc/stock.js';
 import { t } from '../i18n/index.js';
 
 /** Day thresholds offered in the selector. */
@@ -111,7 +112,7 @@ export function findDeadStock({ stock, items, sources, now, minDays = DEFAULT_DE
             hindiName: item.hindiName || '',
             quantity,
             rate,
-            value: quantity * rate,
+            value: itemValue({ quantity, rate }),
             lastSaleAt,
             daysSinceSale,
             saleBeyondWindow: lastSaleAt === null && !full,

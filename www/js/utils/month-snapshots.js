@@ -154,6 +154,17 @@ export function partialFigures(doc, uptoDay, fromDay = 1) {
 }
 
 /**
+ * I1 "vs last year" from snapshots: item sales of whole months added up per item.
+ * @param {Array<{items: Array<{key: string, sales: number}>}>} figures figuresFromSnapshot() of each month
+ * @returns {Array<{key: string, sales: number}>}
+ */
+export function snapshotItemSales(figures) {
+    const out = new Map();
+    (figures || []).forEach(d => d.items.forEach(x => out.set(x.key, { key: x.key, sales: (out.get(x.key)?.sales || 0) + x.sales })));
+    return [...out.values()];
+}
+
+/**
  * Figures for any [from, to) from month snapshots. Whole months add all
  * figures; a part first or last month adds only its days (sales and profit),
  * so a range starting mid-month is never padded with the whole month.

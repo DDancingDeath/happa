@@ -595,6 +595,34 @@ export function netWorth(data, { accounts = 0, drawer = 0 } = {}) {
 }
 
 /**
+ * I12 top-5 share: the five biggest named parties' (PARTY) share of all parties'
+ * BILL-TOTAL in the period, rounded %. null when the total is not above 0.
+ * @param {'sales'|'purchases'} kind
+ */
+export function topShare(data, range, kind = 'sales', n5 = 5) {
+    const bills = kind === 'sales' ? [...activity(data.wholesaleSales), ...activity(data.retailSales)] : activity(data.purchases);
+    const byParty = {};
+    bills.filter(b => inRange(eventTimeOf(b), range)).forEach(b => {
+        const k = partyKey(b.customerName ?? b.supplierName);
+        byParty[k] = (byParty[k] || 0) + billValue(b);
+    });
+    const totals = Object.entries(byParty).sort((a, b) => b[1] - a[1]);
+    const all = totals.reduce((a, [, v]) => a + v, 0);
+    const top = totals.filter(([k]) => k).slice(0, n5).reduce((a, [, v]) => a + v, 0);
+    return all > 0 ? Math.round((top / all) * 100) : null;
+}
+
+/**
+ * S5 stock adjustment value: its quantity × its own rate, else the item's
+ * average cost now (S2); null without a quantity or a rate.
+ */
+export function adjustmentValue(adj, avgCostNow) {
+    if (adj.quantity === undefined) return null;
+    const rate = n(adj.rate) > 0 ? n(adj.rate) : n(avgCostNow);
+    return rate > 0 ? n(adj.quantity) * rate : null;
+}
+
+/**
  * I9 weekly kg: kg sold (retail + wholesale lines, any item key) in the last 8 weeks
  * (56 days up to now) ÷ 8, per item key (catalogue id, else the line name).
  */

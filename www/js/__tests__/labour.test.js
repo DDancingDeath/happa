@@ -6,7 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import {
-    labourDeducted, labourGap, labourToPay, labourPackages, labourSummary, labourToPayByDay, billKg, billPackets,
+    labourDeducted, labourGap, periodLabourGap, labourToPay, labourPackages, labourSummary, labourToPayByDay, billKg, billPackets,
     normalizePackageKg, DEFAULT_LABOUR_PACKAGE_KG
 } from '../utils/labour.js';
 import { buildDayReportText } from '../utils/anomalies.js';
@@ -250,4 +250,10 @@ test('T-LAB-3: to pay and deducted match within 50 paise, else more / less', () 
     expect(labourGap(-0.49)).toEqual({ amount: 0.49, kind: 'same' });
     expect(labourGap(0.5)).toEqual({ amount: 0.5, kind: 'more' });
     expect(labourGap(-0.5)).toEqual({ amount: 0.5, kind: 'less' });
+});
+
+test('T-LAB-3 for a period: to pay − deducted to the paise, then labourGap', () => {
+    expect(periodLabourGap(150, 102)).toEqual({ amount: 48, kind: 'more' });
+    expect(periodLabourGap(100.1, 100.6)).toEqual({ amount: 0.5, kind: 'less' });
+    expect(periodLabourGap(0.3, 0.1)).toEqual({ amount: 0.2, kind: 'same' });
 });

@@ -20,8 +20,9 @@
 
 import {
     collectEvents, cloneState, createItemKeyResolver, replayEvents, replayWithValues,
-    stateValue, eventTime
+    eventTime
 } from './stock-replay.js';
+import { stockValue } from './calc/stock.js';
 import { activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { parseAnyBillDate } from './dates.js';
@@ -144,7 +145,7 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
     let i = 0;
     while (i < events.length && events[i].t < from) i++;
     replayWithValues(state, events.slice(0, i), getKey, (ev, key) => noteCost(key, ev));
-    const opening = stateValue(state);
+    const opening = stockValue(state);
     const openingState = detail ? cloneState(state) : null;
 
     let j = i;
@@ -228,10 +229,10 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
             rows.uncosted.push({ key: `u${u.idx}`, ...billFields(u.ev.bill, u.ev.source), itemKey: u.key, ...namer.name(u.key), qty: u.qty, rate, amount: u.qty * rate });
         }
     });
-    const closing = stateValue(state);
+    const closing = stockValue(state);
     const closingState = detail ? cloneState(state) : null;
     replayEvents(state, events.slice(j), getKey);
-    const now = stateValue(state);
+    const now = stockValue(state);
     const result = {
         opening: round2(opening),
         purchases: round2(purchases),
