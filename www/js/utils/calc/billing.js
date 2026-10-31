@@ -171,23 +171,52 @@ export function computeRetailTotals(items) {
 }
 
 /**
+ * WS-COST: the average cost per kg of a wholesale line's item in stock: by its
+ * itemId, else the catalogue item with that id or name / Hindi name (as the stock
+ * replay maps names); null when no stock entry has a rate (never purchased, no
+ * opening stock, or an unknown item).
+ * @param {Object} line - ({ itemId, name })
+ * @param {Object} stock - AppState.stock ({ [itemId|name]: { rate } })
+ * @param {Object[]} [catalogue] - AppState.items
+ * @returns {?number}
+ */
+export function wholesaleCostRate(line, stock = {}, catalogue = []) {
+    const norm = (s) => String(s ?? '').trim().toLowerCase();
+    const name = norm(readLineItem(line).name);
+    const item = (catalogue || []).find(i => i && ((line?.itemId && i.id === line.itemId)
+        || (name && (norm(i.name) === name || norm(i.hindiName) === name)))) || null;
+    for (const key of [line?.itemId, item?.id, item?.name, readLineItem(line).name, name]) {
+        if (!key) continue;
+        const rate = toMoney(stock?.[key]?.rate);
+        if (rate && rate > 0) return rate;
+    }
+    return null;
+}
+
+/**
  * BF-TOTAL, WS-PROFIT, WS-MARGIN: wholesale total, cost (qty × the item's
- * current average rate in stock; ₹0 when the rate is unknown), profit and margin.
+ * current average rate in stock, WS-COST), profit and margin. When a line's
+ * cost is not known the profit is not known either (#102): profit and margin
+ * are null and `unknownCost` lists those lines (cost then counts the known lines).
  * @param {Array<Object>} items - sale lines ({ itemId, qty|quantity, total })
  * @param {Object} stock - AppState.stock ({ [itemId]: { rate } })
  * @param {number} [expenses=0]
- * @returns {{total: number, cost: number, profit: number, profitPercent: number}}
+ * @param {Object[]} [catalogue] - AppState.items, to find a line's stock by name
+ * @returns {{total: number, cost: number, profit: ?number, profitPercent: ?number, unknownCost: number[]}}
  */
-export function computeWholesaleTotals(items, stock = {}, expenses = 0) {
+export function computeWholesaleTotals(items, stock = {}, expenses = 0, catalogue = []) {
     const list = Array.isArray(items) ? items : [];
     const total = roundFor('billTotal', moneySum(list, item => readLineItem(item).total));
-    const cost = roundFor('billTotal', moneySum(list, item => {
-        const rate = toMoney(stock?.[item?.itemId]?.rate);
-        return rate ? rate * readLineItem(item).qty : 0;
-    }));
+    const unknownCost = [];
+    const cost = roundFor('billTotal', moneySum(list.map((item, i) => {
+        const rate = wholesaleCostRate(item, stock, catalogue);
+        if (rate === null) unknownCost.push(i);
+        return rate === null ? 0 : rate * readLineItem(item).qty;
+    }), x => x));
+    if (unknownCost.length) return { total, cost, profit: null, profitPercent: null, unknownCost };
     const profit = roundFor('billTotal', total - cost - (toMoney(expenses) || 0));
     const profitPercent = total > 0 ? roundFor('margin', profit / total) : 0;
-    return { total, cost, profit, profitPercent };
+    return { total, cost, profit, profitPercent, unknownCost };
 }
 
 /**
@@ -195,12 +224,13 @@ export function computeWholesaleTotals(items, stock = {}, expenses = 0) {
  * @param {Array<Object>} items
  * @param {Object} stock
  * @param {number} [expenses=0]
- * @returns {{total: number, cost: number, profit: number, profitPercent: number, shownProfit: number}}
- *   shownProfit in ROUNDING.shown (also the WhatsApp text's profit)
+ * @param {Object[]} [catalogue]
+ * @returns {{total: number, cost: number, profit: ?number, profitPercent: ?number, unknownCost: number[], shownProfit: ?number}}
+ *   shownProfit in ROUNDING.shown (also the WhatsApp text's profit); null when a cost is unknown
  */
-export function wholesaleLiveProfit(items, stock, expenses = 0) {
-    const totals = computeWholesaleTotals(items, stock, expenses);
-    return { ...totals, shownProfit: roundFor('shown', totals.profit) || 0 };
+export function wholesaleLiveProfit(items, stock, expenses = 0, catalogue = []) {
+    const totals = computeWholesaleTotals(items, stock, expenses, catalogue);
+    return { ...totals, shownProfit: totals.profit === null ? null : (roundFor('shown', totals.profit) || 0) };
 }
 
 /**
@@ -321,6 +351,7 @@ export const BILLING_SPEC = Object.freeze({
     payableOnScreen: 'BF-PAYABLE',
     computeRetailTotals: 'BF-TOTAL',
     computeWholesaleTotals: 'BF-TOTAL, WS-PROFIT, WS-MARGIN',
+    wholesaleCostRate: 'WS-COST',
     wholesaleLiveProfit: 'WS-PROFIT, WS-MARGIN',
     paymentSplit: 'BF-SAVE',
     paidOnScreen: 'BF-PAID',

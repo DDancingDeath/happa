@@ -105,9 +105,16 @@ describe('the forms show the oracle\'s figures', () => {
         const want = O.billForm('wholesale', entries, { stock: AppState.stock, expenses: 20.5 });
         expect(lineAmounts('#salesTable')).toEqual(want.BF_LINE);
         expect(Number(text('salesTotalAmount'))).toBe(want.BF_TOTAL_shown);
-        expect(Number(text('salesProfitAmount'))).toBe(want.WS_PROFIT_shown);
-        expect(Number(text('salesProfitPercent'))).toBe(want.WS_MARGIN);
-        expect(WholesaleSalesManager.computeTotals()).toMatchObject({ total: want.BF_TOTAL, profit: want.WS_PROFIT, profitPercent: want.WS_MARGIN });
+        expect(want.WS_PROFIT).toBeNull();
+        expect([text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['—', '—']);
+        expect(WholesaleSalesManager.computeTotals()).toMatchObject({ total: want.BF_TOTAL, profit: null, profitPercent: null });
+
+        AppState.stock['item-wheat'].rate = 30;
+        WholesaleSalesManager.updateProfitCalculation();
+        const known = O.billForm('wholesale', entries, { stock: AppState.stock, expenses: 20.5 });
+        expect(Number(text('salesProfitAmount'))).toBe(known.WS_PROFIT_shown);
+        expect(Number(text('salesProfitPercent'))).toBe(known.WS_MARGIN);
+        expect(WholesaleSalesManager.computeTotals()).toMatchObject({ total: known.BF_TOTAL, profit: known.WS_PROFIT, profitPercent: known.WS_MARGIN });
     });
 });
 
@@ -153,7 +160,8 @@ describe('utils/calc/billing.js == oracle on generated bills', () => {
         });
         const stock = fc.record({
             a: fc.record({ rate: fc.integer({ min: 1, max: 20000 }).map(x => x / 100) }),
-            b: fc.record({ rate: fc.constant(undefined) })
+            b: fc.record({ rate: fc.oneof(fc.constant(undefined), fc.integer({ min: 1, max: 20000 }).map(x => x / 100)) }),
+            c: fc.record({ rate: fc.integer({ min: 1, max: 20000 }).map(x => x / 100) })
         });
         const expenses = fc.integer({ min: 0, max: 100000 }).map(x => x / 100);
         fc.assert(fc.property(fc.array(entry, { maxLength: 6 }), stock, expenses, (entries, st, ex) => {
@@ -163,5 +171,29 @@ describe('utils/calc/billing.js == oracle on generated bills', () => {
             expect({ total: got.total, profit: got.profit, shown: got.shownProfit, margin: got.profitPercent })
                 .toEqual({ total: want.BF_TOTAL, profit: want.WS_PROFIT, shown: want.WS_PROFIT_shown, margin: want.WS_MARGIN });
         }), { seed: 129, numRuns: RUNS });
+    });
+});
+
+describe('WS-COST lookup by name (#102)', () => {
+    test('stock keyed by id or by name, lines found by Hindi name or an old id: app == oracle', () => {
+        const catalogue = [{ id: 'r', name: 'Rice', hindiName: 'चावल' }, { id: 'w', name: 'Wheat' }, { id: 'm', name: 'Maize' }];
+        const entry = fc.record({
+            itemId: fc.constantFrom('r', 'w', 'm', 'old-id', undefined),
+            name: fc.constantFrom('Rice', 'चावल', 'Wheat', 'Maize', 'Ghost', 'Corn '),
+            rate: fc.integer({ min: 1, max: 10000 }).map(x => x / 100),
+            qty: fc.integer({ min: 1, max: 5000 }).map(x => x / 100)
+        });
+        const stock = fc.record({
+            r: fc.constantFrom(undefined, { rate: 25 }),
+            Wheat: fc.constantFrom(undefined, { rate: 31.5 }, { rate: 0 }),
+            m: fc.constantFrom(undefined, { quantity: 4 }),
+            corn: fc.constantFrom(undefined, { rate: 18 })
+        });
+        fc.assert(fc.property(fc.array(entry, { minLength: 1, maxLength: 5 }), stock, (entries, st) => {
+            const want = O.billForm('wholesale', entries, { stock: st, catalogue });
+            const lines = entries.map(e => ({ itemId: e.itemId, name: e.name, qty: e.qty, total: computeLine(e).total }));
+            const got = wholesaleLiveProfit(lines, st, 0, catalogue);
+            expect({ profit: got.profit, margin: got.profitPercent }).toEqual({ profit: want.WS_PROFIT, margin: want.WS_MARGIN });
+        }), { seed: 102, numRuns: RUNS });
     });
 });
