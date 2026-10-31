@@ -38,8 +38,8 @@
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="save-btn" onclick="window.app.expenses.saveBusinessExpense()" data-i18n="ui.expenses.save_expense">Save Expense</button>
-                <button class="print-btn" onclick="window.app.expenses.saveAndPrintBusiness()" data-i18n="ui.expenses.print_expense">Print Expense</button>
+                <button class="save-btn" data-expense-save onclick="window.app.expenses.saveBusinessExpense()" data-i18n="ui.expenses.save_expense">Save Expense</button>
+                <button class="print-btn" data-expense-save onclick="window.app.expenses.saveAndPrintBusiness()" data-i18n="ui.expenses.print_expense">Print Expense</button>
             </div>
 
             <h3 data-i18n="ui.expenses.business_expense_history">Business Expense History</h3>
@@ -80,8 +80,8 @@
             </div>
 
             <div style="display: flex; gap: 12px; margin-top: 16px;">
-                <button class="save-btn" onclick="window.app.expenses.savePersonalExpense()" data-i18n="ui.expenses.save_expense">Save Expense</button>
-                <button class="print-btn" onclick="window.app.expenses.saveAndPrintPersonal()" data-i18n="ui.expenses.print_expense">Print Expense</button>
+                <button class="save-btn" data-expense-save onclick="window.app.expenses.savePersonalExpense()" data-i18n="ui.expenses.save_expense">Save Expense</button>
+                <button class="print-btn" data-expense-save onclick="window.app.expenses.saveAndPrintPersonal()" data-i18n="ui.expenses.print_expense">Print Expense</button>
             </div>
 
             <h3 data-i18n="ui.expenses.personal_expense_history">Personal Expense History</h3>

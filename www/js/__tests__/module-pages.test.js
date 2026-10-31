@@ -200,7 +200,7 @@ describe('Stock', () => {
 
     test('add adjustment records previous stock from the id bucket (#29: replay folds legacy names into the id)', async () => {
         AppState.stock = cloneStock();
-        const save = jest.spyOn(FirebaseService, 'saveStockAdjustment').mockResolvedValue(undefined);
+        const save = jest.spyOn(FirebaseService, 'startSaveStockAdjustment').mockReturnValue({ record: {}, committed: Promise.resolve() });
         jest.spyOn(FirebaseService, 'calculateStock').mockResolvedValue({});
         jest.spyOn(StockManager, 'renderAdjustmentHistory').mockImplementation(() => {});
         StockManager.loadAdjustItemsDropdown();
@@ -217,7 +217,7 @@ describe('Stock', () => {
     });
 
     test('rejects a missing item or non-positive quantity', async () => {
-        const save = jest.spyOn(FirebaseService, 'saveStockAdjustment').mockResolvedValue(undefined);
+        const save = jest.spyOn(FirebaseService, 'startSaveStockAdjustment').mockReturnValue({ record: {}, committed: Promise.resolve() });
         StockManager.loadAdjustItemsDropdown();
         await StockManager.applyStockAdjustment();
         expect(toast).toHaveBeenLastCalledWith('Please select an item');
@@ -231,7 +231,7 @@ describe('Stock', () => {
     // #72: "Set" to 0 is allowed, but only with a reason.
     test('can set stock to 0 (with a reason)', async () => {
         AppState.stock = cloneStock();
-        const save = jest.spyOn(FirebaseService, 'saveStockAdjustment').mockResolvedValue(undefined);
+        const save = jest.spyOn(FirebaseService, 'startSaveStockAdjustment').mockReturnValue({ record: {}, committed: Promise.resolve() });
         jest.spyOn(FirebaseService, 'calculateStock').mockResolvedValue({});
         jest.spyOn(StockManager, 'renderAdjustmentHistory').mockImplementation(() => {});
         StockManager.loadAdjustItemsDropdown();

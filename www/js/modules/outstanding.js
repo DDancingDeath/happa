@@ -39,8 +39,8 @@ const COLLECTION_BY_TYPE = { purchase: 'purchases', retail: 'retailSales', whole
 
 const colName = (name) => (window.getCollection ? window.getCollection(name) : name);
 
-/** Record buttons disabled while a due payment is being saved (#70) */
-const RECORD_PAYMENT_BUTTONS = '[data-record-payment]';
+/** Record / Mark cleared buttons disabled while a due payment is being saved (#70, #95) */
+const RECORD_PAYMENT_BUTTONS = '[data-record-payment], [data-mark-cleared]';
 
 /**
  * Outstanding Manager - Manages due payments
@@ -247,7 +247,7 @@ export class OutstandingManager {
                         <button data-record-payment onclick="window.app.outstanding.recordPayment('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background-color: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.record')}</button>
                     </div>
                     <div style="margin-top: 8px;">
-                        <button type="button" onclick="window.app.outstanding.markAsCleared('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background: white; color: #333; border: 1px solid #999; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.mark_as_cleared')}</button>
+                        <button type="button" data-mark-cleared onclick="window.app.outstanding.markAsCleared('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background: white; color: #333; border: 1px solid #999; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.mark_as_cleared')}</button>
                     </div>
                 </div>
             `;
@@ -783,6 +783,7 @@ export class OutstandingManager {
      * @returns {Promise<boolean>} true when the bill was cleared
      */
     static async markAsCleared(transactionId, transactionType) {
+        if (Helpers.isBusy('due-payment')) return false;
         const transaction = this.findBill(transactionType, transactionId);
         if (!transaction) {
             UIManager.showToast(t('msg.outstanding.error_transaction_not_found'));
@@ -837,6 +838,11 @@ export class OutstandingManager {
             UIManager.showToast(t('msg.outstanding.internet_required_clear_due'));
             return false;
         }
+        const ok = await Helpers.runExclusive('due-payment', RECORD_PAYMENT_BUTTONS, () => this._writeOff(transactionType, transaction, reason));
+        return ok === true;
+    }
+
+    static async _writeOff(transactionType, transaction, reason) {
         try {
             const written = await this.applyWriteOffTransaction(transactionType, transaction, reason);
             Object.assign(transaction, written);

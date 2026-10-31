@@ -719,6 +719,35 @@ function forgetRecord(collKey, id) {
 }
 
 /**
+ * New history record with an id made on the phone, shown in memory at once
+ * (works offline; the listener later replaces it, same doc id). A refused
+ * write removes it again and rejects `committed`. `id`: save again over this
+ * not-yet-confirmed record; `sent` is the raw write (for whenStoredLocally).
+ * @private
+ * @returns {{record: Object, committed: Promise<void>, sent: Promise<void>}}
+ */
+function startCreate(collKey, data, id = null) {
+    const coll = getDb().collection(col(collKey));
+    const ref = id ? coll.doc(String(id)) : coll.doc();
+    const record = { id: ref.id, ...data };
+    const stateKey = HISTORY_SPEC[collKey].stateKey;
+    noteLocalRecordWrite(collKey, ref.id, record);
+    const list = AppState[stateKey] || (AppState[stateKey] = []);
+    const at = list.findIndex(r => String(r.id) === ref.id);
+    if (at === -1) list.unshift(record);
+    else list[at] = record;
+    const sent = ref.set(data);
+    SyncStatus.trackWrite(ref.path, sent);
+    const committed = sent.catch(err => {
+        forgetRecord(collKey, ref.id);
+        const i = (AppState[stateKey] || []).findIndex(r => String(r.id) === ref.id);
+        if (i !== -1) AppState[stateKey].splice(i, 1);
+        throw err;
+    });
+    return { record, committed, sent };
+}
+
+/**
  * Gives a record the numeric `timestamp` the window queries filter on. Uses
  * the time the stock replay already assigns it (so replay order is unchanged),
  * or now for a new record without a parseable date.
@@ -2525,22 +2554,7 @@ const FirebaseService = {
         }
 
         ensureTimestamp(expense, true);
-        const coll = getDb().collection(col('expenses'));
-        const ref = id ? coll.doc(String(id)) : coll.doc();
-        const record = { id: ref.id, ...expense };
-        noteLocalRecordWrite('expenses', ref.id, record);
-        const list = AppState.expensesHistory || (AppState.expensesHistory = []);
-        const at = list.findIndex(e => String(e.id) === ref.id);
-        if (at === -1) list.unshift(record);
-        else list[at] = record;
-        const sent = ref.set(expense);
-        SyncStatus.trackWrite(ref.path, sent);
-        const committed = sent.catch(err => {
-            forgetRecord('expenses', ref.id);
-            const i = (AppState.expensesHistory || []).findIndex(e => String(e.id) === ref.id);
-            if (i !== -1) AppState.expensesHistory.splice(i, 1);
-            throw err;
-        });
+        const { record, committed, sent } = startCreate('expenses', expense, id);
         noteMonthWrite('expenses', null, record);
         return { record, committed, stored: whenStoredLocally(sent, EXPENSE_STORE_WAIT_MS) };
     },
@@ -2855,6 +2869,18 @@ const FirebaseService = {
      * @returns {Promise<Object>} The saved adjustment with ID
      */
     async saveStockAdjustment(adjustment) {
+        const { record, committed } = this.startSaveStockAdjustment(adjustment);
+        await committed;
+        return record;
+    },
+
+    /**
+     * Starts saving a new stock adjustment (id made on the phone) and shows it
+     * at once, also offline (#95); a refused write removes it again.
+     * @param {Object} adjustment
+     * @returns {{record: Object, committed: Promise<void>}}
+     */
+    startSaveStockAdjustment(adjustment) {
         if (!adjustment.userId && AppState.currentUser) {
             adjustment.userId = AppState.currentUser.uid;
         }
@@ -2863,11 +2889,10 @@ const FirebaseService = {
         }
         
         prepareStockRecord('stockAdjustments', adjustment, true);
-        const write = getDb().collection(col('stockAdjustments')).add(adjustment);
+        const started = startCreate('stockAdjustments', adjustment);
         noteStockWrite('stockAdjustments', null, adjustment);
         noteMonthWrite('stockAdjustments', null, adjustment);
-        const docRef = await write;
-        return { id: docRef.id, ...adjustment };
+        return started;
     },
 
     /**
@@ -2903,6 +2928,18 @@ const FirebaseService = {
      * @returns {Promise<Object>} The saved withdrawal with ID
      */
     async saveWithdrawal(withdrawal) {
+        const { record, committed } = this.startSaveWithdrawal(withdrawal);
+        await committed;
+        return record;
+    },
+
+    /**
+     * Starts saving a new withdrawal (id made on the phone) and shows it at
+     * once, also offline (#95); a refused write removes it again.
+     * @param {Object} withdrawal
+     * @returns {{record: Object, committed: Promise<void>}}
+     */
+    startSaveWithdrawal(withdrawal) {
         if (!withdrawal.userId && AppState.currentUser) {
             withdrawal.userId = AppState.currentUser.uid;
         }
@@ -2915,9 +2952,9 @@ const FirebaseService = {
         if (typeof withdrawal.timestamp !== 'number') {
             withdrawal.timestamp = Math.max(Date.now(), parseAnyBillDate(withdrawal.date)?.getTime() || 0);
         }
-        const docRef = await getDb().collection(col('withdrawals')).add(withdrawal);
+        const started = startCreate('withdrawals', withdrawal);
         noteMonthWrite('withdrawals', null, withdrawal);
-        return { id: docRef.id, ...withdrawal };
+        return started;
     },
 
     /**

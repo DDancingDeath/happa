@@ -106,6 +106,8 @@ export default {
     'msg.cash.cash_signed_in_successfully': "✓ Cash opened for today",
     'msg.cash.joined_open_session': "Cash for today is already open ({name}, ₹{amount}). Joined that session.",
     'msg.cash.open_needs_internet': "Open cash needs internet. Connect and try again.",
+    'msg.cash.close_needs_internet': "Close cash needs internet. Connect and try again.",
+    'msg.cash.close_waiting': "Still closing cash: waiting for the internet…",
     'msg.cash.cash_signed_out_successfully': "✓ Cash closed",
     'msg.cash.choose_bill_or_no_bill': "Choose a bill, or \"No bill\"",
     'msg.cash.confirm_sign_out': "Close cash for today?",

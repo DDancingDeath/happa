@@ -67,7 +67,7 @@
                 <label data-i18n="ui.cash.opening_note_optional">Opening Note (Optional):</label>
                 <input type="text" id="cashSignInNotes" maxlength="200" placeholder="e.g., Counted by Ramesh" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.counted_ramesh"/>
             </div>
-            <button class="save-btn" onclick="window.app.cashManagement.signIn()" style="width: 100%; padding: 14px; margin-top: 10px; background: #15803d; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_in_today">
+            <button class="save-btn" data-cash-save="open" onclick="window.app.cashManagement.signIn()" style="width: 100%; padding: 14px; margin-top: 10px; background: #15803d; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_in_today">
                 ✓ Open cash for today
             </button>
         </div>
@@ -107,7 +107,7 @@
                 <input type="text" id="transactionNotes" placeholder="e.g., Cash low, Bill reference, etc." style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.cash_low_bill_reference"/>
             </div>
 
-            <button class="save-btn" onclick="window.app.cashManagement.recordTransaction()" style="width: 100%; padding: 14px; margin-top: 10px; background: #047857; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.record_transaction">
+            <button class="save-btn" data-cash-save="entry" onclick="window.app.cashManagement.recordTransaction()" style="width: 100%; padding: 14px; margin-top: 10px; background: #047857; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.record_transaction">
                 ✓ Record Transaction
             </button>
         </div>
@@ -190,7 +190,7 @@
                 <input type="text" id="cashSignOutNotes" maxlength="200" placeholder="e.g., Took ₹2,000 home" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.took_2_000_home"/>
             </div>
             
-            <button class="save-btn" onclick="window.app.cashManagement.signOut()" style="width: 100%; padding: 14px; margin-top: 10px; background: #dc2626; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_out_close_day">
+            <button class="save-btn" data-cash-save="close" onclick="window.app.cashManagement.signOut()" style="width: 100%; padding: 14px; margin-top: 10px; background: #dc2626; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_out_close_day">
                 ✓ Close cash & end day
             </button>
         </div>

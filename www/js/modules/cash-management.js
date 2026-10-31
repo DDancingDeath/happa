@@ -40,6 +40,11 @@ function startCashCloseRun(session, expected, counted, difference) {
 const DUE_BILL_NONE = '__none__';
 const DUE_BILL_UNLINKED = '__nobill__';
 
+/** Drawer action ('open' | 'close' | 'count' | 'entry') runs once at a time; its buttons wait (#95). */
+const withCashLock = (action, fn) => Helpers.runExclusive(`cash-${action}`, `[data-cash-save="${action}"]`, fn);
+/** Close day still waiting for the server after this long: say so (the button stays busy). */
+const CLOSE_WAIT_MS = 8000;
+
 /** Sessions read when Cash opens (today and the one before), and per "Load older" (#34). */
 const RECENT_SESSIONS = 2;
 const OLDER_SESSIONS_PAGE = 30;
@@ -719,7 +724,11 @@ export class CashManagementManager {
      * Transaction: only a still-uncounted session is updated.
      * @param {string} sessionId
      */
-    static async recordLateCount(sessionId) {
+    static recordLateCount(sessionId) {
+        return withCashLock('count', () => this._recordLateCount(sessionId));
+    }
+
+    static async _recordLateCount(sessionId) {
         const amount = parseCashAmount(document.getElementById('lateCountAmount')?.value);
         if (amount === null) {
             UIManager.showToast(t('msg.cash.enter_cash_amount_counted'));
@@ -797,6 +806,7 @@ export class CashManagementManager {
     }
 
     static async signIn() {
+        if (Helpers.isBusy('cash-open')) return;
         // 0 is a valid opening (empty drawer); only empty/negative input is rejected (#66)
         const amount = parseCashAmount(document.getElementById('cashSignInAmount')?.value);
         const openingNotes = Helpers.getInputText('cashSignInNotes');
@@ -835,20 +845,22 @@ export class CashManagementManager {
             };
             if (openingNotes) session.openingNotes = openingNotes;
 
-            const { session: opened, joined } = await FirebaseService.openCashSession(session);
-            this.todaySession = opened;
-            await this.calculateTodayTransactions();
-            this.updateUI();
-            this.renderHistory();
-            
-            UIManager.showToast(joined
-                ? t('msg.cash.joined_open_session', { name: opened.userName || '', amount: opened.openingBalance })
-                : t('msg.cash.cash_signed_in_successfully'));
-            
-            // Clear inputs
-            document.getElementById('cashSignInAmount').value = '';
-            const openingNotesInput = document.getElementById('cashSignInNotes');
-            if (openingNotesInput) openingNotesInput.value = '';
+            await withCashLock('open', async () => {
+                const { session: opened, joined } = await FirebaseService.openCashSession(session);
+                this.todaySession = opened;
+                await this.calculateTodayTransactions();
+                this.updateUI();
+                this.renderHistory();
+
+                UIManager.showToast(joined
+                    ? t('msg.cash.joined_open_session', { name: opened.userName || '', amount: opened.openingBalance })
+                    : t('msg.cash.cash_signed_in_successfully'));
+
+                // Clear inputs
+                document.getElementById('cashSignInAmount').value = '';
+                const openingNotesInput = document.getElementById('cashSignInNotes');
+                if (openingNotesInput) openingNotesInput.value = '';
+            });
         } catch (error) {
             console.error('Sign in error:', error);
             UIManager.showToast(error?.code === CASH_NEEDS_INTERNET
@@ -858,11 +870,18 @@ export class CashManagementManager {
     }
 
     static async signOut() {
+        if (Helpers.isBusy('cash-close')) return;
         const actualAmount = parseCashAmount(document.getElementById('cashSignOutAmount')?.value);
         const closingNotes = Helpers.getInputText('cashSignOutNotes');
 
         if (actualAmount === null) {
             UIManager.showToast(t('msg.cash.enter_actual_cash_amount'));
+            return;
+        }
+        // Closing is not queued offline: the count must use every phone's entries, and
+        // another phone may close the day meanwhile (the rules then refuse this close).
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.cash.close_needs_internet'), 'warning');
             return;
         }
 
@@ -879,6 +898,10 @@ export class CashManagementManager {
             if (!confirmed) return;
         }
 
+        await withCashLock('close', () => this._closeSession(actualAmount, closingNotes, expected, difference));
+    }
+
+    static async _closeSession(actualAmount, closingNotes, expected, difference) {
         const closingFields = {
             closingBalance: actualAmount,
             expectedBalance: expected,
@@ -904,9 +927,11 @@ export class CashManagementManager {
         const updatedSession = { ...this.todaySession, ...closingFields };
         const run = startCashCloseRun(this.todaySession, expected, actualAmount, difference);
 
+        const waiting = setTimeout(() => UIManager.showToast(t('msg.cash.close_waiting'), 'warning'), CLOSE_WAIT_MS);
         try {
             // Field-level update: never overwrite deposits/due payments added on another device
             await sessionRef(this.todaySession.id).update(closingFields);
+            clearTimeout(waiting);
             run.complete();
             this.todaySession = updatedSession;
             this.updateUI();
@@ -919,13 +944,32 @@ export class CashManagementManager {
             const closingNotesInput = document.getElementById('cashSignOutNotes');
             if (closingNotesInput) closingNotesInput.value = '';
         } catch (error) {
+            clearTimeout(waiting);
             console.error('Sign out error:', error);
             run.completeAndFail('write_failed', { code: String(error?.code || 'unknown').slice(0, 40) });
             UIManager.showToast(t('msg.cash.failed_sign_out', { message: error.message }));
         }
     }
 
-    static async recordTransaction() {
+    static recordTransaction() {
+        return withCashLock('entry', () => this._recordTransaction());
+    }
+
+    /**
+     * Takes a refused drawer entry out of `session` and of every other
+     * in-memory copy of that session (today's, the history cache).
+     * @param {Object} session
+     * @param {'cashDeposits'|'duePayments'} field
+     * @param {string} entryId
+     */
+    static dropSessionEntry(session, field, entryId) {
+        const sid = String(session.id);
+        [session, this.todaySession, ...(this.cachedSessions || [])].forEach(s => {
+            if (s && String(s.id) === sid && Array.isArray(s[field])) s[field] = s[field].filter(e => e?.id !== entryId);
+        });
+    }
+
+    static async _recordTransaction() {
         const type = Helpers.getInputText('cashTransactionType');
         const amount = parseCashAmount(document.getElementById('transactionAmount')?.value);
         const notes = Helpers.getInputText('transactionNotes');
@@ -950,16 +994,22 @@ export class CashManagementManager {
                 addedBy: AppState.userName || 'Unknown'
             };
 
-            const updatedSession = {
-                ...this.todaySession,
-                cashDeposits: [...(this.todaySession.cashDeposits || []), deposit]
-            };
-
+            const session = this.todaySession;
             try {
-                await sessionRef(this.todaySession.id).update({
+                // Queued offline like the "No bill" entry below: show it now, don't wait for the server
+                const write = sessionRef(session.id).update({
                     cashDeposits: firebase.firestore.FieldValue.arrayUnion(deposit)
                 });
-                this.todaySession = updatedSession;
+                session.cashDeposits = [...(session.cashDeposits || []), deposit];
+                write.catch(error => {
+                    console.error('Add deposit error:', error);
+                    this.dropSessionEntry(session, 'cashDeposits', deposit.id);
+                    this.calculateTodayTransactions()
+                        .then(() => this.updateUI())
+                        .catch(e => console.error('Cash refresh failed:', e));
+                    this.renderHistory();
+                    UIManager.showToast(t('msg.cash.failed_add_deposit', { message: error.message }));
+                });
                 await this.calculateTodayTransactions();
                 this.updateUI();
                 this.renderHistory();
@@ -1035,10 +1085,11 @@ export class CashManagementManager {
                 session.duePayments = [...(session.duePayments || []), payment];
                 write.catch(error => {
                     console.error('Record payment error:', error);
-                    session.duePayments = (session.duePayments || []).filter(p => p.id !== payment.id);
+                    this.dropSessionEntry(session, 'duePayments', payment.id);
                     this.calculateTodayTransactions()
                         .then(() => this.updateUI())
                         .catch(e => console.error('Cash refresh failed:', e));
+                    this.renderHistory();
                     UIManager.showToast(t('msg.cash.failed_record_payment', { message: error.message }));
                 });
                 await this.calculateTodayTransactions();
@@ -1263,7 +1314,7 @@ export class CashManagementManager {
                     <div style="margin: 6px 0;">${L('ui.cash.record_if_known')}</div>
                     <div style="display: flex; gap: 6px;">
                         <input type="number" inputmode="decimal" min="0" id="lateCountAmount" placeholder="${L('ui.cash.cash_counted')}" style="flex: 1; padding: 8px; border: 1px solid #fdba74; border-radius: 6px;" />
-                        <button type="button" onclick="window.app.cashManagement.recordLateCount('${Helpers.escapeJsAttr(session.id)}')" style="background: #ea580c; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600;">${L('ui.cash.save_count')}</button>
+                        <button type="button" onclick="window.app.cashManagement.recordLateCount('${Helpers.escapeJsAttr(session.id)}')" data-cash-save="count" style="background: #ea580c; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600;">${L('ui.cash.save_count')}</button>
                     </div>
                 </div>` : ''}
                 <!-- Summary Card -->

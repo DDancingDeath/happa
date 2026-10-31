@@ -17,7 +17,7 @@ import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
 import { PurchaseManager } from './purchase.js';
 import { RetailSaleManager } from './retail-sale.js';
 import { t } from '../i18n/index.js';
-import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY } from '../utils/storage-full.js';
+import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
@@ -448,7 +448,11 @@ const BillingManager = {
      * Save current bill as draft
      * @async
      */
-    async saveDraft() {
+    saveDraft() {
+        return Helpers.runExclusive('draft', '#saveDraftBtn', () => this._saveDraft());
+    },
+
+    async _saveDraft() {
         const mode = this.currentMode;
         
         const currentUser = firebase.auth().currentUser;
@@ -519,18 +523,34 @@ const BillingManager = {
             draft.saleTotal = sumMoney(saleItems, item => item.total);
         }
 
+        const drafts = window.getCollection ? window.getCollection('drafts') : 'drafts';
+        let write;
         try {
-            await db.collection(window.getCollection ? window.getCollection('drafts') : 'drafts').doc(draft.id).set(draft);
-            
-            UIManager.showToast(t('msg.billing.draft_saved_cloud'));
-            UIManager.hapticFeedback('light');
-            await this.updateDraftCount();
-
-            this.clearBill();
+            // Saved on the phone at once (also offline); if the server refuses it, the bill comes back
+            write = db.collection(drafts).doc(draft.id).set(draft);
         } catch (error) {
             console.error('Failed to save draft:', error);
             UIManager.showToast(saveFailedText(error, t('msg.billing.failed_save_draft')), 'error');
+            return;
         }
+        write.catch(error => {
+            console.error('Failed to save draft:', error);
+            UIManager.showToast(saveFailedText(error, t('msg.billing.failed_save_draft')), 'error');
+            if (this.editorEmpty(draft.mode)) this.applyDraft(draft);
+            this.updateDraftCount().catch(e => console.error('Draft count refresh failed:', e));
+        });
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        UIManager.showToast(t(offline ? SAVED_ON_PHONE_KEY : 'msg.billing.draft_saved_cloud'));
+        UIManager.hapticFeedback('light');
+        this.clearBill();
+        this.updateDraftCount().catch(e => console.error('Draft count refresh failed:', e));
+    },
+
+    /** Whether the bill editor of `mode` has no items and no weights. */
+    editorEmpty(mode) {
+        return mode === 'purchase'
+            ? PurchaseManager.getBillItems().length === 0 && PurchaseManager.getWeights().length === 0
+            : RetailSaleManager.getSaleItems().length === 0 && RetailSaleManager.getSaleWeights().length === 0;
     },
 
     /**
@@ -608,6 +628,37 @@ const BillingManager = {
     },
 
     /**
+     * Put a draft's bill back into the editor.
+     * @param {Object} draft
+     */
+    applyDraft(draft) {
+        this.switchMode(draft.mode);
+
+        if (draft.mode === 'purchase') {
+            PurchaseManager.setBillItems(draft.items || []);
+            PurchaseManager.setWeights(draft.weights || []);
+            PurchaseManager.setPendingBill(draft.pendingBill);
+            PurchaseManager.renderBill();
+            PurchaseManager.renderWeights();
+            if (draft.customerName) document.getElementById('customerName').value = draft.customerName;
+            if (draft.laborCharges) document.getElementById('manualLaborCharges').value = draft.laborCharges;
+            if (draft.comments) document.getElementById('billComments').value = draft.comments;
+            setPrintComments('billPrintComments', draft.printComments);
+        } else {
+            RetailSaleManager.setSaleItems(draft.items || []);
+            RetailSaleManager.setSaleWeights(draft.weights || []);
+            RetailSaleManager.setPendingBill(draft.pendingBill);
+            RetailSaleManager.renderSalesBill();
+            RetailSaleManager.renderSaleWeights();
+            if (draft.customerName) document.getElementById('saleCustomerName').value = draft.customerName;
+            if (draft.comments) document.getElementById('saleComments').value = draft.comments;
+            setPrintComments('salePrintComments', draft.printComments);
+        }
+
+        PurchaseManager.updateTotals();
+    },
+
+    /**
      * Load a draft
      * @async
      * @param {string} draftId - Draft ID to load
@@ -623,30 +674,7 @@ const BillingManager = {
 
             const draft = draftDoc.data();
 
-            this.switchMode(draft.mode);
-
-            if (draft.mode === 'purchase') {
-                PurchaseManager.setBillItems(draft.items || []);
-                PurchaseManager.setWeights(draft.weights || []);
-                PurchaseManager.setPendingBill(draft.pendingBill);
-                PurchaseManager.renderBill();
-                PurchaseManager.renderWeights();
-                if (draft.customerName) document.getElementById('customerName').value = draft.customerName;
-                if (draft.laborCharges) document.getElementById('manualLaborCharges').value = draft.laborCharges;
-                if (draft.comments) document.getElementById('billComments').value = draft.comments;
-                setPrintComments('billPrintComments', draft.printComments);
-            } else {
-                RetailSaleManager.setSaleItems(draft.items || []);
-                RetailSaleManager.setSaleWeights(draft.weights || []);
-                RetailSaleManager.setPendingBill(draft.pendingBill);
-                RetailSaleManager.renderSalesBill();
-                RetailSaleManager.renderSaleWeights();
-                if (draft.customerName) document.getElementById('saleCustomerName').value = draft.customerName;
-                if (draft.comments) document.getElementById('saleComments').value = draft.comments;
-                setPrintComments('salePrintComments', draft.printComments);
-            }
-
-            PurchaseManager.updateTotals();
+            this.applyDraft(draft);
             this.closeDrafts();
 
             await db.collection(window.getCollection ? window.getCollection('drafts') : 'drafts').doc(draftId).delete();
