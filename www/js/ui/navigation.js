@@ -108,6 +108,7 @@ const NavigationManager = {
         const overlay = document.querySelector('.overlay');
         if (sideNav) sideNav.classList.toggle('active', open);
         if (overlay) overlay.classList.toggle('active', open);
+        document.querySelector('.bottom-nav-item[data-tab="more"]')?.setAttribute('aria-expanded', String(!!open));
     },
 
     openMenu() {
@@ -278,6 +279,7 @@ const NavigationManager = {
         
         // Initialize cash management when Cash Management tab is shown
         if (tabId === 'cash-management' && window.app?.cashManagement) {
+            window.app.day?.returnCashBody?.();
             this.resetFilterButtons('cash-management');
             setTimeout(() => window.app.cashManagement.init(), 100);
         }
