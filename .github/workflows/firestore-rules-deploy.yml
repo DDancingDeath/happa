@@ -1,6 +1,17 @@
 # Deploys firestore.rules and firestore.indexes.json to Happa's project (from
-# happa.config.json; never aadhat-management) when they change on main (#16). Hosting is deployed separately by
-# firebase-hosting-merge.yml. Never runs on pull requests.
+# happa.config.json; never aadhat-management). Never runs on pull requests.
+#
+# On a push to main it is not triggered by itself: firebase-hosting-merge.yml
+# calls it (workflow_call) BEFORE Hosting whenever the rules, indexes or config
+# changed, and deploys Hosting only if this succeeded -- the rules are
+# backward-compatible, so they must be live before the app that needs them.
+# workflow_dispatch deploys only the rules and indexes (no Hosting).
+#
+# Self-healing: tools/ci/deploy-with-retry.js retries Firebase API outages
+# (503/500/502/504/429/409, unavailable, ECONNRESET, deadline) up to 7 attempts
+# with 15s..240s backoff; a 409 "Release ... already exists" counts as done when
+# the live ruleset equals firestore.rules; the last step reads the live ruleset
+# back (tools/ci/live-rules.js, read-only) and fails unless it equals the repo's.
 #
 # The service account in FIREBASE_SERVICE_ACCOUNT_HAPPA needs, in
 # addition to its hosting roles: Firebase Rules Admin
@@ -9,29 +20,22 @@
 name: Deploy Firestore rules and indexes
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - firestore.rules
-      - firestore.indexes.json
-      - happa.config.json
-      - .github/workflows/firestore-rules-deploy.yml
-      - tools/ci/deploy-with-retry.js
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: firestore-rules-deploy
-  cancel-in-progress: false
-
 jobs:
   deploy:
-    name: Test and deploy Firestore rules + indexes
+    name: Test, deploy and verify Firestore rules + indexes
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
+    # One rules deploy at a time (a manual dispatch and a push to main).
+    concurrency:
+      group: firestore-rules-deploy
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -67,9 +71,10 @@ jobs:
 
       # No --force: indexes that exist in the project but not in
       # firestore.indexes.json are reported, not deleted (the script refuses
-      # --force and aadhat-management). Transient Google API errors (503, 500,
-      # 429, ECONNRESET, deadline) are retried up to 4 attempts with 30s/60s/
-      # 120s backoff; compile and permission errors fail at once with a hint.
+      # --force and aadhat-management). Transient Google API errors are retried
+      # up to 7 attempts (15s/30s/60s/120s/180s/240s backoff); a 409 "Release
+      # already exists" is accepted only if the live ruleset equals the repo's;
+      # compile and permission errors fail at once with a hint.
       - name: Deploy rules and indexes
         env:
           PROJECT_ID: ${{ steps.project.outputs.project_id }}
@@ -77,9 +82,18 @@ jobs:
           SA_EMAIL=$(jq -r .client_email "$GOOGLE_APPLICATION_CREDENTIALS")
           node tools/ci/deploy-with-retry.js \
             --log "$RUNNER_TEMP/deploy.log" --project "$PROJECT_ID" --sa-email "$SA_EMAIL" \
+            --rules firestore.rules \
             -- npx --yes firebase-tools@latest deploy \
               --only firestore:rules,firestore:indexes \
               --project "$PROJECT_ID" --non-interactive
+
+      # Read-only: fetches the cloud.firestore release's ruleset from the
+      # Firebase Rules API and fails unless its source equals firestore.rules
+      # (rechecked for ~2 minutes in case the release takes a moment to show).
+      - name: Verify the live ruleset equals firestore.rules
+        env:
+          PROJECT_ID: ${{ steps.project.outputs.project_id }}
+        run: node tools/ci/live-rules.js verify --project "$PROJECT_ID" --rules firestore.rules
 
       - name: Remove service account key
         if: always()

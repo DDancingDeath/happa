@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * Backup failure alert. Opens (or comments on) one `ops` issue in Happa's repo
+ * Ops failure alert. Opens (or comments on) one `ops` issue in Happa's repo
  * when the scheduled Firestore backup fails or is skipped two nights running,
- * or when the monthly restore drill fails, and closes it once a later run
- * succeeds. Only ever posts to DDancingDeath/happa (never the old app's repo).
+ * when the monthly restore drill fails, or when the deploy on a push to main
+ * (Firestore rules, then Hosting: firebase-hosting-merge.yml) fails, and
+ * closes it once a later run succeeds. Only ever posts to DDancingDeath/happa
+ * (never the old app's repo).
  *
  * Env:
  *   GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_RUN_ID, GITHUB_SERVER_URL
- *   ALERT_KIND      backup | drill
+ *   ALERT_KIND      backup | drill | deploy
  *   EVENT_NAME      github.event_name
  *   CURRENT_GOOD    "true" when this run produced a verified backup / passed the drill
  *   ALERT_DRY_RUN   "true" prints the plan only
@@ -26,17 +28,22 @@ const KINDS = {
         marker: '<!-- backup-alert:drill -->',
         title: '[Ops] Monthly backup restore drill failed',
         workflow: 'backup-restore-drill.yml'
+    },
+    deploy: {
+        marker: '<!-- deploy-alert:main -->',
+        title: '[Ops] Deploy to main failed (Firestore rules or Hosting)',
+        workflow: 'firebase-hosting-merge.yml'
     }
 };
 
 /**
- * @param {{kind: 'backup'|'drill', event: string, currentGood: boolean, previousGood: boolean|null}} o
+ * @param {{kind: 'backup'|'drill'|'deploy', event: string, currentGood: boolean, previousGood: boolean|null}} o
  *   previousGood: the previous scheduled run's result (null = no earlier run)
  * @returns {'open'|'resolve'|'none'}
  */
 function decideAlert({ kind, event, currentGood, previousGood }) {
     if (currentGood) return 'resolve';
-    if (kind === 'drill') return 'open';
+    if (kind !== 'backup') return 'open';
     // Backups: only scheduled nights count, and only two bad ones in a row.
     if (event === 'schedule' && previousGood === false) return 'open';
     return 'none';
@@ -108,18 +115,25 @@ async function main() {
         return;
     }
 
-    const note = kind === 'backup'
-        ? `The scheduled backup failed or was skipped again: ${runUrl}` + (prev ? ` (previous night: ${prev.run.html_url})` : '')
-        : `The restore drill failed: ${runUrl}`;
+    const note = {
+        backup: `The scheduled backup failed or was skipped again: ${runUrl}` + (prev ? ` (previous night: ${prev.run.html_url})` : ''),
+        drill: `The restore drill failed: ${runUrl}`,
+        deploy: `The deploy of main failed: ${runUrl}`
+    }[kind];
     if (open) {
         console.log(`Commenting on #${open.number}`);
         if (!dry) await gh('POST', `/repos/${repo}/issues/${open.number}/comments`, { body: note });
         return;
     }
     const body = `${cfg.marker}\n${note}\n\n`
-        + 'Open the run, read the failing step, fix it and re-run the workflow (Actions → Run workflow). '
-        + 'Common causes: an expired or removed service-account secret, a missing IAM role, the free read quota, '
-        + 'or the size guard (`BACKUP_WEEKLY_ABOVE` / `BACKUP_HARD_MAX`). Steps: `tools/backup/README.md`.\n\n'
+        + (kind === 'deploy'
+            ? 'If the Firestore rules deploy failed, Hosting was NOT deployed: the live app still runs the previous build. '
+                + 'Open the run, read the failing step (a Firebase Rules API outage, a rules compile error or a missing IAM role) '
+                + 'and use "Re-run failed jobs"; Hosting deploys once the rules are live. Manual fallback: '
+                + '`firebase deploy --only firestore:rules,firestore:indexes`, then re-run. See AGENTS.md, "CI".\n\n'
+            : 'Open the run, read the failing step, fix it and re-run the workflow (Actions → Run workflow). '
+                + 'Common causes: an expired or removed service-account secret, a missing IAM role, the free read quota, '
+                + 'or the size guard (`BACKUP_WEEKLY_ABOVE` / `BACKUP_HARD_MAX`). Steps: `tools/backup/README.md`.\n\n')
         + 'This issue closes itself when a later run succeeds.';
     console.log('Opening a new issue');
     if (dry) return;

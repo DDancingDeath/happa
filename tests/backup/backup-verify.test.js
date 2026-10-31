@@ -204,6 +204,11 @@ describe('backup failure alert', () => {
         expect(decideAlert({ kind: 'drill', event: 'schedule', currentGood: false, previousGood: null })).toBe('open');
     });
 
+    test('a failed deploy of main opens the alert at once (no second strike); a good one closes it', () => {
+        expect(decideAlert({ kind: 'deploy', event: 'push', currentGood: false, previousGood: null })).toBe('open');
+        expect(decideAlert({ kind: 'deploy', event: 'push', currentGood: true, previousGood: null })).toBe('resolve');
+    });
+
     test('a successful run without a backup artifact (size guard skip) counts as bad', () => {
         expect(runWasGood({ conclusion: 'success' }, [{ name: 'firestore-backup-nightly-2026-10-30_1345' }])).toBe(true);
         expect(runWasGood({ conclusion: 'success' }, [])).toBe(false);
