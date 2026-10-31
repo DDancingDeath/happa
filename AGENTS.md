@@ -408,6 +408,28 @@ CI, an issue or a PR: turn each new mismatch class into an anonymised fixture in
 skipped with its issue while the bug is open, and give it a cause in
 `tools/audit/causes.js`.
 
+### Architecture rules
+
+Target layers and the order of the refactor are in
+[docs/architecture.md](docs/architecture.md): calc (pure, `www/js/utils/`) →
+services → repositories → UI. In page code (`www/js/modules/**`,
+`www/js/rentals/**` except the pure `rent-math` / `rent-views` / `rent-public`):
+
+- no arithmetic on money or quantity, no `Math.round(qty * rate)`, no `reduce` of
+  amounts: call (or add) a function in `utils/` with a spec ID;
+- no numbers read back from the screen (`Number(el.textContent)`,
+  `Helpers.getElementInt`);
+- no Firestore calls (`.collection(`, `db.doc(`, `runTransaction`, `batch`);
+- no `AppState.<x> = …` or `AppState.<list>.push(…)`;
+- no calendar arithmetic (`new Date(y, m, d + 1)`): use `utils/dates.js`.
+
+`www/js/__tests__/architecture-guard.test.js` counts these per file against
+`tests/architecture-baseline.json` and fails when a count goes up or a new file
+has one. When your change lowers a count, run
+`ARCH_BASELINE=lower npx jest architecture-guard` and commit the baseline. Never
+raise it to get a PR green; move the logic instead (or explain the exception in
+the PR).
+
 ### PR checklist
 
 - [ ] Tests, `npm run lint` (0 errors), `check:review`, `check:sw`, `check:release` pass.
@@ -416,6 +438,8 @@ skipped with its issue while the bug is open, and give it a cause in
 - [ ] Added or changed a number shown on screen (or how it is calculated) →
       updated its entry in `docs/calculations.md` and its oracle test in
       `tests/oracle/` (review rule `displayed-number-spec` warns).
+- [ ] Architecture ratchet green; lowered `tests/architecture-baseline.json` if a
+      count went down (docs/architecture.md).
 - [ ] New user-facing text in both `i18n/en.js` and `i18n/hi.js`; no "staff".
 
 ---

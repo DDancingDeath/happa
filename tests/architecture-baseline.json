@@ -1,0 +1,93 @@
+{
+  "_readme": "Architecture ratchet baseline: www/js/__tests__/architecture-guard.test.js, docs/architecture.md section 6. Counts may only go down. Lower them with ARCH_BASELINE=lower npx jest architecture-guard.",
+  "totals": {
+    "firestore": 31,
+    "moneyMath": 151,
+    "domNumber": 2,
+    "appStateWrite": 43,
+    "dateMath": 20
+  },
+  "files": {
+    "www/js/modules/admin.js": {
+      "moneyMath": 2
+    },
+    "www/js/modules/billing.js": {
+      "firestore": 11,
+      "moneyMath": 4,
+      "appStateWrite": 3
+    },
+    "www/js/modules/cash-management.js": {
+      "firestore": 3,
+      "moneyMath": 14,
+      "dateMath": 1
+    },
+    "www/js/modules/day.js": {
+      "moneyMath": 28,
+      "dateMath": 1
+    },
+    "www/js/modules/history.js": {
+      "moneyMath": 9,
+      "domNumber": 1,
+      "appStateWrite": 3,
+      "dateMath": 1
+    },
+    "www/js/modules/insights.js": {
+      "moneyMath": 11,
+      "dateMath": 4
+    },
+    "www/js/modules/items.js": {
+      "appStateWrite": 6
+    },
+    "www/js/modules/miscellaneous.js": {
+      "appStateWrite": 1
+    },
+    "www/js/modules/money.js": {
+      "moneyMath": 4,
+      "dateMath": 9
+    },
+    "www/js/modules/outstanding.js": {
+      "firestore": 3,
+      "moneyMath": 5,
+      "appStateWrite": 1
+    },
+    "www/js/modules/purchase.js": {
+      "moneyMath": 16
+    },
+    "www/js/modules/rate-trends.js": {
+      "moneyMath": 2
+    },
+    "www/js/modules/retail-sale.js": {
+      "moneyMath": 20
+    },
+    "www/js/modules/roles-access.js": {
+      "appStateWrite": 2
+    },
+    "www/js/modules/settings.js": {
+      "appStateWrite": 19
+    },
+    "www/js/modules/statements.js": {
+      "dateMath": 3
+    },
+    "www/js/modules/stock.js": {
+      "moneyMath": 13,
+      "appStateWrite": 8
+    },
+    "www/js/modules/wholesale-sales.js": {
+      "moneyMath": 21,
+      "domNumber": 1
+    },
+    "www/js/rentals/rent-receipt-store.js": {
+      "firestore": 2
+    },
+    "www/js/rentals/rent-receipt.js": {
+      "moneyMath": 1
+    },
+    "www/js/rentals/rent-store.js": {
+      "firestore": 12,
+      "moneyMath": 1
+    },
+    "www/js/rentals/rent-unit.js": {
+      "dateMath": 1
+    }
+  }
+}
