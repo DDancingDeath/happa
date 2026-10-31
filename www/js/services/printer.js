@@ -6,9 +6,20 @@ import { DEFAULT_SETTINGS } from '../utils/constants.js';
 import { getAndroidMajorVersion, Helpers } from '../utils/helpers.js';
 import { copyMark, receiptDateTime } from '../utils/bill-share.js';
 import { t, tn } from '../i18n/index.js';
+import { PrinterLink } from './printer-link.js';
 
 /** Dots darker than this (average of R,G,B) print black */
 const RASTER_THRESHOLD = 128;
+
+const jobKey = (kind, id) => (id ? `${kind}:${id}` : null);
+const UNCERTAIN_KEY = 'printerMayHavePrinted';
+const UNCERTAIN_TTL_MS = 24 * 60 * 60 * 1000;
+const STOPPED_KEY = 'printerDisconnected';
+
+const clockTime = (ms) => {
+    const d = new Date(ms);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};
 
 /**
  * Pack RGBA pixels into a 1-bit ESC/POS raster (MSB = leftmost dot, 1 = black).
@@ -79,37 +90,31 @@ function canvasToEscPos(canvas, height = canvas.height) {
 }
 
 class BluetoothPrinterManager {
-    constructor() {
-        this.device = null;
-        this.printerName = null;
-        this._printQueue = Promise.resolve();
+    /** @param {Object} [linkOptions] PrinterLink options (transport, timeouts, retry, sleep, now) */
+    constructor(linkOptions) {
+        this.link = new PrinterLink(linkOptions);
     }
 
-    /**
-     * Serialize print jobs so two bills never interleave on the Bluetooth link.
-     * @private
-     */
-    _enqueue(job) {
-        const run = this._printQueue.then(job, job);
-        this._printQueue = run.catch(() => {});
-        return run;
-    }
+    get device() { return this.link.deviceId; }
+    set device(value) { this.link.deviceId = value; }
+    get printerName() { return this.link.deviceName; }
+    set printerName(value) { this.link.deviceName = value; }
 
     /**
-     * Send raw bytes to the connected printer.
+     * Send raw bytes as one job (serialized, timed out, reconnects to `target`).
      * @private
      */
-    _send(bytes, label) {
-        return new Promise((resolve, reject) => {
-            window.bluetoothSerial.write(
-                bytes,
-                () => resolve(true),
-                (error) => {
-                    console.error(`[${label}] Print failed:`, error);
-                    reject(error instanceof Error ? error : new Error(error || 'Print failed'));
-                }
-            );
-        });
+    async _send(bytes, label, job = {}) {
+        try {
+            return await this.link.send(bytes, job.target, job);
+        } catch (error) {
+            console.error(`[${label}] Print ${error?.outcome || 'failed'}:`, error);
+            throw error;
+        }
+    }
+
+    sendCanvas(canvas, job) {
+        return this._send(canvasToEscPos(canvas), 'WRITE CANVAS', job);
     }
 
     async scan() {
@@ -176,88 +181,35 @@ class BluetoothPrinterManager {
             }
         }
         
-        return new Promise((resolve, reject) => {
-            UIManager.showLoading();
-            
-            try {
-                window.bluetoothSerial.list(
-                    (devices) => {
-                        UIManager.hideLoading();
-                        resolve(devices || []);
-                    },
-                    (error) => {
-                        UIManager.hideLoading();
-                        const errorMsg = error || 'Failed to scan for devices';
-                        console.error('[SCAN] Error:', errorMsg);
-                        reject(new Error(errorMsg));
-                    }
-                );
-            } catch (error) {
-                UIManager.hideLoading();
-                const errorMsg = 'Bluetooth scan failed: ' + error.message;
-                console.error('[SCAN] Exception:', error);
-                reject(new Error(errorMsg));
-            }
-        });
+        UIManager.showLoading();
+        try {
+            const devices = await this.link.list();
+            return devices || [];
+        } catch (error) {
+            console.error('[SCAN] Error:', error);
+            throw error;
+        } finally {
+            UIManager.hideLoading();
+        }
     }
 
     async connect(deviceId, deviceName = null) {
+        if (!this.link.transport.available()) {
+            throw new Error('Bluetooth Serial plugin not available');
+        }
+        UIManager.showLoading();
         try {
-            if (!window.bluetoothSerial) {
-                const errorMsg = 'Bluetooth Serial plugin not available';
-                console.error('[CONNECT]', errorMsg);
-                throw new Error(errorMsg);
-            }
-            
-            UIManager.showLoading();
-            
-            return new Promise((resolve, reject) => {
-                window.bluetoothSerial.connect(
-                    deviceId,
-                    () => {
-                        UIManager.hideLoading();
-                        this.device = deviceId;
-                        this.printerName = deviceName;
-                        resolve(true);
-                    },
-                    (error) => {
-                        UIManager.hideLoading();
-                        const errorMsg = error || 'Connection failed';
-                        console.error('[CONNECT] Error:', errorMsg);
-                        reject(new Error(errorMsg));
-                    }
-                );
-            });
+            return await this.link.connectNow(deviceId, deviceName);
         } catch (error) {
-            UIManager.hideLoading();
-            const errorMsg = 'Connection failed: ' + error.message;
-            console.error('[CONNECT] Exception:', error);
+            console.error('[CONNECT] Error:', error);
             throw error;
+        } finally {
+            UIManager.hideLoading();
         }
     }
 
     async disconnect() {
-        if (this.device && window.bluetoothSerial) {
-            try {
-                return new Promise((resolve) => {
-                    window.bluetoothSerial.disconnect(
-                        () => {
-                            this.device = null;
-                            this.printerName = null;
-                            resolve();
-                        },
-                        () => {
-                            // Even if disconnect fails, clear state
-                            this.device = null;
-                            this.printerName = null;
-                            resolve();
-                        }
-                    );
-                });
-            } catch (error) {
-                console.error('[DISCONNECT] Error:', error);
-            }
-        }
+        await this.link.disconnect();
     }
 
     _createDrawingUtils(ctx, config) {
@@ -603,26 +555,14 @@ class BluetoothPrinterManager {
         return { canvas: tempCanvas, height: y };
     }
 
-    async write(billData) {
-        if (!this.device) {
-            throw new Error('Not connected to device');
-        }
+    /** ESC/POS raster bytes for a bill (the used rows of the render canvas). */
+    billBytes(billData) {
+        const { canvas, height } = this._renderBillCanvas(billData);
+        return canvasToEscPos(canvas, height);
+    }
 
-        if (!window.bluetoothSerial) {
-            throw new Error('Bluetooth Serial plugin not available');
-        }
-        
-        return this._enqueue(async () => {
-            try {
-                // Read the used rows straight from the render canvas (no cropped copy)
-                const { canvas, height } = this._renderBillCanvas(billData);
-                const commandBytes = canvasToEscPos(canvas, height);
-                return await this._send(commandBytes, 'WRITE');
-            } catch (error) {
-                console.error('[WRITE] Print failed:', error);
-                throw error;
-            }
-        });
+    async write(billData, job) {
+        return this._send(this.billBytes(billData), 'WRITE', job);
     }
     
     async generateExpenseCanvas(expense) {
@@ -731,25 +671,9 @@ class BluetoothPrinterManager {
         return finalCanvas;
     }
     
-    async writeExpense(expense) {
-        if (!this.device) {
-            throw new Error('Not connected to device');
-        }
-
-        if (!window.bluetoothSerial) {
-            throw new Error('Bluetooth Serial plugin not available');
-        }
-        
-        return this._enqueue(async () => {
-            try {
-                const finalCanvas = await this.generateExpenseCanvas(expense);
-                const commandBytes = canvasToEscPos(finalCanvas);
-                return await this._send(commandBytes, 'WRITE EXPENSE');
-            } catch (error) {
-                console.error('[WRITE EXPENSE] Print failed:', error);
-                throw error;
-            }
-        });
+    async writeExpense(expense, job) {
+        const finalCanvas = await this.generateExpenseCanvas(expense);
+        return this._send(canvasToEscPos(finalCanvas), 'WRITE EXPENSE', job);
     }
 
     /**
@@ -817,10 +741,8 @@ class BluetoothPrinterManager {
         return out;
     }
 
-    async writeStatement(statement) {
-        if (!this.device) throw new Error('Not connected to device');
-        if (!window.bluetoothSerial) throw new Error('Bluetooth Serial plugin not available');
-        return this._enqueue(() => this._send(canvasToEscPos(this.generateStatementCanvas(statement)), 'WRITE STATEMENT'));
+    async writeStatement(statement, job) {
+        return this._send(canvasToEscPos(this.generateStatementCanvas(statement)), 'WRITE STATEMENT', job);
     }
 }
 
@@ -833,7 +755,7 @@ const PrinterService = {
             return devices;
         } catch (error) {
             console.error('Printer scan error:', error);
-            UIManager.showToast(t('msg.printer.failed_scan_devices', { message: error.message }));
+            UIManager.showToast(t('msg.printer.failed_scan_devices', { message: this.errorText(error) }));
             throw error;
         }
     },
@@ -841,17 +763,19 @@ const PrinterService = {
     async connect(deviceId, deviceName) {
         try {
             await this.manager.connect(deviceId, deviceName);
+            localStorage.removeItem(STOPPED_KEY);
             this.updateStatus();
             return true;
         } catch (error) {
             console.error('Printer connect error:', error);
-            UIManager.showToast(t('msg.printer.failed_connect', { message: error.message }));
+            UIManager.showToast(t('msg.printer.failed_connect', { message: this.errorText(error) }));
             throw error;
         }
     },
 
     async disconnect() {
         try {
+            localStorage.setItem(STOPPED_KEY, '1');
             await this.manager.disconnect();
             this.updateStatus();
             UIManager.showToast(t('msg.common.printer_disconnected'));
@@ -862,19 +786,108 @@ const PrinterService = {
     },
 
     async print(billData) {
+        return this.printBill(billData);
+    },
+
+    /** Readable text for a print/link error (timeouts and drops are translated). */
+    errorText(error) {
+        const keys = {
+            timeout_connect: 'msg.printer.err_timeout_connect',
+            timeout_write: 'msg.printer.err_timeout_write',
+            timeout_check: 'msg.printer.err_timeout_check',
+            timeout_list: 'msg.printer.err_timeout_check',
+            dropped: 'msg.printer.err_dropped',
+            no_printer: 'msg.settings.printer_not_connected',
+            stopped: 'msg.settings.printer_not_connected',
+            unavailable: 'msg.printer.android_app_only'
+        };
+        const key = keys[error?.kind];
+        return key ? t(key) : String(error?.message || error || '');
+    },
+
+    /** The printer to reconnect to: the one saved in Settings. */
+    target() {
+        const { deviceId = null, deviceName = null } = AppState.printerSettings || {};
+        return { deviceId, deviceName };
+    },
+
+    /**
+     * Bluetooth is used when the link is up now or a saved printer is enabled,
+     * unless the user pressed Disconnect (then bills go to the preview).
+     */
+    canPrint() {
+        if (!this.isAvailable() || this.manager.link.stopped) return false;
+        const saved = AppState.printerSettings || {};
+        return this.isConnected() || !!(saved.enabled && saved.deviceId);
+    },
+
+    /** Receipts that may have printed: { key: time }, kept 24 h across restarts. */
+    uncertainJobs() {
+        let map = {};
         try {
-            const escpos = this.manager.generateESCPOS(billData);
-            await this.manager.print(escpos);
-            return true;
+            map = JSON.parse(localStorage.getItem(UNCERTAIN_KEY)) || {};
+        } catch {
+            map = {};
+        }
+        const cutoff = Date.now() - UNCERTAIN_TTL_MS;
+        return Object.fromEntries(Object.entries(map).filter(([, at]) => Number(at) > cutoff));
+    },
+
+    setUncertain(key, uncertain) {
+        if (!key) return;
+        const map = this.uncertainJobs();
+        if (uncertain) map[key] = Date.now();
+        else delete map[key];
+        localStorage.setItem(UNCERTAIN_KEY, JSON.stringify(map));
+    },
+
+    /**
+     * One print job. The may-have-printed check runs inside the job queue, so
+     * a reprint queued behind an unanswered original still asks first.
+     * @param {string|null} key Same key = same receipt
+     * @param {(job: Object) => Promise} send
+     * @param {'quick'|'full'} [mode='quick']
+     * @returns {Promise<{outcome: 'printed'|'failed'|'uncertain'|'cancelled', error?: Error}>}
+     */
+    async runJob(key, send, mode = 'quick') {
+        let release = UIManager.holdLoading();
+        const confirmReprint = async () => {
+            if (!key || !this.uncertainJobs()[key]) return true;
+            release();
+            const again = await UIManager.showModal(t('msg.printer.confirm_print_again'), t('ui.print.may_have_printed_title'), true);
+            release = UIManager.holdLoading();
+            return again;
+        };
+        try {
+            const result = await send({
+                target: this.target(),
+                mode,
+                confirmReprint,
+                onUncertain: () => this.setUncertain(key, true),
+                onPrinted: () => this.setUncertain(key, false)
+            });
+            if (result?.outcome === 'cancelled') return { outcome: 'cancelled' };
+            this.setUncertain(key, false);
+            return { outcome: 'printed' };
         } catch (error) {
-            console.error('Print error:', error);
-            throw error;
+            if (error?.outcome === 'uncertain') {
+                this.setUncertain(key, true);
+                release();
+                this.updateStatus();
+                await UIManager.showModal(t('msg.printer.may_have_printed'), t('ui.print.may_have_printed_title'));
+                return { outcome: 'uncertain', error };
+            }
+            return { outcome: 'failed', error };
+        } finally {
+            release();
+            this.updateStatus();
         }
     },
 
     /**
      * Settings → Bluetooth Printer status line and buttons, from the real
-     * connection state (AadhatManagementApp#133).
+     * connection state (AadhatManagementApp#133), when it was last checked and
+     * the last problem (#77).
      */
     updateStatus() {
         const statusText = document.getElementById('printerStatusText');
@@ -885,21 +898,31 @@ const PrinterService = {
         const available = this.isAvailable();
         const connected = this.isConnected();
         const name = this.manager.printerName || saved.deviceName || '';
+        const { checkedAt, lastError, lastJob } = this.manager.link.status;
 
         let text;
         let color = '#999';
         if (!available) {
             text = t('ui.settings.printer_android_only');
         } else if (connected) {
-            text = t('ui.settings.printer_connected_to', { deviceName: name });
+            text = checkedAt
+                ? t('ui.settings.printer_connected_checked', { deviceName: name, time: clockTime(checkedAt) })
+                : t('ui.settings.printer_connected_to', { deviceName: name });
             color = '#4CAF50';
         } else if (saved.deviceId && name) {
             text = t('ui.settings.printer_saved_not_connected', { deviceName: name });
         } else {
             text = t('ui.settings.printer_not_connected');
         }
+        let detail = '';
+        if (available && lastJob?.outcome === 'uncertain') {
+            detail = t('ui.settings.printer_last_may_have_printed', { time: clockTime(lastJob.at) });
+        } else if (available && lastError) {
+            detail = t('ui.settings.printer_last_error', { message: this.errorText(lastError), time: clockTime(lastError.at) });
+        }
         if (statusText) {
-            statusText.innerHTML = `<span style="color: ${color};">${connected ? '●' : '○'} ${Helpers.escapeHtml(text)}</span>`;
+            statusText.innerHTML = `<span style="color: ${color};">${connected ? '●' : '○'} ${Helpers.escapeHtml(text)}</span>`
+                + (detail ? `<br><small class="printer-status-detail">${Helpers.escapeHtml(detail)}</small>` : '');
             statusText.dataset.state = !available ? 'unavailable' : connected ? 'connected' : 'disconnected';
         }
         if (disconnectBtn) disconnectBtn.style.display = connected ? 'block' : 'none';
@@ -907,12 +930,12 @@ const PrinterService = {
         if (scanBtn) scanBtn.style.display = available ? '' : 'none';
     },
 
-    /** Renders the status now, then again once the plugin confirms the link. */
+    /** Renders the status now, then again once the plugin has checked the link. */
     async refreshStatus() {
         this.updateStatus();
         if (!this.isConnected()) return;
-        const up = await this.checkConnection();
-        if (!up) this.updateStatus();
+        await this.checkConnection();
+        this.updateStatus();
     },
 
     async testPrint() {
@@ -920,12 +943,9 @@ const PrinterService = {
             await UIManager.showModal(t('msg.printer.android_app_only'));
             return false;
         }
-        if (!this.isConnected() && !(await this.reconnectSaved())) {
-            await UIManager.showModal(t('msg.settings.printer_not_connected'));
-            return false;
-        }
+        if (this.testing) return false;
+        this.testing = true;
         try {
-            UIManager.showLoading();
             const testBill = {
                 type: 'TEST',
                 date: new Date().toISOString(),
@@ -940,22 +960,28 @@ const PrinterService = {
                 isPurchase: true,
                 isAutoLabor: true
             };
-            
-            await this.manager.write(testBill);
-            UIManager.showToast(t('msg.printer.test_print_successful'));
-            return true;
-        } catch (error) {
-            console.error('Test print error:', error);
-            UIManager.showToast(t('msg.common.test_print_failed', { message: error?.message || error }), 'error');
+            const { outcome, error } = await this.runJob('test', (job) => this.manager.write(testBill, job), 'full');
+            if (outcome === 'printed') {
+                UIManager.showToast(t('msg.printer.test_print_successful'));
+                return true;
+            }
+            if (outcome === 'failed') {
+                console.error('Test print error:', error);
+                if (error?.kind === 'no_printer' || error?.kind === 'stopped') {
+                    await UIManager.showModal(t('msg.settings.printer_not_connected'));
+                } else {
+                    UIManager.showToast(t('msg.common.test_print_failed', { message: this.errorText(error) }), 'error');
+                }
+            }
             return false;
         } finally {
-            UIManager.hideLoading();
+            this.testing = false;
         }
     },
 
     /** Bluetooth printing needs the Android app (cordova bluetoothSerial plugin). */
     isAvailable() {
-        return !!window.bluetoothSerial;
+        return this.manager.link.transport.available();
     },
 
     /** Connected in this app session (the link is not kept across restarts). */
@@ -970,51 +996,22 @@ const PrinterService = {
      */
     async checkConnection() {
         if (!this.isConnected()) return false;
-        if (typeof window.bluetoothSerial.isConnected !== 'function') return true;
-        const up = await new Promise((resolve) => {
-            try {
-                window.bluetoothSerial.isConnected(() => resolve(true), () => resolve(false));
-            } catch {
-                resolve(false);
-            }
-        });
-        if (!up) {
-            this.manager.device = null;
-            this.manager.printerName = null;
-        }
-        return up;
-    },
-
-    /** Reconnects to the printer saved in Settings, without toasts. */
-    async reconnectSaved() {
-        const { deviceId, deviceName } = AppState.printerSettings || {};
-        if (!this.isAvailable() || !deviceId) return false;
-        try {
-            await this.manager.connect(deviceId, deviceName);
-            return true;
-        } catch (error) {
-            console.warn('Printer reconnect failed:', error?.message || error);
-            return false;
-        }
+        return this.manager.link.check();
     },
 
     async printBill(billData) {
-        // Try Bluetooth first if available and connected
-        if (this.manager.device && window.bluetoothSerial) {
-            try {
-                await this.manager.write(billData);
+        if (this.canPrint()) {
+            const key = jobKey('bill', billData.billNumber || billData.id);
+            const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
+            if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
-            } catch (error) {
-                console.error('Bluetooth print failed:', error);
-                UIManager.showToast(t('msg.printer.print_failed', { message: error.message || error }));
-                // Automatically show preview on Bluetooth failure
-                return await this.showBillPreview(billData);
             }
-        } else {
-            // No Bluetooth printer - show preview
-            return await this.showBillPreview(billData);
+            if (outcome !== 'failed') return false;
+            console.error('Bluetooth print failed:', error);
+            UIManager.showToast(t('msg.printer.print_failed', { message: this.errorText(error) }));
         }
+        return await this.showBillPreview(billData);
     },
 
     async showBillPreview(billData) {
@@ -1038,15 +1035,16 @@ const PrinterService = {
      * @returns {Promise<boolean>}
      */
     async printStatement(statement) {
-        if (this.manager.device && window.bluetoothSerial) {
-            try {
-                await this.manager.writeStatement(statement);
+        if (this.canPrint()) {
+            const key = jobKey('statement', statement.filename);
+            const { outcome, error } = await this.runJob(key, (job) => this.manager.writeStatement(statement, job));
+            if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
-            } catch (error) {
-                console.error('Bluetooth statement print failed:', error);
-                UIManager.showToast(t('msg.printer.print_failed', { message: error.message || error }));
             }
+            if (outcome !== 'failed') return false;
+            console.error('Bluetooth statement print failed:', error);
+            UIManager.showToast(t('msg.printer.print_failed', { message: this.errorText(error) }));
         }
         try {
             const canvas = this.manager.generateStatementCanvas(statement);
@@ -1064,15 +1062,15 @@ const PrinterService = {
      * @returns {Promise<boolean>}
      */
     async printCanvas(canvas, filename, title) {
-        if (this.manager.device && window.bluetoothSerial) {
-            try {
-                await this.manager._enqueue(() => this.manager._send(canvasToEscPos(canvas), 'WRITE CANVAS'));
+        if (this.canPrint()) {
+            const { outcome, error } = await this.runJob(jobKey('canvas', filename), (job) => this.manager.sendCanvas(canvas, job));
+            if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
-            } catch (error) {
-                console.error('Bluetooth print failed:', error);
-                UIManager.showToast(t('msg.printer.print_failed', { message: error.message || error }));
             }
+            if (outcome !== 'failed') return false;
+            console.error('Bluetooth print failed:', error);
+            UIManager.showToast(t('msg.printer.print_failed', { message: this.errorText(error) }));
         }
         return this.showImagePreview(canvas, filename, title);
     },
@@ -1215,22 +1213,17 @@ const PrinterService = {
     },
 
     async printExpense(expense) {
-        // Try Bluetooth first if available and connected
-        if (this.manager.device && window.bluetoothSerial) {
-            try {
-                await this.manager.writeExpense(expense);
+        if (this.canPrint()) {
+            const { outcome, error } = await this.runJob(jobKey('expense', expense.id), (job) => this.manager.writeExpense(expense, job));
+            if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.expense_printed_successfully'));
                 return true;
-            } catch (error) {
-                console.error('Bluetooth expense print failed:', error);
-                UIManager.showToast(t('msg.printer.print_failed', { message: error.message || error }));
-                // Automatically show preview on Bluetooth failure
-                return await this.showExpensePreview(expense);
             }
-        } else {
-            // No Bluetooth printer - show preview
-            return await this.showExpensePreview(expense);
+            if (outcome !== 'failed') return false;
+            console.error('Bluetooth expense print failed:', error);
+            UIManager.showToast(t('msg.printer.print_failed', { message: this.errorText(error) }));
         }
+        return await this.showExpensePreview(expense);
     },
     
     async showExpensePreview(expense) {
@@ -1418,8 +1411,10 @@ const PrinterService = {
     }
 };
 
-// Create singleton instance
-const printerManager = new BluetoothPrinterManager();
+PrinterService.manager.link.onChange = () => PrinterService.updateStatus();
+PrinterService.manager.link.stopped = localStorage.getItem(STOPPED_KEY) === '1';
+
+const printerManager = PrinterService.manager;
 
 // Export PrinterService and manager
 export { PrinterService, BluetoothPrinterManager, printerManager };
