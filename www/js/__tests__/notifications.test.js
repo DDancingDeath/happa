@@ -180,7 +180,9 @@ describe('Firestore paths (fake Firestore)', () => {
         FirebaseService.forgetPeopleCaches();
         fake.seed('users', [
             { id: 'owner1', role: 'owner' }, { id: 'owner2', role: 'owner' },
-            { id: 'mgr', role: 'manager' }, { id: 'u3', role: 'staff' }
+            { id: 'mgr', role: 'manager' }, { id: 'u3', role: 'staff' },
+            // rejected / removed / pending people get no notifications (#84)
+            { id: 'no', role: 'staff', status: 'rejected' }, { id: 'gone', status: 'disabled' }, { id: 'p', role: 'staff', status: 'pending' }
         ]);
     });
     afterEach(() => {

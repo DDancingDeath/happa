@@ -312,7 +312,7 @@ rejected / no profile / unknown role.
 | `drafts` | own only (`where('userId', '==', uid)`, get by id) | own |
 | `autoSaves/{uid}` | own doc | own |
 | `users` | own profile at start-up / login / registration; full list: Admin and Roles & access › People (owner only) | **own only**. Names shown on bills, payments and audit rows are stored on those records |
-| `settings/team` (#87) | names and roles of the approved people, written by the owner's phone whenever it reads the profiles (Admin, App health, notification fan-out) and by `tools/migrate`; one get for managers' App health device names and their notification fan-out on item and rate edits | no (managers only) |
+| `settings/team` (#87) | names and roles of the approved people, written by the owner's phone whenever it reads the profiles (Admin, App health, notification fan-out; at start-up once a day when the doc is missing, 1 read) and by `tools/migrate`; one get for managers' App health device names and their notification fan-out on item and rate edits | no (managers only) |
 | `users/{uid}/preferences` | own | own |
 | `auditLogs`, `telemetry` | append by everyone; read in Settings/Diagnostics and the anomaly scan by the owner only | no |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | App health, Anomalies, Rates history, Insights › Seasons, Money snapshots (the app loads them for owner/manager only) | no |

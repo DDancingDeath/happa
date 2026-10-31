@@ -465,6 +465,12 @@ async function initializeUserData() {
         // Daily anomaly scan (#187): owner/manager devices, once per day, over loaded data
         AnomaliesManager.scheduleDailyScan();
 
+        // Team directory (#87): managers read names and roles from it; the owner's phone makes sure it exists
+        if (AppState.userRole === 'owner') {
+            setTimeout(() => FirebaseService.ensureTeamDirectory()
+                .catch(e => console.warn('Team directory not checked:', e?.code || e)), 30000);
+        }
+
         // Rate trends (#65): roll monthly rate stats forward from loaded bills (owner/manager)
         if (AppState.userRole === 'owner' || AppState.userRole === 'manager') {
             setTimeout(() => loadRateTrends().then(m => m.scheduleRollForward(0))

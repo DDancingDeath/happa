@@ -212,4 +212,19 @@ describe('team directory settings/team (#87)', () => {
         fake.raw('dev_settings').delete('team');
         expect(await FirebaseService.loadPeople()).toEqual([]);
     });
+
+    test("the owner's phone writes a missing directory once a day; managers never do", async () => {
+        localStorage.clear();
+        AppState.userRole = 'manager';
+        expect(await FirebaseService.ensureTeamDirectory()).toBe(false);
+        expect(team()).toBeUndefined();
+        AppState.userRole = 'owner';
+        expect(await FirebaseService.ensureTeamDirectory()).toBe(true);
+        await flush();
+        expect(Object.keys(team().people).sort()).toEqual(['legacy', 'old']);
+        FirebaseService.forgetPeopleCaches();
+        const users = jest.spyOn(FirebaseService, 'loadUsers');
+        expect(await FirebaseService.ensureTeamDirectory()).toBe(false);
+        expect(users).not.toHaveBeenCalled();
+    });
 });
