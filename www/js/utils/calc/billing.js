@@ -185,7 +185,7 @@ export function wholesaleCostRate(line, stock = {}, catalogue = []) {
     const name = norm(readLineItem(line).name);
     const item = (catalogue || []).find(i => i && ((line?.itemId && i.id === line.itemId)
         || (name && (norm(i.name) === name || norm(i.hindiName) === name)))) || null;
-    for (const key of [line?.itemId, item?.id, item?.name, readLineItem(line).name]) {
+    for (const key of [line?.itemId, item?.id, item?.name, readLineItem(line).name, name]) {
         if (!key) continue;
         const rate = toMoney(stock?.[key]?.rate);
         if (rate && rate > 0) return rate;

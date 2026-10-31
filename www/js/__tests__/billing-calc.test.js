@@ -105,6 +105,7 @@ describe('BF-TOTAL, WS-PROFIT, WS-MARGIN: wholesale (#26)', () => {
         expect(wholesaleCostRate({ name: 'चावल' }, { rice: { rate: 31 } }, catalogue)).toBe(31);
         expect(wholesaleCostRate({ itemId: 'old-id', name: 'rice ' }, { Rice: { rate: 29 } }, catalogue)).toBe(29);
         expect(wholesaleCostRate({ itemId: 'dal' }, { dal: { quantity: 5 } }, catalogue)).toBeNull();
+        expect(wholesaleCostRate({ name: 'Corn ' }, { corn: { rate: 18 } }, catalogue)).toBe(18);
         expect(wholesaleCostRate({ itemId: 'gone', name: 'Gone' }, { rice: { rate: 30 } }, catalogue)).toBeNull();
     });
     test('live profit adds the whole-rupee figure the form shows (never -0)', () => {

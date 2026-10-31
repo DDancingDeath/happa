@@ -160,7 +160,8 @@ describe('utils/calc/billing.js == oracle on generated bills', () => {
         });
         const stock = fc.record({
             a: fc.record({ rate: fc.integer({ min: 1, max: 20000 }).map(x => x / 100) }),
-            b: fc.record({ rate: fc.constant(undefined) })
+            b: fc.record({ rate: fc.oneof(fc.constant(undefined), fc.integer({ min: 1, max: 20000 }).map(x => x / 100)) }),
+            c: fc.record({ rate: fc.integer({ min: 1, max: 20000 }).map(x => x / 100) })
         });
         const expenses = fc.integer({ min: 0, max: 100000 }).map(x => x / 100);
         fc.assert(fc.property(fc.array(entry, { maxLength: 6 }), stock, expenses, (entries, st, ex) => {
@@ -178,14 +179,15 @@ describe('WS-COST lookup by name (#102)', () => {
         const catalogue = [{ id: 'r', name: 'Rice', hindiName: 'चावल' }, { id: 'w', name: 'Wheat' }, { id: 'm', name: 'Maize' }];
         const entry = fc.record({
             itemId: fc.constantFrom('r', 'w', 'm', 'old-id', undefined),
-            name: fc.constantFrom('Rice', 'चावल', 'Wheat', 'Maize', 'Ghost'),
+            name: fc.constantFrom('Rice', 'चावल', 'Wheat', 'Maize', 'Ghost', 'Corn '),
             rate: fc.integer({ min: 1, max: 10000 }).map(x => x / 100),
             qty: fc.integer({ min: 1, max: 5000 }).map(x => x / 100)
         });
         const stock = fc.record({
             r: fc.constantFrom(undefined, { rate: 25 }),
             Wheat: fc.constantFrom(undefined, { rate: 31.5 }, { rate: 0 }),
-            m: fc.constantFrom(undefined, { quantity: 4 })
+            m: fc.constantFrom(undefined, { quantity: 4 }),
+            corn: fc.constantFrom(undefined, { rate: 18 })
         });
         fc.assert(fc.property(fc.array(entry, { minLength: 1, maxLength: 5 }), stock, (entries, st) => {
             const want = O.billForm('wholesale', entries, { stock: st, catalogue });

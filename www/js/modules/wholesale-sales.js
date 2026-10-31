@@ -420,7 +420,10 @@ export class WholesaleSalesManager {
         const expenses = typedAmount(Helpers.getInputNumber('salesExpensesAmount'));
         
         // Total and profit come from the bill lines, never from the text on screen
-        const { total, profit, profitPercent, unknownCost } = this.computeTotals();
+        const totals = this.computeTotals();
+        const { total, profit, profitPercent } = totals;
+        // Marked only once stock is known: while it loads every cost looks unknown
+        const unknownCost = AppState.stockReady === false ? [] : totals.unknownCost;
         const split = this.readPaymentSplit();
         const { cash, online, due } = split;
         

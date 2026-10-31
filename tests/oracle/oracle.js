@@ -869,7 +869,7 @@ export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, s
         const low = (s) => String(s || '').trim().toLowerCase();
         const costOf = (l) => {
             const item = catalogue.find(i => i.id === l.itemId || (l.name && (low(i.name) === low(l.name) || low(i.hindiName) === low(l.name))));
-            const keys = [l.itemId, item && item.id, item && item.name, l.name];
+            const keys = [l.itemId, item && item.id, item && item.name, l.name, low(l.name)];
             const k = keys.find(key => key && n(stock[key]?.rate) > 0);
             return k ? n(stock[k].rate) : null;
         };
