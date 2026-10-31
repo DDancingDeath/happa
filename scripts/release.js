@@ -177,6 +177,7 @@ function main(argv) {
             return 1;
         }
         console.log(`Set version ${version} (Android versionCode ${code}) in package.json, www/js/version.js and android/app/build.gradle.`);
+        console.log('Before tagging, run the manual checks in docs/release-checklist.md.');
         return 0;
     } catch (e) {
         console.error(e.message);
