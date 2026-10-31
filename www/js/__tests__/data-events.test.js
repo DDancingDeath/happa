@@ -85,6 +85,10 @@ describe('pages re-render on the same data changes as before (old VIEWS → wind
         expect([...subscribed].sort()).toEqual(Object.keys(REFRESH).sort());
     });
 
+    test('FirebaseService hands out no document references (cashSessionRef is private to the data layer)', () => {
+        expect(Object.keys(FirebaseService).filter(k => /Ref$/.test(k))).toEqual([]);
+    });
+
     test('the data layer (firebase/) never calls pages through window.app', () => {
         const dir = path.join(JS, 'firebase');
         const list = (d) => fs.readdirSync(d, { withFileTypes: true })

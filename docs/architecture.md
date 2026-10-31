@@ -333,8 +333,14 @@ Phase 4's firestore 57 → 0: 43 lines moved into `firebase/repos/` (billing 11,
 audit 11, telemetry 7, authentication 4, cash-management 3, outstanding 3,
 helpers 3, main 1) and 14 are the Rentals repository (rent-store 12,
 rent-receipt-store 2), now exempt as repositories. The detector also counts
-`where(a, op, b)`, `onSnapshot`, transaction / batch operations and
-`firebase.firestore.FieldValue` since phase 4.
+`where(a, op, b)`, `onSnapshot`, transaction / batch operations,
+`runTransaction` / `batch` on anything and `firebase.firestore.FieldValue` since
+phase 4, and the ways round them: any `.db` (`FirebaseService.db`, `window.db`,
+destructuring), `…Ref(` on FirebaseService through any import name or alias
+(`cashSessionRef` is no longer public), the `firebase` global used for anything but
+`.auth` / `typeof` (`window.firebase`, `globalThis.firebase`, `const fb = firebase`),
+and any import, `import()` or re-export naming "firebase" other than our own
+`firebase/` folder (the SDK, CDN URLs, firebaseConfig.js).
 
 (Insights, Money and Statements now have no hits; stock.js keeps one moneyMath line,
 the unused `StockManager.updateStock`.)

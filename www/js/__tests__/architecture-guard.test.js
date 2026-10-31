@@ -9,11 +9,18 @@
  *
  *   firestore     direct Firestore access: `.collection(` / `.collectionGroup(`,
  *                 `firebase.firestore(` and `firebase.firestore.<x>` (FieldValue…),
- *                 `.doc(` / `.runTransaction(` / `.batch(` called on `db`, `<x>.db`
- *                 or `getDb()`, `.where(a, op, b)`, `.onSnapshot(`,
- *                 `.waitForPendingWrites(`, and get/set/update/delete on a
- *                 transaction (`tx` / `transaction`) or commit/set/update/delete on
- *                 a `batch`.
+ *                 `.runTransaction(` / `.batch(` on anything, `.doc(` on `db`,
+ *                 `<x>.db` or `getDb()`, `.where(a, op, b)`, `.onSnapshot(`,
+ *                 `.waitForPendingWrites(`, get/set/update/delete on a transaction
+ *                 (`tx` / `transaction`), commit/set/update/delete on a `batch`.
+ *                 Ways round it count too: any `.db` (`FirebaseService.db`,
+ *                 `window.db`, `const { db } = …`); `<FirebaseService>.<x>Ref(` (and
+ *                 destructuring a `…Ref` from it), through any import name or alias
+ *                 of firestore-service.js; `firebase` used for anything but `.auth`
+ *                 or `typeof` (`const fb = firebase`, `window.firebase.firestore()`,
+ *                 `globalThis.firebase`…); an import / `import()` / re-export whose
+ *                 specifier names "firebase" other than our own `firebase/` folder
+ *                 (the SDK, CDN URLs, firebaseConfig.js).
  *   moneyMath     arithmetic on money or quantity: `Math.round/floor/ceil/trunc(...)`
  *                 of an expression that names an amount; `Math.round(x * 100) / 100`
  *                 (hand-made paise rounding); `*`, `/`, `%` with an amount on either
@@ -268,7 +275,8 @@ function scanSource(source) {
                 // firestore
                 if (prop === 'collection' || prop === 'collectionGroup') hit('firestore', node);
                 else if (prop === 'firestore' && rootName(callee) === 'firebase') hit('firestore', node);
-                else if ((prop === 'doc' || prop === 'runTransaction' || prop === 'batch') && isDbObject(callee.object)) hit('firestore', node);
+                else if (prop === 'runTransaction' || prop === 'batch') hit('firestore', node);
+                else if (prop === 'doc' && isDbObject(callee.object)) hit('firestore', node);
                 else if (prop === 'onSnapshot' || prop === 'waitForPendingWrites' || (prop === 'where' && node.arguments.length === 3)) hit('firestore', node);
                 else if (prop && TX_OPS.has(prop) && callee.object.type === 'Identifier' && TX_NAMES.has(callee.object.name)) hit('firestore', node);
                 else if (prop && BATCH_OPS.has(prop) && callee.object.type === 'Identifier' && callee.object.name === 'batch') hit('firestore', node);
@@ -331,7 +339,88 @@ function scanSource(source) {
                 break;
         }
     });
+    firestoreDetours(ast, (node) => hit('firestore', node));
     return Object.fromEntries(CATEGORIES.map(c => [c, lines[c].size]));
+}
+
+const GLOBAL_OBJECTS = new Set(['window', 'globalThis', 'self', 'global']);
+
+/** An import specifier that reaches Firebase other than through our own firebase/ folder. */
+function isFirebaseSpecifier(spec) {
+    if (typeof spec !== 'string' || !/firebase/i.test(spec)) return false;
+    return !(spec.startsWith('.') && spec.split(/[/?#]/).includes('firebase'));
+}
+
+/**
+ * Ways to reach Firestore without the direct calls above (review of #199): SDK
+ * imports, FirebaseService.db / …Ref() through any name, the firebase global through
+ * window / globalThis or an alias.
+ */
+function firestoreDetours(ast, hit) {
+    // Local names of firestore-service.js (import names, namespaces, `const S = FirebaseService`).
+    const service = new Set(['FirebaseService']);
+    const isService = (node) => {
+        const n = unchain(node);
+        if (!n) return false;
+        if (n.type === 'Identifier') return service.has(n.name);
+        if (n.type === 'MemberExpression') return isService(n.object) || (!n.computed && n.property.name === 'FirebaseService');
+        return false;
+    };
+    walk.full(ast, (node) => {
+        if (node.type === 'ImportDeclaration' && /firestore-service(\.js)?$/.test(node.source.value)) {
+            node.specifiers.forEach(sp => service.add(sp.local.name));
+        }
+    });
+    for (let grew = true; grew;) {
+        grew = false;
+        walk.full(ast, (node) => {
+            if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier' && node.init && isService(node.init) && !service.has(node.id.name)) {
+                service.add(node.id.name);
+                grew = true;
+            }
+        });
+    }
+
+    walk.full(ast, (node) => {
+        switch (node.type) {
+            case 'ImportDeclaration':
+            case 'ExportAllDeclaration':
+            case 'ExportNamedDeclaration':
+            case 'ImportExpression':
+                if (node.source && isFirebaseSpecifier(node.source.value)) hit(node);
+                break;
+            case 'MemberExpression':
+                if (!node.computed && node.property.name === 'db') hit(node);
+                break;
+            case 'CallExpression': {
+                const callee = unchain(node.callee);
+                if (callee.type === 'MemberExpression' && !callee.computed && /Ref$/.test(callee.property.name) && isService(callee.object)) hit(node);
+                if (callee.type === 'Identifier' && callee.name === 'require' && isFirebaseSpecifier(node.arguments[0]?.value)) hit(node);
+                break;
+            }
+            case 'VariableDeclarator':
+                // const { db, cashSessionRef } = FirebaseService
+                if (node.id.type === 'ObjectPattern' && node.init && (isService(node.init) || /^(window|globalThis|self|global)$/.test(rootName(node.init) || ''))
+                    && node.id.properties.some(p => p.type === 'Property' && !p.computed && /^(db|firebase)$|Ref$/.test(p.key.name || p.key.value))) hit(node);
+                break;
+            default:
+                break;
+        }
+    });
+
+    // The firebase global: only `firebase.auth` and `typeof firebase` are allowed outside the repositories.
+    walk.fullAncestor(ast, (node, _state, ancestors) => {
+        const isGlobalRef = (node.type === 'Identifier' && node.name === 'firebase')
+            || (node.type === 'MemberExpression' && !node.computed && node.property.name === 'firebase'
+                && node.object.type === 'Identifier' && GLOBAL_OBJECTS.has(node.object.name));
+        if (!isGlobalRef) return;
+        let i = ancestors.length - 2;
+        let parent = ancestors[i];
+        while (parent && parent.type === 'ChainExpression') parent = ancestors[--i];
+        if (parent && parent.type === 'MemberExpression' && parent.object === node && !parent.computed && parent.property.name === 'auth') return;
+        if (parent && parent.type === 'UnaryExpression' && parent.operator === 'typeof') return;
+        hit(node);
+    });
 }
 
 /** Counts of one file with its layer's exemptions applied. */
@@ -548,6 +637,33 @@ describe('architecture ratchet (docs/architecture.md)', () => {
         ['const off = query.onSnapshot(fn);', { firestore: 1 }],
         ['const at = firebase.firestore.FieldValue.serverTimestamp();', { firestore: 1 }],
         ['const kept = rows.where(x => x.ok); map.set("a", 1); list.delete(0);', {}],
+        // Ways round the direct calls (review of #199): each must count outside the repositories
+        ['import { getFirestore } from "firebase/firestore";', { firestore: 1 }],
+        ['import * as sdk from "https://www.gstatic.com/firebasejs/10.0.0/firebase-firestore.js";', { firestore: 1 }],
+        ['export { db } from "../../firebaseConfig.js";', { firestore: 1 }],
+        ['const m = await import("firebase/firestore");', { firestore: 1 }],
+        ['import { FirebaseService as FS } from "../firebase/firestore-service.js";\nconst d = FS.db;', { firestore: 1 }],
+        ['import * as S from "../firebase/firestore-service.js";\nS.FirebaseService.cashSessionRef("s1").update({ a: 1 });', { firestore: 1 }],
+        ['FirebaseService.cashSessionRef(id).update({ closingBalance: 1 });', { firestore: 1 }],
+        ['const S = FirebaseService;\nconst r = S.sessionRef(1);', { firestore: 1 }],
+        ['const d = FirebaseService.db;\nawait d.runTransaction(async () => {});', { firestore: 2 }],
+        ['const { db } = FirebaseService;', { firestore: 1 }],
+        ['const { cashSessionRef: ref } = FirebaseService;', { firestore: 1 }],
+        ['const x = window.db;', { firestore: 1 }],
+        ['window.firebase.firestore();', { firestore: 1 }],
+        ['globalThis.firebase.firestore.FieldValue.increment(1);', { firestore: 1 }],
+        ['const fb = firebase; fb.firestore.FieldValue.increment(1);', { firestore: 1 }],
+        ['const fb = window.firebase;', { firestore: 1 }],
+        ['const { firebase: fb } = window;', { firestore: 1 }],
+        ['useSdk(firebase);', { firestore: 1 }],
+        ['const t = store.runTransaction(fn);', { firestore: 1 }],
+        ['const b = anything.batch();', { firestore: 1 }],
+        // ...while the sanctioned paths stay free
+        ['import { FirebaseService } from "../firebase/firestore-service.js";\nFirebaseService.loadUsers();', {}],
+        ['import { userProfile } from "../firebase/repos/users.js";\nconst p = userProfile("u1");', {}],
+        ['const u = firebase.auth().currentUser;\nif (typeof firebase === "undefined") {}', {}],
+        ['const u = globalThis.firebase?.auth?.().currentUser;', {}],
+        ['const r = billRef(b); AnomaliesManager.openRef(1);', {}],
         ['AppState.stock = stock; AppState.items.push(x);', { appStateWrite: 1 }],
         ['const end = new Date(y, m, d + 1);', { dateMath: 1 }],
         ['tomorrow.setDate(tomorrow.getDate() + 1);', { dateMath: 1 }],

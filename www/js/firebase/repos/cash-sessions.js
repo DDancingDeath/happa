@@ -14,6 +14,18 @@ const sessionRef = (sessionId) => {
     return FirebaseService.db.collection(name).doc(String(sessionId));
 };
 
+/** FirebaseService's col(): the env prefix from window.COLLECTION_PREFIX. */
+const prefixed = (name) => (window.COLLECTION_PREFIX || '') + name;
+
+/**
+ * A session's document reference for another repository's transaction (bill-payments:
+ * the drawer leg of a due payment). Named with FirebaseService's prefix
+ * (`window.COLLECTION_PREFIX`, the same as getCollection in the app). Never given to pages.
+ * @param {string} sessionId
+ */
+export const sessionRefForTransaction = (sessionId) => FirebaseService.db
+    .collection(prefixed('cashManagement')).doc(String(sessionId));
+
 /**
  * Re-reads a session in a transaction and writes `fieldsFor(fresh)`, so a session
  * changed on another device (e.g. closed) since it was loaded is never clobbered.

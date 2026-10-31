@@ -9,6 +9,7 @@
  * @module firebase/repos/bill-payments
  */
 import { FirebaseService } from '../firestore-service.js';
+import { sessionRefForTransaction } from './cash-sessions.js';
 
 const colName = (name) => (window.getCollection ? window.getCollection(name) : name);
 
@@ -24,7 +25,7 @@ const colName = (name) => (window.getCollection ? window.getCollection(name) : n
  * @throws {Error} 'Transaction not found' when neither document exists
  */
 export async function updateBillInTransaction(collKey, billId, sessionId, change) {
-    const sessionRef = sessionId ? FirebaseService.cashSessionRef(sessionId) : null;
+    const sessionRef = sessionId ? sessionRefForTransaction(sessionId) : null;
     const db = FirebaseService.db;
     const coll = db.collection(colName(collKey));
     let ref = coll.doc(String(billId));

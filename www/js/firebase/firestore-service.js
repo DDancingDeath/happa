@@ -86,6 +86,13 @@ const col = (name) => {
     return prefix + name;
 };
 
+/**
+ * Document reference of a cash session (openCashSession's transaction). Not on
+ * FirebaseService: refs stay inside the data layer (repos/cash-sessions.js has its own).
+ * @param {string} sessionId
+ */
+const cashSessionRef = (sessionId) => FirebaseService.db.collection(col('cashManagement')).doc(String(sessionId));
+
 /** @type {Function[]} Array of unsubscribe functions for real-time listeners */
 const unsubscribeFunctions = [];
 /** Numbers the data listeners for the sync pill (#70). */
@@ -4174,7 +4181,7 @@ const FirebaseService = {
     async openCashSession(session) {
         const needsInternet = () => Object.assign(new Error('Open cash needs internet'), { code: CASH_NEEDS_INTERNET });
         if (typeof navigator !== 'undefined' && navigator.onLine === false) throw needsInternet();
-        const ref = this.cashSessionRef(cashSessionDocId(session.date));
+        const ref = cashSessionRef(cashSessionDocId(session.date));
         const fresh = { ...session, id: ref.id };
         try {
             const legacy = sessionForDate(await this.loadCashSessionsForDate(session.date, { source: 'server' }), session.date);
@@ -4189,14 +4196,6 @@ const FirebaseService = {
             if (error?.code === 'unavailable') throw needsInternet();
             throw error;
         }
-    },
-
-    /**
-     * Document reference of a cash session (for transactions).
-     * @param {string} sessionId
-     */
-    cashSessionRef(sessionId) {
-        return this.db.collection(col('cashManagement')).doc(String(sessionId));
     },
 
     /**

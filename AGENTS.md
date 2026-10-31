@@ -493,6 +493,8 @@ services → repositories → UI. Anywhere in `www/js` (`modules/`, `rentals/`,
   `Helpers.getElementInt`), calc included;
 - no Firestore calls (`.collection(`, `db.doc(`, `runTransaction`, `batch`,
   `where`, `onSnapshot`, transaction / batch operations, `firebase.firestore.FieldValue`)
+  and no way round them (`.db`, `FirebaseService.<x>Ref(` under any alias,
+  `firebase` other than `.auth` / `typeof`, `window.firebase`, Firebase SDK / CDN imports)
   outside the repositories (`firebase/**`, `rentals/rent-store.js`,
   `rentals/rent-receipt-store.js`), calc included. This one is absolute: no
   baseline entry, no exception; add a repository function instead;
