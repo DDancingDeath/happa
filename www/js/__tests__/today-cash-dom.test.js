@@ -36,11 +36,14 @@ test('opening Today › Cash moves the cash body: one copy of every id', () => {
     expect(duplicateIds()).toEqual([]);
 });
 
-test('the Cash page takes the body back; Today › Cash takes it again when Today opens', () => {
+test('the Cash page takes the body back; Today › Cash takes it again when Today is the open page', () => {
     DayManager.showSubTab('cash');
     DayManager.returnCashBody();
     expect(document.querySelector('#cash-management > .cash-body')).not.toBeNull();
     expect(document.getElementById('dayCashManagementContainer').children).toHaveLength(0);
+    DayManager.init();
+    expect(document.querySelector('#cash-management > .cash-body')).not.toBeNull();
+    document.getElementById('day').classList.add('active');
     DayManager.init();
     expect(document.querySelector('#dayCashManagementContainer > .cash-body')).not.toBeNull();
     expect(duplicateIds()).toEqual([]);
