@@ -2,6 +2,7 @@
   "appId": "com.happa",
   "appName": "happa",
   "webDir": "www",
+  "zoomEnabled": true,
   "server": {
     "allowNavigation": [
       "*.firebaseapp.com",
