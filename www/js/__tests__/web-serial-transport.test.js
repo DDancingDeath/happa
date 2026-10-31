@@ -70,6 +70,26 @@ test('a port that will not open fails before anything is sent (safe to retry)', 
     expect(port.written).toEqual([]);
 });
 
+test('a failed write closes the port; the next print opens it again', async () => {
+    const port = fakePort();
+    let fail = true;
+    const open = port.open.getMockImplementation();
+    port.open.mockImplementation(async () => {
+        await open();
+        const ok = port.writable.getWriter;
+        port.writable.getWriter = () => {
+            const w = ok();
+            return { ...w, write: async (b) => { if (fail) { fail = false; throw new Error('device lost'); } return w.write(b); } };
+        };
+    });
+    const link = new PrinterLink({ transport: webSerialTransport(() => fakeSerial([port])), sleep: () => Promise.resolve() });
+    await expect(link.send(new Uint8Array([1]), { deviceId: 'port:0' })).rejects.toMatchObject({ outcome: 'uncertain' });
+    expect(port.close).toHaveBeenCalled();
+    await expect(link.send(new Uint8Array([2]), { deviceId: 'port:0' })).resolves.toMatchObject({ outcome: 'printed' });
+    expect(port.open).toHaveBeenCalledTimes(2);
+    expect(port.written).toEqual([new Uint8Array([2])]);
+});
+
 test('a disconnect closes the port and tells the link', async () => {
     const port = fakePort();
     const tr = webSerialTransport(() => fakeSerial([port]));

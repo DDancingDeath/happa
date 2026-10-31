@@ -8,7 +8,7 @@ import { webSerialTransport } from '/js/services/web-serial-transport.js';
 
 const $ = (id) => document.getElementById(id);
 const transport = webSerialTransport();
-const link = new PrinterLink({ transport });
+let link = new PrinterLink({ transport });
 let chosen = null;
 
 function log(line) {
@@ -52,7 +52,12 @@ function slipBytes(canvas) {
 
 async function choose() {
     try {
-        chosen = await transport.request();
+        const picked = await transport.request();
+        if (picked.id !== chosen?.id) {
+            await transport.disconnect();
+            link = new PrinterLink({ transport });
+        }
+        chosen = picked;
         const info = (await navigator.serial.getPorts())[Number(chosen.id.slice(5))]?.getInfo?.() || {};
         $('chosen').textContent = t(chosen.bluetooth ? 'ui.spike.chosen_bluetooth' : 'ui.spike.chosen_serial');
         $('print').disabled = false;

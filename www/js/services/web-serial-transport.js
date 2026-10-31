@@ -55,7 +55,7 @@ export function webSerialTransport(getSerial = () => (typeof navigator !== 'unde
             const index = Number(String(deviceId).replace('port:', ''));
             const port = (await ports())[index];
             if (!port) throw new Error('Printer port not found');
-            if (open?.port === port) return true;
+            if (open?.port === port && port.writable) return true;
             await close();
             await port.open({ baudRate });
             open = { port, writer: port.writable.getWriter() };
@@ -73,10 +73,16 @@ export function webSerialTransport(getSerial = () => (typeof navigator !== 'unde
             return !!(open && open.port.writable && open.port.connected !== false);
         },
 
+        /** A failed write closes the port, so the next print opens it afresh. */
         async write(bytes) {
             if (!open) throw new Error('Not connected');
-            await open.writer.ready;
-            await open.writer.write(bytes);
+            try {
+                await open.writer.ready;
+                await open.writer.write(bytes);
+            } catch (error) {
+                await close();
+                throw error;
+            }
         }
     };
 }
