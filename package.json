@@ -5,7 +5,8 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:rules": "npx --yes firebase-tools@latest emulators:exec --only firestore --project demo-aadhat \"node rules-tests/test.js\"",
-    "check:sw": "node scripts/check-sw-assets.js",
+    "check:sw": "node scripts/check-sw-assets.js && node scripts/build-css.js --check",
+    "build:css": "node scripts/build-css.js",
     "release": "node scripts/release.js",
     "check:release": "node scripts/release.js --check",
     "apply:happa-config": "node scripts/happa-config.js apply",
@@ -19,15 +20,12 @@
     "audit:numbers": "node tools/audit/real-data-audit.js"
   },
   "dependencies": {
-    "@capacitor-community/bluetooth-le": "^7.2.0",
     "@capacitor/android": "^7.4.4",
     "@capacitor/app": "^7.1.2",
     "@capacitor/cli": "^7.4.4",
     "@capacitor/core": "^7.4.4",
-    "capacitor-thermal-printer": "^0.2.5",
     "cordova-plugin-android-permissions": "^1.1.5",
     "cordova-plugin-bluetooth-serial": "^0.4.7",
-    "escpos-buffer": "^4.1.0",
     "firebase": "^12.6.0",
     "servor": "^4.0.2"
   },
