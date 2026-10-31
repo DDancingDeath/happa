@@ -6,6 +6,7 @@
 
 import { AppState } from '../utils/state.js';
 import { noteTipError } from '../tip/index.js';
+import { on, TOAST_ERROR } from '../utils/events.js';
 import { saveTelemetryReport, recentTelemetryReports, deleteAllTelemetryReports, deleteTelemetryReports } from '../firebase/repos/telemetry.js';
 
 /**
@@ -224,8 +225,9 @@ const TelemetryService = {
         if (FIRESTORE_UNAVAILABLE_PATTERN.test(String(errorData?.message || ''))) {
             return;
         }
-        // TIP error watcher (#217): errors during an open scenario run turn a pass into a warning
-        noteTipError();
+        // TIP error watcher (#217): errors during an open scenario run turn a pass into a warning.
+        // An error toast may be a typing mistake; a real failure also reaches console.error.
+        if (errorData?.type !== 'toast') noteTipError();
         const error = {
             ...errorData,
             timestamp: Date.now(),
@@ -256,6 +258,7 @@ const TelemetryService = {
      * @returns {string} Fingerprint hash
      */
     createFingerprint(errorData) {
+        if (errorData.ref) return String(errorData.ref);
         const parts = [
             errorData.type,
             errorData.message?.substring(0, 100),
@@ -434,5 +437,8 @@ const TelemetryService = {
         }
     }
 };
+
+// Error toasts (#82) are reported under their ref, whether or not init() ran.
+on(TOAST_ERROR, ({ message, ref }) => TelemetryService.captureError({ type: 'toast', message, ref }));
 
 export { TelemetryService, buildTelemetryDoc, mergeTelemetryReports };
