@@ -5,7 +5,8 @@
  */
 import {
     autoLabour, BILLING_SPEC, buildPaymentSplit, computeLine, computePurchaseTotals, computeRetailTotals,
-    computeWholesaleTotals, draftLineSum, entryAmount, meterAmount, paidOnScreen, payableOnScreen, paymentSplit,
+    computeWholesaleTotals, draftLineSum, editedPaymentSplit, editKeepsMoney, entryAmount, hasPaise, meterAmount,
+    paidOnScreen, payableOnScreen, paymentSplit, settleSplit,
     prefillPayment, restInDue, roundFor, ROUNDING, shownAmount, sumWeights, typedAmount, validateDuePayment,
     validatePaymentSplit, weightsForEdit, wholesaleLiveProfit
 } from '../utils/calc/billing.js';
@@ -154,10 +155,14 @@ describe('BF-SPLIT: validatePaymentSplit (#23)', () => {
 
 describe('DUE-CHECK: validateDuePayment', () => {
     test.each([
-        // Exactly the due (within a paisa) keeps its paise: a due saved before #129 can be paid off
-        ['500.26', 0, 500.25, { ok: true, cash: 500.26, online: 0, total: 500.26 }],
+        // A due with paise (saved before #129) paid off exactly: whole-rupee legs, its paise remainder in one leg
+        ['500.26', 0, 500.25, { ok: true, cash: 500.25, online: 0, total: 500.25 }],
         ['987.5', 0, 987.5, { ok: true, cash: 987.5, online: 0, total: 987.5 }],
         ['487.5', '500', 987.5, { ok: true, cash: 487.5, online: 500, total: 987.5 }],
+        ['487.4', '500.1', 987.5, { ok: true, cash: 487.5, online: 500, total: 987.5 }],
+        // A whole-rupee due gets whole-rupee legs, even when the paise add up to it
+        ['0.01', '99.99', 100, { ok: true, cash: 0, online: 100, total: 100 }],
+        ['99.5', '0.5', 100, { ok: false, error: 'exceeds-due' }],
         // Anything else is saved in whole rupees
         ['500.27', 0, 500.25, { ok: true, cash: 500, online: 0, total: 500 }],
         ['300.6', '200.2', 1000, { ok: true, cash: 301, online: 200, total: 501 }],
@@ -168,5 +173,60 @@ describe('DUE-CHECK: validateDuePayment', () => {
         [0, -1, 10, { ok: false, error: 'negative' }]
     ])('validateDuePayment(%p, %p, due %p)', (cash, online, due, expected) => {
         expect(validateDuePayment(cash, online, due)).toEqual(expected);
+    });
+});
+
+describe('BF-SAVE on an edited bill (#129 review)', () => {
+    // A bill saved before #129: ₹1,000 of lines, ₹12.50 labour, payable ₹987.50
+    const oldBill = (payment) => ({
+        items: [{ itemId: 'rice', name: 'Rice', qty: 40, rate: 25, total: 1000, weights: [40] }],
+        billTotal: 1000, laborCharges: 12.5, grandTotal: 987.5, amountPayable: 987.5,
+        cashPayment: payment.cash, onlinePayment: payment.online, dueAmount: payment.due,
+        payment: { ...payment, total: 987.5 }
+    });
+
+    test('hasPaise / settleSplit: rounded legs, the remainder in Due, else the largest leg, never below 0', () => {
+        expect([hasPaise(987.5), hasPaise(988), hasPaise('0.5'), hasPaise(null)]).toEqual([true, false, true, false]);
+        expect(settleSplit({ cash: 300.5, online: 300.5, due: 386.5 }, 987, ['due'])).toEqual({ cash: 301, online: 301, due: 385 });
+        expect(settleSplit({ cash: 487.5, online: 500, due: 0 }, 987, ['due'])).toEqual({ cash: 488, online: 499, due: 0 });
+        expect(settleSplit({ cash: 0, online: 0, due: 0.5 }, 0, ['due'])).toEqual({ cash: 0, online: 0, due: 0 });
+    });
+
+    test('2 legs, ₹987.50 old payable: the split adds up to the new ₹987 exactly (not ₹988 "overpaid")', () => {
+        const typed = { cash: 487.5, online: 500, due: 0 };
+        expect(paymentSplit(typed)).toEqual({ cash: 488, online: 500, due: 0 });
+        const split = editedPaymentSplit(typed, 987, 987.5);
+        expect(split).toEqual({ cash: 488, online: 499, due: 0 });
+        expect(validatePaymentSplit(987, split)).toMatchObject({ ok: true, difference: 0 });
+    });
+
+    test('3 legs: 301 + 301 + 387 = 989 would fail BF-SPLIT against ₹987; settled it is 301 + 301 + 385', () => {
+        const typed = { cash: 300.5, online: 300.5, due: 386.5 };
+        expect(validatePaymentSplit(987, paymentSplit(typed)).ok).toBe(false);
+        const split = editedPaymentSplit(typed, 987, 987.5);
+        expect(split).toEqual({ cash: 301, online: 301, due: 385 });
+        expect(buildPaymentSplit(split).total).toBe(987);
+    });
+
+    test('a ₹0.50 old due on a ₹1,000 sale: the due is ₹0 after the edit, not ₹1', () => {
+        expect(paymentSplit({ cash: 999.5, online: 0, due: 0.5 })).toEqual({ cash: 1000, online: 0, due: 1 });
+        expect(editedPaymentSplit({ cash: 999.5, online: 0, due: 0.5 }, 1000, 1000)).toEqual({ cash: 1000, online: 0, due: 0 });
+    });
+
+    test('a split still being changed (more than ₹1 off) is only rounded, so the form shows what is left', () => {
+        expect(editedPaymentSplit({ cash: 500.4, online: 0, due: 0 }, 987, 987.5)).toEqual({ cash: 500, online: 0, due: 0 });
+    });
+
+    test('editKeepsMoney: unchanged lines, labour and split keep the stored money; any money change does not', () => {
+        const bill = oldBill({ cash: 487.5, online: 500, due: 0 });
+        const items = bill.items.map(l => ({ ...l }));
+        const typed = { cash: 487.5, online: 500, due: 0 };
+        expect(editKeepsMoney({ bill, items, labour: 12.5, typed })).toBe(true);
+        expect(editKeepsMoney({ bill, items, labour: 13, typed })).toBe(false);
+        expect(editKeepsMoney({ bill, items, labour: 12.5, typed: { ...typed, cash: 488 } })).toBe(false);
+        expect(editKeepsMoney({ bill, items: [{ ...items[0], qty: 41 }], labour: 12.5, typed })).toBe(false);
+        // Sales have no labour; top-level-only payments are read as BILL-PAY reads them
+        const sale = { items: [{ name: 'Rice', qty: 2, rate: 50.25, total: 100.5 }], total: 100.5, cashPayment: 100, dueAmount: 0.5 };
+        expect(editKeepsMoney({ bill: sale, items: sale.items, typed: { cash: 100, online: 0, due: 0.5 } })).toBe(true);
     });
 });

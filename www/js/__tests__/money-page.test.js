@@ -12,7 +12,7 @@ import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { AppState } from '../utils/state.js';
 import { moneySummary, change, comparisonRanges, periodRange, netMoneyByDay, accountsTotal } from '../utils/business-metrics.js';
 import {
-    buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, rangeFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION,
+    buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, rangeFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION, outdatedOlderMonths,
     snapshotCustomers
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
@@ -393,6 +393,15 @@ describe('month snapshots', () => {
         expect(monthsToRoll({ '2026-09': { v: SNAPSHOT_VERSION, builtAt: now - 1000 } }, { now, loadedFrom: 0 })).toEqual(['2026-10']);
         expect(monthsToRoll({}, { now, loadedFrom: new Date(2026, 9, 1).getTime() })).toEqual(['2026-10']);
         expect(monthsToRoll({ '2026-10': { v: SNAPSHOT_VERSION, builtAt: now, stale: true } }, { now, loadedFrom: 0 })).toEqual(['2026-09', '2026-10']);
+    });
+
+    test('#129: older months built by another version are rebuilt once (stale ones go the stale way)', () => {
+        const now = new Date(2026, 9, 21, 15).getTime();
+        const docs = {
+            '2026-06': { v: SNAPSHOT_VERSION - 1 }, '2026-07': { v: SNAPSHOT_VERSION }, '2026-08': { v: SNAPSHOT_VERSION - 1, stale: true },
+            '2026-09': { v: SNAPSHOT_VERSION - 1 }, '2026-10': { v: SNAPSHOT_VERSION - 1 }
+        };
+        expect(outdatedOlderMonths(docs, now)).toEqual(['2026-06']);
     });
 
     test('month keys', () => {

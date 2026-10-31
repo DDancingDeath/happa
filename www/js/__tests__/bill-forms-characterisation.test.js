@@ -582,10 +582,10 @@ describe('wholesale sale form', () => {
             setVal('payment_w1', 500.27);
             await WholesaleSalesManager.recordPayment('w1');
             expect(apply).toHaveBeenLastCalledWith(500);
-            // The exact due of a bill saved with paise (₹500.25, within a paisa) keeps its paise
+            // The exact due of a bill saved with paise (₹500.25, within a paisa) pays it off: only its paise remainder carries paise
             setVal('payment_w1', 500.26);
             await WholesaleSalesManager.recordPayment('w1');
-            expect(apply).toHaveBeenLastCalledWith(500.26);
+            expect(apply).toHaveBeenLastCalledWith(500.25);
             setVal('payment_opening-x', 2000.004);
             await WholesaleSalesManager.recordPayment('opening-x');
             expect(apply).toHaveBeenLastCalledWith(2000);

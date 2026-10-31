@@ -67,13 +67,23 @@ describe('payments and status', () => {
         expect(b).toEqual({ amount: 3000, paid: 5000, open: false });
     });
 
-    test('rejects zero, negative, NaN and more than due; rounds to paise', () => {
+    test('rejects zero, negative, NaN and more than due; whole rupees (#129)', () => {
         expect(() => applyPayment(charge, 0)).toThrow('amount');
         expect(() => applyPayment(charge, -5)).toThrow('amount');
         expect(() => applyPayment(charge, 'x')).toThrow('amount');
         expect(() => applyPayment({ ...charge, paid: 4000 }, 1000.5)).toThrow('over');
         expect(() => applyPayment({ ...charge, payments: Array(12).fill({ amount: 1 }) }, 1)).toThrow('too_many');
         expect(applyPayment({ amount: 0.3, paid: 0.1 }, 0.2)).toEqual({ amount: 0.2, paid: 0.3, open: false });
+    });
+
+    test('#129: whole rupees, half-up; only exactly a due with paise (saved before) keeps its paise', () => {
+        expect(applyPayment(charge, 1999.5)).toMatchObject({ amount: 2000, paid: 2000 });
+        expect(applyPayment(charge, 1999.4)).toMatchObject({ amount: 1999 });
+        expect(() => applyPayment({ ...charge, paid: 4000 }, 999.5)).not.toThrow();
+        const old = { ...charge, amount: 5904.05, paid: 4000 };
+        expect(applyPayment(old, 1904.05)).toEqual({ amount: 1904.05, paid: 5904.05, open: false });
+        expect(applyPayment(old, 1000.4)).toEqual({ amount: 1000, paid: 5000, open: true });
+        expect(() => applyPayment(charge, 0.4)).toThrow('amount');
     });
 
     test('status: due before the due day, late after it, partial, paid', () => {
