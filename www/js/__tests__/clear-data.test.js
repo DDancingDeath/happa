@@ -26,6 +26,8 @@ import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { AdminManager } from '../modules/admin.js';
+
+const realSaveJsonBackup = AdminManager.saveJsonBackup;
 import { serializeForBackup, buildBackup, isDeleteConfirmed, canClearCollection } from '../utils/data-export.js';
 
 describe('data-export helpers', () => {
@@ -130,6 +132,20 @@ describe('AdminManager.clearAllData', () => {
         expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
         expect(AuditService.log).not.toHaveBeenCalled();
         expect(UIManager.showModal).not.toHaveBeenCalled();
+        expect(UIManager.showToast).toHaveBeenCalledWith('The backup was not saved, so nothing was deleted.');
+    });
+
+    test('Android app without sharing: no backup can be saved, so nothing is deleted', async () => {
+        AdminManager.saveJsonBackup = realSaveJsonBackup;
+        window.Capacitor = { isNativePlatform: () => true };
+        const click = jest.spyOn(HTMLAnchorElement.prototype, 'click');
+        try {
+            await AdminManager.clearAllData();
+        } finally {
+            delete window.Capacitor;
+        }
+        expect(click).not.toHaveBeenCalled();
+        expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
         expect(UIManager.showToast).toHaveBeenCalledWith('The backup was not saved, so nothing was deleted.');
     });
 

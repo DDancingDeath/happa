@@ -487,7 +487,8 @@ const AdminManager = {
      * go to Drive/WhatsApp), a normal download elsewhere.
      * @param {Object} backup
      * @param {string} filename
-     * @returns {Promise<boolean>} false when the user cancelled sharing
+     * @returns {Promise<boolean>} false when the user cancelled sharing, or in the
+     *   Android app when sharing isn't available (its WebView drops downloads)
      */
     async saveJsonBackup(backup, filename) {
         const json = JSON.stringify(backup);
@@ -504,6 +505,7 @@ const AdminManager = {
                 }
             }
         }
+        if (window.Capacitor?.isNativePlatform?.()) return false;
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
