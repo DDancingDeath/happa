@@ -1774,6 +1774,80 @@ function defineSuite(prefix) {
         await assertSucceeds(as('legacyOwner').collection(personalDays).doc(D).delete());
     });
 
+    // ---- expense date and payment mode (#118) ----
+
+    /** The local (IST) day `offset` days from today, YYYY-MM-DD. */
+    const istDay = (offset = 0) => new Date(Date.now() + 330 * MIN + offset * DAY).toISOString().slice(0, 10);
+    const dated = (uid, offset, extra = {}) => expense(uid, { paymentMode: 'cash', day: istDay(offset), ...extra });
+
+    t('expenses (#118): payment mode is cash or online; the day is never in the future', async () => {
+        const c = as('staff1').collection(expenses);
+        await assertSucceeds(c.doc('m1').set(dated('staff1', 0, { paymentMode: 'online' })));
+        await assertSucceeds(c.doc('m2').set(dated('staff1', 0)));
+        await assertFails(c.doc('m3').set(dated('staff1', 0, { paymentMode: 'card' })));
+        await assertFails(c.doc('m4').set(dated('staff1', 2)));
+        await assertFails(c.doc('m5').set(dated('staff1', 0, { day: '2026-13-01' })));
+        await assertFails(as('legacyOwner').collection(expenses).doc('m6').set(dated('legacyOwner', 2)));
+        await assertFails(as('legacyOwner').collection(expenses).doc('m7').set(dated('legacyOwner', 0, { paymentMode: 'upi' })));
+        // the mode can be corrected on an edit; the 24-hour member rules still apply
+        await assertSucceeds(c.doc('m2').update(edit({ paymentMode: 'online' })));
+        await assertFails(c.doc('m2').update(edit({ paymentMode: 'cheque' })));
+        await assertFails(as('manager1').collection(expenses).doc('m2').update({ paymentMode: 'cheque' }));
+        await assertSucceeds(as('manager1').collection(expenses).doc('m2').update({ paymentMode: 'cash' }));
+        // older apps send neither field
+        await assertSucceeds(c.doc('m8').set(expense('staff1')));
+    });
+
+    t('expenses (#118): back-dating at most the role edit window (+3 days offline); owner any day', async () => {
+        const c = as('staff1').collection(expenses);
+        // default window 2 days, + 3 for a phone that saved offline
+        await assertSucceeds(c.doc('w1').set(dated('staff1', -2)));
+        await assertSucceeds(c.doc('w2').set(dated('staff1', -5)));
+        await assertFails(c.doc('w3').set(dated('staff1', -6)));
+        await assertFails(as('manager1').collection(expenses).doc('w4').set(dated('manager1', -6)));
+        await assertSucceeds(as('legacyOwner').collection(expenses).doc('w5').set(dated('legacyOwner', -400)));
+        await setPersonalAccess({ staff: { editDays: 0 } });
+        await assertSucceeds(c.doc('w6').set(dated('staff1', -3)));
+        await assertFails(c.doc('w7').set(dated('staff1', -4)));
+        // personal expenses follow the same rule
+        await assertFails(as('staff1').collection(personal).doc('w8').set(dated('staff1', -4, { category: 'personal' })));
+        await assertSucceeds(as('staff1').collection(personal).doc('w9').set(dated('staff1', 0, { category: 'personal', paymentMode: 'online' })));
+    });
+
+    t('personal expenses (#118): the day doc flags exactly the expenses paid online', async () => {
+        const db = as('staff1');
+        const D = istDay(0);
+        const key = (id, amount, online) => ({ ...dayKey(id, amount), online: { [id]: online ? true : FieldValue.delete() } });
+        const create = (id, mode, dayData) => {
+            const b = db.batch();
+            b.set(db.collection(personal).doc(id), dated('staff1', 0, { category: 'personal', amount: 40, paymentMode: mode }));
+            b.set(db.collection(personalDays).doc(D), dayData, { merge: true });
+            return b.commit();
+        };
+        await assertSucceeds(create('o1', 'online', key('o1', 40, true)));
+        await assertFails(create('o2', 'online', key('o2', 40, false)));
+        await assertFails(create('o3', 'cash', key('o3', 40, true)));
+        await assertSucceeds(create('o4', 'cash', key('o4', 40, false)));
+        // a flag on someone else's key, or a flag that isn't `true`
+        await assertFails(create('o5', 'cash', { ...key('o5', 40, false), online: { o5: FieldValue.delete(), o4: true } }));
+        await assertFails(create('o6', 'online', { ...dayKey('o6', 40), online: { o6: 'yes' } }));
+        // changing the mode moves the flag with it
+        let b = db.batch();
+        b.update(db.collection(personal).doc('o1'), edit({ amount: 40, paymentMode: 'cash' }));
+        b.set(db.collection(personalDays).doc(D), key('o1', 40, true), { merge: true });
+        await assertFails(b.commit());
+        b = db.batch();
+        b.update(db.collection(personal).doc('o1'), edit({ amount: 40, paymentMode: 'cash' }));
+        b.set(db.collection(personalDays).doc(D), key('o1', 40, false), { merge: true });
+        await assertSucceeds(b.commit());
+        // an older app deletes without touching the flags: allowed, the stale flag counts nowhere
+        await assertSucceeds(create('o7', 'online', key('o7', 40, true)));
+        b = db.batch();
+        b.delete(db.collection(personal).doc('o7'));
+        b.set(db.collection(personalDays).doc(D), dayKey('o7', null), { merge: true });
+        await assertSucceeds(b.commit());
+    });
+
     t('personal expenses (#98): new expenses tagged personal are refused in `expenses` (older apps)', async () => {
         await assertFails(as('staff1').collection(expenses).doc('x1').set(expense('staff1', { category: 'personal' })));
         await assertFails(as('staff1').collection(expenses).doc('x2').set(expense('staff1', { category: ' Personal ' })));

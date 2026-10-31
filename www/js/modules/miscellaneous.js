@@ -18,10 +18,19 @@ import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.j
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
-import { isPersonalExpense } from '../utils/money.js';
+import { expenseMode, isPersonalExpense } from '../utils/money.js';
+import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpenseEntry } from '../utils/expense-entry.js';
+import { toLocalISODate } from '../utils/dates.js';
+import { personalDayKey } from '../utils/personal-expenses.js';
 
 /** Expense save / print buttons, disabled while one is being saved (#95). */
 const EXPENSE_BUTTONS = '[data-expense-save]';
+
+/** An input of a section's form: formField('business', 'Amount') → #businessExpenseAmount. */
+const formField = (category, name) => document.getElementById(`${category}Expense${name}`);
+
+/** Escaped "Cash" / "Online" of an expense (EXP-MODE; no mode = cash). */
+const modeLabel = (expense) => tx(expenseMode(expense) === 'online' ? 'ui.expenses.mode_online' : 'ui.expenses.mode_cash');
 
 /** The signed-in user, as canChangeExpense expects it. */
 const currentUserInfo = () => ({ uid: AppState.currentUser?.uid, role: AppState.userRole });
@@ -84,6 +93,7 @@ export class ExpensesManager {
             personName: expense.personName,
             amount: expense.amount,
             remarks: expense.remarks,
+            paymentMode: expense.paymentMode,
             updatedAt: Helpers.getCurrentDateTime(),
             updatedBy: expense.createdBy,
             updatedByName: expense.createdByName
@@ -100,6 +110,7 @@ export class ExpensesManager {
 
         // Keep original creation info on the object used for printing
         if (original.date) expense.date = original.date;
+        if (original.day) expense.day = original.day;
         if (original.createdByName) expense.createdByName = original.createdByName;
 
         await AuditService.log(AuditService.ACTIONS.EDIT_EXPENSE || 'EDIT_EXPENSE', {
@@ -121,6 +132,92 @@ export class ExpensesManager {
      */
     static async updateExistingExpense(expenseId, fields) {
         await FirebaseService.updateExpense(expenseId, fields);
+    }
+
+    /**
+     * The expense in a section's form, checked (#118: day and mode too), or null
+     * after telling the user what is wrong. Editing keeps the expense's date.
+     * @param {'business'|'personal'} category
+     * @returns {?Object}
+     */
+    static expenseFromForm(category) {
+        const type = formField(category, 'Type').value.trim();
+        const personName = formField(category, 'Person').value.trim();
+        const amount = Number(formField(category, 'Amount').value);
+        const remarks = formField(category, 'Remarks').value.trim();
+
+        if (!type) {
+            UIManager.showModal(t('msg.expenses.enter_expense_type'));
+            return null;
+        }
+
+        if (!amount || amount <= 0) {
+            UIManager.showModal(t('msg.common.enter_valid_amount'));
+            return null;
+        }
+
+        const now = new Date();
+        const mode = formField(category, 'Mode')?.value || DEFAULT_EXPENSE_MODE;
+        const editing = this.editingExpense?.category === category;
+        const day = editing ? toLocalISODate(now) : (formField(category, 'Date')?.value || toLocalISODate(now));
+        const problem = validateExpenseEntry({ day, mode }, { role: AppState.userRole, roleAccess: AppState.settings?.roleAccess, now });
+        if (problem) {
+            UIManager.showModal(t(problem.key, problem.params));
+            return null;
+        }
+
+        return {
+            type,
+            personName,
+            amount,
+            remarks,
+            category,
+            paymentMode: mode,
+            ...expenseDateFields(day, now),
+            // Save time: the members' edit window counts from it, the expense's day is `date` / `day`
+            timestamp: now.getTime(),
+            createdBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
+            createdByName: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
+        };
+    }
+
+    /**
+     * Date and mode inputs of both sections (#118): the days the role may pick,
+     * today unless the user picked another day, and editable unless an expense
+     * is being edited (editing keeps its date).
+     */
+    static prepareExpenseForms() {
+        const range = expenseDayRange({ role: AppState.userRole, roleAccess: AppState.settings?.roleAccess });
+        ['business', 'personal'].forEach(category => {
+            const input = formField(category, 'Date');
+            if (!input) return;
+            input.max = range.max;
+            if (range.min) input.min = range.min;
+            else input.removeAttribute('min');
+            if (!input.dataset.prepared) {
+                input.dataset.prepared = '1';
+                input.addEventListener('change', () => { input.dataset.picked = '1'; });
+            }
+            if (this.editingExpense?.category === category) return;
+            input.disabled = false;
+            if (!input.dataset.picked || !input.value) input.value = range.max;
+        });
+    }
+
+    /**
+     * After a save or an abandoned edit: today and cash again.
+     * @param {'business'|'personal'} category
+     */
+    static resetExpenseForm(category) {
+        const input = formField(category, 'Date');
+        if (input) {
+            delete input.dataset.picked;
+            input.value = '';
+            input.disabled = false;
+        }
+        const mode = formField(category, 'Mode');
+        if (mode) mode.value = DEFAULT_EXPENSE_MODE;
+        this.prepareExpenseForms();
     }
 
     /**
@@ -183,31 +280,8 @@ export class ExpensesManager {
     }
 
     static async _saveBusinessExpense() {
-        const type = document.getElementById('businessExpenseType').value.trim();
-        const personName = document.getElementById('businessExpensePerson').value.trim();
-        const amount = Number(document.getElementById('businessExpenseAmount').value);
-        const remarks = document.getElementById('businessExpenseRemarks').value.trim();
-
-        if (!type) {
-            UIManager.showModal(t('msg.expenses.enter_expense_type'));
-            return;
-        }
-
-        if (!amount || amount <= 0) {
-            UIManager.showModal(t('msg.common.enter_valid_amount'));
-            return;
-        }
-
-        const expense = {
-            type,
-            personName,
-            amount,
-            remarks,
-            category: 'business',
-            date: Helpers.getCurrentDateTime(),
-            createdBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
-            createdByName: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
-        };
+        const expense = this.expenseFromForm('business');
+        if (!expense) return;
 
         // Use withLoading for the Firebase operation
         let updated = false;
@@ -224,6 +298,7 @@ export class ExpensesManager {
         document.getElementById('businessExpensePerson').value = '';
         document.getElementById('businessExpenseAmount').value = '';
         document.getElementById('businessExpenseRemarks').value = '';
+        this.resetExpenseForm('business');
         
         if (window.app.finance && document.getElementById('financeOverviewSection') && document.getElementById('financeOverviewSection').style.display !== 'none') {
             window.app.finance.calculateOverview();
@@ -248,31 +323,8 @@ export class ExpensesManager {
     }
 
     static async _savePersonalExpense() {
-        const type = document.getElementById('personalExpenseType').value.trim();
-        const amount = Number(document.getElementById('personalExpenseAmount').value);
-        const personName = document.getElementById('personalExpensePerson').value.trim();
-        const remarks = document.getElementById('personalExpenseRemarks').value.trim();
-
-        if (!type) {
-            UIManager.showModal(t('msg.expenses.enter_expense_type'));
-            return;
-        }
-
-        if (!amount || amount <= 0) {
-            UIManager.showModal(t('msg.common.enter_valid_amount'));
-            return;
-        }
-
-        const expense = {
-            type,
-            personName,
-            amount,
-            remarks,
-            category: 'personal',
-            date: Helpers.getCurrentDateTime(),
-            createdBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
-            createdByName: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
-        };
+        const expense = this.expenseFromForm('personal');
+        if (!expense) return;
 
         // Use withLoading for the Firebase operation
         let updated = false;
@@ -289,6 +341,7 @@ export class ExpensesManager {
         document.getElementById('personalExpenseAmount').value = '';
         document.getElementById('personalExpensePerson').value = '';
         document.getElementById('personalExpenseRemarks').value = '';
+        this.resetExpenseForm('personal');
         
         if (window.app.finance && document.getElementById('financeOverviewSection') && document.getElementById('financeOverviewSection').style.display !== 'none') {
             window.app.finance.calculateOverview();
@@ -320,6 +373,7 @@ export class ExpensesManager {
      * Render all expense history (business + personal)
      */
     static renderexpensesHistory() {
+        this.prepareExpenseForms();
         this.renderBusinessExpenseHistory();
         this.renderPersonalExpenseHistory();
     }
@@ -360,7 +414,7 @@ export class ExpensesManager {
                     </div>
                 </div>
                 ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
-                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
+                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
             </div>
         `).join('');
     }
@@ -420,7 +474,7 @@ export class ExpensesManager {
                     </div>
                 </div>
                 ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
-                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
+                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
             </div>
         `).join('');
     }
@@ -439,31 +493,8 @@ export class ExpensesManager {
     }
 
     static async _saveAndPrintBusiness() {
-        const type = document.getElementById('businessExpenseType').value.trim();
-        const personName = document.getElementById('businessExpensePerson').value.trim();
-        const amount = Number(document.getElementById('businessExpenseAmount').value);
-        const remarks = document.getElementById('businessExpenseRemarks').value.trim();
-
-        if (!type) {
-            UIManager.showModal(t('msg.expenses.enter_expense_type'));
-            return;
-        }
-
-        if (!amount || amount <= 0) {
-            UIManager.showModal(t('msg.common.enter_valid_amount'));
-            return;
-        }
-
-        const expense = {
-            type,
-            personName,
-            amount,
-            remarks,
-            category: 'business',
-            date: Helpers.getCurrentDateTime(),
-            createdBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
-            createdByName: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
-        };
+        const expense = this.expenseFromForm('business');
+        if (!expense) return;
 
         const updated = await this.persistExpense(expense);
         if (updated === null) return;
@@ -475,6 +506,7 @@ export class ExpensesManager {
         document.getElementById('businessExpensePerson').value = '';
         document.getElementById('businessExpenseAmount').value = '';
         document.getElementById('businessExpenseRemarks').value = '';
+        this.resetExpenseForm('business');
         
         if (window.app.finance && document.getElementById('financeOverviewSection') && document.getElementById('financeOverviewSection').style.display !== 'none') {
             window.app.finance.calculateOverview();
@@ -517,6 +549,14 @@ export class ExpensesManager {
                                 <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.history.date')}</span>
                             </div>
                             <span style="font-size: 14px; color: #333; font-weight: 500;">${Helpers.escapeHtml(expense.date)}</span>
+                        </div>
+
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                            <div style="display: flex; align-items: center;">
+                                <span style="font-size: 20px; margin-right: 12px;">💳</span>
+                                <span style="font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_paid_by')}</span>
+                            </div>
+                            <span style="font-size: 14px; color: #333; font-weight: 500;">${modeLabel(expense)}</span>
                         </div>
                         
                         ${expense.createdByName ? `
@@ -664,6 +704,14 @@ export class ExpensesManager {
             document.getElementById('personalExpensePerson').value = expense.personName || '';
             document.getElementById('personalExpenseRemarks').value = expense.remarks || '';
         }
+        // Editing keeps the expense's date (#118); its mode can be corrected
+        const dateInput = formField(category, 'Date');
+        if (dateInput) {
+            dateInput.value = expense.day || personalDayKey(expense.date) || '';
+            dateInput.disabled = true;
+        }
+        const modeInput = formField(category, 'Mode');
+        if (modeInput) modeInput.value = expenseMode(expense);
 
         // Edit in place: saving this category updates the same document (nothing is deleted)
         this.editingExpense = { id: String(expense.id), category };
@@ -683,10 +731,12 @@ export class ExpensesManager {
         UIManager.showToast(t('msg.expenses.edit_expense_save_update'));
     }
 
-    /** Stops editing: the next save creates a new expense. */
+    /** Stops editing: the next save creates a new expense (dated today, cash, unless picked). */
     static cancelExpenseEdit() {
-        this.editingExpense?.cleanup?.();
+        const was = this.editingExpense;
+        was?.cleanup?.();
         this.editingExpense = null;
+        if (was && typeof document !== 'undefined') this.resetExpenseForm(was.category);
     }
 
     static async deleteExpense(expenseId, category, showConfirm = true) {
@@ -743,31 +793,8 @@ export class ExpensesManager {
     }
 
     static async _saveAndPrintPersonal() {
-        const type = document.getElementById('personalExpenseType').value.trim();
-        const amount = Number(document.getElementById('personalExpenseAmount').value);
-        const personName = document.getElementById('personalExpensePerson').value.trim();
-        const remarks = document.getElementById('personalExpenseRemarks').value.trim();
-
-        if (!type) {
-            UIManager.showModal(t('msg.expenses.enter_expense_type'));
-            return;
-        }
-
-        if (!amount || amount <= 0) {
-            UIManager.showModal(t('msg.common.enter_valid_amount'));
-            return;
-        }
-
-        const expense = {
-            type,
-            personName,
-            amount,
-            remarks,
-            category: 'personal',
-            date: Helpers.getCurrentDateTime(),
-            createdBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
-            createdByName: AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown')
-        };
+        const expense = this.expenseFromForm('personal');
+        if (!expense) return;
 
         const updated = await this.persistExpense(expense);
         if (updated === null) return;
@@ -779,6 +806,7 @@ export class ExpensesManager {
         document.getElementById('personalExpenseAmount').value = '';
         document.getElementById('personalExpensePerson').value = '';
         document.getElementById('personalExpenseRemarks').value = '';
+        this.resetExpenseForm('personal');
         
         if (window.app.finance && document.getElementById('financeOverviewSection') && document.getElementById('financeOverviewSection').style.display !== 'none') {
             window.app.finance.calculateOverview();

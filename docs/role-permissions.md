@@ -48,6 +48,9 @@ setting is missing or invalid.
 - `editDays`: whole days, 0–30; 0 = never. Managers may edit any bill and delete their own;
   members edit and delete only their own bills. Recording a payment, clearing or writing off
   a due is **not** limited (it is bookkeeping, not an edit). The owner has no limit.
+  The same days limit how far back a new expense may be dated (#118): 2 = today, yesterday
+  and the day before; 0 = today only (`utils/expense-entry.js`; the rules check it with 3
+  more days for a phone that saved offline, `expenseDayInWindow`).
 - `historyDays`: whole days, 0–3650; 0 = all bills.
 - `shopSettings`: managers only (members never see Settings › Aadhat; the client forces it off for
   them). When on, a manager may update only the Aadhat fields of `settings/app`: `laborRate`,

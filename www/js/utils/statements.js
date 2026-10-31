@@ -7,7 +7,7 @@
  */
 
 import { billsInRange } from './finance-calc.js';
-import { activityBills, billLabour, billTotal, isOpeningRecord, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
+import { activityBills, billLabour, billTotal, isOpeningRecord, isOnlineExpense, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, entryParts, entryTime, dueEvents } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayWithValues, eventTime } from './stock-replay.js';
 import { normalizePartyName } from './aging.js';
@@ -51,7 +51,8 @@ export function dayBook(src, { from, to }, { personal = true, sessions = [] } = 
         if (t === null || t < from || t >= to) return;
         if (!personal && isPersonalExpense(e)) return;
         const amount = num(e.amount);
-        rows.push({ t, kind: isPersonalExpense(e) ? 'personal' : 'expense', billNo: '', party: String(e.personName || '').trim(), amount, cash: amount, online: 0, due: 0, note: [e.type, e.remarks].filter(Boolean).join(' · ') });
+        const online = isOnlineExpense(e);
+        rows.push({ t, kind: isPersonalExpense(e) ? 'personal' : 'expense', billNo: '', party: String(e.personName || '').trim(), amount, cash: online ? 0 : amount, online: online ? amount : 0, due: 0, note: [e.type, e.remarks].filter(Boolean).join(' · ') });
         totals.expenses += amount;
     });
     (src.withdrawals || []).forEach(w => {

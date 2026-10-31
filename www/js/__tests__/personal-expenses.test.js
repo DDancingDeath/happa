@@ -6,7 +6,7 @@
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
-import { canReadPersonalExpenses, dayDocTotals, personalDayFixes, personalDaysFromRows, personalForDay } from '../utils/personal-expenses.js';
+import { canReadPersonalExpenses, dayDocTotals, personalDayFixes, personalDaysFromRows, personalForDay, personalOnlineFromRows } from '../utils/personal-expenses.js';
 import { toLocalISODate } from '../utils/dates.js';
 
 const settle = async (fake, rounds = 10) => {
@@ -22,24 +22,43 @@ describe('personal expense helpers', () => {
     });
 
     test('day docs: one key per expense; totals are the sum; fixes set or remove keys', () => {
-        expect(dayDocTotals({ amounts: { a: 50, b: 25.25 } })).toEqual({ total: 75.25, count: 2 });
-        expect(dayDocTotals(null)).toEqual({ total: 0, count: 0 });
+        expect(dayDocTotals({ amounts: { a: 50, b: 25.25 } })).toEqual({ total: 75.25, count: 2, online: 0, onlineCount: 0 });
+        expect(dayDocTotals(null)).toEqual({ total: 0, count: 0, online: 0, onlineCount: 0 });
         const want = personalDaysFromRows([
             { id: 'a', day: '2026-10-22', amount: 50 }, { id: 'b', date: '22/10/2026, 6:00:00 pm', amount: 10 },
             { id: 'c', day: '2026-10-21', amount: 5 }, { id: 'd', amount: 1 }
         ]);
         expect(want).toEqual({ '2026-10-22': { a: 50, b: 10 }, '2026-10-21': { c: 5 } });
         expect(personalDayFixes(want['2026-10-22'], { amounts: { a: 40, z: 9 } }))
-            .toEqual([{ id: 'a', amount: 50 }, { id: 'b', amount: 10 }, { id: 'z', amount: null }]);
+            .toEqual([{ id: 'a', amount: 50, online: false }, { id: 'b', amount: 10, online: false }, { id: 'z', amount: null, online: false }]);
         expect(personalDayFixes(want['2026-10-22'], { amounts: { a: 50, b: 10 } })).toEqual([]);
+    });
+
+    test('day docs flag the expenses paid online (#118); a flag without an amount counts nowhere', () => {
+        expect(dayDocTotals({ amounts: { a: 50, b: 25.25 }, online: { b: true, gone: true, a: false } }))
+            .toEqual({ total: 75.25, count: 2, online: 25.25, onlineCount: 1 });
+        const rows = [
+            { id: 'a', day: '2026-10-22', amount: 50, paymentMode: 'online' }, { id: 'b', day: '2026-10-22', amount: 10 },
+            { id: 'c', day: '2026-10-21', amount: 5, paymentMode: 'cash' }
+        ];
+        const online = personalOnlineFromRows(rows);
+        expect(online).toEqual({ '2026-10-22': { a: true } });
+        const want = personalDaysFromRows(rows)['2026-10-22'];
+        expect(personalDayFixes(want, { amounts: { a: 50, b: 10 } }, online['2026-10-22'])).toEqual([{ id: 'a', amount: 50, online: true }]);
+        expect(personalDayFixes(want, { amounts: { a: 50, b: 10 }, online: { a: true, b: true } }, online['2026-10-22']))
+            .toEqual([{ id: 'b', amount: 10, online: false }]);
+        expect(personalDayFixes(want, { amounts: { a: 50, b: 10 }, online: { a: true } }, online['2026-10-22'])).toEqual([]);
     });
 
     test('a day: the rows when readable; else the rows still in expenses + the day total', () => {
         const rows = [{ amount: 50 }, { amount: 25.25 }];
-        expect(personalForDay(rows, true, { total: 999, count: 9 })).toEqual({ total: 75.25, count: 2 });
-        expect(personalForDay([], false, { total: 300, count: 2 })).toEqual({ total: 300, count: 2 });
-        expect(personalForDay(rows, false, { total: 300, count: 2 })).toEqual({ total: 375.25, count: 4 });
-        expect(personalForDay([], false, null)).toEqual({ total: 0, count: 0 });
+        expect(personalForDay(rows, true, { total: 999, count: 9 })).toEqual({ total: 75.25, count: 2, online: 0 });
+        expect(personalForDay([], false, { total: 300, count: 2 })).toEqual({ total: 300, count: 2, online: 0 });
+        expect(personalForDay(rows, false, { total: 300, count: 2 })).toEqual({ total: 375.25, count: 4, online: 0 });
+        expect(personalForDay([], false, null)).toEqual({ total: 0, count: 0, online: 0 });
+        // EXP-MODE (#118): the online part, from the rows and the day doc
+        expect(personalForDay([{ amount: 50, paymentMode: 'online' }, { amount: 25.25 }], false, { total: 300, count: 2, online: 100 }))
+            .toEqual({ total: 375.25, count: 4, online: 150 });
     });
 });
 
@@ -86,12 +105,17 @@ describe('FirebaseService personal expenses (#98)', () => {
         await settle(fake);
         expect(fake.raw('personalExpenses').get(record.id)).toMatchObject({ amount: 80, category: 'personal', userId: 'u1', day: today });
         expect(fake.raw('expenses').size).toBe(1);
-        expect(fake.raw('personalExpenseDays').get(today)).toEqual({ amounts: { [record.id]: 80 }, last: record.id });
+        expect(fake.raw('personalExpenseDays').get(today)).toEqual({ amounts: { [record.id]: 80 }, online: {}, last: record.id });
         expect(AppState.expensesHistory.map(e => e.amount).sort()).toEqual([20, 80]);
 
         await FirebaseService.updateExpense(record.id, { amount: 65 });
         expect(fake.raw('personalExpenses').get(record.id).amount).toBe(65);
         expect(fake.raw('personalExpenseDays').get(today).amounts).toEqual({ [record.id]: 65 });
+
+        // paid online after all (#118): the flag follows the mode, the amount stays
+        await FirebaseService.updateExpense(record.id, { paymentMode: 'online' });
+        expect(fake.raw('personalExpenseDays').get(today)).toMatchObject({ amounts: { [record.id]: 65 }, online: { [record.id]: true } });
+        expect(dayDocTotals(fake.raw('personalExpenseDays').get(today))).toMatchObject({ total: 65, online: 65 });
 
         AppState.expensesHistory = AppState.expensesHistory.filter(e => e.id !== record.id);
         await FirebaseService.deleteExpense(record.id);
@@ -109,7 +133,7 @@ describe('FirebaseService personal expenses (#98)', () => {
         await again.committed;
         await settle(fake);
         expect(fake.raw('personalExpenses').size).toBe(1);
-        expect(dayDocTotals(fake.raw('personalExpenseDays').get(today))).toEqual({ total: 90, count: 1 });
+        expect(dayDocTotals(fake.raw('personalExpenseDays').get(today))).toMatchObject({ total: 90, count: 1 });
     });
 
     test('a row moved from the old app (numeric id field) is edited and deleted in personalExpenses', async () => {
@@ -156,8 +180,8 @@ describe('FirebaseService personal expenses (#98)', () => {
         expect(AppState.expensesHistory.map(e => e.id)).toEqual(['b1']);
         expect(FirebaseService.personalRowsLoaded()).toBe(false);
         expect([...fake.stats.listenLog, ...fake.stats.queryLog.map(q => q.coll)]).not.toContain('personalExpenses');
-        expect(await FirebaseService.loadPersonalExpenseDay(today)).toEqual({ total: 80, count: 1 });
-        expect(FirebaseService.personalExpenseDay(today)).toEqual({ total: 80, count: 1 });
+        expect(await FirebaseService.loadPersonalExpenseDay(today)).toMatchObject({ total: 80, count: 1, online: 0 });
+        expect(FirebaseService.personalExpenseDay(today)).toMatchObject({ total: 80, count: 1, online: 0 });
     });
 });
 

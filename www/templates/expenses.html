@@ -27,6 +27,19 @@
             </div>
 
             <div class="form-row">
+                <label for="businessExpenseDate" data-i18n="ui.expenses.date">Date:</label>
+                <input type="date" id="businessExpenseDate" />
+            </div>
+
+            <div class="form-row">
+                <label for="businessExpenseMode" data-i18n="ui.expenses.paid_by">Paid by:</label>
+                <select id="businessExpenseMode">
+                    <option value="cash" data-i18n="ui.expenses.mode_cash">Cash</option>
+                    <option value="online" data-i18n="ui.expenses.mode_online">Online</option>
+                </select>
+            </div>
+
+            <div class="form-row">
                 <label data-i18n="ui.expenses.person_name_optional">Person Name (Optional):</label>
                 <input type="text" id="businessExpensePerson" list="businessExpensePersonOptions" placeholder="Enter name" data-i18n-placeholder="ui.expenses.enter_name" />
                 <datalist id="businessExpensePersonOptions"></datalist>
@@ -66,6 +79,19 @@
             <div class="form-row">
                 <label data-i18n="ui.expenses.amount">Amount (₹):</label>
                 <input type="number" inputmode="decimal" id="personalExpenseAmount" placeholder="Enter amount" data-i18n-placeholder="ui.cash.enter_amount" />
+            </div>
+
+            <div class="form-row">
+                <label for="personalExpenseDate" data-i18n="ui.expenses.date">Date:</label>
+                <input type="date" id="personalExpenseDate" />
+            </div>
+
+            <div class="form-row">
+                <label for="personalExpenseMode" data-i18n="ui.expenses.paid_by">Paid by:</label>
+                <select id="personalExpenseMode">
+                    <option value="cash" data-i18n="ui.expenses.mode_cash">Cash</option>
+                    <option value="online" data-i18n="ui.expenses.mode_online">Online</option>
+                </select>
             </div>
 
             <div class="form-row">
