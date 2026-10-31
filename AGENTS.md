@@ -338,11 +338,16 @@ section 7) before pushing; don't commit one-off probe scripts.
 2. `npm run release -- <x.y.z> --code <n>` (updates `package.json`,
    `www/js/version.js`, `android/app/build.gradle`), then
    `npm run check:release`.
-3. Merge to `main` (web deploys automatically), then push tag `v<x.y.z>`.
+3. Merge to `main` after shop hours (web deploys automatically), then push a
+   release-candidate tag `v<x.y.z>-rc<n>` (a prerelease, never offered by the
+   update banner) and run the manual checks in `docs/release-checklist.md` with
+   its APK (real printer, 5 bills offline, cash open/close, install over the
+   previous APK, timings).
+4. All good: push tag `v<x.y.z>` on the same commit, after shop hours.
    The tag-driven Android release workflow (#92 / PR #173) builds and signs
    the APK (Happa key, `HAPPA_*` secrets, pinned to `HAPPA_CERT_SHA256`) and
    publishes a GitHub Release with `happa.apk`.
-4. Installed apps see the "Update available" banner (checks
+5. Installed apps see the "Update available" banner (checks
    `releases/latest`, at most every 12 h); `/download` always links to the
    latest APK; users get a one-time "What's new" sheet.
 
@@ -360,7 +365,9 @@ in `.github/review-rules-examples/`.
 ### CI: what runs on a pull request
 
 - **`ci.yml`** (every PR and push to `main`): *Lint, Jest, release checks* and
-  *Firestore rules tests*. Nightly it also runs the read-only production smoke
+  *Firestore rules tests*. Jest includes a docs link check
+  (`tests/ci/docs-links.test.js`: every relative link in a `.md` file must point
+  to a file that exists). Nightly it also runs the read-only production smoke
   (`npm run test:smoke`).
 - **`e2e.yml`**: the Playwright E2E suite (`tests/e2e`, Firebase emulators;
   every page × role × en/hi × phone/desktop). It runs on **every PR that changes
