@@ -131,11 +131,8 @@ const AuthManager = {
 
     setPasswordShown(input, btn, show) {
         input.type = show ? 'text' : 'password';
-        if (!btn) return;
-        const label = t(show ? 'ui.auth.hide_password' : 'ui.auth.show_password');
-        btn.setAttribute('aria-pressed', String(show));
-        btn.setAttribute('aria-label', label);
-        btn.title = label;
+        // A toggle button: the label stays "Show password", the pressed state says whether it is shown
+        if (btn) btn.setAttribute('aria-pressed', String(show));
     },
 
     /** Every password field back to hidden (switching cards, after signing in). */
@@ -179,13 +176,22 @@ const AuthManager = {
 
     // An auth account can exist without a Firestore profile if an earlier registration was
     // interrupted. Sign in with the supplied password and finish creating the profile.
+    // This is a password try too, so it shares the Login card's backoff (#105).
     async recoverExistingRegistration(name, email, password) {
+        const wait = loginWaitMs(readBackoff(), Date.now());
+        if (wait > 0) return loginWaitText(wait);
         let credential;
         try {
             credential = await firebase.auth().signInWithEmailAndPassword(email, password);
         } catch (e) {
-            return t('msg.auth.already_registered_forgot');
+            const backoff = afterLoginFailure(readBackoff(), Date.now(), e?.code);
+            safeSetItem(BACKOFF_KEY, JSON.stringify(backoff));
+            const after = loginWaitMs(backoff, Date.now());
+            return after > 0
+                ? `${t('msg.auth.already_registered_forgot')} ${loginWaitText(after)}`
+                : t('msg.auth.already_registered_forgot');
         }
+        clearBackoff();
         try {
             const created = await this.createPendingProfile(credential.user, name, email);
             return created ? null : t('msg.auth.already_registered_login');

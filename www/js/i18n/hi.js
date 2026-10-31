@@ -1285,7 +1285,6 @@ export default {
     'ui.admin.open_settings': "सेटिंग्स खोलें",
     'ui.auth.forgot_password': "पासवर्ड भूल गए?",
     'ui.auth.show_password': "पासवर्ड दिखाएँ",
-    'ui.auth.hide_password': "पासवर्ड छिपाएँ",
     'ui.auth.reset_email_label': "रीसेट लिंक के लिए ईमेल",
     'ui.auth.reset_email_placeholder': "अपना ईमेल लिखें",
     'ui.auth.send_reset_link': "रीसेट लिंक भेजें",

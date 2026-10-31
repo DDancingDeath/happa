@@ -283,6 +283,26 @@ describe('wrong-try backoff, show password, Enter (#105)', () => {
         expect(localStorage.getItem('happaLoginBackoff')).toBeNull();
     });
 
+    test('Register with an existing email is a password try too: it waits and counts', async () => {
+        auth.createUserWithEmailAndPassword.mockRejectedValue(authError('auth/email-already-in-use'));
+        auth.signInWithEmailAndPassword.mockRejectedValue(authError('auth/wrong-password'));
+        const register = async () => {
+            AuthManager.showAuthTab('register');
+            $('registerName').value = 'A';
+            $('registerEmail').value = 'a@x.com';
+            $('registerPassword').value = 'guess12';
+            $('registerConfirmPassword').value = 'guess12';
+            await AuthManager.handleRegister();
+        };
+        for (let i = 0; i < 5; i++) await register();
+        expect(auth.signInWithEmailAndPassword).toHaveBeenCalledTimes(5);
+        expect($('loginMessage').textContent).toMatch(/Try again in 30 s\.$/);
+        await register();
+        expect(auth.signInWithEmailAndPassword).toHaveBeenCalledTimes(5);
+        await AuthManager.handleLogin();
+        expect(auth.signInWithEmailAndPassword).toHaveBeenCalledTimes(5);
+    });
+
     test('the Hindi wait message', async () => {
         setLang('hi', { store: null });
         localStorage.setItem('happaLoginBackoff', JSON.stringify({ fails: 6, last: Date.now(), until: Date.now() + 120000 }));
@@ -297,7 +317,7 @@ describe('wrong-try backoff, show password, Enter (#105)', () => {
         expect(AuthManager.togglePassword('loginPassword', eye)).toBe(true);
         expect($('loginPassword').type).toBe('text');
         expect(eye.getAttribute('aria-pressed')).toBe('true');
-        expect(eye.getAttribute('aria-label')).toBe('Hide password');
+        expect(eye.getAttribute('aria-label')).toBe('Show password');
         expect(AuthManager.togglePassword('loginPassword', eye)).toBe(false);
         expect($('loginPassword').type).toBe('password');
         ['registerPassword', 'registerConfirmPassword'].forEach(id => {

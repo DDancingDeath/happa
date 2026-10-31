@@ -1286,7 +1286,6 @@ export default {
     'ui.admin.open_settings': "Open Settings",
     'ui.auth.forgot_password': "Forgot password?",
     'ui.auth.show_password': "Show password",
-    'ui.auth.hide_password': "Hide password",
     'ui.auth.reset_email_label': "Email for the reset link",
     'ui.auth.reset_email_placeholder': "Enter your email",
     'ui.auth.send_reset_link': "Send reset link",

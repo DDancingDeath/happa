@@ -36,7 +36,8 @@ const clean = (state) => ({
  */
 export function loginWaitMs(state, now) {
     const s = clean(state);
-    return s.until > now ? s.until - now : 0;
+    // Capped: a phone clock moved back must not lock sign-in for longer than the longest wait
+    return s.until > now ? Math.min(s.until - now, LOGIN_BACKOFF.maxWaitMs) : 0;
 }
 
 /**
@@ -49,7 +50,7 @@ export function loginWaitMs(state, now) {
 export function afterLoginFailure(state, now, code) {
     const s = clean(state);
     if (!COUNTED_LOGIN_ERRORS.includes(code)) return s;
-    const fails = (now - s.last > LOGIN_BACKOFF.forgetAfterMs ? 0 : s.fails) + 1;
+    const fails = (now - s.last > LOGIN_BACKOFF.forgetAfterMs || now < s.last ? 0 : s.fails) + 1;
     const over = fails - LOGIN_BACKOFF.freeTries;
     const wait = over < 0 ? 0 : Math.min(LOGIN_BACKOFF.firstWaitMs * 2 ** over, LOGIN_BACKOFF.maxWaitMs);
     return { fails, last: now, until: wait ? now + wait : 0 };

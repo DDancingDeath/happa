@@ -32,6 +32,9 @@ test('only wrong email/password (or Firebase\'s own limit) counts; a quiet hour 
     s = fail(s, 1000 + LOGIN_BACKOFF.forgetAfterMs + 1);
     expect(s.fails).toBe(1);
     expect(loginWaitMs({ until: 'x' }, 5)).toBe(0);
+    // a phone clock moved back never locks longer than the longest wait, and starts the count again
+    expect(loginWaitMs({ fails: 9, last: 10 * 86400000, until: 10 * 86400000 + 900000 }, 1000)).toBe(LOGIN_BACKOFF.maxWaitMs);
+    expect(fail({ fails: 9, last: 10 * 86400000, until: 0 }, 1000).fails).toBe(1);
 });
 
 test('wait text parts', () => {
