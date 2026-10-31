@@ -233,7 +233,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
             throw new Error('timeout');
         });
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
-        expect(toast()).toBe('Error: timeout');
+        expect(toast()).toMatch(/^Error: timeout · Ref \d{6}$/);
 
         // Adding another 5 kg on the retry bill: 35 of 50 kg, the add check must credit the 30 kg too
         setVal('sellQuantity', 5);
