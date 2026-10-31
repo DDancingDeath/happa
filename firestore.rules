@@ -376,8 +376,37 @@ service cloud.firestore {
 
     function expenseEditOk() {
       let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return changed.hasOnly(['type', 'personName', 'amount', 'remarks', 'updatedAt', 'updatedBy', 'updatedByName'])
+      return changed.hasOnly(['type', 'personName', 'amount', 'remarks', 'paymentMode', 'updatedAt', 'updatedBy', 'updatedByName'])
         && (!changed.hasAny(['amount']) || amountOk());
+    }
+
+    // --- expense date and payment mode (#118) ---
+    // paymentMode: 'cash' | 'online' (none = cash). day: the local (IST) day the
+    // expense counts on, YYYY-MM-DD, never in the future (1 hour for a fast phone clock).
+    function expenseDayStart(day) {
+      return timestamp.date(int(day[0:4]), int(day[5:7]), int(day[8:10])) - duration.value(330, 'm');
+    }
+
+    function expenseFieldsOk(d) {
+      return (!('paymentMode' in d) || d.paymentMode in ['cash', 'online'])
+        && (!('day' in d) || (dayKeyOk(d.day) && expenseDayStart(d.day) <= request.time + duration.value(1, 'h')));
+    }
+
+    // A new expense by anyone but the owner that names its day may be dated back at most
+    // the role's edit window (roleAccess.<role>.editDays, as bills; the app allows exactly
+    // that), plus 3 days for a phone that saved it offline. Its `date` (what the figures
+    // read) must be on that day: "D/M/YYYY, …" as en-IN writes it, with or without leading
+    // zeros. Older apps name the day only on personal expenses (today, from the date).
+    function expenseDateOnDay(d) {
+      return d.get('date', null) is string
+        && d.date.matches('^0?' + string(int(d.day[8:10])) + '/0?' + string(int(d.day[5:7])) + '/' + d.day[0:4] + '([^0-9].*)?$');
+    }
+
+    function expenseDayInWindow(usersCol) {
+      let d = request.resource.data;
+      return !('day' in d)
+        || (expenseDateOnDay(d)
+            && request.time < expenseDayStart(d.day) + duration.value(billEditDays(usersCol) + 4, 'd'));
     }
 
     function canUpdateExpense(usersCol) {
@@ -647,19 +676,27 @@ service cloud.firestore {
     // the stored amount (rebuild from the rows).
     function validPersonalDay(u, docId) {
       let d = request.resource.data;
+      let before = resource == null ? {} : resource.data;
       return dayKeyOk(docId)
-        && d.keys().hasOnly(['amounts', 'last'])
+        && d.keys().hasOnly(['amounts', 'online', 'last'])
         && d.get('amounts', null) is map
+        && d.get('online', {}) is map
         && d.get('last', null) is string && d.last.matches('^[A-Za-z0-9_-]{1,100}$')
-        && d.amounts.diff(resource == null ? {} : resource.data.get('amounts', {})).affectedKeys().hasOnly([d.last])
+        && d.amounts.diff(before.get('amounts', {})).affectedKeys().hasOnly([d.last])
+        && d.get('online', {}).diff(before.get('online', {})).affectedKeys().hasOnly([d.last])
         && personalDayKeyOk(u, docId, d,
              /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenses')/$(d.last));
     }
 
+    // `online` flags an expense paid online (#118): set exactly when the expense's
+    // paymentMode is 'online', so nobody can move a cash expense out of the drawer.
+    // A removed expense may keep a stale flag (older apps don't clear it); it counts nowhere.
     function personalDayKeyOk(u, docId, d, p) {
       return d.last in d.amounts
         ? existsAfter(p) && getAfter(p).data.get('amount', null) == d.amounts[d.last]
           && getAfter(p).data.get('day', '') == docId
+          && ((d.last in d.get('online', {}) && d.online[d.last] == true)
+              == (getAfter(p).data.get('paymentMode', 'cash') == 'online'))
           && (isManagerIn(u) || !exists(p) || get(p).data != getAfter(p).data)
         : !existsAfter(p);
     }
@@ -674,9 +711,11 @@ service cloud.firestore {
         : base == 'drafts' ? validDraftCreate()
         : base == 'notifications' ? validNotificationCreate(u, docId)
         : base == 'expenses' && personalTagged(request.resource.data) ? false
+        : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
         : (isOwnerIn(u)
         || (base in billCollections() ? validBillCreate()
-          : base in ['expenses', 'withdrawals'] ? validLedgerCreate()
+          : base == 'expenses' ? validLedgerCreate() && expenseDayInWindow(u)
+          : base == 'withdrawals' ? validLedgerCreate()
           : base == 'stockAdjustments' ? isManagerIn(u) && validAdjustmentCreate()
           : base == 'cashManagement' ? validCashCreate(docId)
           // legacy cashSessions (backup only) and settings: owner only (#64)
@@ -684,7 +723,7 @@ service cloud.firestore {
           : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.keys())
           : base == 'counters' ? validCounterCreate()
           : base == 'itemFrequency' ? itemFrequencyOk(docId)
-          : base == 'personalExpenses' ? personalOn(u) && validPersonalCreate()
+          : base == 'personalExpenses' ? personalOn(u) && validPersonalCreate() && expenseDayInWindow(u)
           : base == 'personalExpenseDays' ? personalOn(u) && validPersonalDay(u, docId)
           : true));
     }
@@ -703,6 +742,7 @@ service cloud.firestore {
         : base == 'drafts' ? draftUpdateOk()
         : base == 'notifications' ? notificationReadOnly()
         : base == 'expenses' && personalTagged(request.resource.data) && !personalTagged(resource.data) ? false
+        : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canUpdateExpense(u)

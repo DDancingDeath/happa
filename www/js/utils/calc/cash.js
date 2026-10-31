@@ -13,7 +13,7 @@
  * @module utils/calc/cash
  */
 
-import { isPersonalExpense, round2 } from '../money.js';
+import { isOnlineExpense, isPersonalExpense, round2 } from '../money.js';
 import { endOfLocalDayExclusive, parseAnyBillDate, parseLocalDate } from '../dates.js';
 import { dueEvents, saleTimePayment, sumDueEvents } from '../due-payments.js';
 import { personalForDay } from '../personal-expenses.js';
@@ -66,10 +66,10 @@ export function dayBounds(date) {
  * @param {Object} src
  * @param {string} src.date YYYY-MM-DD
  * @param {{wholesale?: Object[], retail?: Object[], purchase?: Object[]}} [src.bills] All loaded bills (due payments on older bills count too)
- * @param {Object[]} [src.expenses] Loaded expenses (business, and personal ones when this phone has them)
+ * @param {Object[]} [src.expenses] Loaded expenses (business, and personal ones when this phone has them); only cash ones count
  * @param {?Object} [src.session] The day's cash session: its due legs (C4, C5) and deposits (C6)
  * @param {boolean} [src.personalReadable=true] This phone has the personal expense rows (#98)
- * @param {?{total?: number, count?: number}} [src.personalDay] The day's personalExpenseDays totals, used only when not readable
+ * @param {?{total?: number, count?: number, online?: number}} [src.personalDay] The day's personalExpenseDays totals, used only when not readable
  * @returns {{cashSales: number, cashPurchases: number, businessExpenses: number, personalExpenses: number, dueReceived: number, duePaid: number, cashDeposits: number}}
  */
 export function drawerDay({ date, bills = {}, expenses = [], session = null, personalReadable = true, personalDay = null } = {}) {
@@ -102,14 +102,16 @@ export function drawerDay({ date, bills = {}, expenses = [], session = null, per
         if (inDay(purchase.date)) transactions.cashPurchases += saleTimePayment(purchase).cash;
     });
 
-    // EXP-KIND; personal ones a role can't read come from the day total (#98).
+    // EXP-KIND; only cash expenses leave the drawer (EXP-MODE, #118: no mode = cash).
+    // Personal ones a role can't read come from the day total and its online part (#98).
     const payments = (expenses || []).filter(p => inDay(p.date));
     payments.forEach(payment => {
-        if (!isPersonalExpense(payment)) transactions.businessExpenses += Number(payment.amount) || 0;
+        if (!isPersonalExpense(payment) && !isOnlineExpense(payment)) transactions.businessExpenses += Number(payment.amount) || 0;
     });
-    transactions.personalExpenses = personalForDay(
-        payments.filter(isPersonalExpense).map(p => ({ amount: Number(p.amount) || 0 })),
-        personalReadable, personalReadable ? null : personalDay).total;
+    const personal = personalForDay(
+        payments.filter(isPersonalExpense).map(p => ({ amount: Number(p.amount) || 0, paymentMode: p.paymentMode })),
+        personalReadable, personalReadable ? null : personalDay);
+    transactions.personalExpenses = personal.total - personal.online;
 
     // DUE-PAY made that day: on bills and/or as drawer legs, each id once (#98). Only cash is drawer cash.
     const dues = sumDueEvents(dueEvents({

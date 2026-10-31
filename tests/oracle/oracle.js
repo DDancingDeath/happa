@@ -154,6 +154,9 @@ const expenseAmount = (e) => n(e.amount);
 /** EXP-KIND: 'personal' only when tagged personal (`category`, else `type` on an expense with no category; any case); anything else (incl. untagged) is business (owner decision #36). */
 const isPersonal = (e) => String(e.category || e.type || '').trim().toLowerCase() === 'personal';
 export const isPersonalExpenseOracle = isPersonal;
+/** EXP-MODE (#118): paid online only when `paymentMode` says "online"; no mode = cash. */
+const isOnline = (e) => String(e.paymentMode || '').trim().toLowerCase() === 'online';
+const isCash = (e) => !isOnline(e);
 
 // ---------------------------------------------------------------- Today (T*)
 
@@ -169,11 +172,12 @@ export function today(data, nowMs, session = null) {
     const atPurchase = purchases.map(paidAtSave);
     const dues = duePaymentsIn({ purchase: data.purchases, retail: data.retailSales, wholesale: data.wholesaleSales },
         session ? [session] : [], range);
-    const expTotal = sum(expenses, expenseAmount);
+    const expCash = sum(expenses.filter(isCash), expenseAmount);
+    const expOnline = sum(expenses.filter(isOnline), expenseAmount);
     const cashIn = sum(atSale, p => p.cash) + dues.receivedCash;
     const onlineIn = sum(atSale, p => p.online) + dues.receivedOnline;
-    const cashOut = sum(atPurchase, p => p.cash) + expTotal + dues.paidCash;
-    const onlineOut = sum(atPurchase, p => p.online) + dues.paidOnline;
+    const cashOut = sum(atPurchase, p => p.cash) + expCash + dues.paidCash;
+    const onlineOut = sum(atPurchase, p => p.online) + expOnline + dues.paidOnline;
     return {
         T1_purchases: r2(sum(purchases, billValue)), T1_purchaseCount: purchases.length,
         T2_sales: r2(sum(sales, billValue)), T2_saleCount: sales.length,
@@ -396,7 +400,7 @@ const partyKey = (name) => String(name ?? '').normalize('NFC').trim().replace(/\
 
 /**
  * M1–M16 and I1/I3/I4 for [from, to) (BILL-TIME, OPENING left out, BILL-COUNT).
- * M2/M3/M6 follow F2/F4; M7 = labour; M12/M13 split cash/online (expenses are cash).
+ * M2/M3/M6 follow F2/F4; M7 = labour; M12/M13 split cash/online (expenses by their mode, EXP-MODE).
  */
 export function metrics(data, range = [-Infinity, Infinity]) {
     const inR = (b) => inRange(eventTimeOf(b), range);
@@ -407,7 +411,8 @@ export function metrics(data, range = [-Infinity, Infinity]) {
     const f = finance(data, range);
     const stock = stockReplay(data, range);
     const exp = (data.expenses || []).filter(e => inRange(timeOf(e.date), range));
-    const expenseTotal = sum(exp, expenseAmount);
+    const expenseCash = sum(exp.filter(isCash), expenseAmount);
+    const expenseOnline = sum(exp.filter(isOnline), expenseAmount);
     const dues = duePaymentsIn({ purchase: data.purchases, retail: data.retailSales, wholesale: data.wholesaleSales }, [], range);
     const at = (bills) => bills.reduce((a, b) => { const p = paidAtSave(b); a.cash += p.cash; a.online += p.online; return a; }, { cash: 0, online: 0 });
     const sold = at(sales);
@@ -456,7 +461,7 @@ export function metrics(data, range = [-Infinity, Infinity]) {
         M9_withdrawals: f.F11_withdrawals,
         M10_kept: r2(f.F4_profit - f.F5_personalExpenses - f.F11_withdrawals),
         M12_inCash: r2(sold.cash + dues.receivedCash), M12_inOnline: r2(sold.online + dues.receivedOnline),
-        M13_outCash: r2(bought.cash + dues.paidCash + expenseTotal), M13_outOnline: r2(bought.online + dues.paidOnline),
+        M13_outCash: r2(bought.cash + dues.paidCash + expenseCash), M13_outOnline: r2(bought.online + dues.paidOnline + expenseOnline),
         M14_net: f.F7_cashFlow,
         M16_purchases: r2(sum(purchases, billValue)), M16_purchaseCount: purchases.length,
         I1_itemSales: itemSales, I1_itemCogs: itemCogs, I2_itemRetail: byType.retail, I2_itemWholesale: byType.wholesale,
@@ -701,8 +706,8 @@ export function drawer(data, session) {
     const c = {
         C1_cashSales: r2(sum(sales, b => paidAtSave(b).cash)),
         C2_cashPurchases: r2(sum(purchases, b => paidAtSave(b).cash)),
-        C3_businessExpenses: r2(sum(exp.filter(e => !isPersonal(e)), expenseAmount)),
-        C3_personalExpenses: r2(sum(exp.filter(isPersonal), expenseAmount)),
+        C3_businessExpenses: r2(sum(exp.filter(e => !isPersonal(e) && isCash(e)), expenseAmount)),
+        C3_personalExpenses: r2(sum(exp.filter(e => isPersonal(e) && isCash(e)), expenseAmount)),
         C4_dueReceived: r2(dues.receivedCash),
         C5_duePaid: r2(dues.paidCash),
         C6_deposits: r2(sum(session.cashDeposits || [], d => n(d.amount)))

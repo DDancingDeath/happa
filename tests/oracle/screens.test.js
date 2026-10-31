@@ -29,7 +29,8 @@ import { StockManager } from '../../www/js/modules/stock.js';
 import { InsightsManager } from '../../www/js/modules/insights.js';
 import { UIManager } from '../../www/js/ui/ui-manager.js';
 import { isPersonalExpense } from '../../www/js/utils/money.js';
-import { dayDocTotals, personalDaysFromRows } from '../../www/js/utils/personal-expenses.js';
+import { dayDocTotals, personalDaysFromRows, personalOnlineFromRows } from '../../www/js/utils/personal-expenses.js';
+import { moneySummary } from '../../www/js/utils/business-metrics.js';
 
 const FIX = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/calculations/shop-month.json'), 'utf8'));
 const NOW = O.timeOf(FIX.now);
@@ -447,5 +448,64 @@ describe('Cash drawer and Today without the personal expense rows (#98) == oracl
         expect(s.personalExpenses).toBe(want.T5_personalExpenses);
         expect(s.cashOut).toBe(want.T8_cashOut);
         expect(s.totalOut).toBe(want.T11_totalOut);
+    });
+});
+
+// ------------------------------------------------- expenses paid online (EXP-MODE, #118)
+
+describe('Expenses paid online (#118) == oracle', () => {
+    // The same month with today's business and personal expense and an older one paid online;
+    // e4 says cash, e5 has no mode (= cash).
+    const MODES = { e1: 'online', e2: 'online', e3: 'online', e4: 'cash' };
+    const online = FIX.expenses.map(e => (MODES[e.id] ? { ...e, paymentMode: MODES[e.id] } : { ...e }));
+    const dataOnline = { ...data, expenses: online };
+    const bills = () => ({ purchase: copy(FIX.purchases), wholesale: copy(FIX.wholesaleSales), retail: copy(FIX.retailSales) });
+    beforeEach(() => { AppState.expensesHistory = copy(online); });
+
+    test('Today: T8 counts cash expenses, T9 online ones; T4, T5 and T11 unchanged', () => {
+        const want = O.today(dataOnline, NOW, FIX.session);
+        const before = O.today(data, NOW, FIX.session);
+        expect([want.T4_businessExpenses, want.T5_personalExpenses, want.T11_totalOut])
+            .toEqual([before.T4_businessExpenses, before.T5_personalExpenses, before.T11_totalOut]);
+        expect(want.T8_cashOut).toBe(O.r2(before.T8_cashOut - 200));
+        expect(want.T9_onlineOut).toBe(O.r2(before.T9_onlineOut + 200));
+        const s = todaySummary({ bills: bills(), expenses: copy(online), sessions: [copy(FIX.session)], settings: {}, today: new Date(NOW) });
+        expect([s.businessExpenses, s.personalExpenses, s.cashOut, s.onlineOut, s.totalOut, s.expensesCash, s.expensesOnline])
+            .toEqual([want.T4_businessExpenses, want.T5_personalExpenses, want.T8_cashOut, want.T9_onlineOut, want.T11_totalOut, 50, 200]);
+    });
+
+    test('Drawer: C3 and C7 count only cash expenses', () => {
+        const want = O.drawer(dataOnline, FIX.session);
+        expect(want.C7_expected).toBe(O.r2(O.drawer(data, FIX.session).C7_expected + 200));
+        const tx = CashManagementManager.calculateTransactionsForDate(FIX.session.date, copy(FIX.session));
+        expect([tx.businessExpenses, tx.personalExpenses, sessionTotals(FIX.session, tx).expected])
+            .toEqual([want.C3_businessExpenses, want.C3_personalExpenses, want.C7_expected]);
+    });
+
+    test('Money: M13 split by mode, M4, M8 and M13 total unchanged', () => {
+        const input = { ...dataOnline, base: { state: {}, from: -Infinity } };
+        const m = moneySummary(input, { from: -Infinity, to: Infinity });
+        const w = O.metrics(dataOnline, [-Infinity, Infinity]);
+        const before = O.metrics(data, [-Infinity, Infinity]);
+        expect(m.M13.cash).toBeCloseTo(w.M13_outCash, 2);
+        expect(m.M13.online).toBeCloseTo(w.M13_outOnline, 2);
+        expect(m.M13.expensesOnline).toBe(700);
+        expect(m.M13.total).toBeCloseTo(before.M13_outCash + before.M13_outOnline, 2);
+        expect([m.M4.total, m.M8.total]).toEqual([before.M4_businessExpenses, before.M8_personalExpenses]);
+    });
+
+    test('A role without the personal rows: the day doc flags the online one', () => {
+        const rows = online.filter(isPersonalExpense).map(e => ({ ...e }));
+        const amounts = personalDaysFromRows(rows)[FIX.session.date];
+        const flags = personalOnlineFromRows(rows)[FIX.session.date];
+        const day = dayDocTotals({ amounts, online: flags });
+        expect(day).toMatchObject({ total: 80, online: 80 });
+        const business = copy(online).filter(e => !isPersonalExpense(e));
+        const wantToday = O.today(dataOnline, NOW, FIX.session);
+        const s = todaySummary({ bills: bills(), expenses: business, personalDay: day, sessions: [copy(FIX.session)], settings: {}, today: new Date(NOW) });
+        expect([s.personalExpenses, s.cashOut, s.onlineOut]).toEqual([wantToday.T5_personalExpenses, wantToday.T8_cashOut, wantToday.T9_onlineOut]);
+        const wantDrawer = O.drawer(dataOnline, FIX.session);
+        const tx = drawerDay({ date: FIX.session.date, bills: bills(), expenses: business, session: copy(FIX.session), personalReadable: false, personalDay: day });
+        expect([tx.businessExpenses, tx.personalExpenses]).toEqual([wantDrawer.C3_businessExpenses, wantDrawer.C3_personalExpenses]);
     });
 });
