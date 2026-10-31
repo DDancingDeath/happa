@@ -74,7 +74,10 @@ service cloud.firestore {
     }
 
     function billEditDays(usersCol) {
-      let role = get(profilePath(usersCol)).data.get('role', '');
+      return billEditDaysFor(usersCol, get(profilePath(usersCol)).data.get('role', ''));
+    }
+
+    function billEditDaysFor(usersCol, role) {
       let p = settingsAppPath(usersCol);
       let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
       let roleAccess = access is map ? access.get(role, {}) : {};
@@ -87,6 +90,11 @@ service cloud.firestore {
       return c is timestamp && request.time < c + duration.value(billEditDays(usersCol), 'd');
     }
 
+    function withinBillWindowFor(usersCol, role) {
+      let c = resource.data.get('createdAt', null);
+      return c is timestamp && request.time < c + duration.value(billEditDaysFor(usersCol, role), 'd');
+    }
+
     function canDeleteBill(usersCol) {
       // resource is null when deleting a doc that is already gone (no-op).
       return isOwnerIn(usersCol)
@@ -95,18 +103,13 @@ service cloud.firestore {
                 || (resource.data.get('userId', null) == request.auth.uid && withinBillWindow(usersCol))));
     }
 
-    function keepsBillOwner(usersCol) {
-      return isOwnerIn(usersCol)
-        || request.resource.data.get('userId', null) == resource.data.get('userId', null);
-    }
-
     // Full edits (the owner is handled in canUpdateBill): a manager, or the bill's
     // creator, inside the edit window; createdAt never changes.
-    function canFullyEditBill(usersCol) {
-      return (isManagerIn(usersCol)
+    function canFullyEditBill(usersCol, role) {
+      return (role == 'manager'
               || (resource.data.get('userId', null) != null
                   && resource.data.get('userId', null) == request.auth.uid))
-        && withinBillWindow(usersCol)
+        && withinBillWindowFor(usersCol, role)
         && request.resource.data.get('createdAt', null) == resource.data.get('createdAt', null);
     }
 
@@ -116,8 +119,7 @@ service cloud.firestore {
     // wholesale markSaleAsCleared) and the legacy backfill (openDue, clientVersion,
     // a missing numeric timestamp). `timestamp` and `id` may only be filled in,
     // never changed.
-    function bookkeepingOnly(docId) {
-      let changed = request.resource.data.diff(resource.data).affectedKeys();
+    function bookkeepingOnly(docId, changed) {
       return changed.hasOnly([
           'payment', 'payments', 'dueAmount', 'openDue', 'clientVersion', 'paidAt',
           'cleared', 'clearedAt', 'clearedBy', 'clearedByName',
@@ -127,11 +129,23 @@ service cloud.firestore {
         && (!changed.hasAny(['id']) || (!('id' in resource.data) && request.resource.data.id == docId));
     }
 
-    // --- money validation (#19) ---
+    // --- money validation (#19, #65) ---
+    // A bill write already uses much of the 1000 expressions rules evaluate per
+    // request, so these follow the shape the app writes (payment.cash / online /
+    // due, with top-level copies) rather than every legacy shape readPayment() reads.
 
-    // `key` is absent from map `m`, or a number >= 0.
-    function nonNegativeOrAbsent(m, key) {
-      return !(key in m) || (m[key] is number && m[key] >= 0);
+    // A payment amount as the app writes it (round2): a number >= 0 in whole paise
+    // (NaN fails >= 0; for Infinity the paise test is NaN, so it fails too).
+    function moneyOk(v) {
+      return v is number && v >= 0 && math.abs(v * 100 - math.round(v * 100)) < 0.001;
+    }
+
+    function moneyOrAbsent(m, key) {
+      return !(key in m) || moneyOk(m[key]);
+    }
+
+    function totalOk(m, key) {
+      return !(key in m) || (m[key] is number && m[key] > -10000000000 && m[key] < 10000000000);
     }
 
     // The bill's due before this write, as readPayment() reads it (nested
@@ -142,18 +156,36 @@ service cloud.firestore {
       return due is number ? due : null;
     }
 
-    // Money fields that a write changes must be numbers (full edits and creates).
-    function changedMoneyTypesOk(keys) {
-      let d = request.resource.data;
-      return (!keys.hasAny(['total']) || d.total is number)
-        && (!keys.hasAny(['dueAmount']) || d.dueAmount is number)
-        && (!keys.hasAny(['cashPayment']) || d.cashPayment is number)
-        && (!keys.hasAny(['onlinePayment']) || d.onlinePayment is number)
-        && (!keys.hasAny(['payment'])
-            || (d.payment is map
-                && (!('cash' in d.payment) || d.payment.cash is number)
-                && (!('online' in d.payment) || d.payment.online is number)
-                && (!('due' in d.payment) || d.payment.due is number)));
+    // Money on a bill created or fully edited by a non-owner: totals are finite
+    // numbers, payment amounts are money and, when any of them changes, cash +
+    // online + written off + due is at most the bill total + Rs 1 (the bill
+    // screen's split check, money.js SPLIT_TOLERANCE: "Cash" or "Due" fills in the
+    // total rounded to the rupee). The total is read as billTotal() reads it
+    // (grandTotal, amountPayable, total, then billTotal / saleTotal). Only
+    // tools/migrate writes opening records; the app never writes the legacy
+    // amountPaid / due that readPayment() would also read.
+    function changedMoneyOk(keys) {
+      return !keys.hasAny(['openingBalance', 'amountPaid', 'due'])
+        && (keys.hasAny(['total', 'grandTotal', 'amountPayable', 'billTotal', 'saleTotal',
+                         'payment', 'cashPayment', 'onlinePayment', 'dueAmount'])
+            ? billMoneyOk(request.resource.data, request.resource.data.get('payment', {}))
+            : true);
+    }
+
+    function billMoneyOk(d, p) {
+      return p is map
+        && moneyOrAbsent(p, 'cash') && moneyOrAbsent(p, 'online') && moneyOrAbsent(p, 'due')
+        && moneyOrAbsent(p, 'writtenOff') && moneyOrAbsent(p, 'total')
+        && moneyOrAbsent(d, 'cashPayment') && moneyOrAbsent(d, 'onlinePayment') && moneyOrAbsent(d, 'dueAmount')
+        && totalOk(d, 'total') && totalOk(d, 'grandTotal') && totalOk(d, 'amountPayable')
+        && totalOk(d, 'billTotal') && totalOk(d, 'saleTotal')
+        && p.get('cash', d.get('cashPayment', 0)) + p.get('online', d.get('onlinePayment', 0))
+           + p.get('writtenOff', 0) + p.get('due', d.get('dueAmount', 0))
+           <= (d.get('grandTotal', 0) != 0 ? d.grandTotal
+               : d.get('amountPayable', 0) != 0 ? d.amountPayable
+               : d.get('total', 0) != 0 ? d.total
+               : d.get('billTotal', 0) != 0 ? d.billTotal
+               : d.get('saleTotal', 0)) + 1.0101;
     }
 
     // payments[] may only grow by one entry; existing entries stay unchanged and
@@ -169,45 +201,110 @@ service cloud.firestore {
         && newList[oldList.size()].amount >= 0;
     }
 
+    // Money moves only with the due (#65). A payment or write-off writes
+    // payment.cash, online and due as money; cash, online and written off never
+    // go down, each goes up by what the new payments[] entry (amount > 0) says
+    // (due-payments.js entryParts: a write-off, else its cash / online parts,
+    // else all cash; half a paisa for round2 of older values), and the due goes
+    // down by the same (1 paisa either way, outstanding.js PAYMENT_TOLERANCE).
+    // Without an entry no money moves and the due only drops when a due under
+    // 1 paisa is written off to 0. So a member can neither take money off a bill
+    // nor lower a due without money, and with the split check on creates and
+    // edits nobody pays more than the bill total.
+    function paymentMoneyOk(changed, p, rp, before) {
+      return moneyOk(p.get('cash', null)) && moneyOk(p.get('online', null)) && moneyOk(p.get('due', null))
+        && moneyOrAbsent(p, 'writtenOff') && moneyOrAbsent(p, 'total')
+        && rp is map && before != null
+        && entryMatches(
+             p.cash - rp.get('cash', resource.data.get('cashPayment', 0)),
+             p.online - rp.get('online', resource.data.get('onlinePayment', 0)),
+             p.get('writtenOff', 0) - rp.get('writtenOff', 0),
+             before - p.due,
+             changed.hasAny(['payments']) ? request.resource.data.payments[request.resource.data.payments.size() - 1] : {});
+    }
+
+    function entryMatches(cash, online, wo, settled, e) {
+      return !('amount' in e)
+        ? math.abs(cash) <= 0.005 && math.abs(online) <= 0.005 && math.abs(wo) <= 0.005
+          && (math.abs(settled) <= 0.000001 || (settled <= 0.0101 && request.resource.data.payment.due == 0))
+        : e.amount > 0 && math.abs(cash + online + wo - settled) <= 0.0101
+          && (e.get('kind', '') == 'writeOff'
+              ? math.abs(cash) <= 0.005 && math.abs(online) <= 0.005 && math.abs(wo - e.amount) <= 0.005
+              : math.abs(wo) <= 0.005 && partsMatch(cash, online, e.amount,
+                  ('cash' in e || 'online' in e) ? e.get('cash', 0) : e.amount, e.get('online', 0)));
+    }
+
+    function partsMatch(cash, online, amount, ec, eo) {
+      return ec >= 0 && eo >= 0
+        && math.abs(cash - ec) <= 0.005 && math.abs(online - eo) <= 0.005 && math.abs(amount - ec - eo) <= 0.005;
+    }
+
+    // A new payments[] entry carries its time (`at`, ms) within 10 minutes of the
+    // server's: payments and write-offs are transactions, so they never queue
+    // offline, and a back- or forward-dated entry would move drawer cash to
+    // another day (due-payments.js counts an entry on the day of its `at`).
+    function entryTimeOk() {
+      let at = request.resource.data.payments[request.resource.data.payments.size() - 1].get('at', null);
+      return at is number && at > request.time.toMillis() - 600000 && at < request.time.toMillis() + 600000;
+    }
+
+    // A due is cleared only when it is settled in the same write (#104: paid or
+    // written off), by the caller, and openDue goes false only with it
+    // (firestore-service.js hasDue).
+    function clearOk(changed, d, due) {
+      return (!changed.hasAny(['cleared']) || (d.get('cleared', false) == true && due <= 0.0101))
+        && (!changed.hasAny(['clearedBy']) || d.clearedBy == request.auth.uid)
+        && (!changed.hasAny(['openDue']) || d.openDue == true || d.get('cleared', false) == true || due <= 0.0101);
+    }
+
     // Payment bookkeeping by someone who may not fully edit the bill: amounts are
-    // numbers >= 0, the due never goes up, payment.due and dueAmount agree,
-    // payments[] is append-only and `paidAt` is written only with a new payments[]
-    // entry and equals that entry's `at` (outstanding.js applyPaymentTransaction /
-    // applyWriteOffTransaction, wholesale markSaleAsCleared). Older apps append
-    // without `paidAt`; that stays allowed.
-    function paymentEditOk() {
-      let changed = request.resource.data.diff(resource.data).affectedKeys();
+    // money, payment.due and dueAmount agree, payments[] is append-only, money
+    // moves only with the due (paymentMoneyOk), dues are cleared only when settled
+    // (clearOk), and `paidAt` is written only with a new payments[] entry and
+    // equals that entry's `at` (outstanding.js applyPaymentTransaction /
+    // applyWriteOffTransaction; markAsCleared and wholesale markSaleAsCleared go
+    // through them). Older apps append without `paidAt`; that stays allowed.
+    function paymentEditOk(changed) {
       let d = request.resource.data;
-      let before = storedDue();
-      return (!changed.hasAny(['payment'])
-              || (d.payment is map
-                  && nonNegativeOrAbsent(d.payment, 'cash')
-                  && nonNegativeOrAbsent(d.payment, 'online')
-                  && nonNegativeOrAbsent(d.payment, 'due')
-                  && nonNegativeOrAbsent(d.payment, 'writtenOff')
-                  && (!('due' in d.payment) || before == null || d.payment.due <= before + 0.01)))
-        && (!changed.hasAny(['dueAmount'])
-            || (d.dueAmount is number && d.dueAmount >= 0
-                && (before == null || d.dueAmount <= before + 0.01)
-                && (!(d.get('payment', {}) is map) || !('due' in d.get('payment', {})) || d.payment.due == d.dueAmount)))
-        && (!changed.hasAny(['payments']) || appendsOneEntry('payments'))
+      return (!changed.hasAny(['dueAmount'])
+              || (moneyOk(d.dueAmount) && d.dueAmount == d.get('payment', {}).get('due', d.dueAmount)))
+        && (!changed.hasAny(['payments']) || (appendsOneEntry('payments') && entryTimeOk()))
         && (!changed.hasAny(['paidAt'])
             || (d.paidAt is number && changed.hasAny(['payments'])
-                && d.paidAt == d.payments[d.payments.size() - 1].get('at', null)));
+                && d.paidAt == d.payments[d.payments.size() - 1].get('at', null)))
+        && (changed.hasAny(['payment', 'payments', 'dueAmount'])
+            ? changed.hasAny(['payment']) && paymentMoneyOk(changed, d.payment, resource.data.get('payment', {}), storedDue())
+            : true)
+        && (changed.hasAny(['cleared', 'clearedBy', 'openDue'])
+            ? clearOk(changed, d, d.get('payment', {}).get('due', d.get('dueAmount', 0)))
+            : true);
     }
 
+    // The caller is approved (businessAccess); their role is read once and the
+    // changed keys worked out once (rules allow 1000 expressions per request).
+    // Only an owner may change userId.
     function canUpdateBill(usersCol, docId) {
-      return keepsBillOwner(usersCol)
-        && (isOwnerIn(usersCol)
-            || (canFullyEditBill(usersCol) && changedMoneyTypesOk(request.resource.data.diff(resource.data).affectedKeys()))
-            || (bookkeepingOnly(docId) && paymentEditOk()));
+      return billUpdateAs(usersCol, docId, get(profilePath(usersCol)).data.get('role', ''),
+        request.resource.data.diff(resource.data).affectedKeys());
     }
 
-    // New bills: the creator's own uid (when set), numeric money fields and, when
-    // sent, createdAt = the server time of this write (older apps don't send it).
+    function billUpdateAs(usersCol, docId, role, changed) {
+      // Ternaries keep the expensive checks off the paths that don't need them.
+      return role == 'owner' ? true
+        : changed.hasAny(['userId']) ? false
+        : canFullyEditBill(usersCol, role) ? changedMoneyOk(changed)
+        : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
+        : false;
+    }
+
+    // New bills: the creator's own uid (when set), well-formed money (changedMoneyOk),
+    // no payment history or cleared state (the app never sends them on a new bill;
+    // they come only with payments, paymentEditOk) and, when sent, createdAt = the
+    // server time of this write (older apps don't send it).
     function validBillCreate() {
       return request.resource.data.get('userId', request.auth.uid) == request.auth.uid
-        && changedMoneyTypesOk(request.resource.data.keys())
+        && !request.resource.data.keys().hasAny(['payments', 'paidAt', 'cleared'])
+        && changedMoneyOk(request.resource.data.keys())
         && (!('createdAt' in request.resource.data) || request.resource.data.createdAt == request.time);
     }
 
