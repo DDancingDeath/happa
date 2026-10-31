@@ -566,7 +566,17 @@
     grid-column: 1 / -1;
   }
 
+  /* Full-width cards would otherwise leave a hole beside a lone half-width card */
+  #dayTodayContent:not([style*="none"]) {
+    grid-auto-flow: row dense;
+  }
+
   .today-channels {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  /* Four stat cards in a half-width card wrapped their amounts mid-number */
+  #dayTodayContent .stats-grid-2:has(> :nth-child(3)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

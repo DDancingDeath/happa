@@ -56,7 +56,9 @@ export const DayManager = {
                 this.daySessions = { date: today, list: sessions || [] };
                 const pick = sessionForDate(sessions, today);
                 if (pick && CashManagementManager.todaySession?.date !== today) CashManagementManager.todaySession = pick;
-                this.loadTodayData();
+                // No session: only the prompt depends on it (a full redraw would repeat Today's other queries)
+                if (this.daySessions.list.length > 0) this.loadTodayData();
+                else this.renderCashPrompt(this.lastHasBills, today);
             })
             .catch(e => console.warn('Could not load today\'s cash sessions:', e?.message || e))
             .finally(() => { if (this.daySessionsLoading === today) this.daySessionsLoading = null; });
@@ -187,9 +189,11 @@ export const DayManager = {
         this.updateElement('todayDueToReceive', formatCurrency(s.dueToReceive));
         this.updateElement('todayDueToPay', formatCurrency(s.dueToPay));
 
-        this.renderChannels(s.channels);
-        this.renderDayBills(s.dayBills);
-        this.renderCashPrompt(s.dayBills.length > 0, todayIso);
+        const showWholesale = this.canSeeWholesale();
+        this.renderChannels(s.channels, showWholesale);
+        this.renderDayBills(showWholesale ? s.dayBills : s.dayBills.filter(r => r.type !== 'wholesale'));
+        this.lastHasBills = s.dayBills.length > 0;
+        this.renderCashPrompt(this.lastHasBills, todayIso);
 
         // Render item-wise details
         this.renderItemWiseDetails(s.purchaseItems, 'purchase');
@@ -210,15 +214,15 @@ export const DayManager = {
     },
 
     /**
-     * T18: cash / online at save and due still open, per bill type. Wholesale is hidden for roles without that page.
+     * T18: cash / online at save and due still open, per bill type.
      * @param {Object} channels - todaySummary().channels
+     * @param {boolean} showWholesale - false hides the Wholesale card
      */
-    renderChannels(channels) {
-        const role = AppState.userRole;
+    renderChannels(channels, showWholesale = true) {
         Object.entries(CHANNELS).forEach(([type, k]) => {
             const c = channels[type];
             const card = document.getElementById(`todayCh${k}`);
-            if (card) card.hidden = type === 'wholesale' && !!role && !canOpenPage('wholesale-sales', role, AppState.settings?.roleAccess);
+            if (card) card.hidden = type === 'wholesale' && !showWholesale;
             this.updateElement(`todayCh${k}Count`, tn('ui.today.bills_count', c.count));
             this.updateElement(`todayCh${k}Total`, formatCurrency(c.total));
             this.updateElement(`todayCh${k}Cash`, formatCurrency(c.cash));
@@ -227,7 +231,14 @@ export const DayManager = {
         });
     },
 
+    /** Wholesale cards and bills only for roles that may open the Wholesale page. */
+    canSeeWholesale() {
+        const role = AppState.userRole;
+        return !role || canOpenPage('wholesale-sales', role, AppState.settings?.roleAccess);
+    },
+
     showAllBills: false,
+    lastHasBills: false,
 
     /**
      * T19: today's bills, newest first; a row opens the bill (History's bill details).

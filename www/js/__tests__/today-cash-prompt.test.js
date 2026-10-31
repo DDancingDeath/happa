@@ -41,3 +41,33 @@ test('hidden once a session of today exists (loaded, or opened on this phone)', 
     DayManager.renderCashPrompt(true, day);
     expect(prompt().hidden).toBe(true);
 });
+
+test('members without the Wholesale page see no wholesale card or bills', () => {
+    const { AppState } = require('../utils/state.js');
+    const day = todayLocalISO();
+    const now = new Date().toISOString();
+    AppState.userRole = 'staff';
+    AppState.settings = {};
+    AppState.salesHistory = [{ id: 'w1', billNumber: 'W-1', date: now, total: 500, cashPayment: 500, payment: { cash: 500, online: 0, due: 0, total: 500 } }];
+    AppState.retailSalesHistory = [{ id: 'r1', billNumber: 'S-1', date: now, total: 100, cashPayment: 100, payment: { cash: 100, online: 0, due: 0, total: 100 } }];
+    AppState.purchaseHistory = [];
+    AppState.expensesHistory = [];
+    DayManager.daySessions = { date: day, list: [] };
+    const { AnomaliesManager } = require('../modules/anomalies.js');
+    const { HealthManager } = require('../modules/health.js');
+    jest.spyOn(AnomaliesManager, 'renderDayReport').mockImplementation(() => {});
+    jest.spyOn(HealthManager, 'renderTodayBanner').mockResolvedValue();
+    DayManager.loadTodayData();
+    expect(document.getElementById('todayChWholesale').hidden).toBe(true);
+    const rows = [...document.querySelectorAll('.today-bill-row')].map(r => r.getAttribute('onclick'));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain("'retail'");
+    expect(prompt().hidden).toBe(false);
+    AppState.userRole = 'owner';
+    DayManager.loadTodayData();
+    expect(document.getElementById('todayChWholesale').hidden).toBe(false);
+    expect(document.querySelectorAll('.today-bill-row')).toHaveLength(2);
+    jest.restoreAllMocks();
+    ['salesHistory', 'retailSalesHistory'].forEach(k => { AppState[k] = []; });
+    AppState.userRole = null;
+});
