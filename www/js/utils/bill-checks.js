@@ -15,7 +15,7 @@
  */
 
 import {
-    checkPaymentSplit, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney
+    billTotal, checkPaymentSplit, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney
 } from './money.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
 import { t } from '../i18n/index.js';
@@ -216,7 +216,7 @@ function duplicateIssue(draft, ctx) {
         if (!b || (draft.id && b.id === draft.id)) return false;
         const ts = Number(b.timestamp) || parseAnyBillDate(b.date)?.getTime();
         if (!ts || Math.abs(ref - ts) > windowMs) return false;
-        const bTotal = round2(toMoney(b.grandTotal) ?? toMoney(b.total) ?? toMoney(b.billTotal) ?? 0);
+        const bTotal = billTotal(b);
         return normalize(b.customerName) === party && bTotal === total && itemsSignature(b.items) === sig;
     });
     if (!dup) return null;

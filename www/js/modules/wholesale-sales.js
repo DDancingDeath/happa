@@ -26,7 +26,7 @@ import { lineItemIdentity } from '../utils/item-catalog.js';
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
     checkPaymentSplit, computeWholesaleTotals, KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, round2,
-    openingAmount, openingOldTotals, wholesaleOutstanding, isOpeningRecord
+    openingAmount, openingOldTotals, outstandingDue, isOpeningRecord
 } from '../utils/money.js';
 
 /** Wholesale bills shown under the entry form (the rest are in Wholesale › History). */
@@ -722,18 +722,15 @@ export class WholesaleSalesManager {
                 if (sale.source !== 'sales-tab') return false;
                 if (sale.cleared) return false;
                 if (party && normalizePartyName(sale.customerName) !== party.key) return false;
-                return wholesaleOutstanding(sale) > 0;
+                return outstandingDue(sale) > 0;
             })
             .map(sale => {
-                const onlineReceived = sale.payment ? (sale.payment.online || 0) : 0;
-                const cashReceived = sale.payment ? (sale.payment.cash || 0) : 0;
-                const totalReceived = onlineReceived + cashReceived;
-                
+                const pay = readPayment(sale);
                 return {
                     ...sale,
-                    outstanding: wholesaleOutstanding(sale),
-                    totalAmount: sale.total || openingAmount(sale),
-                    paidAmount: totalReceived
+                    outstanding: outstandingDue(sale),
+                    totalAmount: pay.total || openingAmount(sale),
+                    paidAmount: pay.paid
                 };
             })
             .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));

@@ -123,7 +123,7 @@ function openingDoc({ billType, kind, entry, party, src, cutoff, fromProject, wa
 function dueSet(billType, bills, today, { hidden = false } = {}) {
     let open;
     if (billType === 'wholesale' && !hidden) {
-        // Wholesale page rule (wholesale-sales.js renderSalesOutstanding): sales-tab bills only.
+        // The old app's Wholesale page rule (what it showed): sales-tab bills only.
         open = bills.filter(b => b && b.source === 'sales-tab' && wholesaleOutstanding(b) > 0)
             .map(b => withDue(b, wholesaleOutstanding(b)));
     } else if (hidden) {

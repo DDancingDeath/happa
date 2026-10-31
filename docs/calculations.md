@@ -23,12 +23,12 @@ ID, today and after the refactor: [architecture.md](architecture.md) §3.
 
 | ID | Name | Definition |
 |---|---|---|
-| BILL-TOTAL | Bill total | What the bill is worth. **Purchases:** the total after labour is taken off (`grandTotal`). **Sales:** the sale total (`total`). Older bills: the first of `grandTotal`, `amountPayable`, `total`, `billTotal`, `saleTotal` that is present. |
+| BILL-TOTAL | Bill total | What the bill is worth. **Purchases:** the total after labour is taken off (`grandTotal`). **Sales:** the sale total (`total`). Older bills: the first of `grandTotal`, `amountPayable`, `total`, `billTotal`, `saleTotal` that is present and not 0 (a legacy purchase's `billTotal` is its line value before labour, so it comes after `total`). One function, `billTotal()` in `utils/money.js`: Today (T1, T2), Money, Statements, History (list rows and the bill's "Total payable" / "Sale total") and the duplicate-bill check all use it. |
 | BILL-PAY | Cash / online / due on a bill | Taken from `payment.cash/online/due` when present (it is kept up to date when a due is paid later); otherwise from `cashPayment` / `onlinePayment` / `dueAmount`. Very old bills only have `amountPaid` (cash): their due is total − paid. |
 | BILL-AT-SAVE | Paid when the bill was saved | Cash / online on the bill minus every later due payment in `payments[]`. Later payments count on the day they were made, not on the bill's day. |
-| BILL-DUE | Still owed on a bill | BILL-PAY due, never below 0, and 0 when the bill is cleared or written off. |
+| BILL-DUE | Still owed on a bill | BILL-PAY due, never below 0, and 0 when the bill is cleared or written off. One function, `outstandingDue()` in `utils/money.js`: Outstanding, Money, Today, Wholesale › Outstanding and the bills' `openDue` flag (what a phone loads as dues) use it. A due of 0 with cash + online a little under the total (inside the ₹1 split tolerance) is not a due. |
 | DUE-PAY | Due payment | One entry in a bill's `payments[]` (cash and/or online; entries before #107 have only `amount`, which is cash), or the same payment as a leg in a cash session's `duePayments` (every session of that day: legacy days can have more than one). The same payment id is counted once. A write-off (`kind: 'writeOff'`) is never money. |
-| EXP-KIND | Business or personal expense | Personal only when the expense is tagged personal. Anything else — including old expenses with no tag — is business and should be shown as "uncategorised" (owner decision #36). |
+| EXP-KIND | Business or personal expense | Personal only when the expense is tagged personal: its `category` is "personal" (any case), or, on an expense with no category, its `type` is. Anything else — including old expenses with no tag, and a business expense whose type is "personal" — is business and should be shown as "uncategorised" (owner decision #36). One function, `isPersonalExpense()` in `utils/money.js`: Today (T4, T5), the drawer (C3), Money (M4 and its category rows, M8), Statements (ST1) and `finance-calc` use it. |
 | DAY | A day | Local (IST) calendar day, midnight to midnight, using the bill's own date (❓ open: #99 asks whether "Today" should follow the open cash session instead). Dates may be ISO, `DD/MM/YYYY` or `DD/MM/YYYY, h:mm:ss am`; all mean local time. |
 | PERIOD | This week / month / year | Calendar period up to now: week from Monday, month from the 1st, year from 1 January (owner decision #43, 2026-10-26: calendar month; `insights-config.js` `monthMode` / `yearStartMonth` can switch to the last 30 days or an April year). "Last 7 / 30 days" would be labelled so. |
 | AVG-COST | Average cost of an item | Weighted average: each purchase adds its quantity at the line rate; each sale removes quantity at the average cost of that moment; adjustments add (at their rate), remove (at average cost, never below zero) or set the quantity. Lines match a catalogue item by item id, else by English or Hindi name (trimmed, any case). Retail sales reduce stock like wholesale and are costed the same way (owner decision #33, 2026-10-25). |
@@ -168,6 +168,14 @@ month); the "in loss" suggestion only shows when the month has sales.
 | O2 | Sale dues per party | Σ BILL-DUE of that customer's **retail** sales (❓ open: #130 — wholesale dues are on the Wholesale page today). |
 | O3 | Payables total (aging panel) | Σ O1. |
 | O4 | Receivables total (aging panel) | Σ O2. |
+
+**Wholesale › Outstanding** (`modules/wholesale-sales.js`, until #130 moves wholesale dues here) lists
+the Wholesale page's bills (`source: 'sales-tab'`, OPENING records included) with BILL-DUE > 0. Each
+shows BILL-DUE, the BILL-TOTAL (an OPENING record: its carried amount) and the cash + online received
+(BILL-PAY), the same rule as this page and Money (Σ = the wholesale part of O4 / M15's "to receive").
+It used to show `payment.due`, else total − received, so an old bill with only top-level
+`cashPayment` / `dueAmount` showed its whole total as due, and a bill saved a few paise short showed a
+₹1 due no other page had. Oracle: `tests/oracle/cross-page.test.js`.
 
 ## Stock (`templates/stock.html`, `modules/stock.js`)
 

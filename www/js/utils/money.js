@@ -153,6 +153,16 @@ export function outstandingDue(bill) {
 }
 
 /**
+ * EXP-KIND: personal only when tagged personal: its `category`, or `type` on an
+ * expense with no category, in any case. Anything else is business (#36).
+ * @param {Object} expense
+ * @returns {boolean}
+ */
+export function isPersonalExpense(expense) {
+    return String(expense?.category || expense?.type || '').trim().toLowerCase() === 'personal';
+}
+
+/**
  * Opening balance carried from the old Firebase project (tools/migrate): one
  * record per old unpaid bill, with no lines and no bill total, so sales and
  * profit are never counted twice; the open amount is `openingBalance.amount`.
@@ -206,8 +216,10 @@ export function openingOldTotals(bill) {
     return { total: round2(toMoney(o.billTotal) || 0), paid: round2(toMoney(o.paidBefore) || 0) };
 }
 /**
- * Still due on a wholesale sale as the Wholesale page's Outstanding list
- * computes it: payment.due, or total − received when payment.due is 0/absent.
+ * Still due on a wholesale sale as the OLD app's Wholesale page computed it:
+ * payment.due, or total − received when payment.due is 0/absent. Only
+ * tools/migrate uses it, to carry what that page showed; the app uses
+ * outstandingDue() (BILL-DUE) everywhere.
  * @param {Object} sale
  * @returns {number}
  */

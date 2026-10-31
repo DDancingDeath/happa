@@ -10,7 +10,7 @@
 
 import { Helpers } from '../utils/helpers.js';
 import { t, tn } from '../i18n/index.js';
-import { formatAmount, formatRupees, isOpeningRecord, openingAmount } from '../utils/money.js';
+import { billTotal, formatAmount, formatRupees, isOpeningRecord, openingAmount } from '../utils/money.js';
 import { billDateOf } from '../utils/history-filters.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -35,7 +35,7 @@ export function billNumberOf(bill) {
  */
 export function billListAmount(bill) {
     if (isOpeningRecord(bill)) return openingAmount(bill);
-    return Number(bill?.grandTotal || bill?.amountPayable || bill?.saleTotal || bill?.total || 0) || 0;
+    return billTotal(bill);
 }
 
 /**

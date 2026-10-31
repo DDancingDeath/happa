@@ -40,12 +40,6 @@ const fullStock = () => computeStock({
     stockAdjustments: docsOf('stockAdjustments')
 }, ITEMS);
 
-const wholesaleRuleDue = (d) => {
-    if (d.cleared) return 0;
-    const p = d.payment || {};
-    return p.due || ((d.total || 0) - ((p.online || 0) + (p.cash || 0)));
-};
-
 function install(seed = 3) {
     fake = createFakeFirestore();
     global.firebase = fake.firebase;
@@ -111,7 +105,7 @@ describe('recent history window + stock checkpoint', () => {
         // Legacy due bills got openDue backfilled, so nothing needs pinning by id.
         expect(cp.pinned).toEqual({ purchases: [], retailSales: [], wholesaleSales: [] });
         ['purchases', 'wholesaleSales', 'retailSales'].forEach(c => docsOf(c).forEach(d => {
-            expect(d.openDue).toBe(outstandingDue(d) > 0 || (c === 'wholesaleSales' && wholesaleRuleDue(d) > 0));
+            expect(d.openDue).toBe(outstandingDue(d) > 0);
         }));
 
         // Second open: no .get(), stock identical, window + dues only.
@@ -137,7 +131,7 @@ describe('recent history window + stock checkpoint', () => {
                 } else if (ids.has(d.id)) {
                     olderLoaded++;
                 }
-                const due = outstandingDue(d) > 0 || (c === 'wholesaleSales' && wholesaleRuleDue(d) > 0);
+                const due = outstandingDue(d) > 0;
                 if (due) expect(ids.has(d.id)).toBe(true);
             });
             expect(AppState[STATE_KEY[c]]).toEqual(AppState[STATE_KEY[c]].slice().sort(dateDescComparator(r => r.id)));

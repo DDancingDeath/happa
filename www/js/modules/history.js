@@ -28,7 +28,7 @@ import { todayLocalISO } from '../utils/dates.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
-import { isOpeningRecord } from '../utils/money.js';
+import { billTotal, isOpeningRecord } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -567,13 +567,13 @@ export class HistoryManager {
                             
                             <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 16px; border-top: 2px solid ${billColor}; margin-top: 8px; background: linear-gradient(135deg, #e3f2fd, #bbdefb); margin: 8px -14px -14px -14px; padding: 12px 14px; border-radius: 0 0 10px 10px;">
                                 <span style="font-weight: 700;">${L('ui.billing.total_payable')}</span>
-                                <strong style="font-size: 18px; color: #1976d2;">₹${Math.round(bill.total || bill.amountPayable || 0)}</strong>
+                                <strong style="font-size: 18px; color: #1976d2;">₹${Math.round(billTotal(bill))}</strong>
                             </div>
                         ` : ''}
                     ` : `
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                             <span style="font-weight: 600;">${L('ui.billing.sale_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(bill.total || 0)}</strong>
+                            <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(billTotal(bill))}</strong>
                         </div>
                     `}
                 </div>
