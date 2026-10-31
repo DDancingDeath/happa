@@ -253,7 +253,9 @@ export function createFakeFirestore(options = {}) {
         return {
             id,
             path: `${collName}/${id}`,
-            get: async () => {
+            get: async (opts) => {
+                // A cache-only read is never billed (the real SDK serves it from this device).
+                if (opts?.source === 'cache') return { ...docSnap(collName, id, coll(collName).get(id)), metadata: { fromCache: true, hasPendingWrites: false } };
                 stats.docGets++;
                 stats.reads++;
                 return docSnap(collName, id, coll(collName).get(id));

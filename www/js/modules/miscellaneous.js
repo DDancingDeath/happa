@@ -14,6 +14,7 @@ import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { canChangeExpense, EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
+import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
@@ -34,23 +35,43 @@ export class ExpensesManager {
     static editingExpense = null;
 
     /**
+     * New expense whose save this phone has not confirmed yet ({ id, category }):
+     * the next save of that category reuses the id (#153).
+     * @type {{id: string, category: string}|null}
+     */
+    static pendingExpense = null;
+
+    /**
      * Create a new expense, or update the one being edited (same doc, no delete).
      * @param {Object} expense - Expense built from the form
      * @returns {Promise<boolean|null>} true if an existing expense was updated,
-     *   null if that update was refused (message already shown)
+     *   null if that update or this phone refused it, or this phone has not confirmed storing it (message already shown)
      */
     static async persistExpense(expense) {
         const editing = this.editingExpense;
         if (!editing || editing.category !== expense.category) {
-            // Shown at once (also offline); the listener reconciles it (#89)
-            const { committed } = FirebaseService.startSaveExpense(expense);
+            // Shown at once (also offline); the listener reconciles it (#89). A save
+            // after "not confirmed" reuses that expense's id so it can't duplicate.
+            const pending = this.pendingExpense?.category === expense.category ? this.pendingExpense : null;
+            const { record, committed, stored } = FirebaseService.startSaveExpense(expense, { id: pending?.id });
+            const forget = () => { if (this.pendingExpense?.id === record.id) this.pendingExpense = null; };
             committed.catch(err => {
                 console.error('Expense save failed:', err);
-                UIManager.showToast(t('msg.expenses.expense_not_saved', { value: err?.message || err }));
+                forget();
+                UIManager.showToast(saveFailedText(err, t('msg.expenses.expense_not_saved', { value: err?.message || err })), 'error');
                 this.refreshExpenseViews();
             });
             this.refreshExpenseViews();
-            return false;
+            // Not "saved" unless this phone stored it: refused (storage full, #153) or
+            // still unconfirmed after a few seconds keeps the form
+            const ok = stored ? await stored : true;
+            if (ok === null) {
+                this.pendingExpense = { id: record.id, category: expense.category };
+                UIManager.showToast(t(EXPENSE_UNCONFIRMED_KEY), 'warning');
+                return null;
+            }
+            forget();
+            return ok === true ? false : null;
         }
 
         const original = (AppState.expensesHistory || []).find(e => String(e.id) === String(editing.id)) || {};

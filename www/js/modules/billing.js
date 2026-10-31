@@ -17,6 +17,7 @@ import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
 import { PurchaseManager } from './purchase.js';
 import { RetailSaleManager } from './retail-sale.js';
 import { t } from '../i18n/index.js';
+import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
@@ -80,6 +81,7 @@ async function commitBillEdit(writePromise) {
  * @private
  */
 let autoSaveTimer = null;
+let autoSaveFullWarnedAt = 0;
 
 /**
  * Billing Manager - Coordinates purchase and sale operations
@@ -527,7 +529,7 @@ const BillingManager = {
             this.clearBill();
         } catch (error) {
             console.error('Failed to save draft:', error);
-            UIManager.showToast(t('msg.billing.failed_save_draft'));
+            UIManager.showToast(saveFailedText(error, t('msg.billing.failed_save_draft')), 'error');
         }
     },
 
@@ -775,6 +777,10 @@ const BillingManager = {
             
         } catch (error) {
             console.error('Auto-save failed:', error);
+            if (isStorageFullError(error) && Date.now() - autoSaveFullWarnedAt > TIME_MS.MINUTE) {
+                autoSaveFullWarnedAt = Date.now();
+                UIManager.showToast(t(STORAGE_FULL_KEY), 'error');
+            }
         }
     },
 
@@ -1238,6 +1244,10 @@ const BillingManager = {
         } catch (error) {
             console.error('Failed to update bill:', error);
             // Known outcomes keep the editor open so nothing typed is lost.
+            if (isStorageFullError(error)) {
+                UIManager.showToast(t(STORAGE_FULL_KEY), 'error');
+                return undefined;
+            }
             if (error?.code === 'conflict' || error?.code === 'edit-timeout') {
                 UIManager.showToast(t(error.code === 'conflict' ? 'msg.billing.edit_conflict' : 'msg.billing.edit_timeout'));
                 return undefined;
