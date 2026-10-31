@@ -1,11 +1,13 @@
-// Bluetooth link to the receipt printer (#77): every call has a timeout, a
-// dropped link is reconnected before a job, the reconnect is retried a limited
-// number of times, and a job whose bytes may have reached the printer is never
-// sent again on its own. The transport is injected so tests can fake it.
+// Bluetooth link to the receipt printer (#77): every call has a timeout and
+// jobs (prints and manual connects) run one at a time. A bill makes one quick
+// reconnect when the link is down; Test Print and Connect retry with backoff.
+// A job whose bytes may have reached the printer is never sent again on its
+// own. The transport is injected so tests can fake it.
 
 export const LINK_TIMEOUTS = Object.freeze({
     checkMs: 3000,
     connectMs: 8000,
+    quickConnectMs: 3500,
     writeBaseMs: 8000,
     writePerKbMs: 250
 });
@@ -87,6 +89,7 @@ export class PrinterLink {
         this.lastDevice = null;
         this.status = { checkedAt: null, lastError: null, lastJob: null };
         this.onChange = null;
+        this.stopped = false;
         this._queue = Promise.resolve();
     }
 
@@ -113,11 +116,11 @@ export class PrinterLink {
         return withTimeout(this.transport.list(), this.timeouts.connectMs, 'timeout_list');
     }
 
-    async connect(deviceId, deviceName = null) {
+    async connect(deviceId, deviceName = null, timeoutMs = this.timeouts.connectMs) {
         try {
             await withTimeout(
                 this.transport.connect(deviceId, (error) => this._dropped(deviceId, error)),
-                this.timeouts.connectMs,
+                timeoutMs,
                 'timeout_connect'
             );
         } catch (e) {
@@ -149,8 +152,10 @@ export class PrinterLink {
         return up;
     }
 
+    /** The user's Disconnect: no reconnects until connectNow() succeeds. */
     async disconnect() {
         const had = this.deviceId;
+        this.stopped = true;
         this.deviceId = null;
         this.deviceName = null;
         this.lastDevice = null;
@@ -171,17 +176,51 @@ export class PrinterLink {
             .catch((error) => console.warn('[PRINTER] reset:', error?.message || error));
     }
 
-    /**
-     * Sends one job; jobs run one at a time.
-     * @param {Uint8Array} bytes
-     * @param {{deviceId?: string, deviceName?: string}} [target] printer to reconnect to
-     * @returns {Promise<{outcome: 'printed', attempts: number}>}
-     * @throws {PrinterLinkError} outcome 'failed' or 'uncertain'
-     */
-    send(bytes, target = {}) {
-        const run = this._queue.then(() => this._job(bytes, target));
+    _enqueue(job) {
+        const run = this._queue.then(job);
         this._queue = run.catch(() => {});
         return run;
+    }
+
+    /** Up to `attempts` checks/connects with backoff; resolves true or throws the last error. */
+    async _linkWithRetries(deviceId, deviceName) {
+        const { attempts, backoffMs } = this.retry;
+        let lastError = null;
+        for (let tries = 0; tries < attempts; tries++) {
+            if (tries > 0) await this.sleep(backoffMs[Math.min(tries - 1, backoffMs.length - 1)] || 0);
+            try {
+                if ((await this.check()) || (await this.connect(deviceId, deviceName))) return tries + 1;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+        throw lastError || new PrinterLinkError('connect', 'Connection failed');
+    }
+
+    /** The user's Connect button: queued behind any print, retried with backoff. */
+    connectNow(deviceId, deviceName = null) {
+        return this._enqueue(async () => {
+            if (this.deviceId && this.deviceId !== deviceId) this._reset();
+            await this._linkWithRetries(deviceId, deviceName);
+            this.stopped = false;
+            this._changed();
+            return true;
+        });
+    }
+
+    /**
+     * Sends one job; jobs run one at a time.
+     * mode 'quick' (bills): a 3 s check when linked, else one short connect.
+     * mode 'full' (Test Print): check/connect retried with backoff.
+     * confirm() runs inside the queue, before anything is sent; false cancels.
+     * @param {Uint8Array} bytes
+     * @param {{deviceId?: string, deviceName?: string}} [target] printer to reconnect to
+     * @param {{mode?: 'quick'|'full', confirm?: () => Promise<boolean>}} [options]
+     * @returns {Promise<{outcome: 'printed'|'cancelled', attempts?: number}>}
+     * @throws {PrinterLinkError} outcome 'failed' or 'uncertain'
+     */
+    send(bytes, target = {}, options = {}) {
+        return this._enqueue(() => this._job(bytes, target, options));
     }
 
     _finish(outcome, error = null) {
@@ -192,40 +231,41 @@ export class PrinterLink {
         return error;
     }
 
-    async _job(bytes, target) {
+    async _job(bytes, target, { mode = 'quick', confirm, onUncertain, onPrinted } = {}) {
+        if (confirm && !(await confirm())) return { outcome: 'cancelled' };
         if (!this.transport.available()) {
             throw this._finish('failed', new PrinterLinkError('unavailable', 'Bluetooth Serial plugin not available'));
         }
+        if (this.stopped) throw this._finish('failed', new PrinterLinkError('stopped', 'Printer disconnected'));
         const deviceId = this.deviceId || target.deviceId || this.lastDevice?.deviceId;
         const deviceName = this.deviceName || target.deviceName || this.lastDevice?.deviceName || null;
         if (!deviceId) throw this._finish('failed', new PrinterLinkError('no_printer', 'No printer selected'));
 
-        const { attempts, backoffMs } = this.retry;
-        let linked = false;
-        let lastError = null;
-        let tries = 0;
-        while (!linked && tries < attempts) {
-            if (tries > 0) await this.sleep(backoffMs[Math.min(tries - 1, backoffMs.length - 1)] || 0);
-            tries++;
-            try {
-                linked = (await this.check()) || (await this.connect(deviceId, deviceName));
-            } catch (error) {
-                lastError = error;
+        let attempts = 1;
+        try {
+            if (mode === 'full') {
+                attempts = await this._linkWithRetries(deviceId, deviceName);
+            } else if (!(await this.check())) {
+                await this.connect(deviceId, deviceName, this.timeouts.quickConnectMs);
             }
+        } catch (error) {
+            throw this._finish('failed', error);
         }
-        if (!linked) throw this._finish('failed', lastError || new PrinterLinkError('connect', 'Connection failed'));
 
         try {
             await withTimeout(this.transport.write(bytes), this.writeTimeoutMs(bytes.length), 'timeout_write');
         } catch (e) {
             const kind = e instanceof PrinterLinkError ? e.kind : 'write';
             if (kind === 'timeout_write') this._reset();
+            if (onUncertain) onUncertain();
             throw this._finish('uncertain', new PrinterLinkError(kind, asError(e, 'Print failed').message, 'uncertain'));
         }
         if (!(await this.check())) {
+            if (onUncertain) onUncertain();
             throw this._finish('uncertain', new PrinterLinkError('dropped', 'Connection lost while printing', 'uncertain'));
         }
+        if (onPrinted) onPrinted();
         this._finish('printed');
-        return { outcome: 'printed', attempts: tries };
+        return { outcome: 'printed', attempts };
     }
 }

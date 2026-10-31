@@ -20,6 +20,8 @@ function attachToBody(el) {
 }
 
 let toastTimer = null;
+let loadingShown = false;
+let loadingHolds = 0;
 
 const TOAST_TYPES = ['success', 'error', 'warning', 'info'];
 const TOAST_TYPE_DURATIONS = { error: 5000, warning: 4000, info: 3000, success: 2000 };
@@ -56,17 +58,40 @@ const UIManager = {
      * @returns {void}
      */
     showLoading() {
+        loadingShown = true;
         const overlay = attachToBody(document.getElementById('loadingOverlay'));
         if (overlay) overlay.classList.add('active');
     },
 
     /**
-     * Hides the loading overlay.
+     * Hides the loading overlay, unless a holdLoading() is still active.
      * @returns {void}
      */
     hideLoading() {
+        loadingShown = false;
+        if (loadingHolds > 0) return;
         const overlay = document.getElementById('loadingOverlay');
         if (overlay) overlay.classList.remove('active');
+    },
+
+    /**
+     * Shows the loading overlay until the returned release() is called, even
+     * if hideLoading() runs meanwhile (e.g. a print that outlives its save).
+     * @returns {() => void} release (safe to call more than once)
+     */
+    holdLoading() {
+        loadingHolds++;
+        const overlay = attachToBody(document.getElementById('loadingOverlay'));
+        if (overlay) overlay.classList.add('active');
+        let released = false;
+        return () => {
+            if (released) return;
+            released = true;
+            loadingHolds--;
+            if (loadingHolds > 0 || loadingShown) return;
+            const el = document.getElementById('loadingOverlay');
+            if (el) el.classList.remove('active');
+        };
     },
 
     /**

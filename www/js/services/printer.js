@@ -12,6 +12,9 @@ import { PrinterLink } from './printer-link.js';
 const RASTER_THRESHOLD = 128;
 
 const jobKey = (kind, id) => (id ? `${kind}:${id}` : null);
+const UNCERTAIN_KEY = 'printerMayHavePrinted';
+const UNCERTAIN_TTL_MS = 24 * 60 * 60 * 1000;
+const STOPPED_KEY = 'printerDisconnected';
 
 const clockTime = (ms) => {
     const d = new Date(ms);
@@ -101,17 +104,17 @@ class BluetoothPrinterManager {
      * Send raw bytes as one job (serialized, timed out, reconnects to `target`).
      * @private
      */
-    async _send(bytes, label, target) {
+    async _send(bytes, label, job = {}) {
         try {
-            return await this.link.send(bytes, target);
+            return await this.link.send(bytes, job.target, job);
         } catch (error) {
             console.error(`[${label}] Print ${error?.outcome || 'failed'}:`, error);
             throw error;
         }
     }
 
-    sendCanvas(canvas, target) {
-        return this._send(canvasToEscPos(canvas), 'WRITE CANVAS', target);
+    sendCanvas(canvas, job) {
+        return this._send(canvasToEscPos(canvas), 'WRITE CANVAS', job);
     }
 
     async scan() {
@@ -196,7 +199,7 @@ class BluetoothPrinterManager {
         }
         UIManager.showLoading();
         try {
-            return await this.link.connect(deviceId, deviceName);
+            return await this.link.connectNow(deviceId, deviceName);
         } catch (error) {
             console.error('[CONNECT] Error:', error);
             throw error;
@@ -558,8 +561,8 @@ class BluetoothPrinterManager {
         return canvasToEscPos(canvas, height);
     }
 
-    async write(billData, target) {
-        return this._send(this.billBytes(billData), 'WRITE', target);
+    async write(billData, job) {
+        return this._send(this.billBytes(billData), 'WRITE', job);
     }
     
     async generateExpenseCanvas(expense) {
@@ -668,9 +671,9 @@ class BluetoothPrinterManager {
         return finalCanvas;
     }
     
-    async writeExpense(expense, target) {
+    async writeExpense(expense, job) {
         const finalCanvas = await this.generateExpenseCanvas(expense);
-        return this._send(canvasToEscPos(finalCanvas), 'WRITE EXPENSE', target);
+        return this._send(canvasToEscPos(finalCanvas), 'WRITE EXPENSE', job);
     }
 
     /**
@@ -738,8 +741,8 @@ class BluetoothPrinterManager {
         return out;
     }
 
-    async writeStatement(statement, target) {
-        return this._send(canvasToEscPos(this.generateStatementCanvas(statement)), 'WRITE STATEMENT', target);
+    async writeStatement(statement, job) {
+        return this._send(canvasToEscPos(this.generateStatementCanvas(statement)), 'WRITE STATEMENT', job);
     }
 }
 
@@ -760,6 +763,7 @@ const PrinterService = {
     async connect(deviceId, deviceName) {
         try {
             await this.manager.connect(deviceId, deviceName);
+            localStorage.removeItem(STOPPED_KEY);
             this.updateStatus();
             return true;
         } catch (error) {
@@ -771,6 +775,7 @@ const PrinterService = {
 
     async disconnect() {
         try {
+            localStorage.setItem(STOPPED_KEY, '1');
             await this.manager.disconnect();
             this.updateStatus();
             UIManager.showToast(t('msg.common.printer_disconnected'));
@@ -793,6 +798,7 @@ const PrinterService = {
             timeout_list: 'msg.printer.err_timeout_check',
             dropped: 'msg.printer.err_dropped',
             no_printer: 'msg.settings.printer_not_connected',
+            stopped: 'msg.settings.printer_not_connected',
             unavailable: 'msg.printer.android_app_only'
         };
         const key = keys[error?.kind];
@@ -805,42 +811,75 @@ const PrinterService = {
         return { deviceId, deviceName };
     },
 
-    /** Bluetooth is used when the link is up now or a saved printer is enabled. */
+    /**
+     * Bluetooth is used when the link is up now or a saved printer is enabled,
+     * unless the user pressed Disconnect (then bills go to the preview).
+     */
     canPrint() {
-        if (!this.isAvailable()) return false;
+        if (!this.isAvailable() || this.manager.link.stopped) return false;
         const saved = AppState.printerSettings || {};
         return this.isConnected() || !!(saved.enabled && saved.deviceId);
     },
 
+    /** Receipts that may have printed: { key: time }, kept 24 h across restarts. */
+    uncertainJobs() {
+        let map = {};
+        try {
+            map = JSON.parse(localStorage.getItem(UNCERTAIN_KEY)) || {};
+        } catch {
+            map = {};
+        }
+        const cutoff = Date.now() - UNCERTAIN_TTL_MS;
+        return Object.fromEntries(Object.entries(map).filter(([, at]) => Number(at) > cutoff));
+    },
+
+    setUncertain(key, uncertain) {
+        if (!key) return;
+        const map = this.uncertainJobs();
+        if (uncertain) map[key] = Date.now();
+        else delete map[key];
+        localStorage.setItem(UNCERTAIN_KEY, JSON.stringify(map));
+    },
+
     /**
-     * One print job with the may-have-printed guard: a job whose last try may
-     * have printed is only sent again after the user confirms.
+     * One print job. The may-have-printed check runs inside the job queue, so
+     * a reprint queued behind an unanswered original still asks first.
      * @param {string|null} key Same key = same receipt
-     * @param {(target: Object) => Promise} send
+     * @param {(job: Object) => Promise} send
+     * @param {'quick'|'full'} [mode='quick']
      * @returns {Promise<{outcome: 'printed'|'failed'|'uncertain'|'cancelled', error?: Error}>}
      */
-    async runJob(key, send) {
-        if (key && this.uncertainKey === key) {
-            UIManager.hideLoading();
+    async runJob(key, send, mode = 'quick') {
+        let release = UIManager.holdLoading();
+        const confirm = async () => {
+            if (!key || !this.uncertainJobs()[key]) return true;
+            release();
             const again = await UIManager.showModal(t('msg.printer.confirm_print_again'), t('ui.print.may_have_printed_title'), true);
-            if (!again) return { outcome: 'cancelled' };
-        }
-        UIManager.showLoading();
+            release = UIManager.holdLoading();
+            return again;
+        };
         try {
-            await send(this.target());
-            this.uncertainKey = null;
+            const result = await send({
+                target: this.target(),
+                mode,
+                confirm,
+                onUncertain: () => this.setUncertain(key, true),
+                onPrinted: () => this.setUncertain(key, false)
+            });
+            if (result?.outcome === 'cancelled') return { outcome: 'cancelled' };
+            this.setUncertain(key, false);
             return { outcome: 'printed' };
         } catch (error) {
             if (error?.outcome === 'uncertain') {
-                this.uncertainKey = key;
+                this.setUncertain(key, true);
+                release();
                 this.updateStatus();
-                UIManager.hideLoading();
                 await UIManager.showModal(t('msg.printer.may_have_printed'), t('ui.print.may_have_printed_title'));
                 return { outcome: 'uncertain', error };
             }
             return { outcome: 'failed', error };
         } finally {
-            UIManager.hideLoading();
+            release();
             this.updateStatus();
         }
     },
@@ -907,11 +946,6 @@ const PrinterService = {
         if (this.testing) return false;
         this.testing = true;
         try {
-            if (!this.isConnected() && !(await this.reconnectSaved())) {
-                await UIManager.showModal(t('msg.settings.printer_not_connected'));
-                return false;
-            }
-            UIManager.showLoading();
             const testBill = {
                 type: 'TEST',
                 date: new Date().toISOString(),
@@ -926,19 +960,22 @@ const PrinterService = {
                 isPurchase: true,
                 isAutoLabor: true
             };
-            const { outcome, error } = await this.runJob('test', (target) => this.manager.write(testBill, target));
+            const { outcome, error } = await this.runJob('test', (job) => this.manager.write(testBill, job), 'full');
             if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.test_print_successful'));
                 return true;
             }
             if (outcome === 'failed') {
                 console.error('Test print error:', error);
-                UIManager.showToast(t('msg.common.test_print_failed', { message: this.errorText(error) }), 'error');
+                if (error?.kind === 'no_printer' || error?.kind === 'stopped') {
+                    await UIManager.showModal(t('msg.settings.printer_not_connected'));
+                } else {
+                    UIManager.showToast(t('msg.common.test_print_failed', { message: this.errorText(error) }), 'error');
+                }
             }
             return false;
         } finally {
             this.testing = false;
-            UIManager.hideLoading();
         }
     },
 
@@ -962,23 +999,10 @@ const PrinterService = {
         return this.manager.link.check();
     },
 
-    /** Reconnects to the printer saved in Settings, without toasts. */
-    async reconnectSaved() {
-        const { deviceId, deviceName } = this.target();
-        if (!this.isAvailable() || !deviceId) return false;
-        try {
-            await this.manager.connect(deviceId, deviceName);
-            return true;
-        } catch (error) {
-            console.warn('Printer reconnect failed:', error?.message || error);
-            return false;
-        }
-    },
-
     async printBill(billData) {
         if (this.canPrint()) {
             const key = jobKey('bill', billData.billNumber || billData.id);
-            const { outcome, error } = await this.runJob(key, (target) => this.manager.write(billData, target));
+            const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
             if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
@@ -1013,7 +1037,7 @@ const PrinterService = {
     async printStatement(statement) {
         if (this.canPrint()) {
             const key = jobKey('statement', statement.filename);
-            const { outcome, error } = await this.runJob(key, (target) => this.manager.writeStatement(statement, target));
+            const { outcome, error } = await this.runJob(key, (job) => this.manager.writeStatement(statement, job));
             if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
@@ -1039,7 +1063,7 @@ const PrinterService = {
      */
     async printCanvas(canvas, filename, title) {
         if (this.canPrint()) {
-            const { outcome, error } = await this.runJob(jobKey('canvas', filename), (target) => this.manager.sendCanvas(canvas, target));
+            const { outcome, error } = await this.runJob(jobKey('canvas', filename), (job) => this.manager.sendCanvas(canvas, job));
             if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
@@ -1190,7 +1214,7 @@ const PrinterService = {
 
     async printExpense(expense) {
         if (this.canPrint()) {
-            const { outcome, error } = await this.runJob(jobKey('expense', expense.id), (target) => this.manager.writeExpense(expense, target));
+            const { outcome, error } = await this.runJob(jobKey('expense', expense.id), (job) => this.manager.writeExpense(expense, job));
             if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.expense_printed_successfully'));
                 return true;
@@ -1388,6 +1412,7 @@ const PrinterService = {
 };
 
 PrinterService.manager.link.onChange = () => PrinterService.updateStatus();
+PrinterService.manager.link.stopped = localStorage.getItem(STOPPED_KEY) === '1';
 
 const printerManager = PrinterService.manager;
 
