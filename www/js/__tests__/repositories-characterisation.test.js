@@ -265,7 +265,9 @@ describe('telemetry (services/telemetry.js)', () => {
             { id: 't1', fingerprint: 'fp1', message: 'a', lastSeen: 2, count: 1 },
             { id: 't2', fingerprint: 'fp2', message: 'b', lastSeen: 1, count: 1 },
             { id: 't0', fingerprint: 'fp0', message: 'z', lastSeen: 3, count: 1, hidden: true, hiddenAt: Date.now() },
-            { id: 't9', fingerprint: 'fp9', message: 'old', lastSeen: 3, count: 1, hidden: true, hiddenAt: 5 }
+            { id: 't9', fingerprint: 'fp9', message: 'old', lastSeen: 3, count: 1, hidden: true, hiddenAt: 5 },
+            // hidden offline: no server time yet, never counts as expired
+            { id: 't8', fingerprint: 'fp8', message: 'queued', lastSeen: 3, count: 1, hidden: true, hiddenAt: null }
         ]);
         const data = await TelemetryService.getTelemetryData();
         for (let i = 0; i < 10; i++) await Promise.resolve();
@@ -273,7 +275,7 @@ describe('telemetry (services/telemetry.js)', () => {
         pin('telemetry.owner', rec.log);
         expect(data.map(d => d.id)).toEqual(['fp1', 'fp2']);
         // hidden for more than 90 days: deleted; hidden recently: kept
-        expect([...fake.raw('dev_telemetry').keys()].sort()).toEqual(['t0', 't1', 't2']);
+        expect([...fake.raw('dev_telemetry').keys()].sort()).toEqual(['t0', 't1', 't2', 't8']);
         expect(fake.raw('dev_telemetry').get('t1')).toMatchObject({ hidden: true, message: 'a' });
         expect((await TelemetryService.getTelemetryData()).length).toBe(0);
     });

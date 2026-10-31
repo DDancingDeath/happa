@@ -392,7 +392,7 @@ const TelemetryService = {
             // Hidden reports are kept 90 days (as the audit log), then the owner's phone deletes them
             const cutoff = Date.now() - HIDDEN_KEEP_MS;
             const hiddenMs = (d) => (d.hiddenAt?.toMillis ? d.hiddenAt.toMillis() : Number(d.hiddenAt) || 0);
-            const expired = docs.filter(d => d.hidden === true && hiddenMs(d) < cutoff).map(d => d.id);
+            const expired = docs.filter(d => d.hidden === true && hiddenMs(d) > 0 && hiddenMs(d) < cutoff).map(d => d.id);
             if (expired.length) deleteTelemetryReports(expired).catch(e => console.warn('Old hidden reports not deleted:', e?.code || e));
             return mergeTelemetryReports(docs.filter(d => d.hidden !== true));
         } catch (error) {

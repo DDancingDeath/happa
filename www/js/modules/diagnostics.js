@@ -612,9 +612,11 @@ const DiagnosticsManager = {
 
         try {
             UIManager.showLoading();
-            const count = await TelemetryService.hideErrors((this.data || []).flatMap(d => (d.docIds?.length ? d.docIds : [d.id])));
+            const listed = this.filter === 'all' ? (this.data || []) : (this.data || []).filter(d => d.type === this.filter);
+            const count = await TelemetryService.hideErrors(listed.flatMap(d => (d.docIds?.length ? d.docIds : [d.id])));
             AuditService.note(AuditService.ACTIONS.HIDE_ERRORS, { reports: count, all: true });
-            this.data = [];
+            const gone = new Set(listed.map(d => d.id));
+            this.data = (this.data || []).filter(d => !gone.has(d.id));
             this.renderErrors();
             UIManager.showToast(t('msg.diagnostics.all_diagnostics_cleared'));
         } catch (error) {
