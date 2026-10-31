@@ -6,7 +6,7 @@
  *  - a single-document write the rules refused → `PERMISSION_DENIED` { source:
  *    "collection op" } (throttled per phone; refusals the app expects, such as a
  *    wrong phone clock or a bill a retry already saved, are marked and skipped);
- *  - a person's sign-in on a phone not in users/{uid}.devices → `NEW_DEVICE`
+ *  - a person's sign-in on a phone not in deviceLog/{uid}.devices → `NEW_DEVICE`
  *    (after the first DEVICE_GRACE_DAYS of their list; nothing for a known phone);
  *  - trying to change or void a bill past the edit window → `OLD_BILL_EDIT_TRY`.
  * Entries are written by the person's own app, so a modified app can skip them:
@@ -17,11 +17,15 @@
 import { AppState } from '../utils/state.js';
 import { on, FIRESTORE_DENIED } from '../utils/events.js';
 import { AuditService } from './audit.js';
-import { addOwnDevice } from '../firebase/repos/users.js';
+import { addOwnDevice, readOwnDevices } from '../firebase/repos/users.js';
+import { safeSetItem } from '../utils/storage-full.js';
 import { tipDeviceId } from '../tip/index.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { accessFor } from '../utils/role-access.js';
 import { SECURITY_ACTIONS, deniedWriteSource, deviceCheck, planDeniedNote } from '../utils/security-flags.js';
+
+/** This phone already recorded for the person ("uid|deviceId"). */
+const DEVICE_KEY = 'happaDeviceKnown';
 
 /** Time for the caller to mark a refusal as expected (the clock check takes up to 5 s). */
 export const DENIED_DECIDE_MS = 8000;
@@ -83,21 +87,27 @@ export const SecurityMonitor = {
     },
 
     /**
-     * After the profile was read at start-up: remembers this phone for the person
-     * and, when they have had a list for a while, writes `NEW_DEVICE`.
+     * At start-up: remembers this phone for the person in deviceLog/{uid} and, when
+     * they have had a list for a while, writes `NEW_DEVICE`. A phone that already
+     * did this for the person reads nothing (kept on the phone).
      * @param {string} uid
-     * @param {Object} profile - users/{uid} data
      * @returns {Promise<boolean>} true when this phone was new
      */
-    async checkDevice(uid, profile) {
-        if (!uid || !profile || !writesAudit()) return false;
+    async checkDevice(uid) {
+        if (!uid || !writesAudit()) return false;
         const deviceId = tipDeviceId(uid);
-        const check = deviceCheck(profile.devices, deviceId, todayLocalISO());
-        if (!check.isNew) return false;
-        if (check.flag) record(SECURITY_ACTIONS.NEW_DEVICE, { device: deviceId.slice(0, 10) });
-        // Added with arrayUnion (another phone may add itself meanwhile); a full list is replaced
-        await addOwnDevice(uid, check.entry, check.full ? check.next : null);
-        return true;
+        const known = `${uid}|${deviceId}`;
+        try {
+            if (localStorage.getItem(DEVICE_KEY) === known) return false;
+        } catch (_) { /* no storage: check with the server */ }
+        const check = deviceCheck(await readOwnDevices(uid), deviceId, todayLocalISO());
+        if (check.isNew) {
+            if (check.flag) record(SECURITY_ACTIONS.NEW_DEVICE, { device: deviceId.slice(0, 10) });
+            // Added with arrayUnion (another phone may add itself meanwhile); a full list is replaced
+            await addOwnDevice(uid, check.entry, check.full ? check.next : null);
+        }
+        safeSetItem(DEVICE_KEY, known);
+        return check.isNew;
     },
 
     /**

@@ -25,7 +25,7 @@ import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
 import { firstStockTimes, stockKeyFor } from './stock-check.js';
 import { labourCalcText } from './labour.js';
-import { SECURITY_ACTIONS, deniedClusters } from './security-flags.js';
+import { SECURITY_ACTIONS, OLD_BILL_TRIES_PER_DAY, deniedClusters } from './security-flags.js';
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 
@@ -94,7 +94,7 @@ export const ANOMALY_TYPES = Object.freeze({
     // #124: from the security entries phones write to the audit log
     'access-denied': { en: 'Changes refused again and again', hi: 'बार-बार बदलाव मना हुए', severity: 'high' },
     'new-device': { en: 'Sign-in from a new phone', hi: 'नए फ़ोन से लॉग इन', severity: 'low' },
-    'old-bill-edit-try': { en: 'Tried to change an old bill', hi: 'पुराना बिल बदलने की कोशिश', severity: 'medium' }
+    'old-bill-edit-try': { en: 'Tried to change several old bills', hi: 'कई पुराने बिल बदलने की कोशिश', severity: 'low' }
 });
 
 /** Label of a type (unknown stored flag rules fall back to their id). */
@@ -478,24 +478,32 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     });
     (auditLogs || []).forEach(log => {
         if (!log || log.id == null) return;
-        const d = log.details && typeof log.details === 'object' ? log.details : {};
         if (log.action === SECURITY_ACTIONS.NEW_DEVICE) {
             add(makeAnomaly('new-device', { refKind: 'audit', refId: log.id, ...logUser(log) }, {
                 at: Number(log.timestamp),
                 en: 'First sign-in on a phone this person had not used before',
                 hi: 'इस व्यक्ति ने पहली बार इस फ़ोन से लॉग इन किया'
             }));
-        } else if (log.action === SECURITY_ACTIONS.OLD_BILL_TRY) {
-            const no = d.billNumber ? ` #${d.billNumber}` : '';
-            const isVoid = d.what === 'void';
-            add(makeAnomaly('old-bill-edit-try', {
-                refKind: 'audit', refId: log.id, billNumber: d.billNumber ? String(d.billNumber) : null, ...logUser(log)
-            }, {
-                at: Number(log.timestamp),
-                en: `Tried to ${isVoid ? 'void' : 'change'} bill${no} after its edit window`,
-                hi: `बिल${no} को बदलाव का समय बीतने के बाद ${isVoid ? 'रद्द करने' : 'बदलने'} की कोशिश`
-            }));
         }
+    });
+    // Tapping a locked Edit / Void is no flag by itself; trying 3 or more different old bills in a day is
+    const triesByUserDay = new Map();
+    (auditLogs || []).filter(l => l && l.id != null && l.action === SECURITY_ACTIONS.OLD_BILL_TRY && Number.isFinite(Number(l.timestamp)))
+        .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
+        .forEach(l => {
+            const k = `${l.userId || ''}|${istDayKey(Number(l.timestamp))}`;
+            if (!triesByUserDay.has(k)) triesByUserDay.set(k, []);
+            triesByUserDay.get(k).push(l);
+        });
+    triesByUserDay.forEach(list => {
+        const billIds = new Set(list.map(l => String(l.details?.billId || '')).filter(Boolean));
+        if (billIds.size < OLD_BILL_TRIES_PER_DAY) return;
+        const first = list[0];
+        add(makeAnomaly('old-bill-edit-try', { refKind: 'audit', refId: first.id, ...logUser(first) }, {
+            at: Number(first.timestamp),
+            en: `Tried to change or void ${billIds.size} bills past their edit window in one day`,
+            hi: `एक दिन में ${billIds.size} बिल बदलाव का समय बीतने के बाद बदलने या रद्द करने की कोशिश`
+        }));
     });
 
     const stockFrom = firstStockTimes({ purchases: bills.purchase, stockAdjustments: adjustments }, catalogue);

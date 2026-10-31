@@ -314,6 +314,7 @@ rejected / no profile / unknown role.
 | `users` | own profile at start-up / login / registration; full list: Admin and Roles & access › People (owner), App health device names (owner/manager), notification fan-out on item and rate edits (owner/manager) | **own only**. Names shown on bills, payments and audit rows are stored on those records, so no name mirror is needed |
 | `users/{uid}/preferences` | own | own |
 | `auditLogs`, `telemetry` | append by everyone; read in Settings/Diagnostics and the anomaly scan by the owner only | no |
+| `deviceLog/{uid}` (#124) | own doc at start-up, once per person per phone (then remembered on the phone) | own only |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | App health, Anomalies, Rates history, Insights › Seasons, Money snapshots (the app loads them for owner/manager only) | no |
 | `rent_*` | Rentals (`js/rentals/rent-store.js`), loaded only when Rentals opens | rentals roles only |
 | `rent_public/{token}` | tenant page, get by token | anyone with the link |
@@ -340,6 +341,7 @@ except `rent_public` get.
 | `users`: other profiles (G, L) | ✓ → ✓ | ✓ → ✓ | ✓ → **✗** | ✗ → ✗ | ✗ → ✗ |
 | `users/{uid}/preferences` | own only (unchanged) | own | own | ✗ | ✗ |
 | `auditLogs`, `telemetry` | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
+| `deviceLog` (#124): own / other people's | ✓ / ✓ | ✓ / ✗ | ✓ / ✗ | ✗ | ✗ |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `rent_*` (incl. `rent_settings`, `rent_receipts`, `rent_counters`) | ✓ → ✓ | ✗ without a `rentRole` | ✗ without a `rentRole` | ✓ → ✓ | ✗ → ✗ |
 | `rent_public` | G ✓, L ✗ for everyone, signed out too (unchanged) | | | | |

@@ -155,13 +155,20 @@ on Anomalies and the Today day report. No extra reads.
   person's refused changes reaching the limit in Settings › Aadhat › bill checks (default **3 within 10
   minutes**: `deniedCount`, `deniedWindowMin`).
 - **New phone**: at start-up the app compares this phone's id (the App health device id) with
-  `users/{uid}.devices` (up to 10 `id:YYYYMMDD` entries, the person's own field, added with `arrayUnion`).
-  A known phone writes nothing. A new phone is remembered; it writes `NEW_DEVICE` only once the person's
-  list is 14 days old, so the phones in use when this starts are not flagged. **Flag**
-  `new-device` (low).
-- **Old bills**: when someone other than the owner tries to change or void a bill the app refuses
-  because its edit window has passed, `OLD_BILL_EDIT_TRY`. **Flag** `old-bill-edit-try` (medium).
-  (Edits the rules refuse are refused writes, above.)
+  `deviceLog/{uid}.devices` (up to 10 `id:YYYYMMDD` entries, added with `arrayUnion`). The rules let
+  only that approved person write their own doc (`devices` only; each entry `^[a-z0-9]{1,20}:[0-9]{8}$`,
+  its day not after tomorrow), and only that person and the owner read it: managers never see phones.
+  A phone that already checked for this person reads nothing (kept on the phone). A new phone is
+  remembered; it writes `NEW_DEVICE` only once the person's list is 14 days old, so the phones in use
+  when this starts are not flagged. **Flag** `new-device` (low).
+- **Old bills**: past the edit window, Edit / Void stay visible but **locked** (greyed, "🔒 Edit window
+  closed" / "🔒 बदलने का समय बीत गया") for those who could act inside it. A tap only explains the window;
+  for someone other than the owner it also writes `OLD_BILL_EDIT_TRY` (one per bill and action per app
+  run), which is no flag by itself. **Flag** `old-bill-edit-try` (low) only when one person tries **3
+  or more different** old bills in one IST day. (Edits the rules refuse are refused writes, above.)
+
+The daily scan reads the audit log since the last scanned day in pages of 300, at most 1,000 entries
+per scanned day (`loadAuditLogsSince`), so a busy day is not cut short at the first page.
 
 These entries come from the person's own app, so a modified app can leave them out: they are review
 hints. The rules remain the protection.

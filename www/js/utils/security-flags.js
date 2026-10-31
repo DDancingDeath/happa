@@ -13,6 +13,9 @@ export const SECURITY_ACTIONS = Object.freeze({
     OLD_BILL_TRY: 'OLD_BILL_EDIT_TRY'
 });
 
+/** Different bills past their edit window one person tries in a day before a (low) flag. */
+export const OLD_BILL_TRIES_PER_DAY = 3;
+
 // "x (doc) transaction" is a read inside a transaction; the transaction itself is "transaction"
 const WRITE_OPS = ['set', 'update', 'delete', 'add'];
 
@@ -22,7 +25,7 @@ const WRITE_OPS = ['set', 'update', 'delete', 'add'];
  * refused for removed users), and the stock checkpoint's scan state (members'
  * phones try it and are refused by design).
  */
-const IGNORED = new Set(['auditLogs', 'telemetry', 'tipHealth', 'tipFailures', 'stockCheckpoints']);
+const IGNORED = new Set(['auditLogs', 'telemetry', 'tipHealth', 'tipFailures', 'stockCheckpoints', 'deviceLog']);
 
 /**
  * The write a refused Firestore call was, as "collection op" (dev_ dropped), or

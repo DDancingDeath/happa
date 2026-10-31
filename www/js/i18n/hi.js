@@ -1178,6 +1178,7 @@ export default {
     'ui.checks.cash_ok': "नकद गिनती: इतने ₹ तक ठीक",
     'ui.checks.cash_high': "नकद गिनती: इतने ₹ से ज़्यादा बड़ा अंतर",
     'ui.checks.stock_adjust_flag': "स्टॉक बदलाव इतने kg से ज़्यादा पर निशान",
+    'ui.bill.edit_window_closed': "बदलने का समय बीत गया",
     'ui.checks.denied_count': "एक व्यक्ति के इतने बदलाव मना होने पर निशान",
     'ui.checks.denied_window': "… इतने मिनट के अंदर",
     'ui.checks.title': "बिल जाँच",

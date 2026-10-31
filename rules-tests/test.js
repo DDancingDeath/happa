@@ -925,6 +925,30 @@ function defineSuite(prefix) {
         await assertFails(as('pending1').collection(users).doc('pending1').collection('preferences').doc('ui').get());
     });
 
+    // ---- phones per person (#124): deviceLog/{uid} ----
+
+    t('deviceLog: a person writes only their own list of up to 10 "id:YYYYMMDD" entries; they and the owner read it, managers never', async () => {
+        const log = (uid) => as(uid).collection(`${prefix}deviceLog`).doc(uid);
+        const day = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`; };
+        const today = day(Date.now());
+        await assertSucceeds(log('staff1').set({ devices: [`abc123:${today}`] }));
+        await assertSucceeds(log('staff1').set({ devices: FieldValue.arrayUnion(`def456:${today}`) }, { merge: true }));
+        await assertSucceeds(log('staff1').get());
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}deviceLog`).doc('staff1').get());
+        await assertFails(as('manager1').collection(`${prefix}deviceLog`).doc('staff1').get());
+        await assertFails(as('manager1').collection(`${prefix}deviceLog`).get());
+        await assertFails(as('staff1').collection(`${prefix}deviceLog`).doc('manager1').set({ devices: [`abc123:${today}`] }));
+        await assertFails(as('pending1').collection(`${prefix}deviceLog`).doc('pending1').set({ devices: [`abc123:${today}`] }));
+        // bad entries, a future day, too many, other fields
+        await assertFails(log('staff1').set({ devices: ['ABC:20261101'] }));
+        await assertFails(log('staff1').set({ devices: ['abc123'] }));
+        await assertFails(log('staff1').set({ devices: ['abc123:20261301'] }));
+        await assertFails(log('staff1').set({ devices: [`abc123:${day(Date.now() + 3 * DAY)}`] }));
+        await assertFails(log('staff1').set({ devices: Array.from({ length: 11 }, (_, i) => `d${i}:${today}`) }));
+        await assertFails(log('staff1').set({ devices: [`abc123:${today}`], note: 'x' }));
+        await assertSucceeds(log('staff1').set({ devices: Array.from({ length: 10 }, (_, i) => `d${i}:${today}`) }));
+    });
+
     // ---- audit logs (#55): append-only, caller's uid, server time ----
 
     const auditLogs = `${prefix}auditLogs`;

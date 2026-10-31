@@ -1178,6 +1178,7 @@ export default {
     'ui.checks.cash_ok': "Cash count: fine up to (₹)",
     'ui.checks.cash_high': "Cash count: big difference above (₹)",
     'ui.checks.stock_adjust_flag': "Stock adjustment flagged above (kg)",
+    'ui.bill.edit_window_closed': "Edit window closed",
     'ui.checks.denied_count': "Refused changes by one person that raise a flag",
     'ui.checks.denied_window': "… within this many minutes",
     'ui.checks.title': "Bill checks",

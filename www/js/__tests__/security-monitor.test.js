@@ -32,6 +32,7 @@ describe('which refused calls are recorded', () => {
         ['telemetry (doc) set', null],
         ['dev_tipHealth (doc) set', null],
         ['stockCheckpoints (doc) set', null],
+        ['dev_deviceLog (doc) set', null],
         ['', null]
     ])('%s → %s', (source, out) => {
         expect(deniedWriteSource(source)).toBe(out);
@@ -102,15 +103,27 @@ describe('owner daily scan flags (detectAnomalies)', () => {
         expect(scan(logs, { deniedCount: 2, deniedWindowMin: 20 }).some(a => a.type === 'access-denied')).toBe(true);
     });
 
-    test('a new phone is a low flag; a try on an old bill a medium one', () => {
+    test('a new phone is a low flag; tries on old bills only once 3 different bills in a day', () => {
+        const day = Date.UTC(2026, 9, 21, 4, 0); // 09:30 IST
+        const tryOn = (id, billId, at, userId = 'u1') => ({
+            id, action: SECURITY_ACTIONS.OLD_BILL_TRY, userId, userName: 'Ram', timestamp: at,
+            details: { what: 'edit', billNumber: billId.toUpperCase(), billType: 'purchase', billId }
+        });
         const flags = scan([
             { id: 'n1', action: SECURITY_ACTIONS.NEW_DEVICE, userId: 'u1', userName: 'Ram', timestamp: t0, details: { device: 'abc' } },
-            { id: 'o1', action: SECURITY_ACTIONS.OLD_BILL_TRY, userId: 'u1', userName: 'Ram', timestamp: t0, details: { what: 'void', billNumber: 'P1', billType: 'purchase' } }
+            tryOn('o1', 'b1', day), tryOn('o2', 'b1', day + MIN), tryOn('o3', 'b2', day + 2 * MIN)
         ]);
         expect(flags.find(a => a.type === 'new-device')).toMatchObject({ severity: 'low', userId: 'u1' });
-        expect(flags.find(a => a.type === 'old-bill-edit-try')).toMatchObject({
-            severity: 'medium', billNumber: 'P1', en: 'Tried to void bill #P1 after its edit window'
-        });
+        // two different bills (one tried twice): no flag
+        expect(flags.some(a => a.type === 'old-bill-edit-try')).toBe(false);
+        // three different bills by one person the same IST day: one low flag
+        const three = [tryOn('o1', 'b1', day), tryOn('o2', 'b2', day + MIN), tryOn('o3', 'b3', day + 2 * MIN)];
+        const tries = scan(three).filter(a => a.type === 'old-bill-edit-try');
+        expect(tries).toHaveLength(1);
+        expect(tries[0]).toMatchObject({ severity: 'low', userId: 'u1', refId: 'o1' });
+        // spread over two people or two IST days: no flag
+        expect(scan([three[0], three[1], tryOn('o3', 'b3', day + 2 * MIN, 'u2')]).some(a => a.type === 'old-bill-edit-try')).toBe(false);
+        expect(scan([three[0], three[1], tryOn('o3', 'b3', day + 86400000)]).some(a => a.type === 'old-bill-edit-try')).toBe(false);
     });
 
     test('deniedClusters starts a new run after a flagged one', () => {
@@ -167,18 +180,30 @@ describe('SecurityMonitor on the phone', () => {
         expect(note).not.toHaveBeenCalled();
     });
 
-    test('checkDevice adds a new phone (arrayUnion) and flags it once the list is old enough', async () => {
+    test('checkDevice adds a new phone to deviceLog (arrayUnion), flags it once the list is old enough, and reads once per phone', async () => {
+        localStorage.removeItem('happaDeviceKnown');
+        const read = jest.spyOn(users, 'readOwnDevices').mockResolvedValue(null);
         const save = jest.spyOn(users, 'addOwnDevice').mockResolvedValue();
-        expect(await SecurityMonitor.checkDevice('u1', { name: 'Ram' })).toBe(true);
+        expect(await SecurityMonitor.checkDevice('u1')).toBe(true);
         expect(save).toHaveBeenCalledTimes(1);
-        const [, entry, replace] = save.mock.calls[0];
+        const [uid, entry, replace] = save.mock.calls[0];
+        expect(uid).toBe('u1');
+        expect(entry).toMatch(/^[a-z0-9]{1,20}:\d{8}$/);
         expect(replace).toBeNull();
         expect(note).not.toHaveBeenCalled();
-        expect(await SecurityMonitor.checkDevice('u1', { devices: [entry] })).toBe(false);
-        expect(await SecurityMonitor.checkDevice('u1', { devices: ['otherphone1:20200101'] })).toBe(true);
+        // known on this phone: no read at all next time
+        expect(await SecurityMonitor.checkDevice('u1')).toBe(false);
+        expect(read).toHaveBeenCalledTimes(1);
+        localStorage.removeItem('happaDeviceKnown');
+        read.mockResolvedValue([entry]);
+        expect(await SecurityMonitor.checkDevice('u1')).toBe(false);
+        localStorage.removeItem('happaDeviceKnown');
+        read.mockResolvedValue(['otherphone1:20200101']);
+        expect(await SecurityMonitor.checkDevice('u1')).toBe(true);
         expect(note).toHaveBeenCalledWith('NEW_DEVICE', expect.objectContaining({ device: expect.any(String) }));
+        localStorage.removeItem('happaDeviceKnown');
         AppState.userRole = 'none';
-        expect(await SecurityMonitor.checkDevice('u1', { devices: ['x:20200101'] })).toBe(false);
+        expect(await SecurityMonitor.checkDevice('u1')).toBe(false);
     });
 
     test('a try on an old bill is recorded for everyone but the owner, once per bill and action, never with editDays 0', () => {
@@ -213,5 +238,42 @@ describe('Edit / Void past the edit window (#124)', () => {
         // editDays 0 = never: nothing to try, the buttons stay hidden
         setBillActions(old, { uid: 'u1', role: 'staff', raw: { staff: { editDays: 0 } } });
         expect([shown('billEditBtn'), shown('billVoidBtn')]).toEqual([false, false]);
+    });
+
+    test('are shown locked (greyed, "🔒 Edit window closed"); inside the window they are plain', () => {
+        document.body.innerHTML = ['billEditBtn', 'billVoidBtn', 'billDeleteBtn', 'billReprintBtn', 'billShareBtn']
+            .map(id => `<button id="${id}"></button>`).join('');
+        const edit = () => document.getElementById('billEditBtn');
+        const old = { id: 'b1', userId: 'u1', createdAt: { toMillis: () => Date.now() - 30 * 86400000 } };
+        setBillActions(old, { uid: 'u1', role: 'staff', raw: {} });
+        expect(edit().classList.contains('bill-action-locked')).toBe(true);
+        expect(edit().getAttribute('aria-disabled')).toBe('true');
+        expect(edit().dataset.lockedLabel).toBe('Edit window closed');
+        expect(document.getElementById('billVoidBtn').classList.contains('bill-action-locked')).toBe(true);
+        setBillActions({ ...old, createdAt: { toMillis: () => Date.now() } }, { uid: 'u1', role: 'staff', raw: {} });
+        expect(edit().classList.contains('bill-action-locked')).toBe(false);
+        expect(edit().hasAttribute('aria-disabled')).toBe(false);
+        expect(edit().style.display).toBe('');
+    });
+});
+
+describe('owner daily scan reads the audit log in pages (#124)', () => {
+    test('reads every entry since the scan start, page by page, up to the cap', async () => {
+        const { createFakeFirestore } = await import('./__mocks__/fake-firestore.js');
+        const { FirebaseService } = await import('../firebase/firestore-service.js');
+        const fake = createFakeFirestore();
+        const db = jest.spyOn(FirebaseService, 'db', 'get').mockReturnValue(fake.db);
+        fake.seed('auditLogs', Array.from({ length: 700 }, (_, i) => ({ id: `a${String(i).padStart(4, '0')}`, action: 'X', timestamp: 1000 + i })));
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const all = await FirebaseService.loadAuditLogsSince(1000, 1000, 300);
+        expect(all).toHaveLength(700);
+        expect(new Set(all.map(l => l.id)).size).toBe(700);
+        expect(all[0].timestamp).toBe(1699);
+        const since = await FirebaseService.loadAuditLogsSince(1600, 1000, 300);
+        expect(since).toHaveLength(100);
+        const capped = await FirebaseService.loadAuditLogsSince(1000, 450, 300);
+        expect(capped).toHaveLength(450);
+        expect(capped[449].timestamp).toBe(1250);
+        db.mockRestore();
     });
 });

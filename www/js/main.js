@@ -346,7 +346,7 @@ async function initializeUserData() {
                 AppState.rentRole = userData.rentRole || null;
                 AppState.userName = userData.name || 'User';
                 // #124: remember this phone; a person's first sign-in on another phone is flagged for review
-                SecurityMonitor.checkDevice(userId, userData)
+                SecurityMonitor.checkDevice(userId)
                     .catch(e => console.warn('Device check not saved:', e?.code || e));
             } else {
                 // User document doesn't exist

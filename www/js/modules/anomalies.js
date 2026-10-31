@@ -38,7 +38,8 @@ const REPORT_TTL_MS = 30 * 60 * 1000;
 const REPORT_KEY = 'aadhatAnomalyReportRead';
 const REPORT_LIMIT = 200;
 const SCAN_LIMIT = 500;
-const AUDIT_LIMIT = 300;
+/** Audit entries read per scanned day at most (paged by FirebaseService). */
+const AUDIT_PER_DAY = 1000;
 const SCAN_KEY = 'aadhatAnomalyScanDay';
 const PAGE_SIZE = 200;
 const SEV_COLORS = { high: '#dc2626', medium: '#d97706', low: '#6b7280' };
@@ -114,7 +115,7 @@ export const AnomaliesManager = {
                 return [];
             }),
             audit && AppState.userRole === 'owner'
-                ? FirebaseService.loadAuditLogsSince(from, AUDIT_LIMIT).catch(e => {
+                ? FirebaseService.loadAuditLogsSince(from, Math.max(1, Math.ceil((to - from) / DAY_MS)) * AUDIT_PER_DAY).catch(e => {
                     console.warn('Anomaly scan: audit log not read:', e?.code || e);
                     return [];
                 })
@@ -159,7 +160,7 @@ export const AnomaliesManager = {
      * Once per IST day per user and device (owner/manager, guarded in
      * localStorage across app reopens): scan from the last scanned day (or
      * `scanDays` back) to today over the loaded history window. The only
-     * place the audit log is read (owner devices, capped at AUDIT_LIMIT).
+     * place the audit log is read (owner devices, at most AUDIT_PER_DAY entries per scanned day).
      */
     async dailyScan() {
         if (!canSee() || !AppState.currentUser) return;
