@@ -3,8 +3,8 @@ const { bumpProblems, stamps } = require('../../scripts/check-cache-bump.js');
 const before = { cacheName: 'happa-v1', buildId: '20261101a-x', tokens: ['20261101a'] };
 const bumped = { cacheName: 'happa-v2', buildId: '20261101b-y', tokens: ['20261101b'] };
 
-test('no shipped www/ change needs no bump', () => {
-    expect(bumpProblems(['docs/a.md', 'www/js/__tests__/a.test.js', 'www/js/README.md'], before, before)).toEqual([]);
+test('no cached www/ change needs no bump', () => {
+    expect(bumpProblems(['docs/a.md', 'www/js/__tests__/a.test.js', 'www/js/README.md', 'www/r.html', 'www/changelog.json'], before, before)).toEqual([]);
 });
 
 test('a shipped change needs all three stamps changed', () => {

@@ -4,14 +4,25 @@
  * the network, so a PR that changes a shipped www/ file must change CACHE_NAME,
  * BUILD_ID and the index.html ?v= token, or phones keep the old files.
  *
- *   node scripts/check-cache-bump.js <base-ref>    # e.g. origin/main (CI, pull requests)
+ *   node scripts/check-cache-bump.js <base-ref>    # CI: HEAD^1, the base the PR merge commit was built on
  */
 const { execFileSync } = require('child_process');
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' });
 
-/** Shipped files: everything under www/ except the Jest tests. */
-const isShipped = (file) => file.startsWith('www/') && !file.includes('/__tests__/') && !file.endsWith('.md');
+/**
+ * Files the service worker caches: the precache and lazy lists, the stylesheets
+ * joined into css/app.css, index.html and the worker itself. Not r.html / r/
+ * (never cached), changelog.json (network-first), tests or docs.
+ */
+function cachedFiles() {
+    const { readStaticAssets, readLazyAssets } = require('./check-sw-assets.js');
+    const { cssSources } = require('./build-css.js');
+    const urls = [...readStaticAssets(), ...readLazyAssets(), ...cssSources().map((rel) => '/' + rel)]
+        .filter((u) => u !== '/' && u !== '/changelog.json');
+    return new Set(['www/index.html', 'www/service-worker.js', ...urls.map((u) => 'www' + u)]);
+}
+
 
 function stamps({ sw, main, html }) {
     return {
@@ -28,7 +39,8 @@ function stamps({ sw, main, html }) {
  * @returns {string[]} problems
  */
 function bumpProblems(changed, before, after) {
-    if (!changed.some(isShipped)) return [];
+    const cached = cachedFiles();
+    if (!changed.some((f) => cached.has(f))) return [];
     const problems = [];
     if (after.cacheName === before.cacheName) problems.push(`CACHE_NAME is still '${after.cacheName}' in www/service-worker.js`);
     if (after.buildId === before.buildId) problems.push(`BUILD_ID is still '${after.buildId}' in www/js/main.js`);
@@ -44,7 +56,7 @@ function read(ref, file) {
 const FILES = { sw: 'www/service-worker.js', main: 'www/js/main.js', html: 'www/index.html' };
 const load = (ref) => stamps(Object.fromEntries(Object.entries(FILES).map(([k, f]) => [k, read(ref, f)])));
 
-module.exports = { bumpProblems, stamps, isShipped };
+module.exports = { bumpProblems, stamps, cachedFiles };
 
 if (require.main === module) {
     const base = process.argv[2];
@@ -58,5 +70,6 @@ if (require.main === module) {
         console.error('This PR changes shipped files under www/ but does not bump the cache (AGENTS.md section 4):\n  ' + problems.join('\n  '));
         process.exit(1);
     }
-    console.log(changed.some(isShipped) ? 'OK: cache bumped.' : 'OK: no shipped www/ file changed.');
+    const cached = cachedFiles();
+    console.log(changed.some((f) => cached.has(f)) ? 'OK: cache bumped.' : 'OK: no cached www/ file changed.');
 }

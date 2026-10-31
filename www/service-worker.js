@@ -329,8 +329,10 @@ self.addEventListener('fetch', (event) => {
                     return cachedResponse;
                 }
                 
-                // Not in cache - fetch from network
-                return fetch(event.request)
+                // Not in cache - fetch from network (revalidated: the HTTP cache
+                // may still hold the previous deploy's copy, and it would stay
+                // in this cache until the next deploy)
+                return fetch(event.request, { cache: 'no-cache' })
                     .then((response) => {
                         // Cache successful responses
                         if (response.ok) {
