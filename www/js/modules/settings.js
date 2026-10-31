@@ -20,7 +20,7 @@ import { auditActionLabel } from '../i18n/localize.js';
 import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
-import { AuthManager } from '../auth/authentication.js';
+import { AuthManager, authErrorMessage } from '../auth/authentication.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 const LABOUR_INPUTS = ['settingHeavyWeight', 'settingLaborRate', 'settingLabourPackageKg'];
@@ -479,7 +479,7 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Password reset email failed:', error?.code || error);
-            UIManager.showToast(t('msg.common.failed_send_reset_email', { message: error.message }), 'error');
+            UIManager.showToast(t('msg.common.failed_send_reset_email', { message: authErrorMessage(error, 'reset') }), 'error');
             return false;
         }
     }

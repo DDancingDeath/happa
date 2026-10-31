@@ -7,6 +7,28 @@ import { t } from '../i18n/index.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { canOpenPage, hiddenPermissionClasses } from '../utils/role-access.js';
 import { userProfile, createProfileIfMissing } from '../firebase/repos/users.js';
+import { afterLoginFailure, loginWaitMs, waitParts } from '../utils/login-backoff.js';
+import { safeSetItem } from '../utils/storage-full.js';
+
+const BACKOFF_KEY = 'happaLoginBackoff';
+
+const readBackoff = () => {
+    try {
+        return JSON.parse(localStorage.getItem(BACKOFF_KEY) || 'null');
+    } catch (_) {
+        return null;
+    }
+};
+
+const clearBackoff = () => {
+    try { localStorage.removeItem(BACKOFF_KEY); } catch (_) { /* nothing stored */ }
+};
+
+/** "Try again in N s / N min" for a sign-in wait (#105). */
+function loginWaitText(ms) {
+    const p = waitParts(ms);
+    return 'minutes' in p ? t('msg.auth.wait_minutes', p) : t('msg.auth.wait_seconds', p);
+}
 
 const FORM_IDS = { login: 'loginForm', register: 'registerForm', reset: 'resetForm' };
 
@@ -92,6 +114,38 @@ const AuthManager = {
         if (el) el.textContent = '';
     },
 
+    /**
+     * Show-password eye (#105): switches the field between hidden and plain text.
+     * @param {string} inputId
+     * @param {HTMLElement} [btn] - the eye button (its pressed state and label follow)
+     * @returns {boolean} true when the password is now shown
+     */
+    togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (!input) return false;
+        const show = input.type === 'password';
+        this.setPasswordShown(input, btn || document.querySelector(`[data-password-toggle="${inputId}"]`), show);
+        input.focus();
+        return show;
+    },
+
+    setPasswordShown(input, btn, show) {
+        input.type = show ? 'text' : 'password';
+        if (!btn) return;
+        const label = t(show ? 'ui.auth.hide_password' : 'ui.auth.show_password');
+        btn.setAttribute('aria-pressed', String(show));
+        btn.setAttribute('aria-label', label);
+        btn.title = label;
+    },
+
+    /** Every password field back to hidden (switching cards, after signing in). */
+    hidePasswords() {
+        document.querySelectorAll('[data-password-toggle]').forEach(btn => {
+            const input = document.getElementById(btn.dataset.passwordToggle);
+            if (input) this.setPasswordShown(input, btn, false);
+        });
+    },
+
     /** Loading state on the card's submit button; disabled so a double tap can't submit twice. */
     setBusy(form, busy, labelKey) {
         if (form in this.busy) this.busy[form] = busy;
@@ -164,6 +218,7 @@ const AuthManager = {
         registerForm.classList.add('hidden');
         this.clearMessage('login');
         this.clearMessage('register');
+        this.hidePasswords();
         
         // Show selected tab
         if (tab === 'login') {
@@ -227,10 +282,18 @@ const AuthManager = {
             return;
         }
         
+        // Too many wrong tries on this phone: wait first (#105)
+        const wait = loginWaitMs(readBackoff(), Date.now());
+        if (wait > 0) {
+            this.showMessage('login', loginWaitText(wait));
+            return;
+        }
+        
         this.setBusy('login', true, 'ui.auth.signing_in');
         
         try {
             const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+            clearBackoff();
             
             const userId = userCredential.user.uid;
             const profile = userProfile(userId);
@@ -273,6 +336,7 @@ const AuthManager = {
             AppState.userName = userData.name || 'User';
             
             UIManager.showToast(t('msg.auth.login_successful'));
+            this.hidePasswords();
             
             // Hide auth screen and initialize app
             document.getElementById('authScreen').style.display = 'none';
@@ -284,7 +348,12 @@ const AuthManager = {
             
         } catch (error) {
             console.error('Login error:', error?.code, error?.message);
-            this.showMessage('login', authErrorMessage(error, 'login'));
+            const backoff = afterLoginFailure(readBackoff(), Date.now(), error?.code);
+            safeSetItem(BACKOFF_KEY, JSON.stringify(backoff));
+            const wait = loginWaitMs(backoff, Date.now());
+            this.showMessage('login', wait > 0
+                ? `${authErrorMessage(error, 'login')} ${loginWaitText(wait)}`
+                : authErrorMessage(error, 'login'));
         } finally {
             this.setBusy('login', false);
             UIManager.hideLoading();
@@ -451,7 +520,7 @@ const AuthManager = {
         } catch (error) {
             console.error('Logout error:', error);
             UIManager.hideLoading();
-            UIManager.showToast(t('msg.auth.logout_failed', { message: error.message }));
+            UIManager.showToast(t('msg.auth.logout_failed', { message: authErrorMessage(error, 'login') }));
         }
     },
 

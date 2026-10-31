@@ -126,6 +126,33 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }
 
+/* Show-password eye (#105) */
+.password-field {
+  position: relative;
+}
+
+.form-group .password-field input {
+  padding-right: 52px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.password-toggle[aria-pressed="true"] {
+  opacity: 1;
+}
+
 .auth-btn {
   width: 100%;
   padding: 14px;
