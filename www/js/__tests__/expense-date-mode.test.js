@@ -120,6 +120,17 @@ describe('Expenses form (#118)', () => {
         expect([document.getElementById('personalExpenseDate').value, document.getElementById('personalExpenseMode').value]).toEqual(['2026-10-31', 'cash']);
     });
 
+    test('#129: the amount is saved in whole rupees, half-up; under 50 paise is not an amount', async () => {
+        fill('business');
+        setVal('businessExpenseAmount', '45.50');
+        await ExpensesManager.saveBusinessExpense();
+        fill('business');
+        setVal('businessExpenseAmount', '0.4');
+        await ExpensesManager.saveBusinessExpense();
+        expect(saved.map(e => e.amount)).toEqual([46]);
+        expect(modal).toHaveBeenLastCalledWith('Please enter a valid amount');
+    });
+
     test('a day outside the window or in the future is refused with a message', async () => {
         fill('business', { day: '2026-10-27' });
         await ExpensesManager.saveBusinessExpense();
