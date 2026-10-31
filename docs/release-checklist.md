@@ -1,7 +1,9 @@
 # Release checklist
 
 Manual checks for every APK release, about 30 minutes. If any step fails, don't
-publish the final release; open an issue and fix it first.
+push the final tag; open an issue and fix it first. If the failure is in the app
+itself (not only the APK), the website already has it: roll it back right away
+(Firebase console → Hosting → release history).
 
 The order (release steps themselves: AGENTS.md section 5, "Releasing"; the first
 release, v1.0.0, also follows [happa-go-live.md](happa-go-live.md)):
@@ -17,8 +19,8 @@ release, v1.0.0, also follows [happa-go-live.md](happa-go-live.md)):
 
 - [ ] `main` is green: *CI* (lint, Jest, rules tests) and *Playwright E2E (emulators)*.
 - [ ] The last *Deploy to Firebase on merge* run succeeded, and
-      https://myhappa.web.app shows the new `BUILD_ID` (Diagnostics, or the
-      browser console line `[Aadhat] BUILD …`).
+      https://myhappa.web.app shows the new `BUILD_ID` (the
+      browser console line `[Aadhat] BUILD …`, or `window.__AADHAT_BUILD__`).
 - [ ] The old site https://aadhat-management.web.app still shows `20261023e-release-1-6-1`.
 - [ ] `npm run check:release` passes and `www/changelog.json` has the new
       version with short `en` and `hi` notes.

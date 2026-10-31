@@ -62,7 +62,7 @@ function relativeLinks(text) {
         const dest = destinationAt(prose, i + 2);
         if (dest) targets.push(dest);
     }
-    for (const m of prose.matchAll(/^\s{0,3}\[[^\]\n]+\]:\s*<?([^\s>]+)>?/gm)) targets.push(m[1]);
+    for (const m of prose.matchAll(/^\s{0,3}\[(?!\^)[^\]\n]+\]:\s*(?:<([^>\n]*)>|(\S+))/gm)) targets.push(m[1] ?? m[2]);
     return targets.filter(t => !/^[a-z][a-z0-9+.-]*:/i.test(t) && !t.startsWith('#') && !t.startsWith('//'));
 }
 
@@ -95,8 +95,8 @@ describe('docs link check', () => {
             '````', '```', '[f](no2.md)', '```', '````',
             '~~~~', '~~~', '[g](no3.md)', '~~~', '~~~~',
             '![img](i.png "t") [h](y.md \'t\') [**[i]**](z.md) [j](<my file.md>) [k](foo_(bar).md)',
-            '[ref]: refs/r.md "Title"'
+            '[ref]: refs/r.md "Title"', '[r2]: <my ref.md>', '[^1]: A footnote'
         ].join('\n');
-        expect(relativeLinks(text)).toEqual(['docs/x.md', 'i.png', 'y.md', 'z.md', 'my file.md', 'foo_(bar).md', 'refs/r.md']);
+        expect(relativeLinks(text)).toEqual(['docs/x.md', 'i.png', 'y.md', 'z.md', 'my file.md', 'foo_(bar).md', 'refs/r.md', 'my ref.md']);
     });
 });
