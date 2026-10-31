@@ -180,8 +180,6 @@ const TelemetryService = {
             originalConsoleError.apply(console, args);
         };
 
-        on(TOAST_ERROR, ({ message, ref }) => this.captureError({ type: 'toast', message, ref }));
-
         this.initialized = true;
         console.log('Telemetry service initialized');
     },
@@ -439,5 +437,8 @@ const TelemetryService = {
         }
     }
 };
+
+// Error toasts (#82) are reported under their ref, whether or not init() ran.
+on(TOAST_ERROR, ({ message, ref }) => TelemetryService.captureError({ type: 'toast', message, ref }));
 
 export { TelemetryService, buildTelemetryDoc, mergeTelemetryReports };

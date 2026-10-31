@@ -54,9 +54,6 @@ describe('showToast (#51)', () => {
     });
 
     test('an error toast carries a short ref that names its Diagnostics entry (#82)', () => {
-        const consoleError = console.error;
-        TelemetryService.init();
-        console.error = consoleError;
         TelemetryService.errorBuffer = [];
         const seen = [];
         const stop = on(TOAST_ERROR, (e) => seen.push(e));
