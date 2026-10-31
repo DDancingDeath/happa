@@ -39,7 +39,7 @@ What is already right: Money, Insights and Statements take every figure from
 `utils/business-metrics.js` (M*, I*, ST*), with one home per figure
 (`utils/metric-registry.js`) and an independent oracle (`tests/oracle/`). Rentals
 maths is pure (`rent-math`, `rent-views`, `rent-public`). Today (`calc/today`,
-#185) and the bill forms (purchase, retail, wholesale: `calc/billing`, step 2f)
+#185) and the bill forms (purchase, retail, wholesale: `calc/billing`, #189)
 now only render calc results. The weak parts are the cash drawer, Stock and
 History, which still calculate inside the page.
 
@@ -272,7 +272,7 @@ on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js
 | 2c | Periods: month step, day loops and day ends into `dates.js` (insights, money, statements, cash :320, day :126) | S | ⚠ modules/money.js, cash-management.js (#181) |
 | 2d | History `viewBill` view-model on `billTotal` / `readPayment` | S | none |
 | 2e | Insights top-5 share and per-₹100 into business-metrics with spec IDs | S | none |
-| 2f | ✅ `calc/billing`: lines, draft totals, labour, payable, payment split / prefill / Rest → Due, split checks (one copy for purchase / retail / wholesale; both `checkPaymentSplit`s are now `validatePaymentSplit` / `validateDuePayment`), wholesale live profit / margin; rounding unchanged, one named policy per figure (`ROUNDING`, #129). Characterised first (`bill-forms-characterisation.test.js`); moneyMath 147 → 100, domNumber 3 → 2 | M | done |
+| 2f | ✅ #189: `calc/billing`: lines, draft totals, labour, payable, payment split / prefill / Rest → Due, split checks (one copy for purchase / retail / wholesale; both `checkPaymentSplit`s are now `validatePaymentSplit` / `validateDuePayment`), wholesale live profit / margin; rounding unchanged, one named policy per figure (`ROUNDING`, #129). Characterised first (`bill-forms-characterisation.test.js`); moneyMath 147 → 100, domNumber 3 → 2 | M | done |
 | 2g | `calc/cash.drawerDay` (C1–C6, C8) out of cash-management | M | ⚠ #181, cash save handlers, offline cash close (#143) |
 | 2h | `calc/stock-value` (S2/S3 consolidation, adjustment value) out of stock.js | S | ⚠ #181 (stock.js) |
 | 2i | Rentals: `moveMonthRent` / `oldMonth` into rent-math; rent-views on `monthSummary` | S | ⚠ #181 (rentals.js) |
