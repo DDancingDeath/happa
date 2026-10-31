@@ -134,8 +134,16 @@ In order:
   `on(REFRESH.x, () => Manager.render())` at the end of its module (Money,
   Insights, Statements in main.js through their lazy loaders). Never call
   `window.app.*` from `firebase/` (`data-events.test.js`).
-- **Templates live in `www/templates/`**. They are loaded by
-  `template-loader.js` on demand and inserted into the SPA shell.
+- **Templates live in `www/templates/`**. `template-loader.js` puts the
+  login screen, side menu and dialogs (`SHELL_TEMPLATES`) in first; the pages
+  (`PAGE_TEMPLATES`) load while Firebase restores the sign-in (#66), and
+  `main.js` runs nothing that touches them (event listeners, the signed-in
+  start) before `pagesReady`. A new page template goes into `PAGE_TEMPLATES`.
+- **Stylesheets**: edit the files in `www/css/`, but `index.html` links only
+  `css/app.css`, which `npm run build:css` joins from the list in
+  `www/styles.css` (cascade order; a new stylesheet is added there). Commit the
+  rebuilt `app.css` with your change: `check:sw` and `load-perf.test.js` fail
+  while it is out of date. The joined files are not precached on their own.
 - **Date strings**: bills mix ISO-8601 and `DD/MM/YYYY`. Use
   `www/js/utils/dates.js` (`parseAnyBillDate`, `todayLocalISO`,
   `parseLocalDate`) or `Helpers.parseDate()` — never raw
@@ -163,7 +171,9 @@ In order:
   icon/manifest) must be listed in `STATIC_ASSETS` in `www/service-worker.js`
   (`npm run check:sw`; a test enforces it), or in `LAZY_ASSETS` for a file loaded only on use
   (outside the precache budget; install caches it best effort, the fetch handler on use). Any PR that changes a shipped
-  file under `www/` bumps all three together:
+  file under `www/` bumps all three together (the service worker serves cached
+  files without asking the network again, so without the `CACHE_NAME` bump phones
+  keep the old files; CI's `scripts/check-cache-bump.js` fails a PR that forgets):
   1. every `?v=<token>` in `www/index.html` (one token for the whole file),
   2. `BUILD_ID` in `www/js/main.js`,
   3. `CACHE_NAME` (`happa-vN`) in `www/service-worker.js`.

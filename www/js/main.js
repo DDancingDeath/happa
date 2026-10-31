@@ -36,7 +36,7 @@ import { NotificationsManager } from './modules/notifications.js';
 import { markStartup, noteStartup, logStartupTimings } from './utils/startup-timings.js';
 
 // Import template loader utility
-import { TemplateLoader } from './utils/template-loader.js';
+import { TemplateLoader, SHELL_TEMPLATES, PAGE_TEMPLATES } from './utils/template-loader.js';
 import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101r-repositories';
+const BUILD_ID = '20261101y-fast-start';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -111,12 +111,22 @@ on(REFRESH.money, () => loadMoney().then(m => m.render()));
 on(REFRESH.insights, () => loadInsights().then(m => m.render()));
 on(REFRESH.statements, () => loadStatements().then(m => m.render()));
 
-// Load and inject HTML templates from separate .html files
+// Load and inject HTML templates from separate .html files. The login screen
+// and app shell go in first; the pages load while Firebase restores the
+// sign-in (#66), and nothing that uses them runs before pagesReady.
+let pagesReady = Promise.resolve();
 async function injectTemplates() {
-    const templates = await TemplateLoader.loadAllTemplates();
-    TemplateLoader.injectTemplates(templates);
+    TemplateLoader.injectShell(await TemplateLoader.loadTemplates(SHELL_TEMPLATES));
+    const pages = TemplateLoader.loadTemplates(PAGE_TEMPLATES);
     document.documentElement.lang = getLang();
     applyTranslations(document);
+    pagesReady = pages.then(templates => {
+        TemplateLoader.injectPages(templates);
+        applyTranslations(document.getElementById('appContent'));
+        markStartup('templates');
+        setupEventListeners();
+        InstallManager.refresh();
+    }).catch(e => console.error('Page templates not loaded:', e));
 }
 
 /**
@@ -286,6 +296,7 @@ function writeTipReport({ delta, failures }) {
 }
 
 async function initializeUserData() {
+    await pagesReady;
     if (outdatedBlocked) {
         blockOutdatedApp();
         return;
@@ -481,11 +492,10 @@ async function initializeUserData() {
 
 // Initialize app on DOM ready
 document.addEventListener('DOMContentLoaded', async function() {
-    // STEP 1: Load and inject all HTML templates from .html files
+    // STEP 1: Login screen and app shell now, pages in the background
     markStartup('dom-ready');
     await injectTemplates();
-    markStartup('templates');
-    InstallManager.refresh();
+    markStartup('shell');
     
     // STEP 2: Initialize auth tabs after templates are loaded
     AuthManager.initAuthTabs();
@@ -516,8 +526,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // STEP 4: Set up event listeners
-    setupEventListeners();
+    // STEP 4: Event listeners are set up once the pages are in (injectTemplates)
     
     // STEP 5: Clean up listeners when page unloads
     window.addEventListener('beforeunload', () => {

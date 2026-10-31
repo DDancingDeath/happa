@@ -46,6 +46,11 @@ jobs:
         env:
           BASE: ${{ github.base_ref }}
         run: git fetch --no-tags --depth=1 origin "+$BASE:refs/remotes/origin/$BASE"
+      - name: Cache bump (shipped www/ files changed)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.base_ref }}
+        run: node scripts/check-cache-bump.js "origin/$BASE"
       - name: Jest
         run: npx jest --ci
         env:
