@@ -114,25 +114,17 @@ export class CashManagementManager {
         this.renderHistoryFromCache();
         this.loadDuplicateDays().catch(e => console.warn('Cash: duplicate-day check failed:', e));
         
-        // Listen for cash amount input changes for validation
-        const signOutInput = document.getElementById('cashSignOutAmount');
-        if (signOutInput) {
-            signOutInput.addEventListener('input', () => this.validateSignOut());
-        }
-        
-        // Listen for transaction type changes
-        const transactionType = document.getElementById('cashTransactionType');
-        if (transactionType) {
-            transactionType.addEventListener('change', () => this.updateTransactionForm());
-        }
-        const partyInput = document.getElementById('partyName');
-        if (partyInput) {
-            partyInput.addEventListener('input', () => this.populateDueBills());
-        }
-        const dueBillSelect = document.getElementById('dueBillSelect');
-        if (dueBillSelect) {
-            dueBillSelect.addEventListener('change', () => this.showDueBillDetails());
-        }
+        // One set of listeners: the same fields move between the Cash page and Today › Cash (#96)
+        const bindOnce = (id, type, fn) => {
+            const el = document.getElementById(id);
+            if (!el || el.dataset.cashBound) return;
+            el.dataset.cashBound = '1';
+            el.addEventListener(type, fn);
+        };
+        bindOnce('cashSignOutAmount', 'input', () => this.validateSignOut());
+        bindOnce('cashTransactionType', 'change', () => this.updateTransactionForm());
+        bindOnce('partyName', 'input', () => this.populateDueBills());
+        bindOnce('dueBillSelect', 'change', () => this.showDueBillDetails());
         
         // Initialize form state (hide customer name for default "Cash Added")
         this.updateTransactionForm();
