@@ -487,8 +487,9 @@ const AdminManager = {
      * go to Drive/WhatsApp), a normal download elsewhere.
      * @param {Object} backup
      * @param {string} filename
-     * @returns {Promise<boolean>} false when the user cancelled sharing, or in the
-     *   Android app when sharing isn't available (its WebView drops downloads)
+     * @returns {Promise<boolean>} true when the share sheet or download was started (the browser
+     *   can't confirm the file was kept); false when sharing was cancelled, or in the Android app
+     *   when sharing isn't available (its WebView drops downloads)
      */
     async saveJsonBackup(backup, filename) {
         const json = JSON.stringify(backup);
@@ -519,9 +520,9 @@ const AdminManager = {
 
     /**
      * Clear Data (owner only). Nothing is pre-selected; the owner sees how many
-     * records will go, a JSON backup of the selected collections must be saved
-     * first, and deletion needs the word DELETE typed in. On the live data the
-     * business record (bills, cash, items, users) can't be selected (#63).
+     * records will go and types DELETE; the JSON backup download/share is started
+     * and the owner must confirm they saved the file before anything is deleted.
+     * On the live data only LIVE_CLEARABLE_COLLECTIONS can be selected (#63).
      */
     async clearAllData() {
         if (AppState.userRole !== 'owner') {
@@ -647,8 +648,18 @@ const AdminManager = {
         }
         
         const backup = buildBackup(data, { env, exportedBy: AppState.currentUser?.uid || null });
-        const saved = await this.saveJsonBackup(backup, `aadhat_backup_${env}_${todayLocalISO()}_${Date.now()}.json`);
-        if (!saved) {
+        const backupOffered = await this.saveJsonBackup(backup, `aadhat_backup_${env}_${todayLocalISO()}_${Date.now()}.json`);
+        if (!backupOffered) {
+            UIManager.showToast(t('msg.admin.backup_not_saved_nothing_deleted'));
+            return;
+        }
+        // The browser can't tell whether the file was kept: the owner confirms it (no dialog = no)
+        const ownerConfirmedBackup = !!document.getElementById('modalOverlay') && await UIManager.showModal(
+            t('msg.admin.confirm_backup_saved_text'),
+            t('msg.admin.confirm_backup_saved_title'),
+            true
+        ) === true;
+        if (!ownerConfirmedBackup) {
             UIManager.showToast(t('msg.admin.backup_not_saved_nothing_deleted'));
             return;
         }
@@ -660,7 +671,8 @@ const AdminManager = {
             await AuditService.log(AuditService.ACTIONS.CLEAR_DATA, {
                 collections: selectedCollections,
                 recordsToDelete: total,
-                backupSaved: saved
+                backupOffered,
+                ownerConfirmedBackup
             });
             
             let deletedCount = 0;

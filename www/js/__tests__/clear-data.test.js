@@ -28,7 +28,7 @@ import { AppState } from '../utils/state.js';
 import { AdminManager } from '../modules/admin.js';
 
 const realSaveJsonBackup = AdminManager.saveJsonBackup;
-import { serializeForBackup, buildBackup, isDeleteConfirmed, canClearCollection } from '../utils/data-export.js';
+import { serializeForBackup, buildBackup, isDeleteConfirmed, canClearCollection, LIVE_CLEARABLE_COLLECTIONS } from '../utils/data-export.js';
 
 describe('data-export helpers', () => {
     test('serializes Timestamps, Dates and refs to plain JSON', () => {
@@ -54,6 +54,13 @@ describe('data-export helpers', () => {
         ['drafts', 'autoSaves', 'itemFrequency'].forEach(id => expect(canClearCollection(id, 'prod')).toBe(true));
     });
 
+    test('live data is an allow-list: a collection nobody listed is never clearable', () => {
+        expect(LIVE_CLEARABLE_COLLECTIONS).toEqual(['drafts', 'autoSaves', 'itemFrequency']);
+        ['personalExpenses', 'rent_leases', 'rent_receipts', 'auditLogs', 'telemetry', 'someNewCollection']
+            .forEach(id => expect(canClearCollection(id, 'prod')).toBe(false));
+        expect(canClearCollection('someNewCollection', 'dev')).toBe(true);
+    });
+
     test('only the exact word DELETE confirms', () => {
         expect(isDeleteConfirmed(' DELETE ')).toBe(true);
         expect(isDeleteConfirmed('delete')).toBe(false);
@@ -70,7 +77,8 @@ describe('AdminManager.clearAllData', () => {
     beforeEach(() => {
         jest.useFakeTimers();
         order.length = 0;
-        document.body.innerHTML = '<div id="modalMessage"></div>';
+        document.body.innerHTML = '<div id="modalOverlay"></div><div id="modalMessage"></div>';
+        UIManager.showModal.mockImplementation(async () => { order.push('confirmed'); return true; });
         AppState.userRole = 'owner';
         AppState.currentUser = { uid: 'owner1' };
         typedWord = 'DELETE';
@@ -117,13 +125,30 @@ describe('AdminManager.clearAllData', () => {
         expect(AdminManager.saveJsonBackup).not.toHaveBeenCalled();
     });
 
-    test('DELETE: backup, then audit, then batched delete; localStorage kept', async () => {
+    test('DELETE: backup, owner confirms it, then audit, then batched delete; localStorage kept', async () => {
         await AdminManager.clearAllData();
-        expect(order).toEqual(['backup', 'audit', 'delete:purchases']);
+        expect(order).toEqual(['backup', 'confirmed', 'audit', 'delete:purchases']);
+        expect(UIManager.showModal).toHaveBeenCalledWith(expect.stringMatching(/I have saved the backup file/), 'I have saved the backup file', true);
+        expect(AuditService.log.mock.calls[0][1]).toMatchObject({ backupOffered: true, ownerConfirmedBackup: true });
+        expect(AuditService.log.mock.calls[0][1]).not.toHaveProperty('backupSaved');
         const [backup] = AdminManager.saveJsonBackup.mock.calls[0];
         expect(backup.collections.purchases.map(d => d.id)).toEqual(['purchases1', 'purchases2']);
         expect(FirebaseService.deleteDocsInBatches).toHaveBeenCalledWith('purchases', ['purchases1', 'purchases2']);
         expect(Storage.prototype.clear).not.toHaveBeenCalled();
+    });
+
+    test('owner does not confirm the backup was saved → nothing deleted', async () => {
+        UIManager.showModal.mockImplementation(async () => false);
+        await AdminManager.clearAllData();
+        expect(AdminManager.saveJsonBackup).toHaveBeenCalled();
+        expect(AuditService.log).not.toHaveBeenCalled();
+        expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
+    });
+
+    test('no dialog to confirm in → nothing deleted', async () => {
+        document.getElementById('modalOverlay').remove();
+        await AdminManager.clearAllData();
+        expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
     });
 
     test('backup not saved → nothing deleted, no way to go on without it', async () => {
@@ -166,7 +191,7 @@ describe('AdminManager.clearAllData', () => {
         const offered = [...div.querySelectorAll('.collection-checkbox')].map(cb => cb.dataset.collection);
         expect(offered).toEqual(['autoSaves', 'drafts', 'itemFrequency']);
         expect(div.textContent).toMatch(/can't be deleted here/);
-        expect(order).toEqual(['backup', 'audit', 'delete:drafts']);
+        expect(order).toEqual(['backup', 'confirmed', 'audit', 'delete:drafts']);
     });
 
     test('live data: a ledger collection slipped into the selection is ignored', async () => {
