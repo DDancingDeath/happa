@@ -151,8 +151,9 @@ export function duePaymentsIn(bills, sessions, range) {
 }
 
 const expenseAmount = (e) => n(e.amount);
-/** EXP-KIND: 'personal' only when tagged personal; anything else (incl. untagged / legacy `type`) is business (owner decision #36). */
-const isPersonal = (e) => String(e.category || e.type || '').toLowerCase() === 'personal';
+/** EXP-KIND: 'personal' only when tagged personal (`category`, else `type` on an expense with no category; any case); anything else (incl. untagged) is business (owner decision #36). */
+const isPersonal = (e) => String(e.category || e.type || '').trim().toLowerCase() === 'personal';
+export const isPersonalExpenseOracle = isPersonal;
 
 // ---------------------------------------------------------------- Today (T*)
 

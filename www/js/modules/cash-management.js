@@ -12,7 +12,7 @@ import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale, localISODaysAgo } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
 import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
-import { round2, outstandingDue } from '../utils/money.js';
+import { round2, outstandingDue, isPersonalExpense } from '../utils/money.js';
 import { evaluateCashCount, toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
 import { dueEvents, sumDueEvents, saleTimePayment, normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
@@ -356,8 +356,7 @@ export class CashManagementManager {
         payments.forEach(payment => {
             if (inDay(payment.date)) {
                 const amount = Number(payment.amount) || 0;
-                const category = (payment.category || payment.type || '').toLowerCase();
-                if (category === 'personal') {
+                if (isPersonalExpense(payment)) {
                     transactions.personalExpenses += amount;
                 } else {
                     transactions.businessExpenses += amount;

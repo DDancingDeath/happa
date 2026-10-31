@@ -44,7 +44,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101b-double-tap';
+const BUILD_ID = '20261101d-canonical-figures';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -520,10 +520,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 window.initializeApp = loadUserDataAndInitialize;
 
 /**
- * Diagnostic helper: replay every event touching items whose name/hindiName/id
- * matches `query` (case-insensitive substring) and dump the chronological
- * timeline plus running totals to console. Compares against the value that
- * FirebaseService.calculateStock() returns so any divergence is obvious.
+ * Diagnostic helper: for items whose name/hindiName/id matches `query`
+ * (case-insensitive substring), dump the item ledger (ST4, `itemLedger()`: the
+ * shared stock replay) with running kg and average cost, and compare its closing
+ * quantity with FirebaseService.calculateStock().
  *
  * Usage from browser console:  await app.debug.stock('piyar dana')
  */
@@ -545,156 +545,39 @@ async function debugStockForName(query) {
         return;
     }
 
-    const eventTime = (record) => {
-        if (typeof record.timestamp === 'number') return record.timestamp;
-        if (record.timestamp && typeof record.timestamp.toMillis === 'function') {
-            return record.timestamp.toMillis();
-        }
-        const parsed = Helpers.parseDate(record.date);
-        return parsed ? parsed.getTime() : Number.MAX_SAFE_INTEGER;
-    };
-
-    const lineMatchesItem = (lineItem, item) => {
-        if (lineItem.itemId && item.id) return lineItem.itemId === item.id;
-        const n = (lineItem.name || '').toLowerCase();
-        return n === (item.name || '').toLowerCase() || n === (item.hindiName || '').toLowerCase();
-    };
-
     const computed = await FirebaseService.calculateStock();
-    // The timeline below replays AppState directly, so it needs all history.
+    // The ledger replays AppState directly, so it needs all history.
     await FirebaseService.ensureHistoryFrom(null);
+    const { itemLedger } = await import('./utils/statements.js');
+    const src = {
+        purchases: AppState.purchaseHistory, wholesaleSales: AppState.salesHistory,
+        retailSales: AppState.retailSalesHistory, stockAdjustments: AppState.stockAdjustments
+    };
 
     for (const item of matches) {
-        const events = [];
-        (AppState.purchaseHistory || []).forEach(p => {
-            (p.items || []).forEach(li => {
-                if (lineMatchesItem(li, item)) {
-                    events.push({ t: eventTime(p), kind: 'purchase', date: p.date, doc: p.id, qty: parseFloat(li.qty || li.quantity) || 0, rate: parseFloat(li.rate) || 0, lineItem: li });
-                }
-            });
-        });
-        (AppState.salesHistory || []).forEach(s => {
-            (s.items || []).forEach(li => {
-                if (lineMatchesItem(li, item)) {
-                    events.push({ t: eventTime(s), kind: 'wholesale-sale', date: s.date, doc: s.id, qty: parseFloat(li.qty || li.quantity) || 0, rate: parseFloat(li.rate) || 0, lineItem: li });
-                }
-            });
-        });
-        (AppState.retailSalesHistory || []).forEach(s => {
-            (s.items || []).forEach(li => {
-                if (lineMatchesItem(li, item)) {
-                    events.push({ t: eventTime(s), kind: 'retail-sale', date: s.date, doc: s.id, qty: parseFloat(li.qty || li.quantity) || 0, rate: parseFloat(li.rate) || 0, lineItem: li });
-                }
-            });
-        });
-        (AppState.stockAdjustments || []).forEach(adj => {
-            const key = adj.itemId || adj.itemName;
-            const matchesById = item.id && adj.itemId === item.id;
-            const matchesByName = (adj.itemName || '').toLowerCase() === (item.name || '').toLowerCase()
-                || (adj.itemName || '').toLowerCase() === (item.hindiName || '').toLowerCase();
-            if (key && (matchesById || matchesByName)) {
-                events.push({ t: eventTime(adj), kind: `adjust:${adj.adjustType}`, date: adj.date, doc: adj.id, qty: parseFloat(adj.quantity) || 0, rate: parseFloat(adj.rate) || 0, newStockSnapshot: adj.newStock, reason: adj.reason, adj });
-            }
-        });
-        events.sort((a, b) => a.t - b.t);
+        // ST4: the same stock replay (AVG-COST) as calculateStock().
+        const ledger = itemLedger(src, AppState.items || [], item.id);
+        const timeline = ledger.rows.map((r, idx) => ({
+            '#': idx + 1,
+            when: r.t !== null ? new Date(r.t).toLocaleString('en-IN') : '(no date)',
+            kind: r.kind,
+            billNo: r.billNo,
+            qty: r.qty,
+            rate: r.rate,
+            runningQty: r.balanceQty,
+            runningRate: r.avgCost,
+            note: r.beforeBought ? 'sold before bought' : r.belowCost ? `below cost ${r.cost}` : ''
+        }));
 
-        let runningQty = 0;
-        let runningValue = 0;
-        const timeline = events.map((ev, idx) => {
-            let delta = 0;
-            let note = '';
-            // Mirror the cost-basis discipline in firestore-service.js
-            // calculateStock(): totalValue is clamped to 0 whenever
-            // runningQty drops to <= 0, and a purchase that lifts a
-            // negative position back into positive territory contributes
-            // only the excess to the new cost basis at the purchase rate.
-            if (ev.kind === 'purchase') {
-                delta = ev.qty;
-                const prevQty = runningQty;
-                runningQty = prevQty + ev.qty;
-                if (runningQty <= 0) {
-                    runningValue = 0;
-                } else if (prevQty < 0) {
-                    runningValue = runningQty * ev.rate;
-                    note = `filled deficit ${(-prevQty).toFixed(3)}kg; ${runningQty.toFixed(3)}kg new stock @ ${ev.rate}`;
-                } else {
-                    runningValue += ev.qty * ev.rate;
-                }
-            } else if (ev.kind === 'wholesale-sale' || ev.kind === 'retail-sale') {
-                delta = -ev.qty;
-                const prevQty = runningQty;
-                const avg = prevQty > 0 ? runningValue / prevQty : 0;
-                runningQty = prevQty - ev.qty;
-                if (runningQty <= 0) {
-                    runningValue = 0;
-                    note = `avg-rate-used=${avg.toFixed(2)} (clamped: oversold by ${Math.abs(runningQty).toFixed(3)}kg)`;
-                } else {
-                    runningValue -= ev.qty * avg;
-                    note = `avg-rate-used=${avg.toFixed(2)}`;
-                }
-            } else if (ev.kind === 'adjust:add') {
-                delta = ev.qty;
-                const prevQty = runningQty;
-                runningQty = prevQty + ev.qty;
-                if (runningQty <= 0) {
-                    runningValue = 0;
-                } else if (prevQty < 0) {
-                    runningValue = ev.rate > 0 ? runningQty * ev.rate : 0;
-                } else if (ev.rate > 0) {
-                    runningValue += ev.qty * ev.rate;
-                }
-            } else if (ev.kind === 'adjust:remove') {
-                // Same cap as stock-replay: never removes more than is on hand
-                const prevQty = runningQty;
-                const removed = Math.min(ev.qty, Math.max(0, prevQty));
-                delta = -removed;
-                runningQty = prevQty - removed;
-                if (runningQty <= 0 || prevQty <= 0) {
-                    runningValue = 0;
-                } else {
-                    const ratio = removed / prevQty;
-                    runningValue -= runningValue * ratio;
-                }
-            } else if (ev.kind === 'adjust:set') {
-                const prev = runningQty;
-                const prevValue = runningValue;
-                delta = ev.qty - prev;
-                runningQty = ev.qty;
-                if (runningQty <= 0) {
-                    runningValue = 0;
-                } else if (ev.rate > 0) {
-                    runningValue = ev.qty * ev.rate;
-                } else {
-                    const avg = prev > 0 && prevValue > 0 ? prevValue / prev : 0;
-                    runningValue = ev.qty * avg;
-                }
-                note = `was ${prev}, snapshot=${ev.newStockSnapshot}`;
-            }
-            return {
-                '#': idx + 1,
-                when: new Date(ev.t).toLocaleString('en-IN'),
-                kind: ev.kind,
-                date_field: ev.date,
-                qty: ev.qty,
-                rate: ev.rate,
-                delta,
-                runningQty: Number(runningQty.toFixed(3)),
-                runningRate: runningQty > 0 ? Number((runningValue / runningQty).toFixed(2)) : 0,
-                doc: ev.doc,
-                note
-            };
-        });
-
-        const key = item.id;
-        const displayed = computed[key] || computed[item.name] || computed[item.hindiName];
+        const displayed = computed[item.id] || computed[item.name] || computed[item.hindiName];
 
         console.groupCollapsed(`%cStock debug — ${item.name}${item.hindiName ? ' / ' + item.hindiName : ''}  (id=${item.id})`, 'font-weight:bold;color:#0a7');
-        console.log('Events found:', events.length);
+        console.log('Events found:', ledger.rows.length);
         console.table(timeline);
-        console.log('Expected final  :', { quantity: Number(runningQty.toFixed(3)), rate: runningQty > 0 ? Number((runningValue / runningQty).toFixed(2)) : 0 });
+        console.log('Ledger closing  :', ledger.closing);
         console.log('calculateStock() :', displayed || '(not present in output — quantity is 0 or key mismatch)');
-        if (displayed && Math.abs((displayed.quantity || 0) - runningQty) > 1e-6) {
-            console.warn('⚠ MISMATCH between replay and calculateStock — please share this dump.');
+        if (displayed && Math.abs((displayed.quantity || 0) - ledger.closing.qty) > 0.01) {
+            console.warn('⚠ MISMATCH between the ledger and calculateStock — please share this dump.');
         }
         console.groupEnd();
     }

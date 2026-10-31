@@ -134,3 +134,24 @@ describe('History detail actions', () => {
         expect(decodeURIComponent(url.split('text=')[1])).toBe(buildBillShareText(WHOLESALE, 'wholesale'));
     });
 });
+
+describe('receipt totals come from the shared money functions (BILL-TOTAL, BILL-PAY, BILL-DUE)', () => {
+    function totals(bill) {
+        const drawn = [];
+        const ctx = { fillText: (txt) => drawn.push(txt), measureText: () => ({ width: 50 }), font: '', fillStyle: '', textAlign: '' };
+        const config = { width: 384, padding: { left: 10 }, spacing: { line: 24 }, fonts: { body: { size: 20 }, total: { size: 24 } } };
+        new BluetoothPrinterManager()._drawTotalsSection(ctx, bill, config, {}, 0);
+        return drawn;
+    }
+
+    test('payment.cash 0 wins over a stale top-level cashPayment', () => {
+        const bill = { ...WHOLESALE, cashPayment: 1000, payment: { cash: 0, online: 1500, due: 2500 } };
+        expect(totals(bill).slice(4)).toEqual(['Total received:', '₹1500', 'Due:', '₹2500']);
+    });
+    test('a cleared bill prints no due; a legacy purchase prints its BILL-TOTAL as payable', () => {
+        expect(totals({ ...WHOLESALE, cleared: true })).not.toContain('Due:');
+        const legacy = { isPurchase: true, billTotal: 1000, total: 970, laborCharges: 30, items: [], cashPayment: 970, dueAmount: 0 };
+        expect(totals(legacy)).toEqual(['Total:', '₹1000', 'Labour:', '₹30', 'Total:', '₹970', 'Total paid:', '₹970']);
+        expect(buildBillShareText(legacy, 'purchase')).toContain('*Payable: ₹970*');
+    });
+});

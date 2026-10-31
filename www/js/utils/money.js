@@ -97,16 +97,15 @@ export function sumMoney(items, fn) {
 }
 
 /**
- * Bill total payable/receivable (net of labour for purchases).
+ * BILL-TOTAL: bill total payable/receivable (net of labour for purchases), the
+ * first of these fields that is present; a present 0 counts (labour equal to
+ * the line value makes the payable ₹0).
  * @param {Object} bill
  * @returns {number}
  */
 export function billTotal(bill) {
     if (!bill) return 0;
-    return round2(
-        toMoney(bill.grandTotal) || toMoney(bill.amountPayable) || toMoney(bill.total) ||
-        toMoney(bill.billTotal) || toMoney(bill.saleTotal) || 0
-    );
+    return round2(firstPresent(bill.grandTotal, bill.amountPayable, bill.total, bill.billTotal, bill.saleTotal) || 0);
 }
 
 /**
@@ -150,6 +149,16 @@ export function outstandingDue(bill) {
     if (!bill || bill.cleared) return 0;
     const due = readPayment(bill).due;
     return due > 0 ? due : 0;
+}
+
+/**
+ * EXP-KIND: personal only when tagged personal: its `category`, or `type` on an
+ * expense with no category, in any case. Anything else is business (#36).
+ * @param {Object} expense
+ * @returns {boolean}
+ */
+export function isPersonalExpense(expense) {
+    return String(expense?.category || expense?.type || '').trim().toLowerCase() === 'personal';
 }
 
 /**
@@ -206,8 +215,10 @@ export function openingOldTotals(bill) {
     return { total: round2(toMoney(o.billTotal) || 0), paid: round2(toMoney(o.paidBefore) || 0) };
 }
 /**
- * Still due on a wholesale sale as the Wholesale page's Outstanding list
- * computes it: payment.due, or total − received when payment.due is 0/absent.
+ * Still due on a wholesale sale as the OLD app's Wholesale page computed it:
+ * payment.due, or total − received when payment.due is 0/absent. Only
+ * tools/migrate uses it, to carry what that page showed; the app uses
+ * outstandingDue() (BILL-DUE) everywhere.
  * @param {Object} sale
  * @returns {number}
  */

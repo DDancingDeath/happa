@@ -22,7 +22,7 @@ import {
     collectEvents, cloneState, createItemKeyResolver, replayEvents, replayWithValues,
     stateValue, eventTime
 } from './stock-replay.js';
-import { activityBills, billLabour, billTotal, outstandingDue, readLineItem, round2 } from './money.js';
+import { activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { parseAnyBillDate } from './dates.js';
 
@@ -351,7 +351,7 @@ export function computeFinanceSummary({
     (expenses || []).forEach((e, idx) => {
         if (!recordInRange(e, from, to)) return;
         const amount = num(e.amount);
-        const personal = e.category === 'personal';
+        const personal = isPersonalExpense(e);
         if (personal) {
             personalExp += amount;
             personalCount++;
@@ -362,7 +362,7 @@ export function computeFinanceSummary({
         }
         if (detail) {
             expenseRows[personal ? 'personal' : 'business'].push({
-                key: `e:${e.id ?? idx}`, t: recordTime(e), category: String(e.category || ''),
+                key: `e:${e.id ?? idx}`, t: recordTime(e), category: personal ? 'personal' : String(e.category || ''),
                 party: String(e.personName || '').trim(),
                 note: [e.type, e.remarks].filter(Boolean).map(String).join(' · '),
                 amount

@@ -86,12 +86,12 @@ the migration. **Inline** = computed inside a page module.
 
 | Spec IDs | Today | Target |
 |---|---|---|
-| BILL-TOTAL | `money.billTotal`; re-implemented with other field orders in calc/today.js (`purchaseTotal`, `saleTotal`) and history.js:759, 770, 776 | `money.billTotal` only |
-| BILL-PAY | `money.readPayment` | same |
+| BILL-TOTAL | `money.billTotal` (first field present, 0 counts) everywhere: Today, History, receipts, bill rows, duplicate check (#186) | same |
+| BILL-PAY | `money.readPayment` (also History chips / bill details and the receipt, #186) | same |
 | BILL-AT-SAVE | `due-payments.saleTimePayment` | same |
-| BILL-DUE | `money.outstandingDue`; second rule `money.wholesaleOutstanding` (wholesale-sales.js:718, 727) | `money.outstandingDue` only |
+| BILL-DUE | `money.outstandingDue` everywhere, incl. Wholesale › Outstanding, `openDue`, History, receipts (#186); `wholesaleOutstanding` only in tools/migrate (old app's page rule) | same |
 | DUE-PAY | `due-payments.dueEvents`, `sumDueEvents`, `entryParts`, `legParts` | same |
-| EXP-KIND | inline in 5 places, two rules: calc/today.js `isPersonal` and cash-management.js:354 (`category‖type`, any case); business-metrics.js:266, finance-calc.js:354, statements.js:52 (`category === 'personal'`) | `money.expenseKind(e)` (new) |
+| EXP-KIND | `money.isPersonalExpense(e)` everywhere: Today, drawer, Money, Statements, finance-calc, Expenses lists (#186) | same |
 | DAY | `dates.startOfLocalDay`, `endOfLocalDayExclusive`, `todayLocalISO`; inline in cash-management.js:320, statements.js:216, 334 | `dates.*` only |
 | PERIOD | `business-metrics.periodRange` (+ `insights-config`) | same |
 | AVG-COST | `stock-replay.replayEvents` / `computeStock` | same |

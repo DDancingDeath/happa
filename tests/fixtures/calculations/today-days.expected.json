@@ -1,7 +1,7 @@
 {
   "rich": {
     "text": {
-      "todayTotalPurchases": "₹20,838",
+      "todayTotalPurchases": "₹20,808",
       "todayPurchaseCount": "4 bills",
       "todayTotalSales": "₹27,033",
       "todaySaleCount": "4 bills",
@@ -34,7 +34,7 @@
     "dayReport": {
       "sales": 27032.890000000003,
       "saleCount": 4,
-      "purchases": 20837.75,
+      "purchases": 20807.75,
       "purchaseCount": 4,
       "expenses": 555.75,
       "totalIn": 26302.9,

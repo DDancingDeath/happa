@@ -1273,16 +1273,11 @@ function refetchAfterDueRemoval(c, docId, prev) {
 }
 
 /**
- * Due as the screens compute it: readPayment()/outstandingDue() (Due tab,
- * finance, reports) and, for wholesale bills, also the Sales tab rule
- * `payment.due || (total - received)`.
+ * Due as the screens compute it: BILL-DUE (outstandingDue), the rule of
+ * Outstanding, Money and Wholesale › Outstanding.
  */
 function hasDue(collKey, rec) {
-    if (outstandingDue(rec) > 0) return true;
-    if (collKey !== 'wholesaleSales' || rec.cleared) return false;
-    const p = rec.payment || {};
-    const received = (p.online || 0) + (p.cash || 0);
-    return (p.due || ((rec.total || 0) - received)) > 0;
+    return outstandingDue(rec) > 0;
 }
 
 /** Whether the dues listener (openDue == true, numeric timestamp) returns this bill. */
@@ -1471,7 +1466,7 @@ function scheduleLegacyScan(ws, gen) {
 
 /**
  * Ids of bills that are due but invisible to the dues queries (legacy derived
- * dues, wholesale `total - received`); stored in the checkpoint as `pinned`
+ * dues); stored in the checkpoint as `pinned`
  * and listened to by id.
  * @private
  */
@@ -2615,8 +2610,8 @@ const FirebaseService = {
     },
 
     /**
-     * Whether a bill has money due as the screens compute it (Due tab rule, plus
-     * the wholesale `total - received` rule). Stored as `openDue` on bills.
+     * Whether a bill has money due as the screens compute it (BILL-DUE,
+     * outstandingDue). Stored as `openDue` on bills.
      * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
      * @param {Object} bill
      * @returns {boolean}

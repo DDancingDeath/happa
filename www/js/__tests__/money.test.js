@@ -162,7 +162,7 @@ describe('opening balances carried from the old project (#15)', () => {
         expect(openingOldTotals({ total: 1 })).toBeNull();
     });});
 
-describe('wholesaleOutstanding (Wholesale page rule)', () => {
+describe('wholesaleOutstanding (the old app Wholesale page rule, tools/migrate only)', () => {
     test('payment.due, else total minus received; cleared is 0', () => {
         expect(wholesaleOutstanding({ total: 4200, payment: { cash: 1000, online: 1200, due: 2000 } })).toBe(2000);
         expect(wholesaleOutstanding({ total: 2000, payment: { cash: 500, online: 0, due: 0 } })).toBe(1500);
