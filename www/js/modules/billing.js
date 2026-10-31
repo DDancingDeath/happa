@@ -13,7 +13,7 @@ import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
-import { round2, sumMoney } from '../utils/money.js';
+import { isActiveBill, round2, sumMoney } from '../utils/money.js';
 import { BillChecksUI } from '../ui/bill-highlight.js';
 import { findBillIndex } from '../utils/history-window.js';
 import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
@@ -981,7 +981,7 @@ const BillingManager = {
             }
             if (!canEditBill(bill)) {
                 // #124: a try to change a bill past its edit window goes to the owner's review
-                if (AppState.userRole === 'manager' || (bill.userId && bill.userId === AppState.currentUser?.uid)) {
+                if (isActiveBill(bill) && (AppState.userRole === 'manager' || (bill.userId && bill.userId === AppState.currentUser?.uid))) {
                     SecurityMonitor.noteOldBillTry(bill, billType, 'edit');
                 }
                 UIManager.showToast(editRefusedMessage(bill));

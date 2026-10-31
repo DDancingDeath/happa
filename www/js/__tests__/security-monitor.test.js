@@ -13,6 +13,7 @@ import { AuditService } from '../services/audit.js';
 import { emit, FIRESTORE_DENIED } from '../utils/events.js';
 import { AppState } from '../utils/state.js';
 import * as users from '../firebase/repos/users.js';
+import { setBillActions } from '../ui/bill-status.js';
 
 const MIN = 60000;
 
@@ -186,5 +187,22 @@ describe('SecurityMonitor on the phone', () => {
         AppState.userRole = 'owner';
         SecurityMonitor.noteOldBillTry({ id: 'b2' }, 'purchase', 'edit');
         expect(note).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('Edit / Void past the edit window (#124)', () => {
+    test('stay visible for those who could act inside the window, so a try is explained and recorded', () => {
+        document.body.innerHTML = ['billEditBtn', 'billVoidBtn', 'billDeleteBtn', 'billReprintBtn', 'billShareBtn']
+            .map(id => `<button id="${id}"></button>`).join('');
+        const shown = (id) => document.getElementById(id).style.display !== 'none';
+        const old = { id: 'b1', userId: 'u1', createdAt: { toMillis: () => Date.now() - 30 * 86400000 } };
+        setBillActions(old, { uid: 'u1', role: 'staff', raw: {} });
+        expect([shown('billEditBtn'), shown('billVoidBtn')]).toEqual([true, true]);
+        setBillActions(old, { uid: 'u2', role: 'staff', raw: {} });
+        expect([shown('billEditBtn'), shown('billVoidBtn')]).toEqual([false, false]);
+        setBillActions(old, { uid: 'u2', role: 'manager', raw: {} });
+        expect([shown('billEditBtn'), shown('billVoidBtn')]).toEqual([true, false]);
+        setBillActions({ ...old, voided: true }, { uid: 'u1', role: 'staff', raw: {} });
+        expect([shown('billEditBtn'), shown('billVoidBtn')]).toEqual([false, false]);
     });
 });

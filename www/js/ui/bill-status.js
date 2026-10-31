@@ -105,8 +105,12 @@ export function setBillActions(bill, who, { editable = true } = {}) {
         if (el) el.style.display = on ? '' : 'none';
     };
     const active = isActiveBill(bill);
-    show('billEditBtn', editable && canEditBillWith(bill, who));
-    show('billVoidBtn', canVoidBillWith(bill, who));
+    // #124: Edit / Void stay visible past the edit window for those who could act inside it;
+    // a tap then explains the window (and is recorded for the owner's review)
+    const role = who?.role;
+    const mine = !!bill?.userId && bill.userId === who?.uid;
+    show('billEditBtn', editable && (canEditBillWith(bill, who) || (active && (role === 'manager' || mine))));
+    show('billVoidBtn', canVoidBillWith(bill, who) || (active && mine));
     show('billDeleteBtn', canDeleteBillWith(bill, who));
     show('billReprintBtn', active);
     show('billShareBtn', active);
