@@ -1002,7 +1002,7 @@ const PrinterService = {
         if (this.canPrint()) {
             const key = jobKey('bill', billData.billNumber || billData.id);
             const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
-            if (outcome !== 'cancelled') recordPrint(billData, outcome, { error: outcome === 'failed' ? this.errorText(error) : '' });
+            if (outcome !== 'cancelled') recordPrint(billData, outcome, outcome === 'failed' ? { errorKind: error?.kind, error: error?.message } : {});
             if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;

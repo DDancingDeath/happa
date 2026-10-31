@@ -42,7 +42,9 @@ describe('stored on this phone', () => {
     });
 
     test('outcome, time, tries and error survive an app restart', () => {
-        recordPrint(bill(), 'failed', { error: 'Printer did not answer', now: NOW });
+        recordPrint(bill(), 'failed', { errorKind: 'timeout_connect', error: 'connect (3500 ms)', now: NOW });
+        resetPrintStatusCache();
+        expect(printStatusOf(bill(), { now: NOW })).toEqual({ s: 'failed', at: NOW, n: 1, k: 'timeout_connect', err: 'connect (3500 ms)' });
         recordPrint(bill(), 'printed', { now: NOW + 60000 });
         resetPrintStatusCache();
         expect(printStatusOf(bill(), { now: NOW + 60000 })).toEqual({ s: 'printed', at: NOW + 60000, n: 2 });
@@ -79,7 +81,7 @@ describe('the print path records the outcome', () => {
 
     test.each([
         ['printed', { outcome: 'printed' }, { s: 'printed' }],
-        ['failed', { outcome: 'failed', error: { kind: 'timeout_connect' } }, { s: 'failed', err: 'the printer did not connect in time' }],
+        ['failed', { outcome: 'failed', error: { kind: 'timeout_connect', message: 'x' } }, { s: 'failed', k: 'timeout_connect' }],
         ['uncertain', { outcome: 'uncertain' }, { s: 'uncertain' }]
     ])('%s', async (name, result, want) => {
         jest.spyOn(PrinterService, 'runJob').mockResolvedValue(result);
@@ -119,11 +121,20 @@ describe('History', () => {
         expect(chip.textContent).toBe('Print failed');
     });
 
-    test('details: not printed → Print again (no COPY mark) and Mark printed by hand', async () => {
+    test('details: no record on this phone → only Mark printed by hand (Reprint keeps its COPY mark)', () => {
+        HistoryManager.renderPrintStatus();
+        const box = document.getElementById('billPrintStatus');
+        expect(box.dataset.state).toBe('none');
+        expect(box.textContent).toContain('Not printed from this phone');
+        expect([...box.querySelectorAll('button')].map(b => b.textContent)).toEqual(['Mark printed by hand']);
+    });
+
+    test('details: failed → Print again (no COPY mark); the row and the line update', async () => {
+        document.body.innerHTML += '<div id="billDetailsOverlay" class="active"></div>';
+        recordPrint(bill(), 'failed', { errorKind: 'timeout_connect' });
         HistoryManager.renderPrintStatus();
         const box = () => document.getElementById('billPrintStatus');
-        expect(box().dataset.state).toBe('none');
-        expect(box().textContent).toContain('Not printed from this phone');
+        expect(box().textContent).toContain('the printer did not connect in time');
         expect(box().querySelectorAll('button')).toHaveLength(2);
 
         const print = jest.spyOn(PrinterService, 'printBill').mockImplementation(async (b) => { recordPrint(b, 'printed'); return true; });
@@ -131,10 +142,24 @@ describe('History', () => {
         expect(print.mock.calls[0][0]).toMatchObject({ billNumber: 'P20261101-007', isCopy: false });
         expect(box().dataset.state).toBe('printed');
         expect(box().querySelectorAll('button')).toHaveLength(0);
+        expect(box().textContent).toContain('Printed on this phone');
         expect(HistoryManager.refreshHistory).toHaveBeenCalled();
     });
 
+    test('the stored failure is shown in the language of the screen, not of the moment it failed', async () => {
+        const { setLang } = await import('../i18n/index.js');
+        recordPrint(bill(), 'failed', { errorKind: 'timeout_connect' });
+        setLang('hi');
+        try {
+            HistoryManager.renderPrintStatus();
+            expect(document.getElementById('billPrintStatus').textContent).not.toMatch(/[A-Za-z]{3,}/);
+        } finally {
+            setLang('en');
+        }
+    });
+
     test('details: failed → Mark printed by hand', () => {
+        document.body.innerHTML += '<div id="billDetailsOverlay" class="active"></div>';
         recordPrint(bill(), 'failed', { error: 'Paper out' });
         HistoryManager.renderPrintStatus();
         expect(document.getElementById('billPrintStatus').textContent).toContain('Paper out');

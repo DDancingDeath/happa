@@ -6,7 +6,7 @@
  */
 
 import { AppState } from '../utils/state.js';
-import { on, REFRESH } from '../utils/events.js';
+import { on, PRINT_STATUS_CHANGED, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
@@ -1001,12 +1001,12 @@ export class HistoryManager {
             console.error('Reprint failed:', error);
             UIManager.showToast(t('msg.history.reprint_failed'));
         }
-        this.renderPrintStatus();
     }
 
     /**
-     * The open bill's print status on this phone (#132) with Print again (no COPY
-     * mark: the customer has no slip yet) and Mark printed by hand.
+     * The open bill's print status on this phone (#132). After a failed or
+     * may-have-printed print: Print again (no COPY mark, the customer has no slip
+     * yet); until printed: Mark printed by hand.
      */
     static renderPrintStatus() {
         const host = document.getElementById('billDetailsContent');
@@ -1014,11 +1014,11 @@ export class HistoryManager {
         host?.querySelector('#billPrintStatus')?.remove();
         if (!host || !current || !isActiveBill(current.bill) || isOpeningRecord(current.bill)) return;
         const st = printStatusOf(current.bill);
-        const retry = !st || st.s === 'failed' || st.s === 'uncertain';
+        const retry = !!st && (st.s === 'failed' || st.s === 'uncertain');
         const markHand = !st || st.s === 'failed' || st.s === 'uncertain';
         host.insertAdjacentHTML('beforeend', `
             <div class="bill-print-status" id="billPrintStatus" data-state="${Helpers.escapeHtml(st ? st.s : 'none')}">
-                <span class="bill-print-status__text">🖨️ ${Helpers.escapeHtml(printStatusText(current.bill))}</span>
+                <span class="bill-print-status__text">🖨️ ${Helpers.escapeHtml(printStatusText(current.bill, (e) => PrinterService.errorText(e)))}</span>
                 ${retry ? `<button type="button" class="filter-btn" onclick="window.app.history.retryPrint()">${L('ui.print_status.retry')}</button>` : ''}
                 ${markHand ? `<button type="button" class="filter-btn" onclick="window.app.history.markPrintedByHand()">${L('ui.print_status.mark_hand')}</button>` : ''}
             </div>`);
@@ -1033,8 +1033,6 @@ export class HistoryManager {
             console.error('Print again failed:', error);
             UIManager.showToast(t('msg.history.reprint_failed'));
         }
-        this.renderPrintStatus();
-        this.refreshHistory();
     }
 
     static markPrintedByHand() {
@@ -1045,8 +1043,6 @@ export class HistoryManager {
             return;
         }
         UIManager.showToast(t('msg.print_status.marked'));
-        this.renderPrintStatus();
-        this.refreshHistory();
     }
 
     /** Share the open bill on WhatsApp (bill date, COPY mark, bilingual). */
@@ -1088,3 +1084,7 @@ export class HistoryManager {
 
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
 on(REFRESH.history, () => HistoryManager.refreshHistory());
+on(PRINT_STATUS_CHANGED, () => {
+    HistoryManager.refreshHistory();
+    if (document.getElementById('billDetailsOverlay')?.classList.contains('active')) HistoryManager.renderPrintStatus();
+});

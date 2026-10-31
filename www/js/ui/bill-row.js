@@ -122,13 +122,15 @@ export function printStatusChipHtml(bill) {
 /**
  * The bill details' print line (#132), plain text (caller escapes).
  * @param {Object} bill
+ * @param {(e: {kind?: string, message?: string}) => string} [errorText] translates a stored failure
  * @returns {string}
  */
-export function printStatusText(bill) {
+export function printStatusText(bill, errorText = (e) => e.message || '') {
     const st = printStatusOf(bill);
     if (!st) return t('ui.print_status.none');
     const time = Helpers.formatDateTime(st.at);
-    if (st.s === 'failed') return st.err ? t('ui.print_status.failed', { time, message: st.err }) : t('ui.print_status.failed_plain', { time });
+    const message = st.s === 'failed' && (st.k || st.err) ? errorText({ kind: st.k, message: st.err }) : '';
+    if (st.s === 'failed') return message ? t('ui.print_status.failed', { time, message }) : t('ui.print_status.failed_plain', { time });
     return t(`ui.print_status.${st.s}`, { time });
 }
 

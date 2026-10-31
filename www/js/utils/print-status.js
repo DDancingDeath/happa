@@ -2,6 +2,8 @@
 // May have printed / Printed by hand. A print is a fact about the phone that has
 // the printer, so it costs no Firestore reads or writes and needs no rules change.
 
+import { emit, PRINT_STATUS_CHANGED } from './events.js';
+
 const KEY = 'printStatus';
 const KEEP_MS = 60 * 24 * 60 * 60 * 1000;
 const MAX_ENTRIES = 1000;
@@ -39,7 +41,7 @@ export function prunePrintStatuses(map, now = Date.now()) {
 
 /**
  * @param {Object} bill
- * @returns {{s: 'printed'|'failed'|'uncertain'|'hand', at: number, n: number, err?: string}|null}
+ * @returns {{s: 'printed'|'failed'|'uncertain'|'hand', at: number, n: number, k?: string, err?: string}|null}
  */
 export function printStatusOf(bill, { store = localStorage, now = Date.now() } = {}) {
     const key = printKey(bill);
@@ -48,19 +50,21 @@ export function printStatusOf(bill, { store = localStorage, now = Date.now() } =
 }
 
 /**
- * Records a print outcome; `n` counts the tries sent to the printer.
+ * Records a print outcome; `n` counts the tries sent to the printer. A failure
+ * keeps the error kind (translated when shown) or, without one, its message.
  * @param {Object} bill
  * @param {'printed'|'failed'|'uncertain'|'hand'} state
- * @param {{error?: string, store?: Storage, now?: number}} [opts]
+ * @param {{errorKind?: string, error?: string, store?: Storage, now?: number}} [opts]
  * @returns {boolean} false when the phone's storage refused it
  */
-export function recordPrint(bill, state, { error = '', store = localStorage, now = Date.now() } = {}) {
+export function recordPrint(bill, state, { errorKind = '', error = '', store = localStorage, now = Date.now() } = {}) {
     const key = printKey(bill);
     if (!key || !PRINT_STATES.includes(state)) return false;
     const map = load(store);
     const prev = map[key];
     const tries = (prev?.n || 0) + (state === 'hand' ? 0 : 1);
     const entry = { s: state, at: now, n: tries };
+    if (state === 'failed' && errorKind) entry.k = String(errorKind).slice(0, 40);
     if (state === 'failed' && error) entry.err = String(error).slice(0, 120);
     const next = prunePrintStatuses({ ...map, [key]: entry }, now);
     try {
@@ -70,6 +74,7 @@ export function recordPrint(bill, state, { error = '', store = localStorage, now
         return false;
     }
     cache = { store, map: next };
+    emit(PRINT_STATUS_CHANGED, key);
     return true;
 }
 
