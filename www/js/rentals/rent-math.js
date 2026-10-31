@@ -6,6 +6,7 @@
  */
 
 import { round2 } from '../utils/money.js';
+import { meterAmount } from '../utils/calc/billing.js';
 import { cleanText, formatINR } from '../utils/due-reminder.js';
 
 /** Oldest start month allowed (months back) and most months charged per visit. */
@@ -307,7 +308,7 @@ const okNum = (v) => Number.isFinite(v) && v >= 0;
 
 /**
  * Electricity from a sub-meter reading (RENT-7): units = current − previous,
- * amount = units × rate per unit.
+ * amount = units × rate per unit, a whole rupee (calc/billing meterAmount, #129).
  * @throws {Error} 'reading' when a number is missing/negative or current < previous
  */
 export function meterBill({ prev, curr, rate }) {
@@ -316,7 +317,7 @@ export function meterBill({ prev, curr, rate }) {
     const r = Number(rate);
     if (![p, c, r].every(okNum) || c < p) throw new Error('reading');
     const units = round2(c - p);
-    return { prev: p, curr: c, rate: r, units, amount: round2(units * r) };
+    return { prev: p, curr: c, rate: r, units, amount: meterAmount(units, r) };
 }
 
 /**

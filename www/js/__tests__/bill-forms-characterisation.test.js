@@ -3,9 +3,11 @@
  * wholesale) before their maths moves to utils/calc/billing.js
  * (docs/architecture.md §5, plan step 2f). Each test drives the form the way the
  * page does and pins what the screen shows, the saved bill document and the
- * payment split, rounding included (whole-rupee lines, paise totals, whole-rupee
- * display and tick-to-fill; rounding policy is open in #129). Recorded against
- * the code before the move; the move must not change a single value here.
+ * payment split, rounding included. Recorded against the code before the move
+ * (step 2f: whole-rupee lines, paise totals). Re-recorded for #129 (owner
+ * decision: rates keep paise, every money amount is a whole rupee, half-up):
+ * totals, labour, payments, Rest → Due, wholesale cost / profit / expenses are
+ * now whole rupees; each changed value says so where it is pinned.
  */
 jest.mock('../utils/bill-share.js', () => {
     const actual = jest.requireActual('../utils/bill-share.js');
@@ -164,27 +166,29 @@ describe('purchase form', () => {
         expect(PurchaseManager.getCheckDraft()).toMatchObject({ kind: 'purchase', total: 1947, payment: { cash: 0, online: 0, due: 0 } });
     });
 
-    test('paise labour typed by hand: screen and Cash tick round to ₹1, the saved total keeps the paise', async () => {
+    test('paise labour typed by hand is saved rounded half-up (₹12.50 → ₹13): screen, Cash tick and saved total agree (#129)', async () => {
         await buildBill();
         setVal('manualLaborCharges', '12.50');
         $('manualLaborCharges').dataset.manuallySet = 'true';
         PurchaseManager.updateTotals();
         expect($('manualLaborCharges').value).toBe('12.50');
-        expect(text('amountPayable')).toBe('1941');
+        // #129: was 1941 (1953 − 12.50 = 1940.50 shown half-up) while 1940.50 was saved
+        expect(text('amountPayable')).toBe('1940');
         tick('cashCheckbox');
         PurchaseManager.fillPayableAmount('cash');
-        expect([$('cashPayment').value, $('onlinePayment').value, $('dueAmount').value]).toEqual(['1941', '0', '0']);
-        expect(text('totalPayment')).toBe('1941');
+        expect([$('cashPayment').value, $('onlinePayment').value, $('dueAmount').value]).toEqual(['1940', '0', '0']);
+        expect(text('totalPayment')).toBe('1940');
         expect(text('purchaseSplitRemaining')).toBe('✓ ₹0');
 
         const bill = await PurchaseManager.saveBillToHistory();
 
         expect(savePurchase).toHaveBeenCalledTimes(1);
         expect(pick(bill, PURCHASE_KEYS)).toEqual({
-            billTotal: 1953, laborCharges: 12.5, laborCalc: null, totalPackets: 3,
-            grandTotal: 1940.5, amountPayable: 1940.5,
-            onlinePayment: 0, cashPayment: 1941, dueAmount: 0,
-            payment: { online: 0, cash: 1941, due: 0, total: 1941 },
+            // #129: was laborCharges 12.5, grandTotal / amountPayable 1940.5, cash 1941
+            billTotal: 1953, laborCharges: 13, laborCalc: null, totalPackets: 3,
+            grandTotal: 1940, amountPayable: 1940,
+            onlinePayment: 0, cashPayment: 1940, dueAmount: 0,
+            payment: { online: 0, cash: 1940, due: 0, total: 1940 },
             type: 'purchase', isPurchase: true, customerName: ''
         });
         expect(lineKeys(bill.items).map(l => [l.qty, l.total])).toEqual([[60.3, 1538], [12.4, 415]]);
@@ -234,16 +238,18 @@ describe('purchase form', () => {
         setVal('onlinePayment', 500.35);
         setVal('dueAmount', '');
         PurchaseManager.putRestInDue();
-        expect([$('dueAmount').value, $('dueCheckbox').checked]).toEqual(['445', true]);
-        expect(text('totalPayment')).toBe('1501');
+        // #129: cash ₹1,000.40 → ₹1,000 and online ₹500.35 → ₹500 as saved, labour ₹7.25 → ₹7,
+        // so the rest is 1946 − 1500 = 446 (was 445 in paise) and paid shows 1500 (was 1501)
+        expect([$('dueAmount').value, $('dueCheckbox').checked]).toEqual(['446', true]);
+        expect(text('totalPayment')).toBe('1500');
         expect(text('purchaseSplitRemaining')).toBe('✓ ₹0');
 
         setVal('customerName', 'Ramesh');
         const bill = await PurchaseManager.saveBillToHistory();
         expect(pick(bill, PURCHASE_KEYS)).toMatchObject({
-            billTotal: 1953, laborCharges: 7.25, grandTotal: 1945.75, amountPayable: 1945.75,
-            onlinePayment: 500.35, cashPayment: 1000.4, dueAmount: 445,
-            payment: { online: 500.35, cash: 1000.4, due: 445, total: 1945.75 }
+            billTotal: 1953, laborCharges: 7, grandTotal: 1946, amountPayable: 1946,
+            onlinePayment: 500, cashPayment: 1000, dueAmount: 446,
+            payment: { online: 500, cash: 1000, due: 446, total: 1946 }
         });
 
         await buildBill();
@@ -262,11 +268,12 @@ describe('purchase form', () => {
         expect(PurchaseManager.computeTotals()).toMatchObject({ laborCharges: 0, grandTotal: 1953 });
     });
 
-    test('WhatsApp text: plain line sum and the labour box read as whole rupees', async () => {
+    test('WhatsApp text: plain line sum and the labour as saved (whole rupees, half-up)', async () => {
         await buildBill();
         setVal('manualLaborCharges', '12.75');
         await PurchaseManager.shareWhatsApp();
-        expect(buildDraftShareText).toHaveBeenCalledWith(expect.objectContaining({ kind: 'purchase', total: 1953, labour: 12 }));
+        // #129: was 12 (the box cut to an integer) while the bill saved 12.75
+        expect(buildDraftShareText).toHaveBeenCalledWith(expect.objectContaining({ kind: 'purchase', total: 1953, labour: 13 }));
     });
 });
 
@@ -334,7 +341,8 @@ describe('retail sale form', () => {
         setVal('saleOnlinePayment', 999.25);
         setVal('saleDueAmount', '');
         RetailSaleManager.putRestInDue();
-        expect([$('saleDueAmount').value, $('saleDueCheckbox').checked]).toEqual(['753.25', true]);
+        // #129: cash ₹1,000.50 → ₹1,001, online ₹999.25 → ₹999, rest 753 (was 753.25)
+        expect([$('saleDueAmount').value, $('saleDueCheckbox').checked]).toEqual(['753', true]);
         expect(text('totalReceived')).toBe('2000');
         expect(text('saleSplitRemaining')).toBe('✓ ₹0');
         setVal('saleCustomerName', 'Sita');
@@ -343,15 +351,15 @@ describe('retail sale form', () => {
 
         expect(saveRetailSale).toHaveBeenCalledTimes(1);
         expect(pick(sale, RETAIL_KEYS)).toEqual({
-            total: 2753, totalPackets: 4, onlinePayment: 999.25, cashPayment: 1000.5, dueAmount: 753.25,
-            payment: { online: 999.25, cash: 1000.5, due: 753.25, total: 2753 },
+            total: 2753, totalPackets: 4, onlinePayment: 999, cashPayment: 1001, dueAmount: 753,
+            payment: { online: 999, cash: 1001, due: 753, total: 2753 },
             type: 'retail', isPurchase: false, customerName: 'Sita'
         });
         expect(lineKeys(sale.items).map(l => [l.qty, l.packets, l.total])).toEqual([[60.35, 3, 2520], [7, 1, 233]]);
         expect([text('saleTotal'), text('totalReceived')]).toEqual(['0', '0']);
     });
 
-    test('paise line totals (restored draft): screen and tick round, the saved total keeps the paise', async () => {
+    test('paise line totals (a draft or bill from before #129): screen, tick and saved total are whole rupees', async () => {
         RetailSaleManager.setSaleItems([
             { itemId: 'item-rice', name: 'Rice', rate: 40.1, qty: 2.504, total: 100.4 },
             { itemId: 'item-wheat', name: 'Wheat', rate: 30.1, qty: 1.671, packets: 2, total: 50.3 }
@@ -364,7 +372,8 @@ describe('retail sale form', () => {
         expect(text('saleSplitRemaining')).toBe('✓ ₹0');
         const sale = await RetailSaleManager.completeSale();
         expect(pick(sale, RETAIL_KEYS)).toMatchObject({
-            total: 150.7, totalPackets: 2, cashPayment: 151, payment: { online: 0, cash: 151, due: 0, total: 151 }
+            // #129: was 150.7
+            total: 151, totalPackets: 2, cashPayment: 151, payment: { online: 0, cash: 151, due: 0, total: 151 }
         });
     });
 
@@ -426,7 +435,8 @@ describe('wholesale sale form', () => {
 
     test('line amounts (whole rupees), total, live profit and margin with an unknown cost', async () => {
         await addLine('Rice', 33.5, 12.4);
-        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['415', '137', '33.1']);
+        // #129: cost 12.4 × ₹22.40 = 277.76 → ₹278, so profit 137 and 137 ÷ 415 = 33.0% (was 137.24, 33.1%)
+        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['415', '137', '33.0']);
         await addLine('Wheat', 40.1, 7.25);
         expect(lineKeys(WholesaleSalesManager.getItems())).toEqual([
             { itemId: 'item-rice', name: 'Rice', rate: 33.5, qty: 12.4, total: 415 },
@@ -436,11 +446,12 @@ describe('wholesale sale form', () => {
             ['Rice', '₹33.50', '12.4 kg', '₹415'],
             ['Wheat', '₹40.10', '7.3 kg', '₹291']
         ]);
-        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '428', '60.7']);
+        // #129: 428 ÷ 706 = 60.6% (was 428.24 → 60.7%); expenses ₹20.50 count as saved, ₹21: profit 407, 57.6% (was 408 shown, 407.74 saved, 57.8%)
+        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '428', '60.6']);
         setVal('salesExpensesAmount', 20.5);
         WholesaleSalesManager.updateProfitCalculation();
-        expect([text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['408', '57.8']);
-        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 706, cost: 277.76, profit: 407.74, profitPercent: 57.8 });
+        expect([text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['407', '57.6']);
+        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 706, cost: 278, profit: 407, profitPercent: 57.6 });
         expect(text('wholesaleSplitRemaining')).toBe('₹706 left');
         expect(WholesaleSalesManager.getCheckDraft()).toMatchObject({ kind: 'wholesale', total: 706 });
     });
@@ -453,14 +464,16 @@ describe('wholesale sale form', () => {
         setVal('salesExpensesAmount', 1.25);
         WholesaleSalesManager.renderWholesaleBill();
         expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['281', '280', '99.6']);
-        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 281.4, cost: 0, profit: 280.15, profitPercent: 99.6 });
+        // #129: was total 281.4, profit 280.15 (expenses ₹1.25 now ₹1)
+        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 281, cost: 0, profit: 280, profitPercent: 99.6 });
     });
 
     test('a loss shows a negative profit and margin; no lines resets the figures', async () => {
         await addLine('Rice', 20.15, 3.3);
         setVal('salesExpensesAmount', 10);
         WholesaleSalesManager.updateProfitCalculation();
-        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['66', '-18', '-27.2']);
+        // #129: cost 73.92 → ₹74, profit −18 → −18 ÷ 66 = −27.3% (was −17.92, −27.2%)
+        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['66', '-18', '-27.3']);
         WholesaleSalesManager.removeWholesaleItem(0);
         expect([text('salesTotalAmount'), $('salesExpensesAmount').value, text('salesProfitAmount'), text('salesProfitPercent')])
             .toEqual(['0', '0', '0', '0']);
@@ -480,7 +493,8 @@ describe('wholesale sale form', () => {
         setVal('wholesaleCashPayment', 300);
         setVal('wholesaleDueAmount', '');
         WholesaleSalesManager.putRestInDue();
-        expect([$('wholesaleDueAmount').value, $('wholesaleDueCheckbox').checked]).toEqual(['305.75', true]);
+        // #129: online ₹100.25 → ₹100, rest 306 (was 305.75)
+        expect([$('wholesaleDueAmount').value, $('wholesaleDueCheckbox').checked]).toEqual(['306', true]);
         expect(text('wholesaleTotalReceived')).toBe('400');
         expect(text('wholesaleSplitRemaining')).toBe('✓ ₹0');
         setVal('wholesaleCustomerName', 'Mohan');
@@ -490,9 +504,10 @@ describe('wholesale sale form', () => {
 
         expect(saveWholesaleSale).toHaveBeenCalledTimes(1);
         expect(pick(sale, WHOLESALE_KEYS)).toEqual({
-            total: 706, expenses: 20.5, profit: 407.74, profitPercent: 57.8,
-            onlinePayment: 100.25, cashPayment: 300, dueAmount: 305.75,
-            payment: { online: 100.25, cash: 300, due: 305.75, total: 706 },
+            // #129: was expenses 20.5, profit 407.74, 57.8%, online 100.25, due 305.75
+            total: 706, expenses: 21, profit: 407, profitPercent: 57.6,
+            onlinePayment: 100, cashPayment: 300, dueAmount: 306,
+            payment: { online: 100, cash: 300, due: 306, total: 706 },
             type: 'wholesale', source: 'sales-tab', customerName: 'Mohan', comments: 'truck 2'
         });
         expect(sale.items).toEqual([
@@ -511,10 +526,11 @@ describe('wholesale sale form', () => {
         expect(text('wholesaleSplitRemaining')).toBe('₹94 extra');
     });
 
-    test('WhatsApp text: plain line sum, expenses as whole rupees, the profit shown', async () => {
+    test('WhatsApp text: plain line sum, expenses as saved (whole rupees, half-up), the profit shown', async () => {
         await buildSale();
         WholesaleSalesManager.shareViaWhatsApp();
-        expect(buildDraftShareText).toHaveBeenCalledWith(expect.objectContaining({ kind: 'wholesale', total: 706, expenses: 20, profit: 408 }));
+        // #129: was expenses 20 (cut to an integer), profit 408
+        expect(buildDraftShareText).toHaveBeenCalledWith(expect.objectContaining({ kind: 'wholesale', total: 706, expenses: 21, profit: 407 }));
     });
 
     describe('with opening records (old-app dues) in the history', () => {
@@ -545,7 +561,7 @@ describe('wholesale sale form', () => {
             expect($('salesRecentList').querySelectorAll('[data-bill-id], .history-item, .bill-row').length).toBeGreaterThan(0);
             expect($('salesRecentList').textContent).not.toContain('W-OLD');
             await buildSale();
-            expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '408', '57.8']);
+            expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '407', '57.6']);
         });
 
         test('recording a due payment checks the amount against the bill\'s due', async () => {
@@ -559,12 +575,17 @@ describe('wholesale sale form', () => {
             setVal('payment_w1', -5);
             await WholesaleSalesManager.recordPayment('w1');
             expect(toast).toHaveBeenLastCalledWith('Please enter a valid payment amount');
-            setVal('payment_w1', 500.27);
+            setVal('payment_w1', 501);
             await WholesaleSalesManager.recordPayment('w1');
             expect(toast).toHaveBeenLastCalledWith('Payment amount exceeds outstanding amount');
+            // #129: an amount that is not the due is saved in whole rupees (500.27 was refused as above the due)
+            setVal('payment_w1', 500.27);
+            await WholesaleSalesManager.recordPayment('w1');
+            expect(apply).toHaveBeenLastCalledWith(500);
+            // The exact due of a bill saved with paise (₹500.25, within a paisa) keeps its paise
             setVal('payment_w1', 500.26);
             await WholesaleSalesManager.recordPayment('w1');
-            expect(apply).toHaveBeenCalledWith(500.26);
+            expect(apply).toHaveBeenLastCalledWith(500.26);
             setVal('payment_opening-x', 2000.004);
             await WholesaleSalesManager.recordPayment('opening-x');
             expect(apply).toHaveBeenLastCalledWith(2000);

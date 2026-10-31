@@ -150,6 +150,9 @@ describe('rent increase reminder (RENT-6)', () => {
 describe('electricity sub-meter (RENT-7)', () => {
     test('units × rate; bad readings rejected', () => {
         expect(meterBill({ prev: '100', curr: '150.5', rate: '8' })).toEqual({ prev: 100, curr: 150.5, rate: 8, units: 50.5, amount: 404 });
+        // #129: the amount is a whole rupee, half-up: 123 units × ₹7.35 = ₹904.05 → ₹904; 3 × ₹0.50 = ₹1.50 → ₹2
+        expect(meterBill({ prev: 100, curr: 223, rate: 7.35 })).toMatchObject({ units: 123, amount: 904 });
+        expect(meterBill({ prev: 0, curr: 3, rate: 0.5 }).amount).toBe(2);
         expect(() => meterBill({ prev: 150, curr: 100, rate: 8 })).toThrow('reading');
         expect(() => meterBill({ prev: 0, curr: 10, rate: -1 })).toThrow('reading');
         expect(() => meterBill({ prev: 'x', curr: 10, rate: 1 })).toThrow('reading');

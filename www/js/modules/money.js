@@ -15,6 +15,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { formatRupees, formatAmount, normalizeLabourSettings } from '../utils/money.js';
+import { entryAmount } from '../utils/calc/billing.js';
 import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap } from '../utils/labour.js';
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow } from '../utils/dates.js';
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
@@ -562,7 +563,7 @@ export const MoneyManager = {
 
     _saveWithdrawal() {
         const val = (id) => (document.getElementById(id)?.value || '').trim();
-        const amount = parseFloat(val('moneyWdAmount'));
+        const amount = entryAmount(val('moneyWdAmount'));
         const person = val('moneyWdPerson');
         const date = val('moneyWdDate');
         if (!(amount > 0)) { UIManager.showToast(t('msg.common.enter_valid_amount'), 'error'); return; }

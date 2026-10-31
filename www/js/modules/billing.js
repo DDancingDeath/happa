@@ -12,7 +12,8 @@ import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
-import { round2, sumMoney } from '../utils/money.js';
+import { sumMoney } from '../utils/money.js';
+import { buildPaymentSplit, computeRetailTotals } from '../utils/calc/billing.js';
 import { BillChecksUI } from '../ui/bill-highlight.js';
 import { findBillIndex } from '../utils/history-window.js';
 import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
@@ -1136,9 +1137,9 @@ const BillingManager = {
                 const billItems = PurchaseManager.getBillItems();
                 // Totals come from the items, never from the (rounded) text on screen
                 const { billTotal, laborCharges, totalPackets, grandTotal } = PurchaseManager.computeTotals();
-                const onlinePayment = round2(Helpers.getInputNumber('onlinePayment'));
-                const cashPayment = round2(Helpers.getInputNumber('cashPayment'));
-                const dueAmount = round2(Helpers.getInputNumber('dueAmount'));
+                // Same rounding as a new bill (MONEY-ROUND, #129)
+                const split = PurchaseManager.readPaymentSplit();
+                const { online: onlinePayment, cash: cashPayment, due: dueAmount } = split;
                 const customerName = Helpers.getInputText('customerName');
                 const comments = Helpers.getInputText('billComments');
                 const printComments = readPrintComments('billPrintComments');
@@ -1164,12 +1165,7 @@ const BillingManager = {
                     customerName,
                     comments,
                     printComments,
-                    payment: {
-                        online: onlinePayment,
-                        cash: cashPayment,
-                        due: dueAmount,
-                        total: round2(onlinePayment + cashPayment + dueAmount)
-                    },
+                    payment: buildPaymentSplit(split),
                     editedAt: new Date().toISOString(),
                     editedBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
                     ...BillChecksUI.billFields(checks, bill)
@@ -1203,11 +1199,9 @@ const BillingManager = {
                 return updatedBill;
             } else {
                 const saleItems = RetailSaleManager.getSaleItems();
-                const salesTotal = sumMoney(saleItems, item => item.total);
-                const totalPackets = saleItems.reduce((sum, item) => sum + (item.packets || 0), 0);
-                const saleOnline = round2(Helpers.getInputNumber('saleOnlinePayment'));
-                const saleCash = round2(Helpers.getInputNumber('saleCashPayment'));
-                const saleDue = round2(Helpers.getInputNumber('saleDueAmount'));
+                const { total: salesTotal, packetsSaved: totalPackets } = computeRetailTotals(saleItems);
+                const saleSplit = RetailSaleManager.readPaymentSplit();
+                const { online: saleOnline, cash: saleCash, due: saleDue } = saleSplit;
                 const saleCustomer = Helpers.getInputText('saleCustomerName');
                 const saleComments = Helpers.getInputText('saleComments');
                 const printComments = readPrintComments('salePrintComments');
@@ -1227,12 +1221,7 @@ const BillingManager = {
                     customerName: saleCustomer,
                     comments: saleComments,
                     printComments: printComments,
-                    payment: {
-                        online: saleOnline,
-                        cash: saleCash,
-                        due: saleDue,
-                        total: round2(saleOnline + saleCash + saleDue)
-                    },
+                    payment: buildPaymentSplit(saleSplit),
                     editedAt: new Date().toISOString(),
                     editedBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
                     ...BillChecksUI.billFields(checks, bill)

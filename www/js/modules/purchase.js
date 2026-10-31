@@ -696,7 +696,7 @@ const PurchaseManager = {
         }
         
         const total = draftLineSum(billItems);
-        const laborCharges = Helpers.getInputInt('manualLaborCharges');
+        const { laborCharges } = this.computeTotals();
         const message = buildDraftShareText({
             kind: 'purchase', customer: Helpers.getInputText('customerName'), items: billItems, total, labour: laborCharges
         });
