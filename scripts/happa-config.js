@@ -154,6 +154,18 @@ function identityModule(d) {
 const APP_PUBLIC = 'www';
 const REDIRECT_PUBLIC = 'hosting-redirect';
 
+// Security headers of the redirect-only sites (#89). The app site's own set (plus its
+// report-only CSP) is in firebase.json; security-headers.test.js keeps the two in step.
+// These sites only answer 301s, so their CSP can already deny everything.
+const REDIRECT_SECURITY_HEADERS = [
+    { key: 'Strict-Transport-Security', value: 'max-age=31556926; includeSubDomains; preload' },
+    { key: 'X-Content-Type-Options', value: 'nosniff' },
+    { key: 'X-Frame-Options', value: 'DENY' },
+    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+    { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=()' },
+    { key: 'Content-Security-Policy', value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'" }
+];
+
 function redirectHosting(site, d) {
     return {
         site,
@@ -162,7 +174,8 @@ function redirectHosting(site, d) {
         redirects: [
             { source: '/', destination: `${d.siteUrl}/`, type: 301 },
             { source: '/:path*', destination: `${d.siteUrl}/:path`, type: 301 }
-        ]
+        ],
+        headers: [{ source: '**', headers: REDIRECT_SECURITY_HEADERS.map((h) => ({ ...h })) }]
     };
 }
 

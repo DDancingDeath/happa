@@ -19,6 +19,26 @@ const opt = (name) => {
 };
 const PORT = Number(args[0] || process.env.E2E_PORT || 8099);
 const EMU = opt('--project') ? target({ project: opt('--project'), authPort: Number(opt('--auth-port') || 9099), firestorePort: Number(opt('--firestore-port') || 8181) }) : null;
+
+// The app site's '**' security headers from firebase.json (#89), so every E2E page runs
+// under the same report-only CSP as Hosting; the fixture fails on any CSP report.
+// The auth emulator stands in for the API hosts and the authDomain iframe only here.
+function securityHeaders() {
+    const hosting = JSON.parse(fs.readFileSync(path.resolve(ROOT, '..', 'firebase.json'), 'utf8')).hosting;
+    const app = (Array.isArray(hosting) ? hosting : [hosting]).find((h) => h.public === 'www');
+    const all = (app.headers || []).filter((e) => e.source === '**').flatMap((e) => e.headers);
+    const out = {};
+    for (const { key, value } of all) {
+        if (key === 'Strict-Transport-Security') continue;
+        out[key] = (key === 'Content-Security-Policy-Report-Only' && EMU)
+            ? value
+                .replace(/connect-src ([^;]*)/, `connect-src $1 http://127.0.0.1:${EMU.authPort} http://127.0.0.1:${EMU.firestorePort}`)
+                .replace(/frame-src ([^;]*)/, `frame-src $1 http://127.0.0.1:${EMU.authPort}`)
+            : value;
+    }
+    return out;
+}
+const SECURITY = securityHeaders();
 const TYPES = {
     '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
     '.json': 'application/json; charset=utf-8', '.webmanifest': 'application/manifest+json', '.png': 'image/png',
@@ -48,10 +68,10 @@ http.createServer((req, res) => {
             res.end(String(e.message || e));
             return;
         }
-        res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+        res.writeHead(200, { ...SECURITY, 'Content-Type': type, 'Cache-Control': 'no-store' });
         res.end(text);
         return;
     }
-    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store' });
+    res.writeHead(200, { ...SECURITY, 'Content-Type': type, 'Cache-Control': 'no-store' });
     fs.createReadStream(file).pipe(res);
 }).listen(PORT, '127.0.0.1', () => console.log(`static www/ on http://127.0.0.1:${PORT}${EMU ? ` (emulators: ${EMU.project}, auth ${EMU.authPort}, firestore ${EMU.firestorePort})` : ''}`));
