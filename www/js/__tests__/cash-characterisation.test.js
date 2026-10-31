@@ -16,6 +16,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
+import { drawerDay } from '../utils/calc/cash.js';
 
 const FIXTURES = path.resolve(__dirname, '../../../tests/fixtures/calculations');
 const FIX = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'cash-days.json'), 'utf8'));
@@ -210,5 +211,22 @@ describe('Cash drawer, pinned (cash-days.json)', () => {
         const got = await recordCase(FIX.cases[name]);
         if (RECORD) EXPECTED[name] = got;
         else expect(got).toEqual(EXPECTED[name]);
+    });
+});
+
+describe('drawerDay() alone (utils/calc/cash.js) == the pinned drawer', () => {
+    const run = RECORD ? test.skip : test;
+    run.each(Object.keys(FIX.cases))('%s', (name) => {
+        const c = FIX.cases[name];
+        const day = (s, date) => drawerDay({
+            date,
+            bills: { wholesale: copy(c.wholesaleSales), retail: copy(c.retailSales), purchase: copy(c.purchases) },
+            expenses: copy(c.expenses),
+            session: s ? copy(s) : null,
+            personalReadable: !!c.personalRows,
+            personalDay: c.personalDays[date] || null
+        });
+        expect(c.sessions.map(s => ({ id: s.id, tx: day(s, s.date) }))).toEqual(EXPECTED[name].drawers);
+        expect(day(null, c.now.slice(0, 10))).toEqual(EXPECTED[name].drawerNoSession);
     });
 });

@@ -389,7 +389,7 @@ in `.github/review-rules-examples/`.
 Every money/stock number the app shows has a plain-language definition with a
 spec ID in `docs/calculations.md`. Money, insight and statement figures (M*, I*)
 come from one pure module, `www/js/utils/business-metrics.js` (owner choices in
-`utils/insights-config.js`), Today's (T*) from `todaySummary()` in `www/js/utils/calc/today.js`, the bill forms' (BF-*, WS-*) from `www/js/utils/calc/billing.js` (rounding: one named policy per figure, `ROUNDING`) and Stock's (S*) from `www/js/utils/calc/stock.js` (`stockValue()` is the one stock value, also Money's); calendar steps (days, months, periods) only through `utils/dates.js`; pages only render them, and each figure has one home
+`utils/insights-config.js`), Today's (T*) from `todaySummary()` in `www/js/utils/calc/today.js`, the bill forms' (BF-*, WS-*) from `www/js/utils/calc/billing.js` (rounding: one named policy per figure, `ROUNDING`) and Stock's (S*) from `www/js/utils/calc/stock.js` (`stockValue()` is the one stock value, also Money's), the cash drawer's (C*) from `www/js/utils/calc/cash.js` (`drawerDay()` for C1–C6, the count / close / opening checks for C8); calendar steps (days, months, periods) only through `utils/dates.js`; pages only render them, and each figure has one home
 page (`utils/metric-registry.js`, checked by `metric-registry.test.js`). `tests/oracle/` recomputes each one with an
 independent, simple implementation and compares it with the screen;
 `tests/property/` runs the accounting checks (stock value adds up, bill split,
