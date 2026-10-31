@@ -87,14 +87,27 @@ describe('firebaseConfig.js SDK-missing recovery (#28)', () => {
     });
 });
 
-describe('index.html stylesheets', () => {
-    test('match styles.css @import order', () => {
+describe('index.html stylesheets (#66)', () => {
+    const { cssSources, buildCss, OUT_URL } = require('../../../scripts/build-css.js');
+
+    test('index.html links one stylesheet, css/app.css', () => {
         const html = fs.readFileSync(path.join(WWW, 'index.html'), 'utf8');
-        const css = fs.readFileSync(path.join(WWW, 'styles.css'), 'utf8');
-        const imported = [...css.matchAll(/@import url\('([^']+)'\)/g)].map((m) => m[1]);
         const linked = [...html.matchAll(/<link rel="stylesheet" href="([^"?]+)/g)].map((m) => m[1]);
-        expect(imported.length).toBeGreaterThan(0);
-        expect(linked).toEqual(imported);
+        expect(linked).toEqual([OUT_URL]);
+    });
+
+    test('css/app.css is up to date with the files in styles.css (npm run build:css)', () => {
+        expect(cssSources().length).toBeGreaterThan(20);
+        const built = fs.readFileSync(path.join(WWW, OUT_URL), 'utf8').replace(/\r\n/g, '\n');
+        expect(built === buildCss()).toBe(true);
+    });
+
+    test('joins in list order and refuses @import inside a source', () => {
+        const files = { 'css/a.css': '.a{}\r\n', 'css/b.css': '.b{}' };
+        const out = buildCss(['css/a.css', 'css/b.css'], (rel) => files[rel]);
+        expect(out.indexOf('.a{}')).toBeLessThan(out.indexOf('.b{}'));
+        expect(out).not.toMatch(/\r/);
+        expect(() => buildCss(['css/a.css'], () => "@import url('x.css');")).toThrow(/@import/);
     });
 });
 
