@@ -285,9 +285,24 @@
 }
 
 [data-record-payment],
-[data-mark-cleared],
-#dueList input[type="number"] {
+[data-mark-cleared] {
   font-size: 14px;
+}
+
+/* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */
+@supports (-webkit-touch-callout: none) {
+  body input:not([type]),
+  body input[type="text"],
+  body input[type="number"],
+  body input[type="search"],
+  body input[type="tel"],
+  body input[type="email"],
+  body input[type="password"],
+  body input[type="date"],
+  body select,
+  body textarea {
+    font-size: 16px !important;
+  }
 }
 
 #dueList input[type="number"] {

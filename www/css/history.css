@@ -388,8 +388,11 @@
   font-weight: 500;
 }
 
+/* Chips wrap inside the card instead of running off a narrow phone (#68: 14 px text) */
 .bill-row .bill-row__chips {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   gap: 4px;
   font-size: 12px;
