@@ -946,6 +946,7 @@ export default {
     'ui.health.test_bill_save': "बिल सेव करना",
     'ui.health.test_payment_record': "भुगतान दर्ज करना",
     'ui.health.test_cash_close': "कैश बंद करना",
+    'ui.health.test_session_reads': "डेटा पढ़ना",
     'ui.health.result_fail': "फ़ेल",
     'ui.health.result_abandoned': "अधूरा छूटा",
     'ui.health.result_expired': "बहुत देर लगी",

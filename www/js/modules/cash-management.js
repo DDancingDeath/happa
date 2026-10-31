@@ -18,6 +18,7 @@ import {
     savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
 } from '../utils/calc/cash.js';
 import { round2, outstandingDue } from '../utils/money.js';
+import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
 import { normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
@@ -114,25 +115,17 @@ export class CashManagementManager {
         this.renderHistoryFromCache();
         this.loadDuplicateDays().catch(e => console.warn('Cash: duplicate-day check failed:', e));
         
-        // Listen for cash amount input changes for validation
-        const signOutInput = document.getElementById('cashSignOutAmount');
-        if (signOutInput) {
-            signOutInput.addEventListener('input', () => this.validateSignOut());
-        }
-        
-        // Listen for transaction type changes
-        const transactionType = document.getElementById('cashTransactionType');
-        if (transactionType) {
-            transactionType.addEventListener('change', () => this.updateTransactionForm());
-        }
-        const partyInput = document.getElementById('partyName');
-        if (partyInput) {
-            partyInput.addEventListener('input', () => this.populateDueBills());
-        }
-        const dueBillSelect = document.getElementById('dueBillSelect');
-        if (dueBillSelect) {
-            dueBillSelect.addEventListener('change', () => this.showDueBillDetails());
-        }
+        // One set of listeners: the same fields move between the Cash page and Today › Cash (#96)
+        const bindOnce = (id, type, fn) => {
+            const el = document.getElementById(id);
+            if (!el || el.dataset.cashBound) return;
+            el.dataset.cashBound = '1';
+            el.addEventListener(type, fn);
+        };
+        bindOnce('cashSignOutAmount', 'input', () => this.validateSignOut());
+        bindOnce('cashTransactionType', 'change', () => this.updateTransactionForm());
+        bindOnce('partyName', 'input', () => this.populateDueBills());
+        bindOnce('dueBillSelect', 'change', () => this.showDueBillDetails());
         
         // Initialize form state (hide customer name for default "Cash Added")
         this.updateTransactionForm();
@@ -920,10 +913,15 @@ export class CashManagementManager {
         }
 
         if (type === 'deposit') {
-            // Cash deposit
+            // Cash deposit, in whole rupees (MONEY-ROUND, #129)
+            const depositAmount = entryAmount(amount);
+            if (!(depositAmount > 0)) {
+                UIManager.showToast(t('msg.common.enter_valid_amount'));
+                return;
+            }
             const deposit = {
                 id: Helpers.generateId(),
-                amount: amount,
+                amount: depositAmount,
                 reason: notes,
                 timestamp: new Date().toISOString(),
                 addedBy: AppState.userName || 'Unknown'
@@ -947,7 +945,7 @@ export class CashManagementManager {
                 this.updateUI();
                 this.renderHistory();
                 
-                UIManager.showToast(t('msg.cash.added_cash_drawer', { amount }));
+                UIManager.showToast(t('msg.cash.added_cash_drawer', { amount: depositAmount }));
                 
                 // Clear inputs
                 document.getElementById('transactionAmount').value = '';
@@ -995,11 +993,17 @@ export class CashManagementManager {
                 return;
             }
 
+            // "No bill" entries are in whole rupees (MONEY-ROUND, #129)
+            const legAmount = entryAmount(amount);
+            if (!(legAmount > 0)) {
+                UIManager.showToast(t('msg.common.enter_valid_amount'));
+                return;
+            }
             const payment = noBillLeg({
                 id: Helpers.generateId(),
                 type, // 'received' or 'paid'
                 party: partyName,
-                amount,
+                amount: legAmount,
                 notes,
                 timestamp: new Date().toISOString(),
                 recordedBy: AppState.userName || 'Unknown'
@@ -1023,7 +1027,7 @@ export class CashManagementManager {
                 this.updateUI();
                 this.renderHistory();
                 
-                UIManager.showToast(t(type === 'paid' ? 'msg.cash.recorded_paid_to' : 'msg.cash.recorded_received_from', { amount, partyName }));
+                UIManager.showToast(t(type === 'paid' ? 'msg.cash.recorded_paid_to' : 'msg.cash.recorded_received_from', { amount: legAmount, partyName }));
                 
                 // Clear inputs
                 document.getElementById('partyName').value = '';
