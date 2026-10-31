@@ -500,7 +500,7 @@ export class SettingsManager {
             const devices = await PrinterService.scanDevices();
             this.displayBluetoothDevices(devices);
         } catch (error) {
-            const errorMsg = t('msg.printer.failed_scan_devices', { message: error.message || error });
+            const errorMsg = t('msg.printer.failed_scan_devices', { message: PrinterService.errorText(error) });
             console.error('[SETTINGS] Scan error:', error);
             await UIManager.showModal(errorMsg);
         }
@@ -562,7 +562,7 @@ export class SettingsManager {
             if (container) container.innerHTML = '';
             
         } catch (error) {
-            const errorMsg = t('msg.printer.failed_connect', { message: error.message || error });
+            const errorMsg = t('msg.printer.failed_connect', { message: PrinterService.errorText(error) });
             console.error('[SETTINGS] Connect error:', error);
             await UIManager.showModal(errorMsg);
         }
