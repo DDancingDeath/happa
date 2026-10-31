@@ -14,6 +14,7 @@ import { HealthManager } from '../modules/health.js';
 import { CashManagementManager } from '../modules/cash-management.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
+import { TODAY_SPEC, todaySummary } from '../utils/calc/today.js';
 
 const FIXTURES = path.resolve(__dirname, '../../../tests/fixtures/calculations');
 const FIX = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'today-days.json'), 'utf8'));
@@ -80,5 +81,33 @@ describe('Today screen, pinned (today-days.json)', () => {
         const got = renderToday(FIX.cases[name]);
         if (RECORD) EXPECTED[name] = got;
         else expect(got).toEqual(EXPECTED[name]);
+    });
+});
+
+describe('todaySummary() alone (utils/calc/today.js)', () => {
+    const summaryOf = (c) => todaySummary({
+        bills: { purchase: copy(c.purchases), wholesale: copy(c.wholesaleSales), retail: copy(c.retailSales) },
+        expenses: copy(c.expenses),
+        sessions: [c.liveSession, ...c.daySessions].filter(Boolean).map(copy),
+        settings: copy(c.settings),
+        today: new Date(c.now)
+    });
+
+    test.each(Object.keys(FIX.cases))('%s day: the pinned day-report figures', (name) => {
+        if (RECORD) return;
+        const s = summaryOf(FIX.cases[name]);
+        expect({
+            sales: s.sales, saleCount: s.saleCount, purchases: s.purchases, purchaseCount: s.purchaseCount,
+            expenses: s.expenses, totalIn: s.totalIn, totalOut: s.totalOut, dueReceived: s.dueReceived, duePaid: s.duePaid,
+            labourDeducted: s.labour.deducted.amount, labourDeductedBills: s.labour.deducted.bills, labourToPay: s.labour.toPay
+        }).toEqual(EXPECTED[name].dayReport);
+    });
+
+    test('every figure has a spec ID that docs/calculations.md defines', () => {
+        const s = summaryOf(FIX.cases.rich);
+        expect(Object.keys(s).filter(k => k !== 'from' && k !== 'to').sort()).toEqual(Object.keys(TODAY_SPEC).sort());
+        const doc = fs.readFileSync(path.resolve(__dirname, '../../../docs/calculations.md'), 'utf8');
+        const ids = new Set(Object.values(TODAY_SPEC).flatMap(v => v.split(', ')));
+        ids.forEach(id => expect(doc).toMatch(new RegExp(`^\\| ${id} \\|`, 'm')));
     });
 });

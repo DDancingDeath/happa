@@ -190,6 +190,28 @@ export function today(data, nowMs, session = null) {
     };
 }
 
+/** T17: the day's bill lines by item name (lines, kg, value, average rate), highest value first. */
+export function todayItems(data, nowMs) {
+    const range = dayRange(nowMs);
+    const group = (bills) => {
+        const rows = new Map();
+        bills.forEach(b => (b.items || []).forEach(l => {
+            const name = l.item || l.name || 'Unknown';
+            const row = rows.get(name) || { name, lines: 0, kg: 0, value: 0 };
+            row.lines += 1;
+            row.kg += n(l.qty ?? l.quantity);
+            row.value += n(l.total ?? l.amount);
+            rows.set(name, row);
+        }));
+        return [...rows.values()].sort((a, b) => b.value - a.value)
+            .map(r => ({ name: r.name, lines: r.lines, kg: r2(r.kg), value: r2(r.value), avgRate: r.kg > 0 ? r2(r.value / r.kg) : null }));
+    };
+    return {
+        purchases: group(datedBills(data.purchases, range)),
+        sales: group([...datedBills(data.wholesaleSales, range), ...datedBills(data.retailSales, range)])
+    };
+}
+
 // ---------------------------------------------------------------- Labour (T-LAB-*)
 
 /**

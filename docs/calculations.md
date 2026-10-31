@@ -51,24 +51,27 @@ as its own line, M7. `insights-config.js` `labourInCost` keeps the choice in one
 
 All for DAY = today. Due payments (T6–T9, T13, T14) come from the loaded bills and the legs of every cash session of the day, read with one query (a legacy day can have two; the drawer is still the one the Cash page picks), each payment id once, as the day book (ST1).
 
-| ID | On screen | Definition |
-|---|---|---|
-| T1 | Purchases | Σ BILL-TOTAL of today's purchases; count of bills. |
-| T2 | Sales | Σ BILL-TOTAL of today's wholesale + retail sales; count of bills. |
-| T3 | Labour › Deducted from farmers | Same number as T-LAB-1 below. |
-| T4 | Business expenses | Σ today's expenses of kind business (EXP-KIND), untagged ones included. |
-| T5 | Personal expenses | Σ today's expenses tagged personal. |
-| T6 | Cash received | BILL-AT-SAVE cash of today's sales + cash part of DUE-PAYs received today. |
-| T7 | Online received | Same, online. |
-| T8 | Cash paid | BILL-AT-SAVE cash of today's purchases + all of today's expenses + cash part of DUE-PAYs paid today. (❓ open: #117 adds a cash/online mode for expenses; until then all expenses count as cash.) |
-| T9 | Online paid | BILL-AT-SAVE online of today's purchases + online part of DUE-PAYs paid today. |
-| T10 | Total in | T6 + T7. |
-| T11 | Total out | T8 + T9. |
-| T12 | Net inflow / outflow | T10 − T11, shown as an amount with "Net inflow" or "Net outflow". |
-| T13 | Due received | DUE-PAYs received today (cash + online). |
-| T14 | Due paid | DUE-PAYs paid today (cash + online). |
-| T15 | Due to receive | Σ BILL-DUE of today's sales (new dues made today; OPENING records are not today's sales even when dated today). The all-time total is on Outstanding / Finance (F9). |
-| T16 | Due to pay | Σ BILL-DUE of today's purchases (OPENING records left out, as T15). |
+One pure function computes every figure: `todaySummary({ bills, expenses, sessions, settings, today })` in `www/js/utils/calc/today.js` (field → ID in `TODAY_SPEC`); `modules/day.js` only gathers its inputs and renders it. Tests: `tests/oracle/screens.test.js` (screen and function vs the oracle) and `www/js/__tests__/today-characterisation.test.js` (exact screen text pinned for `tests/fixtures/calculations/today-days.json`).
+
+| ID | On screen | Definition | Owner (`todaySummary()` field) |
+|---|---|---|---|
+| T1 | Purchases | Σ BILL-TOTAL of today's purchases; count of bills. | `purchases`, `purchaseCount` |
+| T2 | Sales | Σ BILL-TOTAL of today's wholesale + retail sales; count of bills. | `sales`, `saleCount` |
+| T3 | Labour › Deducted from farmers | Same number as T-LAB-1 below. | `labour.deducted.amount` |
+| T4 | Business expenses | Σ today's expenses of kind business (EXP-KIND), untagged ones included. | `businessExpenses`, `businessExpenseCount` |
+| T5 | Personal expenses | Σ today's expenses tagged personal. | `personalExpenses`, `personalExpenseCount` |
+| T6 | Cash received | BILL-AT-SAVE cash of today's sales + cash part of DUE-PAYs received today. | `cashIn` |
+| T7 | Online received | Same, online. | `onlineIn` |
+| T8 | Cash paid | BILL-AT-SAVE cash of today's purchases + all of today's expenses + cash part of DUE-PAYs paid today. (❓ open: #117 adds a cash/online mode for expenses; until then all expenses count as cash.) | `cashOut` (expenses term: `expenses`) |
+| T9 | Online paid | BILL-AT-SAVE online of today's purchases + online part of DUE-PAYs paid today. | `onlineOut` |
+| T10 | Total in | T6 + T7. | `totalIn` |
+| T11 | Total out | T8 + T9. | `totalOut` |
+| T12 | Net inflow / outflow | T10 − T11, shown as an amount with "Net inflow" or "Net outflow". | `net` (= −`netOutflow`); label from `isOutflow`, amount `netAmount` |
+| T13 | Due received | DUE-PAYs received today (cash + online). | `dueReceived` |
+| T14 | Due paid | DUE-PAYs paid today (cash + online). | `duePaid` |
+| T15 | Due to receive | Σ BILL-DUE of today's sales (new dues made today; OPENING records are not today's sales even when dated today). The all-time total is on Outstanding / Finance (F9). | `dueToReceive` |
+| T16 | Due to pay | Σ BILL-DUE of today's purchases (OPENING records left out, as T15). | `dueToPay` |
+| T17 | Item cards (Purchases / Sales by item) | The day's bill lines (purchases; wholesale + retail sales; OPENING records have none) grouped by item name (`item`, else `name`, else "Unknown"): lines, Σ kg (`qty`, else `quantity`), Σ value (`total`, else `amount`), average rate = value ÷ kg (2 decimals; ₹0 when there is no kg). Highest value first. | `purchaseItems`, `saleItems` (`itemRows()`) |
 
 ### Labour: deducted and to pay (`utils/labour.js`)
 
@@ -76,7 +79,7 @@ Two different questions, both shown on the Today Labour card (tap for each
 bill), in the day report (WhatsApp / image) and, for a period, on Money ›
 Spending (M7, M18): Today is their home for today, Money › Spending for periods. One implementation: `labourSummary()` in
 `utils/labour.js`; oracle: `tests/oracle/labour.test.js`. Purchases only,
-OPENING records left out (`activityBills()`).
+OPENING records left out (`activityBills()`). On Today they are `todaySummary().labour`: `deducted` (T-LAB-1), `toPay` (T-LAB-2), `gap` (T-LAB-3, `labourGap()`) and `packets` (the breakdown's total packets).
 
 | ID | On screen | Definition |
 |---|---|---|
