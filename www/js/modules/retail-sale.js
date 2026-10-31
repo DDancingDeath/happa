@@ -683,9 +683,9 @@ const RetailSaleManager = {
                 return;
             }
             
-            await printPromise;
+            const printed = await printPromise;
             
-            if (savedSale) {
+            if (savedSale && printed === true) {
                 UIManager.showToast(t('msg.common.sale_saved_printed'));
             }
         } catch (error) {

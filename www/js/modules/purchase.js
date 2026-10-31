@@ -543,8 +543,8 @@ const PurchaseManager = {
             }));
             
             if (!printPromise) return;
-            await printPromise;
-            if (savedBill) {
+            const printed = await printPromise;
+            if (savedBill && printed === true) {
                 UIManager.showToast(t('msg.purchase.bill_saved_printed'));
             }
         } catch (error) {
