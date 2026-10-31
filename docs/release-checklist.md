@@ -1,11 +1,17 @@
 # Release checklist
 
-Run this before every APK release (`v<x.y.z>` or `-rc<n>` tag) and before any
-web deploy that changes billing, printing, cash or offline saving. It takes about
-30 minutes. If any step fails, don't release; open an issue and fix it first.
+Manual checks for every APK release, about 30 minutes. If any step fails, don't
+publish the final release; open an issue and fix it first.
 
-Release steps (changelog, `npm run release`, tag) are in AGENTS.md section 5,
-"Releasing". The first release (v1.0.0) also follows [happa-go-live.md](happa-go-live.md).
+The order (release steps themselves: AGENTS.md section 5, "Releasing"; the first
+release, v1.0.0, also follows [happa-go-live.md](happa-go-live.md)):
+
+1. Merge the release to `main` **after shop hours**: the website updates at the merge.
+2. Tag a release candidate `v<x.y.z>-rc<n>` from that commit. It builds the signed
+   APK as a prerelease that the update banner and `/download` never offer.
+3. Run sections 1–5 and 7 below with the RC's `happa.apk`.
+4. All good: tag `v<x.y.z>` on the same commit, after shop hours (section 8).
+5. Section 6 (blocking old versions) only later, once every phone has the new APK.
 
 ## 1. Before you start
 
@@ -22,12 +28,12 @@ Release steps (changelog, `npm run release`, tag) are in AGENTS.md section 5,
       "Data reads this session" on the main phones).
 
 Use a test phone signed in as the owner, plus one phone with a non-owner role.
-Test against the live site / the new APK, not the emulator.
+Test against the live site and the RC APK, not the emulator.
 
 ## 2. Install over the previous APK
 
 - [ ] On a phone that has the **previous** release installed (with data and a
-      saved printer), install the new `happa.apk` from the GitHub release.
+      saved printer), install the RC's `happa.apk` from its GitHub release page.
       It must install **over** it with no "App not installed" error. That error
       means the signing key changed: stop, never ask users to uninstall.
 - [ ] After opening: still signed in, the language, the printer and any
@@ -68,7 +74,7 @@ new APK.
 
 - [ ] In the Firebase console → Firestore → `settings/app`, set
       `minClientVersion` to the new `CLIENT_VERSION`.
-- [ ] A phone still on the older APK shows "This app version is outdated. Please
+- [ ] A test phone kept on the older APK shows "This app version is outdated. Please
       update the app to continue." at start and can't save anything.
 - [ ] A phone on the new APK still opens and saves normally.
 - [ ] If a phone that needs to work gets blocked by mistake, set
@@ -90,8 +96,9 @@ the last row needs an issue before it goes out.
 
 ## 8. Roll out after shop hours
 
-- [ ] Publish the release (push the tag) **after the shop closes**, never during
-      billing hours, so a bad build can't stop a sale.
+- [ ] Merge to `main` (the website update) and push the final `v<x.y.z>` tag
+      (the APK and its update banner) only **after the shop closes**, never
+      during billing hours, so a bad build can't stop a sale.
 - [ ] Next morning, before billing starts: open the app on each phone, confirm
       the new version, print one test bill and check App health for new failures.
 - [ ] If something is badly wrong, fix forward with a new release (Android won't

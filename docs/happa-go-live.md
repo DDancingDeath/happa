@@ -240,8 +240,8 @@ remove any stored password for them, and delete the branch
 
 ## 11. Tag v1.0.0 (Android release)
 
-Run the manual checks in [release-checklist.md](release-checklist.md) first
-(printer, offline bills, cash, install over the RC, timings).
+Run the manual checks in [release-checklist.md](release-checklist.md) on a
+release candidate first (printer, offline bills, cash, install over the RC, timings).
 
 ```powershell
 git fetch origin

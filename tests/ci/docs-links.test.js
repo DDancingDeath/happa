@@ -20,18 +20,50 @@ function markdownFiles(dir, out = []) {
     return out;
 }
 
-/** Relative link targets of a Markdown text, without code blocks/spans. */
-function relativeLinks(text) {
-    const prose = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
-    const links = [];
-    const re = /!?\[[^\]\n]*\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)/g;
-    let m;
-    while ((m = re.exec(prose))) {
-        const target = m[1];
-        if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith('#') || target.startsWith('//')) continue;
-        links.push(target);
+/** The text outside fenced code blocks (``` or ~~~, closed by a fence at least as long) and code spans. */
+function proseOf(text) {
+    const out = [];
+    let fence = null;
+    text.split(/\r?\n/).forEach(line => {
+        const m = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+        if (fence) {
+            if (m && m[1][0] === fence[0] && m[1].length >= fence.length && !line.slice(line.indexOf(m[1]) + m[1].length).trim()) fence = null;
+            return;
+        }
+        if (m) { fence = m[1]; return; }
+        out.push(line.replace(/(`+)[^`]*?\1/g, ''));
+    });
+    return out.join('\n');
+}
+
+/** Destination of an inline link starting at text[i] (just after "]("), or null. */
+function destinationAt(text, i) {
+    while (text[i] === ' ' || text[i] === '\t') i++;
+    if (text[i] === '<') {
+        const end = text.indexOf('>', i);
+        return end > i ? text.slice(i + 1, end) : null;
     }
-    return links;
+    let depth = 0;
+    let j = i;
+    for (; j < text.length; j++) {
+        const c = text[j];
+        if (/\s/.test(c)) break;
+        if (c === '(') depth++;
+        else if (c === ')') { if (depth === 0) break; depth--; }
+    }
+    return j > i ? text.slice(i, j) : null;
+}
+
+/** Relative link targets (inline links, images and reference definitions) outside code. */
+function relativeLinks(text) {
+    const prose = proseOf(text);
+    const targets = [];
+    for (let i = prose.indexOf(']('); i !== -1; i = prose.indexOf('](', i + 2)) {
+        const dest = destinationAt(prose, i + 2);
+        if (dest) targets.push(dest);
+    }
+    for (const m of prose.matchAll(/^\s{0,3}\[[^\]\n]+\]:\s*<?([^\s>]+)>?/gm)) targets.push(m[1]);
+    return targets.filter(t => !/^[a-z][a-z0-9+.-]*:/i.test(t) && !t.startsWith('#') && !t.startsWith('//'));
 }
 
 describe('docs link check', () => {
@@ -58,7 +90,13 @@ describe('docs link check', () => {
     });
 
     test('the parser skips external links, anchors and code', () => {
-        const text = '[a](docs/x.md) [b](https://e.com) [c](#top) `[d](no.md)`\n```\n[e](no2.md)\n```\n![img](i.png "t")';
-        expect(relativeLinks(text)).toEqual(['docs/x.md', 'i.png']);
+        const text = [
+            "[a](docs/x.md) [b](https://e.com) [c](#top) `[d](no.md)` ``[e](no.md)``",
+            '````', '```', '[f](no2.md)', '```', '````',
+            '~~~~', '~~~', '[g](no3.md)', '~~~', '~~~~',
+            '![img](i.png "t") [h](y.md \'t\') [**[i]**](z.md) [j](<my file.md>) [k](foo_(bar).md)',
+            '[ref]: refs/r.md "Title"'
+        ].join('\n');
+        expect(relativeLinks(text)).toEqual(['docs/x.md', 'i.png', 'y.md', 'z.md', 'my file.md', 'foo_(bar).md', 'refs/r.md']);
     });
 });

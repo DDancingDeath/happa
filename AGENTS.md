@@ -328,10 +328,12 @@ section 7) before pushing; don't commit one-off probe scripts.
 2. `npm run release -- <x.y.z> --code <n>` (updates `package.json`,
    `www/js/version.js`, `android/app/build.gradle`), then
    `npm run check:release`.
-3. Run the manual checks in `docs/release-checklist.md` (real printer, 5 bills
-   offline, cash open/close, install over the previous APK, timings; release
-   after shop hours).
-4. Merge to `main` (web deploys automatically), then push tag `v<x.y.z>`.
+3. Merge to `main` after shop hours (web deploys automatically), then push a
+   release-candidate tag `v<x.y.z>-rc<n>` (a prerelease, never offered by the
+   update banner) and run the manual checks in `docs/release-checklist.md` with
+   its APK (real printer, 5 bills offline, cash open/close, install over the
+   previous APK, timings).
+4. All good: push tag `v<x.y.z>` on the same commit, after shop hours.
    The tag-driven Android release workflow (#92 / PR #173) builds and signs
    the APK (Happa key, `HAPPA_*` secrets, pinned to `HAPPA_CERT_SHA256`) and
    publishes a GitHub Release with `happa.apk`.
