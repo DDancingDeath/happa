@@ -236,6 +236,12 @@ In order:
 
 - SheetJS (`XLSX`) is loaded on demand via `ensureXLSX()` in
   `www/js/utils/lazy-scripts.js`; don't add it back as a `<script>` tag.
+- `firebase.json` sends security headers and a **report-only** CSP on every
+  path (#89, `docs/security.md`). A new external origin (fetch, script, image)
+  goes into that CSP in the same PR: `security-headers.test.js` fails on an
+  `https://` origin in `www/` the CSP doesn't list, and the E2E fixture fails on
+  any CSP report. Its `script-src 'unsafe-inline'` is only there for the inline
+  handlers; don't add new inline `<script>` blocks.
 - `firebase` global is the compat-SDK style — modular SDK is intentionally
   not used.
 - Many functions are async but are called without `await` — that's a real

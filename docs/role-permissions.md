@@ -476,6 +476,15 @@ client-only (below).
   missing/non-integer/out-of-range `editDays`.
 - An unknown role gets member access in the client (the rules already refuse unknown roles).
 
+## App Check (not enabled, #89)
+
+Today only these rules protect the data: anyone with the public web config can call Firestore
+and Auth from a script, so every check above must stay in the rules, not only in the client.
+App Check (reCAPTCHA Enterprise for the web, Play Integrity for the APK) would also refuse
+calls that don't come from the real app. It is assessed but not enabled; the costs, the
+tenant-link-page and old-APK blockers and the rollout order are in
+[security.md](security.md#app-check-assessment-not-enabled).
+
 ## Migration and old APKs
 
 - No data migration. Nothing is written until the owner saves Roles & access.
