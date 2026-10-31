@@ -389,7 +389,7 @@ in `.github/review-rules-examples/`.
 Every money/stock number the app shows has a plain-language definition with a
 spec ID in `docs/calculations.md`. Money, insight and statement figures (M*, I*)
 come from one pure module, `www/js/utils/business-metrics.js` (owner choices in
-`utils/insights-config.js`); pages only render them, and each figure has one home
+`utils/insights-config.js`), and Today's (T*) from `todaySummary()` in `www/js/utils/calc/today.js`; pages only render them, and each figure has one home
 page (`utils/metric-registry.js`, checked by `metric-registry.test.js`). `tests/oracle/` recomputes each one with an
 independent, simple implementation and compares it with the screen;
 `tests/property/` runs the accounting checks (stock value adds up, bill split,

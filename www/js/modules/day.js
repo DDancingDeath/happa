@@ -4,10 +4,9 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { activityBills, outstandingDue, round2 } from '../utils/money.js';
-import { formatKg, labourCalcText, labourSummary } from '../utils/labour.js';
+import { formatKg, labourCalcText } from '../utils/labour.js';
 import { parseAnyBillDate, todayLocalISO, displayLocale } from '../utils/dates.js';
-import { dueEvents, sumDueEvents, saleTimePayment } from '../utils/due-payments.js';
+import { todaySummary } from '../utils/calc/today.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
 import { sessionForDate } from '../utils/cash-session.js';
@@ -18,6 +17,7 @@ import { t, tn } from '../i18n/index.js';
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
 const formatDate = (date) => Helpers.formatDate(date);
+const LABOUR_GAP_KEYS = { same: 'ui.today.labour_same', more: 'ui.today.labour_more', less: 'ui.today.labour_less' };
 
 export const DayManager = {
     currentSubTab: 'today',
@@ -120,187 +120,75 @@ export const DayManager = {
      * Load today's summary data
      */
     loadTodayData() {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        // Filter today's purchases
-        const todayPurchases = activityBills(AppState.purchaseHistory).filter(p => {
-            const date = parseAnyBillDate(p.date);
-            return date && date >= today && date < tomorrow;
-        });
-
-        // Filter today's wholesale sales
-        const todayWholesaleSales = activityBills(AppState.salesHistory).filter(s => {
-            const date = parseAnyBillDate(s.date);
-            return date && date >= today && date < tomorrow;
-        });
-
-        // Filter today's retail sales
-        const todayRetailSales = activityBills(AppState.retailSalesHistory).filter(s => {
-            const date = parseAnyBillDate(s.date);
-            return date && date >= today && date < tomorrow;
-        });
-
-        // Filter today's expenses
-        const todayExpenses = (AppState.expensesHistory || []).filter(e => {
-            const date = parseAnyBillDate(e.date);
-            return date && date >= today && date < tomorrow;
-        });
-
-        // Calculate totals
-        // Purchases can have: grandTotal, amountPayable, billTotal, or total
-        const totalPurchases = todayPurchases.reduce((sum, p) => {
-            const amount = Number(p.grandTotal) || Number(p.amountPayable) || Number(p.billTotal) || Number(p.total) || 0;
-            return sum + amount;
-        }, 0);
-        const totalWholesaleSales = todayWholesaleSales.reduce((sum, s) => {
-            const amount = Number(s.grandTotal) || Number(s.total) || Number(s.saleTotal) || 0;
-            return sum + amount;
-        }, 0);
-        const totalRetailSales = todayRetailSales.reduce((sum, s) => {
-            const amount = Number(s.grandTotal) || Number(s.total) || Number(s.saleTotal) || 0;
-            return sum + amount;
-        }, 0);
-        const totalSales = totalWholesaleSales + totalRetailSales;
-        
-        // EXP-KIND: personal only when tagged personal; untagged counts as business (#219)
-        const isPersonal = (e) => String(e.category || e.type || '').toLowerCase() === 'personal';
-        const businessExpenses = todayExpenses.filter(e => !isPersonal(e));
-        const personalExpenses = todayExpenses.filter(isPersonal);
-        
-        const totalBusinessExpenses = businessExpenses.reduce((sum, e) => {
-            return sum + (Number(e.amount) || Number(e.total) || 0);
-        }, 0);
-        const totalPersonalExpenses = personalExpenses.reduce((sum, e) => {
-            return sum + (Number(e.amount) || Number(e.total) || 0);
-        }, 0);
-        const totalExpenses = totalBusinessExpenses + totalPersonalExpenses;
-
-        // Labour (T-LAB-1 deducted from farmers, T-LAB-2 to pay labour)
-        const labour = labourSummary(todayPurchases, AppState.settings);
-        const totalLaborCost = labour.deducted.amount;
-
-        // Calculate quantities
-        let qtyPurchased = 0;
-        todayPurchases.forEach(p => {
-            (p.items || []).forEach(item => {
-                qtyPurchased += parseFloat(item.qty || item.quantity || 0);
-            });
-        });
-
-        let qtySold = 0;
-        [...todayWholesaleSales, ...todayRetailSales].forEach(s => {
-            (s.items || []).forEach(item => {
-                qtySold += parseFloat(item.qty || item.quantity || 0);
-            });
-        });
-
-        // Calculate payments
-        let cashReceived = 0, onlineReceived = 0, cashPaid = 0, onlinePaid = 0;
-        let dueToReceive = 0, dueToPay = 0;
-
-        // From purchases (cash/online paid when saved, due to pay). Money paid
-        // later on a bill is a due payment, counted on the day it was paid.
-        todayPurchases.forEach(p => {
-            const paid = saleTimePayment(p);
-            cashPaid += paid.cash;
-            onlinePaid += paid.online;
-            dueToPay += outstandingDue(p); // 0 once cleared
-        });
-
-        // From sales (cash/online received when saved, due to receive)
-        [...todayWholesaleSales, ...todayRetailSales].forEach(s => {
-            const paid = saleTimePayment(s);
-            cashReceived += paid.cash;
-            onlineReceived += paid.online;
-            dueToReceive += outstandingDue(s);
-        });
-
-        // Due payments made today (#95): entries on any loaded bill plus the
-        // drawer legs in every one of today's cash sessions, counted once (cash + online).
         const todayIso = todayLocalISO();
         const session = CashManagementManager.todaySession;
-        const dues = sumDueEvents(dueEvents({
-            bills: { retail: AppState.retailSalesHistory || [], wholesale: AppState.salesHistory || [], purchase: AppState.purchaseHistory || [] },
+        const s = todaySummary({
+            bills: { purchase: AppState.purchaseHistory, wholesale: AppState.salesHistory, retail: AppState.retailSalesHistory },
+            expenses: AppState.expensesHistory,
             sessions: this.sessionsOn(todayIso),
-            from: today.getTime(),
-            to: tomorrow.getTime()
-        }));
-        const dueReceived = round2(dues.receivedCash + dues.receivedOnline);
-        const duePaid = round2(dues.paidCash + dues.paidOnline);
-
-        // Breakdown by method, including due payments; the hero totals are their sums
-        const cashIn = round2(cashReceived + dues.receivedCash);
-        const onlineIn = round2(onlineReceived + dues.receivedOnline);
-        const cashOut = round2(cashPaid + totalExpenses + dues.paidCash);
-        const onlineOut = round2(onlinePaid + dues.paidOnline);
-        const totalCashIn = round2(cashIn + onlineIn);
-        const totalCashOut = round2(cashOut + onlineOut);
-        const totalCashFlow = totalCashIn - totalCashOut;
-
-        // Net outflow (Out - In): positive means money went out, negative means money came in
-        const netOutflow = totalCashOut - totalCashIn;
+            settings: AppState.settings,
+            today: new Date()
+        });
+        const { labour } = s;
 
         // Update UI - Main Stats
-        this.updateElement('todayTotalPurchases', formatCurrency(totalPurchases));
-        this.updateElement('todayPurchaseCount', tn('ui.today.bills_count', todayPurchases.length));
-        this.updateElement('todayTotalSales', formatCurrency(totalSales));
-        this.updateElement('todaySaleCount', tn('ui.today.bills_count', todayWholesaleSales.length + todayRetailSales.length));
-        this.updateElement('todayLaborCost', formatCurrency(totalLaborCost));
+        this.updateElement('todayTotalPurchases', formatCurrency(s.purchases));
+        this.updateElement('todayPurchaseCount', tn('ui.today.bills_count', s.purchaseCount));
+        this.updateElement('todayTotalSales', formatCurrency(s.sales));
+        this.updateElement('todaySaleCount', tn('ui.today.bills_count', s.saleCount));
+        this.updateElement('todayLaborCost', formatCurrency(labour.deducted.amount));
         this.renderLabour(labour);
         
         // Expenses breakdown
-        this.updateElement('todayBusinessExpenses', formatCurrency(totalBusinessExpenses));
-        this.updateElement('todayBusinessExpenseCount', tn('ui.today.entries_count', businessExpenses.length));
-        this.updateElement('todayPersonalExpenses', formatCurrency(totalPersonalExpenses));
-        this.updateElement('todayPersonalExpenseCount', tn('ui.today.entries_count', personalExpenses.length));
+        this.updateElement('todayBusinessExpenses', formatCurrency(s.businessExpenses));
+        this.updateElement('todayBusinessExpenseCount', tn('ui.today.entries_count', s.businessExpenseCount));
+        this.updateElement('todayPersonalExpenses', formatCurrency(s.personalExpenses));
+        this.updateElement('todayPersonalExpenseCount', tn('ui.today.entries_count', s.personalExpenseCount));
         
         // Total In and Total Out for hero card
-        this.updateElement('todayTotalIn', formatCurrency(totalCashIn));
-        this.updateElement('todayTotalOut', formatCurrency(totalCashOut));
+        this.updateElement('todayTotalIn', formatCurrency(s.totalIn));
+        this.updateElement('todayTotalOut', formatCurrency(s.totalOut));
         
         // Net outflow with color coding
         const cashFlowLabel = document.getElementById('todayCashFlowLabel');
         if (cashFlowLabel) {
-            cashFlowLabel.textContent = t(netOutflow >= 0 ? 'ui.today.net_outflow' : 'ui.today.net_inflow');
+            cashFlowLabel.textContent = t(s.isOutflow ? 'ui.today.net_outflow' : 'ui.today.net_inflow');
         }
         
         const netCashFlowEl = document.getElementById('todayNetCashFlow');
         if (netCashFlowEl) {
-            netCashFlowEl.style.color = netOutflow >= 0 ? 'white' : '#a5f3fc';
-            netCashFlowEl.textContent = formatCurrency(Math.abs(netOutflow));
+            netCashFlowEl.style.color = s.isOutflow ? 'white' : '#a5f3fc';
+            netCashFlowEl.textContent = formatCurrency(s.netAmount);
         }
 
         // Payment summary
-        this.updateElement('todayCashReceived', formatCurrency(cashIn));
-        this.updateElement('todayOnlineReceived', formatCurrency(onlineIn));
-        this.updateElement('todayCashPaid', formatCurrency(cashOut));
-        this.updateElement('todayOnlinePaid', formatCurrency(onlineOut));
+        this.updateElement('todayCashReceived', formatCurrency(s.cashIn));
+        this.updateElement('todayOnlineReceived', formatCurrency(s.onlineIn));
+        this.updateElement('todayCashPaid', formatCurrency(s.cashOut));
+        this.updateElement('todayOnlinePaid', formatCurrency(s.onlineOut));
         
         // Total cash flow with color
         const totalCashFlowEl = document.getElementById('todayTotalCashFlow');
         if (totalCashFlowEl) {
-            totalCashFlowEl.textContent = (totalCashFlow >= 0 ? '+' : '') + formatCurrency(totalCashFlow);
+            totalCashFlowEl.textContent = (s.net >= 0 ? '+' : '') + formatCurrency(s.net);
         }
 
         // Due summary
-        this.updateElement('todayDueReceived', formatCurrency(dueReceived));
-        this.updateElement('todayDuePaid', formatCurrency(duePaid));
-        this.updateElement('todayDueToReceive', formatCurrency(dueToReceive));
-        this.updateElement('todayDueToPay', formatCurrency(dueToPay));
+        this.updateElement('todayDueReceived', formatCurrency(s.dueReceived));
+        this.updateElement('todayDuePaid', formatCurrency(s.duePaid));
+        this.updateElement('todayDueToReceive', formatCurrency(s.dueToReceive));
+        this.updateElement('todayDueToPay', formatCurrency(s.dueToPay));
 
         // Render item-wise details
-        this.renderItemWiseDetails(todayPurchases, 'purchase');
-        this.renderItemWiseDetails([...todayWholesaleSales, ...todayRetailSales], 'sale');
+        this.renderItemWiseDetails(s.purchaseItems, 'purchase');
+        this.renderItemWiseDetails(s.saleItems, 'sale');
 
         // Day report (#187, #40): today's anomalies + review queue, shared with these totals
         AnomaliesManager.renderDayReport({
-            sales: totalSales, saleCount: todayWholesaleSales.length + todayRetailSales.length,
-            purchases: totalPurchases, purchaseCount: todayPurchases.length,
-            expenses: totalExpenses, totalIn: totalCashIn, totalOut: totalCashOut,
-            dueReceived, duePaid,
+            sales: s.sales, saleCount: s.saleCount,
+            purchases: s.purchases, purchaseCount: s.purchaseCount,
+            expenses: s.expenses, totalIn: s.totalIn, totalOut: s.totalOut,
+            dueReceived: s.dueReceived, duePaid: s.duePaid,
             labourDeducted: labour.deducted.amount, labourDeductedBills: labour.deducted.bills,
             labourToPay: labour.toPay
         }, session && session.date === todayIso ? session : null);
@@ -310,42 +198,14 @@ export const DayManager = {
     },
 
     /**
-     * Render item-wise purchase or sale details
-     * @param {Array} transactions - Array of purchase or sale transactions
+     * Render item-wise purchase or sale cards (T17)
+     * @param {Array<Object>} itemsArray - todaySummary().purchaseItems / saleItems
      * @param {string} type - 'purchase' or 'sale'
      */
-    renderItemWiseDetails(transactions, type) {
+    renderItemWiseDetails(itemsArray, type) {
         const containerId = type === 'purchase' ? 'todayPurchaseItems' : 'todaySaleItems';
         const container = document.getElementById(containerId);
         if (!container) return;
-
-        // Aggregate items from all transactions
-        const itemsMap = {};
-
-        transactions.forEach(t => {
-            const items = t.items || [];
-            items.forEach(item => {
-                const name = item.item || item.name || 'Unknown';
-                if (!itemsMap[name]) {
-                    itemsMap[name] = {
-                        name: name,
-                        count: 0,
-                        quantity: 0,
-                        totalValue: 0,
-                        rates: []
-                    };
-                }
-                itemsMap[name].count += 1;
-                itemsMap[name].quantity += parseFloat(item.qty || item.quantity || 0);
-                itemsMap[name].totalValue += parseFloat(item.total || item.amount || 0);
-                if (item.rate) {
-                    itemsMap[name].rates.push(parseFloat(item.rate));
-                }
-            });
-        });
-
-        // Convert to array and sort by total value (popularity)
-        const itemsArray = Object.values(itemsMap).sort((a, b) => b.totalValue - a.totalValue);
 
         if (itemsArray.length === 0) {
             container.innerHTML = `<p class="empty-state">${Helpers.escapeHtml(t(type === 'purchase' ? 'ui.today.no_purchases_today' : 'ui.today.no_sales_today'))}</p>`;
@@ -357,9 +217,7 @@ export const DayManager = {
 
         const label = (key) => Helpers.escapeHtml(t(key));
         container.innerHTML = itemsArray.map(item => {
-            const avgRate = item.quantity > 0 
-                ? (item.totalValue / item.quantity).toFixed(2)
-                : 0;
+            const avgRate = item.avgRate === null ? 0 : item.avgRate.toFixed(2);
             
             return `
                 <div class="stat-card ${cardClass}" style="text-align: left; padding: 14px;">
@@ -385,17 +243,15 @@ export const DayManager = {
 
     /**
      * Today › Labour card: deducted from farmers (T-LAB-1), to pay labour (T-LAB-2) and the gap.
-     * @param {ReturnType<typeof labourSummary>} labour
+     * @param {Object} labour - todaySummary().labour (labourSummary + gap + packets)
      */
     renderLabour(labour) {
         this.lastLabour = labour;
-        const { deducted, toPay, difference } = labour;
+        const { deducted, toPay, gap } = labour;
         this.updateElement('todayLabourDeductedBills', tn('ui.today.labour_deducted_bills', deducted.bills));
         this.updateElement('todayLabourToPay', formatCurrency(toPay.amount));
         this.updateElement('todayLabourToPayCalc', labourCalcText(toPay, 'ui.today.labour_to_pay_calc'));
-        const diff = Math.abs(difference);
-        const key = diff < 0.5 ? 'ui.today.labour_same' : difference > 0 ? 'ui.today.labour_more' : 'ui.today.labour_less';
-        this.updateElement('todayLabourDiff', t(key, { amount: formatCurrency(diff) }));
+        this.updateElement('todayLabourDiff', t(LABOUR_GAP_KEYS[gap.kind], { amount: formatCurrency(gap.amount) }));
     },
 
     /** Tap on the Labour card: today's purchase bills with kg, packets and labour deducted. */
@@ -403,12 +259,11 @@ export const DayManager = {
         const labour = this.lastLabour;
         if (!labour) return Promise.resolve(false);
         const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
-        const { deducted, toPay, rows } = labour;
+        const { deducted, toPay, rows, packets } = labour;
         const body = rows.length ? rows.map(({ bill, kg, packets, labour: amount }) => {
             const name = [bill.billNumber ? `#${bill.billNumber}` : '', bill.customerName || bill.seller || ''].filter(Boolean).join(' ');
             return `<tr><td>${esc(name || t('ui.reports.unknown'))}</td><td>${esc(formatKg(kg))}</td><td>${esc(packets)}</td><td>${esc(formatCurrency(amount))}</td></tr>`;
         }).join('') : `<tr><td colspan="4">${esc(t('ui.today.no_purchases_today'))}</td></tr>`;
-        const packets = rows.reduce((sum, r) => sum + r.packets, 0);
         const html = `
             <table class="labour-breakdown-table">
                 <thead><tr><th>${esc(t('ui.today.labour_col_bill'))}</th><th>${esc(t('ui.today.labour_col_kg'))}</th><th>${esc(t('ui.today.labour_col_packets'))}</th><th>${esc(t('ui.today.labour_col_deducted'))}</th></tr></thead>

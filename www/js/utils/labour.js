@@ -117,6 +117,16 @@ export function labourToPayByDay(bills, settings, dayKeyOf) {
 }
 
 /**
+ * T-LAB-3: how far to pay is from deducted; within 50 paise they "match".
+ * @param {number} difference - to pay − deducted
+ * @returns {{amount: number, kind: 'same'|'more'|'less'}}
+ */
+export function labourGap(difference) {
+    const amount = Math.abs(difference);
+    return { amount, kind: amount < 0.5 ? 'same' : difference > 0 ? 'more' : 'less' };
+}
+
+/**
  * Both labour figures for the Today card, the day report and Money › Spending.
  * @param {Array<Object>} bills - purchase bills of the period (opening records are left out here)
  * @param {Object} [settings]

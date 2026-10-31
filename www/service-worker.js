@@ -129,6 +129,7 @@ const STATIC_ASSETS = [
     '/js/utils/lazy-scripts.js',
     '/js/utils/money.js',
     '/js/utils/labour.js',
+    '/js/utils/calc/today.js',
     '/js/utils/number-checks.js',
     '/js/utils/notification-format.js',
     '/js/utils/record-permissions.js',
