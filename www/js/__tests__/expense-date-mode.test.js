@@ -59,13 +59,14 @@ describe('EXP-MODE and the day a new expense may have', () => {
 describe('Expenses form (#118)', () => {
     let saved;
     let modal;
+    let toast;
     beforeEach(() => {
         jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
         jest.setSystemTime(NOW);
         document.body.innerHTML = TEMPLATE;
         saved = [];
         modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
-        jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         jest.spyOn(UIManager, 'hapticFeedback').mockImplementation(() => {});
         jest.spyOn(UIManager, 'withLoading').mockImplementation(async (fn) => fn());
         jest.spyOn(AuditService, 'log').mockResolvedValue(undefined);
@@ -93,7 +94,10 @@ describe('Expenses form (#118)', () => {
     const fill = (category, { day, mode } = {}) => {
         setVal(`${category}ExpenseType`, 'Diesel');
         setVal(`${category}ExpenseAmount`, 500);
-        if (day !== undefined) setVal(`${category}ExpenseDate`, day);
+        if (day !== undefined) {
+            setVal(`${category}ExpenseDate`, day);
+            document.getElementById(`${category}ExpenseDate`).dispatchEvent(new Event('change'));
+        }
         if (mode !== undefined) setVal(`${category}ExpenseMode`, mode);
     };
 
@@ -139,6 +143,56 @@ describe('Expenses form (#118)', () => {
         const fields = update.mock.calls[0][1];
         expect('date' in fields || 'day' in fields || 'timestamp' in fields).toBe(false);
         expect([date.value, date.disabled]).toEqual(['2026-10-31', false]);
+    });
+
+    test('a form left open over midnight saves on the new day; showing it again moves the inputs', async () => {
+        jest.setSystemTime(new Date(2026, 9, 31, 23, 58));
+        ExpensesManager.renderexpensesHistory();
+        const date = document.getElementById('businessExpenseDate');
+        expect([date.value, date.max]).toEqual(['2026-10-31', '2026-10-31']);
+        jest.setSystemTime(new Date(2026, 10, 1, 0, 2));
+        fill('business');
+        await ExpensesManager.saveBusinessExpense();
+        expect(saved[0]).toMatchObject({ day: '2026-11-01', date: new Date(2026, 10, 1, 0, 2).toLocaleString('en-IN') });
+        // the app shown again the next day, then the Expenses tab the day after
+        jest.setSystemTime(new Date(2026, 10, 2, 9, 0));
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+        document.dispatchEvent(new Event('visibilitychange'));
+        expect([date.value, date.max, date.min]).toEqual(['2026-11-02', '2026-11-02', '2026-10-31']);
+        jest.setSystemTime(new Date(2026, 10, 3, 9, 0));
+        window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'expenses' } }));
+        expect([date.value, date.max]).toEqual(['2026-11-03', '2026-11-03']);
+        delete document.visibilityState;
+    });
+
+    test('a day the user picked stays picked over midnight; picking today follows the clock', async () => {
+        jest.setSystemTime(new Date(2026, 9, 31, 23, 58));
+        ExpensesManager.renderexpensesHistory();
+        fill('business', { day: '2026-10-30' });
+        fill('personal', { day: '2026-10-31' });
+        jest.setSystemTime(new Date(2026, 10, 1, 0, 2));
+        await ExpensesManager.saveBusinessExpense();
+        await ExpensesManager.savePersonalExpense();
+        expect(saved.map(e => e.day)).toEqual(['2026-10-30', '2026-11-01']);
+    });
+
+    test('a back-dated cash expense on a closed cash day says that day won\'t change', async () => {
+        const load = jest.spyOn(FirebaseService, 'loadCashSessionsForDate')
+            .mockResolvedValueOnce([{ id: 'cash_2026-10-30', date: '2026-10-30', signedOut: true, counted: true }])
+            .mockResolvedValueOnce([{ id: 'cash_2026-10-29', date: '2026-10-29', signedOut: false }]);
+        fill('business', { day: '2026-10-30' });
+        await ExpensesManager.saveBusinessExpense();
+        fill('business', { day: '2026-10-29' });
+        await ExpensesManager.saveBusinessExpense();
+        fill('business', { day: '2026-10-30', mode: 'online' });
+        await ExpensesManager.saveBusinessExpense();
+        fill('business');
+        await ExpensesManager.saveBusinessExpense();
+        expect(load.mock.calls.map(c => c[0])).toEqual(['2026-10-30', '2026-10-29']);
+        expect(toast.mock.calls).toEqual([
+            ["✓ Business expense saved. That day's cash is already closed; its figures won't change", 5000],
+            ['✓ Business expense saved'], ['✓ Business expense saved'], ['✓ Business expense saved']
+        ]);
     });
 
     test('lists and details say how it was paid (no mode = cash)', () => {

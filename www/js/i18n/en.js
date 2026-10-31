@@ -192,6 +192,7 @@ export default {
     'msg.expenses.date_in_future': "The date can't be in the future",
     'msg.expenses.date_today_only': "You can enter only today's expenses",
     'msg.expenses.date_too_old': "You can enter an expense only up to {days} days back",
+    'msg.expenses.saved_cash_day_closed': "{message}. That day's cash is already closed; its figures won't change",
     'msg.expenses.enter_expense_type': "Please enter expense type",
     'msg.expenses.expense_deleted': "✓ Expense deleted",
     'msg.expenses.expense_not_found': "Expense not found",

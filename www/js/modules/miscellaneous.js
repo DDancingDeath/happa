@@ -22,12 +22,16 @@ import { expenseMode, isPersonalExpense } from '../utils/money.js';
 import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpenseEntry } from '../utils/expense-entry.js';
 import { toLocalISODate } from '../utils/dates.js';
 import { personalDayKey } from '../utils/personal-expenses.js';
+import { sessionForDate } from '../utils/cash-session.js';
 
 /** Expense save / print buttons, disabled while one is being saved (#95). */
 const EXPENSE_BUTTONS = '[data-expense-save]';
 
 /** An input of a section's form: formField('business', 'Amount') → #businessExpenseAmount. */
 const formField = (category, name) => document.getElementById(`${category}Expense${name}`);
+
+/** How long the "saved" toast waits to learn whether a back-dated cash day is closed (#118). */
+const CLOSED_DAY_WAIT_MS = 1500;
 
 /** Escaped "Cash" / "Online" of an expense (EXP-MODE; no mode = cash). */
 const modeLabel = (expense) => tx(expenseMode(expense) === 'online' ? 'ui.expenses.mode_online' : 'ui.expenses.mode_cash');
@@ -159,7 +163,9 @@ export class ExpensesManager {
         const now = new Date();
         const mode = formField(category, 'Mode')?.value || DEFAULT_EXPENSE_MODE;
         const editing = this.editingExpense?.category === category;
-        const day = editing ? toLocalISODate(now) : (formField(category, 'Date')?.value || toLocalISODate(now));
+        // A day the user didn't pick is today at save time (a form left open over midnight, #118)
+        const dateInput = formField(category, 'Date');
+        const day = !editing && dateInput?.dataset.picked && dateInput.value ? dateInput.value : toLocalISODate(now);
         const problem = validateExpenseEntry({ day, mode }, { role: AppState.userRole, roleAccess: AppState.settings?.roleAccess, now });
         if (problem) {
             UIManager.showModal(t(problem.key, problem.params));
@@ -196,12 +202,42 @@ export class ExpensesManager {
             else input.removeAttribute('min');
             if (!input.dataset.prepared) {
                 input.dataset.prepared = '1';
-                input.addEventListener('change', () => { input.dataset.picked = '1'; });
+                // Picking today is the same as not picking: it follows the clock
+                input.addEventListener('change', () => {
+                    if (input.value && input.value !== toLocalISODate(new Date())) input.dataset.picked = '1';
+                    else delete input.dataset.picked;
+                });
             }
             if (this.editingExpense?.category === category) return;
             input.disabled = false;
             if (!input.dataset.picked || !input.value) input.value = range.max;
         });
+    }
+
+    /**
+     * "Saved" toast. A new cash expense dated on an earlier day whose cash is
+     * already closed adds that the closed day's figures won't change (#118):
+     * the closed session keeps the totals it was counted with.
+     * @param {string} key i18n key of the saved / updated message
+     * @param {Object} expense
+     * @param {boolean} updated an edit (keeps its date): no note
+     */
+    static async showSavedToast(key, expense, updated) {
+        const text = t(key);
+        if (updated || expenseMode(expense) !== 'cash' || !expense.day || expense.day >= toLocalISODate(new Date())) {
+            UIManager.showToast(text);
+            return;
+        }
+        let closed = false;
+        try {
+            const timeout = new Promise(resolve => setTimeout(() => resolve(null), CLOSED_DAY_WAIT_MS));
+            const sessions = await Promise.race([FirebaseService.loadCashSessionsForDate(expense.day), timeout]);
+            closed = !!sessionForDate(sessions || [], expense.day)?.signedOut;
+        } catch (e) {
+            console.warn('Expense: cash day not checked:', e?.code || e);
+        }
+        if (closed) UIManager.showToast(t('msg.expenses.saved_cash_day_closed', { message: text }), 5000);
+        else UIManager.showToast(text);
     }
 
     /**
@@ -292,7 +328,7 @@ export class ExpensesManager {
         
         
         UIManager.hapticFeedback('medium');
-        UIManager.showToast(updated ? t('msg.expenses.business_expense_updated') : t('msg.expenses.business_expense_saved'));
+        await this.showSavedToast(updated ? 'msg.expenses.business_expense_updated' : 'msg.expenses.business_expense_saved', expense, updated);
         
         document.getElementById('businessExpenseType').value = '';
         document.getElementById('businessExpensePerson').value = '';
@@ -334,7 +370,7 @@ export class ExpensesManager {
         if (updated === null) return;
         
         UIManager.hapticFeedback('medium');
-        UIManager.showToast(updated ? t('msg.expenses.personal_expense_updated') : t('msg.expenses.personal_expense_saved'));
+        await this.showSavedToast(updated ? 'msg.expenses.personal_expense_updated' : 'msg.expenses.personal_expense_saved', expense, updated);
         
         
         document.getElementById('personalExpenseType').value = '';
@@ -500,7 +536,7 @@ export class ExpensesManager {
         if (updated === null) return;
         
         UIManager.hapticFeedback('medium');
-        UIManager.showToast(updated ? t('msg.expenses.business_expense_updated') : t('msg.expenses.business_expense_saved'));
+        await this.showSavedToast(updated ? 'msg.expenses.business_expense_updated' : 'msg.expenses.business_expense_saved', expense, updated);
         
         document.getElementById('businessExpenseType').value = '';
         document.getElementById('businessExpensePerson').value = '';
@@ -800,7 +836,7 @@ export class ExpensesManager {
         if (updated === null) return;
         
         UIManager.hapticFeedback('medium');
-        UIManager.showToast(updated ? t('msg.expenses.personal_expense_updated') : t('msg.expenses.personal_expense_saved'));
+        await this.showSavedToast(updated ? 'msg.expenses.personal_expense_updated' : 'msg.expenses.personal_expense_saved', expense, updated);
         
         document.getElementById('personalExpenseType').value = '';
         document.getElementById('personalExpenseAmount').value = '';
@@ -820,9 +856,14 @@ export class ExpensesManager {
     }
 }
 
-// Leaving the Expenses tab abandons any in-progress edit
+// Leaving the Expenses tab abandons any in-progress edit; showing it (or the app again) moves
+// the date inputs to today if the day changed meanwhile (#118)
 if (typeof window !== 'undefined') {
     window.addEventListener('aadhat:tabshown', (event) => {
         if (event.detail?.tabId !== 'expenses') ExpensesManager.cancelExpenseEdit();
+        else ExpensesManager.prepareExpenseForms();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') ExpensesManager.prepareExpenseForms();
     });
 }

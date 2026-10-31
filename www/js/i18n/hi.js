@@ -192,6 +192,7 @@ export default {
     'msg.expenses.date_in_future': "तारीख आगे की नहीं हो सकती",
     'msg.expenses.date_today_only': "आप सिर्फ़ आज का खर्च लिख सकते हैं",
     'msg.expenses.date_too_old': "आप सिर्फ़ {days} दिन पीछे तक का खर्च लिख सकते हैं",
+    'msg.expenses.saved_cash_day_closed': "{message}। उस दिन का नकद पहले ही बंद हो चुका है; उसके आंकड़े नहीं बदलेंगे",
     'msg.expenses.enter_expense_type': "खर्च का प्रकार डालें",
     'msg.expenses.expense_deleted': "✓ खर्च हटा दिया",
     'msg.expenses.expense_not_found': "खर्च नहीं मिला",

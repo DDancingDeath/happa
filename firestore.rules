@@ -392,13 +392,21 @@ service cloud.firestore {
         && (!('day' in d) || (dayKeyOk(d.day) && expenseDayStart(d.day) <= request.time + duration.value(1, 'h')));
     }
 
-    // A new expense from this app (it sends paymentMode) may be dated back at most the
-    // role's edit window (roleAccess.<role>.editDays, as bills; the app allows exactly
-    // that), plus 3 days for a phone that saved it offline. The owner: any day.
+    // A new expense by anyone but the owner that names its day may be dated back at most
+    // the role's edit window (roleAccess.<role>.editDays, as bills; the app allows exactly
+    // that), plus 3 days for a phone that saved it offline. Its `date` (what the figures
+    // read) must be on that day: "D/M/YYYY, …" as en-IN writes it, with or without leading
+    // zeros. Older apps name the day only on personal expenses (today, from the date).
+    function expenseDateOnDay(d) {
+      return d.get('date', null) is string
+        && d.date.matches('^0?' + string(int(d.day[8:10])) + '/0?' + string(int(d.day[5:7])) + '/' + d.day[0:4] + '([^0-9].*)?$');
+    }
+
     function expenseDayInWindow(usersCol) {
       let d = request.resource.data;
-      return !('paymentMode' in d) || !('day' in d)
-        || request.time < expenseDayStart(d.day) + duration.value(billEditDays(usersCol) + 4, 'd');
+      return !('day' in d)
+        || (expenseDateOnDay(d)
+            && request.time < expenseDayStart(d.day) + duration.value(billEditDays(usersCol) + 4, 'd'));
     }
 
     function canUpdateExpense(usersCol) {

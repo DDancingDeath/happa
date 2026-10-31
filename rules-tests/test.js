@@ -1752,12 +1752,17 @@ function defineSuite(prefix) {
     const personalDays = `${prefix}personalExpenseDays`;
     const setPersonalAccess = (roleAccess) => env.withSecurityRulesDisabled(ctx =>
         ctx.firestore().collection(`${prefix}settings`).doc('app').set({ roleAccess }));
-    const pexp = (uid, extra = {}) => expense(uid, { category: 'personal', day: '2026-10-22', ...extra });
+    /** The local (IST) day `offset` days from today, YYYY-MM-DD. */
+    const istDay = (offset = 0) => new Date(Date.now() + 330 * MIN + offset * DAY).toISOString().slice(0, 10);
+    /** An expense `date` on that day, as en-IN writes it ("5/1/2026, 10:00:00 am"). */
+    const onDay = (day) => `${Number(day.slice(8, 10))}/${Number(day.slice(5, 7))}/${day.slice(0, 4)}, 10:00:00 am`;
+    const PDAY = istDay(0);
+    const pexp = (uid, extra = {}) => expense(uid, { category: 'personal', day: PDAY, date: onDay(PDAY), ...extra });
     const dayKey = (id, amount) => ({ amounts: { [id]: amount === null ? FieldValue.delete() : amount }, last: id });
 
     t('personal expenses (#98): owner always; managers and members while their switch is on (default)', async () => {
         await seedBill(personal, 'p1', pexp('legacyOwner'));
-        await seedBill(personalDays, '2026-10-22', { amounts: { p1: 50 }, last: 'p1' });
+        await seedBill(personalDays, PDAY, { amounts: { p1: 50 }, last: 'p1' });
         for (const uid of ['legacyOwner', 'manager1', 'staff1', 'legacyStaff']) {
             await assertSucceeds(as(uid).collection(personal).get());
             await assertSucceeds(as(uid).collection(personal).doc('p1').get());
@@ -1769,14 +1774,14 @@ function defineSuite(prefix) {
         await assertSucceeds(as('manager1').collection(personal).get());
         await assertSucceeds(as('legacyOwner').collection(personal).get());
         // the day totals stay readable, so the cash count and Today still add them up
-        await assertSucceeds(as('staff1').collection(personalDays).doc('2026-10-22').get());
-        await assertFails(as('staff1').collection(personalDays).doc('2026-10-22').set(dayKey('p1', 50), { merge: true }));
+        await assertSucceeds(as('staff1').collection(personalDays).doc(PDAY).get());
+        await assertFails(as('staff1').collection(personalDays).doc(PDAY).set(dayKey('p1', 50), { merge: true }));
         await setPersonalAccess({ manager: { personalExpenses: false } });
         await assertFails(as('manager1').collection(personal).get());
         await assertSucceeds(as('staff1').collection(personal).get());
         for (const uid of ['pending1', 'rejected1', 'noRole', 'rentOnly', 'ghost']) {
             await assertFails(as(uid).collection(personal).get());
-            await assertFails(as(uid).collection(personalDays).doc('2026-10-22').get());
+            await assertFails(as(uid).collection(personalDays).doc(PDAY).get());
         }
         await assertFails(anon().collection(personal).get());
     });
@@ -1790,7 +1795,7 @@ function defineSuite(prefix) {
         await assertFails(c.doc('text').set(pexp('staff1', { amount: '50' })));
         await assertSucceeds(c.doc('mine').update(edit()));
         await assertFails(c.doc('mine').update(edit({ category: 'business' })));
-        await assertFails(as('manager1').collection(personal).doc('mine').update({ day: '2026-10-23' }));
+        await assertFails(as('manager1').collection(personal).doc('mine').update({ day: istDay(-1) }));
         await seedBill(personal, 'theirs', pexp('manager1'));
         await seedBill(personal, 'old', pexp('staff1', { timestamp: Date.now() - 25 * HOUR }));
         await assertFails(c.doc('theirs').update(edit()));
@@ -1804,7 +1809,7 @@ function defineSuite(prefix) {
 
     t('personal expenses (#98): a day doc key follows its expense, written in the same batch', async () => {
         const db = as('staff1');
-        const D = '2026-10-22';
+        const D = PDAY;
         const dayDoc = async () => {
             let data;
             await env.withSecurityRulesDisabled(async ctx => { data = (await ctx.firestore().collection(personalDays).doc(D).get()).data(); });
@@ -1816,7 +1821,7 @@ function defineSuite(prefix) {
         b.set(db.collection(personalDays).doc(D), dayKey('b1', 50), { merge: true });
         await assertSucceeds(b.commit());
         // a wrong amount, another day, an extra field or a second key are refused
-        for (const [id, data, day] of [['b2', dayKey('b2', 99), D], ['b3', dayKey('b3', 50), '2026-10-23'],
+        for (const [id, data, day] of [['b2', dayKey('b2', 99), D], ['b3', dayKey('b3', 50), istDay(-1)],
             ['b4', { ...dayKey('b4', 50), note: 'x' }, D], ['b5', { amounts: { b5: 50, b1: 0 }, last: 'b5' }, D]]) {
             b = db.batch();
             b.set(db.collection(personal).doc(id), pexp('staff1', { amount: 50 }));
@@ -1852,9 +1857,7 @@ function defineSuite(prefix) {
 
     // ---- expense date and payment mode (#118) ----
 
-    /** The local (IST) day `offset` days from today, YYYY-MM-DD. */
-    const istDay = (offset = 0) => new Date(Date.now() + 330 * MIN + offset * DAY).toISOString().slice(0, 10);
-    const dated = (uid, offset, extra = {}) => expense(uid, { paymentMode: 'cash', day: istDay(offset), ...extra });
+    const dated = (uid, offset, extra = {}) => expense(uid, { paymentMode: 'cash', day: istDay(offset), date: onDay(istDay(offset)), ...extra });
 
     t('expenses (#118): payment mode is cash or online; the day is never in the future', async () => {
         const c = as('staff1').collection(expenses);
@@ -1888,6 +1891,19 @@ function defineSuite(prefix) {
         // personal expenses follow the same rule
         await assertFails(as('staff1').collection(personal).doc('w8').set(dated('staff1', -4, { category: 'personal' })));
         await assertSucceeds(as('staff1').collection(personal).doc('w9').set(dated('staff1', 0, { category: 'personal', paymentMode: 'online' })));
+        // the window holds without a mode (older apps), and `date` (what the figures read) must be on `day`
+        const noMode = dated('staff1', -4);
+        delete noMode.paymentMode;
+        await assertFails(c.doc('w10').set(noMode));
+        await assertSucceeds(c.doc('w10b').set({ ...noMode, day: istDay(-1), date: onDay(istDay(-1)) }));
+        await assertFails(as('staff1').collection(personal).doc('w11').set(expense('staff1', { category: 'personal', day: istDay(-30), date: onDay(istDay(-30)) })));
+        await assertFails(c.doc('w12').set(dated('staff1', 0, { date: onDay(istDay(-30)) })));
+        await assertFails(c.doc('w13').set(dated('staff1', 0, { date: '2026-01-01' })));
+        await assertFails(c.doc('w14').set(dated('staff1', 0, { date: 7 })));
+        const [y, m, d] = PDAY.split('-');
+        await assertSucceeds(c.doc('w15').set(dated('staff1', 0, { date: `${d}/${m}/${y}, 9:05:00 am` })));
+        // the owner: no window and no date check (repairs, restores)
+        await assertSucceeds(as('legacyOwner').collection(expenses).doc('w16').set(dated('legacyOwner', -40, { date: onDay(istDay(-41)) })));
     });
 
     t('personal expenses (#118): the day doc flags exactly the expenses paid online', async () => {
