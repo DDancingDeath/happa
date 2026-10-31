@@ -10,7 +10,8 @@ import { SyncStatus } from './ui/sync-status.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { userProfile } from './firebase/repos/users.js';
-import { on, REFRESH } from './utils/events.js';
+import { on, REFRESH, READS_ALERT } from './utils/events.js';
+import { backgroundReadsAllowed, getQuotaStatus } from './firebase/firestore-meter.js';
 import { ItemsManager } from './modules/items.js';
 import { PrinterService, printerManager } from './services/printer.js';
 import { BillingManager, PurchaseManager, RetailSaleManager } from './modules/billing.js';
@@ -37,7 +38,7 @@ import { NotificationsManager } from './modules/notifications.js';
 import { markStartup, noteStartup, logStartupTimings } from './utils/startup-timings.js';
 
 // Import template loader utility
-import { TemplateLoader } from './utils/template-loader.js';
+import { TemplateLoader, SHELL_TEMPLATES, PAGE_TEMPLATES } from './utils/template-loader.js';
 import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
@@ -47,7 +48,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuc-bottom-nav';
+const BUILD_ID = '20261101zzuza-bottom-nav';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -112,12 +113,25 @@ on(REFRESH.money, () => loadMoney().then(m => m.render()));
 on(REFRESH.insights, () => loadInsights().then(m => m.render()));
 on(REFRESH.statements, () => loadStatements().then(m => m.render()));
 
-// Load and inject HTML templates from separate .html files
+// Read meter alerts (#159) become TIP SessionReads failures, which reach the daily tip-auto issues.
+on(READS_ALERT, ({ kind, reads }) => tip.start('SessionReads').complete({ [kind]: true, reads }));
+
+// Load and inject HTML templates from separate .html files. The login screen
+// and app shell go in first; the pages load while Firebase restores the
+// sign-in (#66), and nothing that uses them runs before pagesReady.
+let pagesReady = Promise.resolve();
 async function injectTemplates() {
-    const templates = await TemplateLoader.loadAllTemplates();
-    TemplateLoader.injectTemplates(templates);
+    TemplateLoader.injectShell(await TemplateLoader.loadTemplates(SHELL_TEMPLATES));
+    const pages = TemplateLoader.loadTemplates(PAGE_TEMPLATES);
     document.documentElement.lang = getLang();
     applyTranslations(document);
+    pagesReady = pages.then(templates => {
+        TemplateLoader.injectPages(templates);
+        applyTranslations(document.getElementById('appContent'));
+        markStartup('templates');
+        setupEventListeners();
+        InstallManager.refresh();
+    }).catch(e => console.error('Page templates not loaded:', e));
 }
 
 /**
@@ -287,11 +301,14 @@ function writeTipReport({ delta, failures }) {
 }
 
 async function initializeUserData() {
+    await pagesReady;
     if (outdatedBlocked) {
         blockOutdatedApp();
         return;
     }
     UIManager.showLoading();
+    // Reads of this sign-in only: the read meter counts from page load, across sign-outs
+    const readsAtStart = getQuotaStatus().reads;
     // TIP AppStart (#217): first usable screen after the profile/data load
     const appStart = tip.start('AppStart', { flags: { offline: navigator.onLine === false } });
     const notShown = () => { appStart.setFlag('blocked'); appStart.complete(); };
@@ -350,7 +367,11 @@ async function initializeUserData() {
         });
         // Shared labour rate / heavy-packet weight (#20) come from the same settings/app read
         FirebaseService.loadAppSettings()
-            .then(data => { configureTip(data); RolesAccessManager.applyShared(data); return SettingsManager.applySharedSettings(data); })
+            .then(data => {
+                configureTip(data);
+                RolesAccessManager.applyShared(data);
+                return SettingsManager.applySharedSettings(data);
+            })
             .catch(e => console.warn('Shared labour settings not loaded:', e?.code || e));
         // TIP reporting (#217): approved user only; writes are batched (≤ 1 counter write / 30 min)
         startTipReporting({ sink: writeTipReport, buildId: BUILD_ID });
@@ -473,6 +494,7 @@ async function initializeUserData() {
         
         UIManager.hideLoading();
         markStartup('app-shown', { online: navigator.onLine });
+        tip.start('SessionReads').complete({ startupReads: getQuotaStatus().reads - readsAtStart });
         noteStartup('listeners', FirebaseService.getStartupListenerInfo?.() || {});
         logStartupTimings();
         // Shop | Rentals switch (#149): Rentals code loads only when opened
@@ -490,8 +512,11 @@ async function initializeUserData() {
 
         // Rate trends (#65): roll monthly rate stats forward from loaded bills (owner/manager)
         if (AppState.userRole === 'owner' || AppState.userRole === 'manager') {
-            setTimeout(() => loadRateTrends().then(m => m.scheduleRollForward(0))
-                .catch(e => console.warn('Rate trends roll-forward not started:', e?.message || e)), 20000);
+            setTimeout(() => {
+                if (!backgroundReadsAllowed()) return;
+                loadRateTrends().then(m => m.scheduleRollForward(0))
+                    .catch(e => console.warn('Rate trends roll-forward not started:', e?.message || e));
+            }, 20000);
         }
         
     } catch (error) {
@@ -504,11 +529,10 @@ async function initializeUserData() {
 
 // Initialize app on DOM ready
 document.addEventListener('DOMContentLoaded', async function() {
-    // STEP 1: Load and inject all HTML templates from .html files
+    // STEP 1: Login screen and app shell now, pages in the background
     markStartup('dom-ready');
     await injectTemplates();
-    markStartup('templates');
-    InstallManager.refresh();
+    markStartup('shell');
     
     // STEP 2: Initialize auth tabs after templates are loaded
     AuthManager.initAuthTabs();
@@ -539,8 +563,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // STEP 4: Set up event listeners
-    setupEventListeners();
+    // STEP 4: Event listeners are set up once the pages are in (injectTemplates)
     
     // STEP 5: Clean up listeners when page unloads
     window.addEventListener('beforeunload', () => {
@@ -1114,7 +1137,8 @@ window.app = {
         showSubTab: (tab) => DayManager.showSubTab(tab),
         loadTodayData: () => DayManager.loadTodayData(),
         filterTransactions: () => DayManager.filterTransactions(),
-        showLabourBreakdown: () => DayManager.showLabourBreakdown()
+        showLabourBreakdown: () => DayManager.showLabourBreakdown(),
+        returnCashBody: () => DayManager.returnCashBody()
     },
     
     // Cash Management

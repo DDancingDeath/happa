@@ -14,6 +14,7 @@ import {
     readsForQuerySnapshot,
     readsForDocSnapshot
 } from '../utils/quota-guard.js';
+import { emit, READS_ALERT } from '../utils/events.js';
 
 const telemetry = (fn) => {
     import('../services/telemetry.js')
@@ -23,9 +24,20 @@ const telemetry = (fn) => {
 
 /** Session guard shared by the whole app. */
 export const quotaGuard = createQuotaGuard({
-    onQuota: (source) => telemetry(t => t.logWarning('Firestore daily free limit reached on this device', { source })),
-    onHeavy: (total, top) => telemetry(t => t.logWarning(`Heavy session: about ${total} document reads`, { top }))
+    onQuota: (source) => {
+        telemetry(t => t.logWarning('Firestore daily free limit reached on this device', { source }));
+        emit(READS_ALERT, { kind: 'quota', reads: quotaGuard.status().reads });
+    },
+    onHeavy: (total, top) => {
+        telemetry(t => t.logWarning(`Heavy session: about ${total} document reads`, { top }));
+        emit(READS_ALERT, { kind: 'heavy', reads: total });
+    }
 });
+
+/** False while optional background reads must not run (kill switch, quota, session cap). */
+export const backgroundReadsAllowed = () => quotaGuard.backgroundAllowed();
+/** settings/app.pauseBackgroundReads: the owner's kill switch for background reads. */
+export const pauseBackgroundReads = (value) => quotaGuard.setBackgroundPaused(value);
 
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     // A quota error can arrive before <body> exists; show the banner once it does.
