@@ -3017,6 +3017,20 @@ function defineRentSuite(prefix) {
         await assertSucceeds(unitRef('rentManager').update({ meterRate: 9.5, updatedAt: 3, updatedBy: 'rentManager' }));
     });
 
+    t('electricity amount: units × rate to the rupee (#129) or in paise (older app versions), nothing further off', async () => {
+        await seed('rent_units', 'U1', unit({ lastReading: 100, meterRate: 7.35 }));
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        // 123 units × ₹7.35 = ₹904.05
+        const at = (amount) => ({ ...elec(100, 223, 7.35), amount });
+        await assertFails(meterWrite('rentMember', at(903)));
+        await assertFails(meterWrite('rentMember', at(905)));
+        await assertSucceeds(meterWrite('rentMember', at(904)));
+        await seed('rent_units', 'U1', unit({ lastReading: 100, meterRate: 7.35 }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await assertSucceeds(meterWrite('rentMember', at(904.05)));
+    });
+
     t('owner/manager corrections: payments kept or one own entry added, paid = Σ entries, creation fixed', async () => {
         await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 3000, payments: [entry('rentMember', 2000), entry('rentOnly', 1000)] }));
         const ref = chargeRef('rentManager', CUR);
