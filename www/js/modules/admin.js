@@ -656,6 +656,8 @@ const AdminManager = {
         // The browser can't tell whether the file was kept: the owner ticks a box to confirm it
         // (a box, so a double tap on the previous dialog's OK can't confirm by accident)
         let backupTicked = false;
+        // Let the click that closed the DELETE dialog finish before this one opens
+        await new Promise(resolve => setTimeout(resolve, 0));
         const confirmedDialog = await UIManager.showModalWithHtml(`
             <div style="text-align: left;">
                 <p style="margin: 0 0 10px; font-size: 13px;">${tx('msg.admin.confirm_backup_saved_text')}</p>

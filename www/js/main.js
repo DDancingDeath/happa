@@ -223,16 +223,8 @@ function setupEventListeners() {
     NavigationManager.initMenuDismiss();
     watchHeadingEmoji(document.body);
     
-    // Modal buttons
-    const modalCancel = document.getElementById('modalCancel');
-    const modalConfirm = document.getElementById('modalConfirm');
-    
-    if (modalCancel) {
-        modalCancel.addEventListener('click', () => UIManager.closeModal(false));
-    }
-    if (modalConfirm) {
-        modalConfirm.addEventListener('click', () => UIManager.closeModal(true));
-    }
+    // Modal buttons: wired once, by their onclick in templates/modals.html. A second
+    // listener here closed the next dialog too when one opened straight after (#63).
     
     // Warn before leaving page with unsaved bill
     window.addEventListener('beforeunload', function(e) {

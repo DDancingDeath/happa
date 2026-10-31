@@ -78,7 +78,7 @@ describe('AdminManager.clearAllData', () => {
     const order = [];
 
     beforeEach(() => {
-        jest.useFakeTimers();
+        jest.useFakeTimers({ advanceTimers: true });
         order.length = 0;
         document.body.innerHTML = '<div id="modalOverlay"></div><div id="modalMessage"></div>';
         backupHtml = null;
