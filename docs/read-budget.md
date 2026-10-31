@@ -30,8 +30,8 @@ localhost use the `dev_` test data, the cash page reads 5–38 documents instead
 | Quota banner | A quota error shows one banner per session ("Daily free data limit reached …"); writes stay queued | `utils/quota-guard.js` |
 | Heavy session | Past 3,000 reads in one session: a console warning and a telemetry warning | `HEAVY_SESSION_READS` |
 | Session cap | Past 10,000 reads in one session, after a quota error, or while the kill switch is on, the optional background reads stop for the session: the legacy-timestamp scan and the rate-trends roll-forward | `SESSION_READ_CAP`, `backgroundReadsAllowed()` |
-| Kill switch | `settings/app.pauseBackgroundReads: true` (Firebase console) stops those background reads on every phone at its next open; delete the field to undo | `main.js` |
-| Alerts | TIP check `SessionReads`: every app open records its start-up reads (warn above 1,000, fail above 2,500); a heavy session and a quota error are failures. The daily TIP job opens a `tip-auto` issue when they repeat, and App health shows them | `tip/scenarios/session-reads.js` |
+| Kill switch | `settings/app.pauseBackgroundReads: true` (Firebase console) stops those background reads on every phone at its next open; delete the field to undo. While it is on, records written by outdated app versions (no numeric `timestamp`) can be missing from history, dues and stock until the weekly full rebuild, so turn it off again soon | `FirebaseService.loadAppSettings()` |
+| Alerts | TIP check `SessionReads`: every sign-in records its reads until the first screen (warn above 1,000, fail above 2,500; listeners answered from the offline copy are counted later, so this can be low); a heavy session and a quota error are failures. The daily TIP job opens a `tip-auto` issue when they repeat, and App health shows them | `tip/scenarios/session-reads.js` |
 | Read budget in CI | The E2E smoke fails a page that reads more than its baseline (+25%) | `tests/e2e/read-baselines.json` |
 
 ## When the quota runs out

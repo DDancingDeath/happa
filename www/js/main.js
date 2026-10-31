@@ -10,7 +10,7 @@ import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { userProfile } from './firebase/repos/users.js';
 import { on, REFRESH, READS_ALERT } from './utils/events.js';
-import { backgroundReadsAllowed, pauseBackgroundReads, getQuotaStatus } from './firebase/firestore-meter.js';
+import { backgroundReadsAllowed, getQuotaStatus } from './firebase/firestore-meter.js';
 import { ItemsManager } from './modules/items.js';
 import { PrinterService, printerManager } from './services/printer.js';
 import { BillingManager, PurchaseManager, RetailSaleManager } from './modules/billing.js';
@@ -295,6 +295,8 @@ async function initializeUserData() {
         return;
     }
     UIManager.showLoading();
+    // Reads of this sign-in only: the read meter counts from page load, across sign-outs
+    const readsAtStart = getQuotaStatus().reads;
     // TIP AppStart (#217): first usable screen after the profile/data load
     const appStart = tip.start('AppStart', { flags: { offline: navigator.onLine === false } });
     const notShown = () => { appStart.setFlag('blocked'); appStart.complete(); };
@@ -355,7 +357,6 @@ async function initializeUserData() {
         FirebaseService.loadAppSettings()
             .then(data => {
                 configureTip(data);
-                pauseBackgroundReads(data?.pauseBackgroundReads === true);
                 RolesAccessManager.applyShared(data);
                 return SettingsManager.applySharedSettings(data);
             })
@@ -459,7 +460,7 @@ async function initializeUserData() {
         
         UIManager.hideLoading();
         markStartup('app-shown', { online: navigator.onLine });
-        tip.start('SessionReads').complete({ startupReads: getQuotaStatus().reads });
+        tip.start('SessionReads').complete({ startupReads: getQuotaStatus().reads - readsAtStart });
         noteStartup('listeners', FirebaseService.getStartupListenerInfo?.() || {});
         logStartupTimings();
         // Shop | Rentals switch (#149): Rentals code loads only when opened
