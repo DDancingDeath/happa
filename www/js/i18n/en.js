@@ -924,6 +924,7 @@ export default {
     'ui.health.test_bill_save': "Saving a bill",
     'ui.health.test_payment_record': "Recording a payment",
     'ui.health.test_cash_close': "Closing cash",
+    'ui.health.test_session_reads': "Data reads",
     'ui.health.result_fail': "failed",
     'ui.health.result_abandoned': "left unfinished",
     'ui.health.result_expired': "took too long",
