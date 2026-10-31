@@ -3498,6 +3498,11 @@ const FirebaseService = {
                     } else {
                         settle.reject(error);
                     }
+                } else if (optional) {
+                    // Failed later (e.g. Roles & access switched off): drop what it had, so a
+                    // phone without the rows never also counts them (#98).
+                    live.docs = [];
+                    if (gen === sessionGen) onData(null, true);
                 }
             });
             unsubscribeFunctions.push(unsubscribe);
@@ -3551,6 +3556,8 @@ const FirebaseService = {
                     .where('timestamp', '>=', liveFrom)
                     .orderBy('timestamp', 'desc');
                 waits.push(listen(windowQuery, spec.label, c.live, (changes, started) => {
+                    // null: an optional listener failed; its one-shot older records go too
+                    if (changes === null) c.extended = new Map();
                     (changes || []).forEach(ch => {
                         const previous = ch.oldRec || findInSources(c, ch.docId, c.live);
                         if (ch.newRec) c.extended.delete(ch.docId);

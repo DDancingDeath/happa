@@ -369,6 +369,13 @@ export function createFakeFirestore(options = {}) {
             docs.forEach(({ id, ...data }) => coll(collName).set(String(id), deepClone(data)));
         },
         raw: (collName) => coll(collName),
+        /** Ends every query listener on a collection with an error (e.g. permission-denied after a rules change). */
+        failListeners(collName, error) {
+            [...listeners].filter(l => l.kind === 'query' && l.coll === collName).forEach(l => {
+                listeners.delete(l);
+                l.error(error);
+            });
+        },
         /** Delivers the server snapshots held back by options.holdServer. */
         releaseServer() {
             serverHeld = false;

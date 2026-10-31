@@ -129,6 +129,18 @@ describe('FirebaseService personal expenses (#98)', () => {
         expect(AppState.expensesHistory).toEqual([]);
     });
 
+    test('a personal listener failing later drops its rows: never counted twice with the day total', async () => {
+        fake.seed('personalExpenses', [{ id: 'p1', amount: 80, category: 'personal', date, day: today, timestamp: NOW }]);
+        fake.seed('expenses', [{ id: 'b1', amount: 20, category: 'business', date, timestamp: NOW }]);
+        await open('staff');
+        expect(FirebaseService.personalRowsLoaded()).toBe(true);
+        expect(AppState.expensesHistory.map(e => e.id).sort()).toEqual(['b1', 'p1']);
+        fake.failListeners('personalExpenses', Object.assign(new Error('denied'), { code: 'permission-denied' }));
+        await settle(fake);
+        expect(FirebaseService.personalRowsLoaded()).toBe(false);
+        expect(AppState.expensesHistory.map(e => e.id)).toEqual(['b1']);
+    });
+
     test('a role with Personal expenses off never queries them; it reads the day total instead', async () => {
         fake.seed('personalExpenses', [{ id: 'p1', amount: 80, category: 'personal', date, timestamp: NOW }]);
         fake.seed('personalExpenseDays', [{ id: today, amounts: { p1: 80 } }]);
