@@ -205,7 +205,7 @@ export function today(data, nowMs, session = null) {
     };
 }
 
-/** T18: per bill type, today's count, value, cash and online at save, and what is still due. T19: those bills newest first. */
+/** T18: per bill type, today's count, value, cash and online at save, paid later, written off and still due (they add up to the value). T19: those bills newest first. */
 export function todayChannels(data, nowMs) {
     const range = dayRange(nowMs);
     const split = (bills) => ({
@@ -213,6 +213,8 @@ export function todayChannels(data, nowMs) {
         total: r2(sum(bills, billValue)),
         cash: r2(sum(bills, b => paidAtSave(b).cash)),
         online: r2(sum(bills, b => paidAtSave(b).online)),
+        paidLater: r2(sum(bills, b => sum(laterPayments(b), p => p.cash + p.online))),
+        writtenOff: r2(sum(bills, b => sum(laterPayments(b), p => p.writeOff))),
         due: r2(sum(bills, openDue))
     });
     const retail = datedBills(data.retailSales, range);

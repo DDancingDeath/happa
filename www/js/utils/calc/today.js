@@ -8,7 +8,7 @@
 
 import { activityBills, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, round2 } from '../money.js';
 import { endOfLocalDayExclusive, parseAnyBillDate, startOfLocalDay } from '../dates.js';
-import { dueEvents, saleTimePayment, sumDueEvents } from '../due-payments.js';
+import { dueEvents, paymentBreakdown, saleTimePayment, sumDueEvents } from '../due-payments.js';
 import { labourGap, labourSummary } from '../labour.js';
 
 /** Field of todaySummary() → its spec ID in docs/calculations.md. */
@@ -55,21 +55,24 @@ export function itemRows(bills) {
 }
 
 /**
- * T18 one bill type's split: bills, BILL-TOTAL, BILL-AT-SAVE cash and online, BILL-DUE still open.
+ * T18 one bill type's split, adding up to its total: bills, BILL-TOTAL, cash and
+ * online paid at save (BILL-AT-SAVE), paid later today (due payments on these
+ * bills, cash + online), written off and the due still open (BILL-DUE).
  * @param {Object[]} bills today's bills of one type
- * @returns {{count: number, total: number, cash: number, online: number, due: number}}
+ * @returns {{count: number, total: number, cash: number, online: number, paidLater: number, writtenOff: number, due: number}}
  */
 export function channelSplit(bills) {
-    const paid = bills.map(b => saleTimePayment(b));
+    const parts = bills.map(b => paymentBreakdown(b));
     return {
         count: bills.length,
         total: round2(sumOf(bills, billTotal)),
-        cash: round2(sumOf(paid, p => p.cash)),
-        online: round2(sumOf(paid, p => p.online)),
-        due: round2(sumOf(bills, outstandingDue))
+        cash: round2(sumOf(parts, p => p.atSave.cash)),
+        online: round2(sumOf(parts, p => p.atSave.online)),
+        paidLater: round2(sumOf(parts, p => p.later.total)),
+        writtenOff: round2(sumOf(parts, p => p.writtenOff)),
+        due: round2(sumOf(parts, p => p.due))
     };
 }
-
 /**
  * T19 today's bills, newest first, each with its BILL-TOTAL.
  * @param {{purchase: Object[], wholesale: Object[], retail: Object[]}} byType

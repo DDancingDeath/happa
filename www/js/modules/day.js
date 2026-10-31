@@ -218,7 +218,7 @@ export const DayManager = {
     },
 
     /**
-     * T18: cash / online at save and due still open, per bill type.
+     * T18: cash / online at save, paid later today, written off and due still open, per bill type (they add up to the total).
      * @param {Object} channels - todaySummary().channels
      * @param {boolean} showWholesale - false hides the Wholesale card
      */
@@ -231,7 +231,11 @@ export const DayManager = {
             this.updateElement(`todayCh${k}Total`, formatCurrency(c.total));
             this.updateElement(`todayCh${k}Cash`, formatCurrency(c.cash));
             this.updateElement(`todayCh${k}Online`, formatCurrency(c.online));
+            this.updateElement(`todayCh${k}PaidLater`, formatCurrency(c.paidLater));
             this.updateElement(`todayCh${k}Due`, formatCurrency(c.due));
+            this.updateElement(`todayCh${k}WrittenOff`, formatCurrency(c.writtenOff));
+            const off = document.getElementById(`todayCh${k}WrittenOffRow`);
+            if (off) off.hidden = !(c.writtenOff > 0);
         });
     },
 

@@ -186,6 +186,41 @@ describe('todaySummary() (utils/calc/today.js) == oracle, to the paise', () => {
 
 // ------------------------------------------------------------------ Stock
 
+describe('Today › By bill type (T18): paid later, write-off, voided, wholesale (today-channels.json)', () => {
+    const CH = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/calculations/today-channels.json'), 'utf8'));
+    const CH_NOW = O.timeOf(CH.now);
+    const chData = { purchases: CH.purchases, wholesaleSales: CH.wholesaleSales, retailSales: CH.retailSales, expenses: [] };
+    const KEYS = { retail: 'Retail', wholesale: 'Wholesale', purchase: 'Purchase' };
+
+    test('the oracle reproduces the hand-worked split (voided bill out, yesterday\'s bill out)', () => {
+        expect(O.todayChannels(O.withoutVoided(chData), CH_NOW).T18).toEqual(CH.expected);
+    });
+
+    specTest('T18')('todaySummary().channels == hand-worked split; each type adds up to its total', () => {
+        const s = todaySummary({ bills: { purchase: copy(CH.purchases), wholesale: copy(CH.wholesaleSales), retail: copy(CH.retailSales) }, today: CH_NOW });
+        expect(s.channels).toEqual(CH.expected);
+        Object.values(s.channels).forEach(c => expect(O.r2(c.cash + c.online + c.paidLater + c.writtenOff + c.due)).toBe(c.total));
+    });
+
+    specTest('T18')('on screen: every part, the written-off line only where there is one', () => {
+        jest.setSystemTime(new Date(CH_NOW));
+        AppState.purchaseHistory = copy(CH.purchases);
+        AppState.salesHistory = copy(CH.wholesaleSales);
+        AppState.retailSalesHistory = copy(CH.retailSales);
+        AppState.expensesHistory = [];
+        CashManagementManager.todaySession = null;
+        document.body.innerHTML = fs.readFileSync(path.resolve(__dirname, '../../www/templates/day.html'), 'utf8');
+        jest.spyOn(AnomaliesManager, 'renderDayReport').mockImplementation(() => {});
+        DayManager.loadTodayData();
+        Object.entries(KEYS).forEach(([type, k]) => {
+            const c = CH.expected[type];
+            [['Total', 'total'], ['Cash', 'cash'], ['Online', 'online'], ['PaidLater', 'paidLater'], ['Due', 'due'], ['WrittenOff', 'writtenOff']]
+                .forEach(([id, f]) => expect([type, f, shown(`todayCh${k}${id}`)]).toEqual([type, f, rupee(c[f])]));
+            expect(document.getElementById(`todayCh${k}WrittenOffRow`).hidden).toBe(!(c.writtenOff > 0));
+        });
+        expect(document.querySelectorAll('#todayBillsList .today-bill-row')).toHaveLength(4);
+    });
+});
 describe("Today › By bill type (T18) and Today's bills (T19) == oracle", () => {
     const want = O.todayChannels(data, NOW);
     const KEYS = { retail: 'Retail', wholesale: 'Wholesale', purchase: 'Purchase' };
