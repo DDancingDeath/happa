@@ -39,9 +39,10 @@ What is already right: Money, Insights and Statements take every figure from
 `utils/business-metrics.js` (M*, I*, ST*), with one home per figure
 (`utils/metric-registry.js`) and an independent oracle (`tests/oracle/`). Rentals
 maths is pure (`rent-math`, `rent-views`, `rent-public`). Today (`calc/today`,
-#185) and the bill forms (purchase, retail, wholesale: `calc/billing`, #189)
-now only render calc results. The weak parts are the cash drawer, Stock and
-History, which still calculate inside the page.
+#185) and the bill forms (purchase, retail, wholesale: `calc/billing`, #189),
+Stock (`calc/stock`, #190) and the cash drawer (`calc/cash`, phase 2g) now only
+render calc results. The weak part left is History, which still calculates
+inside the page.
 
 ## 2. Target layers
 
@@ -93,7 +94,7 @@ the migration. **Inline** = computed inside a page module.
 | BILL-DUE | `money.outstandingDue` everywhere, incl. Wholesale › Outstanding, `openDue`, History, receipts (#186); `wholesaleOutstanding` only in tools/migrate (old app's page rule) | same |
 | DUE-PAY | `due-payments.dueEvents`, `sumDueEvents`, `entryParts`, `legParts` | same |
 | EXP-KIND | `money.isPersonalExpense(e)` everywhere: Today, drawer, Money, Statements, finance-calc, Expenses lists (#186) | same |
-| DAY | `dates.startOfLocalDay`, `endOfLocalDayExclusive`, `addLocalDays`, `localDayKeys`, `periodBounds`, `endUpToNow`, `todayLocalISO` (Money, Statements, Outstanding ages via `startOfLocalDay`); inline in cash-management.js:320 | `dates.*` only |
+| DAY | `dates.startOfLocalDay`, `endOfLocalDayExclusive`, `addLocalDays`, `localDayKeys`, `periodBounds`, `endUpToNow`, `todayLocalISO` (Money, Statements, Outstanding ages via `startOfLocalDay`); the drawer's day `calc/cash.dayBounds` (`parseLocalDate` + `endOfLocalDayExclusive`) | `dates.*` only |
 | PERIOD | `business-metrics.periodRange` (+ `insights-config`); month steps `dates.monthStart`, `monthRange`, `addMonths`, `latestMonthStart` (Insights / Money ‹ ›, Statements month list, Insights calendar tap and "load older", Money last-year worth label) | same |
 | AVG-COST | `stock-replay.replayEvents` / `computeStock` | same |
 | COGS | `finance-calc.computeFinanceSummary` (via `replayWithValues`) | same |
@@ -123,10 +124,10 @@ the migration. **Inline** = computed inside a page module.
 | S4 | `calc/stock.stockValue` (on the replay state through `stock-replay.stateValue`): `finance-calc` opening / closing / now → `moneySummary().stockNow` (M15 term, M17); registry home `stock.html` renders no total | same; tag it on its home |
 | S5 | `calc/stock.adjustmentValue` (Stock › Adjustments card) | same |
 | S6 | `calc/stock.deadStockValue` (= `stockValue` of the dead-stock rows) | same |
-| C1, C2, C3, C4, C5, C6 | inline `CashManagementManager.calculateTransactionsForDate` (cash-management.js:317-361) + `dueEvents` | `calc/cash.drawerDay` (new) |
-| C7 | `cash-session.sessionTotals` | same (`calc/cash` re-exports) |
-| C8 | inline cash-management.js:766 and the status card (~600-628) | `calc/cash.difference` |
-| C9 | `cash-session.lastCountedSession` | same |
+| C1, C2, C3, C4, C5, C6 | `calc/cash.drawerDay` (phase 2g; on `saleTimePayment`, `dueEvents`, `personalForDay`); `CashManagementManager.calculateTransactionsForDate` only gathers its inputs; "No bill" legs from `calc/cash.noBillLeg` | same |
+| C7 | `cash-session.sessionTotals` through `calc/cash.expectedCash`; status card, sign-out summary and day details from `calc/cash.drawerStatus`, `signOutSummary`, `sessionDetail` | same |
+| C8 | `calc/cash.difference` (shown), `savedDifference` (closing, late count), `countCheck` (count box: match within ₹1 + Q19 bands), `closeCheck` (confirm above ₹1, flags), `differenceBand` (colours), `openingCheck` (opening vs C9) | same |
+| C9 | `cash-session.lastCountedSession` (`calc/cash` re-exports) | same |
 | RT-WEEK, RT-MONTH | `rate-trends.istWeekStart` / `weekKey`, `istMonthKey` | same (or `dates`) |
 | RT-LINE, RT1, RT4 | `rate-trends.lineKg`, `lineRate`, `aggregateBills`, `sectionAvg` | same |
 | RT2, RT-CUT | `item-rate-series.itemRateSeries`, `dailyRates`, `cutoffMonth` / `cutoffWeek` | same |
@@ -272,11 +273,11 @@ on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js
 | 1 | Characterisation tests: bill forms (draft totals, labour, prefill, split), Today item cards, cash drawer C1–C8, history viewBill; BUG fixtures for the 4 disagreements | M | tests only; rebase on #181, #182 |
 | 2a | ✅ #185: delete the dead `HistoryManager.saveBillToHistory` and its `window.app.history.saveBillToHistory` wiring (main.js:1060), and the commented-out `viewRetailSale` block (history.js:531-610) | S | ⚠ main.js (#181, #182) |
 | 2b | ✅ #185: `calc/today.todaySummary` (T1–T17) out of day.js | M | none (day.js not in flight) |
-| 2c | ◐ #190: month steps, day loops and day ends of Insights, Money, Statements and Outstanding into `dates.js` (`monthStart`, `addMonths`, `monthRange`, `addLocalDays`, `localDayKeys`, `periodBounds`, `endUpToNow`, `latestMonthStart`); left: cash :320 (security PRs in flight), day :126 | S | ⚠ cash-management.js (#181) |
+| 2c | ◐ #190: month steps, day loops and day ends of Insights, Money, Statements and Outstanding into `dates.js` (`monthStart`, `addMonths`, `monthRange`, `addLocalDays`, `localDayKeys`, `periodBounds`, `endUpToNow`, `latestMonthStart`); left: day :126 (cash :320 done in 2g) | S | ⚠ cash-management.js (#181) |
 | 2d | History `viewBill` view-model on `billTotal` / `readPayment` | S | none |
 | 2e | ✅ #190: Insights top-5 share (I12), per-₹100 / season / cover rounding, retail-wholesale %, weekly kg, season sums, last-year item sales and the add-up check, and Money's leftovers (accounts total, M14 per day, labour gap, add-up check) into business-metrics / labour / month-snapshots | S | none |
 | 2f | ✅ #189: `calc/billing`: lines, draft totals, labour, payable, payment split / prefill / Rest → Due, split checks (one copy for purchase / retail / wholesale; both `checkPaymentSplit`s are now `validatePaymentSplit` / `validateDuePayment`), wholesale live profit / margin; rounding unchanged, one named policy per figure (`ROUNDING`, #129). Characterised first (`bill-forms-characterisation.test.js`); moneyMath 147 → 100, domNumber 3 → 2 | M | done |
-| 2g | `calc/cash.drawerDay` (C1–C6, C8) out of cash-management | M | ⚠ #181, cash save handlers, offline cash close (#143) |
+| 2g | ✅ `calc/cash`: `drawerDay` (C1–C6, the day via `dates`), expected / status card / sign-out summary / day details (C7), the count, close, late-count and opening checks and colour bands (C8), "No bill" legs; behaviour unchanged, characterised first (`cash-characterisation.test.js`); cash-management moneyMath 16 → 0, dateMath 1 → 0 | M | done |
 | 2h | ✅ #190: `calc/stock` (S1/S2 merge, S3 `itemValue`, S4 `stockValue` shared with finance-calc / Money, S5 adjustment value, S6 dead-stock value) out of stock.js | S | none |
 | 2i | ✅ Rentals: all rent maths and rules in rent-math (`moveMonthRent` / `moveMonthSplit` / `oldMonth` / `changeUnitPlan`, `rentTotals` for rent-views and the totals, `moveInError`, receipt amounts); `moveTarget` in rent-views | S | ⚠ #181 (rentals.js) |
 | 2j | Bug fixes from section 4, one PR each after the owner answers | S each | ⚠ #181, #182 (wholesale-sales, cash, expenses) |
@@ -306,13 +307,13 @@ and fails; moving it into `utils/` lowers it. `tests/architecture-baseline.json`
 holds the counts over all of `www/js`; at Phase 0 (`ca6f2ba`) and after 2c / 2e / 2h
 (Stock, Insights, Money and dates into calc / utils):
 
-| Category | Phase 0 | After 2c/2e/2h | Largest now |
-|---|---|---|---|
-| firestore | 57 | 57 | rent-store 12, billing 11, audit 11, telemetry 7 |
-| moneyMath | 205 | 111 | retail-sale 23, wholesale-sales 20, purchase 17, cash-management 17, history 7 |
-| domNumber | 4 | 3 | utils/helpers.js 2 (`getElementNumber` / `getElementInt`), wholesale-sales 1 |
-| appStateWrite | 83 | 81 | firestore-service 25, settings 19, stock 8 |
-| dateMath | 22 | 5 | anomalies 2, cash-management 1, history 1, rent-unit 1 |
+| Category | Phase 0 | After 2c/2e/2h | After 2f/2g/2i | Largest now |
+|---|---|---|---|---|
+| firestore | 57 | 57 | 57 | rent-store 12, billing 11, audit 11, telemetry 7 |
+| moneyMath | 205 | 111 | 45 | wholesale-sales 11, history 7, printer 6, billing 5, outstanding 5 |
+| domNumber | 4 | 3 | 2 | utils/helpers.js 2 (`getElementNumber` / `getElementInt`) |
+| appStateWrite | 83 | 81 | 81 | firestore-service 25, settings 19, stock 8 |
+| dateMath | 22 | 5 | 3 | anomalies 2, history 1 |
 
 (Insights, Money and Statements now have no hits; stock.js keeps one moneyMath line,
 the unused `StockManager.updateStock`.)

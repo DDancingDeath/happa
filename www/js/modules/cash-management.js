@@ -11,19 +11,25 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale, localISODaysAgo } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
-import { sessionTotals, parseCashAmount, isNotCounted, lastCountedSession, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
-import { round2, outstandingDue, isPersonalExpense } from '../utils/money.js';
-import { evaluateCashCount, toFlags } from '../utils/bill-checks.js';
+import { parseCashAmount, isNotCounted, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
+import {
+    drawerDay, expectedCash, drawerStatus, signOutSummary, countCheck, closeCheck, openingCheck,
+    savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
+} from '../utils/calc/cash.js';
+import { round2, outstandingDue } from '../utils/money.js';
+import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
-import { dueEvents, sumDueEvents, saleTimePayment, normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
+import { normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
-import { personalForDay } from '../utils/personal-expenses.js';
 import { tip } from '../tip/index.js';
 import { cashCloseProps } from '../tip/scenarios/cash-close.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
+
+/** Colour of a cash difference band (calc/cash differenceBand). */
+const DIFF_COLORS = Object.freeze({ ok: '#22c55e', warn: '#f59e0b', high: '#ef4444' });
 
 /** TIP CashClose run (#217); never throws. */
 function startCashCloseRun(session, expected, counted, difference) {
@@ -326,67 +332,15 @@ export class CashManagementManager {
      * @returns {Object} Transaction totals
      */
     static calculateTransactionsForDate(dateStr, session) {
-        const dayStart = parseLocalDate(dateStr);
-        const dateStart = dayStart ? dayStart.getTime() : NaN;
-        const dateEnd = dayStart ? new Date(dayStart.getFullYear(), dayStart.getMonth(), dayStart.getDate() + 1).getTime() : NaN;
-        const inDay = (value) => {
-            const t = billTime(value);
-            return t >= dateStart && t < dateEnd;
-        };
-
-        const transactions = {
-            cashSales: 0,
-            cashPurchases: 0,
-            businessExpenses: 0,
-            personalExpenses: 0,
-            dueReceived: 0,
-            duePaid: 0,
-            cashDeposits: 0
-        };
-
-        const sales = AppState.salesHistory || [];
-        const retailSales = AppState.retailSalesHistory || [];
-        const purchases = AppState.purchaseHistory || [];
-
-        // Cash paid when the bill was saved (payment.* is canonical); cash
-        // collected later on the bill counts as a due payment on its own day.
-        [...sales, ...retailSales].forEach(sale => {
-            if (inDay(sale.date)) transactions.cashSales += saleTimePayment(sale).cash;
-        });
-        purchases.forEach(purchase => {
-            if (inDay(purchase.date)) transactions.cashPurchases += saleTimePayment(purchase).cash;
-        });
-
-        // Calculate cash expenses. Personal ones a role can't read come from the day total (#98).
-        const payments = (AppState.expensesHistory || []).filter(p => inDay(p.date));
-        payments.forEach(payment => {
-            if (!isPersonalExpense(payment)) transactions.businessExpenses += Number(payment.amount) || 0;
-        });
         const readable = this.personalReadable();
-        transactions.personalExpenses = personalForDay(
-            payments.filter(isPersonalExpense).map(p => ({ amount: Number(p.amount) || 0 })),
-            readable, readable ? null : FirebaseService.personalExpenseDay?.(dateStr)).total;
-
-        // Due payments made that day: recorded on bills and/or as drawer legs
-        // in the session, counted once (#98). Only the cash part is drawer cash.
-        const dues = sumDueEvents(dueEvents({
-            bills: { retail: retailSales, wholesale: sales, purchase: purchases },
-            sessions: session ? [session] : [],
-            from: dateStart,
-            to: dateEnd
-        }));
-        transactions.dueReceived = dues.receivedCash;
-        transactions.duePaid = dues.paidCash;
-
-        // Get cash deposits from session
-        if (session && session.cashDeposits) {
-            session.cashDeposits.forEach(deposit => {
-                transactions.cashDeposits += Number(deposit.amount) || 0;
-            });
-        }
-
-        Object.keys(transactions).forEach(k => { transactions[k] = round2(transactions[k]); });
-        return transactions;
+        return drawerDay({
+            date: dateStr,
+            bills: { wholesale: AppState.salesHistory || [], retail: AppState.retailSalesHistory || [], purchase: AppState.purchaseHistory || [] },
+            expenses: AppState.expensesHistory || [],
+            session,
+            personalReadable: readable,
+            personalDay: readable ? null : FirebaseService.personalExpenseDay?.(dateStr)
+        });
     }
 
     /**
@@ -610,21 +564,10 @@ export class CashManagementManager {
             return;
         }
 
-        const opening = this.todaySession.openingBalance || 0;
-        const cashAdded = this.todayTransactions.cashDeposits || 0;
-        const purchases = this.todayTransactions.cashPurchases || 0;
-        const sales = this.todayTransactions.cashSales || 0;
-        const dueReceived = this.todayTransactions.dueReceived || 0;
-        const totalExpenses = (this.todayTransactions.businessExpenses || 0) + (this.todayTransactions.personalExpenses || 0);
-        const duePaid = this.todayTransactions.duePaid || 0;
-        const others = totalExpenses + duePaid;
-        const expected = this.calculateExpectedCash();
-        
-        // Calculate totals for 4-block view
-        // Cash In = Opening + Cash Added + Sales + Due Received
-        const totalCashIn = opening + cashAdded + sales + dueReceived;
-        const totalCashOut = purchases + duePaid + totalExpenses;
-        const availableCash = totalCashIn - totalCashOut;
+        const {
+            opening, cashAdded, purchases, sales, others, expected,
+            totalCashIn, totalCashOut, availableCash, actual, diff, diffLevel
+        } = drawerStatus(this.todaySession, this.todayTransactions);
 
         if (this.todaySession.signedOut) {
             // Signed out - show Opening Balance + 7 other blocks
@@ -640,15 +583,8 @@ export class CashManagementManager {
             if (statusActualCard) statusActualCard.style.display = 'block';
             if (statusDiffCard) statusDiffCard.style.display = 'block';
             
-            const actual = this.todaySession.closingBalance || 0;
-            const diff = actual - expected;
-            const absDiff = Math.abs(diff);
-            
-            // Color coding for difference amount
-            let diffColor = '#22c55e'; // green for < 50
-            if (absDiff >= 500) diffColor = '#ef4444'; // red for >= 500
-            else if (absDiff >= 50) diffColor = '#f59e0b'; // orange for >= 50
-            
+            const diffColor = DIFF_COLORS[diffLevel];
+
             if (statusOpeningBalance) statusOpeningBalance.textContent = `₹${opening}`;
             if (statusCashAdded) statusCashAdded.textContent = `₹${cashAdded}`;
             if (statusBuy) statusBuy.textContent = `₹${purchases}`;
@@ -682,8 +618,7 @@ export class CashManagementManager {
     }
 
     static calculateExpectedCash() {
-        if (!this.todaySession) return 0;
-        return sessionTotals(this.todaySession, this.todayTransactions).expected;
+        return expectedCash(this.todaySession, this.todayTransactions);
     }
 
     static updateSignOutSummary() {
@@ -699,18 +634,10 @@ export class CashManagementManager {
         const totalCashOutEl = document.getElementById('totalCashOut');
         const expectedCashEl = document.getElementById('expectedCashAmount');
         
-        const opening = this.todaySession?.openingBalance || 0;
-        const sales = this.todayTransactions.cashSales || 0;
-        const purchases = this.todayTransactions.cashPurchases || 0;
-        const businessExpenses = this.todayTransactions.businessExpenses || 0;
-        const personalExpenses = this.todayTransactions.personalExpenses || 0;
-        const dueReceived = this.todayTransactions.dueReceived || 0;
-        const duePaid = this.todayTransactions.duePaid || 0;
-        const deposits = this.todayTransactions.cashDeposits || 0;
-        
-        const totals = sessionTotals(this.todaySession, this.todayTransactions);
-        const totalCashIn = round2(totals.opening + totals.cashIn);
-        const totalCashOut = totals.cashOut;
+        const {
+            opening, sales, purchases, businessExpenses, personalExpenses, dueReceived, duePaid, deposits,
+            totalCashIn, totalCashOut, expected
+        } = signOutSummary(this.todaySession, this.todayTransactions);
         
         if (openingBalanceEl) openingBalanceEl.textContent = `₹${opening}`;
         if (cashSalesEl) cashSalesEl.textContent = `₹${sales}`;
@@ -723,7 +650,6 @@ export class CashManagementManager {
         if (totalCashInEl) totalCashInEl.textContent = `₹${totalCashIn}`;
         if (totalCashOutEl) totalCashOutEl.textContent = `₹${totalCashOut}`;
         
-        const expected = this.calculateExpectedCash();
         if (expectedCashEl) expectedCashEl.textContent = `₹${expected}`;
     }
 
@@ -769,10 +695,9 @@ export class CashManagementManager {
                 if (!snap.exists) return null;
                 const fresh = { id: snap.id, ...snap.data() };
                 if (!isNotCounted(fresh)) return null;
-                const expected = Number(fresh.expectedBalance) || 0;
                 const fields = {
                     closingBalance: amount,
-                    difference: round2(amount - expected),
+                    difference: savedDifference(amount, Number(fresh.expectedBalance) || 0),
                     counted: true,
                     countedLate: true,
                     countedAt: new Date().toISOString(),
@@ -799,30 +724,28 @@ export class CashManagementManager {
 
     static validateSignOut() {
         const actualAmount = parseCashAmount(document.getElementById('cashSignOutAmount')?.value);
-        const expected = this.calculateExpectedCash();
-        const difference = (actualAmount ?? 0) - expected;
+        const check = countCheck(actualAmount, this.calculateExpectedCash(), AppState.settings?.checkThresholds);
         
         const alertDiv = document.getElementById('cashDifferenceAlert');
         if (alertDiv && actualAmount !== null) {
-            if (Math.abs(difference) < 1) {
+            if (check.kind === 'match') {
                 alertDiv.style.display = 'block';
                 alertDiv.style.background = '#d1f4e0';
                 alertDiv.style.color = '#0f5132';
                 alertDiv.textContent = t('ui.cash.cash_matches');
-            } else if (difference > 0) {
+            } else if (check.kind === 'extra') {
                 alertDiv.style.display = 'block';
                 alertDiv.style.background = '#fff3cd';
                 alertDiv.style.color = '#997404';
-                alertDiv.textContent = t('ui.cash.extra_verify', { amount: Math.abs(difference).toFixed(2) });
+                alertDiv.textContent = t('ui.cash.extra_verify', { amount: check.amount.toFixed(2) });
             } else {
                 alertDiv.style.display = 'block';
                 alertDiv.style.background = '#f8d7da';
                 alertDiv.style.color = '#842029';
-                alertDiv.textContent = t('ui.cash.short_verify', { amount: Math.abs(difference).toFixed(2) });
+                alertDiv.textContent = t('ui.cash.short_verify', { amount: check.amount.toFixed(2) });
             }
             // Q19 bands (#37): name a big difference or an impossible (negative) expected drawer
-            const band = evaluateCashCount({ expected, counted: actualAmount }, AppState.settings?.checkThresholds)
-                .filter(i => i.id !== 'cash-mismatch');
+            const band = check.bands;
             alertDiv.style.whiteSpace = 'pre-line';
             if (band.length) alertDiv.textContent += band.map(i => `\n⚠ ${pickLang(i)}`).join('');
             // Owner/manager: today's anomaly summary before closing the day (#187)
@@ -851,10 +774,10 @@ export class CashManagementManager {
             
             if (lastCounted) {
                 const lastClosing = Number(lastCounted.closingBalance);
-                const diff = Math.abs(lastClosing - amount);
-                if (diff > 1) {
+                const opening = openingCheck(lastClosing, amount);
+                if (opening.needsConfirm) {
                     const confirmed = await UIManager.showModal(
-                        t('msg.cash.last_counted_closing_was_but', { date: lastCounted.date, lastClosing, amount, diff: diff.toFixed(2) }),
+                        t('msg.cash.last_counted_closing_was_but', { date: lastCounted.date, lastClosing, amount, diff: opening.difference.toFixed(2) }),
                         t('msg.cash.cash_mismatch_warning'),
                         true
                     );
@@ -914,22 +837,23 @@ export class CashManagementManager {
         }
 
         const expected = this.calculateExpectedCash();
-        const difference = round2(actualAmount - expected);
+        const check = closeCheck(actualAmount, expected, AppState.settings?.checkThresholds);
 
         // Confirm if there's a difference
-        if (Math.abs(difference) > 1) {
-            const message = difference > 0 
-                ? t('msg.cash.signout_extra', { diff: Math.abs(difference).toFixed(2), expected, actual: actualAmount })
-                : t('msg.cash.signout_short', { diff: Math.abs(difference).toFixed(2), expected, actual: actualAmount });
+        if (check.needsConfirm) {
+            const message = check.extra
+                ? t('msg.cash.signout_extra', { diff: check.amount.toFixed(2), expected, actual: actualAmount })
+                : t('msg.cash.signout_short', { diff: check.amount.toFixed(2), expected, actual: actualAmount });
             
             const confirmed = await UIManager.showModal(message, t('msg.cash.confirm_sign_out'), true);
             if (!confirmed) return;
         }
 
-        await withCashLock('close', () => this._closeSession(actualAmount, closingNotes, expected, difference));
+        await withCashLock('close', () => this._closeSession(actualAmount, closingNotes, expected, check));
     }
 
-    static async _closeSession(actualAmount, closingNotes, expected, difference) {
+    static async _closeSession(actualAmount, closingNotes, expected, check) {
+        const difference = check.difference;
         const closingFields = {
             closingBalance: actualAmount,
             expectedBalance: expected,
@@ -949,8 +873,7 @@ export class CashManagementManager {
             }
         };
         if (closingNotes) closingFields.closingNotes = closingNotes;
-        const cashFlags = toFlags(evaluateCashCount({ expected, counted: actualAmount }, AppState.settings?.checkThresholds),
-            AppState.currentUser?.uid || 'unknown', Date.now());
+        const cashFlags = toFlags(check.issues, AppState.currentUser?.uid || 'unknown', Date.now());
         if (cashFlags.length) closingFields.flags = cashFlags;
         const updatedSession = { ...this.todaySession, ...closingFields };
         const run = startCashCloseRun(this.todaySession, expected, actualAmount, difference);
@@ -1090,19 +1013,15 @@ export class CashManagementManager {
                 return;
             }
 
-            const payment = {
+            const payment = noBillLeg({
                 id: Helpers.generateId(),
-                type: type, // 'received' or 'paid'
-                customer: partyName,
-                amount: amount,
-                method: 'cash', // All cash transactions
-                cash: amount,
-                online: 0,
-                unlinked: true, // not tied to a bill in the app
-                notes: notes,
+                type, // 'received' or 'paid'
+                party: partyName,
+                amount,
+                notes,
                 timestamp: new Date().toISOString(),
                 recordedBy: AppState.userName || 'Unknown'
-            };
+            });
 
             const session = this.todaySession;
             try {
@@ -1243,16 +1162,9 @@ export class CashManagementManager {
                 : (uncounted ? `<span style="color: #c2410c; font-weight: 600;">⚠ ${L('ui.cash.not_counted')}</span>` : `<span style="color: #6c757d;">✓ ${L('ui.cash.closed')}</span>`);
 
             const diff = Number(session.difference) || 0;
-            const absDiff = Math.abs(diff);
-            let diffColor;
-            if (absDiff < 50) {
-                diffColor = '#22c55e'; // Green for small differences
-            } else if (absDiff < 500) {
-                diffColor = '#f59e0b'; // Yellow for medium differences
-            } else {
-                diffColor = '#ef4444'; // Red for large differences
-            }
-            const diffText = absDiff < 1 ? L('ui.cash.matched') : (diff > 0 ? `+₹${diff.toFixed(2)}` : `-₹${Math.abs(diff).toFixed(2)}`);
+            const { abs: absDiff, level } = differenceBand(diff);
+            const diffColor = DIFF_COLORS[level];
+            const diffText = absDiff < 1 ? L('ui.cash.matched') : (diff > 0 ? `+₹${diff.toFixed(2)}` : `-₹${absDiff.toFixed(2)}`);
             const cashAdded = session.transactions?.cashDeposits || 0;
             const closedRows = uncounted ? `
                             <div>${L('ui.cash.closing')} <strong style="color: #c2410c;">${L('ui.cash.not_counted')}</strong></div>
@@ -1310,27 +1222,16 @@ export class CashManagementManager {
         });
 
         const diff = session.difference || 0;
-        const absDiff = Math.abs(diff);
-        let diffColor = '#22c55e'; // green
-        if (absDiff >= 500) diffColor = '#ef4444'; // red
-        else if (absDiff >= 50) diffColor = '#f59e0b'; // yellow
+        const absDiff = differenceBand(diff).abs;
         const uncounted = isNotCounted(session);
         const diffText = uncounted ? L('ui.cash.not_counted') : (absDiff < 1 ? L('ui.cash.matched') : (diff >= 0 ? `+₹${diff.toFixed(2)}` : `₹${diff.toFixed(2)}`));
 
         // An open session has no saved snapshot yet: use today's live totals.
         const isLiveToday = !session.signedOut && this.todaySession && this.todaySession.date === session.date;
         const txns = (isLiveToday ? this.todayTransactions : session.transactions) || {};
-        const totals = sessionTotals(session, txns);
-        const totalCashIn = totals.opening + totals.cashIn;
-        const totalCashOut = totals.cashOut;
-        const difference = session.signedOut && !uncounted ? (session.closingBalance - session.expectedBalance) : 0;
-        const absDifference = Math.abs(difference);
+        const { totals, totalCashIn, cashIn, totalCashOut, countedLevel } = sessionDetail(session, txns, uncounted);
         
-        // Color coding based on difference amount
-        let cardDiffColor = '#22c55e'; // green for < 50
-        if (absDifference >= 500) cardDiffColor = '#ef4444'; // red for >= 500
-        else if (absDifference >= 50) cardDiffColor = '#f59e0b'; // orange/yellow for >= 50
-        
+        const cardDiffColor = DIFF_COLORS[countedLevel];
         const diffBgColor = session.signedOut ? `rgba(${parseInt(cardDiffColor.slice(1, 3), 16)}, ${parseInt(cardDiffColor.slice(3, 5), 16)}, ${parseInt(cardDiffColor.slice(5, 7), 16)}, 0.1)` : 'rgba(148, 163, 184, 0.1)';
         const diffTextColor = session.signedOut && !uncounted ? cardDiffColor : '#64748b';
         
@@ -1383,7 +1284,7 @@ export class CashManagementManager {
                     <!-- Cash In -->
                     <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.cash_in')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">₹${Helpers.escapeHtml(totalCashIn - (session.openingBalance || 0))}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">₹${Helpers.escapeHtml(cashIn)}</div>
                     </div>
                     
                     <!-- Cash Out -->
