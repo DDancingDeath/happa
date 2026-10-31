@@ -182,21 +182,3 @@ export function sumDueEvents(events) {
     Object.keys(t).forEach(k => { t[k] = round2(t[k]); });
     return t;
 }
-
-/**
- * Validates the cash/online split of a due payment against the bill's due.
- * @param {*} cash
- * @param {*} online
- * @param {number} due
- * @param {number} [tolerance=0.01]
- * @returns {{ok: true, cash: number, online: number, total: number}|{ok: false, error: string}}
- */
-export function checkPaymentSplit(cash, online, due, tolerance = 0.01) {
-    const c = round2(Number(cash) || 0);
-    const o = round2(Number(online) || 0);
-    if (c < 0 || o < 0) return { ok: false, error: 'negative' };
-    const total = round2(c + o);
-    if (total <= 0) return { ok: false, error: 'empty' };
-    if (total > due + tolerance) return { ok: false, error: 'exceeds-due' };
-    return { ok: true, cash: c, online: o, total };
-}

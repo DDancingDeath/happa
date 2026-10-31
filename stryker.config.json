@@ -12,6 +12,7 @@
   "mutator": { "excludedMutations": ["StringLiteral", "OptionalChaining"] },
   "mutate": [
     "www/js/utils/money.js",
+    "www/js/utils/calc/billing.js",
     "www/js/utils/stock-replay.js",
     "www/js/utils/bill-checks.js",
     "www/js/utils/dates.js",

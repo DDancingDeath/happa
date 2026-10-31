@@ -10,9 +10,11 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
+import { KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage } from '../utils/money.js';
 import {
-    checkPaymentSplit, KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, round2, sumMoney
-} from '../utils/money.js';
+    buildPaymentSplit, computeLine, computeRetailTotals, paidOnScreen, paymentSplit, prefillPayment, restInDue,
+    shownAmount, sumWeights, validatePaymentSplit, weightsForEdit
+} from '../utils/calc/billing.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
@@ -109,7 +111,7 @@ const RetailSaleManager = {
             return;
         }
         
-        const total = saleWeights.reduce((sum, w) => sum + w, 0);
+        const total = sumWeights(saleWeights);
         
         if (totalWeightsSpan) totalWeightsSpan.textContent = total.toFixed(1);
         if (totalPacketsSpan) totalPacketsSpan.textContent = saleWeights.length;
@@ -174,8 +176,6 @@ const RetailSaleManager = {
             return;
         }
         
-        let qty;
-        let packets;
         let allWeights = [];
         
         const typedWeight = parseFloat(weightInput?.value);
@@ -186,9 +186,6 @@ const RetailSaleManager = {
             if (hasTypedWeight) {
                 allWeights.push(typedWeight);
             }
-            
-            qty = allWeights.reduce((sum, w) => sum + w, 0);
-            packets = allWeights.length;
         } else {
             UIManager.showToast(t('msg.retail.add_weights_or_enter_quantity'));
             return;
@@ -204,7 +201,7 @@ const RetailSaleManager = {
         // Bill lines keep the catalogue name; Hindi is only for display (#143, Reports group by item).
         const itemName = lineLabel(item);
         
-        const total = Math.round(qty * rate);
+        const { qty, packets, total } = computeLine({ rate, weights: allWeights });
         
         saleItems.push({
             itemId: item.id,
@@ -290,17 +287,16 @@ const RetailSaleManager = {
                 <td>${Helpers.escapeHtml(lineLabel(item))}</td>
                 <td>₹${item.rate.toFixed(2)}</td>
                 <td>${item.qty.toFixed(1)} kg</td>
-                <td>₹${Math.round(item.total)}</td>
+                <td>₹${shownAmount(item.total)}</td>
                 <td><button onclick="event.stopPropagation(); window.app.retailSale.removeSaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
             </tr>
         `).join('');
         
         // Update totals
-        const salesTotal = saleItems.reduce((sum, item) => sum + item.total, 0);
-        const totalPackets = saleItems.reduce((sum, item) => sum + (item.packets || 1), 0);
+        const { screenTotal, packetsShown } = computeRetailTotals(saleItems);
         
-        if (saleTotalSpan) saleTotalSpan.textContent = Math.round(salesTotal);
-        if (totalSalePacketsSpan) totalSalePacketsSpan.textContent = totalPackets;
+        if (saleTotalSpan) saleTotalSpan.textContent = shownAmount(screenTotal);
+        if (totalSalePacketsSpan) totalSalePacketsSpan.textContent = packetsShown;
         
         this.updateSaleTotals();
         this.updateSaleRunningTotal();
@@ -346,16 +342,7 @@ const RetailSaleManager = {
             }, 50);
         }
         
-        if (item.qty && item.packets) {
-            if (item.weights && item.weights.length > 0) {
-                saleWeights = [...item.weights];
-            } else {
-                const avgWeight = item.qty / item.packets;
-                saleWeights = Array(item.packets).fill(avgWeight);
-            }
-        } else {
-            saleWeights = [item.qty];
-        }
+        saleWeights = weightsForEdit(item);
         this.renderSaleWeights();
         
         if (this.billingManager) this.billingManager.triggerAutoSave();
@@ -369,13 +356,13 @@ const RetailSaleManager = {
      * Update sale totals display
      */
     updateSaleTotals() {
-        const total = saleItems.reduce((sum, item) => sum + item.total, 0);
+        const shown = shownAmount(computeRetailTotals(saleItems).screenTotal);
         
         const saleTotalEl = document.getElementById('saleTotal');
         const amountReceivableEl = document.getElementById('amountReceivable');
         
-        if (saleTotalEl) saleTotalEl.textContent = Math.round(total);
-        if (amountReceivableEl) amountReceivableEl.textContent = Math.round(total);
+        if (saleTotalEl) saleTotalEl.textContent = shown;
+        if (amountReceivableEl) amountReceivableEl.textContent = shown;
         
         this.updateSalePaymentTotal();
     },
@@ -384,8 +371,7 @@ const RetailSaleManager = {
      * Update sale running total display
      */
     updateSaleRunningTotal() {
-        const totalQty = saleItems.reduce((sum, item) => sum + item.qty, 0);
-        const packetCount = saleItems.length;
+        const { kg: totalQty, lines: packetCount } = computeRetailTotals(saleItems);
         
         const runningTotalEl = document.getElementById('saleRunningTotal');
         const packetCountEl = document.getElementById('salePacketCount');
@@ -400,11 +386,9 @@ const RetailSaleManager = {
     updateSalePaymentTotal() {
         const split = this.readPaymentSplit();
         
-        const totalReceived = split.online + split.cash;
-        
         const totalReceivedEl = document.getElementById('totalReceived');
-        if (totalReceivedEl) totalReceivedEl.textContent = Math.round(totalReceived);
-        Helpers.showSplitRemaining('saleSplitRemaining', checkPaymentSplit(sumMoney(saleItems, item => item.total), split));
+        if (totalReceivedEl) totalReceivedEl.textContent = paidOnScreen(split);
+        Helpers.showSplitRemaining('saleSplitRemaining', validatePaymentSplit(computeRetailTotals(saleItems).total, split));
         BillChecksUI.schedule('retail');
     },
 
@@ -413,28 +397,26 @@ const RetailSaleManager = {
      * @returns {{cash: number, online: number, due: number}}
      */
     readPaymentSplit() {
-        return {
-            online: round2(Helpers.getInputNumber('saleOnlinePayment')),
-            cash: round2(Helpers.getInputNumber('saleCashPayment')),
-            due: round2(Helpers.getInputNumber('saleDueAmount'))
-        };
+        return paymentSplit({
+            online: Helpers.getInputNumber('saleOnlinePayment'),
+            cash: Helpers.getInputNumber('saleCashPayment'),
+            due: Helpers.getInputNumber('saleDueAmount')
+        });
     },
 
     /**
      * One tap: put whatever is not yet received (total − cash − online) in Due.
      */
     putRestInDue() {
-        const total = sumMoney(saleItems, item => item.total);
-        const { cash, online } = this.readPaymentSplit();
-        const rest = round2(total - cash - online);
-        if (rest < 0) {
-            UIManager.showToast(paymentSplitMessage(checkPaymentSplit(total, { cash, online })));
+        const rest = restInDue(computeRetailTotals(saleItems).total, this.readPaymentSplit());
+        if (!rest.ok) {
+            UIManager.showToast(paymentSplitMessage(rest.check));
             return;
         }
         const dueInput = document.getElementById('saleDueAmount');
-        if (dueInput) dueInput.value = rest;
+        if (dueInput) dueInput.value = rest.due;
         const dueCheckbox = document.getElementById('saleDueCheckbox');
-        if (dueCheckbox) dueCheckbox.checked = rest > 0;
+        if (dueCheckbox) dueCheckbox.checked = rest.dueTicked;
         this.updateSalePaymentTotal();
     },
 
@@ -443,34 +425,11 @@ const RetailSaleManager = {
      * @param {'online'|'cash'|'due'} type - Payment type
      */
     fillReceivableAmount(type) {
-        const total = saleItems.reduce((sum, item) => sum + item.total, 0);
-        const onlineInput = document.getElementById('saleOnlinePayment');
-        const cashInput = document.getElementById('saleCashPayment');
-        const dueInput = document.getElementById('saleDueAmount');
-        const onlineCheckbox = document.getElementById('saleOnlineCheckbox');
-        const cashCheckbox = document.getElementById('saleCashCheckbox');
-        const dueCheckbox = document.getElementById('saleDueCheckbox');
-        
-        if (type === 'online' && onlineCheckbox?.checked) {
-            if (onlineInput) onlineInput.value = Math.round(total);
-            if (cashInput) cashInput.value = '0';
-            if (dueInput) dueInput.value = '0';
-            if (cashCheckbox) cashCheckbox.checked = false;
-            if (dueCheckbox) dueCheckbox.checked = false;
-        } else if (type === 'cash' && cashCheckbox?.checked) {
-            if (cashInput) cashInput.value = Math.round(total);
-            if (onlineInput) onlineInput.value = '0';
-            if (dueInput) dueInput.value = '0';
-            if (onlineCheckbox) onlineCheckbox.checked = false;
-            if (dueCheckbox) dueCheckbox.checked = false;
-        } else if (type === 'due' && dueCheckbox?.checked) {
-            if (dueInput) dueInput.value = Math.round(total);
-            if (onlineInput) onlineInput.value = '0';
-            if (cashInput) cashInput.value = '0';
-            if (onlineCheckbox) onlineCheckbox.checked = false;
-            if (cashCheckbox) cashCheckbox.checked = false;
-        }
-        
+        Helpers.applyPaymentPrefill(type, prefillPayment(type, computeRetailTotals(saleItems).screenTotal), {
+            online: ['saleOnlinePayment', 'saleOnlineCheckbox'],
+            cash: ['saleCashPayment', 'saleCashCheckbox'],
+            due: ['saleDueAmount', 'saleDueCheckbox']
+        });
         this.updateSalePaymentTotal();
     },
 
@@ -514,10 +473,9 @@ const RetailSaleManager = {
             return;
         }
 
-        const salesTotal = sumMoney(saleItems, item => item.total);
-        const saleOnline = round2(Helpers.getInputNumber('saleOnlinePayment'));
-        const saleCash = round2(Helpers.getInputNumber('saleCashPayment'));
-        const saleDue = round2(Helpers.getInputNumber('saleDueAmount'));
+        const { total: salesTotal, packetsSaved: totalPackets } = computeRetailTotals(saleItems);
+        const split = this.readPaymentSplit();
+        const { online: saleOnline, cash: saleCash, due: saleDue } = split;
         const saleCustomer = Helpers.getInputText('saleCustomerName');
         const saleComments = Helpers.getInputText('saleComments');
         const printComments = document.getElementById('salePrintComments')?.checked || false;
@@ -526,8 +484,6 @@ const RetailSaleManager = {
         this.updateSalePaymentTotal();
         const checks = await BillChecksUI.confirmSave('retail');
         if (!checks.ok) return;
-        
-        const totalPackets = saleItems.reduce((sum, item) => sum + (item.packets || 0), 0);
         
         try {
             UIManager.showLoading();
@@ -557,12 +513,7 @@ const RetailSaleManager = {
                 userId: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
                 userName: AppState.userName || 'User',
                 timestamp: pending.timestamp,
-                payment: {
-                    online: saleOnline,
-                    cash: saleCash,
-                    due: saleDue,
-                    total: round2(saleOnline + saleCash + saleDue)
-                },
+                payment: buildPaymentSplit(split),
                 ...BillChecksUI.billFields(checks)
             };
             
@@ -661,7 +612,7 @@ const RetailSaleManager = {
             return;
         }
         
-        const salesTotal = saleItems.reduce((sum, item) => sum + item.total, 0);
+        const salesTotal = computeRetailTotals(saleItems).screenTotal;
         const message = buildDraftShareText({
             kind: 'retail', customer: document.getElementById('saleCustomerName')?.value, items: saleItems, total: salesTotal
         });
@@ -730,7 +681,7 @@ const RetailSaleManager = {
             id: editing ? original?.id || null : pendingBill?.id || null,
             editingBill: original,
             items: saleItems,
-            total: sumMoney(saleItems, line => line.total),
+            total: computeRetailTotals(saleItems).total,
             payment: this.readPaymentSplit(),
             partyName: Helpers.getInputText('saleCustomerName'),
             date: editing ? original?.date : pendingBill?.date,
