@@ -4,6 +4,7 @@
  * (app.spec.js). For a real backup <out> is outside the repo.
  */
 import { oldOutstanding } from './old-outstanding.js';
+import { isServiceAccountEmail } from '../../tools/migrate/lib/service-accounts.js';
 
 const BILL_PREFIX = { purchases: 'P', retailSales: 'S', wholesaleSales: 'W' };
 const pad = (v) => String(v).padStart(2, '0');
@@ -37,7 +38,8 @@ const active = (u) => !u.status || ['active', 'approved'].includes(u.status);
 export function buildExpected(backup) {
     const cutoff = Date.parse(backup.exportedAt);
     const dues = oldOutstanding({ retailSales: billsOf(backup, 'retailSales'), wholesaleSales: billsOf(backup, 'wholesaleSales') }, cutoff);
-    const users = Object.fromEntries((backup.collections.users || []).map(({ id, data }) => [id, { email: data.email || '', role: data.role || '', status: data.status || '' }]));
+    const users = Object.fromEntries((backup.collections.users || []).filter(({ data }) => !isServiceAccountEmail(data?.email))
+        .map(({ id, data }) => [id, { email: data.email || '', role: data.role || '', status: data.status || '' }]));
     const pick = (role) => Object.keys(users).sort().find(uid => users[uid].role === role && active(users[uid])) || null;
     return {
         cutoff,

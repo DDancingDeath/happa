@@ -143,11 +143,14 @@ async function main() {
     await setDoc('rateStats', '_meta', { by: 'rehearsal', bills: 1 });
     await signUp('rehearsal@happa.local', 'Rehearsal#1', 'rehearsal-login');
     await signUp('keep@other.test', 'Keep#12345', 'kept-login');
+    // a service-account login an earlier rehearsal imported (#101): wipe must delete it
+    await signUp('staging-readonly@aadhat.local', 'Rehearsal#2', 'rehearsal-staging-ro');
     done();
 
     done = step('3. migrate.js plan');
     const planDir = path.join(outDir, 'plan');
-    migrate('plan', '--in', files.backup, '--out-dir', planDir);
+    const planned = migrate('plan', '--in', files.backup, '--out-dir', planDir);
+    if (!REAL && !/Skipped 1 service accounts/.test(planned)) throw new Error('plan did not report the skipped service account');
     done();
 
     done = step('4. migrate.js wipe (dry run, then --yes)');
@@ -164,7 +167,8 @@ async function main() {
 
     done = step('6. migrate.js auth:import (dry run, then --yes)');
     migrate('auth:import', '--users', files.auth, '--hash-params', files.hashParams, '--project', PROJECT, '--emulator');
-    migrate('auth:import', '--users', files.auth, '--hash-params', files.hashParams, '--project', PROJECT, '--emulator', '--yes');
+    const imported = migrate('auth:import', '--users', files.auth, '--hash-params', files.hashParams, '--project', PROJECT, '--emulator', '--yes');
+    if (!REAL && !/Skipped 1 service accounts/.test(imported)) throw new Error('auth:import did not report the skipped service account');
     done();
 
     const ctx = { project: PROJECT, real: REAL, files, planDir, outDir, writes, applyAt: Date.now(), expect: process.env.MIGRATION_E2E_EXPECT || '' };

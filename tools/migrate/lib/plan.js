@@ -11,6 +11,7 @@ import { readPayment, round2, wholesaleOutstanding } from '../../../www/js/utils
 import { buildAging } from '../../../www/js/utils/aging.js';
 import { addBillToAcc, createCatalogueResolver, istDayKey, lineKg, lineRate, RATE_KINDS } from '../../../www/js/utils/rate-trends.js';
 import { buildRateStatsDocs, rateStatsMeta } from './rate-stats.js';
+import { PER_USER_COLLECTIONS, serviceAccountUids } from './service-accounts.js';
 
 export const BUNDLE_FORMAT = 'aadhat-migration-bundle-v1';
 export const OLD_PROJECT_ID = 'aadhat-management';
@@ -264,6 +265,8 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
         if (s.stripped.length) warnings.push(`settings fields left behind (project-specific): ${s.stripped.join(', ')}`);
     }
 
+    const skippedUids = serviceAccountUids(collections.users);
+    const skippedDocs = {};
     const copied = {};
     let copyNames;
     if (options.mode === 'full') {
@@ -272,8 +275,13 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
         copyNames = options.copy.filter(n => n !== 'settings');
     }
     copyNames.forEach(name => {
-        const docs = collections[name] || [];
+        let docs = collections[name] || [];
         if (!collections[name]) warnings.push(`collection ${name} is not in the backup`);
+        if (PER_USER_COLLECTIONS.includes(name) && skippedUids.size) {
+            const kept = docs.filter(d => !skippedUids.has(String(d.id)));
+            if (kept.length !== docs.length) skippedDocs[name] = docs.length - kept.length;
+            docs = kept;
+        }
         copied[name] = docs.length;
         add(`copy:${name}`, docs.map(d => ({ coll: name, id: d.id, data: d.data })));
     });
@@ -369,6 +377,7 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
         devExcluded: devExcluded.map(n => ({ name: n, docs: (backup.collections[n] || []).length })),
         options,
         copied,
+        serviceAccounts: { skipped: skippedUids.size, docs: skippedDocs },
         counters: counters.length,
         settings: writes.filter(w => w.group === 'settings').length,
         dues,

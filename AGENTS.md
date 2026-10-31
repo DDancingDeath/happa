@@ -432,7 +432,8 @@ reference only:
   relevant has been (or should be) filed as a GitHub issue here.
 - It talked to the same Firebase project through an ordinary approved staff
   account, `staging-readonly`; `firestore.rules` has no special rule for it.
-  Removing that account is tracked in #81.
+  `tools/migrate` never carries it (or `staging-owner`) into happa; disabling it
+  in the old project is an owner action (#101).
 - Old commits that cite a staging SHA keep that reference; new work doesn't.
 
 ---
