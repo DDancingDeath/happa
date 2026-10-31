@@ -54,6 +54,23 @@ export function buildBackup(collections, meta = {}) {
 export const DELETE_CONFIRM_WORD = 'DELETE';
 
 /**
+ * The only collections Clear Data may delete on the live data (not the test
+ * data, #63). An allow-list, so a new collection is never clearable by default:
+ * a wrong bill is voided, and a full wipe is a tools/migrate job.
+ */
+export const LIVE_CLEARABLE_COLLECTIONS = Object.freeze(['drafts', 'autoSaves', 'itemFrequency']);
+
+/**
+ * Whether Clear Data may delete a collection.
+ * @param {string} id unprefixed collection name
+ * @param {'prod'|'dev'} env
+ * @returns {boolean}
+ */
+export function canClearCollection(id, env) {
+    return env === 'dev' || LIVE_CLEARABLE_COLLECTIONS.includes(id);
+}
+
+/**
  * True when the typed text confirms deletion (surrounding spaces ignored).
  * @param {*} text
  * @returns {boolean}
