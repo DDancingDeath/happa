@@ -222,6 +222,7 @@ describe('a save the phone refused is never reported as saved (#153)', () => {
         PurchaseManager.setBillItems([]);
         PurchaseManager.setWeights([]);
         PurchaseManager.setPendingBill(null);
+        ExpensesManager.pendingExpense = null;
     });
 
     const toastTexts = () => toast.mock.calls.map(c => c[0]);
@@ -304,19 +305,32 @@ describe('a save the phone refused is never reported as saved (#153)', () => {
         function holdWrites(collName) {
             let storeLocally;
             const barrier = new Promise(r => { storeLocally = () => r({ exists: false, metadata: { fromCache: true } }); });
-            let refuse;
-            const write = jest.fn(() => new Promise((_, reject) => { refuse = reject; }));
+            const held = [];
+            const write = jest.fn((ref, data, opts) => new Promise((resolve, reject) => { held.push({ ref, data, opts, resolve, reject }); }));
             const collection = fake.db.collection;
             fake.db.collection = (name) => {
                 const c = collection(name);
                 if (name === 'items') {
                     return { ...c, doc: (id) => ({ ...c.doc(id), get: (opts) => (opts?.source === 'cache' ? barrier : c.doc(id).get(opts)) }) };
                 }
-                return name === collName ? { ...c, doc: (id) => ({ ...c.doc(id), set: write }) } : c;
+                if (name !== collName) return c;
+                return { ...c, doc: (id) => { const ref = c.doc(id); return { ...ref, set: (data, opts) => write(ref, data, opts) }; } };
             };
-            return { write, storeLocally: () => storeLocally(), refuse: (e) => refuse(e) };
+            return {
+                write,
+                storeLocally: () => storeLocally(),
+                refuse: (e) => held.splice(0).forEach(w => w.reject(e)),
+                /** The server takes every held write, in order. */
+                acknowledge: async () => {
+                    for (const w of held.splice(0)) {
+                        await w.ref.set(w.data, w.opts);
+                        w.resolve();
+                    }
+                }
+            };
         }
         const saved = () => [t('msg.purchase.bill_saved_successfully'), t('msg.sync.saved_on_phone')];
+        const LOCAL_WAIT = 10000;
 
         afterEach(() => jest.useRealTimers());
 
@@ -386,6 +400,87 @@ describe('a save the phone refused is never reported as saved (#153)', () => {
             expect(toastTexts()).toContain(t('msg.sync.expense_unconfirmed'));
             expect(toastTexts()).not.toContain(t('msg.expenses.business_expense_saved'));
             expect(document.getElementById('businessExpenseAmount').value).toBe('50');
+        });
+
+        test('expense: Save again after "not confirmed" reuses the id → one document', async () => {
+            online = true;
+            document.body.innerHTML = `<input id="businessExpenseType" value="Tea"><input id="businessExpensePerson" value="">
+                <input id="businessExpenseAmount" value="50"><input id="businessExpenseRemarks" value=""><div id="toast"></div>`;
+            jest.spyOn(UIManager, 'withLoading').mockImplementation(async (fn) => fn());
+            jest.spyOn(ExpensesManager, 'refreshExpenseViews').mockImplementation(() => {});
+            AppState.expensesHistory = [];
+            ExpensesManager.pendingExpense = null;
+            window.app = window.app || {};
+            const held = holdWrites('expenses');
+            jest.useFakeTimers();
+            ExpensesManager.saveBusinessExpense();
+            await jest.advanceTimersByTimeAsync(4000);
+            expect(toastTexts()).toContain(t('msg.sync.expense_unconfirmed'));
+
+            document.getElementById('businessExpenseAmount').value = '60';
+            held.storeLocally();
+            await ExpensesManager.saveBusinessExpense();
+            expect(held.write).toHaveBeenCalledTimes(2);
+            expect(held.write.mock.calls[1][0].id).toBe(held.write.mock.calls[0][0].id);
+            expect(toastTexts()).toContain(t('msg.expenses.business_expense_saved'));
+            expect(ExpensesManager.pendingExpense).toBeNull();
+
+            await held.acknowledge();
+            expect(fake.raw('expenses').size).toBe(1);
+            expect([...fake.raw('expenses').values()][0].amount).toBe(60);
+            expect(AppState.expensesHistory).toHaveLength(1);
+        });
+
+        test('offline: Save again after "not confirmed" sends no transaction and no failure; once stored → "Saved on this phone", one write', async () => {
+            await fillBill();
+            const held = holdWrites('purchases');
+            fake.db.runTransaction = jest.fn(async () => { throw Object.assign(new Error('offline'), { code: 'unavailable' }); });
+            jest.useFakeTimers();
+            let result = 'waiting';
+            PurchaseManager.saveBillToHistory().then(r => { result = r; });
+            await jest.advanceTimersByTimeAsync(LOCAL_WAIT);
+            expect(result).toBeUndefined();
+
+            toast.mockClear();
+            result = 'waiting';
+            PurchaseManager.saveBillToHistory().then(r => { result = r; }, e => { result = e; });
+            await jest.advanceTimersByTimeAsync(LOCAL_WAIT);
+            expect(result).toBeUndefined();
+            expect(toastTexts()).toEqual([t('msg.sync.save_unconfirmed')]);
+            expect(PurchaseManager.getBillItems()).toHaveLength(1);
+
+            held.storeLocally();
+            toast.mockClear();
+            PurchaseManager.saveBillToHistory().then(r => { result = r; }, e => { result = e; });
+            await jest.advanceTimersByTimeAsync(0);
+            expect(FirebaseService.savedOnPhoneOnly(result)).toBe(true);
+            expect(toastTexts()).toEqual([t('msg.sync.saved_on_phone')]);
+            expect(PurchaseManager.getBillItems()).toHaveLength(0);
+            expect(held.write).toHaveBeenCalledTimes(1);
+            expect(fake.db.runTransaction).not.toHaveBeenCalled();
+        });
+
+        test('offline: Save again after the phone refused the first write saves it again as new (no transaction)', async () => {
+            await fillBill();
+            const held = holdWrites('purchases');
+            fake.db.runTransaction = jest.fn(async () => { throw Object.assign(new Error('offline'), { code: 'unavailable' }); });
+            jest.useFakeTimers();
+            PurchaseManager.saveBillToHistory().catch(() => {});
+            await jest.advanceTimersByTimeAsync(100);
+            held.refuse(persistFull());
+            await jest.advanceTimersByTimeAsync(0);
+            expect(toastTexts()).toContain(t('msg.sync.storage_full'));
+
+            held.storeLocally();
+            toast.mockClear();
+            let result = 'waiting';
+            PurchaseManager.saveBillToHistory().then(r => { result = r; }, e => { result = e; });
+            await jest.advanceTimersByTimeAsync(0);
+            expect(FirebaseService.savedOnPhoneOnly(result)).toBe(true);
+            expect(toastTexts()).toEqual([t('msg.sync.saved_on_phone')]);
+            expect(held.write).toHaveBeenCalledTimes(2);
+            expect(held.write.mock.calls[1][0].id).toBe(held.write.mock.calls[0][0].id);
+            expect(fake.db.runTransaction).not.toHaveBeenCalled();
         });
     });
 });

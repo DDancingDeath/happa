@@ -773,6 +773,32 @@ const unconfirmedBills = new WeakSet();
 const pendingFirstSaves = new Set();
 /** Of those, the ones a retry has saved meanwhile. */
 const retriedBillSaves = new Set();
+/** First set() of new bills not yet confirmed on this phone, by key: { sent, json } (#153). */
+const unconfirmedFirstSaves = new Map();
+
+/** A bill's content as compared between save attempts (createdAt is set by the server). */
+const billAttemptJson = (record) => {
+    const rest = { ...record };
+    delete rest.createdAt;
+    return stableJson(rest);
+};
+
+/**
+ * An offline re-save of a bill whose first attempt was not confirmed (#153): a
+ * transaction needs the server, so instead check that first write on this phone.
+ * 'stored' - stored, same content: nothing to write; 'resend' - this phone
+ * refused it: save it again as new; 'unconfirmed' - still unknown, or changed
+ * since (no write: re-sending could clash with the queued first write).
+ * @private
+ */
+async function offlineRetryOutcome(key, record) {
+    const first = unconfirmedFirstSaves.get(key);
+    if (!first) return 'unconfirmed';
+    const stored = await whenStoredLocally(first.sent, LOCAL_STORE_WAIT_MS);
+    if (stored === false) return 'resend';
+    if (stored === true && first.json === billAttemptJson(record)) return 'stored';
+    return 'unconfirmed';
+}
 
 /**
  * Creates a bill (or overwrites by id) and keeps memory/checkpoint in step.
@@ -788,9 +814,25 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     const docRef = getDb().collection(col(collKey)).doc(String(record.id));
     const key = `${collKey}/${record.id}`;
     const run = startBillSaveRun(collKey, record, retry);
-    if (retry) {
+    let resend = false;
+    if (retry && typeof navigator !== 'undefined' && navigator.onLine === false) {
+        const outcome = await offlineRetryOutcome(key, record);
+        if (outcome !== 'resend') {
+            if (outcome === 'stored') {
+                unconfirmedFirstSaves.delete(key);
+                savedOnPhoneBills.add(record);
+            } else {
+                unconfirmedBills.add(record);
+            }
+            run.complete();
+            return record;
+        }
+        resend = true;
+    }
+    if (retry && !resend) {
         try {
             const saved = await retryBillSave(collKey, record, docRef, previous, key);
+            unconfirmedFirstSaves.delete(key);
             run.complete();
             return saved;
         } catch (error) {
@@ -800,7 +842,7 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     }
     sentBillPaymentSigs.set(key, paymentSignature(record));
     let payload = record;
-    if (previous) {
+    if (previous && !resend) {
         if (record.createdAt === undefined && previous.createdAt !== undefined) record.createdAt = previous.createdAt;
     } else {
         // Local estimate until the listener brings the server time
@@ -810,6 +852,7 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     pendingFirstSaves.add(key);
     const sent = docRef.set(payload);
     SyncStatus.trackWrite(docRef.path, sent);
+    unconfirmedFirstSaves.set(key, { sent, json: billAttemptJson(record) });
     // A #70 retry may already have created this bill; this first attempt then arrives later as an
     // update that changes createdAt, which the rules refuse for non-owners (#87). Nothing is lost.
     const settled = () => {
@@ -828,8 +871,12 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     noteMonthWrite(collKey, previous, record);
     noteLocalRecordWrite(collKey, String(record.id), record);
     const { pending, stored } = await settleWrite(write, label);
-    if (!stored) unconfirmedBills.add(record);
-    else if (pending && typeof navigator !== 'undefined' && navigator.onLine === false) savedOnPhoneBills.add(record);
+    if (!stored) {
+        unconfirmedBills.add(record);
+        return record;
+    }
+    unconfirmedFirstSaves.delete(key);
+    if (pending && typeof navigator !== 'undefined' && navigator.onLine === false) savedOnPhoneBills.add(record);
     return record;
 }
 
@@ -2466,9 +2513,10 @@ const FirebaseService = {
      * once the write is on this device, false when this device refused it (e.g.
      * storage full, #153), null if still unconfirmed after EXPENSE_STORE_WAIT_MS.
      * @param {Object} expense
+     * @param {{id?: string}} [options] - id: save again over this not-yet-confirmed expense
      * @returns {{record: Object, committed: Promise<void>, stored: Promise<boolean|null>}}
      */
-    startSaveExpense(expense) {
+    startSaveExpense(expense, { id } = {}) {
         if (!expense.userId && AppState.currentUser) {
             expense.userId = AppState.currentUser.uid;
         }
@@ -2477,11 +2525,14 @@ const FirebaseService = {
         }
 
         ensureTimestamp(expense, true);
-        const ref = getDb().collection(col('expenses')).doc();
+        const coll = getDb().collection(col('expenses'));
+        const ref = id ? coll.doc(String(id)) : coll.doc();
         const record = { id: ref.id, ...expense };
         noteLocalRecordWrite('expenses', ref.id, record);
         const list = AppState.expensesHistory || (AppState.expensesHistory = []);
-        if (!list.some(e => String(e.id) === ref.id)) list.unshift(record);
+        const at = list.findIndex(e => String(e.id) === ref.id);
+        if (at === -1) list.unshift(record);
+        else list[at] = record;
         const sent = ref.set(expense);
         SyncStatus.trackWrite(ref.path, sent);
         const committed = sent.catch(err => {

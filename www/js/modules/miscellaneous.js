@@ -35,6 +35,13 @@ export class ExpensesManager {
     static editingExpense = null;
 
     /**
+     * New expense whose save this phone has not confirmed yet ({ id, category }):
+     * the next save of that category reuses the id (#153).
+     * @type {{id: string, category: string}|null}
+     */
+    static pendingExpense = null;
+
+    /**
      * Create a new expense, or update the one being edited (same doc, no delete).
      * @param {Object} expense - Expense built from the form
      * @returns {Promise<boolean|null>} true if an existing expense was updated,
@@ -43,10 +50,14 @@ export class ExpensesManager {
     static async persistExpense(expense) {
         const editing = this.editingExpense;
         if (!editing || editing.category !== expense.category) {
-            // Shown at once (also offline); the listener reconciles it (#89)
-            const { committed, stored } = FirebaseService.startSaveExpense(expense);
+            // Shown at once (also offline); the listener reconciles it (#89). A save
+            // after "not confirmed" reuses that expense's id so it can't duplicate.
+            const pending = this.pendingExpense?.category === expense.category ? this.pendingExpense : null;
+            const { record, committed, stored } = FirebaseService.startSaveExpense(expense, { id: pending?.id });
+            const forget = () => { if (this.pendingExpense?.id === record.id) this.pendingExpense = null; };
             committed.catch(err => {
                 console.error('Expense save failed:', err);
+                forget();
                 UIManager.showToast(saveFailedText(err, t('msg.expenses.expense_not_saved', { value: err?.message || err })), 'error');
                 this.refreshExpenseViews();
             });
@@ -54,9 +65,13 @@ export class ExpensesManager {
             // Not "saved" unless this phone stored it: refused (storage full, #153) or
             // still unconfirmed after a few seconds keeps the form
             const ok = stored ? await stored : true;
-            if (ok === true) return false;
-            if (ok === null) UIManager.showToast(t(EXPENSE_UNCONFIRMED_KEY), 'warning');
-            return null;
+            if (ok === null) {
+                this.pendingExpense = { id: record.id, category: expense.category };
+                UIManager.showToast(t(EXPENSE_UNCONFIRMED_KEY), 'warning');
+                return null;
+            }
+            forget();
+            return ok === true ? false : null;
         }
 
         const original = (AppState.expensesHistory || []).find(e => String(e.id) === String(editing.id)) || {};
