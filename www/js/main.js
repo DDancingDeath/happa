@@ -3,6 +3,7 @@
 import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
+import { BottomNav } from './ui/bottom-nav.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
@@ -47,7 +48,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzd-billing-ux';
+const BUILD_ID = '20261101zzuzieebg-billing-ux';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -224,16 +225,8 @@ function setupEventListeners() {
     NavigationManager.initMenuDismiss();
     watchHeadingEmoji(document.body);
     
-    // Modal buttons
-    const modalCancel = document.getElementById('modalCancel');
-    const modalConfirm = document.getElementById('modalConfirm');
-    
-    if (modalCancel) {
-        modalCancel.addEventListener('click', () => UIManager.closeModal(false));
-    }
-    if (modalConfirm) {
-        modalConfirm.addEventListener('click', () => UIManager.closeModal(true));
-    }
+    // Modal buttons: wired once, by their onclick in templates/modals.html. A second
+    // listener here closed the next dialog too when one opened straight after (#63).
     
     // Warn before leaving page with unsaved bill
     window.addEventListener('beforeunload', function(e) {
@@ -430,6 +423,28 @@ async function initializeUserData() {
         }
         
         // Show the billing tab by default
+        BottomNav.init({
+            showTab: (tab) => NavigationManager.showTabFromNav(tab),
+            // Pull-to-refresh reloads data only: filters, the bill being entered and forms stay as they are
+            // (older on-demand bills keep History's own Refresh button: re-reading them costs reads)
+            refreshers: {
+                day: () => (DayManager.currentSubTab === 'cash' ? CashManagementManager.init() : DayManager.init()),
+                history: () => HistoryManager.refreshHistory(),
+                due: () => {
+                    OutstandingManager.renderDue();
+                    if (document.getElementById('outstandingSearchInput')?.value.trim()) OutstandingManager.searchOutstanding();
+                },
+                stock: () => {
+                    const shown = (id) => document.getElementById(id)?.style.display !== 'none';
+                    if (shown('stockAdjustmentSection')) return StockManager.renderAdjustmentHistory();
+                    if (shown('deadStockSection')) return StockManager.renderDeadStock();
+                    return Promise.resolve(StockManager.renderStock()).then(() => {
+                        if (document.getElementById('stockSearchInput')?.value.trim()) StockManager.searchStock();
+                    });
+                }
+            },
+            onRefreshed: () => UIManager.showToast(t('msg.nav.refreshed'))
+        });
         NavigationManager.showTab('billing');
         NavigationManager.setActiveNavLink('billing');
         NavigationManager.initBackNavigation();
@@ -748,6 +763,11 @@ window.app = {
         showTab: (tabId, evt) => NavigationManager.showTabFromNav(tabId, evt),
         noteRoute: (routeId) => NavigationManager.noteRoute(routeId)
     },
+
+    // Phone bottom bar (#142): Settings › swipe between pages
+    bottomNav: {
+        setSwipe: (on) => BottomNav.setSwipe(on)
+    },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
     business: {
@@ -996,6 +1016,8 @@ window.app = {
         setCustomRange: (from, to) => HistoryManager.setCustomRange(from, to),
         applyCustomRange: (from, to) => HistoryManager.applyCustomRange(from, to),
         reprintBill: () => HistoryManager.reprintBill(),
+        retryPrint: () => HistoryManager.retryPrint(),
+        markPrintedByHand: () => HistoryManager.markPrintedByHand(),
         shareBill: () => HistoryManager.shareBill(),
         editBillDetails: (billIndex) => {
             if (billIndex !== undefined) {
@@ -1157,6 +1179,7 @@ window.app = {
         toggleDarkMode: () => SettingsManager.toggleDarkMode(),
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
+        togglePrintPreview: () => SettingsManager.togglePrintPreview(),
         scanBluetoothDevices: () => SettingsManager.scanBluetoothDevices(),
         connectToPrinter: (id, name) => SettingsManager.connectToPrinter(id, name),
         disconnectPrinter: () => SettingsManager.disconnectPrinter(),
