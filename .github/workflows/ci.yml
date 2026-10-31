@@ -40,15 +40,16 @@ jobs:
         run: npm run check:sw
       - name: Release metadata
         run: npm run check:release
-      # The architecture ratchet compares tests/architecture-baseline.json with the PR base.
-      - name: Fetch the base branch
+      # On a PR the architecture ratchet compares tests/architecture-baseline.json with the base branch.
+      - name: Fetch the PR base branch
+        if: github.event_name == 'pull_request'
         env:
-          BASE: ${{ github.base_ref || 'main' }}
-        run: git fetch --no-tags --depth=1 origin "$BASE:refs/remotes/origin/$BASE"
+          BASE: ${{ github.base_ref }}
+        run: git fetch --no-tags --depth=1 origin "+$BASE:refs/remotes/origin/$BASE"
       - name: Jest
         run: npx jest --ci
         env:
-          ARCH_REQUIRE_BASE: '1'
+          ARCH_REQUIRE_BASE: ${{ github.event_name == 'pull_request' && '1' || '' }}
 
   rules:
     name: Firestore rules tests

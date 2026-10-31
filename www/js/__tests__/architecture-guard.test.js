@@ -54,7 +54,7 @@
  *  2. The baseline against the PR base (`git show origin/<base>:tests/architecture-baseline.json`):
  *     any raised number needs an entry in `exceptions` ({file, category, from,
  *     to, reason, issue}). Skipped when git or the base ref is not available,
- *     unless ARCH_REQUIRE_BASE=1 (set in ci.yml, which fetches the base).
+ *     unless ARCH_REQUIRE_BASE=1 (set by ci.yml on pull requests, after fetching the base).
  *     `ARCH_BASELINE=reset` (local only, refused when CI is set) writes the exact
  *     counts and adds exception stubs to fill in.
  */

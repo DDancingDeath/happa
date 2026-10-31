@@ -315,8 +315,8 @@ hits.
   `ARCH_BASELINE=lower npx jest architecture-guard` rewrites the baseline (it
   never raises a number).
 - **Raising is recorded.** The test also reads the baseline on the PR base
-  (`git show origin/<base>:tests/architecture-baseline.json`; ci.yml fetches the
-  base and sets `ARCH_REQUIRE_BASE=1`) and fails on any number above it unless
+  (`git show origin/<base>:tests/architecture-baseline.json`; on pull requests
+    ci.yml fetches the base and sets `ARCH_REQUIRE_BASE=1`) and fails on any number above it unless
   `exceptions` has a matching `{file, category, from, to, reason, issue}`.
   `ARCH_BASELINE=reset` (local only; refused when `CI` is set) writes the exact
   counts and adds exception stubs with `reason: "TODO"`, which fail until filled
