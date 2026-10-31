@@ -2,7 +2,8 @@
  * @fileoverview Offline / pending-sync pill in the header (#70). Uses only free
  * signals: the browser's online/offline events, the hasPendingWrites flag of
  * snapshots the app's listeners already receive, the writes this device sends,
- * and firestore.waitForPendingWrites(). It never reads from Firestore.
+ * and the SDK's "nothing left to send" (FirebaseService.pendingWritesWaiter, passed
+ * in by main.js). It never reads from Firestore and never touches it directly.
  * @module ui/sync-status
  */
 
@@ -29,10 +30,11 @@ export function syncStatusText({ online, pending, synced = false }) {
  * @param {Object} [deps]
  * @param {Window} [deps.win]
  * @param {Document} [deps.doc]
- * @param {Function} [deps.getDb] - Returns the Firestore instance (for waitForPendingWrites)
+ * @param {Function} [deps.pendingWrites] - Returns a function that resolves once nothing is
+ *   left to send, or null when that can't be asked (FirebaseService.pendingWritesWaiter)
  */
-export function createSyncStatus({ win = null, doc = null, getDb: initialGetDb = () => null } = {}) {
-    let getDb = initialGetDb;
+export function createSyncStatus({ win = null, doc = null, pendingWrites: initialPendingWrites = () => null } = {}) {
+    let pendingWrites = initialPendingWrites;
     const writes = new Map();
     const listened = new Map();
     let online = win?.navigator?.onLine !== false;
@@ -85,10 +87,10 @@ export function createSyncStatus({ win = null, doc = null, getDb: initialGetDb =
     /** After the last pending change is gone, confirm with the SDK that nothing else is queued. */
     const confirmSynced = () => {
         const seq = ++waitSeq;
-        let db = null;
-        try { db = getDb(); } catch (_) { db = null; }
-        const wait = db && typeof db.waitForPendingWrites === 'function'
-            ? Promise.resolve().then(() => db.waitForPendingWrites())
+        let waiter = null;
+        try { waiter = pendingWrites(); } catch (_) { waiter = null; }
+        const wait = typeof waiter === 'function'
+            ? Promise.resolve().then(() => waiter())
             : Promise.resolve();
         wait.then(() => {
             if (seq !== waitSeq || !online || pendingCount() > 0) return;
@@ -143,9 +145,9 @@ export function createSyncStatus({ win = null, doc = null, getDb: initialGetDb =
     const onLang = () => render();
 
     return {
-        /** @param {{getDb?: Function}} [opts] - getDb returns the Firestore instance */
+        /** @param {{pendingWrites?: Function}} [opts] - see createSyncStatus */
         start(opts = {}) {
-            if (typeof opts.getDb === 'function') getDb = opts.getDb;
+            if (typeof opts.pendingWrites === 'function') pendingWrites = opts.pendingWrites;
             if (started || !win) return;
             started = true;
             online = win.navigator?.onLine !== false;

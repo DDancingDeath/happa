@@ -38,7 +38,7 @@ describe('sync pill (#70)', () => {
         online = true;
         jest.spyOn(window.navigator, 'onLine', 'get').mockImplementation(() => online);
         db = { waitForPendingWrites: jest.fn(() => Promise.resolve()) };
-        status = createSyncStatus({ win: window, doc: document, getDb: () => db });
+        status = createSyncStatus({ win: window, doc: document, pendingWrites: () => () => db.waitForPendingWrites() });
         status.start();
     });
     afterEach(() => {

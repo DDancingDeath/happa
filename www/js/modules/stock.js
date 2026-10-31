@@ -6,6 +6,7 @@
  */
 
 import { AppState } from '../utils/state.js';
+import { on, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
@@ -702,3 +703,7 @@ export class StockManager {
         }
     }
 }
+
+// Data changes re-render this page (firestore-service.js emits, utils/events.js).
+on(REFRESH.stockAdjustmentHistory, () => StockManager.renderAdjustmentHistory());
+on(REFRESH.stockView, () => StockManager.renderStock());

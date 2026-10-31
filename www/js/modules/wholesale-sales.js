@@ -1,5 +1,6 @@
 // Wholesale Sales Management Module
 import { AppState } from '../utils/state.js';
+import { on, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { PrinterService } from '../services/printer.js';
@@ -1127,3 +1128,9 @@ BillChecksUI.register('wholesale', {
         'entry.qty': { inputs: ['sellQuantity'] }
     }
 });
+
+// Data changes re-render this page (firestore-service.js emits, utils/events.js).
+on(REFRESH.salesDropdown, () => WholesaleSalesManager.loadItemsDropdown());
+on(REFRESH.wholesaleHistory, () => WholesaleSalesManager.renderSalesHistory());
+on(REFRESH.wholesaleOutstanding, () => WholesaleSalesManager.renderSalesOutstanding());
+on(ITEM_FREQUENCY_CHANGED, () => WholesaleSalesManager.loadItemsDropdown());

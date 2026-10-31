@@ -6,8 +6,10 @@
  */
 
 import { AppState } from '../utils/state.js';
+import { on, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { updateBillInTransaction } from '../firebase/repos/bill-payments.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { activeBills, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2 } from '../utils/money.js';
@@ -38,8 +40,6 @@ import {
 
 const PAYMENT_TOLERANCE = 0.01;
 const COLLECTION_BY_TYPE = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
-
-const colName = (name) => (window.getCollection ? window.getCollection(name) : name);
 
 /** Record / Mark cleared buttons disabled while a due payment is being saved (#70, #95) */
 const RECORD_PAYMENT_BUTTONS = '[data-record-payment], [data-mark-cleared]';
@@ -678,22 +678,19 @@ export class OutstandingManager {
         };
 
         const sessionId = await this.findOpenSessionId();
-        const sessionRef = sessionId ? FirebaseService.cashSessionRef(sessionId) : null;
         const today = todayLocalISO();
         let legWritten = null;
         let tipInfo = null;
 
-        const written = await this.withBillRef(transactionType, bill, (db, ref) => db.runTransaction(async (tx) => {
+        // Re-read on the server: bill (and today's session) in one transaction; the
+        // fields below are computed from that fresh data (the transaction may retry).
+        const collKey = COLLECTION_BY_TYPE[transactionType] || 'wholesaleSales';
+        const written = await updateBillInTransaction(collKey, bill.id, sessionId, (fresh, openSession) => {
             legWritten = null;
             tipInfo = null;
-            const snap = await tx.get(ref);
-            const sessionSnap = sessionRef ? await tx.get(sessionRef) : null;
-            if (!snap.exists) return null;
-            const fresh = snap.data() || {};
             if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
             const pay = readPayment(fresh);
             const entries = Array.isArray(fresh.payments) ? fresh.payments : [];
-            const openSession = sessionSnap && sessionSnap.exists ? sessionSnap.data() : null;
             tipInfo = { fresh, sessionOpen: !!(openSession && !openSession.signedOut && openSession.date === today), retried: false };
 
             // A retry of a payment that already reached the server: nothing to add (#70)
@@ -701,7 +698,7 @@ export class OutstandingManager {
                 tipInfo.retried = true;
                 const current = { payment: fresh.payment, payments: entries, openDue: fresh.openDue };
                 if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) current.dueAmount = fresh.dueAmount;
-                return current;
+                return { result: current };
             }
 
             if (total > pay.due + PAYMENT_TOLERANCE) {
@@ -733,12 +730,10 @@ export class OutstandingManager {
             update.paidAt = at;
             // "Mark as cleared" with cash/online: the payment settles the whole due
             if (clear && newDue === 0) Object.assign(update, this.clearedFields());
-            update.openDue = FirebaseService.billHasOpenDue(COLLECTION_BY_TYPE[transactionType] || 'wholesaleSales', { ...fresh, ...update });
+            update.openDue = FirebaseService.billHasOpenDue(collKey, { ...fresh, ...update });
             update.clientVersion = FirebaseService.CLIENT_VERSION;
-            tx.update(ref, update);
 
-            const session = sessionSnap && sessionSnap.exists ? sessionSnap.data() : null;
-            if (session && !session.signedOut && session.date === today) {
+            if (openSession && !openSession.signedOut && openSession.date === today) {
                 const leg = {
                     id: fullEntry.id,
                     billId: String(fresh.id ?? bill.id),
@@ -755,11 +750,12 @@ export class OutstandingManager {
                     timestamp: new Date(at).toISOString(),
                     recordedBy: fullEntry.recordedBy || 'Unknown'
                 };
-                tx.update(sessionRef, { duePayments: [...(Array.isArray(session.duePayments) ? session.duePayments : []), leg] });
                 legWritten = leg;
+                const duePayments = [...(Array.isArray(openSession.duePayments) ? openSession.duePayments : []), leg];
+                return { bill: update, session: { duePayments }, result: update };
             }
-            return update;
-        }));
+            return { bill: update, result: update };
+        });
 
         const local = CashManagementManager.todaySession;
         if (legWritten && local && String(local.id) === sessionId) {
@@ -767,28 +763,6 @@ export class OutstandingManager {
         }
         this.lastPaymentTip = tipInfo ? { ...tipInfo, legWritten: !!legWritten } : null;
         return written;
-    }
-
-    /**
-     * Runs `run(db, ref)` on the bill's document; FirebaseService saves bills
-     * at doc(String(bill.id)), but legacy docs may only carry an `id` field,
-     * so a null result retries once with the doc found by that field.
-     * @returns {Promise<Object>} run's result
-     */
-    static async withBillRef(transactionType, bill, run) {
-        const db = FirebaseService.db;
-        const coll = db.collection(colName(COLLECTION_BY_TYPE[transactionType] || 'wholesaleSales'));
-        let ref = coll.doc(String(bill.id));
-        for (let attempt = 0; attempt < 2; attempt++) {
-            const written = await run(db, ref);
-            if (written) return written;
-            if (attempt === 0) {
-                const snap = await coll.where('id', '==', bill.id).limit(2).get();
-                if (snap.size !== 1) break;
-                ref = snap.docs[0].ref;
-            }
-        }
-        throw new Error('Transaction not found');
     }
 
     /**
@@ -899,10 +873,7 @@ export class OutstandingManager {
      * @returns {Promise<Object>} fields written
      */
     static async applyWriteOffTransaction(transactionType, bill, reason) {
-        return this.withBillRef(transactionType, bill, (db, ref) => db.runTransaction(async (tx) => {
-            const snap = await tx.get(ref);
-            if (!snap.exists) return null;
-            const fresh = snap.data() || {};
+        return updateBillInTransaction(COLLECTION_BY_TYPE[transactionType] || 'wholesaleSales', bill.id, null, (fresh) => {
             if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
             const pay = readPayment(fresh);
             const amount = pay.due > PAYMENT_TOLERANCE ? pay.due : 0;
@@ -936,9 +907,8 @@ export class OutstandingManager {
             if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) update.dueAmount = 0;
             update.openDue = false;
             update.clientVersion = FirebaseService.CLIENT_VERSION;
-            tx.update(ref, update);
-            return update;
-        }));
+            return { bill: update, result: update };
+        });
     }
 
     static async showDetails(transactionId, transactionType) {
@@ -967,3 +937,6 @@ export class OutstandingManager {
         }
     }
 }
+
+// Data changes re-render this page (firestore-service.js emits, utils/events.js).
+on(REFRESH.due, () => OutstandingManager.renderDue());

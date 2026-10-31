@@ -1,0 +1,1145 @@
+{
+  "draft.save": [
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "doc",
+      "gen-1"
+    ],
+    [
+      "set",
+      {
+        "id": "gen-1",
+        "userId": "u1",
+        "userName": "Owner",
+        "mode": "purchase",
+        "timestamp": 1792557000000,
+        "date": "21/10/2026, 10:00:00 am",
+        "items": [
+          {
+            "name": "Rice",
+            "qty": 40,
+            "rate": 25,
+            "total": 1000
+          }
+        ],
+        "weights": [
+          40
+        ],
+        "pendingBill": null,
+        "customerName": "Ram",
+        "laborCharges": 12,
+        "comments": "note",
+        "printComments": false,
+        "billTotal": 1000
+      }
+    ],
+    [
+      "collection",
+      "dev_autoSaves"
+    ],
+    [
+      "doc",
+      "u1"
+    ],
+    [
+      "delete"
+    ],
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "draft.list": [
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "draft.load": [
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "doc",
+      "d1"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "doc",
+      "d1"
+    ],
+    [
+      "delete"
+    ],
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "draft.load-missing": [
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "doc",
+      "nope"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "draft.delete": [
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "doc",
+      "d2"
+    ],
+    [
+      "delete"
+    ],
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_drafts"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "autosave.save": [
+    [
+      "collection",
+      "dev_autoSaves"
+    ],
+    [
+      "doc",
+      "u1"
+    ],
+    [
+      "set",
+      {
+        "userId": "u1",
+        "userName": "Owner",
+        "mode": "purchase",
+        "lastSaved": "SERVER_TIME",
+        "deviceInfo": "test-agent",
+        "purchase": {
+          "items": [
+            {
+              "name": "Rice",
+              "qty": 40,
+              "rate": 25,
+              "total": 1000
+            }
+          ],
+          "weights": [
+            40
+          ],
+          "pendingBill": null,
+          "typedWeight": "",
+          "selectedItem": "Rice",
+          "rate": "25",
+          "customerName": "Ram",
+          "laborCharges": 12,
+          "comments": "note",
+          "printComments": false,
+          "billTotal": 1000
+        },
+        "sale": {
+          "items": [],
+          "weights": [],
+          "pendingBill": null,
+          "typedWeight": "",
+          "selectedItem": "",
+          "rate": "",
+          "customerName": "",
+          "comments": "",
+          "printComments": false,
+          "saleTotal": 0
+        }
+      }
+    ]
+  ],
+  "autosave.empty": [
+    [
+      "collection",
+      "dev_autoSaves"
+    ],
+    [
+      "doc",
+      "u1"
+    ],
+    [
+      "delete"
+    ]
+  ],
+  "autosave.check-declined": [
+    [
+      "collection",
+      "dev_autoSaves"
+    ],
+    [
+      "doc",
+      "u1"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_autoSaves"
+    ],
+    [
+      "doc",
+      "u1"
+    ],
+    [
+      "delete"
+    ]
+  ],
+  "itemFrequency.load": [
+    [
+      "collection",
+      "dev_itemFrequency"
+    ],
+    [
+      "doc",
+      "global"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "itemFrequency.update": [
+    [
+      "collection",
+      "dev_itemFrequency"
+    ],
+    [
+      "doc",
+      "global"
+    ],
+    [
+      "set",
+      {
+        "purchase": {
+          "Rice": {
+            "score": "increment(205)",
+            "count": "increment(2)",
+            "lastUsed": 1792557000000,
+            "effectiveScore": 205
+          },
+          "i.2/x": {
+            "score": "increment(100.5)",
+            "count": "increment(1)",
+            "lastUsed": 1792557000000,
+            "effectiveScore": 100.5
+          }
+        }
+      },
+      {
+        "merge": true
+      }
+    ]
+  ],
+  "audit.log": [
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "add",
+      {
+        "action": "EDIT_BILL",
+        "userId": "u1",
+        "userName": "Owner",
+        "userRole": "owner",
+        "details": {
+          "billNumber": "P1"
+        },
+        "timestamp": 1792557000000,
+        "date": "2026-10-21T04:30:00.000Z",
+        "serverTime": "SERVER_TIME"
+      }
+    ]
+  ],
+  "audit.reads": [
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "limit",
+      2
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u2"
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "limit",
+      5
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "where",
+      "action",
+      "==",
+      "EDIT_BILL"
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "limit",
+      50
+    ],
+    [
+      "get"
+    ]
+  ],
+  "audit.cleanup": [
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1784694600000
+    ],
+    [
+      "limit",
+      100
+    ],
+    [
+      "get"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_auditLogs/old1)"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_auditLogs/old2)"
+    ],
+    [
+      "batch.commit"
+    ]
+  ],
+  "telemetry.sync": [
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "doc",
+      "fp1-mvhm5lc0i"
+    ],
+    [
+      "set",
+      {
+        "userId": "u1",
+        "fingerprint": "fp1",
+        "count": 2,
+        "occurrences": [
+          {
+            "timestamp": 1,
+            "userId": "u1",
+            "userName": "Owner"
+          },
+          {
+            "timestamp": 2,
+            "userId": "u1",
+            "userName": "Owner"
+          }
+        ],
+        "timestamp": 1,
+        "lastSeen": 2,
+        "firstSeen": 1,
+        "type": "error",
+        "message": "boom",
+        "userName": "Owner"
+      }
+    ],
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "doc",
+      "fp2-mvhm5lc0i"
+    ],
+    [
+      "set",
+      {
+        "userId": "u1",
+        "fingerprint": "fp2",
+        "count": 1,
+        "occurrences": [
+          {
+            "timestamp": 3,
+            "userId": "u1",
+            "userName": "Owner"
+          }
+        ],
+        "timestamp": 3,
+        "lastSeen": 3,
+        "firstSeen": 3,
+        "type": "error",
+        "message": "bang",
+        "userName": "Owner"
+      }
+    ]
+  ],
+  "telemetry.owner": [
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "orderBy",
+      "lastSeen",
+      "desc"
+    ],
+    [
+      "limit",
+      300
+    ],
+    [
+      "get"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "doc",
+      "t1"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_telemetry/t1)"
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "doc",
+      "t2"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_telemetry/t2)"
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "get"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_telemetry/t3)"
+    ],
+    [
+      "batch.commit"
+    ]
+  ],
+  "counters.next": [
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1792521000000
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1792607400000
+    ],
+    [
+      "collection",
+      "dev_counters"
+    ],
+    [
+      "doc",
+      "W20261021"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_counters/W20261021)"
+    ],
+    [
+      "get"
+    ],
+    [
+      "tx.set",
+      "ref(dev_counters/W20261021)",
+      {
+        "next": 2,
+        "initialized": true,
+        "prefix": "W",
+        "date": "20261021",
+        "updatedAt": 1792557000000
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1792521000000
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1792607400000
+    ],
+    [
+      "collection",
+      "dev_counters"
+    ],
+    [
+      "doc",
+      "W20261021"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_counters/W20261021)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_counters/W20261021)",
+      {
+        "next": 3,
+        "initialized": true,
+        "prefix": "W",
+        "date": "20261021",
+        "updatedAt": 1792557000000
+      },
+      {
+        "merge": true
+      }
+    ]
+  ],
+  "users.createPending": [
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "doc",
+      "u1"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_users/u1)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_users/u1)",
+      {
+        "name": "Asha",
+        "email": "a@x.com",
+        "role": "staff",
+        "status": "pending",
+        "createdAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "doc",
+      "u1"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_users/u1)"
+    ]
+  ],
+  "users.login-pending": [
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "doc",
+      "u1"
+    ],
+    [
+      "get"
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ]
+  ],
+  "cash.autoClose": [
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-20"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "s20"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_cashManagement/s20)"
+    ],
+    [
+      "tx.update",
+      "ref(dev_cashManagement/s20)",
+      {
+        "closingBalance": null,
+        "expectedBalance": 1500,
+        "difference": null,
+        "counted": false,
+        "signOutTime": "2026-10-20T18:29:59.000Z",
+        "signedOut": true,
+        "autoSignedOut": true,
+        "autoClosed": true,
+        "autoSignOutReason": "Session not closed by end of day",
+        "transactions": {
+          "cashSales": 1000,
+          "cashPurchases": 0,
+          "businessExpenses": 0,
+          "personalExpenses": 0,
+          "dueReceived": 0,
+          "duePaid": 0,
+          "cashDeposits": 0
+        }
+      }
+    ]
+  ],
+  "cash.lateCount": [
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "s20"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_cashManagement/s20)"
+    ],
+    [
+      "tx.update",
+      "ref(dev_cashManagement/s20)",
+      {
+        "closingBalance": 1450,
+        "difference": -50,
+        "counted": true,
+        "countedLate": true,
+        "countedAt": "2026-10-21T04:30:00.000Z",
+        "countedBy": "u1",
+        "countedByName": "Owner"
+      }
+    ]
+  ],
+  "cash.updates": [
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "s21"
+    ],
+    [
+      "update",
+      {
+        "cashDeposits": {
+          "arrayUnion": [
+            {
+              "id": "gen-1",
+              "amount": 200,
+              "reason": "float",
+              "timestamp": "2026-10-21T04:30:00.000Z",
+              "addedBy": "Owner"
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-21"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "s21"
+    ],
+    [
+      "update",
+      {
+        "duePayments": {
+          "arrayUnion": [
+            {
+              "id": "gen-2",
+              "type": "received",
+              "customer": "Gita",
+              "amount": 50,
+              "method": "cash",
+              "cash": 50,
+              "online": 0,
+              "unlinked": true,
+              "notes": "old",
+              "timestamp": "2026-10-21T04:30:00.000Z",
+              "recordedBy": "Owner"
+            }
+          ]
+        }
+      }
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "s21"
+    ],
+    [
+      "update",
+      {
+        "closingBalance": 1250,
+        "expectedBalance": 1250,
+        "difference": 0,
+        "signOutTime": "2026-10-21T04:30:00.000Z",
+        "signedOut": true,
+        "counted": true,
+        "closedBy": "u1",
+        "transactions": {
+          "cashSales": 0,
+          "cashPurchases": 0,
+          "businessExpenses": 0,
+          "personalExpenses": 0,
+          "dueReceived": 50,
+          "duePaid": 0,
+          "cashDeposits": 200
+        }
+      }
+    ]
+  ],
+  "bills.payment": [
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "s21"
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "doc",
+      "r1"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_retailSales/r1)"
+    ],
+    [
+      "tx.get",
+      "ref(dev_cashManagement/s21)"
+    ],
+    [
+      "tx.update",
+      "ref(dev_retailSales/r1)",
+      {
+        "payment": {
+          "cash": 500,
+          "online": 95,
+          "due": 200,
+          "total": 595
+        },
+        "payments": [
+          {
+            "recordedBy": "Owner",
+            "date": "21/10/2026",
+            "note": "n",
+            "id": "gen-1",
+            "amount": 295,
+            "cash": 200,
+            "online": 95,
+            "at": 1792557000000,
+            "recordedById": "u1"
+          }
+        ],
+        "dueAmount": 200,
+        "paidAt": 1792557000000,
+        "openDue": true,
+        "clientVersion": 4
+      }
+    ],
+    [
+      "tx.update",
+      "ref(dev_cashManagement/s21)",
+      {
+        "duePayments": [
+          {
+            "id": "gen-1",
+            "billId": "r1",
+            "billType": "retail",
+            "billNumber": "S1",
+            "type": "received",
+            "customer": "Sita",
+            "amount": 295,
+            "cash": 200,
+            "online": 95,
+            "method": "split",
+            "notes": "n",
+            "timestamp": "2026-10-21T04:30:00.000Z",
+            "recordedBy": "Owner"
+          }
+        ]
+      }
+    ]
+  ],
+  "bills.payment-retry": [
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "doc",
+      "r1"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_retailSales/r1)"
+    ]
+  ],
+  "bills.payment-legacy": [
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "doc",
+      "legacy-7"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_wholesaleSales/legacy-7)"
+    ],
+    [
+      "where",
+      "id",
+      "==",
+      "legacy-7"
+    ],
+    [
+      "limit",
+      2
+    ],
+    [
+      "get"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_wholesaleSales/autoDoc)"
+    ],
+    [
+      "tx.update",
+      "ref(dev_wholesaleSales/autoDoc)",
+      {
+        "payment": {
+          "cash": 395,
+          "online": 0,
+          "due": 400,
+          "total": 395
+        },
+        "payments": [
+          {
+            "recordedBy": "Owner",
+            "id": "gen-1",
+            "amount": 95,
+            "cash": 95,
+            "online": 0,
+            "at": 1792557000000,
+            "recordedById": "u1"
+          }
+        ],
+        "dueAmount": 400,
+        "paidAt": 1792557000000,
+        "openDue": true,
+        "clientVersion": 4
+      }
+    ]
+  ],
+  "bills.writeOff": [
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc",
+      "p1"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_purchases/p1)"
+    ],
+    [
+      "tx.update",
+      "ref(dev_purchases/p1)",
+      {
+        "payment": {
+          "cash": 300,
+          "online": 0,
+          "due": 0,
+          "total": 300,
+          "writtenOff": 495
+        },
+        "cleared": true,
+        "clearedAt": "21/10/2026, 10:00:00 am",
+        "clearedBy": "u1",
+        "clearedByName": "Owner",
+        "payments": [
+          {
+            "id": "gen-1",
+            "kind": "writeOff",
+            "amount": 495,
+            "reason": "left town",
+            "date": "21/10/2026, 10:00:00 am",
+            "at": 1792557000000,
+            "recordedBy": "Owner",
+            "recordedById": "u1"
+          }
+        ],
+        "paidAt": 1792557000000,
+        "dueAmount": 0,
+        "openDue": false,
+        "clientVersion": 4
+      }
+    ]
+  ],
+  "bills.missing": [
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc",
+      "gone"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_purchases/gone)"
+    ],
+    [
+      "where",
+      "id",
+      "==",
+      "gone"
+    ],
+    [
+      "limit",
+      2
+    ],
+    [
+      "get"
+    ]
+  ]
+}

@@ -11,6 +11,7 @@ import { AppState } from '../utils/state.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { defaultWindowStart } from '../utils/history-range.js';
 import { itemsSignature } from '../utils/stock-replay.js';
+import { on, REFRESH } from '../utils/events.js';
 
 const NOW = Date.now();
 const ITEMS = [{ id: 'i1', name: 'Gehu' }];
@@ -26,6 +27,14 @@ function install(options) {
         itemsSignature: itemsSignature(ITEMS), stale: false, staleCount: 0, builtAt: Date.now(), fullBuiltAt: Date.now()
     }]);
     fake.seed('stockCheckpoints', [{ id: 'legacyScan', ...Object.fromEntries(['purchases', 'retailSales', 'wholesaleSales', 'expenses', 'stockAdjustments', 'withdrawals'].map(c => [c, { v: 2, complete: true, foundAt: 0 }])) }]);
+}
+
+/** Subscribes jest mocks to view refresh events, as the pages do (utils/events.js). */
+function views(...names) {
+    const out = {};
+    const offs = names.map(name => { out[name] = jest.fn(); return on(REFRESH[name], out[name]); });
+    out.off = () => offs.forEach(off => off());
+    return out;
 }
 
 const bill = (id, t, extra = {}) => ({ id, timestamp: t, date: new Date(t).toISOString(), ...extra });
@@ -137,10 +146,7 @@ describe('FirebaseService.setupRealtimeListeners', () => {
     it('debounces stock recalculation and renders only the visible tab, deferring hidden tabs until shown', async () => {
         install();
         document.body.innerHTML = '<div id="stock" class="tab active"></div><div id="history" class="tab"></div>';
-        window.app = {
-            stock: { render: jest.fn() },
-            history: { refresh: jest.fn() }
-        };
+        const view = views('stockView', 'history');
         await FirebaseService.setupRealtimeListeners();
         await fake.settle();
         jest.useFakeTimers();
@@ -156,23 +162,24 @@ describe('FirebaseService.setupRealtimeListeners', () => {
 
         expect(calcSpy).toHaveBeenCalledTimes(1);
         expect(AppState.stock.i1.quantity).toBe(2);
-        expect(window.app.stock.render).toHaveBeenCalledTimes(1);
-        expect(window.app.history.refresh).not.toHaveBeenCalled();
+        expect(view.stockView).toHaveBeenCalledTimes(1);
+        expect(view.history).not.toHaveBeenCalled();
 
         document.getElementById('stock').classList.remove('active');
         document.getElementById('history').classList.add('active');
         window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'history' } }));
         await fake.settle();
 
-        expect(window.app.history.refresh).toHaveBeenCalledTimes(1);
+        expect(view.history).toHaveBeenCalledTimes(1);
         expect(calcSpy).toHaveBeenCalledTimes(1);
+        view.off();
     });
 
     it('a bill or withdrawal change refreshes an open Money page; Insights and Statements wait until shown', async () => {
         install();
         AppState.userRole = 'owner';
         document.body.innerHTML = '<div id="money" class="tab active"></div><div id="insights" class="tab"></div><div id="statements" class="tab"></div>';
-        window.app = { money: { render: jest.fn() }, insights: { render: jest.fn() }, statements: { render: jest.fn() } };
+        const view = views('money', 'insights', 'statements');
         await FirebaseService.setupRealtimeListeners();
         await fake.settle();
         jest.useFakeTimers();
@@ -181,21 +188,22 @@ describe('FirebaseService.setupRealtimeListeners', () => {
         await fake.settle();
         jest.advanceTimersByTime(200);
         await fake.settle();
-        expect(window.app.money.render).toHaveBeenCalledTimes(1);
-        expect(window.app.insights.render).not.toHaveBeenCalled();
+        expect(view.money).toHaveBeenCalledTimes(1);
+        expect(view.insights).not.toHaveBeenCalled();
 
         await fake.db.collection('withdrawals').doc('w1').set({ id: 'w1', amount: 100, person: 'A', date: new Date(NOW).toISOString(), timestamp: NOW });
         await fake.settle();
         jest.advanceTimersByTime(200);
         await fake.settle();
-        expect(window.app.money.render).toHaveBeenCalledTimes(2);
+        expect(view.money).toHaveBeenCalledTimes(2);
 
         document.getElementById('money').classList.remove('active');
         document.getElementById('statements').classList.add('active');
         window.dispatchEvent(new CustomEvent('aadhat:tabshown', { detail: { tabId: 'statements' } }));
         await fake.settle();
-        expect(window.app.statements.render).toHaveBeenCalledTimes(1);
-        expect(window.app.insights.render).not.toHaveBeenCalled();
+        expect(view.statements).toHaveBeenCalledTimes(1);
+        expect(view.insights).not.toHaveBeenCalled();
+        view.off();
     });
 
     it('getStock reuses the listener-computed stock until data changes', async () => {

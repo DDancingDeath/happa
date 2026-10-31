@@ -31,7 +31,8 @@ export const LISTEN_LIMITS = {
 export const rentCol = (name) => (typeof window !== 'undefined' && typeof window.getCollection === 'function'
     ? window.getCollection(name) : name);
 
-export const coll = (name) => FirebaseService.db.collection(rentCol(name));
+/** Raw collection reference: repository-internal (rent-receipt-store.js has its own), never exported to screens. */
+const coll = (name) => FirebaseService.db.collection(rentCol(name));
 export const uid = () => AppState.currentUser?.uid || null;
 
 const data = {
@@ -330,6 +331,15 @@ export async function endLease(leaseId, endMonth, currentMonth, names = {}) {
         return (await endInTx(tx, lease, endMonth))();
     });
 }
+
+/** A lease's data read in a transaction (change of unit). */
+export const leaseInTx = async (tx, leaseId) => (await tx.get(coll('rent_leases').doc(leaseId))).data();
+
+/** A charge's data read in a transaction (change of unit: the old unit's move month). */
+export const chargeInTx = async (tx, id) => (await tx.get(coll('rent_charges').doc(id))).data();
+
+/** Updates a charge in a transaction (change of unit: the old unit's pro-rated month). */
+export const updateChargeInTx = (tx, id, fields) => tx.update(coll('rent_charges').doc(id), fields);
 
 /** Move-out reads in a transaction; returns the writes (+ `fields`, `snap`: the link). @throws {Error} 'later_paid' */
 export async function endInTx(tx, lease, endMonth) {

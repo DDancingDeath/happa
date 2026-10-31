@@ -8,6 +8,8 @@ import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
+import { userProfile } from './firebase/repos/users.js';
+import { on, REFRESH } from './utils/events.js';
 import { ItemsManager } from './modules/items.js';
 import { PrinterService, printerManager } from './services/printer.js';
 import { BillingManager, PurchaseManager, RetailSaleManager } from './modules/billing.js';
@@ -44,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101q-void-edit-history';
+const BUILD_ID = '20261101r-repositories';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -101,6 +103,13 @@ function loadStatements() {
     }
     return statementsLoading;
 }
+
+// Data changes re-render the open lazy pages (firestore-service.js emits, utils/events.js);
+// the eager pages subscribe in their own modules. Money, Insights and Statements subscribe
+// here because their modules are imported only on first use.
+on(REFRESH.money, () => loadMoney().then(m => m.render()));
+on(REFRESH.insights, () => loadInsights().then(m => m.render()));
+on(REFRESH.statements, () => loadStatements().then(m => m.render()));
 
 // Load and inject HTML templates from separate .html files
 async function injectTemplates() {
@@ -290,15 +299,15 @@ async function initializeUserData() {
         // Fetch user data
         const userId = AppState.currentUser?.uid || firebase.auth().currentUser?.uid;
         if (userId) {
-            const userRef = firebase.firestore().collection(window.getCollection ? window.getCollection('users') : 'users').doc(userId);
-            let userDoc = await userRef.get();
-            markStartup('profile', { fromCache: !!userDoc.metadata?.fromCache });
+            const profile = userProfile(userId);
+            let userDoc = await profile.read();
+            markStartup('profile', { fromCache: userDoc.fromCache });
             // A stale offline-cache copy must not lock out a user who has since been approved
-            if (!userDoc.exists || userDoc.data().status === 'pending') {
-                userDoc = await userRef.get({ source: 'server' }).catch(() => userDoc);
+            if (!userDoc.exists || userDoc.data.status === 'pending') {
+                userDoc = await profile.read({ source: 'server' }).catch(() => userDoc);
             }
             if (userDoc.exists) {
-                const userData = userDoc.data();
+                const userData = userDoc.data;
                 
                 // Check if user is approved
                 if (userData.status === 'pending') {
@@ -446,7 +455,7 @@ async function initializeUserData() {
         // Shop | Rentals switch (#149): Rentals code loads only when opened
         BusinessSwitcher.init();
         // Offline / waiting-to-sync pill (#70)
-        SyncStatus.start({ getDb: () => FirebaseService.db });
+        SyncStatus.start({ pendingWrites: () => FirebaseService.pendingWritesWaiter() });
         FirebaseService.prepareStock({ defer: true })
             .then(() => markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox }));
 

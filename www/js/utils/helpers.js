@@ -10,6 +10,7 @@
 import { t, getLang } from '../i18n/index.js';
 import { formatRupees } from './money.js';
 import { formatDay, formatDayTime, formatTimeOfDay } from './dates.js';
+import { dayCounter } from '../firebase/repos/counters.js';
 
 export class Helpers {
     // -------------------- FORMATTING --------------------
@@ -300,19 +301,14 @@ export class Helpers {
         todayEnd.setDate(todayEnd.getDate() + 1);
         
         try {
-            const getCol = window.getCollection || ((name) => name);
-            const todaysBills = db.collection(getCol(collectionName))
-                .where('timestamp', '>=', todayStart.getTime())
-                .where('timestamp', '<', todayEnd.getTime());
-            const counterRef = db.collection(getCol('counters')).doc(`${prefix}${dateStr}`);
+            const counter = dayCounter({
+                prefix, dateStr, billsCollection: collectionName, dayStart: todayStart.getTime(), dayEnd: todayEnd.getTime()
+            });
             
             const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-            if (!offline && typeof db.runTransaction === 'function') {
+            if (!offline && counter.transactional) {
                 try {
-                    const seq = await withTimeout(
-                        Helpers._nextCounterValue(counterRef, todaysBills, prefix, dateStr),
-                        BILL_COUNTER_TIMEOUT_MS
-                    );
+                    const seq = await withTimeout(counter.next(), BILL_COUNTER_TIMEOUT_MS);
                     return format(seq);
                 } catch (counterError) {
                     console.warn('Bill counter unavailable, using local fallback:', counterError?.message || counterError);
@@ -400,36 +396,6 @@ export class Helpers {
     /** @private */
     static _storage() {
         try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch (_) { return null; }
-    }
-
-    /**
-     * Atomically increment and return the day's bill counter.
-     * @private
-     */
-    static async _nextCounterValue(counterRef, todaysBills, prefix, dateStr) {
-        let existingCount = null;
-        return db.runTransaction(async (tx) => {
-            const snap = await tx.get(counterRef);
-            const data = snap.exists ? (snap.data() || {}) : {};
-            let current = Number(data.next) || 0;
-            if (!data.initialized) {
-                // Bills may already exist today (counter introduced mid-day or
-                // numbers reserved offline): never issue a number below them.
-                if (existingCount === null) {
-                    existingCount = (await todaysBills.get()).size;
-                }
-                current = Math.max(current, existingCount);
-            }
-            const next = current + 1;
-            tx.set(counterRef, {
-                next,
-                initialized: true,
-                prefix,
-                date: dateStr,
-                updatedAt: Date.now()
-            }, { merge: true });
-            return next;
-        });
     }
 
     /**

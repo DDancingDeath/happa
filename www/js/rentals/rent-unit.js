@@ -154,12 +154,12 @@ export async function changeUnit({ unitId, tenantId, tenantName, fromLeaseId, en
     const read = async (tx, leaseId) => {
         kept = false;
         capped = null;
-        const old = { id: fromLeaseId, ...(await tx.get(store.coll('rent_leases').doc(fromLeaseId))).data() };
+        const old = { id: fromLeaseId, ...(await store.leaseInTx(tx, fromLeaseId)) };
         if (old.status !== 'active' || old.tenantId !== tenantId) throw new Error('tenant_changed');
         if (endMonth < old.startMonth) throw new Error('bad_move_date');
         const end = await store.endInTx(tx, old, endMonth);
-        const chRef = store.coll('rent_charges').doc(chargeId(fromLeaseId, endMonth));
-        const ch = oldRent !== null && endMonth === month ? (await tx.get(chRef)).data() : null;
+        const chId = chargeId(fromLeaseId, endMonth);
+        const ch = oldRent !== null && endMonth === month ? await store.chargeInTx(tx, chId) : null;
         let split = null;
         if (Number.isFinite(ch?.rent)) {
             const o = oldMonth(ch, oldRent === 'auto' ? moveMonthRent(ch.rent, old, month, lease.startDate) : oldRent);
@@ -172,7 +172,7 @@ export async function changeUnit({ unitId, tenantId, tenantName, fromLeaseId, en
             lease: { fromLeaseId, ...(token ? { shareToken: token } : {}) },
             write: () => {
                 end({ movedTo: leaseId, ...(token ? { shareToken: null } : {}) }, (s) => movedSnapshot(s, { leaseId, lease, endMonth, names, split }));
-                if (split) tx.update(chRef, { rent: split.rent, amount: split.amount, open: split.open, updatedAt: Date.now(), updatedBy: store.uid() });
+                if (split) store.updateChargeInTx(tx, chId, { rent: split.rent, amount: split.amount, open: split.open, updatedAt: Date.now(), updatedBy: store.uid() });
             }
         };
     };
