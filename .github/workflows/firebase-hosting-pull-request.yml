@@ -1,17 +1,21 @@
 # Deploys a Happa preview channel on PR (test data, see firebaseConfig.js). The app
 # site (myhappa) gets www/; the redirect sites' previews only 301 to production myhappa.
+# Channels expire after 2 days and are deleted on all sites when the PR closes, so the
+# per-site channel limit isn't reached.
 # Skipped until happa.config.json has the real project and the
 # FIREBASE_SERVICE_ACCOUNT_HAPPA secret exists; never targets aadhat-management.
 
 name: Deploy to Firebase Hosting on PR
-on: pull_request
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
 permissions:
   checks: write
   contents: read
   pull-requests: write
 jobs:
   build_and_preview:
-    if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+    if: ${{ github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,3 +37,49 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
           projectId: ${{ steps.project.outputs.project_id }}
+          expires: 2d
+
+  delete_preview:
+    name: Delete preview channels
+    if: ${{ github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Resolve Happa project (refuses aadhat-management)
+        id: project
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
+        run: node scripts/happa-config.js guard --sa-env SA_JSON
+      # Every site in firebase.json (myhappa, happaapp, happa-bfc07) has its own channel.
+      # Channel ids are pr<number>-<branch>; the trailing '-' keeps pr21- from matching pr210-.
+      - name: Delete this PR's channels on every site
+        if: steps.project.outputs.ready == 'true'
+        env:
+          SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_HAPPA }}
+          PROJECT: ${{ steps.project.outputs.project_id }}
+          SITES: ${{ steps.project.outputs.sites }}
+          PREFIX: pr${{ github.event.pull_request.number }}-
+        run: |
+          set -euo pipefail
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          printf '%s' "$SA_JSON" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          trap 'rm -f "$GOOGLE_APPLICATION_CREDENTIALS"' EXIT
+          failed=0
+          for site in ${SITES//,/ }; do
+            if ! list=$(npx --yes firebase-tools@latest hosting:channel:list --project "$PROJECT" --site "$site" --json); then
+              echo "::warning::Could not list the channels of $site"; failed=1; continue
+            fi
+            for id in $(jq -r --arg p "$PREFIX" '.result.channels[]?.name | split("/") | last | select(startswith($p))' <<<"$list"); do
+              if npx --yes firebase-tools@latest hosting:channel:delete "$id" --project "$PROJECT" --site "$site" --force; then
+                echo "Deleted $site/$id"
+              else
+                echo "::warning::Could not delete $site/$id (it expires on its own)"; failed=1
+              fi
+            done
+          done
+          exit $failed

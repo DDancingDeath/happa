@@ -364,6 +364,9 @@ in `.github/review-rules-examples/`.
   reads per page. Browsers, firebase-tools and the emulator jars are cached.
   On failure, download the `test-results-N` (traces) or `playwright-report`
   artifacts.
+- **`firebase-hosting-pull-request.yml`**: a preview channel per PR (test data)
+  on each hosting site, expiring after 2 days; when the PR closes its channels
+  are deleted on every site (Firebase limits the channels per site).
 - **Required check name: `Playwright E2E (emulators)`** (the job that collects
   the shards; it passes when E2E was not needed). Don't rename it: branch
   protection matches it by name. The shard jobs (`E2E shard N/3`) are not stable
