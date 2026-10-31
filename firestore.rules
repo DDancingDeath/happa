@@ -239,6 +239,15 @@ service cloud.firestore {
         && math.abs(cash - ec) <= 0.005 && math.abs(online - eo) <= 0.005 && math.abs(amount - ec - eo) <= 0.005;
     }
 
+    // A new payments[] entry carries its time (`at`, ms) within 10 minutes of the
+    // server's: payments and write-offs are transactions, so they never queue
+    // offline, and a back- or forward-dated entry would move drawer cash to
+    // another day (due-payments.js counts an entry on the day of its `at`).
+    function entryTimeOk() {
+      let at = request.resource.data.payments[request.resource.data.payments.size() - 1].get('at', null);
+      return at is number && at > request.time.toMillis() - 600000 && at < request.time.toMillis() + 600000;
+    }
+
     // A due is cleared only when it is settled in the same write (#104: paid or
     // written off), by the caller, and openDue goes false only with it
     // (firestore-service.js hasDue).
@@ -259,7 +268,7 @@ service cloud.firestore {
       let d = request.resource.data;
       return (!changed.hasAny(['dueAmount'])
               || (moneyOk(d.dueAmount) && d.dueAmount == d.get('payment', {}).get('due', d.dueAmount)))
-        && (!changed.hasAny(['payments']) || appendsOneEntry('payments'))
+        && (!changed.hasAny(['payments']) || (appendsOneEntry('payments') && entryTimeOk()))
         && (!changed.hasAny(['paidAt'])
             || (d.paidAt is number && changed.hasAny(['payments'])
                 && d.paidAt == d.payments[d.payments.size() - 1].get('at', null)))
@@ -288,10 +297,13 @@ service cloud.firestore {
         : false;
     }
 
-    // New bills: the creator's own uid (when set), well-formed money (changedMoneyOk)
-    // and, when sent, createdAt = the server time of this write (older apps don't send it).
+    // New bills: the creator's own uid (when set), well-formed money (changedMoneyOk),
+    // no payment history or cleared state (the app never sends them on a new bill;
+    // they come only with payments, paymentEditOk) and, when sent, createdAt = the
+    // server time of this write (older apps don't send it).
     function validBillCreate() {
       return request.resource.data.get('userId', request.auth.uid) == request.auth.uid
+        && !request.resource.data.keys().hasAny(['payments', 'paidAt', 'cleared'])
         && changedMoneyOk(request.resource.data.keys())
         && (!('createdAt' in request.resource.data) || request.resource.data.createdAt == request.time);
     }

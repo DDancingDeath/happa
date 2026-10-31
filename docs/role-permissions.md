@@ -176,7 +176,12 @@ canDeleteBill    = owner || (creator && withinBillWindow)
     due goes down by the same, within 1 paisa (`PAYMENT_TOLERANCE`). No entry, no money: the due then
     drops only when a due under 1 paisa is written off to 0. So nobody pays
     more than the due, and with the split check above, never more than the bill total (+ ₹1 rounding).
-    Opening records are capped by their carried amount the same way.
+    Opening records are capped by their carried amount the same way. The new entry's time (`at`, which
+    puts the money on a day in the drawer and Today) must be within 10 minutes of the server's: payments
+    and write-offs are transactions, so they never wait offline, and a back-dated entry would hide
+    drawer cash on another day. (A phone whose clock is more than 10 minutes off can't record payments.)
+  - **New bills** never carry `payments`, `paidAt` or `cleared` (the app doesn't send them; they come only
+    with payments).
   - **Clearing** (`clearOk`): `cleared` only becomes true with the due settled (≤ 1 paisa) in the
     same write, `clearedBy` is the caller, and `openDue` goes false only when cleared or settled.
   - Limits: bills with no due field at all (very old shapes) take no member payments; the owner
