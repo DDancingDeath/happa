@@ -34,12 +34,14 @@ import { markStartup } from '../utils/startup-timings.js';
 import { canReadWithdrawals } from '../utils/role-access.js';
 import { canReadPersonalExpenses, dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, personalOnlineFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
-import { isStorageFullError, STORAGE_FULL_KEY } from '../utils/storage-full.js';
+import { isStorageFullError, safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { SyncStatus } from '../ui/sync-status.js';
 import { historyIdBound } from '../utils/rate-history.js';
 import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { entryTime } from '../utils/due-payments.js';
 import { installFirestoreMeter, getQuotaStatus } from './firestore-meter.js';
+import { readTeamDirectory, writeTeamDirectory } from './repos/users.js';
+import { buildTeamDirectory, isTeamMember, sameTeam, teamPeople } from '../utils/team-directory.js';
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
@@ -2066,15 +2068,37 @@ function settleWrite(writePromise, label = 'write') {
 const USERS_CACHE_TTL_MS = 10 * 60 * 1000;
 let usersCache = null;
 
+// Owner: every profile; managers: the team directory (#87), never other profiles.
 const getUsersForNotifications = async () => {
     if (usersCache && Date.now() - usersCache.at < USERS_CACHE_TTL_MS) {
         return usersCache.users;
     }
-    const snapshot = await getDb().collection(col('users')).get();
-    const users = snapshot.docs.map(doc => ({ id: doc.id, role: doc.data().role }));
+    let users;
+    if (AppState.userRole === 'owner') {
+        const snapshot = await getDb().collection(col('users')).get();
+        const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Only from the server: a cached list could undo another owner device's change
+        if (!snapshot.metadata?.fromCache) syncTeamDirectory(profiles).catch(e => console.warn('Team directory not updated:', e?.code || e));
+        users = profiles.filter(isTeamMember).map(u => ({ id: u.id, role: u.role }));
+    } else {
+        users = teamPeople(await readTeamDirectory()).map(p => ({ id: p.id, role: p.role }));
+    }
     usersCache = { at: Date.now(), users };
     return users;
 };
+
+/** The team directory as last read or written on this phone (undefined: not read yet). */
+let knownTeam;
+
+/** Owner only: rewrites settings/team when the profiles say something else (#87). */
+async function syncTeamDirectory(users) {
+    const next = buildTeamDirectory(users);
+    if (knownTeam === undefined) knownTeam = await readTeamDirectory();
+    if (knownTeam && sameTeam(knownTeam, next)) return false;
+    await writeTeamDirectory(next);
+    knownTeam = next;
+    return true;
+}
 
 /**
  * Writes planned notification docs ({id, data}) with batched writes. Doc ids
@@ -4300,7 +4324,8 @@ const FirebaseService = {
 
     /**
      * All user profiles, newest `createdAt` first (sorted client-side so legacy
-     * profiles without `createdAt` are kept, at the end).
+     * profiles without `createdAt` are kept, at the end). On the owner's phone the
+     * team directory (`settings/team`, #87) is brought in line with them.
      * @returns {Promise<Object[]>} `{ id, ...data }` per profile
      */
     async loadUsers() {
@@ -4309,8 +4334,46 @@ const FirebaseService = {
             const c = u.createdAt;
             return c?.toMillis ? c.toMillis() : (c ? new Date(c).getTime() || 0 : 0);
         };
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => createdMs(b) - createdMs(a));
+        if (AppState.userRole === 'owner' && !snapshot.metadata?.fromCache) {
+            syncTeamDirectory(users).catch(e => console.warn('Team directory not updated:', e?.code || e));
+        }
+        return users;
+    },
+
+    /**
+     * The people of the team as `[{ id, name, role, ... }]`: the owner reads the
+     * profiles; managers read only the team directory (#87, one read).
+     * @returns {Promise<Object[]>}
+     */
+    async loadPeople() {
+        if (AppState.userRole === 'owner') return this.loadUsers();
+        return teamPeople(await readTeamDirectory());
+    },
+
+    /** Forgets the cached people lists (sign-out: the next user may have another role). */
+    forgetPeopleCaches() {
+        usersCache = null;
+        knownTeam = undefined;
+    },
+
+    /**
+     * Owner only, at most once a day per phone (one read): writes the team directory
+     * from the profiles when it is missing, e.g. right after the #87 rules go live.
+     * @returns {Promise<boolean>} true when it read the profiles to write it
+     */
+    async ensureTeamDirectory() {
+        const uid = AppState.currentUser?.uid;
+        if (AppState.userRole !== 'owner' || !uid) return false;
+        const key = 'happaTeamDirectoryDay';
+        const mark = `${uid}|${localISODaysAgo(0)}`;
+        if (localStorage.getItem(key) === mark) return false;
+        if (knownTeam === undefined) knownTeam = await readTeamDirectory();
+        const missing = !knownTeam;
+        if (missing) await this.loadUsers();
+        safeSetItem(key, mark);
+        return missing;
     },
 
     /** Partial update of a user profile (role/status/approval fields). */
@@ -4319,9 +4382,33 @@ const FirebaseService = {
         usersCache = null;
     },
 
-    /** Deletes a user profile document (reject / delete user). */
-    async deleteUserProfile(userId) {
-        await getDb().collection(col('users')).doc(userId).delete();
+    /**
+     * Rejects a registration (#84): the profile stays as `status: 'rejected'`, so
+     * the person can't register again as pending; the owner can restore it.
+     */
+    async rejectUserProfile(userId, byUid) {
+        await getDb().collection(col('users')).doc(userId).update({
+            status: 'rejected',
+            rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            rejectedBy: byUid || null
+        });
+        usersCache = null;
+    },
+
+    /**
+     * Restores a removed or rejected person as a pending registration (#84): the
+     * owner then approves them with a role like any new registration.
+     */
+    async restoreUserProfile(userId) {
+        const del = firebase.firestore.FieldValue.delete();
+        await getDb().collection(col('users')).doc(userId).update({
+            status: 'pending',
+            role: 'staff',
+            disabledAt: del,
+            disabledBy: del,
+            rejectedAt: del,
+            rejectedBy: del
+        });
         usersCache = null;
     },
 

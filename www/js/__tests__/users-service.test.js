@@ -41,11 +41,9 @@ describe('FirebaseService user methods', () => {
         expect(users[0]).toMatchObject({ id: 'new', name: 'New', status: 'pending' });
     });
 
-    test('updateUser / deleteUserProfile touch only the prefixed profile', async () => {
+    test('updateUser touches only the prefixed profile', async () => {
         await FirebaseService.updateUser('old', { role: 'manager' });
         expect(userDoc('old')).toMatchObject({ role: 'manager', status: 'active', name: 'Old' });
-        await FirebaseService.deleteUserProfile('legacy');
-        expect(userDoc('legacy')).toBeUndefined();
         expect(fake.raw('users').get('prod')).toBeDefined();
     });
 
@@ -146,5 +144,87 @@ describe('reset password and remove user (AadhatManagementApp#74)', () => {
         AppState.userRole = 'manager';
         expect(await AdminManager.deleteUser('old', 'Old')).toBe(false);
         expect(userDoc('old')).toMatchObject({ role: 'staff', status: 'active' });
+    });
+
+    test('reject keeps the profile as rejected (#84); it shows under Removed and rejected, not as pending', async () => {
+        document.body.innerHTML += '<div id="adminRemovedCard" hidden><div id="adminRemovedUsers"></div></div>';
+        await expect(AdminManager.rejectUser('new')).resolves.toBe(true);
+        expect(userDoc('new')).toMatchObject({ status: 'rejected', rejectedBy: 'owner-1', name: 'New' });
+        expect(document.getElementById('adminPendingUsers').textContent).not.toContain('New');
+        expect(document.getElementById('adminRemovedCard').hidden).toBe(false);
+        expect(document.getElementById('adminRemovedUsers').textContent).toContain('New');
+        await expect(UsersManager.rejectUser('old')).resolves.toBe(true);
+        expect(userDoc('old')).toMatchObject({ status: 'rejected' });
+    });
+
+    test('restore puts a removed or rejected person back as a pending registration (#84)', async () => {
+        fake.seed('dev_users', [
+            { id: 'gone', name: 'Gone', status: 'disabled', disabledBy: 'owner-1', disabledAt: 1 },
+            { id: 'no', name: 'No', role: 'staff', status: 'rejected', rejectedBy: 'owner-1', rejectedAt: 1 }
+        ]);
+        document.body.innerHTML += '<div id="adminRemovedCard"><div id="adminRemovedUsers"></div></div>';
+        await expect(AdminManager.restoreUser('gone', 'Gone')).resolves.toBe(true);
+        await expect(AdminManager.restoreUser('no', 'No')).resolves.toBe(true);
+        for (const id of ['gone', 'no']) {
+            const doc = userDoc(id);
+            expect(doc).toMatchObject({ status: 'pending', role: 'staff' });
+            ['disabledAt', 'disabledBy', 'rejectedAt', 'rejectedBy'].forEach(k => expect(doc).not.toHaveProperty(k));
+        }
+        expect(document.getElementById('adminPendingUsers').textContent).toContain('Gone');
+        AppState.userRole = 'manager';
+        expect(await AdminManager.restoreUser('old', 'Old')).toBe(false);
+    });
+});
+
+describe('team directory settings/team (#87)', () => {
+    beforeEach(() => {
+        FirebaseService.forgetPeopleCaches();
+        window.getCollection = (name) => `dev_${name}`;
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => { delete window.getCollection; });
+    const team = () => fake.raw('dev_settings')?.get('team');
+    const flush = () => new Promise(r => setTimeout(r, 0));
+
+    test("the owner's profile read writes names and roles of approved people only, and only when they changed", async () => {
+        await FirebaseService.loadUsers();
+        await flush();
+        expect(team().people).toEqual({ legacy: { name: 'Legacy', role: 'owner' }, old: { name: 'Old', role: 'staff' } });
+        expect(JSON.stringify(team())).not.toContain('@');
+        const before = team();
+        await FirebaseService.loadUsers();
+        await flush();
+        expect(team()).toBe(before);
+        await FirebaseService.updateUser('old', { role: 'manager' });
+        await FirebaseService.loadUsers();
+        await flush();
+        expect(team().people.old).toEqual({ name: 'Old', role: 'manager' });
+    });
+
+    test('a manager reads the directory, never the profiles', async () => {
+        fake.seed('dev_settings', [{ id: 'team', people: { old: { name: 'Old', role: 'staff' }, legacy: { name: 'Legacy', role: 'owner' } } }]);
+        AppState.userRole = 'manager';
+        const users = jest.spyOn(FirebaseService, 'loadUsers');
+        const people = await FirebaseService.loadPeople();
+        expect(people.map(p => p.id).sort()).toEqual(['legacy', 'old']);
+        expect(people.find(p => p.id === 'old')).toEqual({ id: 'old', name: 'Old', role: 'staff' });
+        expect(users).not.toHaveBeenCalled();
+        fake.raw('dev_settings').delete('team');
+        expect(await FirebaseService.loadPeople()).toEqual([]);
+    });
+
+    test("the owner's phone writes a missing directory once a day; managers never do", async () => {
+        localStorage.clear();
+        AppState.userRole = 'manager';
+        expect(await FirebaseService.ensureTeamDirectory()).toBe(false);
+        expect(team()).toBeUndefined();
+        AppState.userRole = 'owner';
+        expect(await FirebaseService.ensureTeamDirectory()).toBe(true);
+        await flush();
+        expect(Object.keys(team().people).sort()).toEqual(['legacy', 'old']);
+        FirebaseService.forgetPeopleCaches();
+        const users = jest.spyOn(FirebaseService, 'loadUsers');
+        expect(await FirebaseService.ensureTeamDirectory()).toBe(false);
+        expect(users).not.toHaveBeenCalled();
     });
 });

@@ -372,12 +372,12 @@ describe('Admin → Users and Users manager', () => {
         expect(document.getElementById('adminActiveUsers').textContent).toContain('Newbie');
     });
 
-    test('reject deletes the profile only after confirmation', async () => {
+    test('reject keeps the profile as rejected (#84), only after confirmation', async () => {
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValueOnce(false).mockResolvedValueOnce(true);
         await AdminManager.rejectUser('new1');
-        expect(fake.raw('users').has('new1')).toBe(true);
+        expect(fake.raw('users').get('new1').status).not.toBe('rejected');
         await AdminManager.rejectUser('new1');
-        expect(fake.raw('users').has('new1')).toBe(false);
+        expect(fake.raw('users').get('new1').status).toBe('rejected');
         expect(modal).toHaveBeenCalledTimes(2);
     });
 
