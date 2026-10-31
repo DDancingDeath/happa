@@ -1692,7 +1692,7 @@ function defineSuite(prefix) {
             await assertSucceeds(c.doc('p').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
                 payment: { cash: 90, online: 0, due: 0, total: 90 }, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('p2').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
-                payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 3 }));
+                payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertSucceeds(as('legacyOwner').collection(coll).doc('restored').set(bill({ cash: 500, online: 0, due: 0 })));
         }
     });
@@ -2326,9 +2326,10 @@ function defineSuite(prefix) {
         const w = { amount: 500, person: 'O', purpose: 'Personal Use', date: '2026-10-22', createdAt: 'x', userId: 'manager1', timestamp: Date.now() };
         await assertSucceeds(as('manager1').collection(withdrawals).doc('w1').set(w));
         await assertFails(as('manager1').collection(withdrawals).doc('w2').set({ ...w, amount: '500' }));
-        await assertFails(as('staff1').collection(withdrawals).doc('w3').set(w));
         await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app')
             .set({ roleAccess: { staff: { finance: true } } }));
+        // with Money on, a member still records only as themselves
+        await assertFails(as('staff1').collection(withdrawals).doc('w3').set(w));
         await assertSucceeds(as('staff1').collection(withdrawals).doc('w4').set({ ...w, userId: 'staff1' }));
         await assertFails(as('staff1').collection(withdrawals).doc('w1').update({ amount: 1 }));
         await assertFails(as('staff1').collection(withdrawals).doc('w1').delete());
