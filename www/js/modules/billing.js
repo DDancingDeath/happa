@@ -5,6 +5,7 @@
  */
 
 import { AppState } from '../utils/state.js';
+import { SecurityMonitor } from '../services/security-monitor.js';
 import { on, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -979,6 +980,10 @@ const BillingManager = {
                 return;
             }
             if (!canEditBill(bill)) {
+                // #124: a try to change a bill past its edit window goes to the owner's review
+                if (AppState.userRole === 'manager' || (bill.userId && bill.userId === AppState.currentUser?.uid)) {
+                    SecurityMonitor.noteOldBillTry(bill, billType, 'edit');
+                }
                 UIManager.showToast(editRefusedMessage(bill));
                 return;
             }

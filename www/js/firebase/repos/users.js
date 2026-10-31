@@ -10,6 +10,16 @@ const userRef = (uid) => firebase.firestore()
     .collection(window.getCollection ? window.getCollection('users') : 'users').doc(uid);
 
 /**
+ * Replaces the person's own list of phones (#124; rules: only `name` and `devices`).
+ * @param {string} uid
+ * @param {string[]} devices
+ * @returns {Promise<void>}
+ */
+export function setOwnDevices(uid, devices) {
+    return userRef(uid).update({ devices });
+}
+
+/**
  * One user's profile; read() reads it (with the same document reference each time).
  * @param {string} uid
  * @returns {{read: function({source?: 'server'|'cache'}=): Promise<{exists: boolean, data: (Object|undefined), fromCache: boolean}>}}

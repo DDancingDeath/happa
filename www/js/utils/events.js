@@ -20,6 +20,12 @@ export const REFRESH = Object.freeze(Object.fromEntries([
 
 export const ITEM_FREQUENCY_CHANGED = 'itemFrequency:changed';
 
+/**
+ * Firestore refused a call with permission-denied (firebase/firestore-meter.js);
+ * payload: its source label ("purchases (doc) update", "batch commit"…). #124.
+ */
+export const FIRESTORE_DENIED = 'firestore:denied';
+
 const handlers = new Map();
 
 /**
