@@ -155,9 +155,13 @@ In order:
   "staff"/"स्टाफ". Escape `t()` output that goes into `innerHTML`. Show one
   language at a time, never "English / हिंदी" together:
   `single-language-guard.test.js` (scanner: `node scripts/mixed-language-scan.js`)
-  fails on any literal, template or template text mixing Latin and Devanagari.
+  fails on any literal, template or template text mixing Latin and Devanagari
+  (the unit `kg` is allowed: in Hindi the weight unit is always "kg", e.g.
+  "50 kg", "₹/kg", "प्रति kg", never the Hindi word for kilo; `hindi-kg-unit.test.js`
+  checks `hi.js` and every shipped `www/` file).
   Records that carry both languages (`{ en, hi }`, stored anomalies/flags) are shown
-  with `pickLang()` from `i18n/localize.js`; old stored "English / Hindi" sentences
+  with `pickLang()` from `i18n/localize.js` (in Hindi it also shows an old stored
+  weight unit as "kg"); old stored "English / Hindi" sentences
   fall back to `splitBilingual()`.
 - **Service worker / cache bump**: every app JS/CSS/template file (and
   icon/manifest) must be listed in `STATIC_ASSETS` in `www/service-worker.js`

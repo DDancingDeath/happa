@@ -9,7 +9,7 @@ import { AppState } from '../utils/state.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { ITEMS, generateHistory } from './__mocks__/history-data.js';
 import { defaultWindowStart, monthsBefore, dateDescComparator } from '../utils/history-range.js';
-import { computeStock, eventTime, buildCheckpointState, serializeState, itemsSignature } from '../utils/stock-replay.js';
+import { computeStock, eventTime, buildCheckpointState, serializeState, itemsSignature, STOCK_REPLAY_FORMAT } from '../utils/stock-replay.js';
 import { outstandingDue } from '../utils/money.js';
 import { LEASE_MAX_WAIT_MS } from '../utils/rebuild-lease.js';
 
@@ -99,7 +99,7 @@ describe('recent history window + stock checkpoint', () => {
 
         await rebuildSettled();
         const cp = cpDoc();
-        expect(cp).toMatchObject({ stale: false, asOf: W, formatVersion: 4 });
+        expect(cp).toMatchObject({ stale: false, asOf: W, formatVersion: STOCK_REPLAY_FORMAT });
         expect(cp.backfill.complete).toBe(true);
         // Every dated stock document now has a numeric timestamp.
         ['purchases', 'wholesaleSales', 'retailSales', 'stockAdjustments'].forEach(c => {
@@ -750,7 +750,7 @@ describe('review fixes (2)', () => {
         await settle();
         expect(AppState.stockReady).toBe(true);
         expect(AppState.stock).toEqual(fullStock());
-        expect(cpDoc()).toMatchObject({ formatVersion: 4, clientVersion: 4, writtenAt: expect.any(Number), rebuildingUntil: 0, stale: false });
+        expect(cpDoc()).toMatchObject({ formatVersion: STOCK_REPLAY_FORMAT, clientVersion: 4, writtenAt: expect.any(Number), rebuildingUntil: 0, stale: false });
     }, 30000);
 
     it('#13 deferred stock: not ready at the first screen, computed right after the first paint', async () => {

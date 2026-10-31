@@ -439,7 +439,7 @@ async function pay(leaseId) {
         ${lbl('ui.rent.month', `
             <select id="rentPayCharge" onchange="window.app.rentals.fillDue(this)">${options}</select>`)}
         ${lbl('ui.rent.amount', `
-            <input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(chargeDue(first))}">`)}
+            <input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${esc(chargeDue(first))}">`)}
         ${lbl('ui.rent.mode', `<select id="rentPayMode">${modes}</select>`)}
         ${lbl('ui.rent.reference', `<input id="rentPayRef" type="text" maxlength="60">`)}
         ${lbl('ui.rent.date', `<input id="rentPayDate" type="date" value="${esc(todayLocalISO())}">`)}`;

@@ -197,7 +197,7 @@ function oversellIssues(items, ctx, extraLine) {
         const field = onEntry ? 'entry.qty' : 'items';
         return issue('oversell', field, block ? 'block' : 'warn',
             `${s.name}: selling ${fmtKg(s.requested)} kg, only ${avail} kg in stock (short ${fmtKg(s.shortfall)} kg)${approx ? ` — ${approx.en}` : ''}`,
-            `${s.name}: ${fmtKg(s.requested)} किलो बिक्री, स्टॉक में सिर्फ़ ${avail} किलो (${fmtKg(s.shortfall)} किलो कम)${approx ? ` — ${approx.hi}` : ''}`,
+            `${s.name}: ${fmtKg(s.requested)} kg बिक्री, स्टॉक में सिर्फ़ ${avail} kg (${fmtKg(s.shortfall)} kg कम)${approx ? ` — ${approx.hi}` : ''}`,
             { lines: indices });
     });
 }
@@ -479,5 +479,5 @@ export function evaluateStockAdjustment(qtyKg, thresholds) {
     if (q <= t.stockAdjustFlagKg) return [];
     return [issue('stock-adjust-large', 'qty', 'warn',
         `Large stock adjustment: ${fmtKg(q)} kg (more than ${t.stockAdjustFlagKg} kg)`,
-        `बड़ा स्टॉक बदलाव: ${fmtKg(q)} किलो (${t.stockAdjustFlagKg} किलो से ज़्यादा)`)];
+        `बड़ा स्टॉक बदलाव: ${fmtKg(q)} kg (${t.stockAdjustFlagKg} kg से ज़्यादा)`)];
 }

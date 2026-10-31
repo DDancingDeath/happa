@@ -36,6 +36,11 @@ export function splitBilingual(text, lang = getLang()) {
  * @returns {string}
  */
 export function pickLang(value, lang = getLang()) {
+    const text = pickText(value, lang);
+    return lang === 'hi' ? hindiKg(text) : text;
+}
+
+function pickText(value, lang) {
     if (value == null) return '';
     if (typeof value !== 'object') return splitBilingual(value, lang);
     const own = value[lang];
@@ -44,6 +49,21 @@ export function pickLang(value, lang = getLang()) {
     if (other != null && String(other) !== '') return String(other);
     if (value.message != null) return splitBilingual(value.message, lang);
     return '';
+}
+
+/**
+ * Hindi text says "kg" for weight, never the Hindi word for kilo (owner decision).
+ * Records stored before that rule are shown with "kg" too; only a unit right after
+ * a number is changed, so names and other words stay as stored.
+ * @param {string} text
+ * @returns {string}
+ */
+export function hindiKg(text) {
+    // The Hindi words for kilo / kilogram and their short forms, as escapes so the
+    // no-Hindi-kilo guard (hindi-kg-unit.test.js) finds no such word in www/.
+    return String(text).replace(
+        /(\d)\s*(?:\u0915\u093F\u0932\u094B\u0917\u094D\u0930\u093E\u092E|\u0915\u093F\u0932\u094B|\u0915\u093F\.?\s?\u0917\u094D\u0930\u093E\.?)(?![\u0900-\u097F])/g,
+        '$1 kg');
 }
 
 export const AUDIT_ACTIONS = ['PERMISSION_DENIED', 'NEW_DEVICE', 'OLD_BILL_EDIT_TRY',

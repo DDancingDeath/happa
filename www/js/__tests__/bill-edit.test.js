@@ -5,10 +5,11 @@
  * client-side edit permission (canEditBill).
  */
 import { BillingManager, PurchaseManager, canEditBill, EDIT_NOT_ALLOWED_KEY, EDIT_WINDOW_CLOSED_KEY } from '../modules/billing.js';
+import { RetailSaleManager } from '../modules/retail-sale.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { NAME_REQUIRED_FOR_DUE_KEY } from '../utils/money.js';
+import { NAME_REQUIRED_FOR_DUE_KEY, round2 } from '../utils/money.js';
 import { t } from '../i18n/index.js';
 
 const BILL = { id: 'b1', userId: 'creator', items: [{ itemId: 'x', qty: 1, rate: 1 }], payment: { due: 0 } };
@@ -238,5 +239,144 @@ describe('Print comments toggle survives edit (#86)', () => {
         jest.spyOn(FirebaseService, 'updatePurchase').mockImplementation(async b => b);
         const saved = await BillingManager.saveEditedBill();
         expect(saved.printComments).toBe(true);
+    });
+});
+describe('#129: editing a bill saved with paise', () => {
+    const PURCHASE_FORM = `
+      <select id="billItem"></select><input id="billRate"><input id="newWeight">
+      <table id="billTable"><tbody></tbody></table><div id="weightBreakdownSection"></div>
+      <span id="billTotal">0</span><span id="totalPacketsInBill">0</span>
+      <input type="checkbox" id="autoLaborCharge" checked><input id="manualLaborCharges" value="0"><span id="laborCalculation"></span>
+      <span id="amountPayable">0</span><span id="totalPayment">0</span>
+      <input id="onlinePayment"><input id="cashPayment"><input id="dueAmount"><strong id="purchaseSplitRemaining"></strong>
+      <input type="checkbox" id="onlineCheckbox"><input type="checkbox" id="cashCheckbox"><input type="checkbox" id="dueCheckbox">
+      <input id="customerName"><input id="billComments"><input type="checkbox" id="billPrintComments">`;
+    const SALE_FORM = `
+      <select id="saleItem"></select><input id="saleRate"><input id="saleWeight">
+      <table id="saleTable"><tbody></tbody></table><div id="saleWeightBreakdownSection"></div>
+      <span id="saleTotal">0</span><span id="totalSalePacketsInBill">0</span><span id="amountReceivable">0</span><span id="totalReceived">0</span>
+      <input id="saleOnlinePayment"><input id="saleCashPayment"><input id="saleDueAmount"><strong id="saleSplitRemaining"></strong>
+      <input type="checkbox" id="saleOnlineCheckbox"><input type="checkbox" id="saleCashCheckbox"><input type="checkbox" id="saleDueCheckbox">
+      <input id="saleCustomerName"><input id="saleComments"><input type="checkbox" id="salePrintComments">`;
+    // ₹1,000 of lines, ₹12.50 labour typed by hand: payable ₹987.50 (saved before #129)
+    const oldPurchase = (payment) => ({
+        id: 'b1', userId: 'creator', customerName: 'Ramesh', date: '2026-10-01T10:00:00.000Z', timestamp: 1,
+        items: [{ itemId: 'rice', name: 'Rice', qty: 40, rate: 25, total: 1000, weights: [40] }],
+        billTotal: 1000, laborCharges: 12.5, laborCalc: null, totalPackets: 1, grandTotal: 987.5, amountPayable: 987.5,
+        cashPayment: payment.cash, onlinePayment: payment.online, dueAmount: payment.due,
+        payment: { ...payment, total: round2(payment.cash + payment.online + payment.due) }
+    });
+    let update;
+    const setVal = (id, v) => { document.getElementById(id).value = String(v); };
+
+    beforeEach(() => {
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+        jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        jest.spyOn(PurchaseManager, 'clearBill').mockImplementation(() => {});
+        jest.spyOn(RetailSaleManager, 'clearSale').mockImplementation(() => {});
+        jest.spyOn(BillingManager, '_refreshAfterEdit').mockImplementation(() => {});
+        jest.spyOn(BillingManager, 'switchMode').mockImplementation(function (mode) { this.currentMode = mode; });
+        jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+        answerReason();
+        window.app = { nav: { showTab: jest.fn() }, billing: { switchMode: jest.fn() } };
+        AppState.currentUser = { uid: 'creator' };
+        AppState.userRole = 'owner';
+        AppState.settings = {};
+        PurchaseManager.init(BillingManager);
+        RetailSaleManager.init(BillingManager);
+        update = jest.spyOn(FirebaseService, 'updatePurchase').mockImplementation(async b => b);
+    });
+
+    afterEach(() => {
+        jest.restoreAllMocks();
+        BillingManager.editingBillIndex = undefined;
+        AppState.purchaseHistory = [];
+        AppState.retailSalesHistory = [];
+        PurchaseManager.setBillItems([]);
+        RetailSaleManager.setSaleItems([]);
+        delete window.app;
+        document.body.innerHTML = '';
+    });
+
+    async function openPurchase(bill) {
+        document.body.innerHTML = PURCHASE_FORM;
+        AppState.purchaseHistory = [bill];
+        window.currentBillId = bill.id;
+        BillingManager.currentMode = 'purchase';
+        await BillingManager.editBill(0, 'purchase');
+    }
+
+    test('a name-only edit keeps every stored money field exactly (paise included)', async () => {
+        const bill = oldPurchase({ cash: 487.5, online: 500, due: 0 });
+        await openPurchase(bill);
+        setVal('customerName', 'Ramesh Kumar');
+        const saved = await BillingManager.saveEditedBill();
+        expect(update).toHaveBeenCalledTimes(1);
+        const money = ['items', 'billTotal', 'laborCharges', 'laborCalc', 'totalPackets', 'grandTotal', 'amountPayable', 'cashPayment', 'onlinePayment', 'dueAmount', 'payment'];
+        money.forEach(k => expect(saved[k]).toEqual(bill[k]));
+        expect(saved.customerName).toBe('Ramesh Kumar');
+    });
+
+    test('2 legs (₹487.50 + ₹500 of ₹987.50): with the labour changed the split adds up to the new payable exactly', async () => {
+        await openPurchase(oldPurchase({ cash: 487.5, online: 500, due: 0 }));
+        setVal('manualLaborCharges', 12);
+        PurchaseManager.updateTotals();
+        // ₹988 payable; the legs 488 + 500 already add up to it
+        const saved = await BillingManager.saveEditedBill();
+        expect(saved).toMatchObject({ laborCharges: 12, grandTotal: 988, cashPayment: 488, onlinePayment: 500, dueAmount: 0 });
+        expect(saved.payment).toEqual({ cash: 488, online: 500, due: 0, total: 988 });
+    });
+
+    test('2 legs, payable rounded to ₹987 (labour ₹12.50 → ₹13): no ₹1 overpaid', async () => {
+        await openPurchase(oldPurchase({ cash: 487.5, online: 500, due: 0 }));
+        // The line re-weighed as two packets (same kg and amount): a money edit
+        PurchaseManager.setBillItems([{ itemId: 'rice', name: 'Rice', qty: 40, rate: 25, total: 1000, weights: [20, 20] }]);
+        PurchaseManager.updateTotals();
+        const saved = await BillingManager.saveEditedBill();
+        expect(saved).toMatchObject({ laborCharges: 13, grandTotal: 987 });
+        expect(saved.payment).toEqual({ cash: 488, online: 499, due: 0, total: 987 });
+    });
+
+    test('3 legs (300.50 + 300.50 + 386.50): the split check passes and the due takes the remainder', async () => {
+        await openPurchase(oldPurchase({ cash: 300.5, online: 300.5, due: 386.5 }));
+        setVal('manualLaborCharges', 13);
+        PurchaseManager.updateTotals();
+        expect(PurchaseManager.readPaymentSplit()).toEqual({ cash: 301, online: 301, due: 385 });
+        const saved = await BillingManager.saveEditedBill();
+        expect(update).toHaveBeenCalledTimes(1);
+        expect(saved.payment).toEqual({ cash: 301, online: 301, due: 385, total: 987 });
+        expect([saved.cashPayment, saved.onlinePayment, saved.dueAmount]).toEqual([301, 301, 385]);
+    });
+
+    test('a retail sale with a ₹0.50 old due: a money edit leaves ₹0 due, not ₹1', async () => {
+        document.body.innerHTML = SALE_FORM;
+        const sale = {
+            id: 's1', userId: 'creator', customerName: 'Sita', date: '2026-10-01T10:00:00.000Z', timestamp: 1,
+            items: [{ itemId: 'rice', name: 'Rice', qty: 20.01, rate: 50, total: 1000.5, packets: 1 }],
+            total: 1000.5, saleTotal: 1000.5, cashPayment: 1000, onlinePayment: 0, dueAmount: 0.5,
+            payment: { cash: 1000, online: 0, due: 0.5, total: 1000.5 }
+        };
+        AppState.retailSalesHistory = [sale];
+        window.currentBillId = 's1';
+        BillingManager.currentMode = 'sale';
+        await BillingManager.editBill(0, 'retail');
+        const updateSale = jest.spyOn(FirebaseService, 'updateRetailSale').mockImplementation(async b => b);
+        // A name-only edit keeps the stored paise
+        setVal('saleCustomerName', 'Sita Devi');
+        const kept = await BillingManager.saveEditedBill();
+        expect(kept.payment).toEqual(sale.payment);
+        expect(kept.total).toBe(1000.5);
+        // A money edit: the line is re-entered at 20 kg × ₹50 = ₹1,000
+        BillingManager.editingBillIndex = 0;
+        BillingManager.editingBillId = 's1';
+        BillingManager.editingBillType = 'retail';
+        AppState.retailSalesHistory = [sale];
+        RetailSaleManager.setSaleItems([{ itemId: 'rice', name: 'Rice', qty: 20, rate: 50, total: 1000, packets: 1 }]);
+        setVal('saleCashPayment', 1000);
+        setVal('saleDueAmount', 0.5);
+        const saved = await BillingManager.saveEditedBill();
+        expect(updateSale).toHaveBeenCalledTimes(2);
+        expect(saved).toMatchObject({ total: 1000, dueAmount: 0 });
+        expect(saved.payment).toEqual({ cash: 1000, online: 0, due: 0, total: 1000 });
     });
 });

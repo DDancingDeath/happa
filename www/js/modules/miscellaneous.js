@@ -21,6 +21,7 @@ import { refusedForClock } from '../utils/clock-skew.js';
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
 import { expenseMode, isPersonalExpense } from '../utils/money.js';
+import { entryAmount } from '../utils/calc/billing.js';
 import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpenseEntry } from '../utils/expense-entry.js';
 import { toLocalISODate } from '../utils/dates.js';
 import { personalDayKey } from '../utils/personal-expenses.js';
@@ -151,7 +152,8 @@ export class ExpensesManager {
     static expenseFromForm(category) {
         const type = formField(category, 'Type').value.trim();
         const personName = formField(category, 'Person').value.trim();
-        const amount = Number(formField(category, 'Amount').value);
+        // Whole rupees (MONEY-ROUND, #129): ₹0.40 is not an amount
+        const amount = entryAmount(formField(category, 'Amount').value);
         const remarks = formField(category, 'Remarks').value.trim();
 
         if (!type) {
