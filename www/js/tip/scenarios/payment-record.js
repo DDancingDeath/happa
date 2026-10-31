@@ -7,7 +7,8 @@
  * @module tip/scenarios/payment-record
  */
 
-import { readPayment, SPLIT_TOLERANCE } from '../../utils/money.js';
+import { readPayment } from '../../utils/money.js';
+import { SPLIT_TOLERANCE } from '../../utils/calc/billing.js';
 
 export const PaymentRecordTest = {
     id: 'PaymentRecord',

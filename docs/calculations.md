@@ -93,6 +93,40 @@ a period longer than a day, T-LAB-1 is the sum over
 the period; T-LAB-2 is the sum of each day's T-LAB-2 (labour is paid per day,
 so each day is rounded up on its own).
 
+## Bill forms: purchase, retail sale, wholesale sale (`templates/billing.html`, `templates/wholesale-sales.html`)
+
+While a bill is entered (before it is saved) and the money fields of the bill
+the form saves. One pure module computes every figure: `www/js/utils/calc/billing.js`
+(function → ID in `BILLING_SPEC`); `modules/purchase.js`, `retail-sale.js` and
+`wholesale-sales.js` only read the inputs, call it and render. Tests:
+`www/js/__tests__/bill-forms-characterisation.test.js` (each form driven in
+jsdom: screen text, saved bill and payment split pinned),
+`www/js/__tests__/billing-calc.test.js` and the oracle
+`tests/oracle/billing.test.js` (forms and functions vs `billForm()`).
+
+Rounding is one named policy per figure, `ROUNDING` in `calc/billing.js`
+(❓ open: #129 / F-R1, whole-rupee lines vs paise; until then it stays as below).
+Because the payable and the Cash / Online / Due tick are rounded to the rupee
+but the saved total keeps paise, a purchase of ₹1,953 with ₹12.50 labour shows
+and fills ₹1,941 and saves `grandTotal` ₹1,940.50 (inside the ₹1 BF-SPLIT
+tolerance); a retail form shows its lines' plain sum to the rupee and saves the
+paise total.
+
+| ID | On screen | Definition | Owner (`calc/billing.js`) |
+|---|---|---|---|
+| BF-KG | Packet chips' kg and count; a line's kg and packets | kg = Σ the packet weights typed for the line (plain sum, shown to 0.1 kg); packets = how many. Wholesale lines are typed in kg. Editing a retail line puts its weights back: its own, else its kg split evenly over its packets, else its kg as one packet. | `sumWeights`, `computeLine`, `weightsForEdit` |
+| BF-LINE | Line amount (bill table) | kg × rate, **rounded to the rupee** (`ROUNDING.lineAmount`): 12.4 kg × ₹33.50 = ₹415 (the stock replay values it at ₹415.40, see architecture.md §4). | `computeLine` |
+| BF-TOTAL | Bill total (purchase "Bill Total", retail "Total" / "Receivable", wholesale "Total"); total packets | Σ BF-LINE in paise (`ROUNDING.billTotal`), saved as `billTotal` (purchase) or `total` (sales), shown to the rupee. The retail screen and every WhatsApp draft add the lines with plain addition (no paise rounding). Purchase packets: Σ packets; retail: Σ packets (a line without packets counts 1 on screen, 0 in the saved `totalPackets`). | `computePurchaseTotals`, `computeRetailTotals`, `computeWholesaleTotals`, `draftLineSum` |
+| BF-LAB | Labour box and "6 × 2" | With Labour ticked: the shared labour rate (`laborRate`, default ₹6) × heavy packets (packets above `heavyWeightThreshold`, default 30 kg), put in the box in whole rupees (`ROUNDING.autoLabourBox`) unless typed by hand; the saved bill keeps the box in paise (`laborCharges`, = T-LAB-1) and the working (`laborCalc`) when it was not typed. Unticked: 0. | `autoLabour`, `computePurchaseTotals` (`heavyPackets`) |
+| BF-PAYABLE | Purchase "Total Payable" | BF-TOTAL − labour: saved as `grandTotal` / `amountPayable` in paise; shown as BF-TOTAL − the labour box, to the rupee. | `computePurchaseTotals` (`grandTotal`), `payableOnScreen` |
+| BF-PAID | "Total Paid" / "Total Received" | Cash + online typed, shown to the rupee. | `paidOnScreen` |
+| BF-SPLIT | "₹X left" / "₹X extra" / "✓ ₹0"; the save check | Cash + online + due against the bill total (BF-PAYABLE for purchases, BF-TOTAL for sales): ok within ₹1 (`SPLIT_TOLERANCE`); otherwise the difference, which the save refuses. | `validatePaymentSplit` |
+| BF-FILL | Ticking Online / Cash / Due; "Rest → Due" | A tick puts the whole bill total, to the rupee (`ROUNDING.tickFill`), in that box and 0 in the others (purchase: BF-PAYABLE in paise; retail: the screen total). Rest → Due = total − cash − online in paise (`ROUNDING.restInDue`), Due ticked when > 0; refused with the BF-SPLIT message when more than the total is paid. | `prefillPayment`, `restInDue` |
+| BF-SAVE | Saved `cashPayment` / `onlinePayment` / `dueAmount`, `payment` | Each typed amount in paise (`ROUNDING.payment`; also the wholesale `expenses`); `payment = {online, cash, due, total: online + cash + due}` (paise). Read back with BILL-PAY. | `paymentSplit`, `buildPaymentSplit`, `typedAmount` |
+| WS-PROFIT | Wholesale "Profit" (live) and the saved `profit` | BF-TOTAL − cost − expenses (paise), cost = Σ kg × the item's **current** average rate in stock (lines whose rate is unknown cost ₹0). Shown to the rupee; the WhatsApp draft uses the shown figure. Can differ from I1 / M6 (AVG-COST at the moment of the sale) once an earlier-dated record is saved later. | `computeWholesaleTotals`, `wholesaleLiveProfit` |
+| WS-MARGIN | Wholesale "Profit %" and the saved `profitPercent` | WS-PROFIT ÷ BF-TOTAL × 100, one decimal (`ROUNDING.margin`); 0 when the total is 0. | `computeWholesaleTotals`, `wholesaleLiveProfit` |
+| DUE-CHECK | Recording a due payment (Outstanding, Wholesale › Outstanding) | Cash and online each in paise, neither negative, together > 0 and at most the bill's BILL-DUE + ₹0.01. | `validateDuePayment` |
+
 ## Finance (retired; `utils/finance-calc.js` stays as the engine of M*) — #215
 
 > Retired in redesign phase 5: the page is gone and its route opens Money. Its figures are now

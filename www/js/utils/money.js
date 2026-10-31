@@ -250,65 +250,8 @@ export function readLineItem(item) {
 }
 
 /**
- * Purchase bill totals computed from the line items (never from on-screen text).
- * @param {Array<Object>} items - bill lines ({ total, weights })
- * @param {number} laborCharges - labour deducted from the item total (0 when Labour is unticked)
- * @param {number} [heavyWeightThreshold=30] - packets heavier than this (kg) count as heavy
- * @returns {{billTotal: number, laborCharges: number, grandTotal: number, totalPackets: number, heavyPackets: number}}
- */
-export function computePurchaseTotals(items, laborCharges = 0, heavyWeightThreshold = 30) {
-    const list = Array.isArray(items) ? items : [];
-    const billTotal = sumMoney(list, item => readLineItem(item).total);
-    let totalPackets = 0;
-    let heavyPackets = 0;
-    for (const item of list) {
-        const weights = Array.isArray(item?.weights) ? item.weights : [];
-        totalPackets += weights.length;
-        heavyPackets += weights.filter(w => Number(w) > heavyWeightThreshold).length;
-    }
-    const labour = round2(toMoney(laborCharges) || 0);
-    return { billTotal, laborCharges: labour, grandTotal: round2(billTotal - labour), totalPackets, heavyPackets };
-}
-
-/**
- * Wholesale sale total, cost (from stock average rates) and profit computed
- * from the line data.
- * @param {Array<Object>} items - sale lines ({ itemId, qty|quantity, total })
- * @param {Object} stock - AppState.stock ({ [itemId]: { rate } })
- * @param {number} [expenses=0]
- * @returns {{total: number, cost: number, profit: number, profitPercent: number}}
- */
-export function computeWholesaleTotals(items, stock = {}, expenses = 0) {
-    const list = Array.isArray(items) ? items : [];
-    const total = sumMoney(list, item => readLineItem(item).total);
-    const cost = sumMoney(list, item => {
-        const rate = toMoney(stock?.[item?.itemId]?.rate);
-        return rate ? rate * readLineItem(item).qty : 0;
-    });
-    const profit = round2(total - cost - (toMoney(expenses) || 0));
-    const profitPercent = total > 0 ? Math.round((profit / total) * 1000) / 10 : 0;
-    return { total, cost, profit, profitPercent };
-}
-
-/** Allowed gap (₹) between cash + online + due and the bill total. */
-export const SPLIT_TOLERANCE = 1;
-
-/**
- * Checks that cash + online + due adds up to the bill total (within ₹1).
- * @param {number} total - bill total
- * @param {{cash?: number, online?: number, due?: number}} split
- * @returns {{ok: boolean, entered: number, difference: number}} difference = total − entered
- *   (positive: amount still to allocate; negative: entered too much)
- */
-export function checkPaymentSplit(total, { cash = 0, online = 0, due = 0 } = {}) {
-    const entered = round2((toMoney(cash) || 0) + (toMoney(online) || 0) + (toMoney(due) || 0));
-    const difference = round2((toMoney(total) || 0) - entered);
-    return { ok: Math.abs(difference) <= SPLIT_TOLERANCE, entered, difference };
-}
-
-/**
  * Message for a payment split that does not match the bill total.
- * @param {{difference: number}} check - result of checkPaymentSplit
+ * @param {{difference: number}} check - result of validatePaymentSplit (utils/calc/billing.js)
  * @param {'en'|'hi'} [lang] - defaults to the app language
  * @returns {string}
  */

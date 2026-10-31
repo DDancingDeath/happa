@@ -786,3 +786,48 @@ export function dailyKg(sources, items, itemId, month) {
     }
     return out;
 }
+
+// ---------------------------------------------------------------- Bill forms (BF-*, WS-*)
+
+/**
+ * The figures a bill form shows while a bill is entered, and the money of the
+ * bill it saves. Lines: BF-LINE = qty × rate in whole rupees (#129 open), qty =
+ * Σ packet weights (BF-KG). Purchase: BF-TOTAL = Σ lines (paise); BF-LAB =
+ * labour rate × packets above the heavy weight, whole rupees in the box;
+ * BF-PAYABLE = BF-TOTAL − labour (saved in paise, shown in rupees). Retail:
+ * BF-TOTAL = Σ lines. Wholesale: WS-PROFIT = total − Σ qty × average rate
+ * (lines with no known rate cost nothing) − expenses; WS-MARGIN = profit ÷
+ * total × 100, one decimal (0 with no total).
+ * @param {'purchase'|'retail'|'wholesale'} kind
+ * @param {Array<{rate: number, qty?: number, weights?: number[], itemId?: string}>} entries
+ * @param {{laborRate?: number, heavyKg?: number, labour?: number, stock?: Object, expenses?: number}} [opts]
+ *   labour: typed labour (default: the suggested one)
+ */
+export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, stock = {}, expenses = 0 } = {}) {
+    const lines = entries.map(e => {
+        const qty = e.weights ? sum(e.weights, w => w) : n(e.qty);
+        return { ...e, qty, amount: Math.round(qty * e.rate) };
+    });
+    const total = r2(sum(lines, l => l.amount));
+    const out = { BF_LINE: lines.map(l => l.amount), BF_KG: lines.map(l => l.qty), BF_TOTAL: total, BF_TOTAL_shown: Math.round(total) };
+    if (kind === 'purchase') {
+        const heavy = sum(lines, l => (l.weights || []).filter(w => w > heavyKg).length);
+        const suggested = Math.round(laborRate * heavy);
+        const typed = labour === undefined ? suggested : labour;
+        Object.assign(out, {
+            BF_LAB: suggested,
+            BF_PAYABLE: r2(total - r2(typed)),
+            BF_PAYABLE_shown: Math.round(total - typed)
+        });
+    }
+    if (kind === 'wholesale') {
+        const cost = r2(sum(lines, l => (n(stock[l.itemId]?.rate) > 0 ? n(stock[l.itemId].rate) * l.qty : 0)));
+        const profit = r2(total - cost - n(expenses));
+        Object.assign(out, {
+            WS_PROFIT: profit,
+            WS_PROFIT_shown: Math.round(profit) || 0,
+            WS_MARGIN: total > 0 ? Math.round((profit / total) * 1000) / 10 : 0
+        });
+    }
+    return out;
+}

@@ -38,8 +38,9 @@ utils/state.js    ── AppState: one global mutable object, written in 83 line
 What is already right: Money, Insights and Statements take every figure from
 `utils/business-metrics.js` (M*, I*, ST*), with one home per figure
 (`utils/metric-registry.js`) and an independent oracle (`tests/oracle/`). Rentals
-maths is pure (`rent-math`, `rent-views`, `rent-public`). The weak parts are the
-bill forms (purchase, retail, wholesale), Today, the cash drawer, Stock and
+maths is pure (`rent-math`, `rent-views`, `rent-public`). Today (`calc/today`,
+#185) and the bill forms (purchase, retail, wholesale: `calc/billing`, #189)
+now only render calc results. The weak parts are the cash drawer, Stock and
 History, which still calculate inside the page.
 
 ## 2. Target layers
@@ -104,6 +105,12 @@ the migration. **Inline** = computed inside a page module.
 | MONEY-TEXT | `money.formatRupees` / `formatAmount`; pages also print raw `₹${x}` (cash-management.js:619-694) and `Math.round` | `money.formatRupees` |
 | DATE-TEXT | `dates.formatDay`, `formatDayTime` | same |
 | T1, T2, T4, T5, T6, T7, T8, T9, T10, T11, T12, T15, T16, T17 | `calc/today.todaySummary` (#185) on top of `saleTimePayment`, `outstandingDue`; day.js only renders | same |
+| BF-KG, BF-LINE | `calc/billing.sumWeights`, `computeLine`, `weightsForEdit` (step 2f); purchase / retail / wholesale forms only render | same |
+| BF-TOTAL | `calc/billing.computePurchaseTotals`, `computeRetailTotals`, `computeWholesaleTotals`, `draftLineSum` (moved from money.js) | same |
+| BF-LAB, BF-PAYABLE | `calc/billing.autoLabour`, `computePurchaseTotals`, `payableOnScreen` | same |
+| BF-PAID, BF-SPLIT, BF-FILL, BF-SAVE | `calc/billing.paidOnScreen`, `validatePaymentSplit` (was `money.checkPaymentSplit`), `prefillPayment`, `restInDue`, `paymentSplit`, `buildPaymentSplit`; one copy for the three forms (`Helpers.applyPaymentPrefill` writes the ticks) | same |
+| WS-PROFIT, WS-MARGIN | `calc/billing.computeWholesaleTotals`, `wholesaleLiveProfit` (the WhatsApp draft no longer reads the profit back from the screen) | same |
+| DUE-CHECK | `calc/billing.validateDuePayment` (was `due-payments.checkPaymentSplit`): Outstanding and Wholesale › Outstanding | same |
 | T13, T14 | `due-payments.dueEvents` + `sumDueEvents`, inside `todaySummary` | same |
 | T3, T-LAB-1, T-LAB-2, T-LAB-3 | `labour.labourSummary` | same |
 | F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11 (retired page) | `finance-calc.computeFinanceSummary` | same (engine of M*) |
@@ -153,12 +160,10 @@ the migration. **Inline** = computed inside a page module.
 | AC7, AC9, AC10, AC11, AC12, AC14 | tests only (`tests/property`, `tests/oracle`); AC10 also inline in modules/money.js:650 | tests + `number-checks` |
 | AC13 | `metric-registry.registryProblems` | same |
 
-Numbers on screen with **no spec ID** today (add one when they move): wholesale
-live profit / margin (`money.computeWholesaleTotals`, shown at
-wholesale-sales.js:286-287), stock adjustment value (stock.js:754), Insights
-top-5 share (insights.js:377-381),
-bill-form draft totals before save (purchase, retail,
-wholesale).
+Numbers on screen with **no spec ID** today (add one when they move): stock
+adjustment value (stock.js:754), Insights top-5 share (insights.js:377-381).
+Wholesale live profit / margin and the bill-form draft figures got theirs in
+step 2f (WS-PROFIT, WS-MARGIN, BF-*).
 
 ## 4. Verified findings (review of 31 Oct 2026)
 
@@ -193,7 +198,7 @@ Each claim of the combined review checked against `main` `ca6f2ba`.
 | Profit / margin | ◐ live profit is pure (`computeWholesaleTotals`, current average rate from `AppState.stock`) | Differs from I1/M6 (AVG-COST at the moment of sale) once an earlier-dated record is saved later. No spec ID. |
 | Stock value | ✅ stock.js:159-191, 257, 583 vs `stock-replay` / `moneySummary().stockNow` | Same inputs today; two code paths. |
 | Rent totals | ◐ rent-views.js:33-40 vs `rent-math.monthSummary` | Agree (same rounding). |
-| Other copies found | `checkPaymentSplit` exists twice with different signatures (money.js:292, due-payments.js:194); `normalizeParty` = `normalizePartyName` (due-payments.js:28, aging.js:54); `istDayKey` (anomalies.js:103, rate-trends.js:52); month step (insights / money) | Identical today; one copy should go. |
+| Other copies found | `checkPaymentSplit` exists twice with different signatures (money.js:292, due-payments.js:194; since 2f `calc/billing.validatePaymentSplit` / `validateDuePayment`); `normalizeParty` = `normalizePartyName` (due-payments.js:28, aging.js:54); `istDayKey` (anomalies.js:103, rate-trends.js:52); month step (insights / money) | Identical today; one copy should go. |
 | Found by the full-scope ratchet | firestore-service.js:1197-1198 repeats `wholesaleOutstanding`'s `payment.due ‖ total − received`; main.js:527-695 (`debugStockForName`) re-implements AVG-COST; services/printer.js:350-431 recomputes payable (its own field order, then `subtotal − labour`), received and due for the receipt, with `‖` so `payment.cash: 0` falls back to the top-level `cashPayment` (`readPayment` keeps the 0) | The first disagrees with BILL-DUE as above; the receipt rounds to the rupee (₹988 for the ₹987.50 bill above) and can show a stale cash figure. |
 
 "No spec ID" list: wholesale live profit / margin ✅, stock adjustment value ✅,
@@ -209,7 +214,7 @@ call `billTotal()`), cash-session difference / shortfall ❌ (C8; the bands are
 | Direct Firestore in UI: billing.js (231 … 804), cash-management.js:50, outstanding.js:763, rent-store.js:35 | ✅ | billing.js has 11 lines (also :668); cash-management.js :50, :271, :730; outstanding.js :670, :763, :879; rent-store.js 12 (it is the rentals repository), rent-receipt-store.js :46, :67. Outside pages: `Helpers.generateBillNumber` (helpers.js:303-307), telemetry.js:438. |
 | UI mutates AppState: billing.js:1154-1216, 1261-1268; cash-management 177-178, 336-350, 742-832 | ◐ | billing.js :1155, :1216, :1261 ✅. cash-management ❌: those lines only **read** AppState. Real writers: settings.js 19 lines, stock.js 8, items.js 6, billing.js 3, history.js 3, roles-access.js 2, outstanding.js 1, miscellaneous.js 1. |
 | Cross-module `window.app` calls, inline handlers, templates/day.html:45 | ✅ | billing.js:1264-1268; 297 inline `onclick=`; day.html:45 inline keydown logic. |
-| Rules inside UI handlers | ◐ | `validateSignOut` (cash-management.js:763) composes `evaluateCashCount` (utils/bill-checks.js:443) and computes C8 inline. rentals.js:792-794 re-checks only "not negative"; `meterBill` (rent-math.js:268-275) owns the full rule. Payment-split tick / "rest in Due" logic is triplicated: purchase.js:445-500, retail-sale.js:414-470, wholesale-sales.js:295-345. |
+| Rules inside UI handlers | ◐ | `validateSignOut` (cash-management.js:763) composes `evaluateCashCount` (utils/bill-checks.js:443) and computes C8 inline. rentals.js:792-794 re-checks only "not negative"; `meterBill` (rent-math.js:268-275) owns the full rule. Payment-split tick / "rest in Due" logic is triplicated: purchase.js:445-500, retail-sale.js:414-470, wholesale-sales.js:295-345 (one copy in `calc/billing` since 2f). |
 
 ### Design risks checked
 
@@ -267,7 +272,7 @@ on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js
 | 2c | Periods: month step, day loops and day ends into `dates.js` (insights, money, statements, cash :320, day :126) | S | ⚠ modules/money.js, cash-management.js (#181) |
 | 2d | History `viewBill` view-model on `billTotal` / `readPayment` | S | none |
 | 2e | Insights top-5 share and per-₹100 into business-metrics with spec IDs | S | none |
-| 2f | `calc/billing`: `lineTotal`, draft totals, labour, payment prefill / rest-in-Due (one copy for purchase / retail / wholesale) | M | ⚠ #181, #182, save handlers |
+| 2f | ✅ #189: `calc/billing`: lines, draft totals, labour, payable, payment split / prefill / Rest → Due, split checks (one copy for purchase / retail / wholesale; both `checkPaymentSplit`s are now `validatePaymentSplit` / `validateDuePayment`), wholesale live profit / margin; rounding unchanged, one named policy per figure (`ROUNDING`, #129). Characterised first (`bill-forms-characterisation.test.js`); moneyMath 147 → 100, domNumber 3 → 2 | M | done |
 | 2g | `calc/cash.drawerDay` (C1–C6, C8) out of cash-management | M | ⚠ #181, cash save handlers, offline cash close (#143) |
 | 2h | `calc/stock-value` (S2/S3 consolidation, adjustment value) out of stock.js | S | ⚠ #181 (stock.js) |
 | 2i | Rentals: `moveMonthRent` / `oldMonth` into rent-math; rent-views on `monthSummary` | S | ⚠ #181 (rentals.js) |

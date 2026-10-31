@@ -9,7 +9,7 @@ module.exports = {
     ...base,
     verbose: false,
     testMatch: [
-        '**/www/js/__tests__/{money,dates,bill-checks,release,calculateStock,calculateStock-equivalence,oracle,stock-adjust,stock-check,number-checks}.test.js',
+        '**/www/js/__tests__/{money,billing-calc,dates,bill-checks,release,calculateStock,calculateStock-equivalence,oracle,stock-adjust,stock-check,number-checks}.test.js',
         '**/tests/oracle/**/*.test.js'
     ]
 };
