@@ -12,7 +12,7 @@ import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage } from '../utils/money.js';
 import {
-    autoLabour, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, paidOnScreen, payableOnScreen,
+    autoLabour, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, editSplitFor, paidOnScreen, payableOnScreen,
     paymentSplit, prefillPayment, restInDue, shownAmount, sumWeights, validatePaymentSplit
 } from '../utils/calc/billing.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
@@ -364,11 +364,7 @@ const PurchaseManager = {
      * @returns {{billTotal: number, laborCharges: number, grandTotal: number, totalPackets: number, heavyPackets: number}}
      */
     computeTotals(laborCharges) {
-        if (laborCharges === undefined) {
-            const autoLaborCheckbox = document.getElementById('autoLaborCharge');
-            const labourOn = autoLaborCheckbox ? autoLaborCheckbox.checked : true;
-            laborCharges = labourOn ? Helpers.getInputNumber('manualLaborCharges') : 0;
-        }
+        if (laborCharges === undefined) laborCharges = this.typedLabour();
         const { heavyWeightThreshold } = normalizeLabourSettings(AppState.settings);
         return computePurchaseTotals(billItems, laborCharges, heavyWeightThreshold);
     },
@@ -437,15 +433,35 @@ const PurchaseManager = {
     },
 
     /**
-     * Cash / online / due typed on the purchase form
+     * The Labour box as typed (0 when Labour is unticked), before rounding.
+     * @returns {number}
+     */
+    typedLabour() {
+        const autoLaborCheckbox = document.getElementById('autoLaborCharge');
+        const labourOn = autoLaborCheckbox ? autoLaborCheckbox.checked : true;
+        return labourOn ? Helpers.getInputNumber('manualLaborCharges') : 0;
+    },
+
+    /**
+     * Cash / online / due as typed, before rounding.
      * @returns {{cash: number, online: number, due: number}}
      */
-    readPaymentSplit() {
-        return paymentSplit({
+    readTypedSplit() {
+        return {
             online: Helpers.getInputNumber('onlinePayment'),
             cash: Helpers.getInputNumber('cashPayment'),
             due: Helpers.getInputNumber('dueAmount')
-        });
+        };
+    },
+
+    /**
+     * Cash / online / due typed on the purchase form, as checked and saved
+     * (BF-SAVE; an edited bill's split settles on its new total, #129).
+     * @returns {{cash: number, online: number, due: number}}
+     */
+    readPaymentSplit() {
+        const editing = this.billingManager?.editingBillIndex !== undefined ? this.billingManager.getEditingBill?.() : null;
+        return editing ? editSplitFor(this.readTypedSplit(), this.computeTotals().grandTotal, editing) : paymentSplit(this.readTypedSplit());
     },
 
     /**
@@ -700,7 +716,7 @@ const PurchaseManager = {
         }
         
         const total = draftLineSum(billItems);
-        const laborCharges = Helpers.getInputInt('manualLaborCharges');
+        const { laborCharges } = this.computeTotals();
         const message = buildDraftShareText({
             kind: 'purchase', customer: Helpers.getInputText('customerName'), items: billItems, total, labour: laborCharges
         });

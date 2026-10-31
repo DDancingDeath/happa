@@ -65,9 +65,10 @@ describe('i18n catalogues', () => {
     });
 
     it('Hindi values are actually Hindi (not a copy of the English text)', () => {
-        // The app name "happa" is the same in both languages.
+        // The app name "happa" is the same in both languages, and so is the unit "kg" ("{qty} kg × {rate}").
         const SAME_IN_BOTH = new Set(['ui.app.name']);
-        const copies = Object.keys(en).filter(k => !SAME_IN_BOTH.has(k) && en[k] === hi[k] && /[A-Za-z]{2,}/.test(en[k]));
+        const words = (v) => String(v).replace(/\{\w+\}/g, ' ').replace(/(?<![A-Za-z])kg(?![A-Za-z])/g, ' ');
+        const copies = Object.keys(en).filter(k => !SAME_IN_BOTH.has(k) && en[k] === hi[k] && /[A-Za-z]{2,}/.test(words(en[k])));
         expect(copies).toEqual([]);
     });
 });

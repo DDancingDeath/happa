@@ -69,6 +69,24 @@ describe('the forms show the oracle\'s figures', () => {
         expect(PurchaseManager.computeTotals().grandTotal).toBe(typed.BF_PAYABLE);
     });
 
+    test('#129: ₹12.50 labour on ₹1,000 of lines is ₹13 labour and ₹987 payable on screen, in the Cash tick and saved', async () => {
+        document.body.innerHTML = `<input type="checkbox" id="autoLaborCharge" checked>
+            <input id="manualLaborCharges" value="12.5" data-manually-set="true"><span id="laborCalculation"></span>
+            <span id="billTotal"></span><span id="totalPacketsInBill"></span><span id="amountPayable"></span><span id="totalPayment"></span>
+            <table id="billTable"><tbody></tbody></table>
+            <input id="onlinePayment"><input id="cashPayment"><input id="dueAmount">
+            <input type="checkbox" id="onlineCheckbox"><input type="checkbox" id="cashCheckbox"><input type="checkbox" id="dueCheckbox">`;
+        PurchaseManager.setBillItems([{ itemId: 'item-rice', name: 'Rice', rate: 25, qty: 40, weights: [40], packets: 1, total: 1000 }]);
+        PurchaseManager.updateTotals();
+        const want = O.billForm('purchase', [{ rate: 25, weights: [40] }], { laborRate: 6.5, labour: 12.5 });
+        expect([want.BF_LAB_saved, want.BF_PAYABLE, want.BF_PAYABLE_shown]).toEqual([13, 987, 987]);
+        expect(Number(text('amountPayable'))).toBe(987);
+        document.getElementById('cashCheckbox').checked = true;
+        PurchaseManager.fillPayableAmount('cash');
+        expect(document.getElementById('cashPayment').value).toBe('987');
+        expect(PurchaseManager.computeTotals()).toMatchObject({ billTotal: 1000, laborCharges: 13, grandTotal: 987 });
+    });
+
     test('retail: BF-LINE, BF-TOTAL', async () => {
         document.body.innerHTML = `<select id="saleItem"><option value="0">Rice</option><option value="1">Wheat</option></select>
             <input id="saleRate"><input id="saleWeight"><table id="saleTable"><tbody></tbody></table>
@@ -131,7 +149,7 @@ describe('utils/calc/billing.js == oracle on generated bills', () => {
             const totals = computePurchaseTotals(lines, typed, 30);
             expect({
                 BF_LINE: lines.map(l => l.total), BF_KG: lines.map(l => l.qty), BF_TOTAL: totals.billTotal,
-                BF_TOTAL_shown: Math.round(totals.billTotal), BF_LAB: suggested,
+                BF_TOTAL_shown: Math.round(totals.billTotal), BF_LAB: suggested, BF_LAB_saved: totals.laborCharges,
                 BF_PAYABLE: totals.grandTotal, BF_PAYABLE_shown: payableOnScreen(totals.billTotal, typed)
             }).toEqual(want);
         }), { seed: 129, numRuns: RUNS });

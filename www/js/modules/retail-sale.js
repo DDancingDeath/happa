@@ -12,7 +12,7 @@ import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage } from '../utils/money.js';
 import {
-    buildPaymentSplit, computeLine, computeRetailTotals, paidOnScreen, paymentSplit, prefillPayment, restInDue,
+    buildPaymentSplit, computeLine, computeRetailTotals, editSplitFor, paidOnScreen, paymentSplit, prefillPayment, restInDue,
     shownAmount, sumWeights, validatePaymentSplit, weightsForEdit
 } from '../utils/calc/billing.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
@@ -394,15 +394,25 @@ const RetailSaleManager = {
     },
 
     /**
-     * Cash / online / due typed on the retail sale form
+     * Cash / online / due as typed on the retail sale form, before rounding.
      * @returns {{cash: number, online: number, due: number}}
      */
-    readPaymentSplit() {
-        return paymentSplit({
+    readTypedSplit() {
+        return {
             online: Helpers.getInputNumber('saleOnlinePayment'),
             cash: Helpers.getInputNumber('saleCashPayment'),
             due: Helpers.getInputNumber('saleDueAmount')
-        });
+        };
+    },
+
+    /**
+     * Cash / online / due typed on the retail sale form, as checked and saved
+     * (BF-SAVE; an edited bill's split settles on its new total, #129).
+     * @returns {{cash: number, online: number, due: number}}
+     */
+    readPaymentSplit() {
+        const editing = this.billingManager?.editingBillIndex !== undefined ? this.billingManager.getEditingBill?.() : null;
+        return editing ? editSplitFor(this.readTypedSplit(), computeRetailTotals(saleItems).total, editing) : paymentSplit(this.readTypedSplit());
     },
 
     /**

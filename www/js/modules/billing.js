@@ -12,7 +12,8 @@ import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
-import { round2, sumMoney } from '../utils/money.js';
+import { billLabour, readPayment, sumMoney } from '../utils/money.js';
+import { buildPaymentSplit, computeRetailTotals, editKeepsMoney } from '../utils/calc/billing.js';
 import { BillChecksUI } from '../ui/bill-highlight.js';
 import { findBillIndex } from '../utils/history-window.js';
 import { TIME_MS, AUTO_SAVE_DELAY } from '../utils/constants.js';
@@ -1156,21 +1157,23 @@ const BillingManager = {
                 if (bill.customerName) document.getElementById('customerName').value = bill.customerName;
                 if (bill.comments) document.getElementById('billComments').value = bill.comments;
                 setPrintComments('billPrintComments', bill.printComments);
-                if (bill.laborCharges) document.getElementById('manualLaborCharges').value = bill.laborCharges;
+                // Labour and payment as BILL-PAY reads them (every stored shape), so an edit that
+                // changes no money is recognised and keeps the stored figures (#129)
+                const labour = billLabour(bill);
+                if (labour) document.getElementById('manualLaborCharges').value = labour;
                 
-                if (bill.payment) {
-                    if (bill.payment.online > 0) {
-                        document.getElementById('onlinePayment').value = bill.payment.online;
-                        document.getElementById('onlineCheckbox').checked = true;
-                    }
-                    if (bill.payment.cash > 0) {
-                        document.getElementById('cashPayment').value = bill.payment.cash;
-                        document.getElementById('cashCheckbox').checked = true;
-                    }
-                    if (bill.payment.due > 0) {
-                        document.getElementById('dueAmount').value = bill.payment.due;
-                        document.getElementById('dueCheckbox').checked = true;
-                    }
+                const paid = readPayment(bill);
+                if (paid.online > 0) {
+                    document.getElementById('onlinePayment').value = paid.online;
+                    document.getElementById('onlineCheckbox').checked = true;
+                }
+                if (paid.cash > 0) {
+                    document.getElementById('cashPayment').value = paid.cash;
+                    document.getElementById('cashCheckbox').checked = true;
+                }
+                if (paid.due > 0) {
+                    document.getElementById('dueAmount').value = paid.due;
+                    document.getElementById('dueCheckbox').checked = true;
                 }
                 
                 PurchaseManager.renderBill();
@@ -1186,9 +1189,10 @@ const BillingManager = {
                 if (bill.comments) document.getElementById('saleComments').value = bill.comments;
                 setPrintComments('salePrintComments', bill.printComments);
                 
-                // Check payments from payment object or top-level properties
-                const onlineValue = bill.payment?.online || bill.onlinePayment || 0;
-                const cashValue = bill.payment?.cash || bill.cashPayment || 0;
+                // Payment as BILL-PAY reads it (payment object first, then top-level fields)
+                const paid = readPayment(bill);
+                const onlineValue = paid.online;
+                const cashValue = paid.cash;
                 
                 if (onlineValue > 0) {
                     document.getElementById('saleOnlinePayment').value = onlineValue;
@@ -1199,8 +1203,7 @@ const BillingManager = {
                     document.getElementById('saleCashCheckbox').checked = true;
                 }
                 
-                // Check due from payment.due or dueAmount
-                const dueValue = bill.payment?.due || bill.dueAmount || 0;
+                const dueValue = paid.due;
                 if (dueValue > 0) {
                     document.getElementById('saleDueAmount').value = dueValue;
                     document.getElementById('saleDueCheckbox').checked = true;
@@ -1285,9 +1288,10 @@ const BillingManager = {
                 const billItems = PurchaseManager.getBillItems();
                 // Totals come from the items, never from the (rounded) text on screen
                 const { billTotal, laborCharges, totalPackets, grandTotal } = PurchaseManager.computeTotals();
-                const onlinePayment = round2(Helpers.getInputNumber('onlinePayment'));
-                const cashPayment = round2(Helpers.getInputNumber('cashPayment'));
-                const dueAmount = round2(Helpers.getInputNumber('dueAmount'));
+                // Money untouched: the stored figures stay exactly (paise of an old bill included);
+                // else whole rupees with the split settled on the new payable (MONEY-ROUND, #129)
+                const keepMoney = editKeepsMoney({ bill, items: billItems, labour: PurchaseManager.typedLabour(), typed: PurchaseManager.readTypedSplit() });
+                const split = PurchaseManager.readPaymentSplit();
                 const customerName = Helpers.getInputText('customerName');
                 const comments = Helpers.getInputText('billComments');
                 const printComments = readPrintComments('billPrintComments');
@@ -1298,8 +1302,7 @@ const BillingManager = {
                 const laborCalculationSpan = document.getElementById('laborCalculation');
                 const laborCalc = laborCalculationSpan?.textContent || null;
 
-                const updatedBill = {
-                    ...bill,
+                const money = keepMoney ? {} : {
                     items: billItems,
                     billTotal,
                     laborCharges,
@@ -1307,18 +1310,17 @@ const BillingManager = {
                     totalPackets,
                     grandTotal,
                     amountPayable: grandTotal,
-                    onlinePayment,
-                    cashPayment,
-                    dueAmount,
+                    onlinePayment: split.online,
+                    cashPayment: split.cash,
+                    dueAmount: split.due,
+                    payment: buildPaymentSplit(split)
+                };
+                const updatedBill = {
+                    ...bill,
+                    ...money,
                     customerName,
                     comments,
                     printComments,
-                    payment: {
-                        online: onlinePayment,
-                        cash: cashPayment,
-                        due: dueAmount,
-                        total: round2(onlinePayment + cashPayment + dueAmount)
-                    },
                     editedAt: new Date().toISOString(),
                     editedBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
                     ...BillChecksUI.billFields(checks, bill)
@@ -1352,11 +1354,9 @@ const BillingManager = {
                 return updatedBill;
             } else {
                 const saleItems = RetailSaleManager.getSaleItems();
-                const salesTotal = sumMoney(saleItems, item => item.total);
-                const totalPackets = saleItems.reduce((sum, item) => sum + (item.packets || 0), 0);
-                const saleOnline = round2(Helpers.getInputNumber('saleOnlinePayment'));
-                const saleCash = round2(Helpers.getInputNumber('saleCashPayment'));
-                const saleDue = round2(Helpers.getInputNumber('saleDueAmount'));
+                const { total: salesTotal, packetsSaved: totalPackets } = computeRetailTotals(saleItems);
+                const keepMoney = editKeepsMoney({ bill, items: saleItems, typed: RetailSaleManager.readTypedSplit() });
+                const saleSplit = RetailSaleManager.readPaymentSplit();
                 const saleCustomer = Helpers.getInputText('saleCustomerName');
                 const saleComments = Helpers.getInputText('saleComments');
                 const printComments = readPrintComments('salePrintComments');
@@ -1364,24 +1364,22 @@ const BillingManager = {
                 const checks = await BillChecksUI.confirmSave('retail', editCheckContext(bill));
                 if (!checks.ok) return undefined;
 
-                const updatedSale = {
-                    ...bill,
+                const saleMoney = keepMoney ? {} : {
                     items: saleItems,
                     total: salesTotal,
                     saleTotal: salesTotal,
                     totalPackets: totalPackets,
-                    onlinePayment: saleOnline,
-                    cashPayment: saleCash,
-                    dueAmount: saleDue,
+                    onlinePayment: saleSplit.online,
+                    cashPayment: saleSplit.cash,
+                    dueAmount: saleSplit.due,
+                    payment: buildPaymentSplit(saleSplit)
+                };
+                const updatedSale = {
+                    ...bill,
+                    ...saleMoney,
                     customerName: saleCustomer,
                     comments: saleComments,
                     printComments: printComments,
-                    payment: {
-                        online: saleOnline,
-                        cash: saleCash,
-                        due: saleDue,
-                        total: round2(saleOnline + saleCash + saleDue)
-                    },
                     editedAt: new Date().toISOString(),
                     editedBy: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
                     ...BillChecksUI.billFields(checks, bill)
