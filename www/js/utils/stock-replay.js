@@ -13,12 +13,28 @@
  */
 
 import { Helpers } from './helpers.js';
-import { isActiveBill, isOpeningRecord } from './money.js';
+import { isActiveBill, isOpeningRecord, toMoney } from './money.js';
 
-/** Bump when the replay rules or the checkpoint layout change. */
-export const STOCK_REPLAY_FORMAT = 4;
+/** Bump when the replay rules or the checkpoint layout change. 5: purchases at their saved line amount (#129). */
+export const STOCK_REPLAY_FORMAT = 5;
 
 const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
+
+/**
+ * AVG-COST: what a purchase line adds to stock. Its value is the line amount
+ * saved on the bill (`total`, older lines `amount`: the whole rupees the bill
+ * shows and the supplier is paid, #129), else kg × rate for a line saved
+ * without one. A 12.4 kg × ₹33.50 line saved at ₹415 adds ₹415, not ₹415.40.
+ * @param {Object} item purchase bill line
+ * @returns {{qty: number, value: number, rate: number}} rate = value ÷ kg (the line rate when kg ≤ 0)
+ */
+export function purchaseLineValue(item) {
+    const qty = parseFloat(item?.qty || item?.quantity) || 0;
+    const rate = parseFloat(item?.rate) || 0;
+    const saved = toMoney(item?.total) ?? toMoney(item?.amount);
+    if (!(qty > 0) || saved === null) return { qty, value: qty * rate, rate };
+    return { qty, value: saved, rate: saved / qty };
+}
 
 /**
  * Resolve a sortable timestamp (ms since epoch) for a record. Prefers the
@@ -161,8 +177,7 @@ export function replayEvents(stock, events, getItemKey, resolutions) {
         if (ev.kind === 'purchase') {
             const key = keyOf(ev.item);
             if (!stock[key]) stock[key] = { quantity: 0, rate: 0, totalValue: 0 };
-            const qty = parseFloat(ev.item.qty || ev.item.quantity) || 0;
-            const rate = parseFloat(ev.item.rate) || 0;
+            const { qty, rate, value } = purchaseLineValue(ev.item);
             const prevQty = stock[key].quantity;
             const newQty = prevQty + qty;
             stock[key].quantity = newQty;
@@ -171,7 +186,7 @@ export function replayEvents(stock, events, getItemKey, resolutions) {
             } else if (prevQty < 0) {
                 stock[key].totalValue = newQty * rate;
             } else {
-                stock[key].totalValue += qty * rate;
+                stock[key].totalValue += value;
             }
         } else if (ev.kind === 'sale') {
             const key = keyOf(ev.item);
@@ -398,7 +413,7 @@ export function deserializeState(entries) {
 export function stockFingerprint(record) {
     if (!isActiveBill(record)) return null;
     const pick = (o) => o && typeof o === 'object'
-        ? [o.itemId ?? null, o.name ?? null, o.qty ?? null, o.quantity ?? null, o.rate ?? null]
+        ? [o.itemId ?? null, o.name ?? null, o.qty ?? null, o.quantity ?? null, o.rate ?? null, o.total ?? null, o.amount ?? null]
         : null;
     return JSON.stringify([
         eventTime(record),

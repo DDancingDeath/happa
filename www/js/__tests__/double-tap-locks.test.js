@@ -181,6 +181,18 @@ describe('cash drawer', () => {
         <select id="dueBillSelect"><option value="__nobill__" selected>-</option></select>`;
 
     test.each([
+        ['deposit', '', 'cashDeposits'],
+        ['received', 'Ramesh', 'duePayments']
+    ])('#129: a %s typed with paise is saved in whole rupees, half-up', async (type, party, field) => {
+        document.body.innerHTML = entryForm(type, party).replace('value="300"', 'value="300.50"');
+        openSession();
+        const session = CashManagementManager.todaySession;
+        stubDb({ update: pendingWrite().fn });
+        await CashManagementManager.recordTransaction();
+        expect(session[field]).toEqual([expect.objectContaining({ amount: 301 })]);
+    });
+
+    test.each([
         ['deposit', ''],
         ['received', 'Ramesh']
     ])('Record (%s): a double tap adds one drawer entry; it is queued, so the button is free again offline', async (type, party) => {
@@ -230,6 +242,13 @@ describe('Money › Save withdrawal', () => {
         const write = pendingWrite();
         const start = jest.spyOn(FirebaseService, 'startSaveWithdrawal').mockImplementation(() => ({ record: {}, committed: write.fn() }));
         await doubleTap(button('data-withdrawal-save'), () => MoneyManager.saveWithdrawal(), start, write.release, { held: false });
+    });
+
+    test('#129: an amount typed with paise is saved in whole rupees, half-up', async () => {
+        document.getElementById('moneyWdAmount').value = '1000.50';
+        const start = jest.spyOn(FirebaseService, 'startSaveWithdrawal').mockImplementation(() => ({ record: {}, committed: Promise.resolve() }));
+        await MoneyManager.saveWithdrawal();
+        expect(start).toHaveBeenCalledWith(expect.objectContaining({ amount: 1001 }));
     });
 
     test('offline: saved on the phone at once (id made on the phone), form cleared; a refused write says so', async () => {
