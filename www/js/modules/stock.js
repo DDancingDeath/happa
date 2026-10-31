@@ -9,6 +9,7 @@ import { AppState } from '../utils/state.js';
 import { on, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { formatAmount, formatRupees } from '../utils/money.js';
@@ -593,11 +594,16 @@ export class StockManager {
             return false;
         }
         // Saved on the phone at once (also offline); a refused write is taken out again
+        const auditDetails = {
+            itemId: item.id, itemName, adjustType, from: currentStock, to: newStock, reason: String(reason || '').slice(0, 200)
+        };
         committed.catch(error => {
             console.error("Stock adjustment error:", error);
             UIManager.showToast(t('msg.stock.failed_apply_adjustment'));
+            AuditService.note(AuditService.ACTIONS.ADJUST_STOCK, { ...auditDetails, refused: true });
             this.refreshAfterAdjustment().catch(e => console.error('Stock refresh failed:', e));
         });
+        AuditService.note(AuditService.ACTIONS.ADJUST_STOCK, auditDetails);
 
         if (!AppState.stock[item.id]) {
             AppState.stock[item.id] = { quantity: 0, rate: 0 };

@@ -11,6 +11,7 @@ import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
 import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
@@ -587,8 +588,10 @@ export const MoneyManager = {
         // Saved on the phone at once (also offline); a refused write is taken out again
         committed.catch(e => {
             failed(e);
+            AuditService.note(AuditService.ACTIONS.RECORD_WITHDRAWAL, { amount, person, date, refused: true });
             this.render();
         });
+        AuditService.note(AuditService.ACTIONS.RECORD_WITHDRAWAL, { amount, person, date });
         ['moneyWdAmount', 'moneyWdPerson', 'moneyWdPurpose'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         const f = document.getElementById('moneyWithdrawalForm');
         if (f) f.hidden = true;

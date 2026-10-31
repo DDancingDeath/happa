@@ -963,6 +963,16 @@ function defineSuite(prefix) {
         await assertFails(logs.add(audit('staff1', { action: 'X'.repeat(100) })));
     });
 
+    t('audit: the action is an UPPER_CASE code (#85): no free text', async () => {
+        const logs = as('staff1').collection(auditLogs);
+        for (const action of ['RENT_PAYMENT', 'CASH_OPEN', 'PERMISSION_DENIED', 'APPROVE_USER']) {
+            await assertSucceeds(logs.add(audit('staff1', { action })));
+        }
+        for (const action of ['delete bill', 'Owner approved Ram', '', '_X', 'A-B', 7]) {
+            await assertFails(logs.add(audit('staff1', { action })));
+        }
+    });
+
     t('audit: pending/rejected/unauthenticated users cannot append', async () => {
         await assertFails(as('pending1').collection(auditLogs).add(audit('pending1')));
         await assertFails(as('rejected1').collection(auditLogs).add(audit('rejected1')));
@@ -1000,11 +1010,20 @@ function defineSuite(prefix) {
         await assertSucceeds(as('legacyOwner').collection(telemetry).doc('abc123-1').delete());
     });
 
-    t('telemetry: reports cannot be rewritten (no update, not even by the owner)', async () => {
+    t('telemetry: reports cannot be rewritten; the owner may only hide one (#116)', async () => {
         await seedBill(telemetry, 'fp1', report('staff1'));
         await assertFails(as('staff1').collection(telemetry).doc('fp1').update({ count: 3 }));
         await assertFails(as('staff1').collection(telemetry).doc('fp1').set(report('staff1', { message: 'nothing' })));
         await assertFails(as('legacyOwner').collection(telemetry).doc('fp1').update({ count: 0 }));
+        const hide = (uid, extra = {}) => as(uid).collection(telemetry).doc('fp1')
+            .update({ hidden: true, hiddenBy: uid, hiddenAt: serverTimestamp(), ...extra });
+        await assertFails(hide('staff1'));
+        await assertFails(hide('manager1'));
+        await assertFails(hide('legacyOwner', { hiddenBy: 'staff1' }));
+        await assertFails(hide('legacyOwner', { hiddenAt: Timestamp.fromMillis(Date.now() - DAY) }));
+        await assertFails(hide('legacyOwner', { hidden: 'yes' }));
+        await assertFails(hide('legacyOwner', { message: 'gone' }));
+        await assertSucceeds(hide('legacyOwner'));
     });
 
     t('telemetry: forged uid, bad counts, oversized fields and unknown fields are rejected', async () => {

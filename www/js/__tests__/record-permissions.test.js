@@ -43,7 +43,7 @@ test('isPermissionDenied recognises rules refusals only', () => {
 describe('telemetry reports are create-only documents (#122)', () => {
     test('buildTelemetryDoc keeps only allowed fields, clips text and uses the caller uid', () => {
         const doc = buildTelemetryDoc({
-            type: 'uncaught', message: { not: 'a string' }, stack: 'x'.repeat(5000), context: { top: [1, 2] },
+            type: 'uncaught', message: { not: 'a string' }, stack: 'at x '.repeat(1000), context: { top: [1, 2] },
             fingerprint: 'abc', count: 250, occurrences: Array.from({ length: 12 }, (_, i) => ({ timestamp: i })),
             timestamp: 5, lastSeen: 9, userId: 'anonymous', line: 3, extraField: 'dropped', source: undefined
         }, 'uid1');
