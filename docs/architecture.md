@@ -94,6 +94,7 @@ the migration. **Inline** = computed inside a page module.
 | BILL-DUE | `money.outstandingDue` everywhere, incl. Wholesale › Outstanding, `openDue`, History, receipts (#186); `wholesaleOutstanding` only in tools/migrate (old app's page rule) | same |
 | DUE-PAY | `due-payments.dueEvents`, `sumDueEvents`, `entryParts`, `legParts` | same |
 | EXP-KIND | `money.isPersonalExpense(e)` everywhere: Today, drawer, Money, Statements, finance-calc, Expenses lists (#186) | same |
+| EXP-MODE | `money.expenseMode` / `isOnlineExpense` (#118): Today T8 / T9 (`calc/today`), drawer C3 (`calc/cash.drawerDay`), Money M13 (`business-metrics`, online total from `finance-calc`), Statements ST1; day-doc online flags `personal-expenses.dayDocTotals` / `personalOnlineFromRows`; the form's day and mode rules `expense-entry.validateExpenseEntry`, `expenseDayRange`, `expenseDateFields` | same |
 | DAY | `dates.startOfLocalDay`, `endOfLocalDayExclusive`, `addLocalDays`, `localDayKeys`, `periodBounds`, `endUpToNow`, `todayLocalISO` (Money, Statements, Outstanding ages via `startOfLocalDay`); the drawer's day `calc/cash.dayBounds` (`parseLocalDate` + `endOfLocalDayExclusive`) | `dates.*` only |
 | PERIOD | `business-metrics.periodRange` (+ `insights-config`); month steps `dates.monthStart`, `monthRange`, `addMonths`, `latestMonthStart` (Insights / Money ‹ ›, Statements month list, Insights calendar tap and "load older", Money last-year worth label) | same |
 | AVG-COST | `stock-replay.replayEvents` / `computeStock` | same |

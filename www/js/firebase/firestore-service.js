@@ -10,7 +10,7 @@
 import { AppState } from '../utils/state.js';
 import { APP_CONFIG } from '../utils/constants.js';
 import { Helpers } from '../utils/helpers.js';
-import { outstandingDue } from '../utils/money.js';
+import { isOnlineExpense, outstandingDue } from '../utils/money.js';
 import { localISODaysAgo, parseAnyBillDate } from '../utils/dates.js';
 import { planNotificationDocs, newEventId } from '../utils/notification-format.js';
 import {
@@ -31,7 +31,7 @@ import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart
 import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_MS } from '../utils/background-tasks.js';
 import { markStartup } from '../utils/startup-timings.js';
 import { canReadWithdrawals } from '../utils/role-access.js';
-import { canReadPersonalExpenses, dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
+import { canReadPersonalExpenses, dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, personalOnlineFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { isStorageFullError, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { SyncStatus } from '../ui/sync-status.js';
@@ -514,13 +514,16 @@ function locateExpense(id) {
 const personalDayOf = (rec) => rec?.day || personalDayKey(rec?.date);
 
 /**
- * One key of personalExpenseDays/{day}: the expense's amount, or removed (amount null).
+ * One key of personalExpenseDays/{day}: the expense's amount, or removed (amount null), and
+ * its online flag (EXP-MODE, #118: set when paid online, else removed).
  * `last` names the key for firestore.rules (validPersonalDay).
  */
-function personalDayWrite(day, id, amount) {
+function personalDayWrite(day, id, amount, online = false) {
     const fv = typeof firebase !== 'undefined' ? firebase.firestore?.FieldValue : null;
-    const value = amount === null ? (typeof fv?.delete === 'function' ? fv.delete() : undefined) : amount;
-    return [getDb().collection(col(PERSONAL_DAYS_COLLECTION)).doc(day), { amounts: { [id]: value }, last: id }, { merge: true }];
+    const remove = typeof fv?.delete === 'function' ? fv.delete() : undefined;
+    const value = amount === null ? remove : amount;
+    const flag = amount !== null && online ? true : remove;
+    return [getDb().collection(col(PERSONAL_DAYS_COLLECTION)).doc(day), { amounts: { [id]: value }, online: { [id]: flag }, last: id }, { merge: true }];
 }
 
 /** Adds the day-doc key of a personal expense write to a batch: set to its amount, or removed (#98). */
@@ -528,8 +531,8 @@ function addPersonalDayWrites(batch, id, before, after) {
     const from = before ? personalDayOf(before) : null;
     const to = after ? personalDayOf(after) : null;
     if (from && from !== to) batch.set(...personalDayWrite(from, String(id), null));
-    if (to && !(from === to && Number(before.amount) === Number(after.amount))) {
-        batch.set(...personalDayWrite(to, String(id), Number(after.amount) || 0));
+    if (to && !(from === to && Number(before.amount) === Number(after.amount) && isOnlineExpense(before) === isOnlineExpense(after))) {
+        batch.set(...personalDayWrite(to, String(id), Number(after.amount) || 0, isOnlineExpense(after)));
     }
 }
 
@@ -2753,12 +2756,13 @@ const FirebaseService = {
         if (!canManageCheckpoint() || !this.personalRowsLoaded()) return 0;
         const rows = (windowState.colls.personalExpenses.published || []).map(r => ({ ...r, id: docIdOf(r) }));
         const want = personalDaysFromRows(rows);
+        const wantOnline = personalOnlineFromRows(rows);
         let written = 0;
         for (const day of days) {
             const snap = await getWithRetry(getDb().collection(col(PERSONAL_DAYS_COLLECTION)).doc(day), 'Personal expense day', { attempts: 2 });
-            const fixes = personalDayFixes(want[day] || {}, snap.exists ? snap.data() : null);
+            const fixes = personalDayFixes(want[day] || {}, snap.exists ? snap.data() : null, wantOnline[day] || {});
             for (const f of fixes) {
-                const [ref, data, opts] = personalDayWrite(day, f.id, f.amount);
+                const [ref, data, opts] = personalDayWrite(day, f.id, f.amount, f.online);
                 await ref.set(data, opts);
                 written++;
             }

@@ -161,6 +161,29 @@ export function isPersonalExpense(expense) {
     return String(expense?.category || expense?.type || '').trim().toLowerCase() === 'personal';
 }
 
+/** EXP-MODE: the ways an expense can be paid (#118). */
+export const EXPENSE_MODES = Object.freeze(['cash', 'online']);
+
+/**
+ * EXP-MODE: how an expense was paid. Online only when `paymentMode` is
+ * "online" (any case); anything else, including every expense saved before
+ * #118 (no mode), is cash.
+ * @param {Object} expense
+ * @returns {'cash'|'online'}
+ */
+export function expenseMode(expense) {
+    return String(expense?.paymentMode || '').trim().toLowerCase() === 'online' ? 'online' : 'cash';
+}
+
+/**
+ * EXP-MODE: the expense was paid online, so it never leaves the cash drawer.
+ * @param {Object} expense
+ * @returns {boolean}
+ */
+export function isOnlineExpense(expense) {
+    return expenseMode(expense) === 'online';
+}
+
 /**
  * Opening balance carried from the old Firebase project (tools/migrate): one
  * record per old unpaid bill, with no lines and no bill total, so sales and

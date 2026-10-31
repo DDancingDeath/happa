@@ -23,7 +23,7 @@ import {
     eventTime
 } from './stock-replay.js';
 import { stockValue } from './calc/stock.js';
-import { activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
+import { activityBills, billLabour, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { parseAnyBillDate } from './dates.js';
 
@@ -348,11 +348,13 @@ export function computeFinanceSummary({
     let uncategorisedExp = 0;
     let businessCount = 0;
     let personalCount = 0;
+    let onlineExp = 0;
     const expenseRows = { business: [], personal: [] };
     (expenses || []).forEach((e, idx) => {
         if (!recordInRange(e, from, to)) return;
         const amount = num(e.amount);
         const personal = isPersonalExpense(e);
+        if (isOnlineExpense(e)) onlineExp += amount;
         if (personal) {
             personalExp += amount;
             personalCount++;
@@ -373,6 +375,7 @@ export function computeFinanceSummary({
     businessExp = round2(businessExp);
     personalExp = round2(personalExp);
     uncategorisedExp = round2(uncategorisedExp);
+    onlineExp = round2(onlineExp);
 
     const withdrawalList = (withdrawals || []).filter(w => recordInRange(w, from, to));
     const withdrawn = round2(withdrawalList.reduce((a, w) => a + num(w.amount), 0));
@@ -415,7 +418,7 @@ export function computeFinanceSummary({
     const summary = {
         sales: { total: salesTotal, count: sales.length, due: salesDue },
         purchases: { total: purchasesTotal, count: purchases.length, labour },
-        expenses: { business: businessExp, businessCount, personal: personalExp, personalCount, uncategorised: uncategorisedExp },
+        expenses: { business: businessExp, businessCount, personal: personalExp, personalCount, uncategorised: uncategorisedExp, online: onlineExp },
         withdrawn,
         cogs,
         grossProfit,

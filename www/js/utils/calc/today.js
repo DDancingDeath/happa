@@ -6,7 +6,7 @@
  * @module utils/calc/today
  */
 
-import { activityBills, billTotal, isPersonalExpense, outstandingDue, round2 } from '../money.js';
+import { activityBills, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, round2 } from '../money.js';
 import { endOfLocalDayExclusive, parseAnyBillDate, startOfLocalDay } from '../dates.js';
 import { dueEvents, saleTimePayment, sumDueEvents } from '../due-payments.js';
 import { labourGap, labourSummary } from '../labour.js';
@@ -18,7 +18,7 @@ export const TODAY_SPEC = Object.freeze({
     labour: 'T3, T-LAB-1, T-LAB-2, T-LAB-3',
     businessExpenses: 'T4', businessExpenseCount: 'T4',
     personalExpenses: 'T5', personalExpenseCount: 'T5',
-    expenses: 'T8',
+    expenses: 'T8, T9', expensesCash: 'T8', expensesOnline: 'T9',
     cashIn: 'T6', onlineIn: 'T7', cashOut: 'T8', onlineOut: 'T9',
     totalIn: 'T10', totalOut: 'T11',
     net: 'T12', netOutflow: 'T12', netAmount: 'T12', isOutflow: 'T12',
@@ -27,7 +27,7 @@ export const TODAY_SPEC = Object.freeze({
     purchaseItems: 'T17', saleItems: 'T17'
 });
 
-const expenseAmount = (e) => Number(e.amount) || Number(e.total) || 0;
+const expenseAmount = (e) => Number(e.amount) || 0;
 
 const sumOf = (list, valueOf) => list.reduce((sum, x) => sum + valueOf(x), 0);
 
@@ -57,7 +57,7 @@ export function itemRows(bills) {
  * @param {Object} src
  * @param {{purchase?: Object[], wholesale?: Object[], retail?: Object[]}} src.bills All loaded bills (due payments on older bills count too)
  * @param {?Object[]} [src.expenses]
- * @param {?{total?: number, count?: number}} [src.personalDay] Today's personal expense total and count
+ * @param {?{total?: number, count?: number, online?: number}} [src.personalDay] Today's personal expense total, count and online part
  *   (personalExpenseDays) when this phone's role can't read the personal rows (#98)
  * @param {Object[]} [src.sessions] Cash sessions of the day whose due legs count (each payment id once)
  * @param {Object} [src.settings] Labour settings (laborRate, labourPackageKg)
@@ -86,6 +86,9 @@ export function todaySummary({ bills = {}, expenses = [], personalDay = null, se
     const businessExpenses = sumOf(business, expenseAmount);
     const personalExpenses = round2(sumOf(personal, expenseAmount) + (Number(personalDay?.total) || 0));
     const expensesTotal = businessExpenses + personalExpenses;
+    // EXP-MODE (#118): online expenses are online out (T9), the rest cash out (T8); no mode = cash
+    const expensesOnline = round2(sumOf(dayExpenses.filter(isOnlineExpense), expenseAmount) + (Number(personalDay?.online) || 0));
+    const expensesCash = expensesTotal - expensesOnline;
 
     // BILL-AT-SAVE: money paid on a bill later is a due payment, counted on the day it was paid.
     let cashPaid = 0, onlinePaid = 0, dueToPay = 0;
@@ -112,8 +115,8 @@ export function todaySummary({ bills = {}, expenses = [], personalDay = null, se
 
     const cashIn = round2(cashReceived + dues.receivedCash);
     const onlineIn = round2(onlineReceived + dues.receivedOnline);
-    const cashOut = round2(cashPaid + expensesTotal + dues.paidCash);
-    const onlineOut = round2(onlinePaid + dues.paidOnline);
+    const cashOut = round2(cashPaid + expensesCash + dues.paidCash);
+    const onlineOut = round2(onlinePaid + expensesOnline + dues.paidOnline);
     const totalIn = round2(cashIn + onlineIn);
     const totalOut = round2(cashOut + onlineOut);
     const netOutflow = totalOut - totalIn;
@@ -129,6 +132,7 @@ export function todaySummary({ bills = {}, expenses = [], personalDay = null, se
         businessExpenses, businessExpenseCount: business.length,
         personalExpenses, personalExpenseCount: personal.length + (Number(personalDay?.count) || 0),
         expenses: expensesTotal,
+        expensesCash: round2(expensesCash), expensesOnline,
         cashIn, onlineIn, cashOut, onlineOut,
         totalIn, totalOut,
         net: totalIn - totalOut,

@@ -205,14 +205,17 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
     const sold = at([...wholesale, ...retail]);
     const bought = at(purchases);
     const expensesAll = round2(s.expenses.business + s.expenses.personal);
+    // EXP-MODE (#118): online expenses are online money out; the rest (and every expense without a mode) cash
+    const expensesOnline = s.expenses.online || 0;
     const moneyIn = {
         cash: round2(sold.cash + dues.receivedCash), online: round2(sold.online + dues.receivedOnline),
         atSale: round2(sold.cash + sold.online), dueReceived: round2(dues.receivedCash + dues.receivedOnline)
     };
     moneyIn.total = round2(moneyIn.cash + moneyIn.online);
     const moneyOut = {
-        cash: round2(bought.cash + dues.paidCash + expensesAll), online: round2(bought.online + dues.paidOnline),
-        atPurchase: round2(bought.cash + bought.online), duePaid: round2(dues.paidCash + dues.paidOnline), expenses: expensesAll
+        cash: round2(bought.cash + dues.paidCash + expensesAll - expensesOnline), online: round2(bought.online + dues.paidOnline + expensesOnline),
+        atPurchase: round2(bought.cash + bought.online), duePaid: round2(dues.paidCash + dues.paidOnline), expenses: expensesAll,
+        expensesCash: round2(expensesAll - expensesOnline), expensesOnline
     };
     moneyOut.total = round2(moneyOut.cash + moneyOut.online);
 
