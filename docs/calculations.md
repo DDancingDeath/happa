@@ -14,7 +14,8 @@ stock. It is the reference the tests check against (#216):
   decision issue. Until it is answered, the recommended option is used.
 
 If you add or change a number on screen, update its entry here and its oracle
-test in the same PR (see AGENTS.md → PR checklist).
+test in the same PR (see AGENTS.md → PR checklist). Which function computes each
+ID, today and after the refactor: [architecture.md](architecture.md) §3.
 
 ---
 
