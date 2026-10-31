@@ -1,6 +1,33 @@
 // Template Loader Utility
 // Loads HTML templates from separate .html files
 
+/** Needed before sign-in: the login screen, the app shell (side menu, loading overlay, toast) and dialogs. */
+export const SHELL_TEMPLATES = ['auth', 'navigation', 'modals'];
+
+/** Page templates, in the order they are placed inside #appContent. */
+export const PAGE_TEMPLATES = [
+    'day',
+    'billing',
+    'items',
+    'history',
+    'due',
+    'stock',
+    'wholesale-sales',
+    'expenses',
+    'settings',
+    'anomalies',
+    'money',
+    'insights',
+    'rate-trends',
+    'statements',
+    'health',
+    'cash-management',
+    'users',
+    'chat',
+    'diagnostics',
+    'admin'
+];
+
 export class TemplateLoader {
     static async loadTemplate(templateName) {
         try {
@@ -15,81 +42,46 @@ export class TemplateLoader {
         }
     }
 
-    static async loadAllTemplates() {
-        const templates = [
-            'auth',
-            'navigation',
-            'modals',
-            'items',
-            'billing',
-            'history',
-            'due',
-            'stock',
-            'wholesale-sales',
-            'expenses',
-            'settings',
-            'anomalies',
-            'rate-trends',
-            'money',
-            'insights',
-            'statements',
-            'health',
-            'day',
-            'cash-management',
-            'users',
-            'chat',
-            'diagnostics',
-            'admin'
-        ];
-
+    /** Fetches the named templates in parallel: { name: html }. */
+    static async loadTemplates(names) {
         const results = {};
-        
-        // Load all templates in parallel
-        await Promise.all(
-            templates.map(async (name) => {
-                results[name] = await this.loadTemplate(name);
-            })
-        );
-
+        await Promise.all(names.map(async (name) => {
+            results[name] = await this.loadTemplate(name);
+        }));
         return results;
     }
 
-    static injectTemplates(templates) {
-        // Inject auth screen first
-        document.body.insertAdjacentHTML('afterbegin', templates.auth);
-        
-        // Create app content wrapper
+    static async loadAllTemplates() {
+        return this.loadTemplates([...SHELL_TEMPLATES, ...PAGE_TEMPLATES]);
+    }
+
+    /** Login screen, #appContent with the side menu, and the dialogs. */
+    static injectShell(templates) {
+        document.body.insertAdjacentHTML('afterbegin', templates.auth || '');
+
         const appContent = document.createElement('div');
         appContent.id = 'appContent';
         appContent.className = 'hidden';
         document.body.appendChild(appContent);
-        
-        // Inject each template individually using insertAdjacentHTML to ensure proper DOM parsing
-        appContent.insertAdjacentHTML('beforeend', templates.navigation);
-        appContent.insertAdjacentHTML('beforeend', templates.day);
-        appContent.insertAdjacentHTML('beforeend', templates.billing);
-        appContent.insertAdjacentHTML('beforeend', templates.items);
-        appContent.insertAdjacentHTML('beforeend', templates.history);
-        appContent.insertAdjacentHTML('beforeend', templates.due);
-        appContent.insertAdjacentHTML('beforeend', templates.stock);
-        appContent.insertAdjacentHTML('beforeend', templates['wholesale-sales']);
-        appContent.insertAdjacentHTML('beforeend', templates.expenses);
-        
-        appContent.insertAdjacentHTML('beforeend', templates.settings);
-        appContent.insertAdjacentHTML('beforeend', templates.anomalies);
-        appContent.insertAdjacentHTML('beforeend', templates.money);
-        appContent.insertAdjacentHTML('beforeend', templates.insights);
-        // Trends / Product traffic (#65): Insights › Seasons mounts this view
-        (appContent.querySelector('#insights') || appContent).insertAdjacentHTML('beforeend', templates['rate-trends']);
-        appContent.insertAdjacentHTML('beforeend', templates.statements);
-        appContent.insertAdjacentHTML('beforeend', templates.health);
-        appContent.insertAdjacentHTML('beforeend', templates['cash-management']);
-        appContent.insertAdjacentHTML('beforeend', templates.users);
-        appContent.insertAdjacentHTML('beforeend', templates.chat);
-        appContent.insertAdjacentHTML('beforeend', templates.diagnostics);
-        appContent.insertAdjacentHTML('beforeend', templates.admin);
-        
-        // Inject modals at the end
-        document.body.insertAdjacentHTML('beforeend', templates.modals);
+        appContent.insertAdjacentHTML('beforeend', templates.navigation || '');
+
+        document.body.insertAdjacentHTML('beforeend', templates.modals || '');
+    }
+
+    /** Pages, after the side menu inside #appContent (same order as before the split, #66). */
+    static injectPages(templates) {
+        const appContent = document.getElementById('appContent');
+        if (!appContent) return;
+        PAGE_TEMPLATES.forEach(name => {
+            if (name === 'rate-trends') return;
+            appContent.insertAdjacentHTML('beforeend', templates[name] || '');
+            // Trends / Product traffic (#65): Insights › Seasons mounts this view
+            if (name === 'insights') (appContent.querySelector('#insights') || appContent).insertAdjacentHTML('beforeend', templates['rate-trends']);
+        });
+    }
+
+    static injectTemplates(templates) {
+        this.injectShell(templates);
+        this.injectPages(templates);
     }
 }
