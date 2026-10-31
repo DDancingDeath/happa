@@ -102,6 +102,15 @@ describe('security headers on every Hosting site (#89)', () => {
             expect(entry.headers).toContainEqual({ key: 'Referrer-Policy', value: 'no-referrer' });
         }
     });
+
+    test('only the printing test page (/spike/**, #133) may use Web Serial, and only this site', () => {
+        const base = everyPathHeaders(appSite)['Permissions-Policy'];
+        const relaxed = appSite.headers.filter((e) => e.headers.some((h) => h.key === 'Permissions-Policy') && e.source !== '**');
+        expect(relaxed.map((e) => e.source)).toEqual(['/spike/**']);
+        const spike = relaxed[0].headers.find((h) => h.key === 'Permissions-Policy').value;
+        expect(spike).toBe(base.replace('serial=()', 'serial=(self)'));
+        expect(base).toContain('serial=()');
+    });
 });
 
 describe('app site CSP (report-only until the inline handlers are gone, #89)', () => {
