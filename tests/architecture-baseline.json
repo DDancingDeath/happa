@@ -2,7 +2,7 @@
   "_readme": "Architecture ratchet baseline (www/js/__tests__/architecture-guard.test.js, docs/architecture.md section 6). Counts may only go down: lower them with ARCH_BASELINE=lower npx jest architecture-guard. A raise needs an entry in exceptions: {file, category, from, to, reason, issue}.",
   "totals": {
     "firestore": 57,
-    "moneyMath": 167,
+    "moneyMath": 147,
     "domNumber": 3,
     "appStateWrite": 81,
     "dateMath": 21
@@ -13,12 +13,12 @@
       "appStateWrite": 6
     },
     "www/js/firebase/firestore-service.js": {
-      "moneyMath": 3,
+      "moneyMath": 1,
       "appStateWrite": 25
     },
     "www/js/main.js": {
       "firestore": 1,
-      "moneyMath": 17,
+      "moneyMath": 1,
       "appStateWrite": 6
     },
     "www/js/modules/admin.js": {
@@ -88,7 +88,7 @@
       "appStateWrite": 8
     },
     "www/js/modules/wholesale-sales.js": {
-      "moneyMath": 21,
+      "moneyMath": 20,
       "domNumber": 1
     },
     "www/js/rentals/rent-receipt-store.js": {
@@ -108,7 +108,7 @@
       "firestore": 11
     },
     "www/js/services/printer.js": {
-      "moneyMath": 7
+      "moneyMath": 6
     },
     "www/js/services/telemetry.js": {
       "firestore": 7

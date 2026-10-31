@@ -18,6 +18,7 @@ import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.j
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
+import { isPersonalExpense } from '../utils/money.js';
 
 /** Expense save / print buttons, disabled while one is being saved (#95). */
 const EXPENSE_BUTTONS = '[data-expense-save]';
@@ -330,7 +331,7 @@ export class ExpensesManager {
     static renderBusinessExpenseHistory() {
         const container = document.getElementById('businessExpenseHistoryList');
         const businessExpenses = AppState.expensesHistory
-            .filter(p => p.category === 'business' && p.id)
+            .filter(p => !isPersonalExpense(p) && p.id)
             .sort((a, b) => {
                 const dateA = Helpers.parseDate(a.date);
                 const dateB = Helpers.parseDate(b.date);
@@ -390,7 +391,7 @@ export class ExpensesManager {
             return;
         }
         const personalExpenses = AppState.expensesHistory
-            .filter(p => p.category === 'personal' && p.id)
+            .filter(p => isPersonalExpense(p) && p.id)
             .sort((a, b) => {
                 const dateA = Helpers.parseDate(a.date);
                 const dateB = Helpers.parseDate(b.date);

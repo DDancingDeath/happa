@@ -97,16 +97,15 @@ export function sumMoney(items, fn) {
 }
 
 /**
- * Bill total payable/receivable (net of labour for purchases).
+ * BILL-TOTAL: bill total payable/receivable (net of labour for purchases), the
+ * first of these fields that is present; a present 0 counts (labour equal to
+ * the line value makes the payable ₹0).
  * @param {Object} bill
  * @returns {number}
  */
 export function billTotal(bill) {
     if (!bill) return 0;
-    return round2(
-        toMoney(bill.grandTotal) || toMoney(bill.amountPayable) || toMoney(bill.total) ||
-        toMoney(bill.billTotal) || toMoney(bill.saleTotal) || 0
-    );
+    return round2(firstPresent(bill.grandTotal, bill.amountPayable, bill.total, bill.billTotal, bill.saleTotal) || 0);
 }
 
 /**

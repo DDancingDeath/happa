@@ -5,7 +5,9 @@
  *   A. EXP-KIND: Today and the drawer read `category || type` (any case); Money,
  *      Statements and finance-calc read only `category === 'personal'`.
  *   B. BILL-DUE: Wholesale › Outstanding used `payment.due || total − received`.
- *   C. BILL-TOTAL: Today read `billTotal` before `total` on purchases.
+ *   C. BILL-TOTAL: Today read `billTotal` before `total` on purchases; billTotal()
+ *      skipped a present 0.
+ *   History cards / bill details and the Expenses lists use the same rules.
  */
 import * as O from './oracle.js';
 import { DayManager } from '../../www/js/modules/day.js';
@@ -15,7 +17,9 @@ import { WholesaleSalesManager } from '../../www/js/modules/wholesale-sales.js';
 import { FirebaseService } from '../../www/js/firebase/firestore-service.js';
 import { moneySummary, expenseCategories, outstandingTotals } from '../../www/js/utils/business-metrics.js';
 import { dayBook } from '../../www/js/utils/statements.js';
-import { billListAmount } from '../../www/js/ui/bill-row.js';
+import { billListAmount, paymentChipsHtml } from '../../www/js/ui/bill-row.js';
+import { HistoryManager } from '../../www/js/modules/history.js';
+import { ExpensesManager } from '../../www/js/modules/miscellaneous.js';
 import { billTotal, isPersonalExpense, outstandingDue } from '../../www/js/utils/money.js';
 import { AppState } from '../../www/js/utils/state.js';
 
@@ -148,11 +152,60 @@ describe('C. BILL-TOTAL: one field order on Today, Money and History', () => {
         expect(shown('todayTotalPurchases')).toBe(want.T1_purchases);
         expect(m.M16.total).toBe(want.T1_purchases);
     });
+    test('a present 0 counts: labour equal to the line value makes the payable ₹0', () => {
+        const zero = { id: 'p0', date: '2026-10-21', timestamp: at(21, 11), billTotal: 600, laborCharges: 600, grandTotal: 0, amountPayable: 0,
+            items: [], payment: { cash: 0, online: 0, due: 0 } };
+        expect(O.billValue(zero)).toBe(0);
+        expect(billTotal(zero)).toBe(0);
+        AppState.purchaseHistory = [...copy(PURCHASES), copy(zero)];
+        renderToday();
+        const m = moneySummary({ ...copy(data), purchases: [...copy(PURCHASES), copy(zero)], base: { state: {}, from: -Infinity } }, { from: DAY[0], to: DAY[1] });
+        expect([shown('todayTotalPurchases'), m.M16.total]).toEqual([want.T1_purchases, want.T1_purchases]);
+    });
     test('Today T2 and History rows read the sale total the same way', () => {
         const sale = { id: 'r1', date: '2026-10-21', timestamp: at(21, 12), saleTotal: 500, total: 480, items: [], payment: { cash: 480, online: 0, due: 0 } };
         AppState.retailSalesHistory = [copy(sale)];
         renderToday();
         expect(shown('todayTotalSales')).toBe(O.billValue(sale));
         expect(billListAmount(sale)).toBe(O.billValue(sale));
+    });
+});
+
+describe('History cards, bill details and the Expenses lists use the same rules', () => {
+    // Marked cleared with a due left on it; and a payment.cash of 0 next to an old top-level cashPayment.
+    const CLEARED = { id: 'c1', billNumber: 'R-9', date: '2026-10-20', timestamp: at(20, 10), total: 1000, items: [],
+        payment: { cash: 700, online: 0, due: 300 }, dueAmount: 300, cleared: true };
+    const STALE = { id: 's1', billNumber: 'R-8', date: '2026-10-20', timestamp: at(20, 11), total: 1000, items: [],
+        payment: { cash: 0, online: 1000, due: 0 }, cashPayment: 1000 };
+    const modal = () => document.getElementById('billDetailsContent').textContent.replace(/\s+/g, ' ');
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="billDetailsOverlay"><div id="billDetailsContent"></div></div>';
+    });
+
+    test('History card chips: BILL-DUE (0 when cleared) and BILL-PAY (payment.cash 0 wins)', () => {
+        expect(O.openDue(CLEARED)).toBe(0);
+        expect(paymentChipsHtml(CLEARED)).not.toContain('payment-due');
+        expect(paymentChipsHtml(STALE)).not.toContain('payment-cash');
+        expect(paymentChipsHtml(STALE)).toContain('payment-online');
+    });
+    test('History bill details show no due on a cleared bill', async () => {
+        AppState.retailSalesHistory = [copy(CLEARED)];
+        await HistoryManager.viewBill(0, 'retail');
+        expect(modal()).toContain('₹700');
+        expect(modal()).not.toContain('Due:');
+    });
+    test('Wholesale bill details show no due on a cleared bill', async () => {
+        AppState.salesHistory = [copy({ ...CLEARED, source: 'sales-tab' })];
+        await WholesaleSalesManager.reprintSale(0);
+        expect(modal()).toContain('₹700');
+        expect(modal()).not.toContain('Due:');
+    });
+    test('Expenses page lists: EXP-KIND (untagged → business, type "personal" with no category → personal)', () => {
+        document.body.innerHTML = '<div id="businessExpenseHistoryList"></div><div id="personalExpenseHistoryList"></div>';
+        ExpensesManager.renderBusinessExpenseHistory();
+        ExpensesManager.renderPersonalExpenseHistory();
+        const ids = (el) => [...document.getElementById(el).innerHTML.matchAll(/viewExpenseDetails\('(\w+)'/g)].map(m => m[1]).sort();
+        expect(ids('personalExpenseHistoryList')).toEqual(EXPENSES.filter(e => O.isPersonalExpenseOracle(e)).map(e => e.id).sort());
+        expect(ids('businessExpenseHistoryList')).toEqual(EXPENSES.filter(e => !O.isPersonalExpenseOracle(e)).map(e => e.id).sort());
     });
 });

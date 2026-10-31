@@ -6,7 +6,7 @@
  * @module utils/calc/today
  */
 
-import { activityBills, outstandingDue, round2 } from '../money.js';
+import { activityBills, billTotal, isPersonalExpense, outstandingDue, round2 } from '../money.js';
 import { endOfLocalDayExclusive, parseAnyBillDate, startOfLocalDay } from '../dates.js';
 import { dueEvents, saleTimePayment, sumDueEvents } from '../due-payments.js';
 import { labourGap, labourSummary } from '../labour.js';
@@ -27,13 +27,7 @@ export const TODAY_SPEC = Object.freeze({
     purchaseItems: 'T17', saleItems: 'T17'
 });
 
-// Today's own BILL-TOTAL field order (differs from money.billTotal for some legacy shapes; kept as shown).
-const purchaseTotal = (p) => Number(p.grandTotal) || Number(p.amountPayable) || Number(p.billTotal) || Number(p.total) || 0;
-const saleTotal = (s) => Number(s.grandTotal) || Number(s.total) || Number(s.saleTotal) || 0;
 const expenseAmount = (e) => Number(e.amount) || Number(e.total) || 0;
-
-/** EXP-KIND: personal only when tagged personal; untagged counts as business (#219). */
-const isPersonal = (e) => String(e.category || e.type || '').toLowerCase() === 'personal';
 
 const sumOf = (list, valueOf) => list.reduce((sum, x) => sum + valueOf(x), 0);
 
@@ -81,11 +75,11 @@ export function todaySummary({ bills = {}, expenses = [], sessions = [], setting
     const saleBills = [...wholesaleBills, ...retailBills];
     const dayExpenses = (expenses || []).filter(onDay);
 
-    const purchases = sumOf(purchaseBills, purchaseTotal);
-    const sales = sumOf(wholesaleBills, saleTotal) + sumOf(retailBills, saleTotal);
+    const purchases = sumOf(purchaseBills, billTotal);
+    const sales = sumOf(wholesaleBills, billTotal) + sumOf(retailBills, billTotal);
 
-    const business = dayExpenses.filter(e => !isPersonal(e));
-    const personal = dayExpenses.filter(isPersonal);
+    const business = dayExpenses.filter(e => !isPersonalExpense(e));
+    const personal = dayExpenses.filter(isPersonalExpense);
     const businessExpenses = sumOf(business, expenseAmount);
     const personalExpenses = sumOf(personal, expenseAmount);
     const expensesTotal = businessExpenses + personalExpenses;

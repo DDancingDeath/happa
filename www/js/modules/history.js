@@ -28,7 +28,7 @@ import { todayLocalISO } from '../utils/dates.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, isOpeningRecord } from '../utils/money.js';
+import { billTotal, isOpeningRecord, outstandingDue, readPayment } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -465,7 +465,8 @@ export class HistoryManager {
             </tr>
         `).join('');
         
-        const payment = bill.payment || {};
+        const pay = readPayment(bill);
+        const payment = { online: pay.online, cash: pay.cash, due: outstandingDue(bill) };
         
         // Build payment section HTML (reusable)
         const paymentHTML = (payment.online > 0 || payment.cash > 0 || payment.due > 0) ? `

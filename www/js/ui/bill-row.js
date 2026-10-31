@@ -10,7 +10,7 @@
 
 import { Helpers } from '../utils/helpers.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, formatAmount, formatRupees, isOpeningRecord, openingAmount } from '../utils/money.js';
+import { billTotal, formatAmount, formatRupees, isOpeningRecord, openingAmount, outstandingDue, readPayment } from '../utils/money.js';
 import { billDateOf } from '../utils/history-filters.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -44,11 +44,9 @@ export function billListAmount(bill) {
  * @returns {string} HTML
  */
 export function paymentChipsHtml(bill) {
-    // Same fields the History cards always showed (nested payment, else the old top-level ones).
-    const src = bill?.payment
-        ? { online: bill.payment.online, cash: bill.payment.cash, due: bill.payment.due }
-        : { online: bill?.onlinePayment, cash: bill?.cashPayment, due: bill?.dueAmount };
-    const p = { online: Number(src.online) || 0, cash: Number(src.cash) || 0, due: Number(src.due) || 0 };
+    // BILL-PAY and BILL-DUE, as the reprint and Outstanding read them
+    const pay = readPayment(bill);
+    const p = { online: pay.online, cash: pay.cash, due: outstandingDue(bill) };
     const chips = [];
     if (p.online > 0) chips.push(`<span class="payment-badge payment-online">${L('ui.history.badge_online', { amount: formatAmount(p.online) })}</span>`);
     if (p.cash > 0) chips.push(`<span class="payment-badge payment-cash">${L('ui.history.badge_cash', { amount: formatAmount(p.cash) })}</span>`);

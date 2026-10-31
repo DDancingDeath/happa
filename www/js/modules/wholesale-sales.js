@@ -992,7 +992,8 @@ export class WholesaleSalesManager {
             `;
         }).join('');
         
-        const payment = sale.payment || {};
+        const pay = readPayment(sale);
+        const payment = { online: pay.online, cash: pay.cash, due: outstandingDue(sale) };
         const paymentHTML = (payment.online > 0 || payment.cash > 0 || payment.due > 0) ? `
             <div style="background: white; padding: 14px; border-radius: 10px; border: 1px solid #dee2e6; margin-top: 12px;">
                 <h4 style="margin: 0 0 12px 0; font-size: 15px; color: #212529;">${L('ui.history.payment_details')}</h4>
