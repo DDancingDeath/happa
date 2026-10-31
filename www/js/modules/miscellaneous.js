@@ -15,6 +15,7 @@ import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../uti
 import { canChangeExpense, EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
 import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
+import { refusedForClock } from '../utils/clock-skew.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
@@ -59,10 +60,12 @@ export class ExpensesManager {
             const pending = this.pendingExpense?.category === expense.category ? this.pendingExpense : null;
             const { record, committed, stored } = FirebaseService.startSaveExpense(expense, { id: pending?.id });
             const forget = () => { if (this.pendingExpense?.id === record.id) this.pendingExpense = null; };
-            committed.catch(err => {
+            committed.catch(async err => {
                 console.error('Expense save failed:', err);
                 forget();
-                UIManager.showToast(saveFailedText(err, t('msg.expenses.expense_not_saved', { value: err?.message || err })), 'error');
+                UIManager.showToast(await refusedForClock(err)
+                    ? t('msg.common.phone_clock_wrong_save')
+                    : saveFailedText(err, t('msg.expenses.expense_not_saved', { value: err?.message || err })), 'error');
                 this.refreshExpenseViews();
             });
             this.refreshExpenseViews();

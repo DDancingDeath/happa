@@ -20,6 +20,7 @@ import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, a
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom, refreshOnDemandHistory } from '../utils/history-window.js';
 import { lastCountedSession } from '../utils/cash-session.js';
+import { refusedForClock } from '../utils/clock-skew.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth,
     itemSummary, biggestChange, profitPerDay, billTime, roundTo, sharePct, addsUp, netMoneyByDay,
@@ -551,6 +552,7 @@ export const MoneyManager = {
         if (!f) return;
         f.hidden = !f.hidden;
         const d = document.getElementById('moneyWdDate');
+        if (d) d.max = toLocalISODate(new Date());
         if (d && !d.value) d.value = toLocalISODate(new Date());
     },
 
@@ -566,9 +568,13 @@ export const MoneyManager = {
         if (!(amount > 0)) { UIManager.showToast(t('msg.common.enter_valid_amount'), 'error'); return; }
         if (!person) { UIManager.showToast(t('msg.finance.enter_who_withdrew_money'), 'error'); return; }
         if (!date || !parseAnyBillDate(date)) { UIManager.showToast(t('msg.finance.select_date'), 'error'); return; }
+        // Its timestamp is the later of now and that day; the rules refuse a future one
+        if (toLocalISODate(parseAnyBillDate(date)) > toLocalISODate(new Date())) { UIManager.showToast(t('msg.finance.withdrawal_date_future'), 'error'); return; }
         const failed = (e) => {
             console.error('Money: saving withdrawal failed:', e);
-            UIManager.showToast(t('msg.finance.error_recording_withdrawal'), 'error');
+            refusedForClock(e)
+                .then(clock => UIManager.showToast(t(clock ? 'msg.common.phone_clock_wrong_save' : 'msg.finance.error_recording_withdrawal'), 'error'))
+                .catch(err => console.error('Money: withdrawal failure toast:', err));
         };
         let committed;
         try {

@@ -49,7 +49,13 @@ async function seedUsers(usersCol) {
     });
 }
 
-const as = (uid) => env.authenticatedContext(uid).firestore();
+// One Firestore client per uid for the whole run: a new one per call kept every
+// instance alive and the suite ran out of memory (the data is cleared between tests).
+const clients = new Map();
+const as = (uid) => {
+    if (!clients.has(uid)) clients.set(uid, env.authenticatedContext(uid).firestore());
+    return clients.get(uid);
+};
 const anon = () => env.unauthenticatedContext().firestore();
 
 function defineSuite(prefix) {
@@ -269,18 +275,45 @@ function defineSuite(prefix) {
 
     t('staff legacy backfill: may fill a missing timestamp / id and openDue, never change them', async () => {
         for (const coll of bills) {
-            const legacy = { userId: 'manager1', total: 100, date: '01/10/2026', payment: { due: 100 } };
+            const legacy = { userId: 'manager1', total: 100, date: '01/10/2025', payment: { due: 100 } };
             await seedBill(coll, 'old', legacy);
             const ref = as('staff1').collection(coll).doc('old');
-            await assertSucceeds(ref.update({ timestamp: 1759276800000, openDue: true, clientVersion: 3 }));
+            await assertSucceeds(ref.update({ timestamp: IST_OCT_1, openDue: true, clientVersion: 3 }));
             await assertFails(ref.update({ timestamp: 1, clientVersion: 3 }));
             await seedBill(coll, 'old2', { ...legacy, timestamp: '2026-10-01' });
-            await assertSucceeds(as('staff1').collection(coll).doc('old2').update({ timestamp: 1759276800000, clientVersion: 3 }));
+            await assertSucceeds(as('staff1').collection(coll).doc('old2').update({ timestamp: IST_OCT_1, clientVersion: 3 }));
             await seedBill(coll, 'old3', legacy);
             await assertFails(as('staff1').collection(coll).doc('old3').set({ ...legacy, id: 'old3', cleared: true, openDue: false, clientVersion: 3 }));
             await assertSucceeds(as('staff1').collection(coll).doc('old3').set({ ...legacy, id: 'old3', openDue: true, clientVersion: 3 }));
             await seedBill(coll, 'old4', { ...legacy, id: 'old4' });
             await assertFails(as('staff1').collection(coll).doc('old4').update({ id: 'other', clientVersion: 3 }));
+        }
+    });
+
+    t('staff bill backfill: the timestamp comes from the bill (its date or old Timestamp), never the future', async () => {
+        const old = Date.now() - 40 * DAY;
+        for (const coll of bills) {
+            const legacy = { userId: 'manager1', total: 100, payment: { due: 100 } };
+            const fill = (id, timestamp, extra = {}) => as('staff1').collection(coll).doc(id).update({ timestamp, clientVersion: 3, ...extra });
+            await seedBill(coll, 'dmy', { ...legacy, date: '01/10/2025, 7:55:07 pm' });
+            await assertFails(fill('dmy', Date.now()));
+            await assertFails(fill('dmy', Date.now() + DAY));
+            await assertFails(fill('dmy', Date.UTC(2025, 9, 5)));
+            await assertFails(fill('dmy', '2025-10-01'));
+            await assertSucceeds(fill('dmy', IST_OCT_1 + 19 * HOUR + 55 * MIN, { openDue: true }));
+            await seedBill(coll, 'iso', { ...legacy, date: '2025-10-01' });
+            await assertFails(fill('iso', Date.UTC(2025, 9, 1) - 2 * DAY));
+            await assertSucceeds(fill('iso', Date.UTC(2025, 9, 1)));
+            await seedBill(coll, 'ts', { ...legacy, date: '2025-10-01', timestamp: Timestamp.fromMillis(old) });
+            await assertFails(fill('ts', old + MIN));
+            await assertSucceeds(fill('ts', old));
+            await seedBill(coll, 'odd', { ...legacy, date: 'Oct 1 2025' });
+            await assertFails(fill('odd', Date.now() + HOUR));
+            await assertFails(fill('odd', Number.MAX_SAFE_INTEGER));
+            await assertSucceeds(fill('odd', Date.UTC(2025, 9, 1)));
+            // the owner corrects bills freely
+            await seedBill(coll, 'own', { ...legacy, date: '2025-10-01' });
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('own').update({ timestamp: Number.MAX_SAFE_INTEGER, clientVersion: 3 }));
         }
     });
 
@@ -412,10 +445,10 @@ function defineSuite(prefix) {
 
     t('edit window: legacy backfill of timestamp or createdAt never unlocks an owner-only bill', async () => {
         for (const coll of bills) {
-            const legacy = { userId: 'staff1', total: 100, date: '01/10/2026', payment: { due: 100 }, items: [] };
+            const legacy = { userId: 'staff1', total: 100, date: '01/10/2025', payment: { due: 100 }, items: [] };
             await seedBill(coll, 'old', legacy);
             const ref = as('staff1').collection(coll).doc('old');
-            await assertSucceeds(ref.update({ timestamp: Date.now(), openDue: true, clientVersion: 3 }));
+            await assertSucceeds(ref.update({ timestamp: IST_OCT_1 + HOUR, openDue: true, clientVersion: 3 }));
             await assertFails(ref.update({ total: 9, clientVersion: 3 }));
             await assertFails(ref.delete());
             await assertFails(ref.update({ createdAt: serverTimestamp(), clientVersion: 3 }));
@@ -568,7 +601,7 @@ function defineSuite(prefix) {
             await assertSucceeds(coll.doc('new1').set({ ...valid, clientVersion: 3 }));
         }
         // Expenses etc. are not restricted by the gate.
-        await assertSucceeds(db.collection(`${prefix}expenses`).doc('e1').set({ amount: 1, userId: 'staff1' }));
+        await assertSucceeds(db.collection(`${prefix}expenses`).doc('e1').set({ amount: 1, userId: 'staff1', timestamp: Date.now() }));
     });
 
     t('payment updates on current bills pass; overwriting with an old-app full set() fails; deletes pass', async () => {
@@ -1947,6 +1980,37 @@ function defineSuite(prefix) {
         await assertFails(as('staff1').collection(withdrawals).doc('w1').delete());
         await assertSucceeds(as('manager1').collection(withdrawals).doc('w1').update({ amount: 400 }));
         await assertSucceeds(as('manager1').collection(withdrawals).doc('w1').delete());
+    });
+
+    t('expenses / withdrawals / personal expenses: created with a numeric timestamp, not in the future', async () => {
+        const rec = (uid, extra = {}) => ({ amount: 50, type: 'Tea', date: '31/10/2026, 10:00:00 am', userId: uid, timestamp: Date.now(), ...extra });
+        const colls = [[`${prefix}expenses`, {}], [withdrawals, { person: 'O', purpose: 'x' }]];
+        for (const [coll, extra] of colls) {
+            for (const uid of ['staff1', 'manager1']) {
+                const c = as(uid).collection(coll);
+                await assertSucceeds(c.doc(`now-${uid}`).set(rec(uid, extra)));
+                await assertSucceeds(c.doc(`ahead-${uid}`).set(rec(uid, { ...extra, timestamp: Date.now() + 5 * MIN })));
+                // queued offline for days: still fine
+                await assertSucceeds(c.doc(`queued-${uid}`).set(rec(uid, { ...extra, timestamp: Date.now() - 3 * DAY })));
+                await assertFails(c.doc(`future-${uid}`).set(rec(uid, { ...extra, timestamp: Date.now() + 30 * MIN })));
+                await assertFails(c.doc(`tomorrow-${uid}`).set(rec(uid, { ...extra, timestamp: Date.now() + DAY })));
+                await assertFails(c.doc(`text-${uid}`).set(rec(uid, { ...extra, timestamp: '2026-10-31' })));
+                const none = rec(uid, extra);
+                delete none.timestamp;
+                await assertFails(c.doc(`none-${uid}`).set(none));
+            }
+            // the owner records anything (repairs, restore)
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('owner').set(rec('legacyOwner', { ...extra, timestamp: Date.now() + DAY })));
+        }
+        const pe = (id, timestamp) => {
+            const db = as('staff1');
+            const b = db.batch();
+            b.set(db.collection(`${prefix}personalExpenses`).doc(id), rec('staff1', { category: 'personal', day: '2026-10-31', timestamp }));
+            b.set(db.collection(`${prefix}personalExpenseDays`).doc('2026-10-31'), { amounts: { [id]: 50 }, last: id }, { merge: true });
+            return b.commit();
+        };
+        await assertSucceeds(pe('p1', Date.now()));
+        await assertFails(pe('p2', Date.now() + DAY));
     });
 
     t('stock adjustments: owner/manager record them (#64); only they change or delete them', async () => {
