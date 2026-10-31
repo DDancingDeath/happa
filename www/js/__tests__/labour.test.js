@@ -21,7 +21,8 @@ import { todayLocalISO } from '../utils/dates.js';
 import { applyTranslations, setLang, resetLangForTests } from '../i18n/index.js';
 
 const DEVANAGARI = /[\u0900-\u097F]/;
-const LATIN_WORD = /[A-Za-z]{2,}/;
+// English words; the unit kg is written the same in Hindi.
+const LATIN_WORD = /(?!kg(?![A-Za-z]))[A-Za-z]{2,}/;
 const RATE = { laborRate: 6, labourPackageKg: 35 };
 
 const line = (qty, packets = 0) => ({ name: 'Wheat', qty, rate: 25, total: qty * 25, weights: Array(packets).fill(packets ? qty / packets : 0) });
@@ -199,7 +200,7 @@ describe('Today Labour card (single language)', () => {
     test('Hindi: the same numbers with no English words', () => {
         const card = render('hi');
         expect(card).toContain('किसानों से काटी गई: ₹72 (1 बिल)');
-        expect(card).toContain('मज़दूरों को देनी है: ₹174 (1,000 किलो ÷ 35 किलो = 29 बोरी × ₹6)');
+        expect(card).toContain('मज़दूरों को देनी है: ₹174 (1,000 kg ÷ 35 kg = 29 बोरी × ₹6)');
         expect(card).toContain('₹102 ज़्यादा');
         expect(card).not.toMatch(LATIN_WORD);
     });
@@ -240,7 +241,7 @@ describe('Today Labour card (single language)', () => {
         setLang('hi', { store: null });
         const hi = buildDayReportText({ dayKey: todayLocalISO(), totals });
         expect(hi).toContain('किसानों से काटी गई मज़दूरी: ₹72 (1 बिल)');
-        expect(hi).toContain('मज़दूरों को देनी है: ₹174 (1,000 किलो ÷ 35 किलो = 29 बोरी × ₹6)');
+        expect(hi).toContain('मज़दूरों को देनी है: ₹174 (1,000 kg ÷ 35 kg = 29 बोरी × ₹6)');
         expect(hi.split('\n').filter(l => /मज़दूरी|मज़दूरों/.test(l)).join(' ')).not.toMatch(LATIN_WORD);
     });
 });
