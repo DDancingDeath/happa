@@ -3008,6 +3008,20 @@ function defineRentSuite(prefix) {
         await assertSucceeds(unitRef('rentManager').update({ meterRate: 9.5, updatedAt: 3, updatedBy: 'rentManager' }));
     });
 
+    t('electricity amount: units × rate to the rupee (#129) or in paise (older app versions), nothing further off', async () => {
+        await seed('rent_units', 'U1', unit({ lastReading: 100, meterRate: 7.35 }));
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        // 123 units × ₹7.35 = ₹904.05
+        const at = (amount) => ({ ...elec(100, 223, 7.35), amount });
+        await assertFails(meterWrite('rentMember', at(903)));
+        await assertFails(meterWrite('rentMember', at(905)));
+        await assertSucceeds(meterWrite('rentMember', at(904)));
+        await seed('rent_units', 'U1', unit({ lastReading: 100, meterRate: 7.35 }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await assertSucceeds(meterWrite('rentMember', at(904.05)));
+    });
+
     t('owner/manager corrections: payments kept or one own entry added, paid = Σ entries, creation fixed', async () => {
         await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 3000, payments: [entry('rentMember', 2000), entry('rentOnly', 1000)] }));
         const ref = chargeRef('rentManager', CUR);
@@ -3185,7 +3199,7 @@ function defineRentSuite(prefix) {
         // Members: the computed pro-rated value only (RENT-11), never e.g. 0.
         const fr = proRated(6000, today);
         await assertFails(moveInBatch('rentMember', { firstRent: 0, chargeAmount: 0 }));
-        if (fr !== 3000) await assertFails(moveInBatch('rentMember', { firstRent: 3000, chargeAmount: 3000 }));
+        await assertFails(moveInBatch('rentMember', { firstRent: fr - 2, chargeAmount: fr - 2 }));
         await assertSucceeds(moveInBatch('rentMember', { firstRent: fr, chargeAmount: fr }));
         const next = istMonth(1);
         await env.clearFirestore();
@@ -3220,6 +3234,11 @@ function defineRentSuite(prefix) {
 
     // ---- Change of unit (tenant form, rent-store assignUnit): old lease ends, new one starts, one write ----
     const istDate = (daysAgo) => new Date(Date.now() + 330 * MIN - daysAgo * DAY).toISOString().slice(0, 10);
+    // A move date a member may use (today or up to 2 days back, IST, as the rules' request.time) whose day of the
+    // month is at least minDay, so the old unit keeps days in its move month (RENT-13). Early in a month that is a
+    // day of the month before (its last day is the 28th or later). A move on the 1st ends the old lease with the
+    // month before and has no old-unit share; that case has its own test below.
+    const moveDate = (minDay = 2) => [0, 1, 2].map(istDate).find(d => Number(d.slice(8, 10)) >= minDay);
     const seedChange = async (month, destLease = null, { through = month, token = null } = {}) => {
         await seed('rent_tenants', 'T1', { name: 'Ram', phone: '9876543210', notes: '', ...meta('x') });
         await seed('rent_units', 'U1', unit());
@@ -3251,11 +3270,13 @@ function defineRentSuite(prefix) {
     };
 
     t('change of unit by a member, the old month already paid: the old charge is untouched and the new lease is pro-rated', async () => {
-        await seedChange(CUR);
-        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 5000, open: false, payments: [entry('rentMember', 5000)] }));
-        await assertFails(changeUnit('rentMember', { first: 7000 }));
-        await assertFails(changeUnit('rentMember', { first: proRated(6000, today) - 2 }));
-        await assertSucceeds(changeUnit('rentMember', { first: proRated(6000, today) }));
+        const mv = moveDate();
+        const mm = mv.slice(0, 7);
+        await seedChange(mm);
+        await seed('rent_charges', `L1_${mm}`, charge(mm, { paid: 5000, open: false, payments: [entry('rentMember', 5000)] }));
+        await assertFails(changeUnit('rentMember', { date: mv, first: 7000 }));
+        await assertFails(changeUnit('rentMember', { date: mv, first: proRated(6000, mv) - 2 }));
+        await assertSucceeds(changeUnit('rentMember', { date: mv, first: proRated(6000, mv) }));
     });
 
     t('change of unit: old lease ends and the new one starts in one write; fromLeaseId stays fixed', async () => {
@@ -3414,18 +3435,24 @@ function defineRentSuite(prefix) {
     const oldDays = (date, s = 1) => Math.round(5000 * (Number(date.slice(8, 10)) - s) / (dim(date.slice(0, 7)) - s + 1));
     const proRated = (rent, date) => Math.round(rent * (dim(date.slice(0, 7)) - Number(date.slice(8, 10)) + 1) / dim(date.slice(0, 7)));
 
+    // Each test moves on moveDate() (never the 1st), so the old unit's share is above 0 on any day it runs.
+    const shareOf = (mv) => { const x = oldDays(mv); if (!(x > 0 && x < 5000)) throw new Error(`no old-unit share on ${mv}`); return x; };
+
     t('RENT-13: members pro-rate the old unit\'s move month to the computed amount only, in the change write', async () => {
-        await seedChange(CUR);
-        const x = oldDays(today);
-        await assertFails(changeUnit('rentMember', { split: { rent: x + 2 } }));
-        await assertFails(changeUnit('rentMember', { split: { rent: x, amount: x + 100 } }));
-        await assertFails(chargeRef('rentMember', CUR).update({ rent: x, amount: x, open: true, updatedAt: 2, updatedBy: 'rentMember' }));
-        await assertSucceeds(changeUnit('rentMember', { split: { rent: x } }));
+        const mv = moveDate();
+        const mm = mv.slice(0, 7);
+        await seedChange(mm);
+        const x = shareOf(mv);
+        await assertFails(changeUnit('rentMember', { date: mv, split: { rent: x + 2 } }));
+        await assertFails(changeUnit('rentMember', { date: mv, split: { rent: x, amount: x + 100 } }));
+        await assertFails(chargeRef('rentMember', mm).update({ rent: x, amount: x, open: true, updatedAt: 2, updatedBy: 'rentMember' }));
+        await assertSucceeds(changeUnit('rentMember', { date: mv, split: { rent: x } }));
     });
 
     t('change of unit as the app writes it fits in one write: link carried + pro-rated month (member), + 3 later months (owner)', async () => {
-        await seedChange(CUR, null, { token: TOKEN });
-        await assertSucceeds(changeUnit('rentMember', { carry: TOKEN, pub: TOKEN, split: { rent: oldDays(today) } }));
+        const mv = moveDate();
+        await seedChange(mv.slice(0, 7), null, { token: TOKEN });
+        await assertSucceeds(changeUnit('rentMember', { date: mv, carry: TOKEN, pub: TOKEN, split: { rent: shareOf(mv) } }));
         await env.clearFirestore();
         await seedUsers(prefix ? 'dev_users' : 'users');
         const m3 = istMonth(-3);
@@ -3435,44 +3462,49 @@ function defineRentSuite(prefix) {
     });
 
     t('RENT-13: electricity stays on the old month; the amount is the pro-rated rent + electricity', async () => {
-        await seedChange(CUR);
-        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { electricity: elec(100, 130, 10), amount: 5300 }));
-        const x = oldDays(today);
-        await assertFails(changeUnit('rentMember', { split: { rent: x } }));
-        await assertSucceeds(changeUnit('rentMember', { split: { rent: x, amount: x + 300 } }));
+        const mv = moveDate();
+        const mm = mv.slice(0, 7);
+        await seedChange(mm);
+        await seed('rent_charges', `L1_${mm}`, charge(mm, { electricity: elec(100, 130, 10), amount: 5300 }));
+        const x = shareOf(mv);
+        await assertFails(changeUnit('rentMember', { date: mv, split: { rent: x } }));
+        await assertSucceeds(changeUnit('rentMember', { date: mv, split: { rent: x, amount: x + 300 } }));
     });
 
     t('RENT-13: owner/manager may set any lower old-month rent, never above it or below what is paid', async () => {
-        await seedChange(CUR);
-        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 1500, open: true, payments: [entry('x', 1500)] }));
-        await assertFails(changeUnit('rentManager', { split: { rent: 6000 } }));
-        await assertFails(changeUnit('rentManager', { split: { rent: 1000 } }));
-        await assertSucceeds(changeUnit('rentManager', { split: { rent: 1600.5 } }));
+        const mv = moveDate();
+        const mm = mv.slice(0, 7);
+        await seedChange(mm);
+        await seed('rent_charges', `L1_${mm}`, charge(mm, { paid: 1500, open: true, payments: [entry('x', 1500)] }));
+        await assertFails(changeUnit('rentManager', { date: mv, split: { rent: 6000 } }));
+        await assertFails(changeUnit('rentManager', { date: mv, split: { rent: 1000 } }));
+        await assertSucceeds(changeUnit('rentManager', { date: mv, split: { rent: 1600.5 } }));
     });
 
     t('RENT-13: more than its share paid: a member closes the old month at exactly what is paid, never another amount above the share', async () => {
-        const x = oldDays(today);
-        if (5000 - x < 4) return; // needs room between the share and the full rent
+        const mv = moveDate();
+        const mm = mv.slice(0, 7);
+        const x = shareOf(mv); // at most 5000 × 30 ÷ 31 = 4839: room between the share and the full rent
         const paid = Math.round((x + 5000) / 2);
         const above = Math.floor((paid + 5000) / 2);
-        await seedChange(CUR);
-        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid, open: true, payments: [entry('x', paid)] }));
-        await assertFails(changeUnit('rentMember', { split: { rent: above, amount: above, open: true } }));
-        await assertFails(changeUnit('rentMember', { split: { rent: above, amount: above, open: false } }));
-        await assertFails(changeUnit('rentMember', { split: { rent: x, amount: x, open: false } }));
-        await assertSucceeds(changeUnit('rentMember', { split: { rent: paid, amount: paid, open: false } }));
+        await seedChange(mm);
+        await seed('rent_charges', `L1_${mm}`, charge(mm, { paid, open: true, payments: [entry('x', paid)] }));
+        await assertFails(changeUnit('rentMember', { date: mv, split: { rent: above, amount: above, open: true } }));
+        await assertFails(changeUnit('rentMember', { date: mv, split: { rent: above, amount: above, open: false } }));
+        await assertFails(changeUnit('rentMember', { date: mv, split: { rent: x, amount: x, open: false } }));
+        await assertSucceeds(changeUnit('rentMember', { date: mv, split: { rent: paid, amount: paid, open: false } }));
     });
 
     t('RENT-13: an old lease that started (pro-rated) in the move month counts from its start day', async () => {
-        const day = Number(today.slice(8, 10));
-        if (day < 3) return; // needs a start day before today inside this month
-        const start = `${CUR}-02`;
-        await seedChange(CUR);
-        await seed('rent_leases', 'L1', lease({ startMonth: CUR, rentSince: CUR, startDate: start, proRate: true, firstRent: 4800, chargedThrough: CUR }));
-        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { rent: 4800, amount: 4800 }));
-        const x = Math.round(4800 * (day - 2) / (dim(CUR) - 1));
-        await assertFails(changeUnit('rentMember', { split: { rent: oldDays(today) === x ? x + 2 : oldDays(today) } }));
-        await assertSucceeds(changeUnit('rentMember', { split: { rent: x } }));
+        const mv = moveDate(3); // a start day (the 2nd) before the move day, in the same month
+        const mm = mv.slice(0, 7);
+        const day = Number(mv.slice(8, 10));
+        await seedChange(mm);
+        await seed('rent_leases', 'L1', lease({ startMonth: mm, rentSince: mm, startDate: `${mm}-02`, proRate: true, firstRent: 4800, chargedThrough: mm }));
+        await seed('rent_charges', `L1_${mm}`, charge(mm, { rent: 4800, amount: 4800 }));
+        const x = Math.round(4800 * (day - 2) / (dim(mm) - 1));
+        await assertFails(changeUnit('rentMember', { date: mv, split: { rent: oldDays(mv) === x ? x + 2 : oldDays(mv) } }));
+        await assertSucceeds(changeUnit('rentMember', { date: mv, split: { rent: x } }));
     });
 
     // Members may only start a lease up to 2 days back, so a member's move on the 1st with this month already
