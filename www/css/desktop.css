@@ -612,7 +612,7 @@
   /* Statement: choices on the left, the document on the right */
   .st-view:not([hidden]) {
     display: grid;
-    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
     grid-template-rows: auto auto auto 1fr;
     column-gap: 16px;
     align-items: start;
