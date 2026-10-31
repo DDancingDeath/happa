@@ -14,6 +14,7 @@ import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { canChangeExpense, EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
+import { saveFailedText } from '../utils/storage-full.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can } from '../utils/role-access.js';
@@ -37,19 +38,21 @@ export class ExpensesManager {
      * Create a new expense, or update the one being edited (same doc, no delete).
      * @param {Object} expense - Expense built from the form
      * @returns {Promise<boolean|null>} true if an existing expense was updated,
-     *   null if that update was refused (message already shown)
+     *   null if that update, or this phone (storage full), refused it (message already shown)
      */
     static async persistExpense(expense) {
         const editing = this.editingExpense;
         if (!editing || editing.category !== expense.category) {
             // Shown at once (also offline); the listener reconciles it (#89)
-            const { committed } = FirebaseService.startSaveExpense(expense);
+            const { committed, stored } = FirebaseService.startSaveExpense(expense);
             committed.catch(err => {
                 console.error('Expense save failed:', err);
-                UIManager.showToast(t('msg.expenses.expense_not_saved', { value: err?.message || err }));
+                UIManager.showToast(saveFailedText(err, t('msg.expenses.expense_not_saved', { value: err?.message || err })), 'error');
                 this.refreshExpenseViews();
             });
             this.refreshExpenseViews();
+            // A write this phone refused (storage full) is not reported as saved (#153)
+            if (stored && !(await stored)) return null;
             return false;
         }
 

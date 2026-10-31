@@ -15,6 +15,7 @@ import {
 } from '../utils/money.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
+import { saveFailedText, SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
@@ -596,14 +597,15 @@ const RetailSaleManager = {
             this.resetForm();
             
             UIManager.hideLoading();
-            UIManager.showToast(FirebaseService.keptServerPayment(sale) ? t(KEPT_SERVER_PAYMENT_KEY) : t('msg.retail.sale_completed_successfully'));
+            UIManager.showToast(FirebaseService.keptServerPayment(sale) ? t(KEPT_SERVER_PAYMENT_KEY)
+                : FirebaseService.savedOnPhoneOnly(sale) ? t(SAVED_ON_PHONE_KEY) : t('msg.retail.sale_completed_successfully'));
             UIManager.hapticFeedback('success');
             
             return sale;
             
         } catch (error) {
             UIManager.hideLoading();
-            UIManager.showToast(t('msg.retail.failed_complete_sale', { message: error.message }));
+            UIManager.showToast(saveFailedText(error, t('msg.retail.failed_complete_sale', { message: error.message })), 'error');
             console.error('Complete sale error:', error);
             throw error;
         }
@@ -686,11 +688,11 @@ const RetailSaleManager = {
             const printed = await printPromise;
             
             if (savedSale && printed === true) {
-                UIManager.showToast(t('msg.common.sale_saved_printed'));
+                UIManager.showToast(FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed'));
             }
         } catch (error) {
             console.error('Print sale error:', error);
-            UIManager.showToast(t('msg.common.error_2', { value: error?.message || error }));
+            UIManager.showToast(saveFailedText(error, t('msg.common.error_2', { value: error?.message || error })), 'error');
         }
     },
 

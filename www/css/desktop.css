@@ -55,6 +55,13 @@
     background: transparent;
   }
 
+  /* Sync pill: centred over the content, not the sidebar */
+  .sync-pill {
+    top: 14px;
+    left: calc(var(--desktop-nav-width) + (100% - var(--desktop-nav-width)) / 2);
+    max-width: 50%;
+  }
+
   .notif-panel {
     left: calc(var(--desktop-nav-width) + 12px);
     right: auto;

@@ -37,3 +37,38 @@
 .toast.warning {
   background: linear-gradient(135deg, var(--warning-color) 0%, var(--warning-dark) 100%);
 }
+
+/* Offline / waiting-to-sync pill (#70), between the menu button and the bell */
+.sync-pill {
+  position: fixed;
+  top: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  max-width: calc(100% - 140px);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: #374151;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+
+.sync-pill[hidden] {
+  display: none;
+}
+
+.sync-pill[data-state="pending"] {
+  background: #fef3c7;
+  color: #78350f;
+}
+
+.sync-pill[data-state="synced"] {
+  background: #047857;
+}

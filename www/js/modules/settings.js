@@ -15,6 +15,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, normalizeLabourSettings, normalizePackageKg } from '../utils/money.js';
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
 import { t } from '../i18n/index.js';
+import { safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { auditActionLabel } from '../i18n/localize.js';
 import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
@@ -46,6 +47,13 @@ function setField(id, prop, value) {
     const el = document.getElementById(id);
     if (el) el[prop] = value;
     return el;
+}
+
+/** Keeps settings on this phone; false, with a "storage full" toast when that is why, if it could not (#153). */
+function storeLocalSettings(key = 'settings', value = AppState.settings) {
+    const { ok, full } = safeSetItem(key, JSON.stringify(value));
+    if (full) UIManager.showToast(t(STORAGE_FULL_KEY), 'error');
+    return ok;
 }
 
 /** Typed package weight is blank (→ default) or within 1–200 kg. */
@@ -155,7 +163,7 @@ export class SettingsManager {
             localStorage.setItem(ITEM_NAMES_FOLLOW_LANG_KEY, '0');
         }
         
-        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        const stored = storeLocalSettings();
         
         const rateInput = document.getElementById('settingLaborRate');
         const weightInput = document.getElementById('settingHeavyWeight');
@@ -174,8 +182,10 @@ export class SettingsManager {
         const labourWrite = labourChanged ? this.saveLabourSettings(typed) : Promise.resolve(false);
         
         UIManager.hapticFeedback('light');
-        UIManager.showToast(t(packageOk ? 'msg.settings.settings_saved_successfully' : 'msg.settings.package_kg_range',
-            { min: LABOUR_PACKAGE_KG_MIN, max: LABOUR_PACKAGE_KG_MAX }));
+        if (stored || !packageOk) {
+            UIManager.showToast(t(packageOk ? 'msg.settings.settings_saved_successfully' : 'msg.settings.package_kg_range',
+                { min: LABOUR_PACKAGE_KG_MIN, max: LABOUR_PACKAGE_KG_MAX }));
+        }
         
         window.app?.items?.render?.();
         window.app?.billing?.loadItemsDropdown?.();
@@ -227,7 +237,7 @@ export class SettingsManager {
         // Business name/details (Settings › Aadhat): shared; a name set only on this device is kept until one is saved
         if (typeof appSettings?.businessName === 'string') AppState.settings.shopName = appSettings.businessName;
         if (typeof appSettings?.businessDetails === 'string') AppState.settings.businessDetails = appSettings.businessDetails;
-        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        storeLocalSettings();
         const hasShared = !!appSettings && (appSettings.laborRate !== undefined || appSettings.heavyWeightThreshold !== undefined
             || appSettings.labourPackageKg !== undefined);
         if (hasShared) {
@@ -250,7 +260,7 @@ export class SettingsManager {
         AppState.settings.laborRate = labour.laborRate;
         AppState.settings.heavyWeightThreshold = labour.heavyWeightThreshold;
         AppState.settings.labourPackageKg = normalizePackageKg(labour.labourPackageKg);
-        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        storeLocalSettings();
         setField('settingLaborRate', 'value', labour.laborRate);
         setField('settingHeavyWeight', 'value', labour.heavyWeightThreshold);
         setField('settingLabourPackageKg', 'value', AppState.settings.labourPackageKg);
@@ -365,7 +375,7 @@ export class SettingsManager {
         CHECK_THRESHOLD_FIELDS.forEach(([key]) => { typed[key] = document.getElementById(`settingCheck_${key}`)?.value; });
         const next = normalizeThresholds(typed);
         AppState.settings.checkThresholds = next;
-        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        storeLocalSettings();
         CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', next[key]));
         try {
             await FirebaseService.saveSharedCheckThresholds(next);
@@ -388,7 +398,7 @@ export class SettingsManager {
         const details = { businessName: clean('settingBusinessName', MAX_BUSINESS_NAME), businessDetails: clean('settingBusinessDetails', MAX_BUSINESS_DETAILS) };
         AppState.settings.shopName = details.businessName;
         AppState.settings.businessDetails = details.businessDetails;
-        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        storeLocalSettings();
         try {
             await FirebaseService.saveBusinessDetails(details);
             UIManager.showToast(t('msg.admin.settings_saved_everyone'));
@@ -404,9 +414,9 @@ export class SettingsManager {
     static saveUpi() {
         const upi = String(document.getElementById('settingUpiId')?.value ?? '').replace(/\s+/g, '').slice(0, MAX_UPI);
         AppState.settings.upiId = upi;
-        localStorage.setItem('settings', JSON.stringify(AppState.settings));
+        const stored = storeLocalSettings();
         setField('settingUpiId', 'value', upi);
-        UIManager.showToast(t('msg.settings.settings_saved_successfully'));
+        if (stored) UIManager.showToast(t('msg.settings.settings_saved_successfully'));
         return upi;
     }
 
@@ -477,7 +487,7 @@ export class SettingsManager {
     static toggleBluetoothPrinter() {
         const enabled = document.getElementById('settingBluetoothEnabled').checked;
         AppState.printerSettings.enabled = enabled;
-        localStorage.setItem('printerSettings', JSON.stringify(AppState.printerSettings));
+        storeLocalSettings('printerSettings', AppState.printerSettings);
         
         const section = document.getElementById('bluetoothPrinterSection');
         if (section) {
@@ -553,7 +563,7 @@ export class SettingsManager {
             
             AppState.printerSettings.deviceId = deviceId;
             AppState.printerSettings.deviceName = deviceName;
-            localStorage.setItem('printerSettings', JSON.stringify(AppState.printerSettings));
+            storeLocalSettings('printerSettings', AppState.printerSettings);
             
             this.updatePrinterStatus();
             UIManager.showToast(t('msg.settings.connected', { deviceName }));
@@ -575,7 +585,7 @@ export class SettingsManager {
             
             AppState.printerSettings.deviceId = null;
             AppState.printerSettings.deviceName = null;
-            localStorage.setItem('printerSettings', JSON.stringify(AppState.printerSettings));
+            storeLocalSettings('printerSettings', AppState.printerSettings);
             
             this.updatePrinterStatus();
             UIManager.showToast(t('msg.common.printer_disconnected'));
