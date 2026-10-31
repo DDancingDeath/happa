@@ -8,9 +8,12 @@ import { copyMark, receiptDateTime } from '../utils/bill-share.js';
 import { billTotal, outstandingDue, readPayment } from '../utils/money.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
+import { currentPrinter, normalizePrinterSettings, PAPER_DOTS, paperDots } from '../utils/printer-settings.js';
 
 /** Dots darker than this (average of R,G,B) print black */
 const RASTER_THRESHOLD = 128;
+/** Receipts are laid out for 58 mm paper; wider paper scales them up. */
+const LAYOUT_DOTS = PAPER_DOTS[58];
 
 const jobKey = (kind, id) => (id ? `${kind}:${id}` : null);
 const UNCERTAIN_KEY = 'printerMayHavePrinted';
@@ -78,12 +81,24 @@ export function buildRasterPrintCommand(raster, bytesPerLine, height) {
 }
 
 /**
- * Convert the top `height` rows of a canvas into a ready-to-send ESC/POS buffer.
+ * Convert the top `height` rows of a canvas into a ready-to-send ESC/POS buffer,
+ * scaled to `dots` per line when the paper is wider than the canvas.
  * @param {HTMLCanvasElement} canvas
  * @param {number} [height=canvas.height]
+ * @param {number} [dots=canvas.width]
  * @returns {Uint8Array}
  */
-function canvasToEscPos(canvas, height = canvas.height) {
+function canvasToEscPos(canvas, height = canvas.height, dots = canvas.width) {
+    if (dots && dots !== canvas.width) {
+        const scaled = document.createElement('canvas');
+        scaled.width = dots;
+        scaled.height = Math.ceil(height * (dots / canvas.width));
+        const ctx = scaled.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, scaled.width, scaled.height);
+        ctx.drawImage(canvas, 0, 0, canvas.width, height, 0, 0, scaled.width, scaled.height);
+        return canvasToEscPos(scaled);
+    }
     const width = canvas.width;
     const { data } = canvas.getContext('2d').getImageData(0, 0, width, height);
     const raster = packMonochromeRaster(data, width, height);
@@ -115,7 +130,7 @@ class BluetoothPrinterManager {
     }
 
     sendCanvas(canvas, job) {
-        return this._send(canvasToEscPos(canvas), 'WRITE CANVAS', job);
+        return this._send(canvasToEscPos(canvas, canvas.height, job?.dots), 'WRITE CANVAS', job);
     }
 
     async scan() {
@@ -182,6 +197,7 @@ class BluetoothPrinterManager {
             }
         }
         
+        await this.link.enableBluetooth();
         UIManager.showLoading();
         try {
             const devices = await this.link.list();
@@ -505,13 +521,16 @@ class BluetoothPrinterManager {
     }
 
     /**
-     * Draw the receipt onto an oversized canvas.
+     * Draw the receipt onto an oversized canvas `dots` wide; the 58 mm layout
+     * is drawn scaled, so text stays sharp on 80 mm paper.
+     * @param {Object} billData
+     * @param {number} [dots=384]
      * @returns {{canvas: HTMLCanvasElement, height: number}} canvas and used height
      * @private
      */
-    _renderBillCanvas(billData) {
+    _renderBillCanvas(billData, dots = LAYOUT_DOTS) {
         const config = {
-            width: 384, // 58mm thermal printer width
+            width: LAYOUT_DOTS,
             padding: { left: 0, right: 0, side: 0 },
             fonts: {
                 title: { size: 26, weight: 'bold' },
@@ -527,15 +546,17 @@ class BluetoothPrinterManager {
         };
 
         // Create temporary canvas
+        const scale = dots / LAYOUT_DOTS;
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = config.width;
-        tempCanvas.height = 2000;
+        tempCanvas.width = dots;
+        tempCanvas.height = Math.ceil(2000 * scale);
         
         // Initialize with white background
         tempCtx.fillStyle = '#ffffff';
         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
         tempCtx.fillStyle = '#000000';
+        if (scale !== 1) tempCtx.scale(scale, scale);
         
         // Drawing utilities
         const utils = this._createDrawingUtils(tempCtx, config);
@@ -550,17 +571,17 @@ class BluetoothPrinterManager {
         y = this._drawItemsTable(tempCtx, billData, config, utils, y);
         y = this._drawTotalsSection(tempCtx, billData, config, utils, y);
         
-        return { canvas: tempCanvas, height: y };
+        return { canvas: tempCanvas, height: Math.ceil(y * scale) };
     }
 
-    /** ESC/POS raster bytes for a bill (the used rows of the render canvas). */
-    billBytes(billData) {
-        const { canvas, height } = this._renderBillCanvas(billData);
+    /** ESC/POS raster bytes for a bill (the used rows of the render canvas), `dots` wide. */
+    billBytes(billData, dots = LAYOUT_DOTS) {
+        const { canvas, height } = this._renderBillCanvas(billData, dots);
         return canvasToEscPos(canvas, height);
     }
 
     async write(billData, job) {
-        return this._send(this.billBytes(billData), 'WRITE', job);
+        return this._send(this.billBytes(billData, job?.dots), 'WRITE', job);
     }
     
     async generateExpenseCanvas(expense) {
@@ -671,7 +692,7 @@ class BluetoothPrinterManager {
     
     async writeExpense(expense, job) {
         const finalCanvas = await this.generateExpenseCanvas(expense);
-        return this._send(canvasToEscPos(finalCanvas), 'WRITE EXPENSE', job);
+        return this._send(canvasToEscPos(finalCanvas, finalCanvas.height, job?.dots), 'WRITE EXPENSE', job);
     }
 
     /**
@@ -740,7 +761,8 @@ class BluetoothPrinterManager {
     }
 
     async writeStatement(statement, job) {
-        return this._send(canvasToEscPos(this.generateStatementCanvas(statement)), 'WRITE STATEMENT', job);
+        const canvas = this.generateStatementCanvas(statement);
+        return this._send(canvasToEscPos(canvas, canvas.height, job?.dots), 'WRITE STATEMENT', job);
     }
 }
 
@@ -797,16 +819,27 @@ const PrinterService = {
             dropped: 'msg.printer.err_dropped',
             no_printer: 'msg.settings.printer_not_connected',
             stopped: 'msg.settings.printer_not_connected',
-            unavailable: 'msg.printer.android_app_only'
+            unavailable: 'msg.printer.android_app_only',
+            bluetooth_off: 'msg.printer.bluetooth_off'
         };
         const key = keys[error?.kind];
         return key ? t(key) : String(error?.message || error || '');
     },
 
-    /** The printer to reconnect to: the one saved in Settings. */
+    /** This phone's printer settings (saved printers, the one in use, preview). */
+    settings() {
+        return normalizePrinterSettings(AppState.printerSettings);
+    },
+
+    /** The printer to reconnect to: the one in use in Settings. */
     target() {
-        const { deviceId = null, deviceName = null } = AppState.printerSettings || {};
+        const { deviceId, deviceName } = this.settings();
         return { deviceId, deviceName };
+    },
+
+    /** Dots per line of the printer in use (58 mm unless set to 80 mm). */
+    paperDots() {
+        return paperDots(currentPrinter(this.settings())?.widthMm);
     },
 
     /**
@@ -815,7 +848,7 @@ const PrinterService = {
      */
     canPrint() {
         if (!this.isAvailable() || this.manager.link.stopped) return false;
-        const saved = AppState.printerSettings || {};
+        const saved = this.settings();
         return this.isConnected() || !!(saved.enabled && saved.deviceId);
     },
 
@@ -859,6 +892,7 @@ const PrinterService = {
         try {
             const result = await send({
                 target: this.target(),
+                dots: this.paperDots(),
                 mode,
                 confirmReprint,
                 onUncertain: () => this.setUncertain(key, true),
@@ -892,16 +926,19 @@ const PrinterService = {
         const disconnectBtn = document.getElementById('disconnectBtn');
         const testPrintBtn = document.getElementById('testPrintBtn');
         const scanBtn = document.getElementById('scanPrintersBtn');
-        const saved = AppState.printerSettings || {};
+        const saved = this.settings();
         const available = this.isAvailable();
         const connected = this.isConnected();
         const name = this.manager.printerName || saved.deviceName || '';
-        const { checkedAt, lastError, lastJob } = this.manager.link.status;
+        const { checkedAt, lastError, lastJob, bluetoothOff } = this.manager.link.status;
+        const btOff = available && !connected && bluetoothOff;
 
         let text;
         let color = '#999';
         if (!available) {
             text = t('ui.settings.printer_android_only');
+        } else if (btOff) {
+            text = t('ui.settings.printer_bluetooth_off');
         } else if (connected) {
             text = checkedAt
                 ? t('ui.settings.printer_connected_checked', { deviceName: name, time: clockTime(checkedAt) })
@@ -921,18 +958,19 @@ const PrinterService = {
         if (statusText) {
             statusText.innerHTML = `<span style="color: ${color};">${connected ? '●' : '○'} ${Helpers.escapeHtml(text)}</span>`
                 + (detail ? `<br><small class="printer-status-detail">${Helpers.escapeHtml(detail)}</small>` : '');
-            statusText.dataset.state = !available ? 'unavailable' : connected ? 'connected' : 'disconnected';
+            statusText.dataset.state = !available ? 'unavailable' : btOff ? 'bluetooth_off' : connected ? 'connected' : 'disconnected';
         }
         if (disconnectBtn) disconnectBtn.style.display = connected ? 'block' : 'none';
-        if (testPrintBtn) testPrintBtn.style.display = available && (connected || saved.deviceId) ? 'block' : 'none';
+        if (testPrintBtn) testPrintBtn.style.display = available && !btOff && (connected || saved.deviceId) ? 'block' : 'none';
         if (scanBtn) scanBtn.style.display = available ? '' : 'none';
     },
 
-    /** Renders the status now, then again once the plugin has checked the link. */
+    /** Renders the status now, then again once the plugin has checked Bluetooth and the link. */
     async refreshStatus() {
         this.updateStatus();
-        if (!this.isConnected()) return;
-        await this.checkConnection();
+        if (!this.isAvailable()) return;
+        await this.manager.link.bluetoothOn();
+        if (this.isConnected()) await this.checkConnection();
         this.updateStatus();
     },
 
@@ -998,6 +1036,14 @@ const PrinterService = {
     },
 
     async printBill(billData) {
+        if (this.canPrint() && this.settings().previewFirst) {
+            return this.showBillPreview(billData, { onPrint: () => this._printBillNow(billData) });
+        }
+        return this._printBillNow(billData);
+    },
+
+    /** @private Bluetooth when it can print, else the image preview. */
+    async _printBillNow(billData) {
         if (this.canPrint()) {
             const key = jobKey('bill', billData.billNumber || billData.id);
             const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
@@ -1012,13 +1058,17 @@ const PrinterService = {
         return await this.showBillPreview(billData);
     },
 
-    async showBillPreview(billData) {
+    /**
+     * @param {Object} billData
+     * @param {{onPrint?: () => Promise<boolean>}} [options] adds a Print button (preview before print)
+     */
+    async showBillPreview(billData, options = {}) {
         try {
             // Generate canvas using the same method as Bluetooth printing
             const canvas = await this.manager.generateBillCanvas(billData);
             const billType = billData.isPurchase ? 'purchase' : 'sale';
             const filename = `${billType}_bill_${billData.billNumber || billData.id || Date.now()}${billData.isCopy ? '_copy' : ''}.png`;
-            return this.showImagePreview(canvas, filename, t('ui.bill.bill_no'));
+            return this.showImagePreview(canvas, filename, t('ui.bill.bill_no'), options);
         } catch (error) {
             console.error('Preview generation failed:', error);
             UIManager.showToast(t('msg.printer.failed_generate_bill_preview'));
@@ -1074,13 +1124,15 @@ const PrinterService = {
     },
 
     /**
-     * Full-screen image preview with Download (share sheet on phones) / Close.
+     * Full-screen image preview with Download (share sheet on phones) / Close,
+     * and Print first when `onPrint` is given (preview before print, #130).
      * @param {HTMLCanvasElement} canvas
      * @param {string} filename
      * @param {string} [shareTitle='Bill']
-     * @returns {boolean}
+     * @param {{onPrint?: () => Promise<boolean>}} [options]
+     * @returns {boolean|Promise<boolean>} with onPrint: resolves with the print result, false on Close
      */
-    showImagePreview(canvas, filename, shareTitle = t('ui.bill.bill_no')) {
+    showImagePreview(canvas, filename, shareTitle = t('ui.bill.bill_no'), { onPrint } = {}) {
         try {
             // Convert canvas to data URL
             const dataUrl = canvas.toDataURL('image/png');
@@ -1200,9 +1252,33 @@ const PrinterService = {
             
             modal.appendChild(img);
             modal.appendChild(buttonContainer);
+
+            let result = true;
+            if (typeof onPrint === 'function') {
+                const printBtn = document.createElement('button');
+                printBtn.textContent = t('ui.print.print');
+                printBtn.className = 'print-preview-print-btn';
+                printBtn.style.cssText = closeBtn.style.cssText;
+                printBtn.style.background = '#111827';
+                buttonContainer.style.flexWrap = 'wrap';
+                buttonContainer.insertBefore(printBtn, downloadBtn);
+                result = new Promise((resolve) => {
+                    const close = () => { if (modal.parentNode) modal.parentNode.removeChild(modal); };
+                    closeBtn.onclick = () => { close(); resolve(false); };
+                    printBtn.onclick = async () => {
+                        close();
+                        try {
+                            resolve(await onPrint());
+                        } catch (error) {
+                            console.error('Print from preview failed:', error);
+                            resolve(false);
+                        }
+                    };
+                });
+            }
             document.body.appendChild(modal);
             
-            return true;
+            return result;
         } catch (error) {
             console.error('Preview failed:', error);
             UIManager.showToast(t('msg.printer.failed_generate_preview'));
