@@ -1630,6 +1630,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
   margin: 0;
 }
 
+.form-row input.bill-date-input,
 .form-row select,
 .form-row input[type="number"],
 .form-row input[type="text"] {

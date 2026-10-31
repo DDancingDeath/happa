@@ -24,6 +24,7 @@ import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KE
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
 import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
 import { askReason } from '../ui/bill-status.js';
+import { prepareBillDate } from '../ui/bill-date-input.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
 const EDIT_TIMEOUT_MS = 20000;
@@ -233,7 +234,15 @@ const BillingManager = {
             PurchaseManager.updateTotals();
         }
         
+        this.prepareBillDates();
         UIManager.hapticFeedback();
+    },
+
+    /** The Date boxes (#147): the role's days; an edited bill shows its own day, locked. */
+    prepareBillDates() {
+        const editing = this.editingBillIndex === undefined ? null : this.getEditingBill();
+        prepareBillDate('billDate', editing && this.editingBillType !== 'retail' ? editing : null);
+        prepareBillDate('saleDate', editing && this.editingBillType === 'retail' ? editing : null);
     },
 
     // -------------------- ITEM FREQUENCY --------------------
@@ -1029,6 +1038,7 @@ const BillingManager = {
                 
                 PurchaseManager.renderBill();
                 PurchaseManager.updateTotals();
+                this.prepareBillDates();
                 
                 window.app.nav.showTab('billing');
                 UIManager.showToast(t('msg.billing.editing_bill_modify_save'));
@@ -1062,6 +1072,7 @@ const BillingManager = {
                 
                 RetailSaleManager.renderSalesBill();
                 RetailSaleManager.updateSaleTotals();
+                this.prepareBillDates();
                 
                 window.app.nav.showTab('billing');
                 // Switch to sale mode for retail sales

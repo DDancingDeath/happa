@@ -20,6 +20,8 @@ import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
+import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
+import { billDateWho, pickedBillDay, resetBillDate, showBillSavedToast } from '../ui/bill-date-input.js';
 
 /** Name to show for a catalogue item or bill line in the chosen item-name language. */
 const lineLabel = (line) => lineItemIdentity(line && 'itemId' in line ? line : { itemId: line?.id, name: line?.name }, AppState.items, AppState.settings.showHindi).label;
@@ -490,6 +492,14 @@ const RetailSaleManager = {
         const saleComments = Helpers.getInputText('saleComments');
         const printComments = document.getElementById('salePrintComments')?.checked || false;
         
+        // The bill's day (#147), fixed by the first attempt (a retry is written identically)
+        const day = pickedBillDay('saleDate');
+        const dayProblem = pendingBill?.timestamp ? null : validateBillDay(day, billDateWho());
+        if (dayProblem) {
+            UIManager.showToast(t(dayProblem.key, dayProblem.params), 'warning');
+            return;
+        }
+        
         // Payment, name-for-Due, stock (warns only for retail, #33) and the other checks (#37)
         this.updateSalePaymentTotal();
         const checks = await BillChecksUI.confirmSave('retail');
@@ -501,8 +511,11 @@ const RetailSaleManager = {
             if (!pending.billNumber) pending.billNumber = await Helpers.generateBillNumber('S', 'retailSales');
             // A retry keeps the first attempt's time so an unchanged sale is written identically
             if (!pending.timestamp) {
-                pending.timestamp = Date.now();
-                pending.date = new Date().toISOString();
+                const now = new Date();
+                const at = billTimeFor(day, now);
+                pending.timestamp = at.getTime();
+                pending.date = at.toISOString();
+                pending.enteredAt = now.getTime();
             }
             
             const sale = {
@@ -523,6 +536,7 @@ const RetailSaleManager = {
                 userId: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
                 userName: AppState.userName || 'User',
                 timestamp: pending.timestamp,
+                enteredAt: pending.enteredAt || pending.timestamp,
                 payment: buildPaymentSplit(split),
                 ...BillChecksUI.billFields(checks)
             };
@@ -564,8 +578,9 @@ const RetailSaleManager = {
             this.resetForm();
             
             UIManager.hideLoading();
-            UIManager.showToast(FirebaseService.keptServerPayment(sale) ? t(KEPT_SERVER_PAYMENT_KEY)
-                : FirebaseService.savedOnPhoneOnly(sale) ? t(SAVED_ON_PHONE_KEY) : t('msg.retail.sale_completed_successfully'));
+            if (FirebaseService.keptServerPayment(sale)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
+            else if (FirebaseService.savedOnPhoneOnly(sale)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
+            else showBillSavedToast(t('msg.retail.sale_completed_successfully'), sale, sale.cashPayment);
             UIManager.hapticFeedback('success');
             
             return sale;
@@ -595,6 +610,7 @@ const RetailSaleManager = {
         
         const totalReceivedEl = document.getElementById('totalReceived');
         if (totalReceivedEl) totalReceivedEl.textContent = '0';
+        resetBillDate('saleDate');
     },
 
     /**
@@ -694,14 +710,14 @@ const RetailSaleManager = {
             total: computeRetailTotals(saleItems).total,
             payment: this.readPaymentSplit(),
             partyName: Helpers.getInputText('saleCustomerName'),
-            date: editing ? original?.date : pendingBill?.date,
-            enteredAt: editing ? original?.timestamp : pendingBill?.timestamp,
+            date: editing ? original?.date : (pendingBill?.date || billTimeFor(pickedBillDay('saleDate')).toISOString()),
+            enteredAt: editing ? (original?.enteredAt || original?.timestamp) : (pendingBill?.enteredAt || pendingBill?.timestamp),
             entry: item ? { itemId: item.id, name: item.name, rate: readTypedNumber('saleRate'), qty: readTypedNumber('saleWeight') } : null
         };
     },
 
     ensurePendingBill() {
-        if (!pendingBill) pendingBill = { id: Helpers.generateId(), billNumber: null, attempted: false, date: null, timestamp: null };
+        if (!pendingBill) pendingBill = { id: Helpers.generateId(), billNumber: null, attempted: false, date: null, timestamp: null, enteredAt: null };
         return pendingBill;
     },
 
@@ -717,7 +733,8 @@ const RetailSaleManager = {
             billNumber: pending.billNumber || null,
             attempted: !!pending.attempted,
             date: pending.date || null,
-            timestamp: pending.timestamp || null
+            timestamp: pending.timestamp || null,
+            enteredAt: pending.enteredAt || null
         } : null;
     },
 

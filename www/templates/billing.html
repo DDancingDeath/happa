@@ -29,6 +29,10 @@
             </div>
             <datalist id="customerOptions"></datalist>
         </div>
+        <div class="form-row">
+            <label style="width: 100px;" for="billDate" data-i18n="ui.billing.bill_date">Date:</label>
+            <input type="date" id="billDate" class="bill-date-input" />
+        </div>
 
         <div class="bill-totals" style="padding: 16px; margin-bottom: 16px;">
             <div class="form-row">
@@ -168,6 +172,10 @@
                 <button onclick="window.app.billing.pickSaleContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 40px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
             </div>
             <datalist id="saleCustomerOptions"></datalist>
+        </div>
+        <div class="form-row">
+            <label style="width: 100px;" for="saleDate" data-i18n="ui.billing.bill_date">Date:</label>
+            <input type="date" id="saleDate" class="bill-date-input" />
         </div>
 
         <div class="bill-totals" style="padding: 16px; margin-bottom: 16px; border-radius: 12px;">

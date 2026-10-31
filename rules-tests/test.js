@@ -635,6 +635,30 @@ function defineSuite(prefix) {
         await assertSucceeds(as('staff1').collection(coll).doc('five').update(voidFields('staff1')));
     });
 
+    t('bill date (#147): members date a new bill back at most editDays (+1 calendar day) from its entry, never after it', async () => {
+        await setRoleAccess({ staff: { editDays: 2 }, manager: { editDays: 0 } });
+        const now = Date.now();
+        const bill = (id, timestamp, enteredAt, extra = {}) => ({ userId: id, total: 5, clientVersion: 4, createdAt: serverTimestamp(), timestamp, enteredAt, ...extra });
+        for (const coll of bills) {
+            const db = as('staff1').collection(coll);
+            await assertSucceeds(db.doc('d0').set(bill('staff1', now, now)));
+            await assertSucceeds(db.doc('d2').set(bill('staff1', now - 2 * DAY - HOUR, now)));
+            await assertFails(db.doc('d4').set(bill('staff1', now - 3 * DAY - HOUR, now)));
+            // never after its entry; the entry not in the future
+            await assertFails(db.doc('d5').set(bill('staff1', now + HOUR, now)));
+            await assertFails(db.doc('d6').set(bill('staff1', now + 2 * HOUR, now + 2 * HOUR)));
+            await assertFails(db.doc('d7').set(bill('staff1', now, 'today')));
+            // queued offline days ago: entered then, synced now
+            await assertSucceeds(db.doc('d8').set(bill('staff1', now - 5 * DAY, now - 5 * DAY)));
+            // apps before #147 send no enteredAt: not limited, as before
+            await assertSucceeds(db.doc('d9').set({ userId: 'staff1', total: 5, clientVersion: 4, timestamp: now - 9 * DAY }));
+            // the window is per role; the owner is not limited
+            await assertFails(as('manager1').collection(coll).doc('m1').set(bill('manager1', now - DAY - 2 * HOUR, now)));
+            await assertSucceeds(as('manager1').collection(coll).doc('m2').set(bill('manager1', now - 20 * HOUR, now)));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('o1').set(bill('legacyOwner', now - 40 * DAY, now)));
+        }
+    });
+
     t('edit window: per-role days still refuse made-up and old-app clocks', async () => {
         await setRoleAccess({ staff: { editDays: 30 }, manager: { editDays: 30 } });
         for (const coll of bills) {
