@@ -122,11 +122,14 @@ describe('wipe', () => {
         expect(db.deleted).toEqual([]);
     });
 
-    test('--yes deletes every collection and only the test logins', async () => {
+    test('--yes deletes every collection, the test logins and denylisted service accounts only', async () => {
         const db = fakeDb({ items: 3, users: 2 });
-        const auth = fakeAuth(['a.test@happa.local', 'real@gmail.com']);
+        const auth = fakeAuth(['a.test@happa.local', 'real@gmail.com', 'staging-readonly@aadhat.local']);
+        const dry = await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth });
+        expect(dry).toMatchObject({ testUsers: 1, serviceUsers: 1, deleted: false });
+        expect(auth.removed).toEqual([]);
         await wipeProject({ project: 'new-proj', keyProject: 'new-proj', db, auth, dryRun: false });
         expect(db.deleted).toEqual(['items', 'users']);
-        expect(auth.removed).toEqual(['u0']);
+        expect(auth.removed).toEqual(['u0', 'u2']);
     });
 });

@@ -12,6 +12,10 @@
  *   node tools/migrate/migrate.js wipe --project <newProjectId> (--key service-account.json | --emulator) [--yes] [--test-domain @happa.local]
  *   node tools/migrate/migrate.js auth:import --users users.json --hash-params hash-params.txt --project <newProjectId>
  *        (--key service-account.json | --emulator) [--yes]
+ *   node tools/migrate/migrate.js auth:filter --users users.json --out users-filtered.json
+ *
+ * Service and test accounts on the denylist (lib/service-accounts.js, by email) are never carried:
+ * `plan` leaves their users docs out, `auth:import` / `auth:filter` their logins, and `wipe` deletes them from Auth.
  *
  * `plan` and `convert` are offline. `apply`, `wipe` and `auth:import` are dry runs unless --yes is given.
  * `--emulator` uses the local Firebase emulators (FIRESTORE_EMULATOR_HOST / FIREBASE_AUTH_EMULATOR_HOST)
@@ -134,7 +138,7 @@ async function wipe() {
     const { getAuth } = await import('firebase-admin/auth');
     await initAdmin({ key, project });
     const dryRun = !flag('--yes');
-    console.log(`Target project: ${project}${targetNote(emulator)}${dryRun ? ' — DRY RUN' : ' — DELETING EVERYTHING IN FIRESTORE + TEST LOGINS'}`);
+    console.log(`Target project: ${project}${targetNote(emulator)}${dryRun ? ' — DRY RUN' : ' — DELETING EVERYTHING IN FIRESTORE + TEST AND SERVICE-ACCOUNT LOGINS'}`);
     await wipeProject({
         project, keyProject: key?.project_id, emulator: !!emulator, db: getFirestore(), auth: getAuth(), dryRun,
         testDomain: arg('--test-domain'), log: (line) => console.log(line)
@@ -157,6 +161,7 @@ async function authImport() {
     const dryRun = !flag('--yes');
     console.log(`Target project: ${project}${targetNote(emulator)}${dryRun ? ' — DRY RUN' : ''}`);
     console.log(`Logins: ${summary.users} (${summary.withPassword} with a password, ${summary.disabled} disabled, ${summary.otherProviders} other sign-in methods); SCRYPT rounds ${hash.rounds}, mem_cost ${hash.memoryCost}`);
+    console.log(`Skipped ${summary.skippedServiceAccounts} service accounts (denylist in tools/migrate/lib/service-accounts.js): not imported`);
     if (dryRun) {
         console.log('Dry run: nothing was imported. Add --yes to import.');
         return;
@@ -168,6 +173,20 @@ async function authImport() {
     failed.forEach(f => console.error(`  login #${f.index + 1} failed: ${f.message}`));
     console.log(`Imported ${imported} logins, ${failed.length} failed. Sign in with one account to check the hash parameters.`);
     if (failed.length) process.exitCode = 1;
+}
+
+/** Writes the Auth export without the denylisted service accounts, for `firebase auth:import`. */
+async function authFilter() {
+    const { filterAuthExport } = await import('./lib/service-accounts.js');
+    const input = arg('--users');
+    const out = arg('--out');
+    if (!input || !out) throw new Error('--users <auth export .json> and --out <filtered .json> are required');
+    if (path.resolve(input) === path.resolve(out)) throw new Error('--out must be a new file, not the export itself');
+    const { exported, skipped } = filterAuthExport(JSON.parse(fs.readFileSync(input, 'utf8')));
+    fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
+    fs.writeFileSync(out, JSON.stringify(exported));
+    console.log(`Skipped ${skipped} service accounts (denylist in tools/migrate/lib/service-accounts.js); ${exported.users.length} logins kept.`);
+    console.log(`Filtered export: ${out}. It holds password hashes: keep it outside the repo and delete it after the import.`);
 }
 
 /**
@@ -189,9 +208,9 @@ async function initAdmin({ key, project }) {
 
 const targetNote = (emulator) => (emulator ? ` (EMULATOR firestore ${emulator.firestore}${emulator.auth ? `, auth ${emulator.auth}` : ''})` : '');
 
-const commands = { plan, apply, convert, wipe, 'auth:import': authImport };
+const commands = { plan, apply, convert, wipe, 'auth:import': authImport, 'auth:filter': authFilter };
 if (!commands[command]) {
-    console.error('Usage: node tools/migrate/migrate.js plan|apply|convert|wipe|auth:import ... (see tools/migrate/README.md)');
+    console.error('Usage: node tools/migrate/migrate.js plan|apply|convert|wipe|auth:import|auth:filter ... (see tools/migrate/README.md)');
     process.exit(2);
 }
 commands[command]().catch(err => {

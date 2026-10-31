@@ -1,13 +1,16 @@
 /**
  * `wipe`: empties a NEW project after a rehearsal, before the real migration.
- * Deletes every document of every root collection (with subcollections) and
+ * Deletes every document of every root collection (with subcollections),
  * the Auth users whose email ends with `--test-domain` (default
- * `@happa.local`, the test logins). Other Auth users are never touched.
+ * `@happa.local`, the test logins) and the service-account logins on the
+ * denylist (service-accounts.js; a rehearsal may have imported them). Other
+ * Auth users are never touched.
  *
  * Dry run unless the caller passes dryRun: false (CLI: --yes). Refuses the
  * old project and keys for another project (checkTarget).
  */
 import { checkTarget } from './apply.js';
+import { isServiceAccountEmail } from './service-accounts.js';
 
 export const DEFAULT_TEST_DOMAIN = '@happa.local';
 
@@ -40,17 +43,20 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
         log(`  ${c}: ${n} docs`);
     }
     const testUsers = [];
+    const serviceUsers = [];
     let pageToken;
     do {
         const page = await auth.listUsers(1000, pageToken);
         page.users.filter(u => isTestLogin(u, testDomain)).forEach(u => testUsers.push(u));
+        page.users.filter(u => isServiceAccountEmail(u.email)).forEach(u => serviceUsers.push(u));
         pageToken = page.pageToken;
     } while (pageToken);
     log(`Auth test logins (*${testDomain}): ${testUsers.length}: ${testUsers.map(u => u.email).join(', ') || 'none'}`);
+    log(`Auth service accounts (denylist, never carried): ${serviceUsers.length}: ${serviceUsers.map(u => u.email).join(', ') || 'none'}`);
     log(`Cost: about ${docs} deletes (+ subcollection docs) and as many reads; Spark allows 20,000 deletes and 50,000 reads a day.`);
     if (dryRun) {
         log('Dry run: nothing was deleted. Add --yes to delete.');
-        return { docs, collections: colls, testUsers: testUsers.length, deleted: false };
+        return { docs, collections: colls, testUsers: testUsers.length, serviceUsers: serviceUsers.length, deleted: false };
     }
     for (const c of colls) {
         await db.recursiveDelete(db.collection(c));
@@ -60,5 +66,9 @@ export async function wipeProject({ project, keyProject, emulator = false, db, a
         const r = await auth.deleteUsers(testUsers.map(u => u.uid));
         log(`Deleted ${r.successCount} test logins (${r.failureCount} failed)`);
     }
-    return { docs, collections: colls, testUsers: testUsers.length, deleted: true };
+    if (serviceUsers.length) {
+        const r = await auth.deleteUsers(serviceUsers.map(u => u.uid));
+        log(`Deleted ${r.successCount} service-account logins (${r.failureCount} failed)`);
+    }
+    return { docs, collections: colls, testUsers: testUsers.length, serviceUsers: serviceUsers.length, deleted: true };
 }

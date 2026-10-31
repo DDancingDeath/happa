@@ -25,6 +25,9 @@ export function formatReport(summary) {
     Object.entries(s.copied).forEach(([n, c]) => L.push(`- ${n}: ${c}`));
     L.push(`- settings docs: ${s.settings}`);
     L.push(`- bill-number counters: ${s.counters}`);
+    const sa = s.serviceAccounts || { skipped: 0, docs: {} };
+    const saDocs = Object.entries(sa.docs || {}).map(([n, c]) => `${n}: ${c}`).join(', ');
+    L.push(`- **Skipped ${sa.skipped} service accounts** (denylist in \`tools/migrate/lib/service-accounts.js\`, by email; their logins are left out by \`auth:import\` too)${saDocs ? `: docs left out ${saDocs}` : ''}`);
     L.push('');
     L.push('## Dues (one opening record per old unpaid bill)');
     L.push('| Page | Parties | Unpaid bills | Old total | Carried | Records | Records total | Same totals, parties and age groups |');

@@ -16,6 +16,8 @@ import { billsToYearDocs, MIGRATION_META_BY } from '../../www/js/utils/rate-tren
 import { MIGRATION_DAILY_WRITES, OLD_PROJECT_ID } from '../../tools/migrate/lib/plan.js';
 import { parseHashParams } from '../../tools/migrate/lib/auth-import.js';
 import { checkEmulatorTarget } from '../../tools/migrate/lib/emulator.js';
+import { isServiceAccountEmail } from '../../tools/migrate/lib/service-accounts.js';
+import { SERVICE_LOGIN } from './make-old-backup.js';
 
 process.env.TZ = 'Asia/Kolkata';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -164,13 +166,30 @@ test('opening dues equal the OLD Outstanding pages (totals, parties, age groups,
 });
 
 test('items, users (with roles), rate history and item order are carried as is', () => {
+    const skipped = new Set(backupDocs('users').filter(d => isServiceAccountEmail(d.data?.email)).map(d => d.id));
+    const carriedDocs = (coll) => backupDocs(coll).filter(d => !(['users', 'itemFrequency'].includes(coll) && skipped.has(d.id)));
     for (const coll of ['items', 'users', 'rateHistory', 'itemFrequency']) {
-        const docs = backupDocs(coll);
+        const docs = carriedDocs(coll);
         assert.equal(data[coll]?.size || 0, docs.length, `${coll}: count`);
         docs.forEach(({ id, data: d }) => assert.deepEqual(norm(data[coll].get(id)), norm(d), `${coll}/${id} as is`));
     }
     const roles = (m) => Object.fromEntries([...m].map(([id, u]) => [id, `${u.role}/${u.status || ''}/${u.rentRole || ''}`]));
-    assert.deepEqual(roles(data.users), roles(new Map(backupDocs('users').map(d => [d.id, d.data]))), 'roles and status');
+    assert.deepEqual(roles(data.users), roles(new Map(carriedDocs('users').map(d => [d.id, d.data]))), 'roles and status');
+});
+
+test('service accounts (#101) are not carried: no users doc, no per-user doc, no login', async () => {
+    const skipped = backupDocs('users').filter(d => isServiceAccountEmail(d.data?.email)).map(d => d.id);
+    if (SYNTHETIC) assert.deepEqual(skipped, [SERVICE_LOGIN.uid], 'the synthetic backup has the staging-readonly account');
+    skipped.forEach(uid => {
+        assert.equal(data.users.has(uid), false, `users/${uid} not carried`);
+        assert.equal(data.itemFrequency?.has(uid) ?? false, false, `itemFrequency/${uid} not carried`);
+    });
+    assert.deepEqual([...data.users.values()].filter(u => isServiceAccountEmail(u.email)).length, 0, 'no carried profile has a denylisted email');
+    assert.equal(bundle.summary.serviceAccounts.skipped, skipped.length, 'plan: skipped service accounts');
+    const list = (await auth.listUsers(1000)).users;
+    assert.deepEqual(list.filter(u => isServiceAccountEmail(u.email)).map(u => u.uid), [], 'no denylisted login in Auth (wipe removed the rehearsal one, auth:import skipped the old one)');
+    skipped.forEach(uid => assert.equal(list.some(u => u.uid === uid), false, `login ${uid} not imported`));
+    console.log(`  service accounts: ${skipped.length} skipped`);
 });
 
 test('settings are carried (minus the old project\'s own fields)', () => {
@@ -207,7 +226,7 @@ test('rateStats (weekly + monthly) equal the app\'s own billsToYearDocs on the o
 });
 
 test('logins: same uids, emails and password hashes; the original passwords match', async () => {
-    const exported = JSON.parse(fs.readFileSync(ctx.files.auth, 'utf8')).users;
+    const exported = JSON.parse(fs.readFileSync(ctx.files.auth, 'utf8')).users.filter(u => !isServiceAccountEmail(u.email));
     const params = parseHashParams(fs.readFileSync(ctx.files.hashParams, 'utf8'));
     const list = (await auth.listUsers(1000)).users;
     const byUid = new Map(list.map(u => [u.uid, u]));

@@ -170,6 +170,10 @@ npx --yes firebase-tools@latest deploy --only firestore:rules,firestore:indexes 
 3. Export the old project's Auth users, read-only, as the #232 README describes,
    e.g. `npx --yes firebase-tools@latest auth:export old-auth-users.json --format=json --project aadhat-management`.
    Keep the file private. It contains password hashes; never commit it.
+   It still holds the archived staging clone's two logins (`staging-readonly@aadhat.local`,
+   `staging-owner@aadhat.local`, #101). The migration tool never carries them
+   (README, "Service accounts"); if you use the plain `firebase auth:import`,
+   run `migrate.js auth:filter` on the export first.
 4. Optionally, do a migration **dry run** from the #232 branch to check the counts.
    The real `apply` waits for step 10.
 
@@ -221,6 +225,18 @@ Run the migration tool from `main`, exactly as the #232 README says: dry run,
 check the counts, then `apply` into `happa-bfc07`. Its source is the old
 project (read-only, with the owner's local credentials, not repository secrets)
 plus the auth export from step 6.3.
+
+Service accounts (#101): the plan report must say **"Skipped 2 service
+accounts"** and `auth:import` the same. Run `wipe` first even without a new
+rehearsal: the 26 Oct rehearsal imported both staging logins into
+`happa-bfc07` Auth, and `wipe` deletes them. After the import, Authentication →
+Users must list no `staging-*@aadhat.local` login.
+
+Owner action, outside this tool (it never changes `aadhat-management`): in the
+old project's console, disable or delete `staging-readonly@aadhat.local` (and
+`staging-owner@aadhat.local`), delete or reject their `users/{uid}` docs,
+remove any stored password for them, and delete the branch
+`feat/staging-readonly-rule`.
 
 ## 11. Tag v1.0.0 (Android release)
 

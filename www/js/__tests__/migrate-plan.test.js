@@ -10,6 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { buildPlan, parseOptions, revive, CLIENT_VERSION } from '../../../tools/migrate/lib/plan.js';
 import { formatReport } from '../../../tools/migrate/lib/report.js';
+import { isServiceAccountEmail } from '../../../tools/migrate/lib/service-accounts.js';
 import { buildAging } from '../utils/aging.js';
 import { billTotal, outstandingDue, readPayment, wholesaleOutstanding } from '../utils/money.js';
 import { computeFinanceSummary } from '../utils/finance-calc.js';
@@ -134,12 +135,34 @@ describe('plan: copies, settings, counters, dev_', () => {
 
     test('items, users, rate history and item frequency are copied as is with the same ids', () => {
         const backup = load();
+        const carried = (name) => backup.collections[name].filter(d => d.id !== 'uid-staging-ro');
         ['items', 'users', 'rateHistory', 'itemFrequency'].forEach(name => {
             const got = writesOf(bundle, `copy:${name}`);
-            expect(got.map(w => w.id)).toEqual(backup.collections[name].map(d => d.id));
-            expect(got.map(w => w.data)).toEqual(backup.collections[name].map(d => d.data));
+            expect(got.map(w => w.id)).toEqual(carried(name).map(d => d.id));
+            expect(got.map(w => w.data)).toEqual(carried(name).map(d => d.data));
         });
         expect(writesOf(bundle, 'copy:users').find(w => w.id === 'uid-owner').data.role).toBe('owner');
+    });
+
+    test('service accounts on the denylist (#101) are skipped by email, in every mode', () => {
+        expect(bundle.writes.some(w => w.id === 'uid-staging-ro')).toBe(false);
+        expect(summary.serviceAccounts).toEqual({ skipped: 1, docs: { users: 1, itemFrequency: 1 } });
+        expect(summary.copied).toMatchObject({ users: 2, itemFrequency: 1 });
+        expect(formatReport(summary)).toMatch(/Skipped 1 service accounts/);
+        expect(plan({ mode: 'full' }).bundle.writes.some(w => w.id === 'uid-staging-ro')).toBe(false);
+        // by email, not by name or uid
+        const renamed = load();
+        renamed.collections.users.find(d => d.id === 'uid-staging-ro').data.name = 'Owner';
+        renamed.collections.users.find(d => d.id === 'uid-member').data.name = 'staging-readonly';
+        const r = plan({}, renamed);
+        expect(writesOf(r.bundle, 'copy:users').map(w => w.id)).toEqual(['uid-owner', 'uid-member']);
+        const none = load();
+        none.collections.users = none.collections.users.filter(d => d.id !== 'uid-staging-ro');
+        expect(plan({}, none).summary.serviceAccounts).toEqual({ skipped: 0, docs: {} });
+        expect(formatReport(plan({}, none).summary)).toMatch(/Skipped 0 service accounts/);
+        expect(isServiceAccountEmail(' STAGING-OWNER@aadhat.local ')).toBe(true);
+        expect(isServiceAccountEmail('staging-readonly@aadhat.local.evil.test')).toBe(false);
+        expect(isServiceAccountEmail('')).toBe(false);
     });
 
     test('no bills, stock, cash or party list in a fresh start', () => {

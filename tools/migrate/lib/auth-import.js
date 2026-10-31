@@ -9,6 +9,8 @@
  * Pure helpers here; migrate.js does the I/O. Never logs hashes, keys or emails.
  */
 
+import { filterAuthExport } from './service-accounts.js';
+
 const B64 = /^[A-Za-z0-9+/_-]*={0,2}$/;
 
 /** Standard base64 → Buffer; also accepts the web-safe alphabet. */
@@ -55,12 +57,13 @@ const time = (ms) => {
 /**
  * Auth export (`{users: [...]}`) → firebase-admin UserImportRecords.
  * The password provider is implied by the hash; other providers are kept.
+ * Logins on the service-account denylist (service-accounts.js) are left out.
  * @param {{users: Array<Object>}} exported
- * @returns {{records: Array<Object>, summary: {users: number, withPassword: number, disabled: number, otherProviders: number}}}
+ * @returns {{records: Array<Object>, summary: {users: number, withPassword: number, disabled: number, otherProviders: number, skippedServiceAccounts: number}}}
  */
 export function toImportRecords(exported) {
-    const users = Array.isArray(exported?.users) ? exported.users : null;
-    if (!users) throw new Error('Not an Auth export: expected {"users": [...]} (firebase auth:export --format=json)');
+    const { exported: kept, skipped } = filterAuthExport(exported);
+    const users = kept.users;
     const seen = new Set();
     let withPassword = 0;
     let otherProviders = 0;
@@ -95,7 +98,7 @@ export function toImportRecords(exported) {
         }
         return r;
     });
-    return { records, summary: { users: records.length, withPassword, disabled: records.filter(r => r.disabled).length, otherProviders } };
+    return { records, summary: { users: records.length, withPassword, disabled: records.filter(r => r.disabled).length, otherProviders, skippedServiceAccounts: skipped } };
 }
 
 /**

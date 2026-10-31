@@ -79,6 +79,15 @@
           "role": "manager",
           "status": "approved"
         }
+      },
+      {
+        "id": "uid-staging-ro",
+        "data": {
+          "name": "Staging read-only",
+          "email": "Staging-ReadOnly@aadhat.local",
+          "role": "staff",
+          "status": "active"
+        }
       }
     ],
     "retailSales": [
@@ -534,6 +543,12 @@
         "data": {
           "item-wheat": 5,
           "item-rice": 2
+        }
+      },
+      {
+        "id": "uid-staging-ro",
+        "data": {
+          "item-wheat": 1
         }
       }
     ],
