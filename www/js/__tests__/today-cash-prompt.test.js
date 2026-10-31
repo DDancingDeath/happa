@@ -71,3 +71,16 @@ test('members without the Wholesale page see no wholesale card or bills', () => 
     ['salesHistory', 'retailSalesHistory'].forEach(k => { AppState[k] = []; });
     AppState.userRole = null;
 });
+
+test('a data change redraws Today only while its Today sub-tab shows', () => {
+    const { emit, REFRESH } = require('../utils/events.js');
+    const draw = jest.spyOn(DayManager, 'loadTodayData').mockImplementation(() => {});
+    DayManager.currentSubTab = 'today';
+    emit(REFRESH.today);
+    expect(draw).toHaveBeenCalledTimes(1);
+    DayManager.currentSubTab = 'cash';
+    emit(REFRESH.today);
+    expect(draw).toHaveBeenCalledTimes(1);
+    DayManager.currentSubTab = 'today';
+    draw.mockRestore();
+});

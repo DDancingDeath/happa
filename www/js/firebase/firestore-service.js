@@ -175,7 +175,8 @@ const VIEWS = {
     expensesHistory: { tab: 'expenses' },
     money: { tab: 'money' },
     insights: { tab: 'insights' },
-    statements: { tab: 'statements' }
+    statements: { tab: 'statements' },
+    today: { tab: 'day' }
 };
 
 /** Debounce window that coalesces bursts of snapshot events (ms). */
@@ -302,16 +303,16 @@ const PINNED_CHUNK = 30;
 
 const HISTORY_COLLECTIONS = [
     { key: 'purchases', stateKey: 'purchaseHistory', label: 'Purchases', stock: true, dues: true,
-        views: ['billingDropdown', 'salesDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
+        views: ['billingDropdown', 'salesDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
     { key: 'retailSales', stateKey: 'retailSalesHistory', label: 'Retail sales', stock: true, dues: true,
-        views: ['billingDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
+        views: ['billingDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
     { key: 'wholesaleSales', stateKey: 'salesHistory', label: 'Sales', stock: true, dues: true,
-        views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
+        views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
     { key: 'expenses', stateKey: 'expensesHistory', label: 'Expenses',
-        views: ['expensesHistory', 'money', 'insights', 'statements'] },
+        views: ['expensesHistory', 'money', 'insights', 'statements', 'today'] },
     // Shares AppState.expensesHistory with `expenses` (publishCollection merges them, #98)
     { key: 'personalExpenses', stateKey: 'expensesHistory', label: 'Personal expenses', optional: true, timestamped: true,
-        views: ['expensesHistory', 'money', 'insights', 'statements'] },
+        views: ['expensesHistory', 'money', 'insights', 'statements', 'today'] },
     { key: 'stockAdjustments', stateKey: 'stockAdjustments', label: 'Stock adjustments', stock: true,
         views: ['stockAdjustmentHistory', 'stockView', 'money', 'insights', 'statements'] },
     { key: 'withdrawals', stateKey: 'withdrawalsHistory', label: 'Withdrawals', optional: true,

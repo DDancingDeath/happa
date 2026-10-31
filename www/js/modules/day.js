@@ -14,6 +14,7 @@ import { AnomaliesManager } from './anomalies.js';
 import { HealthManager } from './health.js';
 import { t, tn } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
+import { on, REFRESH } from '../utils/events.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
@@ -512,3 +513,6 @@ export const DayManager = {
         }
     }
 };
+
+// Bills or expenses changed (another phone, a void): redraw Today while it shows.
+on(REFRESH.today, () => { if (DayManager.currentSubTab === 'today') DayManager.loadTodayData(); });

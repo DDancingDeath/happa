@@ -738,7 +738,6 @@ export class HistoryManager {
             .then(stock => { AppState.stock = stock; })
             .catch(error => console.error('Stock recalculation after void failed:', error));
         window.app?.outstanding?.renderDue?.();
-        if (document.getElementById('todayTotalIn')) window.app?.day?.loadTodayData?.();
     }
 
     /** Owner only: delete a voided bill for good (test data, mistakes). */
