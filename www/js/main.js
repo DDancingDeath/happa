@@ -48,7 +48,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieg-error-refs';
+const BUILD_ID = '20261101zzuzieebd-error-refs';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -224,16 +224,8 @@ function setupEventListeners() {
     NavigationManager.initMenuDismiss();
     watchHeadingEmoji(document.body);
     
-    // Modal buttons
-    const modalCancel = document.getElementById('modalCancel');
-    const modalConfirm = document.getElementById('modalConfirm');
-    
-    if (modalCancel) {
-        modalCancel.addEventListener('click', () => UIManager.closeModal(false));
-    }
-    if (modalConfirm) {
-        modalConfirm.addEventListener('click', () => UIManager.closeModal(true));
-    }
+    // Modal buttons: wired once, by their onclick in templates/modals.html. A second
+    // listener here closed the next dialog too when one opened straight after (#63).
     
     // Warn before leaving page with unsaved bill
     window.addEventListener('beforeunload', function(e) {
