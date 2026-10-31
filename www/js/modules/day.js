@@ -30,7 +30,8 @@ export const DayManager = {
         this.loadTodayData();
         this.loadTodaySession();
         // The Cash page may have taken the cash body back while Today › Cash stayed selected
-        if (this.currentSubTab === 'cash' && !document.querySelector('#dayCashManagementContainer .cash-body')) this.loadCashManagement();
+        if (this.currentSubTab === 'cash' && document.getElementById('day')?.classList.contains('active')
+            && !document.querySelector('#dayCashManagementContainer .cash-body')) this.loadCashManagement();
     },
 
     /** Every cash session of `date` (usually one; legacy days can have more), from one query. */
