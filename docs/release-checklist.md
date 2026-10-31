@@ -93,7 +93,7 @@ can be used; the app's own steps are in Diagnostics → "Startup timings"
 |---|---|---|---|---|---|---|---|
 | | | | | | | | |
 
-Budget: cold start ≤ 2.5 s, save ≤ 1.5 s. A release that is clearly slower than
+Budget ([performance-budget.md](performance-budget.md)): cold start ≤ 2.5 s, save ≤ 1.5 s. A release that is clearly slower than
 the last row needs an issue before it goes out.
 
 ## 8. Roll out after shop hours
