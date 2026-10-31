@@ -2354,6 +2354,26 @@ function defineSuite(prefix) {
         await assertSucceeds(as('staff1').collection(withdrawals).doc('m8').set(w('staff1')));
     });
 
+    t('withdrawals are changed and deleted only by managers with Money on (#64), the owner always', async () => {
+        const app = (roleAccess) => env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app').set({ roleAccess }));
+        const seed = (id) => env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(withdrawals).doc(id)
+            .set({ amount: 500, person: 'O', purpose: 'x', date: '2026-10-22', userId: 'manager1', timestamp: Date.now() }));
+        await seed('u1');
+        await assertSucceeds(as('manager1').collection(withdrawals).doc('u1').update({ amount: 400 }));
+        await app({ manager: { finance: false, reports: true } });
+        await assertFails(as('manager1').collection(withdrawals).doc('u1').update({ amount: 300 }));
+        await assertFails(as('manager1').collection(withdrawals).doc('u1').delete());
+        await assertSucceeds(as('legacyOwner').collection(withdrawals).doc('u1').update({ amount: 300 }));
+        await app({ manager: { finance: true } });
+        await assertSucceeds(as('manager1').collection(withdrawals).doc('u1').delete());
+        // the legacy timestamp backfill stays open to everyone approved
+        const was = Date.now() - DAY;
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(withdrawals).doc('u2')
+            .set({ amount: 5, userId: 'staff1', date: Timestamp.fromMillis(was) }));
+        await app({ manager: { finance: false } });
+        await assertSucceeds(as('manager1').collection(withdrawals).doc('u2').update({ timestamp: was }));
+    });
+
     t('expenses / withdrawals / personal expenses: created with a numeric timestamp, not in the future', async () => {
         // members record withdrawals only with Money on (#64)
         await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app')

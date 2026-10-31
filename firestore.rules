@@ -869,6 +869,7 @@ service cloud.firestore {
         : base in ['withdrawals', 'stockAdjustments']
           ? (legacyBackfillOnly()
              || (isManagerIn(u)
+                 && (base != 'withdrawals' || moneyPageOn(u))
                  && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk())))
         : base == 'cashManagement' ? (cashAppendOk() || cashCloseOk() || cashLateCountOk())
         : base == 'cashSessions' ? false
@@ -887,7 +888,8 @@ service cloud.firestore {
         : base == 'expenses' ? canDeleteExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canDeleteExpense(u)
         : base == 'personalExpenseDays' ? false
-        : base in ['withdrawals', 'stockAdjustments'] ? isManagerIn(u)
+        : base == 'withdrawals' ? isManagerIn(u) && moneyPageOn(u)
+        : base == 'stockAdjustments' ? isManagerIn(u)
         : base in ['cashManagement', 'cashSessions', 'items', 'counters', 'settings', 'itemFrequency'] ? false
         : true;
     }
