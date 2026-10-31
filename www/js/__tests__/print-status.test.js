@@ -130,7 +130,7 @@ describe('History', () => {
     });
 
     test('details: failed → Print again (no COPY mark); the row and the line update', async () => {
-        document.body.innerHTML += '<div id="billDetailsOverlay" class="active"></div>';
+        document.body.innerHTML += '<div id="billDetailsOverlay" class="active"></div><div id="history" class="tab active"></div>';
         recordPrint(bill(), 'failed', { errorKind: 'timeout_connect' });
         HistoryManager.renderPrintStatus();
         const box = () => document.getElementById('billPrintStatus');
@@ -144,6 +144,12 @@ describe('History', () => {
         expect(box().querySelectorAll('button')).toHaveLength(0);
         expect(box().textContent).toContain('Printed on this phone');
         expect(HistoryManager.refreshHistory).toHaveBeenCalled();
+    });
+
+    test('a hidden History is not redrawn by a print (it redraws when shown)', () => {
+        document.body.innerHTML += '<div id="history" class="tab"></div>';
+        recordPrint(bill(), 'printed');
+        expect(HistoryManager.refreshHistory).not.toHaveBeenCalled();
     });
 
     test('the stored failure is shown in the language of the screen, not of the moment it failed', async () => {

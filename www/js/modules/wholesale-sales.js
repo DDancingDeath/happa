@@ -1135,4 +1135,6 @@ on(REFRESH.salesDropdown, () => WholesaleSalesManager.loadItemsDropdown());
 on(REFRESH.wholesaleHistory, () => WholesaleSalesManager.renderSalesHistory());
 on(REFRESH.wholesaleOutstanding, () => WholesaleSalesManager.renderSalesOutstanding());
 on(ITEM_FREQUENCY_CHANGED, () => WholesaleSalesManager.loadItemsDropdown());
-on(PRINT_STATUS_CHANGED, () => WholesaleSalesManager.renderSalesHistory());
+on(PRINT_STATUS_CHANGED, () => {
+    if (document.getElementById('wholesale-sales')?.classList.contains('active')) WholesaleSalesManager.renderSalesHistory();
+});

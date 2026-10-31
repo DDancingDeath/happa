@@ -1084,7 +1084,8 @@ export class HistoryManager {
 
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
 on(REFRESH.history, () => HistoryManager.refreshHistory());
+// Only redraw an open History: a hidden one redraws when it is shown.
 on(PRINT_STATUS_CHANGED, () => {
-    HistoryManager.refreshHistory();
+    if (document.getElementById('history')?.classList.contains('active')) HistoryManager.refreshHistory();
     if (document.getElementById('billDetailsOverlay')?.classList.contains('active')) HistoryManager.renderPrintStatus();
 });
