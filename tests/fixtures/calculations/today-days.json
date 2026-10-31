@@ -1,0 +1,130 @@
+{
+  "name": "today-days",
+  "description": "Synthetic days for the Today page (T1-T16, T-LAB-1..3, item cards). 'rich' mixes every bill shape the page reads: paise, DD/MM/YYYY and epoch dates, legacy totals (amountPayable, billTotal, saleTotal, amountPaid, labour, quantity, item/amount lines), later due payments (split, legacy amount-only, write-off), old-app opening records dated today, two cash sessions of the day with duplicate legs, a cleared bill and records from yesterday / tomorrow. 'outflow' is a small day where more went out than came in; 'empty' has nothing. Expected screen text: today-days.expected.json (written from the page before the move to utils/calc/today.js).",
+  "cases": {
+    "rich": {
+      "now": "2026-10-31T18:30:00",
+      "settings": { "showHindi": false, "laborRate": 7, "labourPackageKg": 40 },
+      "purchases": [
+        { "id": "p1", "billNumber": "P20261031-001", "customerName": "Ramesh", "date": "2026-10-31T09:40:00",
+          "items": [
+            { "itemId": "i-wheat", "name": "Wheat", "qty": 512.4, "rate": 24.5, "total": 12554, "weights": [52, 48.4, 45, 40, 327] },
+            { "itemId": "i-rice", "name": "Rice", "qty": 120.35, "rate": 33.5, "total": 4032 }
+          ],
+          "laborCharges": 48, "total": 16586, "grandTotal": 16538,
+          "cashPayment": 10000.5, "onlinePayment": 2000, "dueAmount": 4537.5,
+          "payment": { "cash": 10500.5, "online": 2000, "due": 4037.5, "total": 12500.5 },
+          "payments": [ { "id": "pp1", "cash": 500, "online": 0, "at": 1793431800000 } ] },
+        { "id": "p2", "billNumber": "P20261031-002", "customerName": "Suresh", "date": "31/10/2026, 9:15:00 am",
+          "items": [
+            { "name": "Wheat", "quantity": 100.25, "rate": 24, "total": 2406 },
+            { "name": "Sacks", "quantity": 4, "total": 6 }
+          ],
+          "labour": 12.25, "amountPayable": 2999.75, "cashPayment": 3000, "onlinePayment": 0, "dueAmount": 0 },
+        { "id": "p3", "billNumber": "P-OLD-3", "customerName": "Mahesh", "date": "2026-10-31",
+          "items": [ { "name": "Rice", "qty": 30, "rate": 32.33, "total": 970 } ],
+          "billTotal": 1000, "total": 970, "amountPaid": 600 },
+        { "id": "p4", "billNumber": "P20261030-009", "customerName": "Dinesh", "date": "2026-10-30T17:00:00",
+          "items": [ { "name": "Wheat", "qty": 200, "rate": 25, "total": 5000 } ],
+          "grandTotal": 5000, "payment": { "cash": 2000, "online": 750.25, "due": 2249.75 },
+          "payments": [ { "id": "pp2", "cash": 0, "online": 750.25, "date": "31/10/2026, 11:05:00 am" } ] },
+        { "id": "opening-purchase-old7", "billNumber": "P-OLD-7", "customerName": "Old Supplier", "date": "2026-10-31",
+          "items": [], "total": 0, "cashPayment": 0, "onlinePayment": 0, "dueAmount": 1800,
+          "payment": { "cash": 200, "online": 0, "due": 1800, "total": 0 },
+          "openingBalance": { "migrated": true, "kind": "payable", "billType": "purchase", "amount": 2000 },
+          "payments": [ { "id": "op1", "cash": 200, "online": 0, "date": "2026-10-31T12:10:00" } ] },
+        { "id": "p6", "billNumber": "P20261101-001", "customerName": "Tomorrow", "date": "2026-11-01T08:00:00",
+          "items": [ { "name": "Wheat", "qty": 999, "rate": 20, "total": 19980 } ], "laborCharges": 99,
+          "grandTotal": 19881, "payment": { "cash": 19881, "online": 0, "due": 0 } },
+        { "id": "p7", "billNumber": "P20261031-003", "customerName": "Cleared", "date": "2026-10-31T16:00:00", "cleared": true,
+          "items": [ { "name": "Maize", "qty": 10, "rate": 30, "total": 300 } ], "laborCharges": 0,
+          "grandTotal": 300, "payment": { "cash": 0, "online": 0, "due": 300 } }
+      ],
+      "wholesaleSales": [
+        { "id": "w1", "billNumber": "W20261031-001", "customerName": "Big Buyer", "date": "2026-10-31T11:30:00",
+          "items": [ { "itemId": "i-wheat", "name": "Wheat", "qty": 800, "rate": 31.25, "total": 25000 } ],
+          "total": 25000.4, "payment": { "cash": 16000, "online": 5000.4, "due": 4000 },
+          "payments": [
+            { "id": "wp1", "cash": 1000, "online": 0, "at": 1793445300000 },
+            { "id": "wo1", "kind": "writeOff", "amount": 50, "at": 1793445300000 }
+          ] },
+        { "id": "w2", "billNumber": "W-OLD-2", "customerName": "Legacy Buyer", "date": 1793431800000,
+          "items": [ { "item": "Rice", "qty": "40.5", "rate": "37", "amount": "1498.5" } ],
+          "saleTotal": 1500, "cashPayment": 1500 },
+        { "id": "w3", "billNumber": "W20261030-004", "customerName": "Yesterday Buyer", "date": "30/10/2026",
+          "items": [ { "name": "Wheat", "qty": 100, "rate": 30, "total": 3000 } ],
+          "total": 3000, "payment": { "cash": 500, "online": 2500, "due": 0 },
+          "payments": [ { "id": "leg-dup", "cash": 0, "online": 2500, "date": "2026-10-31T11:00:00" } ] },
+        { "id": "ow1", "billNumber": "W-OLD-9", "customerName": "Old Buyer", "date": "2026-10-31",
+          "items": [], "total": 0, "dueAmount": 600,
+          "payment": { "cash": 400, "online": 0, "due": 600, "total": 0 },
+          "openingBalance": { "migrated": true, "kind": "receivable", "billType": "wholesale", "amount": 1000 },
+          "payments": [ { "amount": 400, "date": "2026-10-31T10:20:00" } ] }
+      ],
+      "retailSales": [
+        { "id": "r1", "billNumber": "S20261031-001", "date": "2026-10-31T12:00:00",
+          "items": [ { "name": "Rice", "qty": 12.4, "rate": 35, "total": 434 } ],
+          "total": 432.5, "payment": { "cash": 432.5, "online": 0, "due": 0 } },
+        { "id": "r2", "billNumber": "S20261031-002", "customerName": "Walk-in Due", "date": "2026-10-31T13:15:00",
+          "items": [ { "name": "Sugar", "qty": 2.5, "rate": 40, "total": 100 }, { "name": "Bag", "qty": 0, "rate": 10, "total": 10 } ],
+          "total": 99.99, "payment": { "cash": 0, "online": 50, "due": 49.99 } },
+        { "id": "opening-retail-old3", "billNumber": "S-OLD-3", "customerName": "Old Party", "date": "2026-10-31",
+          "items": [], "total": 0, "dueAmount": 2500, "payment": { "cash": 0, "online": 0, "due": 2500, "total": 0 },
+          "openingBalance": { "migrated": true, "kind": "receivable", "billType": "retail", "amount": 2500 } },
+        { "id": "r4", "billNumber": "S20261030-010", "date": "2026-10-30T23:59:00",
+          "items": [ { "name": "Rice", "qty": 5, "rate": 36, "total": 180 } ],
+          "total": 180, "payment": { "cash": 180, "online": 0, "due": 0 } }
+      ],
+      "expenses": [
+        { "id": "e1", "date": "2026-10-31T08:00:00", "amount": 250, "category": "business", "description": "Tea" },
+        { "id": "e2", "date": "2026-10-31T09:00:00", "amount": 120.5, "category": "personal", "description": "Medicine" },
+        { "id": "e3", "date": "2026-10-31T10:00:00", "total": 80, "description": "Untagged" },
+        { "id": "e4", "date": "2026-10-31T11:00:00", "amount": 60, "type": "Personal" },
+        { "id": "e5", "date": "2026-10-30T11:00:00", "amount": 999, "category": "business" },
+        { "id": "e6", "date": "31/10/2026, 4:30:00 pm", "amount": "45.25", "category": "Transport" }
+      ],
+      "liveSession": { "id": "s-live", "date": "2026-10-31",
+        "duePayments": [
+          { "id": "leg-dup", "type": "received", "cash": 0, "online": 2500, "date": "2026-10-31T11:00:00" },
+          { "id": "leg-a", "type": "received", "amount": 300, "method": "cash" },
+          { "id": "leg-p", "type": "paid", "cash": 150.75, "online": 0, "at": 1793431800000 }
+        ] },
+      "daySessions": [
+        { "id": "s-old", "date": "2026-10-31",
+          "duePayments": [
+            { "id": "leg-b", "type": "received", "amount": 120, "method": "online", "date": "2026-10-31T10:00:00" },
+            { "id": "leg-y", "type": "received", "cash": 999, "online": 0, "at": 1793384940000 },
+            { "id": "leg-a", "type": "received", "amount": 300, "method": "cash" }
+          ] }
+      ]
+    },
+    "outflow": {
+      "now": "2026-10-31T20:00:00",
+      "settings": { "showHindi": false },
+      "purchases": [
+        { "id": "q1", "billNumber": "P20261031-101", "customerName": "Farmer", "date": "2026-10-31T10:00:00",
+          "items": [ { "name": "Wheat", "qty": 35, "rate": 24.75, "total": 866 } ],
+          "laborCharges": 6, "grandTotal": 860.25, "payment": { "cash": 860.25, "online": 0, "due": 0 } }
+      ],
+      "wholesaleSales": [],
+      "retailSales": [
+        { "id": "s1", "billNumber": "S20261031-101", "date": "2026-10-31T11:00:00",
+          "items": [ { "name": "Wheat", "qty": 1, "rate": 30, "total": 30 } ],
+          "total": 30, "payment": { "cash": 30, "online": 0, "due": 0 } }
+      ],
+      "expenses": [ { "id": "x1", "date": "2026-10-31T12:00:00", "amount": 0.4 } ],
+      "liveSession": null,
+      "daySessions": []
+    },
+    "empty": {
+      "now": "2026-10-31T07:00:00",
+      "settings": { "showHindi": false },
+      "purchases": [],
+      "wholesaleSales": [],
+      "retailSales": [],
+      "expenses": null,
+      "liveSession": null,
+      "daySessions": []
+    }
+  }
+}
