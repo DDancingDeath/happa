@@ -67,13 +67,23 @@ describe('payments and status', () => {
         expect(b).toEqual({ amount: 3000, paid: 5000, open: false });
     });
 
-    test('rejects zero, negative, NaN and more than due; rounds to paise', () => {
+    test('rejects zero, negative, NaN and more than due; whole rupees (#129)', () => {
         expect(() => applyPayment(charge, 0)).toThrow('amount');
         expect(() => applyPayment(charge, -5)).toThrow('amount');
         expect(() => applyPayment(charge, 'x')).toThrow('amount');
         expect(() => applyPayment({ ...charge, paid: 4000 }, 1000.5)).toThrow('over');
         expect(() => applyPayment({ ...charge, payments: Array(12).fill({ amount: 1 }) }, 1)).toThrow('too_many');
         expect(applyPayment({ amount: 0.3, paid: 0.1 }, 0.2)).toEqual({ amount: 0.2, paid: 0.3, open: false });
+    });
+
+    test('#129: whole rupees, half-up; only exactly a due with paise (saved before) keeps its paise', () => {
+        expect(applyPayment(charge, 1999.5)).toMatchObject({ amount: 2000, paid: 2000 });
+        expect(applyPayment(charge, 1999.4)).toMatchObject({ amount: 1999 });
+        expect(() => applyPayment({ ...charge, paid: 4000 }, 999.5)).not.toThrow();
+        const old = { ...charge, amount: 5904.05, paid: 4000 };
+        expect(applyPayment(old, 1904.05)).toEqual({ amount: 1904.05, paid: 5904.05, open: false });
+        expect(applyPayment(old, 1000.4)).toEqual({ amount: 1000, paid: 5000, open: true });
+        expect(() => applyPayment(charge, 0.4)).toThrow('amount');
     });
 
     test('status: due before the due day, late after it, partial, paid', () => {
@@ -150,6 +160,9 @@ describe('rent increase reminder (RENT-6)', () => {
 describe('electricity sub-meter (RENT-7)', () => {
     test('units × rate; bad readings rejected', () => {
         expect(meterBill({ prev: '100', curr: '150.5', rate: '8' })).toEqual({ prev: 100, curr: 150.5, rate: 8, units: 50.5, amount: 404 });
+        // #129: the amount is a whole rupee, half-up: 123 units × ₹7.35 = ₹904.05 → ₹904; 3 × ₹0.50 = ₹1.50 → ₹2
+        expect(meterBill({ prev: 100, curr: 223, rate: 7.35 })).toMatchObject({ units: 123, amount: 904 });
+        expect(meterBill({ prev: 0, curr: 3, rate: 0.5 }).amount).toBe(2);
         expect(() => meterBill({ prev: 150, curr: 100, rate: 8 })).toThrow('reading');
         expect(() => meterBill({ prev: 0, curr: 10, rate: -1 })).toThrow('reading');
         expect(() => meterBill({ prev: 'x', curr: 10, rate: 1 })).toThrow('reading');

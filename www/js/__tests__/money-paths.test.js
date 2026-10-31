@@ -204,8 +204,9 @@ describe('new purchase save', () => {
         PurchaseManager.putRestInDue();
         expect(document.getElementById('dueAmount').value).toBe('1568');
         expect(document.getElementById('purchaseSplitRemaining').textContent).toBe('✓ ₹0');
-        setVal('dueAmount', 1567.5);
-        expect(await PurchaseManager.saveBillToHistory()).toMatchObject({ cashPayment: 1000, dueAmount: 1567.5, payment: { due: 1567.5 } });
+        setVal('dueAmount', 1567.4);
+        // #129: typed amounts are saved in whole rupees (was 1567.5 saved as typed)
+        expect(await PurchaseManager.saveBillToHistory()).toMatchObject({ cashPayment: 1000, dueAmount: 1567, payment: { due: 1567 } });
     });
 
     test('saved totals come from the items even if the on-screen total is stale', async () => {

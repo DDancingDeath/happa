@@ -15,6 +15,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { formatRupees, formatAmount, normalizeLabourSettings } from '../utils/money.js';
+import { entryAmount } from '../utils/calc/billing.js';
 import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap } from '../utils/labour.js';
 import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow } from '../utils/dates.js';
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
@@ -30,7 +31,7 @@ import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
 import {
     buildSnapshot, figuresFromSnapshot, rangeFigures, monthsToRoll, monthBounds,
-    monthKeysBetween, lastMonthKeys, monthKeyOf, snapshotsFrom, staleToRebuild
+    monthKeysBetween, lastMonthKeys, monthKeyOf, snapshotsFrom, staleToRebuild, outdatedOlderMonths
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { can } from '../utils/role-access.js';
@@ -562,7 +563,7 @@ export const MoneyManager = {
 
     _saveWithdrawal() {
         const val = (id) => (document.getElementById(id)?.value || '').trim();
-        const amount = parseFloat(val('moneyWdAmount'));
+        const amount = entryAmount(val('moneyWdAmount'));
         const person = val('moneyWdPerson');
         const date = val('moneyWdDate');
         if (!(amount > 0)) { UIManager.showToast(t('msg.common.enter_valid_amount'), 'error'); return; }
@@ -747,7 +748,8 @@ export const MoneyManager = {
 
     /**
      * Stale months before the previous one, rebuilt from the full history when it was read after
-     * the stale mark was seen here (staleToRebuild): 1 read + 1 write each, no bill reads.
+     * the stale mark was seen here (staleToRebuild), and months built by an older version
+     * (outdatedOlderMonths): 1 read + 1 write each, no bill reads.
      * @returns {Promise<number>} snapshots written
      */
     async rebuildStale(now = Date.now()) {
@@ -761,6 +763,14 @@ export const MoneyManager = {
             this.snapshots[k] = res.doc;
             if (res.status === 'newer') this.staleSeen[k] = Date.now();
             else delete this.staleSeen[k];
+            if (res.status === 'written') written += 1;
+        }
+        // Built by an older version (SNAPSHOT_VERSION, e.g. #129's stock valuation): once, 1 read + 1 write each
+        for (const k of FirebaseService.saveMonthStatGuarded ? outdatedOlderMonths(this.snapshots, now) : []) {
+            const doc = this.snapshotFor(k, now);
+            if (!doc) continue;
+            const res = await FirebaseService.saveMonthStatGuarded(doc, null);
+            this.snapshots[k] = res.doc;
             if (res.status === 'written') written += 1;
         }
         return written;
