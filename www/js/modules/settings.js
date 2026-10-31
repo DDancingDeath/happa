@@ -20,6 +20,7 @@ import { auditActionLabel } from '../i18n/localize.js';
 import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
+import { forgetPrinter, normalizePrinterSettings, PAPER_WIDTHS, setPaperWidth, setReceiptOptions, usePrinter } from '../utils/printer-settings.js';
 import { AuthManager } from '../auth/authentication.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
@@ -106,13 +107,16 @@ export class SettingsManager {
         
         const bluetoothCheckbox = document.getElementById('settingBluetoothEnabled');
         if (bluetoothCheckbox) {
-            const { printerSettings } = AppState;
-            bluetoothCheckbox.checked = printerSettings.enabled || false;
+            const printerSettings = PrinterService.settings();
+            bluetoothCheckbox.checked = printerSettings.enabled;
             const section = document.getElementById('bluetoothPrinterSection');
             if (section) {
                 section.style.display = printerSettings.enabled ? 'block' : 'none';
             }
+            const preview = document.getElementById('settingPrintPreview');
+            if (preview) preview.checked = printerSettings.previewFirst;
         }
+        this.renderReceiptOptions();
         
         this.updatePrinterStatus();
     }
@@ -484,10 +488,15 @@ export class SettingsManager {
         }
     }
 
+    /** The one place this page stores the printer settings (this phone only). */
+    static _setPrinterSettings(next) {
+        AppState.printerSettings = normalizePrinterSettings(next);
+        storeLocalSettings('printerSettings', AppState.printerSettings);
+    }
+
     static toggleBluetoothPrinter() {
         const enabled = document.getElementById('settingBluetoothEnabled').checked;
-        AppState.printerSettings.enabled = enabled;
-        storeLocalSettings('printerSettings', AppState.printerSettings);
+        this._setPrinterSettings({ ...PrinterService.settings(), enabled });
         
         const section = document.getElementById('bluetoothPrinterSection');
         if (section) {
@@ -495,6 +504,131 @@ export class SettingsManager {
         }
         
         this.updatePrinterStatus();
+    }
+
+    static togglePrintPreview() {
+        const previewFirst = !!document.getElementById('settingPrintPreview')?.checked;
+        this._setPrinterSettings({ ...PrinterService.settings(), previewFirst });
+    }
+
+    /** Settings › Printed bill (#107): fills the fields from this phone's choices. */
+    static renderReceiptOptions() {
+        const { receipt } = PrinterService.settings();
+        const set = (id, prop, value) => {
+            const el = document.getElementById(id);
+            if (el && document.activeElement !== el) el[prop] = value;
+        };
+        set('settingReceiptFooter', 'value', receipt.footer);
+        set('settingReceiptQr', 'checked', receipt.qr);
+        set('settingReceiptLang', 'value', receipt.lang);
+        set('settingReceiptDensity', 'value', receipt.density);
+        const hasLogo = !!PrinterService.logo();
+        const status = document.getElementById('receiptLogoStatus');
+        if (status) {
+            status.dataset.i18n = hasLogo ? 'ui.settings.receipt_logo_set' : 'ui.settings.receipt_logo_none';
+            status.textContent = t(status.dataset.i18n);
+        }
+        const remove = document.getElementById('receiptLogoRemoveBtn');
+        if (remove) remove.hidden = !hasLogo;
+    }
+
+    static saveReceiptOptions() {
+        const val = (id) => document.getElementById(id)?.value;
+        this._setPrinterSettings(setReceiptOptions(PrinterService.settings(), {
+            footer: val('settingReceiptFooter') || '',
+            qr: !!document.getElementById('settingReceiptQr')?.checked,
+            lang: val('settingReceiptLang'),
+            density: val('settingReceiptDensity')
+        }));
+        this.renderReceiptOptions();
+    }
+
+    static pickReceiptLogo() {
+        document.getElementById('settingReceiptLogo')?.click();
+    }
+
+    /** Reads the chosen picture, stores it as a black-and-white logo, then shows the preview. */
+    static async chooseReceiptLogo(input) {
+        const file = input?.files?.[0];
+        if (input) input.value = '';
+        if (!file) return false;
+        const url = URL.createObjectURL(file);
+        try {
+            const image = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('image'));
+                img.src = url;
+            });
+            const stored = PrinterService.saveLogo(image);
+            if (!stored.ok) {
+                UIManager.showToast(stored.full ? t(STORAGE_FULL_KEY) : t('msg.settings.receipt_logo_failed'), 'error');
+                return false;
+            }
+            this.renderReceiptOptions();
+            await this.previewReceipt();
+            return true;
+        } catch (error) {
+            console.error('[SETTINGS] Logo error:', error);
+            UIManager.showToast(t('msg.settings.receipt_logo_failed'), 'error');
+            return false;
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    static removeReceiptLogo() {
+        PrinterService.removeLogo();
+        this.renderReceiptOptions();
+    }
+
+    static previewReceipt() {
+        return PrinterService.showBillPreview(PrinterService.sampleBill());
+    }
+
+    static setPaperWidth(deviceId, widthMm) {
+        this._setPrinterSettings(setPaperWidth(PrinterService.settings(), deviceId, widthMm));
+        this.renderSavedPrinters();
+    }
+
+    static async forgetPrinter(deviceId) {
+        if (PrinterService.settings().deviceId === deviceId) await this.disconnectPrinter();
+        this._setPrinterSettings(forgetPrinter(PrinterService.settings(), deviceId));
+        this.renderSavedPrinters();
+        this.updatePrinterStatus();
+    }
+
+    /** Settings › Bluetooth Printer: saved printers with paper width, Use and Remove (#130). */
+    static renderSavedPrinters() {
+        const container = document.getElementById('savedPrintersList');
+        if (!container) return;
+        const { printers, deviceId } = PrinterService.settings();
+        container.innerHTML = '';
+        if (!printers.length || !PrinterService.isAvailable()) return;
+        const title = document.createElement('div');
+        title.className = 'saved-printers-title';
+        title.innerHTML = `<strong>${Helpers.escapeHtml(t('ui.settings.saved_printers'))}</strong>`;
+        container.appendChild(title);
+        printers.forEach((p) => {
+            const inUse = p.deviceId === deviceId;
+            const row = document.createElement('div');
+            row.className = 'saved-printer';
+            row.dataset.deviceId = p.deviceId;
+            row.style.cssText = 'background: #f5f5f5; padding: 10px 12px; margin: 8px 0; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;';
+            const name = p.deviceName || p.deviceId;
+            const widths = PAPER_WIDTHS.map(mm => `<option value="${mm}"${p.widthMm === mm ? ' selected' : ''}>${Helpers.escapeHtml(t('ui.settings.paper_mm', { mm }))}</option>`).join('');
+            row.innerHTML = `
+                <div><strong>${Helpers.escapeHtml(name)}</strong>${inUse ? ` <small class="saved-printer-in-use">· ${Helpers.escapeHtml(t('ui.settings.printer_in_use'))}</small>` : ''}</div>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <select class="saved-printer-width" aria-label="${Helpers.escapeHtml(t('ui.settings.paper_width'))}">${widths}</select>
+                    ${inUse ? '' : `<button type="button" class="filter-btn saved-printer-use">${Helpers.escapeHtml(t('ui.settings.use_printer'))}</button>`}
+                    <button type="button" class="filter-btn saved-printer-forget">${Helpers.escapeHtml(t('ui.settings.forget_printer'))}</button>
+                </div>`;
+            row.querySelector('.saved-printer-width').addEventListener('change', (e) => this.setPaperWidth(p.deviceId, Number(e.target.value)));
+            row.querySelector('.saved-printer-use')?.addEventListener('click', () => this.connectToPrinter(p.deviceId, p.deviceName));
+            row.querySelector('.saved-printer-forget').addEventListener('click', () => this.forgetPrinter(p.deviceId));
+            container.appendChild(row);
+        });
     }
 
     static async scanBluetoothDevices() {
@@ -513,6 +647,8 @@ export class SettingsManager {
             const errorMsg = t('msg.printer.failed_scan_devices', { message: PrinterService.errorText(error) });
             console.error('[SETTINGS] Scan error:', error);
             await UIManager.showModal(errorMsg);
+        } finally {
+            PrinterService.updateStatus();
         }
     }
 
@@ -561,9 +697,7 @@ export class SettingsManager {
             
             await PrinterService.connect(deviceId, deviceName);
             
-            AppState.printerSettings.deviceId = deviceId;
-            AppState.printerSettings.deviceName = deviceName;
-            storeLocalSettings('printerSettings', AppState.printerSettings);
+            this._setPrinterSettings(usePrinter(PrinterService.settings(), { deviceId, deviceName }));
             
             this.updatePrinterStatus();
             UIManager.showToast(t('msg.settings.connected', { deviceName }));
@@ -583,9 +717,7 @@ export class SettingsManager {
             UIManager.hapticFeedback('light');
             await PrinterService.disconnect();
             
-            AppState.printerSettings.deviceId = null;
-            AppState.printerSettings.deviceName = null;
-            storeLocalSettings('printerSettings', AppState.printerSettings);
+            this._setPrinterSettings({ ...PrinterService.settings(), deviceId: null, deviceName: null });
             
             this.updatePrinterStatus();
             UIManager.showToast(t('msg.common.printer_disconnected'));
@@ -595,15 +727,23 @@ export class SettingsManager {
     }
 
     static updatePrinterStatus() {
+        this.renderSavedPrinters();
         return PrinterService.refreshStatus();
     }
 
     static async testPrint() {
-        UIManager.hapticFeedback('medium');
-        const printed = await PrinterService.testPrint();
-        PrinterService.updateStatus();
-        if (printed) UIManager.hapticFeedback('heavy');
-        return printed;
+        const btn = document.getElementById('testPrintBtn');
+        if (btn?.disabled) return false;
+        if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+        try {
+            UIManager.hapticFeedback('medium');
+            const printed = await PrinterService.testPrint();
+            PrinterService.updateStatus();
+            if (printed) UIManager.hapticFeedback('heavy');
+            return printed;
+        } finally {
+            if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+        }
     }
 
     // Audit Logs Methods

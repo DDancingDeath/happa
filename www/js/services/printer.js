@@ -4,18 +4,24 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { DEFAULT_SETTINGS } from '../utils/constants.js';
 import { getAndroidMajorVersion, Helpers } from '../utils/helpers.js';
-import { copyMark, receiptDateTime } from '../utils/bill-share.js';
-import { billTotal, outstandingDue, readPayment } from '../utils/money.js';
+import { billQrText, copyMark, receiptDateTime, receiptPayable } from '../utils/bill-share.js';
+import { outstandingDue, readPayment } from '../utils/money.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
+import { currentPrinter, normalizePrinterSettings, PAPER_DOTS, paperDots, rasterThreshold, receiptLang, LOGO_MAX, logoSize } from '../utils/printer-settings.js';
+import { encodeQr } from '../utils/qr-code.js';
+import { safeSetItem } from '../utils/storage-full.js';
 
 /** Dots darker than this (average of R,G,B) print black */
 const RASTER_THRESHOLD = 128;
+/** Receipts are laid out for 58 mm paper; wider paper scales them up. */
+const LAYOUT_DOTS = PAPER_DOTS[58];
 
 const jobKey = (kind, id) => (id ? `${kind}:${id}` : null);
 const UNCERTAIN_KEY = 'printerMayHavePrinted';
 const UNCERTAIN_TTL_MS = 24 * 60 * 60 * 1000;
 const STOPPED_KEY = 'printerDisconnected';
+const LOGO_KEY = 'receiptLogo';
 
 const clockTime = (ms) => {
     const d = new Date(ms);
@@ -78,16 +84,50 @@ export function buildRasterPrintCommand(raster, bytesPerLine, height) {
 }
 
 /**
- * Convert the top `height` rows of a canvas into a ready-to-send ESC/POS buffer.
+ * Convert the top `height` rows of a canvas into a ready-to-send ESC/POS buffer,
+ * scaled to `dots` per line when the paper is wider than the canvas.
  * @param {HTMLCanvasElement} canvas
  * @param {number} [height=canvas.height]
+ * @param {number} [dots=canvas.width]
+ * @param {number} [threshold=128] print density (#107)
  * @returns {Uint8Array}
  */
-function canvasToEscPos(canvas, height = canvas.height) {
+function canvasToEscPos(canvas, height = canvas.height, dots = canvas.width, threshold = RASTER_THRESHOLD) {
+    if (dots && dots !== canvas.width) {
+        const scaled = document.createElement('canvas');
+        scaled.width = dots;
+        scaled.height = Math.ceil(height * (dots / canvas.width));
+        const ctx = scaled.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, scaled.width, scaled.height);
+        ctx.drawImage(canvas, 0, 0, canvas.width, height, 0, 0, scaled.width, scaled.height);
+        return canvasToEscPos(scaled, scaled.height, dots, threshold);
+    }
     const width = canvas.width;
     const { data } = canvas.getContext('2d').getImageData(0, 0, width, height);
-    const raster = packMonochromeRaster(data, width, height);
+    const raster = packMonochromeRaster(data, width, height, threshold || RASTER_THRESHOLD);
     return buildRasterPrintCommand(raster, (width + 7) >> 3, height);
+}
+
+/** Logo bits (packMonochromeRaster layout, base64) as a black-on-white canvas. */
+function logoCanvas(logo) {
+    const bin = atob(logo.bits);
+    const bytesPerLine = (logo.width + 7) >> 3;
+    const canvas = document.createElement('canvas');
+    canvas.width = logo.width;
+    canvas.height = logo.height;
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(logo.width, logo.height);
+    for (let y = 0; y < logo.height; y++) {
+        for (let x = 0; x < logo.width; x++) {
+            const black = (bin.charCodeAt(y * bytesPerLine + (x >> 3)) & (0x80 >> (x & 7))) !== 0;
+            const p = (y * logo.width + x) * 4;
+            img.data[p] = img.data[p + 1] = img.data[p + 2] = black ? 0 : 255;
+            img.data[p + 3] = 255;
+        }
+    }
+    ctx.putImageData(img, 0, 0);
+    return canvas;
 }
 
 class BluetoothPrinterManager {
@@ -115,7 +155,7 @@ class BluetoothPrinterManager {
     }
 
     sendCanvas(canvas, job) {
-        return this._send(canvasToEscPos(canvas), 'WRITE CANVAS', job);
+        return this._send(canvasToEscPos(canvas, canvas.height, job?.dots, job?.receipt?.threshold), 'WRITE CANVAS', job);
     }
 
     async scan() {
@@ -182,6 +222,7 @@ class BluetoothPrinterManager {
             }
         }
         
+        await this.link.enableBluetooth();
         UIManager.showLoading();
         try {
             const devices = await this.link.list();
@@ -255,9 +296,9 @@ class BluetoothPrinterManager {
         billData.items.forEach(item => {
             if (item.weights && item.weights.length > 1) {
                 const itemObj = AppState.items.find(i => i.id === item.itemId || i.name === item.name);
-                const displayName = (itemObj && itemObj.hindiName) ? itemObj.hindiName : item.name;
+                const displayName = this._itemName(itemObj, item);
                 
-                y = utils.drawLeft(`${displayName} (${tn('ui.print.packets_kg', item.weights.length, { kg: item.qty.toFixed(1) })})`, y, { size: 18, weight: 'bold' });
+                y = utils.drawLeft(`${displayName} (${this._tn('ui.print.packets_kg', item.weights.length, { kg: item.qty.toFixed(1) })})`, y, { size: 18, weight: 'bold' });
                 
                 const weightsText = item.weights.map(w => parseFloat(w).toFixed(1)).join('  ');
                 const maxWidth = 380;
@@ -286,15 +327,78 @@ class BluetoothPrinterManager {
         return y;
     }
 
+    /** Receipt text in the receipt language (#107; undefined = the app language). */
+    _t(key, params) {
+        return t(key, params, this._receipt?.lang);
+    }
+
+    _tn(key, count, params) {
+        return tn(key, count, params, this._receipt?.lang);
+    }
+
+    get _lang() {
+        return this._receipt?.lang;
+    }
+
+    /** Item name on the slip: the Hindi name when there is one, except on an English receipt. */
+    _itemName(itemObj, item) {
+        if (this._receipt?.lang !== 'en' && itemObj?.hindiName) return itemObj.hindiName;
+        return item.name;
+    }
+
+    /** Footer line and bill QR (#107), below the totals. */
+    _drawReceiptFooter(ctx, billData, config, utils, y) {
+        const { footer, qr } = this._receipt || {};
+        if (footer) {
+            y += config.spacing.section;
+            ctx.font = `${config.fonts.subtext.size}px Arial`;
+            const lines = [];
+            let line = '';
+            for (const word of footer.split(' ')) {
+                const next = line ? `${line} ${word}` : word;
+                if (line && ctx.measureText(next).width > config.width - 8) {
+                    lines.push(line);
+                    line = word;
+                } else {
+                    line = next;
+                }
+            }
+            if (line) lines.push(line);
+            lines.forEach((l) => { y = utils.drawCenter(l, y, config.fonts.subtext); });
+        }
+        const text = qr ? billQrText(billData) : '';
+        const code = text ? encodeQr(text) : null;
+        if (code) {
+            const quiet = 4;
+            const modulePx = Math.min(5, Math.floor(config.width * 0.6 / (code.size + quiet * 2)));
+            const side = (code.size + quiet * 2) * modulePx;
+            const left = Math.round((config.width - side) / 2);
+            const top = y + config.spacing.small - 16;
+            ctx.fillStyle = '#000000';
+            for (let r = 0; r < code.size; r++) {
+                for (let c = 0; c < code.size; c++) {
+                    if (code.modules[r][c]) ctx.fillRect(left + (c + quiet) * modulePx, top + (r + quiet) * modulePx, modulePx, modulePx);
+                }
+            }
+            y = top + side + 16;
+        }
+        return y;
+    }
+
     _drawReceiptHeader(ctx, billData, config, utils, y) {
+        const logo = this._receipt?.logo;
+        if (logo) {
+            ctx.drawImage(logoCanvas(logo), Math.round((config.width - logo.width) / 2), y - 16, logo.width, logo.height);
+            y += logo.height + 4;
+        }
         // Settings › Aadhat: business name and one line of details, when set
         const name = String(AppState.settings?.shopName || '').trim();
         const details = String(AppState.settings?.businessDetails || '').trim();
         if (name) y = utils.drawCenter(name, y, config.fonts.header, true);
         if (details) y = utils.drawCenter(details, y, config.fonts.small);
-        y = utils.drawCenter(t('ui.print.receipt'), y, config.fonts.title, true);
+        y = utils.drawCenter(this._t('ui.print.receipt'), y, config.fonts.title, true);
         if (billData.isCopy) {
-            y = utils.drawCenter(copyMark(), y, config.fonts.header, true);
+            y = utils.drawCenter(copyMark(this._lang), y, config.fonts.header, true);
         }
         
         // Bill number on left, the bill's own date/time on right (same line)
@@ -303,7 +407,7 @@ class BluetoothPrinterManager {
         if (billData.billNumber) {
             // Draw bill number on left
             ctx.font = '17px Arial';
-            ctx.fillText(`${t('ui.bill.bill_no')}: ${billData.billNumber}`, config.padding.side, y);
+            ctx.fillText(`${this._t('ui.bill.bill_no')}: ${billData.billNumber}`, config.padding.side, y);
             
             // Draw date/time on right
             const dateWidth = ctx.measureText(dateTime).width;
@@ -321,7 +425,7 @@ class BluetoothPrinterManager {
 
     _drawCustomerInfo(billData, utils, y) {
         if (billData.customerName) {
-            y = utils.drawLeft(`${t('ui.bill.customer')}: ${billData.customerName}`, y, { size: 18, weight: 'normal' });
+            y = utils.drawLeft(`${this._t('ui.bill.customer')}: ${billData.customerName}`, y, { size: 18, weight: 'normal' });
             y += 8;
         }
         return y;
@@ -332,17 +436,17 @@ class BluetoothPrinterManager {
         ctx.font = `bold ${config.fonts.header.size}px Arial`;
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'left';
-        ctx.fillText(t('ui.print.th_item'), config.columns.item, y);
-        ctx.fillText(t('ui.print.th_rate'), config.columns.rate, y);
-        ctx.fillText(t('ui.print.th_qty'), config.columns.quantity, y);
-        ctx.fillText(t('ui.print.th_total'), config.columns.total, y);
+        ctx.fillText(this._t('ui.print.th_item'), config.columns.item, y);
+        ctx.fillText(this._t('ui.print.th_rate'), config.columns.rate, y);
+        ctx.fillText(this._t('ui.print.th_qty'), config.columns.quantity, y);
+        ctx.fillText(this._t('ui.print.th_total'), config.columns.total, y);
         y += config.spacing.line;
         
         // Items
         ctx.font = `${config.fonts.body.size}px Arial`;
         billData.items.forEach(item => {
             const itemObj = AppState.items.find(i => i.id === item.itemId || i.name === item.name);
-            const displayName = (itemObj && itemObj.hindiName) ? itemObj.hindiName : item.name;
+            const displayName = this._itemName(itemObj, item);
             
             ctx.textAlign = 'left';
             ctx.fillText(displayName.substring(0, 11), config.columns.item, y);
@@ -367,7 +471,7 @@ class BluetoothPrinterManager {
         const subtotal = billData.billTotal || billData.saleTotal || billData.total || 0;
         
         // Subtotal
-        ctx.fillText(`${t('ui.bill.total')}:`, config.padding.left, y);
+        ctx.fillText(`${this._t('ui.bill.total')}:`, config.padding.left, y);
         const totalText = '₹' + Math.round(subtotal);
         const totalWidth = ctx.measureText(totalText).width;
         ctx.fillText(totalText, config.width - totalWidth - config.padding.left, y);
@@ -377,7 +481,7 @@ class BluetoothPrinterManager {
         if (billData.isPurchase && billData.laborCharges > 0) {
             if (billData.laborCalc) {
                 // Show calculation in middle and amount on right
-                ctx.fillText(`${t('ui.bill.labour')}:`, config.padding.left, y);
+                ctx.fillText(`${this._t('ui.bill.labour')}:`, config.padding.left, y);
                 const calcWidth = ctx.measureText(billData.laborCalc).width;
                 const calcX = (config.width - calcWidth) / 2;
                 ctx.fillText(billData.laborCalc, calcX, y);
@@ -386,7 +490,7 @@ class BluetoothPrinterManager {
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
             } else {
                 // No calculation, just show amount
-                ctx.fillText(`${t('ui.bill.labour')}:`, config.padding.left, y);
+                ctx.fillText(`${this._t('ui.bill.labour')}:`, config.padding.left, y);
                 const laborText = `₹${billData.laborCharges}`;
                 const laborWidth = ctx.measureText(laborText).width;
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
@@ -399,9 +503,9 @@ class BluetoothPrinterManager {
         
         // Grand total - Total bill amount
         ctx.font = `bold ${config.fonts.total.size}px Arial`;
-        const grandTotalLabel = `${t('ui.bill.total')}:`;
+        const grandTotalLabel = `${this._t('ui.bill.total')}:`;
         ctx.fillText(grandTotalLabel, config.padding.left, y);
-        const amountPayable = billTotal(billData) || (subtotal - (billData.laborCharges || 0));
+        const amountPayable = receiptPayable(billData);
         const payableText = '₹' + Math.round(amountPayable);
         const payableWidth = ctx.measureText(payableText).width;
         ctx.fillText(payableText, config.width - payableWidth - config.padding.left, y);
@@ -413,7 +517,7 @@ class BluetoothPrinterManager {
         // Total Received (कुल प्राप्त / कुल भुगतान)
         y += 4;
         ctx.font = `${config.fonts.body.size}px Arial`;
-        const receivedLabel = `${t(billData.isPurchase ? 'ui.print.total_paid' : 'ui.print.total_received')}:`;
+        const receivedLabel = `${this._t(billData.isPurchase ? 'ui.print.total_paid' : 'ui.print.total_received')}:`;
         ctx.fillText(receivedLabel, config.padding.left, y);
         const receivedText = '₹' + Math.round(totalReceived);
         const receivedWidth = ctx.measureText(receivedText).width;
@@ -425,7 +529,7 @@ class BluetoothPrinterManager {
         if (dueAmount > 0) {
             y += 4; // Small gap
             ctx.font = `bold ${config.fonts.body.size}px Arial`;
-            ctx.fillText(`${t('ui.bill.due')}:`, config.padding.left, y);
+            ctx.fillText(`${this._t('ui.bill.due')}:`, config.padding.left, y);
             const dueText = '₹' + Math.round(dueAmount);
             const dueWidth = ctx.measureText(dueText).width;
             ctx.fillText(dueText, config.width - dueWidth - config.padding.left, y);
@@ -438,7 +542,7 @@ class BluetoothPrinterManager {
             ctx.font = `${config.fonts.body.size}px Arial`;
             
             // Print "Note: <comment>" on the same line, with word wrap if needed
-            const noteLabel = `${t('ui.bill.note')}: `;
+            const noteLabel = `${this._t('ui.bill.note')}: `;
             const labelWidth = ctx.measureText(noteLabel).width;
             const maxWidth = config.width - config.padding.left - 10;
             const commentText = billData.comments.trim();
@@ -489,8 +593,13 @@ class BluetoothPrinterManager {
         return y;
     }
 
-    async generateBillCanvas(billData) {
-        const { canvas, height } = this._renderBillCanvas(billData);
+    /**
+     * The receipt as shown in the preview / saved as an image (58 mm layout).
+     * @param {Object} billData
+     * @param {Object} [receipt] footer, qr, lang, logo (#107)
+     */
+    async generateBillCanvas(billData, receipt) {
+        const { canvas, height } = this._renderBillCanvas(billData, LAYOUT_DOTS, receipt);
         
         // Crop to the used height (needed for the on-screen preview / PNG)
         const finalCanvas = document.createElement('canvas');
@@ -505,13 +614,17 @@ class BluetoothPrinterManager {
     }
 
     /**
-     * Draw the receipt onto an oversized canvas.
+     * Draw the receipt onto an oversized canvas `dots` wide; the 58 mm layout
+     * is drawn scaled, so text stays sharp on 80 mm paper.
+     * @param {Object} billData
+     * @param {number} [dots=384]
+     * @param {{footer?: string, qr?: boolean, lang?: string, logo?: Object}} [receipt] what the slip shows (#107)
      * @returns {{canvas: HTMLCanvasElement, height: number}} canvas and used height
      * @private
      */
-    _renderBillCanvas(billData) {
+    _renderBillCanvas(billData, dots = LAYOUT_DOTS, receipt = {}) {
         const config = {
-            width: 384, // 58mm thermal printer width
+            width: LAYOUT_DOTS,
             padding: { left: 0, right: 0, side: 0 },
             fonts: {
                 title: { size: 26, weight: 'bold' },
@@ -527,40 +640,48 @@ class BluetoothPrinterManager {
         };
 
         // Create temporary canvas
+        const scale = dots / LAYOUT_DOTS;
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = config.width;
-        tempCanvas.height = 2000;
+        tempCanvas.width = dots;
+        tempCanvas.height = Math.ceil(2600 * scale);
         
         // Initialize with white background
         tempCtx.fillStyle = '#ffffff';
         tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
         tempCtx.fillStyle = '#000000';
+        if (scale !== 1) tempCtx.scale(scale, scale);
         
         // Drawing utilities
         const utils = this._createDrawingUtils(tempCtx, config);
+        this._receipt = receipt || {};
         let y = 20;
 
         // Draw receipt sections
-        y = this._drawWeightsBreakdown(tempCtx, billData, utils, y);
-        y += config.spacing.section;
+        try {
+            y = this._drawWeightsBreakdown(tempCtx, billData, utils, y);
+            y += config.spacing.section;
+
+            y = this._drawReceiptHeader(tempCtx, billData, config, utils, y);
+            y = this._drawCustomerInfo(billData, utils, y);
+            y = this._drawItemsTable(tempCtx, billData, config, utils, y);
+            y = this._drawTotalsSection(tempCtx, billData, config, utils, y);
+            y = this._drawReceiptFooter(tempCtx, billData, config, utils, y);
+        } finally {
+            this._receipt = null;
+        }
         
-        y = this._drawReceiptHeader(tempCtx, billData, config, utils, y);
-        y = this._drawCustomerInfo(billData, utils, y);
-        y = this._drawItemsTable(tempCtx, billData, config, utils, y);
-        y = this._drawTotalsSection(tempCtx, billData, config, utils, y);
-        
-        return { canvas: tempCanvas, height: y };
+        return { canvas: tempCanvas, height: Math.ceil(y * scale) };
     }
 
-    /** ESC/POS raster bytes for a bill (the used rows of the render canvas). */
-    billBytes(billData) {
-        const { canvas, height } = this._renderBillCanvas(billData);
-        return canvasToEscPos(canvas, height);
+    /** ESC/POS raster bytes for a bill (the used rows of the render canvas), `dots` wide. */
+    billBytes(billData, dots = LAYOUT_DOTS, receipt = {}) {
+        const { canvas, height } = this._renderBillCanvas(billData, dots, receipt);
+        return canvasToEscPos(canvas, height, canvas.width, receipt?.threshold);
     }
 
     async write(billData, job) {
-        return this._send(this.billBytes(billData), 'WRITE', job);
+        return this._send(this.billBytes(billData, job?.dots, job?.receipt), 'WRITE', job);
     }
     
     async generateExpenseCanvas(expense) {
@@ -671,7 +792,7 @@ class BluetoothPrinterManager {
     
     async writeExpense(expense, job) {
         const finalCanvas = await this.generateExpenseCanvas(expense);
-        return this._send(canvasToEscPos(finalCanvas), 'WRITE EXPENSE', job);
+        return this._send(canvasToEscPos(finalCanvas, finalCanvas.height, job?.dots, job?.receipt?.threshold), 'WRITE EXPENSE', job);
     }
 
     /**
@@ -740,7 +861,8 @@ class BluetoothPrinterManager {
     }
 
     async writeStatement(statement, job) {
-        return this._send(canvasToEscPos(this.generateStatementCanvas(statement)), 'WRITE STATEMENT', job);
+        const canvas = this.generateStatementCanvas(statement);
+        return this._send(canvasToEscPos(canvas, canvas.height, job?.dots, job?.receipt?.threshold), 'WRITE STATEMENT', job);
     }
 }
 
@@ -797,16 +919,90 @@ const PrinterService = {
             dropped: 'msg.printer.err_dropped',
             no_printer: 'msg.settings.printer_not_connected',
             stopped: 'msg.settings.printer_not_connected',
-            unavailable: 'msg.printer.android_app_only'
+            unavailable: 'msg.printer.android_app_only',
+            bluetooth_off: 'msg.printer.bluetooth_off'
         };
         const key = keys[error?.kind];
         return key ? t(key) : String(error?.message || error || '');
     },
 
-    /** The printer to reconnect to: the one saved in Settings. */
+    /** This phone's printer settings (saved printers, the one in use, preview). */
+    settings() {
+        return normalizePrinterSettings(AppState.printerSettings);
+    },
+
+    /** The printer to reconnect to: the one in use in Settings. */
     target() {
-        const { deviceId = null, deviceName = null } = AppState.printerSettings || {};
+        const { deviceId, deviceName } = this.settings();
         return { deviceId, deviceName };
+    },
+
+    /** What the printed bill shows on this phone (#107): footer, QR, language, density, logo. */
+    receiptOptions() {
+        const s = this.settings();
+        return { footer: s.receipt.footer, qr: s.receipt.qr, lang: receiptLang(s), threshold: rasterThreshold(s), logo: this.logo() };
+    },
+
+    /** The receipt logo saved on this phone: { width, height, bits } (1-bit rows, base64), or null. */
+    logo() {
+        try {
+            const logo = JSON.parse(localStorage.getItem(LOGO_KEY));
+            const ok = logo && Number.isInteger(logo.width) && Number.isInteger(logo.height)
+                && logo.width > 0 && logo.height > 0 && logo.width <= LOGO_MAX.width && logo.height <= LOGO_MAX.height
+                && typeof logo.bits === 'string' && atob(logo.bits).length === ((logo.width + 7) >> 3) * logo.height;
+            return ok ? logo : null;
+        } catch {
+            return null;
+        }
+    },
+
+    /**
+     * Saves a picture as the receipt logo: fitted into 384 × 120 dots and made black and white.
+     * @param {HTMLImageElement|HTMLCanvasElement} image
+     * @returns {{ok: boolean, full: boolean}}
+     */
+    saveLogo(image) {
+        const { width, height } = logoSize(image.naturalWidth || image.width, image.naturalHeight || image.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(image, 0, 0, width, height);
+        const raster = packMonochromeRaster(ctx.getImageData(0, 0, width, height).data, width, height);
+        let bin = '';
+        raster.forEach((b) => { bin += String.fromCharCode(b); });
+        return safeSetItem(LOGO_KEY, JSON.stringify({ width, height, bits: btoa(bin) }));
+    },
+
+    removeLogo() {
+        localStorage.removeItem(LOGO_KEY);
+    },
+
+    /** The sample bill used by Test Print and the receipt preview in Settings. */
+    sampleBill() {
+        const lang = receiptLang(this.settings());
+        return {
+            type: 'TEST',
+            billNumber: 'TEST-1',
+            date: new Date().toISOString(),
+            customerName: t('ui.print.test_customer', undefined, lang),
+            items: [
+                { name: t('ui.print.test_item', undefined, lang), qty: 10, rate: 100, total: 1000, weights: [10] }
+            ],
+            billTotal: 1000,
+            laborCharges: 6,
+            totalPackets: 1,
+            amountPayable: 1006,
+            isPurchase: true,
+            isAutoLabor: true
+        };
+    },
+
+    /** Dots per line of the printer in use (58 mm unless set to 80 mm). */
+    paperDots() {
+        return paperDots(currentPrinter(this.settings())?.widthMm);
     },
 
     /**
@@ -815,7 +1011,7 @@ const PrinterService = {
      */
     canPrint() {
         if (!this.isAvailable() || this.manager.link.stopped) return false;
-        const saved = AppState.printerSettings || {};
+        const saved = this.settings();
         return this.isConnected() || !!(saved.enabled && saved.deviceId);
     },
 
@@ -859,6 +1055,8 @@ const PrinterService = {
         try {
             const result = await send({
                 target: this.target(),
+                dots: this.paperDots(),
+                receipt: this.receiptOptions(),
                 mode,
                 confirmReprint,
                 onUncertain: () => this.setUncertain(key, true),
@@ -892,16 +1090,19 @@ const PrinterService = {
         const disconnectBtn = document.getElementById('disconnectBtn');
         const testPrintBtn = document.getElementById('testPrintBtn');
         const scanBtn = document.getElementById('scanPrintersBtn');
-        const saved = AppState.printerSettings || {};
+        const saved = this.settings();
         const available = this.isAvailable();
         const connected = this.isConnected();
         const name = this.manager.printerName || saved.deviceName || '';
-        const { checkedAt, lastError, lastJob } = this.manager.link.status;
+        const { checkedAt, lastError, lastJob, bluetoothOff } = this.manager.link.status;
+        const btOff = available && !connected && bluetoothOff;
 
         let text;
         let color = '#999';
         if (!available) {
             text = t('ui.settings.printer_android_only');
+        } else if (btOff) {
+            text = t('ui.settings.printer_bluetooth_off');
         } else if (connected) {
             text = checkedAt
                 ? t('ui.settings.printer_connected_checked', { deviceName: name, time: clockTime(checkedAt) })
@@ -921,18 +1122,19 @@ const PrinterService = {
         if (statusText) {
             statusText.innerHTML = `<span style="color: ${color};">${connected ? '●' : '○'} ${Helpers.escapeHtml(text)}</span>`
                 + (detail ? `<br><small class="printer-status-detail">${Helpers.escapeHtml(detail)}</small>` : '');
-            statusText.dataset.state = !available ? 'unavailable' : connected ? 'connected' : 'disconnected';
+            statusText.dataset.state = !available ? 'unavailable' : btOff ? 'bluetooth_off' : connected ? 'connected' : 'disconnected';
         }
         if (disconnectBtn) disconnectBtn.style.display = connected ? 'block' : 'none';
-        if (testPrintBtn) testPrintBtn.style.display = available && (connected || saved.deviceId) ? 'block' : 'none';
+        if (testPrintBtn) testPrintBtn.style.display = available && !btOff && (connected || saved.deviceId) ? 'block' : 'none';
         if (scanBtn) scanBtn.style.display = available ? '' : 'none';
     },
 
-    /** Renders the status now, then again once the plugin has checked the link. */
+    /** Renders the status now, then again once the plugin has checked Bluetooth and the link. */
     async refreshStatus() {
         this.updateStatus();
-        if (!this.isConnected()) return;
-        await this.checkConnection();
+        if (!this.isAvailable()) return;
+        await this.manager.link.bluetoothOn();
+        if (this.isConnected()) await this.checkConnection();
         this.updateStatus();
     },
 
@@ -944,20 +1146,7 @@ const PrinterService = {
         if (this.testing) return false;
         this.testing = true;
         try {
-            const testBill = {
-                type: 'TEST',
-                date: new Date().toISOString(),
-                customerName: t('ui.print.test_customer'),
-                items: [
-                    { name: t('ui.print.test_item'), qty: 10, rate: 100, total: 1000, weights: [10] }
-                ],
-                billTotal: 1000,
-                laborCharges: 6,
-                totalPackets: 1,
-                amountPayable: 1006,
-                isPurchase: true,
-                isAutoLabor: true
-            };
+            const testBill = this.sampleBill();
             const { outcome, error } = await this.runJob('test', (job) => this.manager.write(testBill, job), 'full');
             if (outcome === 'printed') {
                 UIManager.showToast(t('msg.printer.test_print_successful'));
@@ -998,6 +1187,14 @@ const PrinterService = {
     },
 
     async printBill(billData) {
+        if (this.canPrint() && this.settings().previewFirst) {
+            return this.showBillPreview(billData, { onPrint: () => this._printBillNow(billData) });
+        }
+        return this._printBillNow(billData);
+    },
+
+    /** @private Bluetooth when it can print, else the image preview. */
+    async _printBillNow(billData) {
         if (this.canPrint()) {
             const key = jobKey('bill', billData.billNumber || billData.id);
             const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
@@ -1012,13 +1209,17 @@ const PrinterService = {
         return await this.showBillPreview(billData);
     },
 
-    async showBillPreview(billData) {
+    /**
+     * @param {Object} billData
+     * @param {{onPrint?: () => Promise<boolean>}} [options] adds a Print button (preview before print)
+     */
+    async showBillPreview(billData, options = {}) {
         try {
             // Generate canvas using the same method as Bluetooth printing
-            const canvas = await this.manager.generateBillCanvas(billData);
+            const canvas = await this.manager.generateBillCanvas(billData, this.receiptOptions());
             const billType = billData.isPurchase ? 'purchase' : 'sale';
             const filename = `${billType}_bill_${billData.billNumber || billData.id || Date.now()}${billData.isCopy ? '_copy' : ''}.png`;
-            return this.showImagePreview(canvas, filename, t('ui.bill.bill_no'));
+            return this.showImagePreview(canvas, filename, t('ui.bill.bill_no'), options);
         } catch (error) {
             console.error('Preview generation failed:', error);
             UIManager.showToast(t('msg.printer.failed_generate_bill_preview'));
@@ -1074,13 +1275,15 @@ const PrinterService = {
     },
 
     /**
-     * Full-screen image preview with Download (share sheet on phones) / Close.
+     * Full-screen image preview with Download (share sheet on phones) / Close,
+     * and Print first when `onPrint` is given (preview before print, #130).
      * @param {HTMLCanvasElement} canvas
      * @param {string} filename
      * @param {string} [shareTitle='Bill']
-     * @returns {boolean}
+     * @param {{onPrint?: () => Promise<boolean>}} [options]
+     * @returns {boolean|Promise<boolean>} with onPrint: resolves with the print result, false on Close
      */
-    showImagePreview(canvas, filename, shareTitle = t('ui.bill.bill_no')) {
+    showImagePreview(canvas, filename, shareTitle = t('ui.bill.bill_no'), { onPrint } = {}) {
         try {
             // Convert canvas to data URL
             const dataUrl = canvas.toDataURL('image/png');
@@ -1200,9 +1403,33 @@ const PrinterService = {
             
             modal.appendChild(img);
             modal.appendChild(buttonContainer);
+
+            let result = true;
+            if (typeof onPrint === 'function') {
+                const printBtn = document.createElement('button');
+                printBtn.textContent = t('ui.print.print');
+                printBtn.className = 'print-preview-print-btn';
+                printBtn.style.cssText = closeBtn.style.cssText;
+                printBtn.style.background = '#111827';
+                buttonContainer.style.flexWrap = 'wrap';
+                buttonContainer.insertBefore(printBtn, downloadBtn);
+                result = new Promise((resolve) => {
+                    const close = () => { if (modal.parentNode) modal.parentNode.removeChild(modal); };
+                    closeBtn.onclick = () => { close(); resolve(false); };
+                    printBtn.onclick = async () => {
+                        close();
+                        try {
+                            resolve(await onPrint());
+                        } catch (error) {
+                            console.error('Print from preview failed:', error);
+                            resolve(false);
+                        }
+                    };
+                });
+            }
             document.body.appendChild(modal);
             
-            return true;
+            return result;
         } catch (error) {
             console.error('Preview failed:', error);
             UIManager.showToast(t('msg.printer.failed_generate_preview'));
@@ -1372,7 +1599,7 @@ const PrinterService = {
         const billData = {
             id: saleData.id || Date.now(),
             billNumber: saleData.billNumber,
-            customerName: saleData.customerName || t('ui.print.walk_in_customer'),
+            customerName: saleData.customerName || t('ui.print.walk_in_customer', undefined, receiptLang(this.settings())),
             items: saleData.items.map(item => ({
                 name: item.name,
                 rate: item.rate,
