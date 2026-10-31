@@ -528,6 +528,11 @@ const AdminManager = {
             UIManager.showToast(t('msg.admin.only_owner_can_clear_data'));
             return;
         }
+        // The Android app can't save the backup file (no Web Share, downloads dropped)
+        if (window.Capacitor?.isNativePlatform?.() && !navigator.canShare) {
+            UIManager.showToast(t('msg.admin.clear_data_needs_website'));
+            return;
+        }
         const env = (window.getCollection && window.getCollection('x') !== 'x') ? 'dev' : 'prod';
         // Show collection selection modal
         const collections = [

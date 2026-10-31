@@ -7,6 +7,7 @@
 export default {
     'msg.admin.are_sure_want_reject_user': "क्या आप इस सदस्य को मना करना चाहते हैं?",
     'msg.admin.backup_not_saved_nothing_deleted': "बैकअप सेव नहीं हुआ, इसलिए कुछ नहीं मिटाया गया।",
+    'msg.admin.clear_data_needs_website': "डेटा मिटाने के लिए वेबसाइट खोलें: फ़ोन ऐप बैकअप फ़ाइल सेव नहीं कर सकता।",
     'msg.admin.change_role': "भूमिका बदलें",
     'msg.admin.change_s_role_from': "{userName} की भूमिका {roleLabel} से {roleLabel2} करें?",
     'msg.admin.clear_data': "डेटा हटाएँ",

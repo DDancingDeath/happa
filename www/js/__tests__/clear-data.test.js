@@ -135,18 +135,26 @@ describe('AdminManager.clearAllData', () => {
         expect(UIManager.showToast).toHaveBeenCalledWith('The backup was not saved, so nothing was deleted.');
     });
 
-    test('Android app without sharing: no backup can be saved, so nothing is deleted', async () => {
-        AdminManager.saveJsonBackup = realSaveJsonBackup;
+    test('Android app without sharing: stops at once and says to use the website', async () => {
         window.Capacitor = { isNativePlatform: () => true };
-        const click = jest.spyOn(HTMLAnchorElement.prototype, 'click');
         try {
             await AdminManager.clearAllData();
         } finally {
             delete window.Capacitor;
         }
+        expect(UIManager.showModalWithHtml).not.toHaveBeenCalled();
+        expect(UIManager.showToast).toHaveBeenCalledWith("Clear Data needs the website: the Android app can't save the backup file.");
+    });
+
+    test('Android app: a backup that could not be shared counts as not saved', async () => {
+        window.Capacitor = { isNativePlatform: () => true };
+        const click = jest.spyOn(HTMLAnchorElement.prototype, 'click');
+        try {
+            expect(await realSaveJsonBackup.call(AdminManager, { a: 1 }, 'b.json')).toBe(false);
+        } finally {
+            delete window.Capacitor;
+        }
         expect(click).not.toHaveBeenCalled();
-        expect(FirebaseService.deleteDocsInBatches).not.toHaveBeenCalled();
-        expect(UIManager.showToast).toHaveBeenCalledWith('The backup was not saved, so nothing was deleted.');
     });
 
     test('live data: bills, cash, items and users are not offered; drafts still can be cleared', async () => {

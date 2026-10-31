@@ -7,6 +7,7 @@
 export default {
     'msg.admin.are_sure_want_reject_user': "Are you sure you want to reject this user?",
     'msg.admin.backup_not_saved_nothing_deleted': "The backup was not saved, so nothing was deleted.",
+    'msg.admin.clear_data_needs_website': "Clear Data needs the website: the Android app can't save the backup file.",
     'msg.admin.change_role': "Change Role",
     'msg.admin.change_s_role_from': "Change {userName}'s role from {roleLabel} to {roleLabel2}?",
     'msg.admin.clear_data': "Clear Data",
