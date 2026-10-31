@@ -176,7 +176,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
     });
 
     test('unknown average cost (#102, Q58): a member is blocked; an owner saves with a reason, no profit, lines marked', async () => {
-        AppState.stock = { rice: { quantity: 500 } };
+        AppState.stock = {};
         setVal('wholesaleCashPayment', 4025);
         AppState.userRole = 'staff';
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
@@ -194,6 +194,17 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         expect(sale.items[0].costUnknown).toBe(true);
         expect(sale.overrides).toEqual([expect.objectContaining({ rule: 'cost-unknown', reason: 'opening stock not entered yet' })]);
         expect(saved).toHaveLength(1);
+    });
+
+    test('an item that was bought but is sold out only warns: a member may save it, without a profit (#102)', async () => {
+        AppState.stock = { rice: { quantity: 0, rate: 0 } };
+        AppState.userRole = 'staff';
+        setVal('wholesaleCashPayment', 4025);
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        const sale = await WholesaleSalesManager.completeSale();
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: average cost not known (out of stock)'), expect.any(String), true);
+        expect(sale).toMatchObject({ profit: null, costUnknown: true });
+        expect(sale.flags).toEqual(expect.arrayContaining([expect.objectContaining({ rule: 'cost-unknown' })]));
     });
 
     test('a mismatched split, a Due without a name, or no payment is refused', async () => {

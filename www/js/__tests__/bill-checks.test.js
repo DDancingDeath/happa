@@ -402,7 +402,12 @@ describe('cost-unknown (#102, Q58): wholesale lines need an average cost', () =>
     test('the cost is found by name / Hindi name like the stock replay; no block while stock loads or on an edit', () => {
         expect(ids(ws([{ name: 'चावल', rate: 40, qty: 10, total: 400 }]))).not.toContain('cost-unknown');
         const unknown = [{ itemId: 'dal', name: 'Dal', rate: 90, qty: 1, total: 90 }];
-        expect(ids(ws(unknown, { ctx: { stock: { dal: { quantity: 5 } } } }))).toContain('cost-unknown');
+        expect(ids(ws(unknown, { ctx: { stock: {} } }))).toContain('cost-unknown');
+        // Bought before but sold out (the replay drops its average to 0), or approximate stock: a warning only
+        expect(find(ws(unknown, { ctx: { stock: { dal: { quantity: 0, rate: 0 } } } }), 'cost-unknown')).toMatchObject({ severity: 'warn' });
+        expect(find(ws(unknown, { ctx: { stock: {}, stocked: new Set(['dal']) } }), 'cost-unknown')).toMatchObject({ severity: 'warn' });
+        expect(find(ws(unknown, { ctx: { stock: {}, stockApproximate: true } }), 'cost-unknown')).toMatchObject({ severity: 'warn' });
+        expect(find(ws(unknown, { ctx: { stock: {} } }), 'cost-unknown')).toMatchObject({ severity: 'block' });
         expect(ids(ws(unknown, { ctx: { stock: {}, stockReady: false } }))).not.toContain('cost-unknown');
         expect(ids(ws(unknown, { isEdit: true, ctx: { stock: {} } }))).not.toContain('cost-unknown');
     });
