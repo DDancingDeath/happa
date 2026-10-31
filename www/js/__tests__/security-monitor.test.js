@@ -3,11 +3,12 @@
  * old bills become audit entries on the phone and flags in the owner's daily scan.
  */
 import {
-    SECURITY_ACTIONS, deniedWriteSource, planDeniedNote, deviceCheck, deniedClusters, DENIED_NOTE_LIMITS
+    SECURITY_ACTIONS, deniedWriteSource, planDeniedNote, deviceCheck, deniedClusters, DENIED_NOTE_LIMITS, DEVICE_GRACE_DAYS
 } from '../utils/security-flags.js';
 import { detectAnomalies } from '../utils/anomalies.js';
 import { DEFAULT_THRESHOLDS } from '../utils/bill-checks.js';
-import { SecurityMonitor } from '../services/security-monitor.js';
+import { SecurityMonitor, DENIED_DECIDE_MS } from '../services/security-monitor.js';
+import { refusedForClock } from '../utils/clock-skew.js';
 import { AuditService } from '../services/audit.js';
 import { emit, FIRESTORE_DENIED } from '../utils/events.js';
 import { AppState } from '../utils/state.js';
@@ -21,8 +22,8 @@ describe('which refused calls are recorded', () => {
         ['withdrawals add', 'withdrawals add'],
         ['dev_settings (doc) set', 'settings set'],
         ['purchases/b1/edits (doc) set', 'purchases/b1/edits set'],
-        ['batch commit', 'batch commit'],
-        ['transaction', 'transaction'],
+        ['batch commit', null],
+        ['transaction', null],
         ['purchases get', null],
         ['dev_users listen', null],
         ['dev_counters (doc) transaction', null],
@@ -35,22 +36,40 @@ describe('which refused calls are recorded', () => {
         expect(deniedWriteSource(source)).toBe(out);
     });
 
-    test('one entry per kind and at most 5 per 10 minutes per phone', () => {
+    test('one entry per kind every 2 minutes and at most 5 per 10 minutes per phone', () => {
         let recent = [];
         const note = (s, at) => { const p = planDeniedNote(recent, s, at); recent = p.recent; return p.note; };
         expect(note('a set', 0)).toBe(true);
         expect(note('a set', MIN)).toBe(false);
-        ['b', 'c', 'd', 'e'].forEach((k, i) => expect(note(`${k} set`, 2 * MIN + i)).toBe(true));
-        expect(note('f set', 3 * MIN)).toBe(false);
-        expect(note('a set', DENIED_NOTE_LIMITS.windowMs + 1)).toBe(true);
+        expect(note('a set', 2 * MIN)).toBe(true);
+        ['b', 'c', 'd'].forEach((k, i) => expect(note(`${k} set`, 3 * MIN + i)).toBe(true));
+        expect(note('e set', 4 * MIN)).toBe(false);
+        expect(note('e set', DENIED_NOTE_LIMITS.windowMs + 1)).toBe(true);
     });
 
-    test('new phone: the first ever is remembered without a flag; another one is flagged; the list keeps 10', () => {
-        expect(deviceCheck(undefined, 'p1')).toEqual({ isNew: true, flag: false, next: ['p1'] });
-        expect(deviceCheck(['p1'], 'p1')).toEqual({ isNew: false, flag: false, next: ['p1'] });
-        expect(deviceCheck(['p1'], 'p2')).toEqual({ isNew: true, flag: true, next: ['p1', 'p2'] });
-        const ten = Array.from({ length: 10 }, (_, i) => `d${i}`);
-        expect(deviceCheck(ten, 'new').next).toEqual([...ten.slice(1), 'new']);
+    test('the same write refused every 30 s for 10 minutes still reaches the default flag', () => {
+        let recent = [];
+        const logs = [];
+        for (let at = 0; at <= 10 * MIN; at += 30000) {
+            const p = planDeniedNote(recent, 'purchases update', at);
+            recent = p.recent;
+            if (p.note) logs.push({ id: `l${at}`, action: SECURITY_ACTIONS.DENIED, userId: 'u1', timestamp: at });
+        }
+        expect(deniedClusters(logs, DEFAULT_THRESHOLDS)).toHaveLength(1);
+    });
+
+    test('new phone: remembered with its day; flagged only once the list is ' + DEVICE_GRACE_DAYS + ' days old; the list keeps 10', () => {
+        expect(deviceCheck(undefined, 'p1', '2026-11-01')).toEqual({ isNew: true, flag: false, entry: 'p1:20261101', full: false, next: ['p1:20261101'] });
+        expect(deviceCheck(['p1:20261101'], 'p1', '2026-12-01').isNew).toBe(false);
+        // phones everyone already uses when this starts: no flag in the first 14 days
+        expect(deviceCheck(['p1:20261101'], 'p2', '2026-11-10')).toMatchObject({ isNew: true, flag: false });
+        expect(deviceCheck(['p1:20261101'], 'p2', '2026-11-15')).toMatchObject({ isNew: true, flag: true, next: ['p1:20261101', 'p2:20261115'] });
+        // an old-style entry without a day never starts the clock
+        expect(deviceCheck(['p1'], 'p2', '2027-01-01').flag).toBe(false);
+        const ten = Array.from({ length: 10 }, (_, i) => `d${i}:20260101`);
+        const full = deviceCheck(ten, 'new', '2026-11-01');
+        expect(full).toMatchObject({ full: true, flag: true });
+        expect(full.next).toEqual([...ten.slice(1), 'new:20261101']);
     });
 });
 
@@ -70,7 +89,7 @@ describe('owner daily scan flags (detectAnomalies)', () => {
         expect(flags).toHaveLength(1);
         expect(flags[0]).toMatchObject({ severity: 'high', userId: 'u1', user: 'Ram', refId: 'a1', at: t0 });
         expect(flags[0].en).toBe('3 changes refused within 9 min (purchases update, withdrawals add)');
-        expect(flags[0].hi).toBe('9 मिनट में 3 बदलाव मना हुए (purchases update, withdrawals add)');
+        expect(flags[0].hi).toBe('9 मिनट में 3 बदलाव मना हुए');
         // the same entries give the same id (no second record on the next scan)
         expect(scan(logs).find(a => a.type === 'access-denied').id).toBe(flags[0].id);
     });
@@ -103,6 +122,7 @@ describe('owner daily scan flags (detectAnomalies)', () => {
 describe('SecurityMonitor on the phone', () => {
     let note;
     beforeEach(() => {
+        jest.useFakeTimers();
         note = jest.spyOn(AuditService, 'log').mockResolvedValue();
         AppState.currentUser = { uid: 'u1' };
         AppState.userRole = 'staff';
@@ -111,30 +131,53 @@ describe('SecurityMonitor on the phone', () => {
     });
     afterEach(() => {
         SecurityMonitor.stop();
+        jest.useRealTimers();
         jest.restoreAllMocks();
+        AppState.userRole = 'staff';
     });
 
-    test('a refused write (meter event) writes PERMISSION_DENIED once; reads and the audit log itself never', () => {
-        emit(FIRESTORE_DENIED, 'dev_purchases (doc) update');
-        emit(FIRESTORE_DENIED, 'dev_purchases (doc) update');
-        emit(FIRESTORE_DENIED, 'dev_purchases get');
-        emit(FIRESTORE_DENIED, 'dev_auditLogs add');
+    test('a refused write (meter event) writes PERMISSION_DENIED once, a few seconds later; reads and the audit log itself never', () => {
+        emit(FIRESTORE_DENIED, 'dev_purchases (doc) update', { code: 'permission-denied' });
+        emit(FIRESTORE_DENIED, 'dev_purchases (doc) update', { code: 'permission-denied' });
+        emit(FIRESTORE_DENIED, 'dev_purchases get', { code: 'permission-denied' });
+        emit(FIRESTORE_DENIED, 'dev_auditLogs add', { code: 'permission-denied' });
+        expect(note).not.toHaveBeenCalled();
+        jest.advanceTimersByTime(DENIED_DECIDE_MS);
         expect(note).toHaveBeenCalledTimes(1);
         expect(note).toHaveBeenCalledWith('PERMISSION_DENIED', { source: 'purchases update' });
-        AppState.currentUser = null;
-        emit(FIRESTORE_DENIED, 'dev_items (doc) set');
-        expect(note).toHaveBeenCalledTimes(1);
     });
 
-    test('checkDevice saves a new phone and flags it only when others were used before', async () => {
-        const save = jest.spyOn(users, 'setOwnDevices').mockResolvedValue();
+    test('refusals the app expects (marked by the caller meanwhile) and rentals-only people are not recorded', async () => {
+        const clockErr = { code: 'permission-denied' };
+        const supersededErr = { code: 'permission-denied' };
+        emit(FIRESTORE_DENIED, 'dev_expenses add', clockErr);
+        emit(FIRESTORE_DENIED, 'dev_purchases (doc) set', supersededErr);
+        const user = { getIdTokenResult: async () => ({ issuedAtTime: new Date(Date.now() + 30 * MIN).toUTCString() }) };
+        expect(await refusedForClock(clockErr, { user })).toBe(true);
+        supersededErr.aadhatExpected = true;
+        jest.advanceTimersByTime(DENIED_DECIDE_MS);
+        expect(note).not.toHaveBeenCalled();
+        AppState.userRole = 'none';
+        emit(FIRESTORE_DENIED, 'dev_items (doc) set', { code: 'permission-denied' });
+        AppState.currentUser = null;
+        AppState.userRole = 'staff';
+        emit(FIRESTORE_DENIED, 'dev_items (doc) set', { code: 'permission-denied' });
+        jest.advanceTimersByTime(DENIED_DECIDE_MS);
+        expect(note).not.toHaveBeenCalled();
+    });
+
+    test('checkDevice adds a new phone (arrayUnion) and flags it once the list is old enough', async () => {
+        const save = jest.spyOn(users, 'addOwnDevice').mockResolvedValue();
         expect(await SecurityMonitor.checkDevice('u1', { name: 'Ram' })).toBe(true);
         expect(save).toHaveBeenCalledTimes(1);
-        const [, first] = save.mock.calls[0];
+        const [, entry, replace] = save.mock.calls[0];
+        expect(replace).toBeNull();
         expect(note).not.toHaveBeenCalled();
-        expect(await SecurityMonitor.checkDevice('u1', { devices: first })).toBe(false);
-        expect(await SecurityMonitor.checkDevice('u1', { devices: ['otherphone1'] })).toBe(true);
-        expect(note).toHaveBeenCalledWith('NEW_DEVICE', expect.objectContaining({ known: 1 }));
+        expect(await SecurityMonitor.checkDevice('u1', { devices: [entry] })).toBe(false);
+        expect(await SecurityMonitor.checkDevice('u1', { devices: ['otherphone1:20200101'] })).toBe(true);
+        expect(note).toHaveBeenCalledWith('NEW_DEVICE', expect.objectContaining({ device: expect.any(String) }));
+        AppState.userRole = 'none';
+        expect(await SecurityMonitor.checkDevice('u1', { devices: ['x:20200101'] })).toBe(false);
     });
 
     test('a try on an old bill is recorded for everyone but the owner', () => {

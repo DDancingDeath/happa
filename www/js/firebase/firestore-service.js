@@ -1010,7 +1010,11 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     const write = Promise.resolve(sent).then(settled, (error) => {
         const superseded = retriedBillSaves.has(key) && isPermissionDenied(error);
         settled();
-        if (superseded) return { supersededByRetry: true };
+        if (superseded) {
+            // Expected (a retry already saved this bill): not a misuse signal (#124)
+            if (error && typeof error === 'object') error.aadhatExpected = true;
+            return { supersededByRetry: true };
+        }
         throw error;
     });
     // Server acknowledgement (may come after settleWrite released the UI)

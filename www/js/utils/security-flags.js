@@ -32,7 +32,8 @@ const IGNORED = new Set(['auditLogs', 'telemetry', 'tipHealth', 'tipFailures', '
  */
 export function deniedWriteSource(source) {
     const s = String(source || '').trim();
-    if (s === 'batch commit' || s === 'transaction') return s;
+    // Batches and transactions carry no collection, and several of the app's own are
+    // refused by design (backfill, stale marks, checkpoint leases): not recorded.
     const m = /^(\S+)(?: \(doc\))? (\w+)$/.exec(s);
     if (!m || !WRITE_OPS.includes(m[2])) return null;
     const coll = m[1].replace(/^dev_/, '').split('/')[0];
@@ -40,8 +41,11 @@ export function deniedWriteSource(source) {
     return `${m[1].replace(/^dev_/, '')} ${m[2]}`.slice(0, 100);
 }
 
-/** At most one entry per write kind per window, and at most `maxPerWindow` in all. */
-export const DENIED_NOTE_LIMITS = Object.freeze({ windowMs: 10 * 60 * 1000, maxPerWindow: 5 });
+/**
+ * The same kind at most once per `perSourceMs`, and at most `maxPerWindow` entries in
+ * `windowMs` in all: a repeated refusal still reaches the default flag (3 in 10 min).
+ */
+export const DENIED_NOTE_LIMITS = Object.freeze({ windowMs: 10 * 60 * 1000, perSourceMs: 2 * 60 * 1000, maxPerWindow: 5 });
 
 /**
  * Whether to write an audit entry for this refused write (so a looping refusal
@@ -53,25 +57,44 @@ export const DENIED_NOTE_LIMITS = Object.freeze({ windowMs: 10 * 60 * 1000, maxP
  */
 export function planDeniedNote(recent, source, now, limits = DENIED_NOTE_LIMITS) {
     const kept = (recent || []).filter(r => now - r.at < limits.windowMs && r.at <= now);
-    if (kept.length >= limits.maxPerWindow || kept.some(r => r.source === source)) return { note: false, recent: kept };
+    const sameSoon = kept.some(r => r.source === source && now - r.at < limits.perSourceMs);
+    if (kept.length >= limits.maxPerWindow || sameSoon) return { note: false, recent: kept };
     return { note: true, recent: [...kept, { source, at: now }] };
 }
 
 /** Phones remembered per person (users/{uid}.devices; the rules allow 10). */
 export const MAX_DEVICES = 10;
 
+/** New phones are only remembered, not flagged, during the first days of a person's list. */
+export const DEVICE_GRACE_DAYS = 14;
+
+/** A list entry: the device id and the day it was first seen ("abc123xyz:20261101"). */
+export const deviceEntry = (deviceId, dayKey) => `${deviceId}:${String(dayKey || '').replace(/-/g, '')}`;
+
+const entryId = (e) => String(e).split(':')[0];
+const entryDay = (e) => {
+    const m = /:(\d{4})(\d{2})(\d{2})$/.exec(String(e));
+    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : NaN;
+};
+
 /**
  * Sign-in on this phone: is it new for this person, and is that worth a flag?
- * The first phone ever (no list yet, e.g. everyone right after this change) is
- * recorded without a flag.
+ * Phones are only remembered (no flag) until the person's list is
+ * DEVICE_GRACE_DAYS old, so the phones everyone already uses when this starts
+ * are not flagged.
  * @param {*} devices - the profile's `devices`
  * @param {string} deviceId
- * @returns {{isNew: boolean, flag: boolean, next: string[]}}
+ * @param {string} dayKey - today, YYYY-MM-DD
+ * @returns {{isNew: boolean, flag: boolean, entry: string, full: boolean, next: string[]}}
  */
-export function deviceCheck(devices, deviceId) {
+export function deviceCheck(devices, deviceId, dayKey) {
     const list = Array.isArray(devices) ? devices.filter(d => typeof d === 'string') : [];
-    if (!deviceId || list.includes(deviceId)) return { isNew: false, flag: false, next: list };
-    return { isNew: true, flag: list.length > 0, next: [...list, deviceId].slice(-MAX_DEVICES) };
+    const entry = deviceEntry(deviceId, dayKey);
+    if (!deviceId || list.some(e => entryId(e) === deviceId)) return { isNew: false, flag: false, entry, full: false, next: list };
+    const oldest = Math.min(...list.map(entryDay).filter(Number.isFinite));
+    const today = entryDay(entry);
+    const flag = Number.isFinite(oldest) && Number.isFinite(today) && today - oldest >= DEVICE_GRACE_DAYS * 86400000;
+    return { isNew: true, flag, entry, full: list.length >= MAX_DEVICES, next: [...list, entry].slice(-MAX_DEVICES) };
 }
 
 /**

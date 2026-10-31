@@ -147,14 +147,17 @@ on Anomalies and the Today day report. No extra reads.
 
 - **Refused writes**: `firebase/firestore-meter.js` sees every Firestore call; a `permission-denied`
   on a write emits `firestore:denied` and `services/security-monitor.js` writes a `PERMISSION_DENIED`
-  audit entry with only the collection and operation (no data). At most one per kind and five per
-  10 minutes per phone. Writes the app expects to be refused (the audit log itself, error reports, app
-  health, the stock checkpoint's scan state) are not recorded. **Flag** `access-denied` (high): one
+  audit entry with only the collection and operation (no data), 8 s later. At most one per kind every 2
+  minutes and five per 10 minutes per phone. Not recorded: refusals the app expects (a wrong phone
+  clock, a bill a retry already saved: the caller marks the error), batches and transactions (they carry
+  no collection, and several of the app's own are refused by design), the audit log itself, error
+  reports, app health and the stock checkpoint's scan state; rentals-only people can't write the log. **Flag** `access-denied` (high): one
   person's refused changes reaching the limit in Settings › Aadhat › bill checks (default **3 within 10
   minutes**: `deniedCount`, `deniedWindowMin`).
 - **New phone**: at start-up the app compares this phone's id (the App health device id) with
-  `users/{uid}.devices` (up to 10, the person's own field). A known phone writes nothing. The first
-  phone ever is remembered without a flag; any later new phone writes `NEW_DEVICE`. **Flag**
+  `users/{uid}.devices` (up to 10 `id:YYYYMMDD` entries, the person's own field, added with `arrayUnion`).
+  A known phone writes nothing. A new phone is remembered; it writes `NEW_DEVICE` only once the person's
+  list is 14 days old, so the phones in use when this starts are not flagged. **Flag**
   `new-device` (low).
 - **Old bills**: when someone other than the owner tries to change or void a bill the app refuses
   because its edit window has passed, `OLD_BILL_EDIT_TRY`. **Flag** `old-bill-edit-try` (medium).

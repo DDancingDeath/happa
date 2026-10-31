@@ -473,7 +473,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         add(makeAnomaly('access-denied', { refKind: 'audit', refId: first.id, ...logUser(first) }, {
             at: Number(first.timestamp),
             en: `${entries.length} changes refused within ${mins} min${kinds ? ` (${kinds})` : ''}`,
-            hi: `${mins} मिनट में ${entries.length} बदलाव मना हुए${kinds ? ` (${kinds})` : ''}`
+            hi: `${mins} मिनट में ${entries.length} बदलाव मना हुए`
         }));
     });
     (auditLogs || []).forEach(log => {

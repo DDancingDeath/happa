@@ -10,13 +10,18 @@ const userRef = (uid) => firebase.firestore()
     .collection(window.getCollection ? window.getCollection('users') : 'users').doc(uid);
 
 /**
- * Replaces the person's own list of phones (#124; rules: only `name` and `devices`).
+ * Adds a phone to the person's own list (#124; rules: only `name` and `devices`,
+ * a list of at most 10): arrayUnion, so two phones adding themselves never lose
+ * each other; a full list is replaced by `replaceWith` (oldest dropped).
  * @param {string} uid
- * @param {string[]} devices
+ * @param {string} entry
+ * @param {string[]|null} replaceWith
  * @returns {Promise<void>}
  */
-export function setOwnDevices(uid, devices) {
-    return userRef(uid).update({ devices });
+export function addOwnDevice(uid, entry, replaceWith) {
+    return userRef(uid).update({
+        devices: replaceWith || firebase.firestore.FieldValue.arrayUnion(entry)
+    });
 }
 
 /**
