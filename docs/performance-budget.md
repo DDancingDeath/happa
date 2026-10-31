@@ -10,11 +10,11 @@ mobile data. Record real-phone numbers in the timings table of
 | What | Budget | Measured by |
 |---|---|---|
 | Cold start: tap the icon until billing can be used | ≤ 2.5 s | Release checklist timings (stopwatch); Diagnostics → "Startup timings" (`app-shown`) |
-| App start in the field | warn above 6 s, fail above 15 s | TIP `AppStart` (App health; `tip-auto` issues) |
+| App start in the field: from loading the profile after sign-in to the first screen (SDK load and restoring the sign-in not included) | warn above 6 s, fail above 15 s | TIP `AppStart` (App health; `tip-auto` issues) |
 | Save a bill: tap Save until the success message | ≤ 1.5 s | Release checklist timings; TIP `BillSave` durations in App health (until the server confirms) |
-| Today page ready | ≤ 0.5 s after it opens | Release checklist (by eye; data is already in memory) |
-| Firestore reads per app open | page baselines + 25 % (hard cap 300 per page) in CI; warn above 1,000 / fail above 2,500 in the field | `tests/e2e/read-baselines.json` (E2E smoke); TIP `SessionReads` ([read-budget.md](read-budget.md)) |
-| Stylesheet / template requests before the login screen | 1 stylesheet, 3 templates | `load-perf.test.js`, `template-loader.test.js` |
+| Today page ready | ≤ 0.5 s after it opens | Release checklist timings (by eye; data is already in memory) |
+| Firestore reads | CI: page baselines + 25 % (hard cap 300 per page). Field: from sign-in to the first screen warn above 1,000 / fail above 2,500; whole session fail above 3,000 | `tests/e2e/read-baselines.json` (E2E smoke); TIP `SessionReads` ([read-budget.md](read-budget.md)) |
+| Requests before the login screen | 1 stylesheet (tested); 3 templates (by design, not tested) | `load-perf.test.js`; `SHELL_TEMPLATES` in `utils/template-loader.js` |
 
 ## Lab numbers
 
@@ -40,8 +40,8 @@ cap the list after it.
 ## Regressions
 
 - Reads: the E2E smoke fails a page that reads more than its baseline.
-- Start-up shape: the tests above fail if the start-up loads more stylesheets
-  or templates again.
+- Start-up shape: `load-perf.test.js` fails if `index.html` links more than the
+  one stylesheet again.
 - Field timings: TIP `AppStart`, `BillSave` and `SessionReads` show slow or heavy
   versions in App health, and repeated failures open `tip-auto` issues.
 - jsdom timing checks were left out on purpose: CI machines vary too much for
