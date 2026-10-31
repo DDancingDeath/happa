@@ -1677,17 +1677,17 @@ function defineSuite(prefix) {
             await assertSucceeds(c.doc('split').set(bill({ cash: 50, online: 20.6, due: 29, total: 99.6 })));
             await assertFails(c.doc('over').set(bill({ cash: 101, online: 0, due: 0, total: 101 })));
             await assertFails(c.doc('overDue').set(bill({ cash: 0, online: 0, due: 500, total: 500 })));
-            await assertFails(c.doc('flatOver').set({ userId: 'staff1', total: 10, cashPayment: 0, dueAmount: 50, clientVersion: 3 }));
+            await assertFails(c.doc('flatOver').set({ userId: 'staff1', total: 10, cashPayment: 0, dueAmount: 50, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('paise').set(bill({ cash: 10.005, online: 0, due: 0 })));
             await assertFails(c.doc('neg').set(bill({ cash: 120, online: -20, due: 0 })));
             await assertFails(c.doc('nan').set(bill({ cash: NaN, online: 0, due: 0 })));
-            await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3 }));
+            await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('opening').set({ ...bill({ cash: 0, online: 0, due: 0 }), openingBalance: { amount: 5000 } }));
-            await assertFails(c.doc('amountPaid').set({ userId: 'staff1', total: 100, amountPaid: 5000, clientVersion: 3 }));
-            await assertFails(c.doc('legacyDue').set({ userId: 'staff1', total: 100, due: 5000, clientVersion: 3 }));
+            await assertFails(c.doc('amountPaid').set({ userId: 'staff1', total: 100, amountPaid: 5000, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('legacyDue').set({ userId: 'staff1', total: 100, due: 5000, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('payable').set({ userId: 'staff1', amountPayable: 100, total: 1000000,
-                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3 }));
-            await assertFails(c.doc('payableText').set({ userId: 'staff1', amountPayable: '100', total: 100, clientVersion: 3 }));
+                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('payableText').set({ userId: 'staff1', amountPayable: '100', total: 100, clientVersion: 3, createdAt: serverTimestamp() }));
             // purchase: the total is after labour (grandTotal)
             await assertSucceeds(c.doc('p').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
                 payment: { cash: 90, online: 0, due: 0, total: 90 }, clientVersion: 3, createdAt: serverTimestamp() }));
@@ -1746,10 +1746,10 @@ function defineSuite(prefix) {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
             await assertSucceeds(c.doc('own').set({ userId: 'staff1', total: 10, payment: { cash: 10, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
-            await assertFails(c.doc('other').set({ userId: 'manager1', total: 10, clientVersion: 3 }));
-            await assertFails(c.doc('text').set({ userId: 'staff1', total: '10', clientVersion: 3 }));
-            await assertFails(c.doc('textPay').set({ userId: 'staff1', total: 10, payment: { cash: 'ten' }, clientVersion: 3 }));
-            await assertFails(c.doc('textDue').set({ userId: 'staff1', total: 10, dueAmount: 'x', clientVersion: 3 }));
+            await assertFails(c.doc('other').set({ userId: 'manager1', total: 10, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('text').set({ userId: 'staff1', total: '10', clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('textPay').set({ userId: 'staff1', total: 10, payment: { cash: 'ten' }, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('textDue').set({ userId: 'staff1', total: 10, dueAmount: 'x', clientVersion: 3, createdAt: serverTimestamp() }));
             await assertSucceeds(as('legacyOwner').collection(coll).doc('restored').set({ userId: 'staff1', total: 10, clientVersion: 3 }));
         }
     });
