@@ -2077,7 +2077,8 @@ const getUsersForNotifications = async () => {
     if (AppState.userRole === 'owner') {
         const snapshot = await getDb().collection(col('users')).get();
         const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        syncTeamDirectory(profiles).catch(e => console.warn('Team directory not updated:', e?.code || e));
+        // Only from the server: a cached list could undo another owner device's change
+        if (!snapshot.metadata?.fromCache) syncTeamDirectory(profiles).catch(e => console.warn('Team directory not updated:', e?.code || e));
         users = profiles.filter(isTeamMember).map(u => ({ id: u.id, role: u.role }));
     } else {
         users = teamPeople(await readTeamDirectory()).map(p => ({ id: p.id, role: p.role }));
@@ -4335,7 +4336,7 @@ const FirebaseService = {
         };
         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => createdMs(b) - createdMs(a));
-        if (AppState.userRole === 'owner') {
+        if (AppState.userRole === 'owner' && !snapshot.metadata?.fromCache) {
             syncTeamDirectory(users).catch(e => console.warn('Team directory not updated:', e?.code || e));
         }
         return users;
