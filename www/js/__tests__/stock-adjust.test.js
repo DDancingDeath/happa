@@ -5,7 +5,7 @@
 
 jest.mock('../firebase/firestore-service.js', () => ({
     FirebaseService: {
-        saveStockAdjustment: jest.fn(async () => {}),
+        startSaveStockAdjustment: jest.fn(() => ({ record: {}, committed: Promise.resolve() })),
         calculateStock: jest.fn(async () => ({})),
         getStock: jest.fn(async () => ({}))
     }
@@ -96,7 +96,7 @@ describe('StockManager.applyStockAdjustment', () => {
         AppState.stockAdjustments = [];
         AppState.settings = { showHindi: false };
         AppState.userRole = 'owner';
-        FirebaseService.saveStockAdjustment.mockClear();
+        FirebaseService.startSaveStockAdjustment.mockReset().mockImplementation(() => ({ record: {}, committed: Promise.resolve() }));
         FirebaseService.getStock.mockImplementation(async () => AppState.stock);
         FirebaseService.calculateStock.mockImplementation(async () => ({ a: { quantity: 0, rate: 0 } }));
         UIManager.showModal.mockImplementation(async () => true);
@@ -111,7 +111,7 @@ describe('StockManager.applyStockAdjustment', () => {
         fill('remove', '25');
         await StockManager.applyStockAdjustment();
         expect(UIManager.showModal).toHaveBeenCalled();
-        const saved = FirebaseService.saveStockAdjustment.mock.calls[0][0];
+        const saved = FirebaseService.startSaveStockAdjustment.mock.calls[0][0];
         expect(saved).toMatchObject({ itemId: 'a', adjustType: 'remove', quantity: 10, rawQuantity: 25, previousStock: 10, newStock: 0, reasonCode: 'damage' });
         expect(saved.reason).toMatch(/Damaged/);
     });
@@ -119,16 +119,16 @@ describe('StockManager.applyStockAdjustment', () => {
     test('no reason → nothing saved', async () => {
         fill('add', '5', '');
         await StockManager.applyStockAdjustment();
-        expect(FirebaseService.saveStockAdjustment).not.toHaveBeenCalled();
+        expect(FirebaseService.startSaveStockAdjustment).not.toHaveBeenCalled();
     });
 
     test('set to 0 works; a blank quantity does not mean 0', async () => {
         fill('set', '');
         await StockManager.applyStockAdjustment();
-        expect(FirebaseService.saveStockAdjustment).not.toHaveBeenCalled();
+        expect(FirebaseService.startSaveStockAdjustment).not.toHaveBeenCalled();
         fill('set', '0', 'count');
         await StockManager.applyStockAdjustment();
-        expect(FirebaseService.saveStockAdjustment.mock.calls[0][0]).toMatchObject({ adjustType: 'set', quantity: 0, newStock: 0 });
+        expect(FirebaseService.startSaveStockAdjustment.mock.calls[0][0]).toMatchObject({ adjustType: 'set', quantity: 0, newStock: 0 });
     });
 
     test('the Current Stock list refreshes after saving', async () => {
@@ -139,21 +139,49 @@ describe('StockManager.applyStockAdjustment', () => {
     });
 
     test('a double tap on Apply (also Set opening stock) saves one adjustment (#95)', async () => {
+        // Remove more than in stock: both taps read the filled form, then wait for the confirm
+        fill('remove', '25');
+        await Promise.all([StockManager.applyStockAdjustment(), StockManager.applyStockAdjustment()]);
+        expect(UIManager.showModal).toHaveBeenCalledTimes(2);
+        expect(FirebaseService.startSaveStockAdjustment).toHaveBeenCalledTimes(1);
+    });
+
+    test('offline: each adjustment is saved on the phone at once, so opening stock for several items can be entered (#95)', async () => {
+        const online = jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+        AppState.items = [{ id: 'a', name: 'Chana' }, { id: 'b', name: 'Gehu' }];
+        document.getElementById('adjustItem').innerHTML = '<option value="a">Chana</option><option value="b">Gehu</option>';
         document.body.insertAdjacentHTML('beforeend', '<button id="applyBtn" data-stock-adjust></button>');
-        const btn = document.getElementById('applyBtn');
-        btn.addEventListener('click', () => { StockManager.applyStockAdjustment(); });
-        let release;
-        FirebaseService.saveStockAdjustment.mockImplementationOnce(() => new Promise(r => { release = r; }));
-        fill('set', '40', 'count');
-        btn.click();
-        btn.click();
-        await Promise.resolve();
-        expect(btn.disabled).toBe(true);
+        const never = new Promise(() => {});
+        FirebaseService.startSaveStockAdjustment.mockImplementation(() => ({ record: {}, committed: never }));
+        FirebaseService.calculateStock.mockImplementation(() => never);
+        for (const [id, qty] of [['a', '40'], ['b', '25']]) {
+            document.getElementById('adjustItem').value = id;
+            fill('set', qty, 'count');
+            StockManager.applyStockAdjustment();
+            await Promise.resolve();
+            await Promise.resolve();
+            expect(document.getElementById('adjustQuantity').value).toBe('');
+            expect(document.getElementById('applyBtn').disabled).toBe(false);
+        }
+        expect(FirebaseService.startSaveStockAdjustment.mock.calls.map(c => [c[0].itemId, c[0].quantity])).toEqual([['a', 40], ['b', 25]]);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Saved on this phone, will sync');
+        online.mockRestore();
+    });
+
+    test('a refused adjustment says so and redraws the stock', async () => {
+        let refuse;
+        FirebaseService.startSaveStockAdjustment.mockImplementationOnce(() => ({ record: {}, committed: new Promise((_, r) => { refuse = r; }) }));
+        const redraw = jest.spyOn(StockManager, 'refreshAfterAdjustment').mockResolvedValue(undefined);
+        const err = jest.spyOn(console, 'error').mockImplementation(() => {});
+        fill('add', '5');
         await StockManager.applyStockAdjustment();
-        expect(FirebaseService.saveStockAdjustment).toHaveBeenCalledTimes(1);
-        release();
+        redraw.mockClear();
+        refuse(new Error('denied'));
         await new Promise(r => setTimeout(r));
-        expect(btn.disabled).toBe(false);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Failed to apply adjustment');
+        expect(redraw).toHaveBeenCalled();
+        redraw.mockRestore();
+        err.mockRestore();
     });
 });
 

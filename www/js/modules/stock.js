@@ -644,10 +644,11 @@ export class StockManager {
             );
             if (!ok) return;
         }
-        await Helpers.runExclusive('stock-adjust', '[data-stock-adjust]', () => this._saveAdjustment(item, plan, currentStock, { adjustType, rate, reasonCode }));
+        const saved = await Helpers.runExclusive('stock-adjust', '[data-stock-adjust]', () => this._saveAdjustment(item, plan, currentStock, { adjustType, rate, reasonCode }));
+        if (saved) await this.refreshAfterAdjustment();
     }
 
-    static async _saveAdjustment(item, plan, currentStock, { adjustType, rate, reasonCode }) {
+    static _saveAdjustment(item, plan, currentStock, { adjustType, rate, reasonCode }) {
         const itemName = item.name;
         const newStock = plan.newStock;
         const reason = plan.reason;
@@ -673,35 +674,49 @@ export class StockManager {
             adjustment.createdBy, adjustment.timestamp);
         if (adjustFlags.length) adjustment.flags = adjustFlags;
 
+        let committed;
         try {
-            await FirebaseService.saveStockAdjustment(adjustment);
-            
-            if (!AppState.stock[item.id]) {
-                AppState.stock[item.id] = { quantity: 0, rate: 0 };
-            }
-            AppState.stock[item.id].quantity = newStock;
+            ({ committed } = FirebaseService.startSaveStockAdjustment(adjustment));
+        } catch (error) {
+            console.error("Stock adjustment error:", error);
+            UIManager.showToast(t('msg.stock.failed_apply_adjustment'));
+            return false;
+        }
+        // Saved on the phone at once (also offline); a refused write is taken out again
+        committed.catch(error => {
+            console.error("Stock adjustment error:", error);
+            UIManager.showToast(t('msg.stock.failed_apply_adjustment'));
+            this.refreshAfterAdjustment().catch(e => console.error('Stock refresh failed:', e));
+        });
 
-            document.getElementById("adjustQuantity").value = "";
-            document.getElementById("adjustRate").value = "0";
-            document.getElementById("adjustReason").value = "";
-            const reasonSelect = document.getElementById("adjustReasonCode");
-            if (reasonSelect) reasonSelect.value = "";
-            
-            // Recalculate stock from Firebase data to ensure accuracy
-            const freshStock = await FirebaseService.calculateStock();
-            AppState.stock = freshStock;
-            
-            UIManager.showToast(t('msg.stock.stock_adjustment_applied_successfully'));
+        if (!AppState.stock[item.id]) {
+            AppState.stock[item.id] = { quantity: 0, rate: 0 };
+        }
+        AppState.stock[item.id].quantity = newStock;
+
+        document.getElementById("adjustQuantity").value = "";
+        document.getElementById("adjustRate").value = "0";
+        document.getElementById("adjustReason").value = "";
+        const reasonSelect = document.getElementById("adjustReasonCode");
+        if (reasonSelect) reasonSelect.value = "";
+
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        UIManager.showToast(t(offline ? 'msg.common.saved_on_phone_sync' : 'msg.stock.stock_adjustment_applied_successfully'));
+        return true;
+    }
+
+    /** Stock, adjustment list and Current Stock after an adjustment (outside the save lock). */
+    static async refreshAfterAdjustment() {
+        try {
             this.renderAdjustmentHistory();
             this.loadAdjustItemStock();
-            
-            // Keep the Current Stock list in step with the adjustment
+            AppState.stock = await FirebaseService.calculateStock();
+            this.loadAdjustItemStock();
             if (document.getElementById('currentStockSection')) {
                 this.renderStock();
             }
         } catch (error) {
-            console.error("Stock adjustment error:", error);
-            UIManager.showToast(t('msg.stock.failed_apply_adjustment'));
+            console.error("Stock refresh after adjustment failed:", error);
         }
     }
 

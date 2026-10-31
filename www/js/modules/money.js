@@ -566,7 +566,7 @@ export const MoneyManager = {
         return Helpers.runExclusive('withdrawal', '[data-withdrawal-save]', () => this._saveWithdrawal());
     },
 
-    async _saveWithdrawal() {
+    _saveWithdrawal() {
         const val = (id) => (document.getElementById(id)?.value || '').trim();
         const amount = parseFloat(val('moneyWdAmount'));
         const person = val('moneyWdPerson');
@@ -574,17 +574,28 @@ export const MoneyManager = {
         if (!(amount > 0)) { UIManager.showToast(t('msg.common.enter_valid_amount'), 'error'); return; }
         if (!person) { UIManager.showToast(t('msg.finance.enter_who_withdrew_money'), 'error'); return; }
         if (!date || !parseAnyBillDate(date)) { UIManager.showToast(t('msg.finance.select_date'), 'error'); return; }
-        try {
-            await FirebaseService.saveWithdrawal({ amount, person, purpose: val('moneyWdPurpose') || 'Personal Use', date, createdAt: new Date().toISOString() });
-            ['moneyWdAmount', 'moneyWdPerson', 'moneyWdPurpose'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-            const f = document.getElementById('moneyWithdrawalForm');
-            if (f) f.hidden = true;
-            UIManager.showToast(t('msg.finance.withdrawal_recorded_successfully'), 'success');
-            this.render();
-        } catch (e) {
+        const failed = (e) => {
             console.error('Money: saving withdrawal failed:', e);
             UIManager.showToast(t('msg.finance.error_recording_withdrawal'), 'error');
+        };
+        let committed;
+        try {
+            ({ committed } = FirebaseService.startSaveWithdrawal({ amount, person, purpose: val('moneyWdPurpose') || 'Personal Use', date, createdAt: new Date().toISOString() }));
+        } catch (e) {
+            failed(e);
+            return;
         }
+        // Saved on the phone at once (also offline); a refused write is taken out again
+        committed.catch(e => {
+            failed(e);
+            this.render();
+        });
+        ['moneyWdAmount', 'moneyWdPerson', 'moneyWdPurpose'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        const f = document.getElementById('moneyWithdrawalForm');
+        if (f) f.hidden = true;
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        UIManager.showToast(t(offline ? 'msg.common.saved_on_phone_sync' : 'msg.finance.withdrawal_recorded_successfully'), 'success');
+        this.render();
     },
 
     accounts() {

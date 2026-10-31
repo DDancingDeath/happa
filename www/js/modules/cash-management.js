@@ -42,6 +42,8 @@ const DUE_BILL_UNLINKED = '__nobill__';
 
 /** Drawer action ('open' | 'close' | 'count' | 'entry') runs once at a time; its buttons wait (#95). */
 const withCashLock = (action, fn) => Helpers.runExclusive(`cash-${action}`, `[data-cash-save="${action}"]`, fn);
+/** Close day still waiting for the server after this long: say so (the button stays busy). */
+const CLOSE_WAIT_MS = 8000;
 
 /** Sessions read when Cash opens (today and the one before), and per "Load older" (#34). */
 const RECENT_SESSIONS = 2;
@@ -876,6 +878,12 @@ export class CashManagementManager {
             UIManager.showToast(t('msg.cash.enter_actual_cash_amount'));
             return;
         }
+        // Closing is not queued offline: the count must use every phone's entries, and
+        // another phone may close the day meanwhile (the rules then refuse this close).
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.cash.close_needs_internet'), 'warning');
+            return;
+        }
 
         const expected = this.calculateExpectedCash();
         const difference = round2(actualAmount - expected);
@@ -919,9 +927,11 @@ export class CashManagementManager {
         const updatedSession = { ...this.todaySession, ...closingFields };
         const run = startCashCloseRun(this.todaySession, expected, actualAmount, difference);
 
+        const waiting = setTimeout(() => UIManager.showToast(t('msg.cash.close_waiting'), 'warning'), CLOSE_WAIT_MS);
         try {
             // Field-level update: never overwrite deposits/due payments added on another device
             await sessionRef(this.todaySession.id).update(closingFields);
+            clearTimeout(waiting);
             run.complete();
             this.todaySession = updatedSession;
             this.updateUI();
@@ -934,6 +944,7 @@ export class CashManagementManager {
             const closingNotesInput = document.getElementById('cashSignOutNotes');
             if (closingNotesInput) closingNotesInput.value = '';
         } catch (error) {
+            clearTimeout(waiting);
             console.error('Sign out error:', error);
             run.completeAndFail('write_failed', { code: String(error?.code || 'unknown').slice(0, 40) });
             UIManager.showToast(t('msg.cash.failed_sign_out', { message: error.message }));
@@ -942,6 +953,20 @@ export class CashManagementManager {
 
     static recordTransaction() {
         return withCashLock('entry', () => this._recordTransaction());
+    }
+
+    /**
+     * Takes a refused drawer entry out of `session` and of every other
+     * in-memory copy of that session (today's, the history cache).
+     * @param {Object} session
+     * @param {'cashDeposits'|'duePayments'} field
+     * @param {string} entryId
+     */
+    static dropSessionEntry(session, field, entryId) {
+        const sid = String(session.id);
+        [session, this.todaySession, ...(this.cachedSessions || [])].forEach(s => {
+            if (s && String(s.id) === sid && Array.isArray(s[field])) s[field] = s[field].filter(e => e?.id !== entryId);
+        });
     }
 
     static async _recordTransaction() {
@@ -978,10 +1003,11 @@ export class CashManagementManager {
                 session.cashDeposits = [...(session.cashDeposits || []), deposit];
                 write.catch(error => {
                     console.error('Add deposit error:', error);
-                    session.cashDeposits = (session.cashDeposits || []).filter(d => d.id !== deposit.id);
+                    this.dropSessionEntry(session, 'cashDeposits', deposit.id);
                     this.calculateTodayTransactions()
                         .then(() => this.updateUI())
                         .catch(e => console.error('Cash refresh failed:', e));
+                    this.renderHistory();
                     UIManager.showToast(t('msg.cash.failed_add_deposit', { message: error.message }));
                 });
                 await this.calculateTodayTransactions();
@@ -1059,10 +1085,11 @@ export class CashManagementManager {
                 session.duePayments = [...(session.duePayments || []), payment];
                 write.catch(error => {
                     console.error('Record payment error:', error);
-                    session.duePayments = (session.duePayments || []).filter(p => p.id !== payment.id);
+                    this.dropSessionEntry(session, 'duePayments', payment.id);
                     this.calculateTodayTransactions()
                         .then(() => this.updateUI())
                         .catch(e => console.error('Cash refresh failed:', e));
+                    this.renderHistory();
                     UIManager.showToast(t('msg.cash.failed_record_payment', { message: error.message }));
                 });
                 await this.calculateTodayTransactions();
