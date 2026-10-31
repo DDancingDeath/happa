@@ -1207,7 +1207,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
     "id": "L2_2028-02",
     "month": "2028-02",
     "open": true,
-    "paid": 3500.5,
+    "paid": 3501,
     "rent": 7000,
   },
   {
@@ -1275,10 +1275,10 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
     "paid": 9494,
   },
   {
-    "amount": 1000.5,
+    "amount": 1001,
     "noReceipt": false,
     "open": true,
-    "paid": 3500.5,
+    "paid": 3501,
   },
 ]
 `;
@@ -1838,7 +1838,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "Paid now",
-        "₹1,000.5",
+        "₹1,001",
         true,
       ],
       [
@@ -1847,7 +1847,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "Balance due",
-        "₹3,499.5",
+        "₹3,499",
         true,
       ],
     ],
@@ -1871,7 +1871,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "अभी चुकाया",
-        "₹1,000.5",
+        "₹1,001",
         true,
       ],
       [
@@ -1880,13 +1880,13 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "बाकी",
-        "₹3,499.5",
+        "₹3,499",
         true,
       ],
     ],
     "paidEarlier": 2500,
     "stored": {
-      "balance": 3499.5,
+      "balance": 3499,
       "date": "2028-02-20",
       "elec": null,
       "mode": "cash",
@@ -1894,7 +1894,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
         "2028-02",
       ],
       "no": "R-2028-0005",
-      "paid": 1000.5,
+      "paid": 1001,
       "place": "2B, Gupta Bhawan",
       "ref": "",
       "rent": 7000,
@@ -1914,9 +1914,9 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       "Rent: ₹7,000",
       "*Total: ₹7,000*",
       "Paid earlier: ₹2,500",
-      "*Paid now: ₹1,000.5*",
+      "*Paid now: ₹1,001*",
       "Paid by: Cash",
-      "*Balance due: ₹3,499.5*",
+      "*Balance due: ₹3,499*",
       "",
       "Received by: Owner",
       "",
@@ -1951,9 +1951,9 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
   "Collected this month",
   "₹26,933",
   "Still due this month",
-  "₹6,980",
+  "₹6,979",
   "Total due (all months)",
-  "₹19,280",
+  "₹19,279",
   "Flat 3C, Gupta Bhawan",
   "Vacant · ₹6,000",
   "Vacant",
@@ -1977,8 +1977,8 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
   "Flat 2B, Gupta Bhawan",
   "Sita · ₹7,000/month, due on day 5 ⚡ included · Since 12/12/2027",
   "Late",
-  "₹3,500",
-  "Feb 2028: ₹3,500 Part paid",
+  "₹3,499",
+  "Feb 2028: ₹3,499 Part paid",
   "Late",
   "Record payment",
   "WhatsApp reminder",

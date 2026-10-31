@@ -18,6 +18,7 @@ import {
     savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
 } from '../utils/calc/cash.js';
 import { round2, outstandingDue } from '../utils/money.js';
+import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
 import { normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
@@ -912,10 +913,15 @@ export class CashManagementManager {
         }
 
         if (type === 'deposit') {
-            // Cash deposit
+            // Cash deposit, in whole rupees (MONEY-ROUND, #129)
+            const depositAmount = entryAmount(amount);
+            if (!(depositAmount > 0)) {
+                UIManager.showToast(t('msg.common.enter_valid_amount'));
+                return;
+            }
             const deposit = {
                 id: Helpers.generateId(),
-                amount: amount,
+                amount: depositAmount,
                 reason: notes,
                 timestamp: new Date().toISOString(),
                 addedBy: AppState.userName || 'Unknown'
@@ -939,7 +945,7 @@ export class CashManagementManager {
                 this.updateUI();
                 this.renderHistory();
                 
-                UIManager.showToast(t('msg.cash.added_cash_drawer', { amount }));
+                UIManager.showToast(t('msg.cash.added_cash_drawer', { amount: depositAmount }));
                 
                 // Clear inputs
                 document.getElementById('transactionAmount').value = '';
@@ -987,11 +993,17 @@ export class CashManagementManager {
                 return;
             }
 
+            // "No bill" entries are in whole rupees (MONEY-ROUND, #129)
+            const legAmount = entryAmount(amount);
+            if (!(legAmount > 0)) {
+                UIManager.showToast(t('msg.common.enter_valid_amount'));
+                return;
+            }
             const payment = noBillLeg({
                 id: Helpers.generateId(),
                 type, // 'received' or 'paid'
                 party: partyName,
-                amount,
+                amount: legAmount,
                 notes,
                 timestamp: new Date().toISOString(),
                 recordedBy: AppState.userName || 'Unknown'
@@ -1015,7 +1027,7 @@ export class CashManagementManager {
                 this.updateUI();
                 this.renderHistory();
                 
-                UIManager.showToast(t(type === 'paid' ? 'msg.cash.recorded_paid_to' : 'msg.cash.recorded_received_from', { amount, partyName }));
+                UIManager.showToast(t(type === 'paid' ? 'msg.cash.recorded_paid_to' : 'msg.cash.recorded_received_from', { amount: legAmount, partyName }));
                 
                 // Clear inputs
                 document.getElementById('partyName').value = '';
