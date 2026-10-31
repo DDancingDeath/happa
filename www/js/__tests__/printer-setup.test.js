@@ -257,9 +257,13 @@ describe('Bluetooth off or missing', () => {
 
     test('Scan asks Android to turn Bluetooth on, and explains when it stays off', async () => {
         mockPlugin({ enabled: false });
+        AppState.printerSettings = usePrinter({ enabled: true }, { deviceId: 'A', deviceName: 'P' });
+        await SettingsManager.updatePrinterStatus();
         await SettingsManager.scanBluetoothDevices();
         expect(window.bluetoothSerial.enable).toHaveBeenCalledTimes(1);
         expect(window.bluetoothSerial.list).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('printerStatusText').dataset.state).toBe('disconnected');
+        expect(document.getElementById('testPrintBtn').style.display).toBe('block');
 
         mockPlugin({ enabled: false, enableOk: false });
         await SettingsManager.scanBluetoothDevices();

@@ -571,6 +571,8 @@ export class SettingsManager {
             const errorMsg = t('msg.printer.failed_scan_devices', { message: PrinterService.errorText(error) });
             console.error('[SETTINGS] Scan error:', error);
             await UIManager.showModal(errorMsg);
+        } finally {
+            PrinterService.updateStatus();
         }
     }
 
