@@ -641,8 +641,9 @@ function defineSuite(prefix) {
             const db = as('staff1').collection(coll);
             // made-up createdAt on create is refused; a future client timestamp opens nothing
             await assertFails(db.doc('n3').set({ userId: 'staff1', total: 5, clientVersion: 3, createdAt: Timestamp.fromMillis(Date.now() + 30 * DAY) }));
-            await assertFails(db.doc('n4').set({ userId: 'staff1', total: 5, clientVersion: 3, timestamp: Date.now() + 365 * DAY }));
-            await seedBill(coll, 'n4', { userId: 'staff1', total: 5, clientVersion: 3, timestamp: Date.now() + 365 * DAY });
+            await assertSucceeds(db.doc('n4').set({ userId: 'staff1', total: 5, clientVersion: 3, timestamp: Date.now() + 365 * DAY, createdAt: serverTimestamp() }));
+            // the window counts from createdAt: a bill saved 31 days ago with a future timestamp is closed
+            await seedBill(coll, 'n4', { userId: 'staff1', total: 5, clientVersion: 3, timestamp: Date.now() + 365 * DAY, createdAt: savedAgo(31 * DAY) });
             await assertFails(db.doc('n4').update({ total: 6, clientVersion: 3 }));
             await assertFails(db.doc('n4').delete());
             // old-app bill (no createdAt) stays owner-only, even with a fresh timestamp
