@@ -39,7 +39,7 @@ import { SyncStatus } from '../ui/sync-status.js';
 import { historyIdBound } from '../utils/rate-history.js';
 import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { entryTime } from '../utils/due-payments.js';
-import { installFirestoreMeter, getQuotaStatus } from './firestore-meter.js';
+import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed } from './firestore-meter.js';
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
@@ -1667,7 +1667,8 @@ function scheduleLegacyScan(ws, gen) {
         if (!started) {
             cancel();
             started = legacyScanReadPromise
-                .then(() => (gen === sessionGen && windowState === ws ? scanLegacyCollections(ws, gen) : undefined))
+                // Optional: skipped under the read guards (#159); the next app open tries again
+                .then(() => (gen === sessionGen && windowState === ws && backgroundReadsAllowed() ? scanLegacyCollections(ws, gen) : undefined))
                 .catch(e => console.warn('Legacy timestamp scan failed:', e?.code || e))
                 .then(() => markStartup('legacy-scan'));
         }

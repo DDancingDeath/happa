@@ -356,6 +356,7 @@ shows the pick order — see "Planning" below. The old staging clone and its
 
 - **[AGENTS.md](AGENTS.md)** — conventions and workflows for anyone (human or AI) changing this repo
 - **[docs/architecture.md](docs/architecture.md)** — layers, which function owns each number, refactor plan, architecture ratchet test
+- **[docs/read-budget.md](docs/read-budget.md)** — the 50,000 reads/day budget, the read guards and what to do when it runs out
 - **[ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md)** — `dev_` collection prefix, switching environments
 - **[www/js/README.md](www/js/README.md)** — module layout
 - **[scripts/README.md](scripts/README.md)** — Playwright inspection helpers
