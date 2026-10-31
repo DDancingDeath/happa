@@ -431,7 +431,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         });
         if (!String(a.reason || '').trim()) {
             add(makeAnomaly('stock-adjust-no-reason', ref, {
-                at, en: `Stock changed by ${round2(change)} kg with no reason`, hi: `बिना कारण स्टॉक ${round2(change)} किलो बदला`
+                at, en: `Stock changed by ${round2(change)} kg with no reason`, hi: `बिना कारण स्टॉक ${round2(change)} kg बदला`
             }));
         }
     });

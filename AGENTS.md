@@ -163,9 +163,13 @@ In order:
   "staff"/"स्टाफ". Escape `t()` output that goes into `innerHTML`. Show one
   language at a time, never "English / हिंदी" together:
   `single-language-guard.test.js` (scanner: `node scripts/mixed-language-scan.js`)
-  fails on any literal, template or template text mixing Latin and Devanagari.
+  fails on any literal, template or template text mixing Latin and Devanagari
+  (the unit `kg` is allowed: in Hindi the weight unit is always "kg", e.g.
+  "50 kg", "₹/kg", "प्रति kg", never the Hindi word for kilo; `hindi-kg-unit.test.js`
+  checks `hi.js` and every shipped `www/` file).
   Records that carry both languages (`{ en, hi }`, stored anomalies/flags) are shown
-  with `pickLang()` from `i18n/localize.js`; old stored "English / Hindi" sentences
+  with `pickLang()` from `i18n/localize.js` (in Hindi it also shows an old stored
+  weight unit as "kg"); old stored "English / Hindi" sentences
   fall back to `splitBilingual()`.
 - **Service worker / cache bump**: every app JS/CSS/template file (and
   icon/manifest) must be listed in `STATIC_ASSETS` in `www/service-worker.js`
@@ -381,6 +385,9 @@ in `.github/review-rules-examples/`.
   reads per page. Browsers, firebase-tools and the emulator jars are cached.
   On failure, download the `test-results-N` (traces) or `playwright-report`
   artifacts.
+- **`firebase-hosting-pull-request.yml`**: a preview channel per PR (test data)
+  on each hosting site, expiring after 2 days; when the PR closes its channels
+  are deleted on every site (Firebase limits the channels per site).
 - **Required check name: `Playwright E2E (emulators)`** (the job that collects
   the shards; it passes when E2E was not needed). Don't rename it: branch
   protection matches it by name. The shard jobs (`E2E shard N/3`) are not stable
