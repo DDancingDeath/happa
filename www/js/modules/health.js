@@ -123,7 +123,7 @@ export const HealthManager = {
                     console.warn('TIP failures not loaded:', e?.code || e);
                     return [];
                 }),
-                FirebaseService.loadUsers().catch(e => {
+                FirebaseService.loadPeople().catch(e => {
                     console.warn('Users for device names not loaded:', e?.code || e);
                     return [];
                 })

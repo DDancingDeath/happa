@@ -46,7 +46,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101r-repositories';
+const BUILD_ID = '20261101y-accounts';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -508,6 +508,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             } else {
                 // Clean up Firebase listeners when user signs out
                 FirebaseService.cleanup();
+                FirebaseService.forgetPeopleCaches();
                 NotificationsManager.stop();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
@@ -1183,6 +1184,7 @@ window.app = {
         saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
         approveUser: (userId) => AdminManager.approveUser(userId),
         rejectUser: (userId) => AdminManager.rejectUser(userId),
+        restoreUser: (userId, userName) => AdminManager.restoreUser(userId, userName),
         showChangeRole: (userId, userName, currentRole) => AdminManager.showChangeRole(userId, userName, currentRole),
         resetUserPassword: (userId, email) => AdminManager.resetUserPassword(userId, email),
         deleteUser: (userId, userName) => AdminManager.deleteUser(userId, userName),

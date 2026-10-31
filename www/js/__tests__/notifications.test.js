@@ -176,6 +176,8 @@ describe('Firestore paths (fake Firestore)', () => {
         global.firebase = fake.firebase;
         AppState.currentUser = { uid: 'owner1' };
         AppState.userName = 'Owner';
+        AppState.userRole = 'owner';
+        FirebaseService.forgetPeopleCaches();
         fake.seed('users', [
             { id: 'owner1', role: 'owner' }, { id: 'owner2', role: 'owner' },
             { id: 'mgr', role: 'manager' }, { id: 'u3', role: 'staff' }
@@ -184,6 +186,17 @@ describe('Firestore paths (fake Firestore)', () => {
     afterEach(() => {
         NotificationsManager.stop();
         delete global.firebase;
+    });
+
+    test("a manager's fan-out reads the team directory, never the profiles (#87)", async () => {
+        AppState.currentUser = { uid: 'mgr' };
+        AppState.userRole = 'manager';
+        fake.seed('settings', [{ id: 'team', people: {
+            owner1: { name: 'O', role: 'owner' }, mgr: { name: 'M', role: 'manager' }, u3: { name: 'U', role: 'staff' }
+        } }]);
+        fake.raw('users').clear();
+        await FirebaseService.notifyRateChanges({ id: 'g', name: 'Gehu' }, [{ rateType: 'wholesale', oldRate: 38, newRate: 41 }], 'evt-m');
+        expect([...fake.raw('notifications').values()].map(d => d.userId)).toEqual(['owner1']);
     });
 
     test('rate changes go to everyone but the actor; wholesale only to owners/managers; one batch per event', async () => {
