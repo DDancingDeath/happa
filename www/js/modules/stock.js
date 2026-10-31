@@ -593,17 +593,19 @@ export class StockManager {
             UIManager.showToast(t('msg.stock.failed_apply_adjustment'));
             return false;
         }
-        // Saved on the phone at once (also offline); a refused write is taken out again
+        // Saved on the phone at once (also offline); a refused write is taken out again.
+        // One audit entry once the server has answered (#85)
         const auditDetails = {
             itemId: item.id, itemName, adjustType, from: currentStock, to: newStock, reason: String(reason || '').slice(0, 200)
         };
-        committed.catch(error => {
-            console.error("Stock adjustment error:", error);
-            UIManager.showToast(t('msg.stock.failed_apply_adjustment'));
-            AuditService.note(AuditService.ACTIONS.ADJUST_STOCK, { ...auditDetails, refused: true });
-            this.refreshAfterAdjustment().catch(e => console.error('Stock refresh failed:', e));
-        });
-        AuditService.note(AuditService.ACTIONS.ADJUST_STOCK, auditDetails);
+        committed.then(
+            () => AuditService.note(AuditService.ACTIONS.ADJUST_STOCK, { ...auditDetails, outcome: 'saved' }),
+            error => {
+                console.error("Stock adjustment error:", error);
+                UIManager.showToast(t('msg.stock.failed_apply_adjustment'));
+                AuditService.note(AuditService.ACTIONS.ADJUST_STOCK, { ...auditDetails, outcome: 'refused' });
+                this.refreshAfterAdjustment().catch(e => console.error('Stock refresh failed:', e));
+            });
 
         if (!AppState.stock[item.id]) {
             AppState.stock[item.id] = { quantity: 0, rate: 0 };

@@ -12,6 +12,10 @@ describe('scrubText (#116)', () => {
         ['Call 9876543210 now', 'Call <phone> now'],
         ['Call +91 98765 43210 now', 'Call <phone> now'],
         ['Call 098765-43210', 'Call <phone>'],
+        ['Call 919876543210 now', 'Call <phone> now'],
+        ['Call +91 987 654 3210 now', 'Call <phone> now'],
+        ['Pay ramesh.k@okaxis today', 'Pay <upi> today'],
+        ['Pay 9876543210@ybl', 'Pay <upi>'],
         ['Due ₹5,866.50 left', 'Due ₹<amount> left'],
         ['paid Rs. 1200', 'paid ₹<amount>'],
         ['Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcDEF123_-xyz', 'Bearer <token>'],
@@ -28,6 +32,8 @@ describe('scrubText (#116)', () => {
         const stack = 'TypeError: x is undefined\n    at render (https://myhappa.web.app/js/modules/stock.js?v=20261101r:123:45)';
         expect(scrubText(stack)).toBe(stack);
         expect(scrubText('bill P20261021-002 at 1761234567890 (doc abcDEF1234567890XYZa)')).toBe('bill P20261021-002 at 1761234567890 (doc abcDEF1234567890XYZa)');
+        // 13-digit times (also ones starting with 91…), ids with digits inside and seconds stay
+        expect(scrubText('at 9176123456789 and 1761234567 id a9876543210b K7x9876543210Qp')).toBe('at 9176123456789 and 1761234567 id a9876543210b K7x9876543210Qp');
         expect(scrubText(undefined)).toBeUndefined();
         expect(scrubText(5)).toBe(5);
     });
@@ -91,6 +97,11 @@ describe('changedFields (#85)', () => {
             .toBe('Refused by the server, not saved • Item: Wheat • 10 → 5 • Reason: Damaged');
         expect(formatAuditDetails({ section: 'labour', changes: 'laborRate: 6 → 7' })).toBe('Changes: laborRate: 6 → 7');
         expect(formatAuditDetails({ reports: 3, all: true })).toBe('Reports: 3');
+        expect(formatAuditDetails({ amount: 500, outcome: 'refused' })).toBe('Refused by the server, not saved • Amount: ₹500');
+        expect(formatAuditDetails({ amount: 500, outcome: 'saved' })).toBe('Amount: ₹500');
+        expect(formatAuditDetails({ source: 'purchases update' })).toBe('Refused: purchases update');
+        expect(formatAuditDetails({ what: 'void', billId: 'b1' })).toBe('Tried to void it • Bill: b1');
+        expect(formatAuditDetails({ device: 'abc123' })).toBe('Phone: abc123');
         expect(formatAuditDetails(null)).toBe('');
     });
     test('lists only changed fields as before → after', () => {

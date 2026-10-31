@@ -42,7 +42,7 @@ export function formatAuditDetails(details) {
     if (!details || typeof details !== 'object') return '';
     const d = details;
     const parts = [];
-    if (d.refused === true) parts.push(t('ui.settings.audit_refused'));
+    if (d.outcome === 'refused' || d.refused === true) parts.push(t('ui.settings.audit_refused'));
     if (d.billNumber) parts.push(t('ui.settings.audit_bill', { value: d.billNumber }));
     if (d.amount) parts.push(t('ui.settings.audit_amount', { value: d.amount }));
     if (d.customer) parts.push(t('ui.settings.audit_customer', { value: d.customer }));
@@ -58,5 +58,10 @@ export function formatAuditDetails(details) {
     if (has(d.reason)) parts.push(t('ui.settings.audit_reason', { value: d.reason }));
     if (has(d.changes)) parts.push(t('ui.settings.audit_changes', { value: d.changes }));
     if (has(d.reports)) parts.push(t('ui.settings.audit_reports', { value: d.reports }));
+    // #124 security entries
+    if (has(d.source)) parts.push(t('ui.settings.audit_source', { value: d.source }));
+    if (d.what === 'edit' || d.what === 'void') parts.push(t(d.what === 'void' ? 'ui.settings.audit_tried_void' : 'ui.settings.audit_tried_edit'));
+    if (has(d.billId) && !d.billNumber) parts.push(t('ui.settings.audit_bill', { value: d.billId }));
+    if (has(d.device)) parts.push(t('ui.settings.audit_device', { value: d.device }));
     return parts.join(' • ');
 }

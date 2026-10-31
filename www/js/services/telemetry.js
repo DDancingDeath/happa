@@ -6,7 +6,8 @@
 
 import { AppState } from '../utils/state.js';
 import { noteTipError } from '../tip/index.js';
-import { saveTelemetryReport, recentTelemetryReports, hideTelemetryReports, deleteTelemetryReports } from '../firebase/repos/telemetry.js';
+import { saveTelemetryReport, recentTelemetryReports, hideTelemetryReports, deleteTelemetryReportsBefore } from '../firebase/repos/telemetry.js';
+import { safeSetItem } from '../utils/storage-full.js';
 import { describeLogArg, scrubText, scrubUrl } from '../utils/scrub.js';
 
 /**
@@ -47,8 +48,8 @@ const clip = (value, max) => (value === undefined || value === null ? undefined 
 
 const SCRUBBED_FIELDS = new Set(['message', 'stack', 'context']);
 
-/** How long a hidden error report is kept before the owner's phone deletes it (#116). */
-const HIDDEN_KEEP_MS = 90 * 24 * 60 * 60 * 1000;
+/** How long an error report is kept after it was last seen (#116; the audit log keeps 90 days too). */
+const REPORT_KEEP_MS = 90 * 24 * 60 * 60 * 1000;
 
 /**
  * The telemetry document for one grouped error, holding only the fields the
@@ -389,16 +390,28 @@ const TelemetryService = {
 
         try {
             const docs = await recentTelemetryReports(300);
-            // Hidden reports are kept 90 days (as the audit log), then the owner's phone deletes them
-            const cutoff = Date.now() - HIDDEN_KEEP_MS;
-            const hiddenMs = (d) => (d.hiddenAt?.toMillis ? d.hiddenAt.toMillis() : Number(d.hiddenAt) || 0);
-            const expired = docs.filter(d => d.hidden === true && hiddenMs(d) > 0 && hiddenMs(d) < cutoff).map(d => d.id);
-            if (expired.length) deleteTelemetryReports(expired).catch(e => console.warn('Old hidden reports not deleted:', e?.code || e));
+            this.cleanupOldReports().catch(e => console.warn('Old error reports not deleted:', e?.code || e));
             return mergeTelemetryReports(docs.filter(d => d.hidden !== true));
         } catch (error) {
             console.warn('Failed to get telemetry data:', error.message);
             return [];
         }
+    },
+
+    /**
+     * Retention (#116, as the audit log): the owner's phone deletes reports last seen
+     * more than 90 days ago, hidden or not, at most 450 per run (one bounded query),
+     * at most once a day per phone.
+     * @param {number} [now]
+     * @returns {Promise<number>} how many were deleted
+     */
+    async cleanupOldReports(now = Date.now()) {
+        if (AppState.userRole !== 'owner') return 0;
+        const key = 'happaTelemetryCleanup';
+        if (now - (Number(localStorage.getItem(key)) || 0) < 24 * 60 * 60 * 1000) return 0;
+        const deleted = await deleteTelemetryReportsBefore(now - REPORT_KEEP_MS, 450);
+        safeSetItem(key, String(now));
+        return deleted;
     },
 
     /**

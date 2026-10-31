@@ -1,7 +1,7 @@
 /**
  * @fileoverview Repository of error reports (`telemetry`, docs/architecture.md
  * phase 4): create-only report documents (#122), the owner's list, hiding
- * (#116) and deleting reports hidden for over 90 days. services/telemetry.js
+ * (#116) and the 90-day retention. services/telemetry.js
  * groups errors and decides when to send them.
  * @module firebase/repos/telemetry
  */
@@ -32,14 +32,19 @@ export async function recentTelemetryReports(max = 300) {
 }
 
 /**
- * Deletes report documents by id (owner; hidden reports past their 90 days), at most 450.
- * @param {string[]} ids
+ * Deletes up to `max` reports last seen before `cutoff` (owner; retention), one batch.
+ * @param {number} cutoff - ms
+ * @param {number} [max=450]
+ * @returns {Promise<number>} how many were deleted
  */
-export async function deleteTelemetryReports(ids) {
+export async function deleteTelemetryReportsBefore(cutoff, max = 450) {
     const db = firebase.firestore();
+    const snapshot = await telemetry(db).where('lastSeen', '<', cutoff).limit(max).get();
+    if (snapshot.empty) return 0;
     const batch = db.batch();
-    ids.slice(0, 450).forEach(id => batch.delete(telemetry(db).doc(id)));
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
     await batch.commit();
+    return snapshot.size;
 }
 
 /**

@@ -585,13 +585,15 @@ export const MoneyManager = {
             failed(e);
             return;
         }
-        // Saved on the phone at once (also offline); a refused write is taken out again
-        committed.catch(e => {
-            failed(e);
-            AuditService.note(AuditService.ACTIONS.RECORD_WITHDRAWAL, { amount, person, date, refused: true });
-            this.render();
-        });
-        AuditService.note(AuditService.ACTIONS.RECORD_WITHDRAWAL, { amount, person, date });
+        // Saved on the phone at once (also offline); a refused write is taken out again.
+        // One audit entry once the server has answered (#85)
+        committed.then(
+            () => AuditService.note(AuditService.ACTIONS.RECORD_WITHDRAWAL, { amount, person, date, outcome: 'saved' }),
+            e => {
+                failed(e);
+                AuditService.note(AuditService.ACTIONS.RECORD_WITHDRAWAL, { amount, person, date, outcome: 'refused' });
+                this.render();
+            });
         ['moneyWdAmount', 'moneyWdPerson', 'moneyWdPurpose'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         const f = document.getElementById('moneyWithdrawalForm');
         if (f) f.hidden = true;

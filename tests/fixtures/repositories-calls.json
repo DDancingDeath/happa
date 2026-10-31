@@ -500,15 +500,28 @@
       "get"
     ],
     [
-      "batch"
-    ],
-    [
       "collection",
       "dev_telemetry"
     ],
     [
-      "doc",
-      "t9"
+      "where",
+      "lastSeen",
+      "<",
+      1784781000000
+    ],
+    [
+      "limit",
+      450
+    ],
+    [
+      "get"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_telemetry/t8)"
     ],
     [
       "batch.delete",
