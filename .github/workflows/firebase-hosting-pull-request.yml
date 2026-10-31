@@ -13,6 +13,11 @@ permissions:
   checks: write
   contents: read
   pull-requests: write
+# A newer event (push, close) cancels the PR's run in flight, so an older deploy
+# can't recreate a channel after the close deleted it.
+concurrency:
+  group: firebase-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 jobs:
   build_and_preview:
     if: ${{ github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
