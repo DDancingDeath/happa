@@ -196,7 +196,7 @@
 
 .split-rest-btn {
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
@@ -262,4 +262,34 @@
 
 .print-btn:active {
   transform: scale(0.98);
+}
+
+/* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
+.filter-btn,
+.sub-tab,
+.save-btn,
+.draft-btn,
+.split-rest-btn,
+.contact-pick-btn,
+.anomaly-btn,
+.aging-btn,
+.aging-sort-btn,
+.history-stale-refresh,
+[data-record-payment],
+[data-mark-cleared] {
+  min-height: 44px;
+}
+
+.contact-pick-btn {
+  min-width: 44px;
+}
+
+[data-record-payment],
+[data-mark-cleared],
+#dueList input[type="number"] {
+  font-size: 14px;
+}
+
+#dueList input[type="number"] {
+  min-height: 44px;
 }
