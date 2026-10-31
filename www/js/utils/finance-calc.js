@@ -20,7 +20,7 @@
 
 import {
     collectEvents, cloneState, createItemKeyResolver, replayEvents, replayWithValues,
-    eventTime
+    eventTime, purchaseLineValue
 } from './stock-replay.js';
 import { stockValue } from './calc/stock.js';
 import { activityBills, billLabour, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
@@ -169,9 +169,8 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
         n++;
         const idx = i + n - 1;
         if (ev.kind === 'purchase') {
-            const qty = num(ev.item.qty || ev.item.quantity);
-            const rate = num(ev.item.rate);
-            purchases += qty * rate;
+            const { qty, rate, value } = purchaseLineValue(ev.item);
+            purchases += value;
             if (prevQty < 0 && qty > 0) {
                 const covered = Math.min(qty, -prevQty);
                 deficit.qty += covered;
@@ -179,8 +178,8 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
             }
             if (detail) {
                 namer.note(key, ev.item.name);
-                bump(key, 'purchases', qty * rate);
-                rows.purchases.push({ key: `p${n}`, ...billFields(ev.bill, 'purchase'), itemKey: key, ...namer.name(key), qty, rate, amount: qty * rate });
+                bump(key, 'purchases', value);
+                rows.purchases.push({ key: `p${n}`, ...billFields(ev.bill, 'purchase'), itemKey: key, ...namer.name(key), qty, rate, amount: value });
             }
         } else if (ev.kind === 'sale') {
             const qty = num(ev.item.qty || ev.item.quantity);

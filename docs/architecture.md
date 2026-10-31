@@ -88,7 +88,7 @@ in `www/js/utils/calc/`.
 | UI never assigns `AppState.<x>` or mutates its arrays; services update state through a store API. | ratchet `appStateWrite` (everywhere; today's writers are baselined) |
 | Calendar arithmetic only in `utils/dates.js` (or calc that imports it). | ratchet `dateMath` (all but calc) |
 | Every displayed number comes from a function in `www/js/utils/calc/` or `business-metrics` / `money` / `labour` / `dates` / `rent-math`, with a spec ID in calculations.md and an oracle test. | review (`displayed-number-spec`), oracle, `metric-registry.test.js` |
-| One rounding rule per quantity, applied in calc: line totals, bill totals, payments, stock values (owner decision pending, see F-R1). | oracle + property tests |
+| One rounding rule per quantity, applied in calc (F-R1, resolved by #129: rates keep paise; money amounts are whole rupees, half-up; stock values at saved line totals). One switch, `ROUNDING` in `utils/calc/billing.js`; calculations.md MONEY-ROUND. | oracle (`billForm`, `stockReplay`) + property tests, `rounding.test.js` |
 | Pages talk to other pages through events or a service, not `window.app.x.y()`. | review (Phase 6) |
 
 ## 3. Calculation map: every spec ID and its owner
@@ -206,8 +206,8 @@ Each claim of the combined review checked against `main` `ca6f2ba`.
 
 | Family | Verdict | Can disagree? |
 |---|---|---|
-| Line totals | ✅ purchase.js:199, retail-sale.js:206, wholesale-sales.js:215 (`Math.round`), money.js:232 (`round2` when a line has no total), stock-replay.js:174 (`qty × rate`, unrounded) | **Yes.** 12.4 kg × ₹33.50 = 415.40: the bill line stores ₹415, the stock replay adds ₹415.40, so M16's line value and M17 / AC1's "purchases at line rate" differ by ₹0.40 per such line. |
-| Bill total vs payment (Math.round vs round2) | ✅ purchase.js:419, :484-496 vs money.js:258 | **Yes.** Lines ₹1,000, labour typed ₹12.50: saved `grandTotal` = ₹987.50 (`round2`), but the screen shows ₹988 and the Cash tick fills ₹988. `checkPaymentSplit` passes (−0.50 is within ₹1), so the bill is saved with cash ₹988 on a ₹987.50 total: Today T8 / M13 count ₹988 out, M16 counts ₹987.50. |
+| Line totals | ✅ purchase.js:199, retail-sale.js:206, wholesale-sales.js:215 (`Math.round`), money.js:232 (`round2` when a line has no total), stock-replay.js:174 (`qty × rate`, unrounded) | **Yes** (fixed by #129: the replay now adds the saved line amount). 12.4 kg × ₹33.50 = 415.40: the bill line stores ₹415, the stock replay added ₹415.40, so M16's line value and M17 / AC1's "purchases at line rate" differed by ₹0.40 per such line. |
+| Bill total vs payment (Math.round vs round2) | ✅ purchase.js:419, :484-496 vs money.js:258 | **Yes** (fixed by #129: labour is saved as ₹13, payable ₹987 on screen, tick and bill). Lines ₹1,000, labour typed ₹12.50: saved `grandTotal` = ₹987.50 (`round2`), but the screen shows ₹988 and the Cash tick fills ₹988. `checkPaymentSplit` passes (−0.50 is within ₹1), so the bill is saved with cash ₹988 on a ₹987.50 total: Today T8 / M13 count ₹988 out, M16 counts ₹987.50. |
 | Sale totals | ✅ retail-sale.js:371 (plain `reduce`), :725 (`sumMoney`), day.js:158-165, `money.billTotal` | Field order: a legacy purchase with `billTotal` 1,000 and `total` 970 (no `grandTotal`) is ₹1,000 in Today T1 (day.js:155) and ₹970 in Money M16 (`billTotal()` reads `total` first). |
 | Outstanding due | ✅ `money.wholesaleOutstanding` vs `money.outstandingDue` | **Yes.** A legacy wholesale sale with no `payment` object, `total` 1,000, `cashPayment` 700, `dueAmount` 300: Wholesale › Outstanding shows ₹1,000, Outstanding / Money show ₹300. Also `payment.due` 0 with received < total (within the ₹1 split tolerance) shows the gap on Wholesale only. |
 | EXP-KIND (new) | 4 copies, 2 rules (see map) | **Yes.** An expense with `type: 'personal'` and no `category`, or `category: 'Personal'`: Today T5 and the drawer count it personal; Money M4/M8, Statements and finance-calc count it business. |
@@ -237,7 +237,7 @@ call `billTotal()`), cash-session difference / shortfall ❌ (C8; the bands are
 | # | Claim | Verdict | Evidence |
 |---|---|---|---|
 | 1 | Offline blind `set()` for initial bill saves; two phones overwrite each other | ◐ | `saveBill` (firestore-service.js:774-823) does a whole-doc `set()`, but on a fresh client-made id (:779), so two phones never share an id. Retries go through `retryBillSave` (transaction, keeps server money fields, :846-891) and edits through `updateBillChecked` (transaction, conflict check, :899). Remaining risk: offline item / settings / user writes (#113). |
-| 7 | Rounding not enforced at storage | ✅ | Line totals whole rupees, bill totals and payments `round2`, stock values unrounded (examples above). #129. |
+| 7 | Rounding not enforced at storage | ✅ → fixed | Line totals whole rupees, bill totals and payments `round2`, stock values unrounded (examples above). **F-R1 resolved (#129, owner 2026-11-01):** every money amount is saved as a whole rupee (half-up) through `ROUNDING`, labour included (₹12.50 → ₹13, payable ₹987 on screen, tick and bill), and the stock replay values purchases at their saved line amount (`purchaseLineValue`, `STOCK_REPLAY_FORMAT` 5), so the ₹415 / ₹415.40 and ₹988 / ₹987.50 disagreements above are gone for new records; old paise records are summed as stored. The rules keep accepting paise (`moneyOk`, #184) for older app versions and old bills; only the electricity check widened to ±₹0.51. |
 | 10 | Bill-number counters transactional? | ✅ | Online: `Helpers.generateBillNumber` → `_nextCounterValue`, a `runTransaction` on `counters/{P|S|W}{YYYYMMDD}` (helpers.js:293-330, 409-430), seeded once from today's bill count. Offline or after 2.5 s: a device-scoped `{prefix}{date}-{device}-{seq}` (`nextOfflineBillNumber`, :363) that cannot equal an online number. A transaction that times out on the phone but commits leaves a gap, never a duplicate; `findDuplicateBillNumbers` flags any collision. Rent receipts: `rent-store.nextSeq` inside the payment transaction (rent-store.js:418-434). |
 | 14-16 | Unbounded reads (telemetry.js:438-445) | ✅ | Clearing telemetry reads the whole collection. #159. |
 | 2-6, 8-9, 11-13, 17-20 | | not re-checked | Tracked by #126, #102, #64, #65, #87, #98, #103, #124, #174, #153, #161, #119, #122, #59, #66. |
@@ -265,8 +265,7 @@ Rules for every refactor PR:
 4. **Fixes are separate PRs.** The disagreements in section 4 (EXP-KIND,
    wholesale due, BILL-TOTAL order, labour rounding) are bugs: each gets an issue,
    an oracle fixture (skipped with `// BUG: see #N` until fixed) and its own PR.
-   A rounding change waits for the owner's decision (F-R1: whole-rupee lines vs
-   paise, #129).
+   The rounding decision (F-R1) is made and applied (#129: MONEY-ROUND).
 5. A shipped `www/` change needs the cache bump (AGENTS.md section 4).
 
 Order (S/M/L = size; ⚠ = conflicts with in-flight work, wait for it to merge).
@@ -324,7 +323,7 @@ holds the counts over all of `www/js`; at Phase 0 (`ca6f2ba`) and after 2c / 2e 
 | Category | Phase 0 | After 2c/2e/2h | After 2f/2g/2i | After 4 | Largest now |
 |---|---|---|---|---|---|
 | firestore | 57 | 57 | 57 | 0 (absolute) | none outside the repositories |
-| moneyMath | 205 | 111 | 45 | 45 | wholesale-sales 11, history 7, printer 6, billing 5, outstanding 5 |
+| moneyMath | 205 | 111 | 45 | 45 (42 after #129: the bill-edit save uses `calc/billing`) | wholesale-sales 11, history 7, printer 6, outstanding 5, billing 2 |
 | domNumber | 4 | 3 | 2 | 2 | utils/helpers.js 2 (`getElementNumber` / `getElementInt`) |
 | appStateWrite | 83 | 81 | 81 | 81 | firestore-service 25, settings 19, stock 8 |
 | dateMath | 22 | 5 | 3 | 3 | anomalies 2, history 1 |
