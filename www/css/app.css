@@ -816,19 +816,15 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
 /* ---- css/tabs.css ---- */
 .tab {
   display: none;
-  /* Bottom padding raised from 24px → calc(96px + safe-area) so the
-     last row of action buttons (WhatsApp / Save / Print on Bills, etc.)
-     is not clipped by the Windows taskbar, by mobile browser dynamic
-     chrome, or by the iOS home-indicator safe area. The 96px alone
-     covers desktop OS taskbars; env(safe-area-inset-bottom) adds the
-     iOS notch/home-bar inset on top. height: 100vh is intentionally
-     kept — replacing it is a larger refactor with risk of breaking
-     inner-scroll on Android. See REVIEW_ISSUES STG-WALK-6 in the
-     staging clone for full context. */
+  /* The tab is the scroll container. 100dvh is the visible height while the
+     browser's URL bar shows, so the page bottom is not hidden under it (#104);
+     100vh is the fallback for older WebViews. */
   padding: 70px 16px calc(96px + env(safe-area-inset-bottom, 0px)) 16px;
   max-width: 480px;
   min-height: 100vh;
+  min-height: 100dvh;
   height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -7297,6 +7293,7 @@ body.dark-mode .notif-panel-actions {
 
 /* Statements */
 .st-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.st-list[hidden], .st-view[hidden] { display: none; }
 .st-item {
     display: grid;
     grid-template-columns: 36px 1fr 20px;
@@ -7882,4 +7879,72 @@ body.dark-mode .notif-panel-actions {
   .ins-section > .ins-hero { grid-column: 1 / -1; }
   .ins-section > .ins-wide { grid-column: 1 / -1; }
   .ins-hero-value { font-size: 40px; }
+}
+
+/* ---------- Stocks and Statements (#106): use the width ---------- */
+@media (min-width: 1024px) {
+  #stockList,
+  #deadStockList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+
+  #stockList > :not(.stock-item),
+  #deadStockList > :not(.stock-item) {
+    grid-column: 1 / -1;
+  }
+
+  #stockList > .stock-item,
+  #deadStockList > .stock-item {
+    margin-bottom: 0;
+  }
+
+  .stock-item:hover {
+    transform: none;
+  }
+
+  /* Adjustment form left, its history right */
+  #stockAdjustmentSection:not([style*="none"]) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  #stockAdjustmentSection > .settings-card {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    margin-bottom: 0;
+  }
+
+  #stockAdjustmentSection > :not(.settings-card) {
+    grid-column: 2;
+  }
+
+  #stockAdjustmentSection > h3 {
+    margin-top: 0;
+  }
+
+  .st-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Statement: choices on the left, the document on the right */
+  .st-view:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 16px;
+    align-items: start;
+  }
+
+  .st-view > .st-bar { grid-column: 1 / -1; }
+  .st-view > .st-controls { grid-column: 1; grid-row: 2; }
+  .st-view > .st-actions { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; }
+  .st-view > .st-csv-option { grid-column: 1; grid-row: 4; }
+  .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
 }
