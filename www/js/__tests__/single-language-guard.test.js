@@ -76,6 +76,8 @@ describe('source scan: no "English / हिंदी" strings', () => {
         expect(scan.scanJsSource("const a = x.en + ' · ' + x.hi;")).toHaveLength(1);
         expect(scan.scanJsSource("const a = { en: 'Open', hi: 'खोलें' };")).toEqual([]);
         expect(scan.scanJsSource("const a = ['English', 'हिंदी'];")).toEqual([]);
+        expect(scan.scanJsSource('const a = { hi: `बिना कारण स्टॉक ${n} kg बदला, ₹/kg` };')).toEqual([]);
+        expect(scan.scanJsSource("const a = 'Rice 5 kg चावल';")).toHaveLength(1);
         expect(scan.scanHtmlSource('<p>Fixed / सुधारा</p><input placeholder="Item / आइटम"><!-- Note / नोट -->')).toHaveLength(2);
         expect(scan.scanHtmlSource('<button>English / हिंदी</button>')).toEqual([]);
     });
@@ -226,7 +228,7 @@ describe('Anomalies page and Today day report render in one language', () => {
 
     test('Hindi: Hindi UI text, no English UI text', async () => {
         const text = await render('hi');
-        ['आज की रिपोर्ट', 'जाँच बाकी', 'सभी गड़बड़ियाँ', 'खोलें', 'सुधारा', 'गंभीर', 'Mahua Naya: 1.0 किलो बिक्री',
+        ['आज की रिपोर्ट', 'जाँच बाकी', 'सभी गड़बड़ियाँ', 'खोलें', 'सुधारा', 'गंभीर', 'Mahua Naya: 1.0 kg बिक्री',
             'नकद: बंद, ₹50 कम', 'गड़बड़ियाँ', 'सूची', 'पैटर्न', 'मुख्य पार्टी'].forEach(s => expect(text).toContain(s));
         ['Day report', 'Needs review', 'All anomalies', 'Open', 'Fixed', 'High', 'selling 1.0 kg', 'Cash:', 'Top parties',
             'Loading', 'Severity', 'Patterns'].forEach(s => expect(text).not.toContain(s));
