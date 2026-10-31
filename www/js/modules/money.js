@@ -14,15 +14,16 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
-import { formatRupees, formatAmount, round2, normalizeLabourSettings } from '../utils/money.js';
-import { labourSummary, labourToPayByDay, labourCalcText } from '../utils/labour.js';
-import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate } from '../utils/dates.js';
+import { formatRupees, formatAmount, normalizeLabourSettings } from '../utils/money.js';
+import { labourSummary, labourToPayByDay, labourCalcText, periodLabourGap } from '../utils/labour.js';
+import { formatMonth, formatDay, toLocalISODate, parseAnyBillDate, monthStart, addLocalDays, periodBounds, localDayKeys, endUpToNow } from '../utils/dates.js';
 import { pickReplayBase, billsInRange } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom, refreshOnDemandHistory } from '../utils/history-window.js';
 import { lastCountedSession } from '../utils/cash-session.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth,
-    itemSummary, biggestChange, profitPerDay, billTime
+    itemSummary, biggestChange, profitPerDay, billTime, roundTo, sharePct, addsUp, netMoneyByDay,
+    accountsTotal
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
@@ -173,7 +174,7 @@ export const MoneyManager = {
             setInsightsContext({ preset: preset === 'this-year' ? (dir < 0 ? 'last-year' : 'this-year') : (dir > 0 ? 'this-year' : 'last-year') });
         } else {
             const from = Number.isFinite(r.from) ? new Date(r.from) : now;
-            const target = new Date(from.getFullYear(), from.getMonth() + dir, 1);
+            const target = monthStart(from, dir);
             if (target > now) return;
             const key = monthKeyOf(target.getTime());
             setInsightsContext({ preset: key === monthKeyOf(now.getTime()) ? 'this-month' : `month:${key}` });
@@ -245,7 +246,8 @@ export const MoneyManager = {
         if (isFullHistoryLoaded()) return { list: [], complete: true };
         const end = Math.min(to, Date.now());
         if (!Number.isFinite(from) || end - from > 62 * 86400000) return { list: [], complete: false };
-        const key = `${toLocalISODate(new Date(from))}|${toLocalISODate(new Date(Math.max(from, end - 1)))}`;
+        const { first, last } = periodBounds(from, end);
+        const key = `${first}|${last}`;
         const hit = this.sessionCache.get(key);
         if (hit && hit.list && Date.now() - hit.at < SESSION_TTL_MS) return { list: hit.list, complete: true };
         if (!hit || (!hit.pending && Date.now() - hit.at >= SESSION_TTL_MS)) {
@@ -280,7 +282,7 @@ export const MoneyManager = {
      * its due legs are then on the bills; the drawer balance is not).
      */
     drawerSessions(now = new Date()) {
-        const a = toLocalISODate(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30));
+        const a = toLocalISODate(addLocalDays(now, -30));
         const b = toLocalISODate(now);
         const key = `${a}|${b}`;
         const hit = this.drawerCache;
@@ -416,7 +418,7 @@ export const MoneyManager = {
             ? ` <button type="button" class="ins-link" data-go="insights-items" data-metric-ref="I2">${esc(t('ui.money.split_link'))} ›</button>` : '';
         this.html('moneySalesSplit', `<span data-metric-ref="M1">${esc(tn('ui.money.bills', m.M1.count))}</span>${splitLink}`);
         this.text('moneyCogs', money(m.M2));
-        this.text('moneyGross', m.M3.total === null ? '—' : `${money(m.M3.total)}${m.M3.per100 !== null ? ` · ${t('ui.money.per100', { value: Math.round(m.M3.per100 * 10) / 10 })}` : ''}`);
+        this.text('moneyGross', m.M3.total === null ? '—' : `${money(m.M3.total)}${m.M3.per100 !== null ? ` · ${t('ui.money.per100', { value: roundTo(m.M3.per100, 1) })}` : ''}`);
         this.text('moneyBusinessTerm', money(m.M4.total));
         this.text('moneyBadDebts', money(m.M5));
         this.text('moneyProfitTerm', money(m.M6.total));
@@ -457,7 +459,7 @@ export const MoneyManager = {
         const valueOf = (k) => {
             if (k === current && r.month === current) return m.M6.total;
             const b = monthBounds(k);
-            if (this.covered(b.from)) return this.summary({ from: b.from, to: Math.min(b.to, now.getTime() + 1) }).M6.total;
+            if (this.covered(b.from)) return this.summary({ from: b.from, to: endUpToNow(b.to, now) }).M6.total;
             return figuresFromSnapshot(this.snapshots[k])?.M6 ?? null;
         };
         const vals = keys.map(valueOf);
@@ -485,24 +487,13 @@ export const MoneyManager = {
         this.text('moneyOut', money(m.M13.total));
         this.html('moneyInSplit', `<span data-metric-ref="M12">${esc(t('ui.money.cash_online', { cash: formatRupees(m.M12.cash), online: formatRupees(m.M12.online) }))}</span>`);
         this.html('moneyOutSplit', `<span data-metric-ref="M13">${esc(t('ui.money.cash_online', { cash: formatRupees(m.M13.cash), online: formatRupees(m.M13.online) }))}</span>`);
-        // Day by day (net money in), only for a month.
+        // Day by day (net money in, M14 per day), only for a month.
         if (!r.month) { this.html('moneyCashChart', ''); return; }
-        const days = {};
-        const add = (rows, sign) => (rows || []).forEach(x => {
-            if (!Number.isFinite(x.t)) return;
-            const k = toLocalISODate(new Date(x.t));
-            days[k] = (days[k] || 0) + sign * (Number(x.amount) || 0);
-        });
-        const d = m.detail || {};
-        add(d.receivedAtSale, 1); add(d.dueReceived, 1); add(d.paidAtPurchase, -1); add(d.duePaid, -1);
-        add(d.business, -1); add(d.personal, -1);
-        const start = new Date(r.from);
-        const end = new Date(Math.min(r.to, Date.now()) - 1);
-        const keys = [];
-        for (let x = new Date(start); x <= end; x = new Date(x.getFullYear(), x.getMonth(), x.getDate() + 1)) keys.push(toLocalISODate(x));
+        const keys = localDayKeys(r.from, Math.min(r.to, Date.now()));
+        const net = netMoneyByDay(m.detail, keys);
         const lang = getLang();
-        const labelsD = keys.map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${money(round2(days[k] || 0))}` }));
-        this.html('moneyCashChart', barsSvg(keys.map(k => round2(days[k] || 0)), { labels: labelsD, onTap: 'data-day' }));
+        const labelsD = keys.map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${money(net[i])}` }));
+        this.html('moneyCashChart', barsSvg(net, { labels: labelsD, onTap: 'data-day' }));
     },
 
     renderSpending({ m, prev, ly, labels, r }) {
@@ -519,7 +510,7 @@ export const MoneyManager = {
         this.html('moneySpendCaveats', this.caveatsHtml(m, ['M4']));
         const max = Math.max(1, ...cats.map(c => c.total));
         this.html('moneyCategories', cats.length
-            ? cats.map(c => `<div class="ins-barrow ins-tap" data-breakdown="business" role="button" tabindex="0"><span class="ins-barname">${esc(catName(c.category))}</span><span class="ins-bartrack"><span class="ins-barfill" style="width:${Math.round((c.total / max) * 100)}%"></span></span><span class="ins-barval">${money(c.total)}</span></div>`).join('')
+            ? cats.map(c => `<div class="ins-barrow ins-tap" data-breakdown="business" role="button" tabindex="0"><span class="ins-barname">${esc(catName(c.category))}</span><span class="ins-bartrack"><span class="ins-barfill" style="width:${sharePct(c.total, max)}%"></span></span><span class="ins-barval">${money(c.total)}</span></div>`).join('')
             : `<p class="ins-empty-text">${esc(t('ui.money.no_expenses'))}</p>`);
         this.text('moneyPersonal', money(m.M8.total));
         this.text('moneyWithdrawn', money(m.M9));
@@ -539,9 +530,9 @@ export const MoneyManager = {
         this.text('moneyLabourBills', tn('ui.today.labour_deducted_bills', deducted.bills));
         this.text('moneyLabourToPay', money(toPay.amount));
         this.text('moneyLabourCalc', labourCalcText(toPay, 'ui.money.labour_to_pay_calc'));
-        const diff = round2(toPay.amount - deducted.amount);
-        const key = Math.abs(diff) < 0.5 ? 'ui.today.labour_same' : diff > 0 ? 'ui.today.labour_more' : 'ui.today.labour_less';
-        this.text('moneyLabourDiff', t(key, { amount: formatRupees(Math.abs(diff)) }));
+        const gap = periodLabourGap(toPay.amount, deducted.amount);
+        const key = { same: 'ui.today.labour_same', more: 'ui.today.labour_more', less: 'ui.today.labour_less' }[gap.kind];
+        this.text('moneyLabourDiff', t(key, { amount: formatRupees(gap.amount) }));
         return { deducted, toPay };
     },
 
@@ -607,7 +598,7 @@ export const MoneyManager = {
     },
 
     accountsTotal() {
-        return round2(this.accounts().reduce((a, x) => a + (x.type === 'liability' ? -1 : 1) * (Number(x.balance) || 0), 0));
+        return accountsTotal(this.accounts());
     },
 
     saveAccount() {
@@ -639,8 +630,9 @@ export const MoneyManager = {
         const worth = netWorth({ stock, receivable: dues.receivable.total, payable: dues.payable.total, accounts, drawer }, this.cfg());
         const seeStock = this.can('stockValue');
         this.text('moneyWorthValue', seeStock ? money(worth) : '—');
-        const lyClose = figuresFromSnapshot(this.snapshots[monthKeyOf(new Date(now.getFullYear() - 1, now.getMonth(), 1).getTime())])?.closing;
-        const sinceLabel = formatMonth(new Date(now.getFullYear() - 1, now.getMonth(), 1), { lang: getLang() });
+        const lyMonth = monthStart(now, -12);
+        const lyClose = figuresFromSnapshot(this.snapshots[monthKeyOf(lyMonth.getTime())])?.closing;
+        const sinceLabel = formatMonth(lyMonth, { lang: getLang() });
         // Compared on the stock + dues part only (old dues and accounts are not kept per month).
         const cmp = { ...vsItem(stock, lyClose, t('ui.money.stock_vs', { when: sinceLabel })), unknownText: t('ui.money.stock_vs_not_known', { when: sinceLabel }) };
         this.html('moneyWorthCompare', seeStock && Number.isFinite(stock) && (cmp.c || cmp.unknown) ? compareHtml([cmp]) : '');
@@ -663,8 +655,7 @@ export const MoneyManager = {
     /** AC12 / AC5: the page's dues agree with Outstanding's rule, items add up to sales. */
     renderChecks({ m }) {
         const items = itemSummary(m);
-        const sum = items.reduce((a, x) => a + x.sales, 0);
-        const okItems = Math.abs(sum - m.M1.total) <= 1;
+        const okItems = addsUp(items, 'sales', m.M1.total);
         const okStock = !m.M17 || Math.abs(m.M17.gap) <= 100;
         const ok = okItems && okStock;
         this.html('moneyChecks', `<button type="button" class="ins-checkline ${ok ? 'ok' : 'warn'}" data-go="diagnostics">${ok ? '✓' : '⚠'} ${esc(t(ok ? 'ui.money.checks_ok' : 'ui.money.checks_warn'))}</button>`);
@@ -782,8 +773,7 @@ export const MoneyManager = {
                 .map(b => parseAnyBillDate(b.timestamp ?? b.date)?.getTime()).filter(Number.isFinite);
             const now = Date.now();
             const fetchedAt = FirebaseService.getFullHistoryFetchedAt?.() || 0;
-            const d = new Date(now);
-            const prevFrom = new Date(d.getFullYear(), d.getMonth() - 1, 1).getTime();
+            const prevFrom = monthStart(now, -1).getTime();
             const floor = monthBounds(snapshotsFrom(now)).from;
             // Months a stale mark can reach (read back, older than the two rolled ones) are written guarded.
             const markable = (k) => { const f = monthBounds(k).from; return f >= floor && f < prevFrom; };

@@ -11,7 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { formatAmount, formatRupees, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2 } from '../utils/money.js';
-import { parseAnyBillDate, todayLocalISO } from '../utils/dates.js';
+import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
 import { checkPaymentSplit, directionFor } from '../utils/due-payments.js';
 import { CashManagementManager } from './cash-management.js';
 import { PrinterService } from '../services/printer.js';
@@ -208,7 +208,7 @@ export class OutstandingManager {
         const totalLabel = tt(isPurchase ? 'ui.outstanding.total_payable' : 'ui.outstanding.total_receivable');
         const paidLabel = tt(isPurchase ? 'ui.outstanding.paid' : 'ui.outstanding.received');
 
-        const today = new Date();
+        const today = startOfLocalDay();
         shownTransactions.forEach(transaction => {
             const div = document.createElement("div");
             div.className = "history-item";

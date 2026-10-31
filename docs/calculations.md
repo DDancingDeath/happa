@@ -29,8 +29,8 @@ ID, today and after the refactor: [architecture.md](architecture.md) §3.
 | BILL-DUE | Still owed on a bill | BILL-PAY due, never below 0, and 0 when the bill is cleared or written off. One function, `outstandingDue()` in `utils/money.js`: Outstanding, Money, Today, Wholesale › Outstanding, the History due chip and bill details (History, Wholesale), the printed receipt and WhatsApp bill text, and the bills' `openDue` flag (what a phone loads as dues) use it. A due of 0 with cash + online a little under the total (inside the ₹1 split tolerance) is not a due. |
 | DUE-PAY | Due payment | One entry in a bill's `payments[]` (cash and/or online; entries before #107 have only `amount`, which is cash), or the same payment as a leg in a cash session's `duePayments` (every session of that day: legacy days can have more than one). The same payment id is counted once. A write-off (`kind: 'writeOff'`) is never money. |
 | EXP-KIND | Business or personal expense | Personal only when the expense is tagged personal: its `category` is "personal" (any case), or, on an expense with no category, its `type` is. Anything else — including old expenses with no tag, and a business expense whose type is "personal" — is business and should be shown as "uncategorised" (owner decision #36). One function, `isPersonalExpense()` in `utils/money.js`: Today (T4, T5, `utils/calc/today.js`), the Expenses page's business / personal lists, the drawer (C3), Money (M4 and its category rows, M8), Statements (ST1) and `finance-calc` use it. |
-| DAY | A day | Local (IST) calendar day, midnight to midnight, using the bill's own date (❓ open: #99 asks whether "Today" should follow the open cash session instead). Dates may be ISO, `DD/MM/YYYY` or `DD/MM/YYYY, h:mm:ss am`; all mean local time. |
-| PERIOD | This week / month / year | Calendar period up to now: week from Monday, month from the 1st, year from 1 January (owner decision #43, 2026-10-26: calendar month; `insights-config.js` `monthMode` / `yearStartMonth` can switch to the last 30 days or an April year). "Last 7 / 30 days" would be labelled so. |
+| DAY | A day | Local (IST) calendar day, midnight to midnight, using the bill's own date (❓ open: #99 asks whether "Today" should follow the open cash session instead). Dates may be ISO, `DD/MM/YYYY` or `DD/MM/YYYY, h:mm:ss am`; all mean local time. All calendar steps are in `utils/dates.js`: `startOfLocalDay` / `endOfLocalDayExclusive` (a day), `addLocalDays` (n days, at local midnight), `localDayKeys` / `periodBounds` (the days of a period), `endUpToNow`; pages never add days or months themselves. |
+| PERIOD | This week / month / year | Calendar period up to now: week from Monday, month from the 1st, year from 1 January (owner decision #43, 2026-10-26: calendar month; `insights-config.js` `monthMode` / `yearStartMonth` can switch to the last 30 days or an April year). "Last 7 / 30 days" would be labelled so. Months step from the 1st (`dates.monthStart`, `monthRange`): one month back from 31 Mar is February, from 1 Jan is December of last year; the same date a month later is clipped to the month's end (`dates.addMonths`: 31 Jan + 1 = 28 Feb, 29 Feb in a leap year). |
 | AVG-COST | Average cost of an item | Weighted average: each purchase adds its quantity at the line rate; each sale removes quantity at the average cost of that moment; adjustments add (at their rate), remove (at average cost, never below zero) or set the quantity. Lines match a catalogue item by item id, else by English or Hindi name (trimmed, any case). Retail sales reduce stock like wholesale and are costed the same way (owner decision #33, 2026-10-25). |
 | COGS | Cost of goods sold | For every sale line: quantity × AVG-COST of that item at the moment of the sale. |
 | OPENING | Opening record (old-app due) | A bill-shaped record written by the move from the old app (`tools/migrate`): it has an `openingBalance` object, no lines and a total of ₹0, and is dated with the old bill's date (which can be today). It is a **balance only**: it counts in dues — Outstanding, aging (from its original date), reminders, statements, the all-time "due to receive / pay" totals (F9, F10, R6, R7, A5, A6) — and in **no** period or activity figure: not in Today (T1–T16), Reports R1–R5 and R8, Finance F1–F8, Analytics A1–A4, bill counts, stock, rate trends, item frequency, anomaly scans or Number checks AC2 / AC4. Money paid on it later is a normal DUE-PAY on the day it is paid (cash flow, drawer, T13 / T14); writing it off is not a bad debt (its sale was never a sale here). In code: `isOpeningRecord()` / `activityBills()` in `utils/money.js`, the one filter every period figure uses (review rule `period-aggregation-without-activity-filter`). |
@@ -179,12 +179,16 @@ It used to show `payment.due`, else total − received, so an old bill with only
 
 ## Stock (`templates/stock.html`, `modules/stock.js`)
 
-| ID | On screen | Definition |
-|---|---|---|
-| S1 | Quantity | Replay of all purchases (+), sales (−) and adjustments in time order (AVG-COST rules). Opening stock is a "set" adjustment with reason "Opening stock" and a cost per kg (required), so cost of goods sold works from the first sale. With no stock at all the page says so and offers "Set opening stock". |
-| S2 | Average rate | AVG-COST after the replay (0 when quantity ≤ 0). |
-| S3 | Value per item | S1 × S2 when quantity > 0. |
-| S4 | Total value | Σ S3 = F6. |
+Quantities and average costs come from the stock replay (`utils/stock-replay.js`, AVG-COST). Every figure the page shows is worked out by `utils/calc/stock.js` (function → ID in `STOCK_SPEC`); `modules/stock.js` only renders. The stock value has one function, `stockValue()`: the Stock page (S4, S6), Money › Worth (M15's stock term and M17, through `finance-calc`) and the Insights dead-stock card (S3 of each row, `findDeadStock`) use it. Tests: `www/js/__tests__/calc-stock.test.js`, `tests/oracle/screens.test.js` (Stock screen == oracle) and `www/js/__tests__/pages-characterisation.test.js` (exact screen text pinned).
+
+| ID | On screen | Definition | Owner (`utils/calc/stock.js`) |
+|---|---|---|---|
+| S1 | Quantity | Replay of all purchases (+), sales (−) and adjustments in time order (AVG-COST rules). Opening stock is a "set" adjustment with reason "Opening stock" and a cost per kg (required), so cost of goods sold works from the first sale. With no stock at all the page says so and offers "Set opening stock". Buckets the replay keeps under a legacy name merge onto the catalogue item whose id, or trimmed lower-case English / Hindi name, matches; a bucket with no match is its own "Unmatched" row. | `stockRows()`; adjustment form: `adjustItemStock()` |
+| S2 | Average rate | AVG-COST after the replay (0 when quantity ≤ 0); merged buckets: Σ (quantity × rate) ÷ Σ quantity. The adjustment form shows it only when there is stock at a known cost. | `stockRows()`, `adjustItemStock()` |
+| S3 | Value per item | S1 × S2 when quantity > 0 (rounded to the rupee on screen). | `itemValue()` |
+| S4 | Total value | Σ S3 = F6. | `stockValue()` |
+| S5 | Adjustment value (Stock › Adjustments history card) | Quantity × the adjustment's own rate; when it has none, × the item's average rate now (S2). Not shown when the quantity was not recorded or no rate is known; rounded to the rupee. | `adjustmentValue()` |
+| S6 | Dead stock value (Stock › Dead stock summary, "N items · ≈ ₹X in stock") | Σ S3 of the dead-stock rows (items with stock and no sale in the chosen days, `utils/dead-stock.js`), rounded to the rupee. | `deadStockValue()` |
 
 ## Cash drawer (`templates/cash-management.html`, `modules/cash-management.js`)
 
@@ -338,6 +342,23 @@ and close on the figure of the home page:
 | I9 | Stock up before the season | Items whose busy month (I5) is within the next 8 weeks while the stock covers fewer weeks than it takes to get there + 4. Weekly kg = kg sold in the last 8 weeks ÷ the weeks of bills actually loaded (at most 8); no card under 2 loaded weeks. With fewer than 8 weeks loaded (a phone's window starts on the 1st of the previous month) the card says it is an estimate "from the last N weeks of bills loaded", N = the loaded weeks rounded to a whole number (#164). |
 | I10 | Overdue parties | Parties with an open BILL-DUE older than 30 days (`overdueDays`): count, total, oldest; customers and suppliers separately. |
 | I11 | Purchases by item | Per catalogue item: line value, labour share (labour × line value ÷ the bill's line value), amount after labour, kg. Rows add up to M16 (#47). |
+| I12 | Top-5 share (Insights › Parties takeaway, "Top 5 customers gave X% of sales" / suppliers) | Σ of the five biggest named parties' I3 (or I4) totals ÷ Σ of all parties' totals in the period (walk-in / unnamed bills count in the total, not in the five) × 100, rounded. Not shown when the total is not above 0. |
+
+Which function computes each of these (all pure, in `utils/`; the pages only render):
+
+| Function | IDs |
+|---|---|
+| `business-metrics.moneySummary` | M1–M10, M12–M14, M16, M17 |
+| `business-metrics.netMoneyByDay` | M14 per local day (Money › Cash chart; the days add up to M14) |
+| `business-metrics.netWorth`, `accountsTotal` | M15 (and its "other accounts" term) |
+| `labour.labourSummary`, `labourToPayByDay`, `periodLabourGap` | M7, M18, T-LAB-3 for the period |
+| `business-metrics.itemSummary`, `sharePct` | I1, I2 (and the retail / wholesale % of M1) |
+| `month-snapshots.snapshotItemSales` | I1 "vs last year" from month snapshots (whole months) |
+| `business-metrics.partySummary`, `topShare` | I3, I4, I12 |
+| `business-metrics.soldKgByMonth`, `seasonKgTotal`, `seasonIndex` | I5 |
+| `business-metrics.weeklyKgWindow`, `weeklyKgByItem`, `stockUpItems` | I9 (weekly kg over the loaded weeks, at most 8) |
+| `business-metrics.addsUp` | AC10, AC11 (the "add up" check line on Money and Insights) |
+| `business-metrics.roundTo` | display rounding only: profit per ₹100 (M3, I1, I7) and season index / weeks of cover to 1 decimal, kg to whole numbers |
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and

@@ -117,6 +117,121 @@ export function endOfLocalDayExclusive(value = new Date()) {
 }
 
 /**
+ * Local midnight `days` days after the day containing `value` (negative =
+ * before). Calendar days, so a month end or 29 Feb is stepped over correctly.
+ * @param {*} value Anything parseAnyBillDate accepts
+ * @param {number} days
+ * @returns {Date|null}
+ */
+export function addLocalDays(value, days) {
+    const start = startOfLocalDay(value);
+    if (!start) return null;
+    return new Date(start.getFullYear(), start.getMonth(), start.getDate() + days);
+}
+
+/**
+ * Number of days in the local month containing `value` (28–31).
+ * @param {*} value
+ * @returns {number} NaN when there is no usable date
+ */
+export function daysInMonth(value) {
+    const d = parseAnyBillDate(value);
+    if (!d) return NaN;
+    return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+}
+
+/**
+ * Local midnight on the 1st of the month `months` after the month of `value`
+ * (0 = its own month, -1 = the month before). Steps whole months from the 1st,
+ * so 31 Jan − 1 is 1 Dec and 31 Mar − 1 is 1 Feb.
+ * @param {*} [value=new Date()]
+ * @param {number} [months=0]
+ * @returns {Date|null}
+ */
+export function monthStart(value = new Date(), months = 0) {
+    const d = parseAnyBillDate(value);
+    if (!d) return null;
+    return new Date(d.getFullYear(), d.getMonth() + months, 1);
+}
+
+/**
+ * The same local date and time `months` later (negative = earlier), clipped to
+ * the last day of the target month: 31 Jan + 1 → 28 Feb (29 Feb in a leap
+ * year), 29 Feb + 12 → 28 Feb, 31 Mar − 1 → 28/29 Feb.
+ * @param {*} value
+ * @param {number} months
+ * @returns {Date|null}
+ */
+export function addMonths(value, months) {
+    const d = parseAnyBillDate(value);
+    if (!d) return null;
+    const first = monthStart(d, months);
+    const day = Math.min(d.getDate(), daysInMonth(first));
+    return new Date(first.getFullYear(), first.getMonth(), day, d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+}
+
+/**
+ * [from, to) in ms of the local month `months` after the month of `value`.
+ * @param {*} [value=new Date()]
+ * @param {number} [months=0]
+ * @returns {?{from: number, to: number}}
+ */
+export function monthRange(value = new Date(), months = 0) {
+    const from = monthStart(value, months);
+    if (!from) return null;
+    return { from: from.getTime(), to: monthStart(from, 1).getTime() };
+}
+
+/**
+ * The 1st of calendar month `monthIndex` (0 = Jan) on or before the month of
+ * `now`: this year when that month has started, else last year (a tap on
+ * "Dec" in January opens last December).
+ * @param {number} monthIndex 0–11
+ * @param {*} [now=new Date()]
+ * @returns {Date|null}
+ */
+export function latestMonthStart(monthIndex, now = new Date()) {
+    const d = parseAnyBillDate(now);
+    if (!d) return null;
+    return new Date(monthIndex > d.getMonth() ? d.getFullYear() - 1 : d.getFullYear(), monthIndex, 1);
+}
+
+/**
+ * First and last local day (YYYY-MM-DD) of the period [from, to) (ms; `to`
+ * exclusive). A period shorter than a day has the same first and last day.
+ * @param {number} from
+ * @param {number} to
+ * @returns {{first: string, last: string}}
+ */
+export function periodBounds(from, to) {
+    return { first: toLocalISODate(new Date(from)), last: toLocalISODate(new Date(Math.max(from, to - 1))) };
+}
+
+/**
+ * Local YYYY-MM-DD of every day the period [from, to) touches, oldest first
+ * (each local midnight after `from` starts the next day).
+ * @param {number} from ms
+ * @param {number} to ms, exclusive
+ * @returns {string[]}
+ */
+export function localDayKeys(from, to) {
+    const keys = [];
+    const end = new Date(to - 1);
+    for (let x = new Date(from); x <= end; x = new Date(x.getFullYear(), x.getMonth(), x.getDate() + 1)) keys.push(toLocalISODate(x));
+    return keys;
+}
+
+/**
+ * Exclusive end of a period, never past `now` (now itself included).
+ * @param {number} to ms, exclusive
+ * @param {Date|number} [now=Date.now()]
+ * @returns {number}
+ */
+export function endUpToNow(to, now = Date.now()) {
+    return Math.min(to, Number(now) + 1);
+}
+
+/**
  * Local YYYY-MM-DD for `daysAgo` days before today.
  * @param {number} daysAgo
  * @returns {string}

@@ -11,48 +11,31 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t, getLang } from '../i18n/index.js';
 import { formatRupees, formatAmount } from '../utils/money.js';
-import { formatMonth, formatDay } from '../utils/dates.js';
+import { formatMonth, formatDay, monthStart, latestMonthStart } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
 import { findDeadStock } from '../utils/dead-stock.js';
 import { can, canOpenTab, canOpenSection } from '../utils/role-access.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, itemSummary, belowCostSales, lowProfitItems,
-    purchaseItems, partySummary, stoppedComingCheck, overdueParties, seasonIndex, stockUpItems
+    purchaseItems, partySummary, stoppedComingCheck, overdueParties, seasonIndex, stockUpItems,
+    soldKgByMonth, seasonKgTotal, weeklyKgWindow, weeklyKgByItem, roundTo, sharePct, topShare, addsUp
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext, contextMonth } from '../utils/insights-context.js';
-import { figuresFromSnapshot, monthKeyOf, monthKeysBetween, snapshotCustomers as customersOfSnapshot } from '../utils/month-snapshots.js';
+import { figuresFromSnapshot, monthKeyOf, monthKeysBetween, snapshotCustomers as customersOfSnapshot, snapshotItemSales } from '../utils/month-snapshots.js';
 import { MoneyManager } from './money.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const money = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : formatRupees(v));
 const SECTIONS = ['actions', 'items', 'parties', 'seasons'];
 const ROUTE_SECTION = { trends: ['seasons', 'trends'], traffic: ['seasons', 'traffic'] };
-const DAY_MS = 86400000;
 
 /** Display name of an item row in the chosen language. */
 const nameOf = (r) => (getLang() === 'hi' ? r.itemHi || r.item : r.item) || t('ui.insights.bill_adjustments');
 
-/**
- * kg sold (retail + wholesale) per item and 'YYYY-MM' from rateStats year docs (RT4).
- * @param {Array<{itemId: string, months: Object}>} docs
- * @returns {Map<string, Object<string, number>>}
- */
-export function soldKgByMonth(docs) {
-    const out = new Map();
-    (docs || []).forEach(d => {
-        if (!d || !d.itemId) return;
-        const m = out.get(d.itemId) || {};
-        Object.entries(d.months || {}).forEach(([k, b]) => {
-            const key = String(k).replace(/^m/, '');
-            if (!/^\d{4}-\d{2}$/.test(key)) return;
-            m[key] = (m[key] || 0) + (Number(b?.retail?.kg) || 0) + (Number(b?.wholesale?.kg) || 0);
-        });
-        out.set(d.itemId, m);
-    });
-    return out;
-}
+/** kg sold per item and month from rateStats docs (I5 input; moved to utils/business-metrics.js). */
+export { soldKgByMonth };
 
 /** Heat level 0–4 of a season index. */
 export const heatLevel = (v) => (v === null || v === undefined ? 0 : v >= 1.5 ? 4 : v >= 1.15 ? 3 : v >= 0.85 ? 2 : 1);
@@ -116,7 +99,7 @@ export const InsightsManager = {
             setInsightsContext({ preset: dir < 0 ? 'last-year' : 'this-year' });
         } else {
             const from = Number.isFinite(r.from) ? new Date(r.from) : now;
-            const target = new Date(from.getFullYear(), from.getMonth() + dir, 1);
+            const target = monthStart(from, dir);
             if (target > now) return;
             const key = monthKeyOf(target.getTime());
             setInsightsContext({ preset: key === monthKeyOf(now.getTime()) ? 'this-month' : `month:${key}` });
@@ -213,10 +196,10 @@ export const InsightsManager = {
         const sales = [...(AppState.retailSalesHistory || []), ...(AppState.salesHistory || [])];
         const owed = overdueParties(sales, now, cfg);
         const owe = overdueParties(AppState.purchaseHistory || [], now, cfg);
-        let dues = '';
-        if (owed.parties > 0) dues += this.actionCard('⏰', t('ui.insights.act_overdue', { n: owed.parties, amount: formatRupees(owed.total), days: cfg.overdueDays }), 'due', t('ui.insights.open_outstanding'));
-        if (owe.parties > 0) dues += this.actionCard('📤', t('ui.insights.act_you_owe', { n: owe.parties, amount: formatRupees(owe.total), days: cfg.overdueDays }), 'due', t('ui.insights.open_outstanding'));
-        this.html('insightsActionsDues', dues);
+        let duesHtml = '';
+        if (owed.parties > 0) duesHtml += this.actionCard('⏰', t('ui.insights.act_overdue', { n: owed.parties, amount: formatRupees(owed.total), days: cfg.overdueDays }), 'due', t('ui.insights.open_outstanding'));
+        if (owe.parties > 0) duesHtml += this.actionCard('📤', t('ui.insights.act_you_owe', { n: owe.parties, amount: formatRupees(owe.total), days: cfg.overdueDays }), 'due', t('ui.insights.open_outstanding'));
+        this.html('insightsActionsDues', duesHtml);
         if (!m) {
             this.html('insightsActionsBelow', `<p class="ins-empty-text">${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(this.range()) }))}</p>`);
             ['insightsActionsLow', 'insightsActionsStock'].forEach(id => this.html(id, ''));
@@ -229,7 +212,7 @@ export const InsightsManager = {
                 `<button type="button" class="btn btn-secondary" data-item="${esc(b.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
             const low = showProfit ? lowProfitItems(itemSummary(m), cfg).slice(0, 3) : [];
             this.html('insightsActionsLow', low.map(x => this.actionCard('🪙',
-                t(x.per100 < 0 ? 'ui.insights.act_loss_item' : 'ui.insights.act_low_profit', { item: nameOf(x), value: Math.round(x.per100 * 10) / 10, sales: formatRupees(x.sales) }),
+                t(x.per100 < 0 ? 'ui.insights.act_loss_item' : 'ui.insights.act_low_profit', { item: nameOf(x), value: roundTo(x.per100, 1), sales: formatRupees(x.sales) }),
                 'insights-items', t('ui.insights.see_items'))).join(''));
             if (this.maySeasons()) this.renderStockUp();
             else this.html('insightsActionsStock', '');
@@ -274,24 +257,22 @@ export const InsightsManager = {
         const list = stockUpItems(rows, now, {}, this.cfg()).slice(0, 3);
         const lang = getLang();
         // Under 8 weeks of bills loaded the weekly sale is an estimate from those weeks: say so (#164).
-        const basis = weekly.weeks < 8 ? ` ${t('ui.insights.act_stock_up_basis', { weeks: Math.round(weekly.weeks) })}` : '';
+        const basis = weekly.weeks < 8 ? ` ${t('ui.insights.act_stock_up_basis', { weeks: roundTo(weekly.weeks) })}` : '';
         this.html('insightsActionsStock', list.map(x => this.actionCard('🌾', t('ui.insights.act_stock_up', {
-            item: x.name, month: formatMonth(new Date(now.getFullYear(), x.busyMonth, 1), { lang, year: false }), weeks: x.weeksToBusy, cover: Math.round(x.coverWeeks * 10) / 10
+            item: x.name, month: formatMonth(new Date(now.getFullYear(), x.busyMonth, 1), { lang, year: false }), weeks: x.weeksToBusy, cover: roundTo(x.coverWeeks, 1)
         }) + basis, null, '', `<button type="button" class="btn btn-secondary" data-item="${esc(x.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
     },
 
     /**
      * kg sold per week over the last 8 weeks (or the weeks of bills loaded, if fewer),
-     * per item key: one summary for all items. null under 2 loaded weeks.
+     * per item key: one summary for all items. null under 2 loaded weeks (I9).
      * @returns {?{byItem: Map<string, number>, weeks: number}} weeks: the weeks of bills used (≤ 8)
      */
     weeklySoldKg(now) {
-        const end = now.getTime();
-        const from = Math.max(end - 56 * DAY_MS, isFullHistoryLoaded() ? -Infinity : historyLoadedFrom());
-        const weeks = (end - from) / (7 * DAY_MS);
-        if (!(weeks >= 2)) return null;
-        const m = moneySummary(this.input(from), { from, to: end + 1 }, { detail: true });
-        return { byItem: new Map(itemSummary(m).map(r => [r.itemKey, r.qty / weeks])), weeks };
+        const w = weeklyKgWindow(now.getTime(), isFullHistoryLoaded() ? -Infinity : historyLoadedFrom());
+        if (!w) return null;
+        const m = moneySummary(this.input(w.from), { from: w.from, to: w.to }, { detail: true });
+        return { byItem: weeklyKgByItem(itemSummary(m), w.weeks), weeks: w.weeks };
     },
 
     renderItems(m, r) {
@@ -310,7 +291,7 @@ export const InsightsManager = {
             const c = change(x.sales, lyByKey.get(x.itemKey)?.sales ?? null);
             const cmp = c ? `${c.dir === 'up' ? '▲' : c.dir === 'down' ? '▼' : '＝'} ${Math.abs(c.pct)}%` : '—';
             return `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${money(x.sales)}</td>`
-                + `${profitKnown ? `<td class="num" data-perm="profit">${money(x.profit)}</td><td class="num" data-perm="profit">${x.per100 === null ? '—' : Math.round(x.per100 * 10) / 10}</td>` : ''}`
+                + `${profitKnown ? `<td class="num" data-perm="profit">${money(x.profit)}</td><td class="num" data-perm="profit">${x.per100 === null ? '—' : roundTo(x.per100, 1)}</td>` : ''}`
                 + `<td class="num">${esc(cmp)}</td></tr>`;
         }).join('');
         this.html('insightsItemsTable', rows.length ? head + `<tbody>${body}</tbody>` : `<tr><td>${esc(t('ui.insights.no_sales'))}</td></tr>`);
@@ -319,20 +300,20 @@ export const InsightsManager = {
         const weak = known.filter(x => x.sales >= this.cfg().lowMarginMinSales).sort((a, b) => a.per100 - b.per100)[0];
         let tk = '';
         if (best) tk += `<p data-perm="profit">${esc(t('ui.insights.tk_best_item', { item: nameOf(best), amount: formatRupees(best.profit) }))}</p>`;
-        if (weak && weak !== best) tk += `<p data-perm="profit">${esc(t('ui.insights.tk_weak_item', { item: nameOf(weak), value: Math.round(weak.per100 * 10) / 10 }))}</p>`;
+        if (weak && weak !== best) tk += `<p data-perm="profit">${esc(t('ui.insights.tk_weak_item', { item: nameOf(weak), value: roundTo(weak.per100, 1) }))}</p>`;
         if (!profitKnown) tk += `<p>${esc(t('ui.tk.profit_unknown'))}</p>`;
         this.html('insightsItemsTakeaway', tk);
         const unc = m.caveats.find(c => c.key === 'uncosted');
         this.html('insightsItemsCaveats', unc ? `<div class="ins-caveat">⚠ ${esc(t('ui.money.caveat_uncosted', { qty: unc.qty, amount: formatAmount(unc.estimate) }))}</div>` : '');
         const total = m.M1.total || 0;
-        const pct = (v) => (total ? Math.round((v / total) * 100) : 0);
+        const pct = (v) => sharePct(v, total);
         this.html('insightsSplit', `<div class="ins-row"><span>${esc(t('ui.insights.retail'))}</span><span>${money(m.M1.retail.total)} · ${pct(m.M1.retail.total)}%</span></div>`
             + `<div class="ins-row"><span>${esc(t('ui.insights.wholesale'))}</span><span>${money(m.M1.wholesale.total)} · ${pct(m.M1.wholesale.total)}%</span></div>`);
         const bought = purchaseItems(AppState.purchaseHistory || [], AppState.items || [], r);
         const paid = this.may('purchaseRates');
         this.html('insightsBoughtTable', bought.length
             ? `<thead><tr><th>${esc(t('ui.insights.item'))}</th><th class="num">${esc(t('ui.insights.kg'))}</th>${paid ? `<th class="num" data-perm="purchaseRates">${esc(t('ui.insights.paid'))}</th>` : ''}</tr></thead><tbody>`
-                + bought.map(x => `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${Math.round(x.qty)}</td>${paid ? `<td class="num" data-perm="purchaseRates">${money(x.amount)}</td>` : ''}</tr>`).join('') + '</tbody>'
+                + bought.map(x => `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${roundTo(x.qty)}</td>${paid ? `<td class="num" data-perm="purchaseRates">${money(x.amount)}</td>` : ''}</tr>`).join('') + '</tbody>'
             : `<tr><td>${esc(t('ui.insights.no_purchases'))}</td></tr>`);
     },
 
@@ -350,9 +331,7 @@ export const InsightsManager = {
         if (!whole(r.from) || !whole(r.to) || !whole(ly.from) || !whole(ly.to)) return null;
         const docs = keys.map(k => figuresFromSnapshot(snaps[k]));
         if (!docs.length || docs.some(d => !d)) return null;
-        const out = new Map();
-        docs.forEach(d => d.items.forEach(x => out.set(x.key, { key: x.key, sales: (out.get(x.key)?.sales || 0) + x.sales })));
-        return [...out.values()];
+        return snapshotItemSales(docs);
     },
 
     renderParties(r) {
@@ -374,11 +353,10 @@ export const InsightsManager = {
         if (cust) cust.hidden = kind !== 'sales';
         if (sup) sup.hidden = kind !== 'purchases';
         this.html(kind === 'sales' ? 'insightsCustomersTable' : 'insightsSuppliersTable', table(rows));
-        const total = rows.reduce((a, p) => a + p.total, 0);
-        const top5 = rows.filter(p => p.key).slice(0, 5).reduce((a, p) => a + p.total, 0);
+        const share = topShare(rows, 5);
         const lyCheck = kind === 'sales' ? this.stoppedCheck(src, new Date()) : { list: [], known: true };
         const stopped = lyCheck.list;
-        let tk = total > 0 ? `<p>${esc(t(kind === 'sales' ? 'ui.insights.tk_top5_customers' : 'ui.insights.tk_top5_suppliers', { pct: Math.round((top5 / total) * 100) }))}</p>` : '';
+        let tk = share.pct !== null ? `<p>${esc(t(kind === 'sales' ? 'ui.insights.tk_top5_customers' : 'ui.insights.tk_top5_suppliers', { pct: share.pct }))}</p>` : '';
         if (stopped.length) tk += `<p>${esc(t('ui.insights.tk_stopped', { n: stopped.length, days: this.cfg().stoppedComingDays }))}</p>`;
         this.html('insightsPartiesTakeaway', tk);
         const card = document.getElementById('insightsStoppedCard');
@@ -411,7 +389,7 @@ export const InsightsManager = {
     async loadOlder() {
         const now = new Date();
         try {
-            await ensureHistoryFrom(new Date(now.getFullYear() - 1, now.getMonth() - 1, 1));
+            await ensureHistoryFrom(monthStart(now, -13));
         } catch (e) {
             console.error('Insights: loading older bills failed:', e);
         }
@@ -451,7 +429,7 @@ export const InsightsManager = {
         const lang = getLang();
         return [...byItem.entries()].map(([itemKey, kg]) => {
             const it = items.get(itemKey);
-            const total = Object.values(kg).reduce((a, b) => a + b, 0);
+            const total = seasonKgTotal(kg);
             const name = it ? (lang === 'hi' ? it.hindiName || it.name : it.name) : itemKey;
             return { itemKey, name, total, index: seasonIndex(kg) };
         }).filter(r => r.index && r.total > 0).sort((a, b) => b.total - a.total);
@@ -494,11 +472,11 @@ export const InsightsManager = {
         const head = `<thead><tr><th></th>${months.map((m, i) => `<th${i === now.getMonth() ? ' class="ins-now"' : ''}>${esc(m.slice(0, 3))}</th>`).join('')}</tr></thead>`;
         const body = rows.map(x => `<tr><th scope="row">${esc(x.name)}</th>${x.index.map((v, i) => `<td class="h${heatLevel(v)}" data-item="${esc(x.itemKey)}" data-cal-month="${i}" title="${esc(`${x.name} · ${months[i]}: ${v === null ? '—' : `${v}×`}`)}"></td>`).join('')}</tr>`).join('');
         this.html('insightsCalendar', `<table class="ins-heat">${head}<tbody>${body}</tbody></table>`);
-        const next = [1, 2].map(k => new Date(now.getFullYear(), now.getMonth() + k, 1).getMonth());
+        const next = [1, 2].map(k => monthStart(now, k).getMonth());
         const busy = rows.map(x => ({ x, v: Math.max(...next.map(m => x.index[m] ?? 0)), m: next.find(m => (x.index[m] ?? 0) === Math.max(...next.map(mm => x.index[mm] ?? 0))) }))
             .filter(b => b.v >= this.cfg().seasonBusy).sort((a, b) => b.v - a.v)[0];
         this.html('insightsSeasonTakeaway', busy
-            ? `<p>${esc(t('ui.insights.tk_season', { item: busy.x.name, times: Math.round(busy.v * 10) / 10, month: months[busy.m] }))}</p>`
+            ? `<p>${esc(t('ui.insights.tk_season', { item: busy.x.name, times: roundTo(busy.v, 1), month: months[busy.m] }))}</p>`
             : `<p>${esc(t('ui.insights.tk_no_season'))}</p>`);
     },
 
@@ -506,7 +484,7 @@ export const InsightsManager = {
         if (!m) { this.html('insightsChecks', ''); return; }
         const items = itemSummary(m);
         const parties = partySummary({ purchases: AppState.purchaseHistory, wholesaleSales: AppState.salesHistory, retailSales: AppState.retailSalesHistory }, 'sales', m.range);
-        const ok = Math.abs(items.reduce((a, x) => a + x.sales, 0) - m.M1.total) <= 1 && Math.abs(parties.reduce((a, x) => a + x.total, 0) - m.M1.total) <= 1;
+        const ok = addsUp(items, 'sales', m.M1.total) && addsUp(parties, 'total', m.M1.total);
         this.html('insightsChecks', `<button type="button" class="ins-checkline ${ok ? 'ok' : 'warn'}" data-go="diagnostics">${ok ? '✓' : '⚠'} ${esc(t(ok ? 'ui.insights.checks_ok' : 'ui.money.checks_warn'))}</button>`);
     },
 
@@ -521,8 +499,7 @@ export const InsightsManager = {
             if (cell) {
                 const now = new Date();
                 const m = Number(cell.dataset.calMonth);
-                const y = m > now.getMonth() ? now.getFullYear() - 1 : now.getFullYear();
-                const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+                const key = monthKeyOf(latestMonthStart(m, now).getTime());
                 setInsightsContext({ itemId: cell.dataset.item, preset: key === monthKeyOf(now.getTime()) ? 'this-month' : `month:${key}` });
                 this.seasonView = 'traffic';
                 this.section = 'seasons';

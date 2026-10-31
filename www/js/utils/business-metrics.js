@@ -13,7 +13,7 @@
 import { computeFinanceSummary, billsInRange, profitByDay } from './finance-calc.js';
 import { activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
 import { eventTime, createItemKeyResolver } from './stock-replay.js';
-import { parseAnyBillDate } from './dates.js';
+import { parseAnyBillDate, toLocalISODate } from './dates.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { normalizePartyName, pickPartyName } from './aging.js';
 import { INSIGHTS_DEFAULTS } from './insights-config.js';
@@ -575,6 +575,36 @@ export function overdueParties(bills, now = new Date(), cfg = INSIGHTS_DEFAULTS)
 // ------------------------------------------------------------------ Seasons (I5, I9)
 
 /**
+ * I5 input: kg sold (retail + wholesale) per item and 'YYYY-MM' from rateStats
+ * year docs (RT4 months).
+ * @param {Array<{itemId: string, months: Object}>} docs
+ * @returns {Map<string, Object<string, number>>}
+ */
+export function soldKgByMonth(docs) {
+    const out = new Map();
+    (docs || []).forEach(d => {
+        if (!d || !d.itemId) return;
+        const m = out.get(d.itemId) || {};
+        Object.entries(d.months || {}).forEach(([k, b]) => {
+            const key = String(k).replace(/^m/, '');
+            if (!/^\d{4}-\d{2}$/.test(key)) return;
+            m[key] = (m[key] || 0) + (Number(b?.retail?.kg) || 0) + (Number(b?.wholesale?.kg) || 0);
+        });
+        out.set(d.itemId, m);
+    });
+    return out;
+}
+
+/**
+ * I5: an item's kg sold over all the months given (orders the season calendar).
+ * @param {Object<string, number>} kgByMonth 'YYYY-MM' → kg
+ * @returns {number}
+ */
+export function seasonKgTotal(kgByMonth) {
+    return Object.values(kgByMonth || {}).reduce((a, b) => a + b, 0);
+}
+
+/**
  * I5: season index per item and calendar month (0–11): kg sold in that month
  * ÷ the item's average monthly kg, over the months given. Needs ≥ 12 months.
  * @param {Object<string, number>} kgByMonth 'YYYY-MM' → kg sold (one item)
@@ -618,6 +648,103 @@ export function stockUpItems(rows, now = new Date(), { weeksAhead = 8 } = {}, cf
     return out.sort((a, b) => a.coverWeeks - b.coverWeeks);
 }
 
+/**
+ * I9 weekly kg: the window it is read from, the last `weeksBack` weeks up to
+ * `now`, starting later when the loaded bills start later.
+ * @param {Date|number} now
+ * @param {number} [loadedFrom=-Infinity] first loaded bill time (ms); -Infinity = all loaded
+ * @param {{weeksBack?: number}} [opts]
+ * @returns {?{from: number, to: number, weeks: number}} null under 2 weeks of bills
+ */
+export function weeklyKgWindow(now, loadedFrom = -Infinity, { weeksBack = 8 } = {}) {
+    const end = Number(now);
+    const from = Math.max(end - weeksBack * 7 * DAY_MS, loadedFrom);
+    const weeks = (end - from) / (7 * DAY_MS);
+    if (!(weeks >= 2)) return null;
+    return { from, to: end + 1, weeks };
+}
+
+/**
+ * I9: kg sold per week per item key.
+ * @param {Array<{itemKey: string, qty: number}>} itemRows itemSummary() of the window
+ * @param {number} weeks weeklyKgWindow().weeks
+ * @returns {Map<string, number>}
+ */
+export function weeklyKgByItem(itemRows, weeks) {
+    return new Map((itemRows || []).map(r => [r.itemKey, r.qty / weeks]));
+}
+
+// ------------------------------------------------------------------ Shares and checks (I2, I12, AC10, AC11)
+
+/**
+ * A figure rounded for display to `digits` decimals (profit per ₹100 and season
+ * index to 1, kg to 0).
+ * @param {number} value
+ * @param {number} [digits=0]
+ * @returns {number}
+ */
+export function roundTo(value, digits = 0) {
+    const f = 10 ** digits;
+    return Math.round(value * f) / f;
+}
+
+/**
+ * Whole-number % of `part` in `total` (I2 retail / wholesale split, bar widths);
+ * 0 when the total is 0.
+ * @param {number} part
+ * @param {number} total
+ * @returns {number}
+ */
+export function sharePct(part, total) {
+    return total ? Math.round((part / total) * 100) : 0;
+}
+
+/**
+ * I12: share of the top `n` named parties (Insights › Parties takeaway).
+ * @param {Array<{key: string, total: number}>} rows partySummary(), biggest first
+ * @param {number} [n=5]
+ * @returns {{total: number, top: number, pct: ?number}} pct null when the total is not above 0
+ */
+export function topShare(rows, n = 5) {
+    const list = rows || [];
+    const total = list.reduce((a, p) => a + p.total, 0);
+    const top = list.filter(p => p.key).slice(0, n).reduce((a, p) => a + p.total, 0);
+    return { total, top, pct: total > 0 ? Math.round((top / total) * 100) : null };
+}
+
+/**
+ * AC10 / AC11: rows add up to a total (within `tolerance` rupees).
+ * @param {Array<Object>} rows
+ * @param {string} field
+ * @param {number} total
+ * @param {number} [tolerance=1]
+ * @returns {boolean}
+ */
+export function addsUp(rows, field, total, tolerance = 1) {
+    return Math.abs((rows || []).reduce((a, x) => a + x[field], 0) - total) <= tolerance;
+}
+
+// ------------------------------------------------------------------ Money › Cash by day (M14)
+
+/**
+ * M14 per local day (Money › Cash chart): money in − money out of each day, to paise.
+ * @param {Object} detail moneySummary(…, {detail: true}).detail
+ * @param {string[]} dayKeys local 'YYYY-MM-DD' days, in chart order
+ * @returns {number[]} one value per key
+ */
+export function netMoneyByDay(detail, dayKeys) {
+    const days = {};
+    const add = (rows, sign) => (rows || []).forEach(x => {
+        if (!Number.isFinite(x.t)) return;
+        const k = toLocalISODate(new Date(x.t));
+        days[k] = (days[k] || 0) + sign * (Number(x.amount) || 0);
+    });
+    const d = detail || {};
+    add(d.receivedAtSale, 1); add(d.dueReceived, 1); add(d.paidAtPurchase, -1); add(d.duePaid, -1);
+    add(d.business, -1); add(d.personal, -1);
+    return (dayKeys || []).map(k => round2(days[k] || 0));
+}
+
 // ------------------------------------------------------------------ Worth (M15)
 
 /**
@@ -636,6 +763,15 @@ export function netWorth(t, cfg = INSIGHTS_DEFAULTS) {
     if (terms.includes('accounts')) v += num(t.accounts);
     if (terms.includes('drawer')) v += num(t.drawer);
     return round2(v);
+}
+
+/**
+ * M15 "other accounts" term: owner-entered assets minus liabilities.
+ * @param {Array<{balance: *, type?: string}>} accounts
+ * @returns {number}
+ */
+export function accountsTotal(accounts) {
+    return round2((accounts || []).reduce((a, x) => a + (x.type === 'liability' ? -1 : 1) * (Number(x.balance) || 0), 0));
 }
 
 // ------------------------------------------------------------------ Drivers (I6)
