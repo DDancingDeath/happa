@@ -15,6 +15,7 @@ import {
 } from '../utils/money.js';
 import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
+import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
@@ -545,11 +546,11 @@ const PurchaseManager = {
             if (!printPromise) return;
             const printed = await printPromise;
             if (savedBill && printed === true) {
-                UIManager.showToast(t('msg.purchase.bill_saved_printed'));
+                UIManager.showToast(FirebaseService.savedOnPhoneOnly(savedBill) ? t(SAVED_ON_PHONE_KEY) : t('msg.purchase.bill_saved_printed'));
             }
         } catch (error) {
             console.error('Print error:', error);
-            UIManager.showToast(t('msg.common.error_2', { value: error?.message || error }));
+            UIManager.showToast(saveFailedText(error, t('msg.common.error_2', { value: error?.message || error })), 'error');
         }
     },
 
@@ -640,6 +641,12 @@ const PurchaseManager = {
                 options.onWriteIssued(bill);
             }
             await writePromise;
+            // Not confirmed even on this phone: keep the form (a retry reuses the same id) (#153)
+            if (FirebaseService.saveUnconfirmed(bill)) {
+                UIManager.hideLoading();
+                UIManager.showToast(t(SAVE_UNCONFIRMED_KEY), 'warning');
+                return undefined;
+            }
             
             const savedItems = bill.items;
             const billingManager = this.billingManager;
@@ -665,14 +672,15 @@ const PurchaseManager = {
             this.resetForm();
             
             UIManager.hideLoading();
-            UIManager.showToast(FirebaseService.keptServerPayment(bill) ? t(KEPT_SERVER_PAYMENT_KEY) : t('msg.purchase.bill_saved_successfully'));
+            UIManager.showToast(FirebaseService.keptServerPayment(bill) ? t(KEPT_SERVER_PAYMENT_KEY)
+                : FirebaseService.savedOnPhoneOnly(bill) ? t(SAVED_ON_PHONE_KEY) : t('msg.purchase.bill_saved_successfully'));
             UIManager.hapticFeedback('success');
             
             return bill;
             
         } catch (error) {
             UIManager.hideLoading();
-            UIManager.showToast(t('msg.purchase.failed_save_bill', { message: error.message }));
+            UIManager.showToast(saveFailedText(error, t('msg.purchase.failed_save_bill', { message: error.message })), 'error');
             console.error('Save bill error:', error);
             throw error;
         }

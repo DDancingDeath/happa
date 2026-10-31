@@ -5,6 +5,7 @@ import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
+import { SyncStatus } from './ui/sync-status.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { ItemsManager } from './modules/items.js';
@@ -444,6 +445,8 @@ async function initializeUserData() {
         logStartupTimings();
         // Shop | Rentals switch (#149): Rentals code loads only when opened
         BusinessSwitcher.init();
+        // Offline / waiting-to-sync pill (#70)
+        SyncStatus.start({ getDb: () => FirebaseService.db });
         FirebaseService.prepareStock({ defer: true })
             .then(() => markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox }));
 

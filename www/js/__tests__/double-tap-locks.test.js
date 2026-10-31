@@ -245,7 +245,7 @@ describe('Money › Save withdrawal', () => {
         expect(AppState.withdrawalsHistory).toEqual([expect.objectContaining({ id: 'wd-local-1', amount: 1000 })]);
         expect(document.getElementById('moneyWdAmount').value).toBe('');
         expect(btn.disabled).toBe(false);
-        expect(UIManager.showToast).toHaveBeenLastCalledWith(t('msg.common.saved_on_phone_sync'), 'success');
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(t('msg.sync.saved_on_phone'), 'success');
         refuse(new Error('denied'));
         await flush();
         expect(AppState.withdrawalsHistory).toEqual([]);
@@ -283,12 +283,12 @@ describe('Billing › Save draft', () => {
         global.db = { collection: () => ({ doc: () => ({ set: write.fn }) }) };
         await BillingManager.saveDraft();
         expect(PurchaseManager.getWeights()).toEqual([]);
-        expect(UIManager.showToast).toHaveBeenLastCalledWith(t('msg.common.saved_on_phone_sync'));
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(t('msg.sync.saved_on_phone'));
         write.refuse(new Error('denied'));
         await flush();
         expect(applied).toHaveBeenCalledWith(expect.objectContaining({ mode: 'purchase', weights: [40] }));
         expect(PurchaseManager.getWeights()).toEqual([40]);
-        expect(UIManager.showToast).toHaveBeenLastCalledWith(t('msg.billing.failed_save_draft'));
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(t('msg.billing.failed_save_draft'), 'error');
     });
 });
 

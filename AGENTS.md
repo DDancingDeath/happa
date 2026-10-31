@@ -187,6 +187,15 @@ In order:
   ends. Put confirm dialogs *before* the lock (check `Helpers.isBusy(key)` first).
   A write the app retries itself keeps a client-made id (bills: `pendingBill`,
   due payments: the payment entry `id`).
+- **Saved / offline (#70, #153)**: never show "Saved" for a write this phone refused.
+  Failure toasts use `saveFailedText()` and localStorage writes `safeSetItem()`
+  (`utils/storage-full.js`: "Save failed — storage full"); a new bill stored while
+  offline says "Saved on this phone, will sync" (`FirebaseService.savedOnPhoneOnly()`) only once
+  the phone confirmed storing it; unconfirmed after 10 s (`saveUnconfirmed()`) it keeps the form
+  and says "Saving… check before entering again" (expenses: after 4 s).
+  The header pill (`ui/sync-status.js`: Offline / N changes waiting to sync / Synced) uses
+  online/offline events, `hasPendingWrites` of the existing listeners, the writes
+  `saveBill` / `startSaveExpense` send and `waitForPendingWrites()`: no Firestore reads.
 - **State**: a single `AppState` object lives in `state.js`. Never invent
   a parallel cache.
 - **Businesses / Rentals (#149, #170)**: one app, an `Aadhat | Rentals` switch

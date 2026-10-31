@@ -19,6 +19,7 @@ import { historyCutoff } from '../utils/role-access.js';
 import { OutstandingManager } from './outstanding.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { getLang, t } from '../i18n/index.js';
+import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 
@@ -477,6 +478,11 @@ export class WholesaleSalesManager {
                 options.onWriteIssued(saleData);
             }
             await writePromise;
+            // Not confirmed even on this phone: keep the form (a retry reuses the same id) (#153)
+            if (FirebaseService.saveUnconfirmed(saleData)) {
+                UIManager.showToast(t(SAVE_UNCONFIRMED_KEY), 'warning');
+                return undefined;
+            }
             
             Helpers.runInBackground([
                 () => AuditService.log(AuditService.ACTIONS.CREATE_SALE, {
@@ -514,12 +520,13 @@ export class WholesaleSalesManager {
             // this dropdown. The item detail fields were cleared above so no stale
             // per-item stock is shown in the meantime.
             
-            UIManager.showToast(FirebaseService.keptServerPayment(saleData) ? t(KEPT_SERVER_PAYMENT_KEY) : t('msg.wholesale.sale_completed_successfully'));
+            UIManager.showToast(FirebaseService.keptServerPayment(saleData) ? t(KEPT_SERVER_PAYMENT_KEY)
+                : FirebaseService.savedOnPhoneOnly(saleData) ? t(SAVED_ON_PHONE_KEY) : t('msg.wholesale.sale_completed_successfully'));
             UIManager.hapticFeedback();
             return saleData;
         } catch (error) {
             console.error('Error completing sale:', error);
-            UIManager.showToast(t('msg.common.error', { message: error.message }));
+            UIManager.showToast(saveFailedText(error, t('msg.common.error', { message: error.message })), 'error');
         }
     }
 
@@ -541,7 +548,7 @@ export class WholesaleSalesManager {
             const printed = await printPromise;
             
             if (savedSale && printed === true) {
-                UIManager.showToast(t('msg.common.sale_saved_printed'));
+                UIManager.showToast(FirebaseService.savedOnPhoneOnly(savedSale) ? t(SAVED_ON_PHONE_KEY) : t('msg.common.sale_saved_printed'));
             }
         } catch (error) {
             console.error('Print error:', error);

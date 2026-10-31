@@ -9,6 +9,7 @@
 
 import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
+import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
@@ -594,7 +595,7 @@ export const MoneyManager = {
         const f = document.getElementById('moneyWithdrawalForm');
         if (f) f.hidden = true;
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        UIManager.showToast(t(offline ? 'msg.common.saved_on_phone_sync' : 'msg.finance.withdrawal_recorded_successfully'), 'success');
+        UIManager.showToast(t(offline ? SAVED_ON_PHONE_KEY : 'msg.finance.withdrawal_recorded_successfully'), 'success');
         this.render();
     },
 

@@ -9,6 +9,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { Helpers } from '../utils/helpers.js';
+import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { formatRupees } from '../utils/money.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
@@ -701,7 +702,7 @@ export class StockManager {
         if (reasonSelect) reasonSelect.value = "";
 
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        UIManager.showToast(t(offline ? 'msg.common.saved_on_phone_sync' : 'msg.stock.stock_adjustment_applied_successfully'));
+        UIManager.showToast(t(offline ? SAVED_ON_PHONE_KEY : 'msg.stock.stock_adjustment_applied_successfully'));
         return true;
     }
 
