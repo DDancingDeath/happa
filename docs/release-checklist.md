@@ -87,13 +87,13 @@ new APK.
 Measure on the shop's reference phone, on mobile data. Close the app fully
 before each cold start. Cold start = tap the icon until the billing screen
 can be used; the app's own steps are in Diagnostics → "Startup timings"
-(`app-shown`). Save = tap Save until the success message. Today ready = open Today until its figures show.
+(`app-shown`). Save = tap Save until the success message. Today ready = open Today until its figures stop changing (after the cash sessions load).
 
 | Release | Date | Phone | Cold start (s) | `app-shown` (ms) | Save bill (s) | Today ready (s) | Startup reads | Notes |
 |---|---|---|---|---|---|---|---|---|
 | | | | | | | | | |
 
-Budget ([performance-budget.md](performance-budget.md)): cold start ≤ 2.5 s, save ≤ 1.5 s. A release that is clearly slower than
+Budget ([performance-budget.md](performance-budget.md)): cold start ≤ 2.5 s, save ≤ 1.5 s, Today ready ≤ 2 s. A release that is clearly slower than
 the last row needs an issue before it goes out.
 
 ## 8. Roll out after shop hours
