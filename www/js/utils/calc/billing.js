@@ -6,37 +6,48 @@
  * no Firestore. modules/purchase.js, retail-sale.js and wholesale-sales.js read
  * the inputs, call these and render the result.
  *
- * Rounding is exactly what the forms did before this module existed. Each
- * choice is a named policy in ROUNDING, so the owner's answer to #129 (F-R1:
- * whole-rupee lines vs paise) is a change in this file only.
+ * Rounding (#129, owner decision 2026-11-01: "rate will have paise, total will
+ * not, it will be rounded"): rates and kg keep their decimals; every money
+ * amount the app saves is a whole rupee, rounded half-up. Each choice is a named
+ * policy in ROUNDING, the one switch for it (docs/calculations.md MONEY-ROUND).
  * @module utils/calc/billing
  */
 
-import { normalizeLabourSettings, readLineItem, round2, toMoney } from '../money.js';
+import { billLabour, billTotal, normalizeLabourSettings, readLineItem, readPayment, round2, toMoney } from '../money.js';
 
-/** How each rounding policy rounds a value. */
+/**
+ * How each rounding policy rounds a value. rupee is half-up on the amount in
+ * paise, so 0.7 kg × ₹45 (31.499999999999996 in floating point) is ₹32; never -0.
+ */
 const ROUNDERS = Object.freeze({
-    rupee: (x) => Math.round(x),
+    rupee: (x) => Math.round(round2(x)) || 0,
     paise: (x) => round2(x),
     tenthOfPercent: (ratio) => Math.round(ratio * 1000) / 10
 });
 
 /**
- * Rounding policy per figure (#129 open; recorded, not decided, here).
- * rupee = whole rupees (Math.round), paise = 2 decimals (round2),
+ * Rounding policy per figure (MONEY-ROUND; #129 decided: money amounts are whole
+ * rupees, rates and kg are never rounded here).
+ * rupee = whole rupees, half-up; paise = 2 decimals (round2);
  * tenthOfPercent = a ratio as a percentage with one decimal.
  */
 export const ROUNDING = Object.freeze({
     /** BF-LINE: qty × rate of a new line (12.4 kg × ₹33.50 = ₹415). */
     lineAmount: 'rupee',
-    /** BF-TOTAL / BF-PAYABLE as saved: Σ lines, labour, total − labour, wholesale cost and profit. */
-    billTotal: 'paise',
-    /** BF-SAVE: each typed cash / online / due / expenses amount, and payment.total. */
-    payment: 'paise',
+    /** BF-TOTAL / BF-PAYABLE as saved: Σ lines, total − labour, wholesale cost and profit. */
+    billTotal: 'rupee',
+    /** BF-LAB as saved: the Labour box, typed or suggested (₹12.50 → ₹13, so ₹1,000 of lines pay ₹987). */
+    labour: 'rupee',
+    /** BF-SAVE, DUE-CHECK: each typed cash / online / due / wholesale expenses amount, and payment.total. */
+    payment: 'rupee',
     /** BF-FILL: Rest → Due (total − cash − online). */
-    restInDue: 'paise',
-    /** BF-FILL: ticking Cash / Online / Due fills the whole total (₹988 for ₹987.50). */
+    restInDue: 'rupee',
+    /** BF-FILL: ticking Cash / Online / Due fills the whole total. */
     tickFill: 'rupee',
+    /** MONEY-ROUND: an expense, withdrawal, cash deposit or "No bill" amount as saved. */
+    entryAmount: 'rupee',
+    /** RENT-7: a sub-meter bill's amount (units × rate per unit). */
+    meterAmount: 'rupee',
     /** BF-LAB: auto labour written in the Labour box (rate × heavy packets). */
     autoLabourBox: 'rupee',
     /** Amounts shown on the forms: lines, totals, payable, paid / received, live profit. */
@@ -123,7 +134,7 @@ export function computePurchaseTotals(items, laborCharges = 0, heavyWeightThresh
         totalPackets += weights.length;
         heavyPackets += weights.filter(w => Number(w) > heavyWeightThreshold).length;
     }
-    const labour = roundFor('billTotal', toMoney(laborCharges) || 0);
+    const labour = roundFor('labour', toMoney(laborCharges) || 0);
     return { billTotal, laborCharges: labour, grandTotal: roundFor('billTotal', billTotal - labour), totalPackets, heavyPackets };
 }
 
@@ -142,13 +153,14 @@ export function autoLabour(settings, heavyPackets) {
 
 /**
  * BF-PAYABLE as shown on the purchase form: line total less the labour in the
- * box, in ROUNDING.shown (the saved `grandTotal` is computePurchaseTotals').
+ * box as it is saved (ROUNDING.labour), in ROUNDING.shown: the same figure as
+ * the saved `grandTotal` (computePurchaseTotals') and the Cash / Online / Due tick.
  * @param {number} billTotal
  * @param {number} labour - the Labour box (0 when unticked)
  * @returns {number}
  */
 export function payableOnScreen(billTotal, labour) {
-    return roundFor('shown', billTotal - labour);
+    return roundFor('shown', billTotal - roundFor('labour', toMoney(labour) || 0));
 }
 
 /**
@@ -185,7 +197,7 @@ export function computeWholesaleTotals(items, stock = {}, expenses = 0) {
         const rate = toMoney(stock?.[item?.itemId]?.rate);
         return rate ? rate * readLineItem(item).qty : 0;
     }));
-    const profit = roundFor('billTotal', total - cost - (toMoney(expenses) || 0));
+    const profit = roundFor('billTotal', total - cost - roundFor('payment', toMoney(expenses) || 0));
     const profitPercent = total > 0 ? roundFor('margin', profit / total) : 0;
     return { total, cost, profit, profitPercent };
 }
@@ -219,6 +231,28 @@ export function shownAmount(value) {
  */
 export function typedAmount(value) {
     return roundFor('payment', value);
+}
+
+/**
+ * MONEY-ROUND: an expense, withdrawal, cash deposit or "No bill" amount as it
+ * is saved (ROUNDING.entryAmount); unparseable → 0.
+ * @param {*} value
+ * @returns {number}
+ */
+export function entryAmount(value) {
+    return roundFor('entryAmount', Number(value) || 0);
+}
+
+/**
+ * RENT-7: a sub-meter bill's amount, units × rate per unit, in
+ * ROUNDING.meterAmount (the rules accept it within ₹0.51 of units × rate, like
+ * the pro-rated rents' half a rupee).
+ * @param {number} units
+ * @param {number} rate
+ * @returns {number}
+ */
+export function meterAmount(units, rate) {
+    return roundFor('meterAmount', (Number(units) || 0) * (Number(rate) || 0));
 }
 
 /**
@@ -293,7 +327,97 @@ export function restInDue(total, { cash, online }) {
 }
 
 /**
- * DUE-CHECK: the cash / online of a due payment against the bill's due.
+ * MONEY-ROUND: whether a stored amount has paise (only records saved before #129 do).
+ * @param {*} value
+ * @returns {boolean}
+ */
+export function hasPaise(value) {
+    const v = round2(toMoney(value) || 0);
+    return v !== Math.round(v);
+}
+
+/**
+ * BF-SAVE, DUE-CHECK: each leg in ROUNDING.payment, then the remainder
+ * (target − Σ rounded legs) in one leg, so the legs add up to `target` exactly:
+ * the first leg of `prefer` that has an amount, else the largest leg (never
+ * taken below 0). Legs typed 300.50 + 300.50 + 386.50 for ₹987 are 301 + 301 + 385.
+ * @param {Object<string, *>} typed legs as typed
+ * @param {number} target
+ * @param {string[]} [prefer]
+ * @returns {Object<string, number>} the same keys
+ */
+export function settleSplit(typed, target, prefer = []) {
+    const legs = {};
+    Object.keys(typed).forEach(k => { legs[k] = typedAmount(toMoney(typed[k]) || 0); });
+    const rest = round2(target - Object.values(legs).reduce((a, v) => a + v, 0));
+    if (rest === 0) return legs;
+    const keys = Object.keys(legs);
+    const largest = keys.reduce((a, k) => (legs[k] > legs[a] ? k : a), keys[0]);
+    const pick = [...prefer.filter(k => legs[k] > 0), largest].find(k => k !== undefined && legs[k] + rest >= 0);
+    if (pick !== undefined) legs[pick] = round2(legs[pick] + rest);
+    return legs;
+}
+
+/**
+ * BF-SAVE on an edited bill (#129): the typed cash / online / due in
+ * ROUNDING.payment. When they add up to the new total (within BF-SPLIT's ₹1) or
+ * to the bill's stored total (an unchanged split of a bill saved with paise),
+ * the rounding remainder goes into Due if it has an amount, else the largest
+ * leg, so cash + online + due = the new total exactly. A split still being
+ * changed (further off) is only rounded, so the form shows what is left.
+ * @param {{online: *, cash: *, due: *}} typed
+ * @param {number} total - the bill's new total (BF-PAYABLE / BF-TOTAL)
+ * @param {?number} storedTotal - BILL-TOTAL of the bill as saved
+ * @returns {{online: number, cash: number, due: number}}
+ */
+export function editedPaymentSplit(typed, total, storedTotal) {
+    const raw = { online: toMoney(typed.online) || 0, cash: toMoney(typed.cash) || 0, due: toMoney(typed.due) || 0 };
+    const sum = round2(raw.online + raw.cash + raw.due);
+    const settles = Math.abs(sum - total) <= SPLIT_TOLERANCE
+        || (storedTotal !== null && storedTotal !== undefined && Math.abs(sum - storedTotal) <= 0.01);
+    return settles ? settleSplit(raw, total, ['due']) : paymentSplit(raw);
+}
+
+/**
+ * BF-SAVE on an edited bill (#129): true when the edit leaves the money as it
+ * was loaded: the same lines (item, kg, rate, amount, weights), the same labour
+ * (purchases) and the same cash / online / due. The edit then keeps every
+ * stored money field exactly (a bill saved with paise keeps its paise) and
+ * saves only what else changed.
+ * @param {{bill: Object, items: Object[], labour: ?number, typed: {online: *, cash: *, due: *}}} edit
+ *   labour: the Labour box (0 when unticked); null for sales
+ * @returns {boolean}
+ */
+export function editKeepsMoney({ bill, items, labour = null, typed }) {
+    const sig = (lines) => JSON.stringify((lines || []).map(l => {
+        const r = readLineItem(l);
+        return [l?.itemId ?? null, r.name, r.qty, r.rate, r.total, Array.isArray(l?.weights) ? l.weights.map(Number) : null];
+    }));
+    if (sig(items) !== sig(bill?.items)) return false;
+    if (labour !== null && round2(toMoney(labour) || 0) !== billLabour(bill)) return false;
+    const stored = readPayment(bill);
+    return ['online', 'cash', 'due'].every(k => round2(toMoney(typed?.[k]) || 0) === stored[k]);
+}
+
+/**
+ * BF-SAVE on an edited bill (#129): the payment as it is checked and saved:
+ * editedPaymentSplit against the new total, for the bill being edited.
+ * @param {{online: *, cash: *, due: *}} typed
+ * @param {number} total
+ * @param {Object} bill - the bill as saved
+ * @returns {{online: number, cash: number, due: number}}
+ */
+export function editSplitFor(typed, total, bill) {
+    return editedPaymentSplit(typed, total, bill ? billTotal(bill) : null);
+}
+
+/**
+ * DUE-CHECK: the cash / online of a due payment against the bill's due. Each
+ * part is saved in ROUNDING.payment. Only when the due itself has paise (a bill
+ * saved before #129, ₹987.50) and the payment is exactly that due (within the
+ * tolerance), the paise remainder goes into one leg (the one typed with paise,
+ * else the largest), so the due can be paid off to 0 and only the old
+ * remainder carries paise. A ₹100 due paid 0.01 + 99.99 is 0 + 100.
  * @param {*} cash
  * @param {*} online
  * @param {number} due
@@ -301,9 +425,15 @@ export function restInDue(total, { cash, online }) {
  * @returns {{ok: true, cash: number, online: number, total: number}|{ok: false, error: 'negative'|'empty'|'exceeds-due'}}
  */
 export function validateDuePayment(cash, online, due, tolerance = 0.01) {
-    const c = round2(Number(cash) || 0);
-    const o = round2(Number(online) || 0);
-    if (c < 0 || o < 0) return { ok: false, error: 'negative' };
+    const c0 = round2(Number(cash) || 0);
+    const o0 = round2(Number(online) || 0);
+    if (c0 < 0 || o0 < 0) return { ok: false, error: 'negative' };
+    const d = round2(Number(due) || 0);
+    const paysOldDue = hasPaise(d) && Math.abs(round2(c0 + o0) - d) <= tolerance;
+    const prefer = [hasPaise(c0) && 'cash', hasPaise(o0) && 'online'].filter(Boolean);
+    const { cash: c, online: o } = paysOldDue
+        ? settleSplit({ cash: c0, online: o0 }, d, prefer)
+        : { cash: typedAmount(c0), online: typedAmount(o0) };
     const total = round2(c + o);
     if (total <= 0) return { ok: false, error: 'empty' };
     if (total > due + tolerance) return { ok: false, error: 'exceeds-due' };
@@ -324,7 +454,14 @@ export const BILLING_SPEC = Object.freeze({
     wholesaleLiveProfit: 'WS-PROFIT, WS-MARGIN',
     paymentSplit: 'BF-SAVE',
     paidOnScreen: 'BF-PAID',
+    entryAmount: 'MONEY-ROUND',
+    meterAmount: 'RENT-7',
     buildPaymentSplit: 'BF-SAVE',
+    hasPaise: 'MONEY-ROUND',
+    settleSplit: 'BF-SAVE, DUE-CHECK',
+    editedPaymentSplit: 'BF-SAVE',
+    editKeepsMoney: 'BF-SAVE',
+    editSplitFor: 'BF-SAVE',
     prefillPayment: 'BF-FILL',
     restInDue: 'BF-FILL',
     validatePaymentSplit: 'BF-SPLIT',
