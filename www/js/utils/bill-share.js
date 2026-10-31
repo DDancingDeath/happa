@@ -5,7 +5,7 @@
  * @module utils/bill-share
  */
 
-import { readPayment, readLineItem, round2 } from './money.js';
+import { billTotal, outstandingDue, readPayment, readLineItem } from './money.js';
 import { billDateOf } from './history-filters.js';
 import { t } from '../i18n/index.js';
 
@@ -58,6 +58,7 @@ export function reprintType(bill, type) {
 export function buildReprintPayload(bill, type) {
     const kind = reprintType(bill, type);
     const pay = readPayment(bill);
+    const due = outstandingDue(bill);
     const items = (bill?.items || []).map(item => {
         const line = readLineItem(item);
         return { ...item, name: line.name, qty: line.qty, rate: line.rate, total: line.total };
@@ -68,11 +69,11 @@ export function buildReprintPayload(bill, type) {
         type: kind,
         isPurchase: kind === 'purchase',
         isCopy: true,
-        payment: { ...(bill?.payment || {}), cash: pay.cash, online: pay.online, due: pay.due },
-        dueAmount: pay.due
+        payment: { ...(bill?.payment || {}), cash: pay.cash, online: pay.online, due },
+        dueAmount: due
     };
     if (kind === 'wholesale') {
-        const total = round2(bill?.total || bill?.saleTotal || bill?.grandTotal || 0);
+        const total = billTotal(bill);
         Object.assign(payload, { total, saleTotal: total, grandTotal: total, amountPayable: total });
     }
     return payload;
@@ -113,14 +114,14 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
     if (kind === 'purchase') {
         const subtotal = p.billTotal || p.grandTotal || p.amountPayable || p.total || 0;
         const labor = Number(p.laborCharges) || 0;
-        const payable = p.amountPayable || p.grandTotal || (subtotal - labor);
+        const payable = billTotal(p) || (subtotal - labor);
         lines.push(`*${t('ui.bill.total')}: ${money(subtotal)}*`);
         if (labor > 0) {
             lines.push(`${t('ui.bill.labour')}: ${money(labor)}`);
             lines.push(`*${t('ui.bill.payable')}: ${money(payable)}*`);
         }
     } else {
-        lines.push(`*${t('ui.bill.total')}: ${money(p.total || p.saleTotal || p.grandTotal)}*`);
+        lines.push(`*${t('ui.bill.total')}: ${money(billTotal(p))}*`);
     }
     const paid = p.payment.cash + p.payment.online;
     if (paid > 0) lines.push(`${t(kind === 'purchase' ? 'ui.bill.paid' : 'ui.bill.received')}: ${money(paid)}`);

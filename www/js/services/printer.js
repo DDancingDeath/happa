@@ -5,6 +5,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { DEFAULT_SETTINGS } from '../utils/constants.js';
 import { getAndroidMajorVersion, Helpers } from '../utils/helpers.js';
 import { copyMark, receiptDateTime } from '../utils/bill-share.js';
+import { billTotal, outstandingDue, readPayment } from '../utils/money.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
 
@@ -400,17 +401,14 @@ class BluetoothPrinterManager {
         ctx.font = `bold ${config.fonts.total.size}px Arial`;
         const grandTotalLabel = `${t('ui.bill.total')}:`;
         ctx.fillText(grandTotalLabel, config.padding.left, y);
-        const amountPayable = billData.amountPayable || billData.grandTotal || billData.saleTotal || billData.total ||
-                             (subtotal - (billData.laborCharges || 0));
+        const amountPayable = billTotal(billData) || (subtotal - (billData.laborCharges || 0));
         const payableText = '₹' + Math.round(amountPayable);
         const payableWidth = ctx.measureText(payableText).width;
         ctx.fillText(payableText, config.width - payableWidth - config.padding.left, y);
         y += config.spacing.line;
         
-        // Calculate actual received amount (cash + online)
-        const cashReceived = Number(billData.payment?.cash) || Number(billData.cashPayment) || 0;
-        const onlineReceived = Number(billData.payment?.online) || Number(billData.onlinePayment) || 0;
-        const totalReceived = cashReceived + onlineReceived;
+        // BILL-PAY: nested payment.* wins over the old top-level fields, even when 0
+        const totalReceived = readPayment(billData).paid;
         
         // Total Received (कुल प्राप्त / कुल भुगतान)
         y += 4;
@@ -423,7 +421,7 @@ class BluetoothPrinterManager {
         y += config.spacing.line;
         
         // Due amount (बकाया)
-        const dueAmount = billData.payment?.due || billData.dueAmount || 0;
+        const dueAmount = outstandingDue(billData);
         if (dueAmount > 0) {
             y += 4; // Small gap
             ctx.font = `bold ${config.fonts.body.size}px Arial`;
