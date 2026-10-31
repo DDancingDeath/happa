@@ -3,13 +3,15 @@
 import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
+import { BottomNav } from './ui/bottom-nav.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { userProfile } from './firebase/repos/users.js';
-import { on, REFRESH } from './utils/events.js';
+import { on, REFRESH, READS_ALERT } from './utils/events.js';
+import { backgroundReadsAllowed, getQuotaStatus } from './firebase/firestore-meter.js';
 import { ItemsManager } from './modules/items.js';
 import { PrinterService, printerManager } from './services/printer.js';
 import { BillingManager, PurchaseManager, RetailSaleManager } from './modules/billing.js';
@@ -110,6 +112,9 @@ function loadStatements() {
 on(REFRESH.money, () => loadMoney().then(m => m.render()));
 on(REFRESH.insights, () => loadInsights().then(m => m.render()));
 on(REFRESH.statements, () => loadStatements().then(m => m.render()));
+
+// Read meter alerts (#159) become TIP SessionReads failures, which reach the daily tip-auto issues.
+on(READS_ALERT, ({ kind, reads }) => tip.start('SessionReads').complete({ [kind]: true, reads }));
 
 // Load and inject HTML templates from separate .html files. The login screen
 // and app shell go in first; the pages load while Firebase restores the
@@ -302,6 +307,8 @@ async function initializeUserData() {
         return;
     }
     UIManager.showLoading();
+    // Reads of this sign-in only: the read meter counts from page load, across sign-outs
+    const readsAtStart = getQuotaStatus().reads;
     // TIP AppStart (#217): first usable screen after the profile/data load
     const appStart = tip.start('AppStart', { flags: { offline: navigator.onLine === false } });
     const notShown = () => { appStart.setFlag('blocked'); appStart.complete(); };
@@ -360,7 +367,11 @@ async function initializeUserData() {
         });
         // Shared labour rate / heavy-packet weight (#20) come from the same settings/app read
         FirebaseService.loadAppSettings()
-            .then(data => { configureTip(data); RolesAccessManager.applyShared(data); return SettingsManager.applySharedSettings(data); })
+            .then(data => {
+                configureTip(data);
+                RolesAccessManager.applyShared(data);
+                return SettingsManager.applySharedSettings(data);
+            })
             .catch(e => console.warn('Shared labour settings not loaded:', e?.code || e));
         // TIP reporting (#217): approved user only; writes are batched (≤ 1 counter write / 30 min)
         startTipReporting({ sink: writeTipReport, buildId: BUILD_ID });
@@ -419,6 +430,28 @@ async function initializeUserData() {
         }
         
         // Show the billing tab by default
+        BottomNav.init({
+            showTab: (tab) => NavigationManager.showTabFromNav(tab),
+            // Pull-to-refresh reloads data only: filters, the bill being entered and forms stay as they are
+            // (older on-demand bills keep History's own Refresh button: re-reading them costs reads)
+            refreshers: {
+                day: () => (DayManager.currentSubTab === 'cash' ? CashManagementManager.init() : DayManager.init()),
+                history: () => HistoryManager.refreshHistory(),
+                due: () => {
+                    OutstandingManager.renderDue();
+                    if (document.getElementById('outstandingSearchInput')?.value.trim()) OutstandingManager.searchOutstanding();
+                },
+                stock: () => {
+                    const shown = (id) => document.getElementById(id)?.style.display !== 'none';
+                    if (shown('stockAdjustmentSection')) return StockManager.renderAdjustmentHistory();
+                    if (shown('deadStockSection')) return StockManager.renderDeadStock();
+                    return Promise.resolve(StockManager.renderStock()).then(() => {
+                        if (document.getElementById('stockSearchInput')?.value.trim()) StockManager.searchStock();
+                    });
+                }
+            },
+            onRefreshed: () => UIManager.showToast(t('msg.nav.refreshed'))
+        });
         NavigationManager.showTab('billing');
         NavigationManager.setActiveNavLink('billing');
         NavigationManager.initBackNavigation();
@@ -461,6 +494,7 @@ async function initializeUserData() {
         
         UIManager.hideLoading();
         markStartup('app-shown', { online: navigator.onLine });
+        tip.start('SessionReads').complete({ startupReads: getQuotaStatus().reads - readsAtStart });
         noteStartup('listeners', FirebaseService.getStartupListenerInfo?.() || {});
         logStartupTimings();
         // Shop | Rentals switch (#149): Rentals code loads only when opened
@@ -478,8 +512,11 @@ async function initializeUserData() {
 
         // Rate trends (#65): roll monthly rate stats forward from loaded bills (owner/manager)
         if (AppState.userRole === 'owner' || AppState.userRole === 'manager') {
-            setTimeout(() => loadRateTrends().then(m => m.scheduleRollForward(0))
-                .catch(e => console.warn('Rate trends roll-forward not started:', e?.message || e)), 20000);
+            setTimeout(() => {
+                if (!backgroundReadsAllowed()) return;
+                loadRateTrends().then(m => m.scheduleRollForward(0))
+                    .catch(e => console.warn('Rate trends roll-forward not started:', e?.message || e));
+            }, 20000);
         }
         
     } catch (error) {
@@ -732,6 +769,11 @@ window.app = {
         showTab: (tabId, evt) => NavigationManager.showTabFromNav(tabId, evt),
         noteRoute: (routeId) => NavigationManager.noteRoute(routeId)
     },
+
+    // Phone bottom bar (#142): Settings › swipe between pages
+    bottomNav: {
+        setSwipe: (on) => BottomNav.setSwipe(on)
+    },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
     business: {
@@ -979,6 +1021,8 @@ window.app = {
         setCustomRange: (from, to) => HistoryManager.setCustomRange(from, to),
         applyCustomRange: (from, to) => HistoryManager.applyCustomRange(from, to),
         reprintBill: () => HistoryManager.reprintBill(),
+        retryPrint: () => HistoryManager.retryPrint(),
+        markPrintedByHand: () => HistoryManager.markPrintedByHand(),
         shareBill: () => HistoryManager.shareBill(),
         editBillDetails: (billIndex) => {
             if (billIndex !== undefined) {
@@ -1096,7 +1140,8 @@ window.app = {
         showSubTab: (tab) => DayManager.showSubTab(tab),
         loadTodayData: () => DayManager.loadTodayData(),
         filterTransactions: () => DayManager.filterTransactions(),
-        showLabourBreakdown: () => DayManager.showLabourBreakdown()
+        showLabourBreakdown: () => DayManager.showLabourBreakdown(),
+        returnCashBody: () => DayManager.returnCashBody()
     },
     
     // Cash Management
@@ -1139,6 +1184,7 @@ window.app = {
         toggleDarkMode: () => SettingsManager.toggleDarkMode(),
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
+        togglePrintPreview: () => SettingsManager.togglePrintPreview(),
         scanBluetoothDevices: () => SettingsManager.scanBluetoothDevices(),
         connectToPrinter: (id, name) => SettingsManager.connectToPrinter(id, name),
         disconnectPrinter: () => SettingsManager.disconnectPrinter(),

@@ -206,6 +206,11 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Devanagari's marks above and below the line need more room than Latin text (#68) */
+html[lang="hi"] body {
+  line-height: 1.5;
+}
+
 /* Modern Card Utility Class */
 .modern-card {
   background: var(--card-bg);
