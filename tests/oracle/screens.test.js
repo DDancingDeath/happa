@@ -22,6 +22,7 @@ import { CashManagementManager } from '../../www/js/modules/cash-management.js';
 import { FirebaseService } from '../../www/js/firebase/firestore-service.js';
 import { AppState } from '../../www/js/utils/state.js';
 import { sessionTotals } from '../../www/js/utils/cash-session.js';
+import { todaySummary } from '../../www/js/utils/calc/today.js';
 
 const FIX = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/calculations/shop-month.json'), 'utf8'));
 const NOW = O.timeOf(FIX.now);
@@ -135,6 +136,30 @@ describe('Today screen == oracle', () => {
     specTest('T12_net')('T12_net: net flow amount and its in/out label', () => {
         expect(shown('todayNetCashFlow')).toBe(rupee(Math.abs(want.T12_net)));
         expect(document.getElementById('todayCashFlowLabel').textContent).toMatch(want.T12_net < 0 ? /outflow/i : /inflow/i);
+    });
+});
+
+describe('todaySummary() (utils/calc/today.js) == oracle, to the paise', () => {
+    const want = O.today(data, NOW, FIX.session);
+    const wantItems = O.todayItems(data, NOW);
+    const s = todaySummary({
+        bills: { purchase: copy(FIX.purchases), wholesale: copy(FIX.wholesaleSales), retail: copy(FIX.retailSales) },
+        expenses: copy(FIX.expenses), sessions: FIX.session ? [copy(FIX.session)] : [], settings: {}, today: NOW
+    });
+    const FIELD = {
+        T1_purchases: s.purchases, T1_purchaseCount: s.purchaseCount, T2_sales: s.sales, T2_saleCount: s.saleCount,
+        T3_labour: s.labour.deducted.amount, T4_businessExpenses: s.businessExpenses, T5_personalExpenses: s.personalExpenses,
+        T6_cashIn: s.cashIn, T7_onlineIn: s.onlineIn, T8_cashOut: s.cashOut, T9_onlineOut: s.onlineOut,
+        T10_totalIn: s.totalIn, T11_totalOut: s.totalOut, T12_net: s.net, T13_dueReceived: s.dueReceived, T14_duePaid: s.duePaid,
+        T15_dueToReceive: s.dueToReceive, T16_dueToPay: s.dueToPay
+    };
+    Object.entries(FIELD).forEach(([id, value]) => {
+        specTest(id)(id, () => expect(O.r2(value)).toBe(want[id]));
+    });
+    test('T17 item cards', () => {
+        const rows = (list) => list.map(r => ({ name: r.name, lines: r.count, kg: O.r2(r.quantity), value: O.r2(r.totalValue), avgRate: r.avgRate === null ? null : O.r2(r.avgRate) }));
+        expect({ purchases: rows(s.purchaseItems), sales: rows(s.saleItems) }).toEqual(wantItems);
+        expect(wantItems.purchases.length + wantItems.sales.length).toBeGreaterThan(0);
     });
 });
 

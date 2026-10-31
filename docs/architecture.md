@@ -86,25 +86,25 @@ the migration. **Inline** = computed inside a page module.
 
 | Spec IDs | Today | Target |
 |---|---|---|
-| BILL-TOTAL | `money.billTotal`; re-implemented with other field orders in day.js:155-165 and history.js:759, 770, 776 | `money.billTotal` only |
+| BILL-TOTAL | `money.billTotal`; re-implemented with other field orders in calc/today.js (`purchaseTotal`, `saleTotal`) and history.js:759, 770, 776 | `money.billTotal` only |
 | BILL-PAY | `money.readPayment` | same |
 | BILL-AT-SAVE | `due-payments.saleTimePayment` | same |
 | BILL-DUE | `money.outstandingDue`; second rule `money.wholesaleOutstanding` (wholesale-sales.js:718, 727) | `money.outstandingDue` only |
 | DUE-PAY | `due-payments.dueEvents`, `sumDueEvents`, `entryParts`, `legParts` | same |
-| EXP-KIND | inline in 5 places, two rules: day.js:169 and cash-management.js:354 (`category‖type`, any case); business-metrics.js:266, finance-calc.js:354, statements.js:52 (`category === 'personal'`) | `money.expenseKind(e)` (new) |
-| DAY | `dates.startOfLocalDay`, `endOfLocalDayExclusive`, `todayLocalISO`; inline in day.js:126, cash-management.js:320, statements.js:216, 334 | `dates.*` only |
+| EXP-KIND | inline in 5 places, two rules: calc/today.js `isPersonal` and cash-management.js:354 (`category‖type`, any case); business-metrics.js:266, finance-calc.js:354, statements.js:52 (`category === 'personal'`) | `money.expenseKind(e)` (new) |
+| DAY | `dates.startOfLocalDay`, `endOfLocalDayExclusive`, `todayLocalISO`; inline in cash-management.js:320, statements.js:216, 334 | `dates.*` only |
 | PERIOD | `business-metrics.periodRange` (+ `insights-config`) | same |
 | AVG-COST | `stock-replay.replayEvents` / `computeStock` | same |
 | COGS | `finance-calc.computeFinanceSummary` (via `replayWithValues`) | same |
 | OPENING | `money.isOpeningRecord`, `activityBills` | same |
-| BILL-COUNT | `business-metrics.billCount`; Today counts with `.length` (day.js:248, 250) | `billCount` |
+| BILL-COUNT | `business-metrics.billCount`; Today counts with `.length` (calc/today.js) | `billCount` |
 | BILL-TIME | `business-metrics.billTime`, `recordTime`; copy in `anomalies.billTime` | `business-metrics.billTime` |
 | CMP | `business-metrics.comparisonRanges`, `change` | same |
 | PARTY | `aging.normalizePartyName`, `pickPartyName`; identical copy `due-payments.normalizeParty` | one of them, the other re-exports |
 | MONEY-TEXT | `money.formatRupees` / `formatAmount`; pages also print raw `₹${x}` (cash-management.js:619-694) and `Math.round` | `money.formatRupees` |
 | DATE-TEXT | `dates.formatDay`, `formatDayTime` | same |
-| T1, T2, T4, T5, T6, T7, T8, T9, T10, T11, T12, T15, T16 | inline `DayManager.loadTodayData` (day.js:122-300) on top of `saleTimePayment`, `outstandingDue` | `calc/today.todaySummary(src, day)` (new) |
-| T13, T14 | `due-payments.dueEvents` + `sumDueEvents` (called from day.js:225) | inside `todaySummary` |
+| T1, T2, T4, T5, T6, T7, T8, T9, T10, T11, T12, T15, T16, T17 | `calc/today.todaySummary` (#185) on top of `saleTimePayment`, `outstandingDue`; day.js only renders | same |
+| T13, T14 | `due-payments.dueEvents` + `sumDueEvents`, inside `todaySummary` | same |
 | T3, T-LAB-1, T-LAB-2, T-LAB-3 | `labour.labourSummary` | same |
 | F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11 (retired page) | `finance-calc.computeFinanceSummary` | same (engine of M*) |
 | F12 | open (#39); superseded by M15 | — |
@@ -156,8 +156,8 @@ the migration. **Inline** = computed inside a page module.
 Numbers on screen with **no spec ID** today (add one when they move): wholesale
 live profit / margin (`money.computeWholesaleTotals`, shown at
 wholesale-sales.js:286-287), stock adjustment value (stock.js:754), Insights
-top-5 share (insights.js:377-381), Today item cards' average rate
-(day.js:339-361), bill-form draft totals before save (purchase, retail,
+top-5 share (insights.js:377-381),
+bill-form draft totals before save (purchase, retail,
 wholesale).
 
 ## 4. Verified findings (review of 31 Oct 2026)
@@ -262,8 +262,8 @@ on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js
 |---|---|---|---|
 | 0 | This PR: doc, ratchet, baseline | S | none (ratchet: #180 added no counted line; #181, #182 change no counts) |
 | 1 | Characterisation tests: bill forms (draft totals, labour, prefill, split), Today item cards, cash drawer C1–C8, history viewBill; BUG fixtures for the 4 disagreements | M | tests only; rebase on #181, #182 |
-| 2a | Delete the dead `HistoryManager.saveBillToHistory` and its `window.app.history.saveBillToHistory` wiring (main.js:1060), and the commented-out `viewRetailSale` block (history.js:531-610) | S | ⚠ main.js (#181, #182) |
-| 2b | `calc/today.todaySummary` (T1–T16) out of day.js | M | none (day.js not in flight) |
+| 2a | ✅ #185: delete the dead `HistoryManager.saveBillToHistory` and its `window.app.history.saveBillToHistory` wiring (main.js:1060), and the commented-out `viewRetailSale` block (history.js:531-610) | S | ⚠ main.js (#181, #182) |
+| 2b | ✅ #185: `calc/today.todaySummary` (T1–T17) out of day.js | M | none (day.js not in flight) |
 | 2c | Periods: month step, day loops and day ends into `dates.js` (insights, money, statements, cash :320, day :126) | S | ⚠ modules/money.js, cash-management.js (#181) |
 | 2d | History `viewBill` view-model on `billTotal` / `readPayment` | S | none |
 | 2e | Insights top-5 share and per-₹100 into business-metrics with spec IDs | S | none |

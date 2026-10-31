@@ -6,7 +6,7 @@
 import fs from 'fs';
 import path from 'path';
 import {
-    labourDeducted, labourToPay, labourPackages, labourSummary, labourToPayByDay, billKg, billPackets,
+    labourDeducted, labourGap, labourToPay, labourPackages, labourSummary, labourToPayByDay, billKg, billPackets,
     normalizePackageKg, DEFAULT_LABOUR_PACKAGE_KG
 } from '../utils/labour.js';
 import { buildDayReportText } from '../utils/anomalies.js';
@@ -243,4 +243,11 @@ describe('Today Labour card (single language)', () => {
         expect(hi).toContain('मज़दूरों को देनी है: ₹174 (1,000 किलो ÷ 35 किलो = 29 बोरी × ₹6)');
         expect(hi.split('\n').filter(l => /मज़दूरी|मज़दूरों/.test(l)).join(' ')).not.toMatch(LATIN_WORD);
     });
+});
+
+test('T-LAB-3: to pay and deducted match within 50 paise, else more / less', () => {
+    expect(labourGap(0.49)).toEqual({ amount: 0.49, kind: 'same' });
+    expect(labourGap(-0.49)).toEqual({ amount: 0.49, kind: 'same' });
+    expect(labourGap(0.5)).toEqual({ amount: 0.5, kind: 'more' });
+    expect(labourGap(-0.5)).toEqual({ amount: 0.5, kind: 'less' });
 });
