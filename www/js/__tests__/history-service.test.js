@@ -99,7 +99,7 @@ describe('recent history window + stock checkpoint', () => {
 
         await rebuildSettled();
         const cp = cpDoc();
-        expect(cp).toMatchObject({ stale: false, asOf: W, formatVersion: 3 });
+        expect(cp).toMatchObject({ stale: false, asOf: W, formatVersion: 4 });
         expect(cp.backfill.complete).toBe(true);
         // Every dated stock document now has a numeric timestamp.
         ['purchases', 'wholesaleSales', 'retailSales', 'stockAdjustments'].forEach(c => {
@@ -568,9 +568,9 @@ describe('review fixes (2)', () => {
         await FirebaseService.saveStockAdjustment({ itemId: 'gehu', itemName: 'Gehu', adjustType: 'add', quantity: 1, rate: 0, date: new Date().toISOString() });
         await settle();
         const sale = [...fake.raw('retailSales').values()].find(d => d.total === 5 && d.payment?.due === 3);
-        expect(sale).toMatchObject({ clientVersion: 3, openDue: true });
+        expect(sale).toMatchObject({ clientVersion: 4, openDue: true });
         expect(typeof sale.timestamp).toBe('number');
-        expect([...fake.raw('stockAdjustments').values()].some(d => d.clientVersion === 3 && d.quantity === 1 && d.itemName === 'Gehu')).toBe(true);
+        expect([...fake.raw('stockAdjustments').values()].some(d => d.clientVersion === 4 && d.quantity === 1 && d.itemName === 'Gehu')).toBe(true);
     });
 
     it('#6 an edit based on a stale copy does not overwrite a payment recorded elsewhere', async () => {
@@ -722,7 +722,8 @@ describe('review fixes (2)', () => {
         await open();
         await rebuildSettled();
         const built = { ...cpDoc() };
-        await fake.db.collection('stockCheckpoints').doc('current').set({ ...built, formatVersion: 2, rebuildingUntil, rebuildingBy });
+        // rc1's format (3): written before voids existed (#75), so this phone rebuilds it once
+        await fake.db.collection('stockCheckpoints').doc('current').set({ ...built, formatVersion: 3, clientVersion: 3, rebuildingUntil, rebuildingBy });
         FirebaseService.cleanup();
         await FirebaseService.setupRealtimeListeners();
     };
@@ -749,7 +750,7 @@ describe('review fixes (2)', () => {
         await settle();
         expect(AppState.stockReady).toBe(true);
         expect(AppState.stock).toEqual(fullStock());
-        expect(cpDoc()).toMatchObject({ formatVersion: 3, rebuildingUntil: 0, stale: false });
+        expect(cpDoc()).toMatchObject({ formatVersion: 4, clientVersion: 4, writtenAt: expect.any(Number), rebuildingUntil: 0, stale: false });
     }, 30000);
 
     it('#13 deferred stock: not ready at the first screen, computed right after the first paint', async () => {

@@ -5,7 +5,7 @@
  * reads bills.
  */
 import {
-    billEditChanges, hasEditChanges, describeEdit, editHeading, cleanReason, voidBlocker, editCountOf, nextEditNumber, editRecord
+    billEditChanges, hasEditChanges, describeEdit, editHeading, editLines, cleanReason, voidBlocker, editCountOf, nextEditNumber, editRecord
 } from '../utils/bill-edits.js';
 import { activeBills, activityBills, isActiveBill, outstandingDue } from '../utils/money.js';
 import { saleTimePayment, dueEvents } from '../utils/due-payments.js';
@@ -22,15 +22,16 @@ const BILL = {
 };
 
 describe('what an edit records (#121)', () => {
-    test('only the changed fields, before and after; item lines diffed by item', () => {
+    test('only the changed fields, before and after (the item list whole); the lines diffed by item for the screen', () => {
         const after = {
             ...BILL, customerName: 'Ramesh Kumar', total: 450, saleTotal: 450,
             items: [line('Wheat', 9, 50), line('Rice', 2, 40)], payment: { cash: 450, online: 0, due: 80, total: 530 }
         };
         const c = billEditChanges(BILL, after);
-        expect(Object.keys(c.fields).sort()).toEqual(['customerName', 'payment', 'saleTotal', 'total']);
+        expect(Object.keys(c.fields).sort()).toEqual(['customerName', 'items', 'payment', 'saleTotal', 'total']);
         expect(c.fields.total).toEqual({ before: 500, after: 450 });
-        expect(c.lines).toEqual([
+        expect(c.fields.items).toEqual({ before: BILL.items, after: after.items });
+        expect(editLines(c)).toEqual([
             { name: 'Wheat', before: { qty: 10, rate: 50, total: 500 }, after: { qty: 9, rate: 50, total: 450 } },
             { name: 'Rice', before: null, after: { qty: 2, rate: 40, total: 80 } }
         ]);
@@ -39,15 +40,27 @@ describe('what an edit records (#121)', () => {
 
     test('a removed line, and items changed only in their weights, are recorded too', () => {
         const two = { ...BILL, items: [line('Wheat', 10, 50), line('Rice', 2, 40)] };
-        expect(billEditChanges(two, BILL).lines).toEqual([{ name: 'Rice', before: { qty: 2, rate: 40, total: 80 }, after: null }]);
+        expect(editLines(billEditChanges(two, BILL))).toEqual([{ name: 'Rice', before: { qty: 2, rate: 40, total: 80 }, after: null }]);
         const weights = billEditChanges(BILL, { ...BILL, items: [line('Wheat', 10, 50, { weights: [5, 5] })] });
-        expect(weights).toMatchObject({ fields: {}, lines: [], itemsChanged: true });
+        expect(Object.keys(weights.fields)).toEqual(['items']);
+        expect(editLines(weights)).toEqual([]);
         expect(hasEditChanges(weights)).toBe(true);
     });
 
     test('nothing recorded changed: no record and no reason needed; key order and missing vs undefined do not count', () => {
         const same = { ...BILL, payment: { total: 500, due: 0, online: 0, cash: 500 }, printComments: undefined, editedAt: 'now' };
         expect(hasEditChanges(billEditChanges(BILL, same))).toBe(false);
+        // the notes are not recorded (#121): a notes-only edit needs no reason and gets no record
+        expect(hasEditChanges(billEditChanges(BILL, { ...BILL, comments: 'Deliver Monday', printComments: true }))).toBe(false);
+    });
+
+    test('date and time are recorded; values kept as Firestore stores them (a Timestamp stays one, undefined keys dropped)', () => {
+        const ts = { toMillis: () => 1000 };
+        const c = billEditChanges({ ...BILL, date: '2026-10-01', timestamp: ts }, { ...BILL, date: '2026-09-30', timestamp: 1000, items: [{ ...line('Wheat', 10, 50), note: undefined }] });
+        expect(Object.keys(c.fields).sort()).toEqual(['date', 'timestamp']);
+        expect(c.fields.timestamp.before).toBe(ts);
+        expect(c.fields.date).toEqual({ before: '2026-10-01', after: '2026-09-30' });
+        expect(describeEdit(c, 'en')).toEqual([expect.stringMatching(/^Date: /)]);
     });
 
     test('reasons are trimmed and 3–300 characters', () => {
@@ -63,7 +76,7 @@ describe('what an edit records (#121)', () => {
         expect(editCountOf({ editCount: 'x' })).toBe(0);
         expect(nextEditNumber({ editCount: 2 })).toBe(3);
         const rec = editRecord({ n: 3, at: 'T', by: 'u1', byName: 'Ravi', reason: ' Wrong rate ', changes: billEditChanges(BILL, { ...BILL, total: 450 }) });
-        expect(rec).toEqual({ n: 3, at: 'T', by: 'u1', byName: 'Ravi', reason: 'Wrong rate', fields: { total: { before: 500, after: 450 } }, lines: [], itemsChanged: false });
+        expect(rec).toEqual({ n: 3, at: 'T', by: 'u1', byName: 'Ravi', reason: 'Wrong rate', fields: { total: { before: 500, after: 450 } } });
     });
 
     test('reads as plain lines in the app language: totals once, payment parts, items', () => {
@@ -78,8 +91,7 @@ describe('what an edit records (#121)', () => {
             'Wheat: 10 किलो × ₹50 → 9 किलो × ₹50'
         ]);
         expect(editHeading(edit, 'en')).toMatch(/^#2 · 31 Oct.* · Ravi$/);
-        expect(describeEdit({ itemsChanged: true, lines: [] }, 'en')).toEqual(['Item details changed']);
-        expect(describeEdit({ fields: { printComments: { before: false, after: true } } }, 'en')).toEqual(['Print the note: No → Yes']);
+        expect(describeEdit({ fields: { items: { before: BILL.items, after: [line('Wheat', 10, 50, { weights: [5, 5] })] } } }, 'en')).toEqual(['Item details changed']);
     });
 });
 

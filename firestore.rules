@@ -103,10 +103,23 @@ service cloud.firestore {
     }
 
     // Changing these on a bill needs its edit record (edits/{editCount}) in the same write
-    // (firestore-service.js updateBillChecked; bill-edits.js EDIT_FIELDS without the notes).
+    // (firestore-service.js updateBillChecked; bill-edits.js EDIT_FIELDS). The notes are not logged.
     function editLoggedFields() {
       return ['items', 'customerName', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal',
-              'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount'];
+              'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount', 'date', 'timestamp'];
+    }
+
+    // An app that knows voided bills (#75) writes clientVersion >= 4 (firestore-service.js
+    // CLIENT_VERSION). Older apps (rc1 has its www inside the APK) must not edit or void bills.
+    function voidAwareBill() {
+      return request.resource.data.get('clientVersion', 0) is int && request.resource.data.get('clientVersion', 0) >= 4;
+    }
+
+    // Figures built from bills (stock checkpoint, month snapshots, rate stats) are written only by
+    // such an app, stamped by this very write (writtenAt = server time: a merge from an older app
+    // can't ride on the version a newer one stored). firestore-service.js voidAwareStamp().
+    function voidAwareWriter() {
+      return voidAwareBill() && request.resource.data.get('writtenAt', null) == request.time;
     }
 
     function billPath(usersCol, base, docId) {
@@ -126,7 +139,7 @@ service cloud.firestore {
     function voidOk(usersCol, role, changed) {
       let d = request.resource.data;
       return changed.hasOnly(['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason', 'openDue', 'clientVersion'])
-        && (!changed.hasAny(['clientVersion']) || (d.clientVersion is int && d.clientVersion >= 3))
+        && voidAwareBill()
         && d.get('voided', false) == true
         && d.get('voidedAt', null) == request.time
         && d.get('voidedBy', null) == request.auth.uid
@@ -142,30 +155,46 @@ service cloud.firestore {
     function editCountOk(usersCol, base, docId) {
       let n = request.resource.data.get('editCount', null);
       return n is int && n == resource.data.get('editCount', 0) + 1
+        && voidAwareBill()
         && existsAfter(/databases/$(database)/documents/$(usersCol == 'users' ? base : 'dev_' + base)/$(docId)/edits/$(string(n)));
     }
 
+    // One field of an edit record: absent, or exactly its value on the bill before and after.
+    function editFieldOk(f, before, after, k) {
+      return !(k in f)
+        || (f[k] is map && f[k].keys().hasOnly(['before', 'after'])
+            && f[k].get('before', null) == before.get(k, null)
+            && f[k].get('after', null) == after.get(k, null));
+    }
+
     // An edit record: append-only and immutable; by the caller at the server time with a
-    // reason; numbered with the bill's new editCount, which the same write raises by one;
-    // it names every logged field the write changed (items through itemsChanged).
+    // reason; numbered with the bill's new editCount, which the same write raises by one.
+    // Its fields are exactly the logged fields that write changed (at least one), each with
+    // its true value before and after (the item list compared whole), so it can't be faked.
     function validEditCreate(usersCol, base, billId, editId) {
       let d = request.resource.data;
       let after = getAfter(billPath(usersCol, base, billId)).data;
       let before = get(billPath(usersCol, base, billId)).data;
       let n = after.get('editCount', null);
+      let f = d.get('fields', null);
       let moved = after.diff(before).affectedKeys().intersection(editLoggedFields().toSet());
       return isApprovedIn(usersCol)
-        && d.keys().hasOnly(['n', 'at', 'by', 'byName', 'reason', 'fields', 'lines', 'itemsChanged'])
+        && d.keys().hasOnly(['n', 'at', 'by', 'byName', 'reason', 'fields'])
         && n is int && editId == string(n) && d.get('n', null) == n
         && n == before.get('editCount', 0) + 1
         && d.get('by', null) == request.auth.uid
         && d.get('at', null) == request.time
         && reasonOk(d.get('reason', null))
         && (!('byName' in d) || (d.byName is string && d.byName.size() <= 200))
-        && d.get('fields', {}) is map && d.get('fields', {}).size() <= 20
-        && d.get('fields', {}).keys().toSet().hasAll(moved.difference(['items'].toSet()))
-        && d.get('itemsChanged', false) == moved.hasAny(['items'])
-        && d.get('lines', []) is list && d.get('lines', []).size() <= 200;
+        && f is map && moved.size() > 0
+        && f.keys().hasOnly(editLoggedFields()) && f.keys().toSet().hasAll(moved)
+        && editFieldOk(f, before, after, 'items') && editFieldOk(f, before, after, 'customerName')
+        && editFieldOk(f, before, after, 'grandTotal') && editFieldOk(f, before, after, 'amountPayable')
+        && editFieldOk(f, before, after, 'total') && editFieldOk(f, before, after, 'billTotal')
+        && editFieldOk(f, before, after, 'saleTotal') && editFieldOk(f, before, after, 'laborCharges')
+        && editFieldOk(f, before, after, 'payment') && editFieldOk(f, before, after, 'cashPayment')
+        && editFieldOk(f, before, after, 'onlinePayment') && editFieldOk(f, before, after, 'dueAmount')
+        && editFieldOk(f, before, after, 'date') && editFieldOk(f, before, after, 'timestamp');
     }
 
     // Full edits (the owner is handled in canUpdateBill): a manager, or the bill's
@@ -365,7 +394,7 @@ service cloud.firestore {
       return resource.data.get('voided', false) == true ? false
         : changed.hasAny(voidFields()) ? voidOk(usersCol, role, changed)
         : changed.hasAny(['editCount']) && !editCountOk(usersCol, base, docId) ? false
-        : role == 'owner' ? true
+        : role == 'owner' ? (!changed.hasAny(editLoggedFields()) || voidAwareBill() || bookkeepingOnly(docId, changed))
         : changed.hasAny(['userId']) ? false
         : canFullyEditBill(usersCol, role) && !changed.hasAny(['payments', 'paidAt'])
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount'])) ? changedMoneyOk(changed)
@@ -957,7 +986,7 @@ service cloud.firestore {
     // Only the two docs the app uses (firestore-service.js checkpointRef / legacyScanRef).
     function checkpointRules(usersCol, docId) {
       return docId == 'current'
-        ? (isManagerIn(usersCol) || (isApprovedIn(usersCol) && staleMarkOnly()))
+        ? ((isManagerIn(usersCol) && voidAwareWriter()) || (isApprovedIn(usersCol) && staleMarkOnly()))
         : docId == 'legacyScan' && isManagerIn(usersCol);
     }
 
@@ -1961,9 +1990,10 @@ service cloud.firestore {
     function validRateStats(usersCol, docId) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
+        && voidAwareWriter()
         && (docId == '_meta'
-          ? d.keys().hasOnly(['backfillDone', 'backfillAt', 'bills', 'reads', 'months', 'by', 'byUserId', 'startedAt'])
-          : d.keys().hasOnly(['itemId', 'year', 'weeks', 'months', 'updatedAt'])
+          ? d.keys().hasOnly(['backfillDone', 'backfillAt', 'bills', 'reads', 'months', 'by', 'byUserId', 'startedAt', 'clientVersion', 'writtenAt'])
+          : d.keys().hasOnly(['itemId', 'year', 'weeks', 'months', 'updatedAt', 'clientVersion', 'writtenAt'])
             && d.keys().hasAll(['itemId', 'year', 'weeks', 'months'])
             && d.itemId is string && d.itemId.size() > 0
             && d.year is string && d.year.matches('^[0-9]{4}$')
@@ -1991,8 +2021,9 @@ service cloud.firestore {
     function validMonthStats(usersCol, docId) {
       let d = request.resource.data;
       return isManagerIn(usersCol)
+        && voidAwareWriter()
         && docId.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
-        && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale', 'staleAt'])
+        && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale', 'staleAt', 'clientVersion', 'writtenAt'])
         && d.keys().hasAll(['month', 'v', 'm'])
         && d.month == docId
         && d.v is int

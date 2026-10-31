@@ -365,8 +365,8 @@ const mapDoc = (doc) => {
     return rec;
 };
 
-/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). */
-const CLIENT_VERSION = 3;
+/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). 4: knows voided bills (#75). */
+const CLIENT_VERSION = 4;
 const STOCK_COLLECTION_KEYS = ['purchases', 'retailSales', 'wholesaleSales', 'stockAdjustments'];
 /** Only owners/managers write checkpoint state (firestore.rules); staff devices never rebuild/roll forward. */
 const canManageCheckpoint = () => ['owner', 'manager'].includes(AppState.userRole);
@@ -866,6 +866,16 @@ function serverCreatedAt() {
     return typeof fv?.serverTimestamp === 'function' ? fv.serverTimestamp() : Date.now();
 }
 const withServerCreatedAt = (record) => ({ ...record, createdAt: serverCreatedAt() });
+
+/**
+ * Fields on every write of a figure built from bills (stock checkpoint, month snapshots, rate
+ * stats): this app's version and the server time of the write. firestore.rules accept such a
+ * write only from clientVersion >= 4 (knows voided bills, #75), stamped by that same write, so
+ * an older app can't write one (not even a merge riding on a newer app's stored version).
+ */
+function voidAwareStamp() {
+    return { clientVersion: CLIENT_VERSION, writtenAt: serverCreatedAt() };
+}
 
 /** Keeps the bill's stored `createdAt` on an overwrite (the rules refuse a change). */
 function keepStoredCreatedAt(record, stored) {
@@ -1835,7 +1845,7 @@ async function rollForwardCheckpoint(cp, newAsOf) {
                 extra: { rolledForwardFrom: cp.asOf, pinned: d.pinned || null, fullBuiltAt: d.fullBuiltAt || d.builtAt || 0 }
             });
             if (JSON.stringify(payload).length > CHECKPOINT_MAX_BYTES) return 'too-large';
-            tx.set(ref, payload);
+            tx.set(ref, { ...payload, ...voidAwareStamp() });
             return 'rolled';
         });
     } catch (e) {
@@ -1872,7 +1882,7 @@ async function rebuildCheckpointNow(gen) {
             const ownLease = !!AppState.currentUser?.uid && leaseOwnerUid(d?.rebuildingBy) === AppState.currentUser.uid;
             if (d && (d.rebuildingUntil || 0) > Date.now() && !ownLease) return 'leased';
             baseStaleCount = d?.staleCount || 0;
-            tx.set(ref, { rebuildingUntil: Date.now() + REBUILD_LEASE_MS, rebuildingBy: token }, { merge: true });
+            tx.set(ref, { rebuildingUntil: Date.now() + REBUILD_LEASE_MS, rebuildingBy: token, ...voidAwareStamp() }, { merge: true });
             return 'acquired';
         });
     } catch (e) {
@@ -1921,7 +1931,7 @@ async function rebuildCheckpointNow(gen) {
             const snap = await tx.get(ref);
             const d = snap.exists ? snap.data() : null;
             if (!d || d.rebuildingBy !== token || (d.staleCount || 0) !== baseStaleCount) return false;
-            tx.set(ref, payload);
+            tx.set(ref, { ...payload, ...voidAwareStamp() });
             return true;
         });
         if (!committed) return (result = { status: 'conflict' });
@@ -1939,7 +1949,7 @@ async function rebuildCheckpointNow(gen) {
             db.runTransaction(async tx => {
                 const snap = await tx.get(ref);
                 if (snap.exists && snap.data().rebuildingBy === token) {
-                    tx.update(ref, { rebuildingUntil: 0, rebuildingBy: null });
+                    tx.update(ref, { rebuildingUntil: 0, rebuildingBy: null, ...voidAwareStamp() });
                 }
             }).catch(() => {});
         }
@@ -2306,7 +2316,7 @@ const FirebaseService = {
         const updatedAt = Date.now();
         for (let i = 0; i < writes.length; i += 400) {
             const batch = db.batch();
-            writes.slice(i, i + 400).forEach(w => batch.set(ref.doc(w.id), { ...w.data, updatedAt }));
+            writes.slice(i, i + 400).forEach(w => batch.set(ref.doc(w.id), { ...w.data, updatedAt, ...voidAwareStamp() }));
             await batch.commit();
         }
     },
@@ -2327,7 +2337,7 @@ const FirebaseService = {
      * @returns {Promise<void>}
      */
     async saveRateStatsMeta(data) {
-        await getDb().collection(col('rateStats')).doc('_meta').set(data, { merge: true });
+        await getDb().collection(col('rateStats')).doc('_meta').set({ ...data, ...voidAwareStamp() }, { merge: true });
     },
 
     // ---- Month snapshots (redesign §7.6): monthStats/{YYYY-MM}, owner/manager only (rules) ----
@@ -2360,7 +2370,7 @@ const FirebaseService = {
         const ref = db.collection(col('monthStats'));
         for (let i = 0; i < docs.length; i += 400) {
             const batch = db.batch();
-            docs.slice(i, i + 400).forEach(d => batch.set(ref.doc(d.month), d));
+            docs.slice(i, i + 400).forEach(d => batch.set(ref.doc(d.month), { ...d, ...voidAwareStamp() }));
             await batch.commit();
         }
     },
@@ -2381,7 +2391,7 @@ const FirebaseService = {
             const stored = snap.exists ? { ...snap.data(), month: doc.month } : null;
             if (stored && !stored.stale) return { status: 'fresh', doc: stored };
             if (stored && stored.staleAt !== staleAt) return { status: 'newer', doc: stored };
-            tx.set(ref, doc);
+            tx.set(ref, { ...doc, ...voidAwareStamp() });
             return { status: 'written', doc };
         });
     },
@@ -2402,7 +2412,7 @@ const FirebaseService = {
             const snap = await tx.get(ref);
             const stored = snap.exists ? { ...snap.data(), month: doc.month } : null;
             if (stored?.stale && !(handled && stored.staleAt === handled.staleAt)) return { status: 'newer', doc: stored };
-            tx.set(ref, doc);
+            tx.set(ref, { ...doc, ...voidAwareStamp() });
             return { status: 'written', doc };
         });
     },

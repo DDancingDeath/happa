@@ -777,7 +777,8 @@ export class HistoryManager {
         } catch (error) {
             console.error('Error deleting bill:', error);
             UIManager.hideLoading();
-            UIManager.showToast(t('msg.history.failed_delete_bill'));
+            // Refused by the rules (only the owner deletes, and only a voided bill: #75)
+            UIManager.showToast(t(error?.code === 'permission-denied' ? 'msg.void.delete_refused' : 'msg.history.failed_delete_bill'));
         }
     }
 

@@ -119,6 +119,17 @@ describe('voided bills in History (#75)', () => {
         expect(FirebaseService.deleteVoidedBill).toHaveBeenCalledWith('purchases', VOIDED);
         expect(AuditService.log).toHaveBeenCalledWith('DELETE_BILL', expect.objectContaining({ billNumber: 'P-void', voided: true }));
     });
+
+    test('a delete the rules refuse says to void instead; other failures stay generic', async () => {
+        await HistoryManager.viewBill('id:P-void', 'purchase');
+        FirebaseService.deleteVoidedBill.mockRejectedValueOnce(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+        await HistoryManager.deleteBill();
+        expect(UIManager.showToast).toHaveBeenLastCalledWith("Bills can't be deleted; void it instead");
+        await HistoryManager.viewBill('id:P-void', 'purchase');
+        FirebaseService.deleteVoidedBill.mockRejectedValueOnce(new Error('offline'));
+        await HistoryManager.deleteBill();
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Failed to delete bill');
+    });
 });
 
 describe('Void (#75)', () => {

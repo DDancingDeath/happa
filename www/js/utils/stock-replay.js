@@ -16,7 +16,7 @@ import { Helpers } from './helpers.js';
 import { isActiveBill, isOpeningRecord } from './money.js';
 
 /** Bump when the replay rules or the checkpoint layout change. */
-export const STOCK_REPLAY_FORMAT = 3;
+export const STOCK_REPLAY_FORMAT = 4;
 
 const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
 

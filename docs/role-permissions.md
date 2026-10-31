@@ -236,33 +236,48 @@ greyed with a "Voided" chip and the reason, and its details show who voided it, 
   transactions refuse it too). A mistaken void is fixed by entering the bill again.
 - **Delete for good: owner only.** Rules allow only the owner to delete a bill (Clear Data, repairs);
   the app offers "Delete permanently" only on a voided bill (test data), together with its edit
-  records. Members and managers can no longer delete bills. An older app's Delete button now gets
-  "failed".
+  records. Members and managers can no longer delete bills; a delete the rules refuse shows "Bills
+  can't be deleted; void it instead". An older app (rc1: its web code is inside the APK) can't be
+  changed: its Delete button now ends in its own "Failed to delete bill", and so do its Edit (the
+  manager's and member's, which have no edit record) and its owner's edits (clientVersion 3). The
+  testers update; see docs/happa-go-live.md "lock out rc1".
 - Every void is in the audit log (`VOID_BILL`, with the reason) and is flagged as an anomaly
   ("Bill voided", medium).
 
-**Edit records.** Every change to a bill's items, totals, payment or party (and the notes) asks
-why and stores what changed: `<bills>/{id}/edits/{n}` with `n`, `at` (server time), `by` (uid),
-`byName`, `reason`, `fields` (changed fields only, `{before, after}`), `lines` (item lines added /
-removed / changed, by item) and `itemsChanged`. The bill's `editCount` goes up by one in the same
-transaction (`updateBillChecked`). The bill details show "Edited 2× · View changes"; the records are
-read only when tapped (one read each), never with the bill lists.
+**Edit records.** Every change to a bill's items, totals, payment, party, date or time asks why
+and stores what changed: `<bills>/{id}/edits/{n}` with `n`, `at` (server time), `by` (uid),
+`byName`, `reason` and `fields`: each changed field (bill-edits `EDIT_FIELDS` = rules
+`editLoggedFields()`: `items`, `customerName`, the totals, `laborCharges`, `payment`,
+`cashPayment`, `onlinePayment`, `dueAmount`, `date`, `timestamp`) as `{before, after}`, the item
+list whole (the screen diffs it line by line, `editLines`). The notes (`comments`,
+`printComments`) are not recorded: a notes-only change needs no reason and writes no record. The
+bill's `editCount` goes up by one in the same transaction (`updateBillChecked`). The bill details
+show "Edited 2× · View changes"; the records are read only when tapped (one read each), never with
+the bill lists.
 
-- Rules (`validEditCreate`, `editCountOk`): created only with the bill update that raises
-  `editCount` to its number (`getAfter` on the bill), by the caller at the server time with a reason,
-  naming every logged field that write changed (`fields` keys, and `itemsChanged` exactly when the
-  items changed); never updated; deleted only by the owner once the bill is gone. A non-owner change
-  to a logged field (`editLoggedFields()`) without its record is refused, so every such edit has one;
-  the owner's repairs may skip it. A full edit never touches `payments` / `paidAt` (those change only
-  as bookkeeping, one appended entry at a time), so nobody can empty `payments[]` to get round the
-  void check. Approved users read the records (same as bills). `by` is the verified editor;
-  `byName` is the display name the phone sends, like a bill's `createdByName`.
+- Rules (`validEditCreate`, `editFieldOk`, `editCountOk`): created only with the bill update that
+  raises `editCount` to its number (`getAfter` on the bill), by the caller at the server time with a
+  reason, from an app with `clientVersion` ≥ 4. The record can't be faked: its `fields` are exactly
+  logged fields, at least one of them really changed, every changed one is there, and each `before`
+  / `after` equals the bill's stored value before and after the write (the item list compared whole,
+  line for line; a record with no real change, a made-up "before" or a hidden date change is
+  refused). Never updated; deleted only by the owner once the bill is gone. A non-owner change to a
+  logged field without its record is refused, so every such edit has one; the owner's repairs may
+  skip it (but need clientVersion ≥ 4). A full edit never touches `payments` / `paidAt` (those
+  change only as bookkeeping, one appended entry at a time), so nobody can empty `payments[]` to get
+  round the void check. Approved users read the records (same as bills). `by` is the verified
+  editor; `byName` is the display name the phone sends, like a bill's `createdByName`.
 - A retried new bill whose first, unconfirmed save already reached the server and that was changed
   since is recorded as an edit too, with the reason "Changed before the first save was confirmed".
-- A void also writes `clientVersion` (bills are stock records: with the clientVersion gate on, every
-  write needs it), so old-app bills can be voided too.
-- Size: one small document per edit (only changed fields, at most 200 lines), so the bill itself
-  never grows; edits are rare.
+- Old apps (#75): a void, an edit and every write of a figure built from bills (stock checkpoint
+  and its rebuild lease, `monthStats`, `rateStats`) need `clientVersion` ≥ 4 (`voidAwareBill`); the
+  figures also carry `writtenAt` = the server time of that write (`voidAwareWriter`), so a merge
+  from an older app can't ride on a version a newer one stored. Older apps still save bills and
+  record payments, and may still mark the checkpoint or a month stale (that only makes a newer phone
+  rebuild). `STOCK_REPLAY_FORMAT` 4 and `SNAPSHOT_VERSION` 2 make the new app ignore and rebuild
+  what an older one wrote (once).
+- Size: one small document per edit (only the changed fields; the item list only when it
+  changed), so the bill itself never grows; edits are rare.
 - Backups include them (`SUBCOLLECTIONS`: `purchases/edits`, `retailSales/edits`,
   `wholesaleSales/edits`, one collection-group query for all three).
 

@@ -8,6 +8,7 @@
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { OutstandingManager } from '../modules/outstanding.js';
 import { AppState } from '../utils/state.js';
+import { editLines } from '../utils/bill-edits.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 
 const NOW = new Date(2026, 9, 21, 15).getTime();
@@ -122,26 +123,27 @@ describe('void (#75)', () => {
 });
 
 describe('edit records (#121)', () => {
-    test('an edit writes edits/{n} in its transaction: changed fields before/after, item lines, who and why; editCount counts', async () => {
+    test('an edit writes edits/{n} in its transaction: changed fields before/after (the item list whole), who and why; editCount counts', async () => {
         await open();
         const edited = { ...retail('r2'), items: [line(9)], total: 90, saleTotal: 90, payment: { cash: 40, online: 0, due: 50, total: 90 }, dueAmount: 50 };
         await FirebaseService.updateRetailSale(edited, { reason: ' Wrong weight ' });
         await settle();
         expect(fake.raw('retailSales').get('r2').editCount).toBe(1);
         expect(fake.raw('retailSales/r2/edits').get('1')).toEqual({
-            n: 1, at: NOW, by: 'u1', byName: 'Ravi', reason: 'Wrong weight', itemsChanged: true,
+            n: 1, at: NOW, by: 'u1', byName: 'Ravi', reason: 'Wrong weight',
             fields: {
+                items: { before: [{ ...line(10) }], after: [{ ...line(9) }] },
                 total: { before: 100, after: 90 }, saleTotal: { before: 100, after: 90 }, dueAmount: { before: 60, after: 50 },
                 payment: { before: { cash: 40, online: 0, due: 60, total: 100 }, after: { cash: 40, online: 0, due: 50, total: 90 } }
-            },
-            lines: [{ name: 'Rice', before: { qty: 10, rate: 10, total: 100 }, after: { qty: 9, rate: 10, total: 90 } }]
+            }
         });
+        expect(editLines(fake.raw('retailSales/r2/edits').get('1'))).toEqual([{ name: 'Rice', before: { qty: 10, rate: 10, total: 100 }, after: { qty: 9, rate: 10, total: 90 } }]);
         await FirebaseService.updateRetailSale({ ...retail('r2'), customerName: 'Shyam Lal' }, { reason: 'Full name' });
         await settle();
         expect(retail('r2').editCount).toBe(2);
         const edits = await FirebaseService.loadBillEdits('retailSales', retail('r2'));
         expect(edits.map(e => [e.n, e.reason, Object.keys(e.fields)])).toEqual([
-            [1, 'Wrong weight', ['total', 'saleTotal', 'payment', 'dueAmount']], [2, 'Full name', ['customerName']]
+            [1, 'Wrong weight', ['items', 'total', 'saleTotal', 'payment', 'dueAmount']], [2, 'Full name', ['customerName']]
         ]);
     });
 

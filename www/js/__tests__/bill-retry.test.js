@@ -42,7 +42,7 @@ const doc = () => fake.raw('purchases').get('p1');
 test('first save creates the bill', async () => {
     const saved = await FirebaseService.savePurchase(bill(), { retry: false });
     expect(fake.raw('purchases').size).toBe(1);
-    expect(doc()).toMatchObject({ dueAmount: 60, payment: { due: 60, cash: 40 }, openDue: true, clientVersion: 3 });
+    expect(doc()).toMatchObject({ dueAmount: 60, payment: { due: 60, cash: 40 }, openDue: true, clientVersion: 4 });
     expect(FirebaseService.keptServerPayment(saved)).toBe(false);
 });
 
@@ -71,7 +71,7 @@ test('a retry with changes made on this phone (no payment elsewhere) overwrites 
     expect(doc()).toMatchObject({ cashPayment: 100, dueAmount: 0, payment: { due: 0 }, openDue: false, editCount: 1 });
     // Non-owners may not change money or items without the record (firestore.rules editCountOk)
     expect(fake.raw('purchases/p1/edits').get('1')).toMatchObject({
-        n: 1, by: 'u1', reason: 'Changed before the first save was confirmed', itemsChanged: false,
+        n: 1, by: 'u1', reason: 'Changed before the first save was confirmed',
         fields: { cashPayment: { before: 40, after: 100 }, dueAmount: { before: 60, after: 0 } }
     });
 });

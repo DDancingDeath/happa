@@ -96,33 +96,56 @@ function defineSuite(prefix) {
     // Server time of the bill's first save (#87): non-owners may change/delete it for 2 days.
     const savedAgo = (ms) => Timestamp.fromMillis(Date.now() - ms);
     const fresh = () => ({ createdAt: savedAgo(HOUR) });
+    // What an app that knows voided bills (#75, CLIENT_VERSION 4) stamps on stock checkpoint,
+    // month snapshot and rate stats writes (firestore-service.js voidAwareStamp).
+    const V4 = (cv = 4) => ({ clientVersion: cv, writtenAt: serverTimestamp() });
 
     // A full edit as the app writes it (#121): the bill change with editCount n and its
     // edit record edits/{n} in one batch (firestore-service.js updateBillChecked). The record
     // names the logged fields the change touches (validEditCreate checks it).
     const LOGGED = ['items', 'customerName', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal',
-        'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount'];
-    const recFor = (fields) => {
-        const keys = [...new Set(Object.keys(fields).map(k => k.split('.')[0]))].filter(k => LOGGED.includes(k));
-        return {
-            fields: Object.fromEntries(keys.filter(k => k !== 'items').map(k => [k, { before: null, after: null }])),
-            itemsChanged: keys.includes('items')
-        };
+        'laborCharges', 'payment', 'cashPayment', 'onlinePayment', 'dueAmount', 'date', 'timestamp'];
+    const stored = async (coll, id) => {
+        let data = {};
+        await env.withSecurityRulesDisabled(async (ctx) => {
+            const snap = await ctx.firestore().collection(coll).doc(id).get();
+            data = snap.exists ? snap.data() : {};
+        });
+        return data;
     };
-    const editRec = (uid, n, over = {}) => ({ n, at: serverTimestamp(), by: uid, byName: 'S', reason: 'Wrong rate',
-        fields: { total: { before: 5, after: 6 } }, lines: [], itemsChanged: false, ...over });
-    const logged = (uid, coll, id, n, fields, { set = false, rec = {}, recId = String(n) } = {}) => {
+    // The record's fields: each logged field the change touches, with its true value before and after.
+    const recFor = (before, fields, set) => {
+        const after = set ? { ...fields } : { ...before };
+        if (!set) {
+            Object.entries(fields).forEach(([k, v]) => {
+                const p = k.split('.');
+                if (p.length === 1) { after[k] = v; return; }
+                after[p[0]] = { ...(after[p[0]] || {}) };
+                after[p[0]][p[1]] = v;
+            });
+        }
+        const out = {};
+        LOGGED.forEach(k => {
+            const b = before[k] === undefined ? null : before[k];
+            const a = after[k] === undefined ? null : after[k];
+            if (JSON.stringify(b) !== JSON.stringify(a)) out[k] = { before: b, after: a };
+        });
+        return out;
+    };
+    const editRec = (uid, n, over = {}) => ({ n, at: serverTimestamp(), by: uid, byName: 'S', reason: 'Wrong rate', fields: {}, ...over });
+    const logged = async (uid, coll, id, n, fields, { set = false, rec = {}, recId = String(n), cv = 4 } = {}) => {
+        const before = await stored(coll, id);
         const db = as(uid);
         const ref = db.collection(coll).doc(id);
         const b = db.batch();
-        if (set) b.set(ref, { ...fields, editCount: n });
-        else b.update(ref, { ...fields, editCount: n });
-        b.set(ref.collection('edits').doc(recId), editRec(uid, n, { ...recFor(fields), ...rec }));
+        if (set) b.set(ref, { ...fields, editCount: n, clientVersion: cv });
+        else b.update(ref, { ...fields, editCount: n, clientVersion: cv });
+        b.set(ref.collection('edits').doc(recId), editRec(uid, n, { fields: recFor(before, fields, set), ...rec }));
         return b.commit();
     };
     // A void as the app writes it (#75: firestore-service.js voidBillDoc).
     const voidFields = (uid, over = {}) => ({ voided: true, voidedAt: serverTimestamp(), voidedBy: uid, voidedByName: 'S',
-        voidReason: 'Entered twice', openDue: false, ...over });
+        voidReason: 'Entered twice', openDue: false, clientVersion: 4, ...over });
 
     t('only the owner deletes a bill; the creator and a manager cannot (#75: they void it)', async () => {
         for (const coll of bills) {
@@ -202,14 +225,16 @@ function defineSuite(prefix) {
         }
     });
 
-    t('void with the clientVersion gate on: the void carries clientVersion, so old-app bills can be voided too', async () => {
-        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app').set({ enforceClientVersion: true }, { merge: true }));
+    t('void needs an app that knows voids (clientVersion 4), gate on or off; it voids old-app bills too', async () => {
         await seedBill(purchases, 'oldApp', { total: 5 });
-        await seedBill(purchases, 'mine', { userId: 'staff1', total: 5, ...fresh() });
-        await assertFails(as('legacyOwner').collection(purchases).doc('oldApp').update(voidFields('legacyOwner')));
-        await assertFails(as('legacyOwner').collection(purchases).doc('oldApp').update(voidFields('legacyOwner', { clientVersion: 2 })));
-        await assertSucceeds(as('legacyOwner').collection(purchases).doc('oldApp').update(voidFields('legacyOwner', { clientVersion: 3 })));
-        await assertSucceeds(as('staff1').collection(purchases).doc('mine').update(voidFields('staff1', { clientVersion: 3 })));
+        await seedBill(purchases, 'mine', { userId: 'staff1', total: 5, clientVersion: 4, ...fresh() });
+        const { clientVersion: _cv, ...noVersion } = voidFields('legacyOwner');
+        await assertFails(as('legacyOwner').collection(purchases).doc('oldApp').update(noVersion));
+        await assertFails(as('legacyOwner').collection(purchases).doc('oldApp').update(voidFields('legacyOwner', { clientVersion: 3 })));
+        await assertFails(as('staff1').collection(purchases).doc('mine').update(voidFields('staff1', { clientVersion: 3 })));
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app').set({ enforceClientVersion: true }, { merge: true }));
+        await assertSucceeds(as('legacyOwner').collection(purchases).doc('oldApp').update(voidFields('legacyOwner')));
+        await assertSucceeds(as('staff1').collection(purchases).doc('mine').update(voidFields('staff1')));
     });
 
     t('a voided bill never changes again: no un-void, edit, payment or second void, the owner included; only the owner deletes it', async () => {
@@ -239,12 +264,15 @@ function defineSuite(prefix) {
 
     // ---- edit records (#121): <bills>/{id}/edits/{n} ----
 
-    t('edit record: a non-owner\'s change to items or money writes edits/{n} with it; editor = caller, server time, reason', async () => {
+    t('edit record: a non-owner\'s change to items, money, party or date writes edits/{n} with it; editor = caller, server time, reason', async () => {
         for (const coll of bills) {
-            await seedBill(coll, 'e', { userId: 'staff1', total: 5, ...fresh() });
+            await seedBill(coll, 'e', { userId: 'staff1', total: 5, date: '2026-10-01', items: [{ name: 'x', qty: 1, total: 5 }], ...fresh() });
             await assertFails(as('staff1').collection(coll).doc('e').update({ total: 6 }));
-            await assertFails(as('staff1').collection(coll).doc('e').update({ items: [{ name: 'x', qty: 1 }] }));
-            // the notes alone need none
+            await assertFails(as('staff1').collection(coll).doc('e').update({ items: [{ name: 'x', qty: 2, total: 10 }] }));
+            // probe: the date (or timestamp) moved without a record
+            await assertFails(as('staff1').collection(coll).doc('e').update({ date: '2026-09-01' }));
+            await assertFails(as('staff1').collection(coll).doc('e').update({ timestamp: 1 }));
+            // the notes alone need none (and get none: see "no real change" below)
             await assertSucceeds(as('staff1').collection(coll).doc('e').update({ comments: 'note' }));
             await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { by: 'manager1' } }));
             await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { reason: 'no' } }));
@@ -253,11 +281,22 @@ function defineSuite(prefix) {
             await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { n: 2 } }));
             await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { recId: '7' }));
             await assertFails(logged('staff1', coll, 'e', 2, { total: 6 }));
-            // the record names what changed: no hiding a field or an item change
+            // the record holds the truth: every changed field, its real before and after
             await assertFails(logged('staff1', coll, 'e', 1, { total: 6, customerName: 'X' }, { rec: { fields: { total: { before: 5, after: 6 } } } }));
-            await assertFails(logged('staff1', coll, 'e', 1, { items: [{ name: 'y', qty: 1 }] }, { rec: { itemsChanged: false } }));
-            await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { itemsChanged: true } }));
-            await assertSucceeds(logged('staff1', coll, 'e', 1, { total: 6 }));
+            // probe: a falsified before value
+            await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { fields: { total: { before: 50, after: 6 } } } }));
+            await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { fields: { total: { before: 5, after: 60 } } } }));
+            await assertFails(logged('staff1', coll, 'e', 1, { items: [{ name: 'x', qty: 2, total: 10 }] },
+                { rec: { fields: { items: { before: [{ name: 'x', qty: 9, total: 45 }], after: [{ name: 'x', qty: 2, total: 10 }] } } } }));
+            // probe: an unlogged date change hidden behind a total change
+            await assertFails(logged('staff1', coll, 'e', 1, { total: 6, date: '2026-09-01' }, { rec: { fields: { total: { before: 5, after: 6 } } } }));
+            // probe: no real change (a notes-only edit gets no record), and no notes in a record
+            await assertFails(logged('staff1', coll, 'e', 1, { comments: 'again' }));
+            await assertFails(logged('staff1', coll, 'e', 1, { total: 5 }, { rec: { fields: { total: { before: 5, after: 5 } } } }));
+            await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { rec: { fields: { total: { before: 5, after: 6 }, comments: { before: 'note', after: 'x' } } } }));
+            // an older app (clientVersion 3) can't edit
+            await assertFails(logged('staff1', coll, 'e', 1, { total: 6 }, { cv: 3 }));
+            await assertSucceeds(logged('staff1', coll, 'e', 1, { total: 6, date: '2026-09-01', items: [{ name: 'x', qty: 2, total: 10 }] }));
             await assertSucceeds(logged('manager1', coll, 'e', 2, { total: 7 }));
             await assertSucceeds(logged('legacyOwner', coll, 'e', 3, { total: 8 }));
         }
@@ -371,7 +410,7 @@ function defineSuite(prefix) {
             // full edits of a legacy bill (no userId, no createdAt) are owner only (#87)
             await assertFails(as('staff1').collection(coll).doc('legacy').set({ total: 6, clientVersion: 3 }));
             await assertFails(as('manager1').collection(coll).doc('legacy').set({ total: 6, clientVersion: 3 }));
-            await assertSucceeds(as('legacyOwner').collection(coll).doc('legacy').set({ total: 6, clientVersion: 3 }));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('legacy').set({ total: 6, clientVersion: 4 }));
         }
     });
 
@@ -478,7 +517,8 @@ function defineSuite(prefix) {
             await assertSucceeds(fill('odd', Date.UTC(2025, 9, 1)));
             // the owner corrects bills freely
             await seedBill(coll, 'own', { ...legacy, date: '2025-10-01' });
-            await assertSucceeds(as('legacyOwner').collection(coll).doc('own').update({ timestamp: Number.MAX_SAFE_INTEGER, clientVersion: 3 }));
+            await assertFails(as('legacyOwner').collection(coll).doc('own').update({ timestamp: Number.MAX_SAFE_INTEGER, clientVersion: 3 }));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('own').update({ timestamp: Number.MAX_SAFE_INTEGER, clientVersion: 4 }));
         }
     });
 
@@ -490,7 +530,8 @@ function defineSuite(prefix) {
             // #121: a non-owner's change to the total or items needs its edit record
             await assertFails(as('manager1').collection(coll).doc('b').update({ total: 8, 'payment.cash': 8, timestamp: 1, clientVersion: 3 }));
             await assertSucceeds(logged('manager1', coll, 'b', 2, { total: 8, 'payment.cash': 8, timestamp: 1, clientVersion: 3 }));
-            await assertSucceeds(as('legacyOwner').collection(coll).doc('b').update({ items: [{ name: 'x' }], clientVersion: 3 }));
+            await assertFails(as('legacyOwner').collection(coll).doc('b').update({ items: [{ name: 'x' }], clientVersion: 3 }));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('b').update({ items: [{ name: 'x' }], clientVersion: 4 }));
         }
     });
 
@@ -515,7 +556,7 @@ function defineSuite(prefix) {
             await assertFails(ref('staff1').delete());
             await assertFails(ref('manager1').update({ total: 9, clientVersion: 3 }));
             await assertFails(ref('manager1').delete());
-            await assertSucceeds(ref('legacyOwner').update({ total: 9, clientVersion: 3 }));
+            await assertSucceeds(ref('legacyOwner').update({ total: 9, clientVersion: 4 }));
             await assertSucceeds(ref('legacyOwner').delete());
         }
     });
@@ -536,7 +577,7 @@ function defineSuite(prefix) {
             await assertFails(as('staff1').collection(coll).doc('legacy').update({ total: 9, clientVersion: 3 }));
             await assertFails(as('staff1').collection(coll).doc('legacy').delete());
             await assertFails(as('manager1').collection(coll).doc('legacy').update({ total: 9, clientVersion: 3 }));
-            await assertSucceeds(as('legacyOwner').collection(coll).doc('legacy').update({ total: 9, clientVersion: 3 }));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('legacy').update({ total: 9, clientVersion: 4 }));
         }
     });
 
@@ -691,8 +732,8 @@ function defineSuite(prefix) {
         ctx.firestore().collection(checkpoints).doc('current').set({ asOf: 1, state: [], stale: false, staleCount: 0 }));
 
     t('owner and manager can rebuild (write state/lease of) the stock checkpoint', async () => {
-        await assertSucceeds(as('manager1').collection(checkpoints).doc('current').set({ asOf: 5, state: [], stale: false }));
-        await assertSucceeds(as('legacyOwner').collection(checkpoints).doc('current').set({ rebuildingUntil: 9, rebuildingBy: 'x' }, { merge: true }));
+        await assertSucceeds(as('manager1').collection(checkpoints).doc('current').set({ asOf: 5, state: [], stale: false, ...V4() }));
+        await assertSucceeds(as('legacyOwner').collection(checkpoints).doc('current').set({ rebuildingUntil: 9, rebuildingBy: 'x', ...V4() }, { merge: true }));
         await assertSucceeds(as('staff1').collection(checkpoints).doc('current').get());
     });
 
@@ -1152,7 +1193,7 @@ function defineSuite(prefix) {
         itemId: 'wheat', year: '2026',
         weeks: { 'w2026-10-19': bucket(), 'w2026-10-26': bucket() },
         months: { 'm2026-10': bucket() },
-        updatedAt: 1700000000000, ...extra
+        updatedAt: 1700000000000, ...V4(), ...extra
     });
     const manyWeeks = () => Object.fromEntries(Array.from({ length: 55 }, (_, i) => [`w2026-x${i}`, bucket()]));
 
@@ -1160,7 +1201,7 @@ function defineSuite(prefix) {
         await assertSucceeds(as('manager1').collection(rateStats).doc('wheat_2026').set(stat()));
         await assertSucceeds(as('legacyOwner').collection(rateStats).doc('wheat_2026').set(stat({ weeks: {} })));
         await assertSucceeds(as('legacyOwner').collection(rateStats).doc('_meta').set(
-            { backfillDone: true, backfillAt: 1, bills: 1200, reads: 1210, months: 36, by: 'O', byUserId: 'legacyOwner' }, { merge: true }));
+            { backfillDone: true, backfillAt: 1, bills: 1200, reads: 1210, months: 36, by: 'O', byUserId: 'legacyOwner', ...V4() }, { merge: true }));
         await assertSucceeds(as('manager1').collection(rateStats).doc('wheat_2026').get());
         await assertSucceeds(as('manager1').collection(rateStats).where('year', '>=', '2025').get());
         await assertSucceeds(as('manager1').collection(rateStats).where('year', '==', '2026').limit(300).get());
@@ -1197,11 +1238,11 @@ function defineSuite(prefix) {
 
     const monthStats = `${prefix}monthStats`;
     const snap = (extra = {}) => ({
-        month: '2026-10', v: 1,
+        month: '2026-10', v: 2,
         m: { M1: 1000, M1c: 3, M2: 800, M6: 150, close: 5000 },
         items: { wheat: { s: 1000, c: 800, q: 40, r: 1000, w: 0 } },
         customers: [{ k: 'ram', n: 'Ram', t: 1000, c: 3 }], suppliers: [],
-        categories: { rent: 50 }, days: { 1: { s: 1000, p: 150 } }, builtAt: 1700000000000, ...extra
+        categories: { rent: 50 }, days: { 1: { s: 1000, p: 150 } }, builtAt: 1700000000000, ...V4(), ...extra
     });
 
     t('monthStats: owner and manager can write and read month snapshots', async () => {
@@ -1242,7 +1283,7 @@ function defineSuite(prefix) {
         await assertSucceeds(as('staff1').collection(monthStats).doc('2026-03').set(mark('2026-03'), { merge: true }));
         await env.withSecurityRulesDisabled(async (ctx) => {
             const kept = (await ctx.firestore().collection(monthStats).doc('2026-10').get()).data();
-            if (!kept.stale || kept.m.M1 !== 1000 || kept.v !== 1) throw new Error('stale mark changed the snapshot');
+            if (!kept.stale || kept.m.M1 !== 1000 || kept.v !== 2) throw new Error('stale mark changed the snapshot');
             const stub = (await ctx.firestore().collection(monthStats).doc('2026-03').get()).data();
             if (JSON.stringify(Object.keys(stub).sort()) !== '["month","stale","staleAt"]') throw new Error(`stub: ${JSON.stringify(stub)}`);
         });
@@ -1295,6 +1336,44 @@ function defineSuite(prefix) {
         });
     });
 
+    t('older apps (clientVersion 3, e.g. rc1) can\'t write figures built from bills: checkpoint, lease, month snapshots, rate stats (#75)', async () => {
+        const cp = as('manager1').collection(checkpoints).doc('current');
+        await assertFails(cp.set({ asOf: 5, state: [], stale: false }));
+        await assertFails(cp.set({ asOf: 5, state: [], stale: false, ...V4(3) }));
+        await assertFails(cp.set({ asOf: 5, state: [], stale: false, clientVersion: 4, writtenAt: Timestamp.fromMillis(1) }));
+        await assertSucceeds(cp.set({ asOf: 5, state: [], stale: false, ...V4() }));
+        // a merge (the rebuild lease) can't ride on the version a newer app stored
+        await assertFails(cp.set({ rebuildingUntil: 9, rebuildingBy: 'old' }, { merge: true }));
+        await assertFails(as('legacyOwner').collection(checkpoints).doc('current').update({ rebuildingUntil: 0, rebuildingBy: null }));
+        await assertSucceeds(cp.set({ rebuildingUntil: 9, rebuildingBy: 'new', ...V4() }, { merge: true }));
+        // anyone may still mark it stale (an older app's mark only makes newer apps rebuild)
+        await assertSucceeds(as('staff1').collection(checkpoints).doc('current').set({ stale: true, staleCount: 7 }, { merge: true }));
+        const ms = (uid) => as(uid).collection(monthStats).doc('2026-09');
+        await assertFails(ms('manager1').set(snap({ month: '2026-09', ...V4(3) })));
+        const { clientVersion: _c, writtenAt: _w, ...unstamped } = snap({ month: '2026-09' });
+        await assertFails(ms('legacyOwner').set(unstamped));
+        await assertSucceeds(ms('manager1').set(snap({ month: '2026-09' })));
+        await assertSucceeds(ms('staff1').set(mark('2026-09', { staleAt: Date.now() }), { merge: true }));
+        const rs = as('manager1').collection(rateStats);
+        await assertFails(rs.doc('wheat_2026').set(stat(V4(3))));
+        await assertFails(rs.doc('_meta').set({ backfillDone: true }, { merge: true }));
+        await assertSucceeds(rs.doc('_meta').set({ backfillDone: true, ...V4() }, { merge: true }));
+        await assertFails(rs.doc('_meta').set({ backfillDone: false }, { merge: true }));
+    });
+
+    t('older apps can\'t edit bills, the owner\'s included; they still record payments (#75)', async () => {
+        for (const coll of bills) {
+            await seedBill(coll, 'o', { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100 }, dueAmount: 100, clientVersion: 3, ...fresh() });
+            const ref = (uid) => as(uid).collection(coll).doc('o');
+            await assertFails(ref('legacyOwner').update({ total: 90, clientVersion: 3 }));
+            await assertFails(ref('legacyOwner').set({ userId: 'staff1', total: 90, clientVersion: 3, ...fresh() }));
+            await assertSucceeds(ref('legacyOwner').update({ comments: 'old app note' }));
+            await assertSucceeds(ref('staff1').update({ 'payment.cash': 40, 'payment.online': 0, 'payment.due': 60, dueAmount: 60,
+                payments: [{ amount: 40, cash: 40, online: 0, at: PAID_AT }], openDue: true, clientVersion: 3 }));
+            await assertSucceeds(ref('legacyOwner').update({ total: 90, clientVersion: 4 }));
+        }
+    });
+
     // Documents written by tools/migrate (#15), as its plan builds them from the synthetic backup.
     const migrated = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'tests', 'fixtures', 'migrate', 'migrated-docs.json'), 'utf8')).docs;
     const migratedDoc = (coll, id) => migrated.find(d => d.coll === coll && d.id === id).data;
@@ -1302,10 +1381,10 @@ function defineSuite(prefix) {
     t('migration (#15): carried rate stats and _meta pass the rules; the app can roll them forward', async () => {
         const doc = migratedDoc('rateStats', 'item-rice_2026');
         const meta = migratedDoc('rateStats', '_meta');
-        await assertSucceeds(as('manager1').collection(rateStats).doc('item-rice_2026').set(doc));
-        await assertSucceeds(as('legacyOwner').collection(rateStats).doc('_meta').set(meta));
-        await assertSucceeds(as('manager1').collection(rateStats).doc('item-rice_2026').set({ ...doc, weeks: { ...doc.weeks, 'w2026-10-26': bucket() }, updatedAt: 1800000000000 }));
-        await assertSucceeds(as('manager1').collection(rateStats).doc('_meta').set({ startedAt: 1 }, { merge: true }));
+        await assertSucceeds(as('manager1').collection(rateStats).doc('item-rice_2026').set({ ...doc, ...V4() }));
+        await assertSucceeds(as('legacyOwner').collection(rateStats).doc('_meta').set({ ...meta, ...V4() }));
+        await assertSucceeds(as('manager1').collection(rateStats).doc('item-rice_2026').set({ ...doc, weeks: { ...doc.weeks, 'w2026-10-26': bucket() }, updatedAt: 1800000000000, ...V4() }));
+        await assertSucceeds(as('manager1').collection(rateStats).doc('_meta').set({ startedAt: 1, ...V4() }, { merge: true }));
     });
 
     t('migration (#15): a member records a payment on a carried opening record', async () => {

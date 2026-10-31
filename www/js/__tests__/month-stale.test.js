@@ -141,13 +141,15 @@ describe('the stale mark on a late save, edit or delete', () => {
 
 describe('the guarded rebuild write', () => {
     const doc = { month: '2026-05', v: 1, m: { M1: 1000 }, builtAt: NOW };
+    // as stored: stamped by an app that knows voided bills (#75)
+    const written = { ...doc, clientVersion: 4, writtenAt: NOW };
 
     test('replaces the stale mark it saw; keeps a newer mark; skips a month already rebuilt', async () => {
         fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', v: 1, m: { M1: 900 }, stale: true, staleAt: 5 }]);
         expect(await FirebaseService.rebuildMonthStat(doc, 5)).toEqual({ status: 'written', doc });
-        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(written);
         expect((await FirebaseService.rebuildMonthStat({ ...doc, m: { M1: 1 } }, 5)).status).toBe('fresh');
-        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(written);
         fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', stale: true, staleAt: 6 }]);
         const r = await FirebaseService.rebuildMonthStat(doc, 5);
         expect(r).toEqual({ status: 'newer', doc: { month: '2026-05', stale: true, staleAt: 6 } });
@@ -156,13 +158,13 @@ describe('the guarded rebuild write', () => {
 
     test('Build month history\'s write: over a fresh or missing month; over a stale one only when this phone handled that mark', async () => {
         expect((await FirebaseService.saveMonthStatGuarded(doc)).status).toBe('written');
-        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(written);
         expect((await FirebaseService.saveMonthStatGuarded({ ...doc, builtAt: 1 })).status).toBe('written');
         fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', stale: true, staleAt: 7 }]);
         expect(await FirebaseService.saveMonthStatGuarded(doc)).toEqual({ status: 'newer', doc: { month: '2026-05', stale: true, staleAt: 7 } });
         expect((await FirebaseService.saveMonthStatGuarded(doc, { staleAt: 6 })).status).toBe('newer');
         expect(fake.raw('monthStats').get('2026-05')).toEqual({ month: '2026-05', stale: true, staleAt: 7 });
         expect((await FirebaseService.saveMonthStatGuarded(doc, { staleAt: 7 })).status).toBe('written');
-        expect(fake.raw('monthStats').get('2026-05')).toEqual(doc);
+        expect(fake.raw('monthStats').get('2026-05')).toEqual(written);
     });
 });
