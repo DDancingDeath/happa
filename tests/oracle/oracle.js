@@ -255,7 +255,8 @@ export function labourDay(data, nowMs, { laborRate = 6, labourPackageKg = 35 } =
 /**
  * S1–S4 + COGS: weighted-average cost, replayed in time order.
  * Lines resolve to a catalogue item by itemId, else by English/Hindi name
- * (trimmed, case-insensitive). Purchases add at the line rate; sales (wholesale
+ * (trimmed, case-insensitive). Purchases add their saved line amount (`total`,
+ * else `amount`, else kg × rate: #129, the whole rupees on the bill); sales (wholesale
  * and retail, owner decision #33) remove at
  * the average cost at that moment (that cost is the cost of goods sold);
  * adjustments: add (at their rate), remove (at average cost, never below 0),
@@ -274,7 +275,11 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
     };
     const ev = [];
     const qtyOf = (l) => n(l.qty ?? l.quantity);
-    activity(data.purchases).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 0, k: keyOf(l), op: 'buy', q: qtyOf(l), rate: n(l.rate) })));
+    const boughtValue = (l) => {
+        const saved = has(l.total) ? n(l.total) : has(l.amount) ? n(l.amount) : null;
+        return qtyOf(l) > 0 && saved !== null ? saved : qtyOf(l) * n(l.rate);
+    };
+    activity(data.purchases).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 0, k: keyOf(l), op: 'buy', q: qtyOf(l), value: boughtValue(l) })));
     activity(data.wholesaleSales).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 1, k: keyOf(l), op: 'sell', q: qtyOf(l), line: `wholesale|${b.id}|${keyOf(l)}` })));
     activity(data.retailSales).forEach(b => (b.items || []).forEach(l => ev.push({ t: eventTimeOf(b), o: 2, k: keyOf(l), op: 'sell', q: qtyOf(l), line: `retail|${b.id}|${keyOf(l)}` })));
     (data.stockAdjustments || []).forEach(a => ev.push({ t: eventTimeOf(a), o: 3, k: keyOf({ itemId: a.itemId, name: a.itemName }), op: 'adj-' + a.adjustType, q: n(a.quantity), rate: n(a.rate) }));
@@ -292,7 +297,10 @@ export function stockReplay(data, range = [-Infinity, Infinity]) {
         const s = st[e.k] || (st[e.k] = { q: 0, v: 0 });
         const avg = s.q > 0 ? s.v / s.q : 0;
         const before = s.v;
-        if (e.op === 'buy' || e.op === 'adj-add') {
+        if (e.op === 'buy') {
+            s.q += e.q;
+            s.v += e.value;
+        } else if (e.op === 'adj-add') {
             s.q += e.q;
             s.v += e.q * (e.rate || 0);
         } else if (e.op === 'sell') {
@@ -834,11 +842,13 @@ export function dailyKg(sources, items, itemId, month) {
 
 /**
  * The figures a bill form shows while a bill is entered, and the money of the
- * bill it saves. Lines: BF-LINE = qty × rate in whole rupees (#129 open), qty =
- * Σ packet weights (BF-KG). Purchase: BF-TOTAL = Σ lines (paise); BF-LAB =
- * labour rate × packets above the heavy weight, whole rupees in the box;
- * BF-PAYABLE = BF-TOTAL − labour (saved in paise, shown in rupees). Retail:
- * BF-TOTAL = Σ lines. Wholesale: WS-PROFIT = total − Σ qty × average rate
+ * bill it saves. #129 (owner, 2026-11-01): rates and kg keep their decimals,
+ * every money amount is a whole rupee, half-up on the amount in paise
+ * (`rupee`). Lines: BF-LINE = rupee(qty × rate), qty = Σ packet weights
+ * (BF-KG). Purchase: BF-TOTAL = Σ lines; BF-LAB = rupee(labour rate × packets
+ * above the heavy weight) in the box; the saved labour is rupee(the box), so
+ * ₹12.50 typed is ₹13 and BF-PAYABLE = BF-TOTAL − ₹13 (screen = saved). Retail:
+ * BF-TOTAL = Σ lines. Wholesale: WS-PROFIT = total − rupee(Σ qty × average rate)
  * (lines with no known rate cost nothing) − expenses; WS-MARGIN = profit ÷
  * total × 100, one decimal (0 with no total).
  * @param {'purchase'|'retail'|'wholesale'} kind
@@ -847,28 +857,30 @@ export function dailyKg(sources, items, itemId, month) {
  *   labour: typed labour (default: the suggested one)
  */
 export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, stock = {}, expenses = 0 } = {}) {
+    const rupee = (v) => Math.round(r2(v)) || 0;
     const lines = entries.map(e => {
         const qty = e.weights ? sum(e.weights, w => w) : n(e.qty);
-        return { ...e, qty, amount: Math.round(qty * e.rate) };
+        return { ...e, qty, amount: rupee(qty * e.rate) };
     });
-    const total = r2(sum(lines, l => l.amount));
-    const out = { BF_LINE: lines.map(l => l.amount), BF_KG: lines.map(l => l.qty), BF_TOTAL: total, BF_TOTAL_shown: Math.round(total) };
+    const total = sum(lines, l => l.amount);
+    const out = { BF_LINE: lines.map(l => l.amount), BF_KG: lines.map(l => l.qty), BF_TOTAL: total, BF_TOTAL_shown: total };
     if (kind === 'purchase') {
         const heavy = sum(lines, l => (l.weights || []).filter(w => w > heavyKg).length);
-        const suggested = Math.round(laborRate * heavy);
-        const typed = labour === undefined ? suggested : labour;
+        const suggested = rupee(laborRate * heavy);
+        const typed = rupee(labour === undefined ? suggested : labour);
         Object.assign(out, {
             BF_LAB: suggested,
-            BF_PAYABLE: r2(total - r2(typed)),
-            BF_PAYABLE_shown: Math.round(total - typed)
+            BF_LAB_saved: typed,
+            BF_PAYABLE: total - typed,
+            BF_PAYABLE_shown: total - typed
         });
     }
     if (kind === 'wholesale') {
-        const cost = r2(sum(lines, l => (n(stock[l.itemId]?.rate) > 0 ? n(stock[l.itemId].rate) * l.qty : 0)));
-        const profit = r2(total - cost - n(expenses));
+        const cost = rupee(sum(lines, l => (n(stock[l.itemId]?.rate) > 0 ? n(stock[l.itemId].rate) * l.qty : 0)));
+        const profit = total - cost - rupee(n(expenses));
         Object.assign(out, {
             WS_PROFIT: profit,
-            WS_PROFIT_shown: Math.round(profit) || 0,
+            WS_PROFIT_shown: profit,
             WS_MARGIN: total > 0 ? Math.round((profit / total) * 1000) / 10 : 0
         });
     }
