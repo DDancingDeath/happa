@@ -26,7 +26,7 @@ import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../uti
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
-import { billDateWho, pickedBillDay, prepareBillDate, resetBillDate, showBillSavedToast } from '../ui/bill-date-input.js';
+import { billDateWho, lockBillDate, pickedBillDay, prepareBillDate, resetBillDate, showBillSavedToast } from '../ui/bill-date-input.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
@@ -445,10 +445,11 @@ export class WholesaleSalesManager {
             // A retry keeps the first attempt's time so an unchanged sale is written identically
             if (!pending.timestamp) {
                 const now = new Date();
-                const at = billTimeFor(day, now);
+                const at = billTimeFor(pickedBillDay('wholesaleDate', now), now);
                 pending.timestamp = at.getTime();
                 pending.date = at.toLocaleString('en-IN');
                 pending.enteredAt = now.getTime();
+                lockBillDate('wholesaleDate', pending.timestamp);
             }
             
             const saleData = {
@@ -1145,6 +1146,16 @@ BillChecksUI.register('wholesale', {
         'entry.qty': { inputs: ['sellQuantity'] }
     }
 });
+
+// Showing Wholesale (or the app again) sets the Date box (#147)
+if (typeof window !== 'undefined') {
+    window.addEventListener('aadhat:tabshown', (event) => {
+        if (event.detail?.tabId === 'wholesale-sales') prepareBillDate('wholesaleDate');
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') prepareBillDate('wholesaleDate');
+    });
+}
 
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
 on(REFRESH.salesDropdown, () => WholesaleSalesManager.loadItemsDropdown());

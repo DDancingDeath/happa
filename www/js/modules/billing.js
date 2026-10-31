@@ -54,7 +54,7 @@ export function editRefusedMessage(bill) {
 
 /** Draft fields that make the bill checks treat the form as an edit of `bill` (#37). */
 const editCheckContext = (bill) => ({
-    isEdit: true, id: bill.id, editingBill: bill, date: bill.date, enteredAt: bill.timestamp
+    isEdit: true, id: bill.id, editingBill: bill, date: bill.date, enteredAt: bill.enteredAt || bill.timestamp
 });
 
 /**
@@ -1370,6 +1370,16 @@ const BillingManager = {
 export { BillingManager, PurchaseManager, RetailSaleManager };
 
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
+// Showing Billing (or the app again) sets the Date boxes: the role's days, today if the day changed (#147)
+if (typeof window !== 'undefined') {
+    window.addEventListener('aadhat:tabshown', (event) => {
+        if (event.detail?.tabId === 'billing') BillingManager.prepareBillDates();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') BillingManager.prepareBillDates();
+    });
+}
+
 on(REFRESH.billingDropdown, () => BillingManager.loadItemsDropdown());
 on(ITEM_FREQUENCY_CHANGED, () => {
     BillingManager.loadItemsDropdown();

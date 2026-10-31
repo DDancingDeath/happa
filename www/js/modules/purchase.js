@@ -21,7 +21,7 @@ import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../uti
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
-import { billDateWho, pickedBillDay, resetBillDate, showBillSavedToast } from '../ui/bill-date-input.js';
+import { billDateWho, lockBillDate, pickedBillDay, resetBillDate, showBillSavedToast } from '../ui/bill-date-input.js';
 
 /** Name to show for a catalogue item or bill line in the chosen item-name language. */
 const lineLabel = (line) => lineItemIdentity(line && 'itemId' in line ? line : { itemId: line?.id, name: line?.name }, AppState.items, AppState.settings.showHindi).label;
@@ -598,10 +598,11 @@ const PurchaseManager = {
             // A retry keeps the first attempt's time so an unchanged bill is written identically
             if (!pending.timestamp) {
                 const now = new Date();
-                const at = billTimeFor(day, now);
+                const at = billTimeFor(pickedBillDay('billDate', now), now);
                 pending.timestamp = at.getTime();
                 pending.date = at.toISOString();
                 pending.enteredAt = now.getTime();
+                lockBillDate('billDate', pending.timestamp);
             }
             
             const bill = {

@@ -420,6 +420,7 @@ async function initializeUserData() {
         
         // Show the billing tab by default
         NavigationManager.showTab('billing');
+        BillingManager.prepareBillDates();
         NavigationManager.setActiveNavLink('billing');
         NavigationManager.initBackNavigation();
         

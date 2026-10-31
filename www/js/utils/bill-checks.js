@@ -215,13 +215,14 @@ function duplicateIssue(draft, ctx) {
     const ref = Number(draft.enteredAt) || ctx.now;
     const dup = (ctx.recentBills || []).find(b => {
         if (!b || (draft.id && b.id === draft.id)) return false;
-        const ts = Number(b.timestamp) || parseAnyBillDate(b.date)?.getTime();
+        // When it was entered (#147: a back-dated bill's timestamp is its day)
+        const ts = Number(b.enteredAt) || Number(b.timestamp) || parseAnyBillDate(b.date)?.getTime();
         if (!ts || Math.abs(ref - ts) > windowMs) return false;
         const bTotal = billTotal(b);
         return normalize(b.customerName) === party && bTotal === total && itemsSignature(b.items) === sig;
     });
     if (!dup) return null;
-    const secs = Math.max(1, Math.round(Math.abs(ref - (Number(dup.timestamp) || ref)) / 1000));
+    const secs = Math.max(1, Math.round(Math.abs(ref - (Number(dup.enteredAt) || Number(dup.timestamp) || ref)) / 1000));
     const no = dup.billNumber ? ` (${dup.billNumber})` : '';
     return issue('duplicate', 'bill', 'warn',
         `Same bill was saved ${secs} s ago${no} — is this a duplicate?`,

@@ -65,6 +65,39 @@ describe('the Date box', () => {
         resetBillDate('billDate');
         expect([input.value, input.disabled, pickedBillDay('billDate')]).toEqual([today, false, today]);
     });
+
+    test('a box never prepared (cold start) still keeps a day typed into it', () => {
+        const input = document.getElementById('billDate');
+        input.value = '2026-10-30';
+        expect(pickedBillDay('billDate')).toBe('2026-10-30');
+    });
+});
+
+describe('save checks see when a bill was entered (#147)', () => {
+    const ctx = (recentBills) => ({ kind: 'retail', now: NOW.getTime(), thresholds: {}, catalogue: [], stock: {}, stockReady: true, credit: [], recentBills, oversellCanBlock: false });
+    const items = [{ name: 'Rice', rate: 40, qty: 10, total: 400 }];
+    test('a back-dated duplicate is caught by its entry time, not its day', () => {
+        const yesterday = new Date(2026, 9, 31, 14, 29).getTime();
+        const first = { id: 'a', customerName: 'Ram', items, total: 400, timestamp: yesterday, enteredAt: NOW.getTime() - 60000 };
+        const draft = { kind: 'retail', id: 'b', items, total: 400, partyName: 'Ram', payment: { cash: 400, online: 0, due: 0 }, enteredAt: NOW.getTime(), date: new Date(yesterday).toISOString() };
+        expect(evaluateBill(draft, ctx([first])).map(i => i.id)).toContain('duplicate');
+    });
+});
+
+describe('the Date box after a first save attempt', () => {
+    test('locked on the attempt\'s day; prepare leaves it; reset unlocks', async () => {
+        const { lockBillDate } = await import('../ui/bill-date-input.js');
+        document.body.innerHTML = '<input type="date" id="saleDate">';
+        AppState.userRole = 'staff';
+        prepareBillDate('saleDate');
+        lockBillDate('saleDate', new Date(2026, 9, 31, 9).getTime());
+        const input = document.getElementById('saleDate');
+        expect([input.value, input.disabled]).toEqual(['2026-10-31', true]);
+        prepareBillDate('saleDate');
+        expect([input.value, input.disabled]).toEqual(['2026-10-31', true]);
+        resetBillDate('saleDate');
+        expect(input.disabled).toBe(false);
+    });
 });
 
 describe('saving a back-dated bill', () => {

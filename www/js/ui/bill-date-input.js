@@ -28,7 +28,7 @@ export const billDateWho = (now = new Date()) => ({ role: AppState.userRole, rol
  */
 export function prepareBillDate(id, editingBill = null) {
     const input = document.getElementById(id);
-    if (!input) return;
+    if (!input || (input.dataset.locked && !editingBill)) return;
     const range = billDayRange(billDateWho());
     input.max = range.max;
     input.min = range.min;
@@ -60,7 +60,23 @@ export function prepareBillDate(id, editingBill = null) {
  */
 export function pickedBillDay(id, now = new Date()) {
     const input = document.getElementById(id);
-    return input?.dataset.picked && input.value ? input.value : toLocalISODate(now);
+    const today = toLocalISODate(now);
+    if (!input?.value) return today;
+    if (input.dataset.picked) return input.value;
+    // A prepared box not picked follows the clock; one never prepared holds what was typed
+    return input.dataset.prepared ? today : input.value;
+}
+
+/**
+ * Once the first save attempt fixed the bill's time, the box shows that day and is
+ * locked: a retry is written with the same time (clear the bill to change it).
+ * @param {string} id
+ * @param {number} timestamp
+ */
+export function lockBillDate(id, timestamp) {
+    prepareBillDate(id, { timestamp });
+    const input = document.getElementById(id);
+    if (input) input.dataset.locked = '1';
 }
 
 /** After a save, a clear or the end of an edit: today again. */
@@ -68,6 +84,7 @@ export function resetBillDate(id) {
     const input = document.getElementById(id);
     if (!input) return;
     delete input.dataset.picked;
+    delete input.dataset.locked;
     input.value = '';
     prepareBillDate(id);
 }
