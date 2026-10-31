@@ -556,3 +556,12 @@
   .ins-section > .ins-wide { grid-column: 1 / -1; }
   .ins-hero-value { font-size: 40px; }
 }
+
+/* Phone bottom bar and its settings (#142): the sidebar is permanent here */
+@media (min-width: 1024px) {
+  .bottom-nav,
+  .pull-refresh,
+  .phone-only-setting {
+    display: none !important;
+  }
+}

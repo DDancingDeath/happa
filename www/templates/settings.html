@@ -26,6 +26,12 @@
                 <span data-i18n="ui.settings.show_item_names_in">Show item names in Hindi</span>
             </label>
             <p class="setting-description" data-i18n="ui.settings.display_hindi_names_in">Display Hindi names in the app (Bills always use Hindi names)</p>
+
+            <label class="checkbox-label phone-only-setting">
+                <input type="checkbox" id="settingSwipeTabs" onchange="window.app.bottomNav.setSwipe(this.checked)">
+                <span data-i18n="ui.settings.swipe_tabs">Swipe left or right to change page</span>
+            </label>
+            <p class="setting-description phone-only-setting" data-i18n="ui.settings.swipe_tabs_hint">Moves between Billing, Today, History and Outstanding. Saved on this phone.</p>
         </div>
 
         <div class="settings-card" id="accountCard">
