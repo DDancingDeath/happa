@@ -117,7 +117,7 @@ const AuthManager = {
     async createPendingProfile(user, name, email) {
         return createProfileIfMissing(user.uid, {
             name: String(name || email.split('@')[0]).slice(0, 80),
-            email: user.email || email,
+            email: email,
             role: 'staff', // Default role for new registrations - can be changed by admin
             status: 'pending'
         });
