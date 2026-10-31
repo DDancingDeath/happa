@@ -194,7 +194,7 @@ Each claim of the combined review checked against `main` `ca6f2ba`.
 | Stock value | ✅ stock.js:159-191, 257, 583 vs `stock-replay` / `moneySummary().stockNow` | Same inputs today; two code paths. |
 | Rent totals | ◐ rent-views.js:33-40 vs `rent-math.monthSummary` | Agree (same rounding). |
 | Other copies found | `checkPaymentSplit` exists twice with different signatures (money.js:292, due-payments.js:194); `normalizeParty` = `normalizePartyName` (due-payments.js:28, aging.js:54); `istDayKey` (anomalies.js:103, rate-trends.js:52); month step (insights / money) | Identical today; one copy should go. |
-| Found by the full-scope ratchet | firestore-service.js:1197-1198 repeats `wholesaleOutstanding`'s `payment.due ‖ total − received`; main.js:527-695 (`debugStockForName`) re-implements AVG-COST; services/printer.js:398-479 recomputes payable (its own field order, then `subtotal − labour`), received and due for the receipt, with `‖` so `payment.cash: 0` falls back to the top-level `cashPayment` (`readPayment` keeps the 0) | The first disagrees with BILL-DUE as above; the receipt rounds to the rupee (₹988 for the ₹987.50 bill above) and can show a stale cash figure. |
+| Found by the full-scope ratchet | firestore-service.js:1197-1198 repeats `wholesaleOutstanding`'s `payment.due ‖ total − received`; main.js:527-695 (`debugStockForName`) re-implements AVG-COST; services/printer.js:350-431 recomputes payable (its own field order, then `subtotal − labour`), received and due for the receipt, with `‖` so `payment.cash: 0` falls back to the top-level `cashPayment` (`readPayment` keeps the 0) | The first disagrees with BILL-DUE as above; the receipt rounds to the rupee (₹988 for the ₹987.50 bill above) and can show a stale cash figure. |
 
 "No spec ID" list: wholesale live profit / margin ✅, stock adjustment value ✅,
 Insights top-5 ✅, history legacy totals ◐ (BILL-TOTAL exists; history doesn't
@@ -253,16 +253,16 @@ In flight on 31 Oct: **#181** double-tap locks (billing, cash-management,
 miscellaneous, modules/money, outstanding, stock, wholesale-sales, rentals.js,
 main.js), **#182** offline sync indicator (firestore-service, billing,
 miscellaneous, purchase, retail-sale, settings, wholesale-sales, main.js, new
-ui/sync-status.js and utils/storage-full.js), **#180** printer timeouts
+ui/sync-status.js and utils/storage-full.js), **#180** printer timeouts (merged 31 Oct; this PR is rebased on it)
 (services/printer.js, settings.js, main.js), plus security work on
 firestore.rules and the save handlers. Every PR that changes `www/` also collides
 on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js).
 
 | Phase | PR | Size | Conflicts |
 |---|---|---|---|
-| 0 | This PR: doc, ratchet, baseline | S | none (ratchet: #180 adds no counted line; #181, #182 change no counts) |
+| 0 | This PR: doc, ratchet, baseline | S | none (ratchet: #180 added no counted line; #181, #182 change no counts) |
 | 1 | Characterisation tests: bill forms (draft totals, labour, prefill, split), Today item cards, cash drawer C1–C8, history viewBill; BUG fixtures for the 4 disagreements | M | tests only; rebase on #181, #182 |
-| 2a | Delete the dead `HistoryManager.saveBillToHistory` and its `window.app.history.saveBillToHistory` wiring (main.js:1060), and the commented-out `viewRetailSale` block (history.js:531-610) | S | ⚠ main.js (#181, #182, #180) |
+| 2a | Delete the dead `HistoryManager.saveBillToHistory` and its `window.app.history.saveBillToHistory` wiring (main.js:1060), and the commented-out `viewRetailSale` block (history.js:531-610) | S | ⚠ main.js (#181, #182) |
 | 2b | `calc/today.todaySummary` (T1–T16) out of day.js | M | none (day.js not in flight) |
 | 2c | Periods: month step, day loops and day ends into `dates.js` (insights, money, statements, cash :320, day :126) | S | ⚠ modules/money.js, cash-management.js (#181) |
 | 2d | History `viewBill` view-model on `billTotal` / `readPayment` | S | none |
@@ -272,11 +272,11 @@ on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js
 | 2h | `calc/stock-value` (S2/S3 consolidation, adjustment value) out of stock.js | S | ⚠ #181 (stock.js) |
 | 2i | Rentals: `moveMonthRent` / `oldMonth` into rent-math; rent-views on `monthSummary` | S | ⚠ #181 (rentals.js) |
 | 2j | Bug fixes from section 4, one PR each after the owner answers | S each | ⚠ #181, #182 (wholesale-sales, cash, expenses) |
-| 2k | Receipt amounts (services/printer.js:398-479) from `readPayment` / `billTotal`; move main.js's debug stock replay (`debugStockForName`, main.js:527-695) onto `stock-replay` | S | ⚠ #180 (printer.js), main.js |
+| 2k | Receipt amounts (services/printer.js:350-431) from `readPayment` / `billTotal`; move main.js's debug stock replay (`debugStockForName`, main.js:527-695) onto `stock-replay` | S | main.js (#181, #182) |
 | 3 | Services: `bills` (save/edit/delete), `payments` (record, write-off: outstanding.js:670-900), `cash` (open/close), `stock` (adjust), `rent` | L | ⚠ every save handler, #181, #182 |
 | 4 | Repositories: drafts / autosave / itemFrequency (billing.js 11 sites), cash sessions, bill refs, counters (helpers.js), audit / telemetry, rentals (rent-store, rent-receipt-store) under `firebase/repos/` | M each | ⚠ #182 (billing, firestore-service), security (#64 rules) |
 | 5 | Split firestore-service: realtime coordinator, retry, cache, checkpoint, snapshots, notifications; replace `VIEWS` / `window.app` with change events | L | ⚠ #182 |
-| 6 | AppState store API (`setStock`, `upsertItem`, `setSettings`, `setUser`); settings.js and firestore-service first | M | ⚠ #180, #182 (settings.js), security |
+| 6 | AppState store API (`setStock`, `upsertItem`, `setSettings`, `setUser`); settings.js and firestore-service first | M | ⚠ #182 (settings.js), security |
 | 7 | Inline handlers → delegated listeners; prove the layering with one alternative UI | L | later |
 
 ## 6. The ratchet
