@@ -18,6 +18,7 @@ const BACKUP_COLLECTIONS = [
     'purchases', 'retailSales', 'wholesaleSales', 'items', 'expenses',
     'stockAdjustments', 'withdrawals', 'cashManagement', 'cashSessions',
     'settings', 'itemFrequency', 'notifications', 'autoSaves', 'drafts', 'counters',
+    'personalExpenses', 'personalExpenseDays',
     // own match blocks
     'stockCheckpoints', 'rateHistory', 'anomalies', 'rateStats', 'monthStats',
     'tipHealth', 'tipFailures', 'users', 'auditLogs', 'telemetry',

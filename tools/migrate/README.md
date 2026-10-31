@@ -57,7 +57,7 @@ Disabling them in the old project is an owner action in the Firebase console (`a
 
 | What | How | Flag (default first) |
 |---|---|---|
-| History | **Fresh start**: old bills are not copied; the old project and the encrypted backup are the archive | `--mode fresh` / `full` (copies every bill as is, no opening balances) |
+| History | **Fresh start**: old bills are not copied; the old project and the encrypted backup are the archive | `--mode fresh` / `full` (copies every bill as is, no opening balances; personal expenses go to `personalExpenses` with their day totals in `personalExpenseDays`, #98) |
 | Rates page | `items` copied as is, same ids | `--copy items,users,rateHistory,itemFrequency` |
 | Users | `users` profile docs as is (roles, status), same uids; logins move with `auth:import` below. **Service and test accounts are never carried** (see "Service accounts" below) | (part of `--copy`) |
 | Outstanding (retail) and Wholesale → Outstanding | one **opening record per old unpaid bill**, see below | always in `fresh` mode |

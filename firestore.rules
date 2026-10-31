@@ -43,7 +43,7 @@ service cloud.firestore {
         'purchases', 'retailSales', 'wholesaleSales', 'items', 'expenses',
         'stockAdjustments', 'withdrawals', 'cashManagement', 'cashSessions',
         'settings', 'itemFrequency', 'notifications', 'autoSaves', 'drafts',
-        'counters'
+        'counters', 'personalExpenses', 'personalExpenseDays'
       ];
     }
 
@@ -52,7 +52,7 @@ service cloud.firestore {
         'dev_purchases', 'dev_retailSales', 'dev_wholesaleSales', 'dev_items', 'dev_expenses',
         'dev_stockAdjustments', 'dev_withdrawals', 'dev_cashManagement', 'dev_cashSessions',
         'dev_settings', 'dev_itemFrequency', 'dev_notifications', 'dev_autoSaves', 'dev_drafts',
-        'dev_counters'
+        'dev_counters', 'dev_personalExpenses', 'dev_personalExpenseDays'
       ];
     }
 
@@ -557,10 +557,71 @@ service cloud.firestore {
             : resource == null || resource.data.get('userId', null) == request.auth.uid);
     }
 
+    // --- personal expenses (#98): their own collection, read and written only by the
+    // owner and roles with Roles & access › Personal expenses on (default on; one
+    // read of settings/app, never for the owner). personalExpenseDays/{YYYY-MM-DD} =
+    // { amounts: { <expense id>: amount }, last } holds each day's amounts (one key per
+    // expense, written with it) so the cash count and Today still add them up on phones
+    // that can't read the expenses. Members and managers may read these totals.
+    function personalOn(usersCol) {
+      return personalOnAs(usersCol, get(profilePath(usersCol)).data.get('role', ''));
+    }
+
+    function personalOnAs(usersCol, role) {
+      return role == 'owner' ? true : personalSwitch(settingsAppPath(usersCol), role);
+    }
+
+    function personalSwitch(p, role) {
+      let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
+      let r = access is map ? access.get(role, {}) : {};
+      return (r is map ? r : {}).get('personalExpenses', true) == true;
+    }
+
+    function dayKeyOk(v) {
+      return v is string && v.matches('^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$');
+    }
+
+    // A personal expense names the day it counts on (`day`, its personalExpenseDays doc).
+    function validPersonalCreate() {
+      return validLedgerCreate() && request.resource.data.get('category', null) == 'personal'
+        && dayKeyOk(request.resource.data.get('day', null));
+    }
+
+    // A day doc write changes one key, `last` (an expense id): set to that expense's
+    // amount after this write, on its day, or removed when the expense is gone after
+    // it. So a repeated delete or a late write is harmless, and nobody can zero the
+    // map or add a key for an expense that doesn't exist. Members only touch the key
+    // of an expense written in the same batch; managers may also correct a key to
+    // the stored amount (rebuild from the rows).
+    function validPersonalDay(u, docId) {
+      let d = request.resource.data;
+      return dayKeyOk(docId)
+        && d.keys().hasOnly(['amounts', 'last'])
+        && d.get('amounts', null) is map
+        && d.get('last', null) is string && d.last.matches('^[A-Za-z0-9_-]{1,100}$')
+        && d.amounts.diff(resource == null ? {} : resource.data.get('amounts', {})).affectedKeys().hasOnly([d.last])
+        && personalDayKeyOk(u, docId, d,
+             /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenses')/$(d.last));
+    }
+
+    function personalDayKeyOk(u, docId, d, p) {
+      return d.last in d.amounts
+        ? existsAfter(p) && getAfter(p).data.get('amount', null) == d.amounts[d.last]
+          && getAfter(p).data.get('day', '') == docId
+          && (isManagerIn(u) || !exists(p) || get(p).data != getAfter(p).data)
+        : !existsAfter(p);
+    }
+
+    // Older apps tagged personal expenses in `expenses`, where every member reads them (#98).
+    function personalTagged(m) {
+      return m.get('category', '') is string && m.get('category', '').trim().lower() == 'personal';
+    }
+
     function canCreateRecord(base, u, docId) {
       return base == 'autoSaves' ? ownAutoSaveWrite(docId)
         : base == 'drafts' ? validDraftCreate()
         : base == 'notifications' ? validNotificationCreate(u, docId)
+        : base == 'expenses' && personalTagged(request.resource.data) ? false
         : (isOwnerIn(u)
         || (base in billCollections() ? validBillCreate()
           : base in ['expenses', 'withdrawals'] ? validLedgerCreate()
@@ -570,6 +631,8 @@ service cloud.firestore {
           : base in ['cashSessions', 'settings'] ? false
           : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.keys())
           : base == 'counters' ? validCounterCreate()
+          : base == 'personalExpenses' ? personalOn(u) && validPersonalCreate()
+          : base == 'personalExpenseDays' ? personalOn(u) && validPersonalDay(u, docId)
           : true));
     }
 
@@ -586,8 +649,13 @@ service cloud.firestore {
         : base == 'autoSaves' ? ownAutoSaveWrite(docId)
         : base == 'drafts' ? draftUpdateOk()
         : base == 'notifications' ? notificationReadOnly()
+        : base == 'expenses' && personalTagged(request.resource.data) && !personalTagged(resource.data) ? false
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
+        : base == 'personalExpenses' ? personalOn(u) && canUpdateExpense(u)
+          && request.resource.data.get('category', null) == 'personal'
+          && request.resource.data.get('day', null) == resource.data.get('day', null)
+        : base == 'personalExpenseDays' ? personalOn(u) && validPersonalDay(u, docId)
         : base in ['withdrawals', 'stockAdjustments']
           ? (legacyBackfillOnly()
              || (isManagerIn(u)
@@ -606,6 +674,8 @@ service cloud.firestore {
         : base in ['autoSaves', 'drafts', 'notifications'] ? canDeleteOwnRecord(base, u, docId)
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canDeleteExpense(u)
+        : base == 'personalExpenses' ? personalOn(u) && canDeleteExpense(u)
+        : base == 'personalExpenseDays' ? false
         : base in ['withdrawals', 'stockAdjustments'] ? isManagerIn(u)
         : base in ['cashManagement', 'cashSessions', 'items', 'counters', 'settings', 'itemFrequency'] ? false
         : true;
@@ -669,6 +739,7 @@ service cloud.firestore {
           : base == 'autoSaves' ? docId == request.auth.uid
           : base == 'settings' ? single && docId == 'app'
           : base == 'withdrawals' ? roleSeesMoneyPages(u)
+          : base == 'personalExpenses' ? personalOn(u)
           : base == 'cashSessions' ? isManagerIn(u)
           : true);
     }

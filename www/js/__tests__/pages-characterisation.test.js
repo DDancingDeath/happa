@@ -120,6 +120,8 @@ beforeEach(() => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(UIManager, 'withLoading').mockImplementation(async (fn) => fn());
+    // an owner phone whose personal expense listener delivered its rows (#98)
+    jest.spyOn(FirebaseService, 'personalRowsLoaded').mockReturnValue(true);
     localStorage.clear();
     resetInsightsContextForTests();
     MoneyManager.snapshots = {};

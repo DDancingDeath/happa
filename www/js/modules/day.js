@@ -122,9 +122,13 @@ export const DayManager = {
     loadTodayData() {
         const todayIso = todayLocalISO();
         const session = CashManagementManager.todaySession;
+        // Without the personal rows (listener not started/delivered) today's total comes from personalExpenseDays (#98)
+        const personalReadable = !!FirebaseService.personalRowsLoaded?.();
+        if (!personalReadable) this.loadPersonalDay(todayIso);
         const s = todaySummary({
             bills: { purchase: AppState.purchaseHistory, wholesale: AppState.salesHistory, retail: AppState.retailSalesHistory },
             expenses: AppState.expensesHistory,
+            personalDay: personalReadable ? null : FirebaseService.personalExpenseDay?.(todayIso),
             sessions: this.sessionsOn(todayIso),
             settings: AppState.settings,
             today: new Date()
@@ -236,6 +240,23 @@ export const DayManager = {
     /**
      * Helper to update element text
      */
+    /**
+     * Loads today's personal expense total for a role that can't read the rows
+     * (#98) and redraws once it arrives (FirebaseService reuses it for a minute).
+     * @param {string} day YYYY-MM-DD
+     */
+    loadPersonalDay(day) {
+        if (this.personalDayLoading) return;
+        const before = JSON.stringify(FirebaseService.personalExpenseDay?.(day) ?? null);
+        this.personalDayLoading = Promise.resolve(FirebaseService.loadPersonalExpenseDay?.(day))
+            .then(() => {
+                if (JSON.stringify(FirebaseService.personalExpenseDay?.(day) ?? null) !== before
+                    && document.getElementById('todayTotalIn')) this.loadTodayData();
+            })
+            .catch(e => console.warn('Personal expense day total not loaded:', e))
+            .finally(() => { this.personalDayLoading = null; });
+    },
+
     updateElement(id, value) {
         const el = document.getElementById(id);
         if (el) el.textContent = value;

@@ -19,6 +19,7 @@ import { dueEvents, sumDueEvents, saleTimePayment, normalizeParty, sameParty, bi
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
+import { personalForDay } from '../utils/personal-expenses.js';
 import { tip } from '../tip/index.js';
 import { cashCloseProps } from '../tip/scenarios/cash-close.js';
 
@@ -267,6 +268,11 @@ export class CashManagementManager {
                 }
             }
             
+            // Without the personal rows a day's personal total comes from its day doc; never close a
+            // day on a guess: skip (retry next time) a day whose total couldn't be loaded (#98).
+            const personalTotals = await this.loadPersonalDays(unclosedSessions.map(s => s.date));
+            unclosedSessions = unclosedSessions.filter(s => personalTotals[s.date] !== null);
+
             // Update all unclosed sessions in parallel
             const updatePromises = unclosedSessions.map(async (session) => {
                 try {
@@ -351,18 +357,15 @@ export class CashManagementManager {
             if (inDay(purchase.date)) transactions.cashPurchases += saleTimePayment(purchase).cash;
         });
 
-        // Calculate cash expenses
-        const payments = AppState.expensesHistory || [];
+        // Calculate cash expenses. Personal ones a role can't read come from the day total (#98).
+        const payments = (AppState.expensesHistory || []).filter(p => inDay(p.date));
         payments.forEach(payment => {
-            if (inDay(payment.date)) {
-                const amount = Number(payment.amount) || 0;
-                if (isPersonalExpense(payment)) {
-                    transactions.personalExpenses += amount;
-                } else {
-                    transactions.businessExpenses += amount;
-                }
-            }
+            if (!isPersonalExpense(payment)) transactions.businessExpenses += Number(payment.amount) || 0;
         });
+        const readable = this.personalReadable();
+        transactions.personalExpenses = personalForDay(
+            payments.filter(isPersonalExpense).map(p => ({ amount: Number(p.amount) || 0 })),
+            readable, readable ? null : FirebaseService.personalExpenseDay?.(dateStr)).total;
 
         // Due payments made that day: recorded on bills and/or as drawer legs
         // in the session, counted once (#98). Only the cash part is drawer cash.
@@ -493,7 +496,33 @@ export class CashManagementManager {
      * @returns {Promise<void>}
      */
     static async calculateTodayTransactions() {
-        this.todayTransactions = this.calculateTransactionsForDate(todayLocalISO(), this.todaySession);
+        const today = todayLocalISO();
+        this.todayTransactions = this.calculateTransactionsForDate(today, this.todaySession);
+        if (this.personalReadable()) return;
+        // Without the personal rows: again once today's personal total is in (#98)
+        await this.loadPersonalDays([today]);
+        this.todayTransactions = this.calculateTransactionsForDate(today, this.todaySession);
+    }
+
+    /** Whether this phone has the personal expense rows (their listener delivered them), else day totals (#98). */
+    static personalReadable() {
+        return !!FirebaseService.personalRowsLoaded?.();
+    }
+
+    /**
+     * Loads the personal expense day totals of these days when the rows aren't loaded (#98).
+     * @returns {Promise<Object<string, ?Object>>} per day: totals, or null when they couldn't be loaded
+     */
+    static async loadPersonalDays(days) {
+        const out = {};
+        if (this.personalReadable()) {
+            days.forEach(d => { out[d] = undefined; });
+            return out;
+        }
+        await Promise.all(days.map(async d => {
+            out[d] = (await FirebaseService.loadPersonalExpenseDay?.(d)) ?? null;
+        }));
+        return out;
     }
 
     static updateUI() {
