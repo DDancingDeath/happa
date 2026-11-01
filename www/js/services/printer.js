@@ -5,7 +5,8 @@ import { UIManager } from '../ui/ui-manager.js';
 import { DEFAULT_SETTINGS } from '../utils/constants.js';
 import { getAndroidMajorVersion, Helpers } from '../utils/helpers.js';
 import { billQrText, copyMark, receiptDateTime, receiptPayable } from '../utils/bill-share.js';
-import { outstandingDue, readPayment } from '../utils/money.js';
+import { billLabour, billLineTotal, outstandingDue, readPayment } from '../utils/money.js';
+import { parseAnyBillDate } from '../utils/dates.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
 import { track } from './usage.js';
@@ -471,8 +472,8 @@ class BluetoothPrinterManager {
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'left';
         
-        // Get the subtotal (purchases use billTotal, sales use total or saleTotal)
-        const subtotal = billData.billTotal || billData.saleTotal || billData.total || 0;
+        // BILL-LINES: the lines before labour (purchases), the sale total (sales)
+        const subtotal = billLineTotal(billData, !!billData.isPurchase);
         
         // Subtotal
         ctx.fillText(`${this._t('ui.bill.total')}:`, config.padding.left, y);
@@ -482,20 +483,20 @@ class BluetoothPrinterManager {
         y += config.spacing.line;
         
         // Labor charges (only for purchases)
-        if (billData.isPurchase && billData.laborCharges > 0) {
+        if (billData.isPurchase && billLabour(billData) > 0) {
             if (billData.laborCalc) {
                 // Show calculation in middle and amount on right
                 ctx.fillText(`${this._t('ui.bill.labour')}:`, config.padding.left, y);
                 const calcWidth = ctx.measureText(billData.laborCalc).width;
                 const calcX = (config.width - calcWidth) / 2;
                 ctx.fillText(billData.laborCalc, calcX, y);
-                const laborText = `₹${billData.laborCharges}`;
+                const laborText = `₹${billLabour(billData)}`;
                 const laborWidth = ctx.measureText(laborText).width;
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
             } else {
                 // No calculation, just show amount
                 ctx.fillText(`${this._t('ui.bill.labour')}:`, config.padding.left, y);
-                const laborText = `₹${billData.laborCharges}`;
+                const laborText = `₹${billLabour(billData)}`;
                 const laborWidth = ctx.measureText(laborText).width;
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
             }
@@ -726,22 +727,8 @@ class BluetoothPrinterManager {
         // Date and Time
         ctx.font = `${config.fonts.body.size}px Arial`;
         let dateTime;
-        let expenseDate;
-        
-        // Try to parse the date from various possible formats
-        if (expense.timestamp) {
-            expenseDate = new Date(expense.timestamp);
-        } else if (expense.date) {
-            // Try parsing the date string
-            expenseDate = new Date(expense.date);
-        } else {
-            expenseDate = new Date();
-        }
-        
-        // Check if date is valid, if not use current date
-        if (isNaN(expenseDate.getTime())) {
-            expenseDate = new Date();
-        }
+        // A DD/MM/YYYY or YYYY-MM-DD date is local time (#80); today when it can't be read
+        const expenseDate = parseAnyBillDate(expense.timestamp || expense.date) || new Date();
         
         dateTime = expenseDate.toLocaleString('en-IN', {
             day: '2-digit',
