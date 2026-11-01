@@ -421,6 +421,19 @@ Counts about this phone, never business figures. Nothing is read from the server
 | ID | Shown | Definition |
 |---|---|---|
 | USE-1 | Uses per feature, Today / Last 7 days / Last 30 days | For each documented event (`utils/usage-stats.js` `USAGE_EVENTS`, and `page.<id>`) the sum of this phone's daily counts from the first day of the range to today (local days), most used first (ties by name), top 10. One `track()` call counts 1; the counts stay in IndexedDB on the phone (localStorage without it) for 90 days and are never sent |
+## Admin › Users: counts and activity by person (owner) — #145
+
+| ID | Shown | Definition |
+|---|---|---|
+| ADM-1 | Owner · Managers · Members · Waiting for approval · Removed | From the people list already loaded: removed or rejected (`isRemovedProfile`) → Removed; else no role or `status: pending` → Waiting; else by role (`staff` = Member) |
+| ADM-2 | Bills, Bill total per person | Bills on this phone (purchases, retail, wholesale) that count (`activityBills`: not voided, not opening records) saved by that person (`userId`, wholesale `createdBy`) with their first-save time (`createdAt`, else `timestamp`, else the bill date) in the range [from, to) of local days; total = Σ BILL-TOTAL, rounded to whole rupees at the end |
+| ADM-3 | Payments, Edits, Voids, Last active | That person's audit entries in the range: payments = `RECORD_PAYMENT` + `UPDATE_PAYMENT` + `CLEAR_DUE`, edits = `EDIT_BILL` + `EDIT_SALE`, voids = `VOID_BILL`; last active = their latest bill (ADM-2) or audit entry in the range. Ranges: Today, Last 7 days (today and 6 days before), This month (from the 1st), Last month. One read per tap of the range's audit entries (`timestamp` in [from, to)), at most the newest 300 (the page says so when it hits that) |
+## Today › Reminders (#86) — no reads
+
+| ID | Shown | Definition |
+|---|---|---|
+| REM-1 | Collect udhaar / Collect wholesale dues / Pay suppliers: total, up to 3 parties (amount, days), "+N more" | Outstanding's grouping and age (`buildAging`: BILL-DUE per normalised party name, age of the oldest open bill) over the open bills already on the phone, one block per list as the app keeps them: retail sales (Outstanding › Sales), wholesale sales-tab bills (Wholesale › Outstanding, roles that may open Wholesale) and purchases (Outstanding › Purchases). Only parties whose oldest due is older than 30 days, in Outstanding's "chase first" order (oldest bucket, then the biggest amount); the total is Σ of all those parties' dues |
+| REM-2 | Rent due: amount, units owing, late | Σ RENT-10 `due` (= RENT-9 due), the units marked Late and the count of RENT-10 rows with due > 0, as the Rent page last showed them on this phone for this month (saved when it renders the current month with no load error and nothing cut at a limit; for the same person, with the date and time it was taken). Shown to rentals roles only, with the time it was taken; not shown when Rentals wasn't opened this month |
 
 ## Checking real data
 
