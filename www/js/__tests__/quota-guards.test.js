@@ -12,7 +12,7 @@ import {
     readsForDocSnapshot,
     quotaBannerText
 } from '../utils/quota-guard.js';
-import { installFirestoreMeter, getQuotaStatus, sourceLabel } from '../firebase/firestore-meter.js';
+import { installFirestoreMeter, getQuotaStatus, getIoCounts, sourceLabel } from '../firebase/firestore-meter.js';
 import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart, MEMBER_APPROX_MAX_EXTRA_MS } from '../utils/rebuild-lease.js';
 
 const fs = require('fs');
@@ -126,10 +126,13 @@ describe('read counter', () => {
             get() { return Promise.resolve({ exists: true, metadata: { fromCache: false } }); }
             set() { return Promise.resolve(); }
         }
-        const sdk = { Query, CollectionReference, DocumentReference };
+        class Transaction { set() { return this; } }
+        class Firestore { runTransaction(fn) { return Promise.resolve().then(() => fn(new Transaction())); } }
+        const sdk = { Query, CollectionReference, DocumentReference, Transaction, Firestore };
         const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
         expect(installFirestoreMeter(sdk)).toBe(true);
         const before = getQuotaStatus().reads;
+        const io0 = getIoCounts();
 
         const snap = await new Query('dev_purchases').get();
         expect(snap.size).toBe(7);
@@ -155,6 +158,28 @@ describe('read counter', () => {
         q.fail({ code: 'resource-exhausted', message: 'Quota exceeded.' });
         expect(errors).toHaveLength(1);
         expect(getQuotaStatus().quota.count).toBeGreaterThanOrEqual(2);
+
+        // Diagnostics › Status counters (#119): writes sent, failed writes, failed reads.
+        await new DocumentReference('settings/app').set({});
+        const io = getIoCounts();
+        expect(io.writes - io0.writes).toBe(2);
+        expect(io.writeErrors - io0.writeErrors).toBe(1);
+        expect(io.readErrors - io0.readErrors).toBe(1);
+        expect(io.lastWriteAckAt).toEqual(expect.any(Number));
+
+        // Transactions: one write only when they wrote; only the SDK's own errors are refused writes.
+        const db = new Firestore();
+        await db.runTransaction(async () => 'read only');
+        await db.runTransaction(async (tx) => { tx.set({}, {}); tx.set({}, {}); });
+        await expect(db.runTransaction(async () => { throw new Error('app check'); })).rejects.toThrow('app check');
+        const sdkErr = Object.assign(new Error('aborted'), { name: 'FirebaseError', code: 'aborted' });
+        await expect(db.runTransaction(async (tx) => { tx.set({}, {}); throw sdkErr; })).rejects.toBe(sdkErr);
+        const readErr = Object.assign(new Error('unavailable'), { name: 'FirebaseError', code: 'unavailable' });
+        await expect(db.runTransaction(async () => { throw readErr; })).rejects.toBe(readErr);
+        const io2 = getIoCounts();
+        expect(io2.writes - io.writes).toBe(2);
+        expect(io2.writeErrors - io.writeErrors).toBe(1);
+        expect(io2.readErrors - io.readErrors).toBe(1);
         expect(document.getElementById('quotaBanner')).not.toBeNull();
         warn.mockRestore();
         document.body.innerHTML = '';
