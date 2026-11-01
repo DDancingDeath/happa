@@ -146,7 +146,21 @@
             <p data-i18n="ui.app.tagline">Your business, in one place</p>
         </div>
         
-        <div class="settings-card" id="roleAccessCard" style="display: none;">
+        <div class="settings-card" id="usageCard">
+            <h3 data-i18n="ui.usage.title">Usage on this phone</h3>
+            <p class="setting-description" data-i18n="ui.usage.hint">What is used most on this phone. Kept only on this phone; nothing is sent.</p>
+            <div class="filter-buttons" id="usageRange">
+                <button type="button" class="filter-btn" data-range="today" onclick="window.app.usage.setRange('today')" data-i18n="ui.usage.range_today">Today</button>
+                <button type="button" class="filter-btn active" data-range="week" onclick="window.app.usage.setRange('week')" data-i18n="ui.usage.range_week">Last 7 days</button>
+                <button type="button" class="filter-btn" data-range="month" onclick="window.app.usage.setRange('month')" data-i18n="ui.usage.range_month">Last 30 days</button>
+            </div>
+            <div id="usageList"></div>
+            <div class="app-updates-actions">
+                <button class="add-item-btn" type="button" onclick="window.app.usage.copy()" data-i18n="ui.usage.copy">Copy</button>
+                <button class="add-item-btn" type="button" onclick="window.app.usage.clear()" data-i18n="ui.usage.clear">Clear</button>
+            </div>
+        </div>
+                <div class="settings-card" id="roleAccessCard" style="display: none;">
             <h3 data-i18n="ui.roles.title">Roles &amp; access</h3>
             <p class="setting-description" data-i18n="ui.roles.hint">Choose what managers and members may see and do. The owner always sees everything.</p>
             <div id="roleAccessGrid"></div>
