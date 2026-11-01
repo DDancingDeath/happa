@@ -19,10 +19,17 @@ import { APP_VERSION } from '../version.js';
 import { runProbes, analyseProbes } from '../utils/perf-probe.js';
 import { statusRows, statusText, speedLines } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
-import { t } from '../i18n/index.js';
+import { t, getLang } from '../i18n/index.js';
 import { auditActionLabel } from '../i18n/localize.js';
 import { formatAuditDetails, auditWho, auditWhoText, peopleById } from '../utils/audit-changes.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { Exporter } from '../services/exporter.js';
+import { stampedCsv, stampLine, exportFilename } from '../utils/export-stamp.js';
+import { isoMinute } from '../utils/statements.js';
+import { toLocalISODate } from '../utils/dates.js';
+import { buildErrorReport, errorReportPeriod } from '../utils/error-report.js';
+import { readTeamDirectory } from '../firebase/repos/users.js';
+import { teamPeople } from '../utils/team-directory.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { runNumberChecks } from '../utils/number-checks.js';
@@ -454,6 +461,7 @@ const DiagnosticsManager = {
                     <option value="toast" ${this.filter === 'toast' ? 'selected' : ''}>${tx('ui.diag.t_toast')}</option>
                 </select>
                 <button onclick="window.app.diagnostics.loadData()" class="diag-btn refresh">🔄</button>
+                <button onclick="window.app.diagnostics.exportErrorReport()" class="diag-btn" data-export="errors">${tx('ui.diag.export_report')}</button>
                 <button onclick="window.app.diagnostics.clearAll()" class="diag-btn danger" title="${tx('msg.diagnostics.clear_all_diagnostics')}" aria-label="${tx('msg.diagnostics.clear_all_diagnostics')}">🙈</button>
             </div>
 
@@ -587,6 +595,8 @@ const DiagnosticsManager = {
                     <option value="CLEAR_DATA" ${this.auditFilter === 'CLEAR_DATA' ? 'selected' : ''}>${tx('ui.diag.a_clear_data')}</option>
                 </select>
                 <button onclick="window.app.diagnostics.loadAuditLogs()" class="diag-btn refresh">🔄</button>
+                <button onclick="window.app.diagnostics.exportAuditCsv()" class="diag-btn" data-export="audit-csv">${tx('ui.statements.download_csv')}</button>
+                <button onclick="window.app.diagnostics.printAudit()" class="diag-btn" data-export="audit-print">${tx('ui.statements.print')}</button>
             </div>
 
             <!-- Audit List -->
@@ -685,6 +695,97 @@ const DiagnosticsManager = {
     filterAuditLogs(action) {
         this.auditFilter = action;
         this.renderAuditLogs();
+    },
+
+    /**
+     * The audit entries listed (filter applied), as export rows: time, action, who, details (#85).
+     * @param {'en'|'hi'} [lang] the CSV is always English (for accountants and tools); the printed page follows the app
+     */
+    auditExportRows(lang = getLang()) {
+        const list = this.auditFilter ? this.auditLogs.filter(log => log.action === this.auditFilter) : this.auditLogs;
+        const roleKeys = { owner: 'ui.roles.owner', manager: 'ui.roles.manager', staff: 'ui.roles.member' };
+        const roleLabel = (role) => (roleKeys[role] ? t(roleKeys[role], null, lang) : String(role ?? ''));
+        return list.map(log => {
+            const who = auditWhoText(auditWho(log, this.auditPeople), roleLabel, lang);
+            return {
+                at: Number(log.timestamp),
+                cells: [isoMinute(Number(log.timestamp)), auditActionLabel(log.action, lang), [who.main, who.note].filter(Boolean).join(' · '), formatAuditDetails(log.details, log.action, lang)]
+            };
+        });
+    },
+
+    auditExportPeriod(rows) {
+        const times = rows.map(r => r.at).filter(Number.isFinite);
+        if (!times.length) return { from: null, to: null };
+        return { from: toLocalISODate(new Date(Math.min(...times))), to: toLocalISODate(new Date(Math.max(...times))) };
+    },
+
+    auditHeader(lang = getLang()) {
+        return ['ui.export.col_time', 'ui.export.col_action', 'ui.export.col_who', 'ui.export.col_details'].map(k => t(k, null, lang));
+    },
+
+    /** Audit log as CSV (#85), through the one export path (#103); English, like the accountant CSV. */
+    exportAuditCsv() {
+        const rows = this.auditExportRows('en');
+        if (!rows.length) {
+            UIManager.showToast(t('msg.export.nothing'));
+            return Promise.resolve(false);
+        }
+        return Exporter.run({
+            kind: 'audit', format: 'csv', period: this.auditExportPeriod(rows), rows: rows.length, names: true,
+            produce: (stamp) => Exporter.saveBlob(new Blob([stampedCsv(this.auditHeader('en'), rows.map(r => r.cells), stamp, 'en')], { type: 'text/csv;charset=utf-8;' }),
+                exportFilename(stamp, 'audit', 'csv'), { shareFirst: false })
+        });
+    },
+
+    /** Audit log as a printable page (Print / PDF, #85). */
+    printAudit() {
+        const rows = this.auditExportRows();
+        if (!rows.length) {
+            UIManager.showToast(t('msg.export.nothing'));
+            return Promise.resolve(false);
+        }
+        const e = (v) => Helpers.escapeHtml(String(v ?? ''));
+        const title = t('ui.admin.col_audit_logs');
+        const html = `<h3>${e(title)}</h3><table><thead><tr>${this.auditHeader().map(h => `<th>${e(h)}</th>`).join('')}</tr></thead>`
+            + `<tbody>${rows.map(r => `<tr>${r.cells.map(c => `<td>${e(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+        return Exporter.run({
+            kind: 'audit', format: 'print', period: this.auditExportPeriod(rows), rows: rows.length, names: true,
+            produce: (stamp) => Exporter.printPage({ title, html, stampText: stampLine(stamp), lang: getLang() })
+        });
+    },
+
+    /** The shop's people's names for the error report (#83): the team list (one read, at most 2 s), the audit profiles already loaded and this user. */
+    async reportPeopleNames() {
+        const names = [AppState.userName];
+        (this.auditPeople instanceof Map ? [...this.auditPeople.values()] : []).forEach(p => names.push(p?.name));
+        try {
+            const dir = await Promise.race([readTeamDirectory(), new Promise(resolve => setTimeout(() => resolve(null), 2000))]);
+            teamPeople(dir).forEach(p => names.push(p.name));
+        } catch (e) {
+            console.warn('Error report: team list not read:', e?.code || e);
+        }
+        return names.filter(Boolean);
+    },
+
+    /** Error report (#83): the listed errors, scrubbed (people's names too), with this phone's status; owner only, audited. */
+    async exportErrorReport() {
+        const list = this.filter === 'all' ? (this.data || []) : (this.data || []).filter(d => d.type === this.filter);
+        if (!list.length) {
+            UIManager.showToast(t('msg.export.nothing'));
+            return false;
+        }
+        if (!Exporter.allowed()) return Exporter.run({ kind: 'errors', format: 'json', produce: () => false });
+        const names = await this.reportPeopleNames();
+        const period = errorReportPeriod(list, (ms) => toLocalISODate(new Date(ms)));
+        return Exporter.run({
+            kind: 'errors', format: 'json', period, rows: list.length, names: false,
+            produce: (stamp) => {
+                const status = this.phoneStatus();
+                const report = { stamp, ...buildErrorReport(list, { status: this.statusText(), appVersion: status.appVersion, buildId: status.buildId, names }) };
+                return Exporter.saveBlob(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }), exportFilename(stamp, 'errors', 'json'));
+            }
+        });
     },
 
     /**

@@ -74,6 +74,33 @@ export function dayBook(src, { from, to }, { personal = true, sessions = [] } = 
     return { rows, totals };
 }
 
+/** English column keys of the accountant CSV (ST6); the headers are always English. */
+export const ACCOUNTANT_COLUMNS = Object.freeze(['date', 'entry', 'bill_type', 'bill_no', 'party', 'bill_total', 'cash', 'online', 'due', 'payment_amount']);
+
+const ACCOUNTANT_KINDS = { purchase: 'bill', retail: 'bill', wholesale: 'bill', dueReceived: 'payment_received', duePaid: 'payment_made' };
+
+/**
+ * Accountant CSV (ST6): one row per bill of [from, to) (BILL-TOTAL, paid with the bill
+ * BILL-AT-SAVE, due at the bill) and one row per due payment made in it (DUE-PAY), the
+ * same rows as the day book (ST1) without expenses and withdrawals.
+ * @param {Object} src {purchases, wholesaleSales, retailSales}
+ * @param {{from: number, to: number}} range
+ * @param {{sessions?: Array}} [opts]
+ * @returns {Array<{t: ?number, entry: 'bill'|'payment_received'|'payment_made', billType: string, billNo: string, party: string,
+ *   total: ?number, cash: number, online: number, due: ?number, payment: ?number}>}
+ */
+export function accountantLines(src, range, { sessions = [] } = {}) {
+    return dayBook({ purchases: src.purchases, retailSales: src.retailSales, wholesaleSales: src.wholesaleSales }, range, { sessions }).rows
+        .filter(r => ACCOUNTANT_KINDS[r.kind])
+        .map(r => {
+            const bill = ACCOUNTANT_KINDS[r.kind] === 'bill';
+            return {
+                t: r.t, entry: ACCOUNTANT_KINDS[r.kind], billType: bill ? r.kind : '', billNo: r.billNo, party: r.party,
+                total: bill ? r.amount : null, cash: r.cash, online: r.online, due: bill ? r.due : null, payment: bill ? null : r.amount
+            };
+        });
+}
+
 /**
  * Party ledger (ST3): the running balance of one party. Customers: retail +
  * wholesale bills, balance = what they owe the shop; suppliers: purchases,
