@@ -286,20 +286,26 @@ export class WholesaleSalesManager {
     /**
      * Sale total, cost (stock average rates) and profit (sale − cost − expenses),
      * computed from the bill lines — the screen is display-only.
-     * @returns {{total: number, cost: number, profit: number, profitPercent: number}}
+     * @returns {{total: number, cost: number, profit: ?number, profitPercent: ?number, unknownCost: number[]}}
      */
     static computeTotals() {
-        return computeWholesaleTotals(wholesaleSaleItems, AppState.stock, Helpers.getInputNumber('salesExpensesAmount'));
+        return computeWholesaleTotals(wholesaleSaleItems, this.costStock(), Helpers.getInputNumber('salesExpensesAmount'), AppState.items);
+    }
+
+    /** Stock to cost the lines with: none while it is still loading (no cost is known yet, #102). */
+    static costStock() {
+        return AppState.stockReady === false ? {} : AppState.stock;
     }
 
     static updateProfitCalculation() {
         const profitEl = document.getElementById('salesProfitAmount');
         const profitPercentEl = document.getElementById('salesProfitPercent');
-        const live = wholesaleLiveProfit(wholesaleSaleItems, AppState.stock, Helpers.getInputNumber('salesExpensesAmount'));
+        const live = wholesaleLiveProfit(wholesaleSaleItems, this.costStock(), Helpers.getInputNumber('salesExpensesAmount'), AppState.items);
         
-        if (profitEl) profitEl.textContent = live.shownProfit;
+        // Cost of a line not known (#102): profit is not known either, never counted at cost ₹0
+        if (profitEl) profitEl.textContent = live.shownProfit === null ? '—' : live.shownProfit;
         shownProfit = profitEl ? live.shownProfit : 0;
-        if (profitPercentEl) profitPercentEl.textContent = live.profitPercent.toFixed(1);
+        if (profitPercentEl) profitPercentEl.textContent = live.profitPercent === null ? '—' : live.profitPercent.toFixed(1);
         this.updatePaymentTotal();
     }
 
@@ -423,7 +429,9 @@ export class WholesaleSalesManager {
         const expenses = typedAmount(Helpers.getInputNumber('salesExpensesAmount'));
         
         // Total and profit come from the bill lines, never from the text on screen
-        const { total, profit, profitPercent } = this.computeTotals();
+        const totals = this.computeTotals();
+        const { total, profit, profitPercent } = totals;
+        const { unknownCost } = totals;
         const split = this.readPaymentSplit();
         const { cash, online, due } = split;
         
@@ -445,17 +453,19 @@ export class WholesaleSalesManager {
                 id: pending.id,
                 billNumber: pending.billNumber,
                 customerName,
-                items: wholesaleSaleItems.map(item => ({
+                items: wholesaleSaleItems.map((item, i) => ({
                     itemId: item.itemId,
                     name: item.name,
                     rate: item.rate,
                     quantity: item.qty,
-                    total: item.total
+                    total: item.total,
+                    ...(unknownCost.includes(i) ? { costUnknown: true } : {})
                 })),
                 total,
                 expenses,
                 profit,
                 profitPercent,
+                ...(unknownCost.length ? { costUnknown: true } : {}),
                 comments,
                 type: 'wholesale',
                 // Top-level copies keep readPayment(), the cash drawer and Outstanding in step

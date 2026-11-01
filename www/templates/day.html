@@ -17,6 +17,12 @@
             <!-- App health (#217): red banner when a live check is below its target (owner/manager) -->
             <div id="tipHealthBanner" class="tip-health-banner" style="display: none;"></div>
 
+            <!-- Bills saved today but no cash session (#141) -->
+            <div id="todayCashPrompt" class="today-cash-prompt" role="status" hidden>
+                <span data-i18n="ui.today.no_session">Today has bills but the cash drawer isn't open.</span>
+                <button type="button" class="today-cash-prompt-btn" onclick="window.app.day.showSubTab('cash')" data-i18n="ui.today.open_cash">Open cash</button>
+            </div>
+
             <!-- Day report / review queue (#187, #40): owner/manager only, filled by anomalies.js -->
             <div id="dayReportCard" class="modern-card day-report-card" style="display: none;"></div>
 
@@ -81,6 +87,55 @@
                 </div>
             </div>
 
+            <!-- 2b. BY BILL TYPE (T18): cash / online at save, due still open -->
+            <div class="modern-card" id="todayChannelsCard">
+                <h3 class="section-title" data-i18n="ui.today.ch_title">🧾 By bill type</h3>
+                <div class="today-channels">
+                    <div class="today-channel" id="todayChRetail">
+                        <div class="today-channel-head">
+                            <span class="today-channel-name" data-i18n="ui.finance.bill_retail">Retail sale</span>
+                            <span class="today-channel-count" id="todayChRetailCount"></span>
+                            <strong class="today-channel-total" id="todayChRetailTotal">₹0</strong>
+                        </div>
+                        <div class="today-channel-split">
+                            <div><span data-i18n="ui.today.ch_cash">Cash</span> <strong id="todayChRetailCash">₹0</strong></div>
+                            <div><span data-i18n="ui.today.ch_online">Online</span> <strong id="todayChRetailOnline">₹0</strong></div>
+                            <div><span data-i18n="ui.today.ch_paid_later">Paid later today</span> <strong id="todayChRetailPaidLater">₹0</strong></div>
+                            <div class="today-channel-due"><span data-i18n="ui.today.ch_due">Due</span> <strong id="todayChRetailDue">₹0</strong></div>
+                            <div class="today-channel-writeoff" id="todayChRetailWrittenOffRow" hidden><span data-i18n="ui.today.ch_written_off">Written off</span> <strong id="todayChRetailWrittenOff">₹0</strong></div>
+                        </div>
+                    </div>
+                    <div class="today-channel" id="todayChWholesale">
+                        <div class="today-channel-head">
+                            <span class="today-channel-name" data-i18n="ui.finance.bill_wholesale">Wholesale sale</span>
+                            <span class="today-channel-count" id="todayChWholesaleCount"></span>
+                            <strong class="today-channel-total" id="todayChWholesaleTotal">₹0</strong>
+                        </div>
+                        <div class="today-channel-split">
+                            <div><span data-i18n="ui.today.ch_cash">Cash</span> <strong id="todayChWholesaleCash">₹0</strong></div>
+                            <div><span data-i18n="ui.today.ch_online">Online</span> <strong id="todayChWholesaleOnline">₹0</strong></div>
+                            <div><span data-i18n="ui.today.ch_paid_later">Paid later today</span> <strong id="todayChWholesalePaidLater">₹0</strong></div>
+                            <div class="today-channel-due"><span data-i18n="ui.today.ch_due">Due</span> <strong id="todayChWholesaleDue">₹0</strong></div>
+                            <div class="today-channel-writeoff" id="todayChWholesaleWrittenOffRow" hidden><span data-i18n="ui.today.ch_written_off">Written off</span> <strong id="todayChWholesaleWrittenOff">₹0</strong></div>
+                        </div>
+                    </div>
+                    <div class="today-channel" id="todayChPurchase">
+                        <div class="today-channel-head">
+                            <span class="today-channel-name" data-i18n="ui.reports.pdf_purchase">Purchase</span>
+                            <span class="today-channel-count" id="todayChPurchaseCount"></span>
+                            <strong class="today-channel-total" id="todayChPurchaseTotal">₹0</strong>
+                        </div>
+                        <div class="today-channel-split">
+                            <div><span data-i18n="ui.today.ch_cash">Cash</span> <strong id="todayChPurchaseCash">₹0</strong></div>
+                            <div><span data-i18n="ui.today.ch_online">Online</span> <strong id="todayChPurchaseOnline">₹0</strong></div>
+                            <div><span data-i18n="ui.today.ch_paid_later">Paid later today</span> <strong id="todayChPurchasePaidLater">₹0</strong></div>
+                            <div class="today-channel-due"><span data-i18n="ui.today.ch_due">Due</span> <strong id="todayChPurchaseDue">₹0</strong></div>
+                            <div class="today-channel-writeoff" id="todayChPurchaseWrittenOffRow" hidden><span data-i18n="ui.today.ch_written_off">Written off</span> <strong id="todayChPurchaseWrittenOff">₹0</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 3. TRANSACTIONS -->
             <div class="modern-card">
                 <h3 class="section-title" data-i18n="ui.today.transactions">📦 Transactions</h3>
@@ -129,6 +184,13 @@
                         <strong id="todayDueToPay">₹0</strong>
                     </div>
                 </div>
+            </div>
+
+            <!-- 5. TODAY'S BILLS (T19): tap a row to open the bill -->
+            <div class="modern-card" id="todayBillsCard">
+                <h3 class="section-title" data-i18n="ui.today.bills_title">📃 Today's bills</h3>
+                <div id="todayBillsList" class="today-bills"></div>
+                <button type="button" id="todayBillsMore" class="today-bills-more" hidden onclick="window.app.day.toggleAllBills()"></button>
             </div>
 
             <!-- 6. ITEM DETAILS (Scrollable) -->

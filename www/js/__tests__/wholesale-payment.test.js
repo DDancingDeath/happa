@@ -16,7 +16,7 @@ jest.mock('../firebase/firestore-service.js', () => ({
     }
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: {} }));
-jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(), ACTIONS: {} } }));
+jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: {} } }));
 jest.mock('../ui/infinite-scroll.js', () => ({ attachOlderHistoryScroll: jest.fn() }));
 
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -173,6 +173,35 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         });
         expect(readPayment(sale)).toEqual({ total: 4025, cash: 2000, online: 1000, due: 1025, paid: 3000 });
         expect(saved).toHaveLength(1);
+    });
+
+    test('unknown average cost (#102, Q58): saved after a confirm, without a profit, lines marked', async () => {
+        AppState.stock = { rice: { quantity: 500, rate: 0 } };
+        AppState.userRole = 'staff';
+        setVal('wholesaleCashPayment', 4025);
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValueOnce(false);
+        expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: average cost not known (its stock has no rate)'), expect.any(String), true);
+        expect(saved).toHaveLength(0);
+
+        modal.mockResolvedValue(true);
+        const sale = await WholesaleSalesManager.completeSale();
+        expect(sale).toMatchObject({ total: 4025, profit: null, profitPercent: null, costUnknown: true });
+        expect(sale.items[0].costUnknown).toBe(true);
+        expect(sale.flags).toEqual(expect.arrayContaining([expect.objectContaining({ rule: 'cost-unknown', by: 'owner1' })]));
+        expect(saved).toHaveLength(1);
+    });
+    test('while stock is still loading: no profit, a confirm, the bill and its lines marked (#102)', async () => {
+        AppState.stockReady = false;
+        WholesaleSalesManager.updateProfitCalculation();
+        expect(document.getElementById('salesProfitAmount').textContent).toBe('—');
+        setVal('wholesaleCashPayment', 4025);
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        const sale = await WholesaleSalesManager.completeSale();
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('stock is still loading'), expect.any(String), true);
+        expect(sale).toMatchObject({ profit: null, profitPercent: null, costUnknown: true });
+        expect(sale.items[0].costUnknown).toBe(true);
+        AppState.stockReady = true;
     });
 
     test('a mismatched split, a Due without a name, or no payment is refused', async () => {

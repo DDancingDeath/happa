@@ -34,7 +34,7 @@
       "moneyMath": 1
     },
     "www/js/modules/history.js": {
-      "moneyMath": 7,
+      "moneyMath": 4,
       "appStateWrite": 1,
       "dateMath": 1
     },

@@ -112,10 +112,11 @@ describe('reset password and remove user (AadhatManagementApp#74)', () => {
         expect(auth.sendPasswordResetEmail).not.toHaveBeenCalled();
     });
 
-    test('reset failure is shown, not thrown', async () => {
-        auth.sendPasswordResetEmail.mockRejectedValueOnce(new Error('auth/user-not-found'));
+    test('reset failure is shown in the app language, never as raw Firebase text (#105)', async () => {
+        auth.sendPasswordResetEmail.mockRejectedValueOnce(Object.assign(new Error('Firebase: Error (auth/user-not-found).'), { code: 'auth/user-not-found' }));
         expect(await AdminManager.resetUserPassword('old', 'old@x.com')).toBe(false);
-        expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('auth/user-not-found'), 'error');
+        expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('No account found with this email'), 'error');
+        expect(toast.mock.calls.at(-1)[0]).not.toContain('Firebase:');
     });
 
     test('remove keeps a disabled profile without role, and hides it from both lists', async () => {

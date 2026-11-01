@@ -111,6 +111,30 @@ export function saleTimePayment(bill) {
 }
 
 /**
+ * A bill's money in parts that add up to its total (T18, bill details): paid at
+ * save (BILL-AT-SAVE), paid later (due payments recorded on the bill), written off
+ * later, and the due still open (BILL-DUE).
+ * @param {Object} bill
+ * @returns {{atSave: {cash: number, online: number}, later: {cash: number, online: number, total: number}, writtenOff: number, due: number}}
+ */
+export function paymentBreakdown(bill) {
+    const atSave = saleTimePayment(bill);
+    const later = { cash: 0, online: 0, total: 0 };
+    let writtenOff = 0;
+    if (isActiveBill(bill)) {
+        (Array.isArray(bill?.payments) ? bill.payments : []).forEach(e => {
+            const p = entryParts(e);
+            later.cash += p.cash;
+            later.online += p.online;
+            writtenOff += p.writeOff;
+        });
+    }
+    later.cash = round2(later.cash);
+    later.online = round2(later.online);
+    later.total = round2(later.cash + later.online);
+    return { atSave, later, writtenOff: round2(writtenOff), due: outstandingDue(bill) };
+}
+/**
  * Every due payment made in [from, to), from bill entries and session legs,
  * de-duplicated by payment id.
  * @param {Object} args
