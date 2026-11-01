@@ -7,7 +7,7 @@
  */
 
 const KEY = 'aadhat.insightsContext';
-const PRESETS = /^(this-month|last-month|this-year|last-year|last-30|all|month:\d{4}-\d{2})$/;
+const PRESETS = /^(this-month|last-month|this-year|last-year|this-fy|last-fy|last-30|all|month:\d{4}-\d{2})$/;
 
 const store = () => {
     try { return typeof sessionStorage !== 'undefined' ? sessionStorage : null; } catch { return null; }
