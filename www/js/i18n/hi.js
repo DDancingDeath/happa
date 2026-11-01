@@ -1737,6 +1737,8 @@ export default {
     'ui.diag.a_rent_receipt_issue': "किराया रसीद दी",
     'ui.diag.a_rent_receipt_void': "किराया रसीद रद्द",
     'ui.diag.a_rent_settings': "किराया सेटिंग बदली",
+    'ui.diag.a_rent_deposit': "जमानत दर्ज",
+    'ui.diag.a_rent_deposit_edit': "जमानत एंट्री बदली",
     'ui.diag.a_cash_open': "नकद दिन खोला",
     'ui.diag.a_cash_close': "नकद दिन बंद किया",
     'ui.diag.a_settings_change': "दुकान की सेटिंग बदली",

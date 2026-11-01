@@ -1737,6 +1737,8 @@ export default {
     'ui.diag.a_rent_receipt_issue': "Rent Receipt Issued",
     'ui.diag.a_rent_receipt_void': "Rent Receipt Cancelled",
     'ui.diag.a_rent_settings': "Rentals Settings Changed",
+    'ui.diag.a_rent_deposit': "Deposit Entry",
+    'ui.diag.a_rent_deposit_edit': "Deposit Entry Changed",
     'ui.diag.a_cash_open': "Cash Day Opened",
     'ui.diag.a_cash_close': "Cash Day Closed",
     'ui.diag.a_settings_change': "Shop Settings Changed",
