@@ -373,3 +373,51 @@ describe('rate / name history on save (#82)', () => {
         }
     });
 });
+
+describe('English ↔ Hindi name suggestions in the dialog (#134)', () => {
+    const name = () => document.getElementById('itemModalName');
+    const hindi = () => document.getElementById('itemModalHindiName');
+    const type = (field, value) => {
+        (field === 'name' ? name() : hindi()).value = value;
+        ItemsManager.onModalNameInput(field);
+    };
+
+    test('typing an English name suggests the Hindi name (greyed) and saves it', async () => {
+        ItemsManager.openAddModal();
+        type('name', 'Masoor');
+        expect(hindi().value).toBe('मसूर');
+        expect(hindi().classList.contains('autofill-suggest')).toBe(true);
+        type('name', 'Masoor Dal');
+        expect(hindi().value).toBe('मसूर दाल');
+        await ItemsManager.saveItemFromModal();
+        expect(FirebaseService.saveItem.mock.calls[0][0]).toMatchObject({ name: 'Masoor Dal', hindiName: 'मसूर दाल' });
+    });
+
+    test('typing a Hindi name suggests the English name', () => {
+        ItemsManager.openAddModal();
+        type('hindiName', 'उड़द');
+        expect(name().value).toBe('Urad');
+    });
+
+    test('a typed or tapped field is never overwritten', () => {
+        ItemsManager.openAddModal();
+        type('hindiName', 'काला चना');
+        type('name', 'Black Gram');
+        expect(hindi().value).toBe('काला चना');
+        ItemsManager.openAddModal();
+        type('name', 'Rajma');
+        ItemsManager.acceptNameSuggestion('hindiName');
+        expect(hindi().classList.contains('autofill-suggest')).toBe(false);
+        type('name', 'Rajma Chitra');
+        expect(hindi().value).toBe('राजमा');
+    });
+
+    test('editing an item never replaces its saved Hindi name; an empty one gets a suggestion', () => {
+        ItemsManager.openEditModal('a');
+        type('name', 'Kabuli Chana');
+        expect(hindi().value).toBe('चना');
+        ItemsManager.openEditModal('c');
+        type('name', 'Moong Dal');
+        expect(hindi().value).toBe('मूंग दाल');
+    });
+});

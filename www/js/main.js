@@ -56,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhblt-two-phones';
+const BUILD_ID = '20261101zzuzieecmbbkhblx-two-phones';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -868,6 +868,8 @@ window.app = {
         archiveFromModal: () => ItemsManager.archiveFromModal(),
         toggleArchived: (show) => ItemsManager.toggleArchived(show),
         loadModalHistory: () => ItemsManager.loadModalHistory(),
+        onModalNameInput: (field) => ItemsManager.onModalNameInput(field),
+        acceptNameSuggestion: (field) => ItemsManager.acceptNameSuggestion(field),
         add: () => ItemsManager.addItem(),
         // Item handlers take the item id, never a list position (#29)
         updateName: (id, val) => ItemsManager.updateItemName(id, val),
