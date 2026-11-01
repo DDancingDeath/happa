@@ -9,7 +9,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
-import { changedFields, formatAuditDetails, auditWho, auditWhoText, peopleById } from '../utils/audit-changes.js';
+import { changedFields } from '../utils/audit-changes.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -18,7 +18,6 @@ import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js
 import { CHANGED_ELSEWHERE, NEEDS_INTERNET, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
 import { safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
-import { auditActionLabel } from '../i18n/localize.js';
 import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
@@ -871,111 +870,5 @@ export class SettingsManager {
         } finally {
             if (btn) { btn.disabled = false; btn.removeAttribute('aria-busy'); }
         }
-    }
-
-    // Audit Logs Methods
-    static auditLogs = [];
-    static auditPeople = new Map();
-    
-    static async loadAuditLogs() {
-        if (AppState.userRole !== 'owner') {
-            UIManager.showToast(t('msg.common.only_owners_can_view_audit'));
-            return;
-        }
-        
-        UIManager.showLoading();
-        try {
-            // Profiles name the writer: an entry's stored name and role are whatever the phone sent (#85)
-            const [logs, people] = await Promise.all([
-                AuditService.getRecentLogs(100),
-                FirebaseService.loadAuditPeople().catch(e => {
-                    console.warn('Audit: profiles not read:', e?.code || e);
-                    return [];
-                })
-            ]);
-            this.auditLogs = logs;
-            this.auditPeople = peopleById(people);
-            this.renderAuditLogs();
-            UIManager.hideLoading();
-        } catch (error) {
-            console.error('Error loading audit logs:', error);
-            UIManager.hideLoading();
-            UIManager.showToast(t('msg.common.failed_load_audit_logs'));
-        }
-    }
-    
-    static filterAuditLogs() {
-        this.renderAuditLogs();
-    }
-    
-    static renderAuditLogs() {
-        const container = document.getElementById('auditLogsList');
-        if (!container) return;
-        
-        const filterAction = document.getElementById('auditFilterAction')?.value || '';
-        
-        let filteredLogs = this.auditLogs;
-        if (filterAction) {
-            filteredLogs = this.auditLogs.filter(log => log.action === filterAction);
-        }
-        
-        if (filteredLogs.length === 0) {
-            container.innerHTML = `<p style="padding: 16px; text-align: center; color: #888;">${Helpers.escapeHtml(t('ui.settings.no_audit_logs'))}</p>`;
-            return;
-        }
-        
-        container.innerHTML = filteredLogs.map(log => {
-            const date = new Date(log.timestamp);
-            const formattedDate = Helpers.formatDateTime(date);
-            
-            const actionIcon = this.getActionIcon(log.action);
-            const actionColor = this.getActionColor(log.action);
-            const details = this.formatDetails(log.details, log.action);
-            const who = auditWhoText(auditWho(log, this.auditPeople), Helpers.roleLabel);
-            
-            return `
-                <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; gap: 12px; align-items: flex-start;">
-                    <span style="font-size: 20px;">${actionIcon}</span>
-                    <div style="flex: 1;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                            <span style="font-weight: 600; color: ${actionColor};">${Helpers.escapeHtml(auditActionLabel(log.action))}</span>
-                            <span style="font-size: 11px; color: #888;">${formattedDate}</span>
-                        </div>
-                        <div style="font-size: 12px; color: #666;">
-                            <strong>${Helpers.escapeHtml(who.main)}</strong>${who.note ? ` · ${Helpers.escapeHtml(who.note)}` : ''}
-                        </div>
-                        ${details ? `<div style="font-size: 11px; color: #888; margin-top: 4px;">${Helpers.escapeHtml(details)}</div>` : ''}
-                    </div>
-                </div>
-            `;
-        }).join('');
-    }
-    
-    static getActionIcon(action) {
-        const icons = {
-            'CREATE_BILL': '📥',
-            'DELETE_BILL': '🗑️',
-            'CREATE_SALE': '📤',
-            'DELETE_SALE': '🗑️',
-            'VOID_BILL': '🚫',
-            'DELETE_ITEM': '🗑️',
-            'UPDATE_PAYMENT': '💰',
-            'RECORD_PAYMENT': '💰',
-            'CLEAR_DATA': '⚠️',
-            'LOGIN': '🔑',
-            'LOGOUT': '🚪'
-        };
-        return icons[action] || '📋';
-    }
-    
-    static getActionColor(action) {
-        if (action.includes('DELETE') || action === 'CLEAR_DATA') return '#e74c3c';
-        if (action.includes('CREATE')) return '#27ae60';
-        if (action.includes('PAYMENT')) return '#3498db';
-        return '#333';
-    }
-    
-    static formatDetails(details, action) {
-        return formatAuditDetails(details, action);
     }
 }

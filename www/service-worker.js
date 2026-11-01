@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v353';
+const CACHE_NAME = 'happa-v356';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -25,6 +25,8 @@ const STATIC_ASSETS = [
     '/js/firebase/firestore-service.js',
     '/js/firebase/firestore-meter.js',
     '/js/firebase/db.js',
+    '/js/firebase/core/reads.js',
+    '/js/firebase/core/write-settle.js',
     '/js/firebase/repos/anomalies.js',
     '/js/firebase/repos/audit-logs.js',
     '/js/firebase/repos/bill-drafts.js',
@@ -36,6 +38,7 @@ const STATIC_ASSETS = [
     '/js/firebase/repos/counters.js',
     '/js/firebase/repos/items.js',
     '/js/firebase/repos/notifications.js',
+    '/js/firebase/repos/settings.js',
     '/js/firebase/repos/telemetry.js',
     '/js/firebase/repos/tip-health.js',
     '/js/firebase/repos/user-profiles.js',
@@ -61,7 +64,6 @@ const STATIC_ASSETS = [
     '/js/modules/retail-sale.js',
     '/js/modules/settings.js',
     '/js/modules/stock.js',
-    '/js/modules/users.js',
     '/js/modules/wholesale-sales.js',
     '/js/modules/money.js',
     '/js/modules/insights.js',
@@ -217,7 +219,6 @@ const STATIC_ASSETS = [
     '/templates/navigation.html',
     '/templates/settings.html',
     '/templates/stock.html',
-    '/templates/users.html',
     '/templates/wholesale-sales.html',
     '/templates/money.html',
     '/templates/insights.html',
