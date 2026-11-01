@@ -9,8 +9,8 @@ import { billTotal, outstandingDue, readPayment, readLineItem } from './money.js
 import { billDateOf } from './history-filters.js';
 import { t } from '../i18n/index.js';
 
-/** "COPY" mark on a reprinted slip / shared text, in the app language. */
-export const copyMark = () => t('ui.bill.copy_mark');
+/** "COPY" mark on a reprinted slip / shared text, in the app language (or `lang`). */
+export const copyMark = (lang) => t('ui.bill.copy_mark', undefined, lang);
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -35,6 +35,28 @@ export function formatReceiptDateTime(date) {
  */
 export function receiptDateTime(billData, now = new Date()) {
     return formatReceiptDateTime(billDateOf(billData) || now);
+}
+
+/**
+ * Amount payable on the printed slip (BILL-TOTAL; a print payload without the
+ * bill fields falls back to its subtotal less labour).
+ * @param {Object} billData
+ * @returns {number}
+ */
+export function receiptPayable(billData) {
+    const subtotal = billData.billTotal || billData.saleTotal || billData.total || 0;
+    return billTotal(billData) || (subtotal - (billData.laborCharges || 0));
+}
+
+/**
+ * Text of the bill QR on the slip (#107): bill number, date/time and the
+ * payable in whole rupees as printed; '' without a bill number.
+ * @param {Object} billData
+ * @returns {string}
+ */
+export function billQrText(billData) {
+    if (!billData?.billNumber) return '';
+    return `${billData.billNumber} | ${receiptDateTime(billData)} | ₹${Math.round(receiptPayable(billData))}`;
 }
 
 /**

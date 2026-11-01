@@ -192,14 +192,17 @@ test('service accounts (#101) are not carried: no users doc, no per-user doc, no
     console.log(`  service accounts: ${skipped.length} skipped`);
 });
 
-test('settings are carried (minus the old project\'s own fields)', () => {
+test('settings are carried (minus the old project\'s own fields), plus the team directory (#87)', () => {
     const docs = backupDocs('settings');
-    assert.equal(data.settings?.size || 0, docs.length);
+    assert.equal((data.settings?.size || 0) - (data.settings?.has('team') ? 1 : 0), docs.length);
     docs.forEach(({ id, data: d }) => {
         const want = Object.fromEntries(Object.entries(d).filter(([k, v]) => !(id === 'app' && ['minClientVersion', 'enforceClientVersion'].includes(k))
             && !(typeof v === 'string' && v.includes(OLD_PROJECT_ID))));
         assert.deepEqual(norm(data.settings.get(id)), norm(want), `settings/${id}`);
     });
+    const people = data.settings?.get('team')?.people || {};
+    assert.ok(Object.keys(people).length > 0, 'settings/team lists the team');
+    assert.equal(JSON.stringify(people).includes('@'), false, 'no email in settings/team');
 });
 
 test('bill counters continue from the cutoff day', () => {
