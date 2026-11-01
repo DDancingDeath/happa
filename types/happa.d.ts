@@ -6,8 +6,8 @@
  * rarer fields readable.
  */
 
-/** A money amount as stored: a number, or a numeric string from an old record. */
-type Amount = number;
+/** A stored money amount: a number, or a numeric string / null in an old record, so read it with toMoney(). */
+type Amount = number | string | null;
 
 /** Nested payment state of a bill (canonical when present). */
 interface Payment {

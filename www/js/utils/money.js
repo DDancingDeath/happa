@@ -37,7 +37,7 @@ export function toMoney(v) {
 /**
  * Labour deducted on a purchase bill (T-LAB-1, M7): `laborCharges`, older bills
  * `labour`; 0 when Labour was unticked. The only reader of a bill's labour.
- * @param {Bill} bill
+ * @param {Bill|null|undefined} bill
  * @returns {number}
  */
 export function billLabour(bill) {
@@ -105,7 +105,7 @@ export function sumMoney(items, fn) {
  * BILL-TOTAL: bill total payable/receivable (net of labour for purchases), the
  * first of these fields that is present; a present 0 counts (labour equal to
  * the line value makes the payable ₹0).
- * @param {Bill} bill
+ * @param {Bill|null|undefined} bill
  * @returns {number}
  */
 export function billTotal(bill) {
@@ -117,7 +117,7 @@ export function billTotal(bill) {
  * Normalised payment view of a bill across all known schemas.
  * The payment object wins over top-level fields because outstanding/wholesale
  * payment recording only updates payment.*.
- * @param {Bill} bill
+ * @param {Bill|null|undefined} bill
  * @returns {{total: number, cash: number, online: number, due: number, paid: number}}
  */
 export function readPayment(bill) {
@@ -147,7 +147,7 @@ export function readPayment(bill) {
 
 /**
  * Outstanding amount still owed on a bill (0 when cleared or overpaid).
- * @param {Bill} bill
+ * @param {Bill|null|undefined} bill
  * @returns {number}
  */
 export function outstandingDue(bill) {
@@ -193,7 +193,7 @@ export function isOnlineExpense(expense) {
  * Opening balance carried from the old Firebase project (tools/migrate): one
  * record per old unpaid bill, with no lines and no bill total, so sales and
  * profit are never counted twice; the open amount is `openingBalance.amount`.
- * @param {Bill} bill
+ * @param {Bill|null|undefined} bill
  * @returns {boolean}
  */
 export function isOpeningBalance(bill) {
@@ -206,7 +206,7 @@ export function isOpeningBalance(bill) {
  * reminders, all-time due totals, Finance receivables / payables) and never
  * in a period or activity figure (Today, Reports, Finance period, Analytics,
  * bill counts, stock, rate trends, anomaly scans, number checks).
- * @param {Bill} bill
+ * @param {Bill|null|undefined} bill
  * @returns {boolean}
  */
 export function isOpeningRecord(bill) {
@@ -220,8 +220,8 @@ export function isOpeningRecord(bill) {
  * drawer, Money, Insights, Statements, rate stats, month snapshots, labour.
  * FirebaseService keeps voided bills out of AppState's bill lists, and every
  * calculation that reads bills checks this too.
- * @param {Bill} bill
- * @returns {boolean}
+ * @param {Bill|null|undefined} bill
+ * @returns {bill is Bill}
  */
 export function isActiveBill(bill) {
     return !!bill && typeof bill === 'object' && bill.voided !== true;
@@ -229,8 +229,8 @@ export function isActiveBill(bill) {
 
 /**
  * The bills of a list that count (isActiveBill).
- * @param {Bill[]} bills
- * @returns {Rec[]}
+ * @param {Array<Bill|null|undefined>} bills
+ * @returns {Bill[]}
  */
 export function activeBills(bills) {
     return (Array.isArray(bills) ? bills : []).filter(isActiveBill);
@@ -240,8 +240,8 @@ export function activeBills(bills) {
  * Bills that count as activity: drops voided bills (isActiveBill) and opening
  * records (isOpeningRecord). Every period / activity aggregation filters its
  * bills through this.
- * @param {Bill[]} bills
- * @returns {Rec[]}
+ * @param {Array<Bill|null|undefined>} bills
+ * @returns {Array<Bill|null|undefined>}
  */
 export function activityBills(bills) {
     // Missing entries pass through as before (callers skip them); voided and opening records do not.
@@ -277,9 +277,11 @@ export function openingOldTotals(bill) {
  */
 export function wholesaleOutstanding(sale) {
     if (!sale || sale.cleared) return 0;
+    // The old page's raw arithmetic, kept as it was (tools/migrate carries what it showed)
+    /** @type {any} */
     const p = sale.payment || {};
     const received = (p.online || 0) + (p.cash || 0);
-    return p.due || ((sale.total || 0) - received);
+    return p.due || ((/** @type {any} */ (sale.total) || 0) - received);
 }
 
 /**
