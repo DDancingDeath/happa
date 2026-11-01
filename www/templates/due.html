@@ -4,6 +4,11 @@
             <button class="filter-btn filter-purchase active" onclick="window.app.outstanding.filterDue('purchase', event)" data-i18n="ui.common.purchases">Purchases</button>
             <button class="filter-btn filter-sale" onclick="window.app.outstanding.filterDue('sale', event)" data-i18n="ui.common.sales">Sales</button>
         </div>
+        <div class="filter-buttons" id="dueSaleKinds" style="margin-bottom: 16px;" hidden>
+            <button type="button" class="filter-btn" data-due-kind="sale" onclick="window.app.outstanding.filterDue('sale')" data-i18n="ui.outstanding.kind_all">All</button>
+            <button type="button" class="filter-btn" data-due-kind="retail" onclick="window.app.outstanding.filterDue('retail')" data-i18n="ui.outstanding.kind_retail">Retail</button>
+            <button type="button" class="filter-btn" data-due-kind="wholesale" onclick="window.app.outstanding.filterDue('wholesale')" data-i18n="ui.outstanding.kind_wholesale">Wholesale</button>
+        </div>
 
         <div style="margin-bottom: 20px;">
             <input type="text" 

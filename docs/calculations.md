@@ -207,16 +207,18 @@ here (#144 plans to redo them). "Projected profit" and the smart-suggestion
 profit lines start from A4 (the month's profit so far, scaled to the whole
 month); the "in loss" suggestion only shows when the month has sales.
 
-## Outstanding (`templates/outstanding.html`, `modules/outstanding.js`)
+## Outstanding (`templates/due.html`, `modules/outstanding.js`)
 
 | ID | On screen | Definition |
 |---|---|---|
 | O1 | Purchase dues per party | Σ BILL-DUE of that supplier's purchases. |
-| O2 | Sale dues per party | Σ BILL-DUE of that customer's **retail** sales (❓ open: #130 — wholesale dues are on the Wholesale page today). |
+| O2 | Sale dues per party | Σ BILL-DUE of that customer's sales on the chosen list (owner decision #125): **All** = retail and wholesale (every active wholesale bill, OPENING records included; the default under Sales), **Retail** or **Wholesale**. In All each bill carries a Retail / Wholesale chip. A role without the Wholesale switch sees retail only (no choice). |
 | O3 | Payables total (aging panel) | Σ O1. |
-| O4 | Receivables total (aging panel) | Σ O2. |
+| O4 | Receivables total (aging panel) | Σ O2 of the chosen list. All = M15's "to receive" = F9 (`outstandingTotals().receivable`); Retail + Wholesale = All. |
 
-**Wholesale › Outstanding** (`modules/wholesale-sales.js`; wholesale dues are listed there, see O2) lists
+Each list holds the bills with BILL-DUE > ₹0.005 (`dueRows()` in `utils/aging.js`, the same rule as the aging panel and Money; voided and cleared bills owe nothing), aged from their bill date (OPENING records: the original date, with the "Old app" chip). A party row's Receive payment works on one list's bills (DUE-FIFO); in All a party with both retail and wholesale dues is told to use Retail or Wholesale. Reminders and statements cover the list shown. No extra reads: the wholesale dues come from the same `openDue` listener the Wholesale page and Money use.
+
+**Wholesale › Outstanding** (`modules/wholesale-sales.js`; it keeps its own list: the Wholesale page's bills, which is every wholesale bill the app saves, so the same dues as Outstanding › Sales › Wholesale) lists
 the Wholesale page's bills (`source: 'sales-tab'`, OPENING records included) with BILL-DUE > 0. Each
 shows BILL-DUE, the BILL-TOTAL (an OPENING record: its carried amount) and the cash + online received
 (BILL-PAY), the same rule as this page and Money (Σ = the wholesale part of O4 / M15's "to receive").
@@ -437,7 +439,7 @@ Counts about this phone, never business figures. Nothing is read from the server
 
 | ID | Shown | Definition |
 |---|---|---|
-| REM-1 | Collect udhaar / Collect wholesale dues / Pay suppliers: total, up to 3 parties (amount, days), "+N more" | Outstanding's grouping and age (`buildAging`: BILL-DUE per normalised party name, age of the oldest open bill) over the open bills already on the phone, one block per list as the app keeps them: retail sales (Outstanding › Sales), wholesale sales-tab bills (Wholesale › Outstanding, roles that may open Wholesale) and purchases (Outstanding › Purchases). Only parties whose oldest due is older than 30 days, in Outstanding's "chase first" order (oldest bucket, then the biggest amount); the total is Σ of all those parties' dues |
+| REM-1 | Collect udhaar / Collect wholesale dues / Pay suppliers: total, up to 3 parties (amount, days), "+N more" | Outstanding's grouping and age (`buildAging`: BILL-DUE per normalised party name, age of the oldest open bill) over the open bills already on the phone, one block per list as the app keeps them: retail sales (Outstanding › Sales › Retail), wholesale sales-tab bills (Wholesale › Outstanding, roles that may open Wholesale) and purchases (Outstanding › Purchases). Only parties whose oldest due is older than 30 days, in Outstanding's "chase first" order (oldest bucket, then the biggest amount); the total is Σ of all those parties' dues |
 | REM-2 | Rent due: amount, units owing, late | Σ RENT-10 `due` (= RENT-9 due), the units marked Late and the count of RENT-10 rows with due > 0, as the Rent page last showed them on this phone for this month (saved when it renders the current month with no load error and nothing cut at a limit; for the same person, with the date and time it was taken). Shown to rentals roles only, with the time it was taken; not shown when Rentals wasn't opened this month |
 
 ## Checking real data
