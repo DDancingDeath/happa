@@ -445,15 +445,21 @@ const BillingManager = {
     },
 
     /**
-     * Editing a bill line of an archived item (#123): the pickers leave archived
-     * items out, so add that one option back for this line.
+     * Editing a bill line (#123): the pickers leave archived items out, so add
+     * that one option back for this line, and mark the line's option so a picker
+     * rebuild keeps it even if the item is archived meanwhile.
      * @param {string} selectId
      * @param {number} itemIndex position in AppState.items
      */
     ensureItemOption(selectId, itemIndex) {
         const select = document.getElementById(selectId);
         const item = AppState.items[itemIndex];
-        if (!select || !item || [...select.options].some(o => o.value === String(itemIndex))) return;
+        if (!select || !item) return;
+        const existing = [...select.options].find(o => o.value === String(itemIndex));
+        if (existing) {
+            existing.dataset.editLine = '1';
+            return;
+        }
         const opt = document.createElement('option');
         opt.value = itemIndex;
         if (item.id) opt.dataset.itemId = item.id;
