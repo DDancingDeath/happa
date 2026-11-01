@@ -225,6 +225,12 @@ In order:
   The header pill (`ui/sync-status.js`: Offline / N changes waiting to sync / Synced) uses
   online/offline events, `hasPendingWrites` of the existing listeners, the writes
   `saveBill` / `startSaveExpense` send and `waitForPendingWrites()`: no Firestore reads.
+- **Two phones, one item or setting (#113)**: item, settings and user writes need the
+  internet (`utils/write-conflict.js`, code `needs-internet`). The item dialog saves with
+  `FirebaseService.saveItem(item, { expectedRev })` (a transaction on the item's `rev`) and a
+  settings section through `saveSettingsSection` (a transaction on its `<section>UpdatedAt`
+  stamp): saved over another phone's newer save, they are refused (`changed-elsewhere`) and
+  the user is told to open it again. Users are written field by field (`update`).
 - **State**: a single `AppState` object lives in `state.js`. Never invent
   a parallel cache.
 - **Usage counters (#136)**: `track('<event>')` from `services/usage.js` counts a
