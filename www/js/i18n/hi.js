@@ -2477,5 +2477,8 @@ export default {
     'ui.speed.long_tasks': "पिछले एक मिनट में स्क्रीन {count} बार अटकी ({ms} ms)",
     'ui.speed.long_tasks_fix': "दूसरे पेज पर जाकर लौटें, या ऐप फिर खोलें",
     'ui.speed.storage_full': "ऐप की जगह {percent}% भरी ({quota} MB में से {used} MB)",
-    'ui.speed.storage_full_fix': "फ़ोन में थोड़ी जगह खाली करें"
+    'ui.speed.storage_full_fix': "फ़ोन में थोड़ी जगह खाली करें",
+    'ui.money.p_this_fy': "यह वित्त वर्ष",
+    'ui.money.p_last_fy': "पिछला वित्त वर्ष",
+    'ui.money.fy_label': "वित्त वर्ष {years}"
 };

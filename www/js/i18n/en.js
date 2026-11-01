@@ -2477,5 +2477,8 @@ export default {
     'ui.speed.long_tasks': "The screen froze {count} times in the last minute ({ms} ms)",
     'ui.speed.long_tasks_fix': "Switch to another page and back, or open the app again",
     'ui.speed.storage_full': "Phone storage for the app {percent}% full ({used} of {quota} MB)",
-    'ui.speed.storage_full_fix': "Free some space on the phone"
+    'ui.speed.storage_full_fix': "Free some space on the phone",
+    'ui.money.p_this_fy': "This financial year",
+    'ui.money.p_last_fy': "Last financial year",
+    'ui.money.fy_label': "FY {years}"
 };
