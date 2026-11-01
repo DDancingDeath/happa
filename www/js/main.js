@@ -177,6 +177,7 @@ function refreshForLanguage(lang) {
         money: () => money?.render(),
         insights: () => insights?.render(),
         statements: () => { statements?.renderControls(); statements?.render(); },
+        billing: () => BillingManager.refreshForLanguage(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
@@ -467,11 +468,13 @@ async function initializeUserData() {
         ExpensesManager.renderexpensesHistory();
 
         // TIP AppStart (#217): the first screen is usable now; the auto-save
-        // restore prompt below waits for the user and must not count as start time.
+        // restore banner below must not count as start time.
         appStart.complete();
         
         // Check for auto-saved bill
         await BillingManager.checkAutoSave();
+        BillingManager.renderBillNumber();
+        BillingManager.focusFirstItem();
         if (outdatedBlocked) {
             notShown();
             blockOutdatedApp();
@@ -900,7 +903,8 @@ window.app = {
         
         // Auto-save management
         triggerAutoSave: () => BillingManager.triggerAutoSave(),
-        checkAutoSave: () => BillingManager.checkAutoSave()
+        checkAutoSave: () => BillingManager.checkAutoSave(),
+        resolveRecovery: (restore) => BillingManager.resolveRecovery(restore)
     },
     
     // Purchase (direct access to PurchaseManager)
