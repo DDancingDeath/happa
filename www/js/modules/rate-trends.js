@@ -23,7 +23,7 @@ import {
     DEFAULT_DAILY_READ_BUDGET, DIRECTION_KEYS, CONFIDENCE_KEYS, READ_BUDGET_OPTIONS,
     addMonths, addWeeks, aggregateBills, backfillDays, clampWindowToMigration, isCarriedHistory, estimateBackfillReads, explainOutlook, finalizeStats,
     istDayStartMs, istMonthKey, istMonthStartMs, istWeekStart, itemsByUsage, monthBuckets, monthLabel, monthSeries,
-    newCursor, parseCursor, planRollForward, rollForwardWeekGap, rollForwardWindow, runBackfillReads, seasonalOutlookCombined,
+    newCursor, parseCursor, hasBackdatedBill, planRollForward, rollForwardWeekGap, rollForwardWindow, runBackfillReads, seasonalOutlookCombined,
     trendRows, weekBuckets, yearOverlay
 } from '../utils/rate-trends.js';
 import { ITEM_RATE_KINDS, cutoffMonth, cutoffWeek, itemRateSeries, mergeHistoryEntries, rateChangeRows } from '../utils/item-rate-series.js';
@@ -455,8 +455,11 @@ export const RateTrendsManager = {
                 return this.metaError || 'no-backfill';
             }
             let loadedFrom = Number(AppState.historyLoadedFrom) || 0;
-            const gap = rollForwardWeekGap(rollForwardWindow(loadedFrom, Date.now()), loadedFrom);
+            const first = rollForwardWindow(loadedFrom, Date.now());
+            const gap = rollForwardWeekGap(first, loadedFrom);
+            // Only when a bill was dated back into that week (no reads otherwise)
             if (gap !== null && typeof FirebaseService.ensureHistoryFrom === 'function'
+                && hasBackdatedBill(loadedBills(), gap, istDayStartMs(first.fromWeek))
                 && clampWindowToMigration(rollForwardWindow(gap, Date.now()), meta).fromWeek <= istWeekStart(gap)) {
                 // The first week of the window starts before the loaded history: load those days
                 // so a bill dated back into them reaches the week stats (#147). On failure the week stays as stored.

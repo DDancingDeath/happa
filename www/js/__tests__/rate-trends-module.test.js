@@ -131,19 +131,26 @@ test('#147: loads the first week of the window when the loaded bills start insid
     AppState.historyLoadedFrom = istMonthStartMs('2026-09');
     const gap = istDayStartMs('2026-08-31');
     const sep1 = { id: 'p0', timestamp: istDayStartMs('2026-09-01') + 3600000, items: [{ itemId: 'wheat', rate: 24, qty: 50 }] };
+    // Entered today, dated 2 Sep: in the loaded part of that week
+    const sep2 = { id: 'p2', timestamp: istDayStartMs('2026-09-02') + 3600000, enteredAt: now, items: [{ itemId: 'wheat', rate: 26, qty: 10 }] };
+    // No bill dated back into that week: nothing loaded
+    await expect(RateTrendsManager.rollForward({ force: true })).resolves.toBe('written');
+    expect(FirebaseService.ensureHistoryFrom).not.toHaveBeenCalled();
+    FirebaseService.saveRateStats.mockClear();
+    AppState.purchaseHistory = [...bills.purchase, sep2];
     FirebaseService.ensureHistoryFrom.mockImplementation(async (from) => {
         AppState.historyLoadedFrom = from;
-        AppState.purchaseHistory = [...bills.purchase, sep1];
+        AppState.purchaseHistory = [...bills.purchase, sep2, sep1];
     });
     await expect(RateTrendsManager.rollForward({ force: true })).resolves.toBe('written');
     expect(FirebaseService.ensureHistoryFrom).toHaveBeenCalledWith(gap);
     const doc = FirebaseService.saveRateStats.mock.calls[0][0].find(w => w.id === id).data;
-    expect(doc.weeks['w2026-08-31'].purchase.kg).toBe(50);
+    expect(doc.weeks['w2026-08-31'].purchase.kg).toBe(60);
 
     // Not loaded (offline cache, error): the week stays as stored, the rest is still written
     FirebaseService.saveRateStats.mockClear();
     AppState.historyLoadedFrom = istMonthStartMs('2026-09');
-    AppState.purchaseHistory = bills.purchase;
+    AppState.purchaseHistory = [...bills.purchase, sep2];
     FirebaseService.ensureHistoryFrom.mockRejectedValueOnce(new Error('unavailable'));
     await expect(RateTrendsManager.rollForward({ force: true })).resolves.toBe('written');
     expect(FirebaseService.saveRateStats.mock.calls[0][0][0].data.weeks['w2026-08-31']).toBeUndefined();

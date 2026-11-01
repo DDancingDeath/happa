@@ -60,6 +60,15 @@ function loadedBills() {
     };
 }
 
+/** A loaded bill entered on a later IST day than it is dated, by someone other than `uid` (#147). */
+function datedBackByOthers(bills, uid) {
+    return Object.values(bills).some(list => list.some(b => {
+        const at = Number(b?.enteredAt);
+        return typeof b?.timestamp === 'number' && Number.isFinite(at) && istDayKey(at) > istDayKey(b.timestamp)
+            && String(b.userId || b.createdBy || '') !== String(uid || '');
+    }));
+}
+
 export const AnomaliesManager = {
     /** Stored docs for the Today card days: { key, docs, at, ok } */
     stored: null,
@@ -128,7 +137,8 @@ export const AnomaliesManager = {
     },
 
     async runScan(fromKey, toKey, { audit = false, storedLimit = REPORT_LIMIT } = {}) {
-        await this.loadOwnerIds();
+        // Who the owners are matters only for bills dated back by someone else (#147): no read otherwise
+        if (datedBackByOthers(loadedBills(), AppState.currentUser?.uid)) await this.loadOwnerIds();
         const loadedFrom = Number(AppState.historyLoadedFrom) || 0;
         const from = Math.max(istDayStartMs(fromKey), loadedFrom);
         const to = istDayStartMs(toKey) + DAY_MS;

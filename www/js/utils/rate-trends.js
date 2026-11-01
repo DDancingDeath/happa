@@ -307,6 +307,19 @@ export function rollForwardWeekGap(win, loadedFrom) {
     return start < loadedFrom ? start : null;
 }
 
+/**
+ * True when a loaded bill dated in [fromMs, toMs) was entered on a later IST day (#147:
+ * dated back), i.e. the week stats of those days may be missing it. No reads.
+ * @param {{purchase?: Object[], retail?: Object[], wholesale?: Object[]}} bills
+ */
+export function hasBackdatedBill(bills, fromMs, toMs) {
+    return Object.values(bills || {}).some(list => (list || []).some(b => {
+        const ts = b?.timestamp;
+        const entered = Number(b?.enteredAt);
+        return typeof ts === 'number' && ts >= fromMs && ts < toMs && Number.isFinite(entered) && istDayKey(entered) > istDayKey(ts);
+    }));
+}
+
 const pickBuckets = (map, inRange, keep) => {
     const out = {};
     Object.keys(map || {}).forEach(k => { if (inRange(k) === keep) out[k] = map[k]; });
