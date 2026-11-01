@@ -1,6 +1,8 @@
-# Mutation testing (#216): how many deliberate small bugs in the money / stock /
+# Mutation testing (#216, #160): how many deliberate small bugs in the money / stock /
 # date code the tests catch. Non-blocking for now: it never fails a PR, it only
-# reports the score (job summary + HTML report artifact).
+# reports the score (job summary + HTML report artifact). One job per mutated file
+# (stryker.config.json `mutate`), so the run fits the time limit: with
+# calc/billing.js the single job no longer finished in 60 minutes (#160).
 name: Mutation testing
 
 on:
@@ -17,10 +19,20 @@ concurrency:
 
 jobs:
   stryker:
-    name: Stryker (money.js, stock-replay.js, bill-checks.js, dates.js, release-info.js)
+    name: Stryker (${{ matrix.file }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        file:
+          - www/js/utils/money.js
+          - www/js/utils/calc/billing.js
+          - www/js/utils/stock-replay.js
+          - www/js/utils/bill-checks.js
+          - www/js/utils/dates.js
+          - www/js/utils/release-info.js
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,7 +41,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run Stryker
-        run: npm run test:mutation -- --concurrency 2
+        run: npm run test:mutation -- --concurrency 2 --mutate "${{ matrix.file }}"
       - name: Score summary
         if: always()
         run: |
@@ -48,9 +60,13 @@ jobs:
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out + "\n");
             console.log(out);
           '
+      - name: Report name
+        if: always()
+        id: report
+        run: echo "name=mutation-report-$(basename '${{ matrix.file }}' .js)" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mutation-report
+          name: ${{ steps.report.outputs.name }}
           path: reports/mutation/
           retention-days: 14
