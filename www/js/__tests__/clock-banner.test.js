@@ -25,17 +25,27 @@ afterEach(() => {
 describe('daily start-up check', () => {
     test('measures once a day and keeps the answer for that day', async () => {
         const storage = memoryStorage();
-        const measure = jest.fn(async () => 12 * MIN);
+        const measure = jest.fn(async () => 2 * MIN);
         let now = new Date(2026, 10, 1, 9, 0).getTime();
-        expect(await dailyClockSkew({ storage, measure, now: () => now })).toBe(12 * MIN);
+        expect(await dailyClockSkew({ storage, measure, now: () => now })).toBe(2 * MIN);
         now += 6 * 60 * MIN;
-        expect(await dailyClockSkew({ storage, measure, now: () => now })).toBe(12 * MIN);
+        expect(await dailyClockSkew({ storage, measure, now: () => now })).toBe(2 * MIN);
         expect(measure).toHaveBeenCalledTimes(1);
-        expect(readClockCheck(storage)).toEqual({ day: '2026-11-01', skewMs: 12 * MIN });
+        expect(readClockCheck(storage)).toEqual({ day: '2026-11-01', skewMs: 2 * MIN });
 
         now = new Date(2026, 10, 2, 8, 0).getTime();
         measure.mockResolvedValueOnce(0);
         expect(await dailyClockSkew({ storage, measure, now: () => now })).toBe(0);
+        expect(measure).toHaveBeenCalledTimes(2);
+    });
+
+    test('a wrong clock found earlier today is measured again at the next start (it may be fixed)', async () => {
+        const storage = memoryStorage();
+        const measure = jest.fn(async () => 15 * MIN);
+        expect(await dailyClockSkew({ storage, measure })).toBe(15 * MIN);
+        measure.mockResolvedValueOnce(0);
+        expect(await dailyClockSkew({ storage, measure })).toBe(0);
+        expect(await dailyClockSkew({ storage, measure })).toBe(0);
         expect(measure).toHaveBeenCalledTimes(2);
     });
 
@@ -109,6 +119,12 @@ describe('banner', () => {
 describe('bill details: entered on the phone and saved on the server', () => {
     const entered = new Date(2026, 10, 1, 10, 0).getTime();
 
+    test('billTimes: no server time for a bill not on the server yet', () => {
+        const server = { seconds: (entered + 60 * MIN) / 1000 };
+        expect(billTimes({ enteredAt: entered, createdAt: server }, { waiting: true })).toEqual({ entered: new Date(entered), server: null, far: false });
+        expect(billTimes({ enteredAt: entered, createdAt: entered + 60 * MIN })).toMatchObject({ server: null, far: false });
+    });
+
     test('billTimes: both times; far apart from the clock limit on', () => {
         const server = { toDate: () => new Date(entered + 2 * MIN) };
         expect(billTimes({ enteredAt: entered, createdAt: server })).toEqual({ entered: new Date(entered), server: new Date(entered + 2 * MIN), far: false });
@@ -126,13 +142,13 @@ describe('bill details: entered on the phone and saved on the server', () => {
     const rows = () => [...document.querySelectorAll('.bill-time-row')].map(r => r.textContent.replace(/\s+/g, ' ').trim());
 
     test('both rows show; a far-apart pair gets the note', async () => {
-        await open({ id: 'p1', billNumber: 'P1', items: [], grandTotal: 100, enteredAt: entered, createdAt: entered + 40 * MIN });
+        await open({ id: 'p1', billNumber: 'P1', items: [], grandTotal: 100, enteredAt: entered, createdAt: { seconds: (entered + 40 * MIN) / 1000 } });
         expect(rows()).toEqual(['Entered on the phone 1 Nov, 10:00 am', 'Saved on the server 1 Nov, 10:40 am']);
         expect(document.querySelector('.bill-times-note').textContent).toMatch(/clock was wrong, or the bill was saved offline/);
     });
 
     test('close together: no note; an old bill without the times: no rows', async () => {
-        await open({ id: 'p2', billNumber: 'P2', items: [], grandTotal: 100, enteredAt: entered, createdAt: entered + MIN });
+        await open({ id: 'p2', billNumber: 'P2', items: [], grandTotal: 100, enteredAt: entered, createdAt: { seconds: (entered + MIN) / 1000 } });
         expect(rows()).toHaveLength(2);
         expect(document.querySelector('.bill-times-note')).toBeNull();
         await open({ id: 'p3', billNumber: 'P3', items: [], grandTotal: 100, date: '2026-10-01' });

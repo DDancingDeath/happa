@@ -544,7 +544,9 @@ async function initializeUserData() {
         
         // Clean up old audit logs (runs silently for owners)
         AuditService.cleanupOldLogs().catch(e => console.warn('Audit log cleanup failed:', e));
-        startClockCheck({ toast: (m) => UIManager.showToast(m) }).catch(e => console.warn('Clock check failed:', e));
+        // Wrong phone clock (#115): checked once a day, after the first screens are up
+        setTimeout(() => startClockCheck({ toast: (m) => UIManager.showToast(m) })
+            .catch(e => console.warn('Clock check failed:', e)), 10000);
         
         UIManager.hideLoading();
         markStartup('app-shown', { online: navigator.onLine });

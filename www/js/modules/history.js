@@ -80,7 +80,8 @@ const billRef = (bill) => Helpers.escapeJsAttr(`id:${bill.id}`);
  * @returns {string} HTML
  */
 function billTimesHtml(bill) {
-    const { entered, server, far } = billTimes(bill);
+    const waiting = FirebaseService.savedOnPhoneOnly(bill) || FirebaseService.saveUnconfirmed(bill);
+    const { entered, server, far } = billTimes(bill, { waiting });
     if (!entered && !server) return '';
     const row = (key, d) => (d ? `
                         <div class="bill-info-row bill-time-row">

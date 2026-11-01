@@ -108,7 +108,8 @@ export function readClockCheck(storage) {
 /**
  * Start-up clock check (#115): measured at most once a day on this phone (one ID-token
  * refresh, no Firestore read) and kept for that day. Offline or signed out nothing is
- * kept, so the next start tries again. `force` measures now (the banner's Check again).
+ * kept, so the next start tries again; a wrong clock is measured again at the next start
+ * (it may have been fixed). `force` measures now (the banner's Check again).
  * @param {{storage?: Storage, now?: function(): number, measure?: function(): Promise<?number>, force?: boolean}} [opts]
  * @returns {Promise<?number>} server time minus phone time (ms), null when unknown
  */
@@ -116,7 +117,7 @@ export async function dailyClockSkew({ storage = null, now = Date.now, measure =
     const day = toLocalISODate(new Date(now()));
     if (!force) {
         const saved = readClockCheck(storage);
-        if (saved && saved.day === day) return saved.skewMs;
+        if (saved && saved.day === day && !isClockWrong(saved.skewMs)) return saved.skewMs;
     }
     const skew = await measure();
     if (!Number.isFinite(skew)) return null;
@@ -139,11 +140,14 @@ export function skewMinutes(skewMs) {
  * A bill's two times (#115): when it was entered on the phone (`enteredAt`, the phone's
  * clock) and when the server first saved it (`createdAt`). `far`: they are at least
  * CLOCK_WRONG_MS apart (a wrong phone clock, or a bill saved offline and sent later).
+ * A bill not yet on the server (`waiting`, or `createdAt` still the phone's own number
+ * stamp) has no server time.
  * @param {Object} bill
+ * @param {{waiting?: boolean}} [opts]
  * @returns {{entered: ?Date, server: ?Date, far: boolean}}
  */
-export function billTimes(bill) {
+export function billTimes(bill, { waiting = false } = {}) {
     const entered = toJsDate(bill?.enteredAt);
-    const server = toJsDate(bill?.createdAt);
+    const server = waiting || typeof bill?.createdAt === 'number' ? null : toJsDate(bill?.createdAt);
     return { entered, server, far: !!(entered && server) && Math.abs(server.getTime() - entered.getTime()) >= CLOCK_WRONG_MS };
 }
