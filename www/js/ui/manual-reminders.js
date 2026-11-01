@@ -44,6 +44,7 @@ export const ManualReminders = {
         this.onChange = onChange;
         const uid = AppState.currentUser?.uid || null;
         if (this.unsubscribe && this.uid === uid) return;
+        if (this.uid !== uid) this.reset();
         this.stop();
         if (!uid || typeof FirebaseService.listenOpenReminders !== 'function') return;
         this.uid = uid;
@@ -66,6 +67,15 @@ export const ManualReminders = {
         this.unsubscribe = null;
         this.uid = null;
         this.list = [];
+    },
+
+    /** Sign-out / another person: nothing typed or open stays for the next one. */
+    reset() {
+        this.stop();
+        this.formOpen = false;
+        this.draft = null;
+        const box = typeof document !== 'undefined' ? document.getElementById('todayReminders') : null;
+        box?.querySelector('[data-reminder="manual"]')?.remove();
     },
 
     changed() {
@@ -170,7 +180,9 @@ export const ManualReminders = {
         if (this.offline()) return false;
         return Helpers.runExclusive('reminder-save', '[data-reminder-save]', async () => {
             try {
-                const res = await withTimeout(FirebaseService.createReminder(check.value, this.by()));
+                const write = FirebaseService.createReminder(check.value, this.by());
+                const res = await withTimeout(write);
+                if (res === TIMED_OUT) write.catch(() => UIManager.showToast(t('msg.reminders.not_saved')));
                 this.formOpen = false;
                 this.draft = null;
                 UIManager.showToast(t(res === TIMED_OUT ? 'msg.reminders.saved_on_phone' : 'msg.reminders.saved'));
@@ -188,11 +200,12 @@ export const ManualReminders = {
     async closeReminder(id, write) {
         if (this.offline()) return false;
         return Helpers.runExclusive(`reminder-${id}`, `[data-reminder-id="${CSS_ESCAPE(id)}"] button`, async () => {
+            const p = write();
             try {
-                await withTimeout(write());
+                if (await withTimeout(p) === TIMED_OUT) p.catch(() => UIManager.showToast(t('msg.reminders.not_saved')));
                 return true;
             } catch (e) {
-                if (e?.code === 'permission-denied' && !this.list.some(r => r.id === id)) return true;
+                if (e?.code === 'permission-denied' && await FirebaseService.reminderClosed(id)) return true;
                 console.error('Reminder not changed:', e);
                 UIManager.showToast(t('msg.reminders.not_saved'));
                 return false;

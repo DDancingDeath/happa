@@ -311,7 +311,7 @@ function blockOutdatedApp() {
     outdatedBlocked = true;
     FirebaseService.cleanup();
     NotificationsManager.stop();
-    ManualReminders.stop();
+    ManualReminders.reset();
     document.getElementById('appContent')?.classList.add('hidden');
     UIManager.hideLoading();
     AuthManager.showLoginNotice(t('msg.app.app_version_outdated_update_app'));
@@ -624,7 +624,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 FirebaseService.cleanup();
                 FirebaseService.forgetPeopleCaches();
                 NotificationsManager.stop();
-                ManualReminders.stop();
+                ManualReminders.reset();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
                 document.getElementById('authScreen').style.display = 'flex';

@@ -39,6 +39,16 @@ export const reminderMethods = {
         return ref.id;
     },
 
+    /** True when the server has the reminder done or cancelled already (a refused Done / Cancel raced another phone). */
+    async reminderClosed(id) {
+        try {
+            const snap = await getDb().collection(col('reminders')).doc(id).get({ source: 'server' });
+            return snap.exists && snap.data().status !== 'open';
+        } catch (_) {
+            return false;
+        }
+    },
+
     /** Marks an open reminder done for everyone. */
     async ackReminder(id, { uid, name }) {
         const patch = { status: 'done', doneBy: uid, doneAt: serverCreatedAt() };

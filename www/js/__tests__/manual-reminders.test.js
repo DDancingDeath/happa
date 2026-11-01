@@ -138,7 +138,12 @@ describe('Today: manual reminders', () => {
         expect(ack).toHaveBeenCalledTimes(1);
         expect(second).toBeFalsy();
         ack.mockRejectedValueOnce(Object.assign(new Error('no'), { code: 'permission-denied' }));
+        const closed = jest.spyOn(FirebaseService, 'reminderClosed').mockResolvedValueOnce(true).mockResolvedValueOnce(false);
         expect(await ManualReminders.markReminderDone('r2')).toBe(true);
         expect(toast).not.toHaveBeenCalled();
+        ack.mockRejectedValueOnce(Object.assign(new Error('no'), { code: 'permission-denied' }));
+        expect(await ManualReminders.markReminderDone('r3')).toBe(false);
+        expect(toast).toHaveBeenCalledTimes(1);
+        expect(closed).toHaveBeenCalledTimes(2);
     });
 });
