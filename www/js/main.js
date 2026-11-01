@@ -351,7 +351,9 @@ function openLaunchShortcut() {
     if (!shortcut) return;
     window.history.replaceState(window.history.state, '', withoutShortcut(window.location.pathname, window.location.search, window.location.hash));
     if (shortcut.tab !== 'billing') {
-        if (NavigationManager.showTab(shortcut.tab) !== false) NavigationManager.setActiveNavLink(shortcut.tab);
+        const shown = NavigationManager.showTab(shortcut.tab);
+        if (shown && typeof shown.then === 'function') shown.then(ok => { if (ok) NavigationManager.setActiveNavLink(shortcut.tab); });
+        else if (shown !== false) NavigationManager.setActiveNavLink(shortcut.tab);
         return;
     }
     if (shortcut.mode) BillingManager.switchMode(shortcut.mode, { currentTarget: document.getElementById(shortcut.mode === 'sale' ? 'saleModeBtn' : 'purchaseModeBtn') });
@@ -1157,15 +1159,15 @@ window.app = {
         // Tap on a bill's "Already owes" line (#166); wholesale dues live on the Wholesale page
         showParty: (kind, name) => {
             const tab = kind === 'wholesale' ? 'wholesale-sales' : 'due';
-            NavigationManager.setActiveNavLink(tab);
             const open = () => {
+                NavigationManager.setActiveNavLink(tab);
                 if (kind === 'wholesale') WholesaleSalesManager.showOutstandingParty(name);
                 else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : kind === 'sale' ? 'sale' : 'retail', name);
             };
             // A page loaded on first visit (#66) is put in first
             const shown = NavigationManager.showTab(tab);
-            if (shown && typeof shown.then === 'function') return shown.then(open);
-            open();
+            if (shown && typeof shown.then === 'function') return shown.then(ok => { if (ok) open(); });
+            if (shown !== false) open();
         }
     },
     

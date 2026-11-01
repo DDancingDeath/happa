@@ -115,6 +115,8 @@ export class TemplateLoader {
         root.dataset.pageLoading = tab;
         const run = this.loadTemplates(tab === 'insights' ? ['insights', 'rate-trends'] : [tab])
             .then(templates => {
+                // Insights without its Trends view would never fetch Trends again: both or neither
+                if (Object.values(templates).some(html => !html)) return false;
                 this.injectPages(templates);
                 const el = document.getElementById(tab);
                 if (el) this.onPageAdded(tab, el);

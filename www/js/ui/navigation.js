@@ -364,17 +364,17 @@ const NavigationManager = {
     /**
      * Puts a page loaded on first visit in (#66), then runs `show` unless the user
      * went elsewhere or signed out meanwhile; a page that could not be fetched keeps
-     * the current one and says so.
+     * the current one and says so. Resolves true only when the page was shown.
      */
     afterPageLoad(tab, show) {
         const seq = this.navSeq;
         return TemplateLoader.ensurePage(tab).then(ok => {
-            if (seq !== this.navSeq || !AppState.currentUser) return undefined;
+            if (seq !== this.navSeq || !AppState.currentUser) return false;
             if (!ok) {
                 UIManager.showToast(t('msg.nav.page_not_loaded'), 'error');
                 return false;
             }
-            return show();
+            return show() !== false;
         });
     },
 
