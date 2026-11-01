@@ -108,6 +108,17 @@ node tools/backup/verify-backup.js --dir backup-dl/firestore-backup-weekly-2026-
 
 On Windows use Git Bash for `sha256sum` / `openssl`. Keep decrypted files out of the repo (they are real shop data).
 
+### 1b. Check it on the owner's phone (read-only)
+
+The owner can also check the decrypted `backup.json` (or `backup.json.gz`, unpacked on the phone when the browser can)
+in the app: **Admin › Data › Check a backup**. The file is read on the phone only: nothing is uploaded and nothing is
+written to Firestore. It runs the same checks as `verify-backup.js` (ids, duplicates, tagged values, the file's own
+manifest; `www/js/utils/backup-verify.js`) and shows the record counts, how old the backup is and its newest bill. A
+locked `.enc` file is refused with a hint to decrypt it first. A good check counts as the owner's **restore drill**:
+it is remembered on that phone and written in the audit log (`BACKUP_CHECK`), and Today reminds the owner when no
+check was recorded on the phone for 30 days (REM-3). There is **no in-app restore**: a restore writes over the live
+data, so it stays a tools job (steps 2–4), done after a drill with every phone closed.
+
 ### 2. Drill into the Firestore emulator (safe, no real project)
 
 ```sh
