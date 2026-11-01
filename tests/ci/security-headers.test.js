@@ -111,6 +111,9 @@ describe('security headers on every Hosting site (#89)', () => {
         for (const source of ['/r.html', '/r/**']) {
             const entry = appSite.headers.find((e) => e.source === source);
             expect(entry.headers.find(isPolicy)?.value).toBe(STRICT_POLICY);
+            // a later entry wins, so no '**' entry setting the policy may follow it
+            const lastAll = appSite.headers.map((e, i) => (e.source === '**' && e.headers.some(isPolicy) ? i : -1)).reduce((a, b) => Math.max(a, b), -1);
+            expect(appSite.headers.indexOf(entry)).toBeGreaterThan(lastAll);
         }
     });
 
