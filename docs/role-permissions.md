@@ -242,7 +242,15 @@ internet. The list shows voided expenses behind "Show voided", struck through; t
   and a member only their own, inside the role's `editDays` (as bills) from the expense's save time.
   Rules: `expenseVoidOk`; app: `canVoidExpenseWith`.
 - **Cash:** a voided cash expense's money is back in its day's expected drawer while that day's cash
-  is open (the void dialog says so); a day whose cash is already closed keeps the count it was closed with.
+  is open (the void dialog says so); a day whose cash is already closed keeps the count it was closed with
+  (the Cash page's status card, the history and the day details all show the closed day's stored figures).
+- **Flagged, as bill voids:** a void by anyone except an owner is a **medium** `expense-voided` anomaly on
+  the owner's Today (Day report) and in Anomalies, with who, the amount and the reason. It comes from the
+  voided expenses the listeners already hold (`voidedExpenses()`; `voidedBy` / `voidedAt` set by the rules,
+  no extra read) and, for an expense outside the loaded history, from the `VOID_EXPENSE` audit entry
+  (`details.expenseId`, `details.reason`) in the owner's daily scan; both give the same flag id. The owners
+  are known the same way as for bill voids (read once a session, only when someone else voided). A personal
+  expense's flag leaves out its type and name (managers read flags).
 - **Final.** A voided expense never changes again, the owner included; only the owner deletes one
   (not offered in the app). Older apps can no longer edit or delete expenses (refused by the rules).
 
