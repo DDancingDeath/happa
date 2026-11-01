@@ -12,6 +12,7 @@ import { PrintTest, printProps } from '../tip/scenarios/print.js';
 import { SyncTest, SYNC_LIMIT_MS, createSyncWatcher } from '../tip/scenarios/sync.js';
 import { StockCheckpointTest, checkpointProps } from '../tip/scenarios/stock-checkpoint.js';
 import { NumberChecksTest, numberChecksProps, claimToday } from '../tip/scenarios/number-checks.js';
+import { MainThreadTest, createWatchdog, FREEZE_MS, WINDOW_MS, SLEEP_MS, TICK_MS, MAX_SAMPLES } from '../tip/scenarios/main-thread.js';
 import { SCENARIOS } from '../tip/index.js';
 
 const T0 = new Date(2026, 9, 23, 11, 0, 0).getTime();
@@ -21,12 +22,12 @@ function harness({ online = true } = {}) {
     const net = { online };
     const tip = createTip({ now: () => now, isOnline: () => net.online, appVersion: '1.6.0' });
     [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest, SessionReadsTest,
-        PrintTest, SyncTest, StockCheckpointTest, NumberChecksTest].forEach(d => tip.declareTest(d));
+        PrintTest, SyncTest, StockCheckpointTest, NumberChecksTest, MainThreadTest].forEach(d => tip.declareTest(d));
     const outcome = (test) => {
         const c = tip.takeDelta()[dayKeyOf(now)]['1_6_0'][test];
         return { result: Object.keys(c.n)[0], reason: c.r ? Number(Object.keys(c.r)[0].replace(/^[a-z]+/, '')) : 0 };
     };
-    return { tip, outcome, net, advance: (ms) => { now += ms; } };
+    return { tip, outcome, net, advance: (ms) => { now += ms; }, now: () => now };
 }
 
 describe('AppStart', () => {
@@ -336,9 +337,83 @@ describe('NumberChecks (#161)', () => {
     });
 });
 
+describe('MainThread watchdog (#83)', () => {
+    /** Ticks every TICK_MS for `ms` (the page on screen). */
+    const run = (h, w, ms) => {
+        for (let t = 0; t < ms; t += TICK_MS) {
+            h.advance(TICK_MS);
+            w.tick(h.now());
+        }
+    };
+    const counts = (h) => (h.tip.takeDelta()[dayKeyOf(h.now())] || {})['1_6_0']?.MainThread || { n: {}, r: {} };
+    const setup = () => {
+        const h = harness();
+        return { h, w: createWatchdog(() => h.tip.start('MainThread')) };
+    };
+
+    it('a window on screen with no freeze passes; a 5-second block fails as frozen', () => {
+        const { h, w } = setup();
+        w.tick(h.now());
+        run(h, w, WINDOW_MS);
+        h.advance(FREEZE_MS + 200);
+        w.tick(h.now());
+        const c = counts(h);
+        expect(c.n).toEqual({ s: 1, f: 1 });
+        expect(Object.keys(c.r)).toEqual([`f${MainThreadTest.reasons.frozen}`]);
+    });
+
+    it('time away is never a gap: a stretch on screen is judged when it lasted a minute, else not', () => {
+        const { h, w } = setup();
+        w.tick(h.now());
+        run(h, w, 90000);
+        w.hidden(h.now());
+        h.advance(30000);
+        w.tick(h.now());
+        run(h, w, 10000);
+        w.hidden(h.now());
+        expect(counts(h).n).toEqual({ s: 1, x: 1 });
+        expect(h.tip.activeCount()).toBe(0);
+    });
+
+    it('a screen frozen until the user leaves the app still fails', () => {
+        const { h, w } = setup();
+        w.tick(h.now());
+        run(h, w, 10000);
+        h.advance(FREEZE_MS + 500);
+        w.hidden(h.now());
+        expect(counts(h).n).toEqual({ f: 1 });
+    });
+
+    it('a short block or the phone asleep is not a freeze', () => {
+        const { h, w } = setup();
+        w.tick(h.now());
+        h.advance(FREEZE_MS - TICK_MS);
+        w.tick(h.now());
+        h.advance(SLEEP_MS + 1);
+        w.tick(h.now());
+        w.hidden(h.now());
+        const { n } = counts(h);
+        expect(n.f).toBeUndefined();
+        expect(n.s).toBeUndefined();
+        expect(MainThreadTest.evaluate({ checked: true, longestMs: 900 }, {}, { expired: true })).toBe('discard');
+    });
+
+    it('keeps at most MAX_SAMPLES failure samples a day, leaving the shared budget to the other tests', () => {
+        const { h, w } = setup();
+        w.tick(h.now());
+        for (let i = 0; i < MAX_SAMPLES + 3; i++) {
+            h.advance(FREEZE_MS + 100);
+            w.tick(h.now());
+        }
+        h.tip.start('BillSave').complete({ saveFailed: true });
+        const samples = h.tip.takeFailures();
+        expect(samples.filter(s => s.test === 'MainThread').length).toBe(MAX_SAMPLES);
+        expect(counts(h).n.f).toBe(MAX_SAMPLES + 3);
+    });
+});
 describe('every scenario is declared and has a Health label', () => {
-    it('lists the 9 tests', () => {
+    it('lists the 10 tests', () => {
         expect(SCENARIOS.map(s => s.id)).toEqual(['AppStart', 'BillSave', 'PaymentRecord', 'CashClose', 'SessionReads',
-            'Print', 'Sync', 'StockCheckpoint', 'NumberChecks']);
+            'Print', 'Sync', 'StockCheckpoint', 'NumberChecks', 'MainThread']);
     });
 });

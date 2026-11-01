@@ -16,6 +16,7 @@ import { t, tn, getLang } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
 import { on, REFRESH } from '../utils/events.js';
 import { overdueReminder, rentReminder, leaseReminder } from '../utils/reminders.js';
+import { drillReminder } from '../utils/backup-verify.js';
 import { billsForKind } from '../utils/party-due.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import { formatINR } from '../utils/due-reminder.js';
@@ -298,8 +299,24 @@ export const DayManager = {
                     + `<button type="button" class="filter-btn" onclick="window.app.rentals.open('tenants', event)">${e(t('ui.today.reminder_open_tenants'))}</button></div>`);
             }
         }
+        // REM-3 (#63): the owner checks a backup file at least every 30 days
+        if (AppState.userRole === 'owner') {
+            let drill = null;
+            try { drill = drillReminder(localStorage, AppState.currentUser?.uid || '', now.getTime()); } catch (_) { drill = null; }
+            if (drill?.due) {
+                parts.push(`<div class="today-reminder" data-reminder="backup"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_backup'))}</strong></div>`
+                    + `<div>${e(drill.lastAt === null ? t('ui.today.reminder_backup_never') : t('ui.today.reminder_backup_days', { count: drill.days }))}</div>`
+                    + `<button type="button" class="filter-btn" onclick="window.app.day.openBackupCheck()">${e(t('ui.today.reminder_open_backup'))}</button></div>`);
+            }
+        }
         host.hidden = parts.length === 0;
         host.innerHTML = parts.length ? `<h3 class="today-reminders-title">${e(t('ui.today.reminders'))}</h3>${parts.join('')}` : '';
+    },
+
+    /** Admin › Data, where the owner checks a backup file (REM-3, #63). */
+    openBackupCheck() {
+        window.app?.nav?.showTab?.('admin');
+        setTimeout(() => window.app?.admin?.showTab('data'), 150);
     },
 
     /** Outstanding on its Purchases or Sales list (navigation opens it on Purchases first). */
