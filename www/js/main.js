@@ -56,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbnq-dead-code';
+const BUILD_ID = '20261101zzuzieecmbbkhbog-numcheck-flags';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -141,7 +141,10 @@ function scheduleTipNumberChecks() {
         try {
             if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
             const run = tip.start('NumberChecks');
-            run.complete(numberChecksProps(DiagnosticsManager.numberCheckResults()));
+            const results = DiagnosticsManager.numberCheckResults();
+            run.complete(numberChecksProps(results));
+            // #160: each mismatch also reaches Anomalies, once
+            AnomaliesManager.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
         } catch (e) {
             console.warn('TIP number checks failed:', e?.message || e);
         }
