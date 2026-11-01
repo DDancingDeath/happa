@@ -2215,6 +2215,7 @@ export default {
     'ui.diag.a_rent_expense': "संपत्ति खर्च",
     'ui.diag.a_rent_expense_edit': "संपत्ति खर्च बदला",
     'ui.diag.a_rent_expense_delete': "संपत्ति खर्च हटाया",
+    'ui.diag.a_rent_report_csv': "किराये की सालाना रिपोर्ट डाउनलोड हुई",
     'ui.rent.dep_btn': "जमानत",
     'ui.rent.dep_title': "जमानत राशि",
     'ui.rent.dep_agreed': "तय जमानत",

@@ -2215,6 +2215,7 @@ export default {
     'ui.diag.a_rent_expense': "Property Expense",
     'ui.diag.a_rent_expense_edit': "Property Expense Changed",
     'ui.diag.a_rent_expense_delete': "Property Expense Removed",
+    'ui.diag.a_rent_report_csv': "Rent Yearly Report Downloaded",
     'ui.rent.dep_btn': "Deposit",
     'ui.rent.dep_title': "Security deposit",
     'ui.rent.dep_agreed': "Agreed deposit",
