@@ -228,7 +228,7 @@ function numberKind(rest, groups, gi) {
     for (let k = g.end; k < stop; k++) {
         const w = rest[k];
         if (w) [prevWord, lastWord] = [lastWord, w];
-        if (TOTAL_AFTER_A_WEIGHT.has(w)) {
+        if (TOTAL_AFTER_A_WEIGHT.has(w) && prevWord !== 'give') {
             mein = true;
             meinAfterRateWord = PRICE_BEFORE.has(prevWord);
         }
@@ -247,12 +247,14 @@ function numberKind(rest, groups, gi) {
     }
     if (after === 'other') return 'other';
     // "300 rupaye ke 10 kilo" / "300 ka 10 kilo": the price of that weight, a total (but "30 ka 1 kilo" is a rate)
+    // and so is "60 rupaye mein 2 kilo"
     const next = groups[gi + 1];
-    if (after !== 'weight' && after !== 'gram' && POSSESSIVE.has(lastWord) && next && next.value !== 1
-        && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]))) return 'other';
+    const nextIsWeight = next && next.value !== 1 && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]));
+    if (after !== 'weight' && after !== 'gram' && POSSESSIVE.has(lastWord) && nextIsWeight) return 'other';
+    if ((after === null || after === 'rate') && mein && !meinAfterRateWord && nextIsWeight) return 'other';
     const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
     if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2) && after !== 'weight') return 'rate-kg';
-    if (PRICE_BEFORE.has(b1)) return after === 'rate-kg' ? after : 'rate';
+    if (PRICE_BEFORE.has(b1) && after !== 'weight' && after !== 'gram') return after === 'rate-kg' ? after : 'rate';
     // "2 kilo 60 (rupaye) mein" is a total; "30 ke bhav mein" a rate
     if (gi > 0 && (((after === null || after === 'rate') && mein && !meinAfterRateWord)
         || (after !== 'weight' && after !== 'gram' && TOTAL_AFTER_A_WEIGHT.has(b1)))) return 'other';

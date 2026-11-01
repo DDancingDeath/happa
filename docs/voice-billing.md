@@ -31,7 +31,8 @@ weight words kg / kilo (also in Devanagari), and grams as kg (500 gram = 0.5 kg,
 (archived items never). A number with another unit (quintal, bori, bag, packet…)
 or said as a total ("for 300", "10 kilo ke 300") is never used, and then the
 line's unmarked numbers and a rupee-only rate are not guessed either: the dialog
-warns and the user types them (also "300 rupaye ke 10 kilo", "10 kilo 300 mein"; and
+warns and the user types them (also "300 rupaye ke 10 kilo", "10 kilo 300 mein",
+"60 rupaye mein 2 kilo"; and
 "100 rupaye ka chawal" with no weight, an amount to buy). More
 numbers than a weight and a rate are flagged too, and so is a rate more than 3×
 above or below every rate kept for that item (likely a total).
