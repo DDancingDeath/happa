@@ -37,7 +37,7 @@ the resolver gives today's grouping, so the first PRs change no figure.
 | Name suggestions: Wholesale fills its datalist from loaded wholesale bills, the cash page from all loaded bills; the **purchase and retail datalists (`customerOptions`, `saleCustomerOptions` in `templates/billing.html`) exist but nothing fills them** | `wholesale-sales.js` `updateWholesaleCustomerOptions`, `cash-management.js` `loadCustomerOptions` | Typos create new parties every day |
 | Phone: only migrated opening records have `customerPhone`; Outstanding takes the newest bill's `customerPhone` / `phone` / `mobile`; without one the reminder opens the share sheet | `aging.js` `billPhone`, `outstanding.js` `sendReminder` | WhatsApp reminders reach only migrated parties directly |
 | Migration writes one opening record per old unpaid bill with `customerName` + `customerPhone`; "party list: not carried (fresh start)" | `tools/migrate/README.md`, `lib/plan.js` | Natural place to create the first parties |
-| Rules: bills may carry any extra field on create; `customerName` is an **edit-logged** field (changing it needs an edit record, #121); a voided bill never changes; non-owners may only do bookkeeping on others' bills | `firestore.rules` `editLoggedFields`, `billUpdateAs`, `validBillCreate` | Rewriting names on old bills is costly or impossible (voided) |
+| Rules: bills may carry any extra field on create; `customerName` is an **edit-logged** field (changing it needs an edit record, #121); a voided bill never changes (owner included); outside the edit window (manager / creator) only bookkeeping (payments, clearing) | `firestore.rules` `editLoggedFields`, `billUpdateAs`, `validBillCreate` | Rewriting names on old bills is costly or impossible (voided) |
 | TIP telemetry already drops `customerName`, `phone`, `partyId` keys | `sanitizeProps` (TIP no-PII guard, `__tests__/tip.test.js`) | Parties stay out of telemetry |
 
 Phones load bills from the 1st of last month **plus every bill with `openDue == true`**
@@ -56,14 +56,15 @@ no extra bill reads.
 | `name` | string, 1–60 chars, trimmed, inner spaces collapsed | Display name in English UI, as the shop writes it ("Ramesh Kumar") |
 | `hindiName` | string ≤ 60, optional | Display name in Hindi UI ("रमेश कुमार"). Suggested with the offline transliterator of PR #254 (items), never required |
 | `phone` | string, optional: 10 digits `^[6-9][0-9]{9}$` (stored without +91) | Personal data (section 10). Only with `phoneConsent` |
-| `legacyPhone` | string, optional, same format | Written only by the migration or the owner (old-app phones, no recorded consent, section 8). Used for reminders like `phone`; flagged "ask the customer to confirm"; removed when a consented `phone` is saved or on "Remove phone" |
+| `legacyPhone` | string, optional, same format | Set only by the migration (old-app phones, no recorded consent, section 8); owner and manager may delete it, nobody sets it in the app. Used for reminders like `phone`; flagged "ask the customer to confirm"; deleted when a consented `phone` is saved or on "Remove phone" |
 | `phoneConsent` | map, optional: `{ at: server time, by: uid, byName, how: 'told' \| 'written', purpose: 'bills-reminders' }` | Set in the same write as `phone`; removed with it |
 | `type` | `'customer'` \| `'supplier'` \| `'both'` | Which side's bills it can resolve (section 3). A customer who also sells to the shop is `both` |
 | `aliases` | list of strings, ≤ 20, each ≤ 60 | Other spellings that mean this party ("Ramesh Ji", "R. Kumar"). A rename adds the old `name` here automatically |
 | `mergedInto` | partyId, optional | Set by the owner's merge (section 5). The doc is kept for ever; it resolves to the winner |
 | `mergedAt`, `mergedBy`, `mergedByName`, `mergeReason` | server time, uid, string ≤ 200, string 3–300 | Written with `mergedInto`, removed by an unmerge |
 | `archived` | bool, optional | Hidden from suggestions; still resolves (old bills keep their party) |
-| `erasedAt` | server time, optional | DPDP erasure done (section 9) |
+| `erasedAt` | server time, optional | DPDP erasure done (section 10) |
+| `unmergedAt`, `unmergedBy`, `unmergeReason` | server time, uid, string 3–300 | Written by an unmerge, which clears only `mergedInto`: the last merge and its undo stay on the doc for good (audit rows are cleaned after 90 days) |
 | `createdAt`, `createdBy`, `createdByName` | server time, uid, string | `createdAt == request.time` |
 | `updatedAt`, `updatedBy` | server time, uid | Every update; edits are field-level `update()`s, so two phones editing different fields don't overwrite each other (#113) |
 | `clientVersion` | int | The `CLIENT_VERSION` that understands parties (gate, as for bills) |
@@ -79,19 +80,25 @@ One doc every approved phone listens to. It holds **names only, never phones**:
 {
   p: {
     '<partyId>': { n: 'Ramesh Kumar', h: 'रमेश कुमार', a: ['Ramesh Ji'], t: 'c',   // c | s | b
-                   m: '<winnerId>' /* merged */, x: true /* archived */ }
+                   c: 1793500000000 /* createdAt ms: tie-break */,
+                   m: '<winnerId>' /* merged */, x: true /* archived */,
+                   e: 1793600000000 /* erasedAt ms */, ek: ['<hash>'] /* erased name keys */ }
   },
   last: '<partyId>',        // the one entry this write changed (personalExpenseDays pattern)
   updatedAt: <server time>
 }
 ```
 
-- Written in the **same batch** as the party doc it mirrors, entry `p.<id>` only (field-path
-  update, so two phones adding different parties offline both land).
-- Normalised keys are **not stored**: each phone computes them with the one normaliser, so a
-  normaliser fix never needs a data rewrite.
-- Size: about 150–200 bytes per party → about 5,000 parties per doc (1 MiB cap). Above ~4,000
-  parties (Diagnostics shows the size and warns), shard to `partyIndex/0`…`partyIndex/f` by the
+- Written in the **same batch** as the party doc it mirrors, as **leaf field paths**
+  (`p.<id>.n`, `p.<id>.a`, `p.<id>.x`, …), never the whole entry: two phones adding different
+  parties, or renaming and archiving the same one, both land, and an offline edit of a party can't
+  wipe a merge (`p.<id>.m`) written meanwhile.
+- Normalised keys are **not stored** (except `ek`, section 10): each phone computes them with the
+  one normaliser, so a normaliser fix never needs a data rewrite.
+- Size: Firestore counts every map leaf as a field (at most 20,000 per doc) and indexes each one, so
+  `firestore.indexes.json` gets a `fieldOverrides` entry exempting `partyIndex.p` from indexing
+  (phase 2). With ~8 leaves per party a doc holds about **2,500 parties** (well under 1 MiB). Above
+  ~2,000 (Diagnostics shows the count and warns), shard to `partyIndex/0`…`partyIndex/f` by the
   first hex digit of a hash of the id (16 reads per start instead of 1). Not needed for the aadhat.
 
 ### 2.3 Bills
@@ -123,23 +130,25 @@ resolver.duplicates()                       // keys claimed by two live parties 
 `side` is `'customer'` for retail and wholesale bills, `'supplier'` for purchases. A party serves a
 side when its `type` is that side or `both`.
 
-**Rule PARTY (new wording, lands in calculations.md with phase 4):**
+**Rule PARTY (new wording, lands in calculations.md with phase 5):**
 
 1. **`partyId` present and known** → follow `mergedInto` to the root (at most 10 hops; a cycle or
    an unknown hop stops at the last good party) → key `p:<rootId>`.
 2. **Else** (no `partyId`, or an id the directory doesn't have yet, e.g. a party write refused or
    not synced) → `partyNameKey(customerName || supplierName)` looked up among the **names, Hindi
-   names and aliases** of every party serving that side, merged parties included → that party's
-   root → `p:<rootId>`.
+   names and aliases** of every party serving that side, merged parties included (and, for a bill
+   dated before an erasure, the erased party's `ek` hashes, section 10) → that party's root →
+   `p:<rootId>`.
 3. **Else** → `n:<normalised name>`: exactly today's grouping. A blank name → `''` (the existing
    "No name" row).
 
 **Two live parties claiming the same key on one side** (e.g. two phones offline both created
-"Suresh", or two real people called "Ramesh") → the older `createdAt` wins (then the smaller id),
-so every phone resolves the same way, and the owner sees it under "Possible duplicates" (merge, or
-give one a distinguishing name such as "Ramesh (Kheda)"). The server does **not** enforce unique
-names: a refused key claim would arrive at sync time, after the bill was printed, and could strand
-the party or the bill. Duplicates are exactly what the merge tool is for.
+"Suresh", or two real people called "Ramesh") → the older `createdAt` (directory `c`) wins, then
+the smaller id, so every phone resolves the same way from the directory alone, and the owner sees
+it under "Possible duplicates" (merge, or give one a distinguishing name such as "Ramesh (Kheda)").
+The server does **not** enforce unique names: a refused key claim would arrive at sync time, after
+the bill was printed, and could strand the party or the bill. Duplicates are exactly what the
+merge tool is for.
 
 **Properties** (tested):
 
@@ -148,9 +157,11 @@ the party or the bill. Duplicates are exactly what the merge tool is for.
   Σ over parties = Σ BILL-DUE of the bills (O3, O4, F9, F10 unchanged).
 - Deterministic on every phone for the same directory (no "first loaded wins").
 - `keyOf` is passed into the existing calc functions (`buildAging(bills, { keyOf })`,
-  `partyDues(bills, key, keyOf)`, `partyLedger`, `partyChoices`, `partySummary`,
-  `stoppedComingCheck`, `overdueParties`, `partyDue`), so the maths stays in `utils/**` and the
-  pages only pass `AppState.partyDirectory` in. The default `keyOf` is today's name key.
+  `partyDues`, `partyLedger`, `partyChoices`, `partySummary`, `stoppedComingCheck`,
+  `overdueParties`, `partyDue`), so the maths stays in `utils/**` and the pages only pass
+  `AppState.partyDirectory` in. The default `keyOf` is today's name key. Today `partyDues` calls
+  `keyOf(bill.customerName)` and `partyDue(bills, name)` takes the typed name: phase 1 changes both
+  to `keyOf(bill)` and a party key (callers updated in the same PR).
 
 Normaliser: unchanged (NFC, trim, collapse spaces, lower case), so phase 1 moves no bill between
 groups. Honorifics ("Ji", "जी", "Bhai", "Seth"), dots ("R.K." vs "RK"), zero-width joiners in Hindi
@@ -196,16 +207,19 @@ receive unchanged ₹1,23,400" → reason (3–300 chars, like a void) → confi
 One batch, **3 writes**, whatever the number of bills:
 
 1. loser `parties/{loser}`: `mergedInto`, `mergedAt`, `mergedBy`, `mergedByName`, `mergeReason`;
-2. `partyIndex/main`: `p.<loser>.m = <winner>` (and, if the owner renamed the winner or it now
-   serves both sides, its entry too, with the winner doc as a 4th write);
-3. an `auditLogs` row (`action: 'party_merge'`, both ids, the reason, the before/after due of each
-   side: the "totals equal" evidence).
+2. `partyIndex/main`: the leaf `p.<loser>.m = <winner>` (and, if the owner renamed the winner or it
+   now serves both sides, the winner's leaves too, with the winner doc as a 4th write);
+3. an `auditLogs` row (`action: 'PARTY_MERGE'`, the rules' `^[A-Z][A-Z0-9_]{0,63}$` format; both
+   ids, the reason, the before/after due of each side: the "totals equal" evidence). Audit rows are
+   cleaned after 90 days, so the lasting record is the loser doc's `merged*` / `unmerged*` fields.
 
 The loser's name, Hindi name and aliases are **not copied**: they stay on the loser doc and keep
 resolving (rule 2 finds the loser, then follows `mergedInto`). The winner's party page lists them
 as "Also known as". Hence:
 
-- **Unmerge** is the same 3 writes in reverse and is exact (nothing was moved).
+- **Unmerge** is the same 3 writes (`PARTY_UNMERGE`; the loser's `mergedInto` and `p.<loser>.m`
+  deleted, `unmergedAt` / `unmergedBy` / `unmergeReason` set) and is exact for bills (nothing was
+  moved). Month snapshots store each bill's own key (section 9), so they split again too.
 - Bills of any age, loaded or not, voided ones (which can never be written again), opening
   records, month snapshots keyed by a name or by the loser's id, and bills saved offline with the
   loser's id on a phone with an old directory: all land on the winner.
@@ -229,13 +243,13 @@ hundreds of times more, so it is **not built**. An optional owner "tidy" later c
 on **open** bills only (they are loaded already, ~1 write each; owner writes of edit-logged fields
 are allowed with `clientVersion ≥ 4`), but nothing needs it.
 
-### 5.3 Invariants (Jest + oracle, phase 6)
+### 5.3 Invariants (Jest + oracle, phase 7)
 
 - Σ receivable and Σ payable over all parties are equal before and after a merge and an unmerge
   (property test over generated bills and directories).
 - Winner's due after = winner before + loser before, per side.
-- Merge then unmerge = the original grouping, bill for bill.
-- Every merge writes exactly one audit row.
+- Merge then unmerge = the original grouping, bill for bill and in month snapshots.
+- Every merge and unmerge writes exactly one audit row.
 
 ---
 
@@ -249,26 +263,33 @@ are allowed with `clientVersion ≥ 4`), but nothing needs it.
   moves to an owner/manager-only `partyContacts/{id}` doc.
 - **Create** (`parties`): approved; keys `hasOnly` the section 2.1 fields; `name` 1–60;
   `hindiName` ≤ 60; `type` in the three values; `aliases` a list ≤ 20; `createdAt == request.time`,
-  `createdBy == request.auth.uid`; no `mergedInto`, `erasedAt` or `legacyPhone` (owner only);
-  `phone` only with a
+  `createdBy == request.auth.uid`; no `mergedInto`, `erasedAt` or `legacyPhone` (`legacyPhone`
+  only arrives through the migration, which runs with a service account); `phone` only with a
   `phoneConsent` whose `at == request.time` and `by == request.auth.uid`; `getAfter` of
-  `partyIndex/main` has the matching `p.<id>` entry (1 get).
+  `partyIndex/main` has the matching `p.<id>` leaves (1 get).
 - **Update:** owner/manager for `name`, `hindiName`, `aliases`, `phone`/`phoneConsent`, `type`,
-  `archived`, `updatedAt`, `updatedBy` (field `hasOnly`); `mergedInto` and the `merged*` fields,
-  `erasedAt`: **owner only**, `mergedInto != docId`, the winner exists and has no `mergedInto`
-  (1 get), with a reason (`reasonOk`). `createdAt` / `createdBy` never change.
+  `archived`, `updatedAt`, `updatedBy`, and **deleting** `legacyPhone` (never setting it) (field
+  `hasOnly`). Owner only: **merge** (`mergedInto` + `merged*` set, `mergedInto != docId`, the
+  winner exists and has no `mergedInto`, 1 get, `reasonOk`), **unmerge** (`mergedInto` deleted,
+  `unmerged*` set, `reasonOk`) and **erasure** (`erasedAt`). `createdAt` / `createdBy` never
+  change.
 - **Delete:** owner only (Clear Data). Erasure is an update, not a delete (old bills keep their
   link).
 - **`partyIndex/main`:** keys `hasOnly(['p', 'last', 'updatedAt'])`. A non-owner write changes
-  only `p.<last>` (`diff().affectedKeys().hasOnly([last])`, as `validPersonalDay`), that entry
-  equals the party doc after the same batch (`getAfter`, 1 get) and has no `m`. The owner may change
-  several entries in one write (merge, unmerge, "Set up parties"), like every other owner write.
+  only leaves under `p.<last>` (`diff().affectedKeys().hasOnly([last])`, as `validPersonalDay`),
+  never `m`, `e` or `ek`, and the entry after the write equals the party doc after the same batch
+  (`getAfter`, 1 get). The owner may change several entries in one write (merge, unmerge, erasure,
+  "Set up parties"), like every other owner write; the app still writes leaves only.
 - **Bills:** `partyId`, when present, is a string matching `^[A-Za-z0-9_-]{1,40}$`; it is added to
   `editLoggedFields()` and `validEditCreate`'s `editFieldOk` list. Existence is **not** checked on
-  bill create (offline ordering, expression budget; rule 2 covers a missing party).
+  bill create (offline ordering, expression budget; rule 2 covers a missing party). For erasure
+  (phase 9) one narrow owner exception: deleting only `customerPhone` / `phone` / `mobile` on a
+  **voided** bill (today a voided bill never changes, owner included).
 - Rules tests for prod and `dev_`: create/update by each role, consent required with a phone,
-  merge owner-only, no self-merge or merge into a merged party, directory entry must match, the
-  edit record for a `partyId` change, a voided bill can't get a `partyId`.
+  manager may delete but not set `legacyPhone`, merge and unmerge owner-only, no self-merge or
+  merge into a merged party, directory leaves must match and only `p.<last>` for non-owners, the
+  edit record for a `partyId` change, a voided bill can't get a `partyId` but the owner can drop
+  its phone.
 
 ---
 
@@ -284,13 +305,13 @@ which 3 bring a new party, 20 reminders / statements a day, 2 merges a week.
 | A bill with `partyId` | 0 | 0 extra (a field on the same write) | |
 | Reminder, statement, party page (needs the phone) | +1 (that party doc), cached for the session | 0 | ~20 a day |
 | Merge / unmerge | 0 (+1 per listening phone) | **3–4** | |
-| Erasure | 0 | 1 party + 1 directory + 1 per opening record that has `customerPhone` | Rare |
+| Erasure | 0 | 1 per party erased (the party and its merged-away parties) + 1 directory + 1 per opening record that has `customerPhone` | Rare |
 | Outstanding, Statements, Insights grouping | **0** | 0 | Bills and directory already loaded |
 | **A day, total** | **≈ 75–100** (0.2 % of 50k) | **≈ 10** | |
 
 Rejected: a listener on the whole `parties` collection costs one read **per party per cold start**
 (300 × 40 = 12,000 reads a day, 24 % of the quota) and grows with the shop. The directory doc keeps
-it at 1 read per start up to ~5,000 parties. E2E read baselines rise by **1 at startup** per role
+it at 1 read per start up to ~2,500 parties. E2E read baselines rise by **1 at startup** per role
 (recorded with `E2E_RECORD_READS=1` in phase 2, explained in that PR).
 
 ---
@@ -309,15 +330,19 @@ records with the app's own `buildAging`. It also proposes one party per group:
 - `report.md` gets counts only (parties, merged spellings, with phone), never names (the repo is
   public); a private `parties-review.csv` next to the bundle lists the proposals and the
   "possible duplicates" for the owner. Writes: parties + 1 directory doc (a few hundred, far under
-  `apply`'s 12,000 budget). Idempotent: party ids derived from the group key
-  (`p-` + hash of the normalised name and side), so a rerun sets the same docs.
+  `apply`'s 12,000 budget). Idempotent: the id is `p-` + the first 16 hex digits of SHA-256 of
+  `<t>|<normalised name>` (`t` = `c`, `s` or `b`, the party's type as decided above), so a rerun
+  sets the same docs.
 
 **(b) Data already in happa (if go-live comes first).** Owner action "Set up parties" (Settings ›
-Parties, shown while the directory is empty): builds the same proposals from the bills already on
-the phone (the window + every open due: **0 extra reads**), shows them for review (untick, rename,
-mark duplicates to merge), then writes the parties + directory (one batch per 250 parties). Bills
-are **not** touched: rule 2 links them by name. Parties of older, fully paid bills appear the next
-time those names are billed, or when the owner loads older history on Statements.
+Parties, shown while any name on the loaded bills is not claimed by a party, with that count): builds
+the same proposals from the bills already on the phone (the window + every open due: **0 extra
+reads**), shows them for review (untick, rename, mark duplicates to merge), then writes the parties
++ directory (one batch per 250 parties). It ships **before** billing starts creating parties
+(phase 3 before phase 4), so the owner reviews the existing names first; afterwards it stays
+available for names that are still unclaimed. Bills are **not** touched: rule 2 links them by name.
+Parties of older, fully paid bills appear the next time those names are billed, or when the owner
+loads older history on Statements.
 
 Either way no bill is rewritten, nothing is lost if the setup is skipped (rule 3 = today), and the
 setup can be rerun (it only adds parties for unclaimed names).
@@ -332,8 +357,8 @@ setup can be rerun (it only adds parties for unclaimed names).
 | "Already owes" under the name field (#166) | Uses the picked `partyId`, else the resolver; equals that party's Outstanding total | BILL-DUE |
 | Cash page due payment | Suggestions from the directory; "bill is for X, not Y" compares resolved keys | DUE-PAY |
 | **Statements › Party ledger** (ST3) | Party picker = directory parties with bills + unlinked names; header uses the party name; each bill row keeps its snapshot name; Hindi name in Hindi; a merged party's ledger opens the winner; `closing == due` check unchanged | ST3 |
-| **Insights** I3 (sales by customer), I4 (by supplier), I10 (overdue parties), I12 (top share), "stopped coming" | Grouped by the resolver; snapshot `customers[].k` written as the resolved key from phase 5; old name keys resolved on read, so a later merge also merges last year's months | I3, I4, I10, I12 |
-| Month snapshots | No rebuild needed: keys are resolved when read. `SNAPSHOT_VERSION` unchanged | – |
+| **Insights** I3 (sales by customer), I4 (by supplier), I10 (overdue parties), I12 (top share), "stopped coming" | Grouped by the resolver | I3, I4, I10, I12 |
+| Month snapshots | From phase 6, `customers[].k` stores each bill's **own** key, not the resolved one: `p:<the bill's partyId>` or `n:<name>`. Old snapshots keep name keys. Both are resolved when read, so a later merge also merges last year's months and an unmerge splits them again. No rebuild, `SNAPSHOT_VERSION` unchanged | – |
 | **WhatsApp reminders** (Outstanding, Today REM-1) | Name in the app language from the party; phone only from a party with `phoneConsent` (or `legacyPhone`); without one the share sheet, as now; the message text is unchanged | REM-1 |
 | History search | Also matches a party's aliases and Hindi name | – |
 | Anomalies (duplicate bill check) | Compares resolved keys | – |
@@ -359,12 +384,19 @@ with a lawyer or CA). The design keeps the personal data small and removable:
   WhatsApp"). Without the tick the phone isn't saved.
 - **Withdrawal / correction:** "Remove phone" (owner/manager) deletes `phone` and `phoneConsent`
   (and `legacyPhone`) in one update.
-- **Erasure (owner):** "Erase party" removes the phone, Hindi name and aliases and replaces the
-  display name with "Erased party · <short id>" (`erasedAt` set) **once no due is open**. Bills keep
-  their snapshot `customerName` because books of account must be kept (Income Tax and GST: about
-  6–8 years; flagged: confirm the period), and the shop may keep a name while money is owed.
-  Opening records carrying `customerPhone` get it removed (owner write, not edit-logged). After the
-  retention period the owner's archive tool (later) can blank the snapshot names too.
+- **Erasure (owner):** "Erase party" works on the party **and every party merged into it** (their
+  names live on the losers, section 5.1). Once no due is open, it removes their phones
+  (`phone`, `phoneConsent`, `legacyPhone`), Hindi names and aliases, replaces each display name with
+  "Erased party · <short id>" and sets `erasedAt`. So that old name-only bills keep grouping under
+  the erased party instead of reappearing under the real name, its directory entry keeps `e`
+  (erasedAt) and `ek`: SHA-256 hashes of the erased name keys; rule 2 uses `ek` only for bills
+  dated **before** `e`, so the same person coming back later becomes a new party. (The hashes add
+  no exposure: those bills keep the plain name anyway, see below.) Bills keep their snapshot
+  `customerName` because books of account must be kept (Income Tax and GST: about 6–8 years;
+  flagged: confirm the period), and the shop may keep a name while money is owed. Opening records
+  carrying `customerPhone` get it removed (owner write, not edit-logged; voided ones through the
+  narrow rules exception in section 6). After the retention period the owner's archive tool (later)
+  can blank the snapshot names too.
 - **Minimisation:** the directory every phone reads has **no phones**; telemetry and TIP already
   drop `customerName`, `phone`, `partyId`; error reports never include party docs (#116); backups
   stay encrypted; exports with phones are owner-only and logged (#103).
@@ -405,18 +437,21 @@ Parties are **core** (dues / udhaar), not aadhat-specific:
 | # | PR | Size | Contents | Exit criterion |
 |---|---|---|---|---|
 | 0 | This doc | S | `docs/parties-design.md` | Owner answers the questions below |
-| 1 | One normaliser + resolver, no behaviour change | M | `utils/parties.js` (`partyNameKey`, `buildPartyResolver`); `normalizeParty` / `sameParty` become re-exports; thread `keyOf` through `buildAging`, `partyDues`, `partyDue`, `partyLedger`, `partyChoices` (use `pickPartyName`), `partySummary`, `stoppedComingCheck`, `overdueParties`; characterisation tests pin today's screens | Every figure and screen text identical; guard counts not up |
-| 2 | **Rules + repository** (RULES: orchestrator review) | M | `parties`, `partyIndex` in rules, backup list, Clear Data; `partyId` edit-logged; `firebase/repos/parties.js`; directory listener → `AppState.partyDirectory` (event, no page calls); `CLIENT_VERSION` bump; rules tests prod + `dev_`; read baselines +1 at startup | Rules tests green; E2E reads +1 only |
-| 3 | Billing picks parties | M | Suggestions on Purchase / Retail / Wholesale / cash page (fills the empty datalists); `partyId` on new bills; party auto-created on save; Hindi name shown in Hindi; i18n keys en + hi; cache bump | New bills carry `partyId` (issue AC 1) |
-| 4 | Dues by party (MONEY: orchestrator review) | M | Outstanding, Wholesale › Outstanding, party due, FIFO receive, complete-all, cash check, reminders use the resolver; phone from the party; calculations.md PARTY rewritten + oracle tests (legacy bills still appear) | Issue AC 2; O3 / O4 unchanged on the fixtures |
-| 5 | Statements and Insights by party | M | ST3 picker / ledger, I3 / I4 / I10 / I12, stopped coming, snapshot keys; oracle tests | Same totals; merged parties show as one |
-| 6 | Parties page + merge tool (MONEY + RULES) | L | Settings › Parties (owner / manager), edit, archive, possible duplicates, owner merge / unmerge with reason, audit row; property test "totals equal before and after"; E2E merge flow | Issue AC 3 and 4 |
-| 7 | Migration and "Set up parties" | M | `tools/migrate` proposes parties (private review CSV, counts-only report), `partyId` on opening records, migration E2E checks; in-app setup from loaded bills | Rehearsal on the emulators: same Outstanding totals, one party per group |
-| 8 | DPDP | S | Consent tick + notice, remove phone, erase party, `legacyPhone` handling, owner-guide (en / hi) and security.md section | Rules tests: phone needs consent; erase leaves bills intact |
-| 9 | Core move | – | Part of #208 phase 1b (dues + ageing) and 1e (repositories) | – |
+| 1 | One normaliser + resolver, no behaviour change | M | `utils/parties.js` (`partyNameKey`, `buildPartyResolver`); `normalizeParty` / `sameParty` become re-exports; thread `keyOf(bill)` through `buildAging`, `partyDues`, `partyDue`, `partyLedger`, `partyChoices`, `partySummary`, `stoppedComingCheck`, `overdueParties` (callers updated); characterisation tests pin today's screens | Every figure and screen text identical; guard counts not up |
+| 2 | **Rules + repository** (RULES: orchestrator review) | M | `parties`, `partyIndex` in rules, backup list, Clear Data, index exemption for `partyIndex.p`; `partyId` edit-logged; `firebase/repos/parties.js`; directory listener → `AppState.partyDirectory` (event, no page calls); `CLIENT_VERSION` bump; rules tests prod + `dev_`; read baselines +1 at startup | Rules tests green; E2E reads +1 only |
+| 3 | "Set up parties" (owner, in-app) | M | Proposals from the loaded bills, review screen, batch write of parties + directory; i18n en + hi; cache bump | The owner can claim today's names before billing creates parties |
+| 4 | Billing picks parties | M | Suggestions on Purchase / Retail / Wholesale / cash page (fills the empty datalists); `partyId` on new bills; party auto-created on save; Hindi name shown in Hindi; i18n keys en + hi; cache bump | New bills carry `partyId` (issue AC 1) |
+| 5 | Dues by party (MONEY: orchestrator review) | M | Outstanding, Wholesale › Outstanding, party due, FIFO receive, complete-all, cash check, reminders use the resolver; phone from the party; calculations.md PARTY rewritten + oracle tests (legacy bills still appear) | Issue AC 2; O3 / O4 unchanged on the fixtures |
+| 6 | Statements and Insights by party | M | ST3 picker / ledger (party name, or `pickPartyName` for unlinked names instead of the first spelling), I3 / I4 / I10 / I12, stopped coming, snapshot keys (each bill's own key); oracle tests | Same totals; merged parties show as one |
+| 7 | Parties page + merge tool (MONEY + RULES) | L | Settings › Parties (owner / manager), edit, archive, possible duplicates, owner merge / unmerge with reason, `PARTY_MERGE` / `PARTY_UNMERGE` audit rows; property test "totals equal before and after"; E2E merge flow | Issue AC 3 and 4 |
+| 8 | Migration tool | M | `tools/migrate` proposes parties (private review CSV, counts-only report), `legacyPhone`, `partyId` on opening records, migration E2E checks | Rehearsal on the emulators: same Outstanding totals, one party per group |
+| 9 | DPDP (RULES) | S | Consent tick + notice, remove phone, erase party (with its merged parties, `e` / `ek`), the voided-bill phone exception, owner-guide (en / hi) and security.md section | Rules tests: phone needs consent; erase leaves bills and totals intact |
+| 10 | Core move | – | Part of #208 phase 1b (dues + ageing) and 1e (repositories) | – |
 
-PRs 1, 3, 5 can be self-merged after a clean review; 2, 4, 6 touch money or rules and go to the
-orchestrator. 7 depends on 2; 4–6 depend on 1 and 2; 3 depends on 2.
+PRs 1, 3, 4, 6, 8 can be self-merged after a clean review; 2, 5, 7, 9 touch money or rules and go to
+the orchestrator. 2 depends on 1; 3 and 4 on 2 (4 after 3); 5–7 on 1 and 2; 8 on 2; 9 on 7. Phase
+8 must be in `main` before the real migration if go-live waits for it; otherwise the in-app setup
+(phase 3) covers live data.
 
 ---
 
