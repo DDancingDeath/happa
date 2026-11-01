@@ -268,7 +268,20 @@ describe('reverse an adjustment and stock count (#146)', () => {
         await StockManager.reverseAdjustment('a1');
         expect(FirebaseService.startSaveStockAdjustment).toHaveBeenCalledWith(expect.objectContaining({
             itemId: 'a', adjustType: 'remove', quantity: 15, previousStock: 30, newStock: 15, reasonCode: 'reverse', reversesId: 'a1'
-        }));
+        }), { id: 'rev_a1' });
+
+        // Reversing a removal puts the kg back at the average cost now, so the cost per kg holds
+        AppState.stock = { a: { quantity: 20, rate: 50 }, b: { quantity: 4, rate: 20 } };
+        AppState.stockAdjustments = [adj('d1', 30, 20, { adjustType: 'remove', quantity: 10, reasonCode: 'damage', date: '2/10/2026', timestamp: 2 })];
+        FirebaseService.startSaveStockAdjustment.mockClear();
+        await StockManager.reverseAdjustment('d1');
+        const reversal = FirebaseService.startSaveStockAdjustment.mock.calls[0][0];
+        expect(reversal).toMatchObject({ adjustType: 'add', quantity: 10, rate: 50, newStock: 30, reversesId: 'd1' });
+        const stock = computeStock({
+            purchases: [{ timestamp: 1, items: [{ itemId: 'a', name: 'Chana', qty: 30, rate: 50 }] }],
+            stockAdjustments: [{ ...AppState.stockAdjustments[0], itemId: 'a', timestamp: 2 }, { ...reversal, timestamp: 3 }]
+        }, AppState.items);
+        expect(stock.a).toMatchObject({ quantity: 30, rate: 50 });
 
         UIManager.showModalWithHtml = jest.fn(async (html) => {
             document.body.insertAdjacentHTML('beforeend', html);

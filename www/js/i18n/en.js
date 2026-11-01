@@ -346,6 +346,7 @@ export default {
     'msg.stock.needs_internet': "Changing an item needs the internet.",
     'msg.stock.cannot_reverse': "This adjustment can't be reversed (already reversed, or it changed nothing).",
     'msg.stock.reverse_confirm': "Take back this adjustment? Stock of {item}: {from} kg → {to} kg.",
+    'msg.stock.reverse_capped': "Only {qty} kg is in stock now, so {qty} of the {full} kg is taken back.",
     'msg.stock.reversed': "Adjustment reversed",
     'msg.stock.count_none': "Nothing to change: the counts match the stock",
     'msg.stock.count_invalid': "A count must be 0 or more kg",

@@ -272,6 +272,10 @@ export class StockManager {
      */
     static async reverseAdjustment(adjustmentId) {
         if (Helpers.isBusy('stock-adjust') || !this.canManageStock()) return;
+        if (AppState.stockReady === false) {
+            UIManager.showToast(t('msg.wholesale.stock_still_updating_try_again'));
+            return;
+        }
         const adjustments = AppState.stockAdjustments || [];
         const adj = adjustments.find(a => String(a.id) === String(adjustmentId));
         if (!adj || !canReverseAdjustment(adj, adjustments)) {
@@ -289,13 +293,23 @@ export class StockManager {
             return;
         }
         const name = (AppState.settings?.showHindi && item.hindiName) ? item.hindiName : item.name;
-        const ok = await UIManager.showModal(
-            t('msg.stock.reverse_confirm', { item: name, from: stockKg(plan.previousStock), to: stockKg(plan.newStock) }),
-            t('ui.stock.reverse_title'), true);
+        const full = Math.abs(adjustmentDelta(adj));
+        const message = [t('msg.stock.reverse_confirm', { item: name, from: stockKg(plan.previousStock), to: stockKg(plan.newStock) }),
+            plan.capped ? t('msg.stock.reverse_capped', { qty: stockKg(plan.quantity), full: stockKg(full) }) : ''].filter(Boolean).join(' ');
+        const ok = await UIManager.showModal(message, t('ui.stock.reverse_title'), true);
         if (!ok) return;
-        const saved = await Helpers.runExclusive('stock-adjust', '[data-stock-adjust]', () => this._saveAdjustment(item,
-            { quantity: plan.quantity, rawQuantity: plan.quantity, newStock: plan.newStock, reason: t('ui.stock.reason_reverse') },
-            plan.previousStock, { adjustType: plan.adjustType, rate: 0, reasonCode: 'reverse', reversesId: String(adj.id) }));
+        // Kg put back keep a cost (S2): the adjustment's own rate, else the average cost now
+        const rate = plan.adjustType === 'add' ? (Number(adj.rate) > 0 ? Number(adj.rate) : (Number(AppState.stock[item.id]?.rate) || 0)) : 0;
+        const saved = await Helpers.runExclusive('stock-adjust', '[data-stock-adjust]', () => {
+            // Reversed meanwhile (another phone): nothing to do
+            if (!canReverseAdjustment(adj, AppState.stockAdjustments || [])) {
+                UIManager.showToast(t('msg.stock.cannot_reverse'));
+                return false;
+            }
+            return this._saveAdjustment(item,
+                { quantity: plan.quantity, rawQuantity: full, newStock: plan.newStock, reason: t('ui.stock.reason_reverse') },
+                plan.previousStock, { adjustType: plan.adjustType, rate, reasonCode: 'reverse', reversesId: String(adj.id) });
+        });
         if (saved) await this.refreshAfterAdjustment();
     }
 
@@ -306,6 +320,10 @@ export class StockManager {
      */
     static async openStockCount() {
         if (Helpers.isBusy('stock-adjust') || !this.canManageStock()) return;
+        if (AppState.stockReady === false) {
+            UIManager.showToast(t('msg.wholesale.stock_still_updating_try_again'));
+            return;
+        }
         const show = (i) => (AppState.settings?.showHindi && i.hindiName) ? i.hindiName : i.name;
         const items = [...AppState.items].filter(i => i && i.id && !i.archived).sort((a, b) => String(show(a)).localeCompare(String(show(b))));
         const rows = items.map(i => `<div class="stock-count-row">
@@ -742,7 +760,9 @@ export class StockManager {
 
         let committed;
         try {
-            ({ committed } = FirebaseService.startSaveStockAdjustment(adjustment));
+            ({ committed } = reversesId
+                ? FirebaseService.startSaveStockAdjustment(adjustment, { id: `rev_${reversesId}` })
+                : FirebaseService.startSaveStockAdjustment(adjustment));
         } catch (error) {
             console.error("Stock adjustment error:", error);
             UIManager.showToast(t('msg.stock.failed_apply_adjustment'));

@@ -346,6 +346,7 @@ export default {
     'msg.stock.needs_internet': "आइटम बदलने के लिए इंटरनेट चाहिए।",
     'msg.stock.cannot_reverse': "यह बदलाव वापस नहीं लिया जा सकता (पहले ही वापस लिया गया, या इससे कुछ नहीं बदला)।",
     'msg.stock.reverse_confirm': "यह बदलाव वापस लें? {item} का स्टॉक: {from} kg → {to} kg।",
+    'msg.stock.reverse_capped': "अभी सिर्फ़ {qty} kg स्टॉक है, इसलिए {full} kg में से {qty} kg वापस होगा।",
     'msg.stock.reversed': "बदलाव वापस लिया",
     'msg.stock.count_none': "कुछ नहीं बदला: गिनती स्टॉक से मिलती है",
     'msg.stock.count_invalid': "गिनती 0 या उससे ज़्यादा kg होनी चाहिए",
