@@ -25,6 +25,11 @@ import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext, contextMonth } from '../utils/insights-context.js';
 import { figuresFromSnapshot, monthKeyOf, monthKeysBetween, snapshotCustomers as customersOfSnapshot, snapshotItemSales } from '../utils/month-snapshots.js';
 import { MoneyManager } from './money.js';
+import { UIManager } from '../ui/ui-manager.js';
+import { STORAGE_FULL_KEY } from '../utils/storage-full.js';
+import {
+    compareBarHtml, compareTarget, choosePreset, chooseCompare, applyDates, applySaved, saveCurrentRange, removeCurrentRange, periodText, presetSelectValue
+} from '../ui/period-compare.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const money = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : formatRupees(v));
@@ -57,7 +62,7 @@ export const InsightsManager = {
         this.setupTaps();
         const sel = document.getElementById('insightsPreset');
         const { preset } = getInsightsContext();
-        if (sel) sel.value = /^month:/.test(preset) ? '' : preset;
+        if (sel) sel.value = presetSelectValue(preset);
         this.showSection();
         this.render();
         MoneyManager.loadSnapshots().then(() => { if (this.isOpen()) this.render(); })
@@ -87,7 +92,37 @@ export const InsightsManager = {
     },
 
     setPreset(preset) {
-        setInsightsContext({ preset });
+        choosePreset(preset);
+        this.render();
+    },
+
+    // Period B (#140), as on Money (shared context)
+    setCompare(value) {
+        chooseCompare(value);
+        this.render();
+    },
+
+    applyDates(which) {
+        if (!applyDates('insights', which)) UIManager.showToast(t('msg.cmp.pick_both_days'));
+        this.render();
+    },
+
+    applySaved(id) {
+        if (applySaved(id)) {
+            const sel = document.getElementById('insightsPreset');
+            if (sel) sel.value = presetSelectValue(getInsightsContext().preset);
+        }
+        this.render();
+    },
+
+    saveRange() {
+        const res = saveCurrentRange();
+        UIManager.showToast(t(res.ok ? 'msg.cmp.saved' : res.full ? STORAGE_FULL_KEY : 'msg.cmp.not_saved'));
+        this.render();
+    },
+
+    removeRange() {
+        removeCurrentRange();
         this.render();
     },
 
@@ -108,7 +143,7 @@ export const InsightsManager = {
         }
         const sel = document.getElementById('insightsPreset');
         const p = getInsightsContext().preset;
-        if (sel) sel.value = /^month:/.test(p) ? '' : p;
+        if (sel) sel.value = presetSelectValue(p);
         this.render();
     },
 
@@ -170,6 +205,7 @@ export const InsightsManager = {
         const r = this.range();
         const label = document.getElementById('insightsPeriodLabel');
         if (label) label.textContent = this.periodLabel(r);
+        this.html('insightsCmpBar', compareBarHtml('insights'));
         const ok = this.covered(r.from);
         const m = ok ? moneySummary(this.input(r.from), r, { detail: true }) : null;
         if (this.section === 'actions') this.renderActions(m, r);
@@ -183,6 +219,7 @@ export const InsightsManager = {
         const lang = getLang();
         if (r.month) return formatMonth(r.from, { lang });
         const { preset } = getInsightsContext();
+        if (r.custom) return periodText(r, preset, lang);
         if (preset === 'last-30') return t('ui.money.p_last_30');
         if (r.fy) return t('ui.money.fy_label', { years: fiscalYearLabel(r.fy) });
         return String(new Date(r.from).getFullYear());
@@ -286,16 +323,22 @@ export const InsightsManager = {
         const rows = itemSummary(m, { type: this.itemsType });
         const ly = this.lastYearItems(r);
         const lyByKey = new Map((ly || []).map(x => [x.key, x]));
+        const target = compareTarget(this.cfg());
+        const bItems = target ? this.itemsFor(r, target.range) : null;
+        const bByKey = new Map((bItems || []).map(x => [x.key, x]));
+        const arrow = (c) => (c ? `${c.dir === 'up' ? '▲' : c.dir === 'down' ? '▼' : '＝'} ${Math.abs(c.pct)}%` : '—');
         const profitKnown = m.M2 !== null;
         const head = `<thead><tr><th>${esc(t('ui.insights.item'))}</th><th class="num">${esc(t('ui.money.sales'))}</th>`
             + `${profitKnown ? `<th class="num" data-perm="profit">${esc(t('ui.money.profit'))}</th><th class="num" data-perm="profit">${esc(t('ui.insights.per100'))}</th>` : ''}`
-            + `<th class="num">${esc(t('ui.insights.vs_last_year'))}</th></tr></thead>`;
+            + `<th class="num">${esc(t('ui.insights.vs_last_year'))}</th>`
+            + (target ? `<th class="num">${esc(t('ui.cmp.vs', { period: target.label }))}</th>` : '') + '</tr></thead>';
         const body = rows.map(x => {
-            const c = change(x.sales, lyByKey.get(x.itemKey)?.sales ?? null);
-            const cmp = c ? `${c.dir === 'up' ? '▲' : c.dir === 'down' ? '▼' : '＝'} ${Math.abs(c.pct)}%` : '—';
+            const cmp = arrow(change(x.sales, lyByKey.get(x.itemKey)?.sales ?? null));
+            const cmpB = target ? arrow(bItems ? change(x.sales, bByKey.get(x.itemKey)?.sales ?? null) : null) : null;
             return `<tr data-item="${esc(x.itemKey)}"><td>${esc(nameOf(x))}</td><td class="num">${money(x.sales)}</td>`
                 + `${profitKnown ? `<td class="num" data-perm="profit">${money(x.profit)}</td><td class="num" data-perm="profit">${x.per100 === null ? '—' : roundTo(x.per100, 1)}</td>` : ''}`
-                + `<td class="num">${esc(cmp)}</td></tr>`;
+                + `<td class="num">${esc(cmp)}</td>`
+                + (cmpB === null ? '' : `<td class="num">${esc(cmpB)}</td>`) + '</tr>';
         }).join('');
         this.html('insightsItemsTable', rows.length ? head + `<tbody>${body}</tbody>` : `<tr><td>${esc(t('ui.insights.no_sales'))}</td></tr>`);
         const known = rows.filter(x => x.itemKey && x.profit !== null);
@@ -322,7 +365,11 @@ export const InsightsManager = {
 
     /** Item rows of the same period last year: computed when loaded, else from snapshots (whole months). */
     lastYearItems(r) {
-        const ly = comparisonRanges(r).lastYear;
+        return this.itemsFor(r, comparisonRanges(r).lastYear);
+    },
+
+    /** Item sales of another period `ly` (last year, or period B of #140) for the `r` items table. */
+    itemsFor(r, ly) {
         if (!ly) return null;
         if (this.covered(ly.from)) {
             return itemSummary(moneySummary(this.input(ly.from), ly, { detail: true })).map(x => ({ key: x.itemKey, sales: x.sales }));

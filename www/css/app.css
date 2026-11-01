@@ -7960,6 +7960,16 @@ body.dark-mode .notif-panel-actions {
 .st-actions .btn { min-height: 44px; }
 .st-balance { margin-top: 0; }
 
+/* Period A vs period B, saved ranges, summary (#140) */
+.ins-abbar { width: 100%; }
+.ins-ab-bar, .ins-ab-dates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
+.ins-ab-pick { display: flex; align-items: center; gap: 6px; }
+.ins-ab-bar select, .ins-ab-dates input, .ins-ab-bar .btn, .ins-ab-dates .btn { min-height: 44px; font-size: 14px; }
+.ins-ab-bar .btn, .ins-ab-dates .btn { padding: 6px 12px; }
+.ins-ab-saved { max-width: 100%; }
+.ins-ab-table .ins-cmp-up { color: #047857; }
+.ins-ab-table .ins-cmp-down { color: #b91c1c; }
+
 /* ---- css/desktop.css ---- */
 /* ==================== DESKTOP LAYOUT (wide screens only) ====================
    Everything here is inside min-width media queries so phones (<1024px) are

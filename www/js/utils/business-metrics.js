@@ -52,6 +52,7 @@ const localMidnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()
 /**
  * PERIOD: [from, to) for a preset. Calendar periods run up to the end of today.
  * @param {string} preset 'this-month' | 'last-month' | 'this-year' | 'last-year' | 'last-30' | 'all' | 'month:YYYY-MM'
+ *   | 'range:YYYY-MM-DD:YYYY-MM-DD' (PERIOD-CUSTOM: both days included, never past today)
  * @param {Date} [now]
  * @param {{monthMode?: string, yearStartMonth?: number}} [cfg]
  * @returns {{preset: string, from: number, to: number, month?: string}}
@@ -79,6 +80,13 @@ export function periodRange(preset, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
         case 'last-30': return mk(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29), endOfToday);
         case 'all': return mk(-Infinity, Infinity);
         default: {
+            const custom = customRangeDays(preset);
+            if (custom) {
+                const from = new Date(custom.from[0], custom.from[1] - 1, custom.from[2]).getTime();
+                const end = new Date(custom.to[0], custom.to[1] - 1, custom.to[2] + 1).getTime();
+                const to = Math.max(from, Math.min(end, endOfToday));
+                return mk(from, to, { custom: true, first: toLocalISODate(new Date(from)), last: toLocalISODate(new Date(Math.max(from, to - 1))) });
+            }
             const hit = /^month:(\d{4})-(\d{2})$/.exec(String(preset));
             if (hit) {
                 const from = new Date(+hit[1], +hit[2] - 1, 1);
@@ -88,6 +96,35 @@ export function periodRange(preset, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
             return mk(new Date(y, m, 1), endOfToday, { month: monthKey(now) });
         }
     }
+}
+
+const CUSTOM_RANGE = /^range:(\d{4})-(\d{2})-(\d{2}):(\d{4})-(\d{2})-(\d{2})$/;
+
+/** PERIOD-CUSTOM: the two days of a 'range:' preset ([y, m, d] each, from ≤ to), else null. */
+function customRangeDays(preset) {
+    const m = CUSTOM_RANGE.exec(String(preset));
+    if (!m) return null;
+    const a = [+m[1], +m[2], +m[3]];
+    const b = [+m[4], +m[5], +m[6]];
+    const valid = (d) => d[1] >= 1 && d[1] <= 12 && d[2] >= 1 && d[2] <= new Date(d[0], d[1], 0).getDate();
+    if (!valid(a) || !valid(b)) return null;
+    return toKey(a) <= toKey(b) ? { from: a, to: b } : { from: b, to: a };
+}
+const toKey = (d) => d[0] * 10000 + d[1] * 100 + d[2];
+
+/**
+ * PERIOD-CUSTOM: the preset for two chosen days ('YYYY-MM-DD', either order), or null when one is not a date.
+ * @param {string} fromIso
+ * @param {string} toIso
+ * @returns {?string}
+ */
+export function customRangePreset(fromIso, toIso) {
+    const ok = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+    if (!ok(fromIso) || !ok(toIso)) return null;
+    const days = customRangeDays(`range:${fromIso}:${toIso}`);
+    if (!days) return null;
+    const iso = (d) => `${d[0]}-${String(d[1]).padStart(2, '0')}-${String(d[2]).padStart(2, '0')}`;
+    return `range:${iso(days.from)}:${iso(days.to)}`;
 }
 
 /** PERIOD-FY: 1 April of the Indian financial year containing `now`, `offset` years away. */
@@ -159,6 +196,27 @@ export function change(now, then, sameWithin = INSIGHTS_DEFAULTS.sameWithinPct) 
     const pct = Math.round(((now - then) / Math.abs(then)) * 100);
     const dir = Math.abs(pct) < sameWithin ? 'same' : pct > 0 ? 'up' : 'down';
     return { pct, diff: round2(now - then), dir };
+}
+
+/** CMP-AB: the figures a period A vs period B comparison shows, in order (Money). */
+export const PERIOD_COMPARE_IDS = Object.freeze(['M1', 'M16', 'M4', 'M6', 'M14']);
+
+/**
+ * CMP-AB: period A against any chosen period B, figure by figure: both values,
+ * the ₹ difference A − B and CMP's % change (null when either is not known, or
+ * no % when B is 0).
+ * @param {Object<string, ?number>} a figures of A by spec ID (e.g. { M1, M4, M6, M14, M16 })
+ * @param {?Object<string, ?number>} b figures of B (null: not known)
+ * @param {string[]} [ids]
+ * @returns {Array<{id: string, a: ?number, b: ?number, diff: ?number, c: ?{pct: number, diff: number, dir: string}}>}
+ */
+export function periodCompare(a, b, ids = PERIOD_COMPARE_IDS) {
+    const val = (src, id) => (src && Number.isFinite(src[id]) ? src[id] : null);
+    return ids.map(id => {
+        const x = val(a, id);
+        const y = val(b, id);
+        return { id, a: x, b: y, diff: x === null || y === null ? null : round2(x - y), c: change(x, y) };
+    });
 }
 
 // ------------------------------------------------------------------ BILL-COUNT

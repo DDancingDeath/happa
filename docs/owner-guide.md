@@ -157,6 +157,15 @@ year (CMP; "not known" when that period's figures are not available).
 | Purchases (M16) | Sum of purchase bill totals (after labour). |
 | Stock movement check (M17) | Opening stock value + purchases − cost of goods sold ± corrections = closing value. |
 
+**Compare any two periods (CMP-AB).** "Choose dates…" picks any days for the period
+(PERIOD-CUSTOM). "Also compare with" adds a period B (last month, last year, a
+financial year or chosen days): the headlines show % vs B too, and a card lists
+sales, purchases, business expenses, profit and net money in for both, with the ₹
+and % change. Insights › Items gets a "vs B" column. **☆ Save range** keeps the pair
+on this phone (at most 10, under "Saved ranges"). **WhatsApp summary** and **Print
+summary** send or print the same figures (on the receipt printer, or as a picture
+when it is not connected).
+
 ### Insights (To do, Items, Parties, Seasons)
 
 | On screen | How it is worked out |
