@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Every figure on the Today page for one local day
  * (docs/calculations.md T1–T19, T-LAB-1..3). Pure: no DOM, no AppState, no
@@ -30,19 +31,26 @@ export const TODAY_SPEC = Object.freeze({
     dayBills: 'T19'
 });
 
-const expenseAmount = (e) => Number(e.amount) || 0;
+const expenseAmount = (/** @type {Expense} */ e) => Number(e.amount) || 0;
 
+/**
+ * @template T
+ * @param {T[]} list
+ * @param {(x: T) => number} valueOf
+ * @returns {number}
+ */
 const sumOf = (list, valueOf) => list.reduce((sum, x) => sum + valueOf(x), 0);
 
 /**
  * T17 item cards: the day's lines grouped by item name, highest value first.
- * @param {Object[]} bills
+ * @param {Bill[]} bills
  * @returns {Array<{name: string, count: number, quantity: number, totalValue: number, avgRate: ?number}>}
  */
 export function itemRows(bills) {
+    /** @type {Object<string, {name: string, count: number, quantity: number, totalValue: number}>} */
     const byName = {};
     bills.forEach(bill => {
-        (bill.items || []).forEach(item => {
+        (bill.items || []).forEach((/** @type {Rec} */ item) => {
             const name = item.item || item.name || 'Unknown';
             if (!byName[name]) byName[name] = { name, count: 0, quantity: 0, totalValue: 0 };
             byName[name].count += 1;
@@ -59,7 +67,7 @@ export function itemRows(bills) {
  * T18 one bill type's split, adding up to its total: bills, BILL-TOTAL, cash and
  * online paid at save (BILL-AT-SAVE), paid later today (due payments on these
  * bills, cash + online), written off and the due still open (BILL-DUE).
- * @param {Object[]} bills today's bills of one type
+ * @param {Bill[]} bills today's bills of one type
  * @returns {{count: number, total: number, cash: number, online: number, paidLater: number, writtenOff: number, due: number}}
  */
 export function channelSplit(bills) {
@@ -76,8 +84,8 @@ export function channelSplit(bills) {
 }
 /**
  * T19 today's bills, newest first, each with its BILL-TOTAL.
- * @param {{purchase: Object[], wholesale: Object[], retail: Object[]}} byType
- * @returns {Array<{type: string, bill: Object, at: number, total: number}>}
+ * @param {{purchase: Bill[], wholesale: Bill[], retail: Bill[]}} byType
+ * @returns {Array<{type: string, bill: Bill, at: number, total: number}>}
  */
 export function dayBillRows(byType) {
     return Object.entries(byType)
@@ -87,31 +95,31 @@ export function dayBillRows(byType) {
 
 /**
  * Every Today figure for the local day containing `today`.
- * @param {Object} src
- * @param {{purchase?: Object[], wholesale?: Object[], retail?: Object[]}} src.bills All loaded bills (due payments on older bills count too)
- * @param {?Object[]} [src.expenses]
+ * @param {Object} [src]
+ * @param {{purchase?: Bill[], wholesale?: Bill[], retail?: Bill[]}} [src.bills] All loaded bills (due payments on older bills count too)
+ * @param {?Expense[]} [src.expenses]
  * @param {?{total?: number, count?: number, online?: number}} [src.personalDay] Today's personal expense total, count and online part
  *   (personalExpenseDays) when this phone's role can't read the personal rows (#98)
- * @param {Object[]} [src.sessions] Cash sessions of the day whose due legs count (each payment id once)
- * @param {Object} [src.settings] Labour settings (laborRate, labourPackageKg)
+ * @param {CashSession[]} [src.sessions] Cash sessions of the day whose due legs count (each payment id once)
+ * @param {Rec} [src.settings] Labour settings (laborRate, labourPackageKg)
  * @param {*} [src.today=new Date()] Any instant of the day (Date, ms or a bill date)
  */
 export function todaySummary({ bills = {}, expenses = [], personalDay = null, sessions = [], settings = {}, today = new Date() } = {}) {
-    const from = startOfLocalDay(today);
-    const to = endOfLocalDayExclusive(today);
-    const onDay = (record) => {
+    const from = /** @type {Date} */ (startOfLocalDay(today));
+    const to = /** @type {Date} */ (endOfLocalDayExclusive(today));
+    const onDay = (/** @type {Expense} */ record) => {
         const date = parseAnyBillDate(record.date);
         return date && date >= from && date < to;
     };
 
     // Bills by BILL-TIME (numeric timestamp, else date), as the drawer counts them (#147)
-    const billOnDay = (bill) => {
+    const billOnDay = (/** @type {?Bill|undefined} */ bill) => {
         const t = billDayTime(bill);
         return t >= from.getTime() && t < to.getTime();
     };
-    const purchaseBills = activityBills(bills.purchase).filter(billOnDay);
-    const wholesaleBills = activityBills(bills.wholesale).filter(billOnDay);
-    const retailBills = activityBills(bills.retail).filter(billOnDay);
+    const purchaseBills = /** @type {Bill[]} */ (activityBills(bills.purchase).filter(billOnDay));
+    const wholesaleBills = /** @type {Bill[]} */ (activityBills(bills.wholesale).filter(billOnDay));
+    const retailBills = /** @type {Bill[]} */ (activityBills(bills.retail).filter(billOnDay));
     const saleBills = [...wholesaleBills, ...retailBills];
     const dayExpenses = activeExpenses(expenses).filter(onDay);
 

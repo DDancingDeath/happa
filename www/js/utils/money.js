@@ -255,7 +255,7 @@ export function isActiveExpense(expense) {
 
 /**
  * The expenses of a list that count (isActiveExpense).
- * @param {Array<Expense>} expenses
+ * @param {?Array<Expense>|undefined} expenses
  * @returns {Array<Expense>}
  */
 export function activeExpenses(expenses) {
@@ -275,7 +275,7 @@ export function activeBills(bills) {
  * Bills that count as activity: drops voided bills (isActiveBill) and opening
  * records (isOpeningRecord). Every period / activity aggregation filters its
  * bills through this.
- * @param {Array<Bill|null|undefined>} bills
+ * @param {Array<Bill|null|undefined>|null|undefined} bills
  * @returns {Array<Bill|null|undefined>}
  */
 export function activityBills(bills) {

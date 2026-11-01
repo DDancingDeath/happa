@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Every figure on the three bill forms (purchase, retail sale,
  * wholesale sale) while a bill is being entered, the payment split and its
@@ -20,9 +21,9 @@ import { billLabour, billTotal, normalizeLabourSettings, readLineItem, readPayme
  * paise, so 0.7 kg × ₹45 (31.499999999999996 in floating point) is ₹32; never -0.
  */
 const ROUNDERS = Object.freeze({
-    rupee: (x) => Math.round(round2(x)) || 0,
-    paise: (x) => round2(x),
-    tenthOfPercent: (ratio) => Math.round(ratio * 1000) / 10
+    rupee: (/** @type {number} */ x) => Math.round(round2(x)) || 0,
+    paise: (/** @type {number} */ x) => round2(x),
+    tenthOfPercent: (/** @type {number} */ ratio) => Math.round(ratio * 1000) / 10
 });
 
 /**
@@ -66,13 +67,18 @@ export function roundFor(figure, value) {
     return ROUNDERS[ROUNDING[figure]](value);
 }
 
-/** Σ of money values (absent / unparseable = 0), unrounded. */
+/**
+ * Σ of money values (absent / unparseable = 0), unrounded.
+ * @param {any[]} list
+ * @param {(x: any) => *} valueOf
+ * @returns {number}
+ */
 const moneySum = (list, valueOf) => list.reduce((total, x) => total + (toMoney(valueOf(x)) || 0), 0);
 
 /**
  * Σ of `line.total` exactly as the forms add it for the on-screen total and the
  * WhatsApp text: plain JS addition, no paise rounding (the saved total is BF-TOTAL).
- * @param {Object[]} lines
+ * @param {Array<{total: number}>} lines
  * @returns {number}
  */
 export function draftLineSum(lines) {
@@ -95,7 +101,7 @@ export function sumWeights(weights) {
  * @returns {{qty: number, packets: number, total: number}} total in ROUNDING.lineAmount
  */
 export function computeLine({ rate, weights, qty }) {
-    const kg = Array.isArray(weights) ? sumWeights(weights) : qty;
+    const kg = /** @type {number} */ (Array.isArray(weights) ? sumWeights(weights) : qty);
     return {
         qty: kg,
         packets: Array.isArray(weights) ? weights.length : 0,
@@ -106,7 +112,7 @@ export function computeLine({ rate, weights, qty }) {
 /**
  * BF-KG: the packet weights to put back when a retail line is edited: its own
  * weights, else its kg split evenly over its packets, else its kg as one packet.
- * @param {{qty?: number, packets?: number, weights?: number[]}} line
+ * @param {{qty: number, packets?: number, weights?: number[]}} line
  * @returns {number[]}
  */
 export function weightsForEdit(line) {
@@ -119,7 +125,7 @@ export function weightsForEdit(line) {
 
 /**
  * BF-TOTAL, BF-PAYABLE: purchase totals from the lines (never from the screen).
- * @param {Array<Object>} items - bill lines ({ total, weights })
+ * @param {BillLine[]} items - bill lines ({ total, weights })
  * @param {number} laborCharges - labour deducted from the line total (0 when Labour is unticked)
  * @param {number} [heavyWeightThreshold=30] - packets heavier than this (kg) count as heavy (BF-LAB)
  * @returns {{billTotal: number, laborCharges: number, grandTotal: number, totalPackets: number, heavyPackets: number}}
@@ -140,7 +146,7 @@ export function computePurchaseTotals(items, laborCharges = 0, heavyWeightThresh
 
 /**
  * BF-LAB: labour the purchase form suggests: the shared labour rate × heavy packets.
- * @param {Object} settings - labour settings (laborRate; blank / invalid → ₹6)
+ * @param {Rec} settings - labour settings (laborRate; blank / invalid → ₹6)
  * @param {number} heavyPackets
  * @returns {{rate: number, heavyPackets: number, amount: number, box: number, working: string}}
  *   box = what goes in the Labour box (ROUNDING.autoLabourBox); working = "6 × 2"
@@ -166,7 +172,7 @@ export function payableOnScreen(billTotal, labour) {
 /**
  * BF-TOTAL of a retail sale: the saved total (paise) and what the form shows
  * (plain sum of the lines, see draftLineSum), packets and kg.
- * @param {Object[]} items - sale lines ({ total, qty, packets })
+ * @param {Array<{total: number, qty: number, packets?: number}>} items - sale lines ({ total, qty, packets })
  * @returns {{total: number, screenTotal: number, packetsShown: number, packetsSaved: number, kg: number, lines: number}}
  *   packetsShown counts a line without packets as 1 (bill table); packetsSaved as 0 (saved `totalPackets`)
  */
@@ -187,13 +193,13 @@ export function computeRetailTotals(items) {
  * itemId, else the catalogue item with that id or name / Hindi name (as the stock
  * replay maps names); null when no stock entry has a rate (never purchased, no
  * opening stock, or an unknown item).
- * @param {Object} line - ({ itemId, name })
- * @param {Object} stock - AppState.stock ({ [itemId|name]: { rate } })
- * @param {Object[]} [catalogue] - AppState.items
+ * @param {BillLine} line - ({ itemId, name })
+ * @param {Rec} stock - AppState.stock ({ [itemId|name]: { rate } })
+ * @param {Rec[]} [catalogue] - AppState.items
  * @returns {?number}
  */
 export function wholesaleCostRate(line, stock = {}, catalogue = []) {
-    const norm = (s) => String(s ?? '').trim().toLowerCase();
+    const norm = (/** @type {*} */ s) => String(s ?? '').trim().toLowerCase();
     const name = norm(readLineItem(line).name);
     const item = (catalogue || []).find(i => i && ((line?.itemId && i.id === line.itemId)
         || (name && (norm(i.name) === name || norm(i.hindiName) === name)))) || null;
@@ -210,15 +216,16 @@ export function wholesaleCostRate(line, stock = {}, catalogue = []) {
  * current average rate in stock, WS-COST), profit and margin. When a line's
  * cost is not known the profit is not known either (#102): profit and margin
  * are null and `unknownCost` lists those lines (cost then counts the known lines).
- * @param {Array<Object>} items - sale lines ({ itemId, qty|quantity, total })
- * @param {Object} stock - AppState.stock ({ [itemId]: { rate } })
+ * @param {BillLine[]} items - sale lines ({ itemId, qty|quantity, total })
+ * @param {Rec} stock - AppState.stock ({ [itemId]: { rate } })
  * @param {number} [expenses=0]
- * @param {Object[]} [catalogue] - AppState.items, to find a line's stock by name
+ * @param {Rec[]} [catalogue] - AppState.items, to find a line's stock by name
  * @returns {{total: number, cost: number, profit: ?number, profitPercent: ?number, unknownCost: number[]}}
  */
 export function computeWholesaleTotals(items, stock = {}, expenses = 0, catalogue = []) {
     const list = Array.isArray(items) ? items : [];
     const total = roundFor('billTotal', moneySum(list, item => readLineItem(item).total));
+    /** @type {number[]} */
     const unknownCost = [];
     const cost = roundFor('billTotal', moneySum(list.map((item, i) => {
         const rate = wholesaleCostRate(item, stock, catalogue);
@@ -233,10 +240,10 @@ export function computeWholesaleTotals(items, stock = {}, expenses = 0, catalogu
 
 /**
  * WS-PROFIT, WS-MARGIN as the wholesale form shows them while the bill is entered.
- * @param {Array<Object>} items
- * @param {Object} stock
+ * @param {BillLine[]} items
+ * @param {Rec} stock
  * @param {number} [expenses=0]
- * @param {Object[]} [catalogue]
+ * @param {Rec[]} [catalogue]
  * @returns {{total: number, cost: number, profit: ?number, profitPercent: ?number, unknownCost: number[], shownProfit: ?number}}
  *   shownProfit in ROUNDING.shown (also the WhatsApp text's profit); null when a cost is unknown
  */
@@ -377,6 +384,7 @@ export function hasPaise(value) {
  * @returns {Object<string, number>} the same keys
  */
 export function settleSplit(typed, target, prefer = []) {
+    /** @type {Object<string, number>} */
     const legs = {};
     Object.keys(typed).forEach(k => { legs[k] = typedAmount(toMoney(typed[k]) || 0); });
     const rest = round2(target - Object.values(legs).reduce((a, v) => a + v, 0));
@@ -405,7 +413,7 @@ export function editedPaymentSplit(typed, total, storedTotal) {
     const sum = round2(raw.online + raw.cash + raw.due);
     const settles = Math.abs(sum - total) <= SPLIT_TOLERANCE
         || (storedTotal !== null && storedTotal !== undefined && Math.abs(sum - storedTotal) <= 0.01);
-    return settles ? settleSplit(raw, total, ['due']) : paymentSplit(raw);
+    return settles ? /** @type {{online: number, cash: number, due: number}} */ (settleSplit(raw, total, ['due'])) : paymentSplit(raw);
 }
 
 /**
@@ -414,19 +422,19 @@ export function editedPaymentSplit(typed, total, storedTotal) {
  * (purchases) and the same cash / online / due. The edit then keeps every
  * stored money field exactly (a bill saved with paise keeps its paise) and
  * saves only what else changed.
- * @param {{bill: Object, items: Object[], labour: ?number, typed: {online: *, cash: *, due: *}}} edit
+ * @param {{bill: Bill, items: BillLine[], labour?: ?number, typed: {online: *, cash: *, due: *}}} edit
  *   labour: the Labour box (0 when unticked); null for sales
  * @returns {boolean}
  */
 export function editKeepsMoney({ bill, items, labour = null, typed }) {
-    const sig = (lines) => JSON.stringify((lines || []).map(l => {
+    const sig = (/** @type {BillLine[]|undefined} */ lines) => JSON.stringify((lines || []).map(l => {
         const r = readLineItem(l);
         return [l?.itemId ?? null, r.name, r.qty, r.rate, r.total, Array.isArray(l?.weights) ? l.weights.map(Number) : null];
     }));
     if (sig(items) !== sig(bill?.items)) return false;
     if (labour !== null && round2(toMoney(labour) || 0) !== billLabour(bill)) return false;
     const stored = readPayment(bill);
-    return ['online', 'cash', 'due'].every(k => round2(toMoney(typed?.[k]) || 0) === stored[k]);
+    return /** @type {Array<'online'|'cash'|'due'>} */ (['online', 'cash', 'due']).every(k => round2(toMoney(typed?.[k]) || 0) === stored[k]);
 }
 
 /**
@@ -434,7 +442,7 @@ export function editKeepsMoney({ bill, items, labour = null, typed }) {
  * editedPaymentSplit against the new total, for the bill being edited.
  * @param {{online: *, cash: *, due: *}} typed
  * @param {number} total
- * @param {Object} bill - the bill as saved
+ * @param {?Bill} bill - the bill as saved
  * @returns {{online: number, cash: number, due: number}}
  */
 export function editSplitFor(typed, total, bill) {
@@ -460,7 +468,7 @@ export function validateDuePayment(cash, online, due, tolerance = 0.01) {
     if (c0 < 0 || o0 < 0) return { ok: false, error: 'negative' };
     const d = round2(Number(due) || 0);
     const paysOldDue = hasPaise(d) && Math.abs(round2(c0 + o0) - d) <= tolerance;
-    const prefer = [hasPaise(c0) && 'cash', hasPaise(o0) && 'online'].filter(Boolean);
+    const prefer = /** @type {string[]} */ ([hasPaise(c0) && 'cash', hasPaise(o0) && 'online'].filter(Boolean));
     const { cash: c, online: o } = paysOldDue
         ? settleSplit({ cash: c0, online: o0 }, d, prefer)
         : { cash: typedAmount(c0), online: typedAmount(o0) };
@@ -474,7 +482,7 @@ export function validateDuePayment(cash, online, due, tolerance = 0.01) {
  * BF-RECOVER: what the unsaved-bill prompt says about an auto-save: which form,
  * how many lines and the total it had (the saved `billTotal` / `saleTotal`, else
  * the lines' plain sum), as shown.
- * @param {Object} data - the auto-save document (`{ mode, purchase, sale }`; older ones hold one form at the top level)
+ * @param {Rec} data - the auto-save document (`{ mode, purchase, sale }`; older ones hold one form at the top level)
  * @returns {{mode: 'purchase'|'sale', lines: number, total: number}}
  */
 export function autoSaveSummary(data) {
@@ -491,7 +499,7 @@ export function autoSaveSummary(data) {
  * number comes from the shared counter at save (it can be higher: voided bills,
  * another phone saving first), or a device number when offline (#41).
  * @param {string} prefix - 'P' | 'S' | 'W'
- * @param {Array<Object>} bills - loaded bills of that type ({ billNumber })
+ * @param {Bill[]} bills - loaded bills of that type ({ billNumber })
  * @param {Date} [now]
  * @returns {string}
  */

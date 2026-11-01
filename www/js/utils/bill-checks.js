@@ -481,7 +481,7 @@ export function buildCheckContext(state, kind, { now = Date.now(), editingBill =
  * count is what it is; a big gap or a negative expected drawer is flagged.
  * @param {{expected: number, counted: number}} input
  * @param {Object} [thresholds]
- * @returns {Array<Object>}
+ * @returns {Rec[]}
  */
 export function evaluateCashCount({ expected, counted }, thresholds) {
     const t = normalizeThresholds(thresholds);

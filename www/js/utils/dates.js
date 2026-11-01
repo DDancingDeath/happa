@@ -36,7 +36,7 @@ export function todayLocalISO() {
 
 /**
  * Parse 'YYYY-MM-DD' as local midnight (not UTC midnight).
- * @param {string} str
+ * @param {*} str
  * @returns {Date|null}
  */
 export function parseLocalDate(str) {
