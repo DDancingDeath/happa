@@ -4,7 +4,8 @@
  */
 import {
     detectAnomalies, anomalyId, planAnomalyWrites, mergeAnomalies, summarizeAnomalies, buildDayReportText,
-    filterAnomalies, presetRange, anomalyPatterns, istDayKey, istHour, addDaysToKey, istDayStartMs, summaryLine
+    filterAnomalies, presetRange, anomalyPatterns, istDayKey, istHour, addDaysToKey, istDayStartMs, summaryLine,
+    voidedByOthers, withoutStoredVoidTwins
 } from '../utils/anomalies.js';
 
 const T = (h, m = 0, d = 22) => new Date(2026, 9, d, h, m, 0).getTime(); // Oct 2026, IST
@@ -212,7 +213,91 @@ describe('cash, stock and audit rules', () => {
         ];
         const list = run({ auditLogs: logs });
         expect(list.map(a => [a.type, a.refId, a.billNumber, a.party, a.severity])).toEqual([['bill-voided', 'l4', 'R9', 'Shyam', 'medium']]);
-        expect([list[0].en, list[0].hi]).toEqual(['Bill #R9 voided (₹500)', 'बिल #R9 रद्द किया (₹500)']);
+        expect([list[0].en, list[0].hi]).toEqual(['Bill #R9 voided (₹500) — Entered twice', 'बिल #R9 रद्द किया (₹500) — Entered twice']);
+    });
+
+    describe('voids by anyone but an owner are flagged, with the reason (#75)', () => {
+        const voidedBill = (over = {}) => bill({
+            id: 'v1', billNumber: 'R7', voided: true, voidedBy: 'u2', voidedByName: 'Ravi', voidedAt: { toDate: () => new Date(T(15)) },
+            voidReason: '  Wrong   party ', ...over
+        });
+        const people = [{ id: 'o1', name: 'Owner', role: 'owner' }, { id: 'u2', name: 'Ravi K', role: 'staff' }];
+
+        test('a loaded voided bill gives the flag at once, at the time of the void, without the audit log', () => {
+            const [a, ...rest] = run({ voided: { retail: [voidedBill()] }, ownerIds: ['o1'] });
+            expect(rest).toEqual([]);
+            expect(a).toMatchObject({
+                id: 'bill-voided~bill~v1', type: 'bill-voided', severity: 'medium', refKind: 'bill', billType: 'retail',
+                billNumber: 'R7', party: 'Ramesh', userId: 'u2', user: 'Ravi', amount: 400, at: T(15),
+                en: 'Bill #R7 voided (₹400) — Wrong party', hi: 'बिल #R7 रद्द किया (₹400) — Wrong party'
+            });
+            // the same record from every phone: the name stored on the bill, with or without the profiles
+            expect(run({ voided: { retail: [voidedBill()] }, people })[0]).toEqual(a);
+            // outside the scanned days: nothing
+            expect(run({ voided: { retail: [voidedBill({ voidedAt: T(9, 0, 21) })] }, ownerIds: ['o1'] })).toEqual([]);
+        });
+
+        test('a phone that cannot tell the owners apart (a manager\'s before the team list) leaves voids to the owner\'s phone', () => {
+            expect(run({ voided: { retail: [voidedBill(), voidedBill({ id: 'v2', billNumber: 'R8', voidedBy: 'o1' })] } })).toEqual([]);
+            expect(run({ voided: { retail: [voidedBill()] }, ownerIds: ['o1'] })).toHaveLength(1);
+        });
+
+        test('an owner\'s void is no flag: from the profiles, the owners\' list, or an entry\'s stored role', () => {
+            const byOwner = { retail: [voidedBill({ voidedBy: 'o1' })] };
+            expect(run({ voided: byOwner, people })).toEqual([]);
+            expect(run({ voided: byOwner, ownerIds: ['o1'] })).toEqual([]);
+            expect(run({ voided: byOwner, ownerIds: ['o2'] })).toHaveLength(1);
+            const log = { id: 'l6', action: 'VOID_BILL', userId: 'o1', userRole: 'owner', timestamp: T(13), details: { billNumber: 'R9', amount: 5, reason: 'x' } };
+            expect(run({ auditLogs: [log] })).toEqual([]);
+            expect(run({ auditLogs: [{ ...log, userRole: 'staff' }], people })).toEqual([]);
+            expect(run({ auditLogs: [{ ...log, userRole: 'owner' }], people: [{ id: 'o1', name: 'M', role: 'manager' }] })).toHaveLength(1);
+        });
+
+        test('the bill and its audit entry give one flag', () => {
+            const log = {
+                id: 'l7', action: 'VOID_BILL', userId: 'u2', userRole: 'staff', timestamp: T(15),
+                details: { billId: 'v1', billNumber: 'R7', billType: 'retail', amount: 400, customer: 'Ramesh', reason: 'Wrong party' }
+            };
+            const both = run({ voided: { retail: [voidedBill()] }, auditLogs: [log] });
+            expect(both.map(a => a.id)).toEqual(['bill-voided~bill~v1']);
+            // a bill outside the loaded history: the entry alone still flags it, under the bill's id
+            expect(run({ auditLogs: [log] }).map(a => [a.id, a.refKind, a.billType, a.en]))
+                .toEqual([['bill-voided~bill~v1', 'bill', 'retail', 'Bill #R7 voided (₹400) — Wrong party']]);
+            // an entry from an older app (no billId) finds its loaded bill by kind, number and person
+            const old = { ...log, details: { ...log.details, billId: undefined } };
+            expect(run({ voided: { retail: [voidedBill()] }, auditLogs: [old], people }).map(a => a.id)).toEqual(['bill-voided~bill~v1']);
+            expect(run({ voided: { retail: [voidedBill({ voidedBy: 'u3' })] }, auditLogs: [old], people }).map(a => a.id).sort())
+                .toEqual(['bill-voided~audit~l7', 'bill-voided~bill~v1']);
+        });
+
+        test('a void an older scan stored under its audit entry is not flagged again under its bill', () => {
+            const detected = run({ voided: { retail: [voidedBill()] }, ownerIds: ['o1'] });
+            const storedOld = [{ id: 'bill-voided~audit~l1', type: 'bill-voided', refKind: 'audit', billNumber: 'R7', userId: 'u2', status: 'ok' }];
+            expect(withoutStoredVoidTwins(detected, storedOld)).toEqual([]);
+            expect(withoutStoredVoidTwins(detected, [{ ...storedOld[0], userId: 'u9' }])).toEqual(detected);
+            expect(withoutStoredVoidTwins(detected, null)).toEqual(detected);
+            // the version built from the audit entry only creates the record; the bill's version may update it
+            const log = { id: 'l8', action: 'VOID_BILL', userId: 'u2', timestamp: T(14), details: { billId: 'v1', billNumber: 'R7', billType: 'retail', amount: 400, reason: 'x' } };
+            const fromEntry = run({ auditLogs: [log] });
+            const storedBill = [{ ...detected[0], status: 'open' }];
+            expect(fromEntry.map(a => a.id)).toEqual(['bill-voided~bill~v1']);
+            expect(withoutStoredVoidTwins(fromEntry, storedBill)).toEqual([]);
+            expect(withoutStoredVoidTwins(fromEntry, [])).toEqual(fromEntry);
+            expect(withoutStoredVoidTwins(detected, storedBill)).toEqual(detected);
+            // an older app's entry (no billId) seen without its bill, after the bill's record was stored
+            const oldEntry = run({ auditLogs: [{ ...log, id: 'l9', details: { ...log.details, billId: undefined } }] });
+            expect(oldEntry.map(a => a.id)).toEqual(['bill-voided~audit~l9']);
+            expect(withoutStoredVoidTwins(oldEntry, storedBill)).toEqual([]);
+            expect(withoutStoredVoidTwins(oldEntry, [{ ...storedBill[0], userId: 'u9' }])).toEqual(oldEntry);
+        });
+
+        test('owners are needed only when someone else voided a loaded bill in the scanned days', () => {
+            const v = { retail: [voidedBill()] };
+            expect(voidedByOthers(v, 'u2', DAY.from, DAY.to)).toBe(false);
+            expect(voidedByOthers(v, 'o1', DAY.from, DAY.to)).toBe(true);
+            expect(voidedByOthers(v, 'o1', DAY.to, DAY.to + 86400000)).toBe(false);
+            expect(voidedByOthers({ retail: [voidedBill({ voidedAt: null })] }, 'o1', DAY.from, DAY.to)).toBe(false);
+        });
     });
 });
 

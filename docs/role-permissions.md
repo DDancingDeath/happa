@@ -239,7 +239,14 @@ greyed with a "Voided" chip and the reason, and its details show who voided it, 
 
 - **Who:** the people who could delete a bill before: the owner any bill; anyone else only their
   own bill inside the role's `editDays` (managers too: a manager may *edit* any bill in the window
-  but void only their own). Rules: `voidOk`.
+  but void only their own). Rules: `voidOk`. No owner approval (owner's decision, 1 Nov), but every
+  void by anyone except an owner is flagged: a **medium** `bill-voided` anomaly on the owner's Today
+  (Day report) and in Anomalies, with who and the reason. It comes from the voided bills the listeners
+  already hold (`voidedBy` / `voidedAt` are set by the rules, so no extra read) and, for a bill outside
+  the loaded history, from the `VOID_BILL` audit entry (`details.reason`, `details.billId`) in the
+  owner's daily scan; both give the same flag id. Telling an owner's void apart needs the owners: the
+  owner's own phone knows itself; otherwise they are read once a session (profiles / team list) and only
+  when someone else voided a loaded bill in the scanned days.
 - **Not with later payments.** A bill with entries in `payments[]` (payments or write-offs recorded
   after it was saved, owner included) can't be voided: each such payment is also a cash-session leg,
   real money counted in the drawer on its own day, and a void never moves money. The app says so; the
