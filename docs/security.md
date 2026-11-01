@@ -138,3 +138,65 @@ about 2 assessments a day); (2) ship the SDK (web + native plugin) in
 then Firestore, only when the App Check metrics show > 95% verified requests
 for two weeks. Until then the Firestore rules remain the only data protection,
 so rules stay the priority.
+
+## Audit log and error reports (#85, #116)
+
+- **Audit log** (`auditLogs`, owner reads in Settings and Diagnostics): every entry is
+  created by an approved user **as themselves** (`userId` = caller), with the server time
+  (`serverTime`) and an UPPER_CASE action code (`^[A-Z][A-Z0-9_]{0,63}$`, no free text);
+  nobody edits an entry; the owner's phone deletes entries older than 90 days
+  (`cleanupOldLogs`, allowed by the rules). Logged: bills (create, edit, void, delete),
+  payments and write-offs, expenses (edit, delete), items (create, edit, delete, import), stock
+  adjustments (before → after), withdrawals, cash day open / close (counted vs expected),
+  Settings › Aadhat changes (labour, bill checks, business name: before → after), Roles &
+  access, accounts (approve, reject, role change, remove, restore), rentals actions,
+  Clear Data and hiding error reports. Print / export of the log is #103. An entry's stored
+  `userName` / `userRole` are whatever the phone sent (kept for history): Settings, Diagnostics
+  and the anomaly flags name the **profile** behind `userId` (the owner's phone reads the
+  profiles; the audit cards add the profile email, which unlike the name the person can't change; the role
+  is the person's role now, "removed" once removed), and show a stored name that differs, or one with no profile, as "name as sent by
+  the phone, not checked".
+- **Error reports** (`telemetry`): before a report is stored, `utils/scrub.js` replaces
+  emails, Indian mobile numbers, rupee amounts, tokens and keys (JWTs, `AIza…`,
+  `token=` / `key=` / `oobCode=` values, long opaque strings) with placeholders, drops
+  the page address's query string, and keeps only the error code of objects logged with
+  `console.error` (data objects hold names and amounts). Only the owner reads reports
+  (Diagnostics › Errors; managers see Number checks only). **Hide** / **Hide all** mark
+  reports `hidden` (owner only, nothing else may change) instead of deleting them, and
+  write a `HIDE_ERRORS` audit entry. Retention, like the audit log: once a day, when Diagnostics
+  loads, the owner's phone deletes reports last seen more than 90 days ago, hidden or not (one
+  query, at most 450).
+
+## Misuse review flags (#124)
+
+On the free plan there is no server code, so each phone reports, and the owner's daily anomaly scan
+(`modules/anomalies.js`, which already reads the audit log on the owner's phone) raises the flags
+on Anomalies and the Today day report. No extra reads.
+
+- **Refused writes**: `firebase/firestore-meter.js` sees every Firestore call; a `permission-denied`
+  on a write emits `firestore:denied` and `services/security-monitor.js` writes a `PERMISSION_DENIED`
+  audit entry with only the collection and operation (no data), 8 s later. At most one per kind every 2
+  minutes and five per 10 minutes per phone. Not recorded: refusals the app expects (a wrong phone
+  clock, a bill a retry already saved: the caller marks the error), batches and transactions (they carry
+  no collection, and several of the app's own are refused by design), the audit log itself, error
+  reports, app health and the stock checkpoint's scan state; rentals-only people can't write the log. **Flag** `access-denied` (high): one
+  person's refused changes reaching the limit in Settings › Aadhat › bill checks (default **3 within 10
+  minutes**: `deniedCount`, `deniedWindowMin`).
+- **New phone**: at start-up the app compares this phone's id (the App health device id) with
+  `deviceLog/{uid}.devices` (up to 10 `id:YYYYMMDD` entries, added with `arrayUnion`). The rules let
+  only that approved person write their own doc (`devices` only; each entry `^[a-z0-9]{1,20}:[0-9]{8}$`,
+  its day not after tomorrow), and only that person and the owner read it: managers never see phones.
+  A phone that already checked for this person reads nothing (kept on the phone). A new phone is
+  remembered; it writes `NEW_DEVICE` only once the person's list is 14 days old, so the phones in use
+  when this starts are not flagged. **Flag** `new-device` (low).
+- **Old bills**: past the edit window, Edit / Void stay visible but **locked** (greyed, "🔒 Edit window
+  closed" / "🔒 बदलने का समय बीत गया") for those who could act inside it. A tap only explains the window;
+  for someone other than the owner it also writes `OLD_BILL_EDIT_TRY` (one per bill and action per app
+  run), which is no flag by itself. **Flag** `old-bill-edit-try` (low) only when one person tries **3
+  or more different** old bills in one IST day. (Edits the rules refuse are refused writes, above.)
+
+The daily scan reads the audit log since the last scanned day in pages of 300, at most 1,000 entries
+per scanned day (`loadAuditLogsSince`), so a busy day is not cut short at the first page.
+
+These entries come from the person's own app, so a modified app can leave them out: they are review
+hints. The rules remain the protection.

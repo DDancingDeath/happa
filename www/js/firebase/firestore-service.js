@@ -177,7 +177,8 @@ const VIEWS = {
     expensesHistory: { tab: 'expenses' },
     money: { tab: 'money' },
     insights: { tab: 'insights' },
-    statements: { tab: 'statements' }
+    statements: { tab: 'statements' },
+    today: { tab: 'day' }
 };
 
 /** Debounce window that coalesces bursts of snapshot events (ms). */
@@ -304,16 +305,16 @@ const PINNED_CHUNK = 30;
 
 const HISTORY_COLLECTIONS = [
     { key: 'purchases', stateKey: 'purchaseHistory', label: 'Purchases', stock: true, dues: true,
-        views: ['billingDropdown', 'salesDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
+        views: ['billingDropdown', 'salesDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
     { key: 'retailSales', stateKey: 'retailSalesHistory', label: 'Retail sales', stock: true, dues: true,
-        views: ['billingDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
+        views: ['billingDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
     { key: 'wholesaleSales', stateKey: 'salesHistory', label: 'Sales', stock: true, dues: true,
-        views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'money', 'insights', 'statements'] },
+        views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
     { key: 'expenses', stateKey: 'expensesHistory', label: 'Expenses',
-        views: ['expensesHistory', 'money', 'insights', 'statements'] },
+        views: ['expensesHistory', 'money', 'insights', 'statements', 'today'] },
     // Shares AppState.expensesHistory with `expenses` (publishCollection merges them, #98)
     { key: 'personalExpenses', stateKey: 'expensesHistory', label: 'Personal expenses', optional: true, timestamped: true,
-        views: ['expensesHistory', 'money', 'insights', 'statements'] },
+        views: ['expensesHistory', 'money', 'insights', 'statements', 'today'] },
     { key: 'stockAdjustments', stateKey: 'stockAdjustments', label: 'Stock adjustments', stock: true,
         views: ['stockAdjustmentHistory', 'stockView', 'money', 'insights', 'statements'] },
     { key: 'withdrawals', stateKey: 'withdrawalsHistory', label: 'Withdrawals', optional: true,
@@ -1012,7 +1013,11 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
     const write = Promise.resolve(sent).then(settled, (error) => {
         const superseded = retriedBillSaves.has(key) && isPermissionDenied(error);
         settled();
-        if (superseded) return { supersededByRetry: true };
+        if (superseded) {
+            // Expected (a retry already saved this bill): not a misuse signal (#124)
+            if (error && typeof error === 'object') error.aadhatExpected = true;
+            return { supersededByRetry: true };
+        }
         throw error;
     });
     // Server acknowledgement (may come after settleWrite released the UI)
@@ -2069,6 +2074,8 @@ function settleWrite(writePromise, label = 'write') {
 /** Users list cache for notification fan-out (avoids a query per edit). */
 const USERS_CACHE_TTL_MS = 10 * 60 * 1000;
 let usersCache = null;
+/** Every profile, for naming audit entries (owner; Diagnostics, Settings, the anomaly scan). */
+let auditPeopleCache = null;
 
 // Owner: every profile; managers: the team directory (#87), never other profiles.
 const getUsersForNotifications = async () => {
@@ -4271,15 +4278,28 @@ const FirebaseService = {
     },
 
     /**
-     * Audit log entries since `sinceMs`, newest first, bounded (owner only by rules).
+     * Audit log entries since `sinceMs`, newest first (owner only by rules), read in
+     * pages of `pageSize` until all are read or `max` is reached.
      * @param {number} sinceMs
-     * @param {number} [max=300]
+     * @param {number} [max=1000]
+     * @param {number} [pageSize=300]
      * @returns {Promise<Array<Object>>}
      */
-    async loadAuditLogsSince(sinceMs, max = 300) {
-        const snapshot = await this.db.collection(col('auditLogs'))
-            .where('timestamp', '>=', sinceMs).orderBy('timestamp', 'desc').limit(max).get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    async loadAuditLogsSince(sinceMs, max = 1000, pageSize = 300) {
+        const logs = [];
+        let after = null;
+        while (logs.length < max) {
+            let query = this.db.collection(col('auditLogs'))
+                .where('timestamp', '>=', sinceMs).orderBy('timestamp', 'desc');
+            if (after) query = query.startAfter(after);
+            const want = Math.min(pageSize, max - logs.length);
+            const snapshot = await query.limit(want).get();
+            snapshot.docs.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
+            if (snapshot.docs.length < want) break;
+            after = snapshot.docs[snapshot.docs.length - 1];
+        }
+        if (logs.length >= max) console.warn(`Audit log: stopped at ${max} entries since ${new Date(sinceMs).toISOString()}`);
+        return logs;
     },
 
     // ---- Anomalies (#187): owner/manager only (rules) ---------------------
@@ -4371,9 +4391,21 @@ const FirebaseService = {
         return teamPeople(await readTeamDirectory());
     },
 
+    /**
+     * Every profile (owner), to name the writer of audit entries (#85); reused for 10 minutes.
+     * @returns {Promise<Object[]>}
+     */
+    async loadAuditPeople() {
+        if (auditPeopleCache && Date.now() - auditPeopleCache.at < USERS_CACHE_TTL_MS) return auditPeopleCache.users;
+        const users = await this.loadUsers();
+        auditPeopleCache = { at: Date.now(), users };
+        return users;
+    },
+
     /** Forgets the cached people lists (sign-out: the next user may have another role). */
     forgetPeopleCaches() {
         usersCache = null;
+        auditPeopleCache = null;
         knownTeam = undefined;
     },
 
@@ -4402,6 +4434,7 @@ const FirebaseService = {
     async updateUser(userId, fields) {
         await getDb().collection(col('users')).doc(userId).update(fields);
         usersCache = null;
+        auditPeopleCache = null;
     },
 
     /**
@@ -4415,6 +4448,7 @@ const FirebaseService = {
             rejectedBy: byUid || null
         });
         usersCache = null;
+        auditPeopleCache = null;
     },
 
     /**
@@ -4432,6 +4466,7 @@ const FirebaseService = {
             rejectedBy: del
         });
         usersCache = null;
+        auditPeopleCache = null;
     },
 
     /**
@@ -4451,6 +4486,7 @@ const FirebaseService = {
             disabledBy: byUid || null
         });
         usersCache = null;
+        auditPeopleCache = null;
     },
 
     /** Number of documents in a collection (full read; Admin → Storage). */

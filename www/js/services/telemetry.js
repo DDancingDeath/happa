@@ -7,7 +7,9 @@
 import { AppState } from '../utils/state.js';
 import { noteTipError } from '../tip/index.js';
 import { on, TOAST_ERROR } from '../utils/events.js';
-import { saveTelemetryReport, recentTelemetryReports, deleteAllTelemetryReports, deleteTelemetryReports } from '../firebase/repos/telemetry.js';
+import { saveTelemetryReport, recentTelemetryReports, hideTelemetryReports, deleteTelemetryReportsBefore } from '../firebase/repos/telemetry.js';
+import { safeSetItem } from '../utils/storage-full.js';
+import { describeLogArg, scrubText, scrubUrl } from '../utils/scrub.js';
 
 /**
  * Maximum number of errors to store locally before syncing
@@ -45,6 +47,11 @@ const TELEMETRY_TEXT_LIMITS = {
 
 const clip = (value, max) => (value === undefined || value === null ? undefined : String(value).slice(0, max));
 
+const SCRUBBED_FIELDS = new Set(['message', 'stack', 'context']);
+
+/** How long an error report is kept after it was last seen (#116; the audit log keeps 90 days too). */
+const REPORT_KEEP_MS = 90 * 24 * 60 * 60 * 1000;
+
 /**
  * The telemetry document for one grouped error, holding only the fields the
  * rules allow (#122): reports are create-only, one document per sync.
@@ -69,6 +76,9 @@ function buildTelemetryDoc(group, uid) {
         if (key === 'context' && value !== undefined && typeof value !== 'string') {
             try { value = JSON.stringify(value); } catch (_) { value = String(value); }
         }
+        // #116: no emails, phone numbers, amounts or tokens in stored reports
+        if (SCRUBBED_FIELDS.has(key)) value = scrubText(value);
+        if (key === 'url' || key === 'source') value = scrubUrl(value);
         const text = clip(value, max);
         if (text !== undefined) doc[key] = text;
     });
@@ -117,6 +127,9 @@ const TelemetryService = {
      * @type {Array}
      */
     errorBuffer: [],
+
+    /** Errors caught since the app opened (toasts not counted), for the Diagnostics Status tab. */
+    sessionErrors: 0,
 
     /**
      * Sync timer ID
@@ -189,19 +202,8 @@ const TelemetryService = {
      * @param {Array} args - Console error arguments
      */
     captureConsoleError(args) {
-        const message = args.map(arg => {
-            if (arg instanceof Error) {
-                return arg.message;
-            }
-            if (typeof arg === 'object') {
-                try {
-                    return JSON.stringify(arg);
-                } catch (e) {
-                    return String(arg);
-                }
-            }
-            return String(arg);
-        }).join(' ');
+        // Objects are reduced to their error code: data objects carry names and amounts (#116)
+        const message = args.map(describeLogArg).join(' ');
 
         // Skip certain noisy errors
         if (message.includes('Telemetry') || 
@@ -227,7 +229,10 @@ const TelemetryService = {
         }
         // TIP error watcher (#217): errors during an open scenario run turn a pass into a warning.
         // An error toast may be a typing mistake; a real failure also reaches console.error.
-        if (errorData?.type !== 'toast') noteTipError();
+        if (errorData?.type !== 'toast') {
+            noteTipError();
+            if (errorData?.type !== 'warning') this.sessionErrors++;
+        }
         const error = {
             ...errorData,
             timestamp: Date.now(),
@@ -393,7 +398,9 @@ const TelemetryService = {
         }
 
         try {
-            return mergeTelemetryReports(await recentTelemetryReports(300));
+            const docs = await recentTelemetryReports(300);
+            this.cleanupOldReports().catch(e => console.warn('Old error reports not deleted:', e?.code || e));
+            return mergeTelemetryReports(docs.filter(d => d.hidden !== true));
         } catch (error) {
             console.warn('Failed to get telemetry data:', error.message);
             return [];
@@ -401,40 +408,35 @@ const TelemetryService = {
     },
 
     /**
-     * Clear telemetry data (owner only)
-     * @returns {Promise<void>}
+     * Retention (#116, as the audit log): the owner's phone deletes reports last seen
+     * more than 90 days ago, hidden or not, at most 450 per run (one bounded query),
+     * at most once a day per phone.
+     * @param {number} [now]
+     * @returns {Promise<number>} how many were deleted
      */
-    async clearTelemetryData() {
-        if (AppState.userRole !== 'owner') {
-            throw new Error('Unauthorized');
-        }
-
-        try {
-            await deleteAllTelemetryReports();
-        } catch (error) {
-            console.warn('Failed to clear telemetry data:', error.message);
-            throw error;
-        }
+    async cleanupOldReports(now = Date.now()) {
+        if (AppState.userRole !== 'owner') return 0;
+        const key = 'happaTelemetryCleanup';
+        if (now - (Number(localStorage.getItem(key)) || 0) < 24 * 60 * 60 * 1000) return 0;
+        const deleted = await deleteTelemetryReportsBefore(now - REPORT_KEEP_MS, 450);
+        safeSetItem(key, String(now));
+        return deleted;
     },
 
     /**
-     * Delete one error (owner only): every report document merged into it.
-     * @param {string} errorId - Error fingerprint (or legacy document id)
-     * @param {string[]} [docIds] - documents merged into this entry
-     * @returns {Promise<void>}
+     * Hides error reports (owner only, #116): marked `hidden`, never deleted, so the
+     * record stays in Firestore; Diagnostics stops listing them.
+     * @param {string[]} docIds - report documents (every one merged into the entries shown)
+     * @returns {Promise<number>} how many were hidden
      */
-    async deleteError(errorId, docIds) {
+    async hideErrors(docIds) {
         if (AppState.userRole !== 'owner') {
             throw new Error('Unauthorized');
         }
-
-        try {
-            const ids = docIds && docIds.length ? docIds : [errorId];
-            await deleteTelemetryReports(ids);
-        } catch (error) {
-            console.warn('Failed to delete error:', error.message);
-            throw error;
-        }
+        const ids = [...new Set((docIds || []).filter(Boolean))];
+        if (!ids.length) return 0;
+        await hideTelemetryReports(ids, AppState.currentUser?.uid || null);
+        return ids.length;
     }
 };
 

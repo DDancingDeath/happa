@@ -261,19 +261,25 @@ describe('telemetry (services/telemetry.js)', () => {
         expect(fake.raw('dev_telemetry').size).toBe(2);
     });
 
-    test('owner reads, clears and deletes reports', async () => {
+    test('owner reads and hides reports (#116); reports last seen over 90 days ago are deleted, hidden or not', async () => {
+        const OLD = NOW - 91 * 86400000;
         fake.seed('dev_telemetry', [
-            { id: 't1', fingerprint: 'fp1', message: 'a', lastSeen: 2, count: 1 },
-            { id: 't2', fingerprint: 'fp2', message: 'b', lastSeen: 1, count: 1 }
+            { id: 't1', fingerprint: 'fp1', message: 'a', lastSeen: NOW - 2000, count: 1 },
+            { id: 't2', fingerprint: 'fp2', message: 'b', lastSeen: NOW - 3000, count: 1 },
+            { id: 't0', fingerprint: 'fp0', message: 'z', lastSeen: NOW - 1000, count: 1, hidden: true },
+            { id: 't9', fingerprint: 'fp9', message: 'old hidden', lastSeen: OLD, count: 1, hidden: true },
+            { id: 't8', fingerprint: 'fp8', message: 'old shown', lastSeen: OLD, count: 1 }
         ]);
         const data = await TelemetryService.getTelemetryData();
-        await TelemetryService.deleteError('fp1', ['t1']);
-        await TelemetryService.deleteError('t2');
-        fake.seed('dev_telemetry', [{ id: 't3', fingerprint: 'fp3', message: 'c', lastSeen: 3, count: 1 }]);
-        await TelemetryService.clearTelemetryData();
+        for (let i = 0; i < 10; i++) await Promise.resolve();
+        await TelemetryService.hideErrors(['t1', 't2', 't1']);
         pin('telemetry.owner', rec.log);
-        expect(data.length).toBe(2);
-        expect(fake.raw('dev_telemetry').size).toBe(0);
+        expect(data.map(d => d.id)).toEqual(['fp1', 'fp2', 'fp8']);
+        expect([...fake.raw('dev_telemetry').keys()].sort()).toEqual(['t0', 't1', 't2']);
+        expect(fake.raw('dev_telemetry').get('t1')).toMatchObject({ hidden: true, message: 'a' });
+        expect((await TelemetryService.getTelemetryData()).length).toBe(0);
+        // at most once a day per phone
+        expect(await TelemetryService.cleanupOldReports(NOW + 1000)).toBe(0);
     });
 });
 

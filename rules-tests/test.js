@@ -941,9 +941,9 @@ function defineSuite(prefix) {
     t('staff cannot set own approvedBy', () =>
         assertFails(as('staff1').collection(users).doc('staff1').update({ approvedBy: 'staff1' })));
 
-    t('users change only their own name and phone list (#64, #124)', async () => {
+    t('users change only their own name (#64; phones are in deviceLog, #124)', async () => {
         await assertSucceeds(as('staff1').collection(users).doc('staff1').update({ name: 'Renamed' }));
-        await assertSucceeds(as('staff1').collection(users).doc('staff1').update({ devices: ['abc123', 'def456'] }));
+        await assertFails(as('staff1').collection(users).doc('staff1').update({ devices: ['abc123', 'def456'] }));
         await assertSucceeds(as('rentOnly').collection(users).doc('rentOnly').update({ name: 'Renamed' }));
         await assertFails(as('staff1').collection(users).doc('staff1').update({ lastLogin: new Date() }));
         await assertFails(as('staff1').collection(users).doc('staff1').update({ email: 'other@x.com' }));
@@ -1002,6 +1002,30 @@ function defineSuite(prefix) {
         await assertFails(as('pending1').collection(users).doc('pending1').collection('preferences').doc('ui').get());
     });
 
+    // ---- phones per person (#124): deviceLog/{uid} ----
+
+    t('deviceLog: a person writes only their own list of up to 10 "id:YYYYMMDD" entries; they and the owner read it, managers never', async () => {
+        const log = (uid) => as(uid).collection(`${prefix}deviceLog`).doc(uid);
+        const day = (ms) => { const d = new Date(ms); return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`; };
+        const today = day(Date.now());
+        await assertSucceeds(log('staff1').set({ devices: [`abc123:${today}`] }));
+        await assertSucceeds(log('staff1').set({ devices: FieldValue.arrayUnion(`def456:${today}`) }, { merge: true }));
+        await assertSucceeds(log('staff1').get());
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}deviceLog`).doc('staff1').get());
+        await assertFails(as('manager1').collection(`${prefix}deviceLog`).doc('staff1').get());
+        await assertFails(as('manager1').collection(`${prefix}deviceLog`).get());
+        await assertFails(as('staff1').collection(`${prefix}deviceLog`).doc('manager1').set({ devices: [`abc123:${today}`] }));
+        await assertFails(as('pending1').collection(`${prefix}deviceLog`).doc('pending1').set({ devices: [`abc123:${today}`] }));
+        // bad entries, a future day, too many, other fields
+        await assertFails(log('staff1').set({ devices: ['ABC:20261101'] }));
+        await assertFails(log('staff1').set({ devices: ['abc123'] }));
+        await assertFails(log('staff1').set({ devices: ['abc123:20261301'] }));
+        await assertFails(log('staff1').set({ devices: [`abc123:${day(Date.now() + 3 * DAY)}`] }));
+        await assertFails(log('staff1').set({ devices: Array.from({ length: 11 }, (_, i) => `d${i}:${today}`) }));
+        await assertFails(log('staff1').set({ devices: [`abc123:${today}`], note: 'x' }));
+        await assertSucceeds(log('staff1').set({ devices: Array.from({ length: 10 }, (_, i) => `d${i}:${today}`) }));
+    });
+
     t('a new bill carries createdAt = the server time; only the owner may leave it out (#115)', async () => {
         const bill = (extra = {}) => ({ total: 10, clientVersion: 4, userId: 'staff1', ...extra });
         for (const coll of bills) {
@@ -1051,6 +1075,16 @@ function defineSuite(prefix) {
         await assertFails(logs.add(audit('staff1', { action: 'X'.repeat(100) })));
     });
 
+    t('audit: the action is an UPPER_CASE code (#85): no free text', async () => {
+        const logs = as('staff1').collection(auditLogs);
+        for (const action of ['RENT_PAYMENT', 'CASH_OPEN', 'PERMISSION_DENIED', 'APPROVE_USER']) {
+            await assertSucceeds(logs.add(audit('staff1', { action })));
+        }
+        for (const action of ['delete bill', 'Owner approved Ram', '', '_X', 'A-B', 7]) {
+            await assertFails(logs.add(audit('staff1', { action })));
+        }
+    });
+
     t('audit: pending/rejected/unauthenticated users cannot append', async () => {
         await assertFails(as('pending1').collection(auditLogs).add(audit('pending1')));
         await assertFails(as('rejected1').collection(auditLogs).add(audit('rejected1')));
@@ -1088,11 +1122,20 @@ function defineSuite(prefix) {
         await assertSucceeds(as('legacyOwner').collection(telemetry).doc('abc123-1').delete());
     });
 
-    t('telemetry: reports cannot be rewritten (no update, not even by the owner)', async () => {
+    t('telemetry: reports cannot be rewritten; the owner may only hide one (#116)', async () => {
         await seedBill(telemetry, 'fp1', report('staff1'));
         await assertFails(as('staff1').collection(telemetry).doc('fp1').update({ count: 3 }));
         await assertFails(as('staff1').collection(telemetry).doc('fp1').set(report('staff1', { message: 'nothing' })));
         await assertFails(as('legacyOwner').collection(telemetry).doc('fp1').update({ count: 0 }));
+        const hide = (uid, extra = {}) => as(uid).collection(telemetry).doc('fp1')
+            .update({ hidden: true, hiddenBy: uid, hiddenAt: serverTimestamp(), ...extra });
+        await assertFails(hide('staff1'));
+        await assertFails(hide('manager1'));
+        await assertFails(hide('legacyOwner', { hiddenBy: 'staff1' }));
+        await assertFails(hide('legacyOwner', { hiddenAt: Timestamp.fromMillis(Date.now() - DAY) }));
+        await assertFails(hide('legacyOwner', { hidden: 'yes' }));
+        await assertFails(hide('legacyOwner', { message: 'gone' }));
+        await assertSucceeds(hide('legacyOwner'));
     });
 
     t('telemetry: forged uid, bad counts, oversized fields and unknown fields are rejected', async () => {

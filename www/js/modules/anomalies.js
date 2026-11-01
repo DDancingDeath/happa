@@ -22,6 +22,7 @@ import {
     withoutUnstockedOversell
 } from '../utils/anomalies.js';
 import { firstStockTimes } from '../utils/stock-check.js';
+import { auditScanCap } from '../utils/security-flags.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
@@ -38,7 +39,6 @@ const REPORT_TTL_MS = 30 * 60 * 1000;
 const REPORT_KEY = 'aadhatAnomalyReportRead';
 const REPORT_LIMIT = 200;
 const SCAN_LIMIT = 500;
-const AUDIT_LIMIT = 300;
 const SCAN_KEY = 'aadhatAnomalyScanDay';
 const PAGE_SIZE = 200;
 const SEV_COLORS = { high: '#dc2626', medium: '#d97706', low: '#6b7280' };
@@ -114,17 +114,25 @@ export const AnomaliesManager = {
                 return [];
             }),
             audit && AppState.userRole === 'owner'
-                ? FirebaseService.loadAuditLogsSince(from, AUDIT_LIMIT).catch(e => {
+                ? FirebaseService.loadAuditLogsSince(from, auditScanCap(from, to)).catch(e => {
                     console.warn('Anomaly scan: audit log not read:', e?.code || e);
                     return [];
                 })
                 : Promise.resolve([])
         ]);
+        // Audit-based flags name the profile behind the entry's userId, not the name the phone stored (#85)
+        const people = auditLogs.length
+            ? await FirebaseService.loadAuditPeople().catch(e => {
+                console.warn('Anomaly scan: profiles not read:', e?.code || e);
+                return [];
+            })
+            : [];
         const detected = detectAnomalies({
             bills: loadedBills(),
             sessions,
             adjustments: AppState.stockAdjustments || [],
             auditLogs,
+            people,
             catalogue: AppState.items || [],
             stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
@@ -159,7 +167,7 @@ export const AnomaliesManager = {
      * Once per IST day per user and device (owner/manager, guarded in
      * localStorage across app reopens): scan from the last scanned day (or
      * `scanDays` back) to today over the loaded history window. The only
-     * place the audit log is read (owner devices, capped at AUDIT_LIMIT).
+     * place the audit log is read (owner devices, at most AUDIT_PER_DAY entries per scanned day).
      */
     async dailyScan() {
         if (!canSee() || !AppState.currentUser) return;

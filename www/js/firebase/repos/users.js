@@ -1,8 +1,9 @@
 /**
  * @fileoverview Repository of user profiles (`users/{uid}`, docs/architecture.md
  * phase 4) for sign-in and registration: the profile read (cache first, or from
- * the server) and the pending profile made on registration; and the team
- * directory `settings/team` (#87). The Users admin page goes through
+ * the server) and the pending profile made on registration; the team directory
+ * `settings/team` (#87); and each person's phone list (`deviceLog/{uid}`, #124).
+ * The Users admin page goes through
  * FirebaseService (loadUsers, updateUser…).
  * @module firebase/repos/users
  */
@@ -29,6 +30,34 @@ export async function readTeamDirectory() {
  */
 export function writeTeamDirectory(directory) {
     return teamRef().set({ people: directory.people, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+}
+
+const deviceLogRef = (uid) => firebase.firestore()
+    .collection(window.getCollection ? window.getCollection('deviceLog') : 'deviceLog').doc(uid);
+
+/**
+ * The person's own list of phones (#124, `deviceLog/{uid}`: read by that person and the owner).
+ * @param {string} uid
+ * @returns {Promise<string[]|null>} null when nothing was saved yet
+ */
+export async function readOwnDevices(uid) {
+    const doc = await deviceLogRef(uid).get();
+    return doc.exists ? (doc.data().devices || []) : null;
+}
+
+/**
+ * Adds a phone to the person's own list (rules: `devices` only, at most 10
+ * "id:YYYYMMDD" entries): arrayUnion, so two phones adding themselves never lose
+ * each other; a full list is replaced by `replaceWith` (oldest dropped).
+ * @param {string} uid
+ * @param {string} entry
+ * @param {string[]|null} replaceWith
+ * @returns {Promise<void>}
+ */
+export function addOwnDevice(uid, entry, replaceWith) {
+    return deviceLogRef(uid).set({
+        devices: replaceWith || firebase.firestore.FieldValue.arrayUnion(entry)
+    }, { merge: true });
 }
 
 /**

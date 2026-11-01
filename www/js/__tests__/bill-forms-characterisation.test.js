@@ -414,8 +414,8 @@ describe('wholesale sale form', () => {
     beforeEach(() => {
         document.body.innerHTML = WHOLESALE_DOM;
         saveWholesaleSale = jest.spyOn(FirebaseService, 'saveWholesaleSale').mockResolvedValue(undefined);
-        // Wheat's average cost is unknown (no rate): it counts as ₹0 cost in the live profit.
-        AppState.stock = { 'item-rice': { quantity: 500, rate: 22.4 }, 'item-wheat': { quantity: 300 } };
+        // Both average costs known; tests that need an unknown cost (#102) remove Wheat's rate.
+        AppState.stock = { 'item-rice': { quantity: 500, rate: 22.4 }, 'item-wheat': { quantity: 300, rate: 30 } };
     });
 
     async function addLine(name, rate, qty) {
@@ -425,7 +425,7 @@ describe('wholesale sale form', () => {
         await WholesaleSalesManager.addToWholesaleBill();
     }
 
-    /** Rice 12.4 kg @ ₹33.50 (cost known), Wheat 7.25 kg @ ₹40.10 (cost unknown), ₹20.50 expenses. */
+    /** Rice 12.4 kg @ ₹33.50 (cost ₹22.40), Wheat 7.25 kg @ ₹40.10 (cost ₹30), ₹20.50 expenses. */
     async function buildSale() {
         await addLine('Rice', 33.5, 12.4);
         await addLine('Wheat', 40.1, 7.25);
@@ -446,26 +446,30 @@ describe('wholesale sale form', () => {
             ['Rice', '₹33.50', '12.4 kg', '₹415'],
             ['Wheat', '₹40.10', '7.3 kg', '₹291']
         ]);
-        // #129: 428 ÷ 706 = 60.6% (was 428.24 → 60.7%); expenses ₹20.50 count as saved, ₹21: profit 407, 57.6% (was 408 shown, 407.74 saved, 57.8%)
-        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '428', '60.6']);
+        // #129 whole rupees: cost 277.76 + 217.50 = 495.26 → 495; expenses ₹20.50 count as saved, ₹21
+        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '211', '29.9']);
         setVal('salesExpensesAmount', 20.5);
         WholesaleSalesManager.updateProfitCalculation();
-        expect([text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['407', '57.6']);
-        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 706, cost: 278, profit: 407, profitPercent: 57.6 });
+        expect([text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['190', '26.9']);
+        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 706, cost: 495, profit: 190, profitPercent: 26.9, unknownCost: [] });
+        // #102: Wheat's cost not known → no profit (it used to count Wheat at cost ₹0: 407, 57.6 %)
+        delete AppState.stock['item-wheat'].rate;
+        WholesaleSalesManager.updateProfitCalculation();
+        expect([text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['—', '—']);
+        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 706, cost: 278, profit: null, profitPercent: null, unknownCost: [1] });
         expect(text('wholesaleSplitRemaining')).toBe('₹706 left');
         expect(WholesaleSalesManager.getCheckDraft()).toMatchObject({ kind: 'wholesale', total: 706 });
     });
 
-    test('no line with a known cost: profit is the total less expenses', () => {
+    test('no line with a known cost: no profit (it used to be the total less expenses, #102)', () => {
         WholesaleSalesManager.setItems([
             { itemId: 'item-maize', name: 'Maize', rate: 25.4, qty: 9.9, total: 251 },
             { name: 'Loose', rate: 10, qty: 3, total: 30.4 }
         ]);
         setVal('salesExpensesAmount', 1.25);
         WholesaleSalesManager.renderWholesaleBill();
-        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['281', '280', '99.6']);
-        // #129: was total 281.4, profit 280.15 (expenses ₹1.25 now ₹1)
-        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 281, cost: 0, profit: 280, profitPercent: 99.6 });
+        expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['281', '—', '—']);
+        expect(WholesaleSalesManager.computeTotals()).toEqual({ total: 281, cost: 0, profit: null, profitPercent: null, unknownCost: [0, 1] });
     });
 
     test('a loss shows a negative profit and margin; no lines resets the figures', async () => {
@@ -504,8 +508,8 @@ describe('wholesale sale form', () => {
 
         expect(saveWholesaleSale).toHaveBeenCalledTimes(1);
         expect(pick(sale, WHOLESALE_KEYS)).toEqual({
-            // #129: was expenses 20.5, profit 407.74, 57.8%, online 100.25, due 305.75
-            total: 706, expenses: 21, profit: 407, profitPercent: 57.6,
+            // #129: was expenses 20.5, online 100.25, due 305.75
+            total: 706, expenses: 21, profit: 190, profitPercent: 26.9,
             onlinePayment: 100, cashPayment: 300, dueAmount: 306,
             payment: { online: 100, cash: 300, due: 306, total: 706 },
             type: 'wholesale', source: 'sales-tab', customerName: 'Mohan', comments: 'truck 2'
@@ -529,8 +533,7 @@ describe('wholesale sale form', () => {
     test('WhatsApp text: plain line sum, expenses as saved (whole rupees, half-up), the profit shown', async () => {
         await buildSale();
         WholesaleSalesManager.shareViaWhatsApp();
-        // #129: was expenses 20 (cut to an integer), profit 408
-        expect(buildDraftShareText).toHaveBeenCalledWith(expect.objectContaining({ kind: 'wholesale', total: 706, expenses: 21, profit: 407 }));
+        expect(buildDraftShareText).toHaveBeenCalledWith(expect.objectContaining({ kind: 'wholesale', total: 706, expenses: 21, profit: 190 }));
     });
 
     describe('with opening records (old-app dues) in the history', () => {
@@ -561,7 +564,7 @@ describe('wholesale sale form', () => {
             expect($('salesRecentList').querySelectorAll('[data-bill-id], .history-item, .bill-row').length).toBeGreaterThan(0);
             expect($('salesRecentList').textContent).not.toContain('W-OLD');
             await buildSale();
-            expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '407', '57.6']);
+            expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '190', '26.9']);
         });
 
         test('recording a due payment checks the amount against the bill\'s due', async () => {

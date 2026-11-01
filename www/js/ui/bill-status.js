@@ -11,7 +11,7 @@ import { t } from '../i18n/index.js';
 import { isActiveBill } from '../utils/money.js';
 import { cleanReason, describeEdit, editCountOf, editHeading, REASON_MAX } from '../utils/bill-edits.js';
 import { formatDayTime } from '../utils/dates.js';
-import { canDeleteBillWith, canEditBillWith, canVoidBillWith } from '../utils/role-access.js';
+import { accessFor, canDeleteBillWith, canEditBillWith, canVoidBillWith } from '../utils/role-access.js';
 import { UIManager } from './ui-manager.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -100,13 +100,35 @@ export async function askReason({ titleKey, explainKey, labelKey }) {
  * @param {{editable?: boolean}} [opts] editable: this kind of bill can be edited here
  */
 export function setBillActions(bill, who, { editable = true } = {}) {
-    const show = (id, on) => {
+    const show = (id, on, locked = null) => {
         const el = document.getElementById(id);
-        if (el) el.style.display = on ? '' : 'none';
+        if (!el) return;
+        el.style.display = on ? '' : 'none';
+        if (locked === null) return;
+        // Edit / Void: a locked button is greyed with "🔒 Edit window closed"; a tap only explains the window
+        el.classList.toggle('bill-action-locked', on && locked);
+        if (on && locked) {
+            el.setAttribute('aria-disabled', 'true');
+            el.dataset.lockedLabel = t('ui.bill.edit_window_closed');
+            el.title = t('ui.bill.edit_window_closed');
+        } else {
+            el.removeAttribute('aria-disabled');
+            delete el.dataset.lockedLabel;
+            el.removeAttribute('title');
+        }
     };
     const active = isActiveBill(bill);
-    show('billEditBtn', editable && canEditBillWith(bill, who));
-    show('billVoidBtn', canVoidBillWith(bill, who));
+    // #124: past the edit window, Edit / Void stay visible but locked for those who could act inside it
+    const role = who?.role;
+    const mine = !!bill?.userId && bill.userId === who?.uid;
+    // Only when the role has a window at all (editDays 0 = never: the buttons stay hidden)
+    const hasWindow = accessFor(role, who?.raw).editDays > 0;
+    const canEdit = editable && canEditBillWith(bill, who);
+    const canVoid = canVoidBillWith(bill, who);
+    const lockedEdit = !canEdit && editable && active && hasWindow && (role === 'manager' || mine);
+    const lockedVoid = !canVoid && active && hasWindow && mine;
+    show('billEditBtn', canEdit || lockedEdit, lockedEdit);
+    show('billVoidBtn', canVoid || lockedVoid, lockedVoid);
     show('billDeleteBtn', canDeleteBillWith(bill, who));
     show('billReprintBtn', active);
     show('billShareBtn', active);

@@ -9,6 +9,7 @@
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AuditService } from '../services/audit.js';
+import { changedFields, formatAuditDetails, auditWho, auditWhoText, peopleById } from '../utils/audit-changes.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -21,7 +22,7 @@ import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { forgetPrinter, normalizePrinterSettings, PAPER_WIDTHS, setPaperWidth, setReceiptOptions, usePrinter } from '../utils/printer-settings.js';
-import { AuthManager } from '../auth/authentication.js';
+import { AuthManager, authErrorMessage } from '../auth/authentication.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 const LABOUR_INPUTS = ['settingHeavyWeight', 'settingLaborRate', 'settingLabourPackageKg'];
@@ -37,11 +38,19 @@ export const CHECK_THRESHOLD_FIELDS = [
     ['backdateDays', 'ui.checks.backdate_days'],
     ['cashOkRs', 'ui.checks.cash_ok'],
     ['cashHighRs', 'ui.checks.cash_high'],
-    ['stockAdjustFlagKg', 'ui.checks.stock_adjust_flag']
+    ['stockAdjustFlagKg', 'ui.checks.stock_adjust_flag'],
+    ['deniedCount', 'ui.checks.denied_count'],
+    ['deniedWindowMin', 'ui.checks.denied_window']
 ];
 const MAX_BUSINESS_NAME = 80;
 const MAX_BUSINESS_DETAILS = 120;
 const MAX_UPI = 60;
+
+/** Audit entry for a shared setting saved for everyone, with before → after (#85); nothing when unchanged. */
+function noteSettingsChange(section, before, after) {
+    const changes = changedFields(before, after);
+    if (changes.length) AuditService.note(AuditService.ACTIONS.SETTINGS_CHANGE, { section, changes: changes.join('; ').slice(0, 900) });
+}
 
 /** Set an input's value / checked state when it is on the page. */
 function setField(id, prop, value) {
@@ -221,6 +230,7 @@ export class SettingsManager {
         this.applyLabourLocally(next);
         try {
             await FirebaseService.saveSharedLabourSettings(next);
+            noteSettingsChange('labour', current, next);
             return true;
         } catch (error) {
             console.error('Saving shared labour settings failed:', error);
@@ -378,11 +388,13 @@ export class SettingsManager {
         const typed = {};
         CHECK_THRESHOLD_FIELDS.forEach(([key]) => { typed[key] = document.getElementById(`settingCheck_${key}`)?.value; });
         const next = normalizeThresholds(typed);
+        const previous = normalizeThresholds(AppState.settings?.checkThresholds);
         AppState.settings.checkThresholds = next;
         storeLocalSettings();
         CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', next[key]));
         try {
             await FirebaseService.saveSharedCheckThresholds(next);
+            noteSettingsChange('bill_checks', previous, next);
             UIManager.showToast(t('msg.admin.settings_saved_everyone'));
             return true;
         } catch (error) {
@@ -400,11 +412,13 @@ export class SettingsManager {
         }
         const clean = (id, max) => String(document.getElementById(id)?.value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
         const details = { businessName: clean('settingBusinessName', MAX_BUSINESS_NAME), businessDetails: clean('settingBusinessDetails', MAX_BUSINESS_DETAILS) };
+        const previous = { businessName: AppState.settings.shopName || '', businessDetails: AppState.settings.businessDetails || '' };
         AppState.settings.shopName = details.businessName;
         AppState.settings.businessDetails = details.businessDetails;
         storeLocalSettings();
         try {
             await FirebaseService.saveBusinessDetails(details);
+            noteSettingsChange('business', previous, details);
             UIManager.showToast(t('msg.admin.settings_saved_everyone'));
             return true;
         } catch (error) {
@@ -483,7 +497,7 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Password reset email failed:', error?.code || error);
-            UIManager.showToast(t('msg.common.failed_send_reset_email', { message: error.message }), 'error');
+            UIManager.showToast(t('msg.common.failed_send_reset_email', { message: authErrorMessage(error, 'reset') }), 'error');
             return false;
         }
     }
@@ -748,6 +762,7 @@ export class SettingsManager {
 
     // Audit Logs Methods
     static auditLogs = [];
+    static auditPeople = new Map();
     
     static async loadAuditLogs() {
         if (AppState.userRole !== 'owner') {
@@ -757,7 +772,16 @@ export class SettingsManager {
         
         UIManager.showLoading();
         try {
-            this.auditLogs = await AuditService.getRecentLogs(100);
+            // Profiles name the writer: an entry's stored name and role are whatever the phone sent (#85)
+            const [logs, people] = await Promise.all([
+                AuditService.getRecentLogs(100),
+                FirebaseService.loadAuditPeople().catch(e => {
+                    console.warn('Audit: profiles not read:', e?.code || e);
+                    return [];
+                })
+            ]);
+            this.auditLogs = logs;
+            this.auditPeople = peopleById(people);
             this.renderAuditLogs();
             UIManager.hideLoading();
         } catch (error) {
@@ -793,7 +817,8 @@ export class SettingsManager {
             
             const actionIcon = this.getActionIcon(log.action);
             const actionColor = this.getActionColor(log.action);
-            const details = this.formatDetails(log.details);
+            const details = this.formatDetails(log.details, log.action);
+            const who = auditWhoText(auditWho(log, this.auditPeople), Helpers.roleLabel);
             
             return `
                 <div style="padding: 12px; border-bottom: 1px solid #eee; display: flex; gap: 12px; align-items: flex-start;">
@@ -804,7 +829,7 @@ export class SettingsManager {
                             <span style="font-size: 11px; color: #888;">${formattedDate}</span>
                         </div>
                         <div style="font-size: 12px; color: #666;">
-                            <strong>${Helpers.escapeHtml(log.userName)}</strong> (${Helpers.escapeHtml(Helpers.roleLabel(log.userRole))})
+                            <strong>${Helpers.escapeHtml(who.main)}</strong>${who.note ? ` · ${Helpers.escapeHtml(who.note)}` : ''}
                         </div>
                         ${details ? `<div style="font-size: 11px; color: #888; margin-top: 4px;">${Helpers.escapeHtml(details)}</div>` : ''}
                     </div>
@@ -837,18 +862,7 @@ export class SettingsManager {
         return '#333';
     }
     
-    static formatDetails(details) {
-        if (!details || typeof details !== 'object') return '';
-        
-        const parts = [];
-        if (details.billNumber) parts.push(t('ui.settings.audit_bill', { value: details.billNumber }));
-        if (details.amount) parts.push(t('ui.settings.audit_amount', { value: details.amount }));
-        if (details.customer) parts.push(t('ui.settings.audit_customer', { value: details.customer }));
-        if (details.itemName) parts.push(t('ui.settings.audit_item', { value: details.itemName }));
-        if (details.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: details.paymentAmount }));
-        if (details.collections) parts.push(t('ui.settings.audit_collections', { value: details.collections.join(', ') }));
-        if (details.recordsDeleted) parts.push(t('ui.settings.audit_records', { value: details.recordsDeleted }));
-        
-        return parts.join(' • ');
+    static formatDetails(details, action) {
+        return formatAuditDetails(details, action);
     }
 }

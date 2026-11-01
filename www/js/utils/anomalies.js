@@ -25,8 +25,10 @@ import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
 import { firstStockTimes, stockKeyFor } from './stock-check.js';
 import { labourCalcText } from './labour.js';
+import { SECURITY_ACTIONS, OLD_BILL_TRIES_PER_DAY, deniedClusters } from './security-flags.js';
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
+import { peopleById } from './audit-changes.js';
 
 /** Business day boundaries are Indian Standard Time (UTC+5:30), whatever the device clock zone. */
 export const IST_OFFSET_MS = 330 * 60000;
@@ -69,6 +71,7 @@ export const ANOMALY_TYPES = Object.freeze({
     'rate-round': { en: 'Round-number line', hi: 'गोल रकम वाली लाइन', severity: 'low' },
     'qty-invalid': { en: 'Zero weight/quantity', hi: 'शून्य वज़न/मात्रा', severity: 'high' },
     'below-cost': { en: 'Sold below cost', hi: 'लागत से कम में बिक्री', severity: 'medium' },
+    'cost-unknown': { en: 'Sold with cost not known', hi: 'लागत पता नहीं, फिर भी बिक्री', severity: 'medium' },
     'oversell': { en: 'Sold more than stock', hi: 'स्टॉक से ज़्यादा बिक्री', severity: 'medium' },
     'payment-split': { en: 'Payment does not match total', hi: 'भुगतान कुल से मेल नहीं खाता', severity: 'high' },
     'payment-none': { en: 'No payment recorded', hi: 'कोई भुगतान नहीं लिखा', severity: 'high' },
@@ -89,7 +92,11 @@ export const ANOMALY_TYPES = Object.freeze({
     'bill-deleted': { en: 'Bill deleted', hi: 'बिल मिटाया', severity: 'high' },
     'bill-voided': { en: 'Bill voided', hi: 'बिल रद्द किया', severity: 'medium' },
     'expense-deleted': { en: 'Expense deleted', hi: 'खर्च मिटाया', severity: 'medium' },
-    'night-entry': { en: 'Night-time entry', hi: 'रात में एंट्री', severity: 'low' }
+    'night-entry': { en: 'Night-time entry', hi: 'रात में एंट्री', severity: 'low' },
+    // #124: from the security entries phones write to the audit log
+    'access-denied': { en: 'Changes refused again and again', hi: 'बार-बार बदलाव मना हुए', severity: 'high' },
+    'new-device': { en: 'Sign-in from a new phone', hi: 'नए फ़ोन से लॉग इन', severity: 'low' },
+    'old-bill-edit-try': { en: 'Tried to change several old bills', hi: 'कई पुराने बिल बदलने की कोशिश', severity: 'low' }
 });
 
 /** Label of a type (unknown stored flag rules fall back to their id). */
@@ -254,7 +261,7 @@ function recheckBill(bill, kind, ts, earlier, base) {
     }
     const items = Array.isArray(bill.items) ? bill.items : [];
     const byRule = new Map();
-    issues.filter(i => !isEntryIssue(i) && i.id !== 'oversell' && i.id !== 'below-cost').forEach(i => {
+    issues.filter(i => !isEntryIssue(i) && i.id !== 'oversell' && i.id !== 'below-cost' && i.id !== 'cost-unknown').forEach(i => {
         const lines = [i.line, ...(i.lines || [])].filter(n => Number.isInteger(n));
         const names = lines.map(n => readLineItem(items[n]).name).filter(Boolean);
         const prev = byRule.get(i.id);
@@ -282,6 +289,7 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {Object[]} [input.sessions] - cash sessions (`cashManagement` docs)
  * @param {Object[]} [input.adjustments] - stock adjustments
  * @param {Object[]} [input.auditLogs] - audit log entries (owner devices only)
+ * @param {Object[]} [input.people] - user profiles `{id, name, role}` (owner devices): names on audit-based flags
  * @param {Object[]} [input.catalogue] - items
  * @param {Object} [input.thresholds] - settings/app checkThresholds (+ ANOMALY_DEFAULTS keys)
  * @param {Object} [input.stock] - AppState.stock: stock on hand counts as stock set (purchase older than the loaded history)
@@ -289,7 +297,8 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {number} input.to - exclusive (ms)
  * @returns {Array<Object>} anomalies, one per id, high severity and newest first
  */
-export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], catalogue = [], thresholds = {}, stock = {}, from, to }) {
+export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], people = [], catalogue = [], thresholds = {}, stock = {}, from, to }) {
+    const peopleMap = peopleById(people);
     const t = { ...ANOMALY_DEFAULTS, ...normalizeThresholds(thresholds) };
     Object.keys(ANOMALY_DEFAULTS).forEach(k => {
         const n = Number(thresholds?.[k]);
@@ -442,6 +451,13 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         'bill-voided': (no, amount) => ({ en: `Bill${no} voided (₹${amount})`, hi: `बिल${no} रद्द किया (₹${amount})` }),
         'expense-deleted': (no, amount) => ({ en: `Expense deleted (₹${amount})`, hi: `खर्च मिटाया (₹${amount})` })
     };
+    // An entry's userId is the writer's (rules); its stored userName is whatever the phone sent,
+    // so the name comes from the profile when the owner's scan has the profiles (#85)
+    const logUser = (log) => {
+        const uid = String(log.userId || '');
+        const profile = peopleMap.get(uid);
+        return { userId: uid, user: String(profile?.name || '').trim() || nameOf(uid, log.userName === 'Unknown User' ? '' : log.userName) };
+    };
     (auditLogs || []).forEach(log => {
         const type = AUDIT_TYPES[log?.action];
         if (!type || log.id == null) return;
@@ -452,11 +468,50 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         const no = d.billNumber && d.billNumber !== 'N/A' ? ` #${d.billNumber}` : '';
         add(makeAnomaly(type, {
             refKind: 'audit', refId: log.id, billNumber: d.billNumber && d.billNumber !== 'N/A' ? String(d.billNumber) : null,
-            party: d.customer && d.customer !== 'N/A' ? String(d.customer) : '', userId: String(log.userId || ''),
-            user: nameOf(log.userId, log.userName === 'Unknown User' ? '' : log.userName), amount
+            party: d.customer && d.customer !== 'N/A' ? String(d.customer) : '', ...logUser(log), amount
         }, {
             at: Number(log.timestamp),
             ...AUDIT_TEXT[type](no, amount)
+        }));
+    });
+
+    // #124: refused writes in a burst, new phones, tries on bills past their edit window
+    deniedClusters(auditLogs, t).forEach(({ first, entries }) => {
+        const kinds = [...new Set(entries.map(e => String(e.details?.source || '').trim()).filter(Boolean))].slice(0, 4).join(', ');
+        const mins = Math.max(1, Math.round((Number(entries[entries.length - 1].timestamp) - Number(first.timestamp)) / 60000));
+        add(makeAnomaly('access-denied', { refKind: 'audit', refId: first.id, ...logUser(first) }, {
+            at: Number(first.timestamp),
+            en: `${entries.length} changes refused within ${mins} min${kinds ? ` (${kinds})` : ''}`,
+            hi: `${mins} मिनट में ${entries.length} बदलाव मना हुए`
+        }));
+    });
+    (auditLogs || []).forEach(log => {
+        if (!log || log.id == null) return;
+        if (log.action === SECURITY_ACTIONS.NEW_DEVICE) {
+            add(makeAnomaly('new-device', { refKind: 'audit', refId: log.id, ...logUser(log) }, {
+                at: Number(log.timestamp),
+                en: 'First sign-in on a phone this person had not used before',
+                hi: 'इस व्यक्ति ने पहली बार इस फ़ोन से लॉग इन किया'
+            }));
+        }
+    });
+    // Tapping a locked Edit / Void is no flag by itself; trying 3 or more different old bills in a day is
+    const triesByUserDay = new Map();
+    (auditLogs || []).filter(l => l && l.id != null && l.action === SECURITY_ACTIONS.OLD_BILL_TRY && Number.isFinite(Number(l.timestamp)))
+        .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
+        .forEach(l => {
+            const k = `${l.userId || ''}|${istDayKey(Number(l.timestamp))}`;
+            if (!triesByUserDay.has(k)) triesByUserDay.set(k, []);
+            triesByUserDay.get(k).push(l);
+        });
+    triesByUserDay.forEach(list => {
+        const billIds = new Set(list.map(l => String(l.details?.billId || '')).filter(Boolean));
+        if (billIds.size < OLD_BILL_TRIES_PER_DAY) return;
+        const first = list[0];
+        add(makeAnomaly('old-bill-edit-try', { refKind: 'audit', refId: first.id, ...logUser(first) }, {
+            at: Number(first.timestamp),
+            en: `Tried to change or void ${billIds.size} bills past their edit window in one day`,
+            hi: `एक दिन में ${billIds.size} बिल बदलाव का समय बीतने के बाद बदलने या रद्द करने की कोशिश`
         }));
     });
 

@@ -5,6 +5,7 @@
  */
 
 import { AppState } from '../utils/state.js';
+import { SecurityMonitor } from '../services/security-monitor.js';
 import { on, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -12,7 +13,7 @@ import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
-import { billLabour, readPayment, sumMoney } from '../utils/money.js';
+import { billLabour, isActiveBill, readPayment, sumMoney } from '../utils/money.js';
 import { buildPaymentSplit, computeRetailTotals, editKeepsMoney } from '../utils/calc/billing.js';
 import { BillChecksUI } from '../ui/bill-highlight.js';
 import { findBillIndex } from '../utils/history-window.js';
@@ -1129,6 +1130,10 @@ const BillingManager = {
                 return;
             }
             if (!canEditBill(bill)) {
+                // #124: a try to change a bill past its edit window goes to the owner's review
+                if (isActiveBill(bill) && (AppState.userRole === 'manager' || (bill.userId && bill.userId === AppState.currentUser?.uid))) {
+                    SecurityMonitor.noteOldBillTry(bill, billType, 'edit');
+                }
                 UIManager.showToast(editRefusedMessage(bill));
                 return;
             }
