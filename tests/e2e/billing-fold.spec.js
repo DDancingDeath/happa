@@ -14,8 +14,8 @@ const SIZES = [
 ];
 
 const MODES = {
-    purchase: { btn: '#purchaseModeBtn', item: '#billItem', rate: '#billRate', weight: '#newWeight', section: '#purchaseSection', totals: ['#billTotal', '#amountPayable'], actions: ['#saveBillBtn', '#printBillBtn'] },
-    sale: { btn: '#saleModeBtn', item: '#saleItem', rate: '#saleRate', weight: '#saleWeight', section: '#saleSection', totals: ['#saleTotal'], actions: ['#saveSaleBtn', '#printSaleBtn'] }
+    purchase: { btn: '#purchaseModeBtn', item: '#billItem', rate: '#billRate', weight: '#newWeight', section: '#purchaseSection', totals: ['#billTotal', '#amountPayable'], actions: ['#saveBillBtn', '#printBillBtn'], last: '#billDate' },
+    sale: { btn: '#saleModeBtn', item: '#saleItem', rate: '#saleRate', weight: '#saleWeight', section: '#saleSection', totals: ['#saleTotal'], actions: ['#saveSaleBtn', '#printSaleBtn'], last: '#saleDate' }
 };
 
 /** Where an element is on screen, and whether it is the topmost thing at its centre. */
@@ -25,9 +25,11 @@ const place = (page, sel) => page.$eval(sel, (el) => {
     const y = Math.min(Math.max(r.top + r.height / 2, 0), window.innerHeight - 1);
     const hit = document.elementFromPoint(x, y);
     const tab = document.querySelector('.tab.active');
+    const nav = document.querySelector('.bottom-nav');
+    const navTop = nav && nav.offsetParent !== null ? nav.getBoundingClientRect().top : window.innerHeight;
     return {
         top: Math.round(r.top), bottom: Math.round(r.bottom), right: Math.round(r.right),
-        vw: window.innerWidth, vh: window.innerHeight,
+        vw: window.innerWidth, vh: Math.round(Math.min(window.innerHeight, navTop)),
         scrolled: Math.round((tab ? tab.scrollTop : 0) + window.scrollY),
         onTop: !!hit && (hit === el || el.contains(hit))
     };
@@ -66,6 +68,10 @@ async function addLine(page, mode) {
     await tap(page, `${m.section} .quick-add-btn-inline`);
     await tap(page, `${m.section} .add-to-bill-btn`);
     await expect(page.locator(m.totals[0])).not.toHaveText('0');
+    // Nothing paid yet: the bill checks add their banner above the bill and a line under the
+    // split (after a short debounce). Measure with them, the case #104 is about.
+    await expect(page.locator(`${m.section} > .bill-check-banner`)).toBeVisible();
+    await expect(page.locator(`${m.section} .bill-col-summary .bill-check-msg`).first()).toBeVisible();
 }
 
 for (const size of SIZES) {
@@ -87,6 +93,13 @@ for (const size of SIZES) {
                 expect(p.bottom, `bottom on screen (${where})`).toBeLessThanOrEqual(p.vh);
                 expect(p.right, `not cut off on the right (${where})`).toBeLessThanOrEqual(p.vw);
                 expect(p.onTop, `nothing covers it (${where})`).toBe(true);
+            }
+            if (size.fold) {
+                // Scrolled to the end, the fields under the totals are reachable, not under Save/Print.
+                await scrollTab(page, 'end');
+                const last = await place(page, m.last);
+                expect(last.onTop, `${m.last} reachable at the end (${JSON.stringify(last)})`).toBe(true);
+                await scrollTab(page, 'top');
             }
             await testInfo.attach(`billing-${mode}-${size.width}x${size.height}.png`, {
                 body: await page.screenshot(), contentType: 'image/png'

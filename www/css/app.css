@@ -8463,10 +8463,11 @@ body.dark-mode .notif-panel-actions {
     margin-top: 0 !important;
   }
 
-  /* Banners above the bill push the column below the fold: it grows with the page
-     instead of scrolling inside itself, so its Save/Print row can stick to the
-     bottom of the screen (#104). */
+  /* Banners above the bill push the column below the fold: it scrolls with the
+     page instead of inside itself (every field stays reachable), and its
+     Save/Print row sticks to the bottom of the screen (#104). */
   .bill-col-summary {
+    position: static;
     max-height: none;
     overflow: visible;
   }
