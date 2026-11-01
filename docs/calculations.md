@@ -522,7 +522,15 @@ runs every screen test of `screens.test.js` again with a voided copy of every bi
 
 These must hold for any data. They run as property tests on generated
 multi-year histories (`tests/fixtures/generator.js`) and, for the loaded data,
-in Diagnostics → Number checks.
+in Diagnostics → Number checks. Once a day an owner's or manager's phone runs them (TIP
+NumberChecks); each mismatch it lists (at most 20 per check, as on the screen) becomes one Anomalies
+flag (#160, `utils/number-check-flags.js`: type `numcheck-ac<N>`, filed under its bill, item (Stock) or
+cash day, with expected / found and the money difference). The flag's id is the check plus that bill /
+item / day, so the same mismatch found again on any day or phone is the same flag and keeps its review;
+a new mismatch is a new flag. It is created only when it isn't stored yet: one read per mismatch the
+phone hasn't filed before (it remembers the ids), at most 50 a day (money checks first), none when
+all pass. A mismatch marked fixed that comes back on the same bill / item / day is not flagged again
+(Diagnostics and TIP still show it).
 
 | ID | Check |
 |---|---|
