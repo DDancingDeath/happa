@@ -17,6 +17,8 @@ export const StockCheckpointTest = {
     target: 90,
     onAbandon: 'discard',
     evaluate(props, flags, ctx) {
+        // Expired before an answer (e.g. the app was in the background): still running, not judged.
+        if (!props.status) return 'discard';
         if (props.status === 'built') return 'succeed';
         if (NOT_BUILDING.includes(props.status)) return 'ignore';
         if (props.status === 'offline') return 'discard';
@@ -26,7 +28,6 @@ export const StockCheckpointTest = {
         if (props.status === 'too-large') return { result: 'fail', reason: 'too_large' };
         if (props.status === 'backfill-failed') return { result: 'fail', reason: 'backfill_failed' };
         if (props.status === 'conflict') return { result: 'warn', reason: 'conflict' };
-        if (ctx.expired) return ctx.online ? { result: 'fail', reason: 'not_built' } : 'discard';
         return { result: 'fail', reason: 'not_built' };
     }
 };

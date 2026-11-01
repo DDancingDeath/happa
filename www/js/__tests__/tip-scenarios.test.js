@@ -303,6 +303,14 @@ describe('StockCheckpoint (#161)', () => {
         expect(record(null)).toEqual({ result: 'f', reason: reasons.rebuild_error });
         expect(record(null, null, false)).toEqual({ result: 'x', reason: 0 });
     });
+
+    it('a run that expires before the rebuild answers is not judged', () => {
+        const h = harness();
+        h.tip.start('StockCheckpoint');
+        h.advance(StockCheckpointTest.timeoutMs + 1);
+        h.tip.sweep();
+        expect(h.outcome('StockCheckpoint')).toEqual({ result: 'x', reason: 0 });
+    });
 });
 
 describe('NumberChecks (#161)', () => {
