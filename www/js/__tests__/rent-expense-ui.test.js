@@ -21,7 +21,16 @@ import { RentalsModule, _test } from '../rentals/rentals.js';
 import { monthKey } from '../rentals/rent-math.js';
 import { AuditService } from '../services/audit.js';
 
-const flush = async () => { for (let i = 0; i < 5; i++) await new Promise(r => setTimeout(r)); };
+// rent-expense.js is loaded with import() on first use, which can take many ticks on a busy machine:
+// wait for what the step must produce rather than a fixed number of ticks.
+jest.setTimeout(20000);
+const until = async (done, what) => {
+    const end = Date.now() + 5000;
+    while (!done()) {
+        if (Date.now() > end) throw new Error(`timed out waiting for ${what}`);
+        await new Promise(r => setTimeout(r, 5));
+    }
+};
 const MONTH = monthKey();
 const SNAP = {
     properties: [{ id: 'P1', name: 'Gupta Bhawan', kind: 'house' }, { id: 'P2', name: 'Shiv Market', kind: 'shop' }],
@@ -65,17 +74,20 @@ test('Properties › 💸 Expenses: the list (no edit for a member), then Add sa
     _test.render();
     expect(document.getElementById('rentalsBody').innerHTML).toContain("window.app.rentals.expenses('P1')");
     RentalsModule.api.expenses('P1');
-    await flush();
+    await until(() => body().textContent.includes('Repairs · 2B'), 'the list');
     expect(es.listExpenses).toHaveBeenCalledWith('P1');
     expect(body().textContent).toContain('Repairs · 2B · Cash');
     expect([...body().querySelectorAll('li button')]).toHaveLength(0);
     RentalsModule.api.expenseAction('add', 'P1', '');
-    await flush();
+    await until(() => document.getElementById('rentExpCat'), 'the form');
     document.getElementById('rentExpCat').value = 'tax';
     document.getElementById('rentExpUnit').value = 'U1';
     document.getElementById('rentExpAmount').value = '2499.6';
+    const lists = es.listExpenses.mock.calls.length;
     RentalsModule.api.dialogClose(true);
-    await flush();
+    await until(() => AuditService.log.mock.calls.length > 0, 'the save');
+    // the save reopens the list 300 ms later; wait so it cannot redraw the next test's dialog
+    await until(() => es.listExpenses.mock.calls.length > lists, 'the list again');
     expect(es.addExpense).toHaveBeenCalledWith(expect.objectContaining({ propertyId: 'P1', unitId: 'U1', category: 'tax', amount: 2500, mode: 'cash' }));
     expect(AuditService.log).toHaveBeenCalledWith('RENT_EXPENSE', expect.objectContaining({ amount: 2500 }));
 });
@@ -83,10 +95,12 @@ test('Properties › 💸 Expenses: the list (no edit for a member), then Add sa
 test('the owner gets edit and remove on each expense', async () => {
     rentalsRole.mockReturnValue('owner');
     RentalsModule.api.expenses('P1');
-    await flush();
+    await until(() => body().querySelector('li'), 'the list');
     expect([...body().querySelectorAll('li button')].map(b => b.textContent.trim())).toHaveLength(2);
+    const lists = es.listExpenses.mock.calls.length;
     RentalsModule.api.expenseAction('delete', 'P1', 'E1');
-    await flush();
+    await until(() => es.deleteExpense.mock.calls.length > 0, 'the delete');
+    await until(() => es.listExpenses.mock.calls.length > lists, 'the list again');
     expect(es.deleteExpense).toHaveBeenCalledWith('E1');
 });
 
@@ -94,12 +108,14 @@ test('an expense on a unit removed since keeps it when the owner edits the amoun
     rentalsRole.mockReturnValue('owner');
     es.listExpenses.mockResolvedValue([{ id: 'E9', propertyId: 'P1', unitId: 'U-gone', category: 'repairs', amount: 700, date: `${MONTH}-03`, mode: 'cash', note: '' }]);
     RentalsModule.api.expenses('P1');
-    await flush();
+    await until(() => body().textContent.includes('Removed unit'), 'the list');
     expect(body().textContent).toContain('Repairs · Removed unit · Cash');
     RentalsModule.api.expenseAction('edit', 'P1', 'E9');
-    await flush();
+    await until(() => document.getElementById('rentExpAmount'), 'the form');
     document.getElementById('rentExpAmount').value = '900';
+    const lists = es.listExpenses.mock.calls.length;
     RentalsModule.api.dialogClose(true);
-    await flush();
+    await until(() => es.updateExpense.mock.calls.length > 0, 'the save');
+    await until(() => es.listExpenses.mock.calls.length > lists, 'the list again');
     expect(es.updateExpense).toHaveBeenCalledWith('E9', expect.objectContaining({ unitId: 'U-gone', amount: 900 }));
 });
