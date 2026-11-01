@@ -22,6 +22,7 @@ import { openExternal } from '../utils/open-external.js';
 import { billDateOf } from '../utils/history-filters.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
+import { track } from '../services/usage.js';
 import { paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/payment-record.js';
 import { refusedForClock } from '../utils/clock-skew.js';
 
@@ -550,6 +551,7 @@ export class OutstandingManager {
 
             // Server-side read-modify-write so concurrent payments from two devices can't overwrite each other
             if (clear) entry.settlesDue = true;
+            track('payment.record');
             run = tip.start('PaymentRecord', { flags: { billType, clear: !!clear, split: split.cash > 0 && split.online > 0 } });
             this.lastPaymentTip = null;
             const written = await this.applyPaymentTransaction(billType, transaction, { cash: split.cash, online: split.online }, entry, { clear });

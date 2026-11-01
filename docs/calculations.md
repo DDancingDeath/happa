@@ -403,6 +403,12 @@ Which function computes each of these (all pure, in `utils/`; the pages only ren
 | `business-metrics.weeklyKgWindow`, `weeklyKgByItem`, `stockUpItems` | I9 (weekly kg over the loaded weeks, at most 8) |
 | `business-metrics.addsUp` | AC10, AC11 (the "add up" check line on Money and Insights) |
 | `business-metrics.roundTo` | display rounding only: profit per ₹100 (M3, I1, I7) and season index / weeks of cover to 1 decimal, kg to whole numbers |
+## Settings › Usage on this phone (local only, not money) — #136
+
+| ID | Shown | Definition |
+|---|---|---|
+| USE-1 | Uses per feature, Today / Last 7 days / Last 30 days | For each documented event (`utils/usage-stats.js` `USAGE_EVENTS`, and `page.<id>`) the sum of this phone's daily counts from the first day of the range to today (local days), most used first (ties by name), top 10. One `track()` call counts 1; the counts stay in IndexedDB on the phone (localStorage without it) for 90 days and are never sent |
+
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and

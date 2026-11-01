@@ -27,6 +27,7 @@ import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 import { tip } from '../tip/index.js';
+import { track } from '../services/usage.js';
 import { cashCloseProps } from '../tip/scenarios/cash-close.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -36,6 +37,7 @@ const DIFF_COLORS = Object.freeze({ ok: '#22c55e', warn: '#f59e0b', high: '#ef44
 
 /** TIP CashClose run (#217); never throws. */
 function startCashCloseRun(session, expected, counted, difference) {
+    track('cash.close');
     try {
         return tip.start('CashClose', {
             flags: { offline: typeof navigator !== 'undefined' && navigator.onLine === false },
