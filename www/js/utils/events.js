@@ -18,7 +18,7 @@
 /** View names (firestore-service.js VIEWS) → their refresh event. */
 export const REFRESH = Object.freeze(Object.fromEntries([
     'itemsList', 'itemsTable', 'billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding',
-    'history', 'due', 'stockAdjustmentHistory', 'stockView', 'expensesHistory', 'money', 'insights', 'statements'
+    'history', 'due', 'stockAdjustmentHistory', 'stockView', 'expensesHistory', 'money', 'insights', 'statements', 'today'
 ].map(view => [view, `refresh:${view}`])));
 
 export const ITEM_FREQUENCY_CHANGED = 'itemFrequency:changed';

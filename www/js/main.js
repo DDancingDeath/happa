@@ -761,7 +761,8 @@ window.app = {
         register: () => AuthManager.handleRegister(),
         logout: () => AuthManager.handleLogout(),
         forgotPassword: () => AuthManager.handleForgotPassword(),
-        sendPasswordReset: () => AuthManager.handleSendPasswordReset()
+        sendPasswordReset: () => AuthManager.handleSendPasswordReset(),
+        togglePassword: (inputId, btn) => AuthManager.togglePassword(inputId, btn)
     },
     
     // App language (#143): Settings switch + login card links
@@ -1150,6 +1151,7 @@ window.app = {
         loadTodayData: () => DayManager.loadTodayData(),
         filterTransactions: () => DayManager.filterTransactions(),
         showLabourBreakdown: () => DayManager.showLabourBreakdown(),
+        toggleAllBills: () => DayManager.toggleAllBills(),
         returnCashBody: () => DayManager.returnCashBody()
     },
     

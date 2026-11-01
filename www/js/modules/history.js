@@ -31,10 +31,11 @@ import { askReason, editsRowHtml, renderEditsList, setBillActions, voidedBannerH
 import { voidBlocker } from '../utils/bill-edits.js';
 import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js';
 import { todayLocalISO } from '../utils/dates.js';
+import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, isActiveBill, isOpeningRecord, outstandingDue, readPayment } from '../utils/money.js';
+import { billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -504,35 +505,31 @@ export class HistoryManager {
             </tr>
         `).join('');
         
-        const pay = readPayment(bill);
-        const payment = { online: pay.online, cash: pay.cash, due: outstandingDue(bill) };
-        
-        // Build payment section HTML (reusable)
-        const paymentHTML = (payment.online > 0 || payment.cash > 0 || payment.due > 0) ? `
+        // Paid at save, paid later, written off and still due add up to the total (T18 on Today shows the same parts)
+        // A voided bill counts nowhere, but its details still show what was paid (it may need refunding)
+        const voidPay = isActiveBill(bill) ? null : readPayment(bill);
+        const parts = voidPay
+            ? { atSave: { cash: voidPay.cash, online: voidPay.online }, later: { cash: 0, online: 0, total: 0 }, writtenOff: 0, due: 0 }
+            : paymentBreakdown(bill);
+        const afterSave = parts.later.total > 0 || parts.writtenOff > 0;
+        const money = (v) => Helpers.escapeHtml(Helpers.formatCurrency(v));
+        const payRow = (key, value, bg, fg, note = '') => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px;">
+                        <span>${L(key)}${note ? `<br><small style="color: #595959;">${Helpers.escapeHtml(note)}</small>` : ''}</span>
+                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: ${bg}; color: ${fg};">${money(value)}</span>
+                    </div>`;
+        const paymentHTML = (parts.atSave.online > 0 || parts.atSave.cash > 0 || afterSave || parts.due > 0) ? `
             <div style="background: white; padding: 14px; border-radius: 10px; border: 1px solid #dee2e6; margin-top: 12px;">
                 <h4 style="margin: 0 0 12px 0; font-size: 15px; color: #212529;">${L('ui.history.payment_details')}</h4>
-                ${payment.online > 0 ? `
-                    <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
-                        <span>${L('ui.history.online')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #cfe2ff; color: #084298;">₹${Math.round(payment.online)}</span>
-                    </div>
-                ` : ''}
-                ${payment.cash > 0 ? `
-                    <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
-                        <span>${L('ui.history.cash')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #d1e7dd; color: #0f5132;">₹${Math.round(payment.cash)}</span>
-                    </div>
-                ` : ''}
-                ${payment.due > 0 ? `
-                    <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
-                        <span>${L('ui.history.due')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #fff3cd; color: #997404;">₹${Math.round(payment.due)}</span>
-                    </div>
-                ` : ''}
+                ${parts.atSave.online > 0 ? payRow(afterSave ? 'ui.history.online_at_save' : 'ui.history.online', parts.atSave.online, '#cfe2ff', '#084298') : ''}
+                ${parts.atSave.cash > 0 ? payRow(afterSave ? 'ui.history.cash_at_save' : 'ui.history.cash', parts.atSave.cash, '#d1e7dd', '#0f5132') : ''}
+                ${parts.later.total > 0 ? payRow('ui.history.paid_later', parts.later.total, '#e0f2fe', '#075985',
+                    t('ui.history.paid_later_split', { cash: Helpers.formatCurrency(parts.later.cash), online: Helpers.formatCurrency(parts.later.online) })) : ''}
+                ${parts.writtenOff > 0 ? payRow('ui.history.written_off', parts.writtenOff, '#f3f4f6', '#374151') : ''}
+                ${parts.due > 0 ? payRow('ui.history.due', parts.due, '#fff3cd', '#997404') : ''}
             </div>
         ` : '';
-        
-        const billNumber = bill.billNumber || (typeof bill.id === 'string' ? bill.id.substring(0, 8) : bill.id);
+                const billNumber = bill.billNumber || (typeof bill.id === 'string' ? bill.id.substring(0, 8) : bill.id);
         
         const content = `
             <div style="padding: 16px; max-width: 100%;">

@@ -404,13 +404,14 @@ service cloud.firestore {
 
     // New bills: the creator's own uid (when set), well-formed money (changedMoneyOk),
     // no payment history, cleared state, edit count or void (the app never sends them on a
-    // new bill), and, when sent, createdAt = the server time of this write (older apps don't send it).
+    // new bill), and createdAt = the server time of this write (#115: every happa version,
+    // rc1 included, sends it; the edit window counts from it). The owner (restores) skips this.
     function validBillCreate() {
       return request.resource.data.get('userId', request.auth.uid) == request.auth.uid
         && !request.resource.data.keys().hasAny(['payments', 'paidAt', 'cleared', 'editCount',
              'voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'])
         && changedMoneyOk(request.resource.data.keys())
-        && (!('createdAt' in request.resource.data) || request.resource.data.createdAt == request.time);
+        && request.resource.data.get('createdAt', null) == request.time;
     }
 
     // ============================================
@@ -831,7 +832,7 @@ service cloud.firestore {
         : (isOwnerIn(u)
         || (base in billCollections() ? validBillCreate()
           : base == 'expenses' ? validLedgerCreate() && expenseDayInWindow(u)
-          : base == 'withdrawals' ? validLedgerCreate()
+          : base == 'withdrawals' ? validLedgerCreate() && moneyPageOn(u)
           : base == 'stockAdjustments' ? isManagerIn(u) && validAdjustmentCreate()
           : base == 'cashManagement' ? validCashCreate(docId)
           // legacy cashSessions (backup only) and settings: owner only (#64)
@@ -868,6 +869,7 @@ service cloud.firestore {
         : base in ['withdrawals', 'stockAdjustments']
           ? (legacyBackfillOnly()
              || (isManagerIn(u)
+                 && (base != 'withdrawals' || moneyPageOn(u))
                  && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk())))
         : base == 'cashManagement' ? (cashAppendOk() || cashCloseOk() || cashLateCountOk())
         : base == 'cashSessions' ? false
@@ -886,7 +888,8 @@ service cloud.firestore {
         : base == 'expenses' ? canDeleteExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canDeleteExpense(u)
         : base == 'personalExpenseDays' ? false
-        : base in ['withdrawals', 'stockAdjustments'] ? isManagerIn(u)
+        : base == 'withdrawals' ? isManagerIn(u) && moneyPageOn(u)
+        : base == 'stockAdjustments' ? isManagerIn(u)
         : base in ['cashManagement', 'cashSessions', 'items', 'counters', 'settings', 'itemFrequency'] ? false
         : true;
     }
@@ -968,6 +971,17 @@ service cloud.firestore {
       let r = access is map ? access.get(role, {}) : {};
       let a = r is map ? r : {};
       return a.get('finance', def) == true || a.get('reports', def) == true || a.get('analytics', def) == true;
+    }
+
+    // A withdrawal is recorded only on Money (roleAccess id finance; default on for managers,
+    // off for members), so only roles with Money on may create one (#64). One extra read
+    // (settings/app), never for the owner; withdrawals are rare.
+    function moneyPageOn(usersCol) {
+      let role = get(profilePath(usersCol)).data.get('role', '');
+      let p = settingsAppPath(usersCol);
+      let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
+      let r = access is map ? access.get(role, {}) : {};
+      return (r is map ? r : {}).get('finance', role == 'manager') == true;
     }
 
     // --- stock checkpoint (stockCheckpoints/current) ---
@@ -2190,8 +2204,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // Never used by the app (#64): readable by its user, written by nobody.
     match /users/{userId}/preferences/{prefId} {
-      allow read, write: if isApproved() && request.auth.uid == userId;
+      allow read: if isApproved() && request.auth.uid == userId;
+      allow write: if false;
     }
 
     // Audit logs - approved users append entries as themselves; only owners read,
@@ -2359,7 +2375,8 @@ service cloud.firestore {
     }
 
     match /dev_users/{userId}/preferences/{prefId} {
-      allow read, write: if isApprovedIn('dev_users') && request.auth.uid == userId;
+      allow read: if isApprovedIn('dev_users') && request.auth.uid == userId;
+      allow write: if false;
     }
 
     match /dev_auditLogs/{logId} {

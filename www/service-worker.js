@@ -134,6 +134,7 @@ const STATIC_ASSETS = [
     '/js/utils/state.js',
     '/js/utils/security-flags.js',
     '/js/services/security-monitor.js',
+    '/js/utils/login-backoff.js',
     '/js/utils/team-directory.js',
     '/js/utils/stock-adjust.js',
     '/js/utils/dead-stock.js',
