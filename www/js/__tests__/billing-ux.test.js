@@ -262,5 +262,26 @@ describe('archived items (#123)', () => {
         BillingManager.ensureItemOption('billItem', 1);
         BillingManager.ensureItemOption('billItem', 1);
         expect(names('billItem')).toEqual(['Rice', 'Old Dal']);
+        // A picker rebuild (another phone saved a bill) keeps the archived line selected
+        document.getElementById('billItem').value = '1';
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('1');
+        expect(names('billItem')).toEqual(['Rice', 'Old Dal']);
+        document.getElementById('billItem').value = '0';
+        BillingManager.loadItemsDropdown();
+        expect(names('billItem')).toEqual(['Rice']);
+    });
+
+    test('adding a line of an archived item ends with the archived warning, not "added"', async () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Old Dal', archived: true, rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        BillingManager.ensureItemOption('billItem', 1);
+        document.getElementById('billItem').value = '1';
+        document.getElementById('billRate').value = '5';
+        document.getElementById('newWeight').value = '20';
+        await PurchaseManager.addToBill();
+        expect(PurchaseManager.getBillItems().map(i => i.itemId)).toEqual(['b']);
+        expect(UIManager.showToast.mock.calls.at(-1)[0]).toMatch(/"Old Dal" is archived/);
     });
 });

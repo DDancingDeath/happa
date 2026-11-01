@@ -196,7 +196,6 @@ const PurchaseManager = {
             UIManager.showToast(t('msg.common.item_not_found'));
             return;
         }
-        if (isArchivedItem(item)) UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
         this.ensurePendingBill();
         
         const { qty, total } = computeLine({ rate, weights });
@@ -228,7 +227,8 @@ const PurchaseManager = {
         }
         
         UIManager.hapticFeedback();
-        UIManager.showToast(t('msg.purchase.added_bill', { displayName }));
+        if (isArchivedItem(item)) UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
+        else UIManager.showToast(t('msg.purchase.added_bill', { displayName }));
     },
 
     /**

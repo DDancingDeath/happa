@@ -196,7 +196,6 @@ const RetailSaleManager = {
             UIManager.showToast(t('msg.common.item_not_found'));
             return;
         }
-        if (isArchivedItem(item)) UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
         this.ensurePendingBill();
         
         // Bill lines keep the catalogue name; Hindi is only for display (#143, Reports group by item).
@@ -229,7 +228,8 @@ const RetailSaleManager = {
         itemSelect.focus();
         
         UIManager.hapticFeedback();
-        UIManager.showToast(t('msg.retail.added_sale', { itemName }));
+        if (isArchivedItem(item)) UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
+        else UIManager.showToast(t('msg.retail.added_sale', { itemName }));
     },
 
     /**

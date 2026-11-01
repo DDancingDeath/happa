@@ -384,6 +384,7 @@ const BillingManager = {
     loadItemsDropdown() {
         const select = document.getElementById('billItem');
         if (!select) return;
+        const kept = select.value;
         
         select.innerHTML = '';
         
@@ -407,6 +408,7 @@ const BillingManager = {
             select.appendChild(opt);
         });
         
+        this.keepArchivedSelection('billItem', kept);
         if (AppState.items.length > 0) {
             this.loadRates();
         }
@@ -418,6 +420,7 @@ const BillingManager = {
     loadSaleItemsDropdown() {
         const select = document.getElementById('saleItem');
         if (!select) return;
+        const kept = select.value;
         
         select.innerHTML = '';
         
@@ -441,6 +444,7 @@ const BillingManager = {
             select.appendChild(opt);
         });
         
+        this.keepArchivedSelection('saleItem', kept);
         if (AppState.items.length > 0) {
             this.loadSaleRates();
         }
@@ -460,6 +464,18 @@ const BillingManager = {
         opt.value = itemIndex;
         opt.textContent = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
         select.appendChild(opt);
+    },
+
+    /**
+     * A rebuilt picker drops archived items; if the line being edited was one,
+     * put it back and keep it selected so its weights can't move to another item.
+     * @param {string} selectId
+     * @param {string} kept the picker's value before the rebuild
+     */
+    keepArchivedSelection(selectId, kept) {
+        if (kept === '' || kept == null || !isArchivedItem(AppState.items[Number(kept)])) return;
+        this.ensureItemOption(selectId, Number(kept));
+        document.getElementById(selectId).value = kept;
     },
 
     /**

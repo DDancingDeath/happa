@@ -2234,7 +2234,8 @@ const FirebaseService = {
      */
     async saveItem(item) {
         if (item.id) {
-            await getDb().collection(col('items')).doc(item.id).set(item);
+            // merge: a stale phone's save can't drop fields it never saw (archived, #123)
+            await getDb().collection(col('items')).doc(item.id).set(item, { merge: true });
         } else {
             const docRef = await getDb().collection(col('items')).add(item);
             item.id = docRef.id;
