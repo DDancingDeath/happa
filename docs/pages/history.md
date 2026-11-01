@@ -10,3 +10,5 @@ owner approval, but one by anyone except an owner shows on the owner's Today (Da
 medium) with who voided it and the reason, and stays in the audit log.
 A bill that stored no total shows **—** instead of ₹0, and a date the app can't
 read shows **Date?** next to it.
+**Edit** first reads the bill again from the server: if it was changed on another
+phone (a payment, an edit or a void) the app asks before loading the latest copy.
