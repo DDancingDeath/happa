@@ -249,7 +249,10 @@ function numberKind(rest, groups, gi) {
         else if (after === 'rate' && (WEIGHT_UNITS.has(w) || (PER_WORDS.has(w) && WEIGHT_UNITS.has(rest[k + 1])))) after = 'rate-kg';
     }
     const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
-    if (CURRENCY_BEFORE.has(b1)) {
+    const prev = groups[gi - 1];
+    // "30 rs 10 kg": the rs is the 30's
+    const currency = CURRENCY_BEFORE.has(b1) && !(prev && prev.end === g.start - 1);
+    if (currency) {
         rupees = true;
         if (after === null) after = 'rate';
         else if (after === 'weight') after = 'rate-kg';
@@ -269,9 +272,10 @@ function numberKind(rest, groups, gi) {
         if (!(earlier && (after === 'weight' || after === 'gram'))) return after === 'rate-kg' || after === 'weight' ? 'rate-kg' : 'rate';
     }
     // "2 kilo 60 (rupaye) mein" is a total; "30 ke bhav mein" a rate
+    const meinBefore = TOTAL_AFTER_A_WEIGHT.has(b1) || (currency && TOTAL_AFTER_A_WEIGHT.has(b2));
     if (gi > 0 && (((after === null || after === 'rate') && mein && !meinAfterRateWord)
-        || (after !== 'weight' && after !== 'gram' && TOTAL_AFTER_A_WEIGHT.has(b1)))) return 'other';
-    if (TOTAL_BEFORE.has(b1) || (CURRENCY_BEFORE.has(b1) && TOTAL_BEFORE.has(b2))) return 'other';
+        || (after !== 'weight' && after !== 'gram' && meinBefore && prev.value !== 1))) return 'other';
+    if (TOTAL_BEFORE.has(b1) || (currency && TOTAL_BEFORE.has(b2))) return 'other';
     // "10 kilo ke 300" is a total, "kilo ka 30" a rate per kg
     if (POSSESSIVE.has(b1) && GRAM_UNITS.has(b2)) return 'other';
     if (POSSESSIVE.has(b1) && WEIGHT_UNITS.has(b2)) return gi > 0 && groups[gi - 1].end === g.start - 2 ? 'other' : 'rate-kg';
