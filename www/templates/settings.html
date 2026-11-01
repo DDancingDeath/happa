@@ -34,6 +34,16 @@
             <p class="setting-description phone-only-setting" data-i18n="ui.settings.swipe_tabs_hint">Moves between Billing, Today, History and Outstanding. Saved on this phone.</p>
         </div>
 
+        <div class="settings-card" id="voiceBillingCard">
+            <h3 data-i18n="ui.settings.voice_billing">Voice billing</h3>
+            <label class="checkbox-label">
+                <input type="checkbox" id="settingVoiceBilling" onchange="window.app.voice.setOn(this.checked)">
+                <span data-i18n="ui.settings.voice_billing_toggle">Fill a bill line by speaking</span>
+            </label>
+            <p class="setting-description" data-i18n="ui.settings.voice_billing_hint">Off unless you switch it on. Tap 🎤 on Billing and say the item, weight and rate, e.g. "10 kg rice 30 rupees". You see what was heard before it fills the line; voice never adds to the bill or saves. The phone's or browser's speech service turns speech into text (usually Google's; it may need the internet); the app keeps no recording or text. Saved on this device.</p>
+            <p class="setting-description" id="voiceBillingUnavailable" hidden data-i18n="ui.settings.voice_billing_unavailable">Not available on this device.</p>
+        </div>
+
         <div class="settings-card" id="accountCard">
             <h3 data-i18n="ui.settings.account">Account</h3>
             <label for="settingUserName" data-i18n="ui.settings.your_name">Your name</label>

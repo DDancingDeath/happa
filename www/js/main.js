@@ -4,6 +4,7 @@ import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
 import { BottomNav } from './ui/bottom-nav.js';
+import { VoiceMic } from './ui/voice-mic.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
@@ -56,7 +57,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbml-void-flag';
+const BUILD_ID = '20261101zzuzieecmbbkhbmq-voice-billing';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -462,6 +463,7 @@ async function initializeUserData() {
         
         // Initialize billing manager (connects purchase and retail-sale modules)
         BillingManager.init();
+        VoiceMic.apply();
         
         // Show app content
         const appContent = document.getElementById('appContent');
@@ -830,6 +832,12 @@ window.app = {
     // Phone bottom bar (#142): Settings › swipe between pages
     bottomNav: {
         setSwipe: (on) => BottomNav.setSwipe(on)
+    },
+
+    // Voice billing (#81): Settings switch (off by default) and the Billing mic buttons
+    voice: {
+        start: (mode) => VoiceMic.start(mode),
+        setOn: (on) => VoiceMic.setOn(on)
     },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
