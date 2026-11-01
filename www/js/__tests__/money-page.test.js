@@ -962,6 +962,7 @@ describe('shared accounts helpers (#74)', () => {
     test('accountEntry: trimmed name (1–40), balance 0 or more in whole rupees, asset unless "liability"', () => {
         expect(accountEntry({ name: '  SBI  savings ', balance: '1999.5', type: 'x' })).toEqual({ id: accountId('sbi savings'), entry: { name: 'SBI savings', balance: 2000, type: 'asset' } });
         expect(accountEntry({ name: 'Loan', balance: 0, type: 'liability' }).entry).toEqual({ name: 'Loan', balance: 0, type: 'liability' });
+        expect(Object.is(accountEntry({ name: 'A', balance: '-0.3' }).entry.balance, 0)).toBe(true);
         ['', ' ', 'x'.repeat(41)].forEach(name => expect(accountEntry({ name, balance: 1 })).toBeNull());
         ['', null, 'abc', -1, 1e11].forEach(balance => expect(accountEntry({ name: 'A', balance })).toBeNull());
     });

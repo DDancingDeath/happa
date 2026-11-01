@@ -825,7 +825,7 @@ export function accountId(name) {
  */
 export function accountEntry({ name, balance, type } = {}) {
     const n = String(name ?? '').trim().replace(/\s+/g, ' ');
-    const b = Math.round(Number(balance));
+    const b = Math.round(Number(balance)) + 0; // + 0: no -0 (a decimal in Firestore)
     if (!n || n.length > ACCOUNT_NAME_MAX || balance === '' || balance === null || !Number.isFinite(b) || b < 0 || b > ACCOUNT_BALANCE_MAX) return null;
     return { id: accountId(n), entry: { name: n, balance: b, type: type === 'liability' ? 'liability' : 'asset' } };
 }
