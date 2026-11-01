@@ -23,6 +23,7 @@ import { AuditService } from '../services/audit.js';
 
 // rent-expense.js is loaded with import() on first use, which can take many ticks on a busy machine:
 // wait for what the step must produce rather than a fixed number of ticks.
+jest.setTimeout(20000);
 const until = async (done, what) => {
     const end = Date.now() + 5000;
     while (!done()) {
@@ -82,8 +83,11 @@ test('Properties › 💸 Expenses: the list (no edit for a member), then Add sa
     document.getElementById('rentExpCat').value = 'tax';
     document.getElementById('rentExpUnit').value = 'U1';
     document.getElementById('rentExpAmount').value = '2499.6';
+    const lists = es.listExpenses.mock.calls.length;
     RentalsModule.api.dialogClose(true);
     await until(() => AuditService.log.mock.calls.length > 0, 'the save');
+    // the save reopens the list 300 ms later; wait so it cannot redraw the next test's dialog
+    await until(() => es.listExpenses.mock.calls.length > lists, 'the list again');
     expect(es.addExpense).toHaveBeenCalledWith(expect.objectContaining({ propertyId: 'P1', unitId: 'U1', category: 'tax', amount: 2500, mode: 'cash' }));
     expect(AuditService.log).toHaveBeenCalledWith('RENT_EXPENSE', expect.objectContaining({ amount: 2500 }));
 });
@@ -93,8 +97,10 @@ test('the owner gets edit and remove on each expense', async () => {
     RentalsModule.api.expenses('P1');
     await until(() => body().querySelector('li'), 'the list');
     expect([...body().querySelectorAll('li button')].map(b => b.textContent.trim())).toHaveLength(2);
+    const lists = es.listExpenses.mock.calls.length;
     RentalsModule.api.expenseAction('delete', 'P1', 'E1');
     await until(() => es.deleteExpense.mock.calls.length > 0, 'the delete');
+    await until(() => es.listExpenses.mock.calls.length > lists, 'the list again');
     expect(es.deleteExpense).toHaveBeenCalledWith('E1');
 });
 
@@ -107,7 +113,9 @@ test('an expense on a unit removed since keeps it when the owner edits the amoun
     RentalsModule.api.expenseAction('edit', 'P1', 'E9');
     await until(() => document.getElementById('rentExpAmount'), 'the form');
     document.getElementById('rentExpAmount').value = '900';
+    const lists = es.listExpenses.mock.calls.length;
     RentalsModule.api.dialogClose(true);
     await until(() => es.updateExpense.mock.calls.length > 0, 'the save');
+    await until(() => es.listExpenses.mock.calls.length > lists, 'the list again');
     expect(es.updateExpense).toHaveBeenCalledWith('E9', expect.objectContaining({ unitId: 'U-gone', amount: 900 }));
 });
