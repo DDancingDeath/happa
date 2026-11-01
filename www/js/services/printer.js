@@ -9,6 +9,9 @@ import { billLabour, billLineTotal, outstandingDue, readPayment } from '../utils
 import { parseAnyBillDate } from '../utils/dates.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
+import { track } from './usage.js';
+import { tip } from '../tip/index.js';
+import { printProps } from '../tip/scenarios/print.js';
 import { recordPrint } from '../utils/print-status.js';
 import { currentPrinter, normalizePrinterSettings, PAPER_DOTS, paperDots, rasterThreshold, receiptLang, LOGO_MAX, logoSize } from '../utils/printer-settings.js';
 import { encodeQr } from '../utils/qr-code.js';
@@ -1032,6 +1035,32 @@ const PrinterService = {
      * @returns {Promise<{outcome: 'printed'|'failed'|'uncertain'|'cancelled', error?: Error}>}
      */
     async runJob(key, send, mode = 'quick') {
+        // TIP Print (#161): every print job, judged by how it ended.
+        const run = tip.start('Print', { flags: { mode } });
+        let res = { outcome: 'failed', error: { kind: 'exception' } };
+        try {
+            res = await this._runJobNow(key, send, mode);
+            return res;
+        } finally {
+            this._completePrintRun(run, res, mode);
+        }
+    },
+
+    /** @private A failed connect may just be Bluetooth off: ask (without holding up the caller) before reporting. */
+    _completePrintRun(run, res, mode) {
+        const kind = res.error?.kind;
+        if (res.outcome !== 'failed' || (kind !== 'connect' && kind !== 'timeout_connect')) {
+            run.complete(printProps(res.outcome, res.error, mode));
+            return;
+        }
+        Promise.resolve()
+            .then(() => this.manager.link.bluetoothOn())
+            .then(on => (on ? res.error : { kind: 'bluetooth_off' }), () => res.error)
+            .then(error => run.complete(printProps(res.outcome, error, mode)));
+    },
+
+    /** @private See runJob. */
+    async _runJobNow(key, send, mode) {
         let release = UIManager.holdLoading();
         const confirmReprint = async () => {
             if (!key || !this.uncertainJobs()[key]) return true;
@@ -1205,6 +1234,7 @@ const PrinterService = {
             const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
             if (outcome !== 'cancelled') recordPrint(billData, outcome, outcome === 'failed' ? { errorKind: error?.kind, error: error?.message } : {});
             if (outcome === 'printed') {
+                track('print.bill');
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
             }

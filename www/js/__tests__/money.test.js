@@ -2,6 +2,7 @@
  * @fileoverview Tests for money helpers / payment schema normalisation
  */
 import { round2, sumMoney, readPayment, billTotal, billLineTotal, outstandingDue, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingOldTotals, wholesaleOutstanding } from '../utils/money.js';
+import { perUnitRate, normalizePackageKg, normalizeLabourSettings, toMoney, readLineItem, formatAmount, formatRupees } from '../utils/money.js';
 
 describe('round2', () => {
     test('rounds half-paise correctly', () => {
@@ -149,5 +150,54 @@ describe('billLineTotal (BILL-LINES, #80)', () => {
         expect(billLineTotal({ total: 795 }, false)).toBe(795);
         expect(billLineTotal({ grandTotal: 400 }, false)).toBe(400);
         expect(billLineTotal(null, false)).toBe(0);
+describe('small money helpers the mutation run found untested (#160)', () => {
+    test('perUnitRate: value ÷ quantity to the paisa; null for no, a negative or a bad quantity or value', () => {
+        expect(perUnitRate(100, 3)).toBe(33.33);
+        expect(perUnitRate('50', '4')).toBe(12.5);
+        expect(perUnitRate(0, 5)).toBe(0);
+        expect(perUnitRate(100, 0)).toBeNull();
+        expect(perUnitRate(100, -2)).toBeNull();
+        expect(perUnitRate(NaN, 2)).toBeNull();
+        expect(perUnitRate(10, 'x')).toBeNull();
+    });
+
+    test('normalizePackageKg: 1–200 kg is kept, anything else is 35', () => {
+        expect([normalizePackageKg(1), normalizePackageKg(200), normalizePackageKg('40.25')]).toEqual([1, 200, 40.25]);
+        expect([normalizePackageKg(0.99), normalizePackageKg(200.01), normalizePackageKg(''), normalizePackageKg(null), normalizePackageKg('abc')])
+            .toEqual([35, 35, 35, 35, 35]);
+    });
+
+    test('normalizeLabourSettings: only positive values are kept', () => {
+        expect(normalizeLabourSettings()).toEqual({ laborRate: 6, heavyWeightThreshold: 30, labourPackageKg: 35 });
+        expect(normalizeLabourSettings({ laborRate: 0, heavyWeightThreshold: -5 })).toMatchObject({ laborRate: 6, heavyWeightThreshold: 30 });
+        expect(normalizeLabourSettings({ laborRate: '7.25', heavyWeightThreshold: 25, labourPackageKg: 50 })).toEqual({ laborRate: 7.25, heavyWeightThreshold: 25, labourPackageKg: 50 });
+        expect(normalizeLabourSettings({ laborRate: 0.01 }).laborRate).toBe(0.01);
+    });
+
+    test('toMoney: blank, missing or text is null; numeric strings parse; 0 is 0', () => {
+        expect([toMoney(''), toMoney(undefined), toMoney(null), toMoney('abc')]).toEqual([null, null, null, null]);
+        expect([toMoney('12.5'), toMoney(0), toMoney('0'), toMoney(7)]).toEqual([12.5, 0, 0, 7]);
+    });
+
+    test('readLineItem: no line or a non-object is an empty line; the name is trimmed', () => {
+        const empty = { name: '', qty: 0, rate: 0, total: 0 };
+        expect(readLineItem(null)).toEqual(empty);
+        expect(readLineItem('Rice')).toEqual(empty);
+        expect(readLineItem({ item: '  Rice ', quantity: 2, rate: 10 })).toEqual({ name: 'Rice', qty: 2, rate: 10, total: 20 });
+    });
+
+    test('formatAmount: paise only for small amounts that have them; never "-0"', () => {
+        expect(formatAmount(0.4, { small: true })).toBe('0.40');
+        expect(formatAmount(99.5, { small: true })).toBe('99.50');
+        expect(formatAmount(100.5, { small: true })).toBe('101');
+        expect(formatAmount(5, { small: true })).toBe('5');
+        expect(formatAmount(0.4)).toBe('0');
+        expect(formatAmount(-0.4)).toBe('0');
+        expect(formatAmount(1234.5, { decimals: 2 })).toBe('1,234.50');
+    });
+
+    test('formatRupees: Indian grouping, the minus before ₹', () => {
+        expect(formatRupees(250000)).toBe('₹2,50,000');
+        expect(formatRupees(-500)).toBe('-₹500');
     });
 });

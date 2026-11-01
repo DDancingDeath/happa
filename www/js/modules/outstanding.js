@@ -22,6 +22,7 @@ import { openExternal } from '../utils/open-external.js';
 import { billDateOf } from '../utils/history-filters.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
+import { track } from '../services/usage.js';
 import { paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/payment-record.js';
 import { refusedForClock } from '../utils/clock-skew.js';
 
@@ -554,6 +555,7 @@ export class OutstandingManager {
             this.lastPaymentTip = null;
             const written = await this.applyPaymentTransaction(billType, transaction, { cash: split.cash, online: split.online }, entry, { clear });
             Object.assign(transaction, written);
+            track('payment.record');
             try {
                 const info = this.lastPaymentTip || {};
                 run.complete(paymentRecordProps(info.fresh || null, written, info));

@@ -18,6 +18,7 @@ import { TelemetryService } from '../services/telemetry.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import * as store from './rent-store.js';
 import { AppState } from '../utils/state.js';
+import { noteRent } from '../utils/reminders.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { isShareToken, publicLink } from './rent-public.js';
 import {
@@ -282,6 +283,7 @@ function renderRent(d) {
     const ix = index(d);
     const lang = getLang();
     const rows = unitRows(d, state.month);
+    noteRent(state, rows, store.truncatedKeys());
     const view = state.view === 'units' ? 'units' : 'properties';
     const sw = `<div class="rent-viewswitch" role="group">
         <button type="button" class="filter-btn${view === 'properties' ? ' active' : ''}" aria-pressed="${view === 'properties'}" onclick="window.app.rentals.setView('properties')">${et('ui.rent.view_properties')}</button>

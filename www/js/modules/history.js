@@ -35,6 +35,7 @@ import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
+import { track } from '../services/usage.js';
 import { t, tn } from '../i18n/index.js';
 import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
 
@@ -1072,6 +1073,7 @@ export class HistoryManager {
             UIManager.showToast(t('msg.common.bill_not_found'));
             return;
         }
+        track('share.whatsapp');
         openExternal(whatsAppShareUrl(buildBillShareText(current.bill, current.type)));
     }
 

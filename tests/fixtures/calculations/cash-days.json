@@ -1,6 +1,6 @@
 {
   "name": "cash-days",
-  "description": "Synthetic days for the cash drawer (docs/calculations.md C1-C9). 'busy' is an open day with sales, purchases (one paid later in cash and online), an old-app opening record paid today, business, untagged and personal expenses (category and type-only, a business expense typed 'personal', one with only `total`), due legs (a leg that repeats a bill payment, 'No bill' legs received and paid, an online leg, a legacy leg with no time, a leg from another day), deposits (one stored as text) and paise everywhere. 'twoSessions' is a legacy day with two sessions. 'closedDay' is a counted closed day, with an uncounted day before it and a big difference the day before that. 'member' is a role without the personal expense rows: the day's personal total comes from personalExpenseDays. 'noSession' has no session today. Expected output: cash-days.expected.json (written from modules/cash-management.js before the move to utils/calc/cash.js).",
+  "description": "Synthetic days for the cash drawer (docs/calculations.md C1-C9). 'busy' is an open day with sales, purchases (one paid later in cash and online), an old-app opening record paid today, business, untagged and personal expenses (category and type-only, a business expense typed 'personal', one with only `total`), due legs (a leg that repeats a bill payment, 'No bill' legs received and paid, an online leg, a legacy leg with no time, a leg from another day), deposits (one stored as text) and paise everywhere; two retail bills whose date text and numeric timestamp fall on different IST days count on the timestamp (#147: the drawer and the rules use it). 'twoSessions' is a legacy day with two sessions. 'closedDay' is a counted closed day, with an uncounted day before it and a big difference the day before that. 'member' is a role without the personal expense rows: the day's personal total comes from personalExpenseDays. 'noSession' has no session today. Expected output: cash-days.expected.json (written from modules/cash-management.js before the move to utils/calc/cash.js).",
   "cases": {
     "busy": {
       "now": "2026-10-21T18:30:00",
@@ -21,7 +21,11 @@
           "payment": { "cash": 450.75, "online": 0, "due": 0 } },
         { "id": "r2", "billNumber": "R-2", "customerName": "Walk-in", "date": "21/10/2026", "total": 120, "cashPayment": 120 },
         { "id": "r3", "billNumber": "R-3", "customerName": "Tomorrow", "date": "2026-10-22T00:10:00", "total": 999,
-          "payment": { "cash": 999, "online": 0, "due": 0 } }
+          "payment": { "cash": 999, "online": 0, "due": 0 } },
+        { "id": "r4", "billNumber": "R-4", "customerName": "Date text yesterday, timestamp today", "date": "20/10/2026, 11:00:00 pm", "timestamp": 1792557000000, "total": 77,
+          "payment": { "cash": 77, "online": 0, "due": 0 } },
+        { "id": "r5", "billNumber": "R-5", "customerName": "Date text today, timestamp yesterday", "date": "21/10/2026, 10:00:00 am", "timestamp": 1792470600000, "total": 55,
+          "payment": { "cash": 55, "online": 0, "due": 0 } }
       ],
       "purchases": [
         { "id": "p1", "billNumber": "P-1", "supplierName": "Kisan A", "date": "2026-10-21T08:00:00", "grandTotal": 3000,

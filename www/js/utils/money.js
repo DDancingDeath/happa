@@ -113,7 +113,7 @@ export function billTotal(bill) {
  * WhatsApp text and a purchase's bill details). Purchases: `billTotal`, else
  * BILL-TOTAL + labour; sales: the first present of `billTotal`, `saleTotal`, `total`,
  * else BILL-TOTAL. A present 0 counts.
- * @param {Object} bill
+ * @param {Bill|null|undefined} bill
  * @param {boolean} isPurchase
  * @returns {number}
  */

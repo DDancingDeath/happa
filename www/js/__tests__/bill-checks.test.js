@@ -259,6 +259,13 @@ describe('bill date vs entry time (IST)', () => {
         expect(at('2026-10-21T19:00:00.000Z', new Date(2026, 9, 22, 1, 0).getTime())).toEqual([]);
     });
 
+    test('#147: anyone but the owner is flagged from 1 day back', () => {
+        const by = (ownerEntry, date) => ids(evaluateBill(draft({ date, enteredAt: NOW }), ctx({ ownerEntry })));
+        expect(by(false, '21/10/2026, 11:59:00 pm')).toEqual(['date-backdated']);
+        expect(by(true, '21/10/2026, 11:59:00 pm')).toEqual([]);
+        expect(by(false, new Date(NOW).toISOString())).toEqual([]);
+    });
+
     test('a stored bill is judged against when it was entered (for the anomaly list)', () => {
         expect(at('2026-10-10', new Date(2026, 9, 10, 18, 0).getTime())).toEqual([]);
     });
