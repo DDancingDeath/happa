@@ -150,7 +150,14 @@ const DiagnosticsManager = {
      */
     runNumberChecks() {
         if (!canRunNumberChecks()) return;
-        const results = runNumberChecks({
+        const results = this.numberCheckResults();
+        this.numberChecks = { results, at: Date.now() };
+        this.renderNumberChecks();
+    },
+
+    /** The accounting checks on this phone's loaded data (also TIP NumberChecks, #161). */
+    numberCheckResults() {
+        return runNumberChecks({
             items: AppState.items || [],
             purchases: AppState.purchaseHistory || [],
             wholesaleSales: AppState.salesHistory || [],
@@ -161,8 +168,6 @@ const DiagnosticsManager = {
             session: CashManagementManager.todaySession || null,
             transactionsFor: (date, session) => CashManagementManager.calculateTransactionsForDate(date, session)
         });
-        this.numberChecks = { results, at: Date.now() };
-        this.renderNumberChecks();
     },
 
     /** One difference row: what it is about, expected, found, difference. */

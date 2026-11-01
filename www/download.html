@@ -29,6 +29,10 @@
         .lang-switch { margin-top: 10px; font-size: 0.95rem; }
         .lang-switch button { appearance: none; background: transparent; border: 0; color: #fff; font: inherit; min-height: 36px; padding: 6px 10px; cursor: pointer; text-decoration: underline; opacity: 0.85; }
         .lang-switch button[aria-pressed="true"] { font-weight: 700; text-decoration: none; opacity: 1; }
+        .steps-art { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 4px 0 12px; }
+        .steps-art figure { margin: 0; text-align: center; }
+        .steps-art svg { width: 100%; max-width: 96px; height: auto; }
+        .steps-art figcaption { font-weight: 700; color: #4f46e5; }
         html[lang="en"] .hi, html[lang="hi"] .en { display: none; }
     </style>
     <script>
@@ -72,6 +76,13 @@
         <section>
             <div class="hi">
                 <h2>इंस्टॉल कैसे करें (Android 11 और नए)</h2>
+                <div class="steps-art" aria-hidden="true">
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><path d="M48 26v26m-11-11 11 11 11-11" stroke="#10b981" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="28" y="66" width="40" height="14" rx="5" fill="#10b981"/></svg><figcaption>1</figcaption></figure>
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><rect x="25" y="16" width="46" height="22" rx="4" fill="#e0e7ff"/><path d="M31 21h9l4 4v9H31z" fill="#4f46e5"/><rect x="47" y="23" width="20" height="4" rx="2" fill="#6366f1"/><rect x="47" y="30" width="14" height="4" rx="2" fill="#a5b4fc"/><circle cx="58" cy="62" r="9" fill="none" stroke="#4f46e5" stroke-width="3" opacity=".5"/><circle cx="58" cy="62" r="3" fill="#4f46e5"/></svg><figcaption>2</figcaption></figure>
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><path d="M48 22l14 5v10c0 9-6 15-14 18-8-3-14-9-14-18V27z" fill="#fde68a" stroke="#d97706" stroke-width="2"/><rect x="30" y="70" width="36" height="18" rx="9" fill="#10b981"/><circle cx="57" cy="79" r="7" fill="#fff"/></svg><figcaption>3</figcaption></figure>
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><rect x="26" y="34" width="44" height="46" rx="6" fill="#fff" stroke="#d1d5db" stroke-width="2"/><rect x="34" y="42" width="28" height="4" rx="2" fill="#9ca3af"/><rect x="34" y="50" width="20" height="4" rx="2" fill="#d1d5db"/><rect x="34" y="62" width="28" height="12" rx="4" fill="#2563eb"/><circle cx="56" cy="70" r="8" fill="none" stroke="#f59e0b" stroke-width="3"/></svg><figcaption>4</figcaption></figure>
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><rect x="32" y="40" width="32" height="32" rx="8" fill="#667eea"/><circle cx="48" cy="56" r="7" fill="#fff"/><circle cx="64" cy="40" r="9" fill="#10b981"/><path d="M60 40l3 3 6-6" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>5</figcaption></figure>
+                </div>
                 <ol lang="hi">
                     <li>ऊपर हरे बटन <b>"डाउनलोड करें"</b> को दबाएँ। फ़ाइल डाउनलोड होने तक रुकें।</li>
                     <li>डाउनलोड पूरा होने पर सूचना में या फ़ोन के फ़ाइल वाले ऐप (<b lang="en">Files</b>) में <b data-happa="apkFile">happa.apk</b> खोलें।</li>
@@ -82,6 +93,13 @@
             </div>
             <div class="en">
                 <h2>How to install (Android 11 and newer)</h2>
+                <div class="steps-art" aria-hidden="true">
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><path d="M48 26v26m-11-11 11 11 11-11" stroke="#10b981" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="28" y="66" width="40" height="14" rx="5" fill="#10b981"/></svg><figcaption>1</figcaption></figure>
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><rect x="25" y="16" width="46" height="22" rx="4" fill="#e0e7ff"/><path d="M31 21h9l4 4v9H31z" fill="#4f46e5"/><rect x="47" y="23" width="20" height="4" rx="2" fill="#6366f1"/><rect x="47" y="30" width="14" height="4" rx="2" fill="#a5b4fc"/><circle cx="58" cy="62" r="9" fill="none" stroke="#4f46e5" stroke-width="3" opacity=".5"/><circle cx="58" cy="62" r="3" fill="#4f46e5"/></svg><figcaption>2</figcaption></figure>
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><path d="M48 22l14 5v10c0 9-6 15-14 18-8-3-14-9-14-18V27z" fill="#fde68a" stroke="#d97706" stroke-width="2"/><rect x="30" y="70" width="36" height="18" rx="9" fill="#10b981"/><circle cx="57" cy="79" r="7" fill="#fff"/></svg><figcaption>3</figcaption></figure>
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><rect x="26" y="34" width="44" height="46" rx="6" fill="#fff" stroke="#d1d5db" stroke-width="2"/><rect x="34" y="42" width="28" height="4" rx="2" fill="#9ca3af"/><rect x="34" y="50" width="20" height="4" rx="2" fill="#d1d5db"/><rect x="34" y="62" width="28" height="12" rx="4" fill="#2563eb"/><circle cx="56" cy="70" r="8" fill="none" stroke="#f59e0b" stroke-width="3"/></svg><figcaption>4</figcaption></figure>
+                    <figure><svg viewBox="0 0 96 120" role="presentation"><rect x="18" y="4" width="60" height="112" rx="10" fill="#1f2937"/><rect x="22" y="12" width="52" height="92" rx="4" fill="#f9fafb"/><rect x="32" y="40" width="32" height="32" rx="8" fill="#667eea"/><circle cx="48" cy="56" r="7" fill="#fff"/><circle cx="64" cy="40" r="9" fill="#10b981"/><path d="M60 40l3 3 6-6" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><figcaption>5</figcaption></figure>
+                </div>
                 <ol lang="en">
                     <li>Tap the green <b>"Download Android app"</b> button above and wait for the download to finish.</li>
                     <li>Open <b data-happa="apkFile">happa.apk</b> from the download notification or the <b>Files / Downloads</b> app.</li>
