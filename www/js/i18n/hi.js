@@ -2500,5 +2500,9 @@ export default {
     'ui.usage.e_share_whatsapp': "बिल व्हाट्सऐप पर भेजा",
     'ui.usage.e_perf_diagnostic_run': "गति जाँच चलाई",
     'msg.usage.copied': "✓ इस्तेमाल कॉपी हुआ",
-    'msg.usage.clear_confirm': "इस फ़ोन की इस्तेमाल गिनती मिटाएँ?"
+    'msg.usage.clear_confirm': "इस फ़ोन की इस्तेमाल गिनती मिटाएँ?",
+    'ui.health.test_print': "छपाई",
+    'ui.health.test_sync': "बदलाव सर्वर तक पहुँचना",
+    'ui.health.test_stock_checkpoint': "स्टॉक चेकपॉइंट दोबारा बनाना",
+    'ui.health.test_number_checks': "रोज़ की आँकड़ों की जाँच"
 };
