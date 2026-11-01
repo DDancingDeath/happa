@@ -868,6 +868,8 @@ window.app = {
         archiveFromModal: () => ItemsManager.archiveFromModal(),
         toggleArchived: (show) => ItemsManager.toggleArchived(show),
         loadModalHistory: () => ItemsManager.loadModalHistory(),
+        onModalNameInput: (field) => ItemsManager.onModalNameInput(field),
+        acceptNameSuggestion: (field) => ItemsManager.acceptNameSuggestion(field),
         add: () => ItemsManager.addItem(),
         // Item handlers take the item id, never a list position (#29)
         updateName: (id, val) => ItemsManager.updateItemName(id, val),
