@@ -57,6 +57,11 @@ describe('names not in the table are spelled out', () => {
         expect(suggestHindiName('Hing 50 gram')).toBe('हींग 50 gram');
         expect(suggestHindiName('Atta per Kilo')).toBe('आटा पेर kg');
         expect(suggestHindiName('Kilogram')).toBe('kg');
+        expect(suggestHindiName('Sugar 1 kilo')).toBe('चीनी 1 kg');
+        expect(suggestHindiName('Sugar 1kilo')).toBe('चीनी 1kg');
+        expect(suggestHindiName('Sugar 1 Kilo gram')).toBe('चीनी 1 kg');
+        expect(suggestHindiName('Atta 5 Kilo-gram')).toBe('आटा 5 kg');
+        expect(suggestEnglishName('चीनी 1 \u0915\u093F.\u0917\u094D\u0930\u093E.')).toBe('Sugar 1 kg');
         expect(suggestEnglishName('चीनी 1 \u0915\u093F\u0932\u094B')).toBe('Sugar 1 kg');
         expect(suggestEnglishName('दाल ५०\u0915\u093F\u0917\u094D\u0930\u093E')).toBe('Dal 50kg');
     });

@@ -234,6 +234,13 @@ export function suggestHindiName(english) {
             out += part;
             continue;
         }
+        if (KILO_WORDS.has(part.toLowerCase())) {
+            out += 'kg';
+            // "kilo gram" / "kilo-gram" is one unit
+            if (/^[\s-]?$/.test(parts[i + 1] || 'x') && /^grams?$/i.test(parts[i + 2] || '')) i += 2;
+            else if (/^grams?$/i.test(parts[i + 1] || '')) i += 1;
+            continue;
+        }
         // A letter run glued to digits ("50kg", "No1") is a code or a unit: kept as typed
         const afterNumber = /\d\s*$/.test(parts[i - 1] || '');
         if (KEEP_AS_TYPED.has(part.toLowerCase()) || (afterNumber && UNIT_WORDS.has(part.toLowerCase()))
@@ -242,10 +249,6 @@ export function suggestHindiName(english) {
             continue;
         }
         const key = part.toLowerCase();
-        if (KILO_WORDS.has(key)) {
-            out += 'kg';
-            continue;
-        }
         const phrase = /^\s+$/.test(parts[i + 1] || '') && isWord(parts[i + 2] || '') ? `${key} ${parts[i + 2].toLowerCase()}` : null;
         if (phrase && PHRASES_TO_HINDI.has(phrase)) {
             out += PHRASES_TO_HINDI.get(phrase);
@@ -265,7 +268,9 @@ export function suggestHindiName(english) {
  * @returns {string} '' when there is nothing to suggest
  */
 export function suggestEnglishName(hindi) {
-    const text = String(hindi || '').trim().replace(DEVANAGARI_DIGITS, d => String(d.charCodeAt(0) - 0x0966));
+    const text = String(hindi || '').trim().replace(DEVANAGARI_DIGITS, d => String(d.charCodeAt(0) - 0x0966))
+        // the abbreviated kilo (with dots) is one unit word: kg
+        .replace(/\u0915\u093F\.\s?\u0917\u094D\u0930\u093E\.?/g, 'kg');
     if (!text || !DEVANAGARI.test(text)) return '';
     const parts = text.split(/([\u0900-\u097F]+)/).filter(p => p !== '');
     const isWord = (p) => DEVANAGARI.test(p);
