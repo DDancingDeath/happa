@@ -13,6 +13,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t } from '../i18n/index.js';
+import { authErrorMessage } from '../auth/authentication.js';
 import { AuditService } from './audit.js';
 
 export const DISABLED_STATUS = 'disabled';
@@ -61,8 +62,8 @@ export const UserAdmin = {
             UIManager.showToast(t('msg.common.password_reset_email_sent', { email }));
             return true;
         } catch (error) {
-            console.error('Error sending reset email:', error);
-            UIManager.showToast(t('msg.common.failed_send_reset_email', { message: error?.message || '' }), 'error');
+            console.error('Error sending reset email:', error?.code || error);
+            UIManager.showToast(t('msg.common.failed_send_reset_email', { message: authErrorMessage(error, 'reset') }), 'error');
             return false;
         } finally {
             UIManager.hideLoading();
