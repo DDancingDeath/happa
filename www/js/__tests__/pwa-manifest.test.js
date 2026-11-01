@@ -17,6 +17,18 @@ function pngSize(file) {
 
 const webPath = (src) => path.join(WWW, src.replace(/^\//, ''));
 
+/** Width and height from a JPEG's start-of-frame marker. */
+function jpegSize(buf) {
+    let i = 2;
+    while (i < buf.length) {
+        const marker = buf[i + 1];
+        const len = buf.readUInt16BE(i + 2);
+        if (marker >= 0xc0 && marker <= 0xc3) return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+        i += 2 + len;
+    }
+    return null;
+}
+
 describe('manifest.webmanifest', () => {
     test('has the fields Chromium requires for installability', () => {
         expect(manifest.name).toBeTruthy();
@@ -31,6 +43,32 @@ describe('manifest.webmanifest', () => {
     test.each(manifest.icons.map((i) => [i.src, i.sizes]))('%s exists and is %s', (src, sizes) => {
         const [w, h] = sizes.split('x').map(Number);
         expect(pngSize(webPath(src))).toEqual({ width: w, height: h });
+    });
+
+    test('shortcuts (#151) open a page the app knows, inside the scope, with an existing icon', () => {
+        const { SHORTCUTS, shortcutFromSearch } = require('../utils/launch-shortcut.js');
+        expect(manifest.shortcuts.length).toBeGreaterThanOrEqual(3);
+        for (const s of manifest.shortcuts) {
+            expect(s.name).toBeTruthy();
+            expect(s.url.startsWith(manifest.scope)).toBe(true);
+            const key = new URL(s.url, 'https://x').searchParams.get('shortcut');
+            expect(shortcutFromSearch(`?shortcut=${key}`)).toEqual({ ...SHORTCUTS[key] });
+            s.icons.forEach((i) => expect(fs.existsSync(webPath(i.src))).toBe(true));
+        }
+    });
+
+    test('screenshots (#151): narrow and wide, files of the declared size, not precached', () => {
+        const sw = fs.readFileSync(path.join(WWW, 'service-worker.js'), 'utf8');
+        expect(manifest.screenshots.some((s) => s.form_factor === 'narrow')).toBe(true);
+        expect(manifest.screenshots.some((s) => s.form_factor === 'wide')).toBe(true);
+        for (const s of manifest.screenshots) {
+            const buf = fs.readFileSync(webPath(s.src));
+            expect(s.type).toBe('image/jpeg');
+            expect(buf.subarray(0, 2)).toEqual(Buffer.from([0xff, 0xd8]));
+            expect(jpegSize(buf)).toEqual({ width: Number(s.sizes.split('x')[0]), height: Number(s.sizes.split('x')[1]) });
+            expect(s.label).toBeTruthy();
+            expect(sw).not.toContain(s.src);
+        }
     });
 });
 

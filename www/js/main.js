@@ -47,6 +47,7 @@ import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { SecurityMonitor } from './services/security-monitor.js';
 import { startLongTaskRecorder } from './utils/perf-probe.js';
+import { shortcutFromSearch, withoutShortcut } from './utils/launch-shortcut.js';
 import { UsageView } from './ui/usage-view.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
@@ -55,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkg-admin-activity';
+const BUILD_ID = '20261101zzuzieecmbbkhbc-admin-activity';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -324,6 +325,18 @@ function writeTipReport({ delta, failures }) {
     });
 }
 
+/** Opens the page of a home-screen shortcut (#151) once, after the first screen. */
+function openLaunchShortcut() {
+    const shortcut = shortcutFromSearch(window.location.search);
+    if (!shortcut) return;
+    window.history.replaceState(window.history.state, '', withoutShortcut(window.location.pathname, window.location.search, window.location.hash));
+    if (shortcut.tab !== 'billing') {
+        if (NavigationManager.showTab(shortcut.tab) !== false) NavigationManager.setActiveNavLink(shortcut.tab);
+        return;
+    }
+    if (shortcut.mode) BillingManager.switchMode(shortcut.mode, { currentTarget: document.getElementById(shortcut.mode === 'sale' ? 'saleModeBtn' : 'purchaseModeBtn') });
+}
+
 async function initializeUserData() {
     await pagesReady;
     if (outdatedBlocked) {
@@ -508,6 +521,9 @@ async function initializeUserData() {
         
         // Check for auto-saved bill
         await BillingManager.checkAutoSave();
+        // After the recovery check: a mode switch auto-saves, and with no recovery
+        // pending an empty form deletes the auto-save the check must still read
+        openLaunchShortcut();
         BillingManager.renderBillNumber();
         BillingManager.focusFirstItem();
         if (outdatedBlocked) {
