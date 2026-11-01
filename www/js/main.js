@@ -1235,8 +1235,8 @@ window.app = {
         returnCashBody: () => DayManager.returnCashBody(),
         reminderForm: (open) => ManualReminders.form(open),
         reminderSave: () => ManualReminders.save(),
-        reminderDone: (id) => ManualReminders.done(id),
-        reminderCancel: (id) => ManualReminders.cancel(id)
+        reminderDone: (id) => ManualReminders.markReminderDone(id),
+        reminderCancel: (id) => ManualReminders.cancelReminderNow(id)
     },
     
     // Cash Management

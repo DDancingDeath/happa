@@ -138,7 +138,7 @@ export const ManualReminders = {
         });
     },
 
-    async done(id) {
+    async markReminderDone(id) {
         if (typeof navigator !== 'undefined' && navigator.onLine === false) { UIManager.showToast(t('msg.reminders.needs_internet')); return false; }
         try {
             await FirebaseService.ackReminder(id, this.by());
@@ -150,7 +150,7 @@ export const ManualReminders = {
         }
     },
 
-    async cancel(id) {
+    async cancelReminderNow(id) {
         if (!this.canManage()) return false;
         if (!(await UIManager.showModal(t('msg.reminders.cancel_confirm'), t('ui.reminders.cancel'), true))) return false;
         if (typeof navigator !== 'undefined' && navigator.onLine === false) { UIManager.showToast(t('msg.reminders.needs_internet')); return false; }

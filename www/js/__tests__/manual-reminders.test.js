@@ -89,8 +89,8 @@ describe('Today: manual reminders', () => {
         const cancel = jest.spyOn(FirebaseService, 'cancelReminder').mockResolvedValue();
         const ack = jest.spyOn(FirebaseService, 'ackReminder').mockResolvedValue();
         expect(await ManualReminders.save()).toBe(false);
-        expect(await ManualReminders.cancel('r1')).toBe(false);
-        expect(await ManualReminders.done('r1')).toBe(true);
+        expect(await ManualReminders.cancelReminderNow('r1')).toBe(false);
+        expect(await ManualReminders.markReminderDone('r1')).toBe(true);
         expect(create).not.toHaveBeenCalled();
         expect(cancel).not.toHaveBeenCalled();
         expect(ack).toHaveBeenCalledWith('r1', { uid: 'u1', name: 'Owner' });
