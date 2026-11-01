@@ -24,16 +24,18 @@ function downloadButton() {
     return buttons.find(b => b.textContent === 'Download');
 }
 
-/** Clicks Download and waits for the toBlob callback to finish. */
+/** Clicks Download and waits for the toBlob callback to finish (its errors fail the test). */
 async function clickDownload() {
-    let done;
-    const finished = new Promise(resolve => { done = resolve; });
+    let settle;
+    const finished = new Promise((resolve, reject) => { settle = { resolve, reject }; });
     HTMLCanvasElement.prototype.toBlob = jest.fn(function (cb) {
-        Promise.resolve(cb(blobResult)).then(done, done);
+        Promise.resolve().then(() => cb(blobResult)).then(settle.resolve, settle.reject);
     });
-    downloadButton().onclick();
-    await finished;
+    await Promise.race([finished, Promise.resolve(downloadButton().onclick()).then(() => finished)]);
 }
+
+/** canShare as a browser answers it: yes only for a list of files. */
+const canShareFiles = () => jest.fn(data => Array.isArray(data?.files) && data.files.length > 0);
 
 beforeAll(() => {
     global.File = class File {
@@ -70,10 +72,11 @@ afterEach(() => {
 
 describe('bill picture: Download / share', () => {
     test('a phone that can share files opens the share sheet with the PNG, no download', async () => {
-        navigator.canShare = jest.fn(() => true);
+        navigator.canShare = canShareFiles();
         navigator.share = jest.fn(() => Promise.resolve());
         PrinterService.showImagePreview(previewCanvas(), 'purchase_bill_P1.png', 'Bill');
         await clickDownload();
+        expect(navigator.canShare).toHaveBeenCalledWith({ files: [expect.objectContaining({ name: 'purchase_bill_P1.png', type: 'image/png' })] });
         expect(navigator.share).toHaveBeenCalledTimes(1);
         const shared = navigator.share.mock.calls[0][0];
         expect(shared.title).toBe('Bill');
@@ -101,7 +104,7 @@ describe('bill picture: Download / share', () => {
     });
 
     test('sharing fails: falls back to the download', async () => {
-        navigator.canShare = jest.fn(() => true);
+        navigator.canShare = canShareFiles();
         navigator.share = jest.fn(() => Promise.reject(Object.assign(new Error('no app'), { name: 'NotAllowedError' })));
         PrinterService.showImagePreview(previewCanvas(), 'sale_bill_S9.png');
         await clickDownload();
@@ -110,16 +113,17 @@ describe('bill picture: Download / share', () => {
     });
 
     test('the user closes the share sheet: also downloads, so the picture is never lost', async () => {
-        navigator.canShare = jest.fn(() => true);
+        navigator.canShare = canShareFiles();
         navigator.share = jest.fn(() => Promise.reject(Object.assign(new Error('cancel'), { name: 'AbortError' })));
         PrinterService.showImagePreview(previewCanvas(), 'sale_bill_S10.png');
         await clickDownload();
+        expect(navigator.share).toHaveBeenCalledTimes(1);
         expect(clicked).toHaveLength(1);
     });
 
     test('the picture could not be made: says so instead of sharing an empty file', async () => {
         blobResult = null;
-        navigator.canShare = jest.fn(() => true);
+        navigator.canShare = canShareFiles();
         navigator.share = jest.fn(() => Promise.resolve());
         PrinterService.showImagePreview(previewCanvas(), 'sale_bill_S11.png');
         await clickDownload();
