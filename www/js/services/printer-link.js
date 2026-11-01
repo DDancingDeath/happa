@@ -29,6 +29,9 @@ export class PrinterLinkError extends Error {
 
 const asError = (e, fallback) => (e instanceof Error ? e : new Error(e || fallback));
 
+/** Android 12+ refuses the link without the "Nearby devices" (BLUETOOTH_CONNECT) permission. */
+export const isPermissionError = (e) => /BLUETOOTH_CONNECT|permission/i.test(String(e?.message || e || ''));
+
 export function withTimeout(promise, ms, kind) {
     let timer;
     const timeout = new Promise((_, reject) => {
@@ -153,7 +156,8 @@ export class PrinterLink {
                 'timeout_connect'
             );
         } catch (e) {
-            const error = e instanceof PrinterLinkError ? e : new PrinterLinkError('connect', asError(e, 'Connection failed').message);
+            const error = e instanceof PrinterLinkError ? e
+                : new PrinterLinkError(isPermissionError(e) ? 'permission' : 'connect', asError(e, 'Connection failed').message);
             this.deviceId = null;
             this._recordError(error);
             throw error;
