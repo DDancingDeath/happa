@@ -5,7 +5,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatKg, labourCalcText } from '../utils/labour.js';
-import { parseAnyBillDate, todayLocalISO, displayLocale, toLocalISODate, formatDayTime } from '../utils/dates.js';
+import { parseAnyBillDate, todayLocalISO, displayLocale, toLocalISODate, formatDayTime, formatMonth } from '../utils/dates.js';
 import { todaySummary } from '../utils/calc/today.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
@@ -15,7 +15,7 @@ import { HealthManager } from './health.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
 import { on, REFRESH } from '../utils/events.js';
-import { overdueReminder, rentReminder } from '../utils/reminders.js';
+import { overdueReminder, rentReminder, leaseReminder } from '../utils/reminders.js';
 import { drillReminder } from '../utils/backup-verify.js';
 import { billsForKind } from '../utils/party-due.js';
 import { rentalsRole } from '../ui/business-switcher.js';
@@ -289,6 +289,20 @@ export const DayManager = {
                     + `<div>${e(t('ui.today.reminder_rent_units', { count: rent.dueUnits, late: rent.late }))}</div>`
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatDayTime(rent.at, { lang: getLang() }) }))}</div>`
                     + `<button type="button" class="filter-btn" onclick="window.app.rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div>`);
+            }
+            // REM-4: agreements ending and rent increases due, as the Rent page last saw them this month
+            let leases = null;
+            try { leases = leaseReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { leases = null; }
+            if (leases) {
+                const mon = (m) => formatMonth(`${m}-01`, { lang: getLang() });
+                const what = (x) => (x.kind === 'increase' ? t('ui.today.lease_increase', { pct: x.pct, amount: formatINR(x.newRent) })
+                    : t(x.left < 0 ? 'ui.today.lease_ended' : x.left === 0 ? 'ui.today.lease_ends_now' : 'ui.today.lease_ends', { month: mon(x.end) })
+                        + (x.notice ? ` · ${t('ui.today.lease_notice', { month: mon(x.notice) })}` : ''));
+                parts.push(`<div class="today-reminder" data-reminder="leases"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_leases'))}</strong></div>`
+                    + `<ul>${leases.items.map(x => `<li class="today-reminder-party"><span>${e([x.place, x.tenant].filter(Boolean).join(' · '))}</span> <span class="today-reminder-days">${e(what(x))}</span></li>`).join('')}</ul>`
+                    + (leases.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: leases.more }))}</div>` : '')
+                    + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatDayTime(leases.at, { lang: getLang() }) }))}</div>`
+                    + `<button type="button" class="filter-btn" onclick="window.app.rentals.open('tenants', event)">${e(t('ui.today.reminder_open_tenants'))}</button></div>`);
             }
         }
         // REM-3 (#63): the owner checks a backup file at least every 30 days
