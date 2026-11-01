@@ -174,6 +174,42 @@ describe('Day report card', () => {
         expect(document.getElementById('dayReportCard').style.display).toBe('none');
         expect(FirebaseService.loadAnomalies).not.toHaveBeenCalled();
     });
+
+    describe('voids (#75): no approval, but a void by anyone but an owner is flagged on Today', () => {
+        const voidedBill = (id, voidedBy) => ({
+            ...badBill, id, billNumber: `V${id}`, payment: { cash: 400, online: 0, due: 0 },
+            voided: true, voidedBy, voidedByName: 'Ravi', voidedAt: { toDate: () => new Date(now - 60000) }, voidReason: 'Entered twice'
+        });
+        beforeEach(() => {
+            AppState.retailSalesHistory = [];
+            FirebaseService.voidedBills = jest.fn(coll => (coll === 'retailSales' ? [voidedBill('1', 'staff1'), voidedBill('2', 'own1')] : []));
+        });
+        afterEach(() => { delete FirebaseService.voidedBills; });
+
+        test('owner: a member\'s void shows at once (medium, with the reason) from the bills already loaded; the owner\'s own does not', async () => {
+            FirebaseService.loadPeople.mockResolvedValue([{ id: 'own1', role: 'owner' }, { id: 'staff1', role: 'staff' }]);
+            AnomaliesManager.renderDayReport({}, null);
+            expect(AnomaliesManager.reportList.map(a => [a.id, a.severity])).toEqual([['bill-voided~bill~1', 'medium']]);
+            const card = document.getElementById('dayReportCard');
+            expect(card.textContent).toContain('Bill #V1 voided (₹400) — Entered twice');
+            await AnomaliesManager.refreshing;
+            expect(FirebaseService.loadAuditLogsSince).not.toHaveBeenCalled();
+            expect(FirebaseService.saveAnomalies.mock.calls[0][0].map(w => w.id)).toEqual(['bill-voided~bill~1']);
+        });
+
+        test('manager: the owner\'s void is told apart by the team list, read once', async () => {
+            AppState.userRole = 'manager';
+            AppState.currentUser = { uid: 'man1' };
+            FirebaseService.loadPeople.mockResolvedValue([{ id: 'own1', role: 'owner' }, { id: 'staff1', role: 'staff' }]);
+            AnomaliesManager.renderDayReport({}, null);
+            await AnomaliesManager.refreshing;
+            expect(AnomaliesManager.reportList.map(a => a.id)).toEqual(['bill-voided~bill~1']);
+            expect(FirebaseService.saveAnomalies.mock.calls[0][0].map(w => w.id)).toEqual(['bill-voided~bill~1']);
+            AnomaliesManager.stored = null;
+            await AnomaliesManager.refreshDayReport();
+            expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
+        });
+    });
 });
 
 describe('read budget (free plan)', () => {
