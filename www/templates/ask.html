@@ -1,0 +1,12 @@
+<div id="ask" class="tab">
+    <div class="ask-page">
+        <h2 data-i18n="ui.ask.title">Ask</h2>
+        <p class="ask-intro" data-i18n="ui.ask.intro">Ask about today's sales, a party's due or an item's stock. Answers come from the data on this phone, also offline.</p>
+        <form class="ask-form" onsubmit="window.app.ask.submit(event)">
+            <input type="text" id="askInput" autocomplete="off" maxlength="80" enterkeyhint="send" placeholder="e.g. Ramesh due" data-i18n-placeholder="ui.ask.placeholder" aria-label="Your question" data-i18n-aria-label="ui.ask.input_label">
+            <button type="submit" class="btn btn-primary" data-i18n="ui.ask.ask_button">Ask</button>
+        </form>
+        <div class="ask-examples" id="askExamples"></div>
+        <div class="ask-answers" id="askAnswers" aria-live="polite"></div>
+    </div>
+</div>

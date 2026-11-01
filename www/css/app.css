@@ -6538,6 +6538,17 @@ body.dark-mode .today-cash-prompt {
 .today-reminder-party { display: flex; gap: 8px; justify-content: space-between; font-size: 14px; padding: 2px 0; }
 .today-reminder-party span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .today-reminder-days, .today-reminder-more { color: #6b7280; font-size: 12px; }
+/* Ask (#88) */
+.ask-page { max-width: 720px; }
+.ask-intro { color: var(--text-secondary, #555); margin: 4px 0 12px; }
+.ask-form { display: flex; gap: 8px; }
+.ask-form input { flex: 1; min-width: 0; min-height: 44px; font-size: 16px; padding: 8px 12px; }
+.ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.ask-answers { display: flex; flex-direction: column; gap: 10px; }
+.ask-answer { background: var(--card-bg, #fff); border: 1px solid var(--border-color, #e0e0e0); border-radius: 10px; padding: 10px 12px; }
+.ask-question { font-weight: 600; margin-bottom: 4px; }
+.ask-line { margin: 2px 0; }
+.ask-answer .ask-open { margin-top: 6px; }
 
 /* ---- css/anomalies.css ---- */
 /* ==================== ANOMALIES (#187, #40) ==================== */
