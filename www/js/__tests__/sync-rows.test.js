@@ -107,20 +107,31 @@ describe('per-row sync state', () => {
         expect(status.syncStateOf('e1')).toBeNull();
     });
 
-    test('a listened document: pending while its snapshot says so, saved when a server snapshot clears it', () => {
+    test('a listened document: pending while its snapshot says so; cleared by a snapshot it has nothing to say', () => {
         status.noteSnapshot('L1', snap(['retailSales/s1', 'retailSales/s2']));
         expect(status.syncStateOf('s1')).toBe('pending');
         status.noteSnapshot('L1', snap(['retailSales/s2']));
-        expect(status.syncStateOf('s1')).toBe('synced');
+        expect(status.syncStateOf('s1')).toBeNull();
         expect(status.syncStateOf('s2')).toBe('pending');
-        status.noteSnapshot('L1', snap([]));
-        expect(status.syncStateOf('s2')).toBe('synced');
     });
 
-    test('a cache snapshot that drops a document does not call it saved', () => {
-        status.noteSnapshot('L1', snap(['retailSales/s3']));
-        status.noteSnapshot('L1', snap([], { fromCache: true }));
-        expect(status.syncStateOf('s3')).toBeNull();
+    test('refused while a listener also saw it: never "Saved" (the SDK reverts the document)', async () => {
+        let refuse;
+        status.trackWrite('expenses/e2', new Promise((_, r) => { refuse = r; }));
+        status.noteSnapshot('L2', snap(['expenses/e2'], { fromCache: true }));
+        expect(status.syncStateOf('e2')).toBe('pending');
+        refuse(new Error('permission-denied'));
+        await flush();
+        status.noteSnapshot('L2', snap([]));
+        expect(status.syncStateOf('e2')).toBeNull();
+    });
+
+    test('saved, then written again: waiting again until that write is acknowledged', async () => {
+        status.trackWrite('purchases/b5', Promise.resolve());
+        await flush();
+        expect(status.syncStateOf('b5')).toBe('synced');
+        status.trackWrite('purchases/b5', new Promise(() => {}));
+        expect(status.syncStateOf('b5')).toBe('pending');
     });
 
     test('chips on screen follow the state', async () => {

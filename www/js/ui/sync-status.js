@@ -94,11 +94,21 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let serverDataSavedAt = 0;
 
     const idOf = (path) => String(path).split('/').pop();
+    // Only an acknowledged write proves a row reached the server: a listener's pending
+    // flag also clears when the server refuses a write (the SDK reverts the document).
     const markSynced = (path) => {
         const id = idOf(path);
         syncedIds.delete(id);
         syncedIds.add(id);
         if (syncedIds.size > SYNCED_IDS_MAX) syncedIds.delete(syncedIds.values().next().value);
+    };
+    const forgetSynced = (path) => syncedIds.delete(idOf(path));
+    /** id → 'pending' | 'synced' for every row with something to say. */
+    const rowStates = () => {
+        const states = new Map();
+        syncedIds.forEach(id => states.set(id, 'synced'));
+        pendingKeys().forEach(p => states.set(idOf(p), 'pending'));
+        return states;
     };
 
     const pendingKeys = () => {
@@ -241,6 +251,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             const key = String(path);
             const token = {};
             writes.set(key, token);
+            forgetSynced(key);
             render();
             const done = () => {
                 if (writes.get(key) === token) writes.delete(key);
@@ -254,15 +265,9 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
          * @param {Object} snapshot - Query snapshot (metadata.hasPendingWrites, docs)
          */
         noteSnapshot(listenerId, snapshot) {
-            const had = listened.get(listenerId);
-            const fromServer = snapshot?.metadata && !snapshot.metadata.fromCache;
-            // A document that was waiting and now isn't, in a server snapshot, reached the server.
-            const settled = (paths) => {
-                if (fromServer) had?.forEach(p => { if (!paths?.has(p)) markSynced(p); });
-            };
+            const had = listened.has(listenerId);
             if (!snapshot?.metadata?.hasPendingWrites) {
                 if (!had) return;
-                settled(null);
                 listened.delete(listenerId);
             } else {
                 const paths = new Set();
@@ -270,7 +275,6 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
                     if (d?.metadata?.hasPendingWrites) paths.add(d.ref?.path || d.id);
                 });
                 if (!paths.size && !had) return;
-                settled(paths);
                 if (paths.size) listened.set(listenerId, paths);
                 else listened.delete(listenerId);
             }
@@ -293,20 +297,23 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
          */
         syncStateOf(id) {
             if (id === undefined || id === null || id === '') return null;
-            const key = String(id);
-            for (const p of pendingKeys()) if (idOf(p) === key) return 'pending';
-            return syncedIds.has(key) ? 'synced' : null;
+            return rowStates().get(String(id)) || null;
         },
         /**
          * Fills the row chips (syncChipHtml) under root with their documents' state.
          * @param {ParentNode} [root]
          */
         fillSyncChips(root = doc) {
-            root?.querySelectorAll?.('.sync-chip[data-sync-id]').forEach(chip => {
-                const state = this.syncStateOf(chip.dataset.syncId);
+            const chips = root?.querySelectorAll?.('.sync-chip[data-sync-id]');
+            if (!chips || !chips.length) return;
+            const states = rowStates();
+            chips.forEach(chip => {
+                const state = states.get(chip.dataset.syncId) || '';
+                const text = state ? t(SYNC_CHIP_KEYS[state]) : '';
+                if (chip.dataset.state === state && chip.textContent === text) return;
                 chip.hidden = !state;
-                chip.dataset.state = state || '';
-                chip.textContent = state ? t(SYNC_CHIP_KEYS[state]) : '';
+                chip.dataset.state = state;
+                chip.textContent = text;
             });
         },
         /**
