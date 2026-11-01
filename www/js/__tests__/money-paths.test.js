@@ -225,8 +225,7 @@ describe('new purchase save', () => {
         savePurchase.mockImplementation(() => new Promise(r => { release = r; }));
         const first = PurchaseManager.saveBillToHistory();
         const second = PurchaseManager.saveBillToHistory();
-        await Promise.resolve();
-        await Promise.resolve();
+        for (let i = 0; i < 20 && !release; i++) await Promise.resolve();
         release();
         await Promise.all([first, second]);
         expect(savePurchase).toHaveBeenCalledTimes(1);

@@ -26,6 +26,8 @@ import { getLang, t } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
+import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
+import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, prepareBillDate, resetBillDate } from '../ui/bill-date-input.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
@@ -60,7 +62,7 @@ let shownProfit = 0;
 let pendingBill = null;
 
 function ensurePendingBill() {
-    if (!pendingBill) pendingBill = { id: Helpers.generateId(), billNumber: null, attempted: false, date: null, timestamp: null };
+    if (!pendingBill) pendingBill = { id: Helpers.generateId(), billNumber: null, attempted: false, date: null, timestamp: null, enteredAt: null };
     return pendingBill;
 }
 
@@ -74,6 +76,7 @@ export class WholesaleSalesManager {
     }
 
     static loadItemsDropdown() {
+        prepareBillDate('wholesaleDate');
         const select = document.getElementById('sellItem');
         if (!select) return;
         
@@ -400,8 +403,8 @@ export class WholesaleSalesManager {
             total: this.computeTotals().total,
             payment: this.readPaymentSplit(),
             partyName: Helpers.getInputText('wholesaleCustomerName'),
-            date: pendingBill?.date,
-            enteredAt: pendingBill?.timestamp,
+            date: pendingBill?.date || billTimeFor(pickedBillDay('wholesaleDate')).toLocaleString('en-IN'),
+            enteredAt: pendingBill?.enteredAt || pendingBill?.timestamp,
             entry: item ? { itemId: item.id, name: item.name, rate: readTypedNumber('sellRate'), qty: readTypedNumber('sellQuantity') } : null
         };
     }
@@ -435,6 +438,16 @@ export class WholesaleSalesManager {
         const split = this.readPaymentSplit();
         const { cash, online, due } = split;
         
+        // The bill's day (#147), fixed by the first attempt (a retry is written identically)
+        const day = pickedBillDay('wholesaleDate');
+        const dayProblem = pendingBill?.timestamp ? null : validateBillDay(day, billDateWho());
+        if (dayProblem) {
+            UIManager.showToast(t(dayProblem.key, dayProblem.params), 'warning');
+            return;
+        }
+        // Cash on a back-dated bill: owner only (that day's drawer may be closed)
+        if (!(await allowBackdatedCash(day, cash, pendingBill))) return;
+        
         // Payment, name-for-Due, stock and the other bill checks (#23, #68, #37)
         this.updatePaymentTotal();
         const checks = await BillChecksUI.confirmSave('wholesale');
@@ -445,8 +458,12 @@ export class WholesaleSalesManager {
             if (!pending.billNumber) pending.billNumber = await Helpers.generateBillNumber('W', 'wholesaleSales');
             // A retry keeps the first attempt's time so an unchanged sale is written identically
             if (!pending.timestamp) {
-                pending.timestamp = Date.now();
-                pending.date = Helpers.getCurrentDateTime();
+                const now = new Date();
+                const at = billTimeFor(pickedBillDay('wholesaleDate', now), now);
+                pending.timestamp = at.getTime();
+                pending.date = at.toLocaleString('en-IN');
+                pending.enteredAt = now.getTime();
+                lockBillDate('wholesaleDate', pending.timestamp);
             }
             
             const saleData = {
@@ -475,6 +492,7 @@ export class WholesaleSalesManager {
                 payment: buildPaymentSplit(split),
                 date: pending.date,
                 timestamp: pending.timestamp,
+                enteredAt: pending.enteredAt || pending.timestamp,
                 createdBy: AppState.currentUser?.uid || 'unknown',
                 createdByName: AppState.userName || 'User',
                 source: 'sales-tab',
@@ -516,6 +534,7 @@ export class WholesaleSalesManager {
             document.getElementById('salesComments').value = '';
             document.getElementById('salesExpensesAmount').value = '0';
             this.resetPaymentFields();
+            resetBillDate('wholesaleDate');
             
             // Clear stock details
             document.getElementById('availableStock').textContent = '-';
@@ -530,8 +549,9 @@ export class WholesaleSalesManager {
             // this dropdown. The item detail fields were cleared above so no stale
             // per-item stock is shown in the meantime.
             
-            UIManager.showToast(FirebaseService.keptServerPayment(saleData) ? t(KEPT_SERVER_PAYMENT_KEY)
-                : FirebaseService.savedOnPhoneOnly(saleData) ? t(SAVED_ON_PHONE_KEY) : t('msg.wholesale.sale_completed_successfully'));
+            if (FirebaseService.keptServerPayment(saleData)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
+            else if (FirebaseService.savedOnPhoneOnly(saleData)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
+            else UIManager.showToast(t('msg.wholesale.sale_completed_successfully'));
             UIManager.hapticFeedback();
             return saleData;
         } catch (error) {
@@ -1262,6 +1282,16 @@ BillChecksUI.register('wholesale', {
         'entry.qty': { inputs: ['sellQuantity'] }
     }
 });
+
+// Showing Wholesale (or the app again) sets the Date box (#147)
+if (typeof window !== 'undefined') {
+    window.addEventListener('aadhat:tabshown', (event) => {
+        if (event.detail?.tabId === 'wholesale-sales') prepareBillDate('wholesaleDate');
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') prepareBillDate('wholesaleDate');
+    });
+}
 
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
 on(REFRESH.salesDropdown, () => WholesaleSalesManager.loadItemsDropdown());
