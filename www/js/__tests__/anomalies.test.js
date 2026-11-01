@@ -224,7 +224,7 @@ describe('cash, stock and audit rules', () => {
         const people = [{ id: 'o1', name: 'Owner', role: 'owner' }, { id: 'u2', name: 'Ravi K', role: 'staff' }];
 
         test('a loaded voided bill gives the flag at once, at the time of the void, without the audit log', () => {
-            const [a, ...rest] = run({ voided: { retail: [voidedBill()] }, viewerOwnerId: 'o1' });
+            const [a, ...rest] = run({ voided: { retail: [voidedBill()] }, ownerIds: ['o1'] });
             expect(rest).toEqual([]);
             expect(a).toMatchObject({
                 id: 'bill-voided~bill~v1', type: 'bill-voided', severity: 'medium', refKind: 'bill', billType: 'retail',
@@ -234,7 +234,7 @@ describe('cash, stock and audit rules', () => {
             // the same record from every phone: the name stored on the bill, with or without the profiles
             expect(run({ voided: { retail: [voidedBill()] }, people })[0]).toEqual(a);
             // outside the scanned days: nothing
-            expect(run({ voided: { retail: [voidedBill({ voidedAt: T(9, 0, 21) })] }, viewerOwnerId: 'o1' })).toEqual([]);
+            expect(run({ voided: { retail: [voidedBill({ voidedAt: T(9, 0, 21) })] }, ownerIds: ['o1'] })).toEqual([]);
         });
 
         test('a phone that cannot tell the owners apart (a manager\'s before the team list) leaves voids to the owner\'s phone', () => {
@@ -242,12 +242,11 @@ describe('cash, stock and audit rules', () => {
             expect(run({ voided: { retail: [voidedBill()] }, ownerIds: ['o1'] })).toHaveLength(1);
         });
 
-        test('an owner\'s void is no flag: from the profiles, the owners\' list, the owner looking, or the stored role', () => {
+        test('an owner\'s void is no flag: from the profiles, the owners\' list, or an entry\'s stored role', () => {
             const byOwner = { retail: [voidedBill({ voidedBy: 'o1' })] };
             expect(run({ voided: byOwner, people })).toEqual([]);
             expect(run({ voided: byOwner, ownerIds: ['o1'] })).toEqual([]);
-            expect(run({ voided: byOwner, viewerOwnerId: 'o1' })).toEqual([]);
-            expect(run({ voided: byOwner, ownerIds: ['o2'], viewerOwnerId: 'o1' })).toHaveLength(1);
+            expect(run({ voided: byOwner, ownerIds: ['o2'] })).toHaveLength(1);
             const log = { id: 'l6', action: 'VOID_BILL', userId: 'o1', userRole: 'owner', timestamp: T(13), details: { billNumber: 'R9', amount: 5, reason: 'x' } };
             expect(run({ auditLogs: [log] })).toEqual([]);
             expect(run({ auditLogs: [{ ...log, userRole: 'staff' }], people })).toEqual([]);
@@ -272,11 +271,19 @@ describe('cash, stock and audit rules', () => {
         });
 
         test('a void an older scan stored under its audit entry is not flagged again under its bill', () => {
-            const detected = run({ voided: { retail: [voidedBill()] }, viewerOwnerId: 'o1' });
+            const detected = run({ voided: { retail: [voidedBill()] }, ownerIds: ['o1'] });
             const storedOld = [{ id: 'bill-voided~audit~l1', type: 'bill-voided', refKind: 'audit', billNumber: 'R7', userId: 'u2', status: 'ok' }];
             expect(withoutStoredVoidTwins(detected, storedOld)).toEqual([]);
             expect(withoutStoredVoidTwins(detected, [{ ...storedOld[0], userId: 'u9' }])).toEqual(detected);
             expect(withoutStoredVoidTwins(detected, null)).toEqual(detected);
+            // the version built from the audit entry only creates the record; the bill's version may update it
+            const log = { id: 'l8', action: 'VOID_BILL', userId: 'u2', timestamp: T(14), details: { billId: 'v1', billNumber: 'R7', billType: 'retail', amount: 400, reason: 'x' } };
+            const fromEntry = run({ auditLogs: [log] });
+            const storedBill = [{ ...detected[0], status: 'open' }];
+            expect(fromEntry.map(a => a.id)).toEqual(['bill-voided~bill~v1']);
+            expect(withoutStoredVoidTwins(fromEntry, storedBill)).toEqual([]);
+            expect(withoutStoredVoidTwins(fromEntry, [])).toEqual(fromEntry);
+            expect(withoutStoredVoidTwins(detected, storedBill)).toEqual(detected);
         });
 
         test('owners are needed only when someone else voided a loaded bill in the scanned days', () => {

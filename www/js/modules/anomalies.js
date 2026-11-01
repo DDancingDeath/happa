@@ -70,9 +70,6 @@ function loadedVoided() {
 }
 
 
-/** The uid looking, when that is an owner: counts as an owner while the owners' list is not read. */
-const viewerOwnerId = () => (AppState.userRole === 'owner' ? AppState.currentUser?.uid || null : null);
-
 /** A loaded bill entered (as the scan sees it, billTime) on a later IST day than it is dated, by someone other than `uid` (#147). */
 function datedBackByOthers(bills, uid) {
     return Object.values(bills).some(list => list.some(b => {
@@ -188,7 +185,6 @@ export const AnomaliesManager = {
             // #147: anyone but an owner is flagged from 1 day back (owners not known yet: Q20)
             ownerIds: this.knownOwnerIds(),
             voided,
-            viewerOwnerId: viewerOwnerId(),
             from,
             to
         });
@@ -288,7 +284,6 @@ export const AnomaliesManager = {
             // #147: anyone but an owner is flagged from 1 day back (owners not known yet: Q20)
             ownerIds: this.knownOwnerIds(),
             voided: loadedVoided(),
-            viewerOwnerId: viewerOwnerId(),
             from: Math.max(istDayStartMs(yesterday), Number(AppState.historyLoadedFrom) || 0),
             to: istDayStartMs(today) + DAY_MS
         });
@@ -337,9 +332,11 @@ export const AnomaliesManager = {
         this.refreshing = (async () => {
             const prev = this.stored && this.stored.key === key ? this.stored.docs : [];
             if (!force && this.reportFresh(key)) {
-                // A manager's phone tells an owner's void from anyone else's by the team list (#75, 1 read a session)
-                if (AppState.userRole !== 'owner' && !this.knownOwnerIds()
-                    && voidedByOthers(loadedVoided(), AppState.currentUser?.uid, istDayStartMs(yesterday), istDayStartMs(addDaysToKey(today, 1)))) {
+                // Someone else's void (#75) is told apart from an owner's by the owners' list, read once a session
+                const uid = AppState.currentUser?.uid;
+                if (!this.knownOwnerIds() && this.ownersAskedBy !== uid
+                    && voidedByOthers(loadedVoided(), uid, istDayStartMs(yesterday), istDayStartMs(addDaysToKey(today, 1)))) {
+                    this.ownersAskedBy = uid;
                     await this.loadOwnerIds();
                 }
                 let cached = [];

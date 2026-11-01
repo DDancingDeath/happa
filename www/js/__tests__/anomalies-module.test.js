@@ -53,6 +53,7 @@ beforeEach(() => {
     AnomaliesManager.refreshing = null;
     AnomaliesManager.scanQueue = null;
     AnomaliesManager.owners = null;
+    AnomaliesManager.ownersAskedBy = null;
     document.body.innerHTML = '<div id="dayReportCard" style="display:none"></div>';
 });
 
@@ -186,14 +187,16 @@ describe('Day report card', () => {
         });
         afterEach(() => { delete FirebaseService.voidedBills; });
 
-        test('owner: a member\'s void shows at once (medium, with the reason) from the bills already loaded; the owner\'s own does not', async () => {
+        test('owner: a member\'s void shows on Today (medium, with the reason) once the owners are read; the owner\'s own does not', async () => {
             FirebaseService.loadPeople.mockResolvedValue([{ id: 'own1', role: 'owner' }, { id: 'staff1', role: 'staff' }]);
             AnomaliesManager.renderDayReport({}, null);
+            expect(AnomaliesManager.reportList).toEqual([]);
+            await AnomaliesManager.refreshing;
             expect(AnomaliesManager.reportList.map(a => [a.id, a.severity])).toEqual([['bill-voided~bill~1', 'medium']]);
             const card = document.getElementById('dayReportCard');
             expect(card.textContent).toContain('Bill #V1 voided (₹400) — Entered twice');
-            await AnomaliesManager.refreshing;
             expect(FirebaseService.loadAuditLogsSince).not.toHaveBeenCalled();
+            expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
             expect(FirebaseService.saveAnomalies.mock.calls[0][0].map(w => w.id)).toEqual(['bill-voided~bill~1']);
         });
 
