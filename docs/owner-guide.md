@@ -190,6 +190,8 @@ Separate from the shop: rent money never counts in shop figures.
 | First month (RENT-11) | The full rent by default; with "Pro-rate first month" ticked, only the days from the start date. |
 | Change of unit (RENT-13) | "Pro-rate move month" is ticked by default: the old unit is charged up to the day before the move and the new unit from the move day. A move on the 1st: the new unit pays the whole month. |
 | Receipts (RENT-12) | Numbered R-year-number, one per payment; a cancelled one keeps its number. |
+| Deposit held (RENT-14) | Tenants › 💰 Deposit: what the tenant gave as deposit, minus what was adjusted against unpaid rent and what was refunded. Adjusting pays that month (no receipt). Anyone with a rentals role records; only you edit or remove an entry. Not Aadhat cash. |
+| Deposits held (RENT-15) | Tenants › Deposits held: every deposit still held and their total. |
 
 ### Settings, Admin, App health
 

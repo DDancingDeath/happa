@@ -73,7 +73,7 @@ function leasePart(lease) {
 }
 
 /** A full snapshot from the lease and its charges (used when a link is made). */
-export function buildPublicSnapshot({ lease, tenantName = '', place = '', unitType = null, shopName = '', charges = [], now = Date.now() }) {
+export function buildPublicSnapshot({ lease, tenantName = '', place = '', unitType = null, shopName = '', charges = [], dep = 0, now = Date.now() }) {
     const months = charges.filter(c => c.leaseId === lease.id).map(c => publicMonth(c, new Date(now)))
         .sort(byMonth).slice(-PUBLIC_MONTHS);
     return {
@@ -85,6 +85,7 @@ export function buildPublicSnapshot({ lease, tenantName = '', place = '', unitTy
         ...(unitTypeOrNull(unitType) ? { ut: unitType } : {}),
         ...leasePart(lease),
         months,
+        ...(dep > 0 ? { dep: round2(dep) } : {}),
         updatedAt: now
     };
 }

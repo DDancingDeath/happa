@@ -365,7 +365,7 @@ except `rent_public` get.
 | `auditLogs`, `telemetry` | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `deviceLog` (#124): own / other people's | ✓ / ✓ | ✓ / ✗ | ✓ / ✗ | ✗ | ✗ |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
-| `rent_*` (incl. `rent_settings`, `rent_receipts`, `rent_counters`) | ✓ → ✓ | ✗ without a `rentRole` | ✗ without a `rentRole` | ✓ → ✓ | ✗ → ✗ |
+| `rent_*` (incl. `rent_settings`, `rent_receipts`, `rent_counters`, `rent_deposits`) | ✓ → ✓ | ✗ without a `rentRole` | ✗ without a `rentRole` | ✓ → ✓ | ✗ → ✗ |
 | `rent_public` | G ✓, L ✗ for everyone, signed out too (unchanged) | | | | |
 
 Rentals were already scoped and are unchanged; the matrix tests now check them for every role
@@ -600,6 +600,11 @@ Rent receipts (`rent_receipts`, numbered by `rent_counters/receipts_<year>`): is
 rentals role with the payment they record; a payment saved without one gets it later from its writer or
 from the owner / a Rentals manager (Issue receipt); never edited or deleted; only the owner and Rentals
 managers cancel one (void, with a required reason and an audit entry).
+
+Security deposits (`rent_deposits/{tenantId}`, #157): anyone with a rentals role records an entry
+(received, adjusted against a month's rent, refunded), signed with their uid; the balance can never go
+below 0 and an adjustment must pay that month in the same write (rules). Only the owner edits or
+removes an entry or deletes a ledger. Deposits are never Aadhat cash.
 
 Members (Aadhat or Rentals) see only Common. Old routes keep working: `settings`, `admin-configure`
 and `settings-aadhat` (→ Aadhat), `settings-shop`, `settings-rentals`, `settings-roles`; Admin's old

@@ -1554,7 +1554,8 @@ service cloud.firestore {
         && list[n].keys().hasOnly(['amount', 'mode', 'ref', 'date', 'at', 'by', 'byName', 'rno'])
         && list[n].amount > 0
         && list[n].get('by', null) == request.auth.uid
-        && list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
+        && (list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
+            || (list[n].get('mode', '') == 'deposit' && !('rno' in list[n]) && rentDepPaysOk(usersCol, docId, list[n].amount)))
         && (!('rno' in list[n])
             || getAfter(rentPath(usersCol, 'rent_receipts', docId + '_' + string(n))).data.get('no', '') == list[n].rno);
     }
@@ -1907,8 +1908,9 @@ service cloud.firestore {
       let d = request.resource.data;
       return rentRoleIn(usersCol) != ''
         && rentShareToken(token)
-        && d.keys().hasOnly(['lid', 'v', 'shop', 'tenant', 'place', 'ut', 'since', 'em', 'rent', 'dueDay', 'ended', 'endMonth', 'months', 'updatedAt'])
+        && d.keys().hasOnly(['lid', 'v', 'shop', 'tenant', 'place', 'ut', 'since', 'em', 'rent', 'dueDay', 'ended', 'endMonth', 'months', 'dep', 'updatedAt'])
         && (!('since' in d) || rentDate(d.since))
+        && (!('dep' in d) || rentMoney(d, 'dep'))
         && (!('em' in d) || d.em in ['included', 'meter', 'own'])
         && (!('ut' in d) || d.ut in ['flat', 'commercial', 'office', 'godown', 'other'])
         && rentStr(d, 'lid', 1, 64)
@@ -1952,6 +1954,73 @@ service cloud.firestore {
         && rentNumOrNull(d, 'meterRate')
         && d.get('tenantLink', false) is bool
         && rentStr(d, 'receiptHeader', 0, 80) && rentStr(d, 'receiptAddress', 0, 200);
+    }
+
+    // ---- Security deposit ledger (#157, RENT-14): rent_deposits/{tenantId} ----
+    // {tenantId, tenantName, held, entries[≤ 24]}; held = Σ received − Σ adjusted −
+    // Σ refunded, never below 0. Any rentals role appends one own entry; only the
+    // owner rewrites (edits / removes) entries, with held still their sum. An
+    // adjustment pays a month of this tenant in the same write: the charge gains a
+    // 'deposit' payment of the same amount (rentDepPaysOk checks the other side).
+    function rentDepAt(l, i) {
+      return l.size() > i ? (l[i].kind == 'received' ? l[i].amount : 0 - l[i].amount) : 0;
+    }
+
+    function rentDepSum(l) {
+      return rentDepAt(l, 0) + rentDepAt(l, 1) + rentDepAt(l, 2) + rentDepAt(l, 3) + rentDepAt(l, 4) + rentDepAt(l, 5)
+        + rentDepAt(l, 6) + rentDepAt(l, 7) + rentDepAt(l, 8) + rentDepAt(l, 9) + rentDepAt(l, 10) + rentDepAt(l, 11)
+        + rentDepAt(l, 12) + rentDepAt(l, 13) + rentDepAt(l, 14) + rentDepAt(l, 15) + rentDepAt(l, 16) + rentDepAt(l, 17)
+        + rentDepAt(l, 18) + rentDepAt(l, 19) + rentDepAt(l, 20) + rentDepAt(l, 21) + rentDepAt(l, 22) + rentDepAt(l, 23);
+    }
+
+    function rentDepEntryOk(e) {
+      return e is map && e.keys().hasOnly(['kind', 'amount', 'date', 'mode', 'chargeId', 'month', 'leaseId', 'note', 'at', 'by', 'byName'])
+        && e.get('kind', '') in ['received', 'adjust', 'refund']
+        && e.get('amount', null) is number && e.amount > 0
+        && rentDate(e.get('date', '')) && e.get('by', '') == request.auth.uid
+        && rentStr(e, 'note', 0, 200) && rentStr(e, 'byName', 0, 80)
+        && (!('leaseId' in e) || rentStr(e, 'leaseId', 1, 64))
+        && (e.kind == 'adjust' ? rentStr(e, 'chargeId', 1, 80) : e.get('mode', '') in ['cash', 'upi', 'bank', 'cheque']);
+    }
+
+    // The new entry (index n), held moved by it; an adjustment is this tenant's charge gaining
+    // a 'deposit' payment of the same amount in this write.
+    function rentDepNewOk(usersCol, docId, d, held, n) {
+      let e = d.entries[n];
+      let ch = rentPath(usersCol, 'rent_charges', e.get('chargeId', '-'));
+      return d.entries.size() == n + 1 && rentDepEntryOk(e)
+        && rentPaidMatches(d.held, held + (e.kind == 'received' ? e.amount : 0 - e.amount))
+        && (e.kind != 'adjust'
+          || (getAfter(ch).data.tenantId == docId
+            && getAfter(ch).data.payments.size() == get(ch).data.get('payments', []).size() + 1
+            && getAfter(ch).data.payments[getAfter(ch).data.payments.size() - 1].get('mode', '') == 'deposit'
+            && getAfter(ch).data.payments[getAfter(ch).data.payments.size() - 1].amount == e.amount));
+    }
+
+    function validRentDeposit(usersCol, docId) {
+      let d = request.resource.data;
+      let role = rentRoleIn(usersCol);
+      return role != '' && rentWriterOk()
+        && d.keys().hasOnly(['tenantId', 'tenantName', 'held', 'entries', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'])
+        && d.get('tenantId', '') == docId && rentStr(d, 'tenantName', 0, 80)
+        && d.get('held', null) is number && d.held >= 0
+        && d.get('entries', null) is list && d.entries.size() <= 24
+        && (resource == null
+          ? d.get('createdBy', '') == request.auth.uid && exists(rentPath(usersCol, 'rent_tenants', docId))
+            && rentDepNewOk(usersCol, docId, d, 0, 0)
+          : rentCreationKept()
+            && ((appendsOneEntry('entries') && rentDepNewOk(usersCol, docId, d, resource.data.held, resource.data.entries.size()))
+              || (role == 'owner' && rentPaidMatches(d.held, rentDepSum(d.entries)))));
+    }
+
+    // The 'deposit' payment of charge `chargeId`: the tenant's ledger gains its adjustment in this write.
+    function rentDepPaysOk(usersCol, chargeId, amount) {
+      let path = rentPath(usersCol, 'rent_deposits', resource.data.get('tenantId', '-'));
+      let es = getAfter(path).data.get('entries', []);
+      return es.size() == get(path).data.get('entries', []).size() + 1
+        && es[es.size() - 1].get('kind', '') == 'adjust'
+        && es[es.size() - 1].get('chargeId', '') == chargeId
+        && es[es.size() - 1].get('amount', 0) == amount;
     }
 
     // ============================================
@@ -2357,6 +2426,18 @@ service cloud.firestore {
         && (request.resource.data.get('by', '') == request.auth.uid || canManageRent('dev_users'));
       allow update: if canManageRent('dev_users') && rentReceiptVoidOk('dev_users');
       allow delete: if false;
+    }
+
+    match /rent_deposits/{tenantId} {
+      allow read: if rentRoleIn('users') != '';
+      allow create, update: if validRentDeposit('users', tenantId);
+      allow delete: if rentRoleIn('users') == 'owner';
+    }
+
+    match /dev_rent_deposits/{tenantId} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create, update: if validRentDeposit('dev_users', tenantId);
+      allow delete: if rentRoleIn('dev_users') == 'owner';
     }
 
     match /rent_counters/{id} {

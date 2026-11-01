@@ -151,7 +151,9 @@ export async function updateLease(id, fields) {
 export async function makeShareLink(lease, { tenantName, place, unitType, shopName }) {
     const db = FirebaseService.db;
     const token = newShareToken();
-    const names = { tenantName, place, unitType, shopName };
+    // RENT-14: the deposit held, on the tenant's page (every deposit write keeps it current).
+    const dep = (await coll('rent_deposits').doc(lease.tenantId).get()).data()?.held || 0;
+    const names = { tenantName, place, unitType, shopName, dep };
     const batch = db.batch();
     batch.set(publicRef(token), buildPublicSnapshot({ lease, ...names, charges: await latestCharges(lease.id) }));
     batch.update(coll('rent_leases').doc(lease.id), stamp({ shareToken: token }));
