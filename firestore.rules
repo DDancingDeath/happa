@@ -938,7 +938,10 @@ service cloud.firestore {
     }
 
     function canUpdateRecord(base, u, docId) {
-      return base in billCollections() ? canUpdateBill(u, base, docId)
+      // settings first, on its own: the settings/app receipt check uses most of the 1,000-expression budget.
+      // settings/app is guarded in the match (appSettingsGuard / managerShopSettingsOk); other docs owner only
+      return base == 'settings' ? settingsReceiptOk() && settingsStampsOk(docId) && (docId == 'app' || isOwnerIn(u))
+        : base in billCollections() ? canUpdateBill(u, base, docId)
         : base in ['cashManagement', 'cashSessions'] && !cashStaysClosed() ? false
         : base == 'autoSaves' ? ownAutoSaveWrite(docId)
         : base == 'drafts' ? draftUpdateOk()
@@ -951,7 +954,6 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasAny(expenseVoidFields())
           ? (base == 'expenses' || (personalOn(u) && personalVoidLeavesDay(u, docId)))
             && expenseVoidOk(u, request.resource.data.diff(resource.data).affectedKeys())
-        : base == 'settings' && (!settingsReceiptOk() || !settingsStampsOk(docId)) ? false
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canUpdateExpense(u)
@@ -965,8 +967,6 @@ service cloud.firestore {
                  && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk())))
         : base == 'cashManagement' ? (cashAppendOk() || cashCloseOk() || cashLateCountOk())
         : base == 'cashSessions' ? false
-        // settings/app is guarded in the match (appSettingsGuard / managerShopSettingsOk); other docs owner only
-        : base == 'settings' ? docId == 'app'
         : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.diff(resource.data).affectedKeys())
         : base == 'counters' ? counterIncrementOk()
         : base == 'itemFrequency' ? itemFrequencyOk(docId)
