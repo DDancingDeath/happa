@@ -720,8 +720,8 @@ const AdminManager = {
             UIManager.showToast(t('msg.admin.only_owner_can_clear_data'));
             return;
         }
-        // The Android app can't save the backup file (no Web Share, downloads dropped)
-        if (window.Capacitor?.isNativePlatform?.() && !navigator.canShare) {
+        // An Android app without the share plugins can't save the backup file (no Web Share, downloads dropped)
+        if (window.Capacitor?.isNativePlatform?.() && !navigator.canShare && !Exporter.canShareNative()) {
             UIManager.showToast(t('msg.admin.clear_data_needs_website'));
             return;
         }
