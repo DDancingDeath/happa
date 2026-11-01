@@ -40,7 +40,7 @@ export async function showExpenses(c, pid) {
     }
     const unitName = new Map(units.map(u => [u.id, u.label]));
     const lang = getLang();
-    const rows = list.map(e => `<li>${c.esc([dateLabel(e.date), t(`ui.rent.exp_cat_${e.category}`), e.unitId ? unitName.get(e.unitId) || '' : t('ui.rent.exp_unit_all'), t(`ui.rent.mode_${e.mode}`)].filter(Boolean).join(' · '))}:
+    const rows = list.map(e => `<li>${c.esc([dateLabel(e.date), t(`ui.rent.exp_cat_${e.category}`), e.unitId ? unitName.get(e.unitId) || t('ui.rent.exp_unit_removed') : t('ui.rent.exp_unit_all'), t(`ui.rent.mode_${e.mode}`)].filter(Boolean).join(' · '))}:
         <strong>${c.esc(formatINR(e.amount))}</strong>${e.note ? ` · ${c.esc(e.note)}` : ''} <span class="rent-sub">${c.esc(e.byName || '')}</span>
         ${c.isOwner ? `${act(c, 'edit', pid, 'ui.rent.edit', ' rent-btn-small', e.id)}${act(c, 'delete', pid, 'ui.rent.remove', ' rent-btn-small', e.id)}` : ''}</li>`).join('');
     await c.dialog(`<h3>💸 ${c.esc(t('ui.rent.exp_title', { name: property.name }))}</h3>
@@ -68,9 +68,11 @@ export async function action(c, kind, pid, id) {
         return save(c, pid, () => es.deleteExpense(id), 'RENT_EXPENSE_DELETE', { id, amount: old.amount });
     }
     const v = old || { category: 'repairs', unitId: null, amount: '', date: todayLocalISO(), mode: 'cash', note: '' };
+    // A unit removed since keeps the expense (shown as removed), so an edit doesn't move it to the whole property.
+    const gone = v.unitId && !units.some(u => u.id === v.unitId) ? v.unitId : '';
     const ok = await c.dialog(`<h3>💸 ${c.esc(t(old ? 'ui.rent.edit' : 'ui.rent.exp_add'))}: ${c.esc(property.name)}</h3>
         ${lbl(c, 'ui.rent.exp_category', `<select id="rentExpCat">${opts(c, EXPENSE_CATEGORIES, v.category, k => t(`ui.rent.exp_cat_${k}`))}</select>`)}
-        ${lbl(c, 'ui.rent.exp_unit', `<select id="rentExpUnit"><option value="">${c.esc(t('ui.rent.exp_unit_all'))}</option>${units.map(u => `<option value="${c.esc(u.id)}"${u.id === v.unitId ? ' selected' : ''}>${c.esc(u.label)}</option>`).join('')}</select>`)}
+        ${lbl(c, 'ui.rent.exp_unit', `<select id="rentExpUnit"><option value="">${c.esc(t('ui.rent.exp_unit_all'))}</option>${gone ? `<option value="${c.esc(gone)}" selected>${c.esc(t('ui.rent.exp_unit_removed'))}</option>` : ''}${units.map(u => `<option value="${c.esc(u.id)}"${u.id === v.unitId ? ' selected' : ''}>${c.esc(u.label)}</option>`).join('')}</select>`)}
         ${lbl(c, 'ui.rent.amount', `<input id="rentExpAmount" type="number" inputmode="decimal" min="0" step="1" value="${c.esc(v.amount)}">`)}
         ${lbl(c, 'ui.rent.date', `<input id="rentExpDate" type="date" value="${c.esc(v.date)}">`)}
         ${lbl(c, 'ui.rent.mode', `<select id="rentExpMode">${opts(c, PAYMENT_MODES, v.mode, m => t(`ui.rent.mode_${m}`))}</select>`)}
@@ -78,7 +80,7 @@ export async function action(c, kind, pid, id) {
         <p class="rent-help">${c.esc(t('ui.rent.exp_help'))}</p>`);
     if (!ok) return;
     const e = {
-        propertyId: pid, unitId: units.some(u => u.id === c.val('rentExpUnit')) ? c.val('rentExpUnit') : null,
+        propertyId: pid, unitId: units.some(u => u.id === c.val('rentExpUnit')) || (gone && c.val('rentExpUnit') === gone) ? c.val('rentExpUnit') : null,
         category: c.val('rentExpCat'), amount: entryAmount(c.val('rentExpAmount')), date: c.val('rentExpDate'), mode: c.val('rentExpMode'), note: c.val('rentExpNote')
     };
     const err = expenseError(e);

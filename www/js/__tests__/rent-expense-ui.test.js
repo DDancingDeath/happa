@@ -89,3 +89,17 @@ test('the owner gets edit and remove on each expense', async () => {
     await flush();
     expect(es.deleteExpense).toHaveBeenCalledWith('E1');
 });
+
+test('an expense on a unit removed since keeps it when the owner edits the amount', async () => {
+    rentalsRole.mockReturnValue('owner');
+    es.listExpenses.mockResolvedValue([{ id: 'E9', propertyId: 'P1', unitId: 'U-gone', category: 'repairs', amount: 700, date: `${MONTH}-03`, mode: 'cash', note: '' }]);
+    RentalsModule.api.expenses('P1');
+    await flush();
+    expect(body().textContent).toContain('Repairs · Removed unit · Cash');
+    RentalsModule.api.expenseAction('edit', 'P1', 'E9');
+    await flush();
+    document.getElementById('rentExpAmount').value = '900';
+    RentalsModule.api.dialogClose(true);
+    await flush();
+    expect(es.updateExpense).toHaveBeenCalledWith('E9', expect.objectContaining({ unitId: 'U-gone', amount: 900 }));
+});

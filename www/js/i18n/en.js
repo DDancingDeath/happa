@@ -2163,6 +2163,7 @@ export default {
     'ui.rent.exp_category': "Category",
     'ui.rent.exp_unit': "Unit",
     'ui.rent.exp_unit_all': "Whole property",
+    'ui.rent.exp_unit_removed': "Removed unit",
     'ui.rent.exp_cat_repairs': "Repairs",
     'ui.rent.exp_cat_tax': "Property tax",
     'ui.rent.exp_cat_maintenance': "Maintenance / society",

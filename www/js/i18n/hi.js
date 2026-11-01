@@ -2163,6 +2163,7 @@ export default {
     'ui.rent.exp_category': "किस बात का",
     'ui.rent.exp_unit': "यूनिट",
     'ui.rent.exp_unit_all': "पूरी संपत्ति",
+    'ui.rent.exp_unit_removed': "हटाई गई यूनिट",
     'ui.rent.exp_cat_repairs': "मरम्मत",
     'ui.rent.exp_cat_tax': "संपत्ति कर",
     'ui.rent.exp_cat_maintenance': "रखरखाव / सोसाइटी",
