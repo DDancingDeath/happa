@@ -324,6 +324,7 @@ rejected / no profile / unknown role.
 | `settings/team` (#87) | names and roles of the approved people, written by the owner's phone whenever it reads the profiles (Admin, App health, notification fan-out; and once a day 3 minutes after start-up, one read per profile + the doc; it writes only when a name or role differs) and by `tools/migrate`; one get for managers' App health device names and their notification fan-out on item and rate edits | no (managers only) |
 | `users/{uid}/preferences` | own | own |
 | `auditLogs`, `telemetry` | append by everyone; read in Settings/Diagnostics and the anomaly scan by the owner only | no |
+| `deviceLog/{uid}` (#124) | own doc at start-up, once per person per phone (then remembered on the phone) | own only |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | App health, Anomalies, Rates history, Insights › Seasons, Money snapshots (the app loads them for owner/manager only) | no |
 | `rent_*` | Rentals (`js/rentals/rent-store.js`), loaded only when Rentals opens | rentals roles only |
 | `rent_public/{token}` | tenant page, get by token | anyone with the link |
@@ -351,6 +352,7 @@ except `rent_public` get.
 | `settings/team` (G, #87) | ✓ | ✓ | ✗ | ✗ | ✗ |
 | `users/{uid}/preferences` | own only (unchanged) | own | own | ✗ | ✗ |
 | `auditLogs`, `telemetry` | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
+| `deviceLog` (#124): own / other people's | ✓ / ✓ | ✓ / ✗ | ✓ / ✗ | ✗ | ✗ |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `rent_*` (incl. `rent_settings`, `rent_receipts`, `rent_counters`) | ✓ → ✓ | ✗ without a `rentRole` | ✗ without a `rentRole` | ✓ → ✓ | ✗ → ✗ |
 | `rent_public` | G ✓, L ✗ for everyone, signed out too (unchanged) | | | | |
@@ -563,8 +565,8 @@ not checked one by one (rules can't loop over map keys), so a member can still c
   and restore writes an audit entry (`APPROVE_USER`, `REJECT_USER`, `CHANGE_USER_ROLE`, `REMOVE_USER`,
   `RESTORE_USER`).
 - **Own profile writes**: registration writes only `name`, `email` (the signed-in account's own, any case), `role: 'staff'`, `status: 'pending'`
-  and the server `createdAt`; afterwards a person changes only their `name` (Settings › account) and
-  `devices` (their phones, #124).
+  and the server `createdAt`; afterwards a person changes only their `name` (Settings › account). Their
+  phones (#124) are in `deviceLog/{uid}`, which only they write and only they and the owner read.
 - **Lost phone**: Admin › Users › Reset password. Changing the password ends every other sign-in of that
   account within an hour (Firebase revokes its sessions). To stop the lost phone at once, Remove the person
   first, then Restore and approve them after the reset.

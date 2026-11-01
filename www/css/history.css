@@ -792,3 +792,18 @@
   box-sizing: border-box;
   padding: 6px;
 }
+
+/* #124: Edit / Void past the edit window: shown, greyed, with the reason */
+.bill-action-btn.bill-action-locked {
+    opacity: 0.55;
+    filter: grayscale(1);
+}
+
+.bill-action-btn.bill-action-locked::before {
+    content: '\1F512  ';
+}
+
+.bill-action-btn.bill-action-locked::after {
+    content: ' · ' attr(data-locked-label);
+    font-size: 0.85em;
+}

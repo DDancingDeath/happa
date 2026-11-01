@@ -5,7 +5,7 @@
   "hardCap": 300,
   "reads": {
     "owner": {
-      "startup": 41,
+      "startup": 42,
       "day": 9,
       "billing": 0,
       "wholesale-sales": 1,
@@ -28,7 +28,7 @@
       "whats-new": 0
     },
     "manager": {
-      "startup": 39,
+      "startup": 40,
       "day": 8,
       "billing": 0,
       "wholesale-sales": 1,
@@ -50,7 +50,7 @@
       "whats-new": 0
     },
     "staff": {
-      "startup": 31,
+      "startup": 32,
       "day": 6,
       "billing": 0,
       "expenses": 0,

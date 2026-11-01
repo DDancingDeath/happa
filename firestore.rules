@@ -1068,9 +1068,33 @@ service cloud.firestore {
         || (isSignedIn()
             && request.auth.uid == userId
             && !(resource.data.get('status', '') in ['disabled', 'rejected'])
-            && d.diff(resource.data).affectedKeys().hasOnly(['name', 'devices'])
-            && d.get('name', '') is string && d.get('name', '').size() <= 100
-            && (!('devices' in d) || (d.devices is list && d.devices.size() <= 10)));
+            && d.diff(resource.data).affectedKeys().hasOnly(['name'])
+            && d.get('name', '') is string && d.get('name', '').size() <= 100);
+    }
+
+    // --- phones per person (#124): deviceLog/{uid}.devices, "deviceId:YYYYMMDD" ---
+    // Written only by that person (an approved shop user), read by them and the owner,
+    // never by managers. Entries are checked one by one (at most 10); the day may not
+    // be after tomorrow (UTC) since the phone writes its IST day.
+    function deviceEntryOk(e) {
+      return e is string && e.matches('^[a-z0-9]{1,20}:[0-9]{8}$')
+        && timestamp.date(int(e.split(':')[1][0:4]), int(e.split(':')[1][4:6]), int(e.split(':')[1][6:8]))
+             <= request.time + duration.value(1, 'd');
+    }
+
+    function deviceListOk(l) {
+      return l is list && l.size() <= 10
+        && (l.size() < 1 || deviceEntryOk(l[0])) && (l.size() < 2 || deviceEntryOk(l[1]))
+        && (l.size() < 3 || deviceEntryOk(l[2])) && (l.size() < 4 || deviceEntryOk(l[3]))
+        && (l.size() < 5 || deviceEntryOk(l[4])) && (l.size() < 6 || deviceEntryOk(l[5]))
+        && (l.size() < 7 || deviceEntryOk(l[6])) && (l.size() < 8 || deviceEntryOk(l[7]))
+        && (l.size() < 9 || deviceEntryOk(l[8])) && (l.size() < 10 || deviceEntryOk(l[9]));
+    }
+
+    function validDeviceLog(usersCol, uid) {
+      let d = request.resource.data;
+      return isApprovedIn(usersCol) && request.auth.uid == uid
+        && d.keys().hasOnly(['devices']) && deviceListOk(d.get('devices', null));
     }
 
     // --- audit logs (#55) and telemetry (#122): append-only ---
@@ -2186,6 +2210,13 @@ service cloud.firestore {
       allow delete: if isAdmin() && resource.data.get('role', '') != 'owner';
     }
 
+    match /deviceLog/{uid} {
+      allow get: if (isSignedIn() && request.auth.uid == uid && isApproved()) || isAdmin();
+      allow list: if isAdmin();
+      allow create, update: if validDeviceLog('users', uid);
+      allow delete: if isAdmin();
+    }
+
     // Never used by the app (#64): readable by its user, written by nobody.
     match /users/{userId}/preferences/{prefId} {
       allow read: if isApproved() && request.auth.uid == userId;
@@ -2348,6 +2379,13 @@ service cloud.firestore {
       allow create: if canCreateProfile(userId);
       allow update: if canUpdateProfile('dev_users', userId);
       allow delete: if isOwnerIn('dev_users') && resource.data.get('role', '') != 'owner';
+    }
+
+    match /dev_deviceLog/{uid} {
+      allow get: if (isSignedIn() && request.auth.uid == uid && isApprovedIn('dev_users')) || isOwnerIn('dev_users');
+      allow list: if isOwnerIn('dev_users');
+      allow create, update: if validDeviceLog('dev_users', uid);
+      allow delete: if isOwnerIn('dev_users');
     }
 
     match /dev_users/{userId}/preferences/{prefId} {

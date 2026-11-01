@@ -14,7 +14,7 @@ import {
     readsForQuerySnapshot,
     readsForDocSnapshot
 } from '../utils/quota-guard.js';
-import { emit, READS_ALERT } from '../utils/events.js';
+import { emit, FIRESTORE_DENIED, READS_ALERT } from '../utils/events.js';
 
 const telemetry = (fn) => {
     import('../services/telemetry.js')
@@ -63,14 +63,40 @@ export function sourceLabel(ref, kind) {
     return `${collection}${isDoc ? ' (doc)' : ''} ${kind}`;
 }
 
+/** Writes sent and failed reads/writes since the app opened (#119 Status tab). */
+const ioCounts = { writes: 0, writeErrors: 0, readErrors: 0, lastWriteAckAt: null };
+const isWriteSource = (source) => / (set|update|delete|add)$|^batch commit$/.test(String(source));
+const countedErrors = new WeakSet();
+/** Transactions that called set / update / delete (a transaction that only read is no write). */
+const writingTx = new WeakSet();
+
+const countError = (err, source) => {
+    if (err && typeof err === 'object') {
+        if (countedErrors.has(err)) return;
+        countedErrors.add(err);
+    }
+    if (source === 'transaction' || source === 'transaction read') {
+        // The app's own checks throw inside transactions; only the SDK's errors count.
+        if (err?.name === 'FirebaseError') ioCounts[source === 'transaction' ? 'writeErrors' : 'readErrors']++;
+        return;
+    }
+    if (isWriteSource(source)) ioCounts.writeErrors++;
+    else ioCounts.readErrors++;
+};
+
 const checkError = (err, source) => {
+    try { countError(err, source); } catch (_) { /* counting must never break a write */ }
     if (isQuotaExhaustedError(err)) quotaGuard.noteQuotaExhausted(source);
+    if (err?.code === 'permission-denied') emit(FIRESTORE_DENIED, source, err);
 };
 
 const wrapPromise = (result, source, onValue) => {
+    const write = isWriteSource(source);
+    if (write) ioCounts.writes++;
     if (!result || typeof result.then !== 'function') return result;
     return result.then(
         (value) => {
+            if (write) ioCounts.lastWriteAckAt = Date.now();
             if (onValue) {
                 try { onValue(value); } catch (_) { /* counting must never break a read */ }
             }
@@ -174,11 +200,35 @@ export function installFirestoreMeter(fs) {
         const source = sourceLabel(ref, 'transaction');
         return wrapPromise(orig.call(this, ref, ...rest), source, () => quotaGuard.reads.add(source, 1));
     });
+    ['set', 'update', 'delete'].forEach(name => patch(fs.Transaction?.prototype, name, (orig) => function (...args) {
+        writingTx.add(this);
+        return orig.apply(this, args);
+    }));
     patch(fs.WriteBatch?.prototype, 'commit', (orig) => function (...args) {
         return wrapPromise(orig.apply(this, args), 'batch commit');
     });
-    patch(fs.Firestore?.prototype, 'runTransaction', (orig) => function (...args) {
-        return wrapPromise(orig.apply(this, args), 'transaction');
+    patch(fs.Firestore?.prototype, 'runTransaction', (orig) => function (updateFn, ...rest) {
+        let lastTx = null;
+        const fn = typeof updateFn === 'function'
+            ? function (tx, ...a) { lastTx = tx; return updateFn.call(this, tx, ...a); }
+            : updateFn;
+        const result = orig.call(this, fn, ...rest);
+        if (!result || typeof result.then !== 'function') return result;
+        return result.then(
+            (value) => {
+                if (lastTx && writingTx.has(lastTx)) {
+                    ioCounts.writes++;
+                    ioCounts.lastWriteAckAt = Date.now();
+                }
+                return value;
+            },
+            (err) => {
+                const wrote = !!lastTx && writingTx.has(lastTx);
+                if (wrote) ioCounts.writes++;
+                checkError(err, wrote ? 'transaction' : 'transaction read');
+                throw err;
+            }
+        );
     });
 
     // The SDK only logs quota errors on its streams (listeners stay on cache,
@@ -197,3 +247,6 @@ export function installFirestoreMeter(fs) {
 
 /** Diagnostics snapshot (reads since app open, top sources, quota events). */
 export const getQuotaStatus = () => quotaGuard.status();
+
+/** Writes sent, failed writes and failed reads/listeners since the app opened. */
+export const getIoCounts = () => ({ ...ioCounts });
