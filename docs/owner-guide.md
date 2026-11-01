@@ -311,5 +311,10 @@ Separate from the shop: rent money never counts in shop figures.
 - A restore into the live app is done by the developer from the latest good
   backup. Tell them the date and time the data was last right. Whatever was entered
   after that backup is lost and has to be entered again.
+- **Admin › Data › Check a backup**: pick a backup file on the phone (the developer
+  can give you the unlocked nightly file) and the app checks it is complete and how
+  old it is, without changing anything. Do it at least once a month: Today reminds you
+  (REM-3) when no check was recorded on this phone for 30 days. The card also lists
+  the restore steps; the app itself never restores.
 - Admin › Data "Clear All Data" works only on the website. It first saves a backup
   file and deletes nothing unless that file was saved.
