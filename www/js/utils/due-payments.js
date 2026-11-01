@@ -245,6 +245,29 @@ export function duePaymentUpdate(fresh, { cash, online }, entry, tolerance = 0.0
     return { ok: true, update, due: newDue };
 }
 
+/** When a bill was saved for oldest-first order: its numeric `timestamp`, else its date (0 when neither). */
+function orderTime(bill) {
+    const n = Number(bill?.timestamp);
+    if (Number.isFinite(n) && n > 0) return n;
+    const d = parseAnyBillDate(bill?.date);
+    return d ? d.getTime() : 0;
+}
+
+/**
+ * DUE-ALL / DUE-FIFO order, oldest first: numeric `timestamp`, else the bill date
+ * (`parseAnyBillDate`), then the document id, so equal times always sort the same.
+ * @param {Object} a
+ * @param {Object} b
+ * @returns {number}
+ */
+export function billAgeOrder(a, b) {
+    const d = orderTime(a) - orderTime(b);
+    if (d) return d;
+    const ia = String(a?.docId ?? a?.id ?? '');
+    const ib = String(b?.docId ?? b?.id ?? '');
+    return ia < ib ? -1 : ia > ib ? 1 : 0;
+}
+
 /**
  * DUE-ALL: what "Complete all due" settles for one party: every open bill whose
  * party is `partyKey` (by `keyOf`, e.g. aging.js normalizePartyName) with its
@@ -259,7 +282,7 @@ export function partyDues(bills, partyKey, keyOf) {
         .filter(b => partyKey && keyOf(b?.customerName) === partyKey)
         .map(bill => ({ bill, due: outstandingDue(bill) }))
         .filter(x => x.due > 0)
-        .sort((a, b) => (Number(a.bill.timestamp) || 0) - (Number(b.bill.timestamp) || 0));
+        .sort((a, b) => billAgeOrder(a.bill, b.bill));
     return { bills: list, total: round2(list.reduce((sum, x) => sum + x.due, 0)) };
 }
 
