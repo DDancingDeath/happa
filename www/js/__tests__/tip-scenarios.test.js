@@ -8,18 +8,25 @@ import { BillSaveTest, billSaveProps, AUTO_ROLLBACK_REASON } from '../tip/scenar
 import { PaymentRecordTest, paymentRecordProps, paymentErrorOutcome } from '../tip/scenarios/payment-record.js';
 import { CashCloseTest, cashCloseProps } from '../tip/scenarios/cash-close.js';
 import { SessionReadsTest, STARTUP_READS_WARN, STARTUP_READS_FAIL } from '../tip/scenarios/session-reads.js';
+import { PrintTest, printProps } from '../tip/scenarios/print.js';
+import { SyncTest, SYNC_LIMIT_MS, createSyncWatcher } from '../tip/scenarios/sync.js';
+import { StockCheckpointTest, checkpointProps } from '../tip/scenarios/stock-checkpoint.js';
+import { NumberChecksTest, numberChecksProps, claimToday } from '../tip/scenarios/number-checks.js';
+import { SCENARIOS } from '../tip/index.js';
 
 const T0 = new Date(2026, 9, 23, 11, 0, 0).getTime();
 
 function harness({ online = true } = {}) {
     let now = T0;
-    const tip = createTip({ now: () => now, isOnline: () => online, appVersion: '1.6.0' });
-    [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest, SessionReadsTest].forEach(d => tip.declareTest(d));
+    const net = { online };
+    const tip = createTip({ now: () => now, isOnline: () => net.online, appVersion: '1.6.0' });
+    [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest, SessionReadsTest,
+        PrintTest, SyncTest, StockCheckpointTest, NumberChecksTest].forEach(d => tip.declareTest(d));
     const outcome = (test) => {
         const c = tip.takeDelta()[dayKeyOf(now)]['1_6_0'][test];
         return { result: Object.keys(c.n)[0], reason: c.r ? Number(Object.keys(c.r)[0].replace(/^[a-z]+/, '')) : 0 };
     };
-    return { tip, outcome, advance: (ms) => { now += ms; } };
+    return { tip, outcome, net, advance: (ms) => { now += ms; } };
 }
 
 describe('AppStart', () => {
@@ -199,5 +206,139 @@ describe('SessionReads (#159)', () => {
     it('read meter alerts are failures', () => {
         expect(record({ heavy: true, reads: 3001 })).toEqual({ result: 'f', reason: reasons.heavy_session });
         expect(record({ quota: true, reads: 10 })).toEqual({ result: 'f', reason: reasons.quota_exhausted });
+    });
+});
+
+describe('Print (#161)', () => {
+    const record = (outcome, error) => {
+        const h = harness();
+        h.tip.start('Print').complete(printProps(outcome, error));
+        return h.outcome('Print');
+    };
+    const { reasons } = PrintTest;
+
+    it('passes a printed job; a cancelled one is not judged', () => {
+        expect(record('printed')).toEqual({ result: 's', reason: 0 });
+        expect(record('cancelled')).toEqual({ result: 'i', reason: 0 });
+    });
+
+    it('a send that fails on a connected printer fails; connect / set-up problems and may-have-printed warn', () => {
+        expect(record('failed', { kind: 'timeout_connect' })).toEqual({ result: 'w', reason: reasons.connect_failed });
+        expect(record('failed', { kind: 'dropped' })).toEqual({ result: 'f', reason: reasons.send_failed });
+        expect(record('failed', new Error('plugin said no'))).toEqual({ result: 'f', reason: reasons.send_failed });
+        expect(record('failed', { kind: 'bluetooth_off' })).toEqual({ result: 'w', reason: reasons.printer_not_ready });
+        expect(record('uncertain', { kind: 'timeout_write' })).toEqual({ result: 'w', reason: reasons.may_have_printed });
+    });
+});
+
+describe('Sync (#161)', () => {
+    it('passes when the waiting changes reach the server', () => {
+        const h = harness();
+        const w = createSyncWatcher((o) => h.tip.start('Sync', o));
+        w.update({ online: true, pending: 1 });
+        w.update({ online: true, pending: 3 });
+        h.advance(20000);
+        w.update({ online: true, pending: 0 });
+        expect(h.outcome('Sync')).toEqual({ result: 's', reason: 0 });
+    });
+
+    it('fails when changes still wait online after the limit; offline is not judged', () => {
+        const h = harness();
+        const w = createSyncWatcher((o) => h.tip.start('Sync', o));
+        w.update({ online: true, pending: 2 });
+        h.advance(SYNC_LIMIT_MS + 1);
+        h.tip.sweep();
+        expect(h.outcome('Sync')).toEqual({ result: 'f', reason: SyncTest.reasons.not_flushed });
+
+        const h2 = harness();
+        const w2 = createSyncWatcher((o) => h2.tip.start('Sync', o));
+        w2.update({ online: true, pending: 1 });
+        w2.update({ online: false, pending: 1 });
+        h2.advance(60000);
+        w2.update({ online: true, pending: 0 });
+        expect(h2.outcome('Sync')).toEqual({ result: 'x', reason: 0 });
+    });
+
+    it('a run that went to the background is not judged', () => {
+        const h = harness();
+        const w = createSyncWatcher((o) => h.tip.start('Sync', o));
+        w.update({ online: true, pending: 1 });
+        w.hidden();
+        h.advance(SYNC_LIMIT_MS + 1);
+        h.tip.sweep();
+        expect(h.outcome('Sync')).toEqual({ result: 'x', reason: 0 });
+    });
+
+    it('sign-out discards an open run', () => {
+        const h = harness();
+        const w = createSyncWatcher((o) => h.tip.start('Sync', o));
+        w.update({ online: true, pending: 1 });
+        w.update({ online: true, pending: 0, stopped: true });
+        expect(h.outcome('Sync')).toEqual({ result: 'x', reason: 0 });
+        expect(h.tip.activeCount()).toBe(0);
+    });
+});
+
+describe('StockCheckpoint (#161)', () => {
+    const record = (result, released = null, online = true) => {
+        const h = harness({ online });
+        h.tip.start('StockCheckpoint').complete(checkpointProps(result, released));
+        return h.outcome('StockCheckpoint');
+    };
+    const { reasons } = StockCheckpointTest;
+
+    it('passes a build; another phone building or a fresh checkpoint is not judged', () => {
+        expect(record({ status: 'built' })).toEqual({ result: 's', reason: 0 });
+        expect(record({ status: 'leased' })).toEqual({ result: 'i', reason: 0 });
+        expect(record({ status: 'fresh' })).toEqual({ result: 'i', reason: 0 });
+    });
+
+    it('a failed build must release its lease', () => {
+        expect(record({ status: 'too-large' }, true)).toEqual({ result: 'f', reason: reasons.too_large });
+        expect(record({ status: 'offline' }, true)).toEqual({ result: 'x', reason: 0 });
+        expect(record({ status: 'offline' }, false)).toEqual({ result: 'x', reason: 0 });
+        expect(record({ status: 'too-large' }, false)).toEqual({ result: 'f', reason: reasons.lease_not_released });
+        expect(record({ status: 'too-large' }, false, false)).toEqual({ result: 'x', reason: 0 });
+        expect(record({ status: 'conflict' }, true)).toEqual({ result: 'w', reason: reasons.conflict });
+        expect(record(null)).toEqual({ result: 'f', reason: reasons.rebuild_error });
+        expect(record(null, null, false)).toEqual({ result: 'x', reason: 0 });
+    });
+
+    it('a run that expires before the rebuild answers is not judged', () => {
+        const h = harness();
+        h.tip.start('StockCheckpoint');
+        h.advance(StockCheckpointTest.timeoutMs + 1);
+        h.tip.sweep();
+        expect(h.outcome('StockCheckpoint')).toEqual({ result: 'x', reason: 0 });
+    });
+});
+
+describe('NumberChecks (#161)', () => {
+    const record = (results) => {
+        const h = harness();
+        h.tip.start('NumberChecks').complete(numberChecksProps(results));
+        return h.outcome('NumberChecks');
+    };
+
+    it('passes when every check passes, fails with the first failed check, no amounts', () => {
+        expect(record([{ id: 'AC1', status: 'skip' }, { id: 'AC2', status: 'pass' }])).toEqual({ result: 's', reason: 0 });
+        expect(record([{ id: 'AC2', status: 'pass' }, { id: 'AC4', status: 'fail', rows: [{ expected: 500 }] }, { id: 'AC5', status: 'fail' }]))
+            .toEqual({ result: 'f', reason: NumberChecksTest.reasons.ac4 });
+        expect(numberChecksProps([{ id: 'AC4', status: 'fail', rows: [{ expected: 500 }] }])).toEqual({ checked: 1, failed: 1, first: 'AC4', failedIds: 'AC4' });
+        expect(record([{ id: 'AC1', status: 'skip' }])).toEqual({ result: 'i', reason: 0 });
+    });
+
+    it('runs at most once a day per phone', () => {
+        const store = { v: null, getItem() { return this.v; }, setItem(_, v) { this.v = v; } };
+        expect(claimToday(store, '20261101')).toBe(true);
+        expect(claimToday(store, '20261101')).toBe(false);
+        expect(claimToday(store, '20261102')).toBe(true);
+    });
+});
+
+describe('every scenario is declared and has a Health label', () => {
+    it('lists the 9 tests', () => {
+        expect(SCENARIOS.map(s => s.id)).toEqual(['AppStart', 'BillSave', 'PaymentRecord', 'CashClose', 'SessionReads',
+            'Print', 'Sync', 'StockCheckpoint', 'NumberChecks']);
     });
 });

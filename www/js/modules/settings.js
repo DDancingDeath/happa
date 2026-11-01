@@ -23,6 +23,7 @@ import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { forgetPrinter, normalizePrinterSettings, PAPER_WIDTHS, setPaperWidth, setReceiptOptions, usePrinter } from '../utils/printer-settings.js';
 import { AuthManager, authErrorMessage } from '../auth/authentication.js';
+import { UsageView } from '../ui/usage-view.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 const LABOUR_INPUTS = ['settingHeavyWeight', 'settingLaborRate', 'settingLabourPackageKg'];
@@ -128,6 +129,7 @@ export class SettingsManager {
         this.renderReceiptOptions();
         
         this.updatePrinterStatus();
+        UsageView.render();
     }
 
     /**

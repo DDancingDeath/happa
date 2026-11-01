@@ -3,8 +3,8 @@
  * Cash page's writes (docs/architecture.md phase 4): checked updates in a
  * transaction (auto-close, late count), field updates (close) and entries added
  * with arrayUnion (deposits, "No bill" legs), so another device's additions are
- * never overwritten. Reads and opening a day are in FirebaseService
- * (loadCashSessions, openCashSession…).
+ * never overwritten. Reads and opening a day are FirebaseService methods in
+ * repos/cash-days.js (loadCashSessions, openCashSession…).
  * @module firebase/repos/cash-sessions
  */
 import { FirebaseService } from '../firestore-service.js';

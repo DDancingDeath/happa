@@ -31,6 +31,7 @@ const ROUTES = Object.freeze({
 
     // Wholesale › History (old History 'wholesale' links land here).
     'wholesale-history': { tab: 'wholesale-sales', section: 'history', nav: 'wholesale-sales' },
+    'wholesale-outstanding': { tab: 'wholesale-sales', section: 'outstanding', nav: 'wholesale-sales' },
 
     // Settings sections (Common, Aadhat = internal 'shop', Rentals, Roles & access).
     // Old ids: settings-aadhat, admin-configure (Admin › Configure moved to Settings › Aadhat).

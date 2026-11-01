@@ -32,7 +32,11 @@ const TEST_LABEL_KEYS = {
     BillSave: 'ui.health.test_bill_save',
     PaymentRecord: 'ui.health.test_payment_record',
     CashClose: 'ui.health.test_cash_close',
-    SessionReads: 'ui.health.test_session_reads'
+    SessionReads: 'ui.health.test_session_reads',
+    Print: 'ui.health.test_print',
+    Sync: 'ui.health.test_sync',
+    StockCheckpoint: 'ui.health.test_stock_checkpoint',
+    NumberChecks: 'ui.health.test_number_checks'
 };
 const RESULT_LABEL_KEYS = {
     fail: 'ui.health.result_fail',
