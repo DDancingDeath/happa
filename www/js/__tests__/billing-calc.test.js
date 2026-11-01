@@ -8,7 +8,7 @@ import {
     computeWholesaleTotals, draftLineSum, editedPaymentSplit, editKeepsMoney, entryAmount, hasPaise, meterAmount,
     paidOnScreen, payableOnScreen, paymentSplit, settleSplit,
     prefillPayment, restInDue, roundFor, ROUNDING, shownAmount, sumWeights, typedAmount, validateDuePayment,
-    validatePaymentSplit, weightsForEdit, wholesaleLiveProfit
+    validatePaymentSplit, weightsForEdit, wholesaleCostRate, wholesaleLiveProfit
 } from '../utils/calc/billing.js';
 import * as billing from '../utils/calc/billing.js';
 
@@ -105,14 +105,29 @@ describe('BF-TOTAL: retail', () => {
 describe('BF-TOTAL, WS-PROFIT, WS-MARGIN: wholesale (#26)', () => {
     test('total, cost from stock average rates, profit and profit % from the lines', () => {
         const lines = [{ itemId: 'a', qty: 10.5, total: 420 }, { itemId: 'b', quantity: 4, total: 100.5 }, { itemId: 'c', qty: 1, total: 50 }];
-        const stock = { a: { rate: 30.2 }, b: { rate: 20 } };
-        // cost 10.5 × 30.2 + 4 × 20 = 397.10 → 397; expenses 20.50 → 21 (as saved)
-        expect(computeWholesaleTotals(lines, stock, 20.5)).toEqual({ total: 571, cost: 397, profit: 153, profitPercent: 26.8 });
-        expect(computeWholesaleTotals([], {}, 0)).toEqual({ total: 0, cost: 0, profit: 0, profitPercent: 0 });
+        const stock = { a: { rate: 30.2 }, b: { rate: 20 }, c: { rate: 15 } };
+        // cost 317.1 + 80 + 15 = 412.1 → 412; total 570.5 → 571; expenses 20.50 → 21 (as saved)
+        expect(computeWholesaleTotals(lines, stock, 20.5)).toEqual({ total: 571, cost: 412, profit: 138, profitPercent: 24.2, unknownCost: [] });
+        expect(computeWholesaleTotals([], {}, 0)).toEqual({ total: 0, cost: 0, profit: 0, profitPercent: 0, unknownCost: [] });
+    });
+    test('a line without an average cost makes the profit unknown, never cost ₹0 (#102, WS-COST)', () => {
+        const lines = [{ itemId: 'a', qty: 10.5, total: 420 }, { itemId: 'b', quantity: 4, total: 100.5 }, { itemId: 'c', qty: 1, total: 50 }];
+        expect(computeWholesaleTotals(lines, { a: { rate: 30.2 }, b: { rate: 20 }, c: { rate: 0 } }, 20.5))
+            .toEqual({ total: 571, cost: 397, profit: null, profitPercent: null, unknownCost: [2] });
+        expect(wholesaleLiveProfit(lines.slice(2), {}).shownProfit).toBeNull();
+    });
+    test('WS-COST finds the stock by itemId, else the catalogue item by id / name / Hindi name', () => {
+        const catalogue = [{ id: 'rice', name: 'Rice', hindiName: 'चावल' }, { id: 'dal', name: 'Dal' }];
+        expect(wholesaleCostRate({ itemId: 'rice' }, { rice: { rate: 30 } }, catalogue)).toBe(30);
+        expect(wholesaleCostRate({ name: 'चावल' }, { rice: { rate: 31 } }, catalogue)).toBe(31);
+        expect(wholesaleCostRate({ itemId: 'old-id', name: 'rice ' }, { Rice: { rate: 29 } }, catalogue)).toBe(29);
+        expect(wholesaleCostRate({ itemId: 'dal' }, { dal: { quantity: 5 } }, catalogue)).toBeNull();
+        expect(wholesaleCostRate({ name: 'Corn ' }, { corn: { rate: 18 } }, catalogue)).toBe(18);
+        expect(wholesaleCostRate({ itemId: 'gone', name: 'Gone' }, { rice: { rate: 30 } }, catalogue)).toBeNull();
     });
     test('live profit adds the whole-rupee figure the form shows (never -0)', () => {
         const lines = [{ itemId: 'a', qty: 3.3, total: 66 }];
-        expect(wholesaleLiveProfit(lines, { a: { rate: 22.4 } }, 10)).toEqual({ total: 66, cost: 74, profit: -18, profitPercent: -27.3, shownProfit: -18 });
+        expect(wholesaleLiveProfit(lines, { a: { rate: 22.4 } }, 10)).toEqual({ total: 66, cost: 74, profit: -18, profitPercent: -27.3, shownProfit: -18, unknownCost: [] });
         expect(Object.is(wholesaleLiveProfit([{ itemId: 'a', qty: 1, total: 10 }], { a: { rate: 10.3 } }).shownProfit, 0)).toBe(true);
     });
 });

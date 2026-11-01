@@ -151,6 +151,23 @@
               "value": "no-cache"
             }
           ]
+        },
+        {
+          "source": "/spike/@(serial.html|serial.js)",
+          "headers": [
+            {
+              "key": "Permissions-Policy",
+              "value": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(self), hid=()"
+            },
+            {
+              "key": "X-Robots-Tag",
+              "value": "noindex, nofollow, noarchive"
+            },
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
         }
       ]
     },
