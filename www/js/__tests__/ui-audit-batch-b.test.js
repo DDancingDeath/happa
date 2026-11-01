@@ -127,7 +127,7 @@ describe('F03 / F15: stock that was never set', () => {
     test('low stock alert: item names in the app language, never raw ids, never-stocked items left out', () => {
         const stock = { fakeItemId0000000001: { quantity: 4 }, 'i-gond': { quantity: 50 }, 'i-never': { quantity: -2 }, 'ghost-id': { quantity: 1 } };
         const stocked = stockedItemKeys({ purchases, stockAdjustments: adjustments }, ITEMS);
-        expect(lowStockItems(stock, ITEMS, stocked)).toEqual([{ key: 'fakeItemId0000000001', name: 'Test Item', quantity: 4 }]);
+        expect(lowStockItems(stock, ITEMS, stocked)).toEqual([{ key: 'fakeItemId0000000001', name: 'Test Item', quantity: 4, level: 10 }]);
         expect(lowStockItems(stock, ITEMS, stocked, { lang: 'hi' })[0].name).toBe('टेस्ट आइटम');
     });
 
