@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import { PrinterService } from '../services/printer.js';
 import { SettingsManager } from '../modules/settings.js';
+import { FirebaseService } from '../firebase/firestore-service.js';
+import { createFakeFirestore } from './__mocks__/fake-firestore.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { setLang } from '../i18n/index.js';
@@ -13,7 +15,8 @@ import { encodeQr, QR_MAX_BYTES } from '../utils/qr-code.js';
 import { billQrText, receiptPayable } from '../utils/bill-share.js';
 import { billTotal } from '../utils/money.js';
 import {
-    logoSize, normalizeReceiptOptions, rasterThreshold, receiptLang, setReceiptOptions, usePrinter
+    effectiveReceipt, hasOwnReceipt, LOGO_BITS_MAX, logoSize, normalizeLogo, normalizeReceiptOptions, normalizeSharedReceipt,
+    rasterThreshold, receiptLang, setReceiptOptions, usePrinter
 } from '../utils/printer-settings.js';
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'settings.html'), 'utf8');
@@ -61,6 +64,7 @@ beforeEach(() => {
     images = [];
     pixel = 255;
     localStorage.clear();
+    PrinterService.setSharedReceipt(null);
     setLang('en');
     document.body.innerHTML = TEMPLATE;
     AppState.items = [{ id: 'i1', name: 'Rice', hindiName: 'चावल' }];
@@ -193,51 +197,209 @@ describe('the printed bill', () => {
 });
 
 describe('logo', () => {
-    test('a picture is stored fitted and black and white, drawn at the top, and can be removed', () => {
+    test('a picture is fitted, made black and white and drawn at the top', () => {
         pixel = 0;
-        expect(PrinterService.saveLogo({ naturalWidth: 800, naturalHeight: 400 })).toEqual({ ok: true, full: false });
-        const logo = PrinterService.logo();
+        const logo = PrinterService.makeLogo({ naturalWidth: 800, naturalHeight: 400 });
         expect(logo).toMatchObject({ width: 240, height: 120 });
         expect(atob(logo.bits).charCodeAt(0)).toBe(0xFF);
+        expect(PrinterService.makeLogo({ naturalWidth: 5000, naturalHeight: 5000 }).bits.length).toBeLessThanOrEqual(LOGO_BITS_MAX);
 
         images = [];
         PrinterService.manager._renderBillCanvas(bill, 384, { logo });
         expect(images[0]).toMatchObject({ width: 240, height: 120 });
-
-        PrinterService.removeLogo();
-        expect(PrinterService.logo()).toBeNull();
     });
 
-    test('a damaged stored logo is ignored', () => {
+    test('a damaged or too big logo is ignored', () => {
         localStorage.setItem('receiptLogo', JSON.stringify({ width: 8, height: 2, bits: btoa('x') }));
-        expect(PrinterService.logo()).toBeNull();
+        expect(PrinterService.localLogo()).toBeNull();
         localStorage.setItem('receiptLogo', '{');
-        expect(PrinterService.logo()).toBeNull();
+        expect(PrinterService.localLogo()).toBeNull();
+        expect(normalizeLogo({ width: 384, height: 121, bits: btoa('\0'.repeat(48 * 121)) })).toBeNull();
+        expect(normalizeLogo({ width: 8, height: 1, bits: btoa('\xFF'), extra: 1 })).toEqual({ width: 8, height: 1, bits: btoa('\xFF') });
+    });
+});
+
+describe('shared receipt (settings/app.receipt)', () => {
+    const logo = { width: 8, height: 1, bits: btoa('\xFF') };
+    const shared = { footer: 'Shop line', qr: true, lang: 'hi', density: 'light', logo };
+
+    test('every phone prints with the shared receipt; this phone\'s own choices only until one is shared', () => {
+        AppState.printerSettings = setReceiptOptions({}, { footer: 'Mine', density: 'dark' });
+        expect(PrinterService.receiptOptions()).toMatchObject({ footer: 'Mine', threshold: 176, logo: null });
+        PrinterService.setSharedReceipt(shared);
+        expect(PrinterService.receiptOptions()).toEqual({ footer: 'Shop line', qr: true, lang: 'hi', threshold: 96, logo });
+        expect(effectiveReceipt({}, null, null)).toEqual({ footer: '', qr: false, lang: 'app', density: 'normal', logo: null });
+        expect(normalizeSharedReceipt(null)).toBeNull();
+    });
+
+    test('kept on the phone for an offline start', async () => {
+        PrinterService.setSharedReceipt(shared);
+        jest.resetModules();
+        const { PrinterService: fresh } = await import('../services/printer.js');
+        expect(fresh.sharedReceipt()).toEqual(shared);
+        PrinterService.setSharedReceipt(null);
+        expect(localStorage.getItem('receiptShared')).toBeNull();
+    });
+
+    test('only phones with their own choices or logo have something to share', () => {
+        expect(hasOwnReceipt({}, null)).toBe(false);
+        expect(hasOwnReceipt(setReceiptOptions({}, { qr: true }), null)).toBe(true);
+        expect(hasOwnReceipt({}, logo)).toBe(true);
     });
 });
 
 describe('Settings › Printed bill', () => {
-    test('the fields are saved on this phone and shown again', () => {
+    const logo1 = { width: 8, height: 1, bits: btoa('\xFF') };
+    let save;
+    // settings/app.receipt as the server has it; saveReceiptSettings is a transaction over it
+    let server;
+    beforeEach(() => {
+        AppState.userRole = 'owner';
+        server = null;
+        save = jest.spyOn(FirebaseService, 'saveReceiptSettings').mockImplementation(async (patch, { base, onlyIfMissing } = {}) => {
+            if (server && onlyIfMissing) return { receipt: server, applied: false };
+            server = normalizeSharedReceipt({ ...(server || base || {}), ...patch });
+            return { receipt: server, applied: true };
+        });
+        jest.spyOn(FirebaseService, 'saveSharedLabourSettings').mockResolvedValue();
+    });
+    afterEach(() => {
+        AppState.userRole = null;
+    });
+
+    test('the owner\'s choices are saved for everyone and shown again', async () => {
         document.getElementById('settingReceiptFooter').value = 'Dhanyavaad';
         document.getElementById('settingReceiptQr').checked = true;
         document.getElementById('settingReceiptLang').value = 'hi';
         document.getElementById('settingReceiptDensity').value = 'light';
-        SettingsManager.saveReceiptOptions();
-        expect(JSON.parse(localStorage.getItem('printerSettings')).receipt)
-            .toEqual({ footer: 'Dhanyavaad', qr: true, lang: 'hi', density: 'light' });
+        await expect(SettingsManager.saveReceiptOptions()).resolves.toBe(true);
+        expect(save.mock.calls[0][0]).toEqual({ footer: 'Dhanyavaad', qr: true, lang: 'hi', density: 'light' });
+        expect(server).toEqual({ footer: 'Dhanyavaad', qr: true, lang: 'hi', density: 'light', logo: null });
+        expect(JSON.parse(localStorage.getItem('printerSettings') || '{}').receipt).toBeUndefined();
 
         document.body.innerHTML = TEMPLATE;
         SettingsManager.renderReceiptOptions();
         expect(document.getElementById('settingReceiptFooter').value).toBe('Dhanyavaad');
         expect(document.getElementById('settingReceiptQr').checked).toBe(true);
         expect(document.getElementById('settingReceiptLang').value).toBe('hi');
+        expect(document.getElementById('settingReceiptFooter').disabled).toBe(false);
         expect(document.getElementById('receiptLogoStatus').textContent).toBe('No logo');
         expect(document.getElementById('receiptLogoRemoveBtn').hidden).toBe(true);
     });
 
-    test('Preview the bill shows the sample bill with this phone\'s options', async () => {
+    test('only the changed field is sent: an old copy on this phone never undoes another phone\'s logo', async () => {
+        PrinterService.setSharedReceipt({ footer: 'A', qr: false, lang: 'app', density: 'normal', logo: null });
+        server = { footer: 'A', qr: false, lang: 'app', density: 'normal', logo: logo1 };
+        SettingsManager.renderReceiptOptions();
+        document.getElementById('settingReceiptQr').checked = true;
+        await expect(SettingsManager.saveReceiptOptions()).resolves.toBe(true);
+        expect(save.mock.calls[0][0]).toEqual({ qr: true });
+        expect(server).toMatchObject({ qr: true, logo: logo1 });
+        expect(PrinterService.receipt()).toMatchObject({ qr: true, logo: logo1 });
+        await expect(SettingsManager.saveReceiptOptions()).resolves.toBe(false);
+        expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    test('a logo is saved for everyone and can be removed', async () => {
+        pixel = 0;
+        const preview = jest.spyOn(PrinterService, 'showBillPreview').mockResolvedValue();
+        const OrigImage = global.Image;
+        global.Image = class { set src(v) { this.naturalWidth = 800; this.naturalHeight = 400; this.onload(); } };
+        URL.createObjectURL = jest.fn(() => 'blob:x');
+        URL.revokeObjectURL = jest.fn();
+        try {
+            await expect(SettingsManager.chooseReceiptLogo({ files: [{}], value: 'x' })).resolves.toBe(true);
+        } finally {
+            global.Image = OrigImage;
+        }
+        expect(Object.keys(save.mock.calls[0][0])).toEqual(['logo']);
+        expect(server.logo).toMatchObject({ width: 240, height: 120 });
+        expect(preview).toHaveBeenCalled();
+        expect(document.getElementById('receiptLogoRemoveBtn').hidden).toBe(false);
+        await SettingsManager.removeReceiptLogo();
+        expect(save.mock.calls[1][0]).toEqual({ logo: null });
+        expect(PrinterService.logo()).toBeNull();
+    });
+
+    test('a refused save keeps the shared choices as they were', async () => {
+        PrinterService.setSharedReceipt({ footer: 'Old', qr: false, lang: 'app', density: 'normal', logo: null });
+        save.mockRejectedValue(Object.assign(new Error('denied'), { code: 'permission-denied' }));
+        document.getElementById('settingReceiptFooter').value = 'New';
+        await expect(SettingsManager.saveReceiptOptions()).resolves.toBe(false);
+        expect(PrinterService.receipt().footer).toBe('Old');
+        expect(document.getElementById('settingReceiptFooter').value).toBe('Old');
+        // a dropdown keeps focus after its picker closes: it is put back too
+        const density = document.getElementById('settingReceiptDensity');
+        density.focus();
+        density.value = 'dark';
+        await expect(SettingsManager.saveReceiptOptions()).resolves.toBe(false);
+        expect(document.activeElement).toBe(density);
+        expect(density.value).toBe('normal');
+    });
+
+    test('members see the shared choices but cannot change them', async () => {
+        AppState.userRole = 'staff';
+        PrinterService.setSharedReceipt({ footer: 'Shop line', qr: true, lang: 'en', density: 'dark', logo: null });
+        SettingsManager.renderReceiptOptions();
+        expect(document.getElementById('settingReceiptFooter').value).toBe('Shop line');
+        expect(document.getElementById('settingReceiptFooter').disabled).toBe(true);
+        expect(document.getElementById('settingReceiptDensity').disabled).toBe(true);
+        expect(document.getElementById('receiptViewOnly').hidden).toBe(false);
+        document.getElementById('settingReceiptFooter').value = 'Mine';
+        await expect(SettingsManager.saveReceiptOptions()).resolves.toBe(false);
+        expect(save).not.toHaveBeenCalled();
+    });
+
+    test('nothing shared yet: the owner is offered this phone\'s choices once, and the button shares them', async () => {
+        AppState.printerSettings = setReceiptOptions({}, { footer: 'Mine', qr: true });
+        localStorage.setItem('receiptLogo', JSON.stringify(logo1));
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(false);
+        await SettingsManager.applySharedSettings({});
+        await expect(SettingsManager.offerReceiptShare()).resolves.toBe(false);
+        expect(modal).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('receiptShareBtn').hidden).toBe(false);
+        await SettingsManager.offerReceiptShare();
+        expect(modal).toHaveBeenCalledTimes(1);
+
+        await expect(SettingsManager.shareOwnReceipt()).resolves.toBe(true);
+        expect(save).toHaveBeenCalledWith({}, { base: { footer: 'Mine', qr: true, lang: 'app', density: 'normal', logo: logo1 }, onlyIfMissing: true });
+        expect(server).toEqual({ footer: 'Mine', qr: true, lang: 'app', density: 'normal', logo: logo1 });
+        expect(document.getElementById('receiptShareBtn').hidden).toBe(true);
+    });
+
+    test('sharing this phone\'s choices never replaces ones another phone shared meanwhile', async () => {
+        AppState.printerSettings = setReceiptOptions({}, { footer: 'Mine' });
+        server = { footer: 'Theirs', qr: true, lang: 'en', density: 'dark', logo: null };
+        await expect(SettingsManager.shareOwnReceipt()).resolves.toBe(false);
+        expect(server.footer).toBe('Theirs');
+        expect(PrinterService.receipt().footer).toBe('Theirs');
+        expect(UIManager.showToast).toHaveBeenCalledWith(expect.stringContaining('already saved for everyone'));
+    });
+
+    test('no offer when the shop already shares a receipt, for members, with nothing of its own, offline or over another question', async () => {
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        await SettingsManager.applySharedSettings({});
+        await expect(SettingsManager.offerReceiptShare()).resolves.toBe(false);
+        AppState.printerSettings = setReceiptOptions({}, { footer: 'Mine' });
+        AppState.userRole = 'staff';
+        await expect(SettingsManager.offerReceiptShare()).resolves.toBe(false);
+        AppState.userRole = 'owner';
+        AppState.modalResolve = () => {};
+        await expect(SettingsManager.offerReceiptShare()).resolves.toBe(false);
+        AppState.modalResolve = null;
+        const online = jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+        await expect(SettingsManager.offerReceiptShare()).resolves.toBe(false);
+        online.mockRestore();
+        expect(localStorage.getItem('receiptShareAsked')).toBeNull();
+        await SettingsManager.applySharedSettings({ receipt: { footer: 'Shop', qr: false, lang: 'app', density: 'normal', logo: null } });
+        await expect(SettingsManager.offerReceiptShare()).resolves.toBe(false);
+        expect(modal).not.toHaveBeenCalled();
+        expect(PrinterService.receipt().footer).toBe('Shop');
+    });
+
+    test('Preview the bill shows the sample bill with the shared options', async () => {
         const gen = jest.spyOn(PrinterService.manager, 'generateBillCanvas').mockResolvedValue({ width: 384, height: 10, toDataURL: () => 'data:,' });
-        AppState.printerSettings = setReceiptOptions({}, { footer: 'Thanks' });
+        PrinterService.setSharedReceipt({ footer: 'Thanks' });
         await SettingsManager.previewReceipt();
         expect(gen.mock.calls[0][0]).toMatchObject({ billNumber: 'TEST-1' });
         expect(gen.mock.calls[0][1]).toMatchObject({ footer: 'Thanks' });
@@ -245,10 +407,40 @@ describe('Settings › Printed bill', () => {
 
     test('sample and walk-in names follow the bill language, not the app language', async () => {
         setLang('hi');
-        AppState.printerSettings = setReceiptOptions({}, { lang: 'en' });
+        PrinterService.setSharedReceipt({ lang: 'en' });
         expect(PrinterService.sampleBill()).toMatchObject({ customerName: 'Test Customer', items: [{ name: 'Test Item' }] });
         const print = jest.spyOn(PrinterService, 'printBill').mockResolvedValue(false);
         await PrinterService.printWholesaleSale({ billNumber: 'W-1', items: [], total: 0 });
         expect(print.mock.calls[0][0].customerName).toBe('Walk-in Customer');
+    });
+});
+
+describe('FirebaseService.saveReceiptSettings (settings/app.receipt)', () => {
+    let fake;
+    beforeEach(() => {
+        fake = createFakeFirestore();
+        global.firebase = fake.firebase;
+        AppState.currentUser = { uid: 'u1' };
+    });
+    afterEach(() => {
+        delete global.firebase;
+        AppState.currentUser = null;
+    });
+    const stored = () => fake.raw('settings').get('app');
+
+    test('applies only the changed fields onto the receipt saved now; keeps the other settings', async () => {
+        fake.raw('settings').set('app', { minClientVersion: 4, receipt: { footer: 'A', qr: false, lang: 'app', density: 'normal', logo: { width: 8, height: 1, bits: btoa('\xFF') } } });
+        const res = await FirebaseService.saveReceiptSettings({ qr: true }, { base: { footer: 'stale', logo: null } });
+        expect(res).toEqual({ applied: true, receipt: { footer: 'A', qr: true, lang: 'app', density: 'normal', logo: { width: 8, height: 1, bits: btoa('\xFF') } } });
+        expect(stored()).toMatchObject({ minClientVersion: 4, receipt: res.receipt, receiptUpdatedBy: 'u1' });
+    });
+
+    test('the first share uses the base; "only if missing" leaves a saved receipt alone', async () => {
+        const mine = { footer: 'Mine', qr: true, lang: 'hi', density: 'dark', logo: null };
+        await expect(FirebaseService.saveReceiptSettings({}, { base: mine, onlyIfMissing: true })).resolves.toEqual({ receipt: mine, applied: true });
+        expect(stored().receipt).toEqual(mine);
+        const res = await FirebaseService.saveReceiptSettings({}, { base: { ...mine, footer: 'Other' }, onlyIfMissing: true });
+        expect(res).toEqual({ receipt: mine, applied: false });
+        expect(stored().receipt.footer).toBe('Mine');
     });
 });
