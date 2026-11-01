@@ -2698,6 +2698,7 @@ export default {
     'ui.health.test_sync': "Changes reaching the server",
     'ui.health.test_stock_checkpoint': "Stock checkpoint rebuild",
     'ui.health.test_number_checks': "Daily number checks",
+    'ui.health.test_main_thread': "Screen not frozen",
     'ui.admin.counts': "Owner {owner} · Managers {manager} · Members {member} · Waiting for approval {pending} · Removed {removed}",
     'ui.admin.activity_title': "Activity by person",
     'ui.admin.activity_hint': "Bills from the bills loaded on this phone, and payments, edits and voids from the audit log. Reads the audit log only when you tap a range.",
