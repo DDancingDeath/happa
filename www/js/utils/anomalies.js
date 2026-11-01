@@ -178,9 +178,10 @@ export function billTime(bill) {
 
 /**
  * Voids, one record each (#75): a void flagged under its bill's id that an older scan stored under its
- * audit entry's id (same bill number, same person) is left out, and a flag built from the audit entry
- * (`auditTwin`) never rewrites the record already stored under the bill's id, so scans that see the
- * bill and scans that only see the entry don't overwrite each other.
+ * audit entry's id (same bill number, same person) is left out, and the other way round (an older app's
+ * entry seen without its bill); a flag built from the audit entry (`auditTwin`) never rewrites the record
+ * already stored under the bill's id, so scans that see the bill and scans that only see the entry don't
+ * overwrite each other.
  * @param {Array} detected
  * @param {Array|null} stored
  * @returns {Array}
@@ -188,10 +189,14 @@ export function billTime(bill) {
 export function withoutStoredVoidTwins(detected, stored) {
     const voids = (stored || []).filter(d => d && d.type === 'bill-voided');
     if (!voids.length) return detected;
-    const old = new Set(voids.filter(d => d.refKind === 'audit' && d.billNumber).map(d => `${d.billNumber}|${d.userId || ''}`));
+    const keyOf = (d) => `${d.billNumber}|${d.userId || ''}`;
+    const storedAs = (kind) => new Set(voids.filter(d => d.refKind === kind && d.billNumber).map(keyOf));
+    const byAudit = storedAs('audit');
+    const byBill = storedAs('bill');
     const ids = new Set(voids.map(d => d.id));
-    return detected.filter(a => !(a.type === 'bill-voided' && a.refKind === 'bill'
-        && (old.has(`${a.billNumber}|${a.userId || ''}`) || (a.auditTwin && ids.has(a.id)))));
+    return detected.filter(a => !(a.type === 'bill-voided' && (a.refKind === 'bill'
+        ? (a.auditTwin && ids.has(a.id)) || (!!a.billNumber && byAudit.has(keyOf(a)))
+        : a.refKind === 'audit' && !!a.billNumber && byBill.has(keyOf(a)))));
 }
 
 const billParty = (bill) => String(bill?.customerName || bill?.supplierName || '').trim();

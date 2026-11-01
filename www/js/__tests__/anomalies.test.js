@@ -284,6 +284,11 @@ describe('cash, stock and audit rules', () => {
             expect(withoutStoredVoidTwins(fromEntry, storedBill)).toEqual([]);
             expect(withoutStoredVoidTwins(fromEntry, [])).toEqual(fromEntry);
             expect(withoutStoredVoidTwins(detected, storedBill)).toEqual(detected);
+            // an older app's entry (no billId) seen without its bill, after the bill's record was stored
+            const oldEntry = run({ auditLogs: [{ ...log, id: 'l9', details: { ...log.details, billId: undefined } }] });
+            expect(oldEntry.map(a => a.id)).toEqual(['bill-voided~audit~l9']);
+            expect(withoutStoredVoidTwins(oldEntry, storedBill)).toEqual([]);
+            expect(withoutStoredVoidTwins(oldEntry, [{ ...storedBill[0], userId: 'u9' }])).toEqual(oldEntry);
         });
 
         test('owners are needed only when someone else voided a loaded bill in the scanned days', () => {

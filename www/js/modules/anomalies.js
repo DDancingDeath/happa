@@ -131,11 +131,13 @@ export const AnomaliesManager = {
 
     /**
      * Reads who the owners are once per session (owner: the profiles; manager: the team
-     * directory, #87). On failure they stay unknown and back-dated bills follow Q20.
+     * directory, #87). On failure they stay unknown and back-dated bills follow Q20. Not
+     * offline: the phone's cached copy may miss an owner, and the list is kept for the session.
      */
     async loadOwnerIds() {
         const uid = AppState.currentUser?.uid;
         if (!uid || this.knownOwnerIds() || typeof FirebaseService.loadPeople !== 'function') return this.knownOwnerIds();
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
         try {
             const ids = (await FirebaseService.loadPeople() || []).filter(p => p && p.role === 'owner').map(p => String(p.id));
             if (AppState.userRole === 'owner' && !ids.includes(uid)) ids.push(uid);
@@ -334,7 +336,7 @@ export const AnomaliesManager = {
             if (!force && this.reportFresh(key)) {
                 // Someone else's void (#75) is told apart from an owner's by the owners' list, read once a session
                 const uid = AppState.currentUser?.uid;
-                if (!this.knownOwnerIds() && this.ownersAskedBy !== uid
+                if (!this.knownOwnerIds() && this.ownersAskedBy !== uid && navigator.onLine !== false
                     && voidedByOthers(loadedVoided(), uid, istDayStartMs(yesterday), istDayStartMs(addDaysToKey(today, 1)))) {
                     this.ownersAskedBy = uid;
                     await this.loadOwnerIds();

@@ -214,6 +214,21 @@ describe('Day report card', () => {
             await AnomaliesManager.refreshDayReport();
             expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
         });
+
+        test('the owners\' list is asked for once a session on the cached path, and never offline', async () => {
+            AppState.userRole = 'manager';
+            AppState.currentUser = { uid: 'man1' };
+            AnomaliesManager.markReportFresh(`${AnomaliesManager.reportKeys().yesterday}|${AnomaliesManager.reportKeys().today}`);
+            const online = jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+            await AnomaliesManager.refreshDayReport();
+            expect(FirebaseService.loadPeople).not.toHaveBeenCalled();
+            online.mockRestore();
+            FirebaseService.loadPeople.mockRejectedValue(new Error('unavailable'));
+            await AnomaliesManager.refreshDayReport();
+            await AnomaliesManager.refreshDayReport();
+            expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
+            expect(AnomaliesManager.reportList).toEqual([]);
+        });
     });
 });
 
