@@ -42,6 +42,7 @@ import { TemplateLoader, SHELL_TEMPLATES, PAGE_TEMPLATES } from './utils/templat
 import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { SecurityMonitor } from './services/security-monitor.js';
+import { startLongTaskRecorder } from './utils/perf-probe.js';
 import { UsageView } from './ui/usage-view.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
@@ -50,7 +51,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieeci-usage';
+const BUILD_ID = '20261101zzuzieecibc-usage';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -59,6 +60,8 @@ console.log(
 window.__AADHAT_BUILD__ = BUILD_ID;
 // Deferred Firebase SDK + firebaseConfig.js have run before any module code.
 markStartup('sdk-and-modules-loaded');
+// Speed check (#83): long tasks are only counted, read when Diagnostics › Status runs a check.
+startLongTaskRecorder();
 
 InstallManager.init();
 // #124: writes refused by the rules leave a small audit entry for the owner's review
@@ -175,7 +178,7 @@ function refreshForLanguage(lang) {
         items: () => ItemsManager.renderItemsTable(document.getElementById('itemsSearchInput')?.value || ''),
         diagnostics: () => {
             DiagnosticsManager.renderTabs();
-            const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks' }[DiagnosticsManager.activeTab];
+            const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks', status: 'renderStatus' }[DiagnosticsManager.activeTab];
             if (view) DiagnosticsManager[view]();
         },
         money: () => money?.render(),
@@ -1035,6 +1038,7 @@ window.app = {
         retryPrint: () => HistoryManager.retryPrint(),
         markPrintedByHand: () => HistoryManager.markPrintedByHand(),
         shareBill: () => HistoryManager.shareBill(),
+        copyTraceId: () => HistoryManager.copyTraceId(),
         editBillDetails: (billIndex) => {
             if (billIndex !== undefined) {
                 // Pass the bill type along with index
@@ -1246,7 +1250,10 @@ window.app = {
         filterByType: (type) => DiagnosticsManager.filterByType(type),
         filterAuditLogs: (action) => DiagnosticsManager.filterAuditLogs(action),
         deleteError: (errorId) => DiagnosticsManager.deleteError(errorId),
-        clearAll: () => DiagnosticsManager.clearAll()
+        clearAll: () => DiagnosticsManager.clearAll(),
+        runSpeedCheck: () => DiagnosticsManager.runSpeedCheck(),
+        copyStatus: () => DiagnosticsManager.copyStatus(),
+        shareStatus: () => DiagnosticsManager.shareStatus()
     },
     
     // Settings › Usage on this phone (#136, local only)

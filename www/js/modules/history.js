@@ -34,6 +34,7 @@ import { todayLocalISO } from '../utils/dates.js';
 import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
+import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
 import { t, tn } from '../i18n/index.js';
 import { billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
@@ -556,6 +557,13 @@ export class HistoryManager {
                             <div class="bill-info-value"><strong>${Helpers.escapeHtml(bill.customerName)}</strong></div>
                         </div>
                     ` : ''}
+                    ${billTraceId(bill, type) ? `
+                        <div class="bill-info-row bill-trace-row">
+                            <div class="bill-info-label">${L('ui.status.trace_id')}</div>
+                            <div class="bill-info-value"><code lang="zxx" translate="no" style="font-size:12px;">${Helpers.escapeHtml(billTraceId(bill, type))}</code>
+                                <button type="button" class="btn-link bill-trace-copy" onclick="window.app.history.copyTraceId()" style="margin-left:6px;font-size:12px;">${L('ui.status.copy_short')}</button></div>
+                        </div>
+                    ` : ''}
                 </div>
                 
                 ${bill.comments ? `
@@ -634,6 +642,19 @@ export class HistoryManager {
         this.renderPrintStatus();
         
         document.getElementById('billDetailsOverlay').classList.add('active');
+    }
+
+    /** Copies the open bill's trace id (#119): kind letter + document id, no name or amount. */
+    static async copyTraceId() {
+        const bill = billPool(window.currentBillType).find(b => String(b.id) === String(window.currentBillId));
+        const id = billTraceId(bill, window.currentBillType);
+        if (!id) return;
+        try {
+            await navigator.clipboard.writeText(id);
+            UIManager.showToast(t('msg.status.trace_copied', { id }), 'success');
+        } catch (_) {
+            UIManager.showModal(id);
+        }
     }
 
     static closeBillDetails() {

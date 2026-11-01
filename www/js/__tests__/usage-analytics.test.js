@@ -9,6 +9,8 @@ import { createUsage, localStore, idbStore } from '../services/usage.js';
 import { UsageView, usageLabel, PAGE_KEYS } from '../ui/usage-view.js';
 import { Usage } from '../services/usage.js';
 import { setLang } from '../i18n/index.js';
+import { DiagnosticsManager } from '../modules/diagnostics.js';
+import { AppState } from '../utils/state.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
 
 /** Minimal IndexedDB: one database, one object store, async callbacks like the real one. */
@@ -177,6 +179,14 @@ describe('Settings › Usage on this phone', () => {
         });
         expect(ids.length).toBeGreaterThan(15);
         expect(ids.filter(id => !PAGE_KEYS[id])).toEqual([]);
+    });
+
+    test('the Diagnostics speed check counts perf.diagnostic_run (#83)', async () => {
+        const spy = jest.spyOn(Usage, 'track').mockImplementation(() => {});
+        AppState.userRole = 'owner';
+        await DiagnosticsManager.runSpeedCheck();
+        AppState.userRole = null;
+        expect(spy).toHaveBeenCalledWith('perf.diagnostic_run');
     });
 
     test('nothing counted yet', async () => {
