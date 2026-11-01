@@ -892,6 +892,7 @@ export default {
     'ui.wholesale.mark_as_cleared': "चुकता करें",
     'msg.wholesale.complete_all_due_changed': "इस बीच किसी बिल का बकाया बदल गया; कुछ सेव नहीं हुआ। देखकर फिर करें",
     'msg.wholesale.complete_all_due_done': "{count} बिल पूरे, {total} मिले",
+    'msg.wholesale.complete_all_due_already': "पहले ही पूरे हो चुके: इन बिलों पर अब कुछ बाकी नहीं। दोबारा कुछ दर्ज नहीं किया",
     'msg.wholesale.complete_all_due_oldest': "अभी {all} में से सबसे पुराने {count} बिल पूरे होंगे; बाकी के लिए फिर करें",
     'msg.wholesale.complete_all_due_summary': "{count} बिल बाकी, कुल {total}",
     'ui.wholesale.complete_all_due': "सारा बकाया पूरा करें",

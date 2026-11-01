@@ -754,6 +754,17 @@ export class WholesaleSalesManager {
             return;
         }
         const { settled, total } = result;
+        if (!settled.length) {
+            // Nothing was due on the server: an earlier attempt went through (its answer was lost) or someone settled them
+            UIManager.showToast(t('msg.wholesale.complete_all_due_already'));
+            try {
+                OutstandingManager.refreshAfterPayment();
+                this.renderSalesOutstanding();
+            } catch (e) {
+                console.warn('Redraw after Complete all due failed:', e);
+            }
+            return;
+        }
         settled.forEach(s => Object.assign(s.bill, s.fields));
         AuditService.log(AuditService.ACTIONS.UPDATE_PAYMENT, {
             bulk: true,

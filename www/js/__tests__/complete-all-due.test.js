@@ -31,6 +31,8 @@ import { AppState } from '../utils/state.js';
 import { duePaymentUpdate, partyDues, settleDueUpdate, dueEvents } from '../utils/due-payments.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { outstandingDue, readPayment } from '../utils/money.js';
+import { drawerDay } from '../utils/calc/cash.js';
+import { toLocalISODate } from '../utils/dates.js';
 
 const bill = (id, customerName, due, extra = {}) => ({
     id, billNumber: `W-${id}`, source: 'sales-tab', customerName, total: due + 100, timestamp: Number(id.replace(/\D/g, '')) || 1,
@@ -117,6 +119,12 @@ describe('OutstandingManager.settleAllDues', () => {
         // The drawer counts the bill entries (no session legs needed)
         const events = dueEvents({ bills: { wholesale: [server.w1, server.w2] }, from: entries[0].at, to: entries[0].at + 1 });
         expect(events.reduce((s, e) => s + e.cash, 0)).toBe(420.5);
+        // Today's drawer (C4) takes the settled cash, with or without a cash session; the old bills' sale-time cash stays on their days
+        const today = toLocalISODate(new Date(entries[0].at));
+        const session = { date: today, openingBalance: 500, dueTransactions: [] };
+        for (const s of [null, session]) {
+            expect(drawerDay({ date: today, bills: { wholesale: [server.w1, server.w2] }, session: s })).toMatchObject({ dueReceived: 420.5, cashSales: 0 });
+        }
     });
 
     test('settles what is due on the server: a bill paid meanwhile is skipped, a part-paid one settles the rest; a voided one aborts all', async () => {
@@ -193,6 +201,30 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
         expect(AuditService.log).toHaveBeenCalledTimes(1);
         expect(AuditService.log.mock.calls[0][1]).toMatchObject({ bulk: true, customer: 'gupta', method: 'online', paymentAmount: 200 });
         expect(UIManager.showToast).toHaveBeenLastCalledWith('2 bills settled, ₹200 received');
+    });
+
+    test('a retry after a lost answer: nothing is recorded twice, and it says "already settled"', async () => {
+        // The first transaction is written on the server, but its answer never comes back
+        updateBillsInTransaction.mockImplementationOnce(async (collKey, ids, change) => {
+            const out = change(ids.map(id => JSON.parse(JSON.stringify(server[id]))));
+            out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...fields }; });
+            throw Object.assign(new Error('deadline'), { code: 'unavailable' });
+        });
+        jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async () => {
+            document.querySelectorAll('input[name="completeAllMethod"]').forEach(el => el.remove());
+            document.body.insertAdjacentHTML('beforeend', '<input type="radio" name="completeAllMethod" value="cash" checked>');
+            return true;
+        });
+        await WholesaleSalesManager.completeAllDue('Gupta');
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Internet required to record payment');
+        // This phone still shows both bills due; the owner taps again
+        expect(AppState.salesHistory.filter(s => outstandingDue(s) > 0)).toHaveLength(3);
+        await WholesaleSalesManager.completeAllDue('Gupta');
+        expect(updateBillsInTransaction).toHaveBeenCalledTimes(2);
+        expect([server.w1, server.w2].map(b => [b.payments.length, readPayment(b).cash, readPayment(b).due])).toEqual([[1, 220, 0], [1, 180, 0]]);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Already settled: nothing is due on these bills now. Nothing was recorded again');
+        expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.stringContaining('0 bills'));
+        expect(AuditService.log).not.toHaveBeenCalled();
     });
 
     test('cancelling, or not picking cash / online, writes nothing', async () => {
