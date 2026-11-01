@@ -149,6 +149,8 @@ const BillingManager = {
      * @type {?string|undefined}
      */
     editingBillPaymentSig: undefined,
+    /** The copy of the bill the editor opened (#127): the save builds on it, never on a newer or older one in memory. */
+    editingBill: undefined,
 
     /**
      * Initialize the billing manager
@@ -1207,6 +1209,7 @@ const BillingManager = {
             res = await UIManager.withLoading(() => FirebaseService.latestBill(collKey, bill));
         } catch (error) {
             console.warn('Reading the latest bill before editing failed:', error?.code || error);
+            UIManager.showToast(t('msg.billing.latest_check_failed'), 'warning');
             return bill;
         }
         if (!res.bill) {
@@ -1220,6 +1223,36 @@ const BillingManager = {
         if (!res.changed) return res.bill;
         const reload = await UIManager.showModal(t('msg.billing.changed_elsewhere_reload'), t('ui.billing.changed_elsewhere_title'), true);
         return reload ? res.bill : null;
+    },
+
+    /**
+     * Just before an edit is saved (#127): the server's copy again (no read when a listener
+     * keeps the bill current). Changed on another phone since the editor opened → asks
+     * before saving; voided or gone → stops. A failed read goes on: the save's transaction
+     * needs the server and still refuses a payment recorded elsewhere.
+     * @param {'purchase'|'retail'|'wholesale'} billType
+     * @param {Object} bill - the copy the editor opened
+     * @returns {Promise<boolean>} true to save
+     */
+    async stillLatestBeforeSave(billType, bill) {
+        const collKey = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' }[billType];
+        let res;
+        try {
+            res = await FirebaseService.latestBill(collKey, bill);
+        } catch (error) {
+            console.warn('Reading the latest bill before saving the edit failed:', error?.code || error);
+            return true;
+        }
+        if (!res.bill) {
+            UIManager.showToast(t('msg.common.bill_not_found'));
+            return false;
+        }
+        if (!isActiveBill(res.bill)) {
+            UIManager.showToast(t('msg.billing.edit_voided'));
+            return false;
+        }
+        if (!res.changed) return true;
+        return !!(await UIManager.showModal(t('msg.billing.changed_while_editing'), t('ui.billing.changed_elsewhere_title'), true));
     },
 
     /**
@@ -1271,6 +1304,7 @@ const BillingManager = {
             // Payment state when the editor opened: a payment recorded elsewhere before
             // saving must cause a conflict instead of being overwritten by the form values
             this.editingBillPaymentSig = FirebaseService.loadedPaymentSignature(bill);
+            this.editingBill = bill;
 
             // Retail bills use 'sale' mode, wholesale cannot be edited from billing tab
             const mode = billType === 'retail' ? 'sale' : 'purchase';
@@ -1369,6 +1403,7 @@ const BillingManager = {
      */
     getEditingBill() {
         if (this.editingBillIndex === undefined) return null;
+        if (this.editingBill) return this.editingBill;
         const type = this.editingBillType || 'purchase';
         const history = type === 'purchase' ? AppState.purchaseHistory
             : type === 'retail' ? AppState.retailSalesHistory : AppState.salesHistory;
@@ -1411,12 +1446,14 @@ const BillingManager = {
                 return;
             }
             const currentIndex = findBillIndex(history, this.editingBillId, billIndex);
-            const bill = history[currentIndex];
+            // The copy the editor opened: its payments are what the save is checked against
+            const bill = this.editingBill || history[currentIndex];
             
             if (!bill) {
                 UIManager.showToast(t('msg.billing.original_bill_not_found'));
                 return;
             }
+            if (!(await this.stillLatestBeforeSave(billType, bill))) return undefined;
 
             if (this.currentMode === 'purchase') {
                 const billItems = PurchaseManager.getBillItems();
@@ -1483,6 +1520,7 @@ const BillingManager = {
                 this.editingBillId = undefined;
                 this.editingBillType = undefined;
                 this.editingBillPaymentSig = undefined;
+                this.editingBill = undefined;
                 PurchaseManager.clearBill();
                 
                 return updatedBill;
@@ -1543,6 +1581,7 @@ const BillingManager = {
                 this.editingBillId = undefined;
                 this.editingBillType = undefined;
                 this.editingBillPaymentSig = undefined;
+                this.editingBill = undefined;
                 RetailSaleManager.clearSale();
                 
                 return updatedSale;

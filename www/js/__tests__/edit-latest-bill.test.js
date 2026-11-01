@@ -9,6 +9,10 @@ import { BillingManager } from '../modules/billing.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
+import fs from 'fs';
+import path from 'path';
+
+const BILLING_TEMPLATE = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'billing.html'), 'utf8');
 
 let fake;
 const BILL = {
@@ -129,5 +133,91 @@ describe('BillingManager.latestCopyForEdit', () => {
         await BillingManager.editBill(0, 'purchase');
         expect(BillingManager.latestCopyForEdit).toHaveBeenCalledTimes(1);
         expect(BillingManager.editingBillIndex).toBeUndefined();
+    });
+});
+
+describe('edit and save when another phone recorded a payment (#127)', () => {
+    // This phone's copy (a listener still on cache data, or loaded on demand) has no payment;
+    // the server has one recorded on another phone.
+    const OLD = { ...BILL, createdAt: { toMillis: () => Date.now() - 60 * 1000 } };
+    const PAID = {
+        cashPayment: 40, dueAmount: 60, payment: { cash: 40, online: 0, due: 60, total: 100 },
+        payments: [{ id: 'pay1', amount: 40, mode: 'cash', at: 1790850000000 }], paidAt: 1790850000000
+    };
+    let modal;
+    let toast;
+
+    beforeEach(() => {
+        document.body.innerHTML = BILLING_TEMPLATE + '<div id="billDetailsOverlay"></div>';
+        window.app = { nav: { showTab: jest.fn() } };
+        stored(PAID);
+        AppState.purchaseHistory = [{ ...OLD }];
+        window.currentBillId = 'p1';
+        BillingManager.currentMode = 'purchase';
+        BillingManager.editingBillIndex = undefined;
+        BillingManager.editingBill = undefined;
+        jest.spyOn(UIManager, 'withLoading').mockImplementation(async (fn) => fn());
+        jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => {
+            const box = document.createElement('div');
+            box.innerHTML = html;
+            document.body.appendChild(box);
+            document.getElementById('reasonInput').value = 'Name fix';
+            return true;
+        });
+        modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        jest.spyOn(BillingManager, '_refreshAfterEdit').mockImplementation(() => {});
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        BillingManager.editingBillIndex = undefined;
+        BillingManager.editingBill = undefined;
+        AppState.purchaseHistory = [];
+        delete window.app;
+    });
+
+    test('loaded the latest copy: the save builds on it and keeps the payment, even with the old copy still in memory', async () => {
+        await BillingManager.editBill(0, 'purchase');
+        expect(BillingManager.editingBill).toMatchObject({ payments: PAID.payments });
+        expect(AppState.purchaseHistory[0].payments).toBeUndefined();
+        document.getElementById('customerName').value = 'Ramesh Kumar';
+        await BillingManager.saveEditedBill();
+        const doc = fake.raw('purchases').get('p1');
+        expect(doc.customerName).toBe('Ramesh Kumar');
+        expect(doc.payments).toEqual(PAID.payments);
+        expect(doc.payment).toMatchObject({ cash: 40, due: 60 });
+    });
+
+    test('opened offline on the old copy: the save checks again, asks, and the payment is not overwritten (conflict)', async () => {
+        const realLatest = FirebaseService.latestBill.bind(FirebaseService);
+        jest.spyOn(FirebaseService, 'latestBill')
+            .mockRejectedValueOnce(Object.assign(new Error('offline'), { code: 'unavailable' }))
+            .mockImplementation(realLatest);
+        await BillingManager.editBill(0, 'purchase');
+        expect(toast).toHaveBeenCalledWith("Couldn't check for changes from other phones — editing this phone's copy.", 'warning');
+        expect(BillingManager.editingBill.payments).toBeUndefined();
+        document.getElementById('customerName').value = 'Ramesh Kumar';
+        await BillingManager.saveEditedBill();
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('changed on another phone while you were editing'), 'Changed on another phone', true);
+        const doc = fake.raw('purchases').get('p1');
+        expect(doc.customerName).toBe('Ramesh');
+        expect(doc.payments).toEqual(PAID.payments);
+        expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('changed on another device'));
+        expect(BillingManager.editingBillIndex).toBe(0);
+    });
+
+    test('changed while editing, the user says No: nothing is written, the editor stays open', async () => {
+        const realLatest = FirebaseService.latestBill.bind(FirebaseService);
+        jest.spyOn(FirebaseService, 'latestBill')
+            .mockRejectedValueOnce(Object.assign(new Error('offline'), { code: 'unavailable' }))
+            .mockImplementation(realLatest);
+        await BillingManager.editBill(0, 'purchase');
+        const writes = fake.stats.writes;
+        modal.mockResolvedValueOnce(false);
+        expect(await BillingManager.saveEditedBill()).toBeUndefined();
+        expect(fake.stats.writes).toBe(writes);
+        expect(BillingManager.editingBillIndex).toBe(0);
     });
 });
