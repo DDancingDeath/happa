@@ -5843,6 +5843,51 @@ body.no-perm-purchaseRates [data-perm~="purchaseRates"] {
   max-width: 160px;
 }
 
+/* "Bluetooth permission needed" banner (#77) */
+.printer-perm-banner {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(92vw, 520px);
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #7c2d12;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+}
+
+.printer-perm-banner__text {
+  flex: 1;
+}
+
+.printer-perm-banner__allow {
+  min-height: 40px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #c2410c;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.printer-perm-banner__close {
+  min-width: 40px;
+  min-height: 40px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
 /* ---- css/day.css ---- */
 /* ==================== DAY PAGE STYLES ==================== */
 
