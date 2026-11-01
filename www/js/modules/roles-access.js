@@ -11,6 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { AuthManager } from '../auth/authentication.js';
 import { Helpers } from '../utils/helpers.js';
+import { CHANGED_ELSEWHERE, NEEDS_INTERNET, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
 import {
     CONFIGURABLE_ROLES, PAGE_PERMISSIONS, SECTION_PERMISSIONS, SETTINGS_PERMISSIONS, MAX_EDIT_DAYS, MAX_HISTORY_DAYS,
@@ -142,7 +143,17 @@ export class RolesAccessManager {
             await FirebaseService.saveRoleAccess(next);
         } catch (error) {
             console.error('Saving roles & access failed:', error);
-            UIManager.showToast(t('msg.roles.not_saved'));
+            const messageKey = writeErrorKey(error, 'msg.roles.not_saved');
+            UIManager.showToast(t(messageKey));
+            if (error?.code === CHANGED_ELSEWHERE || error?.code === NEEDS_INTERNET) {
+                // Not saved: back to what is stored (the other phone's values when it changed meanwhile)
+                let stored = { roleAccess: before };
+                if (error.code === CHANGED_ELSEWHERE) {
+                    try { stored = await FirebaseService.loadAppSettings(); } catch (e) { console.warn('Roles & access not read again:', e); }
+                }
+                this.applyShared(stored);
+                this.render();
+            }
             return false;
         }
         if (changes.length) {
