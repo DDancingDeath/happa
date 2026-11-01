@@ -1839,7 +1839,7 @@ function defineSuite(prefix) {
     t('bill create (#65): no payments[], paidAt or cleared on a new bill (non-owners)', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
-            const bill = { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, clientVersion: 3, createdAt: serverTimestamp() };
+            const bill = { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() };
             await assertSucceeds(c.doc('ok').set(bill));
             await assertFails(c.doc('p').set({ ...bill, payment: { cash: 100, online: 0, due: 0, total: 100 }, dueAmount: 0,
                 payments: [{ id: 'x', amount: 100, cash: 100, online: 0, at: Date.now() - 5 * DAY }] }));
