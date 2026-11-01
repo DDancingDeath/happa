@@ -12,7 +12,7 @@ import { AuditService } from '../services/audit.js';
 import { AppState } from '../utils/state.js';
 import { t, getLang } from '../i18n/index.js';
 import { formatINR } from '../utils/due-reminder.js';
-import { toCsv } from '../utils/statements.js';
+import { toCsv, csvLanguage, readCsvEnglish } from '../utils/statements.js';
 import { saveLeaseReminders } from '../utils/reminders.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import * as store from './rent-store.js';
@@ -21,7 +21,7 @@ import { monthLabel, isMonth } from './rent-math.js';
 import { agreementError, leaseReminders, noticeBy, reportMonths, yearReport, MAX_NOTICE_MONTHS } from './rent-math-report.js';
 
 const fail = (key) => UIManager.showToast(t(key), 'error');
-const propName = (p) => p.name || `${t('ui.rent.yr_no_property')} · ${String(p.id).slice(0, 6)}`;
+const propName = (p, lang = getLang()) => p.name || `${t('ui.rent.yr_no_property', undefined, lang)} · ${String(p.id).slice(0, 6)}`;
 const lbl = (c, key, field) => `<label class="rent-label">${c.esc(t(key))}${field}</label>`;
 const FIELDS = ['rent', 'collected', 'due', 'expenses', 'tax', 'net'];
 const report = { year: null, fy: true, data: null, seq: 0, cache: new Map() };
@@ -146,13 +146,14 @@ export async function action(c, name, value) {
     }
 }
 
-/** RENT-19 as CSV: one row per property and month, then the property's total (headers in the app language). */
+/** RENT-19 as CSV: one row per property and month, then the property's total (headers in the CSV language, like the other CSVs). */
 function downloadCsv() {
+    const lang = csvLanguage(getLang(), readCsvEnglish());
     const r = yearReport(report.data, reportMonths(report.year, report.fy));
-    const header = [t('ui.rent.yr_property'), t('ui.rent.yr_month'), ...FIELDS.map(f => t(`ui.rent.yr_${f}`))];
+    const header = [t('ui.rent.yr_property', undefined, lang), t('ui.rent.yr_month', undefined, lang), ...FIELDS.map(f => t(`ui.rent.yr_${f}`, undefined, lang))];
     const rows = r.rows.flatMap(p => [
-        ...r.months.map(m => [propName(p), m, ...FIELDS.map(f => p.months[m][f])]),
-        [propName(p), t('ui.rent.yr_total'), ...FIELDS.map(f => p.total[f])]
+        ...r.months.map(m => [propName(p, lang), m, ...FIELDS.map(f => p.months[m][f])]),
+        [propName(p, lang), t('ui.rent.yr_total', undefined, lang), ...FIELDS.map(f => p.total[f])]
     ]);
     const blob = new Blob([toCsv(header, rows)], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
