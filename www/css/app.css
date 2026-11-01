@@ -3,7 +3,7 @@
 :root {
   /* Modern Primary Gradient Colors */
   --primary-color: #5560d6;
-  --primary-dark: #5a67d8;
+  --primary-dark: #4349b8;
   --primary-light: #818cf8;
   --primary-gradient: linear-gradient(135deg, #5560d6 0%, #764ba2 100%);
   
@@ -14,7 +14,7 @@
   
   --danger-color: #b91c1c;
   --danger-light: #fee2e2;
-  --danger-dark: #b91c1c;
+  --danger-dark: #991b1b;
   
   --warning-color: #f59e0b;
   --warning-light: #fef3c7;
@@ -82,7 +82,7 @@
 /* Dark Mode Variables */
 body.dark-mode {
   --primary-color: #818cf8;
-  --primary-dark: #5560d6;
+  --primary-dark: #667eea;
   --primary-light: #a5b4fc;
   --primary-gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
   
@@ -1377,7 +1377,7 @@ body.typing .bottom-nav {
 /* -------------------- SAVE BUTTON -------------------- */
 .save-btn {
   flex: 1;
-  background: linear-gradient(135deg, #0058b8, #0056b3);
+  background: linear-gradient(135deg, #0058b8, #00438c);
   color: var(--white);
   border: none;
   padding: 14px;
@@ -1390,11 +1390,11 @@ body.typing .bottom-nav {
 }
 
 .save-purchase-btn {
-  background: linear-gradient(135deg, #0058b8, #0056b3);
+  background: linear-gradient(135deg, #0058b8, #00438c);
 }
 
 .save-sale-btn {
-  background: linear-gradient(135deg, #1c7430, #1e7e34);
+  background: linear-gradient(135deg, #1c7430, #155d27);
 }
 
 .save-btn:active {
@@ -1404,7 +1404,7 @@ body.typing .bottom-nav {
 /* -------------------- PRINT BUTTON -------------------- */
 .print-btn {
   flex: 1;
-  background: linear-gradient(135deg, #0058b8, #0056b3);
+  background: linear-gradient(135deg, #0058b8, #00438c);
   color: var(--white);
   border: none;
   padding: 14px;
@@ -1417,11 +1417,11 @@ body.typing .bottom-nav {
 }
 
 .print-purchase-btn {
-  background: linear-gradient(135deg, #0058b8, #0056b3);
+  background: linear-gradient(135deg, #0058b8, #00438c);
 }
 
 .print-sale-btn {
-  background: linear-gradient(135deg, #1c7430, #1e7e34);
+  background: linear-gradient(135deg, #1c7430, #155d27);
 }
 
 .print-btn:active {

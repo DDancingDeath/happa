@@ -47,8 +47,8 @@ const HISTORY_MAX = 500;
 const YEAR_MAX = 300;
 const TRAFFIC_WEEK_OPTIONS = [12, 26, 52, 104];
 const META_TTL_MS = 5 * 60 * 1000;
-const COLORS = { purchase: '#2563eb', retail: '#059669', wholesale: '#92400e', bought: '#93c5fd', sold: '#6ee7b7' };
-const YEAR_COLORS = ['#b91c1c', '#2563eb', '#059669', '#7c3aed', '#92400e'];
+const COLORS = { purchase: '#2563eb', retail: '#059669', wholesale: '#d97706', bought: '#93c5fd', sold: '#6ee7b7' };
+const YEAR_COLORS = ['#dc2626', '#2563eb', '#059669', '#7c3aed', '#d97706'];
 const DASH = [5, 4];
 const STOP_KEYS = { quota: 'ui.trends.stop_quota', budget: 'ui.trends.stop_budget', error: 'ui.trends.stop_error', save: 'ui.trends.stop_save' };
 

@@ -250,7 +250,7 @@
           "cashSignOutSection": "none",
           "cashDepositSection": "none"
         },
-        "diffColor": "rgb(245, 158, 11)",
+        "diffColor": "rgb(253, 230, 138)",
         "signInAmount": "",
         "signInHint": ""
       }
@@ -713,7 +713,7 @@
         "cashSignOutSection": "none",
         "cashDepositSection": "none"
       },
-      "diffColor": "rgb(245, 158, 11)",
+      "diffColor": "rgb(253, 230, 138)",
       "signInAmount": "",
       "signInHint": ""
     },

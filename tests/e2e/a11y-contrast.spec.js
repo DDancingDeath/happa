@@ -5,14 +5,20 @@
  * of the visible screen.
  */
 const AxeBuilder = require('@axe-core/playwright').default;
-const { test, expect, login, showTab } = require('./support/app');
+const { test, expect, login, showTab, settle } = require('./support/app');
+const { seed } = require('./support/seed');
 
 const PAGES = [
-    ['Billing', 'billing'], ['Today', 'day'], ['Today › Cash', 'day', "window.app.day.showSubTab?.('cash')"],
+    ['Billing', 'billing'], ['Today', 'day'], ['Today › Cash', 'day', "window.app.day.showSubTab('cash')"],
     ['History', 'history'], ['Outstanding', 'due'], ['Stocks', 'stock'], ['Wholesale', 'wholesale-sales'],
     ['Expenses', 'expenses'], ['Cash', 'cash-management'], ['Rates', 'rates'], ['Money', 'money'],
     ['Insights', 'insights'], ['Statements', 'statements'], ['Settings', 'settings-common'], ['Settings › Aadhat', 'settings-shop']
 ];
+
+// The specs that add data may run before this one in a shard: start from the seed.
+test.beforeEach(async () => {
+    await seed();
+});
 
 for (const lang of ['en', 'hi']) {
     test(`text contrast is at least WCAG AA on the main pages (${lang})`, async ({ page, problems }) => {
@@ -23,7 +29,7 @@ for (const lang of ['en', 'hi']) {
         for (const [name, route, act] of PAGES) {
             await showTab(page, route);
             if (act) await page.evaluate(act);
-            await page.waitForTimeout(400);
+            expect(await settle(page), `${name} finished loading`).toBe(true);
             const result = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze();
             for (const v of result.violations) {
                 for (const n of v.nodes) {

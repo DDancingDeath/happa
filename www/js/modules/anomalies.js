@@ -41,8 +41,8 @@ const REPORT_LIMIT = 200;
 const SCAN_LIMIT = 500;
 const SCAN_KEY = 'aadhatAnomalyScanDay';
 const PAGE_SIZE = 200;
-const SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' };
-const TYPE_COLORS = ['#b91c1c', '#2563eb', '#92400e', '#059669', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#9333ea', '#be123c', '#15803d', '#1d4ed8', '#a16207'];
+const SEV_COLORS = { high: '#dc2626', medium: '#d97706', low: '#6b7280' };
+const TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#9333ea', '#be123c', '#15803d', '#1d4ed8', '#a16207'];
 
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
 const todayKey = () => istDayKey(Date.now());
@@ -534,7 +534,7 @@ export const AnomaliesManager = {
         return `
             <div class="anomaly-row sev-${esc(a.severity)}${compact ? ' compact' : ''}">
                 <div class="anomaly-row-main"${canOpen ? ` onclick="window.app.anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
-                    <div class="anomaly-row-title"><span class="anomaly-dot" style="background:${SEV_COLORS[a.severity] || '#4b5563'}"></span>${loc(label)} ${statusBadge}</div>
+                    <div class="anomaly-row-title"><span class="anomaly-dot" style="background:${SEV_COLORS[a.severity] || '#6b7280'}"></span>${loc(label)} ${statusBadge}</div>
                     <div class="anomaly-row-why">${loc(a)}</div>
                     <div class="anomaly-row-meta">${meta}</div>
                     ${a.note ? `<div class="anomaly-row-note">📝 ${esc(a.note)}${a.reviewedByName ? ` — ${esc(a.reviewedByName)}` : ''}</div>` : ''}

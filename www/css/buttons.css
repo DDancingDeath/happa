@@ -213,7 +213,7 @@
 /* -------------------- SAVE BUTTON -------------------- */
 .save-btn {
   flex: 1;
-  background: linear-gradient(135deg, #0058b8, #0056b3);
+  background: linear-gradient(135deg, #0058b8, #00438c);
   color: var(--white);
   border: none;
   padding: 14px;
@@ -226,11 +226,11 @@
 }
 
 .save-purchase-btn {
-  background: linear-gradient(135deg, #0058b8, #0056b3);
+  background: linear-gradient(135deg, #0058b8, #00438c);
 }
 
 .save-sale-btn {
-  background: linear-gradient(135deg, #1c7430, #1e7e34);
+  background: linear-gradient(135deg, #1c7430, #155d27);
 }
 
 .save-btn:active {
@@ -240,7 +240,7 @@
 /* -------------------- PRINT BUTTON -------------------- */
 .print-btn {
   flex: 1;
-  background: linear-gradient(135deg, #0058b8, #0056b3);
+  background: linear-gradient(135deg, #0058b8, #00438c);
   color: var(--white);
   border: none;
   padding: 14px;
@@ -253,11 +253,11 @@
 }
 
 .print-purchase-btn {
-  background: linear-gradient(135deg, #0058b8, #0056b3);
+  background: linear-gradient(135deg, #0058b8, #00438c);
 }
 
 .print-sale-btn {
-  background: linear-gradient(135deg, #1c7430, #1e7e34);
+  background: linear-gradient(135deg, #1c7430, #155d27);
 }
 
 .print-btn:active {

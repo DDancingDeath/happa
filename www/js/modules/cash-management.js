@@ -34,6 +34,8 @@ const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
 /** Colour of a cash difference band (calc/cash differenceBand). */
 const DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' });
+/** The same bands on the purple status card (light tints that read on it). */
+const DIFF_ON_CARD = Object.freeze({ ok: '#bbf7d0', warn: '#fde68a', high: '#fecaca' });
 
 /** TIP CashClose run (#217); never throws. */
 function startCashCloseRun(session, expected, counted, difference) {
@@ -568,7 +570,7 @@ export class CashManagementManager {
             if (statusActualCard) statusActualCard.style.display = 'block';
             if (statusDiffCard) statusDiffCard.style.display = 'block';
             
-            const diffColor = DIFF_COLORS[diffLevel];
+            const diffColor = DIFF_ON_CARD[diffLevel];
 
             if (statusOpeningBalance) statusOpeningBalance.textContent = `₹${opening}`;
             if (statusCashAdded) statusCashAdded.textContent = `₹${cashAdded}`;
