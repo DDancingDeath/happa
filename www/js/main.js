@@ -561,7 +561,7 @@ async function initializeUserData() {
         AppUpdatesManager.onAppReady();
 
         // Printed bill (#107): none shared yet → offer this phone's own choices for every phone (once)
-        appSettingsApplied.then(loaded => loaded && SettingsManager.offerReceiptShare())
+        appSettingsApplied.then(loaded => (loaded ? SettingsManager.offerReceiptShare() : false))
             .catch(e => console.warn('Receipt share offer skipped:', e?.code || e));
         // Daily anomaly scan (#187): owner/manager devices, once per day, over loaded data
         AnomaliesManager.scheduleDailyScan();
