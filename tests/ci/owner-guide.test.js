@@ -14,9 +14,12 @@ const DOCS = path.join(__dirname, '..', '..', 'docs');
 const read = (name) => fs.readFileSync(path.join(DOCS, name), 'utf8');
 const guideEn = read('owner-guide.md');
 const guideHi = read('owner-guide.hi.md');
-const PAGES = fs.readdirSync(path.join(DOCS, 'pages')).filter(f => f.endsWith('.md') && !f.endsWith('.hi.md')).map(f => f.slice(0, -3)).sort();
-const pageEn = Object.fromEntries(PAGES.map(p => [p, read(`pages/${p}.md`)]));
-const pageHi = Object.fromEntries(PAGES.map(p => [p, read(`pages/${p}.hi.md`)]));
+const PAGE_FILES = fs.readdirSync(path.join(DOCS, 'pages')).filter(f => f.endsWith('.md'));
+const PAGES = PAGE_FILES.filter(f => !f.endsWith('.hi.md')).map(f => f.slice(0, -3)).sort();
+const HI_PAGES = PAGE_FILES.filter(f => f.endsWith('.hi.md')).map(f => f.slice(0, -6)).sort();
+const readIf = (name) => (fs.existsSync(path.join(DOCS, name)) ? read(name) : '');
+const pageEn = Object.fromEntries(HI_PAGES.concat(PAGES).map(p => [p, readIf(`pages/${p}.md`)]));
+const pageHi = Object.fromEntries(HI_PAGES.concat(PAGES).map(p => [p, readIf(`pages/${p}.hi.md`)]));
 const en = [guideEn, ...Object.values(pageEn)].join('\n');
 const hi = [guideHi, ...Object.values(pageHi)].join('\n');
 const calc = read('calculations.md');
@@ -72,8 +75,8 @@ describe('owner guide (#148)', () => {
 
     test('one doc per page, in English and Hindi, each pair citing the same spec IDs, all listed in the guides', () => {
         expect(PAGES.length).toBeGreaterThanOrEqual(13);
+        expect(HI_PAGES).toEqual(PAGES);
         for (const p of PAGES) {
-            expect(fs.existsSync(path.join(DOCS, 'pages', `${p}.hi.md`))).toBe(true);
             expect([p, [...citedIds(pageHi[p])].sort()]).toEqual([p, [...citedIds(pageEn[p])].sort()]);
             expect(guideEn).toContain(`](pages/${p}.md)`);
             expect(guideHi).toContain(`](pages/${p}.hi.md)`);

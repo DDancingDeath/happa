@@ -16,5 +16,3 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [settin
   a big cash gap…); tap "Mark OK" or "Mark fixed" on each.
 - **Diagnostics › Number checks**: the always-true checks run on this phone's data
   (bill split, payments, dates, dues, drawer, stock).
-
----
