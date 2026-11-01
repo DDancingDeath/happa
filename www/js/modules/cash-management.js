@@ -37,7 +37,6 @@ const DIFF_COLORS = Object.freeze({ ok: '#22c55e', warn: '#f59e0b', high: '#ef44
 
 /** TIP CashClose run (#217); never throws. */
 function startCashCloseRun(session, expected, counted, difference) {
-    track('cash.close');
     try {
         return tip.start('CashClose', {
             flags: { offline: typeof navigator !== 'undefined' && navigator.onLine === false },
@@ -867,6 +866,7 @@ export class CashManagementManager {
             // Field-level update: never overwrite deposits/due payments added on another device
             await updateSession(this.todaySession.id, closingFields);
             clearTimeout(waiting);
+            track('cash.close');
             run.complete();
             AuditService.note(AuditService.ACTIONS.CASH_CLOSE, {
                 date: this.todaySession.date, counted: actualAmount, expected, difference

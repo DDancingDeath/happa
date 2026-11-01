@@ -2,9 +2,11 @@
  * Local usage analytics (#136): track() → counters on this phone, Settings › Usage.
  */
 import { jest } from '@jest/globals';
+import fs from 'fs';
+import path from 'path';
 import { isUsageEvent, mergeUsage, topUsage, expiredUsage, usageKey } from '../utils/usage-stats.js';
 import { createUsage, localStore, idbStore } from '../services/usage.js';
-import { UsageView, usageLabel } from '../ui/usage-view.js';
+import { UsageView, usageLabel, PAGE_KEYS } from '../ui/usage-view.js';
 import { Usage } from '../services/usage.js';
 import { setLang } from '../i18n/index.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
@@ -103,6 +105,23 @@ describe('track() store', () => {
         expect([...idb.data.keys()]).toEqual([usageKey(todayLocalISO(), 'page.day')]);
     });
 
+    test('Clear wins over a write that fails after it', async () => {
+        let rejectAdd;
+        let stored = [];
+        const store = { add: () => new Promise((_, rej) => { rejectAdd = rej; }), all: async () => stored, dropKeys: async () => {}, clear: async () => { stored = []; } };
+        const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        const usage = createUsage({ store, setTimer: () => 1 });
+        usage.track('print.bill');
+        usage.flush();
+        await Promise.resolve();
+        const cleared = usage.clear();
+        rejectAdd(new Error('quota'));
+        await cleared;
+        store.add = async (p) => { stored = [...p].map(([k, n]) => ({ day: k.split('|')[0], event: k.split('|')[1], count: n })); };
+        expect(await usage.rows()).toEqual([]);
+        warn.mockRestore();
+    });
+
     test('a failed write keeps the counts for the next try', async () => {
         let fail = true;
         const saved = [];
@@ -147,6 +166,17 @@ describe('Settings › Usage on this phone', () => {
         setLang('hi');
         expect(usageLabel('page.billing')).toBe('बिलिंग खोला');
         expect(usageLabel('cash.close')).toBe('नकद दिन बंद');
+    });
+
+    test('every page has a name (no raw page id on screen)', () => {
+        const dir = path.join(__dirname, '..', '..', 'templates');
+        const ids = fs.readdirSync(dir).flatMap(f => {
+            const host = document.createElement('div');
+            host.innerHTML = fs.readFileSync(path.join(dir, f), 'utf8');
+            return [...host.querySelectorAll('.tab[id]')].map(el => el.id);
+        });
+        expect(ids.length).toBeGreaterThan(15);
+        expect(ids.filter(id => !PAGE_KEYS[id])).toEqual([]);
     });
 
     test('nothing counted yet', async () => {

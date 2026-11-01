@@ -108,6 +108,8 @@ export function createUsage({ store = null, now = () => new Date(), setTimer = (
     const pending = new Map();
     let timer = null;
     let writing = Promise.resolve();
+    /** Bumped by clear(): a batch from before it is never put back. */
+    let generation = 0;
 
     const getBackend = () => {
         if (backend) return backend;
@@ -123,9 +125,11 @@ export function createUsage({ store = null, now = () => new Date(), setTimer = (
         if (timer) { clearTimeout(timer); timer = null; }
         if (!pending.size) return writing;
         const batch = new Map(pending);
+        const gen = generation;
         pending.clear();
         writing = writing.then(() => getBackend().add(batch)).catch(e => {
             warn('not saved', e);
+            if (gen !== generation) return;
             batch.forEach((n, k) => pending.set(k, (pending.get(k) || 0) + n));
         });
         return writing;
@@ -156,9 +160,13 @@ export function createUsage({ store = null, now = () => new Date(), setTimer = (
             return rows.filter(r => !old.includes(r));
         },
         async clear() {
+            generation++;
             pending.clear();
-            await writing;
-            await getBackend().clear();
+            if (timer) { clearTimeout(timer); timer = null; }
+            writing = writing.then(() => getBackend().clear());
+            const done = writing;
+            writing = writing.catch(e => warn('not cleared', e));
+            await done;
         }
     };
 }

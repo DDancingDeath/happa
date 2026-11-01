@@ -551,11 +551,11 @@ export class OutstandingManager {
 
             // Server-side read-modify-write so concurrent payments from two devices can't overwrite each other
             if (clear) entry.settlesDue = true;
-            track('payment.record');
             run = tip.start('PaymentRecord', { flags: { billType, clear: !!clear, split: split.cash > 0 && split.online > 0 } });
             this.lastPaymentTip = null;
             const written = await this.applyPaymentTransaction(billType, transaction, { cash: split.cash, online: split.online }, entry, { clear });
             Object.assign(transaction, written);
+            track('payment.record');
             try {
                 const info = this.lastPaymentTip || {};
                 run.complete(paymentRecordProps(info.fresh || null, written, info));

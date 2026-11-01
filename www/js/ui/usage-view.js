@@ -11,12 +11,12 @@ import { Usage } from '../services/usage.js';
 import { topUsage } from '../utils/usage-stats.js';
 import { todayLocalISO, localISODaysAgo } from '../utils/dates.js';
 
-const PAGE_KEYS = {
+export const PAGE_KEYS = {
     billing: 'ui.nav.billing', day: 'ui.nav.today', history: 'ui.nav.history', due: 'ui.nav.outstanding',
     'wholesale-sales': 'ui.nav.sales', stock: 'ui.nav.stocks', items: 'ui.nav.rates', money: 'ui.nav.money',
     insights: 'ui.nav.insights', statements: 'ui.nav.statements', anomalies: 'ui.nav.anomalies', health: 'ui.nav.health',
     settings: 'ui.nav.settings', diagnostics: 'ui.nav.diagnostics', admin: 'ui.nav.admin', expenses: 'ui.nav.expenses',
-    'cash-management': 'ui.usage.page_cash', rentals: 'ui.usage.page_rentals', users: 'ui.usage.page_users'
+    'cash-management': 'ui.usage.page_cash', rentals: 'ui.usage.page_rentals', users: 'ui.usage.page_users', chat: 'ui.nav.ai_assistant'
 };
 
 export const RANGE_DAYS = { today: 1, week: 7, month: 30 };
