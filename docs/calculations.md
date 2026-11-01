@@ -414,6 +414,14 @@ Counts about this phone, never business figures. Nothing is read from the server
 | DIAG-SYNC | Changes waiting to sync / last change reached the server | The header pill's pending count (`ui/sync-status.js`); the last time one of this phone's writes was acknowledged by the server (meter) or the pill confirmed "Synced" |
 | DIAG-SCORE | Speed score | 100 − 25 per high − 12 per medium − 4 per low suspect from `utils/perf-probe.js analyseProbes`, never below 0. Suspects: history list ≥ 3,000 (high) / ≥ 1,500 (medium), items ≥ 800, stock entries ≥ 1,500, memory ≥ 80% (high) or ≥ 250 MB, phone memory ≤ 2 GB, offline or 2G (high), no service worker (low), app open ≥ 5 s, ≥ 8 long tasks in the last minute (high), app storage ≥ 85% |
 
+## Admin › Users: counts and activity by person (owner) — #145
+
+| ID | Shown | Definition |
+|---|---|---|
+| ADM-1 | Owner · Managers · Members · Waiting for approval · Removed | From the people list already loaded: removed or rejected (`isRemovedProfile`) → Removed; else no role or `status: pending` → Waiting; else by role (`staff` = Member) |
+| ADM-2 | Bills, Bill total per person | Bills on this phone (purchases, retail, wholesale) that count (`activityBills`: not voided, not opening records) saved by that person (`userId`, wholesale `createdBy`) with their first-save time (`createdAt`, else `timestamp`, else the bill date) in the range [from, to) of local days; total = Σ BILL-TOTAL, rounded to whole rupees at the end |
+| ADM-3 | Payments, Edits, Voids, Last active | That person's audit entries in the range: payments = `RECORD_PAYMENT` + `UPDATE_PAYMENT` + `CLEAR_DUE`, edits = `EDIT_BILL` + `EDIT_SALE`, voids = `VOID_BILL`; last active = their latest bill (ADM-2) or audit entry in the range. Ranges: Today, Last 7 days (today and 6 days before), This month (from the 1st), Last month. At most the newest 300 audit entries are read per tap (the page says so when it hits that) |
+
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and

@@ -10,12 +10,17 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
-import { todayLocalISO } from '../utils/dates.js';
+import { todayLocalISO, formatDateTimeIN, formatDay } from '../utils/dates.js';
+import { userCounts, activityByUser, activityRange, ACTIVITY_RANGES } from '../utils/user-activity.js';
+import { historyLoadedFrom } from '../utils/history-window.js';
+import { getLang } from '../i18n/index.js';
 import { buildBackup, isDeleteConfirmed, DELETE_CONFIRM_WORD, canClearCollection } from '../utils/data-export.js';
 import { t } from '../i18n/index.js';
 import { UserAdmin, isRemovedProfile, logUserAction } from '../services/user-admin.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
+/** Most audit entries the activity report reads per tap. */
+const ACTIVITY_LIMIT = 300;
 
 /**
  * Admin Manager - owner-only panel
@@ -108,6 +113,7 @@ const AdminManager = {
         if (!container) return;
 
         container.innerHTML = `
+            <p class="admin-user-counts" id="adminUserCounts"></p>
             <div class="settings-card">
                 <h3>${tx('ui.users.pending_registrations')}</h3>
                 <p class="setting-description">${tx('ui.users.approve_new_users_and_assign')}</p>
@@ -128,6 +134,15 @@ const AdminManager = {
                 <h3>${tx('ui.admin.removed_users')}</h3>
                 <p class="setting-description">${tx('ui.admin.removed_users_hint')}</p>
                 <div id="adminRemovedUsers"></div>
+            </div>
+
+            <div class="settings-card" id="adminActivityCard">
+                <h3>${tx('ui.admin.activity_title')}</h3>
+                <p class="setting-description">${tx('ui.admin.activity_hint')}</p>
+                <div class="filter-buttons" id="adminActivityRange">
+                    ${ACTIVITY_RANGES.map(r => `<button type="button" class="filter-btn" data-range="${r}" onclick="window.app.admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)}</button>`).join('')}
+                </div>
+                <div id="adminActivity"></div>
             </div>
         `;
 
@@ -158,6 +173,8 @@ const AdminManager = {
                 }
             });
 
+            this.users = users;
+            this.renderCounts(users);
             this.renderPendingUsers(pendingUsers);
             this.renderActiveUsers(activeUsers);
             this.renderRemovedUsers(removedUsers);
@@ -192,6 +209,66 @@ const AdminManager = {
                 </div>
             </div>
         `).join('');
+    },
+
+    /** People loaded for the Users tab (names for the activity report). */
+    users: [],
+
+    /** ADM-1: counts by role, pending and removed, from the list already loaded. */
+    renderCounts(users) {
+        const el = document.getElementById('adminUserCounts');
+        if (!el) return;
+        const c = userCounts(users, isRemovedProfile);
+        el.textContent = t('ui.admin.counts', {
+            owner: c.owner, manager: c.manager, member: c.member, pending: c.pending, removed: c.removed
+        });
+    },
+
+    /**
+     * Per-person activity (#145): bills from the bills on this phone, payments,
+     * edits, voids and sign-ins from the audit log of the range (one read of at
+     * most ACTIVITY_LIMIT entries, only when tapped).
+     * @param {'today'|'week'|'month'|'last_month'} range
+     */
+    async showActivity(range = 'week') {
+        if (AppState.userRole !== 'owner') return;
+        const host = document.getElementById('adminActivity');
+        if (!host || !ACTIVITY_RANGES.includes(range)) return;
+        document.querySelectorAll('#adminActivityRange [data-range]').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+        host.innerHTML = `<p style="text-align: center; color: #888;">${tx('ui.navigation.loading')}</p>`;
+        const { from, to } = activityRange(range);
+        let audit = [];
+        let auditFailed = false;
+        try {
+            audit = await AuditService.getLogsSince(from, ACTIVITY_LIMIT);
+        } catch (error) {
+            console.warn('Activity: audit log not read:', error?.code || error);
+            auditFailed = true;
+        }
+        const bills = [...(AppState.purchaseHistory || []), ...(AppState.retailSalesHistory || []), ...(AppState.salesHistory || [])];
+        const rows = activityByUser({ bills, audit, from, to });
+        const names = new Map((this.users || []).map(u => [u.id, u.name || u.email || '']));
+        const notes = [];
+        if (auditFailed) notes.push(t('ui.admin.activity_audit_failed'));
+        else if (audit.length >= ACTIVITY_LIMIT) notes.push(t('ui.admin.activity_limited', { count: ACTIVITY_LIMIT }));
+        const loadedFrom = historyLoadedFrom();
+        if (loadedFrom && loadedFrom > from) notes.push(t('ui.admin.activity_bills_from', { date: formatDay(loadedFrom, { lang: getLang() }) }));
+        const noteHtml = notes.map(n => `<p class="setting-description">${Helpers.escapeHtml(n)}</p>`).join('');
+        if (!rows.length) {
+            host.innerHTML = `${noteHtml}<p class="setting-description">${tx('ui.admin.activity_none')}</p>`;
+            return;
+        }
+        const cell = (v) => `<td style="text-align:right">${Helpers.escapeHtml(String(v))}</td>`;
+        host.innerHTML = `${noteHtml}
+            <div class="table-scroll"><table class="admin-activity-table" style="width:100%;font-size:13px;border-collapse:collapse;">
+                <thead><tr><th style="text-align:left">${tx('ui.admin.col_person')}</th><th style="text-align:right">${tx('ui.admin.col_bills')}</th>
+                    <th style="text-align:right">${tx('ui.admin.col_bill_total')}</th><th style="text-align:right">${tx('ui.admin.col_payments')}</th>
+                    <th style="text-align:right">${tx('ui.admin.col_edits')}</th><th style="text-align:right">${tx('ui.admin.col_voids')}</th>
+                    <th style="text-align:right">${tx('ui.admin.col_last_active')}</th></tr></thead>
+                <tbody>${rows.map(r => `<tr data-uid="${Helpers.escapeHtml(r.uid)}"><td>${Helpers.escapeHtml(names.get(r.uid) || t('ui.reports.unknown'))}</td>`
+                    + cell(r.bills) + cell(Helpers.formatCurrency(r.billTotal)) + cell(r.payments) + cell(r.edits) + cell(r.voids)
+                    + cell(r.lastActive ? formatDateTimeIN(new Date(r.lastActive)) : '—') + '</tr>').join('')}</tbody>
+            </table></div>`;
     },
 
     /**

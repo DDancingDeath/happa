@@ -1,6 +1,6 @@
 // Audit Logging Service
 import { AppState } from '../utils/state.js';
-import { addAuditLog, recentAuditLogs, deleteAuditLogsBefore } from '../firebase/repos/audit-logs.js';
+import { addAuditLog, recentAuditLogs, auditLogsSince, deleteAuditLogsBefore } from '../firebase/repos/audit-logs.js';
 
 export class AuditService {
     // Retention period in days
@@ -100,6 +100,11 @@ export class AuditService {
             console.error('Error fetching audit logs:', error);
             return [];
         }
+    }
+
+    /** Entries since from (ms), newest first; throws on a failed read (the caller says so). */
+    static getLogsSince(from, limit = 300) {
+        return auditLogsSince(from, limit);
     }
 
     static async getLogsByUser(userId, limit = 50) {
