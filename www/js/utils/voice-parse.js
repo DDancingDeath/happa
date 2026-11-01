@@ -217,13 +217,18 @@ function numberKind(rest, groups, gi) {
     const g = groups[gi];
     const stop = gi + 1 < groups.length ? groups[gi + 1].start : rest.length;
     let after = null;
-    for (let k = g.end; !after && k < stop; k++) {
+    for (let k = g.end; k < stop; k++) {
         const w = rest[k];
-        if (PER_WORDS.has(w)) after = WEIGHT_UNITS.has(rest[k + 1]) ? 'rate-kg' : 'other';
-        else if (WEIGHT_UNITS.has(w)) after = 'weight';
-        else if (GRAM_UNITS.has(w)) after = 'gram';
-        else if (OTHER_UNITS.has(w) || TOTAL_AFTER.has(w)) after = 'other';
-        else if (PRICE_AFTER.has(w)) after = 'rate';
+        // a total word just before the next number belongs to that number ("30 rupees total 300")
+        const total = TOTAL_AFTER.has(w) && !(k + 1 === stop && gi + 1 < groups.length);
+        if (!after) {
+            if (PER_WORDS.has(w)) after = WEIGHT_UNITS.has(rest[k + 1]) ? 'rate-kg' : 'other';
+            else if (WEIGHT_UNITS.has(w)) after = 'weight';
+            else if (GRAM_UNITS.has(w)) after = 'gram';
+            else if (OTHER_UNITS.has(w) || total) after = 'other';
+            else if (PRICE_AFTER.has(w)) after = 'rate';
+        } else if (after === 'rate' && (OTHER_UNITS.has(w) || total)) after = 'other';
+        else if (after === 'rate' && (WEIGHT_UNITS.has(w) || (PER_WORDS.has(w) && WEIGHT_UNITS.has(rest[k + 1])))) after = 'rate-kg';
     }
     if (after === 'other') return 'other';
     const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
@@ -258,7 +263,8 @@ export function parseVoiceLine(text, items = []) {
     let kgJustSet = false;
     // Bags, quintals or a weight word with no number before it: don't guess the unmarked numbers
     let otherUnit = rest.some(w => OTHER_UNITS.has(w)) || rest.some((w, k) => (WEIGHT_UNITS.has(w) || GRAM_UNITS.has(w))
-        && !groups.some(g => g.end === k) && !PER_WORDS.has(rest[k - 1]) && !PRICE_AFTER.has(rest[k - 1]) && !POSSESSIVE.has(rest[k + 1]));
+        && !groups.some(g => g.end === k) && !PER_WORDS.has(rest[k - 1]) && !PRICE_AFTER.has(rest[k - 1]) && !(rest[k - 1] === 'a' && PRICE_AFTER.has(rest[k - 2]))
+        && !POSSESSIVE.has(rest[k + 1]));
     let ratePerKg = false;
     groups.forEach((g, gi) => {
         const kind = numberKind(rest, groups, gi);
@@ -268,7 +274,6 @@ export function parseVoiceLine(text, items = []) {
             unmarked.push(NaN);
             return;
         }
-        if (kind === 'other') otherUnit = true;
         const wasKg = kgJustSet;
         kgJustSet = false;
         if (kind === 'weight' && weight === null) {
