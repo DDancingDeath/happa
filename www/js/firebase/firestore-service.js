@@ -13,7 +13,6 @@ import { Helpers } from '../utils/helpers.js';
 import { isActiveBill, isOnlineExpense, outstandingDue } from '../utils/money.js';
 import { billEditChanges, cleanReason, editCountOf, editRecord, hasEditChanges, nextEditNumber, voidBlocker } from '../utils/bill-edits.js';
 import { localISODaysAgo, parseAnyBillDate } from '../utils/dates.js';
-import { planNotificationDocs, newEventId } from '../utils/notification-format.js';
 import {
     STOCK_REPLAY_FORMAT,
     eventTime,
@@ -34,9 +33,8 @@ import { markStartup } from '../utils/startup-timings.js';
 import { canReadWithdrawals } from '../utils/role-access.js';
 import { canReadPersonalExpenses, dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, personalOnlineFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
-import { isStorageFullError, safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
+import { isStorageFullError, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { SyncStatus } from '../ui/sync-status.js';
-import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { entryTime } from '../utils/due-payments.js';
 import { getDb, col, CLIENT_VERSION, serverCreatedAt, voidAwareStamp } from './db.js';
 import { itemMethods } from './repos/items.js';
@@ -44,12 +42,14 @@ import { billStatsMethods } from './repos/bill-stats.js';
 import { collectionAdminMethods } from './repos/collection-admin.js';
 import { tipMethods } from './repos/tip-health.js';
 import { anomalyMethods } from './repos/anomalies.js';
+import { userProfileMethods } from './repos/user-profiles.js';
+import { notificationMethods } from './repos/notifications.js';
+import { cashDayMethods } from './repos/cash-days.js';
 import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed, pauseBackgroundReads } from './firestore-meter.js';
-import { readTeamDirectory, writeTeamDirectory } from './repos/users.js';
-import { buildTeamDirectory, isTeamMember, sameTeam, teamPeople } from '../utils/team-directory.js';
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
+import { track } from '../services/usage.js';
 import { billSaveProps } from '../tip/scenarios/bill-save.js';
 import { checkpointProps } from '../tip/scenarios/stock-checkpoint.js';
 
@@ -61,13 +61,6 @@ if (typeof firebase !== 'undefined' && firebase.firestore) {
         console.warn('Read counter not installed:', e);
     }
 }
-
-/**
- * Document reference of a cash session (openCashSession's transaction). Not on
- * FirebaseService: refs stay inside the data layer (repos/cash-sessions.js has its own).
- * @param {string} sessionId
- */
-const cashSessionRef = (sessionId) => FirebaseService.db.collection(col('cashManagement')).doc(String(sessionId));
 
 /** @type {Function[]} Array of unsubscribe functions for real-time listeners */
 const unsubscribeFunctions = [];
@@ -990,6 +983,7 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
 
 /** TIP BillSave run (#217) for a new bill; never throws. @private */
 function startBillSaveRun(collKey, record, retry) {
+    if (!retry) track(`bill.save.${collKey}`);
     try {
         return tip.start('BillSave', {
             flags: { retry: !!retry, offline: typeof navigator !== 'undefined' && navigator.onLine === false },
@@ -2026,75 +2020,6 @@ function settleWrite(writePromise, label = 'write') {
         }
     });
 }
-
-/** Users list cache for notification fan-out (avoids a query per edit). */
-const USERS_CACHE_TTL_MS = 10 * 60 * 1000;
-let usersCache = null;
-/** Every profile, for naming audit entries (owner; Diagnostics, Settings, the anomaly scan). */
-let auditPeopleCache = null;
-
-// Owner: every profile; managers: the team directory (#87), never other profiles.
-const getUsersForNotifications = async () => {
-    if (usersCache && Date.now() - usersCache.at < USERS_CACHE_TTL_MS) {
-        return usersCache.users;
-    }
-    let users;
-    if (AppState.userRole === 'owner') {
-        const snapshot = await getDb().collection(col('users')).get();
-        const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Only from the server: a cached list could undo another owner device's change
-        if (!snapshot.metadata?.fromCache) queueTeamSync(profiles);
-        users = profiles.filter(isTeamMember).map(u => ({ id: u.id, role: u.role }));
-    } else {
-        users = teamPeople(await readTeamDirectory()).map(p => ({ id: p.id, role: p.role }));
-    }
-    usersCache = { at: Date.now(), users };
-    return users;
-};
-
-/** The team directory as last read or written on this phone (undefined: not read yet). */
-let knownTeam;
-/** Syncs run one after another, so two reads of the profiles never write twice. */
-let teamSync = Promise.resolve(false);
-
-/** Owner only: rewrites settings/team when the profiles say something else (#87). */
-async function syncTeamDirectory(users) {
-    const next = buildTeamDirectory(users);
-    if (knownTeam === undefined) knownTeam = await readTeamDirectory();
-    if (knownTeam && sameTeam(knownTeam, next)) return false;
-    await writeTeamDirectory(next);
-    knownTeam = next;
-    return true;
-}
-
-/** Queues a sync after any running one; never rejects. @returns {Promise<boolean>} true when it wrote */
-function queueTeamSync(users) {
-    teamSync = teamSync.catch(() => false).then(() => syncTeamDirectory(users))
-        .catch(e => {
-            console.warn('Team directory not updated:', e?.code || e);
-            return false;
-        });
-    return teamSync;
-}
-
-/**
- * Writes planned notification docs ({id, data}) with batched writes. Doc ids
- * are per event + recipient, so re-sending an event never duplicates it.
- */
-const writeNotificationDocs = async (docs) => {
-    const db = getDb();
-    const ref = db.collection(col('notifications'));
-    for (let i = 0; i < docs.length; i += 450) {
-        const batch = db.batch();
-        docs.slice(i, i + 450).forEach(({ id, data }) => batch.set(ref.doc(id), data));
-        await batch.commit();
-    }
-};
-
-const notificationFromDoc = (doc) => {
-    const data = typeof doc.data === 'function' ? (doc.data({ serverTimestamps: 'estimate' }) || {}) : {};
-    return { ...data, id: doc.id };
-};
 
 /**
  * Firebase Service object containing all database operations.
@@ -3510,216 +3435,7 @@ const FirebaseService = {
         });
     },
 
-    /**
-     * Sends one notification event to the given recipients (actor excluded)
-     * in batched writes. Callers fire-and-forget with `.catch(...)` logging.
-     * @param {string} eventId - same id → same docs, so an event never notifies twice
-     * @param {string[]} recipientIds
-     * @param {Object} data - notification fields (type, …)
-     * @returns {Promise<number>} number of recipients
-     */
-    async sendNotification(eventId, recipientIds, data) {
-        const docs = planNotificationDocs(eventId, recipientIds, AppState.currentUser?.uid, {
-            ...data,
-            read: false,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        if (docs.length) await writeNotificationDocs(docs);
-        return docs.length;
-    },
-
-    /**
-     * Notifies users about item rate changes (one event per rate type).
-     * Wholesale rates are only visible to owners/managers, so only they hear
-     * about wholesale changes. Never rejects.
-     * @param {Object} item - the saved item
-     * @param {Array<{rateType: string, oldRate: *, newRate: *}>} changes
-     * @param {string} [eventPrefix] - stable id prefix for this save
-     * @returns {Promise<void>}
-     */
-    async notifyRateChanges(item, changes, eventPrefix = newEventId('rate')) {
-        try {
-            if (!changes?.length) return;
-            const users = await getUsersForNotifications();
-            const labels = { purchase: 'Purchase', sale: 'Sale', wholesale: 'Wholesale' };
-            for (const ch of changes) {
-                const recipients = ch.rateType === 'wholesale'
-                    ? users.filter(u => u.role === 'owner' || u.role === 'manager')
-                    : users;
-                await this.sendNotification(`${eventPrefix}-${ch.rateType}`, recipients.map(u => u.id), {
-                    type: 'rate_change',
-                    itemId: item.id || null,
-                    itemName: item.name || '',
-                    itemHindiName: item.hindiName || '',
-                    rateType: ch.rateType,
-                    rateTypeLabel: labels[ch.rateType] || ch.rateType,
-                    oldRate: ch.oldRate,
-                    newRate: ch.newRate,
-                    changedBy: AppState.userName || 'Unknown',
-                    changedByUserId: AppState.currentUser?.uid || null
-                });
-            }
-        } catch (error) {
-            console.error('Error notifying rate change:', error);
-        }
-    },
-
-    /**
-     * Notifies all users when one item rate is changed (inline rate editor).
-     * Callers need not await this; it never rejects.
-     * @param {Object} item - The item with changed rate
-     * @param {string} rateType - 'purchase' | 'sale' | 'wholesale'
-     * @param {number} oldRate - value when editing started
-     * @param {number} newRate - committed value
-     * @returns {Promise<void>}
-     */
-    async notifyRateChange(item, rateType, oldRate, newRate) {
-        return this.notifyRateChanges(item, [{ rateType, oldRate, newRate }]);
-    },
-
-    /**
-     * Tells owners that an item was added or its name/contact changed
-     * (rate changes go through notifyRateChanges). Never rejects.
-     * @param {Object} item
-     * @param {'added'|'updated'} action
-     * @param {string[]} [fields] - changed non-rate fields
-     * @returns {Promise<void>}
-     */
-    async notifyItemEdit(item, action, fields = []) {
-        try {
-            const users = await getUsersForNotifications();
-            const ownerIds = users.filter(u => u.role === 'owner').map(u => u.id);
-            await this.sendNotification(newEventId('item'), ownerIds, {
-                type: 'item_edit',
-                action,
-                fields,
-                itemId: item.id || null,
-                itemName: item.name || '',
-                itemHindiName: item.hindiName || '',
-                changedBy: AppState.userName || 'Unknown',
-                changedByUserId: AppState.currentUser?.uid || null
-            });
-        } catch (error) {
-            console.error('Error notifying item edit:', error);
-        }
-    },
-
-    /**
-     * Live listener on the user's newest unread notifications
-     * (index: userId + read + timestamp desc).
-     * @param {string} uid
-     * @param {number} limit
-     * @param {function(Array<Object>, Array<{type: string, id: string}>, Object): void} onNext
-     * @param {function(Error): void} onError
-     * @returns {function(): void} unsubscribe
-     */
-    listenUnreadNotifications(uid, limit, onNext, onError) {
-        return getDb().collection(col('notifications'))
-            .where('userId', '==', uid)
-            .where('read', '==', false)
-            .orderBy('timestamp', 'desc')
-            .limit(limit)
-            .onSnapshot(snapshot => {
-                const list = snapshot.docs.map(notificationFromDoc);
-                const changes = snapshot.docChanges().map(ch => ({ type: ch.type, id: ch.doc.id }));
-                onNext(list, changes, snapshot.metadata || {});
-            }, onError);
-    },
-
-    /**
-     * One page of the user's notifications, newest first (read and unread).
-     * `read in [false, true]` lets the existing userId + read + timestamp
-     * index serve this query, so no new index has to be deployed.
-     * @param {string} uid
-     * @param {{limit?: number, after?: Object}} [opts] - `after` = cursor from the previous page
-     * @returns {Promise<{items: Array<Object>, cursor: ?Object, hasMore: boolean}>}
-     */
-    async loadNotificationsPage(uid, { limit = 30, after = null } = {}) {
-        let query = getDb().collection(col('notifications'))
-            .where('userId', '==', uid)
-            .where('read', 'in', [false, true])
-            .orderBy('timestamp', 'desc');
-        if (after) query = query.startAfter(after);
-        const snapshot = await query.limit(limit).get();
-        const docs = snapshot.docs;
-        return {
-            items: docs.map(notificationFromDoc),
-            cursor: docs.length ? docs[docs.length - 1] : after,
-            hasMore: docs.length === limit
-        };
-    },
-
-    /**
-     * Marks notifications read (batched). Fire-and-forget callers add `.catch`.
-     * @param {string[]} ids
-     * @returns {Promise<void>}
-     */
-    async markNotificationsRead(ids) {
-        const unique = [...new Set((ids || []).filter(Boolean))];
-        if (!unique.length) return;
-        const db = getDb();
-        const ref = db.collection(col('notifications'));
-        for (let i = 0; i < unique.length; i += 450) {
-            const batch = db.batch();
-            unique.slice(i, i + 450).forEach(id => batch.update(ref.doc(id), { read: true, readAt: Date.now() }));
-            await batch.commit();
-        }
-    },
-
-    /**
-     * Marks all of this user's unread notifications read, in bounded pages
-     * (`pageSize` docs per batch, at most `maxPages` pages) so a huge backlog
-     * can't run away with reads/writes.
-     * @param {string} uid
-     * @param {{pageSize?: number, maxPages?: number}} [opts]
-     * @returns {Promise<number>} number marked read
-     */
-    async markAllNotificationsRead(uid, { pageSize = 450, maxPages = 3 } = {}) {
-        if (!uid) return 0;
-        const db = getDb();
-        let total = 0;
-        for (let page = 0; page < maxPages; page++) {
-            const snapshot = await db.collection(col('notifications'))
-                .where('userId', '==', uid)
-                .where('read', '==', false)
-                .limit(pageSize)
-                .get();
-            if (snapshot.empty) break;
-            const batch = db.batch();
-            snapshot.docs.forEach(doc => batch.update(doc.ref, { read: true, readAt: Date.now() }));
-            await batch.commit();
-            total += snapshot.size;
-            if (snapshot.size < pageSize) break;
-        }
-        return total;
-    },
-
-    /**
-     * Deletes this user's notifications older than `cutoffMs` (at most `max`
-     * per run, to keep reads cheap).
-     * @param {string} uid
-     * @param {number} cutoffMs
-     * @param {number} [max=100]
-     * @returns {Promise<number>} deleted count
-     */
-    async deleteOldNotifications(uid, cutoffMs, max = 100) {
-        const db = getDb();
-        const cutoff = typeof firebase !== 'undefined' && firebase.firestore?.Timestamp?.fromMillis
-            ? firebase.firestore.Timestamp.fromMillis(cutoffMs)
-            : cutoffMs;
-        const snapshot = await db.collection(col('notifications'))
-            .where('userId', '==', uid)
-            .where('read', 'in', [false, true])
-            .where('timestamp', '<', cutoff)
-            .orderBy('timestamp', 'desc')
-            .limit(max)
-            .get();
-        if (snapshot.empty) return 0;
-        const batch = db.batch();
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-        return snapshot.size;
-    },
+    ...notificationMethods,
 
     /**
      * Loads withdrawals from Firestore ordered by timestamp (secondary method).
@@ -3761,261 +3477,11 @@ const FirebaseService = {
         return { id: docRef.id, ...withdrawal };
     },
 
-    /**
-     * Loads all cash management sessions from Firestore, ordered by date descending.
-     * @async
-     * @returns {Promise<Array<Object>>} Array of cash session objects
-     */
-    async loadCashSessions() {
-        const snapshot = await getDb().collection(col('cashManagement')).orderBy('date', 'desc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-
-    /**
-     * One page of cash sessions, newest first (#34): Cash Management reads the
-     * latest few, and older days only when asked ("Load older").
-     * @param {number} max
-     * @param {?Object} [after] Last document snapshot of the previous page
-     * @returns {Promise<{sessions: Object[], last: ?Object, more: boolean}>}
-     */
-    async loadCashSessionsPage(max, after = null) {
-        let query = getDb().collection(col('cashManagement')).orderBy('date', 'desc');
-        if (after) query = query.startAfter(after);
-        const snapshot = await query.limit(max).get();
-        return {
-            sessions: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
-            last: snapshot.docs[snapshot.docs.length - 1] || after,
-            more: snapshot.docs.length === max
-        };
-    },
-
-    /**
-     * The few sessions Cash needs beyond the latest page (#34), each a small
-     * targeted query: the newest counted day (carry-forward and the opening
-     * check), past days still open (auto-close) and days closed without a
-     * count (review list, newest 30).
-     * @param {string} today YYYY-MM-DD
-     * @returns {Promise<Object[]>}
-     */
-    async loadCashSessionsNeeded(today) {
-        const coll = getDb().collection(col('cashManagement'));
-        const rows = (snap) => snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const [counted, open, uncounted] = await Promise.all([
-            coll.where('signedOut', '==', true).where('counted', '==', true).orderBy('date', 'desc').limit(1).get(),
-            coll.where('signedOut', '==', false).where('date', '<', today).get(),
-            coll.where('counted', '==', false).orderBy('date', 'desc').limit(30).get()
-        ]);
-        return [...rows(counted), ...rows(open), ...rows(uncounted)];
-    },
-
-    /**
-     * Cash sessions for one local day (YYYY-MM-DD); usually one. One small
-     * query instead of loadCashSessions() (which reads every session).
-     * @param {string} date
-     * @param {Object} [getOptions] e.g. `{ source: 'server' }`
-     * @returns {Promise<Array<Object>>}
-     */
-    async loadCashSessionsForDate(date, getOptions) {
-        const snapshot = await this.db.collection(col('cashManagement')).where('date', '==', date).get(getOptions);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-
-    /**
-     * Opens the day's cash session once (#38). The session lives at
-     * `cash_<date>`, created in a transaction: a phone that comes second gets
-     * the existing session back (`joined: true`) instead of a second one. A
-     * session opened earlier that day by an older app (random id) is joined too.
-     * Opening needs a connection: a write queued offline could not see another
-     * phone's session and would overwrite its opening or reopen a closed day.
-     * @param {Object} session New session (needs `date`)
-     * @returns {Promise<{session: Object, joined: boolean}>}
-     * @throws {Error} code `cash/needs-internet` when offline
-     */
-    async openCashSession(session) {
-        const needsInternet = () => Object.assign(new Error('Open cash needs internet'), { code: CASH_NEEDS_INTERNET });
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) throw needsInternet();
-        const ref = cashSessionRef(cashSessionDocId(session.date));
-        const fresh = { ...session, id: ref.id };
-        try {
-            const legacy = sessionForDate(await this.loadCashSessionsForDate(session.date, { source: 'server' }), session.date);
-            if (legacy) return { session: legacy, joined: true };
-            return await getDb().runTransaction(async tx => {
-                const snap = await tx.get(ref);
-                if (snap.exists) return { session: { id: ref.id, ...snap.data() }, joined: true };
-                tx.set(ref, fresh);
-                return { session: fresh, joined: false };
-            });
-        } catch (error) {
-            if (error?.code === 'unavailable') throw needsInternet();
-            throw error;
-        }
-    },
-
-    /**
-     * Updates an existing cash management session in Firestore.
-     * @async
-     * @param {Object} session - The session to update
-     * @param {string} session.id - Session ID (required)
-     * @returns {Promise<Object>} The updated session
-     * @throws {Error} If session.id is not provided
-     */
-    async updateCashSession(session) {
-        if (!session.id) {
-            throw new Error('Session ID is required for update');
-        }
-        await getDb().collection(col('cashManagement')).doc(session.id).set(session);
-        return session;
-    },
-
-    /**
-     * Cash sessions for local days fromDate..toDate (YYYY-MM-DD, inclusive):
-     * a few docs, unlike loadCashSessions() which reads every session.
-     * @param {string} fromDate
-     * @param {string} toDate
-     * @returns {Promise<Array<Object>>}
-     */
-    async loadCashSessionsBetween(fromDate, toDate) {
-        const snapshot = await this.db.collection(col('cashManagement'))
-            .where('date', '>=', fromDate).where('date', '<=', toDate).get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
+    ...cashDayMethods,
 
     ...anomalyMethods,
 
-    // ---- Users (admin.js / users.js) -------------------------------------
-
-    /** Server timestamp sentinel for user-profile writes. */
-    serverTimestamp() {
-        return firebase.firestore.FieldValue.serverTimestamp();
-    },
-
-    /**
-     * All user profiles, newest `createdAt` first (sorted client-side so legacy
-     * profiles without `createdAt` are kept, at the end). On the owner's phone the
-     * team directory (`settings/team`, #87) is brought in line with them.
-     * @returns {Promise<Object[]>} `{ id, ...data }` per profile
-     */
-    async loadUsers() {
-        const snapshot = await getDb().collection(col('users')).get();
-        const createdMs = (u) => {
-            const c = u.createdAt;
-            return c?.toMillis ? c.toMillis() : (c ? new Date(c).getTime() || 0 : 0);
-        };
-        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-            .sort((a, b) => createdMs(b) - createdMs(a));
-        if (AppState.userRole === 'owner' && !snapshot.metadata?.fromCache) {
-            queueTeamSync(users);
-        }
-        return users;
-    },
-
-    /**
-     * The people of the team as `[{ id, name, role, ... }]`: the owner reads the
-     * profiles; managers read only the team directory (#87, one read).
-     * @returns {Promise<Object[]>}
-     */
-    async loadPeople() {
-        if (AppState.userRole === 'owner') return this.loadUsers();
-        return teamPeople(await readTeamDirectory());
-    },
-
-    /**
-     * Every profile (owner), to name the writer of audit entries (#85); reused for 10 minutes.
-     * @returns {Promise<Object[]>}
-     */
-    async loadAuditPeople() {
-        if (auditPeopleCache && Date.now() - auditPeopleCache.at < USERS_CACHE_TTL_MS) return auditPeopleCache.users;
-        const users = await this.loadUsers();
-        auditPeopleCache = { at: Date.now(), users };
-        return users;
-    },
-
-    /** Forgets the cached people lists (sign-out: the next user may have another role). */
-    forgetPeopleCaches() {
-        usersCache = null;
-        auditPeopleCache = null;
-        knownTeam = undefined;
-    },
-
-    /**
-     * Owner only, at most once a day per phone: reads the profiles (one read each,
-     * plus the directory) and rewrites the team directory when it is missing or
-     * says something else, e.g. a name changed in Settings › account.
-     * @returns {Promise<boolean>} true when it wrote the directory
-     */
-    async ensureTeamDirectory() {
-        const uid = AppState.currentUser?.uid;
-        if (AppState.userRole !== 'owner' || !uid) return false;
-        const key = 'happaTeamDirectoryDay';
-        const mark = `${uid}|${localISODaysAgo(0)}`;
-        if (localStorage.getItem(key) === mark) return false;
-        // Offline the profiles come from the cache, which must not overwrite the directory;
-        // a heavy session skips this background read (read guard)
-        if ((typeof navigator !== 'undefined' && navigator.onLine === false) || !backgroundReadsAllowed()) return false;
-        await this.loadUsers();
-        const wrote = await teamSync;
-        safeSetItem(key, mark);
-        return wrote;
-    },
-
-    /** Partial update of a user profile (role/status/approval fields). */
-    async updateUser(userId, fields) {
-        await getDb().collection(col('users')).doc(userId).update(fields);
-        usersCache = null;
-        auditPeopleCache = null;
-    },
-
-    /**
-     * Rejects a registration (#84): the profile stays as `status: 'rejected'`, so
-     * the person can't register again as pending; the owner can restore it.
-     */
-    async rejectUserProfile(userId, byUid) {
-        await getDb().collection(col('users')).doc(userId).update({
-            status: 'rejected',
-            rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            rejectedBy: byUid || null
-        });
-        usersCache = null;
-        auditPeopleCache = null;
-    },
-
-    /**
-     * Restores a removed or rejected person as a pending registration (#84): the
-     * owner then approves them with a role like any new registration.
-     */
-    async restoreUserProfile(userId) {
-        const del = firebase.firestore.FieldValue.delete();
-        await getDb().collection(col('users')).doc(userId).update({
-            status: 'pending',
-            role: 'staff',
-            disabledAt: del,
-            disabledBy: del,
-            rejectedAt: del,
-            rejectedBy: del
-        });
-        usersCache = null;
-        auditPeopleCache = null;
-    },
-
-    /**
-     * Removes a user's access (#74): role and approval are cleared and the profile
-     * is kept as `status: 'disabled'`, so the rules refuse it and the person can't
-     * re-register as pending. The Auth account itself needs the Admin SDK.
-     */
-    async disableUserProfile(userId, byUid) {
-        const del = firebase.firestore.FieldValue.delete();
-        await getDb().collection(col('users')).doc(userId).update({
-            status: 'disabled',
-            role: del,
-            rentRole: del,
-            approvedAt: del,
-            approvedBy: del,
-            disabledAt: firebase.firestore.FieldValue.serverTimestamp(),
-            disabledBy: byUid || null
-        });
-        usersCache = null;
-        auditPeopleCache = null;
-    },
+    ...userProfileMethods,
 
 };
 

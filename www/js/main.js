@@ -47,6 +47,7 @@ import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { SecurityMonitor } from './services/security-monitor.js';
 import { startLongTaskRecorder } from './utils/perf-probe.js';
+import { UsageView } from './ui/usage-view.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
 // Build stamp — bumped on every deploy that ships new JS so you can verify
@@ -54,7 +55,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbi-tip-scenarios';
+const BUILD_ID = '20261101zzuzieecmbbke-tip-scenarios';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1284,6 +1285,13 @@ window.app = {
         shareStatus: () => DiagnosticsManager.shareStatus()
     },
     
+    // Settings › Usage on this phone (#136, local only)
+    usage: {
+        setRange: (range) => UsageView.setRange(range),
+        copy: () => UsageView.copy(),
+        clear: () => UsageView.clear()
+    },
+
     // Admin (owner only)
     admin: {
         init: () => AdminManager.init(),

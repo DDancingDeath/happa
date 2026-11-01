@@ -8,6 +8,7 @@ import { billQrText, copyMark, receiptDateTime, receiptPayable } from '../utils/
 import { outstandingDue, readPayment } from '../utils/money.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
+import { track } from './usage.js';
 import { tip } from '../tip/index.js';
 import { printProps } from '../tip/scenarios/print.js';
 import { recordPrint } from '../utils/print-status.js';
@@ -1246,6 +1247,7 @@ const PrinterService = {
             const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
             if (outcome !== 'cancelled') recordPrint(billData, outcome, outcome === 'failed' ? { errorKind: error?.kind, error: error?.message } : {});
             if (outcome === 'printed') {
+                track('print.bill');
                 UIManager.showToast(t('msg.printer.printed_successfully'));
                 return true;
             }
