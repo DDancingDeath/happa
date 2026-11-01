@@ -307,8 +307,10 @@ export const DayManager = {
 
     /** Outstanding on its Purchases or Sales list (navigation opens it on Purchases first). */
     openDues(kind) {
-        window.app?.nav?.showTab?.('due');
-        setTimeout(() => window.app?.outstanding?.filterDue(kind), 150);
+        // After the page is in and its own first render (#66: it may load on first visit)
+        return Promise.resolve(window.app?.nav?.showTab?.('due')).then(ok => {
+            if (ok !== false) setTimeout(() => window.app?.outstanding?.filterDue(kind), 150);
+        });
     },
 
     /** Wholesale cards and bills only for roles that may open the Wholesale page. */
