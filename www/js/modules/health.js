@@ -37,7 +37,8 @@ const TEST_LABEL_KEYS = {
     Print: 'ui.health.test_print',
     Sync: 'ui.health.test_sync',
     StockCheckpoint: 'ui.health.test_stock_checkpoint',
-    NumberChecks: 'ui.health.test_number_checks'
+    NumberChecks: 'ui.health.test_number_checks',
+    MainThread: 'ui.health.test_main_thread'
 };
 const RESULT_LABEL_KEYS = {
     fail: 'ui.health.result_fail',

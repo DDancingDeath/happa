@@ -60,6 +60,7 @@ export function formatAuditDetails(details, action) {
     if (has(d.reason)) parts.push(t('ui.settings.audit_reason', { value: d.reason }));
     if (has(d.changes)) parts.push(t('ui.settings.audit_changes', { value: d.changes }));
     if (has(d.reports)) parts.push(t('ui.settings.audit_reports', { value: d.reports }));
+    if (has(d.recordsChecked)) parts.push(t('ui.settings.audit_records', { value: d.recordsChecked }));
     // #124 security entries
     if (has(d.source)) parts.push(t(action === 'PERMISSION_DENIED' ? 'ui.settings.audit_source' : 'ui.settings.audit_from', { value: d.source }));
     if (d.what === 'edit' || d.what === 'void') parts.push(t(d.what === 'void' ? 'ui.settings.audit_tried_void' : 'ui.settings.audit_tried_edit'));

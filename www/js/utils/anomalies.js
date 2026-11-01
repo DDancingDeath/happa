@@ -97,7 +97,15 @@ export const ANOMALY_TYPES = Object.freeze({
     // #124: from the security entries phones write to the audit log
     'access-denied': { en: 'Changes refused again and again', hi: 'बार-बार बदलाव मना हुए', severity: 'high' },
     'new-device': { en: 'Sign-in from a new phone', hi: 'नए फ़ोन से लॉग इन', severity: 'low' },
-    'old-bill-edit-try': { en: 'Tried to change several old bills', hi: 'कई पुराने बिल बदलने की कोशिश', severity: 'low' }
+    'old-bill-edit-try': { en: 'Tried to change several old bills', hi: 'कई पुराने बिल बदलने की कोशिश', severity: 'low' },
+    // #160: the daily number checks (utils/number-check-flags.js)
+    'numcheck-ac1': { en: 'Number check: stock value', hi: 'आँकड़ों की जाँच: स्टॉक की कीमत', severity: 'medium' },
+    'numcheck-ac2': { en: 'Number check: bill split', hi: 'आँकड़ों की जाँच: बिल का बँटवारा', severity: 'high' },
+    'numcheck-ac3': { en: 'Number check: payments', hi: 'आँकड़ों की जाँच: भुगतान', severity: 'high' },
+    'numcheck-ac4': { en: 'Number check: bill dates', hi: 'आँकड़ों की जाँच: बिल की तारीख़', severity: 'medium' },
+    'numcheck-ac5': { en: 'Number check: due in two places', hi: 'आँकड़ों की जाँच: दो जगह उधार', severity: 'high' },
+    'numcheck-ac6': { en: 'Number check: cash drawer', hi: 'आँकड़ों की जाँच: गल्ला', severity: 'high' },
+    'numcheck-ac8': { en: 'Number check: stock below zero', hi: 'आँकड़ों की जाँच: शून्य से कम स्टॉक', severity: 'medium' }
 });
 
 /** Label of a type (unknown stored flag rules fall back to their id). */
