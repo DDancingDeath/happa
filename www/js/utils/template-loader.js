@@ -87,8 +87,7 @@ export class TemplateLoader {
             if (name === 'rate-trends' || !(name in templates)) return;
             appContent.insertAdjacentHTML('beforeend', templates[name] || '');
             // Trends / Product traffic (#65): Insights › Seasons mounts this view
-            const host = name === 'insights' && appContent.querySelector('#insights');
-            if (host && templates['rate-trends']) host.insertAdjacentHTML('beforeend', templates['rate-trends']);
+            if (name === 'insights' && templates['rate-trends']) appContent.querySelector('#insights')?.insertAdjacentHTML('beforeend', templates['rate-trends']);
         });
     }
 
