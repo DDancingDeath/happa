@@ -82,7 +82,8 @@ function loadAppState() {
     AppState.salesHistory = withVoided(copy(FIX.wholesaleSales));
     AppState.retailSalesHistory = withVoided(copy(FIX.retailSales));
     AppState.stockAdjustments = copy(FIX.stockAdjustments);
-    AppState.expensesHistory = copy(FIX.expenses);
+    // Voided expenses (#99) count nowhere either
+    AppState.expensesHistory = withVoided(copy(FIX.expenses));
     AppState.withdrawalsHistory = copy(FIX.withdrawals);
     AppState.historyLoadedFrom = 0;
     AppState.userRole = 'owner';

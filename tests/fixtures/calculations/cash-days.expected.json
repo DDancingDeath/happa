@@ -682,9 +682,9 @@
         "statusBuy": "₹0",
         "statusSale": "₹900",
         "statusOthers": "₹75.5",
-        "statusExpected": "₹1924.5",
+        "statusExpected": "₹1500",
         "statusActual": "₹1424.5",
-        "statusDiff": "₹-500.00",
+        "statusDiff": "₹-75.50",
         "openingBalanceTotal": "₹0",
         "cashSalesTotal": "₹0",
         "cashPurchasesTotal": "₹0",
@@ -713,7 +713,7 @@
         "cashSignOutSection": "none",
         "cashDepositSection": "none"
       },
-      "diffColor": "rgb(239, 68, 68)",
+      "diffColor": "rgb(245, 158, 11)",
       "signInAmount": "",
       "signInHint": ""
     },

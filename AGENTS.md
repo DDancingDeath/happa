@@ -651,6 +651,13 @@ transaction (`updateBillChecked(collKey, record, { reason })`); records are read
 only from the bill details (`loadBillEdits`). Details: docs/role-permissions.md
 "Void and edit records".
 
+**Expenses are voided too (#99).** No edit or delete in place: `FirebaseService.voidExpense`
+(reason required; a personal expense leaves `personalExpenseDays` in the same write), and
+"Void & re-enter" saves a new expense with `replacesId`. `isActiveExpense()` in
+`utils/money.js` keeps voided expenses out of `AppState.expensesHistory` and every total
+(`voidedExpenses()` lists them). Month snapshots need `clientVersion` 5 (CLIENT_VERSION),
+since they hold expense totals. Details: docs/role-permissions.md "Voided expenses".
+
 ---
 
 ## 8. Common pitfalls

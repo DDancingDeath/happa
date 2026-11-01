@@ -56,6 +56,7 @@
             </div>
 
             <h3 data-i18n="ui.expenses.business_expense_history">Business Expense History</h3>
+            <label class="expenses-voided-toggle"><input type="checkbox" data-expense-voided-toggle onchange="window.app.expenses.toggleVoided(this.checked)"> <span data-i18n="ui.expenses.show_voided">Show voided</span></label>
             <div id="businessExpenseHistoryList">
                 <p style="text-align: center; color: #888; margin-top: 40px;" data-i18n="ui.expenses.no_business_expenses_recorded_yet">No business expenses recorded yet</p>
             </div>
@@ -111,6 +112,7 @@
             </div>
 
             <h3 data-i18n="ui.expenses.personal_expense_history">Personal Expense History</h3>
+            <label class="expenses-voided-toggle"><input type="checkbox" data-expense-voided-toggle onchange="window.app.expenses.toggleVoided(this.checked)"> <span data-i18n="ui.expenses.show_voided">Show voided</span></label>
             <div id="personalExpenseHistoryList">
                 <p style="text-align: center; color: #888; margin-top: 40px;" data-i18n="ui.expenses.no_personal_expenses_recorded_yet">No personal expenses recorded yet</p>
             </div>
@@ -123,8 +125,8 @@
                     <!-- Expense content will be inserted here -->
                 </div>
                 <div class="bill-details-footer">
-                    <button class="bill-action-btn btn-delete" id="expenseDeleteBtn" onclick="window.app.expenses.confirmDeleteExpense()"><span data-i18n="ui.modals.delete">Delete</span></button>
-                    <button class="bill-action-btn btn-edit" id="expenseEditBtn" onclick="window.app.expenses.editExpenseFromModal()"><span data-i18n="ui.modals.edit">Edit</span></button>
+                    <button class="bill-action-btn btn-delete" id="expenseVoidBtn" onclick="window.app.expenses.voidExpenseFromModal()"><span data-i18n="ui.expenses.void_btn">Void</span></button>
+                    <button class="bill-action-btn btn-edit" id="expenseReenterBtn" onclick="window.app.expenses.reenterExpenseFromModal()"><span data-i18n="ui.expenses.reenter_btn">Void &amp; re-enter</span></button>
                     <button class="bill-action-btn btn-close" onclick="window.app.expenses.closeExpenseDetails()" data-i18n="ui.common.close">Close</button>
                 </div>
             </div>
