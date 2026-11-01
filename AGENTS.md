@@ -134,11 +134,16 @@ In order:
   `on(REFRESH.x, () => Manager.render())` at the end of its module (Money,
   Insights, Statements in main.js through their lazy loaders). Never call
   `window.app.*` from `firebase/` (`data-events.test.js`).
-- **Templates live in `www/templates/`**. `template-loader.js` puts the
-  login screen, side menu and dialogs (`SHELL_TEMPLATES`) in first; the pages
-  (`PAGE_TEMPLATES`) load while Firebase restores the sign-in (#66), and
-  `main.js` runs nothing that touches them (event listeners, the signed-in
-  start) before `pagesReady`. A new page template goes into `PAGE_TEMPLATES`.
+- **Templates live in `www/templates/`**. `template-loader.js` puts the login
+  screen, side menu and dialogs (`SHELL_TEMPLATES`) in first; Billing, Today and
+  Cash (`EAGER_PAGES`) load while Firebase restores the sign-in, and `main.js` runs
+  nothing that touches them (event listeners, the signed-in start) before
+  `pagesReady`. Every other page is fetched and put in the first time it is opened
+  (#66): `NavigationManager.showTab` / `showTabFromNav` call
+  `TemplateLoader.ensurePage` and then return a promise, so code that opens such a
+  page and then works on it waits for that; what startup renders into a page goes
+  in `PAGE_ADDED` (main.js) too. A new page template goes into `PAGE_TEMPLATES` and
+  the service worker's precache (first visits work offline).
 - **Stylesheets**: edit the files in `www/css/`, but `index.html` links only
   `css/app.css`, which `npm run build:css` joins from the list in
   `www/styles.css` (cascade order; a new stylesheet is added there). Commit the

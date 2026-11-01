@@ -151,6 +151,8 @@ export class OutstandingManager {
      * Shows outstanding amounts for purchases or sales based on filter
      */
     static renderDue() {
+        // Outstanding loads on first visit (#66): nothing to draw before then
+        if (!document.getElementById("dueList")) return;
         const currentDueFilter = this.dueFilter();
         const container = document.getElementById("dueList");
         this.syncFilterButtons(currentDueFilter);

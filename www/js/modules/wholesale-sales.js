@@ -860,6 +860,8 @@ export class WholesaleSalesManager {
     }
 
     static renderSalesOutstanding() {
+        // Wholesale loads on first visit (#66): nothing to draw before then
+        if (!document.getElementById("salesOutstandingList")) return;
         const salesHistory = AppState.salesHistory;
         const container = document.getElementById("salesOutstandingList");
         const party = this.outstandingParty;

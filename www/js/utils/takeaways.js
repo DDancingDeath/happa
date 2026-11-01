@@ -65,8 +65,10 @@ export function cashTakeaways({ net, out, profit, salesDue }) {
  * @param {{business: number, vsLastYear: ?Object, topCategory: ?string, withdrawn: number, kept: ?number, personal: number,
  *   show?: {profit?: boolean, personal?: boolean}}} a
  */
-export function spendingTakeaways({ business, vsLastYear, topCategory, withdrawn, kept, personal, show = {} }) {
+export function spendingTakeaways({ business, vsLastYear, topCategory, withdrawn, kept, personal, show = {}, per100Sales = null, nudgeAt = 10 }) {
     const out = [];
+    // Q7 (#111): expenses heavy for the sales (M19)
+    if (per100Sales && per100Sales.high) out.push({ key: 'ui.tk.expenses_high_share', params: { value: per100Sales.value, limit: nudgeAt } });
     if (business > 0 && vsLastYear && vsLastYear.dir !== 'same' && topCategory) {
         out.push({ key: `ui.tk.expenses_${vsLastYear.dir}`, params: { pct: Math.abs(vsLastYear.pct), category: topCategory } });
     } else if (business > 0 && topCategory) {

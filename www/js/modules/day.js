@@ -21,6 +21,7 @@ import { billsForKind } from '../utils/party-due.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import { formatINR } from '../utils/due-reminder.js';
 import { formatRate } from '../utils/money.js';
+import { ManualReminders } from '../ui/manual-reminders.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
@@ -37,6 +38,7 @@ export const DayManager = {
      * Initialize the Day page
      */
     init() {
+        ManualReminders.start(() => this.renderReminders());
         this.updateTodayHeader();
         this.loadTodayData();
         this.loadTodaySession();
@@ -247,7 +249,8 @@ export const DayManager = {
     },
 
     /**
-     * Reminders (#86): REM-1 who to collect from / pay (dues older than 30 days,
+     * Reminders (#86): REM-5 manual reminders (owner/manager add them, anyone marks done),
+     * REM-1 who to collect from / pay (dues older than 30 days,
      * Outstanding's chase-first order) and REM-2 rent still due as Rentals last
      * showed it this month on this phone. Nothing is read from the server.
      */
@@ -268,6 +271,9 @@ export const DayManager = {
             + (r.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: r.more }))}</div>` : '')
             + `<button type="button" class="filter-btn" onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div>`;
         const parts = [];
+        // Manual reminders (#86) first: what someone asked to be done today
+        const manual = ManualReminders.html(toLocalISODate(now));
+        if (manual) parts.push(manual);
         const add = (kind, bills, open) => {
             const r = overdueReminder(bills, { today: now });
             if (r.parties.length) parts.push(block(kind, r, open));
@@ -298,6 +304,7 @@ export const DayManager = {
         }
         host.hidden = parts.length === 0;
         host.innerHTML = parts.length ? `<h3 class="today-reminders-title">${e(t('ui.today.reminders'))}</h3>${parts.join('')}` : '';
+        ManualReminders.restoreFocus();
     },
 
     /** Admin › Data, where the owner checks a backup file (REM-3, #63). */
@@ -308,8 +315,10 @@ export const DayManager = {
 
     /** Outstanding on its Purchases or Sales list (navigation opens it on Purchases first). */
     openDues(kind) {
-        window.app?.nav?.showTab?.('due');
-        setTimeout(() => window.app?.outstanding?.filterDue(kind), 150);
+        // After the page is in and its own first render (#66: it may load on first visit)
+        return Promise.resolve(window.app?.nav?.showTab?.('due')).then(ok => {
+            if (ok !== false) setTimeout(() => window.app?.outstanding?.filterDue(kind), 150);
+        });
     },
 
     /** Wholesale cards and bills only for roles that may open the Wholesale page. */

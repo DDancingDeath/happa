@@ -12,7 +12,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { ensureXLSX } from '../utils/lazy-scripts.js';
-import { findItemById, findDuplicateItem, duplicateItemMessage, itemUsageFrequency, sortItemsByUsage, itemToSheetRow, planItemImport, isArchivedItem, visibleItems } from '../utils/item-catalog.js';
+import { findItemById, findDuplicateItem, duplicateItemMessage, itemUsageFrequency, sortItemsByUsage, sortItemsByName, itemToSheetRow, planItemImport, isArchivedItem, visibleItems } from '../utils/item-catalog.js';
 import { adjustItemStock } from '../utils/calc/stock.js';
 import { todayLocalISO, formatDateTimeIN } from '../utils/dates.js';
 import {
@@ -31,6 +31,10 @@ import { formatRate, formatKg } from '../utils/money.js';
  * Items Manager - Manages inventory items and rates
  * @namespace ItemsManager
  */
+import { safeSetItem } from '../utils/storage-full.js';
+
+const SORT_KEY = 'happa.itemsSort';
+
 const ItemsManager = {
     /**
      * Debounce timers for auto-save operations
@@ -493,6 +497,15 @@ const ItemsManager = {
 
     showArchived: false,
 
+    /** Rates list order (Q48 of #111): most used first (default) or A–Z; kept on this phone. */
+    sortAz: (() => { try { return localStorage.getItem(SORT_KEY) === 'az'; } catch (_) { return false; } })(),
+
+    setSortAz(on) {
+        this.sortAz = !!on;
+        safeSetItem(SORT_KEY, this.sortAz ? 'az' : 'used');
+        this.refreshTable();
+    },
+
     /** Current text in the Items search box (kept across re-renders). */
     currentSearchQuery() {
         return document.getElementById('itemsSearchInput')?.value || '';
@@ -663,8 +676,11 @@ const ItemsManager = {
             });
         }
         
-        // Sort by frequency (most used first), then alphabetically
-        const sortedItems = sortItemsByUsage(filteredItems, frequency);
+        // Most used first, then alphabetically; or A–Z by the name shown (Q48)
+        const shownName = (i) => ((AppState.settings.showHindi && i.hindiName) ? i.hindiName : i.name);
+        const sortedItems = this.sortAz ? sortItemsByName(filteredItems, shownName) : sortItemsByUsage(filteredItems, frequency);
+        const sortBox = document.getElementById('itemsSortAz');
+        if (sortBox) sortBox.checked = this.sortAz;
         
         sortedItems.forEach((item) => {
             // Determine which name to display based on settings

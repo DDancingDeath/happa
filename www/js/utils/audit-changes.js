@@ -6,7 +6,7 @@
  * @module utils/audit-changes
  */
 
-import { t } from '../i18n/index.js';
+import { t, getLang } from '../i18n/index.js';
 import { formatAmount } from './money.js';
 
 const show = (v) => {
@@ -34,38 +34,50 @@ export function changedFields(before = {}, after = {}, keys) {
 
 const has = (v) => v !== undefined && v !== null && v !== '';
 
+/** Labels of an EXPORT entry's kind and format (#103). */
+const EXPORT_KIND_KEYS = {
+    day: 'ui.statements.day_book', month: 'ui.statements.month', party: 'ui.statements.party', item: 'ui.statements.item',
+    csv: 'ui.statements.csv', accountant: 'ui.statements.accountant', audit: 'ui.admin.col_audit_logs', errors: 'ui.diag.tab_errors'
+};
+const EXPORT_FORMAT_KEYS = { csv: 'ui.statements.download_csv', whatsapp: 'ui.statements.whatsapp', print: 'ui.statements.print', json: 'ui.export.format_file' };
+
 /**
  * An audit entry's details as one line in the app language (plain text; escape it).
  * @param {Object} details
  * @param {string} [action] - the entry's action code (a refused write's `source` reads "Refused")
  * @returns {string}
  */
-export function formatAuditDetails(details, action) {
+export function formatAuditDetails(details, action, lang = getLang()) {
+    const tl = (k, p) => t(k, p, lang);
     if (!details || typeof details !== 'object') return '';
     const d = details;
     const parts = [];
-    if (d.outcome === 'refused' || d.refused === true) parts.push(t('ui.settings.audit_refused'));
-    if (d.billNumber) parts.push(t('ui.settings.audit_bill', { value: d.billNumber }));
-    if (d.amount) parts.push(t('ui.settings.audit_amount', { value: formatAmount(d.amount, { exact: true }) }));
-    if (d.customer) parts.push(t('ui.settings.audit_customer', { value: d.customer }));
-    if (d.itemName) parts.push(t('ui.settings.audit_item', { value: d.itemName }));
-    if (d.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: formatAmount(d.paymentAmount, { exact: true }) }));
-    if (Array.isArray(d.collections)) parts.push(t('ui.settings.audit_collections', { value: d.collections.join(', ') }));
-    if (d.recordsDeleted) parts.push(t('ui.settings.audit_records', { value: d.recordsDeleted }));
-    if (has(d.person)) parts.push(t('ui.settings.audit_person', { value: d.person }));
-    if (has(d.date)) parts.push(t('ui.settings.audit_date', { value: d.date }));
-    if (has(d.openingBalance)) parts.push(t('ui.settings.audit_opening', { value: formatAmount(d.openingBalance, { exact: true }) }));
-    if (has(d.counted)) parts.push(t('ui.settings.audit_counted', { counted: formatAmount(d.counted, { exact: true }), expected: has(d.expected) ? formatAmount(d.expected, { exact: true }) : '—' }));
-    if (has(d.from) || has(d.to)) parts.push(t('ui.settings.audit_from_to', { from: has(d.from) ? d.from : '—', to: has(d.to) ? d.to : '—' }));
-    if (has(d.reason)) parts.push(t('ui.settings.audit_reason', { value: d.reason }));
-    if (has(d.changes)) parts.push(t('ui.settings.audit_changes', { value: d.changes }));
-    if (has(d.reports)) parts.push(t('ui.settings.audit_reports', { value: d.reports }));
-    if (has(d.recordsChecked)) parts.push(t('ui.settings.audit_records', { value: d.recordsChecked }));
+    if (d.outcome === 'refused' || d.refused === true) parts.push(tl('ui.settings.audit_refused'));
+    if (d.billNumber) parts.push(tl('ui.settings.audit_bill', { value: d.billNumber }));
+    if (d.amount) parts.push(tl('ui.settings.audit_amount', { value: formatAmount(d.amount, { exact: true }) }));
+    if (d.customer) parts.push(tl('ui.settings.audit_customer', { value: d.customer }));
+    if (d.itemName) parts.push(tl('ui.settings.audit_item', { value: d.itemName }));
+    if (d.paymentAmount) parts.push(tl('ui.settings.audit_payment', { value: formatAmount(d.paymentAmount, { exact: true }) }));
+    if (Array.isArray(d.collections)) parts.push(tl('ui.settings.audit_collections', { value: d.collections.join(', ') }));
+    if (d.recordsDeleted) parts.push(tl('ui.settings.audit_records', { value: d.recordsDeleted }));
+    if (has(d.person)) parts.push(tl('ui.settings.audit_person', { value: d.person }));
+    if (has(d.date)) parts.push(tl('ui.settings.audit_date', { value: d.date }));
+    if (has(d.openingBalance)) parts.push(tl('ui.settings.audit_opening', { value: formatAmount(d.openingBalance, { exact: true }) }));
+    if (has(d.counted)) parts.push(tl('ui.settings.audit_counted', { counted: formatAmount(d.counted, { exact: true }), expected: has(d.expected) ? formatAmount(d.expected, { exact: true }) : '—' }));
+    if (has(d.from) || has(d.to)) parts.push(tl('ui.settings.audit_from_to', { from: has(d.from) ? d.from : '—', to: has(d.to) ? d.to : '—' }));
+    if (has(d.reason)) parts.push(tl('ui.settings.audit_reason', { value: d.reason }));
+    if (has(d.changes)) parts.push(tl('ui.settings.audit_changes', { value: d.changes }));
+    if (has(d.reports)) parts.push(tl('ui.settings.audit_reports', { value: d.reports }));
+    if (has(d.recordsChecked)) parts.push(tl('ui.settings.audit_records', { value: d.recordsChecked }));
+    // #103 exports
+    if (has(d.exportKind)) parts.push(tl('ui.settings.audit_export', { kind: tl(EXPORT_KIND_KEYS[d.exportKind] || 'ui.export.kind_other'), format: tl(EXPORT_FORMAT_KEYS[d.format] || 'ui.export.format_file') }));
+    if (has(d.rows)) parts.push(tl('ui.settings.audit_rows', { value: d.rows }));
+    if (['started', 'done', 'cancelled', 'failed'].includes(d.exportStatus)) parts.push(tl(`ui.export.status_${d.exportStatus}`));
     // #124 security entries
-    if (has(d.source)) parts.push(t(action === 'PERMISSION_DENIED' ? 'ui.settings.audit_source' : 'ui.settings.audit_from', { value: d.source }));
-    if (d.what === 'edit' || d.what === 'void') parts.push(t(d.what === 'void' ? 'ui.settings.audit_tried_void' : 'ui.settings.audit_tried_edit'));
-    if (has(d.billId) && !d.billNumber) parts.push(t('ui.settings.audit_bill', { value: d.billId }));
-    if (has(d.device)) parts.push(t('ui.settings.audit_device', { value: d.device }));
+    if (has(d.source)) parts.push(tl(action === 'PERMISSION_DENIED' ? 'ui.settings.audit_source' : 'ui.settings.audit_from', { value: d.source }));
+    if (d.what === 'edit' || d.what === 'void') parts.push(tl(d.what === 'void' ? 'ui.settings.audit_tried_void' : 'ui.settings.audit_tried_edit'));
+    if (has(d.billId) && !d.billNumber) parts.push(tl('ui.settings.audit_bill', { value: d.billId }));
+    if (has(d.device)) parts.push(tl('ui.settings.audit_device', { value: d.device }));
     return parts.join(' • ');
 }
 
@@ -119,9 +131,10 @@ export function auditWho(log, people) {
  * @param {function(string): string} roleLabel
  * @returns {{main: string, note: string}}
  */
-export function auditWhoText(who, roleLabel) {
-    const role = who.verified && who.removed ? t('ui.settings.audit_removed') : roleLabel(who.role);
-    if (!who.verified) return { main: t('ui.settings.audit_unverified', { name: `${who.name || '—'} (${role})` }), note: '' };
+export function auditWhoText(who, roleLabel, lang = getLang()) {
+    const tl = (k, p) => t(k, p, lang);
+    const role = who.verified && who.removed ? tl('ui.settings.audit_removed') : roleLabel(who.role);
+    if (!who.verified) return { main: tl('ui.settings.audit_unverified', { name: `${who.name || '—'} (${role})` }), note: '' };
     const email = who.email ? ` ${who.email}` : '';
-    return { main: `${who.name} (${role})${email}`, note: who.sent ? t('ui.settings.audit_unverified', { name: who.sent }) : '' };
+    return { main: `${who.name} (${role})${email}`, note: who.sent ? tl('ui.settings.audit_unverified', { name: who.sent }) : '' };
 }

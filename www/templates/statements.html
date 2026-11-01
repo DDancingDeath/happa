@@ -9,7 +9,8 @@
         <button type="button" class="st-item" onclick="window.app.statements.open('month')"><span aria-hidden="true">🗓</span><span><strong data-i18n="ui.statements.month">Month statement</strong><small data-i18n="ui.statements.month_hint">Profit, money and spending of a month</small></span><span aria-hidden="true">›</span></button>
         <button type="button" class="st-item" onclick="window.app.statements.open('party')"><span aria-hidden="true">👤</span><span><strong data-i18n="ui.statements.party">Party ledger</strong><small data-i18n="ui.statements.party_hint">Bills and payments of one party, with balance</small></span><span aria-hidden="true">›</span></button>
         <button type="button" class="st-item" onclick="window.app.statements.open('item')"><span aria-hidden="true">📦</span><span><strong data-i18n="ui.statements.item">Item ledger</strong><small data-i18n="ui.statements.item_hint">Stock and average cost of one item</small></span><span aria-hidden="true">›</span></button>
-        <button type="button" class="st-item" onclick="window.app.statements.open('csv')"><span aria-hidden="true">⬇</span><span><strong data-i18n="ui.statements.csv">Export CSV</strong><small data-i18n="ui.statements.csv_hint">Every bill line of a period, for Excel</small></span><span aria-hidden="true">›</span></button>
+        <button type="button" class="st-item" onclick="window.app.statements.open('csv')" data-owner-only><span aria-hidden="true">⬇</span><span><strong data-i18n="ui.statements.csv">Export CSV</strong><small data-i18n="ui.statements.csv_hint">Every bill line of a period, for Excel</small></span><span aria-hidden="true">›</span></button>
+        <button type="button" class="st-item" onclick="window.app.statements.open('accountant')" data-owner-only><span aria-hidden="true">🧮</span><span><strong data-i18n="ui.statements.accountant">Accountant CSV</strong><small data-i18n="ui.statements.accountant_list_hint">Bills and payments of a period, English headers</small></span><span aria-hidden="true">›</span></button>
     </div>
 
     <div class="st-view" id="statementsView" hidden>
@@ -19,7 +20,7 @@
         </div>
         <div class="ins-card st-controls" id="statementsControls"></div>
         <div class="ins-card st-doc" data-statement id="statementsDoc"></div>
-        <div class="st-actions">
+        <div class="st-actions" id="statementsActions" data-owner-only>
             <button type="button" class="btn btn-secondary" onclick="window.app.statements.shareWhatsApp()" data-i18n="ui.statements.whatsapp">WhatsApp</button>
             <button type="button" class="btn btn-secondary" onclick="window.app.statements.print()" data-i18n="ui.statements.print">Print / PDF</button>
             <button type="button" class="btn btn-secondary" onclick="window.app.statements.downloadCsv()" data-i18n="ui.statements.download_csv">CSV</button>
