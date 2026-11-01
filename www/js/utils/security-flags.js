@@ -76,7 +76,7 @@ export function planDeniedNote(recent, source, now, limits = DENIED_NOTE_LIMITS)
     return { note: true, recent: [...kept, { source, at: now }] };
 }
 
-/** Phones remembered per person (users/{uid}.devices; the rules allow 10). */
+/** Phones remembered per person (deviceLog/{uid}.devices; the rules allow 10). */
 export const MAX_DEVICES = 10;
 
 /** New phones are only remembered, not flagged, during the first days of a person's list. */
@@ -96,7 +96,7 @@ const entryDay = (e) => {
  * Phones are only remembered (no flag) until the person's list is
  * DEVICE_GRACE_DAYS old, so the phones everyone already uses when this starts
  * are not flagged.
- * @param {*} devices - the profile's `devices`
+ * @param {*} devices - the person's `deviceLog` list
  * @param {string} deviceId
  * @param {string} dayKey - today, YYYY-MM-DD
  * @returns {{isNew: boolean, flag: boolean, entry: string, full: boolean, next: string[]}}

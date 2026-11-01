@@ -20,7 +20,7 @@ import { auditActionLabel } from '../i18n/localize.js';
 import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
-import { forgetPrinter, normalizePrinterSettings, PAPER_WIDTHS, setPaperWidth, usePrinter } from '../utils/printer-settings.js';
+import { forgetPrinter, normalizePrinterSettings, PAPER_WIDTHS, setPaperWidth, setReceiptOptions, usePrinter } from '../utils/printer-settings.js';
 import { AuthManager } from '../auth/authentication.js';
 
 const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
@@ -118,6 +118,7 @@ export class SettingsManager {
             const preview = document.getElementById('settingPrintPreview');
             if (preview) preview.checked = printerSettings.previewFirst;
         }
+        this.renderReceiptOptions();
         
         this.updatePrinterStatus();
     }
@@ -510,6 +511,81 @@ export class SettingsManager {
     static togglePrintPreview() {
         const previewFirst = !!document.getElementById('settingPrintPreview')?.checked;
         this._setPrinterSettings({ ...PrinterService.settings(), previewFirst });
+    }
+
+    /** Settings › Printed bill (#107): fills the fields from this phone's choices. */
+    static renderReceiptOptions() {
+        const { receipt } = PrinterService.settings();
+        const set = (id, prop, value) => {
+            const el = document.getElementById(id);
+            if (el && document.activeElement !== el) el[prop] = value;
+        };
+        set('settingReceiptFooter', 'value', receipt.footer);
+        set('settingReceiptQr', 'checked', receipt.qr);
+        set('settingReceiptLang', 'value', receipt.lang);
+        set('settingReceiptDensity', 'value', receipt.density);
+        const hasLogo = !!PrinterService.logo();
+        const status = document.getElementById('receiptLogoStatus');
+        if (status) {
+            status.dataset.i18n = hasLogo ? 'ui.settings.receipt_logo_set' : 'ui.settings.receipt_logo_none';
+            status.textContent = t(status.dataset.i18n);
+        }
+        const remove = document.getElementById('receiptLogoRemoveBtn');
+        if (remove) remove.hidden = !hasLogo;
+    }
+
+    static saveReceiptOptions() {
+        const val = (id) => document.getElementById(id)?.value;
+        this._setPrinterSettings(setReceiptOptions(PrinterService.settings(), {
+            footer: val('settingReceiptFooter') || '',
+            qr: !!document.getElementById('settingReceiptQr')?.checked,
+            lang: val('settingReceiptLang'),
+            density: val('settingReceiptDensity')
+        }));
+        this.renderReceiptOptions();
+    }
+
+    static pickReceiptLogo() {
+        document.getElementById('settingReceiptLogo')?.click();
+    }
+
+    /** Reads the chosen picture, stores it as a black-and-white logo, then shows the preview. */
+    static async chooseReceiptLogo(input) {
+        const file = input?.files?.[0];
+        if (input) input.value = '';
+        if (!file) return false;
+        const url = URL.createObjectURL(file);
+        try {
+            const image = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('image'));
+                img.src = url;
+            });
+            const stored = PrinterService.saveLogo(image);
+            if (!stored.ok) {
+                UIManager.showToast(stored.full ? t(STORAGE_FULL_KEY) : t('msg.settings.receipt_logo_failed'), 'error');
+                return false;
+            }
+            this.renderReceiptOptions();
+            await this.previewReceipt();
+            return true;
+        } catch (error) {
+            console.error('[SETTINGS] Logo error:', error);
+            UIManager.showToast(t('msg.settings.receipt_logo_failed'), 'error');
+            return false;
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    static removeReceiptLogo() {
+        PrinterService.removeLogo();
+        this.renderReceiptOptions();
+    }
+
+    static previewReceipt() {
+        return PrinterService.showBillPreview(PrinterService.sampleBill());
     }
 
     static setPaperWidth(deviceId, widthMm) {

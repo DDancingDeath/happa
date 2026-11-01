@@ -30,6 +30,12 @@ async function seed() {
     }
     ITEMS.forEach(i => writes.push(['dev_items', i.id, i]));
 
+    // Team directory (#87): as the owner's phone or tools/migrate leave it
+    const people = Object.fromEntries(Object.values(USERS)
+        .filter(u => ['owner', 'manager', 'staff'].includes(u.role) && !['pending', 'rejected', 'disabled'].includes(u.status))
+        .map(u => [u.uid, { name: u.name, role: u.role }]));
+    writes.push(['dev_settings', 'team', { people, updatedAt: Date.now() }]);
+
     // A tenant rent-history link (the snapshot rent-public.js writes) for the /r/<token> page.
     writes.push(['dev_rent_public', TENANT_TOKEN, {
         lid: 'lease_e2e', v: 1, shop: 'E2E Shop', tenant: 'Tenant E2E', place: '1A, E2E Bhawan', ut: 'flat',
