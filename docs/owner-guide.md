@@ -77,6 +77,10 @@ While a bill is being typed:
   bought, no opening stock).
 - "Save draft" keeps an unfinished bill; an unsaved bill is offered back at the
   next start.
+- **Voice** (VB-1; off until switched on in Settings › Voice billing): tap 🎤 and
+  say the item, weight and rate. The app shows what it heard and fills the line
+  only after OK; voice never adds to the bill or saves. See
+  [voice-billing.md](voice-billing.md).
 
 ### History
 
@@ -200,7 +204,9 @@ Separate from the shop: rent money never counts in shop figures.
 
 - **Settings › Common**: language, account (Change password), notifications,
   Bluetooth Printer (Test Print), install the app; the owner's **Roles & access** (what each role may see, edit
-  window in days).
+  window in days). **Printed bill**: the bottom line, the bill's QR code, the bill language, print darkness
+  and logo are the same on every phone; the owner, or a manager allowed in Roles & access, changes them.
+  The printer and paper width stay on each phone.
 - **Settings › Aadhat**: business name and UPI ID, labour rate and package
   weight, bill checks, bill numbers, opening stock.
 - **Admin › Users**: approve, change role, Reset Password (emails the person a
