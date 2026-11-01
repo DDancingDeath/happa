@@ -2511,5 +2511,9 @@ export default {
     'ui.usage.e_share_whatsapp': "Bill shared on WhatsApp",
     'ui.usage.e_perf_diagnostic_run': "Speed check run",
     'msg.usage.copied': "✓ Usage copied",
-    'msg.usage.clear_confirm': "Clear the usage counts on this phone?"
+    'msg.usage.clear_confirm': "Clear the usage counts on this phone?",
+    'ui.health.test_print': "Printing",
+    'ui.health.test_sync': "Changes reaching the server",
+    'ui.health.test_stock_checkpoint': "Stock checkpoint rebuild",
+    'ui.health.test_number_checks': "Daily number checks"
 };
