@@ -12,12 +12,15 @@ const hosting = JSON.parse(fs.readFileSync(path.join(ROOT, 'firebase.json'), 'ut
 const sites = Array.isArray(hosting) ? hosting : [hosting];
 const appSite = sites.find((h) => h.public === 'www');
 
+/** Every feature off: the redirect-only sites, the tenant link page; the app site differs only by its own microphone (#81). */
+const STRICT_POLICY = 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=()';
+
 const REQUIRED = {
     'Strict-Transport-Security': /^max-age=\d{8,}; includeSubDomains; preload$/,
     'X-Content-Type-Options': /^nosniff$/,
     'X-Frame-Options': /^DENY$/,
     'Referrer-Policy': /^strict-origin-when-cross-origin$/,
-    'Permissions-Policy': /(^|, )camera=\(\)(, |$)[\s\S]*microphone=\(\)[\s\S]*geolocation=\(\)/,
+    'Permissions-Policy': /(^|, )camera=\(\)(, |$)[\s\S]*microphone=\((self)?\)[\s\S]*geolocation=\(\)/,
     'Content-Security-Policy': /(^|; )frame-ancestors 'none'(;|$)/
 };
 
@@ -89,10 +92,29 @@ describe('security headers on every Hosting site (#89)', () => {
         }
     });
 
-    test('every site sends the same values for the shared headers', () => {
+    test('every site sends the same values for the shared headers (the app site also allows its own microphone)', () => {
         const shared = Object.keys(REQUIRED).filter((k) => k !== 'Content-Security-Policy');
         const pick = (site) => Object.fromEntries(shared.map((k) => [k, everyPathHeaders(site)[k]]));
-        for (const site of sites) expect(pick(site)).toEqual(pick(appSite));
+        const appShared = { ...pick(appSite), 'Permissions-Policy': STRICT_POLICY.replace('microphone=()', 'microphone=(self)') };
+        expect(pick(appSite)).toEqual(appShared);
+        for (const site of sites.filter((s) => s !== appSite)) {
+            expect(pick(site)).toEqual({ ...appShared, 'Permissions-Policy': STRICT_POLICY });
+        }
+    });
+
+    test('voice billing (#81): only the app site allows the microphone, only for itself, and not on the tenant link page', () => {
+        const isPolicy = (h) => h.key.toLowerCase() === 'permissions-policy';
+        for (const site of sites) {
+            const policy = everyPathHeaders(site)['Permissions-Policy'];
+            expect(policy).toMatch(site === appSite ? /(^|, )microphone=\(self\)(,|$)/ : /(^|, )microphone=\(\)(,|$)/);
+        }
+        for (const source of ['/r.html', '/r/**']) {
+            const entry = appSite.headers.find((e) => e.source === source);
+            expect(entry.headers.find(isPolicy)?.value).toBe(STRICT_POLICY);
+            // a later entry wins, so no '**' entry setting the policy may follow it
+            const lastAll = appSite.headers.map((e, i) => (e.source === '**' && e.headers.some(isPolicy) ? i : -1)).reduce((a, b) => Math.max(a, b), -1);
+            expect(appSite.headers.indexOf(entry)).toBeGreaterThan(lastAll);
+        }
     });
 
     test('the security headers come first, so the tenant link page keeps its stricter Referrer-Policy', () => {
@@ -107,13 +129,16 @@ describe('security headers on every Hosting site (#89)', () => {
         const isPolicy = (h) => h.key.toLowerCase() === 'permissions-policy';
         const base = everyPathHeaders(appSite)['Permissions-Policy'];
         for (const site of sites) {
-            const relaxed = (site.headers || []).filter((e) => e.headers.some(isPolicy) && e.source !== '**');
+            const own = (site.headers || []).filter((e) => e.headers.some(isPolicy) && e.source !== '**');
+            const relaxed = own.filter((e) => e.headers.find(isPolicy).value !== STRICT_POLICY);
             expect(relaxed.map((e) => e.source)).toEqual(site === appSite ? ['/spike/@(serial.html|serial.js)'] : []);
         }
-        const relaxed = appSite.headers.filter((e) => e.headers.some(isPolicy) && e.source !== '**');
-        const spike = relaxed[0].headers.find(isPolicy).value;
-        expect(spike).toBe(base.replace('serial=()', 'serial=(self)'));
+        const spike = appSite.headers.find((e) => e.source === '/spike/@(serial.html|serial.js)').headers.find(isPolicy).value;
+        expect(spike).toBe(STRICT_POLICY.replace('serial=()', 'serial=(self)'));
         expect(base).toContain('serial=()');
+        // a later entry wins, so the spike entry must come after every '**' entry that sets the policy
+        const lastAll = appSite.headers.map((e, i) => (e.source === '**' && e.headers.some(isPolicy) ? i : -1)).reduce((x, y) => Math.max(x, y), -1);
+        expect(appSite.headers.findIndex((e) => e.source === '/spike/@(serial.html|serial.js)')).toBeGreaterThan(lastAll);
     });
 });
 
