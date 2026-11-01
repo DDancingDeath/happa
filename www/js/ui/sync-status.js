@@ -45,6 +45,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let started = false;
     let waitSeq = 0;
     let el = null;
+    const watchers = new Set();
 
     const pendingKeys = () => {
         const all = new Set(writes.keys());
@@ -101,6 +102,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     function render() {
         if (!started) return;
         const pending = pendingCount();
+        watchers.forEach(fn => { try { fn({ online, pending }); } catch (_) { /* a watcher never breaks the pill */ } });
         if (!online) {
             clearTimeout(pendingShowTimer);
             clearTimeout(syncedTimer);
@@ -163,6 +165,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
                 win.removeEventListener(LANG_CHANGE_EVENT, onLang);
             }
             started = false;
+            watchers.forEach(fn => { try { fn({ online, pending: 0, stopped: true }); } catch (_) { /* never */ } });
             clearTimeout(pendingShowTimer);
             clearTimeout(syncedTimer);
             pendingShowTimer = null;
@@ -216,7 +219,15 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             render();
         },
         pendingCount,
-        isOnline: () => online
+        isOnline: () => online,
+        /**
+         * Calls fn({online, pending}) on every state change (TIP Sync, #161).
+         * @returns {Function} unsubscribe
+         */
+        watch(fn) {
+            watchers.add(fn);
+            return () => watchers.delete(fn);
+        }
     };
 }
 

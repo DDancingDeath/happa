@@ -2391,5 +2391,9 @@ export default {
     'ui.edits.reason_label': "Reason (required)",
     'msg.edits.reason_required': "Write a reason (at least 3 letters).",
     'ui.diag.a_void_bill': "Void Bill",
-    'ui.edits.retry_reason': "Changed before the first save was confirmed"
+    'ui.edits.retry_reason': "Changed before the first save was confirmed",
+    'ui.health.test_print': "Printing",
+    'ui.health.test_sync': "Changes reaching the server",
+    'ui.health.test_stock_checkpoint': "Stock checkpoint rebuild",
+    'ui.health.test_number_checks': "Daily number checks"
 };

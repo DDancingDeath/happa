@@ -2391,5 +2391,9 @@ export default {
     'ui.edits.reason_label': "कारण (ज़रूरी)",
     'msg.edits.reason_required': "कारण लिखें (कम से कम 3 अक्षर)।",
     'ui.diag.a_void_bill': "बिल रद्द",
-    'ui.edits.retry_reason': "पहली बार सहेजने की पुष्टि से पहले बदला गया"
+    'ui.edits.retry_reason': "पहली बार सहेजने की पुष्टि से पहले बदला गया",
+    'ui.health.test_print': "छपाई",
+    'ui.health.test_sync': "बदलाव सर्वर तक पहुँचना",
+    'ui.health.test_stock_checkpoint': "स्टॉक चेकपॉइंट दोबारा बनाना",
+    'ui.health.test_number_checks': "रोज़ की आँकड़ों की जाँच"
 };
