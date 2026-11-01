@@ -100,11 +100,12 @@ export async function askReason({ titleKey, explainKey, labelKey }) {
  * @param {{editable?: boolean}} [opts] editable: this kind of bill can be edited here
  */
 export function setBillActions(bill, who, { editable = true } = {}) {
-    const show = (id, on, locked = false) => {
+    const show = (id, on, locked = null) => {
         const el = document.getElementById(id);
         if (!el) return;
         el.style.display = on ? '' : 'none';
-        // A locked button: greyed with "🔒 Edit window closed"; a tap only explains the window
+        if (locked === null) return;
+        // Edit / Void: a locked button is greyed with "🔒 Edit window closed"; a tap only explains the window
         el.classList.toggle('bill-action-locked', on && locked);
         if (on && locked) {
             el.setAttribute('aria-disabled', 'true');

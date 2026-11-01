@@ -283,6 +283,10 @@ describe('Edit / Void past the edit window (#124)', () => {
         expect(edit().getAttribute('aria-disabled')).toBe('true');
         expect(edit().dataset.lockedLabel).toBe('Edit window closed');
         expect(document.getElementById('billVoidBtn').classList.contains('bill-action-locked')).toBe(true);
+        // other buttons keep their own tooltips
+        document.getElementById('billShareBtn').title = 'Share on WhatsApp';
+        setBillActions(old, { uid: 'u1', role: 'staff', raw: {} });
+        expect(document.getElementById('billShareBtn').title).toBe('Share on WhatsApp');
         setBillActions({ ...old, createdAt: { toMillis: () => Date.now() } }, { uid: 'u1', role: 'staff', raw: {} });
         expect(edit().classList.contains('bill-action-locked')).toBe(false);
         expect(edit().hasAttribute('aria-disabled')).toBe(false);
