@@ -3,7 +3,7 @@
  * Reminders, its "Add reminder" form and the Done / Cancel taps. In-app only
  * (#58: no push). Reminders are shop-wide: every approved user sees them and
  * may mark one done (for everyone); owners and managers add and cancel them.
- * Grouping: utils/manual-reminders.js (REM-3); data: firebase/repos/reminders.js.
+ * Grouping: utils/manual-reminders.js (REM-5); data: firebase/repos/reminders.js.
  * @module ui/manual-reminders
  */
 

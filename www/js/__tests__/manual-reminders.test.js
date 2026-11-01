@@ -1,5 +1,5 @@
 /**
- * Manual reminders on Today (#86): checks before saving, grouping (REM-3),
+ * Manual reminders on Today (#86): checks before saving, grouping (REM-5),
  * who sees and does what on Today, and the writes the taps make.
  */
 import { checkReminder, groupReminders, daysUntil } from '../utils/manual-reminders.js';
@@ -24,7 +24,7 @@ describe('checkReminder', () => {
     ])('%j', (input, want) => expect(checkReminder(input, TODAY)).toEqual(want));
 });
 
-describe('groupReminders (REM-3)', () => {
+describe('groupReminders (REM-5)', () => {
     test('due (most late first), next 7 days, later only counted; closed ones left out', () => {
         const g = groupReminders([
             { id: 'a', title: 'A', dueDate: '2026-11-20' }, { id: 'b', title: 'B', dueDate: '2026-11-10' },

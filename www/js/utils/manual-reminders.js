@@ -1,7 +1,7 @@
 /**
  * @fileoverview Manual reminders on Today (#86): checks before saving and
  * how they are grouped. Pure: no DOM, no Firestore. "Today" is the phone's
- * local day (India); due dates are 'YYYY-MM-DD'. Spec: docs/calculations.md REM-3.
+ * local day (India); due dates are 'YYYY-MM-DD'. Spec: docs/calculations.md REM-5.
  * @module utils/manual-reminders
  */
 
@@ -50,7 +50,7 @@ export function daysUntil(dueIso, todayIso) {
 }
 
 /**
- * REM-3: open reminders split into due (date today or earlier: most late first),
+ * REM-5: open reminders split into due (date today or earlier: most late first),
  * coming up (next 7 days, soonest first) and the count of later ones.
  * @param {Array<{id: string, title: string, dueDate: string, status?: string}>} list
  * @param {string} todayIso

@@ -60,7 +60,7 @@ Today's figures, from today's bills, expenses and cash sessions.
 | Labour: deducted from farmers (T-LAB-1) | Sum of the labour on today's purchase bills. |
 | Labour: to pay (T-LAB-2) | Today's purchase kg ÷ the package weight (Settings › Aadhat, default 35 kg), **rounded up**, × the labour rate. |
 | More / less than deducted (T-LAB-3) | The gap between the two. Not an error: it happens when labour was unticked on a bill or packets were light. |
-| Reminders: To do (REM-3) | Your own reminders ("Collect from Ramesh", a date, a party). You and managers add them with **＋ Add reminder**; everyone sees the ones due today or late and the next 7 days, and anyone may tap **✓ Done** (it goes for everyone). **✕ Cancel** is for you and managers. They show in the app only, no phone notification. |
+| Reminders: To do (REM-5) | Your own reminders ("Collect from Ramesh", a date, a party). You and managers add them with **＋ Add reminder**; everyone sees the ones due today or late and the next 7 days, and anyone may tap **✓ Done** (it goes for everyone). **✕ Cancel** is for you and managers. They show in the app only, no phone notification. |
 
 ### Billing (purchase, retail sale) and Wholesale
 
@@ -309,5 +309,10 @@ Separate from the shop: rent money never counts in shop figures.
 - A restore into the live app is done by the developer from the latest good
   backup. Tell them the date and time the data was last right. Whatever was entered
   after that backup is lost and has to be entered again.
+- **Admin › Data › Check a backup**: pick a backup file on the phone (the developer
+  can give you the unlocked nightly file) and the app checks it is complete and how
+  old it is, without changing anything. Do it at least once a month: Today reminds you
+  (REM-3) when no check was recorded on this phone for 30 days. The card also lists
+  the restore steps; the app itself never restores.
 - Admin › Data "Clear All Data" works only on the website. It first saves a backup
   file and deletes nothing unless that file was saved.

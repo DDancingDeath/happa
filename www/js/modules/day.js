@@ -16,6 +16,7 @@ import { t, tn, getLang } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
 import { on, REFRESH } from '../utils/events.js';
 import { overdueReminder, rentReminder } from '../utils/reminders.js';
+import { drillReminder } from '../utils/backup-verify.js';
 import { billsForKind } from '../utils/party-due.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import { formatINR } from '../utils/due-reminder.js';
@@ -247,7 +248,7 @@ export const DayManager = {
     },
 
     /**
-     * Reminders (#86): REM-3 manual reminders (owner/manager add them, anyone marks done),
+     * Reminders (#86): REM-5 manual reminders (owner/manager add them, anyone marks done),
      * REM-1 who to collect from / pay (dues older than 30 days,
      * Outstanding's chase-first order) and REM-2 rent still due as Rentals last
      * showed it this month on this phone. Nothing is read from the server.
@@ -290,9 +291,25 @@ export const DayManager = {
                     + `<button type="button" class="filter-btn" onclick="window.app.rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div>`);
             }
         }
+        // REM-3 (#63): the owner checks a backup file at least every 30 days
+        if (AppState.userRole === 'owner') {
+            let drill = null;
+            try { drill = drillReminder(localStorage, AppState.currentUser?.uid || '', now.getTime()); } catch (_) { drill = null; }
+            if (drill?.due) {
+                parts.push(`<div class="today-reminder" data-reminder="backup"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_backup'))}</strong></div>`
+                    + `<div>${e(drill.lastAt === null ? t('ui.today.reminder_backup_never') : t('ui.today.reminder_backup_days', { count: drill.days }))}</div>`
+                    + `<button type="button" class="filter-btn" onclick="window.app.day.openBackupCheck()">${e(t('ui.today.reminder_open_backup'))}</button></div>`);
+            }
+        }
         host.hidden = parts.length === 0;
         host.innerHTML = parts.length ? `<h3 class="today-reminders-title">${e(t('ui.today.reminders'))}</h3>${parts.join('')}` : '';
         ManualReminders.restoreFocus();
+    },
+
+    /** Admin › Data, where the owner checks a backup file (REM-3, #63). */
+    openBackupCheck() {
+        window.app?.nav?.showTab?.('admin');
+        setTimeout(() => window.app?.admin?.showTab('data'), 150);
     },
 
     /** Outstanding on its Purchases or Sales list (navigation opens it on Purchases first). */
