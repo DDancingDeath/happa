@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v379';
+const CACHE_NAME = 'happa-v405';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -92,6 +92,7 @@ const STATIC_ASSETS = [
     '/js/ui/bottom-nav.js',
     '/js/ui/heading-emoji.js',
     '/js/ui/scroll-cue.js',
+    '/js/ui/sticky-focus.js',
     '/js/ui/sync-status.js',
     '/js/ui/ui-manager.js',
     '/js/ui/voice-mic.js',
@@ -113,6 +114,7 @@ const STATIC_ASSETS = [
     '/js/utils/clock-skew.js',
     '/js/utils/constants.js',
     '/js/utils/data-export.js',
+    '/js/utils/backup-verify.js',
     '/js/utils/dates.js',
     '/js/utils/due-payments.js',
     '/js/utils/events.js',
@@ -146,6 +148,7 @@ const STATIC_ASSETS = [
     '/js/utils/calc/stock.js',
     '/js/utils/calc/cash.js',
     '/js/utils/number-checks.js',
+    '/js/utils/number-check-flags.js',
     '/js/utils/notification-format.js',
     '/js/utils/record-permissions.js',
     '/js/utils/role-access.js',
@@ -199,6 +202,7 @@ const STATIC_ASSETS = [
     '/js/tip/scenarios/sync.js',
     '/js/tip/scenarios/stock-checkpoint.js',
     '/js/tip/scenarios/number-checks.js',
+    '/js/tip/scenarios/main-thread.js',
     '/js/version.js',
     '/templates/admin.html',
     '/templates/anomalies.html',

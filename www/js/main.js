@@ -8,6 +8,7 @@ import { VoiceMic } from './ui/voice-mic.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
+import { installStickyFocus } from './ui/sticky-focus.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { userProfile } from './firebase/repos/users.js';
@@ -30,6 +31,7 @@ import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
 import { dayKeyOf } from './tip/tip.js';
 import { createSyncWatcher } from './tip/scenarios/sync.js';
+import { createWatchdog, TICK_MS as WATCHDOG_TICK_MS } from './tip/scenarios/main-thread.js';
 import { claimToday, numberChecksProps } from './tip/scenarios/number-checks.js';
 import { whenIdle } from './utils/background-tasks.js';
 import { APP_VERSION } from './version.js';
@@ -56,7 +58,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbon-unknown-values';
+const BUILD_ID = '20261101zzuzieecmbbkhbozn-billing-fold';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -133,6 +135,23 @@ SyncStatus.watch((s) => tipSyncWatcher.update(s));
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') tipSyncWatcher.hidden();
 });
+// TIP MainThread (#83): a watchdog timer notices a frozen screen; no reads. It runs only while the page is on screen.
+const tipWatchdog = createWatchdog(() => tip.start('MainThread'));
+let watchdogTimer = null;
+const watchdogOn = () => {
+    if (watchdogTimer === null && document.visibilityState !== 'hidden') watchdogTimer = setInterval(() => tipWatchdog.tick(performance.now()), WATCHDOG_TICK_MS);
+};
+const watchdogOff = () => {
+    if (watchdogTimer !== null) clearInterval(watchdogTimer);
+    watchdogTimer = null;
+    tipWatchdog.hidden(performance.now());
+};
+document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? watchdogOff() : watchdogOn()));
+document.addEventListener('freeze', watchdogOff);
+document.addEventListener('resume', watchdogOn);
+window.addEventListener('pagehide', watchdogOff);
+window.addEventListener('pageshow', watchdogOn);
+watchdogOn();
 
 /** TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle. */
 function scheduleTipNumberChecks() {
@@ -141,7 +160,10 @@ function scheduleTipNumberChecks() {
         try {
             if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
             const run = tip.start('NumberChecks');
-            run.complete(numberChecksProps(DiagnosticsManager.numberCheckResults()));
+            const results = DiagnosticsManager.numberCheckResults();
+            run.complete(numberChecksProps(results));
+            // #160: each mismatch also reaches Anomalies, once
+            AnomaliesManager.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
         } catch (e) {
             console.warn('TIP number checks failed:', e?.message || e);
         }
@@ -539,6 +561,8 @@ async function initializeUserData() {
         
         // Update printer status
         PrinterService.updateStatus();
+        PrinterService.bluetoothPermission().catch(e => console.warn('Bluetooth permission check failed:', e));
+        installStickyFocus();
         
         // Clean up old audit logs (runs silently for owners)
         AuditService.cleanupOldLogs().catch(e => console.warn('Audit log cleanup failed:', e));
@@ -623,6 +647,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 NotificationsManager.stop();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
+                document.getElementById('printerPermissionBanner')?.remove();
                 document.getElementById('authScreen').style.display = 'flex';
             }
         });
@@ -1225,6 +1250,7 @@ window.app = {
         showSubTab: (tab) => DayManager.showSubTab(tab),
         loadTodayData: () => DayManager.loadTodayData(),
         openDues: (kind) => DayManager.openDues(kind),
+        openBackupCheck: () => DayManager.openBackupCheck(),
         filterTransactions: () => DayManager.filterTransactions(),
         showLabourBreakdown: () => DayManager.showLabourBreakdown(),
         toggleAllBills: () => DayManager.toggleAllBills(),
@@ -1336,7 +1362,8 @@ window.app = {
         resetUserPassword: (userId, email) => AdminManager.resetUserPassword(userId, email),
         deleteUser: (userId, userName) => AdminManager.deleteUser(userId, userName),
         loadStorageStats: () => AdminManager.loadStorageStats(),
-        clearAllData: () => AdminManager.clearAllData()
+        clearAllData: () => AdminManager.clearAllData(),
+        checkBackupFile: (file) => AdminManager.checkBackupFile(file)
     },
     
     // What's new / update banner / share app

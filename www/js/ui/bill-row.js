@@ -13,6 +13,7 @@ import { t, tn } from '../i18n/index.js';
 import { billTotal, formatAmount, formatRupees, hasBillAmount, isActiveBill, isOpeningRecord, openingAmount, outstandingDue, readPayment, UNKNOWN_AMOUNT } from '../utils/money.js';
 import { billDateOf } from '../utils/history-filters.js';
 import { printStatusOf } from '../utils/print-status.js';
+import { SyncStatus } from './sync-status.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
@@ -123,7 +124,7 @@ export function buildBillRow(bill, { onclick, kind } = {}) {
         <span class="bill-row__meta">
             <span class="bill-row__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<span class="bill-row__by"> • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(by)}</strong></span>` : ''}</span>
             <span class="bill-row__items history-summary" title="${Helpers.escapeHtml(items)}">${Helpers.escapeHtml(items)}</span>
-            <span class="bill-row__chips history-payment">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
+            <span class="bill-row__chips history-payment">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
         </span>
     `;
     return div;
@@ -270,7 +271,7 @@ export function billTableHtml(bills, { onclickFor, openings = [], voided = [] } 
                 <td class="bill-table__amount">${Helpers.escapeHtml(billListAmountText(bill))}</td>
                 <td class="bill-table__date">${Helpers.escapeHtml(date.text)}${date.bad ? badDateBadgeHtml() : ''}${by ? `<div class="bill-table__by">${L('ui.outstanding.by')} ${Helpers.escapeHtml(by)}</div>` : ''}</td>
                 <td class="bill-table__items">${tableItemsHtml(bill)}</td>
-                <td class="bill-table__chips">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</td>
+                <td class="bill-table__chips">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${opening ? '' : SyncStatus.chipHtml(bill?.id)}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</td>
             </tr>`;
     };
     const group = (list, key) => (list.length ? `
