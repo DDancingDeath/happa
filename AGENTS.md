@@ -105,7 +105,6 @@ In order:
 | `printer.js` (modules) | `www/js/services/printer.js` |
 | `wholesaleSalesHistory` | `AppState.salesHistory` (just "salesHistory" means **wholesale** here) |
 | `retailSalesHistory` | `AppState.retailSalesHistory` (this one's normal) |
-| `chat.js` | does not exist in this repo — `templates/chat.html` exists but no chat module is wired |
 | `bottom-nav.html` | doesn't exist — the phone bottom bar (#142: Billing, Today, History, Outstanding, More) is `<nav class="bottom-nav">` in `navigation.html`, driven by `ui/bottom-nav.js` (active item, pull-to-refresh, optional swipe between those pages: Settings › Appearance); `desktop.css` hides it |
 | `rates.html` / `rates.js` (Rates page) | `templates/items.html` + `modules/items.js` (page id `items`, route `rates`; old `items` still works) |
 | Trends / Product traffic page | Views of Insights › Seasons: `templates/rate-trends.html` (`#rate-trends`, injected inside `#insights`) + `modules/rate-trends.js` (Insights moves its `.rt-page` into the Seasons host with `RateTrendsManager.mount()`). Owner/manager via the `rate-trends` entry in `TAB_ROLES`. Routes `insights-trends`, `insights-traffic`; old `reports-trends`, `reports-traffic`, `rate-trends`, `rates-trends`, `rates-traffic` redirect there (`ui/navigation.js`) |

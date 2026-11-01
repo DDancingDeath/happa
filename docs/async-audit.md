@@ -42,7 +42,6 @@ Rule of thumb:
 | `modules/purchase.js` / `retail-sale.js` | `addToBill` / `addToSalesBill` | no awaits; runs synchronously |
 | `modules/settings.js` | `connectToPrinter` | own try/catch + toast |
 | `modules/stock.js` | `renderStock`, `renderAdjustmentHistory` | UI refresh; own try/catch |
-| `modules/users.js` after approve/reject/role/delete | `loadUsers` | refresh after a completed write; catches + toasts |
 | `ui/infinite-scroll.js` | `trigger` | catches and shows the retry state |
 
 ## Inline-handler entry points checked for their own try/catch
