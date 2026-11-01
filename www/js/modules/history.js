@@ -35,7 +35,7 @@ import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
-import { billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
+import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -597,10 +597,10 @@ export class HistoryManager {
                             <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(billLineTotal(bill, true))}</strong>
                         </div>
                         
-                        ${bill.laborCharges > 0 ? `
+                        ${billLabour(bill) > 0 ? `
                             <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; border-top: 1px solid #e9ecef;">
                                 <span style="font-weight: 600;">${L('ui.billing.labor')}</span>
-                                <strong style="font-size: 17px; color: #ffc107;">₹${Math.round(bill.laborCharges)}</strong>
+                                <strong style="font-size: 17px; color: #ffc107;">₹${Math.round(billLabour(bill))}</strong>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 16px; border-top: 2px solid ${billColor}; margin-top: 8px; background: linear-gradient(135deg, #e3f2fd, #bbdefb); margin: 8px -14px -14px -14px; padding: 12px 14px; border-radius: 0 0 10px 10px;">

@@ -5,7 +5,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { DEFAULT_SETTINGS } from '../utils/constants.js';
 import { getAndroidMajorVersion, Helpers } from '../utils/helpers.js';
 import { billQrText, copyMark, receiptDateTime, receiptPayable } from '../utils/bill-share.js';
-import { billLineTotal, outstandingDue, readPayment } from '../utils/money.js';
+import { billLabour, billLineTotal, outstandingDue, readPayment } from '../utils/money.js';
 import { parseAnyBillDate } from '../utils/dates.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
@@ -480,20 +480,20 @@ class BluetoothPrinterManager {
         y += config.spacing.line;
         
         // Labor charges (only for purchases)
-        if (billData.isPurchase && billData.laborCharges > 0) {
+        if (billData.isPurchase && billLabour(billData) > 0) {
             if (billData.laborCalc) {
                 // Show calculation in middle and amount on right
                 ctx.fillText(`${this._t('ui.bill.labour')}:`, config.padding.left, y);
                 const calcWidth = ctx.measureText(billData.laborCalc).width;
                 const calcX = (config.width - calcWidth) / 2;
                 ctx.fillText(billData.laborCalc, calcX, y);
-                const laborText = `₹${billData.laborCharges}`;
+                const laborText = `₹${billLabour(billData)}`;
                 const laborWidth = ctx.measureText(laborText).width;
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
             } else {
                 // No calculation, just show amount
                 ctx.fillText(`${this._t('ui.bill.labour')}:`, config.padding.left, y);
-                const laborText = `₹${billData.laborCharges}`;
+                const laborText = `₹${billLabour(billData)}`;
                 const laborWidth = ctx.measureText(laborText).width;
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
             }

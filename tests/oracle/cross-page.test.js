@@ -179,8 +179,9 @@ describe('C. BILL-TOTAL: one field order on Today, Money and History', () => {
     });
     test('BILL-LINES (#80): the slip, the WhatsApp text and History bill details show the same lines total', () => {
         const legacy = { id: 'p9', isPurchase: true, type: 'purchase', billNumber: 'P-9', date: '05/10/2026', grandTotal: 950, laborCharges: 50, items: [], payment: { cash: 950, online: 0, due: 0 } };
+        const oldLabour = { id: 'p8', isPurchase: true, type: 'purchase', billNumber: 'P-8', date: '04/10/2026', grandTotal: 950, labour: 30, items: [], payment: { cash: 950, online: 0, due: 0 } };
         const zeroSale = { id: 'r9', type: 'retail', billNumber: 'R-9', date: '2026-10-21', saleTotal: 0, total: 70, items: [], payment: { cash: 0, online: 0, due: 0 } };
-        [[PURCHASES[0], true], [legacy, true], [zeroSale, false]].forEach(([b, isPurchase]) => {
+        [[PURCHASES[0], true], [legacy, true], [oldLabour, true], [zeroSale, false]].forEach(([b, isPurchase]) => {
             expect(billLineTotal(b, isPurchase)).toBe(O.billLines(b, isPurchase));
             if (isPurchase) expect(buildBillShareText(b, 'purchase')).toContain(`*Total: ₹${Math.round(O.billLines(b, true))}*`);
         });

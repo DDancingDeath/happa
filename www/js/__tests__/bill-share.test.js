@@ -163,5 +163,7 @@ describe('receipt totals come from the shared money functions (BILL-TOTAL, BILL-
         expect(totals(noLines).slice(0, 4)).toEqual(['Total:', '₹1000', 'Labour:', '₹50']);
         expect(buildBillShareText(noLines, 'purchase')).toContain('*Total: ₹1000*');
         expect(buildBillShareText(noLines, 'purchase')).toContain('*Payable: ₹950*');
+        const oldLabour = { isPurchase: true, grandTotal: 950, labour: 30, items: [], payment: { cash: 950, online: 0, due: 0 } };
+        expect(totals(oldLabour).slice(0, 6)).toEqual(['Total:', '₹980', 'Labour:', '₹30', 'Total:', '₹950']);
     });
 });
