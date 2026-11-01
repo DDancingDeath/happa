@@ -19,7 +19,7 @@ import { can, canOpenTab, canOpenSection } from '../utils/role-access.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, itemSummary, belowCostSales, lowProfitItems,
     purchaseItems, partySummary, stoppedComingCheck, overdueParties, seasonIndex, stockUpItems,
-    soldKgByMonth, seasonKgTotal, weeklyKgWindow, weeklyKgByItem, roundTo, sharePct, topShare, addsUp
+    soldKgByMonth, seasonKgTotal, weeklyKgWindow, weeklyKgByItem, roundTo, sharePct, topShare, addsUp, fiscalYearLabel
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext, contextMonth } from '../utils/insights-context.js';
@@ -97,6 +97,8 @@ export const InsightsManager = {
         const { preset } = getInsightsContext();
         if (/year$/.test(preset)) {
             setInsightsContext({ preset: dir < 0 ? 'last-year' : 'this-year' });
+        } else if (/-fy$/.test(preset)) {
+            setInsightsContext({ preset: dir < 0 ? 'last-fy' : 'this-fy' });
         } else {
             const from = Number.isFinite(r.from) ? new Date(r.from) : now;
             const target = monthStart(from, dir);
@@ -182,6 +184,7 @@ export const InsightsManager = {
         if (r.month) return formatMonth(r.from, { lang });
         const { preset } = getInsightsContext();
         if (preset === 'last-30') return t('ui.money.p_last_30');
+        if (r.fy) return t('ui.money.fy_label', { years: fiscalYearLabel(r.fy) });
         return String(new Date(r.from).getFullYear());
     },
 

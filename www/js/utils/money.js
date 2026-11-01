@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Money helpers shared by finance/outstanding/reports screens.
  * Bills exist in several schemas:
@@ -36,7 +37,7 @@ export function toMoney(v) {
 /**
  * Labour deducted on a purchase bill (T-LAB-1, M7): `laborCharges`, older bills
  * `labour`; 0 when Labour was unticked. The only reader of a bill's labour.
- * @param {Object} bill
+ * @param {Bill|null|undefined} bill
  * @returns {number}
  */
 export function billLabour(bill) {
@@ -72,7 +73,11 @@ export function formatRupees(amount, opts) {
     return text.startsWith('-') ? `-₹${text.slice(1)}` : `₹${text}`;
 }
 
-/** First value that is present and numeric (0 counts as present). */
+/**
+ * First value that is present and numeric (0 counts as present).
+ * @param {...*} values
+ * @returns {?number}
+ */
 function firstPresent(...values) {
     for (const v of values) {
         const n = toMoney(v);
@@ -83,7 +88,7 @@ function firstPresent(...values) {
 
 /**
  * Sum values (optionally mapped) with paise rounding.
- * @param {Array} items
+ * @param {any[]} items
  * @param {Function} [fn] mapper item -> number
  * @returns {number}
  */
@@ -100,7 +105,7 @@ export function sumMoney(items, fn) {
  * BILL-TOTAL: bill total payable/receivable (net of labour for purchases), the
  * first of these fields that is present; a present 0 counts (labour equal to
  * the line value makes the payable ₹0).
- * @param {Object} bill
+ * @param {Bill|null|undefined} bill
  * @returns {number}
  */
 export function billTotal(bill) {
@@ -112,7 +117,7 @@ export function billTotal(bill) {
  * Normalised payment view of a bill across all known schemas.
  * The payment object wins over top-level fields because outstanding/wholesale
  * payment recording only updates payment.*.
- * @param {Object} bill
+ * @param {Bill|null|undefined} bill
  * @returns {{total: number, cash: number, online: number, due: number, paid: number}}
  */
 export function readPayment(bill) {
@@ -142,7 +147,7 @@ export function readPayment(bill) {
 
 /**
  * Outstanding amount still owed on a bill (0 when cleared or overpaid).
- * @param {Object} bill
+ * @param {Bill|null|undefined} bill
  * @returns {number}
  */
 export function outstandingDue(bill) {
@@ -154,7 +159,7 @@ export function outstandingDue(bill) {
 /**
  * EXP-KIND: personal only when tagged personal: its `category`, or `type` on an
  * expense with no category, in any case. Anything else is business (#36).
- * @param {Object} expense
+ * @param {Expense} expense
  * @returns {boolean}
  */
 export function isPersonalExpense(expense) {
@@ -168,7 +173,7 @@ export const EXPENSE_MODES = Object.freeze(['cash', 'online']);
  * EXP-MODE: how an expense was paid. Online only when `paymentMode` is
  * "online" (any case); anything else, including every expense saved before
  * #118 (no mode), is cash.
- * @param {Object} expense
+ * @param {Expense} expense
  * @returns {'cash'|'online'}
  */
 export function expenseMode(expense) {
@@ -177,7 +182,7 @@ export function expenseMode(expense) {
 
 /**
  * EXP-MODE: the expense was paid online, so it never leaves the cash drawer.
- * @param {Object} expense
+ * @param {Expense} expense
  * @returns {boolean}
  */
 export function isOnlineExpense(expense) {
@@ -188,7 +193,7 @@ export function isOnlineExpense(expense) {
  * Opening balance carried from the old Firebase project (tools/migrate): one
  * record per old unpaid bill, with no lines and no bill total, so sales and
  * profit are never counted twice; the open amount is `openingBalance.amount`.
- * @param {Object} bill
+ * @param {Bill|null|undefined} bill
  * @returns {boolean}
  */
 export function isOpeningBalance(bill) {
@@ -201,7 +206,7 @@ export function isOpeningBalance(bill) {
  * reminders, all-time due totals, Finance receivables / payables) and never
  * in a period or activity figure (Today, Reports, Finance period, Analytics,
  * bill counts, stock, rate trends, anomaly scans, number checks).
- * @param {Object} bill
+ * @param {Bill|null|undefined} bill
  * @returns {boolean}
  */
 export function isOpeningRecord(bill) {
@@ -215,8 +220,8 @@ export function isOpeningRecord(bill) {
  * drawer, Money, Insights, Statements, rate stats, month snapshots, labour.
  * FirebaseService keeps voided bills out of AppState's bill lists, and every
  * calculation that reads bills checks this too.
- * @param {Object} bill
- * @returns {boolean}
+ * @param {Bill|null|undefined} bill
+ * @returns {bill is Bill}
  */
 export function isActiveBill(bill) {
     return !!bill && typeof bill === 'object' && bill.voided !== true;
@@ -224,8 +229,8 @@ export function isActiveBill(bill) {
 
 /**
  * The bills of a list that count (isActiveBill).
- * @param {Array<Object>} bills
- * @returns {Array<Object>}
+ * @param {Array<Bill|null|undefined>} bills
+ * @returns {Bill[]}
  */
 export function activeBills(bills) {
     return (Array.isArray(bills) ? bills : []).filter(isActiveBill);
@@ -235,8 +240,8 @@ export function activeBills(bills) {
  * Bills that count as activity: drops voided bills (isActiveBill) and opening
  * records (isOpeningRecord). Every period / activity aggregation filters its
  * bills through this.
- * @param {Array<Object>} bills
- * @returns {Array<Object>}
+ * @param {Array<Bill|null|undefined>} bills
+ * @returns {Array<Bill|null|undefined>}
  */
 export function activityBills(bills) {
     // Missing entries pass through as before (callers skip them); voided and opening records do not.
@@ -245,7 +250,7 @@ export function activityBills(bills) {
 
 /**
  * Carried amount of an opening-balance record (0 for ordinary bills).
- * @param {Object} bill
+ * @param {Bill} bill
  * @returns {number}
  */
 export function openingAmount(bill) {
@@ -254,7 +259,7 @@ export function openingAmount(bill) {
 
 /**
  * The old bill's total and what was paid on it before the move, for display.
- * @param {Object} bill
+ * @param {Bill} bill
  * @returns {?{total: number, paid: number}} null for ordinary bills
  */
 export function openingOldTotals(bill) {
@@ -267,20 +272,22 @@ export function openingOldTotals(bill) {
  * payment.due, or total − received when payment.due is 0/absent. Only
  * tools/migrate uses it, to carry what that page showed; the app uses
  * outstandingDue() (BILL-DUE) everywhere.
- * @param {Object} sale
+ * @param {Bill} sale
  * @returns {number}
  */
 export function wholesaleOutstanding(sale) {
     if (!sale || sale.cleared) return 0;
+    // The old page's raw arithmetic, kept as it was (tools/migrate carries what it showed)
+    /** @type {any} */
     const p = sale.payment || {};
     const received = (p.online || 0) + (p.cash || 0);
-    return p.due || ((sale.total || 0) - received);
+    return p.due || ((/** @type {any} */ (sale.total) || 0) - received);
 }
 
 /**
  * Normalised view of a bill line item across schemas: legacy bills (and some
  * wholesale lines) store `item`/`quantity`/`amount` instead of `name`/`qty`/`total`.
- * @param {Object} item
+ * @param {BillLine} item
  * @returns {{name: string, qty: number, rate: number, total: number}}
  */
 export function readLineItem(item) {
@@ -350,6 +357,7 @@ export function normalizePackageKg(v) {
  * @returns {{laborRate: number, heavyWeightThreshold: number, labourPackageKg: number}}
  */
 export function normalizeLabourSettings(raw = {}) {
+    /** @type {(v: *, fallback: number) => number} */
     const positive = (v, fallback) => {
         const n = toMoney(v);
         return n !== null && n > 0 ? round2(n) : fallback;
