@@ -140,6 +140,10 @@
   white-space: nowrap;
 }
 
+body.dark-mode .stock-row__qty {
+  color: #4ade80;
+}
+
 .stock-row__rate,
 .stock-row__note,
 .stock-row__value {

@@ -75,7 +75,7 @@ describe('itemValue (S3) and stockValue (S4 = F6)', () => {
 });
 
 describe('stockSummary (S7): the Stock page summary', () => {
-    test('counts catalogue rows in stock and adds their kg; unmatched and empty rows are left out', () => {
+    test('counts the rows in stock and adds their kg; empty and below-zero rows are left out', () => {
         const rows = [
             { itemId: 'a', quantity: 40.5 },
             { itemId: 'b', quantity: 9.5 },
@@ -83,7 +83,15 @@ describe('stockSummary (S7): the Stock page summary', () => {
             { itemId: '__orphan__x', quantity: 12, isOrphan: true },
             { itemId: '__orphan__y', quantity: -3, isOrphan: true }
         ];
-        expect(stockSummary(rows)).toEqual({ items: 2, kg: 50 });
+        expect(stockSummary(rows)).toEqual({ items: 3, kg: 62 });
+    });
+
+    test('with an unmatched bucket the card adds up: its kg and its value are both in', () => {
+        const items = [{ id: 'a', name: 'Rice' }, { id: 'b', name: 'Wheat' }];
+        const stock = { a: { quantity: 50, rate: 20 }, b: { quantity: 10, rate: 30 }, 'Old dal': { quantity: 12, rate: 100 } };
+        const { rows } = stockRows(stock, items);
+        expect(stockSummary(rows)).toEqual({ items: 3, kg: 72 });
+        expect(stockValue(stock)).toBe(rows.reduce((a, r) => a + itemValue(r), 0));
     });
 
     test('nothing in stock', () => {

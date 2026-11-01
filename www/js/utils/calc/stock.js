@@ -143,9 +143,9 @@ export function adjustmentValue(adj, stock) {
 }
 
 /**
- * S7: the Stock page summary: catalogue items in stock (S1 > 0) and their total kg.
- * Unmatched rows are left out (they are data to fix, not stock to count).
- * @param {Array<{quantity: number, isOrphan?: boolean}>} rows stockRows().rows
+ * S7: the Stock page summary: the rows in stock (S1 > 0, unmatched rows included, as
+ * S4 values them) and their total kg.
+ * @param {Array<{quantity: number}>} rows stockRows().rows
  * @returns {{items: number, kg: number}}
  */
 export function stockSummary(rows) {
@@ -153,7 +153,7 @@ export function stockSummary(rows) {
     let kg = 0;
     (rows || []).forEach(row => {
         const quantity = Number(row?.quantity) || 0;
-        if (row?.isOrphan || quantity <= 0) return;
+        if (quantity <= 0) return;
         items += 1;
         kg += quantity;
     });
