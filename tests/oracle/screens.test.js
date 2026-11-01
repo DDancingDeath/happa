@@ -315,6 +315,30 @@ describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
         });
     });
 
+    test('summary card (#92): items in stock and their kg (S7), stock value (S4)', async () => {
+        await StockManager.renderStock();
+        const held = Object.values(want.perItem).filter(v => v.qty > 0);
+        const kg = held.reduce((a, v) => a + v.qty, 0);
+        expect(document.getElementById('stockSummary').hidden).toBe(false);
+        expect(document.getElementById('stockSummaryItems').textContent).toBe(String(held.length));
+        expect(document.getElementById('stockSummaryKg').textContent)
+            .toBe(`${kg.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`);
+        expect(document.getElementById('stockSummaryValue').textContent).toBe(`≈ ₹${rupee(want.closing).toLocaleString('en-IN')}`);
+    });
+
+    test('summary card for a member: the item count only (no kg, no value)', async () => {
+        const role = AppState.userRole;
+        AppState.userRole = 'staff';
+        try {
+            await StockManager.renderStock();
+        } finally {
+            AppState.userRole = role;
+        }
+        expect(document.getElementById('stockSummary').hidden).toBe(false);
+        expect(document.getElementById('stockSummaryKgCell').hidden).toBe(true);
+        expect(document.getElementById('stockSummaryValueCell').hidden).toBe(true);
+    });
+
     test('low-stock card (S-LOW, #146): the items below their own level (default 10 kg)', async () => {
         AppState.items = copy(FIX.items).map((i, n) => (n === 0 ? { ...i, lowStockKg: 1e6 } : i));
         await StockManager.renderStock();
