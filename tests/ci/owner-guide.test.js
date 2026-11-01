@@ -1,17 +1,24 @@
 /**
  * Owner guide (#148): docs/owner-guide.md (English) and docs/owner-guide.hi.md
- * (Hindi) explain each page in plain words with the spec IDs of
- * docs/calculations.md, cited in brackets. Every ID they cite must exist there,
- * both guides cite the same IDs (so one is not updated without the other), and the
- * Hindi guide is in one language (Latin only for codes, units and product names).
+ * (Hindi) hold the words and the runbook; each page has its own short doc,
+ * docs/pages/<page>.md and <page>.hi.md, explaining it in plain words with the
+ * spec IDs of docs/calculations.md, cited in brackets. Every ID they cite must
+ * exist there, each English / Hindi pair cites the same IDs (so one is not updated
+ * without the other), and the Hindi docs are in one language (Latin only for
+ * codes, units and product names).
  */
 const fs = require('fs');
 const path = require('path');
 
 const DOCS = path.join(__dirname, '..', '..', 'docs');
 const read = (name) => fs.readFileSync(path.join(DOCS, name), 'utf8');
-const en = read('owner-guide.md');
-const hi = read('owner-guide.hi.md');
+const guideEn = read('owner-guide.md');
+const guideHi = read('owner-guide.hi.md');
+const PAGES = fs.readdirSync(path.join(DOCS, 'pages')).filter(f => f.endsWith('.md') && !f.endsWith('.hi.md')).map(f => f.slice(0, -3)).sort();
+const pageEn = Object.fromEntries(PAGES.map(p => [p, read(`pages/${p}.md`)]));
+const pageHi = Object.fromEntries(PAGES.map(p => [p, read(`pages/${p}.hi.md`)]));
+const en = [guideEn, ...Object.values(pageEn)].join('\n');
+const hi = [guideHi, ...Object.values(pageHi)].join('\n');
 const calc = read('calculations.md');
 
 /** Codes in brackets that are not spec IDs. */
@@ -60,6 +67,17 @@ describe('owner guide (#148)', () => {
 
     test('the English and Hindi guides cite the same spec IDs', () => {
         expect([...citedIds(hi)].sort()).toEqual([...citedIds(en)].sort());
+        expect([...citedIds(guideHi)].sort()).toEqual([...citedIds(guideEn)].sort());
+    });
+
+    test('one doc per page, in English and Hindi, each pair citing the same spec IDs, all listed in the guides', () => {
+        expect(PAGES.length).toBeGreaterThanOrEqual(13);
+        for (const p of PAGES) {
+            expect(fs.existsSync(path.join(DOCS, 'pages', `${p}.hi.md`))).toBe(true);
+            expect([p, [...citedIds(pageHi[p])].sort()]).toEqual([p, [...citedIds(pageEn[p])].sort()]);
+            expect(guideEn).toContain(`](pages/${p}.md)`);
+            expect(guideHi).toContain(`](pages/${p}.hi.md)`);
+        }
     });
 
     test('the Hindi guide is in Hindi: Latin only for codes, units and product names', () => {
