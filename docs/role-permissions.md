@@ -42,6 +42,7 @@ setting is missing or invalid.
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
 | `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client (rules: phase 2) |
 | `purchaseRates` | See purchase rates | खरीद रेट देखें | on | on | client (Rates page only) |
+| `contacts` | Pick names from phone contacts (Q52 of #111) | फ़ोन के संपर्कों से नाम चुनें | on | on | client (the three 👤 pick-contact buttons on Billing and Wholesale; the phone's contacts never reach the database) |
 | `shopSettings` | Change Aadhat settings (labour, bill checks, business name, printed bill) | आढ़त की सेटिंग बदलें | off | – (managers only) | **client + rules** |
 | `historyDays` | History: days back (0 = all) | इतिहास: कितने दिन पीछे तक (0 = सभी) | 0 | 0 | client only (see "Server-side read rules") |
 | `editDays` | Edit/void bills for (days) | बिल बदलने/हटाने के दिन | 2 | 2 | **client + rules** |
@@ -108,10 +109,10 @@ setting is missing or invalid.
 roleAccess: {
   manager: { finance: true, reports: true, analytics: true, wholesale: true,
              personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
-             purchaseRates: true, shopSettings: false, historyDays: 0, editDays: 2 },
+             purchaseRates: true, contacts: true, shopSettings: false, historyDays: 0, editDays: 2 },
   staff:   { finance: false, reports: false, analytics: false, wholesale: false,
              personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
-             purchaseRates: true, shopSettings: false, historyDays: 0, editDays: 2 }
+             purchaseRates: true, contacts: true, shopSettings: false, historyDays: 0, editDays: 2 }
 },
 roleAccessUpdatedAt: <ms>, roleAccessUpdatedBy: <uid>
 ```

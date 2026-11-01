@@ -23,6 +23,7 @@ when it is not connected).
 | **Profit (M6)** | Gross profit − business expenses − bad debts. Labour is **not** taken off (it is already off the purchase bills). |
 | Labour (M7, M18) | Labour deducted on purchases; labour to pay, worked out day by day. |
 | Personal expenses, withdrawals (M8, M9) | Shown apart from profit. |
+| Expenses per ₹100 of sales (M19) | Spending says so when business expenses are more than ₹10 for every ₹100 of sales (personal expenses not counted). |
 | Kept in business (M10) | Profit − personal expenses − withdrawals. |
 | Money in / out / net (M12–M14) | Paid at save + due payments, and expenses; cash and online. |
 | Net worth (M15) | Stock value + to receive + other accounts + counted drawer cash − to pay. Other accounts (bank, savings, loans) are the same on all your phones, in whole rupees; you and managers with Money add or remove them. Members don't see bank balances: their net worth leaves them out and says so. |

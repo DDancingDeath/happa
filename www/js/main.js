@@ -60,7 +60,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozzu-lazy-pages';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzw-q111-defaults';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -949,6 +949,7 @@ window.app = {
         saveItemFromModal: () => ItemsManager.saveItemFromModal(),
         archiveFromModal: () => ItemsManager.archiveFromModal(),
         toggleArchived: (show) => ItemsManager.toggleArchived(show),
+        setSortAz: (on) => ItemsManager.setSortAz(on),
         loadModalHistory: () => ItemsManager.loadModalHistory(),
         onModalNameInput: (field) => ItemsManager.onModalNameInput(field),
         acceptNameSuggestion: (field) => ItemsManager.acceptNameSuggestion(field),

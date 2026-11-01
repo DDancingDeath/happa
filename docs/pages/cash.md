@@ -13,6 +13,7 @@ Only cash counts here, for one day's cash session.
 | Expected cash (C7) | Opening + cash sales + due received + deposits − cash purchases − due paid − expenses. |
 | Difference (C8) | Counted cash − expected: short or extra. Within ₹1 it matches. |
 | Counted cash (C9) | The last counted closing; it is the drawer part of Net worth. |
+| Open for N hours (C10) | When today's cash has been open 14 hours or more, Close cash says so with the time it was opened. |
 
 One session per day: the second phone joins it. Opening needs internet. A closed
 day can't be reopened; a day closed without a count shows "Not counted" and can

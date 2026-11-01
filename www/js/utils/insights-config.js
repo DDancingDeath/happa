@@ -27,7 +27,9 @@ export const INSIGHTS_DEFAULTS = Object.freeze({
     seasonBusy: 1.5,
     seasonQuiet: 0.5,
     /** Changes smaller than this (%) read "about the same". */
-    sameWithinPct: 2
+    sameWithinPct: 2,
+    /** Q7 (#111): Money › Spending nudges when business expenses are more than this per ₹100 of sales (M19). */
+    expenseNudgePer100: 10
 });
 
 const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
@@ -54,6 +56,7 @@ export function insightsSettings(raw = {}) {
         stoppedComingDays: Math.max(1, num(r.stoppedComingDays, d.stoppedComingDays)),
         seasonBusy: num(r.seasonBusy, d.seasonBusy),
         seasonQuiet: num(r.seasonQuiet, d.seasonQuiet),
-        sameWithinPct: Math.max(0, num(r.sameWithinPct, d.sameWithinPct))
+        sameWithinPct: Math.max(0, num(r.sameWithinPct, d.sameWithinPct)),
+        expenseNudgePer100: Math.max(0, num(r.expenseNudgePer100, d.expenseNudgePer100))
     });
 }
