@@ -10,6 +10,7 @@
 import { AppState } from '../utils/state.js';
 import { APP_CONFIG } from '../utils/constants.js';
 import { Helpers } from '../utils/helpers.js';
+import { changedElsewhereError, isOffline, needsInternetError } from '../utils/write-conflict.js';
 import { isActiveBill, isActiveExpense, isOnlineExpense, outstandingDue } from '../utils/money.js';
 import { billEditChanges, cleanReason, editCountOf, editRecord, hasEditChanges, nextEditNumber, voidBlocker } from '../utils/bill-edits.js';
 import { localISODaysAgo, parseAnyBillDate } from '../utils/dates.js';
@@ -357,6 +358,65 @@ let activeCheckpoint = null;
 let checkpointItemsCheck = { items: null, checkpoint: null, ok: false };
 /** settings/app read once per app open (version check + shared labour settings) */
 let appSettingsPromise = null;
+
+/**
+ * Saves one section of settings/app (#113): a transaction that refuses it (code
+ * 'changed-elsewhere') when another phone saved the same section since this phone
+ * read settings/app (its `<section>UpdatedAt` stamp moved), so a stale form can't
+ * overwrite it; needs the internet. `{ checked: false }`: a plain merge write (the
+ * owner's first-start seed, which must not fail offline).
+ * @private
+ */
+const settingsSectionQueue = new Map();
+function saveSettingsSection(fields, stampKey, opts = {}) {
+    // One save of a section at a time on this phone: two quick edits are not a "conflict".
+    // A save queued behind one that was refused is refused too: its form was as stale.
+    const before = settingsSectionQueue.get(stampKey);
+    const run = before
+        ? before.then(() => saveSettingsSectionNow(fields, stampKey, opts))
+        : saveSettingsSectionNow(fields, stampKey, opts);
+    settingsSectionQueue.set(stampKey, run);
+    const done = () => { if (settingsSectionQueue.get(stampKey) === run) settingsSectionQueue.delete(stampKey); };
+    run.then(done, done);
+    return run;
+}
+
+async function saveSettingsSectionNow(fields, stampKey, { checked = true } = {}) {
+    const ref = getDb().collection(col('settings')).doc('app');
+    const keepInCache = () => {
+        if (appSettingsPromise) {
+            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
+        }
+    };
+    if (!checked) {
+        const write = ref.set(fields, { merge: true });
+        keepInCache();
+        await settleWrite(write, `settings:${stampKey}`);
+        return;
+    }
+    if (isOffline()) throw needsInternetError();
+    const loaded = appSettingsPromise ? await appSettingsPromise.catch(() => undefined) : undefined;
+    if (loaded === undefined) {
+        // settings/app was never read on this phone: the form may not show what is stored,
+        // so refuse and read it (the screen then shows the stored values)
+        FirebaseService.loadAppSettings({ refresh: true }).catch(() => {});
+        throw changedElsewhereError('Settings');
+    }
+    const expected = loaded?.[stampKey] ?? null;
+    try {
+        await getDb().runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            const current = snap.exists ? (snap.data()?.[stampKey] ?? null) : null;
+            if (current !== expected) throw changedElsewhereError('Settings');
+            tx.set(ref, fields, { merge: true });
+        });
+    } catch (error) {
+        // Read again so the next save compares with what is stored now
+        if (error?.code === 'changed-elsewhere') FirebaseService.loadAppSettings({ refresh: true }).catch(() => {});
+        throw error;
+    }
+    keepInCache();
+}
 let rebuildPromise = null;
 let rebuildRequestedAgain = false;
 /** Stock objects returned while another device rebuilds the checkpoint (not exact yet). */
@@ -2725,7 +2785,7 @@ const FirebaseService = {
      * @param {{laborRate: number, heavyWeightThreshold: number, labourPackageKg?: number}} labour
      * @returns {Promise<void>}
      */
-    async saveSharedLabourSettings({ laborRate, heavyWeightThreshold, labourPackageKg }) {
+    async saveSharedLabourSettings({ laborRate, heavyWeightThreshold, labourPackageKg }, opts) {
         const fields = {
             laborRate,
             heavyWeightThreshold,
@@ -2733,11 +2793,7 @@ const FirebaseService = {
             labourUpdatedAt: Date.now(),
             labourUpdatedBy: AppState.currentUser?.uid || 'unknown'
         };
-        const write = getDb().collection(col('settings')).doc('app').set(fields, { merge: true });
-        if (appSettingsPromise) {
-            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
-        }
-        await settleWrite(write, 'saveSharedLabourSettings');
+        await saveSettingsSection(fields, 'labourUpdatedAt', opts);
     },
 
     /**
@@ -2745,17 +2801,13 @@ const FirebaseService = {
      * @param {Object} thresholds - normalized (utils/bill-checks.js normalizeThresholds)
      * @returns {Promise<void>}
      */
-    async saveSharedCheckThresholds(thresholds) {
+    async saveSharedCheckThresholds(thresholds, opts) {
         const fields = {
             checkThresholds: { ...thresholds },
             checksUpdatedAt: Date.now(),
             checksUpdatedBy: AppState.currentUser?.uid || 'unknown'
         };
-        const write = getDb().collection(col('settings')).doc('app').set(fields, { merge: true });
-        if (appSettingsPromise) {
-            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
-        }
-        await settleWrite(write, 'saveSharedCheckThresholds');
+        await saveSettingsSection(fields, 'checksUpdatedAt', opts);
     },
 
     /**
@@ -2764,18 +2816,14 @@ const FirebaseService = {
      * @param {{businessName: string, businessDetails: string}} details
      * @returns {Promise<void>}
      */
-    async saveBusinessDetails({ businessName, businessDetails }) {
+    async saveBusinessDetails({ businessName, businessDetails }, opts) {
         const fields = {
             businessName: String(businessName || ''),
             businessDetails: String(businessDetails || ''),
             businessUpdatedAt: Date.now(),
             businessUpdatedBy: AppState.currentUser?.uid || 'unknown'
         };
-        const write = getDb().collection(col('settings')).doc('app').set(fields, { merge: true });
-        if (appSettingsPromise) {
-            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
-        }
-        await settleWrite(write, 'saveBusinessDetails');
+        await saveSettingsSection(fields, 'businessUpdatedAt', opts);
     },
 
     /**
@@ -2784,17 +2832,13 @@ const FirebaseService = {
      * @param {Object} policies - normalized (tip/tip.js normalizePolicies)
      * @returns {Promise<void>}
      */
-    async saveTipPolicies(policies) {
+    async saveTipPolicies(policies, opts) {
         const fields = {
             tipPolicies: { ...policies },
             tipUpdatedAt: Date.now(),
             tipUpdatedBy: AppState.currentUser?.uid || 'unknown'
         };
-        const write = getDb().collection(col('settings')).doc('app').set(fields, { merge: true });
-        if (appSettingsPromise) {
-            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
-        }
-        await settleWrite(write, 'saveTipPolicies');
+        await saveSettingsSection(fields, 'tipUpdatedAt', opts);
     },
 
     /**
@@ -2803,17 +2847,13 @@ const FirebaseService = {
      * @param {{manager: Object, staff: Object}} roleAccess - normalized (utils/role-access.js)
      * @returns {Promise<void>}
      */
-    async saveRoleAccess(roleAccess) {
+    async saveRoleAccess(roleAccess, opts) {
         const fields = {
             roleAccess: { manager: { ...roleAccess.manager }, staff: { ...roleAccess.staff } },
             roleAccessUpdatedAt: Date.now(),
             roleAccessUpdatedBy: AppState.currentUser?.uid || 'unknown'
         };
-        const write = getDb().collection(col('settings')).doc('app').set(fields, { merge: true });
-        if (appSettingsPromise) {
-            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
-        }
-        await settleWrite(write, 'saveRoleAccess');
+        await saveSettingsSection(fields, 'roleAccessUpdatedAt', opts);
     },
 
     ...tipMethods,
