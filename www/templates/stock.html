@@ -20,6 +20,20 @@
         </div>
 
         <div id="currentStockSection">
+            <div id="stockSummary" class="stock-summary" hidden>
+                <div class="stock-summary__cell">
+                    <span class="stock-summary__label" data-i18n="ui.stock.summary_items">Items in stock</span>
+                    <strong id="stockSummaryItems" class="stock-summary__value">0</strong>
+                </div>
+                <div class="stock-summary__cell" id="stockSummaryKgCell">
+                    <span class="stock-summary__label" data-i18n="ui.stock.summary_kg">Total weight</span>
+                    <strong id="stockSummaryKg" class="stock-summary__value">0 kg</strong>
+                </div>
+                <div class="stock-summary__cell" id="stockSummaryValueCell" data-perm="stockValue">
+                    <span class="stock-summary__label" data-i18n="ui.stock.summary_value">Stock value</span>
+                    <strong id="stockSummaryValue" class="stock-summary__value" data-metric="S4">₹0</strong>
+                </div>
+            </div>
             <div style="margin-bottom: 20px;">
                 <input type="text" 
                        id="stockSearchInput" 
