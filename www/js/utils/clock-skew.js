@@ -80,5 +80,8 @@ export async function measureClockSkew({ user = currentUser(), now = Date.now } 
  */
 export async function refusedForClock(error, opts) {
     if (error?.code !== 'permission-denied') return false;
-    return isClockWrong(await measureClockSkew(opts));
+    const wrong = isClockWrong(await measureClockSkew(opts));
+    // A refusal caused by the phone's clock is not misuse (#124: services/security-monitor.js)
+    if (wrong && error && typeof error === 'object') error.aadhatExpected = true;
+    return wrong;
 }

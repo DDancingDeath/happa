@@ -31,6 +31,13 @@ export const PRINT_STATUS_CHANGED = 'printStatus:changed';
 /** An error toast was shown (ui-manager.js); payload `{ message, ref }`. Telemetry logs it under `ref`. */
 export const TOAST_ERROR = 'toast:error';
 
+/**
+ * Firestore refused a call with permission-denied (firebase/firestore-meter.js);
+ * payload: its source label ("purchases (doc) update", "batch commit"…) and the
+ * error (callers mark one the app expects with `aadhatExpected`). #124.
+ */
+export const FIRESTORE_DENIED = 'firestore:denied';
+
 const handlers = new Map();
 
 /**

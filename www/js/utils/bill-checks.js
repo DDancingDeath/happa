@@ -42,7 +42,11 @@ export const DEFAULT_THRESHOLDS = Object.freeze({
     /** … and above this it is a high mismatch. */
     cashHighRs: 200,
     /** Q17: stock adjustment above this many kg gets a flag. */
-    stockAdjustFlagKg: 20
+    stockAdjustFlagKg: 20,
+    /** #124: this many refused changes by one person … */
+    deniedCount: 3,
+    /** … within this many minutes raise a review flag. */
+    deniedWindowMin: 10
 });
 
 /** Rate list on an item for each bill kind (see utils/rate-history.js RATE_FIELDS). */

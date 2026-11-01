@@ -41,6 +41,7 @@ import { markStartup, noteStartup, logStartupTimings } from './utils/startup-tim
 import { TemplateLoader, SHELL_TEMPLATES, PAGE_TEMPLATES } from './utils/template-loader.js';
 import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
+import { SecurityMonitor } from './services/security-monitor.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
 // Build stamp — bumped on every deploy that ships new JS so you can verify
@@ -48,7 +49,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecd-bill-date';
+const BUILD_ID = '20261101zzuzieecf-bill-date';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -59,6 +60,8 @@ window.__AADHAT_BUILD__ = BUILD_ID;
 markStartup('sdk-and-modules-loaded');
 
 InstallManager.init();
+// #124: writes refused by the rules leave a small audit entry for the owner's review
+SecurityMonitor.start();
 
 // Rate trends code (Insights › Seasons: Trends / Product traffic) is imported only when needed
 let rateTrendsLoading = null;
@@ -342,6 +345,9 @@ async function initializeUserData() {
                 AppState.userRole = userData.role || 'staff';
                 AppState.rentRole = userData.rentRole || null;
                 AppState.userName = userData.name || 'User';
+                // #124: remember this phone; a person's first sign-in on another phone is flagged for review
+                SecurityMonitor.checkDevice(userId)
+                    .catch(e => console.warn('Device check not saved:', e?.code || e));
             } else {
                 // User document doesn't exist
                 notShown();

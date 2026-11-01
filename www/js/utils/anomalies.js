@@ -25,6 +25,7 @@ import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
 import { firstStockTimes, stockKeyFor } from './stock-check.js';
 import { labourCalcText } from './labour.js';
+import { SECURITY_ACTIONS, OLD_BILL_TRIES_PER_DAY, deniedClusters } from './security-flags.js';
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { peopleById } from './audit-changes.js';
@@ -91,7 +92,11 @@ export const ANOMALY_TYPES = Object.freeze({
     'bill-deleted': { en: 'Bill deleted', hi: 'बिल मिटाया', severity: 'high' },
     'bill-voided': { en: 'Bill voided', hi: 'बिल रद्द किया', severity: 'medium' },
     'expense-deleted': { en: 'Expense deleted', hi: 'खर्च मिटाया', severity: 'medium' },
-    'night-entry': { en: 'Night-time entry', hi: 'रात में एंट्री', severity: 'low' }
+    'night-entry': { en: 'Night-time entry', hi: 'रात में एंट्री', severity: 'low' },
+    // #124: from the security entries phones write to the audit log
+    'access-denied': { en: 'Changes refused again and again', hi: 'बार-बार बदलाव मना हुए', severity: 'high' },
+    'new-device': { en: 'Sign-in from a new phone', hi: 'नए फ़ोन से लॉग इन', severity: 'low' },
+    'old-bill-edit-try': { en: 'Tried to change several old bills', hi: 'कई पुराने बिल बदलने की कोशिश', severity: 'low' }
 });
 
 /** Label of a type (unknown stored flag rules fall back to their id). */
@@ -477,6 +482,46 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         }, {
             at: Number(log.timestamp),
             ...AUDIT_TEXT[type](no, amount)
+        }));
+    });
+
+    // #124: refused writes in a burst, new phones, tries on bills past their edit window
+    deniedClusters(auditLogs, t).forEach(({ first, entries }) => {
+        const kinds = [...new Set(entries.map(e => String(e.details?.source || '').trim()).filter(Boolean))].slice(0, 4).join(', ');
+        const mins = Math.max(1, Math.round((Number(entries[entries.length - 1].timestamp) - Number(first.timestamp)) / 60000));
+        add(makeAnomaly('access-denied', { refKind: 'audit', refId: first.id, ...logUser(first) }, {
+            at: Number(first.timestamp),
+            en: `${entries.length} changes refused within ${mins} min${kinds ? ` (${kinds})` : ''}`,
+            hi: `${mins} मिनट में ${entries.length} बदलाव मना हुए`
+        }));
+    });
+    (auditLogs || []).forEach(log => {
+        if (!log || log.id == null) return;
+        if (log.action === SECURITY_ACTIONS.NEW_DEVICE) {
+            add(makeAnomaly('new-device', { refKind: 'audit', refId: log.id, ...logUser(log) }, {
+                at: Number(log.timestamp),
+                en: 'First sign-in on a phone this person had not used before',
+                hi: 'इस व्यक्ति ने पहली बार इस फ़ोन से लॉग इन किया'
+            }));
+        }
+    });
+    // Tapping a locked Edit / Void is no flag by itself; trying 3 or more different old bills in a day is
+    const triesByUserDay = new Map();
+    (auditLogs || []).filter(l => l && l.id != null && l.action === SECURITY_ACTIONS.OLD_BILL_TRY && Number.isFinite(Number(l.timestamp)))
+        .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
+        .forEach(l => {
+            const k = `${l.userId || ''}|${istDayKey(Number(l.timestamp))}`;
+            if (!triesByUserDay.has(k)) triesByUserDay.set(k, []);
+            triesByUserDay.get(k).push(l);
+        });
+    triesByUserDay.forEach(list => {
+        const billIds = new Set(list.map(l => String(l.details?.billId || '')).filter(Boolean));
+        if (billIds.size < OLD_BILL_TRIES_PER_DAY) return;
+        const first = list[0];
+        add(makeAnomaly('old-bill-edit-try', { refKind: 'audit', refId: first.id, ...logUser(first) }, {
+            at: Number(first.timestamp),
+            en: `Tried to change or void ${billIds.size} bills past their edit window in one day`,
+            hi: `एक दिन में ${billIds.size} बिल बदलाव का समय बीतने के बाद बदलने या रद्द करने की कोशिश`
         }));
     });
 

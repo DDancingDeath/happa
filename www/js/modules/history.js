@@ -6,6 +6,7 @@
  */
 
 import { AppState } from '../utils/state.js';
+import { SecurityMonitor } from '../services/security-monitor.js';
 import { on, PRINT_STATUS_CHANGED, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
@@ -684,6 +685,7 @@ export class HistoryManager {
         const who = { uid, role: AppState.userRole, raw: AppState.settings?.roleAccess };
         if (!canVoidBillWith(bill, who)) {
             const mine = !!bill.userId && bill.userId === uid;
+            if (mine && isActiveBill(bill)) SecurityMonitor.noteOldBillTry(bill, type, 'void');
             UIManager.showToast(!isActiveBill(bill) ? t('msg.void.already')
                 : mine ? t('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })
                     : t('msg.history.only_person_who_created_bill'));
