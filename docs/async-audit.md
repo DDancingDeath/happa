@@ -42,14 +42,13 @@ Rule of thumb:
 | `modules/purchase.js` / `retail-sale.js` | `addToBill` / `addToSalesBill` | no awaits; runs synchronously |
 | `modules/settings.js` | `connectToPrinter` | own try/catch + toast |
 | `modules/stock.js` | `renderStock`, `renderAdjustmentHistory` | UI refresh; own try/catch |
-| `modules/users.js` after approve/reject/role/delete | `loadUsers` | refresh after a completed write; catches + toasts |
 | `ui/infinite-scroll.js` | `trigger` | catches and shows the retry state |
 
 ## Inline-handler entry points checked for their own try/catch
 
 Async functions called from `onclick` / `onchange` strings can't be awaited.
 Checked: admin.js (approve / reject / role / reset / delete / storage /
-clear data), users.js (same), billing.js `loadDraft` / `deleteDraft`,
+clear data), billing.js `loadDraft` / `deleteDraft`,
 outstanding.js `recordPayment` / `markAsCleared`, wholesale-sales.js
 `recordPayment` / `markSaleAsCleared`, diagnostics.js `clearAll` /
 `deleteError` / loaders, items.js `deleteItem` — all wrap their writes in

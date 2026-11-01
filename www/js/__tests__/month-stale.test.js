@@ -129,7 +129,7 @@ describe('the stale mark on a late save, edit or delete', () => {
     test('a back-dated expense or withdrawal marks its own month only', async () => {
         await FirebaseService.saveExpense({ date: '2026-06-15', amount: 50, category: 'business' });
         expect(await marks()).toEqual(['2026-06']);
-        await FirebaseService.saveWithdrawal({ date: '2026-08-02', amount: 500, person: 'Owner' });
+        await FirebaseService.startSaveWithdrawal({ date: '2026-08-02', amount: 500, person: 'Owner' }).committed;
         expect(await marks()).toEqual(['2026-08']);
         fake.seed('expenses', [{ id: 'e9', date: '2026-04-03', amount: 20 }]);
         AppState.expensesHistory = [{ id: 'e9', date: '2026-04-03', amount: 20 }];
