@@ -288,7 +288,7 @@ export function createTip(opts = {}) {
         write(STORE_KEYS.active, all);
     };
 
-    /** A test with maxSamplesPerDay keeps at most that many samples a day, so it can't use up the shared budget. */
+    /** A test with `maxSamplesPerDay` keeps at most that many samples a day, so it can't use up the shared budget. */
     function overTestCap(testId, day) {
         const cap = tests.get(testId)?.maxSamplesPerDay;
         if (!Number.isFinite(cap)) return false;
