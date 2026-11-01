@@ -153,7 +153,8 @@ so rules stay the priority.
   Clear Data and hiding error reports. Print / export of the log is #103. An entry's stored
   `userName` / `userRole` are whatever the phone sent (kept for history): Settings, Diagnostics
   and the anomaly flags name the **profile** behind `userId` (the owner's phone reads the
-  profiles; the audit cards add the profile email, which unlike the name the person can't change), and show a stored name that differs, or one with no profile, as "name as sent by
+  profiles; the audit cards add the profile email, which unlike the name the person can't change; the role
+  is the person's role now, "removed" once removed), and show a stored name that differs, or one with no profile, as "name as sent by
   the phone, not checked".
 - **Error reports** (`telemetry`): before a report is stored, `utils/scrub.js` replaces
   emails, Indian mobile numbers, rupee amounts, tokens and keys (JWTs, `AIza…`,

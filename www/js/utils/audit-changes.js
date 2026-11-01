@@ -76,7 +76,12 @@ export function peopleById(people) {
     if (people instanceof Map) return people;
     const m = new Map();
     (Array.isArray(people) ? people : []).forEach(p => {
-        if (p && p.id) m.set(String(p.id), { name: String(p.name || '').trim(), role: String(p.role || ''), email: String(p.email || '').trim() });
+        if (p && p.id) {
+            m.set(String(p.id), {
+                name: String(p.name || '').trim(), role: String(p.role || ''), email: String(p.email || '').trim(),
+                removed: ['disabled', 'rejected'].includes(p.status) || !p.role
+            });
+        }
     });
     return m;
 }
@@ -88,16 +93,20 @@ export function peopleById(people) {
  * or role); the stored ones only when they differ or there is no profile (or it has no name).
  * @param {Object} log
  * @param {Map<string, {name: string, role: string, email?: string}>} people
- * @returns {{name: string, role: string, email: string, verified: boolean, sent: string}} `sent`:
- *   the stored name when it is not the profile's ('' otherwise)
+ * @returns {{name: string, role: string, email: string, removed: boolean, verified: boolean, sent: string}}
+ *   `role` is the person's role now; `removed`: removed or rejected since; `sent`: the stored name when
+ *   it is not the profile's ('' otherwise)
  */
 export function auditWho(log, people) {
     const stored = String(log?.userName || '').trim();
     const profile = people instanceof Map ? people.get(String(log?.userId || '')) : null;
     if (profile && profile.name) {
-        return { name: profile.name, role: profile.role, email: profile.email || '', verified: true, sent: stored && stored !== profile.name ? stored : '' };
+        return {
+            name: profile.name, role: profile.role, email: profile.email || '', removed: !!profile.removed,
+            verified: true, sent: stored && stored !== profile.name ? stored : ''
+        };
     }
-    return { name: stored, role: String(log?.userRole || ''), email: '', verified: false, sent: stored };
+    return { name: stored, role: String(log?.userRole || ''), email: '', removed: false, verified: false, sent: stored };
 }
 
 /**
@@ -109,7 +118,7 @@ export function auditWho(log, people) {
  * @returns {{main: string, note: string}}
  */
 export function auditWhoText(who, roleLabel) {
-    const role = roleLabel(who.role);
+    const role = who.verified && who.removed ? t('ui.settings.audit_removed') : roleLabel(who.role);
     if (!who.verified) return { main: t('ui.settings.audit_unverified', { name: `${who.name || '—'} (${role})` }), note: '' };
     const email = who.email ? ` ${who.email}` : '';
     return { main: `${who.name} (${role})${email}`, note: who.sent ? t('ui.settings.audit_unverified', { name: who.sent }) : '' };

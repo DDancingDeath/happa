@@ -514,10 +514,11 @@ describe('Settings', () => {
         jest.spyOn(AuditService, 'getRecentLogs').mockResolvedValue([
             { action: 'DELETE_BILL', timestamp: Date.now(), userId: 'm1', userName: 'Owner Ji', userRole: 'owner', details: {} },
             { action: 'VOID_BILL', timestamp: Date.now(), userId: 's1', userName: 'Sita', userRole: 'staff', details: {} },
-            { action: 'CREATE_SALE', timestamp: Date.now(), userId: 'gone', userName: 'Who', userRole: 'owner', details: {} }
+            { action: 'CREATE_SALE', timestamp: Date.now(), userId: 'gone', userName: 'Who', userRole: 'owner', details: {} },
+            { action: 'CREATE_SALE', timestamp: Date.now(), userId: 'r1', userName: 'Ravi', userRole: 'manager', details: {} }
         ]);
         jest.spyOn(FirebaseService, 'loadUsers').mockResolvedValue([
-            { id: 'm1', name: 'Manoj', role: 'manager', email: 'manoj@x.in' }, { id: 's1', name: 'Sita', role: 'staff' }, { id: 'gone', role: 'owner' }
+            { id: 'm1', name: 'Manoj', role: 'manager', email: 'manoj@x.in' }, { id: 's1', name: 'Sita', role: 'staff' }, { id: 'gone', role: 'owner' }, { id: 'r1', name: 'Ravi', status: 'disabled' }
         ]);
         document.getElementById('auditFilterAction').value = '';
         await SettingsManager.loadAuditLogs();
@@ -529,6 +530,8 @@ describe('Settings', () => {
         expect(rows[1]).not.toContain('not checked');
         // a profile without a name: only the stored name and role, marked
         expect(rows[2]).toContain('Who (Owner) (name as sent by the phone, not checked)');
+        // removed since: the role (deleted on removal) reads "removed"
+        expect(rows[3]).toContain('Ravi (removed)');
 
         DiagnosticsManager.auditFilter = '';
         document.body.innerHTML += '<div id="diagnosticsContainer"></div>';
