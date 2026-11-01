@@ -14,6 +14,7 @@
   margin: 0;
 }
 
+.form-row input.bill-date-input,
 .form-row select,
 .form-row input[type="number"],
 .form-row input[type="text"] {

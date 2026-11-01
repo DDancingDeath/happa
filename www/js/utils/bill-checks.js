@@ -252,13 +252,14 @@ function duplicateIssue(draft, ctx) {
     const ref = Number(draft.enteredAt) || ctx.now;
     const dup = (ctx.recentBills || []).find(b => {
         if (!b || (draft.id && b.id === draft.id)) return false;
-        const ts = Number(b.timestamp) || parseAnyBillDate(b.date)?.getTime();
+        // When it was entered (#147: a back-dated bill's timestamp is its day)
+        const ts = Number(b.enteredAt) || Number(b.timestamp) || parseAnyBillDate(b.date)?.getTime();
         if (!ts || Math.abs(ref - ts) > windowMs) return false;
         const bTotal = billTotal(b);
         return normalize(b.customerName) === party && bTotal === total && itemsSignature(b.items) === sig;
     });
     if (!dup) return null;
-    const secs = Math.max(1, Math.round(Math.abs(ref - (Number(dup.timestamp) || ref)) / 1000));
+    const secs = Math.max(1, Math.round(Math.abs(ref - (Number(dup.enteredAt) || Number(dup.timestamp) || ref)) / 1000));
     const no = dup.billNumber ? ` (${dup.billNumber})` : '';
     return issue('duplicate', 'bill', 'warn',
         `Same bill was saved ${secs} s ago${no} — is this a duplicate?`,
@@ -276,7 +277,9 @@ function dateIssues(draft, ctx) {
             'बिल की तारीख़ आगे की है — फ़ोन की तारीख़/समय जाँचें'));
     }
     const days = Math.round((startOfLocalDay(ref).getTime() - startOfLocalDay(d).getTime()) / 86400000);
-    if (days > ctx.thresholds.backdateDays) {
+    // Q20 (backdateDays) for the owner; anyone else's bill is flagged from 1 day back (#147)
+    const limit = ctx.ownerEntry === false ? 0 : ctx.thresholds.backdateDays;
+    if (days > limit) {
         out.push(issue('date-backdated', 'date', 'warn',
             `Bill is dated ${days} days back`,
             `बिल की तारीख़ ${days} दिन पीछे की है`));
@@ -468,6 +471,7 @@ export function buildCheckContext(state, kind, { now = Date.now(), editingBill =
         recentBills: Array.isArray(history) ? history : [],
         // #33 (should retail reduce stock?) is open: retail oversell only warns, as before.
         oversellCanBlock: kind === 'wholesale',
+        ownerEntry: s.userRole === 'owner',
         showCost: canOverride(s.userRole)
     };
 }

@@ -17,7 +17,7 @@ import { t } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
-    addDaysToKey, anomalyPatterns, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
+    addDaysToKey, anomalyPatterns, billTime, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
     istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, summarizeAnomalies, summaryLine, typeLabel,
     withoutUnstockedOversell
 } from '../utils/anomalies.js';
@@ -58,6 +58,15 @@ function loadedBills() {
         retail: AppState.retailSalesHistory || [],
         wholesale: AppState.salesHistory || []
     };
+}
+
+/** A loaded bill entered (as the scan sees it, billTime) on a later IST day than it is dated, by someone other than `uid` (#147). */
+function datedBackByOthers(bills, uid) {
+    return Object.values(bills).some(list => list.some(b => {
+        const at = billTime(b);
+        return typeof b?.timestamp === 'number' && Number.isFinite(at) && istDayKey(at) > istDayKey(b.timestamp)
+            && String(b.userId || b.createdBy || '') !== String(uid || '');
+    }));
 }
 
 export const AnomaliesManager = {
@@ -104,7 +113,32 @@ export const AnomaliesManager = {
         return next;
     },
 
+    /** The owners' uids when read this session for this user (#147), else null. */
+    knownOwnerIds() {
+        const o = this.owners;
+        return o && o.uid === AppState.currentUser?.uid ? o.ids : null;
+    },
+
+    /**
+     * Reads who the owners are once per session (owner: the profiles; manager: the team
+     * directory, #87). On failure they stay unknown and back-dated bills follow Q20.
+     */
+    async loadOwnerIds() {
+        const uid = AppState.currentUser?.uid;
+        if (!uid || this.knownOwnerIds() || typeof FirebaseService.loadPeople !== 'function') return this.knownOwnerIds();
+        try {
+            const ids = (await FirebaseService.loadPeople() || []).filter(p => p && p.role === 'owner').map(p => String(p.id));
+            if (AppState.userRole === 'owner' && !ids.includes(uid)) ids.push(uid);
+            if (ids.length) this.owners = { uid, ids };
+        } catch (e) {
+            console.warn('Anomaly scan: owners not read:', e?.code || e);
+        }
+        return this.knownOwnerIds();
+    },
+
     async runScan(fromKey, toKey, { audit = false, storedLimit = REPORT_LIMIT } = {}) {
+        // Who the owners are matters only for bills dated back by someone else (#147): no read otherwise
+        if (datedBackByOthers(loadedBills(), AppState.currentUser?.uid)) await this.loadOwnerIds();
         const loadedFrom = Number(AppState.historyLoadedFrom) || 0;
         const from = Math.max(istDayStartMs(fromKey), loadedFrom);
         const to = istDayStartMs(toKey) + DAY_MS;
@@ -136,6 +170,8 @@ export const AnomaliesManager = {
             catalogue: AppState.items || [],
             stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
+            // #147: anyone but an owner is flagged from 1 day back (owners not known yet: Q20)
+            ownerIds: this.knownOwnerIds(),
             from,
             to
         });
@@ -232,6 +268,8 @@ export const AnomaliesManager = {
             catalogue: AppState.items || [],
             stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
+            // #147: anyone but an owner is flagged from 1 day back (owners not known yet: Q20)
+            ownerIds: this.knownOwnerIds(),
             from: Math.max(istDayStartMs(yesterday), Number(AppState.historyLoadedFrom) || 0),
             to: istDayStartMs(today) + DAY_MS
         });
