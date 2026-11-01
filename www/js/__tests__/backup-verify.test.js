@@ -4,7 +4,7 @@
  * restore drill (REM-3) and an audit row; a bad or locked file says why.
  */
 import { jest } from '@jest/globals';
-import { verifyBackup, verifyBackupText, MAX_PROBLEMS } from '../utils/backup-verify.js';
+import { verifyBackup, verifyBackupText, MAX_PROBLEMS, readLimited } from '../utils/backup-verify.js';
 import { buildBackup } from '../utils/data-export.js';
 import { AdminManager } from '../modules/admin.js';
 import { AuditService } from '../services/audit.js';
@@ -66,7 +66,24 @@ describe('verifyBackup', () => {
         const many = verifyBackup({ format: 'aadhat-backup-v1', exportedAt: new Date(NOW).toISOString(), collections: { a: Array.from({ length: 30 }, () => ({})) } }, NOW);
         expect(many.problems.length).toBe(MAX_PROBLEMS);
         expect(many.problemCount).toBe(60);
+        const odd = { ...ciBackup(), manifest: { collections: { items: { toString: 1 }, purchases: 1, retailSales: 2 } } };
+        const p = verifyBackup(odd, NOW).problems[0];
+        expect(p).toEqual({ code: 'count', coll: 'items', file: 1, manifest: '?' });
+        expect(t('ui.backup.p_count', p)).toBe('items: 1 records in the file, its own list says ?.');
     });
+});
+
+test('readLimited joins the chunks, and stops (cancelling the stream) past the limit', async () => {
+    if (typeof global.TextDecoder === 'undefined') global.TextDecoder = require('util').TextDecoder;
+    const streamOf = (parts) => {
+        const queue = parts.map(s => bytesOf(s));
+        const cancel = jest.fn(async () => {});
+        return { cancel, getReader: () => ({ read: async () => (queue.length ? { done: false, value: queue.shift() } : { done: true }), cancel }) };
+    };
+    expect(await readLimited(streamOf(['{"a":', '1}']), 10)).toBe('{"a":1}');
+    const big = streamOf(['12345', '67890', 'x']);
+    expect(await readLimited(big, 10)).toBeNull();
+    expect(big.cancel).toHaveBeenCalled();
 });
 
 describe('Admin › Data › Check a backup', () => {
@@ -105,6 +122,10 @@ describe('Admin › Data › Check a backup', () => {
         expect(document.getElementById('adminBackupResult').textContent).toMatch(/still locked/);
         await AdminManager.checkBackupFile(fakeFile('{}', { size: 200 * 1024 * 1024 }));
         expect(document.getElementById('adminBackupResult').textContent).toMatch(/too big/);
+        const moved = fakeFile('{}');
+        moved.text = async () => { throw Object.assign(new Error('gone'), { code: 8, name: 'NotFoundError' }); };
+        await AdminManager.checkBackupFile(moved);
+        expect(document.getElementById('adminBackupResult').textContent).toMatch(/could not be read/);
         const b = ciBackup();
         b.collections.items.push({ id: 'a', data: {} });
         setLang('hi');

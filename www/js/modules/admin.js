@@ -11,7 +11,7 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { todayLocalISO, formatDateTimeIN, formatDay, formatDayTime, toLocalISODate } from '../utils/dates.js';
-import { verifyBackup, verifyBackupText, recordDrill } from '../utils/backup-verify.js';
+import { verifyBackup, verifyBackupText, recordDrill, readLimited } from '../utils/backup-verify.js';
 import { userCounts, activityByUser, activityRange, ACTIVITY_RANGES } from '../utils/user-activity.js';
 import { historyLoadedFrom } from '../utils/history-window.js';
 import { getLang } from '../i18n/index.js';
@@ -24,6 +24,8 @@ const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 const ACTIVITY_LIMIT = 300;
 /** Largest backup file checked on a phone (memory). */
 const BACKUP_MAX_BYTES = 80 * 1024 * 1024;
+/** Reasons readBackupFile gives; anything else thrown (a file moved away, a lapsed permission) is 'unreadable'. */
+const BACKUP_READ_CODES = ['too_big', 'encrypted', 'gzip'];
 
 /**
  * Admin Manager - owner-only panel
@@ -540,7 +542,10 @@ const AdminManager = {
         if (String.fromCharCode(...head) === 'Salted__' || /\.enc$/i.test(file.name || '')) throw fail('encrypted');
         if (head[0] === 0x1f && head[1] === 0x8b) {
             if (typeof DecompressionStream === 'undefined') throw fail('gzip');
-            return new Response(file.stream().pipeThrough(new DecompressionStream('gzip'))).text();
+            // Unpacked size counts too: a small .gz can unpack to more than a phone can hold.
+            const text = await readLimited(file.stream().pipeThrough(new DecompressionStream('gzip')), BACKUP_MAX_BYTES);
+            if (text === null) throw fail('too_big');
+            return text;
         }
         return file.text();
     },
@@ -562,7 +567,7 @@ const AdminManager = {
             result = verifyBackupText(await this.readBackupFile(file), now);
         } catch (e) {
             result = verifyBackup(null, now);
-            result.problems[0] = { code: e?.code || 'unreadable' };
+            result.problems[0] = { code: typeof e?.code === 'string' && BACKUP_READ_CODES.includes(e.code) ? e.code : 'unreadable' };
         }
         if (result.ok) {
             const uid = AppState.currentUser?.uid || '';

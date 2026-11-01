@@ -109,7 +109,7 @@ export function verifyBackup(backup, now) {
             const want = m[kind] || {};
             const got = Object.fromEntries(list.map(c => [c.name, c.docs]));
             new Set([...Object.keys(want), ...Object.keys(got)]).forEach(n => {
-                if (want[n] !== got[n]) note('count', { coll: n, file: got[n] ?? 0, manifest: want[n] ?? 0 });
+                if (want[n] !== got[n]) note('count', { coll: n, file: got[n] ?? 0, manifest: finite(want[n]) ? want[n] : '?' });
             });
         });
     }
@@ -138,6 +138,30 @@ export function verifyBackupText(text, now) {
         return out;
     }
     return verifyBackup(parsed, now);
+}
+
+/**
+ * Text of a byte stream (an unpacked .gz backup), or null once it passes `maxBytes`
+ * (then the stream is cancelled, so a small packed file can't fill the phone's memory).
+ * @param {ReadableStream<Uint8Array>} stream
+ * @param {number} maxBytes
+ * @returns {Promise<?string>}
+ */
+export async function readLimited(stream, maxBytes) {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let size = 0;
+    let text = '';
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) return text + decoder.decode();
+        size += value.byteLength;
+        if (size > maxBytes) {
+            reader.cancel().catch(() => {});
+            return null;
+        }
+        text += decoder.decode(value, { stream: true });
+    }
 }
 
 /** Days after which the owner is reminded to check a backup again (REM-3). */
