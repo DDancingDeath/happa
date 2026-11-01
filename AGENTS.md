@@ -418,9 +418,11 @@ in `.github/review-rules-examples/`.
   codes with `lang="zxx" translate="no"` (device ids).
 - **Contrast (#68)**: `tests/e2e/a11y-contrast.spec.js` runs axe-core's WCAG AA
   `color-contrast` rule on the main pages (owner, en / hi, phone / desktop) and fails on
-  any finding. Text colours that pass on white and the light card backgrounds:
-  green `#1c7430` / `#15803d`, blue `#0058b8`, red `#b02a37` / `#b91c1c`, amber `#92400e`,
-  brand `#5560d6`, grey `#4b5563` / `#666`.
+  any finding. Text on a page card uses the theme variables (`--success-color`,
+  `--danger-color`, `--info-color`, `--text-secondary`), which also pass in dark mode;
+  text on a fixed light panel uses fixed colours that pass on it: green `#1c7430` /
+  `#15803d` (`#166534` on the light green total rows), blue `#0058b8`, red `#b02a37` /
+  `#b91c1c`, amber `#92400e`, brand `#5560d6`, grey `#4b5563` / `#666`.
 - **Read budget**: each page's first-open Firestore reads (the app's read meter,
   `www/js/firebase/firestore-meter.js`; `startup` = login until ready) are
   compared with `tests/e2e/read-baselines.json`; each step waits for the meter
