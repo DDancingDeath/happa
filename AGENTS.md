@@ -549,7 +549,7 @@ fails unless the baseline's `exceptions` records it
 
 ### PR checklist
 
-- [ ] Tests, `npm run lint` (0 errors), `check:review`, `check:sw`, `check:release` pass.
+- [ ] Tests, `npm run lint` (0 errors), `npm run typecheck`, `check:review`, `check:sw`, `check:release` pass.
 - [ ] App change → the E2E check `Playwright E2E (emulators)` is green (section 5, "CI").
 - [ ] Shipped `www/` file changed → cache bump (section 4).
 - [ ] Added or changed a number shown on screen (or how it is calculated) →
