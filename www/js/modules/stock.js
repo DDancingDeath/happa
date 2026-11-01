@@ -19,6 +19,7 @@ import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { planStockAdjustment, adjustReasonText } from '../utils/stock-adjust.js';
 import { approxStockNote } from '../utils/stock-check.js';
+import { isArchivedItem } from '../utils/item-catalog.js';
 import { evaluateStockAdjustment, toFlags } from '../utils/bill-checks.js';
 import { findDeadStock, daysSinceLabel, localDaysBetween, DEAD_STOCK_DAY_OPTIONS, DEFAULT_DEAD_STOCK_DAYS } from '../utils/dead-stock.js';
 import { t } from '../i18n/index.js';
@@ -465,7 +466,7 @@ export class StockManager {
             const option = document.createElement("option");
             option.value = item.id;
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
-            option.textContent = displayName;
+            option.textContent = isArchivedItem(item) ? `${displayName} (${t('ui.items.archived_chip')})` : displayName;
             select.appendChild(option);
         });
     }

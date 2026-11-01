@@ -12,14 +12,15 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { ensureXLSX } from '../utils/lazy-scripts.js';
-import { findItemById, findDuplicateItem, duplicateItemMessage, itemUsageFrequency, sortItemsByUsage, itemToSheetRow, planItemImport } from '../utils/item-catalog.js';
+import { findItemById, findDuplicateItem, duplicateItemMessage, itemUsageFrequency, sortItemsByUsage, itemToSheetRow, planItemImport, isArchivedItem, visibleItems } from '../utils/item-catalog.js';
+import { adjustItemStock } from '../utils/calc/stock.js';
 import { todayLocalISO, formatDateTimeIN } from '../utils/dates.js';
 import {
     snapshotItem, diffItemSnapshots, changeWarnings, buildHistoryEntries, historyDocId,
     formatHistoryValue, fieldLabel, RATE_SANITY_FACTOR, RATE_FIELDS
 } from '../utils/rate-history.js';
 import { createRateEditTracker, diffItemRates, diffItemFields } from '../utils/notification-format.js';
-import { canDeleteItem, ITEM_DELETE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
+import { canArchiveItem, ITEM_ARCHIVE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
 import { attachScrollCue } from '../ui/scroll-cue.js';
 
@@ -111,7 +112,7 @@ const ItemsManager = {
         
         container.innerHTML = '';
         
-        AppState.items.forEach((item) => {
+        visibleItems(AppState.items).forEach((item) => {
             // Initialize rates arrays if they don't exist
             if (!item.rates) item.rates = [];
             if (!item.saleRates) item.saleRates = [];
@@ -163,7 +164,7 @@ const ItemsManager = {
                            value="${Helpers.escapeHtml(item.name)}" 
                            oninput="window.app.items.updateName(${id}, this.value)"
                            placeholder="${Helpers.escapeHtml(t('ui.items.name_placeholder'))}">
-                    <button class="delete-item-btn" onclick="window.app.items.deleteItem(${id})">${Helpers.escapeHtml(t('ui.modals.delete'))}</button>
+                    <button class="delete-item-btn" onclick="window.app.items.archiveItem(${id})">${Helpers.escapeHtml(t('ui.items.archive_item'))}</button>
                 </div>
                 <div style="margin-bottom: 12px;">
                     <label style="font-size: 13px; font-weight: 600; color: #666; margin-bottom: 4px; display: block;">${Helpers.escapeHtml(t('ui.items.hindi_name_label'))}</label>
@@ -250,7 +251,7 @@ const ItemsManager = {
         const dup = findDuplicateItem(AppState.items, { name: value }, id);
         if (dup) {
             clearTimeout(this.updateTimers[`name_${id}`]);
-            UIManager.showToast(duplicateItemMessage(dup.name));
+            UIManager.showToast(duplicateItemMessage(dup.name, dup.item));
             return;
         }
         const key = `name_${id}`;
@@ -266,7 +267,7 @@ const ItemsManager = {
         const dup = findDuplicateItem(AppState.items, { hindiName: value }, id);
         if (dup) {
             clearTimeout(this.updateTimers[`hindi_${id}`]);
-            UIManager.showToast(duplicateItemMessage(dup.name));
+            UIManager.showToast(duplicateItemMessage(dup.name, dup.item));
             return;
         }
         const key = `hindi_${id}`;
@@ -416,54 +417,78 @@ const ItemsManager = {
     deleteWholesaleRate(id, rateIndex) { return this.deleteRateOfType(id, 'wholesaleRates', rateIndex); },
 
     /**
-     * Deletes an item by id after confirmation. The item is looked up again
-     * after the confirm dialog so a list change while it was open can't
-     * redirect the delete to another item.
+     * Archives an item after confirmation (#123): it stays in old bills, stock
+     * and statements but is no longer offered for new bills. The item is looked
+     * up again after the confirm dialog so a list change while it was open
+     * can't redirect the action to another item.
      * @param {string} id
-     * @returns {Promise<boolean>} true when deleted
+     * @returns {Promise<boolean>} true when archived
      */
-    async deleteItem(id) {
+    async archiveItem(id) {
         const item = this.requireItem(id);
         if (!item) return false;
-        if (!canDeleteItem(AppState.userRole)) {
-            UIManager.showToast(t(ITEM_DELETE_LOCKED_KEY), 4000);
+        if (!canArchiveItem(AppState.userRole)) {
+            UIManager.showToast(t(ITEM_ARCHIVE_LOCKED_KEY), 4000);
             return false;
         }
         const itemName = item.name || 'Unnamed';
-        
-        const confirmed = await UIManager.showModal(
-            t('msg.items.delete', { itemName }),
-            t('msg.common.confirm_delete'),
-            true
-        );
-        
+        const { quantity } = adjustItemStock(AppState.stock?.[id]);
+        const message = [t('msg.items.archive', { itemName }), quantity > 0 ? t('msg.items.archive_stock', { kg: quantity.toFixed(1) }) : '']
+            .filter(Boolean).join(' ');
+        const confirmed = await UIManager.showModal(message, t('ui.items.archive_item'), true);
         if (!confirmed) return false;
         if (!this.requireItem(id)) return false;
-        
+        return this.setArchived(id, true);
+    },
+
+    /**
+     * Brings an archived item back into the lists and bill pickers.
+     * @param {string} id
+     * @returns {Promise<boolean>}
+     */
+    async unarchiveItem(id) {
+        if (!this.requireItem(id)) return false;
+        if (!canArchiveItem(AppState.userRole)) {
+            UIManager.showToast(t(ITEM_ARCHIVE_LOCKED_KEY), 4000);
+            return false;
+        }
+        return this.setArchived(id, false);
+    },
+
+    /** @private */
+    async setArchived(id, archived) {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.items.needs_internet'), 4000);
+            return false;
+        }
         UIManager.showLoading();
         try {
-            await FirebaseService.deleteItem(id);
-            const idx = AppState.items.findIndex(i => i.id === id);
-            if (idx !== -1) AppState.items.splice(idx, 1);
-            this.renderItems();
-            this.renderItemsTable(this.currentSearchQuery());
-            
-            // Log audit entry
-            await AuditService.log(AuditService.ACTIONS.DELETE_ITEM, {
-                itemId: id,
-                itemName: itemName
-            });
-            
+            const fields = await FirebaseService.setItemArchived(id, archived);
+            const current = this.getItem(id);
+            if (current) Object.assign(current, fields);
+            this.refreshTable();
+            const item = this.getItem(id);
+            AuditService.note(archived ? AuditService.ACTIONS.ARCHIVE_ITEM : AuditService.ACTIONS.UNARCHIVE_ITEM,
+                { itemId: id, itemName: item?.name || '' });
             UIManager.hideLoading();
-            UIManager.showToast(t('msg.items.item_deleted'));
+            UIManager.showToast(t(archived ? 'msg.items.item_archived' : 'msg.items.item_unarchived'));
             return true;
         } catch (error) {
-            console.error('Error deleting item:', error);
+            console.error('Error archiving item:', error);
             UIManager.hideLoading();
-            UIManager.showToast(isPermissionDenied(error) ? t(ITEM_DELETE_LOCKED_KEY) : t('msg.items.failed_delete_item'));
+            UIManager.showToast(isPermissionDenied(error) ? t(ITEM_ARCHIVE_LOCKED_KEY)
+                : t(archived ? 'msg.items.failed_archive_item' : 'msg.items.failed_unarchive_item'));
             return false;
         }
     },
+
+    /** Items list: show or hide archived items. */
+    toggleArchived(show) {
+        this.showArchived = !!show;
+        this.refreshTable();
+    },
+
+    showArchived: false,
 
     /** Current text in the Items search box (kept across re-renders). */
     currentSearchQuery() {
@@ -625,10 +650,10 @@ const ItemsManager = {
         const frequency = this.calculateItemFrequency();
         
         // Filter items based on search query
-        let filteredItems = AppState.items;
+        let filteredItems = visibleItems(AppState.items, { showArchived: this.showArchived });
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
-            filteredItems = AppState.items.filter(item => {
+            filteredItems = filteredItems.filter(item => {
                 const name = (item.name || '').toLowerCase();
                 const hindiName = (item.hindiName || '').toLowerCase();
                 return name.includes(query) || hindiName.includes(query);
@@ -669,6 +694,8 @@ const ItemsManager = {
                 }
             }
             
+            const archivedChip = isArchivedItem(item)
+                ? ` <span class="item-archived-chip">${Helpers.escapeHtml(t('ui.items.archived_chip'))}</span>` : '';
             const row = document.createElement('tr');
             row.style.borderBottom = '1px solid #e5e7eb';
             row.style.cursor = isStaff ? 'default' : 'pointer';
@@ -691,7 +718,7 @@ const ItemsManager = {
             if (isStaff) {
                 row.innerHTML = `
                     <td style="padding: 16px; font-weight: 600; color: #1f2937; font-size: 15px; border-right: 1px solid #f3f4f6;">
-                        ${Helpers.escapeHtml(displayName || item.name || '-')}
+                        ${Helpers.escapeHtml(displayName || item.name || '-')}${archivedChip}
                     </td>
                     <td data-perm="purchaseRates" style="padding: 16px; color: #007bff; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
                     <td style="padding: 16px; color: #28a745; font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(saleRates)}</td>
@@ -699,7 +726,7 @@ const ItemsManager = {
             } else {
                 row.innerHTML = `
                     <td style="padding: 16px; font-weight: 600; color: #1f2937; font-size: 15px; border-right: 1px solid #f3f4f6;">
-                        ${Helpers.escapeHtml(displayName || item.name || '-')}
+                        ${Helpers.escapeHtml(displayName || item.name || '-')}${archivedChip}
                     </td>
                     <td data-perm="purchaseRates" style="padding: 16px; color: #007bff; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
                     <td style="padding: 16px; color: #28a745; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(saleRates)}</td>
@@ -724,7 +751,7 @@ const ItemsManager = {
         document.getElementById('itemModalName').value = '';
         document.getElementById('itemModalHindiName').value = '';
         document.getElementById('itemModalContactPerson').value = '';
-        document.getElementById('itemModalDeleteBtn').style.display = 'none';
+        document.getElementById('itemModalArchiveBtn').style.display = 'none';
         this.editStartSnapshot = null;
         this.resetModalHistory(false);
         
@@ -741,7 +768,9 @@ const ItemsManager = {
         document.getElementById('itemModalName').value = item.name || '';
         document.getElementById('itemModalHindiName').value = item.hindiName || '';
         document.getElementById('itemModalContactPerson').value = item.contactPerson || '';
-        document.getElementById('itemModalDeleteBtn').style.display = canDeleteItem(AppState.userRole) ? 'block' : 'none';
+        const archiveBtn = document.getElementById('itemModalArchiveBtn');
+        archiveBtn.style.display = canArchiveItem(AppState.userRole) ? 'block' : 'none';
+        archiveBtn.textContent = t(isArchivedItem(item) ? 'ui.items.unarchive_item' : 'ui.items.archive_item');
         
         this.modalRates = {
             purchase: [...(item.rates || [])],
@@ -909,7 +938,7 @@ const ItemsManager = {
         const editingId = this.currentEditingItemId;
         const dup = findDuplicateItem(AppState.items, { name, hindiName }, editingId);
         if (dup) {
-            UIManager.showToast(duplicateItemMessage(dup.name));
+            UIManager.showToast(duplicateItemMessage(dup.name, dup.item));
             return;
         }
         
@@ -1011,12 +1040,14 @@ const ItemsManager = {
         }
     },
 
-    // Delete item from modal
-    async deleteItemFromModal() {
+    /** Archive (or unarchive) button in the edit dialog. */
+    async archiveFromModal() {
         const id = this.currentEditingItemId;
         if (id === null) return;
-        const deleted = await this.deleteItem(id);
-        if (deleted) this.closeItemModal();
+        const item = this.requireItem(id);
+        if (!item) return;
+        const done = isArchivedItem(item) ? await this.unarchiveItem(id) : await this.archiveItem(id);
+        if (done) this.closeItemModal();
     },
     
     // Close item modal

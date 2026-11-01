@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 import { canDeleteItem, isPermissionDenied } from '../utils/record-permissions.js';
 import { canVoidExpenseWith } from '../utils/role-access.js';
+=======
+import { canChangeExpense, canArchiveItem, isPermissionDenied, MEMBER_EDIT_WINDOW_MS } from '../utils/record-permissions.js';
+>>>>>>> origin/main
 import { buildTelemetryDoc, mergeTelemetryReports } from '../services/telemetry.js';
 
 const NOW = 1_800_000_000_000;
@@ -30,10 +34,10 @@ describe('canVoidExpenseWith (mirrors firestore.rules expenseVoidOk, #99)', () =
     });
 });
 
-test('only the owner may delete items', () => {
-    expect(canDeleteItem('owner')).toBe(true);
-    expect(canDeleteItem('manager')).toBe(false);
-    expect(canDeleteItem('staff')).toBe(false);
+test('owners and managers archive items, members do not', () => {
+    expect(canArchiveItem('owner')).toBe(true);
+    expect(canArchiveItem('manager')).toBe(true);
+    expect(canArchiveItem('staff')).toBe(false);
 });
 
 test('isPermissionDenied recognises rules refusals only', () => {

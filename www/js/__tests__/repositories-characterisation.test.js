@@ -426,7 +426,7 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         FirebaseService.cleanup();
     });
 
-    test('items and rate history: list, save (new / existing), delete, import, history entries and reads', async () => {
+    test('items and rate history: list, save (new / existing), archive, import, history entries and reads', async () => {
         fake.seed('dev_items', [{ id: 'i1', name: 'Rice', rate: 30 }]);
         fake.seed('dev_rateHistory', [
             { id: 'i1_0000000000001', itemId: 'i1', at: 1 },
@@ -436,7 +436,7 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         const items = await FirebaseService.loadItems();
         const added = await FirebaseService.saveItem({ name: 'Wheat', rate: 25 });
         await FirebaseService.saveItem({ id: 'i1', name: 'Rice', rate: 31 });
-        await FirebaseService.deleteItem('i1');
+        await FirebaseService.setItemArchived('i1', true);
         const imported = await FirebaseService.importItems([{ id: 'i9', fields: { rate: 5 } }], [{ fields: { name: 'Dal' } }]);
         await FirebaseService.importItems([], []);
         await FirebaseService.addRateHistoryEntries([{ id: 'i1_5', data: { itemId: 'i1', rate: 31 } }]);

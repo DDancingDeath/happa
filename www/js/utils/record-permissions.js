@@ -6,17 +6,18 @@
 
 /** Message keys (i18n catalogue) for actions the rules refuse. */
 export const EXPENSE_LOCKED_KEY = 'msg.expenses.locked';
-export const ITEM_DELETE_LOCKED_KEY = 'msg.items.delete_locked';
+export const ITEM_ARCHIVE_LOCKED_KEY = 'msg.items.archive_locked';
 
 // Who may void an expense: role-access.js canVoidExpenseWith (#99).
 
 /**
- * Only an owner deletes catalogue items (firestore.rules canDeleteRecord).
+ * Owners and managers archive / unarchive items (#123; firestore.rules: item
+ * updates are owner/manager). Nobody deletes an item from the app.
  * @param {string} role
  * @returns {boolean}
  */
-export function canDeleteItem(role) {
-    return role === 'owner';
+export function canArchiveItem(role) {
+    return isOwnerOrManager(role);
 }
 
 /** Firestore refused the write because of the security rules. */

@@ -6,14 +6,14 @@
 jest.mock('../firebase/firestore-service.js', () => ({
     FirebaseService: {
         saveItem: jest.fn(async (item) => item),
-        deleteItem: jest.fn(async () => {}),
+        setItemArchived: jest.fn(async (id, archived) => ({ archived })),
         notifyRateChange: jest.fn(async () => {}),
         notifyRateChanges: jest.fn(async () => {}),
         notifyItemEdit: jest.fn(async () => {}),
         addRateHistoryEntries: jest.fn(async () => {})
     }
 }));
-jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), ACTIONS: { DELETE_ITEM: 'DELETE_ITEM' } } }));
+jest.mock('../services/audit.js', () => ({ AuditService: { log: jest.fn(async () => {}), note: jest.fn(), ACTIONS: { ARCHIVE_ITEM: 'ARCHIVE_ITEM', UNARCHIVE_ITEM: 'UNARCHIVE_ITEM' } } }));
 jest.mock('../ui/ui-manager.js', () => ({
     UIManager: {
         showToast: jest.fn(),
@@ -29,7 +29,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { ItemsManager } from '../modules/items.js';
-import { findDuplicateItem, normalizeItemName, itemUsageFrequency } from '../utils/item-catalog.js';
+import { findDuplicateItem, normalizeItemName, itemUsageFrequency, visibleItems, duplicateItemMessage } from '../utils/item-catalog.js';
 
 const A = () => ({ id: 'a', name: 'Chana', hindiName: 'चना', rates: [50], saleRates: [], wholesaleRates: [] });
 const B = () => ({ id: 'b', name: 'Gehu', hindiName: 'गेहूं', rates: [30], saleRates: [], wholesaleRates: [], createdAt: 123 });
@@ -38,11 +38,12 @@ const C = () => ({ id: 'c', name: 'Moong', hindiName: '', rates: [], saleRates: 
 function setupDom() {
     document.body.innerHTML = `
         <input id="itemsSearchInput" value="">
+        <input type="checkbox" id="itemsShowArchived">
         <table><tbody id="itemsViewTableBody"></tbody></table>
         <div id="itemEditOverlay" style="display:none">
             <input id="itemModalName"><input id="itemModalHindiName"><input id="itemModalContactPerson">
             <div id="itemModalPurchaseRates"></div><div id="itemModalWholesaleRates"></div><div id="itemModalSaleRates"></div>
-            <button id="itemModalDeleteBtn"></button>
+            <button id="itemModalArchiveBtn"></button>
         </div>`;
 }
 
@@ -53,7 +54,8 @@ beforeEach(() => {
     AppState.userRole = 'owner';
     AppState.settings = { showHindi: false };
     FirebaseService.saveItem.mockClear();
-    FirebaseService.deleteItem.mockClear();
+    FirebaseService.setItemArchived.mockClear();
+    ItemsManager.showArchived = false;
     UIManager.showToast.mockClear();
     UIManager.showModal.mockImplementation(async () => true);
 });
@@ -82,24 +84,89 @@ describe('edit dialog uses the item id', () => {
         expect(AppState.items.map(i => i.id)).toEqual(['a', 'c']);
     });
 
-    test('list changes while the delete confirm is open → the right item is deleted', async () => {
+    test('list changes while the archive confirm is open → the right item is archived, never deleted', async () => {
         ItemsManager.openEditModal('b');
         UIManager.showModal.mockImplementation(async () => {
             AppState.items = [C(), B(), A()];
             return true;
         });
-        await ItemsManager.deleteItemFromModal();
-        expect(FirebaseService.deleteItem).toHaveBeenCalledWith('b');
-        expect(AppState.items.map(i => i.id)).toEqual(['c', 'a']);
+        await ItemsManager.archiveFromModal();
+        expect(FirebaseService.setItemArchived).toHaveBeenCalledWith('b', true);
+        expect(AppState.items.map(i => i.id)).toEqual(['c', 'b', 'a']);
+        expect(AppState.items[1].archived).toBe(true);
     });
 
-    test('item vanishes during the delete confirm → no delete', async () => {
+    test('item vanishes during the archive confirm → nothing written', async () => {
         UIManager.showModal.mockImplementation(async () => {
             AppState.items = [A(), C()];
             return true;
         });
-        await ItemsManager.deleteItem('b');
-        expect(FirebaseService.deleteItem).not.toHaveBeenCalled();
+        await ItemsManager.archiveItem('b');
+        expect(FirebaseService.setItemArchived).not.toHaveBeenCalled();
+    });
+});
+
+describe('archive instead of delete (#123)', () => {
+    const rowNames = () => [...document.querySelectorAll('#itemsViewTableBody tr')].map(r => r.cells[0].textContent.trim());
+
+    test('a member cannot archive; owner and manager can', async () => {
+        AppState.userRole = 'staff';
+        await ItemsManager.archiveItem('b');
+        expect(FirebaseService.setItemArchived).not.toHaveBeenCalled();
+        AppState.userRole = 'manager';
+        await ItemsManager.archiveItem('b');
+        expect(FirebaseService.setItemArchived).toHaveBeenCalledWith('b', true);
+    });
+
+    test('the confirm warns when the item still has stock', async () => {
+        AppState.stock = { b: { quantity: 12.5, rate: 30 } };
+        await ItemsManager.archiveItem('b');
+        expect(UIManager.showModal.mock.calls[0][0]).toMatch(/12\.5 kg in stock/);
+    });
+
+    test('archived items are hidden from the list until "Show archived", then shown with a chip', () => {
+        AppState.items[1].archived = true;
+        ItemsManager.renderItemsTable();
+        expect(rowNames()).not.toContain('Gehu');
+        ItemsManager.toggleArchived(true);
+        const gehu = [...document.querySelectorAll('#itemsViewTableBody tr')].find(r => r.textContent.includes('Gehu'));
+        expect(gehu.querySelector('.item-archived-chip')).not.toBeNull();
+    });
+
+    test('the dialog of an archived item offers Unarchive, which brings it back', async () => {
+        AppState.items[1].archived = true;
+        ItemsManager.openEditModal('b');
+        expect(document.getElementById('itemModalArchiveBtn').textContent).toBe('Unarchive item');
+        await ItemsManager.archiveFromModal();
+        expect(FirebaseService.setItemArchived).toHaveBeenCalledWith('b', false);
+        expect(AppState.items[1].archived).toBe(false);
+    });
+
+    test('offline: nothing is written', async () => {
+        const spy = jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+        try {
+            await ItemsManager.archiveItem('b');
+            expect(FirebaseService.setItemArchived).not.toHaveBeenCalled();
+            expect(UIManager.showToast.mock.calls.at(-1)[0]).toMatch(/needs the internet/);
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    test('a name used by an archived item is refused with an unarchive hint', async () => {
+        AppState.items[1].archived = true;
+        ItemsManager.openAddModal();
+        document.getElementById('itemModalName').value = 'gehu';
+        await ItemsManager.saveItemFromModal();
+        expect(FirebaseService.saveItem).not.toHaveBeenCalled();
+        expect(UIManager.showToast.mock.calls[0][0]).toBe(duplicateItemMessage('Gehu', AppState.items[1]));
+        expect(UIManager.showToast.mock.calls[0][0]).toMatch(/archived/);
+    });
+
+    test('visibleItems leaves archived items out unless asked', () => {
+        const items = [A(), { ...B(), archived: true }];
+        expect(visibleItems(items).map(i => i.id)).toEqual(['a']);
+        expect(visibleItems(items, { showArchived: true }).map(i => i.id)).toEqual(['a', 'b']);
     });
 });
 
