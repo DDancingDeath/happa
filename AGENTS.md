@@ -225,6 +225,9 @@ In order:
   The header pill (`ui/sync-status.js`: Offline / N changes waiting to sync / Synced) uses
   online/offline events, `hasPendingWrites` of the existing listeners, the writes
   `saveBill` / `startSaveExpense` send and `waitForPendingWrites()`: no Firestore reads.
+  Offline it adds "data as of HH:MM" (the last server snapshot, kept in localStorage); History /
+  Expenses rows carry `SyncStatus.chipHtml(id)` (Waiting to sync / Saved, kept up to date by
+  `fillSyncChips`), and Close cash asks while `pendingCount()` > 0.
 - **Two phones, one item or setting (#113)**: item, settings and user writes need the
   internet (`utils/write-conflict.js`, code `needs-internet`). The item dialog saves with
   `FirebaseService.saveItem(item, { expectedRev })` (a transaction on the item's `rev`) and a
