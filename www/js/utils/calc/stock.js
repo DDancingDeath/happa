@@ -17,7 +17,8 @@ export const STOCK_SPEC = Object.freeze({
     stockValue: 'S4, F6',
     adjustItemStock: 'S1, S2',
     adjustmentValue: 'S5',
-    deadStockValue: 'S6'
+    deadStockValue: 'S6',
+    stockSummary: 'S7'
 });
 
 /** @typedef {{itemId: string, name: string, hindiName: string, quantity: number, rate: number, isOrphan?: boolean}} StockRow */
@@ -145,6 +146,24 @@ export function adjustmentValue(adj, stock) {
     const rate = adjustmentRate > 0 ? adjustmentRate : currentStockRate;
     const value = (quantity !== 'Unknown' && rate > 0) ? quantity * rate : null;
     return { rate, value, rounded: value === null ? null : Math.round(value) };
+}
+
+/**
+ * S7: the Stock page summary: the rows in stock (S1 > 0, unmatched rows included, as
+ * S4 values them) and their total kg.
+ * @param {Array<{quantity: number}>} rows stockRows().rows
+ * @returns {{items: number, kg: number}}
+ */
+export function stockSummary(rows) {
+    let items = 0;
+    let kg = 0;
+    (rows || []).forEach(row => {
+        const quantity = Number(row?.quantity) || 0;
+        if (quantity <= 0) return;
+        items += 1;
+        kg += quantity;
+    });
+    return { items, kg };
 }
 
 /**
