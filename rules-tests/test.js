@@ -764,6 +764,94 @@ function defineSuite(prefix) {
         await assertSucceeds(app('legacyOwner').set({ businessName: 'Owner set' }, { merge: true }));
     });
 
+    // ---- Printed bill shared by every phone (#107): settings/app.receipt ----
+
+    t('settings/app section stamps: <x>UpdatedAt an int, <x>UpdatedBy a string of at most 128; the shapes every app writes pass', async () => {
+        const app = (uid) => as(uid).collection(`${prefix}settings`).doc('app');
+        const seedApp = (extra = {}) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(`${prefix}settings`).doc('app')
+            .set({ minClientVersion: 3, roleAccess: { manager: { shopSettings: true }, staff: {} }, ...extra }));
+        await seedApp();
+        const now = Date.now();
+        // what the app (and the older APKs) write: Date.now() and the uid, or 'unknown' with no user
+        const saves = [
+            { laborRate: 7, heavyWeightThreshold: 30, labourPackageKg: 35, labourUpdatedAt: now, labourUpdatedBy: 'legacyOwner' },
+            { checkThresholds: { cashOkRs: 50 }, checksUpdatedAt: now, checksUpdatedBy: 'unknown' },
+            { businessName: 'Aadhat', businessDetails: 'Main road', businessUpdatedAt: now, businessUpdatedBy: 'legacyOwner' },
+            { receipt: { footer: '', qr: false, lang: 'app', density: 'normal', logo: null }, receiptUpdatedAt: now, receiptUpdatedBy: 'legacyOwner' },
+            { tipPolicies: {}, tipUpdatedAt: now, tipUpdatedBy: 'legacyOwner' },
+            { roleAccess: { manager: { shopSettings: true }, staff: {} }, roleAccessUpdatedAt: now, roleAccessUpdatedBy: 'legacyOwner' }
+        ];
+        for (const s of saves) await assertSucceeds(app('legacyOwner').set(s, { merge: true }));
+        await assertSucceeds(app('manager1').set({ laborRate: 8, labourUpdatedAt: now + 1, labourUpdatedBy: 'manager1' }, { merge: true }));
+        // bad stamps are refused, owner and manager alike
+        const bad = [
+            ['labourUpdatedAt', '2026-11-01'], ['checksUpdatedAt', 1.5], ['businessUpdatedAt', true], ['receiptUpdatedAt', null],
+            ['tipUpdatedAt', { t: 1 }], ['roleAccessUpdatedAt', '1'],
+            ['labourUpdatedBy', 7], ['checksUpdatedBy', 'x'.repeat(129)], ['businessUpdatedBy', ['a']], ['receiptUpdatedBy', null],
+            ['tipUpdatedBy', { uid: 'a' }], ['roleAccessUpdatedBy', false]
+        ];
+        for (const [k, v] of bad) await assertFails(app('legacyOwner').set({ [k]: v }, { merge: true }));
+        await assertFails(app('manager1').set({ laborRate: 9, labourUpdatedAt: 'now' }, { merge: true }));
+        await assertFails(app('manager1').set({ businessName: 'X', businessUpdatedBy: 'y'.repeat(129) }, { merge: true }));
+        await assertSucceeds(app('legacyOwner').set({ checksUpdatedBy: 'y'.repeat(128) }, { merge: true }));
+        // a server timestamp is not the app's shape either
+        await assertFails(app('legacyOwner').set({ labourUpdatedAt: serverTimestamp() }, { merge: true }));
+        // an odd stamp already stored doesn't block other saves; creating the doc checks every stamp
+        await seedApp({ labourUpdatedAt: 'legacy' });
+        await assertSucceeds(app('legacyOwner').set({ businessName: 'Y', businessUpdatedAt: now }, { merge: true }));
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(`${prefix}settings`).doc('app').delete());
+        await assertFails(app('legacyOwner').set({ minClientVersion: 3, labourUpdatedAt: 'x' }));
+        await assertSucceeds(app('legacyOwner').set({ minClientVersion: 3, labourUpdatedAt: now, labourUpdatedBy: 'legacyOwner' }));
+        // other settings docs are not touched by this check
+        await assertSucceeds(as('legacyOwner').collection(`${prefix}settings`).doc('team').set({ people: {}, updatedAt: 1 }));
+    });
+
+    t('settings/app.receipt: owner and allowed managers write it; shape and logo size are checked', async () => {
+        const app = (uid) => as(uid).collection(`${prefix}settings`).doc('app');
+        const seedApp = (shopSettings) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(`${prefix}settings`).doc('app')
+            .set({ minClientVersion: 3, roleAccess: { manager: { shopSettings }, staff: {} } }));
+        const logo = { width: 384, height: 120, bits: 'A'.repeat(7680) };
+        const receipt = { footer: 'धन्यवाद, फिर पधारें', qr: true, lang: 'hi', density: 'dark', logo };
+        const stamp = { receiptUpdatedAt: 1, receiptUpdatedBy: 'x' };
+        await seedApp(false);
+        await assertFails(app('manager1').set({ receipt, ...stamp }, { merge: true }));
+        await assertFails(app('staff1').set({ receipt, ...stamp }, { merge: true }));
+        await seedApp(true);
+        await assertFails(app('staff1').set({ receipt, ...stamp }, { merge: true }));
+        await assertSucceeds(app('manager1').set({ receipt, ...stamp }, { merge: true }));
+        await assertSucceeds(app('manager1').set({ receipt: { ...receipt, logo: null }, ...stamp }, { merge: true }));
+        await assertSucceeds(app('legacyOwner').set({ receipt: { footer: '', qr: false, lang: 'app', density: 'normal', logo: null } }, { merge: true }));
+        // everyone approved reads it with settings/app
+        await assertSucceeds(app('staff1').get());
+        // bad shapes are refused, for the owner too
+        const bad = [
+            { ...receipt, logo: { ...logo, bits: 'A'.repeat(7684) } },
+            { ...receipt, logo: { ...logo, width: 385 } },
+            { ...receipt, logo: { ...logo, height: 121 } },
+            { ...receipt, logo: { ...logo, width: 1.5 } },
+            { ...receipt, logo: { ...logo, extra: 1 } },
+            { ...receipt, logo: 'data:image/png;base64,AAAA' },
+            { ...receipt, footer: 'x'.repeat(81) },
+            { ...receipt, lang: 'both' },
+            { ...receipt, density: 'max' },
+            { ...receipt, qr: 'yes' },
+            { ...receipt, widthMm: 80 },
+            { footer: 'x', qr: false, lang: 'en', density: 'normal' }
+        ];
+        await assertSucceeds(app('legacyOwner').update({ receipt }));
+        await assertSucceeds(app('manager1').update({ receipt, ...stamp }));
+        for (const r of bad) {
+            await assertFails(app('legacyOwner').update({ receipt: r }));
+            await assertFails(app('manager1').update({ receipt: r, ...stamp }));
+        }
+        // a manager still may not touch anything but the shop fields alongside it
+        await assertFails(app('manager1').set({ receipt, minClientVersion: 99 }, { merge: true }));
+        // the owner creating settings/app with a bad receipt is refused too
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(`${prefix}settings`).doc('app').delete());
+        await assertFails(app('legacyOwner').set({ receipt: { ...receipt, lang: 'fr' } }));
+        await assertSucceeds(app('legacyOwner').set({ receipt }));
+    });
+
     t('settings/app: a manager cannot create it even when allowed elsewhere', async () => {
         await assertFails(as('manager1').collection(`${prefix}settings`).doc('app').set({ laborRate: 8 }));
     });

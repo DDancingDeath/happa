@@ -22,7 +22,7 @@ import { auditActionLabel } from '../i18n/localize.js';
 import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
-import { forgetPrinter, normalizePrinterSettings, PAPER_WIDTHS, setPaperWidth, setReceiptOptions, usePrinter } from '../utils/printer-settings.js';
+import { forgetPrinter, normalizePrinterSettings, normalizeReceiptOptions, PAPER_WIDTHS, setPaperWidth, usePrinter } from '../utils/printer-settings.js';
 import { AuthManager, authErrorMessage } from '../auth/authentication.js';
 import { UsageView } from '../ui/usage-view.js';
 
@@ -30,6 +30,8 @@ const LABOUR_OWNER_ONLY_KEY = 'msg.settings.labour_owner_only';
 const LABOUR_INPUTS = ['settingHeavyWeight', 'settingLaborRate', 'settingLabourPackageKg'];
 /** '1' = item names follow the app language, '0' = the user chose "Show item names in Hindi" (#143). */
 export const ITEM_NAMES_FOLLOW_LANG_KEY = 'aadhat.itemNamesFollowLang';
+/** '1' once this phone was offered to share its own printed-bill choices with every phone (#107). */
+export const RECEIPT_SHARE_ASKED_KEY = 'receiptShareAsked';
 
 /** Bill-check limits in Settings › Aadhat (keys of DEFAULT_THRESHOLDS); moved from Admin › Configure. */
 export const CHECK_THRESHOLD_FIELDS = [
@@ -251,6 +253,9 @@ export class SettingsManager {
      * @returns {Promise<void>}
      */
     static async applySharedSettings(appSettings) {
+        // Printed bill (#107): the shop's receipt choices, the same on every phone
+        PrinterService.setSharedReceipt(appSettings?.receipt);
+        this.renderReceiptOptions();
         // Bill-check limits (#37): shop-wide, defaults when the owner has not set any
         AppState.settings.checkThresholds = normalizeThresholds(appSettings?.checkThresholds);
         // Business name/details (Settings › Aadhat): shared; a name set only on this device is kept until one is saved
@@ -568,43 +573,108 @@ export class SettingsManager {
         this._setPrinterSettings({ ...PrinterService.settings(), previewFirst });
     }
 
-    /** Settings › Printed bill (#107): fills the fields from this phone's choices. */
-    static renderReceiptOptions() {
-        const { receipt } = PrinterService.settings();
+    /** Settings › Printed bill (#107): the shop's shared choices; only the owner or an allowed manager changes them. */
+    static renderReceiptOptions({ force = false } = {}) {
+        const receipt = PrinterService.receipt();
+        const editable = this.canEditShop();
         const set = (id, prop, value) => {
             const el = document.getElementById(id);
-            if (el && document.activeElement !== el) el[prop] = value;
+            if (el && (force || document.activeElement !== el)) el[prop] = value;
         };
         set('settingReceiptFooter', 'value', receipt.footer);
         set('settingReceiptQr', 'checked', receipt.qr);
         set('settingReceiptLang', 'value', receipt.lang);
         set('settingReceiptDensity', 'value', receipt.density);
-        const hasLogo = !!PrinterService.logo();
+        document.querySelectorAll('#receiptSettingsCard [data-receipt-edit]').forEach(el => { el.disabled = !editable; });
+        const viewOnly = document.getElementById('receiptViewOnly');
+        if (viewOnly) viewOnly.hidden = editable;
+        const share = document.getElementById('receiptShareBtn');
+        if (share) share.hidden = !editable || !!PrinterService.sharedReceipt() || !PrinterService.ownReceipt();
+        const hasLogo = !!receipt.logo;
         const status = document.getElementById('receiptLogoStatus');
         if (status) {
             status.dataset.i18n = hasLogo ? 'ui.settings.receipt_logo_set' : 'ui.settings.receipt_logo_none';
             status.textContent = t(status.dataset.i18n);
         }
         const remove = document.getElementById('receiptLogoRemoveBtn');
-        if (remove) remove.hidden = !hasLogo;
+        if (remove) remove.hidden = !hasLogo || !editable;
+    }
+
+    /**
+     * Saves printed-bill choices for every phone (settings/app.receipt): only the fields
+     * in `patch` change; the rest stay as saved now (see FirebaseService.saveReceiptSettings).
+     * @param {Object} patch - changed fields of { footer, qr, lang, density, logo }
+     * @param {{base?: Object, onlyIfMissing?: boolean}} [options]
+     * @returns {Promise<boolean>} true when saved
+     */
+    static async saveSharedReceipt(patch, { base = PrinterService.receipt(), onlyIfMissing = false } = {}) {
+        if (!this.canEditShop()) {
+            UIManager.showToast(t('ui.settings.shop_view_only'));
+            this.renderReceiptOptions({ force: true });
+            return false;
+        }
+        const before = PrinterService.receipt();
+        const audit = (r) => ({ footer: r.footer, qr: r.qr, lang: r.lang, density: r.density, logo: r.logo ? 'set' : 'none' });
+        try {
+            const { receipt, applied } = await FirebaseService.saveReceiptSettings(patch, { base, onlyIfMissing });
+            PrinterService.setSharedReceipt(receipt);
+            this.renderReceiptOptions({ force: true });
+            if (!applied) {
+                UIManager.showToast(t('msg.settings.receipt_already_shared'));
+                return false;
+            }
+            noteSettingsChange('receipt', audit(before), audit(PrinterService.receipt()));
+            UIManager.showToast(t('msg.admin.settings_saved_everyone'));
+            return true;
+        } catch (error) {
+            console.error('Saving the printed bill settings failed:', error);
+            this.renderReceiptOptions({ force: true });
+            UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
+            return false;
+        }
     }
 
     static saveReceiptOptions() {
         const val = (id) => document.getElementById(id)?.value;
-        this._setPrinterSettings(setReceiptOptions(PrinterService.settings(), {
+        const current = PrinterService.receipt();
+        const typed = normalizeReceiptOptions({
             footer: val('settingReceiptFooter') || '',
             qr: !!document.getElementById('settingReceiptQr')?.checked,
             lang: val('settingReceiptLang'),
             density: val('settingReceiptDensity')
-        }));
-        this.renderReceiptOptions();
+        });
+        const patch = Object.fromEntries(Object.entries(typed).filter(([key, value]) => value !== current[key]));
+        if (!Object.keys(patch).length) return Promise.resolve(false);
+        return this.saveSharedReceipt(patch);
+    }
+
+    /** Shares this phone's own receipt choices and logo (from before they were shared) with every phone, unless some already are. */
+    static shareOwnReceipt() {
+        const own = PrinterService.ownReceipt();
+        return own ? this.saveSharedReceipt({}, { base: own, onlyIfMissing: true }) : Promise.resolve(false);
+    }
+
+    /**
+     * Once, at start-up: no shared receipt yet, and this phone has its own choices →
+     * offer the owner / an allowed manager to use them for every phone.
+     * @returns {Promise<boolean>} true when they were shared
+     */
+    static async offerReceiptShare() {
+        if (PrinterService.sharedReceipt() || !this.canEditShop() || !PrinterService.ownReceipt()) return false;
+        if (localStorage.getItem(RECEIPT_SHARE_ASKED_KEY) === '1' || navigator.onLine === false) return false;
+        // One dialog at a time: never take over a question the user is answering
+        if (AppState.modalResolve || document.getElementById('modalOverlay')?.classList.contains('active')) return false;
+        const yes = await UIManager.showModal(t('msg.settings.receipt_share_offer'), t('ui.settings.receipt_share'), true);
+        safeSetItem(RECEIPT_SHARE_ASKED_KEY, '1');
+        return yes ? this.shareOwnReceipt() : false;
     }
 
     static pickReceiptLogo() {
+        if (!this.canEditShop()) return;
         document.getElementById('settingReceiptLogo')?.click();
     }
 
-    /** Reads the chosen picture, stores it as a black-and-white logo, then shows the preview. */
+    /** Reads the chosen picture, saves it as the black-and-white logo for every phone, then shows the preview. */
     static async chooseReceiptLogo(input) {
         const file = input?.files?.[0];
         if (input) input.value = '';
@@ -617,12 +687,12 @@ export class SettingsManager {
                 img.onerror = () => reject(new Error('image'));
                 img.src = url;
             });
-            const stored = PrinterService.saveLogo(image);
-            if (!stored.ok) {
-                UIManager.showToast(stored.full ? t(STORAGE_FULL_KEY) : t('msg.settings.receipt_logo_failed'), 'error');
+            const logo = PrinterService.makeLogo(image);
+            if (!logo) {
+                UIManager.showToast(t('msg.settings.receipt_logo_failed'), 'error');
                 return false;
             }
-            this.renderReceiptOptions();
+            if (!await this.saveSharedReceipt({ logo })) return false;
             await this.previewReceipt();
             return true;
         } catch (error) {
@@ -635,8 +705,7 @@ export class SettingsManager {
     }
 
     static removeReceiptLogo() {
-        PrinterService.removeLogo();
-        this.renderReceiptOptions();
+        return this.saveSharedReceipt({ logo: null });
     }
 
     static previewReceipt() {
