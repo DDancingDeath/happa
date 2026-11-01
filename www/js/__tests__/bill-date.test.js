@@ -239,6 +239,30 @@ describe('saving a back-dated bill', () => {
         expect(UIManager.showModal).not.toHaveBeenCalledWith(expect.stringContaining('already closed'), expect.any(String), true);
     });
 
+    test('a retry is checked again with the payment as now typed, on its fixed day and entry time', async () => {
+        // First attempt: yesterday, online; the write fails
+        document.getElementById('cashPayment').value = '';
+        document.getElementById('onlinePayment').value = '300';
+        pick('2026-10-31');
+        saved.mockRejectedValueOnce(new Error('network'));
+        await PurchaseManager.saveBillToHistory().catch(() => {});
+        expect(saved).toHaveBeenCalledTimes(1);
+        // The supplier took cash instead: refused before writing, with the real reason
+        document.getElementById('onlinePayment').value = '';
+        document.getElementById('cashPayment').value = '300';
+        expect(await PurchaseManager.saveBillToHistory()).toBeUndefined();
+        expect(saved).toHaveBeenCalledTimes(1);
+        expect(toast).toHaveBeenCalledWith(expect.stringContaining("can't take cash"), 'warning');
+    });
+
+    test('a cash bill entered late yesterday and retried after midnight is not dated back (as the rules judge it)', async () => {
+        const late = new Date(2026, 9, 31, 23, 55).getTime();
+        PurchaseManager.setPendingBill({ id: 'p-late', billNumber: 'P-20261031-009', attempted: true, timestamp: late, enteredAt: late, date: new Date(late).toISOString() });
+        const bill = await PurchaseManager.saveBillToHistory();
+        expect(saved).toHaveBeenCalledTimes(1);
+        expect([bill.timestamp, bill.enteredAt, bill.cashPayment]).toEqual([late, late, 300]);
+    });
+
     test('today: the save time, as before', async () => {
         const bill = await PurchaseManager.saveBillToHistory();
         expect([bill.timestamp, bill.enteredAt, bill.date]).toEqual([NOW.getTime(), NOW.getTime(), NOW.toISOString()]);

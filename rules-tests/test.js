@@ -681,9 +681,9 @@ function defineSuite(prefix) {
             await assertSucceeds(db.doc('c3').set(bill('staff1', yesterday, now, pay(0, 60, 40))));
             // entered yesterday 20:00 offline (not dated back), synced today: kept
             await assertSucceeds(db.doc('off').set(bill('staff1', evening, evening, pay(100, 0, 0))));
-            // ... but its entry time is bounded: more than 3 days old or 10 minutes ahead is refused for cash
+            // ... but a cash bill's entry time may be at most 3 days old; a fast phone clock is not refused
             await assertFails(db.doc('old').set(bill('staff1', now - 3 * DAY - HOUR, now - 3 * DAY - HOUR, pay(100, 0, 0))));
-            await assertFails(db.doc('ahead').set(bill('staff1', now + HOUR, now + HOUR, pay(100, 0, 0))));
+            await assertSucceeds(db.doc('ahead').set(bill('staff1', now + HOUR, now + HOUR, pay(100, 0, 0))));
             await assertFails(db.doc('textAt').set(bill('staff1', now, String(now), pay(100, 0, 0))));
             // an old app (no enteredAt) can't date a bill back: not checked, its offline bills are kept
             await assertSucceeds(db.doc('c4').set(bill('staff1', yesterday, undefined, pay(100, 0, 0))));

@@ -580,7 +580,7 @@ const PurchaseManager = {
             return;
         }
         // Cash on a back-dated bill: owner only (that day's drawer may be closed)
-        if (!pendingBill?.timestamp && !(await allowBackdatedCash(day, cashPayment))) return;
+        if (!(await allowBackdatedCash(day, cashPayment, pendingBill))) return;
         
         // Payment, name-for-Due and the other bill checks (#23, #68, #37)
         this.updatePaymentTotal();

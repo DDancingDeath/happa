@@ -501,7 +501,7 @@ const RetailSaleManager = {
             return;
         }
         // Cash on a back-dated bill: owner only (that day's drawer may be closed)
-        if (!pendingBill?.timestamp && !(await allowBackdatedCash(day, saleCash))) return;
+        if (!(await allowBackdatedCash(day, saleCash, pendingBill))) return;
         
         // Payment, name-for-Due, stock (warns only for retail, #33) and the other checks (#37)
         this.updateSalePaymentTotal();

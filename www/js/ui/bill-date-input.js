@@ -92,13 +92,18 @@ export function resetBillDate(id) {
 /**
  * Cash on a bill dated before today (#147, utils/bill-date.js backdatedCash): refused
  * for everyone but the owner (online or due only); the owner confirms when that day's
- * cash is already closed (its figures won't change). Checked before the bill is saved.
- * @param {string} day YYYY-MM-DD
+ * cash is already closed (its figures won't change). Checked before every save attempt: a retry is
+ * judged on its fixed day and entry time (as the rules judge it), with the payment as now typed.
+ * @param {string} day YYYY-MM-DD picked (first attempt)
  * @param {number} cash
+ * @param {?{timestamp?: number, enteredAt?: number}} [pending] the bill's earlier attempt, if any
  * @returns {Promise<boolean>} true when the bill may be saved
  */
-export async function allowBackdatedCash(day, cash) {
-    const rule = backdatedCash(day, cash, AppState.userRole);
+export async function allowBackdatedCash(day, cash, pending = null) {
+    const fixed = pending?.timestamp ? pending : null;
+    if (fixed) day = toLocalISODate(new Date(fixed.timestamp));
+    const entered = new Date(fixed ? (fixed.enteredAt || fixed.timestamp) : Date.now());
+    const rule = backdatedCash(day, cash, AppState.userRole, entered);
     if (rule === 'ok') return true;
     if (rule === 'refuse') {
         UIManager.showToast(t('msg.billing.backdated_no_cash'), 'warning');

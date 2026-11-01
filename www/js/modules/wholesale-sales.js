@@ -442,7 +442,7 @@ export class WholesaleSalesManager {
             return;
         }
         // Cash on a back-dated bill: owner only (that day's drawer may be closed)
-        if (!pendingBill?.timestamp && !(await allowBackdatedCash(day, cash))) return;
+        if (!(await allowBackdatedCash(day, cash, pendingBill))) return;
         
         // Payment, name-for-Due, stock and the other bill checks (#23, #68, #37)
         this.updatePaymentTotal();
