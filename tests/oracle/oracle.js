@@ -90,6 +90,15 @@ export function billValue(bill) {
 /** Labour deducted on a purchase. */
 export const labourOf = (bill) => n(bill.laborCharges ?? bill.labour);
 
+/** BILL-LINES: the lines before labour (purchases: billTotal, else BILL-TOTAL + labour; sales: billTotal / saleTotal / total, else BILL-TOTAL). */
+export function billLines(bill, isPurchase) {
+    const fields = isPurchase ? ['billTotal'] : ['billTotal', 'saleTotal', 'total'];
+    for (const f of fields) {
+        if (has(bill[f])) return n(bill[f]);
+    }
+    return isPurchase ? billValue(bill) + labourOf(bill) : billValue(bill);
+}
+
 /** Later due payments recorded on the bill (cash/online/write-off parts). */
 function laterPayments(bill) {
     return (bill.payments || []).map(p => {

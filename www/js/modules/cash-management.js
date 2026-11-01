@@ -1128,7 +1128,7 @@ export class CashManagementManager {
         }
 
         const notCounted = sessions.filter(isNotCounted);
-        const dayLabel = (session) => (parseLocalDate(session.date) || new Date(session.date)).toLocaleDateString(displayLocale(), {
+        const dayLabel = (session) => (parseAnyBillDate(session.date) || new Date(NaN)).toLocaleDateString(displayLocale(), {
             weekday: 'short',
             day: 'numeric',
             month: 'short'
@@ -1208,7 +1208,7 @@ export class CashManagementManager {
                 return;
             }
 
-        const date = (parseLocalDate(session.date) || new Date(session.date)).toLocaleDateString(displayLocale(), { 
+        const date = (parseAnyBillDate(session.date) || new Date(NaN)).toLocaleDateString(displayLocale(), { 
             weekday: 'long', 
             day: 'numeric', 
             month: 'long',
