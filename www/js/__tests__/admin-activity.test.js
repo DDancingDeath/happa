@@ -53,9 +53,9 @@ describe('ADM-2 / ADM-3 per person', () => {
     test('counts bills and totals per author, actions from the audit log, inside the range only', () => {
         const rows = activityByUser({ bills, audit, ...activityRange('week', NOW) });
         expect(rows).toEqual([
-            { uid: 'u1', bills: 2, billTotal: 1250, payments: 0, edits: 1, voids: 1, logins: 0, lastActive: at(15) },
-            { uid: 'u2', bills: 1, billTotal: 500, payments: 2, edits: 0, voids: 0, logins: 0, lastActive: at(15, 11) },
-            { uid: 'u3', bills: 0, billTotal: 0, payments: 0, edits: 0, voids: 0, logins: 1, lastActive: at(12) }
+            { uid: 'u1', bills: 2, billTotal: 1250, payments: 0, edits: 1, voids: 1, lastActive: at(15) },
+            { uid: 'u2', bills: 1, billTotal: 500, payments: 2, edits: 0, voids: 0, lastActive: at(15, 11) },
+            { uid: 'u3', bills: 0, billTotal: 0, payments: 0, edits: 0, voids: 0, lastActive: at(12) }
         ]);
     });
 
@@ -89,7 +89,7 @@ describe('Admin › Users page', () => {
     });
 
     test('shows the counts and, on tap, each person\'s activity', async () => {
-        const since = jest.spyOn(AuditService, 'getLogsSince').mockResolvedValue([
+        const since = jest.spyOn(AuditService, 'getLogsBetween').mockResolvedValue([
             { userId: 'm1', action: 'RECORD_PAYMENT', timestamp: Date.now() }
         ]);
         await AdminManager.renderUsers();
@@ -98,14 +98,28 @@ describe('Admin › Users page', () => {
         expect(since).not.toHaveBeenCalled();
 
         await AdminManager.showActivity('today');
-        expect(since).toHaveBeenCalledWith(activityRange('today').from, 300);
+        const today = activityRange('today');
+        expect(since).toHaveBeenCalledWith(today.from, today.to, 300);
         const row = document.querySelector('#adminActivity tr[data-uid="m1"]');
         expect([...row.cells].slice(0, 6).map(c => c.textContent)).toEqual(['Mohan', '1', '₹1,234', '1', '0', '0']);
         expect(document.querySelector('#adminActivityRange .active').dataset.range).toBe('today');
     });
 
+    test('a later tap wins over a slower earlier one', async () => {
+        let first;
+        jest.spyOn(AuditService, 'getLogsBetween')
+            .mockImplementationOnce(() => new Promise(r => { first = r; }))
+            .mockResolvedValueOnce([]);
+        await AdminManager.renderUsers();
+        const slow = AdminManager.showActivity('today');
+        await AdminManager.showActivity('last_month');
+        first([{ userId: 'm1', action: 'RECORD_PAYMENT', timestamp: Date.now() }]);
+        await slow;
+        expect(document.getElementById('adminActivity').textContent).toContain('No activity in this range.');
+    });
+
     test('an audit read failure still shows the bills and says what is missing', async () => {
-        jest.spyOn(AuditService, 'getLogsSince').mockRejectedValue(Object.assign(new Error('x'), { code: 'unavailable' }));
+        jest.spyOn(AuditService, 'getLogsBetween').mockRejectedValue(Object.assign(new Error('x'), { code: 'unavailable' }));
         jest.spyOn(console, 'warn').mockImplementation(() => {});
         await AdminManager.renderUsers();
         await AdminManager.showActivity('week');
@@ -114,7 +128,7 @@ describe('Admin › Users page', () => {
     });
 
     test('managers never read the audit log', async () => {
-        const since = jest.spyOn(AuditService, 'getLogsSince').mockResolvedValue([]);
+        const since = jest.spyOn(AuditService, 'getLogsBetween').mockResolvedValue([]);
         await AdminManager.renderUsers();
         AppState.userRole = 'manager';
         await AdminManager.showActivity('week');
@@ -123,7 +137,7 @@ describe('Admin › Users page', () => {
 
     test('Hindi', async () => {
         setLang('hi');
-        jest.spyOn(AuditService, 'getLogsSince').mockResolvedValue([]);
+        jest.spyOn(AuditService, 'getLogsBetween').mockResolvedValue([]);
         await AdminManager.renderUsers();
         expect(document.getElementById('adminUserCounts').textContent).toBe('मालिक 1 · मैनेजर 1 · सदस्य 0 · मंज़ूरी बाकी 1 · हटाए गए 0');
     });

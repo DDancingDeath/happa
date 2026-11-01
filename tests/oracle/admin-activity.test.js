@@ -25,7 +25,7 @@ describe('ADM-2 / ADM-3: activity by person', () => {
                 }));
                 const audit = rawAudit.map(a => ({ userId: a.uid, action: a.action, timestamp: a.time }));
                 const exp = {};
-                const get = (u) => (exp[u] = exp[u] || { bills: 0, total: 0, payments: 0, edits: 0, voids: 0, logins: 0, last: null });
+                const get = (u) => (exp[u] = exp[u] || { bills: 0, total: 0, payments: 0, edits: 0, voids: 0, last: null });
                 const inRange = (t) => t >= FROM && t < TO;
                 for (const b of rawBills) {
                     if (b.voided || !inRange(b.time)) continue;
@@ -40,11 +40,10 @@ describe('ADM-2 / ADM-3: activity by person', () => {
                     if (PAYMENT.includes(a.action)) e.payments += 1;
                     if (EDIT.includes(a.action)) e.edits += 1;
                     if (a.action === 'VOID_BILL') e.voids += 1;
-                    if (a.action === 'LOGIN') e.logins += 1;
                     e.last = e.last === null ? a.time : Math.max(e.last, a.time);
                 }
                 const got = Object.fromEntries(activityByUser({ bills, audit, from: FROM, to: TO })
-                    .map(r => [r.uid, { bills: r.bills, total: r.billTotal, payments: r.payments, edits: r.edits, voids: r.voids, logins: r.logins, last: r.lastActive }]));
+                    .map(r => [r.uid, { bills: r.bills, total: r.billTotal, payments: r.payments, edits: r.edits, voids: r.voids, last: r.lastActive }]));
                 expect(got).toEqual(exp);
             }
         ), { numRuns: 200, seed: 145 });

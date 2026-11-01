@@ -12,8 +12,7 @@ import { toJsDate, parseAnyBillDate, startOfLocalDay, addLocalDays, monthRange }
 export const ACTIVITY_ACTIONS = Object.freeze({
     payments: ['RECORD_PAYMENT', 'UPDATE_PAYMENT', 'CLEAR_DUE'],
     edits: ['EDIT_BILL', 'EDIT_SALE'],
-    voids: ['VOID_BILL'],
-    logins: ['LOGIN']
+    voids: ['VOID_BILL']
 });
 
 export const ACTIVITY_RANGES = ['today', 'week', 'month', 'last_month'];
@@ -64,13 +63,13 @@ export function billCreatedMs(bill) {
 /** Who saved a bill: purchases / retail store `userId`, wholesale `createdBy`. */
 export const billAuthor = (bill) => bill?.userId || bill?.createdBy || null;
 
-const blankRow = (uid) => ({ uid, bills: 0, billTotal: 0, payments: 0, edits: 0, voids: 0, logins: 0, lastActive: null });
+const blankRow = (uid) => ({ uid, bills: 0, billTotal: 0, payments: 0, edits: 0, voids: 0, lastActive: null });
 
 /**
  * ADM-2 / ADM-3: per person in [from, to).
  * - bills / billTotal: active, non-opening bills (activityBills) this person saved in the range; total =
  *   Σ billTotal, whole rupees.
- * - payments / edits / voids / logins: their audit rows in the range by action (ACTIVITY_ACTIONS).
+ * - payments / edits / voids: their audit rows in the range by action (ACTIVITY_ACTIONS).
  * - lastActive: their latest bill or audit row in the range (ms).
  * Rows sorted by bills, then actions, then uid.
  * @param {{bills: Array<Object>, audit: Array<{userId: string, action: string, timestamp: number}>, from: number, to: number}} p
@@ -103,6 +102,6 @@ export function activityByUser({ bills, audit, from, to }) {
     });
     const out = [...rows.values()];
     out.forEach(r => { r.billTotal = Math.round(r.billTotal); });
-    const actions = (r) => r.payments + r.edits + r.voids + r.logins;
+    const actions = (r) => r.payments + r.edits + r.voids;
     return out.sort((a, b) => b.bills - a.bills || actions(b) - actions(a) || (a.uid < b.uid ? -1 : 1));
 }

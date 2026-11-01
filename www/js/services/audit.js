@@ -1,6 +1,6 @@
 // Audit Logging Service
 import { AppState } from '../utils/state.js';
-import { addAuditLog, recentAuditLogs, auditLogsSince, deleteAuditLogsBefore } from '../firebase/repos/audit-logs.js';
+import { addAuditLog, recentAuditLogs, auditLogsBetween, deleteAuditLogsBefore } from '../firebase/repos/audit-logs.js';
 
 export class AuditService {
     // Retention period in days
@@ -102,9 +102,9 @@ export class AuditService {
         }
     }
 
-    /** Entries since from (ms), newest first; throws on a failed read (the caller says so). */
-    static getLogsSince(from, limit = 300) {
-        return auditLogsSince(from, limit);
+    /** Entries in [from, to) (ms), newest first; throws on a failed read (the caller says so). */
+    static getLogsBetween(from, to, limit = 300) {
+        return auditLogsBetween(from, to, limit);
     }
 
     static async getLogsByUser(userId, limit = 50) {

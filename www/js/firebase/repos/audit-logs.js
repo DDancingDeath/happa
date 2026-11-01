@@ -37,15 +37,17 @@ export async function recentAuditLogs(q) {
 }
 
 /**
- * Entries from `from` (ms, inclusive) to now, newest first, at most `limit`
+ * Entries in [from, to) (ms), newest first, at most `limit`
  * (Admin activity report, #145; owner only by the rules).
  * @param {number} from
+ * @param {number} to
  * @param {number} limit
  * @returns {Promise<Object[]>}
  */
-export async function auditLogsSince(from, limit) {
+export async function auditLogsBetween(from, to, limit) {
     const snapshot = await auditLogs()
         .where('timestamp', '>=', from)
+        .where('timestamp', '<', to)
         .orderBy('timestamp', 'desc')
         .limit(limit)
         .get();

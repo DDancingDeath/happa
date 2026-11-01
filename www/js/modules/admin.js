@@ -213,6 +213,7 @@ const AdminManager = {
 
     /** People loaded for the Users tab (names for the activity report). */
     users: [],
+    activitySeq: 0,
 
     /** ADM-1: counts by role, pending and removed, from the list already loaded. */
     renderCounts(users) {
@@ -236,15 +237,18 @@ const AdminManager = {
         if (!host || !ACTIVITY_RANGES.includes(range)) return;
         document.querySelectorAll('#adminActivityRange [data-range]').forEach(b => b.classList.toggle('active', b.dataset.range === range));
         host.innerHTML = `<p style="text-align: center; color: #888;">${tx('ui.navigation.loading')}</p>`;
+        const seq = ++this.activitySeq;
         const { from, to } = activityRange(range);
         let audit = [];
         let auditFailed = false;
         try {
-            audit = await AuditService.getLogsSince(from, ACTIVITY_LIMIT);
+            audit = await AuditService.getLogsBetween(from, to, ACTIVITY_LIMIT);
         } catch (error) {
             console.warn('Activity: audit log not read:', error?.code || error);
             auditFailed = true;
         }
+        // A later tap (another range) wins.
+        if (seq !== this.activitySeq) return;
         const bills = [...(AppState.purchaseHistory || []), ...(AppState.retailSalesHistory || []), ...(AppState.salesHistory || [])];
         const rows = activityByUser({ bills, audit, from, to });
         const names = new Map((this.users || []).map(u => [u.id, u.name || u.email || '']));
