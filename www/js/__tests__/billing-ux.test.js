@@ -327,6 +327,21 @@ describe('archived items (#123)', () => {
         expect(document.querySelectorAll('#saleItem option[data-edit-line]')).toHaveLength(0);
     });
 
+    test('a rebuild that keeps the item keeps the typed rate; another item clears it', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
+        document.getElementById('purchaseSection').insertAdjacentHTML('beforeend', '<datalist id="rateOptions"></datalist>');
+        BillingManager.loadItemsDropdown();
+        document.getElementById('billItem').value = '1';
+        document.getElementById('billRate').value = '7.5';
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billRate').value).toBe('7.5');
+        AppState.items = [AppState.items[0], { ...AppState.items[1], archived: true }];
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('0');
+        expect(document.getElementById('billRate').value).toBe('');
+    });
+
     test('an item archived while weights are entered for it stays selected', () => {
         AppState.settings = { ...(AppState.settings || {}), showHindi: false };
         AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];

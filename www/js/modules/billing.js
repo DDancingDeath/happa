@@ -401,9 +401,11 @@ const BillingManager = {
             select.appendChild(opt);
         });
         
+        const typedRate = document.getElementById('billRate')?.value;
         this.keepSelection('billItem', kept);
         if (AppState.items.length > 0) {
             this.loadRates();
+            this.keepTypedRate('billItem', 'billRate', kept, typedRate);
         }
     },
 
@@ -438,9 +440,11 @@ const BillingManager = {
             select.appendChild(opt);
         });
         
+        const typedRate = document.getElementById('saleRate')?.value;
         this.keepSelection('saleItem', kept);
         if (AppState.items.length > 0) {
             this.loadSaleRates();
+            this.keepTypedRate('saleItem', 'saleRate', kept, typedRate);
         }
     },
 
@@ -466,6 +470,19 @@ const BillingManager = {
         opt.dataset.editLine = '1';
         opt.textContent = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
         select.appendChild(opt);
+    },
+
+    /**
+     * A rebuild that kept the same item keeps the rate typed for it.
+     * @param {string} selectId
+     * @param {string} rateId
+     * @param {{itemId?: string}} kept dataset of the option selected before the rebuild
+     * @param {string} [typedRate]
+     */
+    keepTypedRate(selectId, rateId, kept, typedRate) {
+        const rateInput = document.getElementById(rateId);
+        if (!rateInput || !typedRate || !kept?.itemId) return;
+        if (document.getElementById(selectId)?.selectedOptions?.[0]?.dataset.itemId === kept.itemId) rateInput.value = typedRate;
     },
 
     /**
