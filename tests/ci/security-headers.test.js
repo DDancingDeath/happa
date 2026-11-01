@@ -136,6 +136,9 @@ describe('security headers on every Hosting site (#89)', () => {
         const spike = appSite.headers.find((e) => e.source === '/spike/@(serial.html|serial.js)').headers.find(isPolicy).value;
         expect(spike).toBe(STRICT_POLICY.replace('serial=()', 'serial=(self)'));
         expect(base).toContain('serial=()');
+        // a later entry wins, so the spike entry must come after every '**' entry that sets the policy
+        const lastAll = appSite.headers.map((e, i) => (e.source === '**' && e.headers.some(isPolicy) ? i : -1)).reduce((x, y) => Math.max(x, y), -1);
+        expect(appSite.headers.findIndex((e) => e.source === '/spike/@(serial.html|serial.js)')).toBeGreaterThan(lastAll);
     });
 });
 
