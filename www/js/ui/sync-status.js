@@ -46,6 +46,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let waitSeq = 0;
     let el = null;
     let lastSyncAt = null;
+    const watchers = new Set();
 
     const pendingKeys = () => {
         const all = new Set(writes.keys());
@@ -53,6 +54,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         return all;
     };
     const pendingCount = () => pendingKeys().size;
+    const notifyStopped = () => watchers.forEach(fn => { try { fn({ online, pending: 0, stopped: true }); } catch (_) { /* never */ } });
 
     const element = () => {
         if (el && el.isConnected) return el;
@@ -103,6 +105,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     function render() {
         if (!started) return;
         const pending = pendingCount();
+        watchers.forEach(fn => { try { fn({ online, pending }); } catch (_) { /* a watcher never breaks the pill */ } });
         if (!online) {
             clearTimeout(pendingShowTimer);
             clearTimeout(syncedTimer);
@@ -165,6 +168,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
                 win.removeEventListener(LANG_CHANGE_EVENT, onLang);
             }
             started = false;
+            notifyStopped();
             clearTimeout(pendingShowTimer);
             clearTimeout(syncedTimer);
             pendingShowTimer = null;
@@ -213,6 +217,8 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         },
         /** Forgets listener state (listeners torn down, e.g. sign-out). */
         clearListeners() {
+            // Sign-out / listeners torn down: an open TIP Sync run is not judged.
+            notifyStopped();
             if (!listened.size) return;
             listened.clear();
             render();
@@ -220,7 +226,15 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         pendingCount,
         isOnline: () => online,
         /** When this phone last saw one of its changes reach the server (ms), null this session. */
-        lastSyncAt: () => lastSyncAt
+        lastSyncAt: () => lastSyncAt,
+        /**
+         * Calls fn({online, pending}) on every state change (TIP Sync, #161).
+         * @returns {Function} unsubscribe
+         */
+        watch(fn) {
+            watchers.add(fn);
+            return () => watchers.delete(fn);
+        }
     };
 }
 
