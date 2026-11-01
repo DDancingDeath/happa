@@ -282,3 +282,46 @@ export function settleDueUpdate(fresh, method, entry, tolerance = 0.01, confirme
     const { update } = duePaymentUpdate(fresh, parts, { ...entry, amount: due, ...parts }, tolerance);
     return { amount: due, update };
 }
+
+/**
+ * DUE-FIFO: one payment from a party spread over their open bills, oldest first
+ * (#152): each bill gets up to its due until the amount runs out, so only the
+ * last bill reached can be part-paid. Paise; anything above the total due is
+ * not allocated (`left`).
+ * @param {number[]} dues - BILL-DUE per bill, oldest first
+ * @param {number} amount
+ * @returns {{amounts: number[], allocated: number, left: number}}
+ */
+export function allocateOldestFirst(dues, amount) {
+    let rest = round2(Math.max(0, Number(amount) || 0));
+    const amounts = (dues || []).map(d => {
+        const due = round2(Math.max(0, Number(d) || 0));
+        const part = round2(Math.min(due, rest));
+        rest = round2(rest - part);
+        return part;
+    });
+    return { amounts, allocated: round2(amounts.reduce((s, a) => s + a, 0)), left: rest };
+}
+
+/**
+ * DUE-FIFO: checks a (possibly hand-edited) split of one payment: every part is
+ * a number from 0 to that bill's due (+ tolerance) and at least one is above 0.
+ * @param {number[]} dues
+ * @param {Array<number|string>} parts - per bill, same order
+ * @param {number} [tolerance=0.01]
+ * @returns {{ok: true, amounts: number[], total: number}|{ok: false, error: 'invalid'|'exceeds-due'|'empty', index?: number}}
+ */
+export function checkAllocation(dues, parts, tolerance = 0.01) {
+    const amounts = [];
+    for (let i = 0; i < dues.length; i++) {
+        const raw = parts[i];
+        const n = raw === '' || raw === null || raw === undefined ? 0 : Number(raw);
+        if (!Number.isFinite(n) || n < 0) return { ok: false, error: 'invalid', index: i };
+        const a = round2(n);
+        if (a > round2(dues[i]) + tolerance) return { ok: false, error: 'exceeds-due', index: i };
+        amounts.push(a);
+    }
+    const total = round2(amounts.reduce((s, a) => s + a, 0));
+    if (!(total > 0)) return { ok: false, error: 'empty' };
+    return { ok: true, amounts, total };
+}

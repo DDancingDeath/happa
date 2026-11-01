@@ -14,7 +14,7 @@ import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { activeBills, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2, sumMoney } from '../utils/money.js';
 import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
-import { directionFor, duePaymentUpdate, settleDueUpdate } from '../utils/due-payments.js';
+import { allocateOldestFirst, checkAllocation, directionFor, duePaymentUpdate, partyDues, settleDueUpdate } from '../utils/due-payments.js';
 import { validateDuePayment } from '../utils/calc/billing.js';
 import { CashManagementManager } from './cash-management.js';
 import { PrinterService } from '../services/printer.js';
@@ -39,6 +39,8 @@ import {
 } from '../utils/due-reminder.js';
 
 const PAYMENT_TOLERANCE = 0.01;
+/** Most bills one party payment is spread over (oldest first), as Complete all due. */
+const PARTY_PAY_MAX = 100;
 const COLLECTION_BY_TYPE = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
 
 /** Record / Mark cleared buttons disabled while a due payment is being saved (#70, #95) */
@@ -316,6 +318,7 @@ export class OutstandingManager {
                 </div>
                 <strong class="aging-party-total">${esc(formatINR(p.total))}</strong>
                 <div class="aging-party-actions">
+                    ${this.canReceiveFromParty() ? `<button type="button" class="aging-btn" data-party-pay onclick="window.app.outstanding.receiveFromParty('${attr(p.key)}')">${tt(isPayable ? 'ui.outstanding.party_pay_pay' : 'ui.outstanding.party_pay_receive')}</button>` : ''}
                     ${isPayable ? '' : `<button type="button" class="aging-btn aging-remind" onclick="window.app.outstanding.sendReminder('${attr(p.key)}')">${tt('ui.outstanding.remind')}</button>`}
                     <button type="button" class="aging-btn" onclick="window.app.outstanding.printStatement('${attr(p.key)}')">${tt('ui.outstanding.statement')}</button>
                 </div>
@@ -907,6 +910,204 @@ export class OutstandingManager {
         return { settled, total: sumMoney(settled, s => s.amount) };
     }
 
+    /** "Receive payment" from a party over their bills (#152): owner and managers, like Complete all due. */
+    static canReceiveFromParty() {
+        return AppState.userRole === 'owner' || AppState.userRole === 'manager';
+    }
+
+    /** A party's open bills of one kind, oldest first (DUE-ALL list, at most PARTY_PAY_MAX). */
+    static partyOpenBills(billType, partyKey) {
+        const list = billType === 'purchase' ? AppState.purchaseHistory
+            : billType === 'retail' ? AppState.retailSalesHistory
+                : (AppState.salesHistory || []).filter(s => s && s.source === 'sales-tab');
+        const group = partyDues(list || [], partyKey, normalizePartyName);
+        return group.bills.slice(0, PARTY_PAY_MAX);
+    }
+
+    /**
+     * One payment from (or to) a party spread over their open bills (#152): the
+     * amount fills the oldest bills first (DUE-FIFO); each bill's part can be
+     * changed by hand before saving. All bills are written in one transaction.
+     * @param {string} partyKey - normalizePartyName of the party
+     * @param {'purchase'|'retail'|'wholesale'} [billType] - default: the Outstanding list shown
+     */
+    static async receiveFromParty(partyKey, billType = AppState.currentDueFilter === 'purchase' ? 'purchase' : 'retail') {
+        if (Helpers.isBusy('due-payment')) return;
+        if (!this.canReceiveFromParty()) {
+            UIManager.showToast(t('msg.common.access_denied'), 'error');
+            return;
+        }
+        const chosen = this.partyOpenBills(billType, String(partyKey ?? ''));
+        if (!chosen.length) {
+            UIManager.showToast(t('msg.outstanding.nothing_due_party'));
+            return;
+        }
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.common.internet_required_record_payment'));
+            return;
+        }
+        const dues = chosen.map(x => x.due);
+        this.partyPay = { dues };
+        const esc = (v) => Helpers.escapeHtml(String(v ?? ''));
+        const name = String(chosen[0].bill.customerName || '').trim();
+        const rows = chosen.map((x, i) => `<tr>
+                <td>${esc(x.bill.billNumber || String(x.bill.id))}<br><small>${esc(Helpers.formatDate(billDateOf(x.bill) || x.bill.date))}</small></td>
+                <td style="text-align:right">${esc(Helpers.formatCurrency(x.due))}</td>
+                <td style="text-align:right"><input type="number" inputmode="decimal" min="0" step="0.01" id="ppPart-${i}" data-party-part
+                    style="width:90px" oninput="window.app.outstanding.partyPaySum()" aria-label="${esc(t('ui.outstanding.party_pay_part', { bill: x.bill.billNumber || '' }))}"></td></tr>`).join('');
+        const isPay = billType === 'purchase';
+        const html = `
+            <div style="text-align:left">
+                <div style="margin-bottom:8px"><strong>${esc(name)}</strong><br>${esc(t('ui.outstanding.party_pay_summary', { count: chosen.length, total: Helpers.formatCurrency(sumMoney(chosen, x => x.due)) }))}</div>
+                <label style="display:block;margin-bottom:6px">${esc(t(isPay ? 'ui.outstanding.party_pay_amount_paid' : 'ui.outstanding.party_pay_amount_received'))}
+                    <input type="number" inputmode="decimal" min="0" step="0.01" id="ppAmount" oninput="window.app.outstanding.partyPayFill()" style="width:100%"></label>
+                <div style="margin:4px 0;font-weight:600">${esc(t('ui.outstanding.party_pay_how'))}</div>
+                <label style="display:block;margin:2px 0"><input type="radio" name="partyPayMethod" value="cash"> ${esc(t('ui.wholesale.complete_all_due_cash'))}</label>
+                <label style="display:block;margin:2px 0"><input type="radio" name="partyPayMethod" value="online"> ${esc(t('ui.wholesale.complete_all_due_online'))}</label>
+                <div style="margin:8px 0 4px;font-size:13px;color:#555">${esc(t('ui.outstanding.party_pay_oldest_first'))}</div>
+                <table style="width:100%;font-size:13px;border-collapse:collapse">
+                    <thead><tr><th style="text-align:left">${esc(t('ui.outstanding.party_pay_col_bill'))}</th><th style="text-align:right">${esc(t('ui.outstanding.party_pay_col_due'))}</th><th style="text-align:right">${esc(t('ui.outstanding.party_pay_col_part'))}</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                <div id="ppSum" style="margin-top:8px;font-weight:600" role="status"></div>
+            </div>`;
+        const ok = await UIManager.showModalWithHtml(html, t(isPay ? 'ui.outstanding.party_pay_title_pay' : 'ui.outstanding.party_pay_title_receive'), true);
+        if (!ok) return;
+        const method = document.querySelector('input[name="partyPayMethod"]:checked')?.value || '';
+        const check = checkAllocation(dues, chosen.map((_, i) => document.getElementById(`ppPart-${i}`)?.value ?? ''), PAYMENT_TOLERANCE);
+        if (!check.ok) {
+            UIManager.showToast(t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'msg.common.enter_valid_payment_amount'));
+            return;
+        }
+        if (!method) {
+            UIManager.showToast(t('msg.outstanding.choose_how_due_was_settled'));
+            return;
+        }
+        const picked = chosen.map((x, i) => ({ bill: x.bill, due: x.due, amount: check.amounts[i] })).filter(x => x.amount > 0);
+        await Helpers.runExclusive('due-payment', `${RECORD_PAYMENT_BUTTONS}, [data-complete-all], [data-party-pay]`,
+            () => this._receiveFromParty(billType, name, picked, method));
+    }
+
+    /** Dialog: the amount typed fills the bills oldest first (DUE-FIFO). */
+    static partyPayFill() {
+        const dues = this.partyPay?.dues || [];
+        const { amounts, left } = allocateOldestFirst(dues, document.getElementById('ppAmount')?.value);
+        amounts.forEach((a, i) => {
+            const el = document.getElementById(`ppPart-${i}`);
+            if (el) el.value = a > 0 ? String(a) : '';
+        });
+        this.partyPaySum(left);
+    }
+
+    /** Dialog: the total of the parts (or what is wrong with them). */
+    static partyPaySum(left = 0) {
+        const el = document.getElementById('ppSum');
+        const dues = this.partyPay?.dues || [];
+        if (!el) return;
+        const check = checkAllocation(dues, dues.map((_, i) => document.getElementById(`ppPart-${i}`)?.value ?? ''), PAYMENT_TOLERANCE);
+        el.textContent = check.ok
+            ? t('ui.outstanding.party_pay_total', { total: Helpers.formatCurrency(check.total) }) + (left > 0 ? ` · ${t('ui.outstanding.party_pay_more_than_due', { amount: Helpers.formatCurrency(left) })}` : '')
+            : t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'ui.outstanding.party_pay_enter');
+    }
+
+    /** Payment entry ids kept for the same party, method and split until a definite result (#70). */
+    static partyPayEntryIds(billType, name, picked, method) {
+        const key = [billType, normalizePartyName(name), method,
+            ...picked.map(x => `${FirebaseService.documentIdOf ? FirebaseService.documentIdOf(x.bill) : String(x.bill.id)}:${x.amount}`)].join('|');
+        if (this.pendingPartyPay?.key !== key) this.pendingPartyPay = { key, ids: picked.map(() => Helpers.generateId()) };
+        return this.pendingPartyPay.ids;
+    }
+
+    static async _receiveFromParty(billType, name, picked, method) {
+        let result;
+        const entryIds = this.partyPayEntryIds(billType, name, picked, method);
+        try {
+            result = await this.receivePartyPayment(billType, picked.map(x => x.bill), picked.map(x => x.amount), method, entryIds);
+        } catch (error) {
+            console.error('Party payment failed:', error);
+            // A definite refusal forgets the ids; any other error may have reached the server: a retry reuses them
+            if (['due-changed', 'voided', 'not-found', 'permission-denied', 'invalid-argument'].includes(error?.code)) this.pendingPartyPay = null;
+            if (this.isOfflineError(error)) {
+                UIManager.showToast(t('msg.common.internet_required_record_payment'));
+            } else if (error?.code === 'due-changed') {
+                UIManager.showToast(t('msg.outstanding.party_pay_changed'));
+            } else if (error?.code === 'not-found') {
+                UIManager.showToast(t('msg.outstanding.error_transaction_not_found'));
+            } else {
+                UIManager.showToast(await this.paymentRefusedText(error));
+            }
+            this.refreshAfterPayment();
+            return;
+        }
+        this.pendingPartyPay = null;
+        const { settled, total } = result;
+        settled.forEach(s => Object.assign(s.bill, s.fields));
+        AuditService.log(AuditService.ACTIONS.UPDATE_PAYMENT, {
+            bulk: true,
+            oldestFirst: true,
+            transactionType: billType,
+            customer: name,
+            method,
+            paymentAmount: total,
+            billNumbers: settled.map(s => s.bill.billNumber || String(s.bill.id)).join(', ').slice(0, 900)
+        }).catch(e => console.warn('Audit log failed:', e));
+        UIManager.showToast(t('msg.outstanding.party_pay_done', { count: settled.length, total: Helpers.formatCurrency(total) }));
+        UIManager.hapticFeedback('light');
+        try {
+            this.refreshAfterPayment();
+        } catch (e) {
+            console.warn('Redraw after party payment failed:', e);
+        }
+    }
+
+    /**
+     * DUE-FIFO write: `amounts[i]` (paise) received on `bills[i]` in cash or online, all
+     * bills in ONE transaction (all or none). Each bill gets its own payments[] entry at the
+     * same time `at` (now; the rules allow ±10 min, #184) and its due goes down by its part,
+     * as one "Record payment" would write it; the due is re-read on the server and a part
+     * now above it (paid meanwhile) aborts with code 'due-changed'. No cash-session legs:
+     * the drawer counts the bill entries (due-payments.js dueEvents), as for Complete all due.
+     * @param {'purchase'|'retail'|'wholesale'} billType
+     * @param {Object[]} bills
+     * @param {number[]} amounts - > 0, same order
+     * @param {'cash'|'online'} method
+     * @param {string[]} [entryIds] - reused when the same payment is retried (#70)
+     * @returns {Promise<{settled: Array<{bill: Object, amount: number, fields: Object}>, total: number}>}
+     */
+    static async receivePartyPayment(billType, bills, amounts, method, entryIds = null) {
+        const collKey = COLLECTION_BY_TYPE[billType] || 'wholesaleSales';
+        const at = Date.now();
+        const recordedBy = AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown');
+        const recordedById = AppState.currentUser ? AppState.currentUser.uid : 'unknown';
+        const ids = bills.map((_, i) => entryIds?.[i] || Helpers.generateId());
+        const docIds = bills.map(b => (FirebaseService.documentIdOf ? FirebaseService.documentIdOf(b) : String(b.id)));
+        const result = await updateBillsInTransaction(collKey, docIds, (freshList) => {
+            const updates = [];
+            const settled = [];
+            freshList.forEach((fresh, i) => {
+                if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
+                const mine = (Array.isArray(fresh.payments) ? fresh.payments : []).find(p => p && p.id === ids[i]);
+                if (mine) {
+                    updates.push(null);
+                    settled.push({ index: i, amount: Number(mine.amount) || 0, fields: { ...fresh } });
+                    return;
+                }
+                const amount = round2(amounts[i]);
+                const parts = method === 'online' ? { cash: 0, online: amount } : { cash: amount, online: 0 };
+                const entry = { id: ids[i], at, amount, ...parts, date: Helpers.getCurrentDateTime(), recordedBy, recordedById, bulk: true };
+                const out = duePaymentUpdate(fresh, parts, entry, PAYMENT_TOLERANCE);
+                if (!out.ok || fresh.cleared) throw Object.assign(new Error('A due changed'), { code: 'due-changed' });
+                const update = out.update;
+                update.openDue = FirebaseService.billHasOpenDue(collKey, { ...fresh, ...update });
+                update.clientVersion = FirebaseService.CLIENT_VERSION;
+                updates.push(update);
+                settled.push({ index: i, amount, fields: update });
+            });
+            return { bills: updates, result: settled };
+        });
+        const settled = result.map(s => ({ bill: bills[s.index], amount: s.amount, fields: s.fields }));
+        return { settled, total: sumMoney(settled, s => s.amount) };
+    }
     /**
      * Write off the remaining due in one transaction: both due fields to 0,
      * payment.writtenOff raised by the amount, and a payments[] entry
