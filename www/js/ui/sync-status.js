@@ -7,23 +7,64 @@
  * @module ui/sync-status
  */
 
-import { t, tn, LANG_CHANGE_EVENT } from '../i18n/index.js';
+import { t, tn, getLang, LANG_CHANGE_EVENT } from '../i18n/index.js';
+import { formatDayTime, formatTimeOfDay, toLocalISODate } from '../utils/dates.js';
 
 /** An online write must stay unacknowledged this long before it is shown as waiting. */
 export const PENDING_SHOW_DELAY_MS = 1500;
 /** How long "Synced" stays on screen. */
 export const SYNCED_SHOW_MS = 2500;
+/** localStorage key: when this phone last got data from the server (ms). */
+export const SERVER_DATA_AT_KEY = 'happa.serverDataAt';
+/** Rows remembered as "Saved" this session (oldest dropped first). */
+const SYNCED_IDS_MAX = 500;
+const SERVER_DATA_SAVE_MS = 60 * 1000;
+
+/**
+ * "as of" time of cached data: the time of day, with the day when it is not today.
+ * @param {number} at - ms
+ * @param {number} [now]
+ * @returns {string}
+ */
+export function asOfText(at, now = Date.now()) {
+    if (!Number.isFinite(at) || at <= 0) return '';
+    const lang = getLang();
+    return toLocalISODate(new Date(at)) === toLocalISODate(new Date(now))
+        ? formatTimeOfDay(at, { lang })
+        : formatDayTime(at, { lang, now: new Date(now) });
+}
 
 /**
  * Text of the pill for a state, or '' when nothing is shown.
- * @param {{online: boolean, pending: number, synced?: boolean}} state
+ * @param {{online: boolean, pending: number, synced?: boolean, asOf?: string}} state
+ *   asOf: when the data on screen last came from the server (offline only)
  * @returns {string}
  */
-export function syncStatusText({ online, pending, synced = false }) {
+export function syncStatusText({ online, pending, synced = false, asOf = '' }) {
     const waiting = pending > 0 ? tn('ui.sync.waiting', pending) : '';
-    if (!online) return waiting ? `${t('ui.sync.offline')} · ${waiting}` : t('ui.sync.offline');
+    if (!online) {
+        const offline = asOf ? t('ui.sync.offline_as_of', { time: asOf }) : t('ui.sync.offline');
+        return waiting ? `${offline} · ${waiting}` : offline;
+    }
     if (waiting) return waiting;
     return synced ? t('ui.sync.synced') : '';
+}
+
+const SYNC_CHIP_KEYS = Object.freeze({ pending: 'ui.sync.row_pending', synced: 'ui.sync.row_saved' });
+
+/**
+ * Per-row sync chip (#70): "Waiting to sync" for a document this phone has not got
+ * onto the server yet, "Saved" once it did (this session). Kept up to date by fillSyncChips.
+ * @param {string} id - Firestore document id
+ * @param {?('pending'|'synced')} state
+ * @returns {string} HTML (an empty, hidden span when there is nothing to say)
+ */
+export function syncChipHtml(id, state = null) {
+    if (id === undefined || id === null || id === '') return '';
+    const safeId = String(id).replace(/[^A-Za-z0-9_-]/g, '');
+    const key = SYNC_CHIP_KEYS[state];
+    const text = key ? t(key).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`) : '';
+    return `<span class="sync-chip" data-sync-id="${safeId}" data-state="${key ? state : ''}"${key ? '' : ' hidden'}>${text}</span>`;
 }
 
 /**
@@ -32,8 +73,9 @@ export function syncStatusText({ online, pending, synced = false }) {
  * @param {Document} [deps.doc]
  * @param {Function} [deps.pendingWrites] - Returns a function that resolves once nothing is
  *   left to send, or null when that can't be asked (FirebaseService.pendingWritesWaiter)
+ * @param {Storage} [deps.storage] - keeps the last server-data time across restarts
  */
-export function createSyncStatus({ win = null, doc = null, pendingWrites: initialPendingWrites = () => null } = {}) {
+export function createSyncStatus({ win = null, doc = null, pendingWrites: initialPendingWrites = () => null, storage = null } = {}) {
     let pendingWrites = initialPendingWrites;
     const writes = new Map();
     const listened = new Map();
@@ -47,6 +89,33 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let el = null;
     let lastSyncAt = null;
     const watchers = new Set();
+    const syncedIds = new Set();
+    let serverDataAt = Number(storage?.getItem?.(SERVER_DATA_AT_KEY)) || null;
+    let serverDataSavedAt = 0;
+    // Listeners heard from the server since the phone came online: live until it goes offline.
+    let serverSinceOnline = false;
+    const saveServerDataAt = (at) => {
+        serverDataSavedAt = at;
+        try { storage?.setItem?.(SERVER_DATA_AT_KEY, String(at)); } catch (_) { /* storage full: the time is only shown */ }
+    };
+
+    const idOf = (path) => String(path).split('/').pop();
+    // Only an acknowledged write proves a row reached the server: a listener's pending
+    // flag also clears when the server refuses a write (the SDK reverts the document).
+    const markSynced = (path) => {
+        const id = idOf(path);
+        syncedIds.delete(id);
+        syncedIds.add(id);
+        if (syncedIds.size > SYNCED_IDS_MAX) syncedIds.delete(syncedIds.values().next().value);
+    };
+    const forgetSynced = (path) => syncedIds.delete(idOf(path));
+    /** id → 'pending' | 'synced' for every row with something to say. */
+    const rowStates = () => {
+        const states = new Map();
+        syncedIds.forEach(id => states.set(id, 'synced'));
+        pendingKeys().forEach(p => states.set(idOf(p), 'pending'));
+        return states;
+    };
 
     const pendingKeys = () => {
         const all = new Set(writes.keys());
@@ -112,7 +181,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             pendingShowTimer = null;
             synced = false;
             shown = true;
-            paint(syncStatusText({ online, pending }), 'offline');
+            paint(syncStatusText({ online, pending, asOf: serverDataAt ? asOfText(serverDataAt) : '' }), 'offline');
             return;
         }
         if (pending > 0) {
@@ -145,8 +214,18 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         paint('', '');
     }
 
-    const onOnline = () => { online = true; render(); };
-    const onOffline = () => { online = false; ++waitSeq; render(); };
+    const onOnline = () => { online = true; serverSinceOnline = false; render(); };
+    const onOffline = () => {
+        online = false;
+        ++waitSeq;
+        // The figures were current until now, not only until the last change arrived
+        if (serverSinceOnline) {
+            serverDataAt = Date.now();
+            saveServerDataAt(serverDataAt);
+            serverSinceOnline = false;
+        }
+        render();
+    };
     const onLang = () => render();
 
     return {
@@ -174,6 +253,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             pendingShowTimer = null;
             writes.clear();
             listened.clear();
+            syncedIds.clear();
             shown = false;
             synced = false;
             paint('', '');
@@ -187,12 +267,13 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
             const key = String(path);
             const token = {};
             writes.set(key, token);
+            forgetSynced(key);
             render();
             const done = () => {
                 if (writes.get(key) === token) writes.delete(key);
                 render();
             };
-            Promise.resolve(promise).then(() => { lastSyncAt = Date.now(); done(); }, done);
+            Promise.resolve(promise).then(() => { lastSyncAt = Date.now(); markSynced(key); done(); }, done);
         },
         /**
          * Notes the documents of a listener snapshot that are not yet on the server.
@@ -214,6 +295,50 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
                 else listened.delete(listenerId);
             }
             render();
+        },
+        /**
+         * A listener got data from the server: the time the offline pill shows as "as of".
+         * @param {number} [at]
+         */
+        noteServerData(at = Date.now()) {
+            serverDataAt = at;
+            if (online) serverSinceOnline = true;
+            if (!storage || at - serverDataSavedAt < SERVER_DATA_SAVE_MS) return;
+            saveServerDataAt(at);
+        },
+        /**
+         * Sync state of one document on this phone.
+         * @param {string} id
+         * @returns {'pending'|'synced'|null}
+         */
+        syncStateOf(id) {
+            if (id === undefined || id === null || id === '') return null;
+            return rowStates().get(String(id)) || null;
+        },
+        /**
+         * Fills the row chips (syncChipHtml) under root with their documents' state.
+         * @param {ParentNode} [root]
+         */
+        fillSyncChips(root = doc) {
+            const chips = root?.querySelectorAll?.('.sync-chip[data-sync-id]');
+            if (!chips || !chips.length) return;
+            const states = rowStates();
+            chips.forEach(chip => {
+                const state = states.get(chip.dataset.syncId) || '';
+                const text = state ? t(SYNC_CHIP_KEYS[state]) : '';
+                if (chip.dataset.state === state && chip.textContent === text) return;
+                chip.hidden = !state;
+                chip.dataset.state = state;
+                chip.textContent = text;
+            });
+        },
+        /**
+         * Row chip with this document's state now (syncChipHtml).
+         * @param {string} id
+         * @returns {string} HTML
+         */
+        chipHtml(id) {
+            return syncChipHtml(id, this.syncStateOf(id));
         },
         /** Forgets listener state (listeners torn down, e.g. sign-out). */
         clearListeners() {
@@ -240,5 +365,9 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
 
 export const SyncStatus = createSyncStatus({
     win: typeof window !== 'undefined' ? window : null,
-    doc: typeof document !== 'undefined' ? document : null
+    doc: typeof document !== 'undefined' ? document : null,
+    storage: typeof localStorage !== 'undefined' ? localStorage : null
 });
+
+// Row chips follow the pill's state (one watcher for every list).
+SyncStatus.watch(() => SyncStatus.fillSyncChips());
