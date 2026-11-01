@@ -40,6 +40,22 @@ describe('names not in the table are spelled out', () => {
         expect(suggestEnglishName('बिनौला खली')).toBe('Binaula Khali');
     });
 
+    test('numbers, units and punctuation stay as typed; trade names of two words; no prototype keys', () => {
+        expect(suggestHindiName('Sugar 50kg')).toBe('चीनी 50kg');
+        expect(suggestHindiName('Rice 1121')).toBe('चावल 1121');
+        expect(suggestHindiName('A1 Rice')).toBe('A1 चावल');
+        expect(suggestHindiName('Moong-Dal')).toBe('मूंग-दाल');
+        expect(suggestHindiName('Black Gram')).toBe('उड़द');
+        expect(suggestHindiName('Green gram dal')).toBe('मूंग दाल');
+        expect(suggestHindiName('Red Gram')).toBe('अरहर');
+        expect(suggestHindiName('constructor')).not.toMatch(/function|native/);
+        expect(suggestHindiName('Dalia')).toBe('दलिया');
+        expect(suggestEnglishName('चावल 1121')).toBe('Rice 1121');
+        expect(suggestEnglishName('गेहूं १')).toBe('Wheat 1');
+        expect(suggestEnglishName('चना-दाल')).toBe('Chana-Dal');
+        expect(suggestHindiName('Gehu 50 kg')).toBe('गेहूं 50 kg');
+    });
+
     test('a half-known Hindi name is spelled out whole, never half translated', () => {
         expect(suggestEnglishName('चना बिनौला')).toBe('Chana Binaula');
     });

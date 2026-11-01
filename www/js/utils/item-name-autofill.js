@@ -90,6 +90,18 @@ const ANUSVARA = 'ं';
 const DEVANAGARI = /[\u0900-\u097F]/;
 
 const TO_ENGLISH_BY_KEY = new Map(Object.entries(TO_ENGLISH).map(([k, v]) => [hindiKey(k), v]));
+const TO_HINDI_BY_KEY = new Map(Object.entries(TO_HINDI));
+
+// Two-word trade names whose words alone would name another commodity ("black gram" is urad, not chana)
+const PHRASES_TO_HINDI = new Map([
+    ['black gram', 'उड़द'], ['green gram', 'मूंग'], ['red gram', 'अरहर'], ['horse gram', 'कुलथी'], ['bengal gram', 'चना'],
+    ['pigeon pea', 'अरहर'], ['lady finger', 'भिंडी'], ['bottle gourd', 'लौकी'], ['bitter gourd', 'करेला']
+]);
+
+const DEVANAGARI_DIGITS = /[\u0966-\u096F]/g;
+
+// Units and codes kept as typed (the Hindi screens also write "kg")
+const KEEP_AS_TYPED = new Set(['kg', 'kgs', 'g', 'gm', 'gms', 'ml', 'l', 'ltr', 'qtl', 'pc', 'pcs', 'no']);
 
 /** Hindi spelling variants that mean the same word (chandrabindu, nukta, NFC). */
 function hindiKey(s) {
@@ -132,6 +144,8 @@ export function latinToDevanagari(word) {
         const last = i === tokens.length - 1;
         if (tok.type === 'V') {
             if (prev?.type === 'C') out += last && tok.latin in WORD_END_SIGN ? WORD_END_SIGN[tok.latin] : tok.sign;
+            // a word ending in -ia / -ea / -ua: दलिया, बथुआ
+            else if (last && prev && tok.latin === 'a') out += ['i', 'e', 'ee', 'ii'].includes(prev.latin) ? 'या' : 'आ';
             else out += tok.letter;
             return;
         }
@@ -195,32 +209,60 @@ export function devanagariToLatin(word) {
 const capitalize = (w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w);
 
 /**
- * Suggested Hindi name for an English (or romanised) item name, word by word.
+ * Suggested Hindi name for an English (or romanised) item name, word by word:
+ * letter runs are translated or spelled in Devanagari; numbers, units glued to
+ * them, punctuation and spaces stay as typed ("Sugar 50kg" → "चीनी 50kg").
  * @param {string} english
  * @returns {string} '' when there is nothing to suggest
  */
 export function suggestHindiName(english) {
     const text = String(english || '').trim();
-    if (!text || DEVANAGARI.test(text)) return '';
-    return text.split(/\s+/).map(w => {
-        const key = w.toLowerCase().replace(/[^a-z]/g, '');
-        if (!key) return w;
-        return TO_HINDI[key] || latinToDevanagari(key);
-    }).filter(Boolean).join(' ');
+    if (!text || DEVANAGARI.test(text) || !/[A-Za-z]/.test(text)) return '';
+    const parts = text.split(/([A-Za-z]+)/).filter(p => p !== '');
+    const isWord = (p) => /^[A-Za-z]+$/.test(p);
+    let out = '';
+    for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (!isWord(part)) {
+            out += part;
+            continue;
+        }
+        // A letter run glued to digits ("50kg", "No1") is a code or a unit: kept as typed
+        if (KEEP_AS_TYPED.has(part.toLowerCase()) || /\d$/.test(parts[i - 1] || '') || /^\d/.test(parts[i + 1] || '')) {
+            out += part;
+            continue;
+        }
+        const key = part.toLowerCase();
+        const phrase = /^\s+$/.test(parts[i + 1] || '') && isWord(parts[i + 2] || '') ? `${key} ${parts[i + 2].toLowerCase()}` : null;
+        if (phrase && PHRASES_TO_HINDI.has(phrase)) {
+            out += PHRASES_TO_HINDI.get(phrase);
+            i += 2;
+            continue;
+        }
+        out += TO_HINDI_BY_KEY.get(key) || latinToDevanagari(key);
+    }
+    return out.replace(/\s+/g, ' ').trim();
 }
 
 /**
- * Suggested English name for a Hindi item name, word by word.
+ * Suggested English name for a Hindi item name: Devanagari words translated when
+ * every one is known, else all spelled out (never half translated); numbers (also
+ * Devanagari digits), punctuation and Latin words stay as typed.
  * @param {string} hindi
  * @returns {string} '' when there is nothing to suggest
  */
 export function suggestEnglishName(hindi) {
-    const text = String(hindi || '').trim();
+    const text = String(hindi || '').trim().replace(DEVANAGARI_DIGITS, d => String(d.charCodeAt(0) - 0x0966));
     if (!text || !DEVANAGARI.test(text)) return '';
-    const words = text.split(/\s+/).map(hindiKey);
-    // All words known: the usual names; otherwise spell every word out (no half-translated names)
-    if (words.every(w => TO_ENGLISH_BY_KEY.has(w))) return words.map(w => TO_ENGLISH_BY_KEY.get(w)).join(' ');
-    return words.map(w => capitalize(devanagariToLatin(w))).filter(Boolean).join(' ');
+    const parts = text.split(/([\u0900-\u097F]+)/).filter(p => p !== '');
+    const isWord = (p) => DEVANAGARI.test(p);
+    const words = parts.filter(isWord).map(hindiKey);
+    const known = words.every(w => TO_ENGLISH_BY_KEY.has(w));
+    return parts.map(p => {
+        if (!isWord(p)) return p;
+        const key = hindiKey(p);
+        return known ? TO_ENGLISH_BY_KEY.get(key) : capitalize(devanagariToLatin(key));
+    }).join('').replace(/\s+/g, ' ').trim();
 }
 
 /**
