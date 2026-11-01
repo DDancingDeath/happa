@@ -8625,6 +8625,43 @@ body.dark-mode .notif-panel-actions {
   .bill-col-summary > div:has(> img[id$="DebugPreview"][style*="none"]) {
     margin-top: 0 !important;
   }
+
+  /* Banners above the bill push the column below the fold (#104). The column
+     scrolls with the page, as tall as the bill beside it: its totals card sticks
+     to the top and its Save/Print row to the bottom of the screen, and the fields
+     between them (notes, date) scroll past in the gap, never hidden for good. */
+  .bill-col-summary {
+    position: static;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* The bill-check banner would cover the stuck totals card */
+  .bill-check-banner {
+    position: static;
+  }
+
+  .bill-col-summary > .bill-totals:first-child {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .bill-col-summary > div[style*="display: flex"]:last-child {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: auto !important;
+    padding: 8px 0;
+    background: var(--light-bg);
+  }
+
+  body.dark-mode .bill-col-summary > div[style*="display: flex"]:last-child {
+    background: var(--card-bg);
+  }
 }
 
 @media (min-width: 1440px) {
