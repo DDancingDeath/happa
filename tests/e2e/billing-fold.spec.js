@@ -124,18 +124,21 @@ for (const size of SIZES) {
     });
 }
 
-test('a long bill on a laptop: the total and Save stay on screen while scrolling its lines', async ({ page, problems }, testInfo) => {
+test('a long bill on a laptop: the totals and Save stay on screen all the way down', async ({ page, problems }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'laptop only');
     await page.setViewportSize({ width: 1280, height: 720 });
     await login(page, 'owner');
     await showTab(page, 'billing');
     const m = MODES.purchase;
-    for (let i = 0; i < 14; i++) await addLine(page, 'purchase', 30 + i);
-    await expect(page.locator('#billTable tbody tr')).toHaveCount(14);
-    await page.$eval('#billTable tbody tr:last-child', el => el.scrollIntoView({ block: 'end', behavior: 'instant' }));
-    for (const sel of ['#amountPayable', ...m.actions]) {
-        const p = await place(page, sel);
-        expect(p.top >= 0 && p.bottom <= p.vh && p.onTop, `${sel} on screen at the last line (${JSON.stringify(p)})`).toBe(true);
+    for (let i = 0; i < 24; i++) await addLine(page, 'purchase', 30 + i);
+    await expect(page.locator('#billTable tbody tr')).toHaveCount(24);
+    const end = await page.evaluate(() => { const tab = document.querySelector('.tab.active'); return tab.scrollHeight - tab.clientHeight; });
+    for (const at of [0.25, 0.5, 0.75, 1]) {
+        await page.evaluate((y) => document.querySelector('.tab.active').scrollTo({ top: y, behavior: 'instant' }), Math.round(end * at));
+        for (const sel of ['#billTotal', '#amountPayable', ...m.actions]) {
+            const p = await place(page, sel);
+            expect(p.top >= 0 && p.bottom <= p.vh && p.onTop, `${sel} on screen at ${at * 100}% (${JSON.stringify(p)})`).toBe(true);
+        }
     }
     expect(problems.pageErrors).toEqual([]);
 });

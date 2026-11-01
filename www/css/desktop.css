@@ -507,8 +507,15 @@
   .bill-col-summary {
     position: static;
     align-self: stretch;
+    display: flex;
+    flex-direction: column;
     max-height: none;
     overflow: visible;
+  }
+
+  /* The bill-check banner would cover the stuck totals card */
+  .bill-check-banner {
+    position: static;
   }
 
   .bill-col-summary > .bill-totals:first-child {
@@ -521,6 +528,7 @@
     position: sticky;
     bottom: 0;
     z-index: 2;
+    margin-top: auto !important;
     padding: 8px 0;
     background: var(--light-bg);
   }
