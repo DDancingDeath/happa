@@ -1501,6 +1501,35 @@ function defineSuite(prefix) {
         dueAmount: 100 - cash, openDue: 100 - cash > 0, clientVersion: 3, ...extra
     });
 
+    t('payment edits (#229): a manager settles in full bills saved with createdAt, Roles & access set (1 bill, many, Mark as cleared)', async () => {
+        await setRoleAccess({ staff: { editDays: 2 }, manager: { editDays: 5 } });
+        const settle = (id) => ({
+            payment: { online: 0, cash: 100, due: 0, total: 100 },
+            payments: [...dueBill.payments, { id: `s-${id}`, amount: 100, cash: 100, online: 0, at: PAID_AT, settlesDue: true }],
+            dueAmount: 0, openDue: false, paidAt: PAID_AT, clientVersion: 4
+        });
+        const cleared = { cleared: true, clearedAt: 'x', clearedBy: 'manager1', clearedByName: 'M' };
+        for (const coll of bills) {
+            const saved = { ...dueBill, userId: 'staff1', createdAt: savedAgo(HOUR) };
+            const db = as('manager1');
+            await seedBill(coll, 'one', saved);
+            await assertSucceeds(db.collection(coll).doc('one').update(settle('one')));
+            await seedBill(coll, 'mark', saved);
+            await assertSucceeds(db.collection(coll).doc('mark').update({ ...settle('mark'), ...cleared }));
+            const batch = db.batch();
+            for (let i = 0; i < 8; i++) {
+                await seedBill(coll, `many${i}`, saved);
+                batch.update(db.collection(coll).doc(`many${i}`), { ...settle(`many${i}`), ...cleared });
+            }
+            await assertSucceeds(batch.commit());
+            // The same routing still refuses a manager's payment that moves no due
+            await seedBill(coll, 'bad', saved);
+            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), payment: { online: 0, cash: 100, due: 100, total: 100 } }));
+            // and a full edit that also touches payments
+            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), total: 90 }));
+        }
+    });
+
     t('payment edits: a member records a payment and a write-off on another user\'s bill', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'b', dueBill);
