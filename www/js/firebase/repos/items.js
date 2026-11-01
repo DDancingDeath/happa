@@ -10,8 +10,8 @@ import { historyIdBound } from '../../utils/rate-history.js';
 import { AppState } from '../../utils/state.js';
 import { changedElsewhereError, isOffline, needsInternetError } from '../../utils/write-conflict.js';
 
-/** Changed only by setItemArchived (#123): an item save never writes them. */
-const ITEM_ARCHIVE_FIELDS = ['archived', 'archivedAt', 'archivedBy', 'archivedByUserId', 'unarchivedAt', 'unarchivedBy', 'unarchivedByUserId'];
+/** Changed only by setItemArchived (#123) and setItemLowStock (#146): an item save never writes them. */
+const ITEM_OWN_FIELDS = ['archived', 'archivedAt', 'archivedBy', 'archivedByUserId', 'unarchivedAt', 'unarchivedBy', 'unarchivedByUserId', 'lowStockKg'];
 
 /** FirebaseService methods for the item list and its rate history; spread into FirebaseService (`this` is FirebaseService). */
 export const itemMethods = {
@@ -54,9 +54,9 @@ export const itemMethods = {
      */
     async saveItem(item, { expectedRev } = {}) {
         if (item.id) {
-            // merge, and never the archive fields: a stale phone's save can't drop or flip them (#123)
+            // merge, and never the archive / low-stock fields: a stale phone's save can't drop or flip them (#123, #146)
             const data = { ...item };
-            ITEM_ARCHIVE_FIELDS.forEach(f => delete data[f]);
+            ITEM_OWN_FIELDS.forEach(f => delete data[f]);
             delete data.rev;
             const ref = getDb().collection(col('items')).doc(item.id);
             if (expectedRev === undefined) {

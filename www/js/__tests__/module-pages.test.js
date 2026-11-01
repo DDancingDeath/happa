@@ -203,10 +203,10 @@ describe('Rates page (items list)', () => {
         window.firebase = fake.firebase;
         global.firebase = fake.firebase;
         try {
-            fake.seed('items', [{ id: 'x', name: 'X', rates: [1], archived: true, archivedBy: 'Owner' }]);
+            fake.seed('items', [{ id: 'x', name: 'X', rates: [1], archived: true, archivedBy: 'Owner', lowStockKg: 50 }]);
             // A stale phone that still sees the item as not archived saves a rate
-            await FirebaseService.saveItem({ id: 'x', name: 'X', rates: [2], archived: false, unarchivedBy: 'Old' });
-            expect(fake.raw('items').get('x')).toMatchObject({ rates: [2], archived: true, archivedBy: 'Owner' });
+            await FirebaseService.saveItem({ id: 'x', name: 'X', rates: [2], archived: false, unarchivedBy: 'Old', lowStockKg: 10 });
+            expect(fake.raw('items').get('x')).toMatchObject({ rates: [2], archived: true, archivedBy: 'Owner', lowStockKg: 50 });
             expect(fake.raw('items').get('x').unarchivedBy).toBeUndefined();
             await FirebaseService.setItemArchived('x', false);
             expect(fake.raw('items').get('x')).toMatchObject({ rates: [2], archived: false });
