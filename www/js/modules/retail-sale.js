@@ -21,7 +21,7 @@ import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../uti
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
-import { billDateWho, lockBillDate, pickedBillDay, resetBillDate, showBillSavedToast } from '../ui/bill-date-input.js';
+import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, resetBillDate } from '../ui/bill-date-input.js';
 
 /** Name to show for a catalogue item or bill line in the chosen item-name language. */
 const lineLabel = (line) => lineItemIdentity(line && 'itemId' in line ? line : { itemId: line?.id, name: line?.name }, AppState.items, AppState.settings.showHindi).label;
@@ -500,6 +500,8 @@ const RetailSaleManager = {
             UIManager.showToast(t(dayProblem.key, dayProblem.params), 'warning');
             return;
         }
+        // Cash on a back-dated bill: owner only (that day's drawer may be closed)
+        if (!pendingBill?.timestamp && !(await allowBackdatedCash(day, saleCash))) return;
         
         // Payment, name-for-Due, stock (warns only for retail, #33) and the other checks (#37)
         this.updateSalePaymentTotal();
@@ -583,7 +585,7 @@ const RetailSaleManager = {
             UIManager.hideLoading();
             if (FirebaseService.keptServerPayment(sale)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
             else if (FirebaseService.savedOnPhoneOnly(sale)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
-            else showBillSavedToast(t('msg.retail.sale_completed_successfully'), sale, sale.cashPayment);
+            else UIManager.showToast(t('msg.retail.sale_completed_successfully'));
             UIManager.hapticFeedback('success');
             
             return sale;

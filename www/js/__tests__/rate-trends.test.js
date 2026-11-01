@@ -1,7 +1,7 @@
 import {
     addBillToAcc, aggregateBills, billMonth, billsToYearDocs, createCatalogueResolver, estimateBackfillReads, explainOutlook,
     finalizeStats, istMonthKey, istWeekStart, lineKg, monthBuckets, monthSeries, newCursor, parseCursor, planRollForward,
-    rollForwardFromMonth, rollForwardWindow, runBackfillReads, seasonalOutlook, seasonalOutlookCombined, combinedChange,
+    rollForwardFromMonth, rollForwardWeekGap, rollForwardWindow, runBackfillReads, seasonalOutlook, seasonalOutlookCombined, combinedChange,
     trendRows, weekBuckets, yearOverlay, addMonths, addWeeks, istMonthStartMs, istDayStartMs, itemsByUsage
 } from '../utils/rate-trends.js';
 
@@ -126,6 +126,18 @@ describe('roll-forward', () => {
         expect(rollForwardWindow(istMonthStartMs('2026-09'), OCT15).fromWeek).toBe('2026-09-07');
         // In January the window reaches back into last year's doc
         expect(rollForwardWindow(0, Date.UTC(2026, 0, 10, 6)).fromYear).toBe('2025');
+    });
+
+    test('#147: the first week of the window left out by the loaded bills is reported, so it can be loaded first', () => {
+        const sep = istMonthStartMs('2026-09');
+        expect(rollForwardWeekGap(rollForwardWindow(sep, OCT15), sep)).toBe(istDayStartMs('2026-08-31'));
+        const loaded = istDayStartMs('2026-08-31');
+        expect(rollForwardWindow(loaded, OCT15)).toEqual({ fromMonth: '2026-09', fromWeek: '2026-08-31', fromYear: '2026' });
+        expect(rollForwardWeekGap(rollForwardWindow(loaded, OCT15), loaded)).toBeNull();
+        expect(rollForwardWeekGap(rollForwardWindow(0, OCT15), 0)).toBeNull();
+        // 1 Jun 2026 is a Monday: nothing left out
+        const jun = istMonthStartMs('2026-06');
+        expect(rollForwardWeekGap(rollForwardWindow(jun, Date.UTC(2026, 6, 10)), jun)).toBeNull();
     });
 
     test('replaces only buckets in the window, keeps older ones, drops emptied ones; writes changed docs only', () => {

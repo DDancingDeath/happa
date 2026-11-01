@@ -52,7 +52,9 @@ setting is missing or invalid.
   The same days limit how far back a new bill may be dated on its form (#147; `utils/bill-date.js`,
   rules `billTimeOk`: `timestamp` at most `editDays` + 1 day before `enteredAt` and never after it;
   `enteredAt` (the phone's clock) is not bounded; bills from apps without `enteredAt` are not limited; the owner back to
-  the 1st of last month, in the app only).
+  the 1st of last month, in the app only). A bill dated before today (IST) takes no cash from anyone but the
+  owner (rules `noBackdatedCash`, judged on `timestamp` alone; a bill without a numeric `timestamp` counts as dated back):
+  online or due only.
   The same days limit how far back a new expense may be dated (#118): 2 = today, yesterday
   and the day before; 0 = today only (`utils/expense-entry.js`; the rules check it with 3
   more days for a phone that saved offline, `expenseDayInWindow`, on every non-owner expense
@@ -532,7 +534,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 
 | Collection | Create | Update | Delete |
 |---|---|---|---|
-| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date) | expenses: own for 24 h (some fields), managers any; withdrawals: managers | expenses: own for 24 h, managers; withdrawals: managers |
+| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date); withdrawals only by roles with **Money** (`finance`) on, the only page that records them (#64; managers by default, members not; +1 read of `settings/app`) | expenses: own for 24 h (some fields), managers any; withdrawals: managers with **Money** on (#64) | expenses: own for 24 h, managers; withdrawals: managers with **Money** on (#64) |
 | `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
 | `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
@@ -542,6 +544,8 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `stockCheckpoints` | `current`: managers (anyone approved: the stale mark); `legacyScan`: managers; no other ids, owner included | same | managers |
 | `settings/app` | owner | owner; managers only the Aadhat fields with `shopSettings` | owner |
 | other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
+| `users/{uid}/preferences` (never used by the app) | nobody (#64) | nobody | nobody |
+| bills (`purchases`, `retailSales`, `wholesaleSales`) | approved user, own `userId`, and `createdAt` = the server time (#115: every happa version sends it; the edit window counts from it) | see "Bill edit window" | owner |
 
 Legacy timestamp backfill (`expenses`, `withdrawals`, `stockAdjustments`, `personalExpenses`, and bills
 through payment bookkeeping; anyone

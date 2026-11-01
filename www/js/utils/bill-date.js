@@ -27,9 +27,12 @@ import { addLocalDays, monthStart, parseLocalDate, toLocalISODate } from './date
  */
 export function billDayRange({ role, roleAccess, now = new Date() } = {}) {
     const max = toLocalISODate(now);
-    if (role === 'owner') return { max, min: toLocalISODate(monthStart(now, -1)), days: null };
+    const liveFrom = toLocalISODate(monthStart(now, -1));
+    if (role === 'owner') return { max, min: liveFrom, days: null };
     const days = accessFor(role, roleAccess).editDays;
-    return { max, min: toLocalISODate(addLocalDays(now, -days)), days };
+    // Never before the oldest day the app keeps live, whatever the role's window
+    const byRole = toLocalISODate(addLocalDays(now, -days));
+    return { max, min: byRole > liveFrom ? byRole : liveFrom, days };
 }
 
 /**
@@ -43,7 +46,7 @@ export function validateBillDay(day, who = {}) {
     const range = billDayRange(who);
     if (day > range.max) return { key: 'msg.billing.date_in_future' };
     if (day < range.min) {
-        if (range.days === null) return { key: 'msg.billing.date_before_last_month' };
+        if (range.days === null || range.min > toLocalISODate(addLocalDays(who.now || new Date(), -range.days))) return { key: 'msg.billing.date_before_last_month' };
         return range.days === 0 ? { key: 'msg.billing.date_today_only' } : { key: 'msg.billing.date_too_old', params: { days: range.days } };
     }
     return null;
@@ -60,4 +63,20 @@ export function billTimeFor(day, now = new Date()) {
     const picked = parseLocalDate(day);
     if (!picked || day === toLocalISODate(now)) return now;
     return new Date(picked.getFullYear(), picked.getMonth(), picked.getDate(), now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+}
+
+/**
+ * Cash on a bill dated before today (#147): that day's drawer may already be counted
+ * and closed, so the cash would show in no open drawer. Everyone but the owner is
+ * refused (the rules refuse it too, `noBackdatedCash`): online or due only. The owner
+ * may, after a confirm when that day's cash is closed.
+ * @param {string} day YYYY-MM-DD
+ * @param {number} cash
+ * @param {string} role
+ * @param {Date} [now]
+ * @returns {'ok'|'refuse'|'owner-check'}
+ */
+export function backdatedCash(day, cash, role, now = new Date()) {
+    if (!(Number(cash) > 0) || day >= toLocalISODate(now)) return 'ok';
+    return role === 'owner' ? 'owner-check' : 'refuse';
 }

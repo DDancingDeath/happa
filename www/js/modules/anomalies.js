@@ -128,6 +128,8 @@ export const AnomaliesManager = {
             catalogue: AppState.items || [],
             stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
+            // Only an owner's device knows who the owner is (#147: anyone else's back-dated bill is flagged from 1 day)
+            ownerIds: AppState.userRole === 'owner' && AppState.currentUser?.uid ? [AppState.currentUser.uid] : null,
             from,
             to
         });
@@ -224,6 +226,8 @@ export const AnomaliesManager = {
             catalogue: AppState.items || [],
             stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
+            // Only an owner's device knows who the owner is (#147: anyone else's back-dated bill is flagged from 1 day)
+            ownerIds: AppState.userRole === 'owner' && AppState.currentUser?.uid ? [AppState.currentUser.uid] : null,
             from: Math.max(istDayStartMs(yesterday), Number(AppState.historyLoadedFrom) || 0),
             to: istDayStartMs(today) + DAY_MS
         });

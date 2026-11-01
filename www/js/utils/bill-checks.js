@@ -240,7 +240,9 @@ function dateIssues(draft, ctx) {
             'बिल की तारीख़ आगे की है — फ़ोन की तारीख़/समय जाँचें'));
     }
     const days = Math.round((startOfLocalDay(ref).getTime() - startOfLocalDay(d).getTime()) / 86400000);
-    if (days > ctx.thresholds.backdateDays) {
+    // Q20 (backdateDays) for the owner; anyone else's bill is flagged from 1 day back (#147)
+    const limit = ctx.ownerEntry === false ? 0 : ctx.thresholds.backdateDays;
+    if (days > limit) {
         out.push(issue('date-backdated', 'date', 'warn',
             `Bill is dated ${days} days back`,
             `बिल की तारीख़ ${days} दिन पीछे की है`));
@@ -431,6 +433,7 @@ export function buildCheckContext(state, kind, { now = Date.now(), editingBill =
         recentBills: Array.isArray(history) ? history : [],
         // #33 (should retail reduce stock?) is open: retail oversell only warns, as before.
         oversellCanBlock: kind === 'wholesale',
+        ownerEntry: s.userRole === 'owner',
         showCost: canOverride(s.userRole)
     };
 }

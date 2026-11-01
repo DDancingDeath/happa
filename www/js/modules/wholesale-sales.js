@@ -26,7 +26,7 @@ import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../uti
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity } from '../utils/item-catalog.js';
 import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
-import { billDateWho, lockBillDate, pickedBillDay, prepareBillDate, resetBillDate, showBillSavedToast } from '../ui/bill-date-input.js';
+import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, prepareBillDate, resetBillDate } from '../ui/bill-date-input.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
@@ -433,6 +433,8 @@ export class WholesaleSalesManager {
             UIManager.showToast(t(dayProblem.key, dayProblem.params), 'warning');
             return;
         }
+        // Cash on a back-dated bill: owner only (that day's drawer may be closed)
+        if (!pendingBill?.timestamp && !(await allowBackdatedCash(day, cash))) return;
         
         // Payment, name-for-Due, stock and the other bill checks (#23, #68, #37)
         this.updatePaymentTotal();
@@ -535,7 +537,7 @@ export class WholesaleSalesManager {
             
             if (FirebaseService.keptServerPayment(saleData)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
             else if (FirebaseService.savedOnPhoneOnly(saleData)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
-            else showBillSavedToast(t('msg.wholesale.sale_completed_successfully'), saleData, saleData.cashPayment);
+            else UIManager.showToast(t('msg.wholesale.sale_completed_successfully'));
             UIManager.hapticFeedback();
             return saleData;
         } catch (error) {

@@ -6,14 +6,14 @@
  */
 
 import { AppState } from '../utils/state.js';
-import { billDayRange } from '../utils/bill-date.js';
+import { backdatedCash, billDayRange } from '../utils/bill-date.js';
 import { parseAnyBillDate, toLocalISODate } from '../utils/dates.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { sessionForDate } from '../utils/cash-session.js';
 import { UIManager } from './ui-manager.js';
 import { t } from '../i18n/index.js';
 
-/** How long the "saved" toast waits to learn whether a back-dated cash day is closed. */
+/** How long the owner's back-dated cash check waits to learn whether that cash day is closed. */
 const CLOSED_DAY_WAIT_MS = 2500;
 
 /** Who is entering: the role's day range (utils/bill-date.js). */
@@ -90,18 +90,19 @@ export function resetBillDate(id) {
 }
 
 /**
- * "Saved" toast. A bill dated on an earlier day with cash in it, whose cash day is
- * already closed, adds that the closed day's figures won't change (the closed
- * session keeps the totals it was counted with).
- * @param {string} text - the saved message
- * @param {Object} bill - the saved bill (timestamp, enteredAt, cash)
- * @param {number} cash - cash paid / received at the bill
+ * Cash on a bill dated before today (#147, utils/bill-date.js backdatedCash): refused
+ * for everyone but the owner (online or due only); the owner confirms when that day's
+ * cash is already closed (its figures won't change). Checked before the bill is saved.
+ * @param {string} day YYYY-MM-DD
+ * @param {number} cash
+ * @returns {Promise<boolean>} true when the bill may be saved
  */
-export async function showBillSavedToast(text, bill, cash) {
-    const day = Number(bill?.timestamp) ? toLocalISODate(new Date(Number(bill.timestamp))) : null;
-    if (!day || !(cash > 0) || day >= toLocalISODate(new Date())) {
-        UIManager.showToast(text);
-        return;
+export async function allowBackdatedCash(day, cash) {
+    const rule = backdatedCash(day, cash, AppState.userRole);
+    if (rule === 'ok') return true;
+    if (rule === 'refuse') {
+        UIManager.showToast(t('msg.billing.backdated_no_cash'), 'warning');
+        return false;
     }
     let closed = false;
     try {
@@ -111,5 +112,6 @@ export async function showBillSavedToast(text, bill, cash) {
     } catch (e) {
         console.warn('Bill: cash day not checked:', e?.code || e);
     }
-    UIManager.showToast(closed ? t('msg.billing.saved_cash_day_closed', { message: text }) : text, closed ? 5000 : undefined);
+    if (!closed) return true;
+    return UIManager.showModal(t('msg.billing.backdated_cash_closed_confirm'), t('msg.checks.check_before_saving'), true);
 }

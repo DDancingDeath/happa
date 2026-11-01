@@ -137,6 +137,23 @@ describe('bill rules', () => {
         const list = run({ bills: { purchase: [purchase], retail: [bill({ id: 'r9', timestamp: T(11, 0, 21) })] } });
         expect(list[0].user).toBe('Amit');
     });
+
+    test('#147: a back-dated bill is found by when it was entered (enteredAt, else createdAt), not by its day', () => {
+        const dated = (over) => bill({ timestamp: T(11, 0, 19), ...over });
+        expect(run({ bills: { retail: [dated()] } })).toEqual([]);
+        const byEntered = run({ bills: { retail: [dated({ enteredAt: T(11) })] } });
+        expect(byEntered.map(a => [a.type, a.dayKey])).toEqual([['date-backdated', '2026-10-22']]);
+        expect(types(run({ bills: { retail: [dated({ createdAt: { seconds: T(11) / 1000, nanoseconds: 0 } })] } }))).toEqual(['date-backdated']);
+        // entered inside the range but dated today: nothing
+        expect(run({ bills: { retail: [bill({ enteredAt: T(11), createdAt: { seconds: T(11) / 1000, nanoseconds: 0 } })] } })).toEqual([]);
+    });
+
+    test('#147: anyone but the owner is flagged from 1 day back; the owner (and unknown owners) from Q20', () => {
+        const yesterday = bill({ timestamp: T(11, 0, 21), enteredAt: T(11), userId: 'u1' });
+        expect(types(run({ bills: { retail: [yesterday] }, ownerIds: ['own1'] }))).toEqual(['date-backdated']);
+        expect(run({ bills: { retail: [yesterday] }, ownerIds: ['u1'] })).toEqual([]);
+        expect(run({ bills: { retail: [yesterday] } })).toEqual([]);
+    });
 });
 
 describe('cash, stock and audit rules', () => {

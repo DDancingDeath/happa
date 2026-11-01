@@ -2,7 +2,7 @@
  * @fileoverview Editable bill date (#147): which days each role may pick, the time a
  * back-dated bill is saved with (BILL-TIME), and the three forms saving it.
  */
-import { billDayRange, billTimeFor, validateBillDay } from '../utils/bill-date.js';
+import { backdatedCash, billDayRange, billTimeFor, validateBillDay } from '../utils/bill-date.js';
 import { prepareBillDate, pickedBillDay, resetBillDate } from '../ui/bill-date-input.js';
 import { PurchaseManager } from '../modules/purchase.js';
 import { WholesaleSalesManager } from '../modules/wholesale-sales.js';
@@ -30,6 +30,18 @@ describe('utils/bill-date.js', () => {
         expect(validateBillDay('2026-10-31', { role: 'staff', roleAccess: { staff: { editDays: 0 } }, now: NOW })).toEqual({ key: 'msg.billing.date_today_only' });
         expect(validateBillDay('2026-09-30', { role: 'owner', now: NOW })).toEqual({ key: 'msg.billing.date_before_last_month' });
         expect(validateBillDay('2026-10-01', { role: 'owner', now: NOW })).toBeNull();
+        // A long role window (30 days on 1 March) still stops at the 1st of last month
+        const long = { role: 'manager', roleAccess: { manager: { editDays: 30 } }, now: new Date(2027, 2, 1, 10) };
+        expect(billDayRange(long)).toEqual({ max: '2027-03-01', min: '2027-02-01', days: 30 });
+        expect(validateBillDay('2027-01-31', long)).toEqual({ key: 'msg.billing.date_before_last_month' });
+    });
+
+    test('cash on a bill dated before today: the owner only (after a check); online or due for anyone', () => {
+        expect(backdatedCash('2026-11-01', 300, 'staff', NOW)).toBe('ok');
+        expect(backdatedCash('2026-10-31', 0, 'staff', NOW)).toBe('ok');
+        expect(backdatedCash('2026-10-31', 300, 'staff', NOW)).toBe('refuse');
+        expect(backdatedCash('2026-10-31', 300, 'manager', NOW)).toBe('refuse');
+        expect(backdatedCash('2026-10-31', 300, 'owner', NOW)).toBe('owner-check');
     });
 
     test('the bill time: now for today, else that day at the current time of day (no UTC day shift)', () => {
@@ -164,6 +176,8 @@ describe('saving a back-dated bill', () => {
     };
 
     test('a purchase dated yesterday counts on yesterday (timestamp, date); enteredAt keeps when it was entered', async () => {
+        document.getElementById('cashPayment').value = '';
+        document.getElementById('onlinePayment').value = '300';
         pick('2026-10-31');
         const bill = await PurchaseManager.saveBillToHistory();
         expect(saved).toHaveBeenCalledTimes(1);
@@ -183,6 +197,34 @@ describe('saving a back-dated bill', () => {
         expect(toast).toHaveBeenCalledWith('You can date a bill only up to 2 days back', 'warning');
     });
 
+    test('cash on a back-dated bill: refused for staff before saving; the owner confirms when that day\'s cash is closed', async () => {
+        pick('2026-10-31');
+        expect(await PurchaseManager.saveBillToHistory()).toBeUndefined();
+        expect(saved).not.toHaveBeenCalled();
+        expect(toast).toHaveBeenCalledWith(expect.stringContaining("can't take cash"), 'warning');
+
+        AppState.userRole = 'owner';
+        const sessions = jest.spyOn(FirebaseService, 'loadCashSessionsForDate').mockResolvedValue([{ id: 's', date: '2026-10-31', signedOut: true }]);
+        UIManager.showModal.mockResolvedValueOnce(false);
+        expect(await PurchaseManager.saveBillToHistory()).toBeUndefined();
+        expect(sessions).toHaveBeenCalledWith('2026-10-31');
+        expect(UIManager.showModal).toHaveBeenCalledWith(expect.stringContaining('already closed'), expect.any(String), true);
+        expect(saved).not.toHaveBeenCalled();
+
+        const bill = await PurchaseManager.saveBillToHistory();
+        expect(saved).toHaveBeenCalledTimes(1);
+        expect(toLocalISODate(new Date(bill.timestamp))).toBe('2026-10-31');
+
+        // An open (or not yet started) day: no question
+        UIManager.showModal.mockClear();
+        sessions.mockResolvedValue([]);
+        PurchaseManager.setBillItems([{ itemId: sampleItems()[0].id, name: 'Rice', rate: 30, qty: 10, weights: [10], total: 300 }]);
+        document.getElementById('cashPayment').value = '300';
+        pick('2026-10-31');
+        expect(await PurchaseManager.saveBillToHistory()).toBeDefined();
+        expect(UIManager.showModal).not.toHaveBeenCalledWith(expect.stringContaining('already closed'), expect.any(String), true);
+    });
+
     test('today: the save time, as before', async () => {
         const bill = await PurchaseManager.saveBillToHistory();
         expect([bill.timestamp, bill.enteredAt, bill.date]).toEqual([NOW.getTime(), NOW.getTime(), NOW.toISOString()]);
@@ -193,6 +235,12 @@ describe('saving a back-dated bill', () => {
         const draft = PurchaseManager.getCheckDraft();
         const issues = evaluateBill(draft, buildCheckContext(AppState, 'purchase', { now: NOW.getTime() }));
         expect(issues.find(i => i.id === 'date-backdated')).toMatchObject({ severity: 'warn', en: 'Bill is dated 2 days back' });
+        // Staff: from 1 day back; the owner: Q20 (more than 1 day)
+        pick('2026-10-31');
+        const dayBack = () => evaluateBill(PurchaseManager.getCheckDraft(), buildCheckContext(AppState, 'purchase', { now: NOW.getTime() })).map(i => i.id);
+        expect(dayBack()).toContain('date-backdated');
+        AppState.userRole = 'owner';
+        expect(dayBack()).not.toContain('date-backdated');
     });
 
     test('wholesale: the en-IN date of the picked day', async () => {

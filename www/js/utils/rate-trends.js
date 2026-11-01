@@ -292,6 +292,21 @@ export function rollForwardWindow(loadedFrom, now, maxMonths = 2) {
     return { fromMonth, fromWeek, fromYear };
 }
 
+/**
+ * Start (ms) of the week holding the window's first month day when the loaded
+ * history begins inside that week, so rollForwardWindow() leaves the week as
+ * stored; null when nothing is missing. A bill dated back into that week (#147:
+ * the owner may date back to the 1st of last month) would never reach the week
+ * stats: the roll-forward loads the history from here first.
+ */
+export function rollForwardWeekGap(win, loadedFrom) {
+    if (!(Number(loadedFrom) > 0) || !win?.fromMonth) return null;
+    const firstWeek = istWeekStart(istMonthStartMs(win.fromMonth));
+    if (win.fromWeek <= firstWeek) return null;
+    const start = istDayStartMs(firstWeek);
+    return start < loadedFrom ? start : null;
+}
+
 const pickBuckets = (map, inRange, keep) => {
     const out = {};
     Object.keys(map || {}).forEach(k => { if (inRange(k) === keep) out[k] = map[k]; });

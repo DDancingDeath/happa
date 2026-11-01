@@ -20,7 +20,7 @@
 
 import { evaluateBill, evaluateCashCount, evaluateStockAdjustment, isEntryIssue, normalizeThresholds } from './bill-checks.js';
 import { activityBills, billTotal, readLineItem, readPayment, round2, toMoney } from './money.js';
-import { parseAnyBillDate } from './dates.js';
+import { parseAnyBillDate, toJsDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
 import { firstStockTimes, stockKeyFor } from './stock-check.js';
@@ -152,8 +152,15 @@ const timeOf = (v) => {
     return d ? d.getTime() : NaN;
 };
 
-/** When a bill was entered (ms): its numeric timestamp, else its date. */
+/**
+ * When a bill was entered (ms): `enteredAt` (#147: a back-dated bill's `timestamp` is its
+ * day, not its entry), else the server `createdAt`, else its numeric timestamp, else its date.
+ */
 export function billTime(bill) {
+    const entered = Number(bill?.enteredAt);
+    if (Number.isFinite(entered) && entered > 0) return entered;
+    const created = bill?.createdAt != null ? toJsDate(bill.createdAt)?.getTime() : NaN;
+    if (Number.isFinite(created) && created > 0) return created;
     const ts = Number(bill?.timestamp);
     return Number.isFinite(ts) && ts > 0 ? ts : timeOf(bill?.date);
 }
@@ -241,6 +248,8 @@ function recheckBill(bill, kind, ts, earlier, base) {
         }, {
             now: ts,
             thresholds: base.thresholds,
+            // Q20 for the owner's own bills; anyone else's back-dated bill is flagged from 1 day (owners unknown: Q20)
+            ownerEntry: base.ownerIds ? base.ownerIds.has(billUserId(bill)) : undefined,
             catalogue: base.catalogue,
             stock: {},
             stockReady: false,
@@ -284,12 +293,13 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {Object[]} [input.auditLogs] - audit log entries (owner devices only)
  * @param {Object[]} [input.catalogue] - items
  * @param {Object} [input.thresholds] - settings/app checkThresholds (+ ANOMALY_DEFAULTS keys)
+ * @param {?string[]} [input.ownerIds] - uids of the owners: their back-dated bills follow Q20 (backdateDays), anyone else's are flagged from 1 day (#147); null (unknown, e.g. a manager's device) = Q20 for all, the save-time flag covers the rest
  * @param {Object} [input.stock] - AppState.stock: stock on hand counts as stock set (purchase older than the loaded history)
  * @param {number} input.from - inclusive (ms)
  * @param {number} input.to - exclusive (ms)
  * @returns {Array<Object>} anomalies, one per id, high severity and newest first
  */
-export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], catalogue = [], thresholds = {}, stock = {}, from, to }) {
+export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], catalogue = [], thresholds = {}, stock = {}, ownerIds = null, from, to }) {
     const t = { ...ANOMALY_DEFAULTS, ...normalizeThresholds(thresholds) };
     Object.keys(ANOMALY_DEFAULTS).forEach(k => {
         const n = Number(thresholds?.[k]);
@@ -306,7 +316,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         const items = new Set([...String(prev.item).split(', '), ...String(a.item).split(', ')].filter(Boolean));
         prev.item = [...items].join(', ');
     };
-    const base = { thresholds, catalogue: Array.isArray(catalogue) ? catalogue : [] };
+    const base = { thresholds, catalogue: Array.isArray(catalogue) ? catalogue : [], ownerIds: Array.isArray(ownerIds) ? new Set(ownerIds.map(String)) : null };
     const lookbackMs = t.rateLookbackDays * DAY_MS;
 
     ['purchase', 'retail', 'wholesale'].forEach(kind => {
