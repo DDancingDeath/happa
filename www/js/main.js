@@ -48,7 +48,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieebm-bill-date';
+const BUILD_ID = '20261101zzuzieebo-bill-date';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1189,6 +1189,11 @@ window.app = {
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
         togglePrintPreview: () => SettingsManager.togglePrintPreview(),
+        saveReceiptOptions: () => SettingsManager.saveReceiptOptions(),
+        pickReceiptLogo: () => SettingsManager.pickReceiptLogo(),
+        chooseReceiptLogo: (input) => SettingsManager.chooseReceiptLogo(input),
+        removeReceiptLogo: () => SettingsManager.removeReceiptLogo(),
+        previewReceipt: () => SettingsManager.previewReceipt(),
         scanBluetoothDevices: () => SettingsManager.scanBluetoothDevices(),
         connectToPrinter: (id, name) => SettingsManager.connectToPrinter(id, name),
         disconnectPrinter: () => SettingsManager.disconnectPrinter(),
