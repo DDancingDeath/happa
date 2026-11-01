@@ -229,7 +229,7 @@ const RetailSaleManager = {
         
         UIManager.hapticFeedback();
         // The edited line is back on the bill: a later picker rebuild may drop an archived item
-        delete document.getElementById('saleItem')?.selectedOptions?.[0]?.dataset.editLine;
+        document.querySelectorAll('#saleItem option[data-edit-line]').forEach(o => { delete o.dataset.editLine; });
         if (isArchivedItem(item)) {
             UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
         } else UIManager.showToast(t('msg.retail.added_sale', { itemName }));

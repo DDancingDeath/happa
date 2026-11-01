@@ -312,6 +312,21 @@ describe('archived items (#123)', () => {
         expect([...document.getElementById('billItem').options].map(o => o.textContent)).toEqual(['Rice']);
     });
 
+    test('retail: adding the edited line back clears its marker even though the picker resets', async () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', saleRates: [10] }, { id: 'b', name: 'Dal', saleRates: [5] }];
+        document.getElementById('saleSection').insertAdjacentHTML('beforeend',
+            '<input id="saleRate"><input id="saleWeight"><div id="saleWeightsDisplay"></div><span id="saleTotal"></span>');
+        BillingManager.loadSaleItemsDropdown();
+        BillingManager.ensureItemOption('saleItem', 1);
+        document.getElementById('saleItem').value = '1';
+        document.getElementById('saleRate').value = '5';
+        document.getElementById('saleWeight').value = '20';
+        await RetailSaleManager.addToSalesBill();
+        expect(RetailSaleManager.getSaleItems().map(i => i.itemId)).toEqual(['b']);
+        expect(document.querySelectorAll('#saleItem option[data-edit-line]')).toHaveLength(0);
+    });
+
     test('a line of an active item being edited survives a rebuild after the item is archived elsewhere', () => {
         AppState.settings = { ...(AppState.settings || {}), showHindi: false };
         AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
