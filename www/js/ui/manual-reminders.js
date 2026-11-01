@@ -16,6 +16,16 @@ import { formatDay, todayLocalISO } from '../utils/dates.js';
 import { checkReminder, groupReminders, REMINDER_LISTEN_LIMIT, REMINDER_TITLE_MAX, REMINDER_PARTY_MAX } from '../utils/manual-reminders.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
+const FORM_IDS = ['reminderTitle', 'reminderDate', 'reminderParty'];
+const CSS_ESCAPE = (s) => (typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(s) : String(s).replace(/[^\w-]/g, '\\$&'));
+/** A write the server hasn't confirmed in this time stays queued on the phone (Firestore sends it when online). */
+const WRITE_WAIT_MS = 10000;
+const TIMED_OUT = Symbol('timed-out');
+function withTimeout(p) {
+    let timer;
+    return Promise.race([p, new Promise(resolve => { timer = setTimeout(() => resolve(TIMED_OUT), WRITE_WAIT_MS); })])
+        .finally(() => clearTimeout(timer));
+}
 
 export const ManualReminders = {
     list: [],
@@ -78,12 +88,36 @@ export const ManualReminders = {
             + '</span></li>';
     },
 
+    /** What is typed in the open form; kept through Today's redraws until the reminder is saved. */
+    draft: null,
+
+    captureDraft() {
+        const el = (id) => (typeof document !== 'undefined' ? document.getElementById(id) : null);
+        if (!this.formOpen || !el('reminderTitle')) return;
+        const focused = typeof document !== 'undefined' ? document.activeElement : null;
+        this.draft = {
+            title: el('reminderTitle').value, dueDate: el('reminderDate')?.value || '', party: el('reminderParty')?.value || '',
+            focus: FORM_IDS.includes(focused?.id) ? focused.id : null, caret: focused?.selectionStart ?? null
+        };
+    },
+
+    /** After Today wrote the block: the field that had the cursor gets it back. */
+    restoreFocus() {
+        const f = this.draft?.focus;
+        if (!f || typeof document === 'undefined') return;
+        const el = document.getElementById(f);
+        if (!el || document.activeElement === el) return;
+        el.focus();
+        if (Number.isInteger(this.draft.caret)) { try { el.setSelectionRange(this.draft.caret, this.draft.caret); } catch (_) { /* date input */ } }
+    },
+
     formHtml() {
         const today = todayLocalISO();
+        const d = this.draft || {};
         return '<div class="today-reminder-form">'
-            + `<input type="text" id="reminderTitle" maxlength="${REMINDER_TITLE_MAX}" placeholder="${esc(t('ui.reminders.title_ph'))}" aria-label="${esc(t('ui.reminders.title_label'))}">`
-            + `<input type="date" id="reminderDate" min="${today}" value="${today}" aria-label="${esc(t('ui.reminders.date_label'))}">`
-            + `<input type="text" id="reminderParty" maxlength="${REMINDER_PARTY_MAX}" placeholder="${esc(t('ui.reminders.party_ph'))}" aria-label="${esc(t('ui.reminders.party_label'))}">`
+            + `<input type="text" id="reminderTitle" maxlength="${REMINDER_TITLE_MAX}" value="${esc(d.title || '')}" placeholder="${esc(t('ui.reminders.title_ph'))}" aria-label="${esc(t('ui.reminders.title_label'))}">`
+            + `<input type="date" id="reminderDate" min="${today}" value="${esc(d.dueDate || today)}" aria-label="${esc(t('ui.reminders.date_label'))}">`
+            + `<input type="text" id="reminderParty" maxlength="${REMINDER_PARTY_MAX}" value="${esc(d.party || '')}" placeholder="${esc(t('ui.reminders.party_ph'))}" aria-label="${esc(t('ui.reminders.party_label'))}">`
             + `<div class="today-reminder-form-buttons"><button type="button" class="btn btn-primary" data-reminder-save onclick="window.app.day.reminderSave()">${esc(t('ui.reminders.save'))}</button>`
             + `<button type="button" class="btn btn-secondary" onclick="window.app.day.reminderForm(false)">${esc(t('ui.reminders.close'))}</button></div></div>`;
     },
@@ -94,6 +128,7 @@ export const ManualReminders = {
      */
     html(todayIso = todayLocalISO()) {
         const manage = this.canManage();
+        this.captureDraft();
         const g = groupReminders(this.list, todayIso);
         const rows = [...g.due, ...g.soon];
         if (!rows.length && !manage) return '';
@@ -102,6 +137,7 @@ export const ManualReminders = {
             + (g.due.length ? ` ${esc(t('ui.reminders.due_count', { count: g.due.length }))}` : '') + '</div>'
             + (rows.length ? `<ul>${rows.map(r => this.rowHtml(r, manage)).join('')}</ul>` : `<div class="today-reminder-more">${esc(t('ui.reminders.none'))}</div>`)
             + (g.later ? `<div class="today-reminder-more">${esc(t('ui.reminders.later', { count: g.later }))}</div>` : '')
+            + (this.list.length >= REMINDER_LISTEN_LIMIT ? `<div class="today-reminder-more">${esc(t('ui.reminders.limit', { count: REMINDER_LISTEN_LIMIT }))}</div>` : '')
             + (manage ? (this.formOpen ? this.formHtml()
                 : `<button type="button" class="filter-btn" onclick="window.app.day.reminderForm(true)">${esc(t('ui.reminders.add'))}</button>`) : '')
             + '</div>';
@@ -113,8 +149,17 @@ export const ManualReminders = {
 
     form(open) {
         this.formOpen = !!open && this.canManage();
+        this.draft = null;
         this.changed();
         if (this.formOpen) setTimeout(() => document.getElementById('reminderTitle')?.focus(), 0);
+    },
+
+    offline() {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.reminders.needs_internet'));
+            return true;
+        }
+        return false;
     },
 
     async save() {
@@ -122,12 +167,13 @@ export const ManualReminders = {
         const value = (id) => document.getElementById(id)?.value || '';
         const check = checkReminder({ title: value('reminderTitle'), dueDate: value('reminderDate'), party: value('reminderParty') }, todayLocalISO());
         if (!check.ok) { UIManager.showToast(t(check.error)); return false; }
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) { UIManager.showToast(t('msg.reminders.needs_internet')); return false; }
+        if (this.offline()) return false;
         return Helpers.runExclusive('reminder-save', '[data-reminder-save]', async () => {
             try {
-                await FirebaseService.createReminder(check.value, this.by());
+                const res = await withTimeout(FirebaseService.createReminder(check.value, this.by()));
                 this.formOpen = false;
-                UIManager.showToast(t('msg.reminders.saved'));
+                this.draft = null;
+                UIManager.showToast(t(res === TIMED_OUT ? 'msg.reminders.saved_on_phone' : 'msg.reminders.saved'));
                 this.changed();
                 return true;
             } catch (e) {
@@ -138,29 +184,29 @@ export const ManualReminders = {
         });
     },
 
-    async markReminderDone(id) {
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) { UIManager.showToast(t('msg.reminders.needs_internet')); return false; }
-        try {
-            await FirebaseService.ackReminder(id, this.by());
-            return true;
-        } catch (e) {
-            console.error('Reminder not marked done:', e);
-            UIManager.showToast(t('msg.reminders.not_saved'));
-            return false;
-        }
+    /** Done / Cancel: one write per tap; refused because it is already closed (another phone) = nothing to say. */
+    async closeReminder(id, write) {
+        if (this.offline()) return false;
+        return Helpers.runExclusive(`reminder-${id}`, `[data-reminder-id="${CSS_ESCAPE(id)}"] button`, async () => {
+            try {
+                await withTimeout(write());
+                return true;
+            } catch (e) {
+                if (e?.code === 'permission-denied' && !this.list.some(r => r.id === id)) return true;
+                console.error('Reminder not changed:', e);
+                UIManager.showToast(t('msg.reminders.not_saved'));
+                return false;
+            }
+        });
+    },
+
+    markReminderDone(id) {
+        return this.closeReminder(id, () => FirebaseService.ackReminder(id, this.by()));
     },
 
     async cancelReminderNow(id) {
-        if (!this.canManage()) return false;
+        if (!this.canManage() || Helpers.isBusy?.(`reminder-${id}`)) return false;
         if (!(await UIManager.showModal(t('msg.reminders.cancel_confirm'), t('ui.reminders.cancel'), true))) return false;
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) { UIManager.showToast(t('msg.reminders.needs_internet')); return false; }
-        try {
-            await FirebaseService.cancelReminder(id, this.by());
-            return true;
-        } catch (e) {
-            console.error('Reminder not cancelled:', e);
-            UIManager.showToast(t('msg.reminders.not_saved'));
-            return false;
-        }
+        return this.closeReminder(id, () => FirebaseService.cancelReminder(id, this.by()));
     }
 };

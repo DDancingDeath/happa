@@ -292,6 +292,7 @@ export const DayManager = {
         }
         host.hidden = parts.length === 0;
         host.innerHTML = parts.length ? `<h3 class="today-reminders-title">${e(t('ui.today.reminders'))}</h3>${parts.join('')}` : '';
+        ManualReminders.restoreFocus();
     },
 
     /** Outstanding on its Purchases or Sales list (navigation opens it on Purchases first). */

@@ -641,8 +641,8 @@ Default chosen (the owner can ask for another): **reminders belong to the shop, 
 The rules check the shape (title 1–120 letters, `dueDate` 'YYYY-MM-DD' not before yesterday in India, at most
 about two years ahead, party ≤ 80), that the writer names themself with the server time (`createdBy` /
 `createdAt`, `doneBy` / `doneAt`, `cancelledBy` / `cancelledAt`), and that done and cancelled are
-final: nothing else of a reminder can change. Today listens to the open ones only (`status == 'open'`, at
-most 50, one listener per sign-in: 1 read when there are none, then only changes).
+final: nothing else of a reminder can change. Today listens to the open ones only (`status == 'open'`, soonest
+due first, at most 50, index `status` + `dueDate`; one listener per sign-in: 1 read when there are none, then only changes).
 
 ## Settings sections (who sees what)
 

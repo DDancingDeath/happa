@@ -2704,6 +2704,8 @@ export default {
     'ui.reminders.none': "Nothing to do now.",
     'ui.reminders.later': "+{count} later",
     'ui.reminders.add': "＋ Add reminder",
+    'ui.reminders.limit': "Showing the {count} soonest open reminders.",
+    'msg.reminders.saved_on_phone': "Saved on this phone; it reaches the other phones when the internet works.",
     'msg.reminders.title_needed': "Write what is to be done.",
     'msg.reminders.title_long': "Keep it under 120 letters.",
     'msg.reminders.party_long': "The party name is too long.",

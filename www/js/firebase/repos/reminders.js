@@ -11,7 +11,7 @@ import { getDb, col, serverCreatedAt } from '../db.js';
 /** FirebaseService methods for manual reminders; spread into FirebaseService. */
 export const reminderMethods = {
     /**
-     * Open reminders, live (no order: Today sorts them; no extra index).
+     * Open reminders, live, soonest due first (index status + dueDate), so the limit keeps the most urgent.
      * @param {function(Array<Object>): void} onNext
      * @param {function(Error): void} onError
      * @param {number} [limit=50]
@@ -20,6 +20,7 @@ export const reminderMethods = {
     listenOpenReminders(onNext, onError, limit = 50) {
         return getDb().collection(col('reminders'))
             .where('status', '==', 'open')
+            .orderBy('dueDate')
             .limit(limit)
             .onSnapshot(snapshot => onNext(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))), onError);
     },

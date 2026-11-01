@@ -2704,6 +2704,8 @@ export default {
     'ui.reminders.none': "अभी कुछ नहीं करना।",
     'ui.reminders.later': "+{count} बाद में",
     'ui.reminders.add': "＋ याद जोड़ें",
+    'ui.reminders.limit': "सबसे पहले की {count} खुली याद दिख रही हैं।",
+    'msg.reminders.saved_on_phone': "इस फ़ोन पर सहेजी गई; इंटरनेट चलने पर दूसरे फ़ोन पर पहुँचेगी।",
     'msg.reminders.title_needed': "लिखें क्या करना है।",
     'msg.reminders.title_long': "120 अक्षरों से छोटा लिखें।",
     'msg.reminders.party_long': "पार्टी का नाम बहुत लंबा है।",

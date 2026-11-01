@@ -108,4 +108,37 @@ describe('Today: manual reminders', () => {
         expect(host.hidden).toBe(false);
         expect(host.querySelector('[data-reminder="manual"] [data-reminder-id="r1"]')).not.toBeNull();
     });
+
+    test('what is typed in the form survives Today redrawing', () => {
+        AppState.userRole = 'owner';
+        jest.spyOn(FirebaseService, 'listenOpenReminders').mockImplementation(() => () => {});
+        Object.assign(AppState, { retailSalesHistory: [], purchaseHistory: [], salesHistory: [] });
+        document.body.innerHTML = '<div id="todayReminders"></div>';
+        ManualReminders.start(() => DayManager.renderReminders());
+        ManualReminders.form(true);
+        document.getElementById('reminderTitle').value = 'Call Gupta';
+        document.getElementById('reminderParty').value = 'Gupta';
+        document.getElementById('reminderParty').focus();
+        DayManager.renderReminders();
+        expect(document.getElementById('reminderTitle').value).toBe('Call Gupta');
+        expect(document.getElementById('reminderParty').value).toBe('Gupta');
+        expect(document.activeElement.id).toBe('reminderParty');
+    });
+
+    test('Done is one write per tap; already closed elsewhere is not an error', async () => {
+        AppState.userRole = 'staff';
+        ManualReminders.list = [];
+        const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        let finish;
+        const ack = jest.spyOn(FirebaseService, 'ackReminder').mockImplementation(() => new Promise(r => { finish = r; }));
+        const first = ManualReminders.markReminderDone('r1');
+        const second = await ManualReminders.markReminderDone('r1');
+        finish();
+        await first;
+        expect(ack).toHaveBeenCalledTimes(1);
+        expect(second).toBeFalsy();
+        ack.mockRejectedValueOnce(Object.assign(new Error('no'), { code: 'permission-denied' }));
+        expect(await ManualReminders.markReminderDone('r2')).toBe(true);
+        expect(toast).not.toHaveBeenCalled();
+    });
 });
