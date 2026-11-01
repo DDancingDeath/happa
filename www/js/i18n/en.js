@@ -641,6 +641,8 @@ export default {
     'ui.history.badge_cash': "Cash: ₹{amount}",
     'ui.history.badge_due': "Due: ₹{amount}",
     'ui.history.old_app_chip': "Old app",
+    'ui.history.bad_date': "Date?",
+    'ui.history.bad_date_title': "This bill's date can't be read",
     'ui.print_status.chip_printed': "Printed",
     'ui.print_status.chip_failed': "Print failed",
     'ui.print_status.chip_uncertain': "May have printed",
