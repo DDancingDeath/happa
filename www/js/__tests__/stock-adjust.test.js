@@ -262,7 +262,7 @@ describe('reverse an adjustment and stock count (#146)', () => {
 
     test('low stock uses each item\'s own level (0 = never), else 10 kg', () => {
         const items = [{ id: 'a', name: 'Chana' }, { id: 'b', name: 'Gehu', lowStockKg: 50 }, { id: 'c', name: 'Moong', lowStockKg: 0 }];
-        const stock = { a: { quantity: 8 }, b: { quantity: 40 }, c: { quantity: 1 } };
+        const stock = { a: { quantity: 8 }, b: { quantity: 40 }, c: { quantity: -3 } };
         expect(lowStockLevel(items[0])).toBe(10);
         expect(lowStockItems(stock, items, new Set(['a', 'b', 'c']))).toEqual([
             { key: 'a', name: 'Chana', quantity: 8, level: 10 }, { key: 'b', name: 'Gehu', quantity: 40, level: 50 }

@@ -277,7 +277,7 @@ export function lowStockItems(stock, items, stocked, { lang = 'en', threshold = 
         if (!item) return;
         const q = Number(data?.quantity) || 0;
         const level = lowStockLevel(item, threshold);
-        if (q >= level || !(stocked.has(item.id) || stocked.has(key))) return;
+        if (level <= 0 || q >= level || !(stocked.has(item.id) || stocked.has(key))) return;
         out.push({ key: item.id, name: (lang === 'hi' && item.hindiName) ? item.hindiName : item.name, quantity: q, level });
     });
     return out.sort((a, b) => a.quantity - b.quantity || a.name.localeCompare(b.name));
