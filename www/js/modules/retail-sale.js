@@ -241,6 +241,7 @@ const RetailSaleManager = {
         const saleWeightBreakdownSection = document.getElementById('saleWeightBreakdownSection');
         
         if (!tbody) return;
+        this.billingManager?.renderBillNumber?.();
         
         if (saleItems.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #999; padding: 24px;" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
@@ -537,6 +538,7 @@ const RetailSaleManager = {
             // Not confirmed even on this phone: keep the form (a retry reuses the same id) (#153)
             if (FirebaseService.saveUnconfirmed(sale)) {
                 UIManager.hideLoading();
+                this.billingManager?.renderBillNumber?.();
                 UIManager.showToast(t(SAVE_UNCONFIRMED_KEY), 'warning');
                 return undefined;
             }
@@ -572,6 +574,7 @@ const RetailSaleManager = {
             
         } catch (error) {
             UIManager.hideLoading();
+            this.billingManager?.renderBillNumber?.();
             UIManager.showToast(saveFailedText(error, t('msg.retail.failed_complete_sale', { message: error.message })), 'error');
             console.error('Complete sale error:', error);
             throw error;
@@ -595,6 +598,7 @@ const RetailSaleManager = {
         
         const totalReceivedEl = document.getElementById('totalReceived');
         if (totalReceivedEl) totalReceivedEl.textContent = '0';
+        this.billingManager?.focusFirstItem?.();
     },
 
     /**

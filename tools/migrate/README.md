@@ -59,7 +59,7 @@ Disabling them in the old project is an owner action in the Firebase console (`a
 |---|---|---|
 | History | **Fresh start**: old bills are not copied; the old project and the encrypted backup are the archive | `--mode fresh` / `full` (copies every bill as is, no opening balances; personal expenses go to `personalExpenses` with their day totals in `personalExpenseDays`, #98) |
 | Rates page | `items` copied as is, same ids | `--copy items,users,rateHistory,itemFrequency` |
-| Users | `users` profile docs as is (roles, status), same uids; logins move with `auth:import` below. **Service and test accounts are never carried** (see "Service accounts" below) | (part of `--copy`) |
+| Users | `users` profile docs as is (roles, status), same uids; logins move with `auth:import` below. **Service and test accounts are never carried** (see "Service accounts" below). Also writes the team directory `settings/team` (names and roles of the approved people, no emails), which managers read instead of the profiles (#87) | (part of `--copy`) |
 | Outstanding (retail) and Wholesale → Outstanding | one **opening record per old unpaid bill**, see below | always in `fresh` mode |
 | Wholesale dues that no page shows (bills not made on the Wholesale page) | **not carried**; the report lists their count and total under "Not carried (owner to decide)" | `--include-hidden-wholesale-dues` carries them to Wholesale → Outstanding |
 | Supplier payables | **checked only**: the report shows the total (should be ₹0) and warns otherwise | `--carry-payables` to carry them like receivables |

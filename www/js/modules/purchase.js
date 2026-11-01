@@ -237,6 +237,7 @@ const PurchaseManager = {
         const tbody = document.querySelector('#billTable tbody');
         const weightBreakdownSection = document.getElementById('weightBreakdownSection');
         if (!tbody) return;
+        this.billingManager?.renderBillNumber?.();
         
         const totalPacketsInBillSpan = document.getElementById('totalPacketsInBill');
         const billTotalSpan = document.getElementById('billTotal');
@@ -626,6 +627,7 @@ const PurchaseManager = {
             // Not confirmed even on this phone: keep the form (a retry reuses the same id) (#153)
             if (FirebaseService.saveUnconfirmed(bill)) {
                 UIManager.hideLoading();
+                this.billingManager?.renderBillNumber?.();
                 UIManager.showToast(t(SAVE_UNCONFIRMED_KEY), 'warning');
                 return undefined;
             }
@@ -662,6 +664,7 @@ const PurchaseManager = {
             
         } catch (error) {
             UIManager.hideLoading();
+            this.billingManager?.renderBillNumber?.();
             UIManager.showToast(saveFailedText(error, t('msg.purchase.failed_save_bill', { message: error.message })), 'error');
             console.error('Save bill error:', error);
             throw error;
@@ -684,6 +687,7 @@ const PurchaseManager = {
         });
         
         this.updateTotals();
+        this.billingManager?.focusFirstItem?.();
     },
 
     /**

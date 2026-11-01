@@ -2148,6 +2148,57 @@ select:focus, input:focus {
   transform: scale(0.95);
 }
 
+/* Unsaved-bill banner and bill number hint (#117) */
+.autosave-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid #f59e0b;
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 14px;
+}
+
+.autosave-banner[hidden] {
+  display: none;
+}
+
+.autosave-banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.autosave-banner-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.autosave-restore {
+  background: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  color: #fff;
+}
+
+.autosave-discard {
+  background: #fff;
+  border: 1px solid #b91c1c;
+  color: #b91c1c;
+}
+
+.bill-no-hint {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary, #555);
+}
+
 /* ---- css/totals.css ---- */
 /* -------------------- BILL TOTALS -------------------- */
 .bill-totals {
@@ -2602,6 +2653,35 @@ body.dark-mode .party-due-line.party-due-old {
   color: #5b21b6;
   vertical-align: middle;
 }
+
+/* Print status on this phone (#132) */
+.print-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.print-chip--failed { background: #fee2e2; color: #991b1b; }
+.print-chip--uncertain { background: #fef3c7; color: #92400e; }
+
+.bill-print-status {
+  margin: 0 16px 16px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.bill-print-status__text { flex: 1 1 180px; }
 
 .history-items-detail {
   margin-top: 12px;
