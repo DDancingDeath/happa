@@ -526,7 +526,7 @@ services → repositories → UI. Anywhere in `www/js` (`modules/`, `rentals/`,
 
 - no arithmetic on money or quantity, no `Math.round(qty * rate)`, no `reduce` of
   amounts: call (or add) a function in `utils/` with a spec ID (calc: `utils/**`
-  and the pure `rent-math` / `rent-views` / `rent-public` are exempt);
+  and the pure `rent-math` / `rent-math-ledger` / `rent-views` / `rent-public` are exempt);
 - no numbers read back from the screen (`Number(el.textContent)`,
   `Helpers.getElementInt`), calc included;
 - no Firestore calls (`.collection(`, `db.doc(`, `runTransaction`, `batch`,

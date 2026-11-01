@@ -9,9 +9,9 @@
  */
 import fc from 'fast-check';
 import {
-    monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, moveMonthRent, oldMonth,
-    depositEntry, depositHeld, depositsTotal, withAdvance, payOldestFirst, payAmount, expenseTotals, netOf
+    monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, withAdvance, payOldestFirst, payAmount, expenseTotals, netOf
 } from '../../www/js/rentals/rent-math.js';
+import { depositEntry, depositHeld, depositsTotal, moveMonthRent, oldMonth } from '../../www/js/rentals/rent-math-ledger.js';
 
 jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: {} }));
 
@@ -236,6 +236,9 @@ describe('an overpayment pays the oldest unpaid months first (RENT-5, RENT-16)',
             expect(got[got.length - 1].adv || 0).toBe(left);
             expect(got.reduce((s, p) => s + payAmount(p), 0)).toBe(amount);
         }), { seed: 1573, numRuns: Number(process.env.FC_RUNS) || 100 });
+    });
+});
+
 describe('property expenses and net (RENT-17, RENT-18)', () => {
     test('this month\'s expenses per property add up to the total; net per property adds up to the page net', () => {
         const expArb = fc.record({ p: fc.constantFrom('P1', 'P2', 'P3'), amount: fc.integer({ min: 1, max: 50000 }), month: fc.constantFrom('2026-09', '2026-10') });

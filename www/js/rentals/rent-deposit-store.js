@@ -9,7 +9,8 @@
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { todayLocalISO } from '../utils/dates.js';
-import { applyPayment, chargeDue, chargeId as chargeIdOf, depositEntry, depositHeld, MAX_DEPOSIT_ENTRIES } from './rent-math.js';
+import { applyPayment, chargeDue, chargeId as chargeIdOf } from './rent-math.js';
+import { depositEntry, depositHeld, MAX_DEPOSIT_ENTRIES } from './rent-math-ledger.js';
 import { withMonth } from './rent-public.js';
 import { rentCol, uid, clip, readPublic } from './rent-store.js';
 

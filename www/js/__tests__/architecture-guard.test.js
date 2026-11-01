@@ -88,6 +88,7 @@ const SKIP_DIRS = new Set(['www/js/__tests__', 'www/js/tip']);
 const CATEGORIES = ['firestore', 'moneyMath', 'domNumber', 'appStateWrite', 'dateMath'];
 const PURE_RENTALS = new Set([
     'www/js/rentals/rent-math.js',
+    'www/js/rentals/rent-math-ledger.js',
     'www/js/rentals/rent-views.js',
     'www/js/rentals/rent-public.js'
 ]);

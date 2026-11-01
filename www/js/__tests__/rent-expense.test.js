@@ -11,7 +11,8 @@ global.__fakeDb = fake.db;
 
 import { AppState } from '../utils/state.js';
 import * as es from '../rentals/rent-expense-store.js';
-import { expenseTotals, netOf, expenseError } from '../rentals/rent-math.js';
+import { expenseTotals, netOf } from '../rentals/rent-math.js';
+import { expenseError } from '../rentals/rent-math-ledger.js';
 
 const ex = (propertyId, amount, month = '2026-10') => ({ propertyId, amount, month });
 

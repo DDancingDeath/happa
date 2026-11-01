@@ -13,7 +13,8 @@ import { formatINR } from '../utils/due-reminder.js';
 import * as store from './rent-store.js';
 import { isShareToken, withLease, withMonth, PUBLIC_MONTHS } from './rent-public.js';
 import { vacantByProperty, typedPlace, moveTarget } from './rent-views.js';
-import { monthLabel, dateLabel, leaseDues, chargeId, isDate, moveMonthRent, oldMonth, moveMonthSplit, changeUnitPlan, keptTerms, advanceLeft } from './rent-math.js';
+import { monthLabel, dateLabel, leaseDues, chargeId, isDate } from './rent-math.js';
+import { moveMonthRent, oldMonth, moveMonthSplit, changeUnitPlan, keptTerms, advanceLeft } from './rent-math-ledger.js';
 
 const el = (id) => document.getElementById(id);
 const toast = (key) => UIManager.showToast(t(key), 'error');

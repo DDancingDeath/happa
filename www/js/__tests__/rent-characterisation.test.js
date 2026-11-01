@@ -28,7 +28,8 @@ import { rentalsRole } from '../ui/business-switcher.js';
 import { setLang, resetLangForTests } from '../i18n/index.js';
 import { receiptRows, buildReceiptText } from '../rentals/rent-receipt.js';
 import { unitRows, summarize, propertySummaries } from '../rentals/rent-views.js';
-import { leaseDues, chargeDue, chargeStatus, rentTotals, paidEarlier } from '../rentals/rent-math.js';
+import { leaseDues, chargeDue, chargeStatus, rentTotals } from '../rentals/rent-math.js';
+import { paidEarlier } from '../rentals/rent-math-ledger.js';
 
 const M = '2028-02';
 // RENT-1 … RENT-4 in the shape recorded before rentTotals replaced monthSummary.

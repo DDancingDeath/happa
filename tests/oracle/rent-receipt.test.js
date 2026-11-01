@@ -14,7 +14,7 @@ jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService
 
 import { AppState } from '../../www/js/utils/state.js';
 import * as store from '../../www/js/rentals/rent-store.js';
-import { paidEarlier } from '../../www/js/rentals/rent-math.js';
+import { paidEarlier } from '../../www/js/rentals/rent-math-ledger.js';
 import { istYear, receiptNo } from '../../www/js/rentals/rent-math.js';
 
 const cents = (n) => Math.round(n * 100);

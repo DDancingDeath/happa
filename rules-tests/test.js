@@ -4608,6 +4608,8 @@ function defineRentSuite(prefix) {
         b.update(chargeOn(f, CUR), { adv: 0, updatedAt: 3, updatedBy: 'rentMember' });
         await assertFails(b.commit());
         await assertSucceeds(first('rentMember'));
+    });
+
     // ---- Property expenses (#157, RENT-17): rent_expenses/{id} ----
     const expense = (uid, over = {}) => ({ propertyId: 'P1', unitId: null, category: 'repairs', amount: 1500, date: '2026-10-05', month: '2026-10',
         mode: 'cash', note: 'Tap', byName: 'x', createdAt: 1, createdBy: uid, updatedAt: 1, updatedBy: uid, ...over });

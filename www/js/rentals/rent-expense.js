@@ -15,7 +15,8 @@ import { formatINR } from '../utils/due-reminder.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as es from './rent-expense-store.js';
-import { EXPENSE_CATEGORIES, PAYMENT_MODES, expenseError, expenseTotals, dateLabel, monthLabel } from './rent-math.js';
+import { PAYMENT_MODES, expenseTotals, dateLabel, monthLabel } from './rent-math.js';
+import { EXPENSE_CATEGORIES, expenseError } from './rent-math-ledger.js';
 
 const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.code || e);
 const fail = (key) => UIManager.showToast(t(key), 'error');

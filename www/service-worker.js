@@ -235,6 +235,7 @@ const LAZY_ASSETS = [
     '/js/rentals/rent-expense.js',
     '/js/rentals/rent-expense-store.js',
     '/js/rentals/rent-link.js',
+    '/js/rentals/rent-math-ledger.js',
     '/js/rentals/rent-receipt.js',
     '/js/rentals/rent-receipt-store.js',
     '/js/rentals/rent-unit.js'

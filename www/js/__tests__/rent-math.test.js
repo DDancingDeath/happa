@@ -1,9 +1,7 @@
 import {
-    monthKey, addMonths, monthRange, monthLabel, monthsToCharge, newCharge, chargeDue, chargeStatus,
-    applyPayment, rentTotals, leaseDues, buildRentReminderText, leaseError, tenantError, unitError,
-    propertyError, increaseDue, meterBill, applyMeter, MAX_BACKFILL_MONTHS, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT,
-    proRateRent, firstMonthRent, moveMonthRent, moveMonthSplit, changeUnitPlan, moveInError, receiptAmounts, paidEarlier
+    monthKey, addMonths, monthRange, monthLabel, monthsToCharge, newCharge, chargeDue, chargeStatus, applyPayment, rentTotals, leaseDues, buildRentReminderText, leaseError, tenantError, unitError, propertyError, increaseDue, meterBill, applyMeter, MAX_BACKFILL_MONTHS, DEFAULT_DUE_DAY, DEFAULT_INCREASE_PCT, proRateRent, firstMonthRent, moveInError, receiptAmounts
 } from '../rentals/rent-math.js';
+import { moveMonthRent, moveMonthSplit, changeUnitPlan, paidEarlier } from '../rentals/rent-math-ledger.js';
 
 const lease = (over = {}) => ({
     id: 'L1', unitId: 'U1', propertyId: 'P1', tenantId: 'T1', rent: 5000, dueDay: 5,
