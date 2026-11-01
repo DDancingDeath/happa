@@ -148,7 +148,10 @@ Code: `www/js/utils/role-access.js` (pure: defaults, `normalizeRoleAccess`, `acc
   `no-perm-<id>` classes on `<body>` and `css/settings.css` hides the matching elements, which
   also covers templates and rows rendered later. Marked: Money profit / cost of goods sold /
   personal expenses, net worth terms; Insights profit cards and to-do ₹ lost; Statements profit,
-  personal expenses, stock value and purchase rate lines (also left out of WhatsApp, CSV and PDF); wholesale
+  personal expenses, stock value and purchase rate lines (also left out of WhatsApp, CSV and PDF; and
+  only the owner exports at all, #103: Statements' WhatsApp / Print / CSV buttons, the CSV and accountant CSV
+  statements, the audit log and error report exports, each confirmed when it names parties, stamped and
+  written in the audit log as `EXPORT` (started before the file goes out, then done / cancelled / failed); client-side, a page's data is already on the phone); wholesale
   profit rows; Stock page rate (average cost) and ₹ value; the Personal expenses tab.
 - **Actions and lists**: Expenses refuses the Personal tab and draws no personal rows; Stock
   "Not selling" also needs `profit` and `stockValue`; Cash history without `oldCashSessions`
@@ -625,6 +628,25 @@ not checked one by one (rules can't loop over map keys), so a member can still c
   account within an hour (Firebase revokes its sessions). To stop the lost phone at once, Remove the person
   first, then Restore and approve them after the reset.
 - Admin › Clear Data › Users still deletes profiles (a fresh start); those people can register again.
+
+## Manual reminders on Today (#86)
+
+Shop-wide to-dos ("Collect from Ramesh on Friday") in `reminders/{id}` (+ `dev_`), in-app only (#58: no push).
+Default chosen (the owner can ask for another): **reminders belong to the shop, not to one person**.
+
+| | Owner | Manager | Member |
+|---|---|---|---|
+| See open reminders on Today (due, next 7 days, later counted) | ✓ | ✓ | ✓ |
+| Add a reminder (title, date today or later, optional party) | ✓ | ✓ | – |
+| Mark one done (it goes for everyone) | ✓ | ✓ | ✓ |
+| Cancel one | ✓ | ✓ | – |
+| Delete (cleanup) | ✓ | – | – |
+
+The rules check the shape (title 1–120 letters, `dueDate` 'YYYY-MM-DD' not before yesterday in India, at most
+about two years ahead, party ≤ 80), that the writer names themself with the server time (`createdBy` /
+`createdAt`, `doneBy` / `doneAt`, `cancelledBy` / `cancelledAt`), and that done and cancelled are
+final: nothing else of a reminder can change. Today listens to the open ones only (`status == 'open'`, soonest
+due first, at most 50, index `status` + `dueDate`; one listener per sign-in: 1 read when there are none, then only changes).
 
 ## Settings sections (who sees what)
 
