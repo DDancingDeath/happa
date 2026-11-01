@@ -66,6 +66,7 @@ export function formatAuditDetails(details, action) {
     if (has(d.reason)) parts.push(t('ui.settings.audit_reason', { value: d.reason }));
     if (has(d.changes)) parts.push(t('ui.settings.audit_changes', { value: d.changes }));
     if (has(d.reports)) parts.push(t('ui.settings.audit_reports', { value: d.reports }));
+    if (has(d.recordsChecked)) parts.push(t('ui.settings.audit_records', { value: d.recordsChecked }));
     // #103 exports
     if (has(d.exportKind)) parts.push(t('ui.settings.audit_export', { kind: t(EXPORT_KIND_KEYS[d.exportKind] || 'ui.export.kind_other'), format: t(EXPORT_FORMAT_KEYS[d.format] || 'ui.export.format_file') }));
     if (has(d.rows)) parts.push(t('ui.settings.audit_rows', { value: d.rows }));

@@ -49,6 +49,8 @@ export class AuditService {
         SETTINGS_CHANGE: 'SETTINGS_CHANGE',
         // Owner hid error reports in Diagnostics (#116; kept in Firestore)
         HIDE_ERRORS: 'HIDE_ERRORS',
+        // Owner checked a backup file on the phone, read-only (#63): details.recordsChecked, date
+        BACKUP_CHECK: 'BACKUP_CHECK',
         // A file or shared text left the app (#103): details.exportKind, format, from, to, rows
         EXPORT: 'EXPORT',
         
