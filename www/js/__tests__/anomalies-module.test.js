@@ -69,6 +69,13 @@ describe('daily scan', () => {
         expect(detected.map(a => [a.type, a.refId])).toEqual([['date-backdated', 's1']]);
         await AnomaliesManager.scan('2026-10-21', '2026-10-21');
         expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
+        // A bill without enteredAt that reached the server a day after its date also needs the owners
+        AnomaliesManager.owners = null;
+        FirebaseService.loadPeople.mockClear();
+        AppState.retailSalesHistory = [{ ...dated('s2', 'staff1'), enteredAt: undefined, createdAt: { seconds: Math.floor(now / 1000), nanoseconds: 0 } }];
+        expect((await AnomaliesManager.scan('2026-10-21', '2026-10-21')).detected.map(a => [a.type, a.refId])).toEqual([['date-backdated', 's2']]);
+        expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
+        AppState.retailSalesHistory = [dated('s1', 'staff1'), dated('o2', 'own2')];
         // Not known (read failed): Q20 for all
         AnomaliesManager.owners = null;
         FirebaseService.loadPeople.mockRejectedValueOnce(new Error('offline'));

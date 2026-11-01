@@ -144,11 +144,14 @@ describe('bill rules', () => {
         const byEntered = run({ bills: { retail: [dated({ enteredAt: T(11) })] } });
         expect(byEntered.map(a => [a.type, a.dayKey])).toEqual([['date-backdated', '2026-10-22']]);
         expect(types(run({ bills: { retail: [dated({ createdAt: { seconds: T(11) / 1000, nanoseconds: 0 } })] } }))).toEqual(['date-backdated']);
-        // an old-app bill saved offline at 18:00 and synced at 01:00 (or next morning): its own time, nothing flagged
-        const offline = bill({ timestamp: T(18, 0, 21), createdAt: { seconds: T(1, 0, 22) / 1000, nanoseconds: 0 } });
-        expect(run({ bills: { retail: [offline] }, ownerIds: ['own1'], from: T(0, 0, 21), to: T(0, 0, 23) })).toEqual([]);
-        const morning = bill({ timestamp: T(18, 0, 21), createdAt: { seconds: T(9, 0, 22) / 1000, nanoseconds: 0 } });
-        expect(run({ bills: { retail: [morning] }, ownerIds: ['own1'], from: T(0, 0, 21), to: T(0, 0, 23) })).toEqual([]);
+        // an old-app bill saved offline at 18:00 and synced at 01:00 (within 12 hours): its own time, nothing flagged
+        const at = (ts, created) => bill({ timestamp: ts, createdAt: { seconds: created / 1000, nanoseconds: 0 } });
+        const flags = (b) => types(run({ bills: { retail: [b] }, ownerIds: ['own1'], from: T(0, 0, 21), to: T(0, 0, 23) }));
+        expect(flags(at(T(18, 0, 21), T(1, 0, 22)))).toEqual([]);
+        // a bill without enteredAt dated a day back: the same time yesterday (even with the phone a second fast),
+        // or yesterday evening entered this morning
+        expect(flags(at(T(11, 0, 21) + 1000, T(11, 0, 22)))).toEqual(['date-backdated']);
+        expect(flags(at(T(18, 0, 21), T(10, 0, 22)))).toEqual(['date-backdated']);
         // entered inside the range but dated today: nothing
         expect(run({ bills: { retail: [bill({ enteredAt: T(11), createdAt: { seconds: T(11) / 1000, nanoseconds: 0 } })] } })).toEqual([]);
     });

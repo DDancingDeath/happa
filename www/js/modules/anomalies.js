@@ -17,7 +17,7 @@ import { t } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
-    addDaysToKey, anomalyPatterns, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
+    addDaysToKey, anomalyPatterns, billTime, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
     istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, summarizeAnomalies, summaryLine, typeLabel,
     withoutUnstockedOversell
 } from '../utils/anomalies.js';
@@ -60,10 +60,10 @@ function loadedBills() {
     };
 }
 
-/** A loaded bill entered on a later IST day than it is dated, by someone other than `uid` (#147). */
+/** A loaded bill entered (as the scan sees it, billTime) on a later IST day than it is dated, by someone other than `uid` (#147). */
 function datedBackByOthers(bills, uid) {
     return Object.values(bills).some(list => list.some(b => {
-        const at = Number(b?.enteredAt);
+        const at = billTime(b);
         return typeof b?.timestamp === 'number' && Number.isFinite(at) && istDayKey(at) > istDayKey(b.timestamp)
             && String(b.userId || b.createdBy || '') !== String(uid || '');
     }));
