@@ -164,7 +164,7 @@ export class WholesaleSalesManager {
             availableStockEl.textContent = t('ui.wholesale.updating');
             avgRateEl.textContent = "-";
         } else if (!stockData) {
-            availableStockEl.textContent = "0.00";
+            availableStockEl.textContent = formatKg(0);
             avgRateEl.textContent = "-";
             sellRateEl.value = "";
             return;

@@ -10,7 +10,7 @@ import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatRupees, formatAmount } from '../utils/money.js';
+import { formatRupees, formatAmount, formatKg } from '../utils/money.js';
 import { formatMonth, formatDay, monthStart, latestMonthStart } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
@@ -211,7 +211,7 @@ export const InsightsManager = {
             const showProfit = this.may('profit');
             const below = showProfit ? belowCostSales(m).slice(0, 3) : [];
             this.html('insightsActionsBelow', below.map(b => this.actionCard('📉',
-                t('ui.insights.act_below_cost', { item: nameOf(b), times: b.times, kg: b.qty, amount: formatRupees(b.lost) }), null, '',
+                t('ui.insights.act_below_cost', { item: nameOf(b), times: b.times, kg: formatKg(b.qty), amount: formatRupees(b.lost) }), null, '',
                 `<button type="button" class="btn btn-secondary" data-item="${esc(b.itemKey)}">${esc(t('ui.insights.see_trend'))} ›</button>`)).join(''));
             const low = showProfit ? lowProfitItems(itemSummary(m), cfg).slice(0, 3) : [];
             this.html('insightsActionsLow', low.map(x => this.actionCard('🪙',

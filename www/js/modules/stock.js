@@ -896,7 +896,7 @@ export class StockManager {
                     <div class="history-header">
                         <strong>${Helpers.escapeHtml(displayName)}</strong>
                         <span style="color: ${typeColor}; font-weight: 600;">
-                            ${Helpers.escapeHtml(typeLabel)} ${quantity !== 'Unknown' ? Helpers.escapeHtml(quantity) + ' kg' : ''}
+                            ${Helpers.escapeHtml(typeLabel)} ${quantity !== 'Unknown' ? `${formatKg(quantity)} kg` : ''}
                         </span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(adj.date || t('ui.stock.unknown_date'))}${adj.createdByName ? ` • ${tx('ui.stock.by', { name: adj.createdByName })}` : ''}</div>
@@ -904,7 +904,7 @@ export class StockManager {
                         ${displayRate > 0 ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">${tx('ui.stock.rate_per_kg', { rate: formatAmount(displayRate, { decimals: 2 }) })}${valueImpact ? ` • ${tx('ui.stock.value', { amount: formatAmount(valueShown) })}` : ''}</div>` : ''}
                         <div style="font-size: 13px; color: #666;">
                             ${formatKg(adj.previousStock)} kg → ${formatKg(adj.newStock)} kg
-                            ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: adj.rawQuantity })}` : ''}
+                            ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: formatKg(adj.rawQuantity) })}` : ''}
                         </div>
                         ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : `<div style="font-size: 13px; color: #999; margin-top: 4px;"><em>${tx('ui.stock.no_reason')}</em></div>`}
                         ${adj.reversesId ? `<div class="stock-adj-note">↩ ${tx('ui.stock.reverses_note')}</div>` : ''}

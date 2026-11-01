@@ -37,7 +37,7 @@ import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
 import { t, tn } from '../i18n/index.js';
-import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment, formatRupees, formatAmount, formatKg } from '../utils/money.js';
+import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment, formatRupees, formatAmount, formatKg, toMoney } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -501,9 +501,9 @@ export class HistoryManager {
         const itemsHTML = bill.items.map(item => `
             <tr>
                 <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb;">${Helpers.escapeHtml(item.name)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${formatAmount(item.rate, { decimals: 2 })}</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${toMoney(item.rate) === null ? '—' : formatAmount(item.rate, { decimals: 2 })}</td>
                 <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${formatKg(item.qty || item.quantity)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${formatAmount(item.total, { exact: true })}</strong></td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${(toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })}</strong></td>
             </tr>
         `).join('');
         
