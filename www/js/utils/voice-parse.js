@@ -76,7 +76,7 @@ const PRICE_AFTER = wordSet([
     'रुपये', 'रुपए', 'रुपया', 'रूपये', 'रूपए', 'ka', 'ke', 'का', 'के'
 ]);
 /** Words just before a number that make it the rate ("at 30", "₹30", "rate 30"). */
-const PRICE_BEFORE = wordSet(['₹', 'rs', 'at', '@', 'rate', 'bhav', 'bhaav', 'रेट', 'भाव', 'दर']);
+const PRICE_BEFORE = wordSet(['₹', 'rs', 'at', '@', 'rate', 'bhav', 'bhaav', 'रेट', 'भाव', 'दर', 'daam', 'दाम', 'hisaab', 'hisab', 'हिसाब']);
 /** "30 per kilo", "प्रति kg 30": a rate. */
 const PER_WORDS = wordSet(['per', 'prati', 'प्रति', 'pratee', 'fi']);
 const POSSESSIVE = wordSet(['ka', 'ke', 'ki', 'का', 'के', 'की']);
@@ -220,12 +220,18 @@ function numberKind(rest, groups, gi) {
     const stop = gi + 1 < groups.length ? groups[gi + 1].start : rest.length;
     let after = null;
     let lastWord = null;
-    let beforeLast = null;
+    let prevWord = null;
+    let mein = false;
+    let meinAfterRateWord = false;
     let possessive = false;
     let rupees = false;
     for (let k = g.end; k < stop; k++) {
         const w = rest[k];
-        if (w) [beforeLast, lastWord] = [lastWord, w];
+        if (w) [prevWord, lastWord] = [lastWord, w];
+        if (TOTAL_AFTER_A_WEIGHT.has(w)) {
+            mein = true;
+            meinAfterRateWord = PRICE_BEFORE.has(prevWord);
+        }
         if (POSSESSIVE.has(w)) possessive = true;
         else if (PRICE_AFTER.has(w)) rupees = true;
         // a total word just before the next number belongs to that number ("30 rupees total 300")
@@ -246,10 +252,10 @@ function numberKind(rest, groups, gi) {
         && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]))) return 'other';
     const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
     if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2) && after !== 'weight') return 'rate-kg';
-    // "2 kilo 60 (rupaye) mein" is a total; "30 ke bhav mein" a rate
-    if (gi > 0 && (((after === null || after === 'rate') && TOTAL_AFTER_A_WEIGHT.has(lastWord) && !PRICE_BEFORE.has(beforeLast))
-        || (after !== 'weight' && after !== 'gram' && TOTAL_AFTER_A_WEIGHT.has(b1)))) return 'other';
     if (PRICE_BEFORE.has(b1)) return after === 'rate-kg' ? after : 'rate';
+    // "2 kilo 60 (rupaye) mein" is a total; "30 ke bhav mein" a rate
+    if (gi > 0 && (((after === null || after === 'rate') && mein && !meinAfterRateWord)
+        || (after !== 'weight' && after !== 'gram' && TOTAL_AFTER_A_WEIGHT.has(b1)))) return 'other';
     if (TOTAL_BEFORE.has(b1)) return 'other';
     // "10 kilo ke 300" is a total, "kilo ka 30" a rate per kg
     if (POSSESSIVE.has(b1) && GRAM_UNITS.has(b2)) return 'other';
