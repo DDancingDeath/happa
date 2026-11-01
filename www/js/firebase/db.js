@@ -24,9 +24,8 @@ export const getDb = () => {
 };
 
 /**
- * Gets the prefixed collection name based on environment.
- * In development: 'items' -> 'dev_items'
- * In production: 'items' -> 'items'
+ * Gets the prefixed collection name based on environment
+ * (window.COLLECTION_PREFIX: empty in production, the dev prefix on localhost).
  * @param {string} name - The base collection name
  * @returns {string} The prefixed collection name
  */
