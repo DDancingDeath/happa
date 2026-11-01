@@ -96,8 +96,25 @@ describe('recording them (AnomaliesManager.recordNumberChecks)', () => {
         expect(fake.raw('anomalies').size + fake.raw('dev_anomalies').size).toBe(0);
     });
 
-    test('the stored record is what a scan would store for a new anomaly', () => {
-        const [w] = planAnomalyWrites(numberCheckFlags(RESULTS, NOW), [], NOW);
-        expect(Object.keys(w.data)).toEqual(expect.arrayContaining(['type', 'severity', 'dayKey', 'status', 'detectedAt', 'refKind', 'refId']));
+    test('a failed save remembers nothing; money mismatches are filed before stock ones', async () => {
+        const save = jest.spyOn(FirebaseService, 'addAnomaliesIfMissing').mockRejectedValueOnce(new Error('offline'));
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        expect(await AnomaliesManager.recordNumberChecks(RESULTS, NOW)).toBe(0);
+        expect(localStorage.getItem('happa.numcheckFlags')).toBeNull();
+        save.mockRestore();
+        const spy = jest.spyOn(FirebaseService, 'addAnomaliesIfMissing');
+        expect(await AnomaliesManager.recordNumberChecks([RESULTS[4], RESULTS[1]], NOW)).toBe(3);
+        expect(spy.mock.calls[0][0].map(w => w.data.severity)).toEqual(['high', 'high', 'medium']);
+    });
+
+    test('the stored record has only the fields the rules allow (validAnomaly)', () => {
+        const rules = require('fs').readFileSync(require('path').join(__dirname, '../../../firestore.rules'), 'utf8');
+        const block = /function validAnomaly[\s\S]*?hasOnly\(\[([\s\S]*?)\]\)/.exec(rules)[1];
+        const allowed = [...block.matchAll(/'([A-Za-z]+)'/g)].map(m => m[1]);
+        planAnomalyWrites(numberCheckFlags(RESULTS, NOW), [], NOW).forEach(w => {
+            expect(Object.keys(w.data).filter(k => !allowed.includes(k))).toEqual([]);
+            expect(['high', 'medium', 'low']).toContain(w.data.severity);
+            expect(w.data.status).toBe('open');
+        });
     });
 });

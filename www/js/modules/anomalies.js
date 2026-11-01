@@ -18,7 +18,7 @@ import { pickLang } from '../i18n/localize.js';
 import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
     addDaysToKey, anomalyPatterns, billTime, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
-    istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, summarizeAnomalies, summaryLine, typeLabel,
+    istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, sortAnomalies, summarizeAnomalies, summaryLine, typeLabel,
     voidedByOthers, withoutStoredVoidTwins, withoutUnstockedOversell
 } from '../utils/anomalies.js';
 import { firstStockTimes } from '../utils/stock-check.js';
@@ -280,7 +280,8 @@ export const AnomaliesManager = {
             if (k && k.uid === uid && Array.isArray(k.ids)) known = k.ids;
         } catch (e) { known = []; }
         const seen = new Set(known);
-        const flags = numberCheckFlags(results, now).filter(f => !seen.has(f.id)).slice(0, NUMCHECK_FLAGS_PER_RUN);
+        // High (money) first, so a backlog never holds back today's drawer check
+        const flags = sortAnomalies(numberCheckFlags(results, now).filter(f => !seen.has(f.id))).slice(0, NUMCHECK_FLAGS_PER_RUN);
         if (!flags.length) return 0;
         try {
             const created = await FirebaseService.addAnomaliesIfMissing(planAnomalyWrites(flags, [], now).map(w => ({ id: w.id, data: w.data })));

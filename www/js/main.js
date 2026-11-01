@@ -144,7 +144,7 @@ function scheduleTipNumberChecks() {
             const run = tip.start('NumberChecks');
             const results = DiagnosticsManager.numberCheckResults();
             run.complete(numberChecksProps(results));
-            // #160: the mismatches also reach Anomalies, once per mismatch set
+            // #160: each mismatch also reaches Anomalies, once
             AnomaliesManager.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
         } catch (e) {
             console.warn('TIP number checks failed:', e?.message || e);
