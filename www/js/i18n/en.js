@@ -2261,7 +2261,7 @@ export default {
     'ui.cmp.row_M4': "Business expenses",
     'ui.cmp.row_M6': "Profit",
     'ui.cmp.row_M14': "Net money in",
-    'msg.cmp.pick_both_days': "Pick both days first.",
+    'msg.cmp.pick_both_days': "Pick both days, up to today.",
     'msg.cmp.saved': "Range saved on this phone.",
     'msg.cmp.not_saved': "Could not save the range.",
     'msg.cmp.not_loaded': "Bills for this period are not loaded yet.",

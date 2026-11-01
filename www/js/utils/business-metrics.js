@@ -113,17 +113,20 @@ function customRangeDays(preset) {
 const toKey = (d) => d[0] * 10000 + d[1] * 100 + d[2];
 
 /**
- * PERIOD-CUSTOM: the preset for two chosen days ('YYYY-MM-DD', either order), or null when one is not a date.
+ * PERIOD-CUSTOM: the preset for two chosen days ('YYYY-MM-DD', either order), or null when one is not a
+ * date or both are after today.
  * @param {string} fromIso
  * @param {string} toIso
+ * @param {Date} [now]
  * @returns {?string}
  */
-export function customRangePreset(fromIso, toIso) {
+export function customRangePreset(fromIso, toIso, now = new Date()) {
     const ok = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
     if (!ok(fromIso) || !ok(toIso)) return null;
     const days = customRangeDays(`range:${fromIso}:${toIso}`);
     if (!days) return null;
     const iso = (d) => `${d[0]}-${String(d[1]).padStart(2, '0')}-${String(d[2]).padStart(2, '0')}`;
+    if (iso(days.from) > toLocalISODate(now)) return null;
     return `range:${iso(days.from)}:${iso(days.to)}`;
 }
 

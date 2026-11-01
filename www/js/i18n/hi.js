@@ -2261,7 +2261,7 @@ export default {
     'ui.cmp.row_M4': "दुकान के खर्च",
     'ui.cmp.row_M6': "मुनाफ़ा",
     'ui.cmp.row_M14': "कुल आया-गया पैसा",
-    'msg.cmp.pick_both_days': "पहले दोनों तारीख़ें चुनें।",
+    'msg.cmp.pick_both_days': "दोनों तारीख़ें चुनें, आज तक की।",
     'msg.cmp.saved': "अवधि इस फ़ोन पर सहेजी गई।",
     'msg.cmp.not_saved': "अवधि सहेजी नहीं जा सकी।",
     'msg.cmp.not_loaded': "इस अवधि के बिल अभी लोड नहीं हुए।",

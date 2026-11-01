@@ -41,7 +41,7 @@ import { openExternal } from '../utils/open-external.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import { PrinterService } from '../services/printer.js';
 import {
-    compareBarHtml, compareTableHtml, compareTarget, choosePreset, chooseCompare, applyDates, applySaved,
+    compareBarHtml, writeBar, compareTableHtml, compareTarget, choosePreset, chooseCompare, applyDates, applySaved,
     saveCurrentRange, removeCurrentRange, periodText, presetSelectValue, summaryLines, summaryText, summaryCanvas
 } from '../ui/period-compare.js';
 
@@ -389,7 +389,7 @@ export const MoneyManager = {
         const r = this.range();
         const label = document.getElementById('moneyPeriodLabel');
         if (label) label.textContent = this.periodLabel(r);
-        this.html('moneyCmpBar', compareBarHtml('money', { share: true }));
+        writeBar('moneyCmpBar', compareBarHtml('money', { share: true }));
         if (!this.covered(r.from)) {
             this.renderNotLoaded(r);
             return;

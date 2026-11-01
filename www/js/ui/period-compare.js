@@ -25,8 +25,18 @@ const PRESET_KEYS = Object.freeze({
 });
 const ROW_KEYS = Object.freeze({ M1: 'ui.cmp.row_M1', M16: 'ui.cmp.row_M16', M4: 'ui.cmp.row_M4', M6: 'ui.cmp.row_M6', M14: 'ui.cmp.row_M14' });
 
-/** Two chosen days are being picked (before "Show"): a = the period, b = compare with. */
-const editing = { a: false, b: false };
+/**
+ * Two chosen days are being picked (before "Show"): a = the period, b = compare with. Each holds the
+ * preset (or period B) shown when "Choose dates…" was picked, so the boxes close by themselves when the
+ * period changes another way (‹ ›, a tapped month). undefined = not picking.
+ */
+const editing = { a: undefined, b: undefined };
+const isEditing = (which) => {
+    const now = getInsightsContext()[which === 'b' ? 'compare' : 'preset'] ?? null;
+    return editing[which] !== undefined && editing[which] === now;
+};
+/** Last HTML written into each bar: rewriting the same bar would clear dates typed but not yet shown. */
+const lastBar = new Map();
 
 const store = () => {
     try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch (_) { return null; }
@@ -53,7 +63,7 @@ export function periodText(r, preset, lang = getLang()) {
 /** Value for the period <select>: '' for a stepped month, 'custom' for chosen days. */
 export function presetSelectValue(preset) {
     if (/^month:/.test(preset)) return '';
-    if (/^range:/.test(preset) || editing.a) return 'custom';
+    if (/^range:/.test(preset) || isEditing('a')) return 'custom';
     return preset;
 }
 
@@ -83,7 +93,7 @@ function datesHtml(page, which, preset) {
  */
 export function compareBarHtml(page, { share = false } = {}) {
     const { preset, compare } = getInsightsContext();
-    const bValue = editing.b || /^range:/.test(compare || '') ? 'custom' : (compare || '');
+    const bValue = isEditing('b') || /^range:/.test(compare || '') ? 'custom' : (compare || '');
     const options = [['', t('ui.cmp.off')], ...COMPARE_PRESETS.map(p => [p, t(PRESET_KEYS[p])]), ['custom', t('ui.cmp.choose_dates')]]
         .map(([v, label]) => `<option value="${v}"${v === bValue ? ' selected' : ''}>${esc(label)}</option>`).join('');
     const saved = readSavedRanges(store());
@@ -93,7 +103,7 @@ export function compareBarHtml(page, { share = false } = {}) {
         const a = periodText(periodRange(x.a), x.a);
         return x.b ? t('ui.cmp.a_vs_b', { a, b: periodText(periodRange(x.b), x.b) }) : a;
     };
-    return (editing.a || /^range:/.test(preset) ? datesHtml(page, 'a', preset) : '')
+    return (isEditing('a') || /^range:/.test(preset) ? datesHtml(page, 'a', preset) : '')
         + `<div class="ins-ab-bar">`
         + `<label class="ins-ab-pick"><span>${esc(t('ui.cmp.compare_with'))}</span>`
         + `<select id="${page}Compare" onchange="window.app.${page}.setCompare(this.value)">${options}</select></label>`
@@ -111,25 +121,34 @@ export function compareBarHtml(page, { share = false } = {}) {
 
 /** Period select changed: 'custom' opens the two date boxes; anything else is the new period. */
 export function choosePreset(preset) {
-    editing.a = preset === 'custom';
-    if (!editing.a) setInsightsContext({ preset });
+    editing.a = preset === 'custom' ? getInsightsContext().preset : undefined;
+    if (preset !== 'custom') setInsightsContext({ preset });
+}
+
+/** Writes the bar into its host unless it is already there (keeps half-typed dates through re-renders). */
+export function writeBar(id, html) {
+    const el = typeof document !== 'undefined' ? document.getElementById(id) : null;
+    if (!el) return;
+    if (lastBar.get(id) === html && el.firstChild) return;
+    el.innerHTML = html;
+    lastBar.set(id, html);
 }
 
 /** Compare-with select changed ('' = off, 'custom' = pick two days). */
 export function chooseCompare(value) {
-    editing.b = value === 'custom';
-    if (!editing.b) setInsightsContext({ compare: value || null });
+    editing.b = value === 'custom' ? (getInsightsContext().compare ?? null) : undefined;
+    if (value !== 'custom') setInsightsContext({ compare: value || null });
 }
 
 /**
  * "Show" under two date boxes: saves the chosen days as the period (a) or period B (b).
- * @returns {boolean} false when a day is missing
+ * @returns {boolean} false when a day is missing or the first day is after today
  */
 export function applyDates(page, which) {
     const id = `${page}Cmp${String(which).toUpperCase()}`;
     const preset = customRangePreset(document.getElementById(`${id}From`)?.value, document.getElementById(`${id}To`)?.value);
     if (!preset) return false;
-    editing[which === 'b' ? 'b' : 'a'] = false;
+    editing[which === 'b' ? 'b' : 'a'] = undefined;
     setInsightsContext(which === 'b' ? { compare: preset } : { preset });
     return true;
 }
@@ -137,8 +156,8 @@ export function applyDates(page, which) {
 export function applySaved(id) {
     const hit = readSavedRanges(store()).find(x => x.id === id);
     if (!hit) return false;
-    editing.a = false;
-    editing.b = false;
+    editing.a = undefined;
+    editing.b = undefined;
     setInsightsContext({ preset: hit.a, compare: hit.b });
     return true;
 }
@@ -156,8 +175,9 @@ export function removeCurrentRange() {
 
 /** Test helper. */
 export function resetPeriodCompareForTests() {
-    editing.a = false;
-    editing.b = false;
+    editing.a = undefined;
+    editing.b = undefined;
+    lastBar.clear();
 }
 
 const pctText = (c) => (!c ? '' : c.dir === 'same' ? '＝' : `${c.dir === 'up' ? '▲' : '▼'} ${Math.abs(c.pct)}%`);

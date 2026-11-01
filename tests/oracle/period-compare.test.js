@@ -26,7 +26,7 @@ describe('PERIOD-CUSTOM: chosen days', () => {
         fc.assert(fc.property(fc.integer({ min: 0, max: 400 }), fc.integer({ min: 0, max: 400 }), (x, y) => {
             const a = new Date(2026, 9, 21 - x);
             const b = new Date(2026, 9, 21 - y + 30);
-            const r = periodRange(customRangePreset(iso(b), iso(a)), NOW);
+            const r = periodRange(customRangePreset(iso(b), iso(a), NOW), NOW);
             const [lo, hi] = a <= b ? [a, b] : [b, a];
             const end = Math.min(new Date(hi.getFullYear(), hi.getMonth(), hi.getDate() + 1).getTime(), new Date(2026, 9, 22).getTime());
             expect(r.from).toBe(lo.getTime());
@@ -39,8 +39,8 @@ describe('CMP-AB: A vs B = oracle', () => {
     test('every pair of chosen periods in the worked example', () => {
         fc.assert(fc.property(fc.integer({ min: 0, max: 60 }), fc.integer({ min: 0, max: 20 }), fc.integer({ min: 0, max: 60 }), fc.integer({ min: 0, max: 20 }), (a0, aLen, b0, bLen) => {
             const day = (n) => new Date(2026, 9, 21 - n);
-            const A = periodRange(customRangePreset(iso(day(a0)), iso(day(Math.max(0, a0 - aLen)))), NOW);
-            const B = periodRange(customRangePreset(iso(day(b0)), iso(day(Math.max(0, b0 - bLen)))), NOW);
+            const A = periodRange(customRangePreset(iso(day(a0)), iso(day(Math.max(0, a0 - aLen))), NOW), NOW);
+            const B = periodRange(customRangePreset(iso(day(b0)), iso(day(Math.max(0, b0 - bLen))), NOW), NOW);
             const rows = periodCompare(figures(moneySummary(input, A)), figures(moneySummary(input, B)));
             const oa = O.metrics(data, [A.from, A.to]);
             const ob = O.metrics(data, [B.from, B.to]);

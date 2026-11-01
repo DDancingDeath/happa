@@ -28,7 +28,7 @@ import { MoneyManager } from './money.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import {
-    compareBarHtml, compareTarget, choosePreset, chooseCompare, applyDates, applySaved, saveCurrentRange, removeCurrentRange, periodText, presetSelectValue
+    compareBarHtml, writeBar, compareTarget, choosePreset, chooseCompare, applyDates, applySaved, saveCurrentRange, removeCurrentRange, periodText, presetSelectValue
 } from '../ui/period-compare.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
@@ -205,7 +205,7 @@ export const InsightsManager = {
         const r = this.range();
         const label = document.getElementById('insightsPeriodLabel');
         if (label) label.textContent = this.periodLabel(r);
-        this.html('insightsCmpBar', compareBarHtml('insights'));
+        writeBar('insightsCmpBar', compareBarHtml('insights'));
         const ok = this.covered(r.from);
         const m = ok ? moneySummary(this.input(r.from), r, { detail: true }) : null;
         if (this.section === 'actions') this.renderActions(m, r);
@@ -372,8 +372,10 @@ export const InsightsManager = {
     itemsFor(r, ly) {
         if (!ly) return null;
         if (this.covered(ly.from)) {
-            return itemSummary(moneySummary(this.input(ly.from), ly, { detail: true })).map(x => ({ key: x.itemKey, sales: x.sales }));
+            return itemSummary(moneySummary(this.input(ly.from), ly, { detail: true }), { type: this.itemsType }).map(x => ({ key: x.itemKey, sales: x.sales }));
         }
+        // Month snapshots don't split item sales by bill type
+        if (this.itemsType !== 'both') return null;
         const snaps = MoneyManager.snapshots || {};
         const keys = monthKeysBetween(ly.from, ly.to);
         // Snapshots keep items per whole month only: a part period (e.g. 1–3 Oct) has no fair comparison.

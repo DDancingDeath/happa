@@ -27,6 +27,9 @@ describe('PERIOD-CUSTOM', () => {
         expect(customRangePreset('2026-02-30', '2026-03-01')).toBeNull();
         expect(customRangePreset('', '2026-03-01')).toBeNull();
         expect(customRangePreset('2026-03-05', '2026-03-01')).toBe('range:2026-03-01:2026-03-05');
+        const now = new Date(2026, 10, 1, 12);
+        expect(customRangePreset('2026-11-02', '2026-11-05', now)).toBeNull();
+        expect(customRangePreset('2026-10-30', '2026-11-05', now)).toBe('range:2026-10-30:2026-11-05');
     });
     test('label: both days, one year when they share it', () => {
         const now = new Date(2026, 10, 1, 12);
