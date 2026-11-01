@@ -913,10 +913,6 @@ const PrinterService = {
         }
     },
 
-    async print(billData) {
-        return this.printBill(billData);
-    },
-
     /** Readable text for a print/link error (timeouts and drops are translated). */
     errorText(error) {
         const keys = {
@@ -1441,7 +1437,7 @@ const PrinterService = {
                         } catch (e) {
                             // User cancelled or share failed, fall through to download
                             if (e.name !== 'AbortError') {
-                                console.log('Share failed, trying download:', e);
+                                console.warn('Share failed, trying download:', e);
                             }
                         }
                     }
@@ -1614,7 +1610,7 @@ const PrinterService = {
                         } catch (e) {
                             // User cancelled or share failed, fall through to download
                             if (e.name !== 'AbortError') {
-                                console.log('Share failed, trying download:', e);
+                                console.warn('Share failed, trying download:', e);
                             }
                         }
                     }

@@ -43,8 +43,7 @@ www/js/
 │   ├── rate-trends.js        # Trends / Product traffic (mounted in Insights › Seasons)
 │   ├── settings.js           # App settings, audit logs, storage stats
 │   ├── statements.js         # Statements: day book, month, ledgers, CSV
-│   ├── stock.js              # Stock tracking and adjustments
-│   └── users.js              # User management and roles
+│   └── stock.js              # Stock tracking and adjustments
 ├── services/
 │   ├── audit.js              # Audit logging (90-day retention)
 │   ├── install-prompt.js     # PWA install card
@@ -95,8 +94,7 @@ www/js/
 | `insights.js` | Insights page: to do, items, parties, seasons |
 | `statements.js` | Statements: day book, month statement, ledgers, CSV / PDF / WhatsApp |
 | `miscellaneous.js` | Expenses, withdrawals |
-| `settings.js` | App settings, audit log viewer, storage stats |
-| `users.js` | User approval, role management (owner only) |
+| `settings.js` | App settings, storage stats |
 
 ## Global Exports
 
