@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title data-i18n="ui.spike.title">happa: computer printing test</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: system-ui, "Segoe UI", Roboto, "Noto Sans Devanagari", Arial, sans-serif; background: #f3f4f6; color: #111827; line-height: 1.5; }
+        main { max-width: 640px; margin: 0 auto; padding: 16px; }
+        section { background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        h1 { font-size: 1.3rem; }
+        h2 { font-size: 1.05rem; margin: 0 0 8px; }
+        button { font: inherit; padding: 10px 16px; border-radius: 8px; border: 0; background: #4f46e5; color: #fff; cursor: pointer; margin: 4px 8px 4px 0; }
+        button:disabled { background: #9ca3af; cursor: default; }
+        .muted { color: #6b7280; font-size: 0.9rem; }
+        #log { white-space: pre-wrap; font-family: Consolas, monospace; font-size: 0.85rem; background: #111827; color: #e5e7eb; padding: 12px; border-radius: 8px; min-height: 80px; }
+        #slip { display: block; margin: 8px 0; border: 1px solid #e5e7eb; max-width: 100%; }
+        .print-only { display: none; }
+        @media print {
+            @page { size: 58mm auto; margin: 0; }
+            body { background: #fff; }
+            main > :not(.print-only) { display: none !important; }
+            .print-only { display: block; }
+            .print-only img { width: 58mm; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1 data-i18n="ui.spike.title">happa: computer printing test</h1>
+    <p class="muted" data-i18n="ui.spike.intro">A test page for printing from a Windows computer to the shop's Bluetooth receipt printer. It isn't part of the app and saves nothing.</p>
+
+    <section>
+        <h2 data-i18n="ui.spike.step_check">1. This browser</h2>
+        <p id="support"></p>
+    </section>
+
+    <section>
+        <h2 data-i18n="ui.spike.step_serial">2. Print over Bluetooth (Web Serial)</h2>
+        <p class="muted" data-i18n="ui.spike.serial_hint">Pair the printer in Windows Bluetooth settings first. Then choose it here: it may be listed by name or as a COM port.</p>
+        <button type="button" id="choose" data-i18n="ui.spike.choose">Choose printer</button>
+        <button type="button" id="print" disabled data-i18n="ui.spike.print">Print test slip</button>
+        <p id="chosen" class="muted"></p>
+    </section>
+
+    <section>
+        <h2 data-i18n="ui.spike.step_windows">3. Print with Windows (if step 2 fails)</h2>
+        <p class="muted" data-i18n="ui.spike.windows_hint">Needs the printer installed in Windows with its driver (Settings › Printers). Choose it in the print window, paper 58 mm, no margins.</p>
+        <button type="button" id="winprint" data-i18n="ui.spike.windows_print">Print with Windows</button>
+    </section>
+
+    <section>
+        <h2 data-i18n="ui.spike.step_result">4. Result</h2>
+        <canvas id="slip" width="384" height="300"></canvas>
+        <p class="muted" data-i18n="ui.spike.result_hint">Copy the lines below into the issue, with what came out of the printer.</p>
+        <div id="log" lang="zxx" translate="no"></div>
+    </section>
+
+    <div class="print-only"><img id="slipImage" alt=""></div>
+</main>
+<script type="module" src="/spike/serial.js"></script>
+</body>
+</html>
