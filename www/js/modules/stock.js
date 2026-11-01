@@ -128,7 +128,7 @@ export class StockManager {
                 // Orphan rows: highlight in red so the user can spot the
                 // discrepancy. Always shown to all users (including staff)
                 // because they signal a data integrity issue.
-                const qtyColor = item.quantity < 0 ? '#b02a37' : '#f0ad4e';
+                const qtyColor = item.quantity < 0 ? 'var(--danger-color)' : '#f0ad4e';
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; border-left: 3px solid ${qtyColor}; padding-left: 8px;">
                         <div>
@@ -172,7 +172,7 @@ export class StockManager {
                         </div>${alertLine}
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 18px; font-weight: 700; color: #1c7430;">
+                        <div style="font-size: 18px; font-weight: 700; color: var(--success-color);">
                             ${quantityDisplay}
                         </div>
                         ${valueDisplay}

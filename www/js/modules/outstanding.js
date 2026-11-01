@@ -203,13 +203,13 @@ export class OutstandingManager {
             const ageDays = billDate ? ageInDays(billDate, today) : null;
             const ageBadge = `<span class="aging-age aging-b${bucketIndex(ageDays)}">${tt(...ageKey(ageDays))}</span>`;
             
-            const itemColor = transaction.transactionType === 'purchase' ? '#0058b8' : '#1c7430';
+            const itemColor = transaction.transactionType === 'purchase' ? 'var(--info-color)' : 'var(--success-color)';
             const billNumber = transaction.billNumber || transaction.id?.toString().substring(0, 8) || 'N/A';
             
             div.innerHTML = `
                 <div class="history-header">
                     <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" onclick="window.app.outstanding.showDetails('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')">#${Helpers.escapeHtml(billNumber)}</span>${isOpeningRecord(transaction) ? ` <span class="old-app-chip">${tt('ui.history.old_app_chip')}</span>` : ''}${currentDueFilter === 'sale' && this.seesWholesale() ? ` <span class="due-kind-chip">${tt(transaction.transactionType === 'wholesale' ? 'ui.outstanding.kind_wholesale' : 'ui.outstanding.kind_retail')}</span>` : ''}${transaction.customerName ? `  <strong>${Helpers.escapeHtml(transaction.customerName)}</strong>` : ''}
-                    <span style="color: ${headerColor}; font-weight: 700;">${tt('ui.outstanding.due_amount', { amount: formatAmount(transaction.outstanding) })}</span>
+                    <span style="color: var(--danger-color); font-weight: 700;">${tt('ui.outstanding.due_amount', { amount: formatAmount(transaction.outstanding) })}</span>
                 </div>
                 <div class="history-date">${Helpers.formatDate(transaction.date)}${transaction.createdByName ? ` • ${tt('ui.outstanding.by')} <strong>${Helpers.escapeHtml(transaction.createdByName)}</strong>` : ''} ${ageBadge}</div>
                 ${openingOldTotals(transaction) ? `<div class="history-date">${tt('ui.outstanding.opening_balance', { total: formatAmount(openingOldTotals(transaction).total), paid: formatAmount(openingOldTotals(transaction).paid) })}</div>` : ''}
