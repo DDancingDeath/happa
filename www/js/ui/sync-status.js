@@ -45,6 +45,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let started = false;
     let waitSeq = 0;
     let el = null;
+    let lastSyncAt = null;
     const watchers = new Set();
 
     const pendingKeys = () => {
@@ -81,6 +82,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
 
     const flashSynced = () => {
         synced = true;
+        lastSyncAt = Date.now();
         clearTimeout(syncedTimer);
         syncedTimer = setTimeout(() => { synced = false; shown = false; render(); }, SYNCED_SHOW_MS);
         render();
@@ -190,7 +192,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
                 if (writes.get(key) === token) writes.delete(key);
                 render();
             };
-            Promise.resolve(promise).then(done, done);
+            Promise.resolve(promise).then(() => { lastSyncAt = Date.now(); done(); }, done);
         },
         /**
          * Notes the documents of a listener snapshot that are not yet on the server.
@@ -223,6 +225,8 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         },
         pendingCount,
         isOnline: () => online,
+        /** When this phone last saw one of its changes reach the server (ms), null this session. */
+        lastSyncAt: () => lastSyncAt,
         /**
          * Calls fn({online, pending}) on every state change (TIP Sync, #161).
          * @returns {Function} unsubscribe
