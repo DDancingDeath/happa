@@ -102,6 +102,11 @@ const DEVANAGARI_DIGITS = /[\u0966-\u096F]/g;
 
 // Units and codes kept as typed (the Hindi screens also write "kg")
 const KEEP_AS_TYPED = new Set(['kg', 'kgs', 'g', 'gm', 'gms', 'ml', 'l', 'ltr', 'qtl', 'pc', 'pcs', 'no']);
+// Unit words after a number ("50 gram"): kept as typed, never read as an item ("gram" is also chana)
+const UNIT_WORDS = new Set(['gram', 'grams', 'kilo', 'kilos', 'kilogram', 'kilograms', 'litre', 'litres', 'liter', 'liters', 'quintal', 'quintals']);
+// Hindi unit words a user may type → the unit the English name writes. The kilo words are
+// escaped: they are only recognised here, the app never shows them (hindi-kg-unit.test.js).
+const HINDI_UNITS = new Map([['\u0915\u093F\u0932\u094B', 'kg'], ['\u0915\u093F\u0917\u094D\u0930\u093E', 'kg'], ['\u0915\u093F\u0932\u094B\u0917\u094D\u0930\u093E\u092E', 'kg'], ['ग्राम', 'g'], ['लीटर', 'L'], ['क्विंटल', 'qtl']]);
 
 /** Hindi spelling variants that mean the same word (chandrabindu, nukta, NFC). */
 function hindiKey(s) {
@@ -228,7 +233,9 @@ export function suggestHindiName(english) {
             continue;
         }
         // A letter run glued to digits ("50kg", "No1") is a code or a unit: kept as typed
-        if (KEEP_AS_TYPED.has(part.toLowerCase()) || /\d$/.test(parts[i - 1] || '') || /^\d/.test(parts[i + 1] || '')) {
+        const afterNumber = /\d\s*$/.test(parts[i - 1] || '');
+        if (KEEP_AS_TYPED.has(part.toLowerCase()) || (afterNumber && UNIT_WORDS.has(part.toLowerCase()))
+            || /\d$/.test(parts[i - 1] || '') || /^\d/.test(parts[i + 1] || '')) {
             out += part;
             continue;
         }
@@ -256,11 +263,12 @@ export function suggestEnglishName(hindi) {
     if (!text || !DEVANAGARI.test(text)) return '';
     const parts = text.split(/([\u0900-\u097F]+)/).filter(p => p !== '');
     const isWord = (p) => DEVANAGARI.test(p);
-    const words = parts.filter(isWord).map(hindiKey);
+    const words = parts.filter(isWord).map(hindiKey).filter(w => !HINDI_UNITS.has(w));
     const known = words.every(w => TO_ENGLISH_BY_KEY.has(w));
     return parts.map(p => {
         if (!isWord(p)) return p;
         const key = hindiKey(p);
+        if (HINDI_UNITS.has(key)) return HINDI_UNITS.get(key);
         return known ? TO_ENGLISH_BY_KEY.get(key) : capitalize(devanagariToLatin(key));
     }).join('').replace(/\s+/g, ' ').trim();
 }

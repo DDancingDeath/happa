@@ -54,6 +54,9 @@ describe('names not in the table are spelled out', () => {
         expect(suggestEnglishName('गेहूं १')).toBe('Wheat 1');
         expect(suggestEnglishName('चना-दाल')).toBe('Chana-Dal');
         expect(suggestHindiName('Gehu 50 kg')).toBe('गेहूं 50 kg');
+        expect(suggestHindiName('Hing 50 gram')).toBe('हींग 50 gram');
+        expect(suggestEnglishName('चीनी 1 \u0915\u093F\u0932\u094B')).toBe('Sugar 1 kg');
+        expect(suggestEnglishName('दाल ५०\u0915\u093F\u0917\u094D\u0930\u093E')).toBe('Dal 50kg');
     });
 
     test('a half-known Hindi name is spelled out whole, never half translated', () => {
