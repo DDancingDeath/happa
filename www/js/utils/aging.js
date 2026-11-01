@@ -6,7 +6,7 @@
  * @module utils/aging
  */
 
-import { outstandingDue, round2 } from './money.js';
+import { openingAmount, outstandingDue, readPayment, round2 } from './money.js';
 import { billDateOf } from './history-filters.js';
 
 /** Days after which a due counts as "long overdue" (badge). */
@@ -21,6 +21,42 @@ export const AGING_BUCKETS = [
 
 const DAY_MS = 86400000;
 const DUE_EPSILON = 0.005;
+
+/**
+ * Outstanding's lists (#125): `purchase` = payables (O1, O3); receivables: `sale` = retail
+ * and wholesale together (O2, O4: the same total as Money's "to receive"), `retail`, `wholesale`.
+ */
+export const DUE_FILTERS = Object.freeze(['purchase', 'sale', 'retail', 'wholesale']);
+
+/**
+ * The open bills of one Outstanding list, each with its BILL-DUE (`outstanding`, > ₹0.005,
+ * as the aging panel and Money count it), total and paid. Voided and cleared bills owe
+ * nothing (`outstandingDue`); OPENING records are kept (a balance only).
+ * @param {{purchases?: Array<Object>, retailSales?: Array<Object>, wholesaleSales?: Array<Object>}} src
+ * @param {string} filter one of DUE_FILTERS (anything else = `purchase`)
+ * @param {{wholesale?: boolean}} [opts] wholesale false: the role can't open Wholesale, so `sale` is retail only
+ * @returns {Array<Object>} copies of the bills with transactionType, outstanding, totalAmount, paidAmount
+ */
+export function dueRows(src, filter, { wholesale = true } = {}) {
+    const lists = filter === 'retail' ? [['retail', src.retailSales]]
+        : filter === 'wholesale' ? (wholesale ? [['wholesale', src.wholesaleSales]] : [])
+            : filter === 'sale' ? [['retail', src.retailSales], ...(wholesale ? [['wholesale', src.wholesaleSales]] : [])]
+                : [['purchase', src.purchases]];
+    const rows = [];
+    lists.forEach(([type, bills]) => (bills || []).forEach(bill => {
+        const due = round2(outstandingDue(bill));
+        if (!(due > DUE_EPSILON)) return;
+        const pay = readPayment(bill);
+        rows.push({
+            ...bill,
+            transactionType: type,
+            outstanding: due,
+            totalAmount: (type === 'retail' ? bill.total : pay.total) || openingAmount(bill),
+            paidAmount: pay.paid
+        });
+    }));
+    return rows;
+}
 
 /**
  * Whole local calendar days from `billDate` to `today` (0 = same day).

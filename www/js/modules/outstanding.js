@@ -12,7 +12,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { updateBillInTransaction, updateBillsInTransaction } from '../firebase/repos/bill-payments.js';
 import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
-import { activeBills, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2, sumMoney } from '../utils/money.js';
+import { formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingOldTotals, readPayment, round2, sumMoney } from '../utils/money.js';
 import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
 import { directionFor, duePaymentUpdate, partyDues, settleDueUpdate } from '../utils/due-payments.js';
 import { allocateOldestFirst, checkAllocation, hasPaise, validateDuePayment } from '../utils/calc/billing.js';
@@ -33,8 +33,9 @@ function ageKey(days) {
     return [days === 1 ? 'ui.outstanding.day_one' : 'ui.outstanding.days_many', { count: days }];
 }
 import {
-    AGING_BUCKETS, ageInDays, bucketIndex, buildAging, chaseFirst, filterBillsByBucket, normalizePartyName, sortParties
+    AGING_BUCKETS, DUE_FILTERS, ageInDays, bucketIndex, buildAging, chaseFirst, dueRows, filterBillsByBucket, normalizePartyName, sortParties
 } from '../utils/aging.js';
+import { can } from '../utils/role-access.js';
 import {
     buildReminderText, buildStatement, formatINR, normalizePhone, whatsAppReminderUrl
 } from '../utils/due-reminder.js';
@@ -47,6 +48,8 @@ const paiseText = (v) => formatRupees(v, { decimals: hasPaise(v) ? 2 : 0 });
 /** How long the ids of an unclear party payment are kept for its retry (the rules' ±10 min for `at`). */
 const PARTY_PAY_RETRY_MS = 10 * 60 * 1000;
 const COLLECTION_BY_TYPE = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
+/** Aging panel title of each receivables list (#125). */
+const RECEIVABLE_TITLE = { retail: 'ui.outstanding.retail_by_age', wholesale: 'ui.outstanding.wholesale_by_age' };
 
 /** Record / Mark cleared buttons disabled while a due payment is being saved (#70, #95) */
 const RECORD_PAYMENT_BUTTONS = '[data-record-payment], [data-mark-cleared]';
@@ -106,17 +109,14 @@ export class OutstandingManager {
     }
 
     /**
-     * Filter outstanding payments by type
-     * @param {'purchase'|'sale'} filter - Type of transactions to show
-     * @param {Event} [evt] - Optional click event for button styling
+     * Filter outstanding payments by type (#125): Purchases, or Sales with All /
+     * Retail / Wholesale (wholesale only for roles that may open Wholesale).
+     * @param {'purchase'|'sale'|'retail'|'wholesale'} filter
      */
-    static filterDue(filter, evt) {
-        AppState.currentDueFilter = filter;
+    static filterDue(filter) {
+        AppState.currentDueFilter = DUE_FILTERS.includes(filter) ? filter : 'purchase';
         this.agingBucket = null;
         this.partyFilter = null;
-        
-        document.querySelectorAll('#due .filter-btn').forEach(btn => btn.classList.remove('active'));
-        if (evt) evt.target.classList.add('active');
         
         const searchInput = document.getElementById("outstandingSearchInput");
         if (searchInput) searchInput.value = '';
@@ -124,66 +124,40 @@ export class OutstandingManager {
         this.renderDue();
     }
 
+    /** Whether this role sees wholesale dues here (the Wholesale page's switch). */
+    static seesWholesale() {
+        return can(AppState.userRole, 'wholesale', AppState.settings?.roleAccess);
+    }
+
+    /** The list shown: 'retail' / 'wholesale' collapse to 'sale' for a role without Wholesale. */
+    static dueFilter() {
+        const f = DUE_FILTERS.includes(AppState.currentDueFilter) ? AppState.currentDueFilter : 'purchase';
+        return f === 'wholesale' && !this.seesWholesale() ? 'sale' : f;
+    }
+
+    /** Purchases | Sales buttons, and All / Retail / Wholesale under Sales. */
+    static syncFilterButtons(filter = this.dueFilter()) {
+        const sale = filter !== 'purchase';
+        const set = (btn, on) => { btn.classList.toggle('active', on); btn.setAttribute('aria-pressed', String(on)); };
+        document.querySelectorAll('#due .filter-purchase').forEach(btn => set(btn, !sale));
+        document.querySelectorAll('#due .filter-sale').forEach(btn => set(btn, sale));
+        const kinds = document.getElementById('dueSaleKinds');
+        if (kinds) kinds.hidden = !sale || !this.seesWholesale();
+        document.querySelectorAll('#dueSaleKinds [data-due-kind]').forEach(btn => set(btn, btn.dataset.dueKind === filter));
+    }
+
     /**
      * Render due payments list
      * Shows outstanding amounts for purchases or sales based on filter
      */
     static renderDue() {
-        const currentDueFilter = AppState.currentDueFilter;
-        // Voided bills (#75) owe nothing; AppState never holds them, this keeps any other caller honest.
-        const purchaseHistory = activeBills(AppState.purchaseHistory);
-        const salesHistory = activeBills(AppState.salesHistory);  // wholesale
-        const retailSalesHistory = activeBills(AppState.retailSalesHistory);  // retail
+        const currentDueFilter = this.dueFilter();
         const container = document.getElementById("dueList");
-        
-        const dueTransactions = [];
-        
-        if (currentDueFilter === 'purchase') {
-            purchaseHistory.forEach(purchase => {
-                const pay = readPayment(purchase);
-                const duePaid = pay.due;
-                
-                if (duePaid > 0 && !purchase.cleared) {
-                    const totalPayable = pay.total || openingAmount(purchase);
-                    const onlinePaid = pay.online;
-                    const cashPaid = pay.cash;
-                    const totalPaid = pay.paid;
-                    
-                    dueTransactions.push({
-                        ...purchase,
-                        transactionType: 'purchase',
-                        outstanding: duePaid,
-                        totalAmount: totalPayable,
-                        paidAmount: totalPaid,
-                        onlinePaid: onlinePaid,
-                        cashPaid: cashPaid
-                    });
-                }
-            });
-        } else if (currentDueFilter === 'sale') {
-            // Only retail sales - wholesale dues are on wholesale page
-            retailSalesHistory.forEach(sale => {
-                const pay = readPayment(sale);
-                const dueReceived = pay.due;
-                
-                if (dueReceived > 0 && !sale.cleared) {
-                    const totalReceivable = sale.total || openingAmount(sale);
-                    const onlineReceived = pay.online;
-                    const cashReceived = pay.cash;
-                    const totalReceived = pay.paid;
-                    
-                    dueTransactions.push({
-                        ...sale,
-                        transactionType: 'retail',
-                        outstanding: dueReceived,
-                        totalAmount: totalReceivable,
-                        paidAmount: totalReceived,
-                        onlineReceived: onlineReceived,
-                        cashReceived: cashReceived
-                    });
-                }
-            });
-        }
+        this.syncFilterButtons(currentDueFilter);
+        // BILL-DUE of each open bill (voided and cleared bills owe nothing, #75)
+        const dueTransactions = dueRows({
+            purchases: AppState.purchaseHistory, retailSales: AppState.retailSalesHistory, wholesaleSales: AppState.salesHistory
+        }, currentDueFilter, { wholesale: this.seesWholesale() });
         
         // Aging summary + per-party rows for the same bills (#46)
         const party = this.partyFilter;
@@ -202,7 +176,9 @@ export class OutstandingManager {
         if (shownTransactions.length === 0) {
             const message = t(partyBills.length > 0 ? 'ui.outstanding.no_bills_in_age_group'
                 : party ? 'ui.outstanding.nothing_for_party'
-                : currentDueFilter === 'purchase' ? 'ui.outstanding.no_purchase_due' : 'ui.outstanding.no_sale_due');
+                : currentDueFilter === 'purchase' ? 'ui.outstanding.no_purchase_due'
+                : currentDueFilter === 'retail' ? 'ui.outstanding.no_retail_due'
+                : currentDueFilter === 'wholesale' ? 'ui.outstanding.no_wholesale_due' : 'ui.outstanding.no_sale_due');
             container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
             return;
         }
@@ -232,7 +208,7 @@ export class OutstandingManager {
             
             div.innerHTML = `
                 <div class="history-header">
-                    <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" onclick="window.app.outstanding.showDetails('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')">#${Helpers.escapeHtml(billNumber)}</span>${isOpeningRecord(transaction) ? ` <span class="old-app-chip">${tt('ui.history.old_app_chip')}</span>` : ''}${transaction.customerName ? `  <strong>${Helpers.escapeHtml(transaction.customerName)}</strong>` : ''}
+                    <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" onclick="window.app.outstanding.showDetails('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')">#${Helpers.escapeHtml(billNumber)}</span>${isOpeningRecord(transaction) ? ` <span class="old-app-chip">${tt('ui.history.old_app_chip')}</span>` : ''}${currentDueFilter === 'sale' && this.seesWholesale() ? ` <span class="due-kind-chip">${tt(transaction.transactionType === 'wholesale' ? 'ui.outstanding.kind_wholesale' : 'ui.outstanding.kind_retail')}</span>` : ''}${transaction.customerName ? `  <strong>${Helpers.escapeHtml(transaction.customerName)}</strong>` : ''}
                     <span style="color: ${headerColor}; font-weight: 700;">${tt('ui.outstanding.due_amount', { amount: formatAmount(transaction.outstanding) })}</span>
                 </div>
                 <div class="history-date">${Helpers.formatDate(transaction.date)}${transaction.createdByName ? ` • ${tt('ui.outstanding.by')} <strong>${Helpers.escapeHtml(transaction.createdByName)}</strong>` : ''} ${ageBadge}</div>
@@ -303,6 +279,14 @@ export class OutstandingManager {
                 <span class="aging-bucket-count">${esc(billsText(b.count))}</span>
             </button>`).join('');
 
+        // Receive payment works on one list's bills; a party with retail and wholesale dues pays on either list.
+        const kinds = new Map();
+        bills.forEach(b => {
+            const k = normalizePartyName(b.customerName);
+            if (!kinds.has(k)) kinds.set(k, new Set());
+            kinds.get(k).add(b.transactionType);
+        });
+        const payType = (p) => (kinds.get(p.key)?.size === 1 ? [...kinds.get(p.key)][0] : null);
         const chase = isPayable ? [] : chaseFirst(aging.parties);
         const chaseHtml = isPayable ? '' : `
             <div class="aging-chase">
@@ -323,7 +307,8 @@ export class OutstandingManager {
                 </div>
                 <strong class="aging-party-total">${esc(formatINR(p.total))}</strong>
                 <div class="aging-party-actions">
-                    ${this.canReceiveFromParty() ? `<button type="button" class="aging-btn" data-party-pay onclick="window.app.outstanding.receiveFromParty('${attr(p.key)}')">${tt(isPayable ? 'ui.outstanding.party_pay_pay' : 'ui.outstanding.party_pay_receive')}</button>` : ''}
+                    ${!this.canReceiveFromParty() ? '' : payType(p) ? `<button type="button" class="aging-btn" data-party-pay onclick="window.app.outstanding.receiveFromParty('${attr(p.key)}', '${attr(payType(p))}')">${tt(isPayable ? 'ui.outstanding.party_pay_pay' : 'ui.outstanding.party_pay_receive')}</button>`
+                        : `<span class="aging-party-meta">${tt('ui.outstanding.party_pay_pick_list')}</span>`}
                     ${isPayable ? '' : `<button type="button" class="aging-btn aging-remind" onclick="window.app.outstanding.sendReminder('${attr(p.key)}')">${tt('ui.outstanding.remind')}</button>`}
                     <button type="button" class="aging-btn" onclick="window.app.outstanding.printStatement('${attr(p.key)}')">${tt('ui.outstanding.statement')}</button>
                 </div>
@@ -334,7 +319,7 @@ export class OutstandingManager {
         el.innerHTML = `
             <div class="aging-panel">
                 <div class="aging-head">
-                    <span class="aging-title">${tt(isPayable ? 'ui.outstanding.payables_by_age' : 'ui.outstanding.receivables_by_age')}</span>
+                    <span class="aging-title">${tt(isPayable ? 'ui.outstanding.payables_by_age' : RECEIVABLE_TITLE[this.dueFilter()] || 'ui.outstanding.receivables_by_age')}</span>
                     <strong class="aging-total">${esc(formatINR(aging.total))}</strong>
                 </div>
                 <div class="aging-buckets">${buckets}</div>
@@ -366,9 +351,6 @@ export class OutstandingManager {
     static showParty(filter, name) {
         const key = normalizePartyName(name);
         this.filterDue(filter === 'purchase' ? 'purchase' : 'sale');
-        document.querySelectorAll('#due .filter-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.classList.contains(filter === 'purchase' ? 'filter-purchase' : 'filter-sale'));
-        });
         if (!key) return;
         this.partyFilter = { key, name: String(name).trim() };
         this.renderDue();
@@ -404,8 +386,11 @@ export class OutstandingManager {
      * @returns {{party: ?Object, kind: 'receivable'|'payable'}}
      */
     static findParty(partyKey) {
-        const kind = AppState.currentDueFilter === 'purchase' ? 'payable' : 'receivable';
-        const bills = kind === 'payable' ? AppState.purchaseHistory : AppState.retailSalesHistory;
+        const filter = this.dueFilter();
+        const kind = filter === 'purchase' ? 'payable' : 'receivable';
+        const bills = dueRows({
+            purchases: AppState.purchaseHistory, retailSales: AppState.retailSalesHistory, wholesaleSales: AppState.salesHistory
+        }, filter, { wholesale: this.seesWholesale() });
         const party = buildAging(bills).parties.find(p => p.key === String(partyKey ?? '')) || null;
         return { party, kind };
     }
@@ -941,7 +926,7 @@ export class OutstandingManager {
      * @param {string} partyKey - normalizePartyName of the party
      * @param {'purchase'|'retail'|'wholesale'} [billType] - default: the Outstanding list shown
      */
-    static async receiveFromParty(partyKey, billType = AppState.currentDueFilter === 'purchase' ? 'purchase' : 'retail') {
+    static async receiveFromParty(partyKey, billType = ({ purchase: 'purchase', wholesale: 'wholesale' })[this.dueFilter()] || 'retail') {
         if (Helpers.isBusy('due-payment')) return;
         if (!this.canReceiveFromParty()) {
             UIManager.showToast(t('msg.common.access_denied'), 'error');
@@ -1216,13 +1201,8 @@ export class OutstandingManager {
                 UIManager.showModal(t('msg.outstanding.retail_sale_not_found'));
             }
         } else {
-            // wholesale
-            const saleIndex = AppState.salesHistory.findIndex(s => String(s.id) === String(transactionId));
-            if (saleIndex >= 0) {
-                await window.app.wholesaleSales.reprintSale(saleIndex);
-            } else {
-                UIManager.showModal(t('msg.common.sale_not_found'));
-            }
+            // wholesale: the Wholesale page's bill view, found by id
+            await window.app.wholesaleSales.reprintSaleById(transactionId);
         }
     }
 }

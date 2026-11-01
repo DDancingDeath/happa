@@ -5,7 +5,7 @@
  * Timezone is pinned to Asia/Kolkata in jest.config.js.
  */
 import {
-    AGING_BUCKETS, ageInDays, bucketIndex, buildAging, chaseFirst, filterBillsByBucket,
+    AGING_BUCKETS, ageInDays, bucketIndex, buildAging, chaseFirst, dueRows, filterBillsByBucket,
     normalizePartyName, sortParties
 } from '../utils/aging.js';
 import {
@@ -249,6 +249,121 @@ describe('#46/#77 Outstanding panel', () => {
         expect(print).toHaveBeenCalledWith(expect.objectContaining({ partyName: "O'Neil", total: 80 }));
         await OutstandingManager.printStatement('nobody');
         expect(toast).toHaveBeenCalledWith('Nothing is due for this party');
+    });
+});
+
+describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => {
+    const W = (over) => ({ source: 'sales-tab', timestamp: Date.now() - 10 * 86400000, total: 1000, payment: { cash: 400, online: 0, due: 600 }, ...over });
+    beforeEach(() => {
+        jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        document.body.innerHTML = DUE_TEMPLATE;
+        Object.assign(OutstandingManager, { agingBucket: null, partyFilter: null, agingSort: 'amount' });
+        AppState.userRole = 'owner';
+        AppState.settings = {};
+        AppState.purchaseHistory = [{ id: 'p1', customerName: 'Supplier', timestamp: Date.now(), payment: { cash: 0, online: 0, due: 70 } }];
+        AppState.retailSalesHistory = [
+            { id: 'r1', billNumber: 'R1', customerName: 'Gupta', timestamp: Date.now() - 3 * 86400000, total: 500, payment: { cash: 0, online: 0, due: 500 } },
+            { id: 'r2', billNumber: 'R2', customerName: 'Sita', timestamp: Date.now() - 2 * 86400000, total: 80, payment: { cash: 0, online: 0, due: 80 } }
+        ];
+        AppState.salesHistory = [
+            W({ id: 'w1', billNumber: 'W1', customerName: 'gupta ' }),
+            W({ id: 'w2', billNumber: 'W2', customerName: 'Hotel Raj' }),
+            W({ id: 'w3', billNumber: 'W3', customerName: 'Paid', payment: { cash: 1000, online: 0, due: 0 } }),
+            W({ id: 'w4', billNumber: 'W4', customerName: 'Void', voided: true }),
+            W({ id: 'w5', billNumber: 'W5', customerName: 'Cleared', cleared: true }),
+            W({ id: 'w6', billNumber: 'W6', customerName: 'Tiny', payment: { cash: 999.997, online: 0, due: 0.003 } })
+        ];
+    });
+    afterEach(() => {
+        jest.restoreAllMocks();
+        AppState.retailSalesHistory = [];
+        AppState.salesHistory = [];
+        AppState.purchaseHistory = [];
+        AppState.currentDueFilter = 'purchase';
+    });
+    const ids = () => [...document.querySelectorAll('#dueList .history-item')].map(el => el.querySelector('input[id^="payment_"]').id.slice(8)).sort();
+    const total = () => document.querySelector('#dueAging .aging-total').textContent;
+    const active = () => [...document.querySelectorAll('#due .filter-btn.active')].map(b => b.dataset.dueKind || b.className.match(/filter-(purchase|sale)/)[1]);
+
+    test('Sales shows All by default: retail and open wholesale bills (not paid, voided, cleared or a few paise)', () => {
+        OutstandingManager.filterDue('sale');
+        expect(ids()).toEqual(['r1', 'r2', 'w1', 'w2']);
+        expect(total()).toBe('₹1,780');
+        expect(active()).toEqual(['sale', 'sale']);
+        expect(document.getElementById('dueSaleKinds').hidden).toBe(false);
+        const chips = [...document.querySelectorAll('#dueList .due-kind-chip')].map(c => c.textContent);
+        expect(chips.sort()).toEqual(['Retail', 'Retail', 'Wholesale', 'Wholesale']);
+    });
+
+    test('Retail and Wholesale lists, their own totals and titles; Purchases hides the choice', () => {
+        OutstandingManager.filterDue('retail');
+        expect(ids()).toEqual(['r1', 'r2']);
+        expect(total()).toBe('₹580');
+        expect(document.querySelector('#dueAging .aging-title').textContent).toBe('Retail receivables by age');
+        expect(document.querySelector('#dueList .due-kind-chip')).toBeNull();
+        OutstandingManager.filterDue('wholesale');
+        expect(ids()).toEqual(['w1', 'w2']);
+        expect(total()).toBe('₹1,200');
+        expect(active()).toEqual(['sale', 'wholesale']);
+        OutstandingManager.filterDue('purchase');
+        expect(ids()).toEqual(['p1']);
+        expect(document.getElementById('dueSaleKinds').hidden).toBe(true);
+        AppState.salesHistory = [];
+        OutstandingManager.filterDue('wholesale');
+        expect(document.getElementById('dueList').textContent).toContain('No outstanding wholesale amounts');
+    });
+
+    test('a role without Wholesale: Sales is retail only, no choice, no chips', () => {
+        AppState.userRole = 'staff';
+        OutstandingManager.filterDue('wholesale');
+        expect(ids()).toEqual(['r1', 'r2']);
+        expect(document.getElementById('dueSaleKinds').hidden).toBe(true);
+        expect(document.querySelector('#dueList .due-kind-chip')).toBeNull();
+        AppState.settings = { roleAccess: { staff: { wholesale: true } } };
+        OutstandingManager.renderDue();
+        expect(ids()).toEqual(['w1', 'w2']);
+    });
+
+    test('a wholesale bill on Outstanding records its payment, clears and opens as a wholesale bill', async () => {
+        OutstandingManager.filterDue('sale');
+        const row = document.getElementById('payment_w2').closest('.history-item');
+        expect(row.querySelector('[data-record-payment]').getAttribute('onclick')).toContain("recordPayment('w2', 'wholesale')");
+        expect(row.querySelector('[data-mark-cleared]').getAttribute('onclick')).toContain("markAsCleared('w2', 'wholesale')");
+        window.app = { wholesaleSales: { reprintSaleById: jest.fn() } };
+        await OutstandingManager.showDetails('w2', 'wholesale');
+        expect(window.app.wholesaleSales.reprintSaleById).toHaveBeenCalledWith('w2');
+        delete window.app;
+    });
+
+    test('party rows: Receive payment on one list\'s bills; a party with both kinds pays on Retail or Wholesale', () => {
+        OutstandingManager.filterDue('sale');
+        const btn = (name) => [...document.querySelectorAll('#dueAgingParties .aging-party')]
+            .find(r => r.querySelector('.aging-party-name').textContent.trim().toLowerCase().startsWith(name))?.querySelector('[data-party-pay]');
+        expect(btn('gupta')).toBeNull();
+        expect(document.getElementById('dueAgingParties').textContent).toContain('Receive payment on Retail or Wholesale');
+        expect(btn('hotel raj').getAttribute('onclick')).toContain("'wholesale')");
+        expect(btn('sita').getAttribute('onclick')).toContain("'retail')");
+        OutstandingManager.filterDue('wholesale');
+        expect(btn('gupta').getAttribute('onclick')).toContain("'wholesale')");
+    });
+
+    test('reminders and statements on All cover the party\'s retail and wholesale dues', async () => {
+        const print = jest.spyOn(PrinterService, 'printStatement').mockResolvedValue(true);
+        OutstandingManager.filterDue('sale');
+        await OutstandingManager.printStatement('gupta');
+        expect(print).toHaveBeenCalledWith(expect.objectContaining({ total: 1100 }));
+        OutstandingManager.filterDue('retail');
+        await OutstandingManager.printStatement('gupta');
+        expect(print).toHaveBeenLastCalledWith(expect.objectContaining({ total: 500 }));
+    });
+
+    test('dueRows: the lists as pure data', () => {
+        const src = { purchases: AppState.purchaseHistory, retailSales: AppState.retailSalesHistory, wholesaleSales: AppState.salesHistory };
+        expect(dueRows(src, 'sale').map(r => [r.id, r.transactionType, r.outstanding])).toEqual([['r1', 'retail', 500], ['r2', 'retail', 80], ['w1', 'wholesale', 600], ['w2', 'wholesale', 600]]);
+        expect(dueRows(src, 'sale', { wholesale: false }).map(r => r.id)).toEqual(['r1', 'r2']);
+        expect(dueRows(src, 'wholesale', { wholesale: false })).toEqual([]);
+        expect(dueRows(src, 'x').map(r => r.id)).toEqual(['p1']);
+        expect(dueRows(src, 'wholesale')[0]).toMatchObject({ totalAmount: 1000, paidAmount: 400 });
     });
 });
 
