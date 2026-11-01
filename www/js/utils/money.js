@@ -138,6 +138,19 @@ export function billTotal(bill) {
 }
 
 /**
+ * Whether the bill stores any amount BILL-TOTAL reads (a present 0 counts). Without
+ * one the bill's total is unknown: screens show "—", not ₹0 (#80).
+ * @param {Bill|null|undefined} bill
+ * @returns {boolean}
+ */
+export function hasBillAmount(bill) {
+    return !!bill && firstPresent(bill.grandTotal, bill.amountPayable, bill.total, bill.billTotal, bill.saleTotal) !== null;
+}
+
+/** Shown for an amount that is not known (#80). */
+export const UNKNOWN_AMOUNT = '—';
+
+/**
  * BILL-LINES: what a bill's lines come to before labour ("Total" on the slip, the
  * WhatsApp text and a purchase's bill details). Purchases: `billTotal`, else
  * BILL-TOTAL + labour; sales: the first present of `billTotal`, `saleTotal`, `total`,
