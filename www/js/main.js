@@ -159,7 +159,12 @@ const PAGE_ADDED = {
     items: () => ItemsManager.renderItems(),
     'wholesale-sales': () => WholesaleSalesManager.loadItemsDropdown(),
     expenses: () => { ExpensesManager.updateExpensePersonOptions(); ExpensesManager.renderexpensesHistory(); },
-    settings: () => PrinterService.updateStatus()
+    settings: () => {
+        PrinterService.updateStatus();
+        VoiceMic.apply();
+        const swipe = document.getElementById('settingSwipeTabs');
+        if (swipe) swipe.checked = !!BottomNav.swipeOn;
+    }
 };
 TemplateLoader.onPageAdded = (name, el) => {
     applyTranslations(el);

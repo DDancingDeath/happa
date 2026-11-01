@@ -193,10 +193,11 @@ const NavigationManager = {
             event.preventDefault();
         }
         const route = resolveRoute(tabId);
+        if (!opts.pageReady) this.navSeq++;
         // A page loaded on first visit (#66): put it in, then show it as usual
         if (!opts.pageReady && !refusal(route) && TemplateLoader.pageMissing(route.tab)) {
             this.setMenuOpen(false);
-            return TemplateLoader.ensurePage(route.tab).then(() => this.showTabFromNav(tabId, null, { ...opts, pageReady: true }));
+            return this.afterPageLoad(route.tab, () => this.showTabFromNav(tabId, null, { ...opts, pageReady: true }));
         }
         if (refusal(route)) {
             UIManager.showToast(this.refusedMessage(tabId));
@@ -324,9 +325,10 @@ const NavigationManager = {
     // Show tab
     showTab(tabId, evt, opts = {}) {
         const route = resolveRoute(tabId);
+        if (!opts.pageReady) this.navSeq++;
         if (!opts.pageReady && !refusal(route) && TemplateLoader.pageMissing(route.tab)) {
             const target = evt?.currentTarget ? { currentTarget: evt.currentTarget } : undefined;
-            return TemplateLoader.ensurePage(route.tab).then(() => this.showTab(tabId, target, { ...opts, pageReady: true }));
+            return this.afterPageLoad(route.tab, () => this.showTab(tabId, target, { ...opts, pageReady: true }));
         }
         // Refused for this role (#84, F23), also for direct navigation
         if (refusal(route)) {
@@ -355,6 +357,26 @@ const NavigationManager = {
     },
 
     currentTab: null,
+
+    /** Counts navigations, so a page that finishes loading late doesn't override a newer one. */
+    navSeq: 0,
+
+    /**
+     * Puts a page loaded on first visit in (#66), then runs `show` unless the user
+     * went elsewhere or signed out meanwhile; a page that could not be fetched keeps
+     * the current one and says so.
+     */
+    afterPageLoad(tab, show) {
+        const seq = this.navSeq;
+        return TemplateLoader.ensurePage(tab).then(ok => {
+            if (seq !== this.navSeq || !AppState.currentUser) return undefined;
+            if (!ok) {
+                UIManager.showToast(t('msg.nav.page_not_loaded'), 'error');
+                return false;
+            }
+            return show();
+        });
+    },
 
     // A page's own tab buttons (e.g. Reports › Overview) record the route so Back returns to it
     noteRoute(routeId) {

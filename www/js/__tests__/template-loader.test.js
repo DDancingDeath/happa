@@ -5,6 +5,7 @@
 import { TemplateLoader, SHELL_TEMPLATES, PAGE_TEMPLATES, EAGER_PAGES } from '../utils/template-loader.js';
 import { NavigationManager } from '../ui/navigation.js';
 import { AppState } from '../utils/state.js';
+import { UIManager } from '../ui/ui-manager.js';
 
 const fake = (name) => (name === 'insights' ? '<div class="tab" id="insights"></div>' : `<div class="tpl" data-t="${name}"></div>`);
 const all = Object.fromEntries([...SHELL_TEMPLATES, ...PAGE_TEMPLATES].map(n => [n, fake(n)]));
@@ -46,7 +47,7 @@ describe('pages on first visit (#66)', () => {
         TemplateLoader.injectShell(all);
         TemplateLoader.injectPages(Object.fromEntries(EAGER_PAGES.map(n => [n, `<div class="tab" id="${n}"></div>`])));
     });
-    afterEach(() => { delete global.fetch; TemplateLoader.onPageAdded = () => {}; });
+    afterEach(() => { delete global.fetch; TemplateLoader.onPageAdded = () => {}; jest.restoreAllMocks(); });
 
     test('only Billing, Today and Cash go in at start; the rest are missing until opened', () => {
         expect(EAGER_PAGES).toEqual(['day', 'billing', 'cash-management']);
@@ -87,9 +88,32 @@ describe('pages on first visit (#66)', () => {
 
     test('showTab puts a missing page in first, then makes it the active tab', async () => {
         AppState.userRole = 'owner';
+        AppState.currentUser = { uid: 'u1' };
         const shown = NavigationManager.showTab('history');
         expect(document.querySelector('.tab.active')).toBeNull();
         await shown;
         expect(document.getElementById('history').classList.contains('active')).toBe(true);
+    });
+
+    test('a page that loads late does not override a newer navigation', async () => {
+        AppState.userRole = 'owner';
+        AppState.currentUser = { uid: 'u1' };
+        const late = NavigationManager.showTab('stock');
+        NavigationManager.showTab('billing');
+        await late;
+        expect(document.getElementById('billing').classList.contains('active')).toBe(true);
+        expect(document.getElementById('stock').classList.contains('active')).toBe(false);
+    });
+
+    test('a page that could not be fetched keeps the current page and says so', async () => {
+        AppState.userRole = 'owner';
+        AppState.currentUser = { uid: 'u1' };
+        NavigationManager.showTab('billing');
+        global.fetch.mockImplementation(async () => ({ ok: false }));
+        jest.spyOn(console, 'error').mockImplementation(() => {});
+        const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        expect(await NavigationManager.showTab('due')).toBe(false);
+        expect(document.getElementById('billing').classList.contains('active')).toBe(true);
+        expect(toast).toHaveBeenCalledWith(expect.stringContaining('could not be opened'), 'error');
     });
 });

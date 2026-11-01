@@ -87,7 +87,8 @@ export class TemplateLoader {
             if (name === 'rate-trends' || !(name in templates)) return;
             appContent.insertAdjacentHTML('beforeend', templates[name] || '');
             // Trends / Product traffic (#65): Insights › Seasons mounts this view
-            if (name === 'insights') (appContent.querySelector('#insights') || appContent).insertAdjacentHTML('beforeend', templates['rate-trends']);
+            const host = name === 'insights' && appContent.querySelector('#insights');
+            if (host && templates['rate-trends']) host.insertAdjacentHTML('beforeend', templates['rate-trends']);
         });
     }
 
@@ -106,10 +107,10 @@ export class TemplateLoader {
      * share one fetch). While it loads, <html data-page-loading> names it. After it
      * is in, onPageAdded(name, element) runs (translations, the page's first render).
      * @param {string} tab
-     * @returns {Promise<void>}
+     * @returns {Promise<boolean>} whether the page is in the document now
      */
     static ensurePage(tab) {
-        if (!this.pageMissing(tab)) return Promise.resolve();
+        if (!this.pageMissing(tab)) return Promise.resolve(true);
         if (pageLoads.has(tab)) return pageLoads.get(tab);
         const root = document.documentElement;
         root.dataset.pageLoading = tab;
@@ -118,8 +119,12 @@ export class TemplateLoader {
                 this.injectPages(templates);
                 const el = document.getElementById(tab);
                 if (el) this.onPageAdded(tab, el);
+                return !!el;
             })
-            .catch(e => console.error(`Page ${tab} not added:`, e))
+            .catch(e => {
+                console.error(`Page ${tab} not added:`, e);
+                return !!document.getElementById(tab);
+            })
             .finally(() => {
                 pageLoads.delete(tab);
                 if (root.dataset.pageLoading === tab) delete root.dataset.pageLoading;
