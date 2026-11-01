@@ -109,6 +109,22 @@ export function billTotal(bill) {
 }
 
 /**
+ * BILL-LINES: what a bill's lines come to before labour ("Total" on the slip, the
+ * WhatsApp text and a purchase's bill details). Purchases: `billTotal`, else
+ * BILL-TOTAL + labour; sales: the first present of `billTotal`, `saleTotal`, `total`,
+ * else BILL-TOTAL. A present 0 counts.
+ * @param {Object} bill
+ * @param {boolean} isPurchase
+ * @returns {number}
+ */
+export function billLineTotal(bill, isPurchase) {
+    if (!bill) return 0;
+    const saved = isPurchase ? firstPresent(bill.billTotal) : firstPresent(bill.billTotal, bill.saleTotal, bill.total);
+    if (saved !== null) return round2(saved);
+    return isPurchase ? round2(billTotal(bill) + billLabour(bill)) : billTotal(bill);
+}
+
+/**
  * Normalised payment view of a bill across all known schemas.
  * The payment object wins over top-level fields because outstanding/wholesale
  * payment recording only updates payment.*.

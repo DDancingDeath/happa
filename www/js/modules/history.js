@@ -35,7 +35,7 @@ import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
+import { billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -594,7 +594,7 @@ export class HistoryManager {
                     ${isPurchase ? `
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                             <span style="font-weight: 600;">${L('ui.billing.purchase_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(bill.billTotal || bill.grandTotal || bill.amountPayable || 0)}</strong>
+                            <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(billLineTotal(bill, true))}</strong>
                         </div>
                         
                         ${bill.laborCharges > 0 ? `

@@ -55,6 +55,8 @@ describe('review-rules.yml', () => {
         ['inline-onclick-without-window-app', 'www/templates/items.html', '<button onclick="saveItem()">', '<button onclick="window.app.items.save()">'],
         ['framework-import', 'www/js/modules/x.js', "import React from 'react';", "import { Helpers } from '../utils/helpers.js';"],
         ['displayed-number-spec', 'www/js/modules/finance.js', 'const profit = revenue - investment;', "const label = t('ui.finance.x');"],
+        ['record-date-raw-parse', 'www/js/modules/stock.js', 'const time = new Date(a.date).getTime();', 'const time = parseAnyBillDate(a.date)?.getTime();'],
+        ['bill-total-or-chain', 'www/js/services/printer.js', 'const s = billData.billTotal || billData.saleTotal || 0;', 'const s = billLineTotal(billData, true);'],
     ];
     test.each(cases)('%s flags the mistake and allows the fix', (id, file, bad, good) => {
         expect(byId[id]).toBeDefined();
@@ -66,6 +68,21 @@ describe('review-rules.yml', () => {
         expect(hits('firestore-collection-literal', 'www/js/__tests__/a.test.js', "db.collection('items')")).toBe(false);
         expect(hits('hardcoded-collection-prefix', 'www/firebaseConfig.js', "const P = 'dev_';")).toBe(false);
         expect(hits('firebase-firestore-in-module', 'www/js/firebase/firestore-service.js', 'firebase.firestore()')).toBe(false);
+    });
+
+    test('#80: no file in www/js parses a record date raw or chains bill totals with ||', () => {
+        const path = require('path');
+        const root = path.resolve(__dirname, '../../..');
+        const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
+            const p = path.join(dir, e.name);
+            return e.isDirectory() ? walk(p) : (p.endsWith('.js') ? [p] : []);
+        });
+        const lines = walk(path.join(root, 'www/js')).flatMap(abs => {
+            const file = path.relative(root, abs).split(path.sep).join('/');
+            return fs.readFileSync(abs, 'utf8').split(/\r?\n/).map((text, i) => ({ file, line: i + 1, text }));
+        });
+        const found = findViolations([byId['record-date-raw-parse'], byId['bill-total-or-chain']], lines);
+        expect(found.map(v => `${v.file}:${v.line}`)).toEqual([]);
     });
 });
 

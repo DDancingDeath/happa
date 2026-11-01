@@ -99,6 +99,7 @@ the migration. **Inline** = computed inside a page module.
 | Spec IDs | Today | Target |
 |---|---|---|
 | BILL-TOTAL | `money.billTotal` (first field present, 0 counts) everywhere: Today, History, receipts, bill rows, duplicate check (#186) | same |
+| BILL-LINES | `money.billLineTotal`: the receipt's and WhatsApp text's "Total", History purchase details (#80) | same |
 | BILL-PAY | `money.readPayment` (also History chips / bill details and the receipt, #186) | same |
 | BILL-AT-SAVE | `due-payments.saleTimePayment` | same |
 | BILL-DUE | `money.outstandingDue` everywhere, incl. Wholesale › Outstanding, `openDue`, History, receipts (#186); `wholesaleOutstanding` only in tools/migrate (old app's page rule) | same |
