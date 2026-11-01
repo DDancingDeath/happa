@@ -483,8 +483,9 @@ const BillingManager = {
     /**
      * A rebuilt picker (another phone's bill, an item change) keeps the item that
      * was selected, found again by id since positions in AppState.items can
-     * shift. An archived item comes back only for a bill line being edited, so
-     * its weights can't move to another item; otherwise it drops out.
+     * shift. An archived item comes back only for a bill line being edited or
+     * while weights are entered for it, so they can't move to another item;
+     * otherwise it drops out.
      * @param {string} selectId
      * @param {{itemId?: string, editLine?: string}} kept dataset of the option selected before the rebuild
      */
@@ -493,7 +494,8 @@ const BillingManager = {
         const index = AppState.items.findIndex(i => i && i.id === kept.itemId);
         if (index === -1) return;
         if (isArchivedItem(AppState.items[index])) {
-            if (kept.editLine !== '1') return;
+            const pending = selectId === 'saleItem' ? RetailSaleManager.getSaleWeights() : PurchaseManager.getWeights();
+            if (kept.editLine !== '1' && !(pending?.length > 0)) return;
             this.ensureItemOption(selectId, index);
         }
         const select = document.getElementById(selectId);

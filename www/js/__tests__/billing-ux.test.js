@@ -327,6 +327,18 @@ describe('archived items (#123)', () => {
         expect(document.querySelectorAll('#saleItem option[data-edit-line]')).toHaveLength(0);
     });
 
+    test('an item archived while weights are entered for it stays selected', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        document.getElementById('billItem').value = '1';
+        PurchaseManager.setWeights([20, 30]);
+        AppState.items = [AppState.items[0], { ...AppState.items[1], archived: true }];
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('1');
+        PurchaseManager.setWeights([]);
+    });
+
     test('restoring an auto-save of an archived line being edited brings its item back into the picker', async () => {
         AppState.settings = { ...(AppState.settings || {}), showHindi: false };
         AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Old Dal', archived: true, rates: [5] }];
