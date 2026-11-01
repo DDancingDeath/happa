@@ -75,6 +75,9 @@ export function withoutVoided(data) {
 const activity = (list) => (list || []).filter(b => !isOpening(b));
 const dated = (list, range) => (list || []).filter(r => inRange(timeOf(r.date), range));
 const datedBills = (list, range) => dated(activity(list), range);
+/** Today and the cash drawer pick bills by BILL-TIME: a numeric `timestamp` (what the rules check, #147), else the date. */
+const billDayTimeOf = (b) => (typeof b.timestamp === 'number' && Number.isFinite(b.timestamp) && b.timestamp > 0 ? b.timestamp : timeOf(b.date));
+const dayBills = (list, range) => activity(list).filter(b => inRange(billDayTimeOf(b), range));
 
 // ---------------------------------------------------------------- one bill
 
@@ -175,8 +178,8 @@ const isCash = (e) => !isOnline(e);
 /** T1–T16: every number on Today for the local day containing `nowMs`. */
 export function today(data, nowMs, session = null) {
     const range = dayRange(nowMs);
-    const purchases = datedBills(data.purchases, range);
-    const sales = [...datedBills(data.wholesaleSales, range), ...datedBills(data.retailSales, range)];
+    const purchases = dayBills(data.purchases, range);
+    const sales = [...dayBills(data.wholesaleSales, range), ...dayBills(data.retailSales, range)];
     const expenses = dated(data.expenses, range);
     const business = expenses.filter(e => !isPersonal(e));
     const personal = expenses.filter(isPersonal);
@@ -219,9 +222,9 @@ export function todayChannels(data, nowMs) {
         writtenOff: r2(sum(bills, b => sum(laterPayments(b), p => p.writeOff))),
         due: r2(sum(bills, openDue))
     });
-    const retail = datedBills(data.retailSales, range);
-    const wholesale = datedBills(data.wholesaleSales, range);
-    const purchase = datedBills(data.purchases, range);
+    const retail = dayBills(data.retailSales, range);
+    const wholesale = dayBills(data.wholesaleSales, range);
+    const purchase = dayBills(data.purchases, range);
     const order = [...retail, ...wholesale, ...purchase]
         .map(b => ({ id: String(b.id), total: r2(billValue(b)), at: timeOf(b.date) }))
         .sort((a, b) => b.at - a.at);
@@ -244,8 +247,8 @@ export function todayItems(data, nowMs) {
             .map(r => ({ name: r.name, lines: r.lines, kg: r2(r.kg), value: r2(r.value), avgRate: r.kg > 0 ? r2(r.value / r.kg) : null }));
     };
     return {
-        purchases: group(datedBills(data.purchases, range)),
-        sales: group([...datedBills(data.wholesaleSales, range), ...datedBills(data.retailSales, range)])
+        purchases: group(dayBills(data.purchases, range)),
+        sales: group([...dayBills(data.wholesaleSales, range), ...dayBills(data.retailSales, range)])
     };
 }
 
@@ -257,7 +260,7 @@ export function todayItems(data, nowMs) {
  * paise integers, so the rounding up does not depend on float division).
  */
 export function labourDay(data, nowMs, { laborRate = 6, labourPackageKg = 35 } = {}) {
-    const purchases = datedBills(data.purchases, dayRange(nowMs));
+    const purchases = dayBills(data.purchases, dayRange(nowMs));
     const deducted = purchases.map(labourOf);
     const kg = r2(sum(purchases, b => sum(b.items || [], i => n(i.qty ?? i.quantity))));
     const kgP = Math.round(kg * 100);
@@ -739,8 +742,8 @@ export function outstanding(data) {
 /** C1–C7 for a session's day: what the drawer should hold. Only cash counts. */
 export function drawer(data, session) {
     const range = dayRange(timeOf(session.date));
-    const sales = [...datedBills(data.wholesaleSales, range), ...datedBills(data.retailSales, range)];
-    const purchases = datedBills(data.purchases, range);
+    const sales = [...dayBills(data.wholesaleSales, range), ...dayBills(data.retailSales, range)];
+    const purchases = dayBills(data.purchases, range);
     const exp = dated(data.expenses, range);
     const dues = duePaymentsIn({ purchase: data.purchases, retail: data.retailSales, wholesale: data.wholesaleSales }, [session], range);
     const c = {

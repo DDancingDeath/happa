@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v255';
+const CACHE_NAME = 'happa-v270';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -30,12 +30,15 @@ const STATIC_ASSETS = [
     '/js/firebase/repos/bill-drafts.js',
     '/js/firebase/repos/bill-payments.js',
     '/js/firebase/repos/bill-stats.js',
+    '/js/firebase/repos/cash-days.js',
     '/js/firebase/repos/cash-sessions.js',
     '/js/firebase/repos/collection-admin.js',
     '/js/firebase/repos/counters.js',
     '/js/firebase/repos/items.js',
+    '/js/firebase/repos/notifications.js',
     '/js/firebase/repos/telemetry.js',
     '/js/firebase/repos/tip-health.js',
+    '/js/firebase/repos/user-profiles.js',
     '/js/firebase/repos/users.js',
     '/js/main.js',
     '/js/modules/admin.js',
@@ -77,6 +80,7 @@ const STATIC_ASSETS = [
     '/js/ui/bill-highlight.js',
     '/js/ui/bill-row.js',
     '/js/ui/bill-status.js',
+    '/js/ui/bill-date-input.js',
     '/js/ui/business-switcher.js',
     '/js/ui/party-due-line.js',
     '/js/ui/infinite-scroll.js',
@@ -133,6 +137,7 @@ const STATIC_ASSETS = [
     '/js/utils/role-access.js',
     '/js/utils/personal-expenses.js',
     '/js/utils/expense-entry.js',
+    '/js/utils/bill-date.js',
     '/js/utils/settings-sections.js',
     '/js/utils/release-info.js',
     '/js/config/app-identity.js',
