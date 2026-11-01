@@ -9,7 +9,6 @@ import { ItemsManager } from '../modules/items.js';
 import { StockManager } from '../modules/stock.js';
 import { DayManager } from '../modules/day.js';
 import { AdminManager } from '../modules/admin.js';
-import { UsersManager } from '../modules/users.js';
 import { SettingsManager } from '../modules/settings.js';
 import { DiagnosticsManager } from '../modules/diagnostics.js';
 import { RolesAccessManager } from '../modules/roles-access.js';
@@ -433,7 +432,7 @@ describe('Today (day.js)', () => {
     });
 });
 
-describe('Admin → Users and Users manager', () => {
+describe('Admin → Users', () => {
     let fake;
     beforeEach(() => {
         fake = createFakeFirestore();
@@ -446,7 +445,7 @@ describe('Admin → Users and Users manager', () => {
             { id: 'legacy1', name: 'Legacy', email: 'l@x', role: 'manager' },           // no status, no createdAt
             { id: 'norole', name: 'NoRole', email: 'r@x', createdAt: 2 }               // no role → pending
         ]);
-        document.body.innerHTML = '<div id="adminTabsContainer"></div><div id="adminContainer"></div><div id="pendingUsersList"></div><div id="activeUsersList"></div>';
+        document.body.innerHTML = '<div id="adminTabsContainer"></div><div id="adminContainer"></div>';
     });
     afterEach(() => { delete window.firebase; delete global.firebase; });
 
@@ -491,17 +490,6 @@ describe('Admin → Users and Users manager', () => {
         expect(fake.stats.gets).toBe(0);
     });
 
-    test('UsersManager: approve as a role, change role; non-owner loads nothing', async () => {
-        await UsersManager.approveUser('new1', 'staff');
-        expect(fake.raw('users').get('new1')).toMatchObject({ role: 'staff', status: 'active' });
-        await UsersManager.changeUserRole('new1', 'manager');
-        expect(fake.raw('users').get('new1').role).toBe('manager');
-        AppState.userRole = 'staff';
-        const gets = fake.stats.gets;
-        await UsersManager.loadUsers();
-        expect(fake.stats.gets).toBe(gets);
-    });
-
     test('user names are escaped in the lists', async () => {
         fake.seed('users', [{ id: 'x1', name: '<img src=x onerror=alert(1)>', email: 'x@x', status: 'pending' }]);
         await AdminManager.loadUsers();
@@ -532,7 +520,7 @@ describe('Settings', () => {
         document.body.innerHTML = `
           <input id="settingHeavyWeight"><input id="settingLaborRate">
           <input type="checkbox" id="settingAutoLabor"><input type="checkbox" id="settingShowHindi">
-          <span id="userEmail"></span><div id="auditLogsList"></div><select id="auditFilterAction"><option value=""></option><option>DELETE_BILL</option></select>`;
+          <span id="userEmail"></span><div id="diagnosticsContainer"></div>`;
         window.app = { items: { render: jest.fn() }, billing: { loadItemsDropdown: jest.fn() } };
         AppState.printerSettings = { enabled: false };
         jest.spyOn(SettingsManager, 'updatePrinterStatus').mockImplementation(() => {});
@@ -592,18 +580,18 @@ describe('Settings', () => {
         expect(shared).toHaveBeenCalledWith({ laborRate: 5, heavyWeightThreshold: 30, labourPackageKg: 35 }, { checked: false });
     });
 
-    test('audit log: owner-only, filter by action, user text escaped', async () => {
+    test('audit log (Diagnostics): owner-only, filter by action, user text escaped', async () => {
         AppState.userRole = 'staff';
-        await SettingsManager.loadAuditLogs();
+        await DiagnosticsManager.loadAuditLogs();
         expect(toast).toHaveBeenCalledWith('Only owners can view audit logs');
 
-        SettingsManager.auditLogs = [
+        DiagnosticsManager.auditPeople = new Map();
+        DiagnosticsManager.auditLogs = [
             { action: 'DELETE_BILL', timestamp: Date.now(), userName: '<b>x</b>', userRole: 'staff', details: { billNumber: 'P1', amount: 50 } },
             { action: 'CREATE_SALE', timestamp: Date.now(), userName: 'Asha', userRole: 'owner', details: {} }
         ];
-        document.getElementById('auditFilterAction').value = 'DELETE_BILL';
-        SettingsManager.renderAuditLogs();
-        const list = document.getElementById('auditLogsList');
+        DiagnosticsManager.filterAuditLogs('DELETE_BILL');
+        const list = document.getElementById('diagnosticsContainer');
         expect(list.textContent).toContain('Delete Bill');
         expect(list.textContent).toContain('Bill: P1 • Amount: ₹50');
         expect(list.textContent).not.toContain('Asha');
@@ -621,9 +609,9 @@ describe('Settings', () => {
         jest.spyOn(FirebaseService, 'loadUsers').mockResolvedValue([
             { id: 'm1', name: 'Manoj', role: 'manager', email: 'manoj@x.in' }, { id: 's1', name: 'Sita', role: 'staff' }, { id: 'gone', role: 'owner' }, { id: 'r1', name: 'Ravi', status: 'disabled' }
         ]);
-        document.getElementById('auditFilterAction').value = '';
-        await SettingsManager.loadAuditLogs();
-        const rows = [...document.getElementById('auditLogsList').children].map(r => r.textContent.replace(/\s+/g, ' '));
+        DiagnosticsManager.auditFilter = '';
+        await DiagnosticsManager.loadAuditLogs();
+        const rows = [...document.querySelectorAll('#diagnosticsContainer .diag-audit-card')].map(r => r.textContent.replace(/\s+/g, ' '));
         // a forged name and role: the profile's are shown, the stored name marked
         // (names can be changed by their owner; the email can't, so it is shown too)
         expect(rows[0]).toContain('Manoj (Manager) manoj@x.in · Owner Ji (name as sent by the phone, not checked)');
@@ -633,12 +621,6 @@ describe('Settings', () => {
         expect(rows[2]).toContain('Who (Owner) (name as sent by the phone, not checked)');
         // removed since: the role (deleted on removal) reads "removed"
         expect(rows[3]).toContain('Ravi (removed)');
-
-        DiagnosticsManager.auditFilter = '';
-        document.body.innerHTML += '<div id="diagnosticsContainer"></div>';
-        await DiagnosticsManager.loadAuditLogs();
-        const cards = document.querySelectorAll('#diagnosticsContainer .diag-audit-user');
-        expect(cards[0].textContent.replace(/\s+/g, ' ')).toContain('Manoj (Manager) manoj@x.in · Owner Ji (name as sent by the phone, not checked)');
     });
 
     test('Roles & access (#84): owner-only grid; saving writes settings/app and applies at once', async () => {
