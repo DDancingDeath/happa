@@ -4,6 +4,7 @@
 import { jest } from '@jest/globals';
 import { overdueReminder, saveRentReminder, rentReminder, unitsWithDue, noteRent } from '../utils/reminders.js';
 import { DayManager } from '../modules/day.js';
+import { drillReminder, recordDrill } from '../utils/backup-verify.js';
 import { AppState } from '../utils/state.js';
 import { setLang } from '../i18n/index.js';
 
@@ -120,5 +121,48 @@ describe('Today › Reminders card', () => {
         const host = document.getElementById('todayReminders');
         expect(host.querySelector('.today-reminders-title').textContent).toBe('याद दिलाना');
         expect(host.querySelector('[data-reminder="pay"]').textContent).toContain('33 दिन');
+    });
+});
+
+describe('REM-3 backup check (#63)', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="todayReminders" hidden></div>';
+        AppState.currentUser = { uid: 'u1' };
+        AppState.settings = {};
+        AppState.retailSalesHistory = [];
+        AppState.salesHistory = [];
+        AppState.purchaseHistory = [];
+        localStorage.clear();
+    });
+    afterEach(() => { AppState.userRole = null; });
+    const card = () => document.querySelector('[data-reminder="backup"]');
+
+    test('the owner is reminded until a backup is checked, then again after 30 days; nobody else is', () => {
+        AppState.userRole = 'owner';
+        DayManager.renderReminders(TODAY);
+        expect(card().textContent).toContain('No backup checked on this phone yet');
+        expect(card().querySelector('button').getAttribute('onclick')).toBe('window.app.day.openBackupCheck()');
+        recordDrill(localStorage, { uid: 'u1', at: TODAY.getTime() - 29 * 86400000, exportedAt: null, docs: 5 });
+        DayManager.renderReminders(TODAY);
+        expect(card()).toBeNull();
+        expect(document.getElementById('todayReminders').hidden).toBe(true);
+        recordDrill(localStorage, { uid: 'u1', at: TODAY.getTime() - 31 * 86400000, exportedAt: null, docs: 5 });
+        DayManager.renderReminders(TODAY);
+        expect(card().textContent).toContain('Last checked 31 days ago');
+        AppState.userRole = 'manager';
+        DayManager.renderReminders(TODAY);
+        expect(card()).toBeNull();
+    });
+
+    test('drillReminder: per person, 30 days, a broken record counts as none', () => {
+        const now = TODAY.getTime();
+        expect(drillReminder(localStorage, 'u1', now)).toEqual({ due: true, lastAt: null, days: null });
+        recordDrill(localStorage, { uid: 'u2', at: now, exportedAt: null, docs: 1 });
+        expect(drillReminder(localStorage, 'u1', now).due).toBe(true);
+        expect(drillReminder(localStorage, 'u2', now + 30 * 86400000 - 1)).toEqual({ due: false, lastAt: now, days: 29 });
+        expect(drillReminder(localStorage, 'u2', now + 30 * 86400000)).toEqual({ due: true, lastAt: now, days: 30 });
+        localStorage.setItem('happa.restoreDrill', '{bad');
+        expect(drillReminder(localStorage, 'u2', now).due).toBe(true);
+        expect(recordDrill({ setItem() { throw new Error('full'); } }, { uid: 'u1', at: now })).toBe(false);
     });
 });

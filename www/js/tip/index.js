@@ -20,10 +20,11 @@ import { PrintTest } from './scenarios/print.js';
 import { SyncTest } from './scenarios/sync.js';
 import { StockCheckpointTest } from './scenarios/stock-checkpoint.js';
 import { NumberChecksTest } from './scenarios/number-checks.js';
+import { MainThreadTest } from './scenarios/main-thread.js';
 import { APP_VERSION } from '../version.js';
 
 export const SCENARIOS = [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest, SessionReadsTest,
-    PrintTest, SyncTest, StockCheckpointTest, NumberChecksTest];
+    PrintTest, SyncTest, StockCheckpointTest, NumberChecksTest, MainThreadTest];
 
 const KEYS = {
     lastFlush: 'aadhat.tip.lastFlush',
