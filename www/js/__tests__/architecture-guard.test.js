@@ -89,6 +89,7 @@ const CATEGORIES = ['firestore', 'moneyMath', 'domNumber', 'appStateWrite', 'dat
 const PURE_RENTALS = new Set([
     'www/js/rentals/rent-math.js',
     'www/js/rentals/rent-math-ledger.js',
+    'www/js/rentals/rent-math-report.js',
     'www/js/rentals/rent-views.js',
     'www/js/rentals/rent-public.js'
 ]);
@@ -97,7 +98,8 @@ const RENTALS_REPOSITORIES = new Set([
     'www/js/rentals/rent-store.js',
     'www/js/rentals/rent-receipt-store.js',
     'www/js/rentals/rent-deposit-store.js',
-    'www/js/rentals/rent-expense-store.js'
+    'www/js/rentals/rent-expense-store.js',
+    'www/js/rentals/rent-report-store.js'
 ]);
 /** Files that may talk to Firestore (docs/architecture.md: repositories). */
 const isRepository = (file) => file.startsWith('www/js/firebase/') || RENTALS_REPOSITORIES.has(file);
