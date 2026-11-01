@@ -110,6 +110,31 @@ describe('Exporter.run (#103)', () => {
         expect(note.mock.calls.map(c => c[1].exportStatus)).toEqual(['started', 'cancelled', 'started', 'failed']);
     });
 
+    test('saveBlob in the Android app with the share plugins: writes to the app cache and opens the share sheet', async () => {
+        global.Blob = RealBlob;
+        const writeFile = jest.fn(async () => ({ uri: 'file:///data/cache/exports/x.csv' }));
+        const share = jest.fn(async () => ({}));
+        const rmdir = jest.fn(async () => { throw new Error('missing'); });
+        window.Capacitor = { isNativePlatform: () => true, Plugins: { Filesystem: { writeFile, rmdir }, Share: { share } } };
+        expect(Exporter.canShareNative()).toBe(true);
+        expect(await Exporter.saveBlob(new Blob(['a,b'], { type: 'text/csv' }), 'x.csv', { shareFirst: false })).toBe(true);
+        expect(writeFile).toHaveBeenCalledWith({ path: 'exports/x.csv', data: 'YSxi', directory: 'CACHE', recursive: true });
+        expect(rmdir).toHaveBeenCalledWith({ path: 'exports', directory: 'CACHE', recursive: true });
+        expect(share).toHaveBeenCalledWith({ title: 'x.csv', files: ['file:///data/cache/exports/x.csv'] });
+        const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        share.mockRejectedValueOnce(new Error('Share canceled'));
+        expect(await Exporter.saveBlob(new Blob(['a']), 'x.csv')).toBe(false);
+        expect(toast).not.toHaveBeenCalled();
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        share.mockRejectedValueOnce(new Error('No activity'));
+        expect(await Exporter.saveBlob(new Blob(['a']), 'x.csv')).toBe(false);
+        expect(toast).toHaveBeenCalledWith('The file could not be shared. Try again.', 'error');
+        window.Capacitor = { isNativePlatform: () => true, Plugins: {} };
+        expect(Exporter.canShareNative()).toBe(false);
+        delete window.Capacitor;
+        expect(Exporter.canShareNative()).toBe(false);
+    });
+
     test('saveBlob: the Android app shares the file and never falls back to a download it would drop', async () => {
         window.Capacitor = { isNativePlatform: () => true };
         global.File = class { constructor(parts, name, o) { this.name = name; this.type = o.type; } };
