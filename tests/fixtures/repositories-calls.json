@@ -1238,6 +1238,9 @@
         "id": "i1",
         "name": "Rice",
         "rate": 31
+      },
+      {
+        "merge": true
       }
     ],
     [
@@ -1249,7 +1252,13 @@
       "i1"
     ],
     [
-      "delete"
+      "update",
+      {
+        "archived": true,
+        "archivedAt": 1792557000000,
+        "archivedBy": "Owner",
+        "archivedByUserId": "u1"
+      }
     ],
     [
       "collection",

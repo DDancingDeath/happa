@@ -45,7 +45,7 @@ describe('Rates page (items list)', () => {
           <div id="itemsActionButtons"></div>
           <div id="itemEditOverlay" style="display:none"></div>
           <input id="itemModalName"><input id="itemModalHindiName"><input id="itemModalContactPerson">
-          <button id="itemModalDeleteBtn"></button>
+          <button id="itemModalArchiveBtn"></button>
           <div id="itemModalPurchaseRates"></div><div id="itemModalWholesaleRates"></div><div id="itemModalSaleRates"></div>`;
     });
     const rowNames = () => [...document.querySelectorAll('#itemsViewTableBody tr')].map(r => r.cells[0].textContent.trim());
@@ -113,6 +113,24 @@ describe('Rates page (items list)', () => {
         await ItemsManager.saveItemFromModal();
         expect(save).toHaveBeenCalledWith(expect.objectContaining({ name: 'Barley', rates: [18] }));
         expect(AppState.items).toHaveLength(SAMPLE_ITEMS.length + 1);
+    });
+
+    test('item saves never write the archive fields: only Archive / Unarchive change them (#123)', async () => {
+        const fake = createFakeFirestore();
+        window.firebase = fake.firebase;
+        global.firebase = fake.firebase;
+        try {
+            fake.seed('items', [{ id: 'x', name: 'X', rates: [1], archived: true, archivedBy: 'Owner' }]);
+            // A stale phone that still sees the item as not archived saves a rate
+            await FirebaseService.saveItem({ id: 'x', name: 'X', rates: [2], archived: false, unarchivedBy: 'Old' });
+            expect(fake.raw('items').get('x')).toMatchObject({ rates: [2], archived: true, archivedBy: 'Owner' });
+            expect(fake.raw('items').get('x').unarchivedBy).toBeUndefined();
+            await FirebaseService.setItemArchived('x', false);
+            expect(fake.raw('items').get('x')).toMatchObject({ rates: [2], archived: false });
+        } finally {
+            delete window.firebase;
+            delete global.firebase;
+        }
     });
 
     // #75: usage is counted from the real purchase/sale histories.
