@@ -69,6 +69,7 @@ describe('names not in the table are spelled out', () => {
         expect(suggestEnglishName('गेहूं 1 \u0915\u093F\u0964\u0917\u094D\u0930\u093E\u0964')).toBe('Wheat 1 kg');
         expect(suggestEnglishName('गेहूं 50 \u0915\u093F\u0932\u094B \u0917\u094D\u0930\u093E\u092E')).toBe('Wheat 50 kg');
         expect(suggestEnglishName('गेहूं\u0964')).toBe('Wheat\u0964');
+        expect(suggestEnglishName('चीनी 1 \u0915\u093F.\u0917\u094D\u0930\u093E\u092E')).toBe('Sugar 1 kg');
     });
 
     test('a half-known Hindi name is spelled out whole, never half translated', () => {

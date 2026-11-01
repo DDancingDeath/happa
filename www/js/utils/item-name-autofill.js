@@ -270,8 +270,8 @@ export function suggestHindiName(english) {
 export function suggestEnglishName(hindi) {
     const text = String(hindi || '').trim().replace(DEVANAGARI_DIGITS, d => String(d.charCodeAt(0) - 0x0966))
         // the abbreviated kilo (dots, danda or the abbreviation sign) and "kilo gram" are one unit: kg
-        .replace(/\u0915\u093F[.\u0964\u0970]\s?\u0917\u094D\u0930\u093E[.\u0964\u0970]?/g, 'kg')
-        .replace(/\u0915\u093F\u0932\u094B[\s-]*\u0917\u094D\u0930\u093E\u092E/g, 'kg');
+        .replace(/\u0915\u093F[.\u0964\u0970]\s?\u0917\u094D\u0930\u093E(?:\u092E|[.\u0964\u0970])?(?![\u0900-\u0963\u0971-\u097F])/g, 'kg')
+        .replace(/\u0915\u093F\u0932\u094B[\s-]*\u0917\u094D\u0930\u093E\u092E(?![\u0900-\u0963\u0971-\u097F])/g, 'kg');
     if (!text || !DEVANAGARI.test(text)) return '';
     // danda, double danda and the abbreviation sign are punctuation, not letters
     const parts = text.split(/([\u0900-\u0963\u0971-\u097F]+)/).filter(p => p !== '');
