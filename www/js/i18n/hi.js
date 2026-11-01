@@ -2183,7 +2183,7 @@ export default {
     'ui.money.accounts_on_phone_one': "इस फ़ोन में 1 खाता सिर्फ़ यहीं सेव है। आपके दूसरे फ़ोन पर यह नहीं दिखता।",
     'ui.money.accounts_loading': "खाते लोड हो रहे हैं…",
     'ui.money.accounts_not_loaded': "खाते लोड नहीं हुए। इंटरनेट देखें।",
-    'ui.money.no_accounts_view': "कोई खाता नहीं जोड़ा गया।",
+    'ui.money.accounts_owner_manager': "बैंक की रकम: सिर्फ़ मालिक और मैनेजर (इस कुल पूंजी में नहीं)",
     'msg.money.accounts_not_saved': "खाता सेव नहीं हुआ। इंटरनेट देखकर फिर कोशिश करें।",
     'msg.money.accounts_full': "ज़्यादा से ज़्यादा {n} खाते।",
     'msg.money.accounts_moved': "इस फ़ोन के खाते अब आपके सभी फ़ोन पर दिखेंगे।",

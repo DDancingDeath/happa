@@ -967,11 +967,16 @@ function defineSuite(prefix) {
         await assertFails(doc('rentOnly').get());
         await assertFails(as('manager1').collection(settings).get());
         await app({ staff: { finance: true }, manager: { finance: false, reports: true } });
-        await assertSucceeds(doc('staff1').get());
+        // bank balances: owner and managers with Money only; a member with Money on is denied
+        await assertFails(doc('staff1').get());
+        await assertFails(doc('legacyStaff').get());
         await assertFails(doc('staff1').set({ accounts: { a6: bank }, ...stamp('staff1', 'a6') }, { merge: true }));
         await assertFails(doc('manager1').get());
         await assertFails(doc('manager1').set({ accounts: { a6: bank }, ...stamp('manager1', 'a6') }, { merge: true }));
         await assertSucceeds(doc('legacyOwner').set({ accounts: { a6: bank }, ...stamp('legacyOwner', 'a6') }, { merge: true }));
+        await app({ staff: { finance: true }, manager: { finance: true } });
+        await assertSucceeds(doc('manager1').get());
+        await assertFails(doc('staff1').get());
     });
 
     t('settings/accounts: a manager may create the doc with one account (#74)', async () => {

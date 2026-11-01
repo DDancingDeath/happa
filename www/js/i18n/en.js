@@ -2183,7 +2183,7 @@ export default {
     'ui.money.accounts_on_phone_one': "This phone has 1 account saved only here. Your other phones don't see it.",
     'ui.money.accounts_loading': "Loading accounts…",
     'ui.money.accounts_not_loaded': "Couldn't load the accounts. Check the internet.",
-    'ui.money.no_accounts_view': "No accounts added.",
+    'ui.money.accounts_owner_manager': "Bank balances: owner and managers only (not in this net worth)",
     'msg.money.accounts_not_saved': "Account not saved. Check the internet and try again.",
     'msg.money.accounts_full': "At most {n} accounts.",
     'msg.money.accounts_moved': "This phone's accounts now show on all your phones.",

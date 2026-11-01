@@ -660,7 +660,8 @@ async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pas
     const counted = O.lastCountedCash(now.sessions);
     const recent = counted && counted.date >= isoDay(new Date(new Date(at).getFullYear(), new Date(at).getMonth(), new Date(at).getDate() - 30).getTime());
     const drawerLabel = document.getElementById('moneyWorthTerms')?.textContent || '';
-    const accountsTotal = O.otherAccounts(sharedAccounts(accounts));
+    // Bank balances (#74) are for the owner and managers with Money; a member's M15 leaves them out.
+    const accountsTotal = pass.role === 'staff' ? 0 : O.otherAccounts(sharedAccounts(accounts));
     if (counted && !recent) {
         if (/not counted lately/i.test(drawerLabel)) unknown('C9_drawer', 'Worth (phone)', P('now'), 'last count older than 30 days: "not counted lately" shown', counted.amount);
         else cmp('C9_drawer_old_hidden', 'Worth (phone)', P('now'), 1, 0, null, at + 1, 'count');

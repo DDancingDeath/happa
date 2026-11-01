@@ -35,7 +35,7 @@ import {
     monthKeysBetween, lastMonthKeys, monthKeyOf, snapshotsFrom, staleToRebuild, outdatedOlderMonths
 } from '../utils/month-snapshots.js';
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
-import { can, canEditWorthAccounts } from '../utils/role-access.js';
+import { can, canEditWorthAccounts, canReadWorthAccounts } from '../utils/role-access.js';
 import { dataSignature } from '../utils/render-memo.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
@@ -613,6 +613,7 @@ export const MoneyManager = {
      * (`stale`), kept in step with this phone's own saves. null until first known.
      */
     accounts() {
+        if (!this.canSeeAccounts()) return null;
         const s = this.sharedAccounts;
         if (s.state === 'idle' || (s.stale && s.state !== 'loading') || (s.state === 'error' && Date.now() - s.at >= SESSION_TTL_MS)) this.loadAccounts();
         return this.sharedAccounts.list;
@@ -649,6 +650,11 @@ export const MoneyManager = {
 
     canEditAccounts() {
         return canEditWorthAccounts(AppState.userRole, AppState.settings?.roleAccess);
+    },
+
+    /** Bank balances are for the owner and managers with Money on (firestore.rules); members never read them. */
+    canSeeAccounts() {
+        return canReadWorthAccounts(AppState.userRole, AppState.settings?.roleAccess);
     },
 
     /** Applies one change to the shared list here at once; the write goes on in the background. */
@@ -725,8 +731,10 @@ export const MoneyManager = {
         const drawerSessions = this.drawerSessions(now);
         const last = lastCountedSession(drawerSessions);
         const drawer = last ? Number(last.closingBalance) : 0;
-        const accounts = this.accountsTotal();
-        const worth = netWorth({ stock, receivable: dues.receivable.total, payable: dues.payable.total, accounts, drawer }, this.cfg());
+        const seeAccounts = this.canSeeAccounts();
+        const cfg = seeAccounts ? this.cfg() : { ...this.cfg(), netWorthTerms: this.cfg().netWorthTerms.filter(x => x !== 'accounts') };
+        const accounts = seeAccounts ? this.accountsTotal() : 0;
+        const worth = netWorth({ stock, receivable: dues.receivable.total, payable: dues.payable.total, accounts, drawer }, cfg);
         const seeStock = this.can('stockValue');
         this.text('moneyWorthValue', seeStock ? money(worth) : '—');
         const lyMonth = monthStart(now, -12);
@@ -735,25 +743,28 @@ export const MoneyManager = {
         // Compared on the stock + dues part only (old dues and accounts are not kept per month).
         const cmp = { ...vsItem(stock, lyClose, t('ui.money.stock_vs', { when: sinceLabel })), unknownText: t('ui.money.stock_vs_not_known', { when: sinceLabel }) };
         this.html('moneyWorthCompare', seeStock && Number.isFinite(stock) && (cmp.c || cmp.unknown) ? compareHtml([cmp]) : '');
-        this.html('moneyWorthTakeaway', seeStock ? takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel, accountsKnown: accounts !== null || !this.cfg().netWorthTerms.includes('accounts') })) : '');
+        this.html('moneyWorthTakeaway', seeStock ? takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel, accountsKnown: accounts !== null || !cfg.netWorthTerms.includes('accounts') })) : '');
         const term = (label, value, link, ref) => `<div class="ins-row"><span>${esc(t(label))}</span><span><span${ref ? ` data-metric-ref="${ref}"` : ''}>${money(value)}</span> <button type="button" class="ins-link" data-go="${link}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button></span></div>`;
-        const cfg = this.cfg();
+        const accountsNote = !seeAccounts && this.cfg().netWorthTerms.includes('accounts')
+            ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span>${esc(t('ui.money.accounts_owner_manager'))}</span></div>` : '';
         this.html('moneyWorthTerms',
             (seeStock && cfg.netWorthTerms.includes('stock') ? term('ui.money.stock_value', stock, 'stock', 'S4') : '')
             + (cfg.netWorthTerms.includes('receivable') ? term('ui.money.to_receive', dues.receivable.total, 'due', 'O4') : '')
             + (cfg.netWorthTerms.includes('drawer') ? term(last ? 'ui.money.drawer_last' : 'ui.money.drawer_none', drawer, 'cash-management', 'C9') : '')
-            + (cfg.netWorthTerms.includes('accounts') ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span data-input>${money(accounts)}</span></div>` : '')
+            + (cfg.netWorthTerms.includes('accounts') ? `<div class="ins-row"><span>${esc(t('ui.money.other_accounts'))}</span><span data-input>${money(accounts)}</span></div>` : accountsNote)
             + term('ui.money.to_pay', -dues.payable.total, 'due', 'O3')
             + (seeStock ? `<div class="ins-row ins-total"><span>${esc(t('ui.money.net_worth'))}</span><span data-metric-ref="M15">${money(worth)}</span></div>` : ''));
         const list = this.accounts();
         const state = this.sharedAccounts.state;
         const edit = this.canEditAccounts();
         const icon = (a) => (a.type === 'liability' ? '🤝' : '🏦');
-        this.html('moneyAccounts', !list
-            ? `<p class="ins-empty-text">${esc(t(state === 'error' ? 'ui.money.accounts_not_loaded' : 'ui.money.accounts_loading'))}</p>`
-            : list.length
-                ? list.map(a => `<div class="ins-row"><span>${icon(a)} ${esc(a.name)}</span><span>${a.type === 'liability' ? '−' : ''}${money(a.balance)}${edit ? ` <button type="button" class="ins-link" onclick="window.app.money.removeAccount('${Helpers.escapeJsAttr(a.id)}')" aria-label="${esc(t('ui.money.acc_remove'))}">✕</button>` : ''}</span></div>`).join('')
-                : `<p class="ins-empty-text">${esc(t(edit ? 'ui.money.no_accounts' : 'ui.money.no_accounts_view'))}</p>`);
+        this.html('moneyAccounts', !seeAccounts
+            ? `<p class="ins-empty-text">${esc(t('ui.money.accounts_owner_manager'))}</p>`
+            : !list
+                ? `<p class="ins-empty-text">${esc(t(state === 'error' ? 'ui.money.accounts_not_loaded' : 'ui.money.accounts_loading'))}</p>`
+                : list.length
+                    ? list.map(a => `<div class="ins-row"><span>${icon(a)} ${esc(a.name)}</span><span>${a.type === 'liability' ? '−' : ''}${money(a.balance)}${edit ? ` <button type="button" class="ins-link" onclick="window.app.money.removeAccount('${Helpers.escapeJsAttr(a.id)}')" aria-label="${esc(t('ui.money.acc_remove'))}">✕</button>` : ''}</span></div>`).join('')
+                    : `<p class="ins-empty-text">${esc(t('ui.money.no_accounts'))}</p>`);
         const form = document.getElementById('moneyAccForm');
         if (form) form.hidden = !edit || state !== 'ready';
         const phone = AppState.userRole === 'owner' && state === 'ready' && list && !list.length

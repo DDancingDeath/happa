@@ -852,13 +852,19 @@ describe('Money › Worth shared accounts (#74, settings/accounts)', () => {
         expect(MoneyManager.accountsTotal()).toBe(100);
     });
 
-    test('a member with Money on sees the accounts but cannot change them; a manager with Money can', async () => {
+    test('a member with Money on: no read of bank balances, M15 without them and a note saying so; a manager with Money sees them', async () => {
         FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 100, type: 'asset' } });
         AppState.userRole = 'staff';
         AppState.settings = { roleAccess: { staff: { finance: true, stockValue: true } } };
         await openWorth();
-        expect(document.getElementById('moneyAccounts').textContent).toMatch(/Bank/);
-        expect(document.querySelector('#moneyAccounts [onclick]')).toBeNull();
+        expect(FirebaseService.loadWorthAccounts).not.toHaveBeenCalled();
+        const note = t('ui.money.accounts_owner_manager');
+        expect(document.getElementById('moneyAccounts').textContent).toBe(note);
+        expect(document.getElementById('moneyWorthTerms').textContent).toContain(note);
+        expect(document.querySelector('#moneyWorthTerms [data-input]')).toBeNull();
+        const dues = O.dueTotals(data);
+        expect(shown('moneyWorthValue')).toBe(rupee(O.stockReplay(data).closing + dues.receivable - dues.payable));
+        expect(document.getElementById('moneyWorthTakeaway').textContent).not.toBe(t('ui.tk.worth_accounts_unknown'));
         expect(document.getElementById('moneyAccForm').hidden).toBe(true);
         const save = jest.spyOn(FirebaseService, 'saveWorthAccount').mockResolvedValue();
         MoneyManager.saveAccount();
@@ -866,6 +872,9 @@ describe('Money › Worth shared accounts (#74, settings/accounts)', () => {
         AppState.userRole = 'manager';
         AppState.settings = {};
         MoneyManager.render();
+        await flush();
+        expect(FirebaseService.loadWorthAccounts).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('moneyAccounts').textContent).toMatch(/Bank/);
         expect(document.getElementById('moneyAccForm').hidden).toBe(false);
         AppState.settings = { roleAccess: { manager: { finance: false } } };
         MoneyManager.render();

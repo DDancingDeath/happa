@@ -995,7 +995,7 @@ service cloud.firestore {
           // settings/team: names and roles of the team (owner-written) for managers' App health
           // and notification fan-out, so they never read other profiles (#87)
           : base == 'settings' ? single && (docId == 'app' || (docId == 'team' && isManagerIn(u))
-              || (docId == 'accounts' && moneyPageOn(u)))
+              || (docId == 'accounts' && isManagerIn(u) && moneyPageOn(u)))
           : base == 'withdrawals' ? roleSeesMoneyPages(u)
           : base == 'personalExpenses' ? personalOn(u)
           : base == 'cashSessions' ? isManagerIn(u)
@@ -1028,7 +1028,7 @@ service cloud.firestore {
     }
 
     // Money › Worth accounts (settings/accounts, #74): one doc shared by every phone,
-    // { accounts: { <id>: { name, balance, type } }, updatedAt, updatedBy, changedId }; read with Money on
+    // { accounts: { <id>: { name, balance, type } }, updatedAt, updatedBy, changedId }; read by the owner and managers with Money on
     // (canReadRecord). The owner writes anything (moving one phone's accounts in one write);
     // a manager with Money on adds, changes or removes one account per write (named in changedId),
     // in whole rupees.
