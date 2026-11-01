@@ -73,6 +73,9 @@ setting is missing or invalid.
   `heavyWeightThreshold`, `labourPackageKg`, `checkThresholds`, `businessName`, `businessDetails`, `receipt` and their
   `…UpdatedAt` / `…UpdatedBy` stamps (`managerShopSettingsOk`). Never `roleAccess`,
   `minClientVersion`, `enforceClientVersion` or TIP settings, and never create or delete the doc.
+  For everyone, the owner included, each section stamp a write sets (`labour`, `checks`, `business`,
+  `receipt`, `tip`, `roleAccess` + `UpdatedAt` / `UpdatedBy`) must be an int (ms) and a string of at
+  most 128 characters (`settingsStampsOk`); stamps already stored are not re-checked.
 - Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, Insights › Seasons (Trends and Product traffic),
   App health) and the stock adjustment / item edit actions are not in the list: their rules are
   fixed and the setting could not open them. `TAB_ROLES` in `role-access.js` lists them (Admin:
