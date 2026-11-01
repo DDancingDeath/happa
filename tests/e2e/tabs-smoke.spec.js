@@ -38,6 +38,7 @@ test.beforeEach(async () => {
 // timers (act's own setTimeout delay to let fire), settle (ms the screen may take to stop loading; default 10 s)
 const STEPS = [
     { name: 'Today', route: 'day', page: 'day', act: "window.app.day.showSubTab('today')", roles: A, expect: '#dayTodayContent' },
+    { name: 'Today › Add reminder', route: 'day', page: 'day', act: "(window.app.day.showSubTab('today'), window.app.day.reminderForm(true))", roles: OM, expect: '#todayReminders #reminderTitle' },
     { name: 'Today › Cash', route: 'day', page: 'day', act: "window.app.day.showSubTab('cash')", roles: A, expect: '#dayCashContent' },
     { name: 'Billing › Purchase', route: 'billing', page: 'billing', roles: A, expect: '#purchaseSection' },
     { name: 'Billing › Retail sale', route: 'billing', page: 'billing', act: "window.app.billing.switchMode('sale', { currentTarget: document.getElementById('saleModeBtn') })", roles: A, expect: '#saleSection' },
