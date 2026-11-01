@@ -2815,7 +2815,7 @@ const FirebaseService = {
      * @param {Object} adjustment
      * @returns {{record: Object, committed: Promise<void>}}
      */
-    startSaveStockAdjustment(adjustment) {
+    startSaveStockAdjustment(adjustment, { id } = {}) {
         if (!adjustment.userId && AppState.currentUser) {
             adjustment.userId = AppState.currentUser.uid;
         }
@@ -2824,7 +2824,8 @@ const FirebaseService = {
         }
         
         prepareStockRecord('stockAdjustments', adjustment, true);
-        const started = startCreate('stockAdjustments', adjustment);
+        // `id`: a fixed id (a reversal, #146), so a second phone's copy lands on the same document
+        const started = startCreate('stockAdjustments', adjustment, id || null);
         noteStockWrite('stockAdjustments', null, adjustment);
         noteMonthWrite('stockAdjustments', null, adjustment);
         return started;
