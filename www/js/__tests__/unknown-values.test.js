@@ -4,6 +4,9 @@
  * whose date can't be read keeps its stored text and gets a "Date?" badge.
  */
 import { hasBillAmount, UNKNOWN_AMOUNT } from '../utils/money.js';
+import { parseAnyBillDate } from '../utils/dates.js';
+import { HistoryManager } from '../modules/history.js';
+import { AppState } from '../utils/state.js';
 import { buildBillRow, billTableHtml, billListAmountText, billRowDate } from '../ui/bill-row.js';
 import { setLang } from '../i18n/index.js';
 
@@ -59,5 +62,32 @@ describe('History rows', () => {
     test('Hindi badge', () => {
         setLang('hi');
         expect(buildBillRow({ id: 'f', date: 'x', items: [] }, { onclick: '' }).querySelector('.bad-date-badge').textContent).toBe('तारीख?');
+    });
+});
+
+describe('parseAnyBillDate: DD/MM/YYYY', () => {
+    test('an impossible day or month is not a date', () => {
+        expect(parseAnyBillDate('31/31/2025')).toBeNull();
+        expect(parseAnyBillDate('31/04/2025')).toBeNull();
+        expect(parseAnyBillDate('29/02/2025')).toBeNull();
+    });
+    test('real days parse, with their time; a time past the day still rolls over as before', () => {
+        expect(parseAnyBillDate('29/02/2024')).toEqual(new Date(2024, 1, 29));
+        expect(parseAnyBillDate('29/02/2024, 11:59:59 pm')).toEqual(new Date(2024, 1, 29, 23, 59, 59));
+        expect(parseAnyBillDate('31/10/2026, 24:00')).toEqual(new Date(2026, 10, 1, 0, 0));
+    });
+});
+
+describe('bill details', () => {
+    test('a bill with no stored total shows "—" for its totals; labour still shows; an unreadable date gets the badge', async () => {
+        document.body.innerHTML = '<div id="billDetailsOverlay"><div id="billDetailsContent"></div></div><div id="billDetailsActions"></div>';
+        AppState.userRole = 'owner';
+        AppState.purchaseHistory = [{ id: 'q1', billNumber: 'Q1', date: 'not a date', items: [], laborCharges: 30 }];
+        await HistoryManager.viewBill('id:q1', 'purchase');
+        const text = document.getElementById('billDetailsContent').textContent.replace(/\s+/g, ' ');
+        expect(text).toContain('Purchase Total: —');
+        expect(text).toContain('Total Payable: —');
+        expect(text).toContain('₹30');
+        expect(document.querySelector('#billDetailsContent .bad-date-badge')).not.toBeNull();
     });
 });
