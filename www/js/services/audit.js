@@ -22,6 +22,9 @@ export class AuditService {
         // Items
         CREATE_ITEM: 'CREATE_ITEM',
         DELETE_ITEM: 'DELETE_ITEM',
+        // Items are archived, never deleted (#123)
+        ARCHIVE_ITEM: 'ARCHIVE_ITEM',
+        UNARCHIVE_ITEM: 'UNARCHIVE_ITEM',
         EDIT_ITEM: 'EDIT_ITEM',
         
         // Payments

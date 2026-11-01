@@ -7,6 +7,10 @@
 
 import { getDb, col } from '../db.js';
 import { historyIdBound } from '../../utils/rate-history.js';
+import { AppState } from '../../utils/state.js';
+
+/** Changed only by setItemArchived (#123): an item save never writes them. */
+const ITEM_ARCHIVE_FIELDS = ['archived', 'archivedAt', 'archivedBy', 'archivedByUserId', 'unarchivedAt', 'unarchivedBy', 'unarchivedByUserId'];
 
 /** FirebaseService methods for the item list and its rate history; spread into FirebaseService (`this` is FirebaseService). */
 export const itemMethods = {
@@ -45,7 +49,10 @@ export const itemMethods = {
      */
     async saveItem(item) {
         if (item.id) {
-            await getDb().collection(col('items')).doc(item.id).set(item);
+            // merge, and never the archive fields: a stale phone's save can't drop or flip them (#123)
+            const data = { ...item };
+            ITEM_ARCHIVE_FIELDS.forEach(f => delete data[f]);
+            await getDb().collection(col('items')).doc(item.id).set(data, { merge: true });
         } else {
             const docRef = await getDb().collection(col('items')).add(item);
             item.id = docRef.id;
@@ -54,13 +61,21 @@ export const itemMethods = {
     },
 
     /**
-     * Deletes an item from Firestore.
+     * Archives or unarchives an item (#123): one field-level update, so other
+     * fields changed on another phone are kept. Items are never deleted.
      * @async
-     * @param {string} itemId - The ID of the item to delete
-     * @returns {Promise<void>}
+     * @param {string} itemId
+     * @param {boolean} archived
+     * @returns {Promise<Object>} the fields written
      */
-    async deleteItem(itemId) {
-        await getDb().collection(col('items')).doc(itemId).delete();
+    async setItemArchived(itemId, archived) {
+        const by = AppState.userName || AppState.currentUser?.email || '';
+        const byUserId = AppState.currentUser?.uid || '';
+        const fields = archived
+            ? { archived: true, archivedAt: Date.now(), archivedBy: by, archivedByUserId: byUserId }
+            : { archived: false, unarchivedAt: Date.now(), unarchivedBy: by, unarchivedByUserId: byUserId };
+        await getDb().collection(col('items')).doc(itemId).update(fields);
+        return fields;
     },
 
     /**

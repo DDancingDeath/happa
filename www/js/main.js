@@ -56,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhblg-stock-alerts';
+const BUILD_ID = '20261101zzuzieecmbbkhblj-stock-alerts';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -865,7 +865,8 @@ window.app = {
         updateModalRate: (type, idx, val) => ItemsManager.updateModalRate(type, idx, val),
         deleteModalRate: (type, idx) => ItemsManager.deleteModalRate(type, idx),
         saveItemFromModal: () => ItemsManager.saveItemFromModal(),
-        deleteItemFromModal: () => ItemsManager.deleteItemFromModal(),
+        archiveFromModal: () => ItemsManager.archiveFromModal(),
+        toggleArchived: (show) => ItemsManager.toggleArchived(show),
         loadModalHistory: () => ItemsManager.loadModalHistory(),
         add: () => ItemsManager.addItem(),
         // Item handlers take the item id, never a list position (#29)
@@ -883,7 +884,7 @@ window.app = {
         updateSaleRate: (id, rIdx, val) => ItemsManager.updateSaleRate(id, rIdx, val),
         commitSaleRate: (id, rIdx) => ItemsManager.commitSaleRate(id, rIdx),
         deleteSaleRate: (id, rIdx) => ItemsManager.deleteSaleRate(id, rIdx),
-        deleteItem: (id) => ItemsManager.deleteItem(id),
+        archiveItem: (id) => ItemsManager.archiveItem(id),
         exportExcel: () => ItemsManager.exportToExcel(),
         importExcel: (evt) => ItemsManager.importFromExcel(evt)
     },

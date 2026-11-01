@@ -543,7 +543,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
 | `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
-| `items` | managers | managers | owner |
+| `items` | managers | managers (the app archives and unarchives with `archived`, never deletes, #123) | owner (no app path) |
 | `counters` | approved user (bill numbers) | +1 per bill | owner |
 | `itemFrequency` | approved user, `global` only (billing ranks items) | approved user: merges into `global.purchase` / `global.sale`, never removing an item | **owner** (#64) |
 | `stockCheckpoints` | `current`: managers (anyone approved: the stale mark); `legacyScan`: managers; no other ids, owner included | same | managers |
