@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v244';
+const CACHE_NAME = 'happa-v255';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -24,12 +24,18 @@ const STATIC_ASSETS = [
     '/js/auth/authentication.js',
     '/js/firebase/firestore-service.js',
     '/js/firebase/firestore-meter.js',
+    '/js/firebase/db.js',
+    '/js/firebase/repos/anomalies.js',
     '/js/firebase/repos/audit-logs.js',
     '/js/firebase/repos/bill-drafts.js',
     '/js/firebase/repos/bill-payments.js',
+    '/js/firebase/repos/bill-stats.js',
     '/js/firebase/repos/cash-sessions.js',
+    '/js/firebase/repos/collection-admin.js',
     '/js/firebase/repos/counters.js',
+    '/js/firebase/repos/items.js',
     '/js/firebase/repos/telemetry.js',
+    '/js/firebase/repos/tip-health.js',
     '/js/firebase/repos/users.js',
     '/js/main.js',
     '/js/modules/admin.js',
