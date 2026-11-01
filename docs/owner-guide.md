@@ -177,6 +177,15 @@ Documents on request, each closing on a page's figure: day book (ST1), month
 statement (ST2), party ledger (ST3), item ledger (ST4) and CSV (ST5). Share by
 WhatsApp, print or PDF.
 
+### Ask
+
+Type a short question, in English, Hinglish or Hindi: "aaj ki bikri", "Ramesh ka
+baaki", "kul baaki", "chawal ka stock". The answer comes from the data already on
+this phone (it works offline and needs no internet or online service) and always equals the page it links to: today's
+sales, purchases or business expenses (ASK-1), what one party owes or is owed
+(ASK-2), the total to receive and to pay (ASK-3), and one item's stock (ASK-4).
+When a name matches more than one party or item, Ask lists them instead.
+
 ### Rates
 
 The item list with purchase, sale and wholesale rates. Every change is kept in the

@@ -459,6 +459,17 @@ Counts about this phone, never business figures. Nothing is read from the server
 | REM-1 | Collect udhaar / Collect wholesale dues / Pay suppliers: total, up to 3 parties (amount, days), "+N more" | Outstanding's grouping and age (`buildAging`: BILL-DUE per normalised party name, age of the oldest open bill) over the open bills already on the phone, one block per list as the app keeps them: retail sales (Outstanding › Sales › Retail), wholesale sales-tab bills (Wholesale › Outstanding, roles that may open Wholesale) and purchases (Outstanding › Purchases). Only parties whose oldest due is older than 30 days, in Outstanding's "chase first" order (oldest bucket, then the biggest amount); the total is Σ of all those parties' dues |
 | REM-2 | Rent due: amount, units owing, late | Σ RENT-10 `due` (= RENT-9 due), the units marked Late and the count of RENT-10 rows with due > 0, as the Rent page last showed them on this phone for this month (saved when it renders the current month with no load error and nothing cut at a limit; for the same person, with the date and time it was taken). Shown to rentals roles only, with the time it was taken; not shown when Rentals wasn't opened this month |
 
+## Ask (`templates/ask.html`, `modules/ask.js`) — #88, no reads
+
+A typed question ("aaj ki bikri", "Ramesh ka baaki", "chawal ka stock"; English, Hinglish or Hindi) is matched by words, with no AI and no network (`parseQuestion()` in `utils/ask.js`), and answered from the data already on the phone by the home page's own function (`answerQuestion()`), so the answer always equals that page. Each answer links to its page.
+
+| ID | Answer | Definition |
+|---|---|---|
+| ASK-1 | Today's sales / purchases / business expenses, with the count | T2, T1 and T4 (`todaySummary()`) for today |
+| ASK-2 | What one party owes us / we owe them, with the bill count | O2 (Outstanding › Sales, All; retail only for a role without Wholesale) and O1 of that PARTY (`dueRows()` + `buildAging()`). The typed name matches a party's name exactly (case, spaces and Latin ↔ Devanagari spelling ignored), else the names with a word starting with it; with no single match the names are offered (at most 5), no figure |
+| ASK-3 | Total to receive / to pay, with the party count | O4 (All, as ASK-2) and O3 |
+| ASK-4 | One item's stock in kg | S1 of the catalogue item (or "Unmatched" row) whose English or Hindi name matches the typed one (also through the item-name table of #134: "chawal" = चावल = Rice); 0 when the Stock page lists none. Members see "available" above 100 kg, as on Stock |
+
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and

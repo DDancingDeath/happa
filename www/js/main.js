@@ -57,7 +57,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbnd-rent-expenses';
+const BUILD_ID = '20261101zzuzieecmbbkhbnf-ask';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -117,6 +117,18 @@ function loadStatements() {
             .catch(e => { statementsLoading = null; throw e; });
     }
     return statementsLoading;
+}
+
+// Ask (#88): ask.js and its matcher are imported on first use
+let ask = null;
+let askLoading = null;
+function loadAsk() {
+    if (!askLoading) {
+        askLoading = import('./modules/ask.js')
+            .then(m => (ask = m.AskManager))
+            .catch(e => { askLoading = null; throw e; });
+    }
+    return askLoading;
 }
 
 // Data changes re-render the open lazy pages (firestore-service.js emits, utils/events.js);
@@ -208,6 +220,7 @@ function refreshForLanguage(lang) {
             if (view) DiagnosticsManager[view]();
         },
         money: () => money?.render(),
+        ask: () => ask?.init(),
         insights: () => insights?.render(),
         statements: () => { statements?.renderControls(); statements?.render(); },
         billing: () => BillingManager.refreshForLanguage(),
@@ -1201,6 +1214,14 @@ window.app = {
             .catch(e => console.warn('Insights not loaded:', e?.message || e)),
         ...Object.fromEntries(['setSection', 'setPreset', 'step', 'setItemsType', 'setPartyKind', 'setSeasonView', 'render', 'loadOlder']
             .map(name => [name, (...args) => loadInsights().then(m => m[name](...args))]))
+    },
+
+    // Ask (#88): ask.js is imported on first use
+    ask: {
+        init: () => loadAsk().then(m => m.init())
+            .catch(e => console.warn('Ask not loaded:', e?.message || e)),
+        submit: (event) => { event?.preventDefault?.(); return loadAsk().then(m => m.submit(event)); },
+        ask: (text) => loadAsk().then(m => m.ask(text))
     },
 
     // Statements (redesign §5.4): statements.js is imported on first use
