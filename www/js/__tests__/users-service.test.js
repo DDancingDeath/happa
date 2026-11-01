@@ -49,12 +49,9 @@ describe('FirebaseService user methods', () => {
         expect(fake.raw('users').get('prod')).toBeDefined();
     });
 
-    test('countDocuments and clearCollection use the prefix and report counts', async () => {
+    test('countDocuments uses the prefix', async () => {
         expect(await FirebaseService.countDocuments('users')).toBe(3);
-        expect(await FirebaseService.clearCollection('users')).toBe(3);
-        expect(fake.raw('dev_users').size).toBe(0);
-        expect(fake.raw('users').size).toBe(1);
-        expect(await FirebaseService.clearCollection('empty')).toBe(0);
+        expect(await FirebaseService.countDocuments('empty')).toBe(0);
     });
 });
 

@@ -470,6 +470,41 @@ export function validateDuePayment(cash, online, due, tolerance = 0.01) {
     return { ok: true, cash: c, online: o, total };
 }
 
+/**
+ * BF-RECOVER: what the unsaved-bill prompt says about an auto-save: which form,
+ * how many lines and the total it had (the saved `billTotal` / `saleTotal`, else
+ * the lines' plain sum), as shown.
+ * @param {Object} data - the auto-save document (`{ mode, purchase, sale }`; older ones hold one form at the top level)
+ * @returns {{mode: 'purchase'|'sale', lines: number, total: number}}
+ */
+export function autoSaveSummary(data) {
+    const mode = data?.mode === 'sale' ? 'sale' : 'purchase';
+    const form = (mode === 'sale' ? data?.sale : data?.purchase) || data || {};
+    const items = Array.isArray(form.items) ? form.items : [];
+    const saved = toMoney(mode === 'sale' ? form.saleTotal : form.billTotal);
+    return { mode, lines: items.length, total: shownAmount(saved ?? draftLineSum(items)) || 0 };
+}
+
+/**
+ * BF-NO: the number the next bill will probably get, before it is saved: one more
+ * than the highest `{prefix}{YYYYMMDD}-NNN` among today's loaded bills. The real
+ * number comes from the shared counter at save (it can be higher: voided bills,
+ * another phone saving first), or a device number when offline (#41).
+ * @param {string} prefix - 'P' | 'S' | 'W'
+ * @param {Array<Object>} bills - loaded bills of that type ({ billNumber })
+ * @param {Date} [now]
+ * @returns {string}
+ */
+export function nextBillNumberHint(prefix, bills, now = new Date()) {
+    const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const pattern = new RegExp(`^${prefix}${day}-(\\d+)$`);
+    const highest = (bills || []).reduce((max, bill) => {
+        const match = pattern.exec(String(bill?.billNumber || ''));
+        return match ? Math.max(max, Number(match[1])) : max;
+    }, 0);
+    return `${prefix}${day}-${String(highest + 1).padStart(3, '0')}`;
+}
+
 /** Function → its spec IDs in docs/calculations.md. */
 export const BILLING_SPEC = Object.freeze({
     sumWeights: 'BF-KG',
@@ -496,5 +531,7 @@ export const BILLING_SPEC = Object.freeze({
     prefillPayment: 'BF-FILL',
     restInDue: 'BF-FILL',
     validatePaymentSplit: 'BF-SPLIT',
-    validateDuePayment: 'DUE-CHECK'
+    validateDuePayment: 'DUE-CHECK',
+    autoSaveSummary: 'BF-RECOVER',
+    nextBillNumberHint: 'BF-NO'
 });

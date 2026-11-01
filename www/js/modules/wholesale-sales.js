@@ -1,6 +1,6 @@
 // Wholesale Sales Management Module
 import { AppState } from '../utils/state.js';
-import { on, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
+import { on, REFRESH, ITEM_FREQUENCY_CHANGED, PRINT_STATUS_CHANGED } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { PrinterService } from '../services/printer.js';
@@ -16,7 +16,7 @@ import {
 import { filterHistoryBills, resolveHistoryRange, validateCustomRange, billTimeMs } from '../utils/history-filters.js';
 import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml } from '../ui/bill-row.js';
 import { editsRowHtml, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
-import { billPool } from './history.js';
+import { billPool, HistoryManager } from './history.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { historyCutoff } from '../utils/role-access.js';
 import { OutstandingManager } from './outstanding.js';
@@ -1108,6 +1108,7 @@ export class WholesaleSalesManager {
         document.getElementById('billDetailsContent').innerHTML = content;
         // Wholesale bills are not edited here; Void / Delete permanently as in History (#75)
         setBillActions(sale, { uid: AppState.currentUser?.uid, role: AppState.userRole, raw: AppState.settings?.roleAccess }, { editable: false });
+        HistoryManager.renderPrintStatus();
         document.getElementById('billDetailsOverlay').classList.add('active');
     }
 
@@ -1140,3 +1141,6 @@ on(REFRESH.salesDropdown, () => WholesaleSalesManager.loadItemsDropdown());
 on(REFRESH.wholesaleHistory, () => WholesaleSalesManager.renderSalesHistory());
 on(REFRESH.wholesaleOutstanding, () => WholesaleSalesManager.renderSalesOutstanding());
 on(ITEM_FREQUENCY_CHANGED, () => WholesaleSalesManager.loadItemsDropdown());
+on(PRINT_STATUS_CHANGED, () => {
+    if (document.getElementById('wholesale-sales')?.classList.contains('active')) WholesaleSalesManager.renderSalesHistory();
+});

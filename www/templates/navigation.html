@@ -122,6 +122,16 @@
         </nav>
     </div>
 
+    <!-- Phone bottom bar (#142): the main pages; More opens the side menu. Hidden on desktop (desktop.css) -->
+    <nav class="bottom-nav" id="bottomNav" aria-label="Main pages" data-i18n-aria-label="ui.nav.bottom_label">
+        <a href="#" class="bottom-nav-item" data-tab="billing" onclick="window.app.nav.showTab('billing', event)"><span class="bottom-nav-icon" aria-hidden="true">📋</span><span class="bottom-nav-label" data-i18n="ui.nav.billing">Billing</span></a>
+        <a href="#" class="bottom-nav-item" data-tab="day" onclick="window.app.nav.showTab('day', event)"><span class="bottom-nav-icon" aria-hidden="true">📅</span><span class="bottom-nav-label" data-i18n="ui.nav.today">Today</span></a>
+        <a href="#" class="bottom-nav-item" data-tab="history" onclick="window.app.nav.showTab('history', event)"><span class="bottom-nav-icon" aria-hidden="true">📜</span><span class="bottom-nav-label" data-i18n="ui.nav.history">History</span></a>
+        <a href="#" class="bottom-nav-item" data-tab="due" onclick="window.app.nav.showTab('due', event)"><span class="bottom-nav-icon" aria-hidden="true">💸</span><span class="bottom-nav-label" data-i18n="ui.nav.outstanding">Outstanding</span></a>
+        <button type="button" class="bottom-nav-item" data-tab="more" onclick="window.app.nav.toggleMenu()" aria-controls="sideNav" aria-expanded="false"><span class="bottom-nav-icon" aria-hidden="true">☰</span><span class="bottom-nav-label" data-i18n="ui.nav.more">More</span></button>
+    </nav>
+    <div class="pull-refresh" id="pullRefresh" hidden aria-hidden="true"><span class="pull-refresh-pull" data-i18n="ui.nav.pull_refresh">↓ Pull to refresh</span><span class="pull-refresh-release" data-i18n="ui.nav.release_refresh">↻ Release to refresh</span></div>
+
     <!-- Overlay -->
     <div class="overlay" id="overlay"></div>
 

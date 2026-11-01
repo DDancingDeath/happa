@@ -1,4 +1,6 @@
-import { UIManager, resolveToastOptions } from '../ui/ui-manager.js';
+import { UIManager, resolveToastOptions, errorRef } from '../ui/ui-manager.js';
+import { on, TOAST_ERROR } from '../utils/events.js';
+import { TelemetryService } from '../services/telemetry.js';
 import { t, setLang, resetLangForTests } from '../i18n/index.js';
 
 describe('showToast (#51)', () => {
@@ -31,7 +33,7 @@ describe('showToast (#51)', () => {
 
     test("a translated message keeps its type styling: showToast(t(key), 'error') (#143, #176)", () => {
         UIManager.showToast(t('msg.common.access_denied'), 'error');
-        expect(toast().textContent).toBe('Access denied');
+        expect(toast().textContent).toBe(`Access denied · Ref ${errorRef('Access denied')}`);
         expect(toast().classList.contains('error')).toBe(true);
         setLang('hi');
         UIManager.showToast(t('msg.finance.account_updated'), 'success');
@@ -49,5 +51,34 @@ describe('showToast (#51)', () => {
         expect(resolveToastOptions('success')).toEqual({ type: 'success', duration: 2000 });
         expect(resolveToastOptions('warning', 7000)).toEqual({ type: 'warning', duration: 7000 });
         expect(resolveToastOptions('bogus')).toEqual({ type: null, duration: 2000 });
+    });
+
+    test('an error toast carries a short ref that names its Diagnostics entry (#82)', () => {
+        TelemetryService.errorBuffer = [];
+        const seen = [];
+        const stop = on(TOAST_ERROR, (e) => seen.push(e));
+        UIManager.showToast('Failed to delete user', 'error');
+        stop();
+        const ref = errorRef('Failed to delete user');
+        expect(ref).toMatch(/^\d{6}$/);
+        expect(errorRef('Failed to delete user')).toBe(ref);
+        expect(errorRef('Failed to save bill')).not.toBe(ref);
+        expect(toast().textContent).toBe(`Failed to delete user · Ref ${ref}`);
+        expect(seen).toEqual([{ message: 'Failed to delete user', ref }]);
+        expect(TelemetryService.createFingerprint({ type: 'toast', message: 'Failed to delete user', ref })).toBe(ref);
+        expect(TelemetryService.errorBuffer).toEqual([expect.objectContaining({ type: 'toast', message: 'Failed to delete user', fingerprint: ref })]);
+        TelemetryService.errorBuffer = [];
+        clearTimeout(TelemetryService.syncTimer);
+    });
+
+    test('other toasts have no ref and are not reported', () => {
+        const seen = [];
+        const stop = on(TOAST_ERROR, (e) => seen.push(e));
+        UIManager.showToast('Saved', 'success');
+        UIManager.showToast('Careful', 'warning');
+        UIManager.showToast('Plain');
+        stop();
+        expect(toast().textContent).toBe('Plain');
+        expect(seen).toEqual([]);
     });
 });
