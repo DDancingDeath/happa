@@ -56,6 +56,8 @@ async function login(page, role = 'owner') {
 async function showTab(page, tab) {
     await page.evaluate((t) => window.app.nav.showTab(t), tab);
     await page.waitForFunction((t) => {
+        // A page loaded on first visit (#66) is still being put in
+        if (document.documentElement.dataset.pageLoading) return false;
         // Route ids (rates, reports-trends, ...) have no page of their own: use the page they opened.
         // Some route ids name a hidden inner element (#rate-trends lives in Insights), so only a .tab counts.
         const own = document.getElementById(t);

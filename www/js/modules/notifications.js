@@ -264,13 +264,13 @@ const NotificationsManager = {
         const target = describeNotification(n).target;
         this.close();
         if (!target?.tab || !window.app?.nav) return;
-        window.app.nav.showTab(target.tab);
+        const shown = Promise.resolve(window.app.nav.showTab(target.tab));
         if (target.tab === 'items' && target.query) {
-            setTimeout(() => {
+            shown.then(() => setTimeout(() => {
                 const input = document.getElementById('itemsSearchInput');
                 if (input) input.value = target.query;
                 window.app.items?.search?.(target.query);
-            }, 200);
+            }, 200));
         }
     },
 

@@ -389,6 +389,8 @@ export class ExpensesManager {
      * Render all expense history (business + personal)
      */
     static renderexpensesHistory() {
+        // Expenses loads on first visit (#66): nothing to draw before then
+        if (!document.getElementById('expenses')) return;
         this.prepareExpenseForms();
         this.renderBusinessExpenseHistory();
         this.renderPersonalExpenseHistory();
