@@ -287,6 +287,41 @@ export function advanceBack(later) {
 /** RENT-16: an advance plus what comes back to it. */
 export const addAdvance = (a, b) => round2((Number(a) || 0) + (Number(b) || 0));
 
+/** RENT-16: the advance a lease ending with `endMonth` leaves (its last month's, plus one later month given back). */
+export function advanceLeft(charges, leaseId, endMonth) {
+    const mine = charges.filter(c => c.leaseId === leaseId);
+    return addAdvance(mine.find(c => c.month === endMonth)?.adv, advanceBack(mine.filter(c => c.month > endMonth)));
+}
+
+/**
+ * RENT-5, RENT-16: a payment above the chosen month's due pays the lease's unpaid months
+ * (`open`, oldest first) oldest first; only what is left after all of them is an advance
+ * (`adv` on the last part), and only when that last month is `latest` (the active lease's
+ * last charged month). Each part as a payment of that month would take it (else 'amount').
+ * @returns {Array<{id: string, month: string, amount: number, adv?: number}>}
+ * @throws {Error} 'amount' | 'over'
+ */
+export function payOldestFirst(open, amount, latest) {
+    let left = entryAmount(amount);
+    if (!(left > 0)) throw new Error('amount');
+    const parts = [];
+    for (const c of open) {
+        const due = chargeDue(c);
+        const a = Math.min(left, due);
+        if (!(a > 0)) continue;
+        if (validateDuePayment(a, 0, due, 0.001).total !== a) throw new Error('amount');
+        parts.push({ id: c.id, month: c.month, amount: a });
+        left = round2(left - a);
+    }
+    const last = parts[parts.length - 1];
+    if (left > 0 && last?.month !== latest) throw new Error('over');
+    if (left > 0) last.adv = left;
+    return parts;
+}
+
+/** What is paid for a part of payOldestFirst: its month's share plus its advance. */
+export const payAmount = (p) => addAdvance(p.amount, p.adv);
+
 /**
  * RENT-16: a new month's charge starts paid from the advance carried on the month before
  * (at most its amount; a payment with mode 'advance', no receipt); the rest is carried on.

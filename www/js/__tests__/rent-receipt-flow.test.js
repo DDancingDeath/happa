@@ -119,10 +119,11 @@ test('a second Record payment while one is saving is ignored: one payment (#95)'
 });
 
 test('an overpayment (RENT-16): the dialog explains it and the toast says what was carried to next month', async () => {
+    UIManager.showModal.mockResolvedValue(true);
     store.recordPayment.mockResolvedValue({ amount: 5000, adv: 2000, paid: 5000, open: false, receipt: RECEIPT });
     const done = _test.pay('L1');
     await flush();
-    expect(document.getElementById('rentDialogBody').textContent).toContain('carried to the next month as an advance');
+    expect(document.getElementById('rentDialogBody').textContent).toContain('pays the unpaid months oldest first');
     document.getElementById('rentPayAmount').value = '7000';
     RentalsModule.api.dialogClose(true);
     await done;
@@ -139,4 +140,36 @@ test('a unit whose month carries an advance says so on the Rent page', () => {
     ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges'].forEach(k => _test.state.loaded.add(k));
     _test.render();
     expect(document.getElementById('rentalsBody').textContent).toContain('Advance for next month: ₹2,000');
+});
+
+test('more than the month\'s due pays the unpaid months oldest first after confirming the split (RENT-5, RENT-16)', async () => {
+    const PREV = '2000-01';
+    const old = { ...CHARGE, id: `L1_${PREV}`, month: PREV, rent: 5000, amount: 5000, paid: 1000 };
+    store.snapshot.mockReturnValue({ ...SNAP, charges: [old, CHARGE] });
+    UIManager.showModal.mockResolvedValue(true);
+    store.recordPayment.mockResolvedValueOnce({ amount: 4000, paid: 5000, open: false, receipt: RECEIPT })
+        .mockResolvedValueOnce({ amount: 5000, adv: 1000, paid: 5000, open: false, receipt: RECEIPT });
+    const done = _test.pay('L1');
+    await flush();
+    document.getElementById('rentPayCharge').value = CHARGE.id;
+    document.getElementById('rentPayAmount').value = '10000';
+    RentalsModule.api.dialogClose(true);
+    await done;
+    await flush();
+    expect(UIManager.showModal.mock.calls[0][0]).toContain('Jan 2000: ₹4,000');
+    expect(UIManager.showModal.mock.calls[0][0]).toContain('Advance for next month: ₹1,000');
+    expect(store.recordPayment.mock.calls.map(c => [c[0], c[1].amount])).toEqual([[old.id, 4000], [CHARGE.id, 6000]]);
+    expect(UIManager.showToast).toHaveBeenCalledWith('✓ 2 payments saved (₹1,000 carried to next month as an advance)', 'success');
+    expect(receipt.showHistory).toHaveBeenCalled();
+});
+
+test('declining the split saves nothing', async () => {
+    store.snapshot.mockReturnValue({ ...SNAP, charges: [{ ...CHARGE, id: 'L1_2000-01', month: '2000-01' }, CHARGE] });
+    UIManager.showModal.mockResolvedValue(false);
+    const done = _test.pay('L1');
+    await flush();
+    document.getElementById('rentPayAmount').value = '9000';
+    RentalsModule.api.dialogClose(true);
+    await done;
+    expect(store.recordPayment).not.toHaveBeenCalled();
 });

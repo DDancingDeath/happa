@@ -14,7 +14,7 @@ global.__fakeDb = fake.db;
 import { AppState } from '../utils/state.js';
 import * as store from '../rentals/rent-store.js';
 import * as ds from '../rentals/rent-deposit-store.js';
-import { applyPayment, withAdvance, receiptReceived, receiptAmounts } from '../rentals/rent-math.js';
+import { applyPayment, withAdvance, receiptReceived, receiptAmounts, payOldestFirst, payAmount, advanceLeft } from '../rentals/rent-math.js';
 import { receiptRows } from '../rentals/rent-receipt.js';
 
 const TOKEN = 'AbCdEfGhIjKlMnOpQrStUvWx';
@@ -55,6 +55,34 @@ describe('RENT-16 math', () => {
         const rows = receiptRows({ ...r, months: ['2026-10'], mode: 'cash' }, 'en').map(([k, v]) => `${k}: ${v}`);
         expect(rows).toEqual(expect.arrayContaining(['Paid now: ₹5,000', 'Advance for next month: ₹2,000', 'Total received: ₹7,000']));
         expect(receiptRows({ ...r, adv: undefined, months: ['2026-10'], mode: 'cash' }, 'en').map(([k]) => k)).not.toContain('Advance for next month');
+    });
+});
+
+describe('RENT-5 / RENT-16: an overpayment pays the oldest unpaid months first', () => {
+    const open = [charge('2026-08', { paid: 4000 }), charge('2026-09'), charge('2026-10')];
+    test('oldest first; only what is left after every unpaid month is the latest month\'s advance', () => {
+        expect(payOldestFirst(open, 7000, '2026-10')).toEqual([
+            { id: 'L1_2026-08', month: '2026-08', amount: 1000 }, { id: 'L1_2026-09', month: '2026-09', amount: 5000 }, { id: 'L1_2026-10', month: '2026-10', amount: 1000 }]);
+        const p = payOldestFirst(open, 13000, '2026-10');
+        expect(p[2]).toEqual({ id: 'L1_2026-10', month: '2026-10', amount: 5000, adv: 2000 });
+        expect(p.map(payAmount)).toEqual([1000, 5000, 7000]);
+        // Not the active lease's latest month (moved out, or it is already paid): nothing may be left over.
+        expect(() => payOldestFirst(open, 13000, '2026-11')).toThrow('over');
+        expect(() => payOldestFirst(open, 13000, undefined)).toThrow('over');
+        expect(payOldestFirst(open, 11000, undefined)).toHaveLength(3);
+        expect(() => payOldestFirst(open, 0, '2026-10')).toThrow('amount');
+        // An old due with paise is paid off exactly; a part payment with paise after it is refused.
+        const paise = [charge('2026-09', { amount: 1234.5 }), charge('2026-10')];
+        expect(payOldestFirst(paise, 6235, '2026-10').map(payAmount)).toEqual([1234.5, 5000.5]);
+        expect(() => payOldestFirst(paise, 3000, '2026-10')).toThrow('amount');
+    });
+
+    test('a change of unit: the advance the old lease leaves (last month, plus one later month given back)', () => {
+        const cs = [charge('2026-09', { adv: 0 }), charge('2026-10', { adv: 1500 }),
+            charge('2026-11', { paid: 2000, payments: [{ amount: 2000, mode: 'advance' }], adv: 500 })];
+        expect(advanceLeft(cs, 'L1', '2026-11')).toBe(500);
+        expect(advanceLeft(cs, 'L1', '2026-10')).toBe(4000);
+        expect(advanceLeft(cs, 'L9', '2026-10')).toBe(0);
     });
 });
 
@@ -126,5 +154,15 @@ describe('advance in the store', () => {
         fake.seed('rent_charges', [charge('2026-10', { id: 'L2_2026-10', leaseId: 'L2' }),
             charge('2026-11', { id: 'L2_2026-11', leaseId: 'L2', paid: 3000, payments: [{ amount: 2000, mode: 'advance' }, { amount: 1000, mode: 'cash' }] })]);
         await expect(store.endLease('L2', '2026-10', '2026-11')).rejects.toThrow('later_paid');
+    });
+
+    test('a change of unit: the new lease\'s first month is paid from the old lease\'s advance', async () => {
+        fake.seed('rent_leases', [lease({ status: 'ended', endMonth: '2026-10', chargedThrough: '2026-10', movedTo: 'L2' }),
+            lease({ id: 'L2', unitId: 'U2', startMonth: '2026-10', startDate: '2026-10-16', proRate: true, firstRent: 3097, rent: 6000, chargedThrough: null, fromLeaseId: 'L1' })]);
+        fake.seed('rent_charges', [charge('2026-10', { rent: 2903, amount: 2903, paid: 2903, open: false, adv: 2000 })]);
+        expect(await store.chargeLease('L2', '2026-11', { tenantName: 'Ram', unitLabel: 'G2' })).toBe(2);
+        expect(fake.raw('rent_charges').get('L1_2026-10').adv).toBe(0);
+        expect(fake.raw('rent_charges').get('L2_2026-10')).toMatchObject({ amount: 3097, paid: 2000, open: true, payments: [{ amount: 2000, mode: 'advance' }] });
+        expect(fake.raw('rent_charges').get('L2_2026-11')).toMatchObject({ paid: 0, payments: [] });
     });
 });

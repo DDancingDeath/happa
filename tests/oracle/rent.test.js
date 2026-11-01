@@ -9,7 +9,7 @@
 import fc from 'fast-check';
 import {
     monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, moveMonthRent, oldMonth,
-    depositEntry, depositHeld, depositsTotal, withAdvance
+    depositEntry, depositHeld, depositsTotal, withAdvance, payOldestFirst, payAmount
 } from '../../www/js/rentals/rent-math.js';
 
 jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: {} }));
@@ -210,5 +210,30 @@ describe('advance carried forward (RENT-16)', () => {
             const fromPayments = got.reduce((s, x) => s + x, 0);
             expect(fromPayments + adv).toBe(received);
         }), { seed: 1571, numRuns: Number(process.env.FC_RUNS) || 100 });
+    });
+});
+
+describe('an overpayment pays the oldest unpaid months first (RENT-5, RENT-16)', () => {
+    test('each month gets min(what is left, its due) oldest first; only the rest is an advance, on the latest month', () => {
+        const arb = fc.tuple(fc.array(fc.integer({ min: 1, max: 20000 }), { minLength: 1, maxLength: 6 }), fc.integer({ min: 1, max: 150000 }), fc.boolean());
+        fc.assert(fc.property(arb, ([dues, amount, latestOpen]) => {
+            const months = dues.map((_, i) => `2026-${String(i + 1).padStart(2, '0')}`);
+            const open = dues.map((d, i) => ({ id: `L1_${months[i]}`, month: months[i], amount: d, paid: 0 }));
+            const latest = latestOpen ? months[months.length - 1] : '2027-01';
+            // Oracle: walk the months with what is left.
+            let left = amount;
+            const want = [];
+            for (let i = 0; i < dues.length && left > 0; i++) {
+                const a = Math.min(left, dues[i]);
+                want.push(a);
+                left -= a;
+            }
+            let got;
+            try { got = payOldestFirst(open, amount, latest); } catch (e) { got = e.message; }
+            if (left > 0 && !latestOpen) return expect(got).toBe('over');
+            expect(got.map(p => p.amount)).toEqual(want);
+            expect(got[got.length - 1].adv || 0).toBe(left);
+            expect(got.reduce((s, p) => s + payAmount(p), 0)).toBe(amount);
+        }), { seed: 1573, numRuns: Number(process.env.FC_RUNS) || 100 });
     });
 });

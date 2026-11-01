@@ -25,9 +25,10 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const rel = (p) => path.relative(WWW, p).split(path.sep).join('/');
 const RENT_COLLECTION = /['"`](?:dev_)?rent_[a-z]/;
 // Recorded raises (docs/rentals-design.md §4): 130 → 133 KB for the deposit ledger (#157): its maths (RENT-14/15)
-// must be in rent-math.js (precached); its screens and data access are lazy (rent-deposit*.js). 133 → 137 KB for
-// the advance (#157, RENT-16): it runs inside the precached payment, monthly-charge and move-out transactions.
-const PRECACHE_BUDGET_BYTES = 137 * 1024;
+// must be in rent-math.js (precached); its screens and data access are lazy (rent-deposit*.js). 133 → 140 KB for
+// the advance (#157, RENT-16): it runs inside the precached payment (oldest months first), monthly-charge and
+// move-out transactions.
+const PRECACHE_BUDGET_BYTES = 140 * 1024;
 /** Loaded with import() only when used (file: its only importer); not precached, own budget per feature. */
 const LAZY = {
     'rent-receipt.js': 'rentals.js', 'rent-receipt-store.js': 'rent-receipt.js', 'rent-unit.js': 'rentals.js', 'rent-link.js': 'rentals.js',

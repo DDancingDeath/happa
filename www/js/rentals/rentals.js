@@ -29,7 +29,7 @@ import {
     PROPERTY_KINDS, PAYMENT_MODES, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, normalizeRentSettings,
     monthKey, monthLabel, monthsToCharge, chargeStatus, chargeDue, leaseDues, buildRentReminderText,
     increaseDue, meterBill, propertyError, unitError, tenantError, leaseError, moveInError, isMonth, addMonths,
-    ELEC_MODES, elecMode, mobile10, dateLabel, firstMonthRent
+    ELEC_MODES, elecMode, mobile10, dateLabel, firstMonthRent, payOldestFirst, payAmount
 } from './rent-math.js';
 
 const PAGES = ['rent', 'tenants', 'properties'];
@@ -455,27 +455,46 @@ async function pay(leaseId) {
     const mode = PAYMENT_MODES.includes(val('rentPayMode')) ? val('rentPayMode') : 'cash';
     const ref = val('rentPayRef');
     const date = val('rentPayDate') || todayLocalISO();
-    await Helpers.runExclusive('rent-pay', '[data-rent-pay]', () => savePayment(id, charge, { amount, mode, ref, date }));
+    // RENT-5, RENT-16: more than the month's due pays the unpaid months oldest first; only the rest is an advance.
+    let parts = [{ id, amount }];
+    if (charge && amount > chargeDue(charge)) {
+        try {
+            parts = payOldestFirst(dues.charges, amount, store.snapshot().leases.find(l => l.id === leaseId)?.chargedThrough);
+        } catch (e) {
+            return fail(e.message === 'over' ? 'msg.rent.more_than_due' : 'msg.rent.bad_amount');
+        }
+        const adv = parts[parts.length - 1].adv;
+        const lines = parts.map(p => `${monthLabel(p.month, lang)}: ${formatINR(p.amount)}`).concat(adv ? [t('ui.rent.adv_next', { amount: formatINR(adv) })] : []).join(' · ');
+        if (!await UIManager.showModal(t('msg.rent.pay_split', { lines }), t('ui.rent.record_payment'))) return;
+    }
+    await Helpers.runExclusive('rent-pay', '[data-rent-pay]', () => savePayment(parts, dues.charges, { mode, ref, date }));
 }
 
-async function savePayment(id, charge, { amount, mode, ref, date }) {
+/** One payment (and receipt) per part: a month, or several oldest first; one opens its receipt, several the tenant's list. */
+async function savePayment(parts, charges, { mode, ref, date }) {
+    const ch = (id) => charges.find(c => c.id === id);
+    let res = null;
+    let n = 0;
+    let adv = 0;
+    let no = false;
     try {
-        const res = await store.recordPayment(id, { amount, mode, ref, date }, rcOf(charge));
-        const no = res.noReceipt;
-        UIManager.showToast(t(no ? 'msg.rent.payment_saved_no_receipt' : 'msg.rent.payment_saved', { amount: formatINR(res.amount) })
-            + (res.adv ? ` ${t('msg.rent.adv_carried', { amount: formatINR(res.adv) })}` : ''), no ? 'warning' : 'success');
-        if (no) TelemetryService.logWarning('Rent receipt not issued', { code: res.receiptError || '', chargeId: id });
-        AuditService.log('RENT_PAYMENT', {
-            chargeId: id, month: charge?.month || '', amount: res.amount, adv: res.adv || 0, mode, tenant: charge?.tenantName || '', receipt: res.receipt?.no || ''
-        }).catch(auditWarn);
-        if (res.receipt || no) void receiptUi(no ? 'showHistory' : 'showReceipt', no ? charge?.tenantId : res.receipt);
+        for (const p of parts) {
+            res = await store.recordPayment(p.id, { amount: payAmount(p), mode, ref, date }, rcOf(ch(p.id)));
+            n++;
+            adv = res.adv || adv;
+            no = no || res.noReceipt;
+            if (res.noReceipt) TelemetryService.logWarning('Rent receipt not issued', { code: res.receiptError || '', chargeId: p.id });
+            AuditService.log('RENT_PAYMENT', {
+                chargeId: p.id, month: ch(p.id)?.month || '', amount: res.amount, adv: res.adv || 0, mode, tenant: ch(p.id)?.tenantName || '', receipt: res.receipt?.no || ''
+            }).catch(auditWarn);
+        }
+        UIManager.showToast(t(`msg.rent.${n > 1 ? 'payments' : 'payment'}_saved${no ? '_no_receipt' : ''}`, { amount: formatINR(res.amount), n })
+            + (adv ? ` ${t('msg.rent.adv_carried', { amount: formatINR(adv) })}` : ''), no ? 'warning' : 'success');
     } catch (e) {
-        const key = e?.message === 'amount' ? 'msg.rent.bad_amount'
-            : e?.message === 'over' ? 'msg.rent.more_than_due'
-            : e?.message === 'too_many' ? 'msg.rent.too_many_payments'
-            : 'msg.rent.payment_failed';
-        fail(key);
+        fail(n ? 'msg.rent.payments_part_saved' : `msg.rent.${{ amount: 'bad_amount', over: 'more_than_due', too_many: 'too_many_payments' }[e?.message] || 'payment_failed'}`, { n });
     }
+    if (n > 1 || no) void receiptUi('showHistory', ch(parts[0].id)?.tenantId);
+    else if (res?.receipt) void receiptUi('showReceipt', res.receipt);
 }
 
 function fillDue(select) {
@@ -822,7 +841,6 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, save = null }
         AuditService.log(from ? 'RENT_UNIT_CHANGE' : 'RENT_MOVE_IN', {
             tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate, fromLeaseId: from?.id || null
         }).catch(auditWarn);
-        if (from) void depUi('afterMoveOut', from.tenantId, from.id, false);
         if (defs?.tenantLink && isManager() && !moved) await lazyUi('./rent-link.js', 'linkNewLease', { unit, res, occ, defs });
         return true;
     } catch (e) {

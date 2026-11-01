@@ -4467,6 +4467,30 @@ function defineRentSuite(prefix) {
         await assertFails(out('rentManager', 0));
         await assertSucceeds(out('rentManager', 2000));
     });
+
+    t('advance: a change of unit carries it into the new lease\'s first month (in that write); never into the deposit', async () => {
+        await seedTenant();
+        await seed('rent_leases', 'L1', lease({ status: 'ended', endMonth: CUR, chargedThrough: CUR, movedTo: 'LN' }));
+        await seed('rent_leases', 'LN', lease({ unitId: 'U2', startMonth: CUR, rentSince: CUR, chargedThrough: null, fromLeaseId: 'L1', rent: 6000 }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 5000, open: false, adv: 2000 }));
+        const first = (uid, { paid = 2000, payments = [advEntry(uid, 2000)], clear = true } = {}) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.set(f.collection(c('rent_charges')).doc(`LN_${CUR}`), charge(CUR, { leaseId: 'LN', unitId: 'U2', rent: 6000, amount: 6000, paid, open: paid < 6000, payments, updatedBy: uid }));
+            b.update(f.collection(c('rent_leases')).doc('LN'), { chargedThrough: CUR, updatedAt: 3, updatedBy: uid });
+            if (clear) b.update(chargeOn(f, CUR), { adv: 0, updatedAt: 3, updatedBy: uid });
+            return b.commit();
+        };
+        await assertFails(first('rentMember', { paid: 0, payments: [], clear: false }));
+        await assertFails(first('rentMember', { clear: false }));
+        await assertFails(first('rentMember', { paid: 1000, payments: [advEntry('rentMember', 1000)] }));
+        const f = db('rentMember');
+        const b = f.batch();
+        b.set(depOn(f), depDoc('rentMember', [dEntry('rentMember', 'received', 2000, { mode: 'advance', chargeId: `L1_${CUR}`, month: CUR })], 2000));
+        b.update(chargeOn(f, CUR), { adv: 0, updatedAt: 3, updatedBy: 'rentMember' });
+        await assertFails(b.commit());
+        await assertSucceeds(first('rentMember'));
+    });
 }
 
 defineRentSuite('');

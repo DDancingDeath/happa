@@ -300,8 +300,11 @@ export async function chargeLease(leaseId, month, names, maxMonths = MAX_BACKFIL
             const lease = { id: snap.id, ...snap.data() };
             const [m] = monthsToCharge(lease, month);
             if (!m) return false;
-            // RENT-16: the advance carried on the month before pays this one first (the rules require it).
-            const prevRef = isMonth(lease.chargedThrough) ? coll('rent_charges').doc(chargeId(lease.id, lease.chargedThrough)) : null;
+            // RENT-16: the advance carried on the month before pays this one first (the rules require it);
+            // a changed lease's first month takes the old lease's last month's.
+            const from = !isMonth(lease.chargedThrough) && lease.fromLeaseId ? (await tx.get(coll('rent_leases').doc(lease.fromLeaseId))).data() : null;
+            const prevRef = isMonth(lease.chargedThrough) ? coll('rent_charges').doc(chargeId(lease.id, lease.chargedThrough))
+                : isMonth(from?.endMonth) ? coll('rent_charges').doc(chargeId(lease.fromLeaseId, from.endMonth)) : null;
             const prev = prevRef ? (await tx.get(prevRef)).data() : null;
             const adv = prev?.adv;
             const pub = await readPublic(tx, lease);
@@ -311,7 +314,7 @@ export async function chargeLease(leaseId, month, names, maxMonths = MAX_BACKFIL
             tx.set(coll('rent_charges').doc(chargeId(lease.id, m)), charge);
             tx.update(leaseRef, { chargedThrough: m, updatedAt: now, updatedBy: uid() });
             if (adv > 0) tx.update(prevRef, { adv: 0, updatedAt: now, updatedBy: uid() });
-            if (pub) tx.set(pub.ref, withMonth(adv > 0 ? withMonth(pub.data, { ...prev, adv: 0 }, now) : pub.data, charge, now));
+            if (pub) tx.set(pub.ref, withMonth(adv > 0 ? withMonth(pub.data, { ...prev, adv: 0 }, now, from ? true : null) : pub.data, charge, now));
             return true;
         });
         if (!made) break;
