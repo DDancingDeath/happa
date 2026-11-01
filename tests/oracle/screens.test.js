@@ -314,6 +314,16 @@ describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
         });
     });
 
+    test('low-stock card (S-LOW, #146): the items below their own level (default 10 kg)', async () => {
+        AppState.items = copy(FIX.items).map((i, n) => (n === 0 ? { ...i, lowStockKg: 1e6 } : i));
+        await StockManager.renderStock();
+        const level = (i) => (typeof i.lowStockKg === 'number' ? i.lowStockKg : 10);
+        const expected = AppState.items.filter(i => want.perItem[i.id] && want.perItem[i.id].qty < level(i)).map(i => i.name).sort();
+        const card = document.querySelector('.stock-low-card');
+        expect(expected.length).toBeGreaterThan(0);
+        expect([...card.querySelectorAll('li strong')].map(el => el.textContent).sort()).toEqual(expected);
+    });
+
     test('adjustment cards: value = quantity × its rate, else the average cost now (S5)', async () => {
         AppState.stockAdjustments = [
             ...copy(FIX.stockAdjustments),

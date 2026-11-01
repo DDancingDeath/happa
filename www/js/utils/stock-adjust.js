@@ -5,11 +5,14 @@
 
 import { t } from '../i18n/index.js';
 import { splitBilingual } from '../i18n/localize.js';
+import { isActiveBill } from './money.js';
 
 /** Reason picker options (catalogue keys); `other` needs a note, `opening` a cost per kg. */
 export const ADJUST_REASONS = {
     opening: 'ui.stock.reason_opening',
     count: 'ui.stock.reason_count',
+    // Written by Reverse on an adjustment row (#146), not offered in the picker
+    reverse: 'ui.stock.reason_reverse',
     damage: 'ui.stock.reason_damage',
     theft: 'ui.stock.reason_theft',
     other: 'ui.stock.reason_other'
@@ -85,4 +88,98 @@ export function planStockAdjustment({ adjustType, quantity, currentStock, reason
         newStock = qty;
     }
     return { ok: true, quantity: round3(effective), rawQuantity: qty, newStock: round3(newStock), capped, reason };
+}
+
+/** How much an adjustment changed the stock (kg; S-ADJ-REV): newStock − previousStock, or null when unknown. */
+export function adjustmentDelta(adj) {
+    const before = Number(adj?.previousStock);
+    const after = Number(adj?.newStock);
+    if (!Number.isFinite(before) || !Number.isFinite(after)) return null;
+    return round3(after - before);
+}
+
+/**
+ * Whether Reverse can be offered on an adjustment (#146): it changed the stock, it is
+ * not itself a reversal, and nothing reversed it yet.
+ * @param {Object} adj
+ * @param {Array<Object>} adjustments every loaded adjustment
+ * @returns {boolean}
+ */
+export function canReverseAdjustment(adj, adjustments) {
+    if (!adj?.id || adj.reversesId) return false;
+    const delta = adjustmentDelta(adj);
+    if (!delta) return false;
+    return !(adjustments || []).some(a => a?.reversesId === adj.id);
+}
+
+/**
+ * The opposite adjustment (#146, S-ADJ-REV): takes back what the adjustment changed,
+ * as an add or remove from the stock now (so later sales and purchases stay). A "set"
+ * is reversed by its change too, not by setting the old number again. A remove stops
+ * at the stock on hand, like any remove (`capped`); quantity 0 = nothing to take back.
+ * @param {Object} adj the adjustment to reverse
+ * @param {number} currentStock kg on hand now
+ * @returns {?{adjustType: 'add'|'remove', quantity: number, previousStock: number, newStock: number, capped: boolean}}
+ */
+export function reversalPlan(adj, currentStock) {
+    const delta = adjustmentDelta(adj);
+    if (!delta) return null;
+    const now = Number(currentStock) || 0;
+    if (delta < 0) return { adjustType: 'add', quantity: -delta, previousStock: round3(now), newStock: round3(now - delta), capped: false };
+    const quantity = round3(Math.min(delta, Math.max(0, now)));
+    return { adjustType: 'remove', quantity, previousStock: round3(now), newStock: round3(now - quantity), capped: quantity < delta };
+}
+
+/**
+ * The item's latest purchase rate in the loaded bills (₹/kg), or 0.
+ * @param {Object} item catalogue item
+ * @param {Array<Object>} purchases purchase bills
+ * @returns {number}
+ */
+export function lastPurchaseRate(item, purchases) {
+    let best = { t: -Infinity, rate: 0 };
+    (purchases || []).forEach(b => {
+        if (!isActiveBill(b)) return;
+        const t = Number(b.timestamp) || 0;
+        (b.items || []).forEach(line => {
+            const rate = Number(line?.rate);
+            const mine = line?.itemId ? line.itemId === item?.id : line?.name === item?.name;
+            if (mine && rate > 0 && t >= best.t) best = { t, rate };
+        });
+    });
+    return best.rate;
+}
+
+/**
+ * Cost per kg for kg put back by a reversal or counted up from nothing (#146): the
+ * adjustment's own rate, else the average cost now (S2; 0 when out of stock), else the
+ * latest purchase rate, else the item's first purchase rate on the Rates page; 0 if none.
+ * @param {{ownRate?: number, stockRate?: number, lastPurchaseRate?: number, catalogueRate?: number}} rates
+ * @returns {number}
+ */
+export function restockCost({ ownRate, stockRate, lastPurchaseRate: last, catalogueRate }) {
+    return [ownRate, stockRate, last, catalogueRate].map(Number).find(r => r > 0) || 0;
+}
+
+/**
+ * Stock count (#146): the items whose counted kg differs from the stock now, as
+ * "set" adjustments (reason count). Blank boxes are skipped; a count must be ≥ 0.
+ * @param {Array<{itemId: string, counted: *, current: number}>} rows
+ * @returns {{changes: Array<{itemId: string, previousStock: number, newStock: number}>, invalid: string[]}}
+ */
+export function stockCountPlan(rows) {
+    const changes = [];
+    const invalid = [];
+    (rows || []).forEach(({ itemId, counted, current }) => {
+        if (counted === '' || counted === null || counted === undefined) return;
+        const kg = Number(counted);
+        if (!Number.isFinite(kg) || kg < 0) {
+            invalid.push(itemId);
+            return;
+        }
+        const before = round3(Number(current) || 0);
+        const after = round3(kg);
+        if (after !== before) changes.push({ itemId, previousStock: before, newStock: after });
+    });
+    return { changes, invalid };
 }
