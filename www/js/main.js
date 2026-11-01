@@ -56,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhba-pwa-shortcuts';
+const BUILD_ID = '20261101zzuzieecmbbkhbc-admin-activity';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1314,6 +1314,7 @@ window.app = {
         showTab: (tab) => AdminManager.showTab(tab),
         saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
         approveUser: (userId) => AdminManager.approveUser(userId),
+        showActivity: (range) => AdminManager.showActivity(range),
         rejectUser: (userId) => AdminManager.rejectUser(userId),
         restoreUser: (userId, userName) => AdminManager.restoreUser(userId, userName),
         showChangeRole: (userId, userName, currentRole) => AdminManager.showChangeRole(userId, userName, currentRole),
