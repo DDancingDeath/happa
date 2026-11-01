@@ -111,6 +111,7 @@ the due. Names match with case and extra spaces ignored (PARTY).
 | Value per item, total value (S3, S4) | Quantity × average rate; the total is their sum. |
 | Adjustment value (S5) | Quantity of a correction × its rate (or today's average rate). |
 | Dead stock value (S6) | Value of items with stock and no sale in the chosen days. |
+| Summary card (S7, S4) | Above the list: items in stock, their total kg and the stock value (S4). Members see the item count only. |
 
 ### Cash (the drawer)
 
@@ -214,7 +215,8 @@ Separate from the shop: rent money never counts in shop figures.
   link), Delete (removes access; Restore brings them back as a pending
   registration).
 - **Anomalies**: bills that look wrong (a possible duplicate bill, a rate far off,
-  a big cash gap…); tap "Mark OK" or "Mark fixed" on each.
+  a big cash gap…) and each mismatch the daily number checks found ("Number check: …", on
+  its bill, item or cash day); tap "Mark OK" or "Mark fixed" on each.
 - **Diagnostics › Number checks**: the always-true checks run on this phone's data
   (bill split, payments, dates, dues, drawer, stock).
 
@@ -312,5 +314,10 @@ Separate from the shop: rent money never counts in shop figures.
 - A restore into the live app is done by the developer from the latest good
   backup. Tell them the date and time the data was last right. Whatever was entered
   after that backup is lost and has to be entered again.
+- **Admin › Data › Check a backup**: pick a backup file on the phone (the developer
+  can give you the unlocked nightly file) and the app checks it is complete and how
+  old it is, without changing anything. Do it at least once a month: Today reminds you
+  (REM-3) when no check was recorded on this phone for 30 days. The card also lists
+  the restore steps; the app itself never restores.
 - Admin › Data "Clear All Data" works only on the website. It first saves a backup
   file and deletes nothing unless that file was saved.
