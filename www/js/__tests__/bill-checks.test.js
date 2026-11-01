@@ -150,7 +150,7 @@ describe('oversell', () => {
     test('wholesale: up to the 5 kg limit warns, beyond it blocks (overridable); lines aggregate by item incl. Hindi name', () => {
         const warn = find(evaluateBill(sale(105, { kind: 'wholesale' }), ctx({ oversellCanBlock: true })), 'oversell');
         expect(warn).toMatchObject({ severity: 'warn', field: 'items', lines: [0, 1] });
-        expect(warn.en).toBe('Rice: selling 105.0 kg, only 100.0 kg in stock (short 5.0 kg)');
+        expect(warn.en).toBe('Rice: selling 105 kg, only 100 kg in stock (short 5 kg)');
         const block = find(evaluateBill(sale(106, { kind: 'wholesale' }), ctx({ oversellCanBlock: true })), 'oversell');
         expect(block).toMatchObject({ severity: 'block', overridable: true });
     });

@@ -25,6 +25,7 @@ import { t } from '../i18n/index.js';
 import { attachScrollCue } from '../ui/scroll-cue.js';
 import { CHANGED_ELSEWHERE, isOffline, writeErrorKey } from '../utils/write-conflict.js';
 import { suggestHindiName, suggestEnglishName, autofillValue } from '../utils/item-name-autofill.js';
+import { formatRate, formatKg } from '../utils/money.js';
 
 /**
  * Items Manager - Manages inventory items and rates
@@ -435,7 +436,7 @@ const ItemsManager = {
         }
         const itemName = item.name || 'Unnamed';
         const { quantity } = adjustItemStock(AppState.stock?.[id]);
-        const message = [t('msg.items.archive', { itemName }), quantity > 0 ? t('msg.items.archive_stock', { kg: quantity.toFixed(1) }) : '']
+        const message = [t('msg.items.archive', { itemName }), quantity > 0 ? t('msg.items.archive_stock', { kg: formatKg(quantity) }) : '']
             .filter(Boolean).join(' ');
         const confirmed = await UIManager.showModal(message, t('ui.items.archive_item'), true);
         if (!confirmed) return false;
@@ -692,7 +693,7 @@ const ItemsManager = {
                 // Stock is keyed by catalogue id (stock-replay resolves names to ids)
                 const stockEntry = AppState.stock[item.id];
                 if (stockEntry && stockEntry.rate) {
-                    avgRate = `₹${stockEntry.rate.toFixed(2)}`;
+                    avgRate = formatRate(stockEntry.rate);
                 }
             }
             
@@ -916,7 +917,7 @@ const ItemsManager = {
         }
         if (outOfBand.length) {
             parts.push(`<p><strong>${e(t('ui.rate_history.big_change', { factor: RATE_SANITY_FACTOR }))}</strong></p><ul style="margin:4px 0 8px 16px">${outOfBand.map(c =>
-                `<li>${e(fieldLabel(c.field))}: ₹${e(c.old)} → ₹${e(c.new)}</li>`).join('')}</ul>
+                `<li>${e(fieldLabel(c.field))}: ${formatRate(c.old)} → ${formatRate(c.new)}</li>`).join('')}</ul>
                 <p style="font-size:13px; color:#555">${e(t('ui.rate_history.check_rate'))}</p>`);
         }
         return UIManager.showModalWithHtml(`<div style="text-align:left">${parts.join('')}</div>`, t('msg.items.confirm_changes'), true);

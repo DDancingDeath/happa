@@ -10,7 +10,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { PrinterService } from '../services/printer.js';
 import { Helpers } from '../utils/helpers.js';
-import { KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage } from '../utils/money.js';
+import { KEPT_SERVER_PAYMENT_KEY, normalizeLabourSettings, paymentSplitMessage, formatRate, formatRupees, formatKg } from '../utils/money.js';
 import {
     autoLabour, buildPaymentSplit, computeLine, computePurchaseTotals, draftLineSum, editSplitFor, paidOnScreen, payableOnScreen,
     paymentSplit, prefillPayment, restInDue, shownAmount, sumWeights, validatePaymentSplit
@@ -273,7 +273,7 @@ const PurchaseManager = {
                     return `
                         <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #007bff;">
                             <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
-                                ${Helpers.escapeHtml(lineLabel(item))} (${Helpers.escapeHtml(tn('ui.print.packets_kg', item.weights.length, { kg: item.qty.toFixed(1) }))})
+                                ${Helpers.escapeHtml(lineLabel(item))} (${Helpers.escapeHtml(tn('ui.print.packets_kg', item.weights.length, { kg: formatKg(item.qty) }))})
                             </div>
                             <div style="font-family: monospace; font-size: 14px; line-height: 1.4; color: #555;">
                                 ${weightLines.join('<br>')}
@@ -291,9 +291,9 @@ const PurchaseManager = {
             return `
                 <tr style="cursor: pointer;" onclick="window.app.purchase.editBillItem(${index})">
                     <td>${Helpers.escapeHtml(lineLabel(item))}</td>
-                    <td>₹${item.rate.toFixed(2)}</td>
-                    <td>${item.qty.toFixed(1)} kg</td>
-                    <td>₹${shownAmount(item.total)}</td>
+                    <td>${formatRate(item.rate)}</td>
+                    <td>${formatKg(item.qty)} kg</td>
+                    <td>${formatRupees(shownAmount(item.total))}</td>
                     <td><button onclick="event.stopPropagation(); window.app.purchase.deleteBillItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
                 </tr>
             `;

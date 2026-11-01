@@ -7,15 +7,12 @@
  */
 
 import {
-    activityBills, billLabour, formatRupees, normalizeLabourSettings, readLineItem, round2, toMoney,
+    activityBills, billLabour, formatKg, formatRupees, normalizeLabourSettings, readLineItem, round2, toMoney,
     DEFAULT_LABOUR_PACKAGE_KG, LABOUR_PACKAGE_KG_MIN, LABOUR_PACKAGE_KG_MAX, normalizePackageKg
 } from './money.js';
 import { tn } from '../i18n/index.js';
 
-export { billLabour, DEFAULT_LABOUR_PACKAGE_KG, LABOUR_PACKAGE_KG_MIN, LABOUR_PACKAGE_KG_MAX, normalizePackageKg };
-
-/** kg as shown: Indian grouping, up to 2 decimals ("1,234.5"). */
-export const formatKg = (kg) => (Number(kg) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+export { billLabour, formatKg, DEFAULT_LABOUR_PACKAGE_KG, LABOUR_PACKAGE_KG_MIN, LABOUR_PACKAGE_KG_MAX, normalizePackageKg };
 
 /**
  * "(1,000 kg ÷ 35 kg = 29 packages × ₹6)" in the app language.

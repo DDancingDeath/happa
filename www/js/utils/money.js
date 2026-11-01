@@ -47,17 +47,20 @@ export function billLabour(bill) {
 
 /**
  * Amount with Indian digit grouping and no ₹ sign ("2,50,000"), for texts whose
- * template already has the ₹. Whole rupees unless `decimals` is set;
- * `small: true` shows paise below ₹100 so ₹0.40 is not shown as ₹0.
+ * template already has the ₹ (MONEY-TEXT). Whole rupees unless `decimals` is set;
+ * `small: true` shows paise below ₹100 so ₹0.40 is not shown as ₹0; `exact: true`
+ * shows paise only when the amount has them (a record saved before #129, a cash
+ * count), so ₹987.50 stays ₹987.50 and ₹987 is ₹987.
  * @param {*} amount
- * @param {{decimals?: number, small?: boolean}} [opts]
+ * @param {{decimals?: number, small?: boolean, exact?: boolean}} [opts]
  * @returns {string}
  */
-export function formatAmount(amount, { decimals = 0, small = false } = {}) {
+export function formatAmount(amount, { decimals = 0, small = false, exact = false } = {}) {
     const n = Number(amount);
     const v = Number.isFinite(n) ? n : 0;
     let digits = decimals;
-    if (small && !decimals && Math.abs(v) < 100 && Math.abs(round2(v) - Math.round(v)) >= 0.005) digits = 2;
+    const paise = Math.abs(round2(v) - Math.round(v)) >= 0.005;
+    if (!decimals && paise && (exact || (small && Math.abs(v) < 100))) digits = 2;
     const shown = digits ? round2(v) : Math.round(v);
     return (Object.is(shown, -0) ? 0 : shown).toLocaleString('en-IN', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 }
@@ -65,12 +68,33 @@ export function formatAmount(amount, { decimals = 0, small = false } = {}) {
 /**
  * The app's one currency format: "₹2,50,000", "-₹500" (options as formatAmount).
  * @param {*} amount
- * @param {{decimals?: number, small?: boolean}} [opts]
+ * @param {{decimals?: number, small?: boolean, exact?: boolean}} [opts]
  * @returns {string}
  */
 export function formatRupees(amount, opts) {
     const text = formatAmount(amount, opts);
     return text.startsWith('-') ? `-₹${text.slice(1)}` : `₹${text}`;
+}
+
+/**
+ * A rate (₹ per kg, labour rate): always with paise, "₹1,234.50" (MONEY-TEXT).
+ * @param {*} rate
+ * @returns {string}
+ */
+export function formatRate(rate) {
+    return formatRupees(rate, { decimals: 2 });
+}
+
+/**
+ * The app's one weight format (KG-TEXT): kg with Indian grouping, at most 3
+ * decimals, trailing zeros dropped ("1,250", "12.5", "0.125"); no unit.
+ * @param {*} kg
+ * @returns {string}
+ */
+export function formatKg(kg) {
+    const n = Number(kg);
+    const v = Number.isFinite(n) ? Math.round(n * 1000) / 1000 : 0;
+    return (Object.is(v, -0) ? 0 : v).toLocaleString('en-IN', { maximumFractionDigits: 3 });
 }
 
 /**
@@ -346,7 +370,7 @@ export function readLineItem(item) {
  * @returns {string}
  */
 export function paymentSplitMessage({ difference }, lang) {
-    const amount = Math.abs(round2(difference)).toLocaleString('en-IN');
+    const amount = formatAmount(Math.abs(round2(difference)), { exact: true });
     return t(difference > 0 ? 'msg.money.split_less' : 'msg.money.split_more', { amount }, lang);
 }
 

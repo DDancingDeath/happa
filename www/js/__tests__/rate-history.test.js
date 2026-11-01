@@ -119,7 +119,7 @@ describe('historyDocId', () => {
 });
 
 test('formatHistoryValue', () => {
-    expect(formatHistoryValue('purchase', 40)).toBe('₹40');
+    expect(formatHistoryValue('purchase', 40)).toBe('₹40.00');
     expect(formatHistoryValue('name', 'Gehu')).toBe('Gehu');
     expect(formatHistoryValue('retail', null)).toBe('—');
 });

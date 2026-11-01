@@ -19,6 +19,7 @@ import { overdueReminder, rentReminder } from '../utils/reminders.js';
 import { billsForKind } from '../utils/party-due.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import { formatINR } from '../utils/due-reminder.js';
+import { formatRate } from '../utils/money.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
@@ -370,16 +371,15 @@ export const DayManager = {
 
         const label = (key) => Helpers.escapeHtml(t(key));
         container.innerHTML = itemsArray.map(item => {
-            const avgRate = item.avgRate === null ? 0 : item.avgRate.toFixed(2);
             
             return `
                 <div class="stat-card ${cardClass}" style="text-align: left; padding: 14px;">
                     <div style="font-weight: 600; color: var(--text-primary); font-size: 15px; margin-bottom: 8px;">${Helpers.escapeHtml(item.name)}</div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 14px;">
                         <div><span style="color: var(--text-secondary);">${label(type === 'purchase' ? 'ui.today.purchases_label' : 'ui.today.sales_label')}</span> <strong>${item.count}x</strong></div>
-                        <div><span style="color: var(--text-secondary);">${label('ui.today.qty_label')}</span> <strong>${item.quantity.toFixed(2)} kg</strong></div>
+                        <div><span style="color: var(--text-secondary);">${label('ui.today.qty_label')}</span> <strong>${formatKg(item.quantity)} kg</strong></div>
                         <div><span style="color: var(--text-secondary);">${label('ui.billing.total_colon')}</span> <strong class="${labelClass}">${formatCurrency(item.totalValue)}</strong></div>
-                        <div><span style="color: var(--text-secondary);">${label('ui.today.avg_rate_label')}</span> <strong>₹${avgRate}/kg</strong></div>
+                        <div><span style="color: var(--text-secondary);">${label('ui.today.avg_rate_label')}</span> <strong>${formatRate(item.avgRate ?? 0)}/kg</strong></div>
                     </div>
                 </div>
             `;

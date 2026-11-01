@@ -10,7 +10,7 @@
 
 import { Helpers } from '../utils/helpers.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, outstandingDue, readPayment } from '../utils/money.js';
+import { billTotal, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, outstandingDue, readPayment, formatKg, formatRate } from '../utils/money.js';
 import { billDateOf } from '../utils/history-filters.js';
 import { printStatusOf } from '../utils/print-status.js';
 
@@ -215,7 +215,7 @@ function tableItemsHtml(bill) {
     if (isOpeningRecord(bill) || items.length === 0) return Helpers.escapeHtml(billItemsText(bill));
     return items.map(item => {
         const qty = Number(item?.qty || item?.quantity || 0).toFixed(1);
-        return `<div class="bill-table__item">${Helpers.escapeHtml(item?.name || '')} · ${Helpers.escapeHtml(qty)} kg × ₹${Helpers.escapeHtml(item?.rate ?? '')}</div>`;
+        return `<div class="bill-table__item">${Helpers.escapeHtml(item?.name || '')} · ${formatKg(qty)} kg × ${formatRate(item?.rate)}</div>`;
     }).join('');
 }
 

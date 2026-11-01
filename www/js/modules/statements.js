@@ -11,7 +11,7 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
-import { formatRupees, formatAmount } from '../utils/money.js';
+import { formatRupees, formatAmount, formatKg } from '../utils/money.js';
 import { formatDay, formatMonth, formatDayTime, toLocalISODate, parseLocalDate, todayLocalISO, monthStart, endOfLocalDayExclusive } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
@@ -316,7 +316,7 @@ export const StatementsManager = {
             return `<tr${below || r.beforeBought ? ' class="st-flag"' : ''}><td>${esc(r.t ? formatDay(r.t, { lang }) : '')}</td><td>${esc([this.kindLabel(r.kind), r.billNo, r.party].filter(Boolean).join(' · '))}${below ? ` ⚠ <span data-perm="profit">${esc(t('ui.statements.below_cost'))}</span>` : ''}${r.beforeBought ? ` ⚠ ${esc(t('ui.statements.before_bought'))}` : ''}</td><td class="num">${r.qty > 0 ? '+' : ''}${r.qty}</td><td class="num">${r.balanceQty}</td>${showCost ? `<td class="num" data-perm="purchaseRates">${r.avgCost}</td>` : ''}</tr>`;
         }).join('');
         const closing = perms.stockValue && perms.purchaseRates
-            ? t('ui.statements.kg_at', { kg: l.closing.qty, rate: l.closing.rate, value: formatRupees(l.closing.value) })
+            ? t('ui.statements.kg_at', { kg: formatKg(l.closing.qty), rate: formatAmount(l.closing.rate, { decimals: 2 }), value: formatRupees(l.closing.value) })
             : t('ui.statements.kg_left', { kg: l.closing.qty });
         const html = `<h3 class="st-title">${esc(title)}</h3>`
             + `<div class="ins-row ins-total"><span>${esc(t('ui.statements.closing_stock'))}</span><span data-metric-export="S4"${perms.stockValue ? ' data-perm="stockValue"' : ''}>${esc(closing)}</span></div>`

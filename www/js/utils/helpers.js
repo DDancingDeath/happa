@@ -8,7 +8,7 @@
  * Static utility helper class
  */
 import { t, getLang } from '../i18n/index.js';
-import { formatRupees } from './money.js';
+import { formatRupees, formatAmount } from './money.js';
 import { formatDay, formatDayTime, formatTimeOfDay } from './dates.js';
 import { dayCounter } from '../firebase/repos/counters.js';
 
@@ -406,7 +406,7 @@ export class Helpers {
     static showSplitRemaining(elementId, check) {
         const el = typeof document !== 'undefined' ? document.getElementById(elementId) : null;
         if (!el || !check) return;
-        const amount = Math.abs(Math.round(check.difference * 100) / 100).toLocaleString('en-IN');
+        const amount = formatAmount(Math.abs(check.difference), { exact: true });
         if (check.ok) {
             el.textContent = '✓ ₹0';
             el.style.color = '#16a34a';

@@ -247,12 +247,12 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         setVal('sellQuantity', 3); // 109 kg → 6 kg short: blocked at add
         await WholesaleSalesManager.addToWholesaleBill();
         expect(WholesaleSalesManager.getItems()).toHaveLength(2);
-        expect(toast()).toBe('Insufficient stock! Available: 103.0kg');
+        expect(toast()).toBe('Insufficient stock! Available: 103kg');
 
         setVal('wholesaleCashPayment', 4267);
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
         const sale = await WholesaleSalesManager.completeSale();
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('short 3.0 kg'), expect.any(String), true);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('short 3 kg'), expect.any(String), true);
         expect(sale.flags).toEqual([expect.objectContaining({ rule: 'oversell', by: 'owner1' })]);
 
         // Stock fell meanwhile: now 9 kg short → blocked for a member, toast names the item
@@ -261,7 +261,7 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         AppState.userRole = 'staff';
         setVal('wholesaleCashPayment', 480);
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
-        expect(toast()).toContain('Rice: selling 12.0 kg, only 3.0 kg in stock');
+        expect(toast()).toContain('Rice: selling 12 kg, only 3 kg in stock');
         expect(saved).toHaveLength(1);
     });
 

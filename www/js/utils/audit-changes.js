@@ -7,6 +7,7 @@
  */
 
 import { t } from '../i18n/index.js';
+import { formatAmount } from './money.js';
 
 const show = (v) => {
     if (v === undefined || v === null || v === '') return '—';
@@ -45,16 +46,16 @@ export function formatAuditDetails(details, action) {
     const parts = [];
     if (d.outcome === 'refused' || d.refused === true) parts.push(t('ui.settings.audit_refused'));
     if (d.billNumber) parts.push(t('ui.settings.audit_bill', { value: d.billNumber }));
-    if (d.amount) parts.push(t('ui.settings.audit_amount', { value: d.amount }));
+    if (d.amount) parts.push(t('ui.settings.audit_amount', { value: formatAmount(d.amount, { exact: true }) }));
     if (d.customer) parts.push(t('ui.settings.audit_customer', { value: d.customer }));
     if (d.itemName) parts.push(t('ui.settings.audit_item', { value: d.itemName }));
-    if (d.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: d.paymentAmount }));
+    if (d.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: formatAmount(d.paymentAmount, { exact: true }) }));
     if (Array.isArray(d.collections)) parts.push(t('ui.settings.audit_collections', { value: d.collections.join(', ') }));
     if (d.recordsDeleted) parts.push(t('ui.settings.audit_records', { value: d.recordsDeleted }));
     if (has(d.person)) parts.push(t('ui.settings.audit_person', { value: d.person }));
     if (has(d.date)) parts.push(t('ui.settings.audit_date', { value: d.date }));
-    if (has(d.openingBalance)) parts.push(t('ui.settings.audit_opening', { value: d.openingBalance }));
-    if (has(d.counted)) parts.push(t('ui.settings.audit_counted', { counted: d.counted, expected: has(d.expected) ? d.expected : '—' }));
+    if (has(d.openingBalance)) parts.push(t('ui.settings.audit_opening', { value: formatAmount(d.openingBalance, { exact: true }) }));
+    if (has(d.counted)) parts.push(t('ui.settings.audit_counted', { counted: formatAmount(d.counted, { exact: true }), expected: has(d.expected) ? formatAmount(d.expected, { exact: true }) : '—' }));
     if (has(d.from) || has(d.to)) parts.push(t('ui.settings.audit_from_to', { from: has(d.from) ? d.from : '—', to: has(d.to) ? d.to : '—' }));
     if (has(d.reason)) parts.push(t('ui.settings.audit_reason', { value: d.reason }));
     if (has(d.changes)) parts.push(t('ui.settings.audit_changes', { value: d.changes }));

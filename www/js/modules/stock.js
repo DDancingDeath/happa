@@ -12,7 +12,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
-import { formatAmount, formatRupees } from '../utils/money.js';
+import { formatAmount, formatRupees, formatRate, formatKg } from '../utils/money.js';
 import { parseAnyBillDate } from '../utils/dates.js';
 import { stockRows, itemValue, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
@@ -28,7 +28,7 @@ const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 
-const stockKg = (q) => (Number(q) || 0).toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const stockKg = (q) => formatKg(q);
 
 const DEAD_STOCK_DAYS_KEY = 'aadhat.deadStockDays';
 
@@ -159,7 +159,7 @@ export class StockManager {
                                 ${stockKg(item.quantity)} kg
                             </div>
                             <div data-perm="profit" style="color: #666; font-size: 12px; margin-top: 4px;">
-                                ${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}
+                                ${tx('ui.stock.rate_per_kg', { rate: formatAmount(item.rate, { decimals: 2 }) })}
                             </div>
                         </div>
                     </div>
@@ -185,7 +185,7 @@ export class StockManager {
                     <div>
                         <div style="font-weight: 600; font-size: 15px;">${Helpers.escapeHtml(displayName)}</div>
                         <div data-perm="profit" style="color: #666; font-size: 13px; margin-top: 4px;">
-                            ${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}
+                            ${tx('ui.stock.rate_per_kg', { rate: formatAmount(item.rate, { decimals: 2 }) })}
                         </div>${alertLine}
                     </div>
                     <div style="text-align: right;">
@@ -608,7 +608,7 @@ export class StockManager {
                         <div style="text-align: right;">
                             <div style="font-size: 18px; font-weight: 700; color: #dc3545;">${e(stockKg(r.quantity))} kg</div>
                             <div style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${e(formatRupees(r.value))}</div>
-                            <div style="color: #888; font-size: 12px;">avg ₹${e(r.rate.toFixed(2))}/kg</div>
+                            <div style="color: #888; font-size: 12px;">avg ${formatRate(r.rate)}/kg</div>
                         </div>
                     </div>
                 </div>`;
@@ -679,12 +679,12 @@ export class StockManager {
         // Stock is keyed by catalogue id: the replay resolves legacy name-only
         // lines to the id, so a name lookup would only find stale entries.
         const { quantity, avgRate } = adjustItemStock(AppState.stock[item.id]);
-        display.textContent = quantity.toFixed(1);
+        display.textContent = formatKg(quantity);
         
         // Average rate (S2)
         if (avgRateDisplay && avgRateValue) {
             if (avgRate !== null) {
-                avgRateValue.textContent = `₹${avgRate.toFixed(2)}/kg`;
+                avgRateValue.textContent = `${formatRate(avgRate)}/kg`;
                 avgRateDisplay.style.display = "block";
             } else {
                 avgRateDisplay.style.display = "none";
@@ -901,9 +901,9 @@ export class StockManager {
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(adj.date || t('ui.stock.unknown_date'))}${adj.createdByName ? ` • ${tx('ui.stock.by', { name: adj.createdByName })}` : ''}</div>
                     <div style="margin: 8px 0; padding: 8px; background: #f8f9fa; border-radius: 4px;">
-                        ${displayRate > 0 ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">${tx('ui.stock.rate_per_kg', { rate: displayRate.toFixed(2) })}${valueImpact ? ` • ${tx('ui.stock.value', { amount: valueShown })}` : ''}</div>` : ''}
+                        ${displayRate > 0 ? `<div style="font-size: 13px; color: #666; margin-bottom: 4px;">${tx('ui.stock.rate_per_kg', { rate: formatAmount(displayRate, { decimals: 2 }) })}${valueImpact ? ` • ${tx('ui.stock.value', { amount: formatAmount(valueShown) })}` : ''}</div>` : ''}
                         <div style="font-size: 13px; color: #666;">
-                            ${(adj.previousStock || 0).toFixed(1)} kg → ${(adj.newStock || 0).toFixed(1)} kg
+                            ${formatKg(adj.previousStock)} kg → ${formatKg(adj.newStock)} kg
                             ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: adj.rawQuantity })}` : ''}
                         </div>
                         ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : `<div style="font-size: 13px; color: #999; margin-top: 4px;"><em>${tx('ui.stock.no_reason')}</em></div>`}

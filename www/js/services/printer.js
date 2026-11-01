@@ -5,7 +5,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { DEFAULT_SETTINGS } from '../utils/constants.js';
 import { getAndroidMajorVersion, Helpers } from '../utils/helpers.js';
 import { billQrText, copyMark, receiptDateTime, receiptPayable } from '../utils/bill-share.js';
-import { billLabour, billLineTotal, outstandingDue, readPayment } from '../utils/money.js';
+import { billLabour, billLineTotal, outstandingDue, readPayment, formatKg, formatRupees } from '../utils/money.js';
 import { parseAnyBillDate } from '../utils/dates.js';
 import { t, tn } from '../i18n/index.js';
 import { PrinterLink } from './printer-link.js';
@@ -320,7 +320,7 @@ class BluetoothPrinterManager {
                 const itemObj = AppState.items.find(i => i.id === item.itemId || i.name === item.name);
                 const displayName = this._itemName(itemObj, item);
                 
-                y = utils.drawLeft(`${displayName} (${this._tn('ui.print.packets_kg', item.weights.length, { kg: item.qty.toFixed(1) })})`, y, { size: 18, weight: 'bold' });
+                y = utils.drawLeft(`${displayName} (${this._tn('ui.print.packets_kg', item.weights.length, { kg: formatKg(item.qty) })})`, y, { size: 18, weight: 'bold' });
                 
                 const weightsText = item.weights.map(w => parseFloat(w).toFixed(1)).join('  ');
                 const maxWidth = 380;
@@ -494,7 +494,7 @@ class BluetoothPrinterManager {
         
         // Subtotal
         ctx.fillText(`${this._t('ui.bill.total')}:`, config.padding.left, y);
-        const totalText = '₹' + Math.round(subtotal);
+        const totalText = formatRupees(subtotal);
         const totalWidth = ctx.measureText(totalText).width;
         ctx.fillText(totalText, config.width - totalWidth - config.padding.left, y);
         y += config.spacing.line;
@@ -507,13 +507,13 @@ class BluetoothPrinterManager {
                 const calcWidth = ctx.measureText(billData.laborCalc).width;
                 const calcX = (config.width - calcWidth) / 2;
                 ctx.fillText(billData.laborCalc, calcX, y);
-                const laborText = `₹${billLabour(billData)}`;
+                const laborText = formatRupees(billLabour(billData), { exact: true });
                 const laborWidth = ctx.measureText(laborText).width;
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
             } else {
                 // No calculation, just show amount
                 ctx.fillText(`${this._t('ui.bill.labour')}:`, config.padding.left, y);
-                const laborText = `₹${billLabour(billData)}`;
+                const laborText = formatRupees(billLabour(billData), { exact: true });
                 const laborWidth = ctx.measureText(laborText).width;
                 ctx.fillText(laborText, config.width - laborWidth - config.padding.left, y);
             }
@@ -528,7 +528,7 @@ class BluetoothPrinterManager {
         const grandTotalLabel = `${this._t('ui.bill.total')}:`;
         ctx.fillText(grandTotalLabel, config.padding.left, y);
         const amountPayable = receiptPayable(billData);
-        const payableText = '₹' + Math.round(amountPayable);
+        const payableText = formatRupees(amountPayable);
         const payableWidth = ctx.measureText(payableText).width;
         ctx.fillText(payableText, config.width - payableWidth - config.padding.left, y);
         y += config.spacing.line;
@@ -541,7 +541,7 @@ class BluetoothPrinterManager {
         ctx.font = `${config.fonts.body.size}px Arial`;
         const receivedLabel = `${this._t(billData.isPurchase ? 'ui.print.total_paid' : 'ui.print.total_received')}:`;
         ctx.fillText(receivedLabel, config.padding.left, y);
-        const receivedText = '₹' + Math.round(totalReceived);
+        const receivedText = formatRupees(totalReceived);
         const receivedWidth = ctx.measureText(receivedText).width;
         ctx.fillText(receivedText, config.width - receivedWidth - config.padding.left, y);
         y += config.spacing.line;
@@ -552,7 +552,7 @@ class BluetoothPrinterManager {
             y += 4; // Small gap
             ctx.font = `bold ${config.fonts.body.size}px Arial`;
             ctx.fillText(`${this._t('ui.bill.due')}:`, config.padding.left, y);
-            const dueText = '₹' + Math.round(dueAmount);
+            const dueText = formatRupees(dueAmount);
             const dueWidth = ctx.measureText(dueText).width;
             ctx.fillText(dueText, config.width - dueWidth - config.padding.left, y);
             y += config.spacing.line;
@@ -771,7 +771,7 @@ class BluetoothPrinterManager {
         // Amount
         ctx.font = `bold ${config.fonts.total.size}px Arial`;
         ctx.fillText(`${t('ui.print.amount')}:`, 10, y);
-        ctx.fillText(`₹${expense.amount}`, 120, y);
+        ctx.fillText(formatRupees(expense.amount, { exact: true }), 120, y);
         y += config.spacing.line + 5;
         
         ctx.font = `${config.fonts.body.size}px Arial`;
@@ -840,7 +840,7 @@ class BluetoothPrinterManager {
             ctx.fillRect(side, y, width - side * 2, 2);
             return y + 10;
         };
-        const rupees = (n) => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
+        const rupees = (n) => formatRupees(n);
 
         let y = 30;
         if (statement.shopName) y = center(statement.shopName, y, 24, true);

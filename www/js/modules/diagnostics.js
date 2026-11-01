@@ -28,6 +28,7 @@ const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { runNumberChecks } from '../utils/number-checks.js';
 import { isFullHistoryLoaded } from '../utils/history-window.js';
 import { CashManagementManager } from './cash-management.js';
+import { formatKg, formatRupees } from '../utils/money.js';
 
 const isOwner = () => AppState.userRole === 'owner';
 /** Number checks (#216) are for owners and managers; errors and audit logs stay owner-only. */
@@ -178,7 +179,7 @@ const DiagnosticsManager = {
         const label = r.item ? r.item
             : r.kind ? [kinds[r.kind] || r.kind, r.number, r.party, r.day].filter(Boolean).join(' · ')
                 : r.day || '';
-        const fmt = (v) => (row.unit === 'qty' ? Number(v).toLocaleString('en-IN') : `₹${Number(v).toLocaleString('en-IN')}`);
+        const fmt = (v) => (row.unit === 'qty' ? formatKg(v) : formatRupees(v, { exact: true }));
         return `<tr><td>${e(label)}</td><td style="text-align:right">${e(fmt(row.expected))}</td>` +
             `<td style="text-align:right">${e(fmt(row.actual))}</td><td style="text-align:right;color:#b91c1c">${e(fmt(row.diff))}</td></tr>`;
     },

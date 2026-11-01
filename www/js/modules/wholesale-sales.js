@@ -31,7 +31,8 @@ import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, prepareBi
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
-    KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, openingAmount, openingOldTotals, outstandingDue, isOpeningRecord, isActiveBill
+    KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, readPayment, openingAmount, openingOldTotals, outstandingDue, isOpeningRecord, isActiveBill,
+    formatAmount, formatKg, formatRate, formatRupees
 } from '../utils/money.js';
 import {
     buildPaymentSplit, computeLine, computeWholesaleTotals, draftLineSum, paidOnScreen, paymentSplit, prefillPayment,
@@ -223,11 +224,11 @@ export class WholesaleSalesManager {
         if (short && short.shortfall > oversellBlockKg + 1e-6) {
             const approx = approxStockNote(AppState.stockApprox);
             if (!approx) {
-                UIManager.showToast(t('msg.wholesale.insufficient_stock_available_kg', { available: short.available.toFixed(1) }));
+                UIManager.showToast(t('msg.wholesale.insufficient_stock_available_kg', { available: formatKg(short.available) }));
                 return;
             }
             // Approximate stock (#129) may be off by older edits: warn only.
-            UIManager.showToast(t('msg.wholesale.approx_stock_warning', { itemName, available: short.available.toFixed(1), note: getLang() === 'hi' ? approx.hi : approx.en }), 6000);
+            UIManager.showToast(t('msg.wholesale.approx_stock_warning', { itemName, available: formatKg(short.available), note: getLang() === 'hi' ? approx.hi : approx.en }), 6000);
         }
         
         const { total } = computeLine({ rate, qty: quantity });
@@ -274,9 +275,9 @@ export class WholesaleSalesManager {
             return `
                 <tr>
                     <td>${Helpers.escapeHtml(lineItemIdentity(item, AppState.items, AppState.settings.showHindi).label)}</td>
-                    <td>₹${item.rate.toFixed(2)}</td>
-                    <td>${item.qty.toFixed(1)} kg</td>
-                    <td>₹${shownAmount(item.total)}</td>
+                    <td>${formatRate(item.rate)}</td>
+                    <td>${formatKg(item.qty)} kg</td>
+                    <td>${formatRupees(shownAmount(item.total))}</td>
                     <td><button onclick="window.app.wholesaleSales.removeWholesaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
                 </tr>
             `;
@@ -693,11 +694,11 @@ export class WholesaleSalesManager {
             this.renderSalesOutstanding();
             this.renderSalesHistory();
             window.app?.outstanding?.renderDue?.();
-            UIManager.showToast(t('msg.wholesale.payment_recorded', { paymentAmount }));
+            UIManager.showToast(t('msg.wholesale.payment_recorded', { paymentAmount: formatAmount(paymentAmount, { exact: true }) }));
         } catch (error) {
             console.error('Error recording payment:', error);
             if (error && error.code === 'exceeds-due') {
-                UIManager.showToast(t('msg.common.payment_amount_exceeds_outstanding_amount_2', { due: error.due }));
+                UIManager.showToast(t('msg.common.payment_amount_exceeds_outstanding_amount_2', { due: formatAmount(error.due, { exact: true }) }));
                 this.renderSalesOutstanding();
             } else if (OutstandingManager.isOfflineError(error)) {
                 UIManager.showToast(t('msg.common.internet_required_record_payment'));
@@ -904,22 +905,22 @@ export class WholesaleSalesManager {
                 div.innerHTML = `
                     <div class="history-header">
                         <span><span style="cursor: pointer; color: #22c55e; text-decoration: underline;" onclick="window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')">#${Helpers.escapeHtml(billNumber)}</span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
-                        <span style="color: #dc3545; font-weight: 700;">${L('ui.outstanding.due_amount', { amount: Math.round(sale.outstanding) })}</span>
+                        <span style="color: #dc3545; font-weight: 700;">${L('ui.outstanding.due_amount', { amount: formatAmount(sale.outstanding) })}</span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>
-                    ${openingOldTotals(sale) ? `<div class="history-date">${L('ui.outstanding.opening_balance', { total: Math.round(openingOldTotals(sale).total), paid: Math.round(openingOldTotals(sale).paid) })}</div>` : ''}
+                    ${openingOldTotals(sale) ? `<div class="history-date">${L('ui.outstanding.opening_balance', { total: formatAmount(openingOldTotals(sale).total), paid: formatAmount(openingOldTotals(sale).paid) })}</div>` : ''}
                     <div style="background: #d1ecf1; border-left: 4px solid #22c55e; padding: 12px; margin: 12px 0; border-radius: 4px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                             <span>${L('ui.common.total_receivable')}</span>
-                            <strong>₹${Math.round(sale.totalAmount)}</strong>
+                            <strong>${formatRupees(sale.totalAmount)}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                             <span>${L('ui.outstanding.received_label')}</span>
-                            <strong>₹${Math.round(sale.paidAmount)}</strong>
+                            <strong>${formatRupees(sale.paidAmount)}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; border-top: 2px solid #17a2b8; padding-top: 6px; margin-top: 6px;">
                             <span style="font-weight: 600;">${L('ui.outstanding.outstanding_label')}</span>
-                            <strong style="color: #dc3545; font-size: 16px;">₹${Math.round(sale.outstanding)}</strong>
+                            <strong style="color: #dc3545; font-size: 16px;">${formatRupees(sale.outstanding)}</strong>
                         </div>
                         <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #17a2b8;">
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -1166,19 +1167,19 @@ export class WholesaleSalesManager {
                 ${payment.online > 0 ? `
                     <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
                         <span>${L('ui.history.online')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #cfe2ff; color: #084298;">₹${Math.round(payment.online)}</span>
+                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #cfe2ff; color: #084298;">${formatRupees(payment.online)}</span>
                     </div>
                 ` : ''}
                 ${payment.cash > 0 ? `
                     <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
                         <span>${L('ui.history.cash')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #d1e7dd; color: #0f5132;">₹${Math.round(payment.cash)}</span>
+                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #d1e7dd; color: #0f5132;">${formatRupees(payment.cash)}</span>
                     </div>
                 ` : ''}
                 ${payment.due > 0 ? `
                     <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
                         <span>${L('ui.history.due')}</span>
-                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #fff3cd; color: #997404;">₹${Math.round(payment.due)}</span>
+                        <span style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 600; background: #fff3cd; color: #997404;">${formatRupees(payment.due)}</span>
                     </div>
                 ` : ''}
             </div>
@@ -1190,7 +1191,7 @@ export class WholesaleSalesManager {
                 ${sale.payments.map(p => `
                     <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px;">
                         <span>• ${Helpers.escapeHtml(p.date)}${p.recordedBy ? ` ${L('ui.wholesale.by_name', { name: p.recordedBy })}` : ''}${p.kind === 'writeOff' ? ` — ${L('ui.wholesale.written_off', { reason: p.reason || '' })}` : ''}</span>
-                        <strong>₹${Math.round(p.amount)}</strong>
+                        <strong>${formatRupees(p.amount)}</strong>
                     </div>
                 `).join('')}
             </div>
@@ -1249,7 +1250,7 @@ export class WholesaleSalesManager {
                 <div style="background: white; padding: 14px; border-radius: 10px; border: 1px solid #dee2e6;">
                     <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                         <span style="font-weight: 600;">${L('ui.billing.sale_total')}</span>
-                        <strong style="font-size: 17px; color: #28a745;">₹${Math.round(sale.total)}</strong>
+                        <strong style="font-size: 17px; color: #28a745;">${formatRupees(sale.total)}</strong>
                     </div>
                 </div>
                 

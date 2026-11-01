@@ -57,6 +57,8 @@ describe('review-rules.yml', () => {
         ['displayed-number-spec', 'www/js/modules/finance.js', 'const profit = revenue - investment;', "const label = t('ui.finance.x');"],
         ['record-date-raw-parse', 'www/js/modules/stock.js', 'const time = new Date(a.date).getTime();', 'const time = parseAnyBillDate(a.date)?.getTime();'],
         ['bill-total-or-chain', 'www/js/services/printer.js', 'const s = billData.billTotal || billData.saleTotal || 0;', 'const s = billLineTotal(billData, true);'],
+        ['inline-rupee-format', 'www/js/modules/day.js', 'el.textContent = `₹${total}`;', 'el.textContent = formatRupees(total);'],
+        ['inline-rupee-format', 'www/js/services/printer.js', "const text = '₹' + Math.round(due);", "const text = formatRupees(due);"],
     ];
     test.each(cases)('%s flags the mistake and allows the fix', (id, file, bad, good) => {
         expect(byId[id]).toBeDefined();
@@ -83,6 +85,8 @@ describe('review-rules.yml', () => {
         });
         const found = findViolations([byId['record-date-raw-parse'], byId['bill-total-or-chain']], lines);
         expect(found.map(v => `${v.file}:${v.line}`)).toEqual([]);
+        // #129: one money formatter, no inline ₹ anywhere in www/js but utils/money.js
+        expect(findViolations([byId['inline-rupee-format']], lines).map(v => `${v.file}:${v.line}`)).toEqual([]);
     });
 });
 

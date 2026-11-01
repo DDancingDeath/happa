@@ -157,9 +157,9 @@ describe('formatShortfallMessage', () => {
             { name: 'Gehu', requested: 50, available: 30, shortfall: 20 },
         ]);
         expect(msg).toContain('Gehu');
-        expect(msg).toContain('50.0');
-        expect(msg).toContain('30.0');
-        expect(msg).toContain('20.0');
+        expect(msg).toContain('selling 50 kg');
+        expect(msg).toContain('only 30 kg');
+        expect(msg).toContain('short 20 kg');
         expect(msg).toContain('Continue anyway?');
     });
 

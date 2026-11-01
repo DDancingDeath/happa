@@ -207,6 +207,9 @@ In order:
   in `js/utils/keyboard-shortcuts.js` (`resolveShortcut()` is pure and
   unit-tested): `Alt+1…9` tabs, `Ctrl+S`/`Ctrl+P` save/print the open bill,
   `/` focus search, `?` help overlay, `Esc` close.
+- **Money and weight text (#129)**: write ₹ only through `formatRupees()` / `formatRate()` /
+  `formatAmount()` and kg through `formatKg()` (`utils/money.js`; calculations.md MONEY-TEXT,
+  KG-TEXT). An inline `₹${…}` or `'₹' +` in `www/js` fails `check:review` and `review-rules.test.js`.
 - **Money fields**: bills sometimes store `dueAmount` at top level *and*
   `payment.due` inside a nested object. Both can exist; both can drift.
   Read both, write both, treat the nested one as canonical when present.

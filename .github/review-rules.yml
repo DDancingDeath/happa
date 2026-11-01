@@ -213,3 +213,14 @@ rules:
       (Outstanding, aging, all-time dues) may use the full list on purpose.
     severity: warn
     learned_at: 2026-10-25
+  - id: inline-rupee-format
+    pattern: "₹\\$\\{|['\"`]₹['\"`]\\s*\\+"
+    applies_to: ["www/js/**/*.js", "www/*.js"]
+    excludes: ["www/js/__tests__/**", "www/js/utils/money.js"]
+    message: |
+      Money written with an inline ₹ (`₹${x}` or '₹' + x): no Indian grouping, raw paise, "₹-5".
+      Use formatRupees() (amounts; { exact: true } keeps an old record's paise), formatRate()
+      (₹ per kg) or formatAmount() for a "₹{x}" text in the catalogue; weights with formatKg()
+      (#129, docs/calculations.md MONEY-TEXT, KG-TEXT).
+    severity: block
+    learned_at: 2026-11-01

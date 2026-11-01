@@ -180,7 +180,7 @@ describe('save gate', () => {
         $('cash').value = '4400';
         const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         expect((await BillChecksUI.confirmSave('test')).ok).toBe(false);
-        expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('Rice: selling 110.0 kg, only 100.0 kg'));
+        expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('Rice: selling 110 kg, only 100 kg'));
 
         AppState.userRole = 'manager';
         BillChecksUI.run('test');
@@ -237,7 +237,7 @@ describe('save gate', () => {
 
         // A member who could not override before is still blocked
         expect((await BillChecksUI.confirmSave('test')).ok).toBe(false);
-        expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('Rice: selling 110.0 kg'));
+        expect(toast).toHaveBeenLastCalledWith(expect.stringContaining('Rice: selling 110 kg'));
         expect(modal).not.toHaveBeenCalled();
 
         AppState.userRole = 'manager';

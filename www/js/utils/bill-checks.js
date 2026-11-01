@@ -15,7 +15,7 @@
  */
 
 import {
-    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney
+    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney, formatKg, formatRupees
 } from './money.js';
 import { validatePaymentSplit, wholesaleCostRate } from './calc/billing.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
@@ -56,8 +56,8 @@ const ITEM_RATE_FIELD = { purchase: 'rates', retail: 'saleRates', wholesale: 'wh
 const HARD_RULES = new Set(['payment-none', 'party-required', 'payment-split', 'qty-invalid', 'rate-invalid']);
 
 const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
-const fmtRs = (n) => `₹${round2(n).toLocaleString('en-IN')}`;
-const fmtKg = (n) => (Math.round(n * 10) / 10).toFixed(1);
+const fmtRs = (n) => formatRupees(n, { exact: true });
+const fmtKg = (n) => formatKg(n);
 
 /**
  * Thresholds with blank / invalid / non-positive values replaced by the defaults.

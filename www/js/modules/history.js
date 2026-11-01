@@ -37,7 +37,7 @@ import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
 import { t, tn } from '../i18n/index.js';
-import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
+import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment, formatRupees } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -603,24 +603,24 @@ export class HistoryManager {
                     ${isPurchase ? `
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                             <span style="font-weight: 600;">${L('ui.billing.purchase_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(billLineTotal(bill, true))}</strong>
+                            <strong style="font-size: 17px; color: ${billColor};">${formatRupees(billLineTotal(bill, true))}</strong>
                         </div>
                         
                         ${billLabour(bill) > 0 ? `
                             <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; border-top: 1px solid #e9ecef;">
                                 <span style="font-weight: 600;">${L('ui.billing.labor')}</span>
-                                <strong style="font-size: 17px; color: #ffc107;">₹${Math.round(billLabour(bill))}</strong>
+                                <strong style="font-size: 17px; color: #ffc107;">${formatRupees(billLabour(bill))}</strong>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 16px; border-top: 2px solid ${billColor}; margin-top: 8px; background: linear-gradient(135deg, #e3f2fd, #bbdefb); margin: 8px -14px -14px -14px; padding: 12px 14px; border-radius: 0 0 10px 10px;">
                                 <span style="font-weight: 700;">${L('ui.billing.total_payable')}</span>
-                                <strong style="font-size: 18px; color: #1976d2;">₹${Math.round(billTotal(bill))}</strong>
+                                <strong style="font-size: 18px; color: #1976d2;">${formatRupees(billTotal(bill))}</strong>
                             </div>
                         ` : ''}
                     ` : `
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                             <span style="font-weight: 600;">${L('ui.billing.sale_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(billTotal(bill))}</strong>
+                            <strong style="font-size: 17px; color: ${billColor};">${formatRupees(billTotal(bill))}</strong>
                         </div>
                     `}
                 </div>

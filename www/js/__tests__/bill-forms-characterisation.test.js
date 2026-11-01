@@ -150,7 +150,7 @@ describe('purchase form', () => {
             { itemId: 'item-wheat', name: 'Wheat', rate: 33.5, qty: 12.4, total: 415, weights: [12.4] }
         ]);
         expect(rows('#billTable')).toEqual([
-            ['Rice', '₹25.50', '60.3 kg', '₹1538'],
+            ['Rice', '₹25.50', '60.3 kg', '₹1,538'],
             ['Wheat', '₹33.50', '12.4 kg', '₹415']
         ]);
         expect($('weightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (2 packets, 60.3 kg) 40.0 20.3');
@@ -309,10 +309,10 @@ describe('retail sale form', () => {
             { itemId: 'item-wheat', name: 'Wheat', rate: 33.33, qty: 7, packets: 1, weights: [7], total: 233 }
         ]);
         expect(rows('#saleTable')).toEqual([
-            ['Rice', '₹41.75', '60.4 kg', '₹2520'],
-            ['Wheat', '₹33.33', '7.0 kg', '₹233']
+            ['Rice', '₹41.75', '60.35 kg', '₹2,520'],
+            ['Wheat', '₹33.33', '7 kg', '₹233']
         ]);
-        expect($('saleWeightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (3 packets, 60.4 kg) 25.5 24.7 10.2');
+        expect($('saleWeightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (3 packets, 60.35 kg) 25.5 24.7 10.2');
         expect(text('saleTotal')).toBe('2753');
         expect(text('amountReceivable')).toBe('2753');
         expect(text('totalSalePacketsInBill')).toBe('4');
@@ -444,7 +444,7 @@ describe('wholesale sale form', () => {
         ]);
         expect(rows('#salesTable')).toEqual([
             ['Rice', '₹33.50', '12.4 kg', '₹415'],
-            ['Wheat', '₹40.10', '7.3 kg', '₹291']
+            ['Wheat', '₹40.10', '7.25 kg', '₹291']
         ]);
         // #129 whole rupees: cost 277.76 + 217.50 = 495.26 → 495; expenses ₹20.50 count as saved, ₹21
         expect([text('salesTotalAmount'), text('salesProfitAmount'), text('salesProfitPercent')]).toEqual(['706', '211', '29.9']);
@@ -552,11 +552,11 @@ describe('wholesale sale form', () => {
             const cards = [...$('salesOutstandingList').querySelectorAll('.history-item')].map(c => c.textContent.replace(/\s+/g, ' ').trim());
             expect(cards).toHaveLength(2);
             expect(cards[0]).toContain('Due: ₹500');
-            expect(cards[0]).toMatch(/Total Receivable:? ₹1001 .*Received:? ₹500 .*Outstanding:? ₹500/);
-            expect(cards[1]).toContain('Due: ₹2000');
-            expect(cards[1]).toContain('₹3501');
-            expect(cards[1]).toContain('₹1500');
-            expect(cards[1]).toMatch(/Total Receivable:? ₹2000 .*Received:? ₹0 .*Outstanding:? ₹2000/);
+            expect(cards[0]).toMatch(/Total Receivable:? ₹1,001 .*Received:? ₹500 .*Outstanding:? ₹500/);
+            expect(cards[1]).toContain('Due: ₹2,000');
+            expect(cards[1]).toContain('₹3,501');
+            expect(cards[1]).toContain('₹1,500');
+            expect(cards[1]).toMatch(/Total Receivable:? ₹2,000 .*Received:? ₹0 .*Outstanding:? ₹2,000/);
         });
 
         test('recent sales leave the opening record out; the form figures ignore the history', async () => {

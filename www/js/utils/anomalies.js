@@ -19,7 +19,7 @@
  */
 
 import { evaluateBill, evaluateCashCount, evaluateStockAdjustment, isEntryIssue, normalizeThresholds } from './bill-checks.js';
-import { activityBills, billTotal, isPersonalExpense, readLineItem, readPayment, round2, toMoney } from './money.js';
+import { activityBills, billTotal, isPersonalExpense, readLineItem, readPayment, round2, toMoney, formatKg, formatRate, formatRupees } from './money.js';
 import { parseAnyBillDate, toJsDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
@@ -408,8 +408,8 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
                     const l = round[0];
                     add(makeAnomaly('rate-round', ref, {
                         at: ts, item: [...new Set(round.map(x => x.name))].join(', '),
-                        en: `${l.name}: round total ₹${l.total} with odd rate ₹${l.rate} — was the total typed in?`,
-                        hi: `${l.name}: गोल रकम ₹${l.total}, रेट ₹${l.rate} — क्या कुल रकम सीधे लिखी गई?`
+                        en: `${l.name}: round total ${inr(l.total)} with odd rate ${formatRate(l.rate)} — was the total typed in?`,
+                        hi: `${l.name}: गोल रकम ${inr(l.total)}, रेट ${formatRate(l.rate)} — क्या कुल रकम सीधे लिखी गई?`
                     }));
                 }
                 if (Number.isFinite(Number(bill.timestamp)) && isNight(istHour(ts), t)) {
@@ -451,8 +451,8 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
                 add(makeAnomaly('due-written-off', ref, {
                     at: timeOf(last.at ?? last.date), amount,
                     userId: String(last.recordedById || ''), user: nameOf(last.recordedById, last.recordedBy),
-                    en: `₹${amount} due written off${reason ? ` — ${reason}` : ''}`,
-                    hi: `₹${amount} उधार माफ़${reason ? ` — ${reason}` : ''}`
+                    en: `${inr(amount)} due written off${reason ? ` — ${reason}` : ''}`,
+                    hi: `${inr(amount)} उधार माफ़${reason ? ` — ${reason}` : ''}`
                 }));
             }
         });
@@ -494,7 +494,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         });
         if (!String(a.reason || '').trim()) {
             add(makeAnomaly('stock-adjust-no-reason', ref, {
-                at, en: `Stock changed by ${round2(change)} kg with no reason`, hi: `बिना कारण स्टॉक ${round2(change)} kg बदला`
+                at, en: `Stock changed by ${formatKg(change)} kg with no reason`, hi: `बिना कारण स्टॉक ${formatKg(change)} kg बदला`
             }));
         }
     });
@@ -505,10 +505,10 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         return why ? ` — ${why}` : '';
     };
     const AUDIT_TEXT = {
-        'bill-deleted': (no, amount) => ({ en: `Bill${no} deleted (₹${amount})`, hi: `बिल${no} मिटाया (₹${amount})` }),
-        'bill-voided': (no, amount, reason) => ({ en: `Bill${no} voided (₹${amount})${reasonText(reason)}`, hi: `बिल${no} रद्द किया (₹${amount})${reasonText(reason)}` }),
-        'expense-deleted': (no, amount) => ({ en: `Expense deleted (₹${amount})`, hi: `खर्च मिटाया (₹${amount})` }),
-        'expense-voided': (no, amount, reason) => ({ en: `Expense voided (₹${amount})${reasonText(reason)}`, hi: `खर्च रद्द किया (₹${amount})${reasonText(reason)}` })
+        'bill-deleted': (no, amount) => ({ en: `Bill${no} deleted (${inr(amount)})`, hi: `बिल${no} मिटाया (${inr(amount)})` }),
+        'bill-voided': (no, amount, reason) => ({ en: `Bill${no} voided (${inr(amount)})${reasonText(reason)}`, hi: `बिल${no} रद्द किया (${inr(amount)})${reasonText(reason)}` }),
+        'expense-deleted': (no, amount) => ({ en: `Expense deleted (${inr(amount)})`, hi: `खर्च मिटाया (${inr(amount)})` }),
+        'expense-voided': (no, amount, reason) => ({ en: `Expense voided (${inr(amount)})${reasonText(reason)}`, hi: `खर्च रद्द किया (${inr(amount)})${reasonText(reason)}` })
     };
     // #75: a void needs no approval, but one by anyone except an owner is flagged. Owners come from the
     // profiles (owner's scan) or the owners' list (else an audit entry's stored role).
@@ -789,7 +789,7 @@ export function summaryLine(list) {
     return t('ui.anom.summary_count', { total: s.total, high: s.bySeverity.high });
 }
 
-const inr = (n) => `₹${round2(Number(n) || 0).toLocaleString('en-IN')}`;
+const inr = (n) => formatRupees(n, { exact: true });
 
 /**
  * WhatsApp text of the day report, in the app language (also the printed image lines).
