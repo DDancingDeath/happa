@@ -6,7 +6,7 @@ definitions are in [calculations.md](calculations.md) (the codes in brackets,
 like T1 or C7, are its spec IDs). Hindi version: [owner-guide.hi.md](owner-guide.hi.md).
 
 Any change to what a page shows or does updates this guide (and the Hindi one)
-in the same pull request (AGENTS.md, PR checklist).
+in the same pull request, as the checklist in AGENTS.md asks.
 
 ---
 
@@ -127,8 +127,9 @@ be counted later.
 ### Expenses
 
 Business and personal expenses, each with a date (today by default, never in the
-future) and cash or online. Personal expenses are seen only by the owner and roles
-allowed in Roles & access.
+future) and cash or online. Only the owner and roles allowed in Roles & access see
+the personal **entries**; everyone who opens Today still sees the day's personal
+total and count (T5), and the cash drawer counts them (C3).
 
 ### Money (Profit, Cash, Spending, Worth)
 
@@ -155,7 +156,7 @@ year (CMP; "not known" when that period's figures are not available).
 | On screen | How it is worked out |
 |---|---|
 | Item sales and profit (I1, I2) | Per item: sales, cost, profit, profit per ₹100; split retail / wholesale. |
-| Sales by customer, purchases by supplier (I3, I4) | Per party: totals, bills, last bill. "Stopped coming": bought in the same 3 months last year, no bill for 60 days. |
+| Sales by customer, purchases by supplier (I3, I4) | Per party: totals, bills, last bill. "Stopped coming": bought in each of the same 3 months last year, and no bill for 60 days. |
 | Season index (I5) | Kg sold in a month ÷ the item's average monthly kg; 1.5 or more is busy. |
 | Low-profit items (I7) | Sales of ₹5,000 or more with under ₹3 profit per ₹100, or a loss. |
 | Sold below cost (I8) | Sales whose value was below their cost. |
@@ -186,19 +187,22 @@ Separate from the shop: rent money never counts in shop figures.
 | Per tenant (RENT-5) | A month is Late after its due day (default the 10th), Part paid when partly paid. |
 | Rent increase due (RENT-6) | One year after the start (or the last change): rent × (1 + increase %). Only a reminder. |
 | Electricity (RENT-7) | Meter billed by us: (current − previous reading) × rate per unit, whole rupees. |
-| First month, change of unit (RENT-11, RENT-13) | Full rent, or pro-rated by days when ticked. |
+| First month (RENT-11) | The full rent by default; with "Pro-rate first month" ticked, only the days from the start date. |
+| Change of unit (RENT-13) | "Pro-rate move month" is ticked by default: the old unit is charged up to the day before the move and the new unit from the move day. A move on the 1st: the new unit pays the whole month. |
 | Receipts (RENT-12) | Numbered R-year-number, one per payment; a cancelled one keeps its number. |
 
 ### Settings, Admin, App health
 
-- **Settings › Common**: language, account, notifications, printer (Test print),
-  install the app; the owner's **Roles & access** (what each role may see, edit
+- **Settings › Common**: language, account (Change password), notifications,
+  Bluetooth Printer (Test Print), install the app; the owner's **Roles & access** (what each role may see, edit
   window in days).
 - **Settings › Aadhat**: business name and UPI ID, labour rate and package
   weight, bill checks, bill numbers, opening stock.
-- **Admin › Users**: approve, change role, reset password, remove.
-- **Anomalies**: bills that look wrong (duplicate bill number, rate far off, big
-  cash gap…); tap "Mark OK" or "Mark fixed" on each.
+- **Admin › Users**: approve, change role, Reset Password (emails the person a
+  link), Delete (removes access; Restore brings them back as a pending
+  registration).
+- **Anomalies**: bills that look wrong (a possible duplicate bill, a rate far off,
+  a big cash gap…); tap "Mark OK" or "Mark fixed" on each.
 - **Diagnostics › Number checks**: the always-true checks run on this phone's data
   (bill split, payments, dates, dues, drawer, stock).
 
@@ -209,7 +213,7 @@ Separate from the shop: rent money never counts in shop figures.
 ### Every day
 
 1. Open cash in the morning (Cash › Open cash). It needs internet.
-2. Before closing, look at **Today**: anomalies ("All anomalies · N pending") and
+2. Before closing, look at **Today**: the "All anomalies · N pending" line and
    the labour card.
 3. Count the drawer and close the day (Cash › Close cash & end day). If it is
    more than ₹1 off, check the day's cash bills and expenses before saving.
@@ -224,12 +228,14 @@ Separate from the shop: rent money never counts in shop figures.
 
 ### The printer is not printing
 
-1. Settings › Printer: is the printer turned on, paired in Android Bluetooth
-   settings and picked here? Tap **Test print**.
+1. Settings › Common › **Bluetooth Printer**: is the printer turned on, paired in
+   Android Bluetooth settings, "Enable Bluetooth Printer" ticked and the printer
+   picked and connected? Tap **Test Print** (it shows once the printer is
+   connected).
 2. "May have printed": the printer did not confirm. **Check the paper before
    printing again**, so the bill is not printed twice.
-3. Still nothing: turn the printer off and on, then reconnect from Settings ›
-   Printer.
+3. Still nothing: turn the printer off and on, then connect it again from
+   Settings › Common › Bluetooth Printer.
 4. Android stops apps in the background to save battery. Open Android Settings ›
    Apps › happa › Battery and choose **Unrestricted** (or "Don't optimise"), so the
    printer link is not cut.
@@ -262,25 +268,32 @@ Separate from the shop: rent money never counts in shop figures.
 
 ### A bill was entered twice
 
-1. **Anomalies** lists duplicate bill numbers and bills that look the same.
-2. Open the extra bill in History and **Void** it with a reason ("entered twice").
-   A bill that already has later payments can't be voided: ask the developer.
+1. **Anomalies** flags a "possible duplicate bill" only when the same party, lines
+   and total are saved again within 2 minutes (the window is in Settings › Aadhat ›
+   bill checks).
+2. Otherwise look in History: filter by the party and compare the totals and
+   times.
+3. Open the extra bill and **Void** it with a reason ("entered twice"). A bill
+   that already has later payments can't be voided: ask the developer.
 
 ### A phone was lost, or someone left
 
-1. **Admin › Users › Remove** the person: they can't sign in or register again
-   (Restore brings them back as a pending registration).
-2. Change the password of any account that was signed in on that phone (Admin ›
-   Users › Reset password).
-3. Their saved bills stay; nothing is deleted.
+1. Someone else: **Admin › Users › Delete** them. They can't sign in or register
+   again (Restore brings them back as a pending registration). Their saved bills
+   stay.
+2. Your own phone: change your password at once on another phone (Settings ›
+   Common › Account › **Change password**, then open the emailed link).
+3. Anyone else who was signed in on that phone: Admin › Users › **Reset Password**
+   emails them a link; the password changes only when they use it.
 
 ### Backups and restore
 
-- Backups run by themselves every night (and a full one every Sunday), are kept
-  for 60 days and are checked automatically; a monthly test restores one into a
-  test database. Two failed nights in a row open an alert for the developer
+- Backups run by themselves once a day in the early afternoon (about 13:45 IST,
+  sometimes hours later) and a full one every Sunday; they are kept for 60 days and
+  checked automatically, and a monthly test restores one into a test database. Two failed days in a row open an alert for the developer
   ([tools/backup/README.md](../tools/backup/README.md)).
 - A restore into the live app is done by the developer from the latest good
-  backup. Tell them the date and time the data was last right.
-- Admin › Data "Clear Data" works only on the website. It first saves a backup
+  backup. Tell them the date and time the data was last right. Whatever was entered
+  after that backup is lost and has to be entered again.
+- Admin › Data "Clear All Data" works only on the website. It first saves a backup
   file and deletes nothing unless that file was saved.

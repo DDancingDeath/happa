@@ -1,9 +1,9 @@
 /**
  * Owner guide (#148): docs/owner-guide.md (English) and docs/owner-guide.hi.md
  * (Hindi) explain each page in plain words with the spec IDs of
- * docs/calculations.md. Every ID they cite must exist there, both guides cite the
- * same IDs (so one is not updated without the other), and the Hindi guide is in
- * one language (Latin only for codes, units and product names).
+ * docs/calculations.md, cited in brackets. Every ID they cite must exist there,
+ * both guides cite the same IDs (so one is not updated without the other), and the
+ * Hindi guide is in one language (Latin only for codes, units and product names).
  */
 const fs = require('fs');
 const path = require('path');
@@ -14,18 +14,25 @@ const en = read('owner-guide.md');
 const hi = read('owner-guide.hi.md');
 const calc = read('calculations.md');
 
-const ID = /\b(?:BILL-[A-Z]+(?:-[A-Z]+)*|RENT-\d+|T-LAB-\d|BF-[A-Z]+|WS-[A-Z]+|DUE-[A-Z]+|EXP-[A-Z]+|AVG-COST|MONEY-ROUND|COGS|VOID|OPENING|DAY|CMP|PARTY|(?:T|C|S|O|M|I|ST)\d{1,2}|RT|PT)\b/g;
+/** Codes in brackets that are not spec IDs. */
+const NOT_IDS = new Set(['IST', 'UPI', 'CSV', 'PDF', 'ID']);
+/** A spec-ID-shaped token: capitals and digits, optionally hyphenated (T1, BILL-DUE, RENT-12, T-LAB-3). */
+const TOKEN = /\b[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*\b/g;
 
-/** Spec IDs in a guide; "T10–T12" and "RENT-1 to RENT-3" count every ID between. */
+/** Spec IDs cited in a guide: every ID-shaped token inside brackets; "T10–T12", "RENT-1 to RENT-3" include those between. */
 function citedIds(text) {
-    const ids = new Set(text.match(ID) || []);
-    for (const m of text.matchAll(/\b([A-Z]+-?)(\d+)\s*(?:–|to|से)\s*\1(\d+)\b/g)) {
-        for (let n = Number(m[2]); n <= Number(m[3]); n++) ids.add(`${m[1]}${n}`);
+    const ids = new Set();
+    const prose = text.replace(/\[[^\]]*\]\([^)]*\)/g, '').replace(/`[^`]*`/g, '');
+    for (const [, inside] of prose.matchAll(/\(([^()]*)\)/g)) {
+        (inside.match(TOKEN) || []).filter(t => !NOT_IDS.has(t)).forEach(t => ids.add(t));
+        for (const m of inside.matchAll(/\b([A-Z]+-?)(\d+)\s*(?:–|to|से)\s*\1(\d+)\b/g)) {
+            for (let n = Number(m[2]); n <= Number(m[3]); n++) ids.add(`${m[1]}${n}`);
+        }
     }
     return ids;
 }
 
-/** IDs defined in calculations.md: the first cell of a table row, or a family prefix (RT1 → RT). */
+/** IDs defined in calculations.md: the first cell of a table row; RT* / PT* also as their family (RT, PT). */
 function definedIds() {
     const ids = new Set();
     for (const m of calc.matchAll(/^\|\s*([A-Z][A-Z0-9-]*(?:,\s*[A-Z][A-Z0-9-]*)*)\s*\|/gm)) {
@@ -39,6 +46,12 @@ function definedIds() {
 }
 
 describe('owner guide (#148)', () => {
+    test('finds the cited IDs, ranges included, and would notice a wrong one', () => {
+        expect([...citedIds('Net (T10–T12), rent (RENT-1 to RENT-3), labour (T-LAB-3), check (AC15), time (IST)')].sort())
+            .toEqual(['AC15', 'RENT-1', 'RENT-2', 'RENT-3', 'T-LAB-3', 'T10', 'T11', 'T12']);
+        expect(definedIds().has('AC15')).toBe(false);
+    });
+
     test('every spec ID it cites is defined in calculations.md', () => {
         const defined = definedIds();
         const missing = [...citedIds(en), ...citedIds(hi)].filter(id => !defined.has(id));
@@ -54,7 +67,7 @@ describe('owner guide (#148)', () => {
         const prose = hi
             .replace(/\[[^\]]*\]\([^)]*\)/g, '')
             .replace(/`[^`]*`/g, '')
-            .replace(ID, '');
+            .replace(TOKEN, '');
         const latin = [...new Set(prose.match(/[A-Za-z]+/g) || [])].filter(w => !ALLOWED.has(w));
         expect(latin).toEqual([]);
     });
