@@ -553,6 +553,8 @@ export const InsightsManager = {
                 const m = Number(cell.dataset.calMonth);
                 const key = monthKeyOf(latestMonthStart(m, now).getTime());
                 setInsightsContext({ itemId: cell.dataset.item, preset: key === monthKeyOf(now.getTime()) ? 'this-month' : `month:${key}` });
+            const presetSel = document.getElementById('insightsPreset');
+            if (presetSel) presetSel.value = presetSelectValue(getInsightsContext().preset);
                 this.seasonView = 'traffic';
                 this.section = 'seasons';
                 this.render();

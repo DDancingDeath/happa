@@ -33,7 +33,8 @@ const ROW_KEYS = Object.freeze({ M1: 'ui.cmp.row_M1', M16: 'ui.cmp.row_M16', M4:
 const editing = { a: undefined, b: undefined };
 const isEditing = (which) => {
     const now = getInsightsContext()[which === 'b' ? 'compare' : 'preset'] ?? null;
-    return editing[which] !== undefined && editing[which] === now;
+    if (editing[which] !== undefined && editing[which] !== now) editing[which] = undefined;
+    return editing[which] !== undefined;
 };
 /** Last HTML written into each bar: rewriting the same bar would clear dates typed but not yet shown. */
 const lastBar = new Map();
@@ -62,8 +63,9 @@ export function periodText(r, preset, lang = getLang()) {
 
 /** Value for the period <select>: '' for a stepped month, 'custom' for chosen days. */
 export function presetSelectValue(preset) {
+    const picking = isEditing('a');
     if (/^month:/.test(preset)) return '';
-    if (/^range:/.test(preset) || isEditing('a')) return 'custom';
+    if (/^range:/.test(preset) || picking) return 'custom';
     return preset;
 }
 

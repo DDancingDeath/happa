@@ -59,6 +59,13 @@ describe('period B in the shared context', () => {
         expect(document.getElementById('moneyCmpBFrom')).not.toBeNull();
         chooseCompare('last-month');
         expect(getInsightsContext().compare).toBe('last-month');
+        // the date boxes close when the period changes another way (‹ ›, a tapped month), for good
+        choosePreset('custom');
+        expect(presetSelectValue('this-month')).toBe('custom');
+        setInsightsContext({ preset: 'month:2026-09' });
+        expect(presetSelectValue('month:2026-09')).toBe('');
+        setInsightsContext({ preset: 'this-month' });
+        expect(presetSelectValue('this-month')).toBe('this-month');
     });
 });
 

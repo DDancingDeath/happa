@@ -1056,7 +1056,13 @@ export const MoneyManager = {
             const day = e.target.closest('[data-day]');
             if (day && day.dataset.day) { window.app?.nav?.showTab('cash-management'); return; }
             const month = e.target.closest('[data-month]');
-            if (month && month.dataset.month) { setInsightsContext({ preset: month.dataset.month === monthKeyOf(Date.now()) ? 'this-month' : `month:${month.dataset.month}` }); this.render(); return; }
+            if (month && month.dataset.month) {
+                setInsightsContext({ preset: month.dataset.month === monthKeyOf(Date.now()) ? 'this-month' : `month:${month.dataset.month}` });
+                const sel = document.getElementById('moneyPreset');
+                if (sel) sel.value = presetSelectValue(getInsightsContext().preset);
+                this.render();
+                return;
+            }
             const el = e.target.closest('[data-breakdown]');
             if (!el) return;
             if (e.type === 'keydown') e.preventDefault();
