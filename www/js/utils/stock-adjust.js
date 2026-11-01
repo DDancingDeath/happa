@@ -10,6 +10,8 @@ import { splitBilingual } from '../i18n/localize.js';
 export const ADJUST_REASONS = {
     opening: 'ui.stock.reason_opening',
     count: 'ui.stock.reason_count',
+    // Written by Reverse on an adjustment row (#146), not offered in the picker
+    reverse: 'ui.stock.reason_reverse',
     damage: 'ui.stock.reason_damage',
     theft: 'ui.stock.reason_theft',
     other: 'ui.stock.reason_other'
@@ -85,4 +87,67 @@ export function planStockAdjustment({ adjustType, quantity, currentStock, reason
         newStock = qty;
     }
     return { ok: true, quantity: round3(effective), rawQuantity: qty, newStock: round3(newStock), capped, reason };
+}
+
+/** How much an adjustment changed the stock (kg; S-ADJ-REV): newStock − previousStock, or null when unknown. */
+export function adjustmentDelta(adj) {
+    const before = Number(adj?.previousStock);
+    const after = Number(adj?.newStock);
+    if (!Number.isFinite(before) || !Number.isFinite(after)) return null;
+    return round3(after - before);
+}
+
+/**
+ * Whether Reverse can be offered on an adjustment (#146): it changed the stock, it is
+ * not itself a reversal, and nothing reversed it yet.
+ * @param {Object} adj
+ * @param {Array<Object>} adjustments every loaded adjustment
+ * @returns {boolean}
+ */
+export function canReverseAdjustment(adj, adjustments) {
+    if (!adj?.id || adj.reversesId) return false;
+    const delta = adjustmentDelta(adj);
+    if (!delta) return false;
+    return !(adjustments || []).some(a => a?.reversesId === adj.id);
+}
+
+/**
+ * The opposite adjustment (#146, S-ADJ-REV): takes back what the adjustment changed,
+ * as an add or remove from the stock now (so later sales and purchases stay). A "set"
+ * is reversed by its change too, not by setting the old number again. A remove stops
+ * at the stock on hand, like any remove (`capped`); quantity 0 = nothing to take back.
+ * @param {Object} adj the adjustment to reverse
+ * @param {number} currentStock kg on hand now
+ * @returns {?{adjustType: 'add'|'remove', quantity: number, previousStock: number, newStock: number, capped: boolean}}
+ */
+export function reversalPlan(adj, currentStock) {
+    const delta = adjustmentDelta(adj);
+    if (!delta) return null;
+    const now = Number(currentStock) || 0;
+    if (delta < 0) return { adjustType: 'add', quantity: -delta, previousStock: round3(now), newStock: round3(now - delta), capped: false };
+    const quantity = round3(Math.min(delta, Math.max(0, now)));
+    return { adjustType: 'remove', quantity, previousStock: round3(now), newStock: round3(now - quantity), capped: quantity < delta };
+}
+
+/**
+ * Stock count (#146): the items whose counted kg differs from the stock now, as
+ * "set" adjustments (reason count). Blank boxes are skipped; a count must be ≥ 0.
+ * @param {Array<{itemId: string, counted: *, current: number}>} rows
+ * @returns {{changes: Array<{itemId: string, previousStock: number, newStock: number}>, invalid: string[]}}
+ */
+export function stockCountPlan(rows) {
+    const changes = [];
+    const invalid = [];
+    (rows || []).forEach(({ itemId, counted, current }) => {
+        if (counted === '' || counted === null || counted === undefined) return;
+        const kg = Number(counted);
+        if (!Number.isFinite(kg) || kg < 0) {
+            invalid.push(itemId);
+            return;
+        }
+        const before = round3(Number(current) || 0);
+        const after = round3(kg);
+        if (after !== before) changes.push({ itemId, previousStock: before, newStock: after });
+    });
+    return { changes, invalid };
 }

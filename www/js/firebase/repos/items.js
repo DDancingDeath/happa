@@ -21,6 +21,19 @@ export const itemMethods = {
     },
 
     /**
+     * Sets an item's low-stock level (#146): one field-level update, so a rate
+     * changed on another phone is kept. null removes it (the default level applies).
+     * @async
+     * @param {string} itemId
+     * @param {?number} kg
+     * @returns {Promise<void>}
+     */
+    async setItemLowStock(itemId, kg) {
+        const fv = firebase.firestore.FieldValue;
+        await getDb().collection(col('items')).doc(itemId).update({ lowStockKg: kg === null ? fv.delete() : kg });
+    },
+
+    /**
      * Saves an item to Firestore. Creates new if no ID, updates if ID exists.
      * @async
      * @param {Object} item - The item to save

@@ -7,7 +7,8 @@ jest.mock('../firebase/firestore-service.js', () => ({
     FirebaseService: {
         startSaveStockAdjustment: jest.fn(() => ({ record: {}, committed: Promise.resolve() })),
         calculateStock: jest.fn(async () => ({})),
-        getStock: jest.fn(async () => ({}))
+        getStock: jest.fn(async () => ({})),
+        setItemLowStock: jest.fn(async () => {})
     }
 }));
 jest.mock('../ui/ui-manager.js', () => ({
@@ -23,7 +24,8 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { StockManager } from '../modules/stock.js';
-import { planStockAdjustment, adjustReasonText } from '../utils/stock-adjust.js';
+import { planStockAdjustment, adjustReasonText, reversalPlan, canReverseAdjustment, stockCountPlan } from '../utils/stock-adjust.js';
+import { lowStockItems, lowStockLevel } from '../utils/stock-check.js';
 import { computeStock } from '../utils/stock-replay.js';
 
 describe('planStockAdjustment', () => {
@@ -212,5 +214,102 @@ describe('StockManager.renderStock while stock is not ready (#194)', () => {
         await StockManager.renderStock();
         expect(document.getElementById('stockList').innerHTML).not.toContain('Stock updating');
         expect(document.getElementById('stockList').textContent).toContain('Chana');
+    });
+});
+
+describe('reverse an adjustment and stock count (#146)', () => {
+    const adj = (id, previousStock, newStock, extra = {}) => ({ id, itemId: 'a', itemName: 'Chana', previousStock, newStock, ...extra });
+
+    test('reversal takes back the change from the stock now; a remove stops at the stock on hand', () => {
+        expect(reversalPlan(adj('x', 10, 25), 30)).toEqual({ adjustType: 'remove', quantity: 15, previousStock: 30, newStock: 15, capped: false });
+        expect(reversalPlan(adj('x', 40, 32, { adjustType: 'set' }), 20)).toEqual({ adjustType: 'add', quantity: 8, previousStock: 20, newStock: 28, capped: false });
+        expect(reversalPlan(adj('x', 10, 25), 6)).toMatchObject({ adjustType: 'remove', quantity: 6, newStock: 0, capped: true });
+        expect(reversalPlan(adj('x', 10, 10), 6)).toBeNull();
+        expect(reversalPlan({ id: 'old', quantity: 5 }, 6)).toBeNull();
+    });
+
+    test('Reverse is offered once, never on a reversal or an adjustment that changed nothing', () => {
+        const a1 = adj('a1', 0, 5);
+        const r1 = adj('r1', 5, 0, { reversesId: 'a1' });
+        expect(canReverseAdjustment(a1, [a1])).toBe(true);
+        expect(canReverseAdjustment(a1, [a1, r1])).toBe(false);
+        expect(canReverseAdjustment(r1, [a1, r1])).toBe(false);
+        expect(canReverseAdjustment(adj('a2', 5, 5), [])).toBe(false);
+    });
+
+    test('count: blank boxes skipped, same kg skipped, negative refused', () => {
+        expect(stockCountPlan([
+            { itemId: 'a', counted: '12.5', current: 10 },
+            { itemId: 'b', counted: '', current: 4 },
+            { itemId: 'c', counted: '4', current: 4 },
+            { itemId: 'd', counted: '0', current: -3 }
+        ])).toEqual({ changes: [{ itemId: 'a', previousStock: 10, newStock: 12.5 }, { itemId: 'd', previousStock: -3, newStock: 0 }], invalid: [] });
+        expect(stockCountPlan([{ itemId: 'a', counted: '-1', current: 1 }]).invalid).toEqual(['a']);
+    });
+
+    test('low stock uses each item\'s own level (0 = never), else 10 kg', () => {
+        const items = [{ id: 'a', name: 'Chana' }, { id: 'b', name: 'Gehu', lowStockKg: 50 }, { id: 'c', name: 'Moong', lowStockKg: 0 }];
+        const stock = { a: { quantity: 8 }, b: { quantity: 40 }, c: { quantity: 1 } };
+        expect(lowStockLevel(items[0])).toBe(10);
+        expect(lowStockItems(stock, items, new Set(['a', 'b', 'c']))).toEqual([
+            { key: 'a', name: 'Chana', quantity: 8, level: 10 }, { key: 'b', name: 'Gehu', quantity: 40, level: 50 }
+        ]);
+    });
+
+    test('Reverse on a row saves the opposite adjustment linked by reversesId; Count saves "set" adjustments', async () => {
+        document.body.innerHTML = '<div id="adjustmentHistory"></div><input id="adjustQuantity"><input id="adjustRate"><input id="adjustReason"><select id="adjustReasonCode"></select>';
+        AppState.userRole = 'manager';
+        AppState.items = [{ id: 'a', name: 'Chana' }, { id: 'b', name: 'Gehu' }];
+        AppState.stock = { a: { quantity: 30, rate: 50 }, b: { quantity: 4, rate: 20 } };
+        AppState.stockAdjustments = [adj('a1', 10, 25, { adjustType: 'add', quantity: 15, date: '1/10/2026', timestamp: 1 })];
+        FirebaseService.startSaveStockAdjustment.mockClear();
+        await StockManager.renderAdjustmentHistory();
+        expect(document.querySelector('#adjustmentHistory button').textContent).toBe('Reverse');
+        await StockManager.reverseAdjustment('a1');
+        expect(FirebaseService.startSaveStockAdjustment).toHaveBeenCalledWith(expect.objectContaining({
+            itemId: 'a', adjustType: 'remove', quantity: 15, previousStock: 30, newStock: 15, reasonCode: 'reverse', reversesId: 'a1'
+        }));
+
+        UIManager.showModalWithHtml = jest.fn(async (html) => {
+            document.body.insertAdjacentHTML('beforeend', html);
+            document.querySelector('[data-count-item="a"]').value = '28';
+            document.querySelector('[data-count-item="b"]').value = '4';
+            return true;
+        });
+        AppState.stock = { a: { quantity: 30, rate: 50 }, b: { quantity: 4, rate: 20 } };
+        FirebaseService.startSaveStockAdjustment.mockClear();
+        await StockManager.openStockCount();
+        expect(FirebaseService.startSaveStockAdjustment).toHaveBeenCalledTimes(1);
+        expect(FirebaseService.startSaveStockAdjustment).toHaveBeenCalledWith(expect.objectContaining({
+            itemId: 'a', adjustType: 'set', quantity: 28, newStock: 28, reasonCode: 'count'
+        }));
+    });
+});
+
+describe('low-stock card and alert level on Current stock (#146)', () => {
+    test('items below their level are listed; owner/manager set a level per item', async () => {
+        document.body.innerHTML = '<div id="currentStockSection"></div><input id="stockSearchInput"><div id="stockList"></div>';
+        AppState.userRole = 'owner';
+        AppState.settings = { showHindi: false };
+        AppState.stockReady = true;
+        AppState.purchaseHistory = [];
+        AppState.stockAdjustments = [{ id: 'o1', itemId: 'a', adjustType: 'set', quantity: 8, timestamp: 1 }];
+        AppState.items = [{ id: 'a', name: 'Chana' }, { id: 'b', name: 'Gehu', lowStockKg: 0 }];
+        FirebaseService.getStock.mockResolvedValue({ a: { quantity: 8, rate: 50 }, b: { quantity: 2, rate: 20 } });
+        await StockManager.renderStock();
+        const card = document.querySelector('.stock-low-card');
+        expect(card.textContent).toContain('Low stock (1)');
+        expect(card.textContent).toContain('Chana');
+        expect(card.textContent).toContain('8.0 kg (alert below 10.0 kg)');
+        expect([...document.querySelectorAll('.stock-alert-link')].map(b => b.textContent.trim())).toEqual(['Alert below 10.0 kg ✎', 'No low-stock alert ✎']);
+
+        UIManager.showModalWithHtml = jest.fn(async (html) => {
+            document.body.insertAdjacentHTML('beforeend', html);
+            document.getElementById('lowStockInput').value = '5';
+            return true;
+        });
+        await StockManager.editLowStock('a');
+        expect(FirebaseService.setItemLowStock).toHaveBeenCalledWith('a', 5);
+        expect(AppState.items[0].lowStockKg).toBe(5);
     });
 });
