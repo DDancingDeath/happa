@@ -231,11 +231,7 @@ const STATIC_ASSETS = [
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
 ];
-<<<<<<< HEAD
-// Loaded with import() only when used (rent receipts, unit picker, tenant link actions, deposits, expenses, reports), so not in
-=======
-// Loaded with import() only when used (Ask, rent receipts, unit picker, tenant link actions, deposits, expenses), so not in
->>>>>>> origin/main
+// Loaded with import() only when used (Ask, rent receipts, unit picker, tenant link actions, deposits, expenses, reports), so not in
 // the precache budget; install also caches them, best effort, so this version's copies (matching
 // the precached files) are there offline right after a deploy.
 const LAZY_ASSETS = [
