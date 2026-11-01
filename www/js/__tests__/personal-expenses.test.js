@@ -125,6 +125,27 @@ describe('FirebaseService personal expenses (#98)', () => {
         expect(AppState.expensesHistory.map(e => e.amount)).toEqual([20]);
     });
 
+    test('void (#99): the expense stays stored, leaves AppState and its day total; voided again is refused', async () => {
+        fake.seed('personalExpenses', [{ id: 'p1', amount: 80, category: 'personal', date, day: today, timestamp: NOW, userId: 'u1' }]);
+        fake.seed('personalExpenseDays', [{ id: today, amounts: { p1: 80 }, online: {} }]);
+        fake.seed('expenses', [{ id: 'b1', amount: 20, category: 'business', date, timestamp: NOW, userId: 'u1' },
+            { id: 'b2', amount: 30, category: 'business', date, timestamp: NOW, userId: 'u1' }]);
+        await open('owner');
+        expect(AppState.expensesHistory.map(e => e.amount).sort()).toEqual([20, 30, 80]);
+        await FirebaseService.voidExpense('p1', 'typed twice');
+        await FirebaseService.voidExpense('b1', 'wrong shop');
+        expect(AppState.expensesHistory.map(e => e.amount)).toEqual([30]);
+        expect(FirebaseService.voidedExpenses().map(e => e.amount).sort()).toEqual([20, 80]);
+        await settle(fake);
+        expect(fake.raw('personalExpenses').get('p1')).toMatchObject({ amount: 80, voided: true, voidReason: 'typed twice', voidedBy: 'u1' });
+        expect(fake.raw('expenses').get('b1')).toMatchObject({ amount: 20, voided: true, voidReason: 'wrong shop' });
+        expect(fake.raw('personalExpenseDays').get(today).amounts).toEqual({});
+        expect(AppState.expensesHistory.map(e => e.amount)).toEqual([30]);
+        expect(personalDaysFromRows(FirebaseService.voidedExpenses())).toEqual({});
+        await expect(FirebaseService.voidExpense('b1', 'again')).rejects.toMatchObject({ code: 'already-voided' });
+        await expect(FirebaseService.voidExpense('b2', 'no')).rejects.toMatchObject({ code: 'reason-required' });
+    });
+
     test('saving again over a not-yet-confirmed personal expense keeps one key', async () => {
         await open('owner');
         const first = FirebaseService.startSaveExpense({ type: 'Food', amount: 80, category: 'personal', date });

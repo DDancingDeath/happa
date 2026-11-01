@@ -299,6 +299,70 @@ describe('cash, stock and audit rules', () => {
             expect(voidedByOthers({ retail: [voidedBill({ voidedAt: null })] }, 'o1', DAY.from, DAY.to)).toBe(false);
         });
     });
+
+    describe('expense voids by anyone but an owner are flagged, with the reason and amount (#99)', () => {
+        const voidedExpense = (over = {}) => ({
+            id: 'e1', type: 'Tea', personName: 'Chotu', amount: 120, category: 'business', voided: true,
+            voidedBy: 'u2', voidedByName: 'Ravi', voidedAt: { toDate: () => new Date(T(15)) }, voidReason: ' Wrong   amount ', ...over
+        });
+        const people = [{ id: 'o1', name: 'Owner', role: 'owner' }, { id: 'u2', name: 'Ravi K', role: 'staff' }];
+        const entry = (over = {}) => ({
+            id: 'l10', action: 'VOID_EXPENSE', userId: 'u2', userRole: 'staff', timestamp: T(15),
+            details: { expenseId: 'e1', category: 'business', amount: 120, type: 'Tea', reason: 'Wrong amount' }, ...over
+        });
+
+        test('a loaded voided expense gives the flag at the time of the void, without the audit log', () => {
+            const list = run({ voided: { expense: [voidedExpense()] }, ownerIds: ['o1'] });
+            expect(list).toHaveLength(1);
+            expect(list[0]).toMatchObject({
+                id: 'expense-voided~expense~e1', type: 'expense-voided', severity: 'medium', refKind: 'expense', refId: 'e1',
+                item: 'Tea', party: 'Chotu', userId: 'u2', user: 'Ravi', amount: 120, at: T(15),
+                en: 'Expense voided (₹120) — Wrong amount', hi: 'खर्च रद्द किया (₹120) — Wrong amount'
+            });
+            expect(run({ voided: { expense: [voidedExpense()] }, people })[0]).toEqual(list[0]);
+            expect(run({ voided: { expense: [voidedExpense({ voidedAt: T(9, 0, 21) })] }, ownerIds: ['o1'] })).toEqual([]);
+            expect(run({ voided: { expense: [voidedExpense({ voided: false })] }, ownerIds: ['o1'] })).toEqual([]);
+        });
+
+        test('an owner\'s void is no flag, and a phone that cannot tell the owners apart flags none', () => {
+            expect(run({ voided: { expense: [voidedExpense({ voidedBy: 'o1' })] }, people })).toEqual([]);
+            expect(run({ voided: { expense: [voidedExpense({ voidedBy: 'o1' })] }, ownerIds: ['o1'] })).toEqual([]);
+            expect(run({ voided: { expense: [voidedExpense()] } })).toEqual([]);
+            expect(run({ auditLogs: [entry({ userId: 'o1', userRole: 'owner' })] })).toEqual([]);
+            expect(run({ auditLogs: [entry({ userId: 'o1' })], people })).toEqual([]);
+        });
+
+        test('a personal expense\'s flag has the amount and reason but not its type or name', () => {
+            const [a] = run({ voided: { expense: [voidedExpense({ category: 'personal' })] }, ownerIds: ['o1'] });
+            expect(a).toMatchObject({ item: '', party: '', amount: 120, en: 'Expense voided (₹120) — Wrong amount' });
+            const [b] = run({ auditLogs: [entry({ details: { ...entry().details, category: 'personal' } })], people });
+            expect(b).toMatchObject({ item: '', party: '', amount: 120 });
+        });
+
+        test('the expense and its VOID_EXPENSE entry give one flag; the entry alone flags it under the expense id', () => {
+            const both = run({ voided: { expense: [voidedExpense()] }, auditLogs: [entry()], people });
+            expect(both.map(a => [a.id, a.user])).toEqual([['expense-voided~expense~e1', 'Ravi']]);
+            const alone = run({ auditLogs: [entry()], people });
+            expect(alone.map(a => [a.id, a.refKind, a.user, a.amount, a.en]))
+                .toEqual([['expense-voided~expense~e1', 'expense', 'Ravi K', 120, 'Expense voided (₹120) — Wrong amount']]);
+            // without the expense id: the entry's own flag
+            expect(run({ auditLogs: [entry({ details: { amount: 5, reason: 'x' } })], people }).map(a => a.id)).toEqual(['expense-voided~audit~l10']);
+        });
+
+        test('the entry\'s version only creates the record; the expense\'s version may update it', () => {
+            const fromExpense = run({ voided: { expense: [voidedExpense()] }, ownerIds: ['o1'] });
+            const fromEntry = run({ auditLogs: [entry()], people });
+            const stored = [{ ...fromExpense[0], status: 'open' }];
+            expect(withoutStoredVoidTwins(fromEntry, stored)).toEqual([]);
+            expect(withoutStoredVoidTwins(fromEntry, [])).toEqual(fromEntry);
+            expect(withoutStoredVoidTwins(fromExpense, stored)).toEqual(fromExpense);
+        });
+
+        test('owners are needed when someone else voided a loaded expense in the scanned days', () => {
+            expect(voidedByOthers({ expense: [voidedExpense()] }, 'o1', DAY.from, DAY.to)).toBe(true);
+            expect(voidedByOthers({ expense: [voidedExpense()] }, 'u2', DAY.from, DAY.to)).toBe(false);
+        });
+    });
 });
 
 describe('storage: idempotent ids and daily scan dedupe', () => {

@@ -23,7 +23,7 @@ import {
     eventTime, purchaseLineValue
 } from './stock-replay.js';
 import { stockValue } from './calc/stock.js';
-import { activityBills, billLabour, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
+import { activeExpenses, activityBills, billLabour, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
 import { parseAnyBillDate } from './dates.js';
 
@@ -349,7 +349,7 @@ export function computeFinanceSummary({
     let personalCount = 0;
     let onlineExp = 0;
     const expenseRows = { business: [], personal: [] };
-    (expenses || []).forEach((e, idx) => {
+    activeExpenses(expenses).forEach((e, idx) => {
         if (!recordInRange(e, from, to)) return;
         const amount = num(e.amount);
         const personal = isPersonalExpense(e);

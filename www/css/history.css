@@ -807,3 +807,21 @@
     content: ' · ' attr(data-locked-label);
     font-size: 0.85em;
 }
+
+/* Voided expenses (#99): kept in the list, struck through */
+.expense-card--voided {
+  opacity: 0.7;
+}
+
+.expense-card--voided .expense-card__amount {
+  text-decoration: line-through;
+}
+
+.expenses-voided-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 12px;
+  font-size: 14px;
+  color: #4b5563;
+}

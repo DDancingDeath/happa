@@ -61,13 +61,15 @@ const inRange = (t, [from, to]) => t >= from && t < to;
 export const isOpening = (bill) => !!bill && typeof bill.openingBalance === 'object' && bill.openingBalance !== null;
 
 /**
- * VOID (#75): a voided bill (`voided: true`) is as if it had never been saved. Every
- * oracle function takes data without them: callers pass withoutVoided(data).
+ * VOID (#75) / VOID-EXP (#99): a voided bill or expense (`voided: true`) is as if it had
+ * never been saved. Every oracle function takes data without them: callers pass withoutVoided(data).
  */
 export const isVoided = (bill) => !!bill && bill.voided === true;
 export function withoutVoided(data) {
     const keep = (list) => (list || []).filter(b => !isVoided(b));
-    return { ...data, purchases: keep(data.purchases), wholesaleSales: keep(data.wholesaleSales), retailSales: keep(data.retailSales) };
+    const out = { ...data, purchases: keep(data.purchases), wholesaleSales: keep(data.wholesaleSales), retailSales: keep(data.retailSales), expenses: keep(data.expenses) };
+    if (Array.isArray(data.personalExpenses)) out.personalExpenses = keep(data.personalExpenses);
+    return out;
 }
 /** Bills that are activity in a period (opening records left out). */
 const activity = (list) => (list || []).filter(b => !isOpening(b));
@@ -731,7 +733,11 @@ export function dueTotals(data) {
 
 // ---------------------------------------------------------------- Outstanding (O*)
 
-/** O1–O4: open dues per party and in total. Receivable = retail only until #130 decides. */
+/**
+ * O1–O4: open dues per party and in total. Receivables (O2, O4) are retail and wholesale
+ * sales together (#125: Outstanding's "All" sales list, the same total as Money's "to receive");
+ * O2_retail / O2_wholesale and O4_retail / O4_wholesale are its Retail and Wholesale lists.
+ */
 export function outstanding(data) {
     const byParty = (bills) => {
         const out = {};
@@ -739,9 +745,14 @@ export function outstanding(data) {
         return out;
     };
     const payable = byParty(data.purchases || []);
-    const receivable = byParty(data.retailSales || []);
+    const receivable = byParty([...(data.retailSales || []), ...(data.wholesaleSales || [])]);
+    const retail = byParty(data.retailSales || []);
+    const wholesale = byParty(data.wholesaleSales || []);
     const total = (o) => r2(Object.values(o).reduce((a, b) => a + b, 0));
-    return { O1_payableByParty: payable, O2_receivableByParty: receivable, O3_payableTotal: total(payable), O4_receivableTotal: total(receivable) };
+    return {
+        O1_payableByParty: payable, O2_receivableByParty: receivable, O3_payableTotal: total(payable), O4_receivableTotal: total(receivable),
+        O2_retailByParty: retail, O2_wholesaleByParty: wholesale, O4_retailTotal: total(retail), O4_wholesaleTotal: total(wholesale)
+    };
 }
 
 // ---------------------------------------------------------------- Cash drawer (C*)

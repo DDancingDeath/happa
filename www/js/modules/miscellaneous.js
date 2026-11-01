@@ -13,14 +13,15 @@ import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
-import { canChangeExpense, EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
+import { EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
+import { askReason, voidedBannerHtml } from '../ui/bill-status.js';
 import { t } from '../i18n/index.js';
 import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { refusedForClock } from '../utils/clock-skew.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
-import { can } from '../utils/role-access.js';
-import { expenseMode, isPersonalExpense } from '../utils/money.js';
+import { can, canVoidExpenseWith } from '../utils/role-access.js';
+import { expenseMode, isActiveExpense, isPersonalExpense } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpenseEntry } from '../utils/expense-entry.js';
 import { toLocalISODate } from '../utils/dates.js';
@@ -39,8 +40,8 @@ const CLOSED_DAY_WAIT_MS = 1500;
 /** Escaped "Cash" / "Online" of an expense (EXP-MODE; no mode = cash). */
 const modeLabel = (expense) => tx(expenseMode(expense) === 'online' ? 'ui.expenses.mode_online' : 'ui.expenses.mode_cash');
 
-/** The signed-in user, as canChangeExpense expects it. */
-const currentUserInfo = () => ({ uid: AppState.currentUser?.uid, role: AppState.userRole });
+/** The signed-in user, as canVoidExpenseWith expects it. */
+const currentUserInfo = () => ({ uid: AppState.currentUser?.uid, role: AppState.userRole, raw: AppState.settings?.roleAccess });
 
 /**
  * Expenses Manager - Manages expense operations
@@ -48,11 +49,14 @@ const currentUserInfo = () => ({ uid: AppState.currentUser?.uid, role: AppState.
  */
 export class ExpensesManager {
     /**
-     * Expense currently loaded into a form for editing ({ id, category }), or null.
-     * While set, saving that category updates the existing document in place.
+     * Voided expense being entered again ({ id, category }), or null (#99): the
+     * next save of that category is the corrected expense, linked by `replacesId`.
      * @type {{id: string, category: string}|null}
      */
-    static editingExpense = null;
+    static replacing = null;
+
+    /** Voided expenses are shown in the lists (struck through) when on. */
+    static showVoided = false;
 
     /**
      * New expense whose save this phone has not confirmed yet ({ id, category }):
@@ -62,85 +66,43 @@ export class ExpensesManager {
     static pendingExpense = null;
 
     /**
-     * Create a new expense, or update the one being edited (same doc, no delete).
+     * Create a new expense. Expenses are never changed in place (#99): a
+     * correction voids the old one and saves a new one with `replacesId`.
      * @param {Object} expense - Expense built from the form
-     * @returns {Promise<boolean|null>} true if an existing expense was updated,
-     *   null if that update or this phone refused it, or this phone has not confirmed storing it (message already shown)
+     * @returns {Promise<false|null>} false when saved; null if this phone refused it
+     *   or has not confirmed storing it (message already shown)
      */
     static async persistExpense(expense) {
-        const editing = this.editingExpense;
-        if (!editing || editing.category !== expense.category) {
-            // Shown at once (also offline); the listener reconciles it (#89). A save
-            // after "not confirmed" reuses that expense's id so it can't duplicate.
-            const pending = this.pendingExpense?.category === expense.category ? this.pendingExpense : null;
-            const { record, committed, stored } = FirebaseService.startSaveExpense(expense, { id: pending?.id });
-            const forget = () => { if (this.pendingExpense?.id === record.id) this.pendingExpense = null; };
-            committed.catch(async err => {
-                console.error('Expense save failed:', err);
-                forget();
-                UIManager.showToast(await refusedForClock(err)
-                    ? t('msg.common.phone_clock_wrong_save')
-                    : saveFailedText(err, t('msg.expenses.expense_not_saved', { value: err?.message || err })), 'error');
-                this.refreshExpenseViews();
-            });
-            this.refreshExpenseViews();
-            // Not "saved" unless this phone stored it: refused (storage full, #153) or
-            // still unconfirmed after a few seconds keeps the form
-            const ok = stored ? await stored : true;
-            if (ok === null) {
-                this.pendingExpense = { id: record.id, category: expense.category };
-                UIManager.showToast(t(EXPENSE_UNCONFIRMED_KEY), 'warning');
-                return null;
-            }
+        const replacing = this.replacing?.category === expense.category ? this.replacing : null;
+        if (replacing) expense.replacesId = replacing.id;
+        // Shown at once (also offline); the listener reconciles it (#89). A save
+        // after "not confirmed" reuses that expense's id so it can't duplicate.
+        const pending = this.pendingExpense?.category === expense.category ? this.pendingExpense : null;
+        // Sent again unchanged, the second write changes nothing on the server (firestore.rules, #99)
+        if (pending && pending.day === expense.day) Object.assign(expense, { timestamp: pending.timestamp, date: pending.date });
+        const { record, committed, stored } = FirebaseService.startSaveExpense(expense, { id: pending?.id });
+        const forget = () => { if (this.pendingExpense?.id === record.id) this.pendingExpense = null; };
+        committed.catch(async err => {
+            console.error('Expense save failed:', err);
             forget();
-            return ok === true ? false : null;
-        }
-
-        const original = (AppState.expensesHistory || []).find(e => String(e.id) === String(editing.id)) || {};
-        const fields = {
-            type: expense.type,
-            personName: expense.personName,
-            amount: expense.amount,
-            remarks: expense.remarks,
-            paymentMode: expense.paymentMode,
-            updatedAt: Helpers.getCurrentDateTime(),
-            updatedBy: expense.createdBy,
-            updatedByName: expense.createdByName
-        };
-        try {
-            await this.updateExistingExpense(editing.id, fields);
-        } catch (err) {
-            if (!isPermissionDenied(err)) throw err;
-            this.cancelExpenseEdit();
-            UIManager.showToast(t(EXPENSE_LOCKED_KEY), 4000);
+            UIManager.showToast(await refusedForClock(err)
+                ? t('msg.common.phone_clock_wrong_save')
+                : saveFailedText(err, t('msg.expenses.expense_not_saved', { value: err?.message || err })), 'error');
+            this.refreshExpenseViews();
+        });
+        this.refreshExpenseViews();
+        // Not "saved" unless this phone stored it: refused (storage full, #153) or
+        // still unconfirmed after a few seconds keeps the form
+        const ok = stored ? await stored : true;
+        if (ok === null) {
+            this.pendingExpense = { id: record.id, category: expense.category, day: expense.day, timestamp: expense.timestamp, date: expense.date };
+            UIManager.showToast(t(EXPENSE_UNCONFIRMED_KEY), 'warning');
             return null;
         }
-        this.cancelExpenseEdit();
-
-        // Keep original creation info on the object used for printing
-        if (original.date) expense.date = original.date;
-        if (original.day) expense.day = original.day;
-        if (original.createdByName) expense.createdByName = original.createdByName;
-
-        await AuditService.log(AuditService.ACTIONS.EDIT_EXPENSE || 'EDIT_EXPENSE', {
-            expenseId: String(editing.id),
-            category: expense.category,
-            oldAmount: original.amount,
-            newAmount: expense.amount,
-            oldType: original.type,
-            newType: expense.type
-        });
-        return true;
-    }
-
-    /**
-     * Update an expense document in place. Resolves docs the same way as
-     * FirebaseService.deleteExpense: numeric ids are legacy `id` fields, others are doc ids.
-     * @param {string|number} expenseId
-     * @param {Object} fields
-     */
-    static async updateExistingExpense(expenseId, fields) {
-        await FirebaseService.updateExpense(expenseId, fields);
+        forget();
+        if (ok !== true) return null;
+        if (replacing && this.replacing === replacing) this.stopReplacing(false);
+        return false;
     }
 
     /**
@@ -168,10 +130,9 @@ export class ExpensesManager {
 
         const now = new Date();
         const mode = formField(category, 'Mode')?.value || DEFAULT_EXPENSE_MODE;
-        const editing = this.editingExpense?.category === category;
         // A day the user didn't pick is today at save time (a form left open over midnight, #118)
         const dateInput = formField(category, 'Date');
-        const day = !editing && dateInput?.dataset.picked && dateInput.value ? dateInput.value : toLocalISODate(now);
+        const day = dateInput?.dataset.picked && dateInput.value ? dateInput.value : toLocalISODate(now);
         const problem = validateExpenseEntry({ day, mode }, { role: AppState.userRole, roleAccess: AppState.settings?.roleAccess, now });
         if (problem) {
             UIManager.showModal(t(problem.key, problem.params));
@@ -195,8 +156,7 @@ export class ExpensesManager {
 
     /**
      * Date and mode inputs of both sections (#118): the days the role may pick,
-     * today unless the user picked another day, and editable unless an expense
-     * is being edited (editing keeps its date).
+     * today unless the user picked another day.
      */
     static prepareExpenseForms() {
         const range = expenseDayRange({ role: AppState.userRole, roleAccess: AppState.settings?.roleAccess });
@@ -214,7 +174,6 @@ export class ExpensesManager {
                     else delete input.dataset.picked;
                 });
             }
-            if (this.editingExpense?.category === category) return;
             input.disabled = false;
             if (!input.dataset.picked || !input.value) input.value = range.max;
         });
@@ -224,26 +183,33 @@ export class ExpensesManager {
      * "Saved" toast. A new cash expense dated on an earlier day whose cash is
      * already closed adds that the closed day's figures won't change (#118):
      * the closed session keeps the totals it was counted with.
-     * @param {string} key i18n key of the saved / updated message
+     * @param {string} key i18n key of the saved message
      * @param {Object} expense
-     * @param {boolean} updated an edit (keeps its date): no note
      */
-    static async showSavedToast(key, expense, updated) {
+    static async showSavedToast(key, expense) {
         const text = t(key);
-        if (updated || expenseMode(expense) !== 'cash' || !expense.day || expense.day >= toLocalISODate(new Date())) {
+        if (expenseMode(expense) !== 'cash' || !expense.day || expense.day >= toLocalISODate(new Date())) {
             UIManager.showToast(text);
             return;
         }
-        let closed = false;
+        if (await this.cashDayClosed(expense.day)) UIManager.showToast(t('msg.expenses.saved_cash_day_closed', { message: text }), 5000);
+        else UIManager.showToast(text);
+    }
+
+    /**
+     * Whether a day's cash is closed (waits at most CLOSED_DAY_WAIT_MS; unknown = not closed).
+     * @param {string} day YYYY-MM-DD
+     * @returns {Promise<boolean>}
+     */
+    static async cashDayClosed(day) {
         try {
             const timeout = new Promise(resolve => setTimeout(() => resolve(null), CLOSED_DAY_WAIT_MS));
-            const sessions = await Promise.race([FirebaseService.loadCashSessionsForDate(expense.day), timeout]);
-            closed = !!sessionForDate(sessions || [], expense.day)?.signedOut;
+            const sessions = await Promise.race([FirebaseService.loadCashSessionsForDate(day), timeout]);
+            return !!sessionForDate(sessions || [], day)?.signedOut;
         } catch (e) {
             console.warn('Expense: cash day not checked:', e?.code || e);
+            return false;
         }
-        if (closed) UIManager.showToast(t('msg.expenses.saved_cash_day_closed', { message: text }), 5000);
-        else UIManager.showToast(text);
     }
 
     /**
@@ -294,7 +260,7 @@ export class ExpensesManager {
             UIManager.showToast(t('msg.roles.section_not_allowed'));
             return;
         }
-        this.cancelExpenseEdit();
+        if (this.replacing?.category !== view) this.cancelExpenseEdit();
         const buttons = document.querySelectorAll('#expenses .filter-btn');
         buttons.forEach(btn => btn.classList.remove('active'));
         if (evt) evt.target.classList.add('active');
@@ -326,15 +292,15 @@ export class ExpensesManager {
         if (!expense) return;
 
         // Use withLoading for the Firebase operation
-        let updated = false;
+        let result = false;
         await UIManager.withLoading(async () => {
-            updated = await this.persistExpense(expense);
+            result = await this.persistExpense(expense);
         });
-        if (updated === null) return;
+        if (result === null) return;
         
         
         UIManager.hapticFeedback('medium');
-        await this.showSavedToast(updated ? 'msg.expenses.business_expense_updated' : 'msg.expenses.business_expense_saved', expense, updated);
+        await this.showSavedToast('msg.expenses.business_expense_saved', expense);
         
         document.getElementById('businessExpenseType').value = '';
         document.getElementById('businessExpensePerson').value = '';
@@ -369,14 +335,14 @@ export class ExpensesManager {
         if (!expense) return;
 
         // Use withLoading for the Firebase operation
-        let updated = false;
+        let result = false;
         await UIManager.withLoading(async () => {
-            updated = await this.persistExpense(expense);
+            result = await this.persistExpense(expense);
         });
-        if (updated === null) return;
+        if (result === null) return;
         
         UIManager.hapticFeedback('medium');
-        await this.showSavedToast(updated ? 'msg.expenses.personal_expense_updated' : 'msg.expenses.personal_expense_saved', expense, updated);
+        await this.showSavedToast('msg.expenses.personal_expense_saved', expense);
         
         
         document.getElementById('personalExpenseType').value = '';
@@ -422,43 +388,64 @@ export class ExpensesManager {
 
     /**
      * Render business expense history list
-     * Displays expense cards with hover effects
      */
     static renderBusinessExpenseHistory() {
-        const container = document.getElementById('businessExpenseHistoryList');
-        const businessExpenses = AppState.expensesHistory
-            .filter(p => !isPersonalExpense(p) && p.id)
-            .sort((a, b) => {
-                const dateA = Helpers.parseDate(a.date);
-                const dateB = Helpers.parseDate(b.date);
-                return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
-            });
-        
-        this.attachExpenseScroll(container);
+        this.renderExpenseList('business', document.getElementById('businessExpenseHistoryList'));
+    }
 
-        if (businessExpenses.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyExpenseMessage('business'))}</p>`;
+    /**
+     * Expenses of a section for its list, newest first: the counted ones, and the
+     * voided ones too when "Show voided" is on (#99).
+     * @param {'business'|'personal'} category
+     * @returns {Array<Object>}
+     */
+    static listedExpenses(category) {
+        const ofCategory = (e) => e && e.id && (category === 'personal') === isPersonalExpense(e);
+        const rows = AppState.expensesHistory.filter(ofCategory);
+        if (this.showVoided) rows.push(...FirebaseService.voidedExpenses().filter(ofCategory));
+        return rows.sort((a, b) => (Helpers.parseDate(b.date)?.getTime() || 0) - (Helpers.parseDate(a.date)?.getTime() || 0));
+    }
+
+    /**
+     * One section's expense cards; voided ones struck through with a chip (#99).
+     * @param {'business'|'personal'} category
+     * @param {?HTMLElement} container
+     */
+    static renderExpenseList(category, container) {
+        if (!container) return;
+        const expenses = this.listedExpenses(category);
+        this.attachExpenseScroll(container);
+        if (expenses.length === 0) {
+            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyExpenseMessage(category))}</p>`;
             return;
         }
-
-        container.innerHTML = businessExpenses.map((payment, index) => `
-            <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s ease;"
+        container.innerHTML = expenses.map(payment => {
+            const voided = !isActiveExpense(payment);
+            return `
+            <div class="expense-card${voided ? ' expense-card--voided' : ''}" style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s ease;"
                  onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'; this.style.transform='translateY(-2px)'"
                  onmouseout="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; this.style.transform='translateY(0)'"
-                 onclick="window.app.expenses.viewExpenseDetails('${Helpers.escapeJsAttr(payment.id)}', 'business')">
+                 onclick="window.app.expenses.viewExpenseDetails('${Helpers.escapeJsAttr(payment.id)}', '${category}')">
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                     <div>
                         ${payment.personName ? `<div style="font-weight: 600; font-size: 16px; color: #333;">${Helpers.escapeHtml(payment.personName)}</div>` : ''}
-                        <div style="font-size: 13px; color: #666; margin-top: 4px;">${Helpers.escapeHtml(payment.type)}</div>
+                        <div style="font-size: 13px; color: #666; margin-top: 4px;">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="voided-chip">${tx('ui.void.chip')}</span>` : ''}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 18px; font-weight: bold; color: #2c3e50;">₹${Helpers.escapeHtml(payment.amount)}</div>
+                        <div class="expense-card__amount" style="font-size: 18px; font-weight: bold; color: #2c3e50;">₹${Helpers.escapeHtml(payment.amount)}</div>
                     </div>
                 </div>
                 ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
                 <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
+    }
+
+    /** "Show voided" switch of the expense lists (both sections follow it). */
+    static toggleVoided(show) {
+        this.showVoided = !!show;
+        document.querySelectorAll('[data-expense-voided-toggle]').forEach(box => { box.checked = this.showVoided; });
+        this.renderexpensesHistory();
     }
 
     /**
@@ -486,39 +473,7 @@ export class ExpensesManager {
             container.innerHTML = '';
             return;
         }
-        const personalExpenses = AppState.expensesHistory
-            .filter(p => isPersonalExpense(p) && p.id)
-            .sort((a, b) => {
-                const dateA = Helpers.parseDate(a.date);
-                const dateB = Helpers.parseDate(b.date);
-                return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
-            });
-        
-        this.attachExpenseScroll(container);
-
-        if (personalExpenses.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyExpenseMessage('personal'))}</p>`;
-            return;
-        }
-
-        container.innerHTML = personalExpenses.map((payment, index) => `
-            <div style="background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s ease;"
-                 onmouseover="this.style.boxShadow='0 4px 12px rgba(0,0,0,0.15)'; this.style.transform='translateY(-2px)'"
-                 onmouseout="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.1)'; this.style.transform='translateY(0)'"
-                 onclick="window.app.expenses.viewExpenseDetails('${Helpers.escapeJsAttr(payment.id)}', 'personal')">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                    <div>
-                        ${payment.personName ? `<div style="font-weight: 600; font-size: 16px; color: #333;">${Helpers.escapeHtml(payment.personName)}</div>` : ''}
-                        <div style="font-size: 13px; color: #666; margin-top: 4px;">${Helpers.escapeHtml(payment.type)}</div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 18px; font-weight: bold; color: #2c3e50;">₹${Helpers.escapeHtml(payment.amount)}</div>
-                    </div>
-                </div>
-                ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
-                <div style="font-size: 12px; color: #999; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
-            </div>
-        `).join('');
+        this.renderExpenseList('personal', container);
     }
 
     static async printExpenseReceipt(expense) {
@@ -538,11 +493,10 @@ export class ExpensesManager {
         const expense = this.expenseFromForm('business');
         if (!expense) return;
 
-        const updated = await this.persistExpense(expense);
-        if (updated === null) return;
+        if (await this.persistExpense(expense) === null) return;
         
         UIManager.hapticFeedback('medium');
-        await this.showSavedToast(updated ? 'msg.expenses.business_expense_updated' : 'msg.expenses.business_expense_saved', expense, updated);
+        await this.showSavedToast('msg.expenses.business_expense_saved', expense);
         
         document.getElementById('businessExpenseType').value = '';
         document.getElementById('businessExpensePerson').value = '';
@@ -561,8 +515,19 @@ export class ExpensesManager {
         });
     }
 
+    /**
+     * An expense of a section by id: a counted one, or a voided one (#99).
+     * @param {string} expenseId
+     * @param {'business'|'personal'} category
+     * @returns {?Object}
+     */
+    static findExpense(expenseId, category) {
+        const match = (p) => String(p.id) === String(expenseId) && (category === 'personal') === isPersonalExpense(p);
+        return AppState.expensesHistory.find(match) || FirebaseService.voidedExpenses().find(match) || null;
+    }
+
     static viewExpenseDetails(expenseId, category) {
-        const expense = AppState.expensesHistory.find(p => p.id == expenseId && p.category === category);
+        const expense = this.findExpense(expenseId, category);
         
         if (!expense) {
             UIManager.showToast(t('msg.expenses.expense_not_found'));
@@ -575,6 +540,7 @@ export class ExpensesManager {
 
         const content = `
             <div style="padding: 8px 0;">
+                ${voidedBannerHtml(expense)}
                 <div style="background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
                     <div style="display: grid; gap: 12px;">
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -642,12 +608,13 @@ export class ExpensesManager {
         `;
 
         document.getElementById('expenseDetailsContent').innerHTML = content;
-        // Hide what the rules would refuse (#18): members change only their own, recent expenses
-        const allowed = canChangeExpense(expense, currentUserInfo());
-        ['expenseDeleteBtn', 'expenseEditBtn'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.style.display = allowed ? '' : 'none';
-        });
+        // Hide what the rules would refuse (#99): void inside the role's edit window
+        const allowed = canVoidExpenseWith(expense, currentUserInfo());
+        const voidBtn = document.getElementById('expenseVoidBtn');
+        if (voidBtn) voidBtn.style.display = allowed ? '' : 'none';
+        // Re-entry on the same day must still be inside the role's back-dating window
+        const reenterBtn = document.getElementById('expenseReenterBtn');
+        if (reenterBtn) reenterBtn.style.display = allowed && !this.reenterProblem(expense) ? '' : 'none';
         document.getElementById('expenseDetailsOverlay').classList.add('active');
     }
 
@@ -657,177 +624,136 @@ export class ExpensesManager {
         window.currentExpenseCategory = null;
     }
 
-    static editExpenseFromModal() {
-        const expenseId = window.currentExpenseId;
+    /**
+     * Voids the open expense with a reason (#99): it stays in the list, struck
+     * through, and counts in no total. A cash expense's money goes back into its
+     * day's drawer while that day's cash is open; a closed day keeps its count.
+     * @param {{reenter?: boolean}} [opts] reenter: then put it in the form to save it corrected
+     * @returns {Promise<boolean>} true when voided
+     */
+    static async voidExpenseFromModal({ reenter = false } = {}) {
         const category = window.currentExpenseCategory;
-        
-        if (!expenseId || !category) {
-            UIManager.showToast(t('msg.expenses.expense_not_found'));
-            return;
-        }
-
-        this.closeExpenseDetails();
-        this.editExpense(expenseId, category);
-    }
-
-    static async confirmDeleteExpense() {
-        const expenseId = window.currentExpenseId;
-        const category = window.currentExpenseCategory;
-        
-        if (!expenseId || !category) {
-            UIManager.showToast(t('msg.expenses.expense_not_found'));
-            return;
-        }
-
-        // Show confirmation toast with action
-        const confirmed = await new Promise((resolve) => {
-            const overlay = document.createElement('div');
-            overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
-            
-            const dialog = document.createElement('div');
-            dialog.style.cssText = 'background: white; padding: 24px; border-radius: 16px; max-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);';
-            dialog.innerHTML = `
-                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 12px;">${tx('ui.expenses.delete_title')}</div>
-                <div style="font-size: 14px; color: #666; margin-bottom: 24px;">${tx('ui.expenses.delete_confirm')}</div>
-                <div style="display: flex; gap: 12px;">
-                    <button id="cancelDelete" style="flex: 1; padding: 12px; border: 1px solid #ddd; background: white; border-radius: 8px; font-size: 14px; font-weight: 500; color: #666; cursor: pointer;">${tx('ui.modals.cancel')}</button>
-                    <button id="confirmDelete" style="flex: 1; padding: 12px; border: none; background: #dc3545; border-radius: 8px; font-size: 14px; font-weight: 500; color: white; cursor: pointer;">${tx('ui.modals.delete')}</button>
-                </div>
-            `;
-            
-            overlay.appendChild(dialog);
-            document.body.appendChild(overlay);
-            
-            document.getElementById('cancelDelete').onclick = () => {
-                document.body.removeChild(overlay);
-                resolve(false);
-            };
-            
-            document.getElementById('confirmDelete').onclick = () => {
-                document.body.removeChild(overlay);
-                resolve(true);
-            };
-            
-            overlay.onclick = (e) => {
-                if (e.target === overlay) {
-                    document.body.removeChild(overlay);
-                    resolve(false);
-                }
-            };
-        });
-
-        if (!confirmed) return;
-
-        this.closeExpenseDetails();
-        await this.deleteExpense(expenseId, category, false);
-    }
-
-    static async editExpense(expenseId, category) {
-        this.cancelExpenseEdit();
-        const expense = AppState.expensesHistory.find(p => p.id == expenseId);
+        const expense = this.findExpense(window.currentExpenseId, category);
         if (!expense) {
             UIManager.showToast(t('msg.expenses.expense_not_found'));
-            return;
+            return false;
         }
-        if (!canChangeExpense(expense, currentUserInfo())) {
+        if (!canVoidExpenseWith(expense, currentUserInfo())) {
             UIManager.showToast(t(EXPENSE_LOCKED_KEY), 4000);
-            return;
+            return false;
         }
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.expenses.void_needs_internet'));
+            return false;
+        }
+        const day = expense.day || personalDayKey(expense.date);
+        if (reenter && this.reenterProblem(expense)) {
+            UIManager.showToast(t('msg.expenses.reenter_too_old'), 5000);
+            return false;
+        }
+        const cash = expenseMode(expense) === 'cash';
+        const explainKey = !cash ? 'ui.expenses.void_explain'
+            : (day && await this.cashDayClosed(day)) ? 'ui.expenses.void_explain_closed' : 'ui.expenses.void_explain_cash';
+        const reason = await askReason({
+            titleKey: reenter ? 'ui.expenses.reenter_title' : 'ui.expenses.void_title',
+            explainKey,
+            labelKey: 'ui.expenses.void_reason'
+        });
+        if (!reason) return false;
+        this.closeExpenseDetails();
+        try {
+            await UIManager.withLoading(() => FirebaseService.voidExpense(expense.id, reason));
+        } catch (error) {
+            console.error('Error voiding expense:', error);
+            UIManager.showToast(isPermissionDenied(error) ? t(EXPENSE_LOCKED_KEY)
+                : error?.code === 'already-voided' ? t('msg.expenses.already_voided')
+                    : t('msg.expenses.void_failed'), 4000);
+            this.refreshExpenseViews();
+            return false;
+        }
+        AuditService.log(AuditService.ACTIONS.VOID_EXPENSE, {
+            expenseId: String(expense.id),
+            category,
+            amount: expense.amount,
+            type: expense.type,
+            reason
+        }).catch(e => console.warn('Audit log failed:', e));
+        UIManager.hapticFeedback('medium');
+        this.refreshExpenseViews();
+        if (window.app.cashManagement) {
+            window.app.cashManagement.calculateTodayTransactions()
+                .catch(e => console.error('Cash refresh after void failed:', e));
+            window.app.cashManagement.updateUI();
+        }
+        if (reenter) this.startReentry(expense, category);
+        else UIManager.showToast(t('msg.expenses.voided'));
+        return true;
+    }
 
-        // Populate the form fields
-        if (category === 'business') {
-            document.getElementById('businessExpenseType').value = expense.type || '';
-            document.getElementById('businessExpenseAmount').value = expense.amount || '';
-            document.getElementById('businessExpensePerson').value = expense.personName || '';
-            document.getElementById('businessExpenseRemarks').value = expense.remarks || '';
-        } else {
-            document.getElementById('personalExpenseType').value = expense.type || '';
-            document.getElementById('personalExpenseAmount').value = expense.amount || '';
-            document.getElementById('personalExpensePerson').value = expense.personName || '';
-            document.getElementById('personalExpenseRemarks').value = expense.remarks || '';
-        }
-        // Editing keeps the expense's date (#118); its mode can be corrected
-        const dateInput = formField(category, 'Date');
-        if (dateInput) {
-            dateInput.value = expense.day || personalDayKey(expense.date) || '';
-            dateInput.disabled = true;
-        }
+    /**
+     * Why the voided expense couldn't be saved again on its own day (back-dating
+     * window of the role, #118), or null. Checked before the void.
+     * @param {Object} expense
+     * @returns {?Object}
+     */
+    static reenterProblem(expense) {
+        return validateExpenseEntry({ day: expense.day || personalDayKey(expense.date), mode: expenseMode(expense) },
+            { role: AppState.userRole, roleAccess: AppState.settings?.roleAccess, now: new Date() });
+    }
+
+    /** "Void & re-enter" of the open expense. */
+    static reenterExpenseFromModal() {
+        return this.voidExpenseFromModal({ reenter: true });
+    }
+
+    /**
+     * Puts a voided expense in its section's form to be saved corrected, on its
+     * own day; the save links the new expense to it (`replacesId`).
+     * @param {Object} expense the voided expense
+     * @param {'business'|'personal'} category
+     */
+    static startReentry(expense, category) {
+        this.stopReplacing();
+        const tabBtn = [...document.querySelectorAll('#expenses .filter-btn')][category === 'personal' ? 1 : 0];
+        this.filterExpenseTab(category, tabBtn ? { target: tabBtn } : undefined);
+        formField(category, 'Type').value = expense.type || '';
+        formField(category, 'Amount').value = expense.amount || '';
+        formField(category, 'Person').value = expense.personName || '';
+        formField(category, 'Remarks').value = expense.remarks || '';
         const modeInput = formField(category, 'Mode');
         if (modeInput) modeInput.value = expenseMode(expense);
-
-        // Edit in place: saving this category updates the same document (nothing is deleted)
-        this.editingExpense = { id: String(expense.id), category };
-
-        // Abandoning the edit (clearing the amount, switching expense tab or app tab) must
-        // turn the next save back into a new expense instead of overwriting this one.
-        const amountInput = document.getElementById(category === 'business' ? 'businessExpenseAmount' : 'personalExpenseAmount');
-        const editing = this.editingExpense;
+        const dateInput = formField(category, 'Date');
+        const day = expense.day || personalDayKey(expense.date);
+        if (dateInput && day) {
+            dateInput.value = day;
+            if (day !== toLocalISODate(new Date())) dateInput.dataset.picked = '1';
+        }
+        const replacing = { id: String(expense.id), category };
+        this.replacing = replacing;
+        // Clearing the amount (or leaving the tab) ends the re-entry: the next save is a plain new expense
+        const amountInput = formField(category, 'Amount');
         const onAmountInput = () => {
-            if (amountInput.value.trim() === '' && this.editingExpense === editing) {
-                this.cancelExpenseEdit();
-            }
+            if (amountInput.value.trim() === '' && this.replacing === replacing) this.stopReplacing();
         };
         amountInput?.addEventListener('input', onAmountInput);
-        editing.cleanup = () => amountInput?.removeEventListener('input', onAmountInput);
-        
-        UIManager.showToast(t('msg.expenses.edit_expense_save_update'));
+        replacing.cleanup = () => amountInput?.removeEventListener('input', onAmountInput);
+        UIManager.showToast(t('msg.expenses.reenter_hint'), 4000);
     }
 
-    /** Stops editing: the next save creates a new expense (dated today, cash, unless picked). */
-    static cancelExpenseEdit() {
-        const was = this.editingExpense;
+    /**
+     * Ends a re-entry: the next save is a new expense (today, cash, unless picked).
+     * @param {boolean} [resetForm=true]
+     */
+    static stopReplacing(resetForm = true) {
+        const was = this.replacing;
         was?.cleanup?.();
-        this.editingExpense = null;
-        if (was && typeof document !== 'undefined') this.resetExpenseForm(was.category);
+        this.replacing = null;
+        if (was && resetForm && typeof document !== 'undefined') this.resetExpenseForm(was.category);
     }
 
-    static async deleteExpense(expenseId, category, showConfirm = true) {
-        if (!expenseId || expenseId === 'undefined') {
-            console.error('Invalid expense ID:', expenseId);
-            UIManager.showToast(t('msg.expenses.invalid_expense_id'));
-            return;
-        }
-        
-        const list = AppState.expensesHistory || [];
-        const index = list.findIndex(e => String(e.id) === String(expenseId));
-        const existing = index !== -1 ? list[index] : null;
-        if (existing && !canChangeExpense(existing, currentUserInfo())) {
-            UIManager.showToast(t(EXPENSE_LOCKED_KEY), 4000);
-            return;
-        }
-
-        if (showConfirm && !confirm(t('msg.expenses.are_sure_want_delete_expense'))) {
-            return;
-        }
-
-        try {
-            // Remove from the screen at once (#89); restored if the delete fails
-            if (index !== -1) list.splice(index, 1);
-            this.refreshExpenseViews();
-            await FirebaseService.deleteExpense(String(expenseId));
-            if (this.editingExpense && String(this.editingExpense.id) === String(expenseId)) {
-                this.cancelExpenseEdit();
-            }
-            await AuditService.log(AuditService.ACTIONS.DELETE_EXPENSE || 'DELETE_EXPENSE', {
-                expenseId: String(expenseId),
-                category: existing?.category || category,
-                amount: existing?.amount,
-                type: existing?.type
-            });
-            UIManager.hapticFeedback('medium');
-            UIManager.showToast(t('msg.expenses.expense_deleted'));
-            
-            if (window.app.finance && document.getElementById('financeOverviewSection') && document.getElementById('financeOverviewSection').style.display !== 'none') {
-                window.app.finance.calculateOverview();
-            }
-        } catch (error) {
-            console.error('Error deleting expense:', error);
-            if (existing && !(AppState.expensesHistory || []).some(e => String(e.id) === String(expenseId))) {
-                AppState.expensesHistory = [...(AppState.expensesHistory || []), existing];
-            }
-            this.refreshExpenseViews();
-            UIManager.showToast(isPermissionDenied(error) ? t(EXPENSE_LOCKED_KEY) : t('msg.expenses.failed_delete_expense'), isPermissionDenied(error) ? 4000 : undefined);
-        }
+    /** Leaving the section or the tab abandons a re-entry. */
+    static cancelExpenseEdit() {
+        this.stopReplacing();
     }
 
     static saveAndPrintPersonal() {
@@ -838,11 +764,10 @@ export class ExpensesManager {
         const expense = this.expenseFromForm('personal');
         if (!expense) return;
 
-        const updated = await this.persistExpense(expense);
-        if (updated === null) return;
+        if (await this.persistExpense(expense) === null) return;
         
         UIManager.hapticFeedback('medium');
-        await this.showSavedToast(updated ? 'msg.expenses.personal_expense_updated' : 'msg.expenses.personal_expense_saved', expense, updated);
+        await this.showSavedToast('msg.expenses.personal_expense_saved', expense);
         
         document.getElementById('personalExpenseType').value = '';
         document.getElementById('personalExpenseAmount').value = '';
