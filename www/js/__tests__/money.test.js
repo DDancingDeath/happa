@@ -150,6 +150,9 @@ describe('billLineTotal (BILL-LINES, #80)', () => {
         expect(billLineTotal({ total: 795 }, false)).toBe(795);
         expect(billLineTotal({ grandTotal: 400 }, false)).toBe(400);
         expect(billLineTotal(null, false)).toBe(0);
+    });
+});
+
 describe('small money helpers the mutation run found untested (#160)', () => {
     test('perUnitRate: value ÷ quantity to the paisa; null for no, a negative or a bad quantity or value', () => {
         expect(perUnitRate(100, 3)).toBe(33.33);
