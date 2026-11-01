@@ -27,6 +27,7 @@ import { firstStockTimes, stockKeyFor } from './stock-check.js';
 import { labourCalcText } from './labour.js';
 import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
+import { peopleById } from './audit-changes.js';
 
 /** Business day boundaries are Indian Standard Time (UTC+5:30), whatever the device clock zone. */
 export const IST_OFFSET_MS = 330 * 60000;
@@ -283,6 +284,7 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {Object[]} [input.sessions] - cash sessions (`cashManagement` docs)
  * @param {Object[]} [input.adjustments] - stock adjustments
  * @param {Object[]} [input.auditLogs] - audit log entries (owner devices only)
+ * @param {Object[]} [input.people] - user profiles `{id, name, role}` (owner devices): names on audit-based flags
  * @param {Object[]} [input.catalogue] - items
  * @param {Object} [input.thresholds] - settings/app checkThresholds (+ ANOMALY_DEFAULTS keys)
  * @param {Object} [input.stock] - AppState.stock: stock on hand counts as stock set (purchase older than the loaded history)
@@ -290,7 +292,8 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {number} input.to - exclusive (ms)
  * @returns {Array<Object>} anomalies, one per id, high severity and newest first
  */
-export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], catalogue = [], thresholds = {}, stock = {}, from, to }) {
+export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], people = [], catalogue = [], thresholds = {}, stock = {}, from, to }) {
+    const peopleMap = peopleById(people);
     const t = { ...ANOMALY_DEFAULTS, ...normalizeThresholds(thresholds) };
     Object.keys(ANOMALY_DEFAULTS).forEach(k => {
         const n = Number(thresholds?.[k]);
@@ -443,6 +446,13 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         'bill-voided': (no, amount) => ({ en: `Bill${no} voided (₹${amount})`, hi: `बिल${no} रद्द किया (₹${amount})` }),
         'expense-deleted': (no, amount) => ({ en: `Expense deleted (₹${amount})`, hi: `खर्च मिटाया (₹${amount})` })
     };
+    // An entry's userId is the writer's (rules); its stored userName is whatever the phone sent,
+    // so the name comes from the profile when the owner's scan has the profiles (#85)
+    const logUser = (log) => {
+        const uid = String(log.userId || '');
+        const profile = peopleMap.get(uid);
+        return { userId: uid, user: String(profile?.name || '').trim() || nameOf(uid, log.userName === 'Unknown User' ? '' : log.userName) };
+    };
     (auditLogs || []).forEach(log => {
         const type = AUDIT_TYPES[log?.action];
         if (!type || log.id == null) return;
@@ -453,8 +463,7 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         const no = d.billNumber && d.billNumber !== 'N/A' ? ` #${d.billNumber}` : '';
         add(makeAnomaly(type, {
             refKind: 'audit', refId: log.id, billNumber: d.billNumber && d.billNumber !== 'N/A' ? String(d.billNumber) : null,
-            party: d.customer && d.customer !== 'N/A' ? String(d.customer) : '', userId: String(log.userId || ''),
-            user: nameOf(log.userId, log.userName === 'Unknown User' ? '' : log.userName), amount
+            party: d.customer && d.customer !== 'N/A' ? String(d.customer) : '', ...logUser(log), amount
         }, {
             at: Number(log.timestamp),
             ...AUDIT_TEXT[type](no, amount)
