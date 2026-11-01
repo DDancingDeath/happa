@@ -146,12 +146,11 @@ export class RolesAccessManager {
             UIManager.showToast(t(writeErrorKey(error, 'msg.roles.not_saved')));
             if (error?.code === CHANGED_ELSEWHERE || error?.code === NEEDS_INTERNET) {
                 // Not saved: back to what is stored (the other phone's values when it changed meanwhile)
-                AppState.settings.roleAccess = before;
+                let stored = { roleAccess: before };
                 if (error.code === CHANGED_ELSEWHERE) {
-                    try { this.applyShared(await FirebaseService.loadAppSettings()); } catch (e) { console.warn('Roles & access not read again:', e); }
+                    try { stored = await FirebaseService.loadAppSettings(); } catch (e) { console.warn('Roles & access not read again:', e); }
                 }
-                try { localStorage.setItem('settings', JSON.stringify(AppState.settings)); } catch (_) { /* storage full/blocked */ }
-                AuthManager.applyRoleBasedRestrictions();
+                this.applyShared(stored);
                 this.render();
             }
             return false;

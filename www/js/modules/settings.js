@@ -393,9 +393,7 @@ export class SettingsManager {
         CHECK_THRESHOLD_FIELDS.forEach(([key]) => { typed[key] = document.getElementById(`settingCheck_${key}`)?.value; });
         const next = normalizeThresholds(typed);
         const previous = normalizeThresholds(AppState.settings?.checkThresholds);
-        AppState.settings.checkThresholds = next;
-        storeLocalSettings();
-        CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', next[key]));
+        this.applyChecksLocally(next);
         try {
             await FirebaseService.saveSharedCheckThresholds(next);
             noteSettingsChange('bill_checks', previous, next);
@@ -404,11 +402,7 @@ export class SettingsManager {
         } catch (error) {
             console.error('Saving bill-check limits failed:', error);
             UIManager.showToast(t(writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet')));
-            await this.afterRefusedSave(error, () => {
-                AppState.settings.checkThresholds = previous;
-                storeLocalSettings();
-                CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', previous[key]));
-            });
+            await this.afterRefusedSave(error, () => this.applyChecksLocally(previous));
             return false;
         }
     }
@@ -422,9 +416,7 @@ export class SettingsManager {
         const clean = (id, max) => String(document.getElementById(id)?.value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
         const details = { businessName: clean('settingBusinessName', MAX_BUSINESS_NAME), businessDetails: clean('settingBusinessDetails', MAX_BUSINESS_DETAILS) };
         const previous = { businessName: AppState.settings.shopName || '', businessDetails: AppState.settings.businessDetails || '' };
-        AppState.settings.shopName = details.businessName;
-        AppState.settings.businessDetails = details.businessDetails;
-        storeLocalSettings();
+        this.applyBusinessLocally(details);
         try {
             await FirebaseService.saveBusinessDetails(details);
             noteSettingsChange('business', previous, details);
@@ -434,14 +426,26 @@ export class SettingsManager {
             console.error('Saving business details failed:', error);
             UIManager.showToast(t(writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet')));
             await this.afterRefusedSave(error, () => {
-                AppState.settings.shopName = previous.businessName;
-                AppState.settings.businessDetails = previous.businessDetails;
-                storeLocalSettings();
+                this.applyBusinessLocally(previous);
                 setField('settingBusinessName', 'value', previous.businessName);
                 setField('settingBusinessDetails', 'value', previous.businessDetails);
             });
             return false;
         }
+    }
+
+    /** Bill-check limits on this phone (AppState, local copy, form). */
+    static applyChecksLocally(thresholds) {
+        AppState.settings.checkThresholds = thresholds;
+        storeLocalSettings();
+        CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', thresholds[key]));
+    }
+
+    /** Business name and details on this phone (AppState, local copy). */
+    static applyBusinessLocally({ businessName, businessDetails }) {
+        AppState.settings.shopName = businessName;
+        AppState.settings.businessDetails = businessDetails;
+        storeLocalSettings();
     }
 
     /**
