@@ -232,6 +232,10 @@ as "Also known as". Hence:
   loser's id on a phone with an old directory: all land on the winner.
 - Chains (A → B, then B → C) resolve A to C; the rules refuse merging into a party that is itself
   merged, and merging a party into itself.
+- **A removed phone stays removed.** If the loser has `phoneRemovedAt` (section 10), the merge also
+  writes the winner (the 4th write): `phoneRemovedAt` set and `legacyPhone` deleted, because the
+  loser's opening records with that number now resolve to the winner. The preview says so; an
+  unmerge doesn't undo it. Tested in phase 7.
 
 ### 5.2 Option B: batched backfill of `partyId` on the bills
 
@@ -342,10 +346,13 @@ records with the app's own `buildAging`. It also proposes one party per group:
   public); a private `parties-review.csv` next to the bundle lists the proposals and the
   "possible duplicates" for the owner. Writes: parties + 1 directory doc (a few hundred, far under
   `apply`'s 12,000 budget). Idempotent: the id is `p-` + the first 16 hex digits of SHA-256 of a
-  random salt (made once by `plan`, kept in the private bundle and cursor, never in the app) and the
-  normalised name (the type is not part of it, so a rerun where a name gained the other side keeps
-  its id and just becomes `both`), so a rerun sets the same docs and the id can't be traced back to
-  the name.
+  random salt and the normalised name (the type is not part of it, so a rerun where a name gained
+  the other side keeps its id and just becomes `both`); the id can't be traced back to the name.
+  The salt is made by the first `plan` and kept in the private bundle; every later `plan` (the
+  usual "new plan, `--restart`" before go-live) takes `--salt-from <previous bundle>`, so the ids
+  stay the same, and `apply` deletes migration parties (`p-*`) that are no longer in the bundle
+  (as it already removes opening records whose bill is no longer due), so no orphaned party keeps a
+  name or phone the app can't reach.
 
 **(b) Data already in happa (if go-live comes first).** Owner action "Set up parties" (Settings ›
 Parties, shown while any name on the loaded bills is not claimed by a party, with that count): builds
@@ -424,8 +431,8 @@ with a lawyer or CA). The design keeps the personal data small and removable:
   start with `opening-`, a document-id range in each bill collection, section 7), picks those the
   resolver puts on the erased party or its merged-away parties, and removes the phone (owner
   write, not edit-logged; voided ones through the narrow rules exception in section 6). After the
-  retention period the owner's archive tool (later) can blank the snapshot names too, and then
-  deletes the `ek` hashes.
+  retention period the owner's archive tool (later) can blank the snapshot names too (bills and
+  month snapshots' `customers[].k` / `n`), and only then deletes the `ek` hashes.
 - **Minimisation:** the directory every phone reads has **no phones**; telemetry and TIP already
   drop `customerName`, `phone`, `partyId`; error reports never include party docs (#116); backups
   stay encrypted; exports with phones are owner-only and logged (#103).
@@ -473,7 +480,7 @@ Parties are **core** (dues / udhaar), not aadhat-specific:
 | 5 | Dues by party (MONEY: orchestrator review) | M | Outstanding, Wholesale › Outstanding, party due, FIFO receive, complete-all, cash check, reminders use the resolver; phones by the PHONE rule (`partyPhone`); calculations.md PARTY rewritten + oracle tests (legacy bills still appear) | Issue AC 2; O3 / O4 unchanged on the fixtures |
 | 6 | Statements and Insights by party | M | ST3 picker / ledger (party name, or `pickPartyName` for unlinked names instead of the first spelling), I3 / I4 / I10 / I12, stopped coming, snapshot keys (each bill's own key); oracle tests | Same totals; merged parties show as one |
 | 7 | Parties page + merge tool (MONEY + RULES) | L | Settings › Parties (owner / manager), edit, archive, possible duplicates, owner merge / unmerge with reason, `PARTY_MERGE` / `PARTY_UNMERGE` audit rows; property test "totals equal before and after"; E2E merge flow | Issue AC 3 and 4 |
-| 8 | Migration tool | M | `tools/migrate` proposes parties (private review CSV, counts-only report), `legacyPhone`, `partyId` on opening records, migration E2E checks | Rehearsal on the emulators: same Outstanding totals, one party per group |
+| 8 | Migration tool | M | `tools/migrate` proposes parties (private review CSV, counts-only report), `legacyPhone`, `partyId` on opening records, salted ids reused with `--salt-from`, stale `p-*` parties removed by `apply`, migration E2E checks | Rehearsal on the emulators: same Outstanding totals, one party per group |
 | 9 | DPDP (RULES) | S | Consent tick + notice, remove phone, erase party (with its merged parties, `e` / `ek`), the voided-bill phone exception, owner-guide (en / hi) and security.md section | Rules tests: phone needs consent; erase leaves bills and totals intact |
 | 10 | Core move | – | Part of #208 phase 1b (dues + ageing) and 1e (repositories) | – |
 
