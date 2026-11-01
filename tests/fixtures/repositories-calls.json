@@ -3216,5 +3216,336 @@
     [
       "get"
     ]
+  ],
+  "service.settings": [
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_settings/app)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_settings/app)",
+      {
+        "laborRate": 7,
+        "heavyWeightThreshold": 30,
+        "labourPackageKg": 50,
+        "labourUpdatedAt": 1792557000000,
+        "labourUpdatedBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_settings/app)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_settings/app)",
+      {
+        "checkThresholds": {
+          "rateMultiple": 3
+        },
+        "checksUpdatedAt": 1792557000000,
+        "checksUpdatedBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_settings/app)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_settings/app)",
+      {
+        "businessName": "Shop",
+        "businessDetails": "Road 1",
+        "businessUpdatedAt": 1792557000000,
+        "businessUpdatedBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_settings/app)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_settings/app)",
+      {
+        "tipPolicies": {
+          "BillSave": {
+            "rollback": "off"
+          }
+        },
+        "tipUpdatedAt": 1792557000000,
+        "tipUpdatedBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_settings/app)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_settings/app)",
+      {
+        "roleAccess": {
+          "manager": {
+            "editDays": 3
+          },
+          "staff": {
+            "editDays": 1
+          }
+        },
+        "roleAccessUpdatedAt": 1792557000000,
+        "roleAccessUpdatedBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_settings/app)"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "set",
+      {
+        "checkThresholds": {
+          "rateMultiple": 5
+        },
+        "checksUpdatedAt": 1792557000000,
+        "checksUpdatedBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "doc",
+      "__localWriteBarrier"
+    ],
+    [
+      "get",
+      {
+        "source": "cache"
+      }
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_settings/app)"
+    ],
+    [
+      "tx.update",
+      "ref(dev_settings/app)",
+      {
+        "receipt": {
+          "footer": "Thanks",
+          "qr": false,
+          "lang": "en",
+          "density": "normal",
+          "logo": null
+        },
+        "receiptUpdatedAt": 1792557000000,
+        "receiptUpdatedBy": "u1"
+      }
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_settings/app)"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "service.settings-unread": [
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "service.withdrawal": [
+    [
+      "collection",
+      "dev_withdrawals"
+    ],
+    [
+      "doc"
+    ],
+    [
+      "set",
+      {
+        "amount": 500,
+        "person": "Owner",
+        "purpose": "Home",
+        "date": "2026-10-20",
+        "userId": "u1",
+        "userName": "Owner",
+        "timestamp": 1792557000000
+      }
+    ]
   ]
 }
