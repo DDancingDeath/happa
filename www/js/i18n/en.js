@@ -2469,5 +2469,15 @@ export default {
     'ui.speed.long_tasks': "The screen froze {count} times in the last minute ({ms} ms)",
     'ui.speed.long_tasks_fix': "Switch to another page and back, or open the app again",
     'ui.speed.storage_full': "Phone storage for the app {percent}% full ({used} of {quota} MB)",
-    'ui.speed.storage_full_fix': "Free some space on the phone"
+    'ui.speed.storage_full_fix': "Free some space on the phone",
+    'ui.today.reminders': "Reminders",
+    'ui.today.reminder_collect': "Collect udhaar",
+    'ui.today.reminder_pay': "Pay suppliers",
+    'ui.today.reminder_days': "{count} days",
+    'ui.today.reminder_more': "+{count} more",
+    'ui.today.reminder_open_dues': "Open dues",
+    'ui.today.reminder_rent': "Rent due",
+    'ui.today.reminder_rent_units': "{count} units owe rent · {late} late",
+    'ui.today.reminder_as_of': "As Rentals showed it at {time}",
+    'ui.today.reminder_open_rent': "Open Rent"
 };

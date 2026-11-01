@@ -5,16 +5,20 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatKg, labourCalcText } from '../utils/labour.js';
-import { parseAnyBillDate, todayLocalISO, displayLocale } from '../utils/dates.js';
+import { parseAnyBillDate, todayLocalISO, displayLocale, toLocalISODate, formatTimeOfDay } from '../utils/dates.js';
 import { todaySummary } from '../utils/calc/today.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
 import { sessionForDate } from '../utils/cash-session.js';
 import { AnomaliesManager } from './anomalies.js';
 import { HealthManager } from './health.js';
-import { t, tn } from '../i18n/index.js';
+import { t, tn, getLang } from '../i18n/index.js';
 import { canOpenPage } from '../utils/role-access.js';
 import { on, REFRESH } from '../utils/events.js';
+import { overdueReminder, rentReminder } from '../utils/reminders.js';
+import { billsForKind } from '../utils/party-due.js';
+import { rentalsRole } from '../ui/business-switcher.js';
+import { formatINR } from '../utils/due-reminder.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
@@ -144,6 +148,7 @@ export const DayManager = {
             today: new Date()
         });
         const { labour } = s;
+        this.renderReminders();
 
         // Update UI - Main Stats
         this.updateElement('todayTotalPurchases', formatCurrency(s.purchases));
@@ -237,6 +242,51 @@ export const DayManager = {
             const off = document.getElementById(`todayCh${k}WrittenOffRow`);
             if (off) off.hidden = !(c.writtenOff > 0);
         });
+    },
+
+    /**
+     * Reminders (#86): REM-1 who to collect from / pay (dues older than 30 days,
+     * Outstanding's chase-first order) and REM-2 rent still due as Rentals last
+     * showed it this month on this phone. Nothing is read from the server.
+     */
+    renderReminders(now = new Date()) {
+        const host = document.getElementById('todayReminders');
+        if (!host) return;
+        const role = AppState.userRole;
+        const canDue = !role || canOpenPage('due', role, AppState.settings?.roleAccess);
+        const canWholesale = this.canSeeWholesale();
+        const e = Helpers.escapeHtml;
+        const party = (p) => `<li class="today-reminder-party"><span>${e(p.name || t('ui.reports.unknown'))}</span>`
+            + ` <strong>${e(formatINR(p.total))}</strong>`
+            + (p.oldestDays !== null && p.oldestDays !== undefined ? ` <span class="today-reminder-days">${e(t('ui.today.reminder_days', { count: p.oldestDays }))}</span>` : '')
+            + '</li>';
+        const block = (kind, r, route) => `<div class="today-reminder" data-reminder="${kind}">`
+            + `<div class="today-reminder-head"><strong>${e(t(`ui.today.reminder_${kind}`))}</strong> ${e(formatINR(r.total))}</div>`
+            + `<ul>${r.parties.map(party).join('')}</ul>`
+            + (r.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: r.more }))}</div>` : '')
+            + `<button type="button" class="filter-btn" onclick="window.app.nav.showTab('${route}', event)">${e(t('ui.today.reminder_open_dues'))}</button></div>`;
+        const parts = [];
+        if (canDue || canWholesale) {
+            const receivables = [...(canDue ? AppState.retailSalesHistory || [] : []), ...(canWholesale ? billsForKind(AppState, 'wholesale') : [])];
+            const collect = overdueReminder(receivables, { today: now });
+            if (collect.parties.length) parts.push(block('collect', collect, canDue ? 'due' : 'wholesale-sales'));
+        }
+        if (canDue) {
+            const pay = overdueReminder(AppState.purchaseHistory || [], { today: now });
+            if (pay.parties.length) parts.push(block('pay', pay, 'due'));
+        }
+        if (rentalsRole(AppState)) {
+            let rent = null;
+            try { rent = rentReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { rent = null; }
+            if (rent) {
+                parts.push(`<div class="today-reminder" data-reminder="rent"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_rent'))}</strong> ${e(formatINR(rent.due))}</div>`
+                    + `<div>${e(t('ui.today.reminder_rent_units', { count: rent.dueUnits, late: rent.late }))}</div>`
+                    + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatTimeOfDay(rent.at, { lang: getLang() }) }))}</div>`
+                    + `<button type="button" class="filter-btn" onclick="window.app.rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div>`);
+            }
+        }
+        host.hidden = parts.length === 0;
+        host.innerHTML = parts.length ? `<h3 class="today-reminders-title">${e(t('ui.today.reminders'))}</h3>${parts.join('')}` : '';
     },
 
     /** Wholesale cards and bills only for roles that may open the Wholesale page. */

@@ -2469,5 +2469,15 @@ export default {
     'ui.speed.long_tasks': "पिछले एक मिनट में स्क्रीन {count} बार अटकी ({ms} ms)",
     'ui.speed.long_tasks_fix': "दूसरे पेज पर जाकर लौटें, या ऐप फिर खोलें",
     'ui.speed.storage_full': "ऐप की जगह {percent}% भरी ({quota} MB में से {used} MB)",
-    'ui.speed.storage_full_fix': "फ़ोन में थोड़ी जगह खाली करें"
+    'ui.speed.storage_full_fix': "फ़ोन में थोड़ी जगह खाली करें",
+    'ui.today.reminders': "याद दिलाना",
+    'ui.today.reminder_collect': "उधार वसूलें",
+    'ui.today.reminder_pay': "देनदारी चुकाएँ",
+    'ui.today.reminder_days': "{count} दिन",
+    'ui.today.reminder_more': "+{count} और",
+    'ui.today.reminder_open_dues': "बकाया खोलें",
+    'ui.today.reminder_rent': "किराया बाकी",
+    'ui.today.reminder_rent_units': "{count} यूनिट का किराया बाकी · {late} देर से",
+    'ui.today.reminder_as_of': "किराया पेज पर {time} बजे जैसा दिखा",
+    'ui.today.reminder_open_rent': "किराया खोलें"
 };
