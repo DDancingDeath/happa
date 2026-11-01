@@ -143,10 +143,12 @@ describe('roll-forward', () => {
     test('#147: a bill of those days entered, edited or voided since a time; others and older changes do not count', () => {
         const from = istDayStartMs('2026-08-31');
         const to = istDayStartMs('2026-09-07');
-        const since = istMonthStartMs('2026-10') - 86400000;
+        const since = to;
         const sep2 = istDayStartMs('2026-09-02') + 3600000;
         const changed = (b) => billChangedSince([[b]], from, to, since);
         expect(changed({ timestamp: sep2, enteredAt: sep2 })).toBe(false);
+        // entered after the week ended (Mon 7 Sep), still in time for September's roll-forwards: reloaded anyway
+        expect(changed({ timestamp: sep2, enteredAt: to + 3600000 })).toBe(true);
         expect(changed({ timestamp: sep2, enteredAt: OCT15 })).toBe(true);
         expect(changed({ timestamp: sep2, enteredAt: sep2, editedAt: new Date(OCT15).toISOString() })).toBe(true);
         expect(changed({ timestamp: sep2, voidedAt: { seconds: OCT15 / 1000, nanoseconds: 0 } })).toBe(true);

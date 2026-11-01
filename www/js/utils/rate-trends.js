@@ -307,12 +307,6 @@ export function rollForwardWeekGap(win, loadedFrom) {
     return start < loadedFrom ? start : null;
 }
 
-/**
- * When the window's first week left the window (ms): the 1st of the month after `fromMonth`,
- * a day early for a roll-forward that hadn't run yet. Changes from then on aren't in its stats.
- */
-export const weekGapSince = (fromMonth) => istMonthStartMs(addMonths(fromMonth, 1)) - DAY_MS;
-
 /** Latest time (ms) a bill was entered, edited or voided; NaN when unknown. */
 function lastChangeMs(b) {
     const v = b?.voidedAt;
