@@ -18,7 +18,7 @@ import { buildTeamDirectory } from '../../../www/js/utils/team-directory.js';
 
 export const BUNDLE_FORMAT = 'aadhat-migration-bundle-v1';
 export const OLD_PROJECT_ID = 'aadhat-management';
-/** Must equal CLIENT_VERSION in www/js/firebase/firestore-service.js (a test checks). */
+/** Must equal CLIENT_VERSION in www/js/firebase/db.js (a test checks). */
 export const CLIENT_VERSION = 5;
 export const SPARK_DAILY_WRITES = 20000;
 /** Writes kept free for the shop's own first day in the new project. */
