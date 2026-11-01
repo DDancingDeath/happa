@@ -1,13 +1,35 @@
 /**
  * @fileoverview Repository of user profiles (`users/{uid}`, docs/architecture.md
  * phase 4) for sign-in and registration: the profile read (cache first, or from
- * the server) and the pending profile made on registration. The Users admin page
- * goes through FirebaseService (loadUsers, updateUser…).
+ * the server) and the pending profile made on registration; and the team
+ * directory `settings/team` (#87). The Users admin page goes through
+ * FirebaseService (loadUsers, updateUser…).
  * @module firebase/repos/users
  */
 
 const userRef = (uid) => firebase.firestore()
     .collection(window.getCollection ? window.getCollection('users') : 'users').doc(uid);
+
+const teamRef = () => firebase.firestore()
+    .collection(window.getCollection ? window.getCollection('settings') : 'settings').doc('team');
+
+/**
+ * The team directory (names and roles; owner and managers may read it).
+ * @returns {Promise<Object|null>} null when it was never written
+ */
+export async function readTeamDirectory() {
+    const doc = await teamRef().get();
+    return doc.exists ? doc.data() : null;
+}
+
+/**
+ * Replaces the team directory (owner only in the rules).
+ * @param {{people: Object}} directory
+ * @returns {Promise<void>}
+ */
+export function writeTeamDirectory(directory) {
+    return teamRef().set({ people: directory.people, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+}
 
 /**
  * One user's profile; read() reads it (with the same document reference each time).

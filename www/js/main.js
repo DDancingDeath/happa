@@ -177,6 +177,7 @@ function refreshForLanguage(lang) {
         money: () => money?.render(),
         insights: () => insights?.render(),
         statements: () => { statements?.renderControls(); statements?.render(); },
+        billing: () => BillingManager.refreshForLanguage(),
         anomalies: () => AnomaliesManager.refreshForLanguage(),
         stock: () => StockManager.refreshForLanguage(),
         admin: () => { AdminManager.renderTabs(); AdminManager.renderContent(); },
@@ -467,11 +468,13 @@ async function initializeUserData() {
         ExpensesManager.renderexpensesHistory();
 
         // TIP AppStart (#217): the first screen is usable now; the auto-save
-        // restore prompt below waits for the user and must not count as start time.
+        // restore banner below must not count as start time.
         appStart.complete();
         
         // Check for auto-saved bill
         await BillingManager.checkAutoSave();
+        BillingManager.renderBillNumber();
+        BillingManager.focusFirstItem();
         if (outdatedBlocked) {
             notShown();
             blockOutdatedApp();
@@ -501,6 +504,13 @@ async function initializeUserData() {
 
         // Daily anomaly scan (#187): owner/manager devices, once per day, over loaded data
         AnomaliesManager.scheduleDailyScan();
+
+        // Team directory (#87): managers read names and roles from it; once a day the owner's phone
+        // rebuilds it from the profiles when they differ (late, so it never slows the first screens)
+        if (AppState.userRole === 'owner') {
+            setTimeout(() => FirebaseService.ensureTeamDirectory()
+                .catch(e => console.warn('Team directory not checked:', e?.code || e)), 180000);
+        }
 
         // Rate trends (#65): roll monthly rate stats forward from loaded bills (owner/manager)
         if (AppState.userRole === 'owner' || AppState.userRole === 'manager') {
@@ -547,6 +557,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             } else {
                 // Clean up Firebase listeners when user signs out
                 FirebaseService.cleanup();
+                FirebaseService.forgetPeopleCaches();
                 NotificationsManager.stop();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
@@ -892,7 +903,8 @@ window.app = {
         
         // Auto-save management
         triggerAutoSave: () => BillingManager.triggerAutoSave(),
-        checkAutoSave: () => BillingManager.checkAutoSave()
+        checkAutoSave: () => BillingManager.checkAutoSave(),
+        resolveRecovery: (restore) => BillingManager.resolveRecovery(restore)
     },
     
     // Purchase (direct access to PurchaseManager)
@@ -1176,6 +1188,11 @@ window.app = {
         clearAllData: () => SettingsManager.clearAllData(),
         toggleBluetoothPrinter: () => SettingsManager.toggleBluetoothPrinter(),
         togglePrintPreview: () => SettingsManager.togglePrintPreview(),
+        saveReceiptOptions: () => SettingsManager.saveReceiptOptions(),
+        pickReceiptLogo: () => SettingsManager.pickReceiptLogo(),
+        chooseReceiptLogo: (input) => SettingsManager.chooseReceiptLogo(input),
+        removeReceiptLogo: () => SettingsManager.removeReceiptLogo(),
+        previewReceipt: () => SettingsManager.previewReceipt(),
         scanBluetoothDevices: () => SettingsManager.scanBluetoothDevices(),
         connectToPrinter: (id, name) => SettingsManager.connectToPrinter(id, name),
         disconnectPrinter: () => SettingsManager.disconnectPrinter(),
@@ -1230,6 +1247,7 @@ window.app = {
         saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
         approveUser: (userId) => AdminManager.approveUser(userId),
         rejectUser: (userId) => AdminManager.rejectUser(userId),
+        restoreUser: (userId, userName) => AdminManager.restoreUser(userId, userName),
         showChangeRole: (userId, userName, currentRole) => AdminManager.showChangeRole(userId, userName, currentRole),
         resetUserPassword: (userId, email) => AdminManager.resetUserPassword(userId, email),
         deleteUser: (userId, userName) => AdminManager.deleteUser(userId, userName),

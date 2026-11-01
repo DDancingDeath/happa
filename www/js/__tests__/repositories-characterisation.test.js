@@ -182,8 +182,9 @@ describe('bill drafts, auto-save and item frequency (billing.js)', () => {
 
     test('auto-save found on open and declined: read, then delete', async () => {
         fake.seed('dev_autoSaves', [{ id: 'u1', mode: 'purchase', purchase: { items: [] }, sale: { items: [] } }]);
-        jest.spyOn(window, 'confirm').mockReturnValue(false);
         await BillingManager.checkAutoSave();
+        expect(fake.raw('dev_autoSaves').has('u1')).toBe(true);
+        await BillingManager.resolveRecovery(false);
         pin('autosave.check-declined', rec.log);
         expect(fake.raw('dev_autoSaves').has('u1')).toBe(false);
     });

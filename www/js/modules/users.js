@@ -10,7 +10,8 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t } from '../i18n/index.js';
-import { UserAdmin, isDisabledProfile } from '../services/user-admin.js';
+import { UserAdmin, isRemovedProfile, logUserAction } from '../services/user-admin.js';
+import { AuditService } from '../services/audit.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 
@@ -36,7 +37,7 @@ export class UsersManager {
             const activeUsers = [];
             
             users.forEach(userData => {
-                if (isDisabledProfile(userData)) return;
+                if (isRemovedProfile(userData)) return;
                 if (userData.status === 'pending' || !userData.role) {
                     pendingUsers.push(userData);
                 } else {
@@ -154,6 +155,7 @@ export class UsersManager {
                 status: 'active',
                 approvedAt: FirebaseService.serverTimestamp()
             });
+            logUserAction(AuditService.ACTIONS.APPROVE_USER, { targetUserId: userId, role });
             
             UIManager.hapticFeedback('medium');
             UIManager.showToast(t('msg.common.user_approved_as', { roleLabel: Helpers.roleLabel(role) }));
@@ -165,19 +167,12 @@ export class UsersManager {
     }
 
     static async rejectUser(userId) {
-        const confirmed = await UIManager.showModal(t('msg.users.are_sure_want_reject_registration'), t('msg.users.confirm'), true);
-        if (!confirmed) return;
-        
-        try {
-            await FirebaseService.deleteUserProfile(userId);
-            
+        const rejected = await UserAdmin.rejectUser(userId, 'msg.users.are_sure_want_reject_registration');
+        if (rejected) {
             UIManager.hapticFeedback('light');
-            UIManager.showToast(t('msg.users.registration_rejected'));
             this.loadUsers();
-        } catch (error) {
-            console.error('Error rejecting user:', error);
-            UIManager.showModal(t('msg.common.failed_reject_user'));
         }
+        return rejected;
     }
 
     static async showChangeRoleDialog(userId, userName, currentRole) {
@@ -214,6 +209,7 @@ export class UsersManager {
                 role: newRole,
                 updatedAt: FirebaseService.serverTimestamp()
             });
+            logUserAction(AuditService.ACTIONS.CHANGE_USER_ROLE, { targetUserId: userId, to: newRole });
             
             UIManager.hapticFeedback('medium');
             UIManager.showToast(t('msg.users.role_updated', { roleLabel: Helpers.roleLabel(newRole) }));

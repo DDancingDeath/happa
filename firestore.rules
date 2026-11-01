@@ -947,7 +947,9 @@ service cloud.firestore {
         || (base in ['notifications', 'drafts']
             ? (single && resource == null) || resource.data.get('userId', null) == request.auth.uid
           : base == 'autoSaves' ? docId == request.auth.uid
-          : base == 'settings' ? single && docId == 'app'
+          // settings/team: names and roles of the team (owner-written) for managers' App health
+          // and notification fan-out, so they never read other profiles (#87)
+          : base == 'settings' ? single && (docId == 'app' || (docId == 'team' && isManagerIn(u)))
           : base == 'withdrawals' ? roleSeesMoneyPages(u)
           : base == 'personalExpenses' ? personalOn(u)
           : base == 'cashSessions' ? isManagerIn(u)
@@ -1010,18 +1012,27 @@ service cloud.firestore {
     // --- user profile rules (shared by users and dev_users) ---
 
     function canReadProfile(usersCol, userId) {
-      // Own profile (pending/rejected users too, at login); owner and managers read
-      // everyone (Admin, Roles & access, App health). Members never read others (#57).
-      return (isSignedIn() && request.auth.uid == userId) || isManagerIn(usersCol);
+      // Own profile (pending/rejected users too, at login); only the owner reads
+      // everyone (Admin, Roles & access). Managers read names and roles from
+      // settings/team instead (#87); members never read others (#57).
+      return (isSignedIn() && request.auth.uid == userId) || isOwnerIn(usersCol);
     }
 
     function canCreateProfile(userId) {
-      // Self-registration only, and always as a pending staff member.
+      // Self-registration only, always as a pending staff member, with the fields
+      // registration writes (repos/users.js createProfileIfMissing). A removed or
+      // rejected person keeps their profile, so they can't come back as pending (#84).
+      let d = request.resource.data;
       return isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.get('status', '') == 'pending'
-        && request.resource.data.get('role', '') == 'staff'
-        && !('rentRole' in request.resource.data);
+        && d.keys().hasOnly(['name', 'email', 'role', 'status', 'createdAt'])
+        && d.get('status', '') == 'pending'
+        && d.get('role', '') == 'staff'
+        && d.get('name', '') is string && d.get('name', '').size() <= 100
+        && d.get('email', '') is string && d.get('email', '').size() <= 254
+        && request.auth.token.get('email', '') is string
+        && d.get('email', '').lower() == request.auth.token.get('email', '').lower()
+        && d.get('createdAt', null) == request.time;
     }
 
     // An owner can't change their own role/status, nor demote or remove another
@@ -1031,12 +1042,17 @@ service cloud.firestore {
         || (request.auth.uid != userId && resource.data.get('role', '') != 'owner');
     }
 
+    // Users change only their own name (Settings › account) and the list of their
+    // phones (first sign-in on a new phone, #124); never while removed or rejected.
     function canUpdateProfile(usersCol, userId) {
+      let d = request.resource.data;
       return (isOwnerIn(usersCol) && ownerProfileGuardOk(userId))
         || (isSignedIn()
             && request.auth.uid == userId
-            && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['role', 'status', 'approvedAt', 'approvedBy', 'rentRole']));
+            && !(resource.data.get('status', '') in ['disabled', 'rejected'])
+            && d.diff(resource.data).affectedKeys().hasOnly(['name', 'devices'])
+            && d.get('name', '') is string && d.get('name', '').size() <= 100
+            && (!('devices' in d) || (d.devices is list && d.devices.size() <= 10)));
     }
 
     // --- audit logs (#55) and telemetry (#122): append-only ---

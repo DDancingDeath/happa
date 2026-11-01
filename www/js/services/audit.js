@@ -49,6 +49,12 @@ export class AuditService {
         CLEAR_DATA: 'CLEAR_DATA',
         // Owner changed Roles & access (#84)
         CHANGE_ROLE_ACCESS: 'CHANGE_ROLE_ACCESS',
+        // Owner actions on accounts (#85, #84)
+        APPROVE_USER: 'APPROVE_USER',
+        REJECT_USER: 'REJECT_USER',
+        CHANGE_USER_ROLE: 'CHANGE_USER_ROLE',
+        REMOVE_USER: 'REMOVE_USER',
+        RESTORE_USER: 'RESTORE_USER',
         
         // Auth
         LOGIN: 'LOGIN',
