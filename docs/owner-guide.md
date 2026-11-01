@@ -200,6 +200,9 @@ Separate from the shop: rent money never counts in shop figures.
 | Advance (RENT-16) | Paying more than a month's due first pays the unpaid months, oldest first (the app shows the split before saving). What is left after the latest month is an advance that pays next month's rent as soon as that month starts (no receipt for it; the payment's receipt shows the advance). On a change of unit it pays the new unit's first month; if the tenant moves out with an advance left, it is added to their deposit. |
 | Expenses and net (RENT-17, RENT-18) | Properties › 💸 Expenses: repairs, property tax, maintenance, insurance, broker or other paid for a property (or one unit). The Rent page shows this month's expenses and the net (collected − expenses) in all and per property. Anyone with a rentals role adds one; only you change or remove one. Not Aadhat cash. |
 | Deposits held (RENT-15) | Tenants › Deposits held: every deposit still held and their total. |
+| Agreement (on a tenant) | Tenants › 📄 Agreement (you and rentals managers): the month the agreement ends and the notice period in months. The start month and the yearly increase % are the lease's own. The tenant row shows "agreement till …". |
+| Rent agreements and increases on Today (REM-4) | People with a rentals role see on Today the agreements ending this month or in the next 2 months (or already ended), with the month the notice must be given by, and the rent increases due. As the Rent page last saw them on this phone this month. |
+| Yearly report (RENT-19) | Properties › 📊 Yearly report (you and rentals managers): for each property and month of the financial year (or a calendar year): rent, collected, still due, expenses (of which property tax) and net (collected − expenses), with the year's total. **Download CSV** is for you only; give it to your accountant for the rent received and the property tax. |
 
 ### Settings, Admin, App health
 

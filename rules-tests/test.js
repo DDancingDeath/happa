@@ -3377,6 +3377,34 @@ function defineRentSuite(prefix) {
         await assertFails(db('rentManager').collection(c('rent_tenants')).doc('T').set({ name: 'A', phone: '', notes: '', hack: 1, ...m }));
     });
 
+    t('agreement terms (#157 phase 3): owner / rentals manager change the end month and notice; members cannot; shape checked', async () => {
+        await seed('rent_leases', 'L1', lease());
+        await seed('rent_units', 'U1', unit());
+        const terms = (uid, over = {}) => ({ agreementEnd: istMonth(10), noticeMonths: 1, updatedAt: 2, updatedBy: uid, ...over });
+        await assertFails(leaseRef('rentMember').update(terms('rentMember')));
+        await assertFails(leaseRef('rentManager').update(terms('rentManager', { agreementEnd: istMonth(-3) })));
+        await assertFails(leaseRef('rentManager').update(terms('rentManager', { noticeMonths: 13 })));
+        await assertFails(leaseRef('rentManager').update(terms('rentManager', { noticeMonths: 1.5 })));
+        await assertFails(leaseRef('rentManager').update(terms('rentManager', { agreementEnd: '2027-13' })));
+        await assertSucceeds(leaseRef('rentManager').update(terms('rentManager')));
+        await assertSucceeds(leaseRef('legacyOwner').update(terms('legacyOwner', { agreementEnd: null, noticeMonths: 0 })));
+        // a member still edits the other lease fields while the terms stay as they are
+        await assertSucceeds(leaseRef('rentMember').update({ dueDay: 12, updatedAt: 3, updatedBy: 'rentMember' }));
+        // a new lease may not carry them (set afterwards by the owner or a manager)
+        await seed('rent_tenants', 'T1', { name: 'Ram', phone: '', notes: '', ...meta('legacyOwner') });
+        await seed('rent_units', 'U2', unit({ label: 'G2', leaseId: null }));
+        const moveIn = (extra) => {
+            const f = db('legacyOwner');
+            const b = f.batch();
+            b.set(f.collection(c('rent_leases')).doc('L2'), lease({ unitId: 'U2', ...extra }));
+            b.update(f.collection(c('rent_units')).doc('U2'), { leaseId: 'L2', updatedAt: 2, updatedBy: 'legacyOwner' });
+            return b.commit();
+        };
+        await assertFails(moveIn({ agreementEnd: istMonth(10) }));
+        await assertFails(moveIn({ noticeMonths: 2 }));
+        await assertSucceeds(moveIn({}));
+    });
+
     t('charges: one month per write, in order, at the lease rent, never skipping or in the future', async () => {
         await seed('rent_leases', 'L1', lease({ startMonth: PREV2 }));
         await assertFails(chargeRef('rentMember', PREV2).set(charge(PREV2, { updatedBy: 'rentMember' })));
