@@ -1761,6 +1761,7 @@ export default {
     'ui.settings.voice_billing_toggle': "Fill a bill line by speaking",
     'ui.settings.voice_billing_unavailable': "Not available on this device.",
     'msg.nav.refreshed': "Updated",
+    'msg.nav.page_not_loaded': "This page could not be opened. Check the internet and try again.",
     'ui.today.ch_paid_later': "Paid later today",
     'ui.today.ch_written_off': "Written off",
     'ui.history.cash_at_save': "Cash at save:",

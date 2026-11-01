@@ -5,6 +5,7 @@ import { AppState } from '../utils/state.js';
 import { canOpenTab, canOpenPage, canOpenSection, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
+import { TemplateLoader } from '../utils/template-loader.js';
 
 // Routes: every id that showTab() accepts besides plain page ids (the .tab element id).
 //   tab     page element to show            section  sub-view handed to the page (see showTabFromNav)
@@ -195,6 +196,12 @@ const NavigationManager = {
             event.preventDefault();
         }
         const route = resolveRoute(tabId);
+        if (!opts.pageReady) this.navSeq++;
+        // A page loaded on first visit (#66): put it in, then show it as usual
+        if (!opts.pageReady && !refusal(route) && TemplateLoader.pageMissing(route.tab)) {
+            this.setMenuOpen(false);
+            return this.afterPageLoad(route.tab, () => this.showTabFromNav(tabId, null, { ...opts, pageReady: true }));
+        }
         if (refusal(route)) {
             UIManager.showToast(this.refusedMessage(tabId));
             this.showTabFromNav(this.refusedTabFallback(tabId), null, opts);
@@ -326,6 +333,11 @@ const NavigationManager = {
     // Show tab
     showTab(tabId, evt, opts = {}) {
         const route = resolveRoute(tabId);
+        if (!opts.pageReady) this.navSeq++;
+        if (!opts.pageReady && !refusal(route) && TemplateLoader.pageMissing(route.tab)) {
+            const target = evt?.currentTarget ? { currentTarget: evt.currentTarget } : undefined;
+            return this.afterPageLoad(route.tab, () => this.showTab(tabId, target, { ...opts, pageReady: true }));
+        }
         // Refused for this role (#84, F23), also for direct navigation
         if (refusal(route)) {
             UIManager.showToast(this.refusedMessage(tabId));
@@ -353,6 +365,26 @@ const NavigationManager = {
     },
 
     currentTab: null,
+
+    /** Counts navigations, so a page that finishes loading late doesn't override a newer one. */
+    navSeq: 0,
+
+    /**
+     * Puts a page loaded on first visit in (#66), then runs `show` unless the user
+     * went elsewhere or signed out meanwhile; a page that could not be fetched keeps
+     * the current one and says so. Resolves true only when the page was shown.
+     */
+    afterPageLoad(tab, show) {
+        const seq = this.navSeq;
+        return TemplateLoader.ensurePage(tab).then(ok => {
+            if (seq !== this.navSeq || !AppState.currentUser) return false;
+            if (!ok) {
+                UIManager.showToast(t('msg.nav.page_not_loaded'), 'error');
+                return false;
+            }
+            return show() !== false;
+        });
+    },
 
     // A page's own tab buttons (e.g. Reports › Overview) record the route so Back returns to it
     noteRoute(routeId) {

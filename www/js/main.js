@@ -46,7 +46,7 @@ import { NotificationsManager } from './modules/notifications.js';
 import { markStartup, noteStartup, logStartupTimings } from './utils/startup-timings.js';
 
 // Import template loader utility
-import { TemplateLoader, SHELL_TEMPLATES, PAGE_TEMPLATES } from './utils/template-loader.js';
+import { TemplateLoader, SHELL_TEMPLATES, EAGER_PAGES } from './utils/template-loader.js';
 import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { SecurityMonitor } from './services/security-monitor.js';
@@ -185,12 +185,32 @@ function scheduleTipNumberChecks() {
 }
 
 // Load and inject HTML templates from separate .html files. The login screen
-// and app shell go in first; the pages load while Firebase restores the
-// sign-in (#66), and nothing that uses them runs before pagesReady.
+// and app shell go in first; Billing, Today and Cash load while Firebase restores
+// the sign-in, and nothing that uses them runs before pagesReady. Every other
+// page is put in the first time it is opened (#66, TemplateLoader.ensurePage).
 let pagesReady = Promise.resolve();
+
+/** What startup renders into a page that is put in later, run when it is added. */
+const PAGE_ADDED = {
+    items: () => ItemsManager.renderItems(),
+    'wholesale-sales': () => WholesaleSalesManager.loadItemsDropdown(),
+    expenses: () => { ExpensesManager.updateExpensePersonOptions(); ExpensesManager.renderexpensesHistory(); },
+    settings: () => {
+        PrinterService.updateStatus();
+        VoiceMic.apply();
+        const swipe = document.getElementById('settingSwipeTabs');
+        if (swipe) swipe.checked = !!BottomNav.swipeOn;
+    }
+};
+TemplateLoader.onPageAdded = (name, el) => {
+    applyTranslations(el);
+    if (!AppState.currentUser) return;
+    try { PAGE_ADDED[name]?.(); } catch (e) { console.error(`First render of ${name} failed:`, e); }
+};
+
 async function injectTemplates() {
     TemplateLoader.injectShell(await TemplateLoader.loadTemplates(SHELL_TEMPLATES));
-    const pages = TemplateLoader.loadTemplates(PAGE_TEMPLATES);
+    const pages = TemplateLoader.loadTemplates(EAGER_PAGES);
     document.documentElement.lang = getLang();
     applyTranslations(document);
     pagesReady = pages.then(templates => {
@@ -369,7 +389,9 @@ function openLaunchShortcut() {
     if (!shortcut) return;
     window.history.replaceState(window.history.state, '', withoutShortcut(window.location.pathname, window.location.search, window.location.hash));
     if (shortcut.tab !== 'billing') {
-        if (NavigationManager.showTab(shortcut.tab) !== false) NavigationManager.setActiveNavLink(shortcut.tab);
+        const shown = NavigationManager.showTab(shortcut.tab);
+        if (shown && typeof shown.then === 'function') shown.then(ok => { if (ok) NavigationManager.setActiveNavLink(shortcut.tab); });
+        else if (shown !== false) NavigationManager.setActiveNavLink(shortcut.tab);
         return;
     }
     if (shortcut.mode) BillingManager.switchMode(shortcut.mode, { currentTarget: document.getElementById(shortcut.mode === 'sale' ? 'saleModeBtn' : 'purchaseModeBtn') });
@@ -1184,10 +1206,15 @@ window.app = {
         // Tap on a bill's "Already owes" line (#166); wholesale dues live on the Wholesale page
         showParty: (kind, name) => {
             const tab = kind === 'wholesale' ? 'wholesale-sales' : 'due';
-            NavigationManager.setActiveNavLink(tab);
-            NavigationManager.showTab(tab);
-            if (kind === 'wholesale') WholesaleSalesManager.showOutstandingParty(name);
-            else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : kind === 'sale' ? 'sale' : 'retail', name);
+            const open = () => {
+                NavigationManager.setActiveNavLink(tab);
+                if (kind === 'wholesale') WholesaleSalesManager.showOutstandingParty(name);
+                else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : kind === 'sale' ? 'sale' : 'retail', name);
+            };
+            // A page loaded on first visit (#66) is put in first
+            const shown = NavigationManager.showTab(tab);
+            if (shown && typeof shown.then === 'function') return shown.then(ok => { if (ok) open(); });
+            if (shown !== false) open();
         }
     },
     

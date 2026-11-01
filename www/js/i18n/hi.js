@@ -1761,6 +1761,7 @@ export default {
     'ui.settings.voice_billing_toggle': "बोलकर बिल की लाइन भरें",
     'ui.settings.voice_billing_unavailable': "इस डिवाइस पर उपलब्ध नहीं है।",
     'msg.nav.refreshed': "ताज़ा हो गया",
+    'msg.nav.page_not_loaded': "यह पेज नहीं खुला। इंटरनेट देखकर फिर कोशिश करें।",
     'ui.today.ch_paid_later': "आज बाद में भुगतान",
     'ui.today.ch_written_off': "माफ़ किया",
     'ui.history.cash_at_save': "बिल के समय नकद:",
