@@ -21,7 +21,7 @@ import { auditActionLabel } from '../i18n/localize.js';
 import { settingsView } from '../utils/settings-sections.js';
 import { BusinessSwitcher } from '../ui/business-switcher.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
-import { forgetPrinter, normalizePrinterSettings, PAPER_WIDTHS, setPaperWidth, usePrinter } from '../utils/printer-settings.js';
+import { forgetPrinter, normalizePrinterSettings, normalizeReceiptOptions, PAPER_WIDTHS, setPaperWidth, usePrinter } from '../utils/printer-settings.js';
 import { AuthManager, authErrorMessage } from '../auth/authentication.js';
 import { UsageView } from '../ui/usage-view.js';
 
@@ -560,29 +560,33 @@ export class SettingsManager {
     }
 
     /**
-     * Saves the printed-bill choices for every phone (settings/app.receipt).
-     * @param {Object} next - { footer, qr, lang, density, logo }
-     * @returns {Promise<boolean>}
+     * Saves printed-bill choices for every phone (settings/app.receipt): only the fields
+     * in `patch` change; the rest stay as saved now (see FirebaseService.saveReceiptSettings).
+     * @param {Object} patch - changed fields of { footer, qr, lang, density, logo }
+     * @param {{base?: Object, onlyIfMissing?: boolean}} [options]
+     * @returns {Promise<boolean>} true when saved
      */
-    static async saveSharedReceipt(next) {
+    static async saveSharedReceipt(patch, { base = PrinterService.receipt(), onlyIfMissing = false } = {}) {
         if (!this.canEditShop()) {
             UIManager.showToast(t('ui.settings.shop_view_only'));
             this.renderReceiptOptions();
             return false;
         }
         const before = PrinterService.receipt();
-        const previous = PrinterService.sharedReceipt();
-        const saved = PrinterService.setSharedReceipt(next);
-        this.renderReceiptOptions();
         const audit = (r) => ({ footer: r.footer, qr: r.qr, lang: r.lang, density: r.density, logo: r.logo ? 'set' : 'none' });
         try {
-            await FirebaseService.saveReceiptSettings(saved);
-            noteSettingsChange('receipt', audit(before), audit(saved));
+            const { receipt, applied } = await FirebaseService.saveReceiptSettings(patch, { base, onlyIfMissing });
+            PrinterService.setSharedReceipt(receipt);
+            this.renderReceiptOptions();
+            if (!applied) {
+                UIManager.showToast(t('msg.settings.receipt_already_shared'));
+                return false;
+            }
+            noteSettingsChange('receipt', audit(before), audit(PrinterService.receipt()));
             UIManager.showToast(t('msg.admin.settings_saved_everyone'));
             return true;
         } catch (error) {
             console.error('Saving the printed bill settings failed:', error);
-            PrinterService.setSharedReceipt(previous);
             this.renderReceiptOptions();
             UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
             return false;
@@ -591,19 +595,22 @@ export class SettingsManager {
 
     static saveReceiptOptions() {
         const val = (id) => document.getElementById(id)?.value;
-        return this.saveSharedReceipt({
-            ...PrinterService.receipt(),
+        const current = PrinterService.receipt();
+        const typed = normalizeReceiptOptions({
             footer: val('settingReceiptFooter') || '',
             qr: !!document.getElementById('settingReceiptQr')?.checked,
             lang: val('settingReceiptLang'),
             density: val('settingReceiptDensity')
         });
+        const patch = Object.fromEntries(Object.entries(typed).filter(([key, value]) => value !== current[key]));
+        if (!Object.keys(patch).length) return Promise.resolve(false);
+        return this.saveSharedReceipt(patch);
     }
 
-    /** Shares this phone's own receipt choices and logo (from before they were shared) with every phone. */
+    /** Shares this phone's own receipt choices and logo (from before they were shared) with every phone, unless some already are. */
     static shareOwnReceipt() {
         const own = PrinterService.ownReceipt();
-        return own ? this.saveSharedReceipt(own) : Promise.resolve(false);
+        return own ? this.saveSharedReceipt({}, { base: own, onlyIfMissing: true }) : Promise.resolve(false);
     }
 
     /**
@@ -613,9 +620,11 @@ export class SettingsManager {
      */
     static async offerReceiptShare() {
         if (PrinterService.sharedReceipt() || !this.canEditShop() || !PrinterService.ownReceipt()) return false;
-        if (localStorage.getItem(RECEIPT_SHARE_ASKED_KEY) === '1') return false;
-        safeSetItem(RECEIPT_SHARE_ASKED_KEY, '1');
+        if (localStorage.getItem(RECEIPT_SHARE_ASKED_KEY) === '1' || navigator.onLine === false) return false;
+        // One dialog at a time: never take over a question the user is answering
+        if (AppState.modalResolve || document.getElementById('modalOverlay')?.classList.contains('active')) return false;
         const yes = await UIManager.showModal(t('msg.settings.receipt_share_offer'), t('ui.settings.receipt_share'), true);
+        safeSetItem(RECEIPT_SHARE_ASKED_KEY, '1');
         return yes ? this.shareOwnReceipt() : false;
     }
 
@@ -642,7 +651,7 @@ export class SettingsManager {
                 UIManager.showToast(t('msg.settings.receipt_logo_failed'), 'error');
                 return false;
             }
-            if (!await this.saveSharedReceipt({ ...PrinterService.receipt(), logo })) return false;
+            if (!await this.saveSharedReceipt({ logo })) return false;
             await this.previewReceipt();
             return true;
         } catch (error) {
@@ -655,7 +664,7 @@ export class SettingsManager {
     }
 
     static removeReceiptLogo() {
-        return this.saveSharedReceipt({ ...PrinterService.receipt(), logo: null });
+        return this.saveSharedReceipt({ logo: null });
     }
 
     static previewReceipt() {

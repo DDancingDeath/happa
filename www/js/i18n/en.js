@@ -308,6 +308,7 @@ export default {
     'msg.printer.android_app_only': "Printing works in the Android app.",
     'msg.printer.bluetooth_off': "Bluetooth is off, or this phone has no Bluetooth.",
     'msg.settings.receipt_logo_failed': "Could not use this picture as the logo.",
+    'msg.settings.receipt_already_shared': "Printed-bill choices were already saved for everyone; this phone now uses them.",
     'msg.settings.receipt_share_offer': "No printed-bill choices are saved for everyone yet. Use this phone's bottom line, QR code, bill language, print darkness and logo on every phone?",
     'msg.printer.test_print_successful': "Test print successful!",
     'msg.printer.may_have_printed': "The printer did not confirm this print. It may have printed: check the paper before printing again.",
