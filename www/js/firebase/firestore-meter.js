@@ -14,7 +14,7 @@ import {
     readsForQuerySnapshot,
     readsForDocSnapshot
 } from '../utils/quota-guard.js';
-import { emit, READS_ALERT } from '../utils/events.js';
+import { emit, FIRESTORE_DENIED, READS_ALERT } from '../utils/events.js';
 
 const telemetry = (fn) => {
     import('../services/telemetry.js')
@@ -65,6 +65,7 @@ export function sourceLabel(ref, kind) {
 
 const checkError = (err, source) => {
     if (isQuotaExhaustedError(err)) quotaGuard.noteQuotaExhausted(source);
+    if (err?.code === 'permission-denied') emit(FIRESTORE_DENIED, source, err);
 };
 
 const wrapPromise = (result, source, onValue) => {

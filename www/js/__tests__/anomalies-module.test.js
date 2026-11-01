@@ -158,7 +158,8 @@ describe('read budget (free plan)', () => {
         expect(serverCalls()[0][2]).toEqual(expect.objectContaining({ limit: 200, server: true }));
         await AnomaliesManager.dailyScan();
         expect(FirebaseService.loadAuditLogsSince).toHaveBeenCalledTimes(1);
-        expect(FirebaseService.loadAuditLogsSince.mock.calls[0][1]).toBe(300);
+        // paged by FirebaseService, at most 1,000 entries per scanned day
+        expect(FirebaseService.loadAuditLogsSince.mock.calls[0][1]).toBe(7 * 1000);
     });
 
     test('repeated Today refreshes within the TTL (even after reopening the app) use the cache only', async () => {

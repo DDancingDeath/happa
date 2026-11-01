@@ -50,7 +50,8 @@ describe('thresholds', () => {
     test('defaults are the #106 answers (2× rate, 5 kg oversell, 120 s duplicate, 60 min / 1 day dates, ₹50/₹200, 20 kg)', () => {
         expect(DEFAULT_THRESHOLDS).toEqual({
             oversellBlockKg: 5, rateMultiple: 2, duplicateWindowSec: 120, maxFutureMin: 60,
-            backdateDays: 1, cashOkRs: 50, cashHighRs: 200, stockAdjustFlagKg: 20
+            backdateDays: 1, cashOkRs: 50, cashHighRs: 200, stockAdjustFlagKg: 20,
+            deniedCount: 3, deniedWindowMin: 10
         });
     });
 
