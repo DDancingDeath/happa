@@ -416,6 +416,12 @@ Counts about this phone, never business figures. Nothing is read from the server
 | DIAG-SYNC | Changes waiting to sync / last change reached the server | The header pill's pending count (`ui/sync-status.js`); the last time one of this phone's writes was acknowledged by the server (meter) or the pill confirmed "Synced" |
 | DIAG-SCORE | Speed score | 100 − 25 per high − 12 per medium − 4 per low suspect from `utils/perf-probe.js analyseProbes`, never below 0. Suspects: history list ≥ 3,000 (high) / ≥ 1,500 (medium), items ≥ 800, stock entries ≥ 1,500, memory ≥ 80% (high) or ≥ 250 MB, phone memory ≤ 2 GB, offline or 2G (high), no service worker (low), app open ≥ 5 s, ≥ 8 long tasks in the last minute (high), app storage ≥ 85% |
 
+## Settings › Usage on this phone (local only, not money) — #136
+
+| ID | Shown | Definition |
+|---|---|---|
+| USE-1 | Uses per feature, Today / Last 7 days / Last 30 days | For each documented event (`utils/usage-stats.js` `USAGE_EVENTS`, and `page.<id>`) the sum of this phone's daily counts from the first day of the range to today (local days), most used first (ties by name), top 10. One `track()` call counts 1; the counts stay in IndexedDB on the phone (localStorage without it) for 90 days and are never sent |
+
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and

@@ -49,7 +49,9 @@ import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed, pauseBac
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
+import { track } from '../services/usage.js';
 import { billSaveProps } from '../tip/scenarios/bill-save.js';
+import { checkpointProps } from '../tip/scenarios/stock-checkpoint.js';
 
 // Count reads and catch quota errors for every Firestore call in the app (#194).
 if (typeof firebase !== 'undefined' && firebase.firestore) {
@@ -995,6 +997,7 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
 
 /** TIP BillSave run (#217) for a new bill; never throws. @private */
 function startBillSaveRun(collKey, record, retry) {
+    if (!retry) track(`bill.save.${collKey}`);
     try {
         return tip.start('BillSave', {
             flags: { retry: !!retry, offline: typeof navigator !== 'undefined' && navigator.onLine === false },
@@ -1835,6 +1838,9 @@ async function rollForwardCheckpoint(cp, newAsOf) {
     return 'rolled';
 }
 
+/** Lease release after a rebuild that did not build: result → Promise<boolean> (TIP StockCheckpoint). */
+const leaseReleases = new WeakMap();
+
 /** See FirebaseService.rebuildStockCheckpoint(). @private */
 async function rebuildCheckpointNow(gen) {
     if (!canManageCheckpoint()) return { status: 'not-allowed' };
@@ -1918,12 +1924,12 @@ async function rebuildCheckpointNow(gen) {
         throw e;
     } finally {
         if (result.status !== 'built') {
-            db.runTransaction(async tx => {
+            leaseReleases.set(result, db.runTransaction(async tx => {
                 const snap = await tx.get(ref);
                 if (snap.exists && snap.data().rebuildingBy === token) {
                     tx.update(ref, { rebuildingUntil: 0, rebuildingBy: null, ...voidAwareStamp() });
                 }
-            }).catch(() => {});
+            }).then(() => true, () => false));
         }
     }
 }
@@ -3220,8 +3226,11 @@ const FirebaseService = {
         }
         rebuildAttempted = true;
         const gen = sessionGen;
+        const run = tip.start('StockCheckpoint');
         const p = rebuildCheckpointNow(gen);
         rebuildPromise = p;
+        p.then(res => Promise.resolve(leaseReleases.get(res) ?? null).then(released => run.complete(checkpointProps(res, released))),
+            () => run.complete(checkpointProps(null)));
         const done = () => {
             if (gen !== sessionGen || rebuildPromise !== p) return;
             rebuildPromise = null;
