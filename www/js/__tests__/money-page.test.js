@@ -10,7 +10,7 @@ import { MoneyManager, compareHtml, vsItem, barsSvg, takeawayHtml } from '../mod
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { AppState } from '../utils/state.js';
-import { moneySummary, change, comparisonRanges, periodRange, netMoneyByDay, accountsTotal } from '../utils/business-metrics.js';
+import { moneySummary, change, comparisonRanges, periodRange, netMoneyByDay, accountsTotal, accountEntry, accountsList, accountsFromPhone, accountId, netWorth } from '../utils/business-metrics.js';
 import {
     buildSnapshot, figuresFromSnapshot, partialFigures, sumFigures, rangeFigures, monthsToRoll, monthKeysBetween, lastMonthKeys, monthBounds, SNAPSHOT_VERSION, outdatedOlderMonths,
     snapshotCustomers
@@ -68,6 +68,9 @@ beforeEach(() => {
     MoneyManager.sessionCache = new Map();
     MoneyManager.section = 'profit';
     MoneyManager.summaryCache = { sig: null, map: new Map(), computed: 0 };
+    MoneyManager.sharedAccounts = { state: 'idle', list: null, map: null };
+    MoneyManager.accountEdits = 0;
+    jest.spyOn(FirebaseService, 'loadWorthAccounts').mockResolvedValue({});
 });
 afterEach(() => {
     jest.useRealTimers();
@@ -111,7 +114,7 @@ describe('figures on screen == oracle (this month)', () => {
     });
 
     test('Worth section: M15 = stock + to receive + accounts + drawer − to pay; dues equal Outstanding\'s rule (AC12)', async () => {
-        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 1000, type: 'asset' }, { name: 'Loan', balance: 300, type: 'liability' }]));
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 1000, type: 'asset' }, a2: { name: 'Loan', balance: 300, type: 'liability' } });
         // Full history is loaded (historyLoadedFrom 0): the drawer still comes from its own session load.
         const load = jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([
             { date: '2026-10-20', signedOut: true, closingBalance: 250 },
@@ -127,7 +130,7 @@ describe('figures on screen == oracle (this month)', () => {
         expect(shown('moneyWorthValue')).toBe(rupee(stock + dues.receivable + 700 + 250 - dues.payable));
         const refs = [...document.querySelectorAll('#moneyWorthTerms [data-metric-ref]')].map(el => el.dataset.metricRef);
         expect(refs).toEqual(['S4', 'O4', 'C9', 'O3', 'M15']);
-        localStorage.removeItem('financeCustomAccounts');
+        expect(FirebaseService.loadWorthAccounts).toHaveBeenCalledTimes(1);
     });
 
     test('a past month and the period stepper', () => {
@@ -242,12 +245,13 @@ describe('comparisons and takeaways', () => {
 describe('taps, caveats and checks', () => {
     test('single home: every ₹ on the rendered page is a tagged figure, link, takeaway or typed amount', async () => {
         const { unexplainedValues } = await import('../utils/metric-registry.js');
-        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 1000, type: 'asset' }]));
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 1000, type: 'asset' } });
         jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([{ date: '2026-10-20', signedOut: true, closingBalance: 250 }]);
         ['profit', 'cash', 'spending', 'worth'].forEach(s => MoneyManager.init(s));
         await Promise.resolve();
+        MoneyManager.render();
+        expect(document.getElementById('moneyAccounts').textContent).toMatch(/Bank/);
         expect(unexplainedValues(document.getElementById('money'))).toEqual([]);
-        localStorage.removeItem('financeCustomAccounts');
     });
 
     test('retail/wholesale split lives on Insights › Items: Money only links to it, and hides the link until that page exists', () => {
@@ -756,5 +760,278 @@ describe('Money calc helpers (M14 per day, M15 accounts)', () => {
     test('accountsTotal: assets − liabilities, unreadable balances count 0', () => {
         expect(accountsTotal([{ balance: 12345.678, type: 'asset' }, { balance: 5000.5, type: 'liability' }, { balance: 'x' }])).toBe(7345.18);
         expect(accountsTotal(null)).toBe(0);
+    });
+});
+
+describe('Money › Worth shared accounts (#74, settings/accounts)', () => {
+    const flush = async () => { for (let i = 0; i < 6; i += 1) await Promise.resolve(); };
+    const openWorth = async () => {
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        MoneyManager.drawerCache = null;
+        MoneyManager.init('worth');
+        await flush();
+    };
+    const accountsRow = () => [...document.querySelectorAll('#moneyWorthTerms .ins-row')].find(el => el.querySelector('[data-input]'));
+    afterEach(() => localStorage.removeItem('financeCustomAccounts'));
+
+    test('until the shared accounts load, their term and net worth say "—"; then the shared values count', async () => {
+        let resolve;
+        FirebaseService.loadWorthAccounts.mockReturnValue(new Promise(r => { resolve = r; }));
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        MoneyManager.init('worth');
+        expect(accountsRow().querySelector('[data-input]').textContent).toBe('—');
+        expect(document.getElementById('moneyWorthValue').textContent).toBe('—');
+        expect(document.getElementById('moneyAccounts').textContent).toBe(t('ui.money.accounts_loading'));
+        resolve({ x: { name: 'Bank', balance: 2500, type: 'asset' } });
+        await flush();
+        const dues = O.dueTotals(data);
+        expect(shown('moneyWorthValue')).toBe(rupee(O.stockReplay(data).closing + dues.receivable + 2500 - dues.payable));
+    });
+
+    test('a load that fails says so, and net worth stays "—" (never a total without the accounts)', async () => {
+        FirebaseService.loadWorthAccounts.mockRejectedValue(new Error('offline'));
+        await openWorth();
+        expect(document.getElementById('moneyAccounts').textContent).toBe(t('ui.money.accounts_not_loaded'));
+        expect(document.getElementById('moneyWorthValue').textContent).toBe('—');
+        expect(document.getElementById('moneyAccForm').hidden).toBe(true);
+    });
+
+    test('this phone\'s old accounts are not counted; each Money open reads the shared doc again', async () => {
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Phone bank', balance: 9999, type: 'asset' }]));
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 100, type: 'asset' } });
+        await openWorth();
+        expect(MoneyManager.accountsTotal()).toBe(100);
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 300, type: 'asset' } });
+        await openWorth();
+        expect(FirebaseService.loadWorthAccounts).toHaveBeenCalledTimes(2);
+        expect(MoneyManager.accountsTotal()).toBe(300);
+    });
+
+    test('the owner saves an account in whole rupees for all phones; a name saved again replaces it', async () => {
+        const save = jest.spyOn(FirebaseService, 'saveWorthAccount').mockResolvedValue();
+        await openWorth();
+        expect(document.getElementById('moneyAccForm').hidden).toBe(false);
+        document.getElementById('moneyAccName').value = ' Bank ';
+        document.getElementById('moneyAccBalance').value = '1234.6';
+        MoneyManager.saveAccount();
+        expect(save).toHaveBeenCalledWith(accountId('Bank'), { name: 'Bank', balance: 1235, type: 'asset' });
+        expect(MoneyManager.accountsTotal()).toBe(1235);
+        document.getElementById('moneyAccName').value = 'bank';
+        document.getElementById('moneyAccBalance').value = '500';
+        document.getElementById('moneyAccType').value = 'liability';
+        MoneyManager.saveAccount();
+        expect(save).toHaveBeenLastCalledWith(accountId('Bank'), { name: 'bank', balance: 500, type: 'liability' });
+        expect(MoneyManager.accountsTotal()).toBe(-500);
+        document.getElementById('moneyAccName').value = 'Cash box';
+        document.getElementById('moneyAccBalance').value = '-5';
+        MoneyManager.saveAccount();
+        expect(save).toHaveBeenCalledTimes(2);
+    });
+
+    test('a refused save shows a failure (never "Saved") and reloads the shared list', async () => {
+        const toast = jest.spyOn(require('../ui/ui-manager.js').UIManager, 'showToast').mockImplementation(() => {});
+        jest.spyOn(FirebaseService, 'saveWorthAccount').mockRejectedValue(new Error('permission-denied'));
+        await openWorth();
+        document.getElementById('moneyAccName').value = 'Bank';
+        document.getElementById('moneyAccBalance').value = '10';
+        MoneyManager.saveAccount();
+        await flush();
+        expect(toast).toHaveBeenCalledWith(t('msg.money.accounts_not_saved'), 'error');
+        expect(FirebaseService.loadWorthAccounts).toHaveBeenCalledTimes(2);
+        expect(MoneyManager.accountsTotal()).toBe(0);
+    });
+
+    test('remove: by the account\'s id', async () => {
+        const remove = jest.spyOn(FirebaseService, 'removeWorthAccount').mockResolvedValue();
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 100, type: 'asset' }, a2: { name: 'Loan', balance: 40, type: 'liability' } });
+        await openWorth();
+        expect(MoneyManager.accountsTotal()).toBe(60);
+        expect(document.querySelector('#moneyAccounts [onclick*="removeAccount(\'a2\')"]')).not.toBeNull();
+        MoneyManager.removeAccount('a2');
+        expect(remove).toHaveBeenCalledWith('a2');
+        expect(MoneyManager.accountsTotal()).toBe(100);
+    });
+
+    test('a member with Money on: no read of bank balances, M15 without them and a note saying so; a manager with Money sees them', async () => {
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 100, type: 'asset' } });
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess: { staff: { finance: true, stockValue: true } } };
+        await openWorth();
+        expect(FirebaseService.loadWorthAccounts).not.toHaveBeenCalled();
+        const note = t('ui.money.accounts_owner_manager');
+        expect(document.getElementById('moneyAccounts').textContent).toBe(note);
+        expect(document.getElementById('moneyWorthTerms').textContent).toContain(note);
+        expect(document.querySelector('#moneyWorthTerms [data-input]')).toBeNull();
+        const dues = O.dueTotals(data);
+        expect(shown('moneyWorthValue')).toBe(rupee(O.stockReplay(data).closing + dues.receivable - dues.payable));
+        expect(document.getElementById('moneyWorthTakeaway').textContent).not.toBe(t('ui.tk.worth_accounts_unknown'));
+        expect(document.getElementById('moneyAccForm').hidden).toBe(true);
+        const save = jest.spyOn(FirebaseService, 'saveWorthAccount').mockResolvedValue();
+        MoneyManager.saveAccount();
+        expect(save).not.toHaveBeenCalled();
+        AppState.userRole = 'manager';
+        AppState.settings = {};
+        MoneyManager.render();
+        await flush();
+        expect(FirebaseService.loadWorthAccounts).toHaveBeenCalledTimes(1);
+        expect(document.getElementById('moneyAccounts').textContent).toMatch(/Bank/);
+        expect(document.getElementById('moneyAccForm').hidden).toBe(false);
+        AppState.settings = { roleAccess: { manager: { finance: false } } };
+        MoneyManager.render();
+        expect(document.getElementById('moneyAccForm').hidden).toBe(true);
+    });
+
+    test('migration: the owner gets one tap to use this phone\'s accounts for all phones while the shared list is empty', async () => {
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([
+            { name: 'Bank', balance: 2500.4, type: 'asset' }, { name: 'Loan', balance: 1000, type: 'liability' }, { name: '', balance: 5 }
+        ]));
+        const move = jest.spyOn(FirebaseService, 'useAccountsForAllPhones').mockResolvedValue(true);
+        await openWorth();
+        expect(document.getElementById('moneyAccountsMove').hidden).toBe(false);
+        expect(document.getElementById('moneyAccountsMoveText').textContent).toBe(t('ui.money.accounts_on_phone', { n: 2 }));
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ [accountId('Bank')]: { name: 'Bank', balance: 2500, type: 'asset' } });
+        await MoneyManager.useThisPhonesAccounts();
+        expect(move).toHaveBeenCalledWith({
+            [accountId('Bank')]: { name: 'Bank', balance: 2500, type: 'asset' },
+            [accountId('Loan')]: { name: 'Loan', balance: 1000, type: 'liability' }
+        });
+        // the nameless one can't be moved and stays on the phone
+        expect(JSON.parse(localStorage.getItem('financeCustomAccounts'))).toEqual([{ name: '', balance: 5 }]);
+        expect(document.getElementById('moneyAccountsMove').hidden).toBe(true);
+    });
+
+    test('migration is not offered once the shared list has accounts, nor to managers', async () => {
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 1, type: 'asset' }]));
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Other', balance: 5, type: 'asset' } });
+        await openWorth();
+        expect(document.getElementById('moneyAccountsMove').hidden).toBe(true);
+        FirebaseService.loadWorthAccounts.mockResolvedValue({});
+        AppState.userRole = 'manager';
+        await openWorth();
+        expect(document.getElementById('moneyAccountsMove').hidden).toBe(true);
+    });
+
+    test('migration keeps the accounts it could not move on the phone and says how many', async () => {
+        const toast = jest.spyOn(require('../ui/ui-manager.js').UIManager, 'showToast').mockImplementation(() => {});
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 1, type: 'asset' }, { name: 'Odd', balance: 'x' }]));
+        jest.spyOn(FirebaseService, 'useAccountsForAllPhones').mockResolvedValue(true);
+        await openWorth();
+        await MoneyManager.useThisPhonesAccounts();
+        expect(JSON.parse(localStorage.getItem('financeCustomAccounts'))).toEqual([{ name: 'Odd', balance: 'x' }]);
+        expect(toast).toHaveBeenCalledWith(t('msg.money.accounts_moved_some_one', { n: 1 }), 'warning');
+    });
+
+    test('Money opened again after a failed load reads again; a refresh never undoes a save made meanwhile', async () => {
+        FirebaseService.loadWorthAccounts.mockRejectedValueOnce(new Error('offline'));
+        await openWorth();
+        expect(MoneyManager.sharedAccounts.state).toBe('error');
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 5, type: 'asset' } });
+        await openWorth();
+        expect(MoneyManager.accountsTotal()).toBe(5);
+        let resolve;
+        FirebaseService.loadWorthAccounts.mockReturnValue(new Promise(r => { resolve = r; }));
+        jest.spyOn(FirebaseService, 'saveWorthAccount').mockResolvedValue();
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        MoneyManager.init('worth');
+        expect(document.getElementById('moneyAccForm').hidden).toBe(false);
+        document.getElementById('moneyAccName').value = 'Cash box';
+        document.getElementById('moneyAccBalance').value = '20';
+        MoneyManager.saveAccount();
+        resolve({ a1: { name: 'Bank', balance: 5, type: 'asset' } });
+        await flush();
+        expect(MoneyManager.accountsTotal()).toBe(25);
+    });
+
+    test('saving an account unchanged writes nothing', async () => {
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ [accountId('Bank')]: { name: 'Bank', balance: 5, type: 'asset' } });
+        const save = jest.spyOn(FirebaseService, 'saveWorthAccount').mockResolvedValue();
+        await openWorth();
+        document.getElementById('moneyAccName').value = 'Bank';
+        document.getElementById('moneyAccBalance').value = '5';
+        MoneyManager.saveAccount();
+        expect(save).not.toHaveBeenCalled();
+    });
+
+    test('while the accounts are not loaded the takeaway says so (not "stock value")', async () => {
+        FirebaseService.loadWorthAccounts.mockRejectedValue(new Error('offline'));
+        await openWorth();
+        expect(document.getElementById('moneyWorthTakeaway').textContent).toBe(t('ui.tk.worth_accounts_unknown'));
+    });
+
+    test('migration that lost the race (another phone saved first) keeps this phone\'s list and changes nothing', async () => {
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 1, type: 'asset' }]));
+        jest.spyOn(FirebaseService, 'useAccountsForAllPhones').mockResolvedValue(false);
+        await openWorth();
+        await MoneyManager.useThisPhonesAccounts();
+        expect(localStorage.getItem('financeCustomAccounts')).not.toBeNull();
+    });
+});
+
+describe('shared accounts helpers (#74)', () => {
+    test('accountEntry: trimmed name (1–40), balance 0 or more in whole rupees, asset unless "liability"', () => {
+        expect(accountEntry({ name: '  SBI  savings ', balance: '1999.5', type: 'x' })).toEqual({ id: accountId('sbi savings'), entry: { name: 'SBI savings', balance: 2000, type: 'asset' } });
+        expect(accountEntry({ name: 'Loan', balance: 0, type: 'liability' }).entry).toEqual({ name: 'Loan', balance: 0, type: 'liability' });
+        expect(Object.is(accountEntry({ name: 'A', balance: '-0.3' }).entry.balance, 0)).toBe(true);
+        ['', ' ', 'x'.repeat(41)].forEach(name => expect(accountEntry({ name, balance: 1 })).toBeNull());
+        ['', null, 'abc', -1, 1e11].forEach(balance => expect(accountEntry({ name: 'A', balance })).toBeNull());
+    });
+    test('accountId: same for the same name in any case or spacing; a safe field name', () => {
+        expect(accountId('Bank  A')).toBe(accountId(' bank a'));
+        expect(accountId('बैंक')).toMatch(/^a[0-9a-f]{8}$/);
+        expect(accountId('Bank')).not.toBe(accountId('Bank 2'));
+    });
+    test('accountsList: whole rupees, sorted by name, unreadable entries dropped', () => {
+        expect(accountsList({ b: { name: 'Zed', balance: 10.6, type: 'liability' }, a: { name: 'Abc', balance: 'x' }, c: null, d: { name: ' ' } }))
+            .toEqual([{ id: 'a', name: 'Abc', balance: 0, type: 'asset' }, { id: 'b', name: 'Zed', balance: 11, type: 'liability' }]);
+        expect(accountsList(null)).toEqual([]);
+    });
+    test('accountsFromPhone: old phone list → shared map; nothing is lost without being returned', () => {
+        const long = 'स्टेट बैंक ऑफ़ इंडिया बचत खाता रमेश कुमार शर्मा';
+        const b = { name: 'B', balance: 'x' };
+        const huge = { name: 'Huge', balance: 2e10 };
+        const { map, skipped } = accountsFromPhone([
+            { name: 'A', balance: -50, type: 'asset' }, b, { name: 'C', balance: 7.4, type: 'liability' },
+            { name: 'SBI', balance: 100 }, { name: ' sbi ', balance: 30, type: 'liability' }, { name: long, balance: 5 }, huge, { name: '', balance: 1 }
+        ]);
+        // negative = the other side; same name in another case = one account with the total; long names cut to 40
+        expect(map).toEqual({
+            [accountId('A')]: { name: 'A', balance: 50, type: 'liability' }, [accountId('C')]: { name: 'C', balance: 7, type: 'liability' },
+            [accountId('SBI')]: { name: 'SBI', balance: 70, type: 'asset' }, [accountId(long.slice(0, 40))]: { name: long.slice(0, 40).trim(), balance: 5, type: 'asset' }
+        });
+        expect(skipped).toEqual([b, { name: '', balance: 1 }, huge]);
+        const many = Array.from({ length: 32 }, (_, i) => ({ name: `N${i}`, balance: i }));
+        const r = accountsFromPhone(many);
+        expect(Object.keys(r.map)).toHaveLength(30);
+        expect(r.skipped).toEqual(many.slice(30));
+        expect(accountsFromPhone('x')).toEqual({ map: {}, skipped: [] });
+    });
+    test('netWorth (M15): unknown while the accounts are not loaded', () => {
+        expect(netWorth({ stock: 100, receivable: 0, payable: 0, accounts: null, drawer: 0 })).toBeNull();
+        expect(netWorth({ stock: 100, receivable: 0, payable: 0, accounts: 5, drawer: 0 })).toBe(105);
+    });
+});
+describe('settings/accounts repository (#74, in-memory Firestore)', () => {
+    test('load / save one / remove one / first move only while empty', async () => {
+        jest.restoreAllMocks();
+        const fake = createFakeFirestore();
+        const before = global.firebase;
+        global.firebase = fake.firebase;
+        AppState.currentUser = { uid: 'owner1' };
+        try {
+            expect(await FirebaseService.loadWorthAccounts()).toEqual({});
+            expect(await FirebaseService.useAccountsForAllPhones({ a1: { name: 'Bank', balance: 10, type: 'asset' } })).toBe(true);
+            await FirebaseService.saveWorthAccount('a2', { name: 'Loan', balance: 5, type: 'liability' });
+            const doc = fake.raw('settings').get('accounts');
+            expect(doc.changedId).toBe('a2');
+            expect(doc.updatedBy).toBe('owner1');
+            expect(await FirebaseService.loadWorthAccounts()).toEqual({ a1: { name: 'Bank', balance: 10, type: 'asset' }, a2: { name: 'Loan', balance: 5, type: 'liability' } });
+            await FirebaseService.removeWorthAccount('a1');
+            expect(await FirebaseService.loadWorthAccounts()).toEqual({ a2: { name: 'Loan', balance: 5, type: 'liability' } });
+            expect(await FirebaseService.useAccountsForAllPhones({ a9: { name: 'X', balance: 1, type: 'asset' } })).toBe(false);
+            expect(Object.keys(await FirebaseService.loadWorthAccounts())).toEqual(['a2']);
+        } finally {
+            global.firebase = before;
+            AppState.currentUser = null;
+        }
     });
 });
