@@ -36,13 +36,13 @@ setting is missing or invalid.
 | `finance` | Money page (the stored id kept the old Finance page's name) | हिसाब पेज | on | off | client; **rules** for withdrawals |
 | `reports` | Statements page (stored id of the old Reports page) | बही-खाता पेज | on | off | client; **rules** for withdrawals |
 | `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule, and `reports` opens Seasons too; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client; **rules** for withdrawals |
-| `wholesale` | Wholesale page | थोक पेज | on | off | client |
+| `wholesale` | Wholesale page, and the wholesale dues on Outstanding › Sales (All / Wholesale, #125) | थोक पेज | on | off | client |
 | `personalExpenses` | Personal expenses | निजी खर्च | on | on | client + **rules** (#98, see "Personal expenses") |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
 | `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client (rules: phase 2) |
 | `purchaseRates` | See purchase rates | खरीद रेट देखें | on | on | client (Rates page only) |
-| `shopSettings` | Change Aadhat settings (labour, bill checks, business name) | आढ़त की सेटिंग बदलें | off | – (managers only) | **client + rules** |
+| `shopSettings` | Change Aadhat settings (labour, bill checks, business name, printed bill) | आढ़त की सेटिंग बदलें | off | – (managers only) | **client + rules** |
 | `historyDays` | History: days back (0 = all) | इतिहास: कितने दिन पीछे तक (0 = सभी) | 0 | 0 | client only (see "Server-side read rules") |
 | `editDays` | Edit/void bills for (days) | बिल बदलने/हटाने के दिन | 2 | 2 | **client + rules** |
 
@@ -70,9 +70,12 @@ setting is missing or invalid.
 - `historyDays`: whole days, 0–3650; 0 = all bills.
 - `shopSettings`: managers only (members never see Settings › Aadhat; the client forces it off for
   them). When on, a manager may update only the Aadhat fields of `settings/app`: `laborRate`,
-  `heavyWeightThreshold`, `labourPackageKg`, `checkThresholds`, `businessName`, `businessDetails` and their
+  `heavyWeightThreshold`, `labourPackageKg`, `checkThresholds`, `businessName`, `businessDetails`, `receipt` and their
   `…UpdatedAt` / `…UpdatedBy` stamps (`managerShopSettingsOk`). Never `roleAccess`,
   `minClientVersion`, `enforceClientVersion` or TIP settings, and never create or delete the doc.
+  For everyone, the owner included, each section stamp a write sets (`labour`, `checks`, `business`,
+  `receipt`, `tip`, `roleAccess` + `UpdatedAt` / `UpdatedBy`) must be an int (ms) and a string of at
+  most 128 characters (`settingsStampsOk`); stamps already stored are not re-checked.
 - Pages that read owner/manager-only collections (Admin, Diagnostics, Anomalies, Insights › Seasons (Trends and Product traffic),
   App health) and the stock adjustment / item edit actions are not in the list: their rules are
   fixed and the setting could not open them. `TAB_ROLES` in `role-access.js` lists them (Admin:
@@ -605,6 +608,7 @@ small button to view the other business's section when the user may see it
 | Section | Sees | Edits | Stored in |
 |---|---|---|---|
 | Common: language, account (name, change password, sign out), notifications, printer, install, What's new / About | everyone | own device / own profile | device, `users/{uid}.name` |
+| Common: Printed bill (bottom line, bill QR, bill language, print darkness, logo; #107) | everyone | owner; managers with `shopSettings` | `settings/app.receipt` (read at start-up, no extra read; the rules check its shape and keep the 1-bit logo to 384 × 120 dots, at most 7,680 base64 characters). Printers and paper width stay on each phone. A phone with its own older choices offers them once to the owner / an allowed manager ("Use this phone's choices for all phones") while none are shared |
 | Common: Roles & access (+ People) | owner | owner | `settings/app.roleAccess`, `users/{uid}.rentRole` |
 | Aadhat: business name and details, UPI ID, labour, bill checks, bill numbers, opening stock link | Aadhat owner and managers | owner; managers with `shopSettings` (UPI ID: this device) | `settings/app` (read at start-up, no extra read); UPI ID on the device |
 | Rentals: defaults for new leases (due day, yearly %, electricity rate, tenant link), business name and address on rent receipts and tenant pages | Rentals owner and managers | owner and Rentals managers | `rent_settings/default` (+ `dev_`), read only when this section is shown, a tenant moves in or a payment is recorded |

@@ -138,6 +138,7 @@ rupees.
 | DUE-FIFO | Outstanding / Wholesale › Outstanding "Receive payment" / "Pay" on a party (#152, owner / manager): each bill's part, the total, "₹X more than the dues is not recorded" and "the parts add up to …" | The party's open bills of that list (DUE-ALL's list and order, at most 100). The amount is required (whole rupees, ROUNDING.payment). It fills the bills in that order: a bill reached in full gets its whole BILL-DUE (paise of an old due kept), the last bill reached gets the whole rupees left (never above its due), so only it is part-paid (`allocateOldestFirst`). Parts can be changed by hand: each 0 … BILL-DUE (+ ₹0.01), saved as whole rupees unless it pays that bill's whole due (`partAsSaved`, as DUE-CHECK). **Σ parts must equal the amount** (`checkAllocation`; otherwise nothing is saved and the difference is shown), with two exceptions only: (a) the amount is more than all the dues and every bill is paid in full: Σ parts = Σ dues and the rest is shown as not recorded; (b) an old due with paise is paid in full, so Σ parts is below the whole-rupee amount by those paise (less than ₹1, never above it), shown as "(paise of an old due) is not recorded". Saved in one transaction: per bill with a part, its own `payments[]` entry (cash or online, same `at`), due down by the part (`duePaymentUpdate`), refused as a whole when a part is now above the bill's due. Party BILL-DUE total after = before − Σ parts. | `allocateOldestFirst`, `checkAllocation`, `partAsSaved` (`utils/calc/billing.js`), `partyDues`, `billAgeOrder`, `duePaymentUpdate` (`utils/due-payments.js`) |
 | BF-RECOVER | The "Unsaved bill" banner at start (#117): lines and total | The auto-save's form (purchase or retail sale, `mode`): its number of lines and its saved total (`billTotal` / `saleTotal`, else the lines' plain sum), to the rupee. | `autoSaveSummary` |
 | BF-NO | "Next bill no. (given on save)" above Save (#117) | One more than the highest `{P\|S}{YYYYMMDD}-NNN` among today's loaded bills of that type (001 when none). Only a hint: the shared counter sets the real number at save, which can be higher (voided bills, another phone); offline the bill gets a device number (#41). While editing: the bill's own number. | `nextBillNumberHint` |
+| VB-1 | Voice billing check dialog (#81, off by default): Item, Weight (kg), Rate (₹) as heard | Nothing is calculated: the numbers are the ones spoken, read from the recogniser's text by `parseVoiceLine` (a number followed by a weight word such as "kg" is the weight; one followed by a rupee word, or said after "at" / "₹" / "rate", is the rate; other numbers fill the weight, then the rate, in spoken order; Hindi words 1–99, सौ / hundred, आधा, पाव, डेढ़, ढाई, साढ़े / सवा / पौने; grams become kg: 500 gram = 0.5 kg, 1 kilo 500 gram = 1.5 kg; "per kilo" makes a rate; a number with another unit (quintal, bori, packet…) or said as a total is not used, and with one in the line nothing is guessed and a rupee-only rate is dropped: the dialog warns; it also warns when the rate is more than 3× above or below every rate kept for the item, isUnusualRate). OK only puts them in the form's Item / Rate / Weight boxes; the line amount is then BF-LINE once Add to Bill is tapped. Tests: `www/js/__tests__/voice-parse.test.js`, `voice-billing.test.js`, oracle `tests/oracle/voice-line.test.js`. | `parseVoiceLine`, `pickVoiceLine` (`utils/voice-parse.js`) |
 
 ## Finance (retired; `utils/finance-calc.js` stays as the engine of M*) — #215
 
@@ -206,16 +207,18 @@ here (#144 plans to redo them). "Projected profit" and the smart-suggestion
 profit lines start from A4 (the month's profit so far, scaled to the whole
 month); the "in loss" suggestion only shows when the month has sales.
 
-## Outstanding (`templates/outstanding.html`, `modules/outstanding.js`)
+## Outstanding (`templates/due.html`, `modules/outstanding.js`)
 
 | ID | On screen | Definition |
 |---|---|---|
 | O1 | Purchase dues per party | Σ BILL-DUE of that supplier's purchases. |
-| O2 | Sale dues per party | Σ BILL-DUE of that customer's **retail** sales (❓ open: #130 — wholesale dues are on the Wholesale page today). |
+| O2 | Sale dues per party | Σ BILL-DUE of that customer's sales on the chosen list (owner decision #125): **All** = retail and wholesale (every active wholesale bill, OPENING records included; the default under Sales), **Retail** or **Wholesale**. In All each bill carries a Retail / Wholesale chip. A role without the Wholesale switch sees retail only (no choice). |
 | O3 | Payables total (aging panel) | Σ O1. |
-| O4 | Receivables total (aging panel) | Σ O2. |
+| O4 | Receivables total (aging panel) | Σ O2 of the chosen list. All = M15's "to receive" = F9 (`outstandingTotals().receivable`); Retail + Wholesale = All. |
 
-**Wholesale › Outstanding** (`modules/wholesale-sales.js`; wholesale dues are listed there, see O2) lists
+Each list holds the bills with BILL-DUE > ₹0.005 (`dueRows()` in `utils/aging.js`, the same rule as the aging panel and Money; voided and cleared bills owe nothing), aged from their bill date (OPENING records: the original date, with the "Old app" chip). A party row's Receive payment works on one list's bills (DUE-FIFO); in All a party with both retail and wholesale dues is told to use Retail or Wholesale. Reminders and statements cover the list shown. No extra reads: the wholesale dues come from the same `openDue` listener the Wholesale page and Money use.
+
+**Wholesale › Outstanding** (`modules/wholesale-sales.js`; it keeps its own list: the Wholesale page's bills, which is every wholesale bill the app saves, so the same dues as Outstanding › Sales › Wholesale) lists
 the Wholesale page's bills (`source: 'sales-tab'`, OPENING records included) with BILL-DUE > 0. Each
 shows BILL-DUE, the BILL-TOTAL (an OPENING record: its carried amount) and the cash + online received
 (BILL-PAY), the same rule as this page and Money (Σ = the wholesale part of O4 / M15's "to receive").
@@ -436,7 +439,7 @@ Counts about this phone, never business figures. Nothing is read from the server
 
 | ID | Shown | Definition |
 |---|---|---|
-| REM-1 | Collect udhaar / Collect wholesale dues / Pay suppliers: total, up to 3 parties (amount, days), "+N more" | Outstanding's grouping and age (`buildAging`: BILL-DUE per normalised party name, age of the oldest open bill) over the open bills already on the phone, one block per list as the app keeps them: retail sales (Outstanding › Sales), wholesale sales-tab bills (Wholesale › Outstanding, roles that may open Wholesale) and purchases (Outstanding › Purchases). Only parties whose oldest due is older than 30 days, in Outstanding's "chase first" order (oldest bucket, then the biggest amount); the total is Σ of all those parties' dues |
+| REM-1 | Collect udhaar / Collect wholesale dues / Pay suppliers: total, up to 3 parties (amount, days), "+N more" | Outstanding's grouping and age (`buildAging`: BILL-DUE per normalised party name, age of the oldest open bill) over the open bills already on the phone, one block per list as the app keeps them: retail sales (Outstanding › Sales › Retail), wholesale sales-tab bills (Wholesale › Outstanding, roles that may open Wholesale) and purchases (Outstanding › Purchases). Only parties whose oldest due is older than 30 days, in Outstanding's "chase first" order (oldest bucket, then the biggest amount); the total is Σ of all those parties' dues |
 | REM-2 | Rent due: amount, units owing, late | Σ RENT-10 `due` (= RENT-9 due), the units marked Late and the count of RENT-10 rows with due > 0, as the Rent page last showed them on this phone for this month (saved when it renders the current month with no load error and nothing cut at a limit; for the same person, with the date and time it was taken). Shown to rentals roles only, with the time it was taken; not shown when Rentals wasn't opened this month |
 
 ## Checking real data

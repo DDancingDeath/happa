@@ -271,7 +271,7 @@ export const DayManager = {
             if (r.parties.length) parts.push(block(kind, r, open));
         };
         // Outstanding lists retail customers and suppliers; wholesale dues live on the Wholesale page.
-        if (canDue) add('collect', AppState.retailSalesHistory || [], "window.app.day.openDues('sale')");
+        if (canDue) add('collect', AppState.retailSalesHistory || [], "window.app.day.openDues('retail')");
         if (canWholesale) add('collect_wholesale', billsForKind(AppState, 'wholesale'), "window.app.nav.showTab('wholesale-outstanding')");
         if (canDue) add('pay', AppState.purchaseHistory || [], "window.app.day.openDues('purchase')");
         if (rentalsRole(AppState)) {
@@ -291,7 +291,7 @@ export const DayManager = {
     /** Outstanding on its Purchases or Sales list (navigation opens it on Purchases first). */
     openDues(kind) {
         window.app?.nav?.showTab?.('due');
-        setTimeout(() => window.app?.outstanding?.filterDue(kind, { target: document.querySelector(`#due .filter-${kind}`) }), 150);
+        setTimeout(() => window.app?.outstanding?.filterDue(kind), 150);
     },
 
     /** Wholesale cards and bills only for roles that may open the Wholesale page. */

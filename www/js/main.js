@@ -4,6 +4,7 @@ import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
 import { BottomNav } from './ui/bottom-nav.js';
+import { VoiceMic } from './ui/voice-mic.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
@@ -56,7 +57,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbmn-shared-accounts';
+const BUILD_ID = '20261101zzuzieecmbbkhbmy-shared-accounts';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -406,13 +407,17 @@ async function initializeUserData() {
             return ok;
         });
         // Shared labour rate / heavy-packet weight (#20) come from the same settings/app read
-        FirebaseService.loadAppSettings()
+        const appSettingsApplied = FirebaseService.loadAppSettings()
             .then(data => {
                 configureTip(data);
                 RolesAccessManager.applyShared(data);
                 return SettingsManager.applySharedSettings(data);
             })
-            .catch(e => console.warn('Shared labour settings not loaded:', e?.code || e));
+            .then(() => true)
+            .catch(e => {
+                console.warn('Shared labour settings not loaded:', e?.code || e);
+                return false;
+            });
         // TIP reporting (#217): approved user only; writes are batched (≤ 1 counter write / 30 min)
         startTipReporting({ sink: writeTipReport, buildId: BUILD_ID });
 
@@ -462,6 +467,7 @@ async function initializeUserData() {
         
         // Initialize billing manager (connects purchase and retail-sale modules)
         BillingManager.init();
+        VoiceMic.apply();
         
         // Show app content
         const appContent = document.getElementById('appContent');
@@ -556,6 +562,9 @@ async function initializeUserData() {
         // What's new + Android update banner (non-blocking, best effort)
         AppUpdatesManager.onAppReady();
 
+        // Printed bill (#107): none shared yet → offer this phone's own choices for every phone (once)
+        appSettingsApplied.then(loaded => (loaded ? SettingsManager.offerReceiptShare() : false))
+            .catch(e => console.warn('Receipt share offer skipped:', e?.code || e));
         // Daily anomaly scan (#187): owner/manager devices, once per day, over loaded data
         AnomaliesManager.scheduleDailyScan();
 
@@ -830,6 +839,12 @@ window.app = {
     // Phone bottom bar (#142): Settings › swipe between pages
     bottomNav: {
         setSwipe: (on) => BottomNav.setSwipe(on)
+    },
+
+    // Voice billing (#81): Settings switch (off by default) and the Billing mic buttons
+    voice: {
+        start: (mode) => VoiceMic.start(mode),
+        setOn: (on) => VoiceMic.setOn(on)
     },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
@@ -1115,7 +1130,7 @@ window.app = {
         setAgingSort: (by) => OutstandingManager.setAgingSort(by),
         setPartiesOpen: (open) => OutstandingManager.setPartiesOpen(open),
         sendReminder: (partyKey) => OutstandingManager.sendReminder(partyKey),
-        receiveFromParty: (partyKey) => OutstandingManager.receiveFromParty(partyKey),
+        receiveFromParty: (partyKey, billType) => OutstandingManager.receiveFromParty(partyKey, billType),
         partyPayFill: () => OutstandingManager.partyPayFill(),
         partyPaySum: () => OutstandingManager.partyPaySum(),
         printStatement: (partyKey) => OutstandingManager.printStatement(partyKey),
@@ -1126,7 +1141,7 @@ window.app = {
             NavigationManager.setActiveNavLink(tab);
             NavigationManager.showTab(tab);
             if (kind === 'wholesale') WholesaleSalesManager.showOutstandingParty(name);
-            else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : 'sale', name);
+            else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : kind === 'sale' ? 'sale' : 'retail', name);
         }
     },
     
@@ -1261,6 +1276,7 @@ window.app = {
         pickReceiptLogo: () => SettingsManager.pickReceiptLogo(),
         chooseReceiptLogo: (input) => SettingsManager.chooseReceiptLogo(input),
         removeReceiptLogo: () => SettingsManager.removeReceiptLogo(),
+        shareOwnReceipt: () => SettingsManager.shareOwnReceipt(),
         previewReceipt: () => SettingsManager.previewReceipt(),
         scanBluetoothDevices: () => SettingsManager.scanBluetoothDevices(),
         connectToPrinter: (id, name) => SettingsManager.connectToPrinter(id, name),

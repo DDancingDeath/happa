@@ -870,6 +870,7 @@ service cloud.firestore {
         : base == 'notifications' ? validNotificationCreate(u, docId)
         : base == 'expenses' && personalTagged(request.resource.data) ? false
         : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
+        : base == 'settings' && (!settingsReceiptOk() || !settingsStampsOk(docId)) ? false
         : (isOwnerIn(u)
         || (base in billCollections() ? validBillCreate(u)
           : base == 'expenses' ? validLedgerCreate() && expenseDayInWindow(u)
@@ -902,6 +903,7 @@ service cloud.firestore {
         : base == 'notifications' ? notificationReadOnly()
         : base == 'expenses' && personalTagged(request.resource.data) && !personalTagged(resource.data) ? false
         : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
+        : base == 'settings' && (!settingsReceiptOk() || !settingsStampsOk(docId)) ? false
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canUpdateExpense(u)
@@ -947,7 +949,58 @@ service cloud.firestore {
     function shopSettingsFields() {
       return ['laborRate', 'heavyWeightThreshold', 'labourPackageKg', 'labourUpdatedAt', 'labourUpdatedBy',
               'checkThresholds', 'checksUpdatedAt', 'checksUpdatedBy',
-              'businessName', 'businessDetails', 'businessUpdatedAt', 'businessUpdatedBy'];
+              'businessName', 'businessDetails', 'businessUpdatedAt', 'businessUpdatedBy',
+              'receipt', 'receiptUpdatedAt', 'receiptUpdatedBy'];
+    }
+
+    // Printed bill for every phone (#107): footer, QR, language, darkness and a small
+    // 1-bit logo (at most 384 × 120 dots: 5,760 bytes, 7,680 base64 characters). No character check:
+    // a regex over 7,680 characters uses most of the 1,000-expression budget; the app ignores a logo
+    // whose bits aren't valid base64 of the right length.
+    function receiptLogoOk(l) {
+      return l == null
+        || (l is map && l.keys().hasOnly(['width', 'height', 'bits']) && l.keys().hasAll(['width', 'height', 'bits'])
+            && l.width is int && l.width >= 1 && l.width <= 384
+            && l.height is int && l.height >= 1 && l.height <= 120
+            && l.bits is string && l.bits.size() <= 7680);
+    }
+
+    function receiptOk(r) {
+      return r is map
+        && r.keys().hasOnly(['footer', 'qr', 'lang', 'density', 'logo'])
+        && r.keys().hasAll(['footer', 'qr', 'lang', 'density', 'logo'])
+        && r.footer is string && r.footer.size() <= 80
+        && r.qr is bool
+        && r.lang in ['app', 'en', 'hi']
+        && r.density in ['light', 'normal', 'dark']
+        && receiptLogoOk(r.logo);
+    }
+
+    function settingsReceiptOk() {
+      return request.resource.data.get('receipt', null) == null || receiptOk(request.resource.data.receipt);
+    }
+
+    // settings/app section stamps: <section>UpdatedAt is a time in ms (int), <section>UpdatedBy a uid
+    // (or 'unknown'), as every app version writes them. Only fields this write sets are checked, so an
+    // odd stamp already stored never blocks other saves; removing a stamp is allowed.
+    function stampAtOk(d, keys, k) {
+      return !(k in keys) || !(k in d) || d[k] is int;
+    }
+
+    function stampByOk(d, keys, k) {
+      return !(k in keys) || !(k in d) || (d[k] is string && d[k].size() <= 128);
+    }
+
+    function settingsStampsOk(docId) {
+      let d = request.resource.data;
+      let keys = resource == null ? d.keys() : d.diff(resource.data).affectedKeys();
+      return docId != 'app'
+        || (stampAtOk(d, keys, 'labourUpdatedAt') && stampByOk(d, keys, 'labourUpdatedBy')
+            && stampAtOk(d, keys, 'checksUpdatedAt') && stampByOk(d, keys, 'checksUpdatedBy')
+            && stampAtOk(d, keys, 'businessUpdatedAt') && stampByOk(d, keys, 'businessUpdatedBy')
+            && stampAtOk(d, keys, 'receiptUpdatedAt') && stampByOk(d, keys, 'receiptUpdatedBy')
+            && stampAtOk(d, keys, 'tipUpdatedAt') && stampByOk(d, keys, 'tipUpdatedBy')
+            && stampAtOk(d, keys, 'roleAccessUpdatedAt') && stampByOk(d, keys, 'roleAccessUpdatedBy'));
     }
 
     function managerShopSettingsOk(collection, docId) {

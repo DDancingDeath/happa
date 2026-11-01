@@ -403,12 +403,12 @@ describe('Money screen, pinned (M1–M18, net worth, day chart)', () => {
 // ---------------------------------------------------------------- Outstanding aging (O1–O4)
 
 describe('Outstanding aging, pinned (O1–O4, ages)', () => {
-    test.each(Object.keys(NOWS))('%s: payables and receivables with their ages', (name) => {
+    test.each(Object.keys(NOWS))('%s: payables and receivables (all, retail, wholesale; #125) with their ages', (name) => {
         document.body.innerHTML = TEMPLATES.due;
         jest.setSystemTime(new Date(NOWS[name]));
         loadShop(shopFor(name));
         const got = {};
-        ['purchase', 'sale'].forEach(kind => {
+        ['purchase', 'sale', 'retail', 'wholesale'].forEach(kind => {
             OutstandingManager.filterDue(kind);
             got[kind] = {
                 aging: squash(document.getElementById('dueAging').textContent),

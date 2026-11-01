@@ -141,7 +141,7 @@ test('migrated owner: original password, carried dues, periods, rates, seasons, 
 
     await test.step('Outstanding: the opening dues with the "Old app" chip and their original ages', async () => {
         await showTab(page, 'due');
-        await page.evaluate(() => window.app.outstanding.filterDue('sale', { target: document.querySelector('#due .filter-sale') }));
+        await page.evaluate(() => window.app.outstanding.filterDue('retail'));
         await expect(page.locator('#dueList .history-item')).toHaveCount(retailBills.length);
         const buckets = BUCKETS.map(() => ({ total: 0, count: 0 }));
         retailBills.forEach(b => { const k = bucketOf(ageOf(b.time)); buckets[k].total = r2(buckets[k].total + b.due); buckets[k].count++; });
@@ -160,6 +160,17 @@ test('migrated owner: original password, carried dues, periods, rates, seasons, 
         expect(panel.rows.every(r => r.chip === 'Old app'), 'every carried due has the "Old app" chip').toBe(true);
         expect(multiset(panel.rows.map(r => `${r.no}|${r.age}|${amount(r.due)}`)))
             .toEqual(multiset(retailBills.map(b => `${rowLabel(b)}|${ageText(ageOf(b.time))}|${b.due}`)));
+    });
+
+    await test.step('Outstanding › Sales › All (#125): retail and wholesale dues, the total Money shows', async () => {
+        await page.evaluate(() => window.app.outstanding.filterDue('sale'));
+        await expect(page.locator('#dueList .history-item')).toHaveCount(retailBills.length + wholesaleBills.length);
+        const all = await page.evaluate(() => ({
+            total: document.querySelector('#dueAging .aging-total')?.textContent,
+            chips: [...document.querySelectorAll('#dueList .history-item')].map(el => el.querySelector('.old-app-chip')?.textContent.trim() || '')
+        }));
+        expect(amount(all.total)).toBe(Math.round(expected.dues.receivable));
+        expect(all.chips.every(c => c === 'Old app'), 'every carried due has the "Old app" chip').toBe(true);
     });
 
     await test.step('Wholesale › Outstanding: the carried wholesale dues', async () => {
@@ -307,7 +318,7 @@ test('migrated member: original password, role gating holds', async ({ page }) =
         expect(hidden).toMatchObject({ admin: true, billing: false, due: false });
     }
     await showTab(page, 'due');
-    await page.evaluate(() => window.app.outstanding.filterDue('sale', { target: document.querySelector('#due .filter-sale') }));
+    await page.evaluate(() => window.app.outstanding.filterDue('retail'));
     await expect(page.locator('#dueAging .aging-total')).toHaveText(new RegExp(`${Math.round(expected.dues.retail.total).toLocaleString('en-IN')}`));
     expect(problems.pageErrors).toEqual([]);
     expect(problems.prodRequests).toEqual([]);

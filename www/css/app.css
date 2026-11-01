@@ -2254,6 +2254,39 @@ select:focus, input:focus {
   font-size: 13px;
   color: var(--text-secondary, #555);
 }
+/* Voice billing (#81): shown only when switched on in Settings */
+.voice-mic-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px dashed #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 15px;
+}
+
+.voice-mic-btn[hidden] {
+  display: none;
+}
+
+.voice-mic-btn.voice-listening {
+  border-style: solid;
+  border-color: #b91c1c;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.voice-check th {
+  text-align: left;
+  padding-right: 12px;
+  font-weight: normal;
+}
+
+.voice-warn {
+  color: #b45309;
+}
 
 /* ---- css/totals.css ---- */
 /* -------------------- BILL TOTALS -------------------- */
@@ -3664,6 +3697,23 @@ body.dark-mode .party-due-line.party-due-old {
 body.dark-mode .party-filter-note {
     background: #172554;
     color: #bfdbfe;
+}
+
+/* Retail / wholesale chip on a bill in Outstanding's "All" sales list (#125) */
+.due-kind-chip {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #ecfdf5;
+    color: #065f46;
+    vertical-align: middle;
+}
+
+body.dark-mode .due-kind-chip {
+    background: #064e3b;
+    color: #a7f3d0;
 }
 
 /* ---- css/stock.css ---- */
