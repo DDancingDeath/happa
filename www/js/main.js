@@ -51,7 +51,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecka-pwa-shortcuts';
+const BUILD_ID = '20261101zzuzieecma-pwa-shortcuts';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -469,7 +469,6 @@ async function initializeUserData() {
         });
         NavigationManager.showTab('billing');
         NavigationManager.setActiveNavLink('billing');
-        openLaunchShortcut();
         NavigationManager.initBackNavigation();
         
         // Initialize UI
@@ -496,6 +495,9 @@ async function initializeUserData() {
         
         // Check for auto-saved bill
         await BillingManager.checkAutoSave();
+        // After the recovery check: a mode switch auto-saves, and with no recovery
+        // pending an empty form deletes the auto-save the check must still read
+        openLaunchShortcut();
         BillingManager.renderBillNumber();
         BillingManager.focusFirstItem();
         if (outdatedBlocked) {
