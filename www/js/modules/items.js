@@ -182,7 +182,7 @@ const ItemsManager = {
                 </div>
                 <div class="item-row">
                     <div style="margin-bottom: 8px;">
-                        <label style="font-size: 14px; font-weight: 600; color: #007bff; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.purchase_rates_kg'))}</label>
+                        <label style="font-size: 14px; font-weight: 600; color: #0058b8; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.purchase_rates_kg'))}</label>
                         <div class="rates-container">${purchaseRatesHTML}<button class="add-rate-plus purchase" onclick="window.app.items.addRate(${id})">+</button></div>
                     </div>
                     <div style="margin-bottom: 8px;">
@@ -190,7 +190,7 @@ const ItemsManager = {
                         <div class="rates-container">${wholesaleRatesHTML}<button class="add-rate-plus wholesale" onclick="window.app.items.addWholesaleRate(${id})">+</button></div>
                     </div>
                     <div>
-                        <label style="font-size: 14px; font-weight: 600; color: #28a745; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.retail_rates_kg'))}</label>
+                        <label style="font-size: 14px; font-weight: 600; color: #1c7430; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.retail_rates_kg'))}</label>
                         <div class="rates-container">${saleRatesHTML}<button class="add-rate-plus sale" onclick="window.app.items.addSaleRate(${id})">+</button></div>
                     </div>
                 </div>
@@ -738,16 +738,16 @@ const ItemsManager = {
                     <td style="padding: 16px; font-weight: 600; color: #1f2937; font-size: 15px; border-right: 1px solid #f3f4f6;">
                         ${Helpers.escapeHtml(displayName || item.name || '-')}${archivedChip}
                     </td>
-                    <td data-perm="purchaseRates" style="padding: 16px; color: #007bff; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
-                    <td style="padding: 16px; color: #28a745; font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(saleRates)}</td>
+                    <td data-perm="purchaseRates" style="padding: 16px; color: #0058b8; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
+                    <td style="padding: 16px; color: #1c7430; font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(saleRates)}</td>
                 `;
             } else {
                 row.innerHTML = `
                     <td style="padding: 16px; font-weight: 600; color: #1f2937; font-size: 15px; border-right: 1px solid #f3f4f6;">
                         ${Helpers.escapeHtml(displayName || item.name || '-')}${archivedChip}
                     </td>
-                    <td data-perm="purchaseRates" style="padding: 16px; color: #007bff; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
-                    <td style="padding: 16px; color: #28a745; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(saleRates)}</td>
+                    <td data-perm="purchaseRates" style="padding: 16px; color: #0058b8; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
+                    <td style="padding: 16px; color: #1c7430; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(saleRates)}</td>
                     <td class="wholesale-column" style="padding: 16px; color: #9333ea; font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(wholesaleRates)}</td>
                 `;
             }
@@ -756,7 +756,7 @@ const ItemsManager = {
         
         if (sortedItems.length === 0) {
             const colspan = isStaff ? '3' : '4';
-            tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 24px; text-align: center; color: #999;">${Helpers.escapeHtml(t('ui.stock.no_items_found'))}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 24px; text-align: center; color: #666;">${Helpers.escapeHtml(t('ui.stock.no_items_found'))}</td></tr>`;
         }
         attachScrollCue(document.getElementById('itemsTableScroll'));
     },
@@ -875,7 +875,7 @@ const ItemsManager = {
         const id = this.currentEditingItemId;
         const list = document.getElementById('itemModalHistoryList');
         if (!id || !list || !this.canUseHistory()) return;
-        list.innerHTML = `<p style="color:#888; font-size:13px;">${Helpers.escapeHtml(t('ui.rate_history.loading'))}</p>`;
+        list.innerHTML = `<p style="color:#666; font-size:13px;">${Helpers.escapeHtml(t('ui.rate_history.loading'))}</p>`;
         try {
             const entries = await FirebaseService.loadRateHistory(id);
             if (this.currentEditingItemId !== id) return;
@@ -896,7 +896,7 @@ const ItemsManager = {
     historyListHtml(entries) {
         const e = (v) => Helpers.escapeHtml(v);
         if (!entries || entries.length === 0) {
-            return `<p style="color:#888; font-size:13px;">${e(t('ui.rate_history.no_changes'))}</p>`;
+            return `<p style="color:#666; font-size:13px;">${e(t('ui.rate_history.no_changes'))}</p>`;
         }
         return entries.map(h => {
             const flags = Array.isArray(h.flags) ? h.flags : [];

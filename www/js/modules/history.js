@@ -269,7 +269,7 @@ export class HistoryManager {
         }
 
         if (sortedBills.length === 0 && !showOpenings && !showVoided) {
-            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
             this.renderShowMore(container);
             this.updateOlderHistoryUi();
             return;
@@ -500,7 +500,7 @@ export class HistoryManager {
         
         const totalPackets = bill.totalPackets || 0;
         const isPurchase = type === 'purchase';
-        const billColor = isPurchase ? '#007bff' : '#28a745';
+        const billColor = isPurchase ? '#0058b8' : '#1c7430';
         
         // Build weight breakdown (purchases and sales)
         let weightBreakdownHTML = '';
@@ -562,7 +562,7 @@ export class HistoryManager {
                 <div class="bill-info-section">
                     <div class="bill-info-row">
                         <div class="bill-info-label">${L('ui.history.bill_no')}</div>
-                        <div class="bill-info-value"><strong style="color: ${billColor};">#${Helpers.escapeHtml(billNumber)}</strong></div>
+                        <div class="bill-info-value"><strong style="color: ${isPurchase ? 'var(--info-color)' : 'var(--success-color)'};">#${Helpers.escapeHtml(billNumber)}</strong></div>
                     </div>
                     <div class="bill-info-row">
                         <div class="bill-info-label">${L('ui.history.date_label')}</div>
@@ -1117,7 +1117,7 @@ export class HistoryManager {
         if (bills.length === 0 && this.pageOpenings.length === 0 && this.pageVoided.length === 0) {
             const searchInput = document.getElementById('historySearch');
             const searchTerm = searchInput ? searchInput.value : '';
-            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(this.emptyMessage(type, searchTerm))}</p>`;
             return;
         }
 

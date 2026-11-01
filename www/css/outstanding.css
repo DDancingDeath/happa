@@ -19,7 +19,7 @@
 
 .aging-total {
     font-size: 18px;
-    color: #dc3545;
+    color: #b02a37;
 }
 
 .aging-buckets {
@@ -62,14 +62,14 @@
 }
 
 /* Bucket colours: fresh → old */
-.aging-bucket.aging-b0 { border-left-color: #16a34a; }
+.aging-bucket.aging-b0 { border-left-color: #15803d; }
 .aging-bucket.aging-b1 { border-left-color: #ca8a04; }
 .aging-bucket.aging-b2 { border-left-color: #ea580c; }
-.aging-bucket.aging-b3 { border-left-color: #dc2626; }
-.aging-bucket.aging-b0.active { border-color: #16a34a; background: #f0fdf4; }
+.aging-bucket.aging-b3 { border-left-color: #b91c1c; }
+.aging-bucket.aging-b0.active { border-color: #15803d; background: #f0fdf4; }
 .aging-bucket.aging-b1.active { border-color: #ca8a04; background: #fefce8; }
 .aging-bucket.aging-b2.active { border-color: #ea580c; background: #fff7ed; }
-.aging-bucket.aging-b3.active { border-color: #dc2626; background: #fef2f2; }
+.aging-bucket.aging-b3.active { border-color: #b91c1c; background: #fef2f2; }
 
 .aging-age {
     display: inline-block;
@@ -88,7 +88,7 @@
 .aging-filter-note {
     margin-top: 6px;
     font-size: 12px;
-    color: #6b7280;
+    color: #4b5563;
 }
 
 .aging-subtitle {
@@ -108,7 +108,7 @@
 
 .aging-empty {
     font-size: 13px;
-    color: #6b7280;
+    color: #4b5563;
 }
 
 .aging-parties {
@@ -155,13 +155,13 @@
     margin-bottom: 6px;
     background: #fff;
     border: 1px solid #e5e7eb;
-    border-left: 5px solid #16a34a;
+    border-left: 5px solid #15803d;
     border-radius: 8px;
 }
 
 .aging-party.aging-b1 { border-left-color: #ca8a04; }
 .aging-party.aging-b2 { border-left-color: #ea580c; }
-.aging-party.aging-b3 { border-left-color: #dc2626; }
+.aging-party.aging-b3 { border-left-color: #b91c1c; }
 
 .aging-party-name {
     font-weight: 600;
@@ -170,12 +170,12 @@
 
 .aging-party-meta {
     font-size: 14px;
-    color: #6b7280;
+    color: #4b5563;
     margin-top: 2px;
 }
 
 .aging-party-total {
-    color: #dc3545;
+    color: #b02a37;
     white-space: nowrap;
 }
 
@@ -207,7 +207,7 @@
     margin-left: 4px;
     padding: 1px 6px;
     border-radius: 10px;
-    background: #dc2626;
+    background: #b91c1c;
     color: #fff;
     font-size: 14px;
     font-weight: 600;

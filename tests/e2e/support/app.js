@@ -66,6 +66,23 @@ async function showTab(page, tab) {
     }, tab);
 }
 
+/** Waits until the screen stops changing (no "Loading…", same text twice); returns false if it never did. */
+async function settle(page, timeout = 10000) {
+    const ok = await page.waitForFunction(() => {
+        const tab = document.querySelector('.tab.active');
+        const ov = document.getElementById('loadingOverlay');
+        if (ov && ov.classList.contains('active')) return false;
+        const txt = tab ? tab.innerText : '';
+        const busy = /Loading|लोड हो रह/.test(txt) || (tab && [...tab.querySelectorAll('.loading-spinner, .spinner')].some(e => e.offsetParent));
+        const s = window.__smokeSettle || (window.__smokeSettle = { len: -1, n: 0 });
+        if (!busy && txt.length === s.len) s.n++; else s.n = 0;
+        s.len = txt.length;
+        return s.n >= 2;
+    }, null, { polling: 250, timeout }).then(() => true, () => false);
+    await page.evaluate(() => { window.__smokeSettle = null; });
+    return ok;
+}
+
 /** Resolves when #toast shows text matching re. */
 async function expectToast(page, re, timeout = 20000) {
     await base.expect(page.locator('#toast')).toHaveText(re, { timeout });
@@ -77,4 +94,4 @@ async function confirmModalIfOpen(page) {
     if (open) await page.click('#modalConfirm');
 }
 
-module.exports = { test, expect: base.expect, login, openApp, showTab, expectToast, confirmModalIfOpen };
+module.exports = { test, expect: base.expect, login, openApp, showTab, settle, expectToast, confirmModalIfOpen };

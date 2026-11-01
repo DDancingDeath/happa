@@ -2,7 +2,7 @@
         <div id="itemsActionButtons" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;">
             <button class="quick-add-btn-inline" onclick="window.app.items.exportExcel()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.export">📊 Export</button>
             <button class="quick-add-btn-inline" onclick="document.getElementById('importItemsFile').click()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600;" data-i18n="ui.items.import">📥 Import</button>
-            <button class="quick-add-btn-inline" onclick="window.app.items.openAddModal()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600; background: #22c55e; border-color: #22c55e;" data-i18n="ui.items.add_item">➕ Add Item</button>
+            <button class="quick-add-btn-inline" onclick="window.app.items.openAddModal()" style="flex: 1; padding: 12px 20px; font-size: 15px; font-weight: 600; background: #15803d; border-color: #15803d;" data-i18n="ui.items.add_item">➕ Add Item</button>
         </div>
         
         <input type="file" id="importItemsFile" accept=".xlsx,.xls,.csv" style="display: none;" onchange="window.app.items.importExcel(event)" />
@@ -23,7 +23,7 @@
         <div id="itemsTableScroll" class="scroll-cue-inner" style="border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
             <table id="itemsViewTable" style="width: 100%; border-collapse: collapse; background: white;">
                 <thead>
-                    <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-bottom: 2px solid #5a67d8;">
+                    <tr style="background: linear-gradient(135deg, #5560d6 0%, #764ba2 100%); border-bottom: 2px solid #5a67d8;">
                         <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-i18n="ui.items.item_name">Item Name</th>
                         <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-perm="purchaseRates" data-i18n="ui.items.purchase_rates">Purchase Rates</th>
                         <th style="padding: 16px; text-align: left; font-weight: 600; color: white; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; border-right: 1px solid rgba(255,255,255,0.2);" data-i18n="ui.items.retail_rates">Retail Rates</th>

@@ -27,5 +27,5 @@ body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "No
 @media print {
     body { background: #fff; }
     .rh-btns { display: none; }
-    .rh-month, .rh-card { break-inside: avoid; border-color: #999; }
+    .rh-month, .rh-card { break-inside: avoid; border-color: #666; }
 }
