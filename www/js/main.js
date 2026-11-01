@@ -57,7 +57,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbne-calc-types';
+const BUILD_ID = '20261101zzuzieecmbbkhbnn-printer-permission';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -540,6 +540,7 @@ async function initializeUserData() {
         
         // Update printer status
         PrinterService.updateStatus();
+        PrinterService.bluetoothPermission().catch(e => console.warn('Bluetooth permission check failed:', e));
         
         // Clean up old audit logs (runs silently for owners)
         AuditService.cleanupOldLogs().catch(e => console.warn('Audit log cleanup failed:', e));

@@ -5,7 +5,7 @@
  * its own, and the user's Disconnect. Uses a fake Bluetooth transport.
  */
 import { PrinterLink, LINK_TIMEOUTS } from '../services/printer-link.js';
-import { PrinterService } from '../services/printer.js';
+import { PrinterService, BILL_PRINT_TRIES } from '../services/printer.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 
@@ -28,6 +28,7 @@ class FakeTransport {
         const step = this.connectPlan.shift() || 'ok';
         if (step === 'hang') return never();
         if (step === 'fail') return Promise.reject(new Error('Unable to connect to device'));
+        if (step === 'denied') return Promise.reject(new Error('Need android.permission.BLUETOOTH_CONNECT permission'));
         this.up = true;
         this.onDrop = onDrop;
         return Promise.resolve();
@@ -153,6 +154,13 @@ describe('PrinterLink', () => {
         expect(transport.calls.write).toBe(2);
     });
 
+    test('Android refusing the link for a missing permission is its own kind of failure', async () => {
+        const { link, transport } = makeLink();
+        transport.connectPlan = ['denied'];
+        await expect(link.send(BYTES, { deviceId: 'AA:BB' })).rejects.toMatchObject({ kind: 'permission', outcome: 'failed' });
+        expect(transport.calls.write).toBe(0);
+    });
+
     test('no printer to connect to fails at once', async () => {
         const { link, transport } = makeLink();
         await expect(link.send(BYTES)).rejects.toMatchObject({ kind: 'no_printer', outcome: 'failed' });
@@ -252,7 +260,7 @@ describe('PrinterService with the fake transport', () => {
         await jest.advanceTimersByTimeAsync(3000);
         expect(preview).not.toHaveBeenCalled();
         await jest.advanceTimersByTimeAsync(1000);
-        expect(preview).toHaveBeenCalledWith(bill);
+        expect(preview).toHaveBeenCalledWith(bill, { onPrint: expect.any(Function) });
         await expect(done).resolves.toBe(true);
         expect(transport.calls.connect).toBe(linked ? 2 : 1);
         expect(toast).toHaveBeenCalledWith('Print failed: the printer did not connect in time');
@@ -344,7 +352,7 @@ describe('PrinterService with the fake transport', () => {
     test('an unreachable printer falls back to the preview and Settings shows the last problem', async () => {
         transport.connectPlan = ['hang'];
         expect(await PrinterService.printBill(bill)).toBe(true);
-        expect(preview).toHaveBeenCalledWith(bill);
+        expect(preview).toHaveBeenCalledWith(bill, { onPrint: expect.any(Function) });
         const status = document.getElementById('printerStatusText');
         expect(status.dataset.state).toBe('disconnected');
         expect(status.textContent).toContain('Not connected (last used: Shop printer)');
@@ -366,6 +374,101 @@ describe('PrinterService with the fake transport', () => {
         expect(preview).toHaveBeenCalled();
         expect(transport.calls.connect).toBe(1);
         expect(transport.calls.write).toBe(0);
+    });
+
+    test('printer off: Print in the preview tries again; after the last try only the picture is left', async () => {
+        transport.connectPlan = Array(BILL_PRINT_TRIES).fill('fail');
+        const offers = [];
+        preview.mockImplementation(async (_bill, opts = {}) => {
+            offers.push(typeof opts.onPrint === 'function');
+            return opts.onPrint ? opts.onPrint() : true;
+        });
+        expect(await PrinterService.printBill(bill)).toBe(true);
+        expect(transport.calls.connect).toBe(BILL_PRINT_TRIES);
+        expect(offers).toEqual([...Array(BILL_PRINT_TRIES - 1).fill(true), false]);
+        expect(toast).toHaveBeenLastCalledWith(`Print failed after ${BILL_PRINT_TRIES} tries: Unable to connect to device. Use the picture, or print it again later from History.`);
+        expect(transport.calls.write).toBe(0);
+    });
+
+    test('printer back on: Print in the preview prints the bill', async () => {
+        transport.connectPlan = ['fail', 'ok'];
+        preview.mockImplementationOnce(async (_bill, opts) => opts.onPrint());
+        expect(await PrinterService.printBill(bill)).toBe(true);
+        expect(transport.written).toEqual([BYTES]);
+        expect(toast).toHaveBeenLastCalledWith('✓ Printed successfully');
+    });
+
+    describe('Bluetooth permission (Android 12+)', () => {
+        let granted;
+        let asked;
+        beforeEach(() => {
+            granted = false;
+            asked = 0;
+            jest.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Linux; Android 13; Pixel 7) wv');
+            window.cordova = { plugins: { permissions: {
+                BLUETOOTH_CONNECT: 'android.permission.BLUETOOTH_CONNECT',
+                checkPermission: (name, ok) => ok({ hasPermission: granted }),
+                requestPermission: (name, ok) => { asked++; granted = true; ok({ hasPermission: true }); }
+            } } };
+            PrinterService.permissionState = 'unknown';
+            PrinterService.permissionBannerClosed = false;
+        });
+        afterEach(() => {
+            delete window.cordova;
+            document.getElementById('printerPermissionBanner')?.remove();
+        });
+        const banner = () => document.getElementById('printerPermissionBanner');
+
+        test('a bill with the permission refused does not touch Bluetooth; the banner asks for it', async () => {
+            expect(await PrinterService.printBill(bill)).toBe(true);
+            expect(transport.calls.connect).toBe(0);
+            expect(preview).toHaveBeenCalledWith(bill, { onPrint: expect.any(Function) });
+            expect(toast).toHaveBeenCalledWith('Print failed: Bluetooth permission needed: allow Nearby devices for this app');
+            expect(banner().textContent).toContain('The printer needs Bluetooth permission (Nearby devices).');
+            expect(document.getElementById('printerStatusText').dataset.state).toBe('permission');
+
+            banner().querySelector('.printer-perm-banner__allow').click();
+            await flush();
+            expect(asked).toBe(1);
+            expect(banner()).toBeNull();
+            expect(await PrinterService.printBill(billB)).toBe(true);
+            expect(transport.written).toEqual([BYTES]);
+        });
+
+        test('Android still says no: the banner stays and says where to allow it', async () => {
+            window.cordova.plugins.permissions.requestPermission = (name, ok) => { asked++; ok({ hasPermission: false }); };
+            await PrinterService.bluetoothPermission();
+            expect(banner()).not.toBeNull();
+            await PrinterService.requestBluetoothPermission();
+            expect(asked).toBe(1);
+            expect(banner()).not.toBeNull();
+            expect(toast).toHaveBeenCalledWith(expect.stringContaining('allow Nearby devices'), 'warning');
+        });
+
+        test('× hides the banner; no printer in use, no banner', async () => {
+            await PrinterService.bluetoothPermission();
+            banner().querySelector('.printer-perm-banner__close').click();
+            expect(banner()).toBeNull();
+            PrinterService.permissionBannerClosed = false;
+            AppState.printerSettings = { enabled: false, deviceId: null };
+            await PrinterService.bluetoothPermission();
+            expect(banner()).toBeNull();
+        });
+
+        test('Android 11 and older have no such permission: nothing is checked', async () => {
+            jest.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Linux; Android 11; X) wv');
+            expect(await PrinterService.bluetoothPermission()).toBe('unknown');
+            expect(banner()).toBeNull();
+        });
+
+        test('a link refused for the permission shows the banner too', async () => {
+            granted = true;
+            transport.connectPlan = ['denied'];
+            await PrinterService.printBill(bill);
+            granted = false;
+            expect(PrinterService.permissionState).toBe('denied');
+            expect(banner()).not.toBeNull();
+        });
     });
 
     test('printing disabled in Settings goes straight to the preview', async () => {
