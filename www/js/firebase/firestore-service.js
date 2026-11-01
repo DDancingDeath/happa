@@ -93,6 +93,7 @@ const col = (name) => {
  * FirebaseService: refs stay inside the data layer (repos/cash-sessions.js has its own).
  * @param {string} sessionId
  */
+const ITEM_ARCHIVE_FIELDS = ['archived', 'archivedAt', 'archivedBy', 'archivedByUserId', 'unarchivedAt', 'unarchivedBy', 'unarchivedByUserId'];
 const cashSessionRef = (sessionId) => FirebaseService.db.collection(col('cashManagement')).doc(String(sessionId));
 
 /** @type {Function[]} Array of unsubscribe functions for real-time listeners */
@@ -2234,8 +2235,10 @@ const FirebaseService = {
      */
     async saveItem(item) {
         if (item.id) {
-            // merge: a stale phone's save can't drop fields it never saw (archived, #123)
-            await getDb().collection(col('items')).doc(item.id).set(item, { merge: true });
+            // merge, and never the archive fields: only setItemArchived changes them (#123)
+            const data = { ...item };
+            ITEM_ARCHIVE_FIELDS.forEach(f => delete data[f]);
+            await getDb().collection(col('items')).doc(item.id).set(data, { merge: true });
         } else {
             const docRef = await getDb().collection(col('items')).add(item);
             item.id = docRef.id;

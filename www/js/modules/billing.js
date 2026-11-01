@@ -384,7 +384,7 @@ const BillingManager = {
     loadItemsDropdown() {
         const select = document.getElementById('billItem');
         if (!select) return;
-        const kept = select.value;
+        const keptId = select.selectedOptions?.[0]?.dataset.itemId;
         
         select.innerHTML = '';
         
@@ -403,12 +403,13 @@ const BillingManager = {
             const opt = document.createElement('option');
             const originalIndex = AppState.items.findIndex(i => i.id === item.id || i.name === item.name);
             opt.value = originalIndex;
+            if (item.id) opt.dataset.itemId = item.id;
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
             opt.textContent = displayName;
             select.appendChild(opt);
         });
         
-        this.keepArchivedSelection('billItem', kept);
+        this.keepSelection('billItem', keptId);
         if (AppState.items.length > 0) {
             this.loadRates();
         }
@@ -420,7 +421,7 @@ const BillingManager = {
     loadSaleItemsDropdown() {
         const select = document.getElementById('saleItem');
         if (!select) return;
-        const kept = select.value;
+        const keptId = select.selectedOptions?.[0]?.dataset.itemId;
         
         select.innerHTML = '';
         
@@ -439,12 +440,13 @@ const BillingManager = {
             const opt = document.createElement('option');
             const originalIndex = AppState.items.findIndex(i => i.id === item.id || i.name === item.name);
             opt.value = originalIndex;
+            if (item.id) opt.dataset.itemId = item.id;
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
             opt.textContent = displayName;
             select.appendChild(opt);
         });
         
-        this.keepArchivedSelection('saleItem', kept);
+        this.keepSelection('saleItem', keptId);
         if (AppState.items.length > 0) {
             this.loadSaleRates();
         }
@@ -462,20 +464,25 @@ const BillingManager = {
         if (!select || !item || [...select.options].some(o => o.value === String(itemIndex))) return;
         const opt = document.createElement('option');
         opt.value = itemIndex;
+        if (item.id) opt.dataset.itemId = item.id;
         opt.textContent = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
         select.appendChild(opt);
     },
 
     /**
-     * A rebuilt picker drops archived items; if the line being edited was one,
-     * put it back and keep it selected so its weights can't move to another item.
+     * A rebuilt picker (another phone's bill, an item change) keeps the item that
+     * was selected, found again by id since positions in AppState.items can
+     * shift; an archived one is put back, so a line being edited can't move its
+     * weights to another item.
      * @param {string} selectId
-     * @param {string} kept the picker's value before the rebuild
+     * @param {string} [keptId] id of the item selected before the rebuild
      */
-    keepArchivedSelection(selectId, kept) {
-        if (kept === '' || kept == null || !isArchivedItem(AppState.items[Number(kept)])) return;
-        this.ensureItemOption(selectId, Number(kept));
-        document.getElementById(selectId).value = kept;
+    keepSelection(selectId, keptId) {
+        if (!keptId) return;
+        const index = AppState.items.findIndex(i => i && i.id === keptId);
+        if (index === -1) return;
+        this.ensureItemOption(selectId, index);
+        document.getElementById(selectId).value = String(index);
     },
 
     /**

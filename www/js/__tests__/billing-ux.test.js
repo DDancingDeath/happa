@@ -267,9 +267,14 @@ describe('archived items (#123)', () => {
         BillingManager.loadItemsDropdown();
         expect(document.getElementById('billItem').value).toBe('1');
         expect(names('billItem')).toEqual(['Rice', 'Old Dal']);
-        document.getElementById('billItem').value = '0';
+        // Positions shift (an item added before it, then the line's item unarchived): kept by id
+        AppState.items = [{ id: 'n', name: 'New', rates: [] }, AppState.items[0], { ...AppState.items[1], archived: false }];
         BillingManager.loadItemsDropdown();
-        expect(names('billItem')).toEqual(['Rice']);
+        expect(document.getElementById('billItem').value).toBe('2');
+        AppState.items[2].archived = true;
+        document.getElementById('billItem').value = '1';
+        BillingManager.loadItemsDropdown();
+        expect(names('billItem').sort()).toEqual(['New', 'Rice']);
     });
 
     test('adding a line of an archived item ends with the archived warning, not "added"', async () => {
