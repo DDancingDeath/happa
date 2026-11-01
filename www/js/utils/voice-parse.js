@@ -272,7 +272,9 @@ function numberKind(rest, groups, gi) {
         if (!(earlier && (after === 'weight' || after === 'gram'))) return after === 'rate-kg' || after === 'weight' ? 'rate-kg' : 'rate';
     }
     // "2 kilo 60 (rupaye) mein" is a total; "30 ke bhav mein" a rate
-    const meinBefore = TOTAL_AFTER_A_WEIGHT.has(b1) || (currency && TOTAL_AFTER_A_WEIGHT.has(b2));
+    const meinAt = TOTAL_AFTER_A_WEIGHT.has(b1) ? g.start - 1 : (currency && TOTAL_AFTER_A_WEIGHT.has(b2) ? g.start - 2 : -1);
+    // "रेट में ₹30" and "में ₹30 किलो" are rates
+    const meinBefore = meinAt !== -1 && after !== 'rate-kg' && !RATE_WORDS.has(rest[meinAt - 1]);
     if (gi > 0 && (((after === null || after === 'rate') && mein && !meinAfterRateWord)
         || (after !== 'weight' && after !== 'gram' && meinBefore && prev.value !== 1))) return 'other';
     if (TOTAL_BEFORE.has(b1) || (currency && TOTAL_BEFORE.has(b2))) return 'other';
