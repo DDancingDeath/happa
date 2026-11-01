@@ -458,6 +458,7 @@ Counts about this phone, never business figures. Nothing is read from the server
 |---|---|---|
 | REM-1 | Collect udhaar / Collect wholesale dues / Pay suppliers: total, up to 3 parties (amount, days), "+N more" | Outstanding's grouping and age (`buildAging`: BILL-DUE per normalised party name, age of the oldest open bill) over the open bills already on the phone, one block per list as the app keeps them: retail sales (Outstanding › Sales › Retail), wholesale sales-tab bills (Wholesale › Outstanding, roles that may open Wholesale) and purchases (Outstanding › Purchases). Only parties whose oldest due is older than 30 days, in Outstanding's "chase first" order (oldest bucket, then the biggest amount); the total is Σ of all those parties' dues |
 | REM-2 | Rent due: amount, units owing, late | Σ RENT-10 `due` (= RENT-9 due), the units marked Late and the count of RENT-10 rows with due > 0, as the Rent page last showed them on this phone for this month (saved when it renders the current month with no load error and nothing cut at a limit; for the same person, with the date and time it was taken). Shown to rentals roles only, with the time it was taken; not shown when Rentals wasn't opened this month |
+| REM-3 | Check a backup: never / last checked N days ago (owner) | Shown to the owner when this phone has no backup check recorded for them, or the last one was 30 or more days ago; N = whole days since that check (`drillReminder`, `utils/backup-verify.js`). A check is recorded when Admin › Data › Check a backup finds a file good (#63); no reads |
 
 ## Checking real data
 
@@ -511,7 +512,15 @@ runs every screen test of `screens.test.js` again with a voided copy of every bi
 
 These must hold for any data. They run as property tests on generated
 multi-year histories (`tests/fixtures/generator.js`) and, for the loaded data,
-in Diagnostics → Number checks.
+in Diagnostics → Number checks. Once a day an owner's or manager's phone runs them (TIP
+NumberChecks); each mismatch it lists (at most 20 per check, as on the screen) becomes one Anomalies
+flag (#160, `utils/number-check-flags.js`: type `numcheck-ac<N>`, filed under its bill, item (Stock) or
+cash day, with expected / found and the money difference). The flag's id is the check plus that bill /
+item / day, so the same mismatch found again on any day or phone is the same flag and keeps its review;
+a new mismatch is a new flag. It is created only when it isn't stored yet: one read per mismatch the
+phone hasn't filed before (it remembers the ids), at most 50 a day (money checks first), none when
+all pass. A mismatch marked fixed that comes back on the same bill / item / day is not flagged again
+(Diagnostics and TIP still show it).
 
 | ID | Check |
 |---|---|
