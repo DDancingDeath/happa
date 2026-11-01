@@ -60,7 +60,7 @@ Formerly AadhatManagementApp (old repo: https://github.com/DDancingDeath/AadhatM
 
 | Collection | Purpose | State Property |
 |------------|---------|----------------|
-| `items` | Product catalog with rates | `AppState.items` |
+| `items` | Product catalog with rates; `archived: true` hides an item from new bills, never deleted (#123) | `AppState.items` |
 | `purchases` | Purchase transactions (stock IN) | `AppState.purchaseHistory` |
 | `retailSales` | Retail sales from billing tab | `AppState.retailSalesHistory` |
 | `wholesaleSales` | Wholesale sales from sales tab | `AppState.salesHistory` |

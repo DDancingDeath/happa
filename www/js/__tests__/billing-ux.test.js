@@ -249,3 +249,136 @@ describe('calc (BF-RECOVER, BF-NO)', () => {
             { billNumber: 'S20261101-K7P-030' }, { billNumber: 'P20261101-040' }, {}], now)).toBe('S20261101-013');
     });
 });
+
+describe('archived items (#123)', () => {
+    test('the item pickers leave archived items out; editing a line of one adds it back', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Old Dal', archived: true, rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        BillingManager.loadSaleItemsDropdown();
+        const names = (id) => [...document.getElementById(id).options].map(o => o.textContent);
+        expect(names('billItem')).toEqual(['Rice']);
+        expect(names('saleItem')).toEqual(['Rice']);
+        BillingManager.ensureItemOption('billItem', 1);
+        BillingManager.ensureItemOption('billItem', 1);
+        expect(names('billItem')).toEqual(['Rice', 'Old Dal']);
+        // A picker rebuild (another phone saved a bill) keeps the archived line selected
+        document.getElementById('billItem').value = '1';
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('1');
+        expect(names('billItem')).toEqual(['Rice', 'Old Dal']);
+        // Positions shift (an item added before it, then the line's item unarchived): kept by id
+        AppState.items = [{ id: 'n', name: 'New', rates: [] }, AppState.items[0], { ...AppState.items[1], archived: false }];
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('2');
+        AppState.items[2].archived = true;
+        document.getElementById('billItem').value = '1';
+        BillingManager.loadItemsDropdown();
+        expect(names('billItem').sort()).toEqual(['New', 'Rice']);
+    });
+
+    test('an item archived while it is merely selected (not a line being edited) drops out of the picker', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        document.getElementById('billItem').value = '1';
+        AppState.items = [AppState.items[0], { ...AppState.items[1], archived: true }];
+        BillingManager.loadItemsDropdown();
+        expect([...document.getElementById('billItem').options].map(o => o.textContent)).toEqual(['Rice']);
+        expect(document.getElementById('billItem').value).toBe('0');
+    });
+
+    test('adding a line of an archived item ends with the archived warning, not "added"', async () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Old Dal', archived: true, rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        BillingManager.ensureItemOption('billItem', 1);
+        document.getElementById('billItem').value = '1';
+        document.getElementById('billRate').value = '5';
+        document.getElementById('newWeight').value = '20';
+        await PurchaseManager.addToBill();
+        expect(PurchaseManager.getBillItems().map(i => i.itemId)).toEqual(['b']);
+        expect(UIManager.showToast.mock.calls.at(-1)[0]).toMatch(/"Old Dal" is archived/);
+        // Edit the line again with the option still there: it is marked again and survives a rebuild
+        BillingManager.ensureItemOption('billItem', 1);
+        document.getElementById('billItem').value = '1';
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('1');
+        // Added back: the next rebuild drops the archived item
+        document.getElementById('billRate').value = '5';
+        document.getElementById('newWeight').value = '20';
+        await PurchaseManager.addToBill();
+        BillingManager.loadItemsDropdown();
+        expect([...document.getElementById('billItem').options].map(o => o.textContent)).toEqual(['Rice']);
+    });
+
+    test('retail: adding the edited line back clears its marker even though the picker resets', async () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', saleRates: [10] }, { id: 'b', name: 'Dal', saleRates: [5] }];
+        document.getElementById('saleSection').insertAdjacentHTML('beforeend',
+            '<input id="saleRate"><input id="saleWeight"><div id="saleWeightsDisplay"></div><span id="saleTotal"></span>');
+        BillingManager.loadSaleItemsDropdown();
+        BillingManager.ensureItemOption('saleItem', 1);
+        document.getElementById('saleItem').value = '1';
+        document.getElementById('saleRate').value = '5';
+        document.getElementById('saleWeight').value = '20';
+        await RetailSaleManager.addToSalesBill();
+        expect(RetailSaleManager.getSaleItems().map(i => i.itemId)).toEqual(['b']);
+        expect(document.querySelectorAll('#saleItem option[data-edit-line]')).toHaveLength(0);
+    });
+
+    test('a rebuild that keeps the item keeps the typed rate; another item clears it', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
+        document.getElementById('purchaseSection').insertAdjacentHTML('beforeend', '<datalist id="rateOptions"></datalist>');
+        BillingManager.loadItemsDropdown();
+        document.getElementById('billItem').value = '1';
+        document.getElementById('billRate').value = '7.5';
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billRate').value).toBe('7.5');
+        AppState.items = [AppState.items[0], { ...AppState.items[1], archived: true }];
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('0');
+        expect(document.getElementById('billRate').value).toBe('');
+    });
+
+    test('an item archived while weights are entered for it stays selected', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        document.getElementById('billItem').value = '1';
+        PurchaseManager.setWeights([20, 30]);
+        AppState.items = [AppState.items[0], { ...AppState.items[1], archived: true }];
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('1');
+        PurchaseManager.setWeights([]);
+    });
+
+    test('restoring an auto-save of an archived line being edited brings its item back into the picker', async () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Old Dal', archived: true, rates: [5] }];
+        BillDrafts.getAutoSave.mockResolvedValue({
+            mode: 'purchase', lastSaved: new Date(2026, 9, 31, 10, 42),
+            purchase: { items: [{ name: 'Rice', qty: 10, rate: 25, total: 250 }], weights: [20], selectedItem: '1', billTotal: 250 },
+            sale: { items: [] }
+        });
+        await BillingManager.checkAutoSave();
+        jest.useFakeTimers();
+        const done = BillingManager.resolveRecovery(true);
+        await jest.advanceTimersByTimeAsync(200);
+        await done;
+        jest.useRealTimers();
+        expect(document.getElementById('billItem').value).toBe('1');
+    });
+
+    test('a line of an active item being edited survives a rebuild after the item is archived elsewhere', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        BillingManager.ensureItemOption('billItem', 1);
+        document.getElementById('billItem').value = '1';
+        AppState.items = [AppState.items[0], { ...AppState.items[1], archived: true }];
+        BillingManager.loadItemsDropdown();
+        expect(document.getElementById('billItem').value).toBe('1');
+    });
+});

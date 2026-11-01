@@ -376,7 +376,7 @@ describe('ItemsManager writes', () => {
             <table><tbody id="itemsViewTableBody"></tbody></table>
             <div id="itemEditOverlay"><input id="itemModalName"><input id="itemModalHindiName"><input id="itemModalContactPerson">
             <div id="itemModalPurchaseRates"></div><div id="itemModalWholesaleRates"></div><div id="itemModalSaleRates"></div>
-            <button id="itemModalDeleteBtn"></button></div>`;
+            <button id="itemModalArchiveBtn"></button></div>`;
         AppState.settings = { showHindi: false };
         ItemsManager.openEditModal('g');
         ItemsManager.updateModalRate('purchase', 0, '42');

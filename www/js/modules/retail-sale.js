@@ -19,7 +19,7 @@ import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
-import { lineItemIdentity } from '../utils/item-catalog.js';
+import { lineItemIdentity, isArchivedItem } from '../utils/item-catalog.js';
 import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
 import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, resetBillDate } from '../ui/bill-date-input.js';
 
@@ -230,7 +230,11 @@ const RetailSaleManager = {
         itemSelect.focus();
         
         UIManager.hapticFeedback();
-        UIManager.showToast(t('msg.retail.added_sale', { itemName }));
+        // The edited line is back on the bill: a later picker rebuild may drop an archived item
+        document.querySelectorAll('#saleItem option[data-edit-line]').forEach(o => { delete o.dataset.editLine; });
+        if (isArchivedItem(item)) {
+            UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
+        } else UIManager.showToast(t('msg.retail.added_sale', { itemName }));
     },
 
     /**
@@ -337,6 +341,7 @@ const RetailSaleManager = {
         
         const itemIndex = AppState.items.findIndex(i => i.id === item.itemId || i.name === item.name);
         if (itemIndex !== -1) {
+            if (this.billingManager) this.billingManager.ensureItemOption('saleItem', itemIndex);
             document.getElementById('saleItem').value = itemIndex;
             if (this.billingManager) this.billingManager.loadSaleRates();
             
