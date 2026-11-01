@@ -1,8 +1,8 @@
 # Mutation testing (#216, #160): how many deliberate small bugs in the money / stock /
 # date code the tests catch. Non-blocking for now: it never fails a PR, it only
-# reports the score (job summary + HTML report artifact). One job per mutated file
-# (stryker.config.json `mutate`), so the run fits the time limit: with
-# calc/billing.js the single job no longer finished in 60 minutes (#160).
+# reports the score (job summary + HTML report artifact). One job per file in
+# stryker.config.json `mutate` (read from the config, so a new file is never
+# skipped): with calc/billing.js one job no longer finished in 60 minutes (#160).
 name: Mutation testing
 
 on:
@@ -18,21 +18,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  files:
+    name: Files to mutate
+    runs-on: ubuntu-latest
+    outputs:
+      files: ${{ steps.list.outputs.files }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        run: echo "files=$(node -p 'JSON.stringify(require("./stryker.config.json").mutate)')" >> "$GITHUB_OUTPUT"
+
   stryker:
     name: Stryker (${{ matrix.file }})
+    needs: files
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
-        file:
-          - www/js/utils/money.js
-          - www/js/utils/calc/billing.js
-          - www/js/utils/stock-replay.js
-          - www/js/utils/bill-checks.js
-          - www/js/utils/dates.js
-          - www/js/utils/release-info.js
+        file: ${{ fromJSON(needs.files.outputs.files) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
