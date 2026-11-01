@@ -55,6 +55,9 @@ setting is missing or invalid.
   the 1st of last month, in the app only). A bill dated before today (IST) takes no cash from anyone but the
   owner (rules `noBackdatedCash`: `timestamp` before the IST day of `enteredAt`, so a cash bill entered offline and synced after midnight is kept; for cash bills `enteredAt` must be at most 3 days old (no upper bound: a fast phone clock keeps its bills); bills without `enteredAt`, from older apps that can't date a bill back, are not checked):
   online or due only.
+  Wholesale › Outstanding **"Complete all due"** (settle every open bill of a party at once,
+  #150, Q36) is shown to the owner and managers only (app); the rules check each bill's write
+  like any payment (its own `payments[]` entry with `at` = now, #184), so it adds no new right.
   The same days limit how far back a new expense may be dated (#118): 2 = today, yesterday
   and the day before; 0 = today only (`utils/expense-entry.js`; the rules check it with 3
   more days for a phone that saved offline, `expenseDayInWindow`, on every non-owner expense
