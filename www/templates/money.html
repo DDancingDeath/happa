@@ -20,13 +20,19 @@
                 <option value="this-fy" data-i18n="ui.money.p_this_fy">This financial year</option>
                 <option value="last-fy" data-i18n="ui.money.p_last_fy">Last financial year</option>
                 <option value="last-30" data-i18n="ui.money.p_last_30">Last 30 days</option>
+                <option value="custom" data-i18n="ui.cmp.choose_dates">Choose dates…</option>
             </select>
         </div>
+        <div class="ins-abbar" id="moneyCmpBar"></div>
     </div>
 
     <div class="ins-section" id="moneyNotLoaded" hidden></div>
 
     <div id="moneyBody">
+        <div class="ins-card ins-wide" id="moneyCmpCard" hidden>
+            <h3 class="ins-card-title" id="moneyCmpTitle"></h3>
+            <div class="ins-scroll" id="moneyCmpTable"></div>
+        </div>
         <section class="ins-section" id="moneyProfit" data-money-pane="profit">
             <div class="ins-hero ins-tap" data-perm="profit" data-breakdown="profit" role="button" tabindex="0">
                 <div class="ins-hero-label" data-i18n="ui.money.profit">Profit</div>

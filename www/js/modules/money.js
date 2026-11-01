@@ -9,7 +9,7 @@
 
 import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
-import { SAVED_ON_PHONE_KEY, saveFailedText, safeSetItem } from '../utils/storage-full.js';
+import { SAVED_ON_PHONE_KEY, STORAGE_FULL_KEY, saveFailedText, safeSetItem } from '../utils/storage-full.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
@@ -24,7 +24,7 @@ import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom, refreshOnDem
 import { lastCountedSession } from '../utils/cash-session.js';
 import { refusedForClock } from '../utils/clock-skew.js';
 import {
-    moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth, fiscalYearLabel,
+    moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth, fiscalYearLabel, periodCompare,
     itemSummary, biggestChange, profitPerDay, billTime, roundTo, sharePct, addsUp, netMoneyByDay,
     accountsTotal, accountsList, accountEntry, accountsFromPhone, MAX_WORTH_ACCOUNTS
 } from '../utils/business-metrics.js';
@@ -37,6 +37,13 @@ import {
 import { profitTakeaways, cashTakeaways, spendingTakeaways, worthTakeaways } from '../utils/takeaways.js';
 import { can, canEditWorthAccounts, canReadWorthAccounts } from '../utils/role-access.js';
 import { dataSignature } from '../utils/render-memo.js';
+import { openExternal } from '../utils/open-external.js';
+import { APP_IDENTITY } from '../config/app-identity.js';
+import { PrinterService } from '../services/printer.js';
+import {
+    compareBarHtml, writeBar, compareTableHtml, compareTarget, choosePreset, chooseCompare, applyDates, applySaved,
+    saveCurrentRange, removeCurrentRange, periodText, presetSelectValue, summaryLines, summaryText, summaryCanvas
+} from '../ui/period-compare.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const money = (v) => (v === null || v === undefined || !Number.isFinite(v) ? '—' : formatRupees(v));
@@ -96,6 +103,11 @@ export function vsItem(now, then, label) {
     return { c: change(now, then), label, unknown: !Number.isFinite(then) };
 }
 
+/** The period B item (#140), only while a period B is chosen. */
+function vsB(now, then, labels) {
+    return labels.b ? vsItem(now, then, labels.b) : null;
+}
+
 /** Simple inline-SVG bars; `faint` is an optional second series (last year). */
 export function barsSvg(values, { faint = null, labels = [], height = 120, onTap = 'data-day' } = {}) {
     const n = values.length;
@@ -144,7 +156,7 @@ export const MoneyManager = {
         this.sharedAccounts = { ...this.sharedAccounts, stale: true };
         const sel = document.getElementById('moneyPreset');
         const { preset } = getInsightsContext();
-        if (sel) sel.value = /^month:/.test(preset) ? 'this-month' : preset;
+        if (sel) sel.value = /^month:/.test(preset) ? 'this-month' : presetSelectValue(preset);
         this.showSection(this.section);
         this.render();
         this.loadSnapshots().catch(e => console.error('Money: month snapshots failed:', e));
@@ -167,7 +179,37 @@ export const MoneyManager = {
     },
 
     setPreset(preset) {
-        setInsightsContext({ preset });
+        choosePreset(preset);
+        this.render();
+    },
+
+    // Period B (#140): compare with any preset or two chosen days; saved ranges on this phone.
+    setCompare(value) {
+        chooseCompare(value);
+        this.render();
+    },
+
+    applyDates(which) {
+        if (!applyDates('money', which)) UIManager.showToast(t('msg.cmp.pick_both_days'));
+        this.render();
+    },
+
+    applySaved(id) {
+        if (applySaved(id)) {
+            const sel = document.getElementById('moneyPreset');
+            if (sel) sel.value = presetSelectValue(getInsightsContext().preset);
+        }
+        this.render();
+    },
+
+    saveRange() {
+        const res = saveCurrentRange();
+        UIManager.showToast(res.ok ? t('msg.cmp.saved') : t(res.full ? STORAGE_FULL_KEY : 'msg.cmp.not_saved'));
+        this.render();
+    },
+
+    removeRange() {
+        removeCurrentRange();
         this.render();
     },
 
@@ -189,7 +231,7 @@ export const MoneyManager = {
         }
         const sel = document.getElementById('moneyPreset');
         const p = getInsightsContext().preset;
-        if (sel) sel.value = /^month:/.test(p) ? '' : p;
+        if (sel) sel.value = presetSelectValue(p);
         this.render();
     },
 
@@ -208,6 +250,7 @@ export const MoneyManager = {
     periodLabel(r = this.range()) {
         const lang = getLang();
         const { preset } = getInsightsContext();
+        if (r.custom) return periodText(r, preset, lang);
         if (r.month) {
             const label = formatMonth(r.from, { lang });
             if (preset !== 'this-month') return label;
@@ -346,6 +389,7 @@ export const MoneyManager = {
         const r = this.range();
         const label = document.getElementById('moneyPeriodLabel');
         if (label) label.textContent = this.periodLabel(r);
+        writeBar('moneyCmpBar', compareBarHtml('money', { share: true }));
         if (!this.covered(r.from)) {
             this.renderNotLoaded(r);
             return;
@@ -362,7 +406,11 @@ export const MoneyManager = {
             prev: r.month ? formatMonth(cmpR.previous?.from, { lang, year: false }) : t('ui.money.before'),
             ly: r.month ? formatMonth(cmpR.lastYear?.from, { lang }) : t('ui.money.last_year')
         };
-        const ctx = { m, prev, ly, labels, r, now, cfg: this.cfg() };
+        const target = compareTarget(this.cfg(), now);
+        const b = target ? this.figuresFor(target.range, now) : null;
+        if (target) labels.b = target.label;
+        this.renderCompare(m, b, labels);
+        const ctx = { m, prev, ly, b, labels, r, now, cfg: this.cfg() };
         this.renderProfit(ctx);
         if (this.section === 'cash') this.renderCash(ctx);
         if (this.section === 'spending') this.renderSpending(ctx);
@@ -383,10 +431,54 @@ export const MoneyManager = {
 
     renderNotLoaded(r) {
         this.showBody(false);
+        this.renderCompare(null, null, {});
         this.lastSummary = null;
         this.html('moneyNotLoaded', `<div class="ins-empty"><p>${esc(t('ui.money.older_not_loaded', { period: this.periodLabel(r) }))}</p>`
             + `<button type="button" class="btn btn-primary" onclick="window.app.money.loadOlder()">${esc(t('ui.money.load_older'))}</button></div>`);
         this.html('moneyChecks', '');
+    },
+
+    /** A's headline figures, as figuresFor() gives them for a comparison period. */
+    figuresOf(m) {
+        return { M1: m.M1.total, M4: m.M4.total, M6: m.M6.total, M14: m.M14, M16: m.M16.total };
+    },
+
+    /** CMP-AB rows a role may see (profit only with the profit switch). */
+    compareRows(m, b) {
+        return periodCompare(this.figuresOf(m), b).filter(row => row.id !== 'M6' || this.can('profit'));
+    },
+
+    /** Period A vs period B card (#140): shown while a period B is chosen. */
+    renderCompare(m, b, labels) {
+        const card = document.getElementById('moneyCmpCard');
+        if (card) card.hidden = !labels.b;
+        if (!labels.b) { this.html('moneyCmpTable', ''); return; }
+        const a = this.periodLabel();
+        this.text('moneyCmpTitle', t('ui.cmp.a_vs_b', { a, b: labels.b }));
+        this.html('moneyCmpTable', compareTableHtml(this.compareRows(m, b), { a, b: labels.b }));
+    },
+
+    /** Period summary (A, and B when chosen) as lines for WhatsApp / the printer; null when A is not loaded. */
+    summaryNow() {
+        const r = this.range();
+        if (!this.covered(r.from)) return null;
+        const now = new Date();
+        const m = this.summary(r, { sessions: this.sessions(r) });
+        const target = compareTarget(this.cfg(), now);
+        const b = target ? this.figuresFor(target.range, now) : null;
+        return summaryLines(this.compareRows(m, b), { a: this.periodLabel(r), b: target?.label || null, shop: AppState.settings?.shopName || APP_IDENTITY.appName });
+    },
+
+    shareSummary() {
+        const lines = this.summaryNow();
+        if (!lines) { UIManager.showToast(t('msg.cmp.not_loaded')); return; }
+        openExternal(`https://wa.me/?text=${encodeURIComponent(summaryText(lines))}`);
+    },
+
+    async printSummary() {
+        const lines = this.summaryNow();
+        if (!lines) { UIManager.showToast(t('msg.cmp.not_loaded')); return false; }
+        return PrinterService.printCanvas(summaryCanvas(lines), 'summary.png', t('ui.cmp.summary'));
     },
 
     async loadOlder() {
@@ -409,11 +501,11 @@ export const MoneyManager = {
         }).join('');
     },
 
-    renderProfit({ m, prev, ly, labels, r, now }) {
+    renderProfit({ m, prev, ly, b, labels, r, now }) {
         const vsPrev = change(m.M6.total, prev?.M6 ?? null);
         const vsLy = change(m.M6.total, ly?.M6 ?? null);
         this.text('moneyProfitValue', money(m.M6.total));
-        this.html('moneyProfitCompare', compareHtml([vsItem(m.M6.total, prev?.M6, labels.prev), vsItem(m.M6.total, ly?.M6, labels.ly)]));
+        this.html('moneyProfitCompare', compareHtml([vsItem(m.M6.total, prev?.M6, labels.prev), vsItem(m.M6.total, ly?.M6, labels.ly), vsB(m.M6.total, b?.M6, labels)]));
         const onProfit = this.section === 'profit';
         const driverRows = onProfit ? this.itemDriver(m, r) : null;
         this.html('moneyProfitTakeaway', takeawayHtml(profitTakeaways({
@@ -487,9 +579,9 @@ export const MoneyManager = {
             : '');
     },
 
-    renderCash({ m, prev, ly, labels, r }) {
+    renderCash({ m, prev, ly, b, labels, r }) {
         this.text('moneyNetCash', money(m.M14));
-        this.html('moneyCashCompare', compareHtml([vsItem(m.M14, prev?.M14, labels.prev), vsItem(m.M14, ly?.M14, labels.ly)]));
+        this.html('moneyCashCompare', compareHtml([vsItem(m.M14, prev?.M14, labels.prev), vsItem(m.M14, ly?.M14, labels.ly), vsB(m.M14, b?.M14, labels)]));
         this.html('moneyCashTakeaway', takeawayHtml(cashTakeaways({ net: m.M14, out: m.M13, profit: this.can('profit') ? m.M6.total : null, salesDue: m.M1.due })));
         this.html('moneyCashCaveats', this.caveatsHtml(m, ['M12', 'M14']));
         this.text('moneyIn', money(m.M12.total));
@@ -505,10 +597,10 @@ export const MoneyManager = {
         this.html('moneyCashChart', barsSvg(net, { labels: labelsD, onTap: 'data-day' }));
     },
 
-    renderSpending({ m, prev, ly, labels, r }) {
+    renderSpending({ m, prev, ly, b, labels, r }) {
         this.text('moneyBusiness', money(m.M4.total));
         const vsLy = change(m.M4.total, ly?.M4 ?? null);
-        this.html('moneySpendCompare', compareHtml([vsItem(m.M4.total, prev?.M4, labels.prev), vsItem(m.M4.total, ly?.M4, labels.ly)]));
+        this.html('moneySpendCompare', compareHtml([vsItem(m.M4.total, prev?.M4, labels.prev), vsItem(m.M4.total, ly?.M4, labels.ly), vsB(m.M4.total, b?.M4, labels)]));
         const cats = m.M4.byCategory || [];
         const catName = (k) => (k === 'untagged' ? t('ui.money.untagged') : k === 'other' ? t('ui.money.other') : k);
         this.html('moneySpendTakeaway', takeawayHtml(spendingTakeaways({
@@ -964,7 +1056,13 @@ export const MoneyManager = {
             const day = e.target.closest('[data-day]');
             if (day && day.dataset.day) { window.app?.nav?.showTab('cash-management'); return; }
             const month = e.target.closest('[data-month]');
-            if (month && month.dataset.month) { setInsightsContext({ preset: month.dataset.month === monthKeyOf(Date.now()) ? 'this-month' : `month:${month.dataset.month}` }); this.render(); return; }
+            if (month && month.dataset.month) {
+                setInsightsContext({ preset: month.dataset.month === monthKeyOf(Date.now()) ? 'this-month' : `month:${month.dataset.month}` });
+                const sel = document.getElementById('moneyPreset');
+                if (sel) sel.value = presetSelectValue(getInsightsContext().preset);
+                this.render();
+                return;
+            }
             const el = e.target.closest('[data-breakdown]');
             if (!el) return;
             if (e.type === 'keydown') e.preventDefault();
