@@ -28,6 +28,10 @@ import { AnomaliesManager } from './modules/anomalies.js';
 import { HealthManager } from './modules/health.js';
 import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
+import { dayKeyOf } from './tip/tip.js';
+import { createSyncWatcher } from './tip/scenarios/sync.js';
+import { claimToday, numberChecksProps } from './tip/scenarios/number-checks.js';
+import { whenIdle } from './utils/background-tasks.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
 import { TelemetryService } from './services/telemetry.js';
@@ -51,7 +55,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkc-usage';
+const BUILD_ID = '20261101zzuzieecmbbke-tip-scenarios';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -122,6 +126,26 @@ on(REFRESH.statements, () => loadStatements().then(m => m.render()));
 
 // Read meter alerts (#159) become TIP SessionReads failures, which reach the daily tip-auto issues.
 on(READS_ALERT, ({ kind, reads }) => tip.start('SessionReads').complete({ [kind]: true, reads }));
+// TIP Sync (#161): changes waiting to sync reach the server within the limit.
+const tipSyncWatcher = createSyncWatcher((opts) => tip.start('Sync', opts));
+SyncStatus.watch((s) => tipSyncWatcher.update(s));
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') tipSyncWatcher.hidden();
+});
+
+/** TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle. */
+function scheduleTipNumberChecks() {
+    if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
+    whenIdle(() => {
+        try {
+            if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
+            const run = tip.start('NumberChecks');
+            run.complete(numberChecksProps(DiagnosticsManager.numberCheckResults()));
+        } catch (e) {
+            console.warn('TIP number checks failed:', e?.message || e);
+        }
+    }, { minDelayMs: 30000 });
+}
 
 // Load and inject HTML templates from separate .html files. The login screen
 // and app shell go in first; the pages load while Firebase restores the
@@ -508,7 +532,10 @@ async function initializeUserData() {
         // Offline / waiting-to-sync pill (#70)
         SyncStatus.start({ pendingWrites: () => FirebaseService.pendingWritesWaiter() });
         FirebaseService.prepareStock({ defer: true })
-            .then(() => markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox }));
+            .then(() => {
+                markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox });
+                scheduleTipNumberChecks();
+            });
 
         // What's new + Android update banner (non-blocking, best effort)
         AppUpdatesManager.onAppReady();
