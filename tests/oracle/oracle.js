@@ -876,7 +876,7 @@ export function dailyKg(sources, items, itemId, month) {
  * @param {{laborRate?: number, heavyKg?: number, labour?: number, stock?: Object, expenses?: number}} [opts]
  *   labour: typed labour (default: the suggested one)
  */
-export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, stock = {}, expenses = 0 } = {}) {
+export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, stock = {}, expenses = 0, catalogue = [] } = {}) {
     const rupee = (v) => Math.round(r2(v)) || 0;
     const lines = entries.map(e => {
         const qty = e.weights ? sum(e.weights, w => w) : n(e.qty);
@@ -896,12 +896,22 @@ export function billForm(kind, entries, { laborRate = 6, heavyKg = 30, labour, s
         });
     }
     if (kind === 'wholesale') {
-        const cost = rupee(sum(lines, l => (n(stock[l.itemId]?.rate) > 0 ? n(stock[l.itemId].rate) * l.qty : 0)));
-        const profit = total - cost - rupee(n(expenses));
+        // WS-COST: the item's average rate in stock (by id, else the catalogue item named so);
+        // a line without one makes the profit unknown (#102)
+        const low = (s) => String(s || '').trim().toLowerCase();
+        const costOf = (l) => {
+            const item = catalogue.find(i => i.id === l.itemId || (l.name && (low(i.name) === low(l.name) || low(i.hindiName) === low(l.name))));
+            const keys = [l.itemId, item && item.id, item && item.name, l.name, low(l.name)];
+            const k = keys.find(key => key && n(stock[key]?.rate) > 0);
+            return k ? n(stock[k].rate) : null;
+        };
+        const unknown = lines.some(l => costOf(l) === null);
+        const cost = rupee(sum(lines, l => (costOf(l) === null ? 0 : costOf(l) * l.qty)));
+        const profit = unknown ? null : total - cost - rupee(n(expenses));
         Object.assign(out, {
             WS_PROFIT: profit,
             WS_PROFIT_shown: profit,
-            WS_MARGIN: total > 0 ? Math.round((profit / total) * 1000) / 10 : 0
+            WS_MARGIN: unknown ? null : total > 0 ? Math.round((profit / total) * 1000) / 10 : 0
         });
     }
     return out;
