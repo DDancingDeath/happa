@@ -265,7 +265,7 @@
 
 /* Statements */
 .st-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.st-list[hidden], .st-view[hidden] { display: none; }
+.st-list[hidden], .st-view[hidden], .st-item[hidden], .st-actions[hidden] { display: none; }
 .st-item {
     display: grid;
     grid-template-columns: 36px 1fr 20px;
@@ -292,3 +292,13 @@
 .st-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
 .st-actions .btn { min-height: 44px; }
 .st-balance { margin-top: 0; }
+
+/* Period A vs period B, saved ranges, summary (#140) */
+.ins-abbar { width: 100%; }
+.ins-ab-bar, .ins-ab-dates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
+.ins-ab-pick { display: flex; align-items: center; gap: 6px; }
+.ins-ab-bar select, .ins-ab-dates input, .ins-ab-bar .btn, .ins-ab-dates .btn { min-height: 44px; font-size: 14px; }
+.ins-ab-bar .btn, .ins-ab-dates .btn { padding: 6px 12px; }
+.ins-ab-saved { max-width: 100%; }
+.ins-ab-table .ins-cmp-up { color: #047857; }
+.ins-ab-table .ins-cmp-down { color: #b91c1c; }

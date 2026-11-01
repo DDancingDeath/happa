@@ -1454,7 +1454,8 @@ service cloud.firestore {
           : base == 'rent_leases'
           ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
                               'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken',
-                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo', 'fromLeaseId', 'movedTo'].concat(rentMeta()))
+                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo', 'fromLeaseId', 'movedTo',
+                              'agreementEnd', 'noticeMonths'].concat(rentMeta()))
             && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
             && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
             && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
@@ -1507,7 +1508,7 @@ service cloud.firestore {
       let d = request.resource.data;
       let unit = getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data;
       return d.get('status', '') == 'active' && d.get('endMonth', null) == null
-        && d.get('movedTo', null) == null
+        && d.get('movedTo', null) == null && d.get('agreementEnd', null) == null && d.get('noticeMonths', 0) == 0
         // No charges yet, or the first month's charge written in the same batch (move-in).
         && (d.get('chargedThrough', null) == null
             || (d.chargedThrough == d.startMonth && d.startMonth <= rentThisMonth()
@@ -1574,7 +1575,8 @@ service cloud.firestore {
             && d.startMonth == r.startMonth && d.unitId == r.unitId && d.tenantId == r.tenantId
             && d.get('startDate', null) == r.get('startDate', null) && d.get('firstRent', null) == r.get('firstRent', null)
             && d.get('proRate', false) == r.get('proRate', false)
-            && d.get('fromLeaseId', null) == r.get('fromLeaseId', null))
+            && d.get('fromLeaseId', null) == r.get('fromLeaseId', null)
+            && rentAgreementOk(d, r, mgr))
         && (d.get('movedTo', null) == r.get('movedTo', null) || moved)
         && (d.get('shareToken', null) == r.get('shareToken', null) || mgr
             || (moved && d.get('shareToken', null) == null
@@ -1595,6 +1597,16 @@ service cloud.firestore {
               && (next == before
                   || (next < before && (mgr || (moved && nextMonth(next) == before))
                       && !existsAfter(rentChargePath(usersCol, docId, before)))));
+    }
+
+    // Agreement terms (#157 phase 3): the month the agreement ends (not before the start) and the notice
+    // period in months; set or changed only by the owner or a rentals manager, on a full lease edit (the
+    // app never writes them at move-in, and a new lease may not carry them: rentLeaseCreateOk).
+    function rentAgreementOk(d, r, mgr) {
+      return (d.get('agreementEnd', null) == r.get('agreementEnd', null) && d.get('noticeMonths', 0) == r.get('noticeMonths', 0))
+        || (mgr
+          && (d.get('agreementEnd', null) == null || (rentMonth(d.agreementEnd) && d.agreementEnd >= d.startMonth))
+          && d.get('noticeMonths', 0) is int && d.get('noticeMonths', 0) >= 0 && d.get('noticeMonths', 0) <= 12);
     }
 
     // Only the lease's state changed (charging, move-out, change of unit, link): the
@@ -2421,6 +2433,71 @@ service cloud.firestore {
     match /dev_anomalies/{docId} {
       allow read: if isManagerIn('dev_users');
       allow create, update: if validAnomaly('dev_users');
+      allow delete: if isOwnerIn('dev_users');
+    }
+
+    // --- Manual reminders on Today (#86) ---
+    // reminders/{id}: { title (1-120), dueDate 'YYYY-MM-DD' (India), party?, status, createdBy,
+    // createdByName?, createdAt, doneBy/doneByName/doneAt or cancelledBy/cancelledByName/cancelledAt }.
+    // Shop-wide: every approved user reads them (Today) and may mark an open one done, for
+    // everyone. Owners and managers create them (due today or later, at most ~2 years ahead,
+    // yesterday allowed for a phone clock near midnight) and cancel open ones. Done and
+    // cancelled are final. Only the owner deletes. In-app only (#58).
+    function remIstDay(n) {
+      let ist = request.time + duration.value(330, 'm') + duration.value(n, 'd');
+      return string(ist.year()) + '-' + pad2(ist.month()) + '-' + pad2(ist.day());
+    }
+
+    function validReminderCreate(usersCol) {
+      let d = request.resource.data;
+      return isManagerIn(usersCol)
+        && d.keys().hasOnly(['title', 'dueDate', 'party', 'status', 'createdBy', 'createdByName', 'createdAt'])
+        && d.keys().hasAll(['title', 'dueDate', 'status', 'createdBy', 'createdAt'])
+        && d.title is string && d.title.size() >= 1 && d.title.size() <= 120
+        && d.dueDate is string
+        && d.dueDate.matches('^20[0-9]{2}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$')
+        && d.dueDate >= remIstDay(-1)
+        && d.dueDate <= remIstDay(800)
+        && shortStringOrAbsent(d, 'party', 80)
+        && shortStringOrAbsent(d, 'createdByName', 60)
+        && d.status == 'open'
+        && d.createdBy == request.auth.uid
+        && d.createdAt == request.time;
+    }
+
+    function reminderAckOk(usersCol) {
+      let d = request.resource.data;
+      return isApprovedIn(usersCol)
+        && resource.data.status == 'open'
+        && d.diff(resource.data).affectedKeys().hasOnly(['status', 'doneBy', 'doneByName', 'doneAt'])
+        && d.status == 'done'
+        && d.doneBy == request.auth.uid
+        && d.doneAt == request.time
+        && shortStringOrAbsent(d, 'doneByName', 60);
+    }
+
+    function reminderCancelOk(usersCol) {
+      let d = request.resource.data;
+      return isManagerIn(usersCol)
+        && resource.data.status == 'open'
+        && d.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledBy', 'cancelledByName', 'cancelledAt'])
+        && d.status == 'cancelled'
+        && d.cancelledBy == request.auth.uid
+        && d.cancelledAt == request.time
+        && shortStringOrAbsent(d, 'cancelledByName', 60);
+    }
+
+    match /reminders/{id} {
+      allow read: if isApprovedIn('users');
+      allow create: if validReminderCreate('users');
+      allow update: if reminderAckOk('users') || reminderCancelOk('users');
+      allow delete: if isOwnerIn('users');
+    }
+
+    match /dev_reminders/{id} {
+      allow read: if isApprovedIn('dev_users');
+      allow create: if validReminderCreate('dev_users');
+      allow update: if reminderAckOk('dev_users') || reminderCancelOk('dev_users');
       allow delete: if isOwnerIn('dev_users');
     }
 

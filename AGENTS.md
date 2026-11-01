@@ -48,7 +48,7 @@ and is wrapped in **Capacitor** for Android distribution.
    small, reviewed, reversible.
 2. **Never bypass `FirebaseService` / the repositories.** All Firestore reads/writes
    go through `FirebaseService` or a repository in `www/js/firebase/repos/`
-   (Rentals: `rentals/rent-store.js`, `rent-receipt-store.js`, `rent-deposit-store.js`, `rent-expense-store.js`), which resolve
+   (Rentals: `rentals/rent-store.js`, `rent-receipt-store.js`, `rent-deposit-store.js`, `rent-expense-store.js`, `rent-report-store.js`), which resolve
    names with `window.getCollection(name)` so collection prefixing stays correct:
    production uses unprefixed names (`purchases`), development (localhost) uses
    `dev_` (`dev_purchases`). Pages, `ui/`, `services/`, `auth/`, `main.js` and
@@ -134,11 +134,16 @@ In order:
   `on(REFRESH.x, () => Manager.render())` at the end of its module (Money,
   Insights, Statements in main.js through their lazy loaders). Never call
   `window.app.*` from `firebase/` (`data-events.test.js`).
-- **Templates live in `www/templates/`**. `template-loader.js` puts the
-  login screen, side menu and dialogs (`SHELL_TEMPLATES`) in first; the pages
-  (`PAGE_TEMPLATES`) load while Firebase restores the sign-in (#66), and
-  `main.js` runs nothing that touches them (event listeners, the signed-in
-  start) before `pagesReady`. A new page template goes into `PAGE_TEMPLATES`.
+- **Templates live in `www/templates/`**. `template-loader.js` puts the login
+  screen, side menu and dialogs (`SHELL_TEMPLATES`) in first; Billing, Today and
+  Cash (`EAGER_PAGES`) load while Firebase restores the sign-in, and `main.js` runs
+  nothing that touches them (event listeners, the signed-in start) before
+  `pagesReady`. Every other page is fetched and put in the first time it is opened
+  (#66): `NavigationManager.showTab` / `showTabFromNav` call
+  `TemplateLoader.ensurePage` and then return a promise, so code that opens such a
+  page and then works on it waits for that; what startup renders into a page goes
+  in `PAGE_ADDED` (main.js) too. A new page template goes into `PAGE_TEMPLATES` and
+  the service worker's precache (first visits work offline).
 - **Stylesheets**: edit the files in `www/css/`, but `index.html` links only
   `css/app.css`, which `npm run build:css` joins from the list in
   `www/styles.css` (cascade order; a new stylesheet is added there). Commit the
@@ -247,7 +252,8 @@ In order:
   loaded **only** with `import()` when Rentals opens (rent receipts, `rentals/rent-receipt.js` +
   `rent-receipt-store.js`, the unit picker / change of unit `rent-unit.js`, the tenant link actions
   `rent-link.js`, the deposit ledger `rent-deposit.js` + `rent-deposit-store.js` and property expenses
-  `rent-expense.js` + `rent-expense-store.js`, even later: `rentals.js` imports them only when used; they are in
+  `rent-expense.js` + `rent-expense-store.js`, agreement terms, lease reminders and the yearly report `rent-report.js` +
+  `rent-report-store.js` + `rent-math-report.js`, even later: `rentals.js` imports them only when used; they are in
   the service worker's `LAZY_ASSETS`, not `STATIC_ASSETS`); its data is in `rent_*`
   collections (all access in `rentals/rent-store.js`; receipt list / issue-later / cancel in
   `rentals/rent-receipt-store.js`), roles in
@@ -538,7 +544,7 @@ services → repositories → UI. Anywhere in `www/js` (`modules/`, `rentals/`,
   and no way round them (`.db`, `FirebaseService.<x>Ref(` under any alias,
   `firebase` other than `.auth` / `typeof`, `window.firebase`, Firebase SDK / CDN imports)
   outside the repositories (`firebase/**`, `rentals/rent-store.js`,
-  `rentals/rent-receipt-store.js`, `rentals/rent-deposit-store.js`, `rentals/rent-expense-store.js`), calc included. This one is absolute: no
+  `rentals/rent-receipt-store.js`, `rentals/rent-deposit-store.js`, `rentals/rent-expense-store.js`, `rentals/rent-report-store.js`), calc included. This one is absolute: no
   baseline entry, no exception; add a repository function instead;
 - no `AppState.<x> = …` or `AppState.<list>.push(…)`, calc included;
 - no calendar arithmetic (`new Date(y, m, d + 1)`, `n * DAY_MS`) outside calc:

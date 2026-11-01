@@ -286,6 +286,7 @@ function renderRent(d) {
     const lang = getLang();
     const rows = unitRows(d, state.month);
     noteRent(state, rows, store.truncatedKeys());
+    if (!state.errors.size && !store.truncatedKeys().length) void import('./rent-report.js').then(m => m.noteLeases(d, state.month, u => placeOf(ix, u))).catch(() => {});
     const view = state.view === 'units' ? 'units' : 'properties';
     const sw = `<div class="rent-viewswitch" role="group">
         <button type="button" class="filter-btn${view === 'properties' ? ' active' : ''}" aria-pressed="${view === 'properties'}" onclick="window.app.rentals.setView('properties')">${et('ui.rent.view_properties')}</button>
@@ -669,11 +670,12 @@ function renderTenants(d) {
         </div>` : '';
     const rows = [...d.tenants].sort((a, b) => a.name.localeCompare(b.name)).map(tn => {
         const lease = leaseByTenant.get(tn.id);
-        const where = lease ? `${esc(placeOf(ix, lease.unitId))} · ${et('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay })} ${elecTag(lease)}${lease.startDate ? ` · ${esc(sinceText(lease))}` : ''}`
+        const where = lease ? `${esc(placeOf(ix, lease.unitId))} · ${et('ui.rent.rent_terms', { amount: formatINR(lease.rent), day: lease.dueDay })} ${elecTag(lease)}${lease.startDate ? ` · ${esc(sinceText(lease))}` : ''}${isMonth(lease.agreementEnd) ? ` · ${et('ui.rent.agr_till', { month: monthLabel(lease.agreementEnd, getLang()) })}` : ''}`
             : et('ui.rent.no_unit');
         const id = js(tn.id);
         const actions = !manage ? '' : `<div class="rent-actions">
             ${lease && isManager() ? btn('', 'shareLink', `'${js(lease.id)}'`, isShareToken(lease.shareToken) ? 'ui.rent.link_on' : 'ui.rent.link_make', '🔗 ') : ''}
+            ${lease && isManager() ? btn('', 'agreement', `'${js(lease.id)}'`, 'ui.rent.agr_btn', '📄 ') : ''}
             ${lease ? `${btn('', 'editLease', `'${js(lease.id)}'`, 'ui.rent.update_rent')}
                 ${btn('', 'moveOut', `'${js(lease.id)}'`, 'ui.rent.move_out')}`
                 : btn(' rent-btn-primary', 'moveIn', `'${id}'`, 'ui.rent.move_in')}
@@ -867,7 +869,7 @@ const unitCtx = () => ({
 
 /** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
 function lazyUi(file, fn, ...args) {
-    return (file === './rent-unit.js' ? unitMod() : file === './rent-deposit.js' ? import('./rent-deposit.js') : file === './rent-expense.js' ? import('./rent-expense.js') : import('./rent-link.js')).then(
+    return (file === './rent-unit.js' ? unitMod() : file === './rent-deposit.js' ? import('./rent-deposit.js') : file === './rent-expense.js' ? import('./rent-expense.js') : file === './rent-report.js' ? import('./rent-report.js') : import('./rent-link.js')).then(
         (m) => Promise.resolve().then(() => m[fn](unitCtx(), ...args)).catch((e) => {
             console.error(`Rentals ${fn} failed:`, e);
             fail('msg.rent.save_failed');
@@ -942,6 +944,7 @@ function renderProperties(d) {
             <select id="rentPropKind">${kinds}</select>
             ${btn(' rent-btn-primary', 'addProperty', '', 'ui.rent.add')}
         </div>` : '';
+    const report = isManager() ? `<div class="rent-actions">${btn('', 'yearReport', '', 'ui.rent.yr_btn', '📊 ')}</div>` : '';
     const leaseById = ix.leases;
     const cards = [...d.properties].sort((a, b) => a.name.localeCompare(b.name)).map(p => {
         const units = d.units.filter(u => u.propertyId === p.id).sort((a, b) => a.label.localeCompare(b.label));
@@ -968,7 +971,7 @@ function renderProperties(d) {
             </div>` : ''}
         </div>`;
     }).join('');
-    return form + (cards || `<p class="rent-empty">${et('ui.rent.no_properties')}</p>`);
+    return form + report + (cards || `<p class="rent-empty">${et('ui.rent.no_properties')}</p>`);
 }
 
 async function addProperty() {
@@ -1142,7 +1145,9 @@ export const RentalsModule = {
         receipts: (tenantId) => receiptUi('showHistory', tenantId),
         receiptAction: (name, id) => receiptUi('action', name, id),
         deposit: (id) => depUi('showDeposit', id), deposits: () => depUi('showHeld'), depositAction: (a, id, i) => depUi('action', a, id, i), advanceToDeposit: (id) => depUi('advanceAction', id),
-        expenses: (pid) => expUi('showExpenses', pid), expenseAction: (a, pid, id) => expUi('action', a, pid, id)
+        expenses: (pid) => expUi('showExpenses', pid), expenseAction: (a, pid, id) => expUi('action', a, pid, id),
+        agreement: (id) => lazyUi('./rent-report.js', 'editAgreement', id), yearReport: () => lazyUi('./rent-report.js', 'showYearReport'),
+        reportAction: (a, v) => lazyUi('./rent-report.js', 'action', a, v)
     }
 };
 

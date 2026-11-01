@@ -12,23 +12,28 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { t, getLang } from '../i18n/index.js';
 import { formatRupees, formatAmount } from '../utils/money.js';
-import { formatDay, formatMonth, formatDayTime, toLocalISODate, parseLocalDate, todayLocalISO, monthStart, endOfLocalDayExclusive } from '../utils/dates.js';
+import { formatDay, formatMonth, formatDayTime, toLocalISODate, parseLocalDate, todayLocalISO, monthStart, endOfLocalDayExclusive, addLocalDays } from '../utils/dates.js';
 import { pickReplayBase } from '../utils/finance-calc.js';
 import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom } from '../utils/history-window.js';
 import { openExternal } from '../utils/open-external.js';
 import { moneySummary } from '../utils/business-metrics.js';
 import { MoneyManager } from './money.js';
 import {
-    dayBook, partyLedger, partyChoices, itemLedger, exportLines, toCsv, csvLanguage, readCsvEnglish, writeCsvEnglish, plainLabel, isoMinute
+    dayBook, partyLedger, partyChoices, itemLedger, exportLines, accountantLines, ACCOUNTANT_COLUMNS, csvLanguage, readCsvEnglish, writeCsvEnglish, plainLabel, isoMinute
 } from '../utils/statements.js';
 import { can } from '../utils/role-access.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
 import { monthBounds, monthKeyOf } from '../utils/month-snapshots.js';
-import { APP_IDENTITY } from '../config/app-identity.js';
+import { Exporter } from '../services/exporter.js';
+import { stampedCsv, stampLine, exportFilename } from '../utils/export-stamp.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const money = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? '—' : formatRupees(Number(v)));
-const KINDS = ['day', 'month', 'party', 'item', 'csv'];
+const KINDS = ['day', 'month', 'party', 'item', 'csv', 'accountant'];
+/** Statements only the owner opens: their whole point is the file (#103). */
+const OWNER_KINDS = ['csv', 'accountant'];
+/** Statements whose files name customers or suppliers: confirm before exporting (#103). */
+const NAMED_KINDS = ['day', 'party', 'item', 'csv', 'accountant'];
 
 export const StatementsManager = {
     kind: null,
@@ -42,8 +47,15 @@ export const StatementsManager = {
     current: null,
 
     init(route) {
+        this.showOwnerParts();
         if (route && KINDS.includes(route)) this.open(route);
         else this.back();
+    },
+
+    /** Export buttons and the export-only statements are the owner's (#103). */
+    showOwnerParts() {
+        const owner = Exporter.allowed();
+        document.querySelectorAll('#statements [data-owner-only]').forEach(el => { el.hidden = !owner; });
     },
 
     back() {
@@ -56,6 +68,11 @@ export const StatementsManager = {
 
     open(kind) {
         if (!KINDS.includes(kind)) return;
+        this.showOwnerParts();
+        if (OWNER_KINDS.includes(kind) && !Exporter.allowed()) {
+            this.back();
+            return;
+        }
         this.kind = kind;
         const list = document.getElementById('statementsList');
         const view = document.getElementById('statementsView');
@@ -141,7 +158,7 @@ export const StatementsManager = {
 
     renderControls() {
         const lang = getLang();
-        const heading = { day: 'ui.statements.day_book', month: 'ui.statements.month', party: 'ui.statements.party', item: 'ui.statements.item', csv: 'ui.statements.csv' }[this.kind];
+        const heading = { day: 'ui.statements.day_book', month: 'ui.statements.month', party: 'ui.statements.party', item: 'ui.statements.item', csv: 'ui.statements.csv', accountant: 'ui.statements.accountant' }[this.kind];
         const h = document.getElementById('statementsHeading');
         if (h) h.textContent = t(heading);
         let html = '';
@@ -161,7 +178,7 @@ export const StatementsManager = {
             const items = (AppState.items || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
             if (!this.itemKey || !items.some(i => i.id === this.itemKey)) this.itemKey = items[0]?.id || null;
             html = `<label>${esc(t('ui.insights.item'))} <select class="form-control" onchange="window.app.statements.set('itemKey', this.value)">${items.map(i => `<option value="${esc(i.id)}"${i.id === this.itemKey ? ' selected' : ''}>${esc(lang === 'hi' ? i.hindiName || i.name : i.name)}</option>`).join('')}</select></label>`;
-        } else if (this.kind === 'csv') {
+        } else if (this.kind === 'csv' || this.kind === 'accountant') {
             html = `<label>${esc(t('ui.statements.from'))} <input type="date" class="form-control" value="${esc(this.csvFrom)}" onchange="window.app.statements.set('csvFrom', this.value)"></label>`
                 + `<label>${esc(t('ui.statements.to'))} <input type="date" class="form-control" value="${esc(this.csvTo)}" onchange="window.app.statements.set('csvTo', this.value)"></label>`;
         }
@@ -181,9 +198,21 @@ export const StatementsManager = {
     render() {
         const doc = document.getElementById('statementsDoc');
         if (!doc || !this.kind) return;
-        const fn = { day: 'renderDay', month: 'renderMonth', party: 'renderParty', item: 'renderItem', csv: 'renderCsv' }[this.kind];
-        this.current = this[fn]();
+        const fn = { day: 'renderDay', month: 'renderMonth', party: 'renderParty', item: 'renderItem', csv: 'renderCsv', accountant: 'renderAccountant' }[this.kind];
+        this.current = { ...this[fn](), period: this.periodOf() };
         doc.innerHTML = this.current.html;
+    },
+
+    /** The period an export covers (its stamp and audit row): ISO days, `from` null = all loaded bills. */
+    periodOf() {
+        const loadedFrom = isFullHistoryLoaded() ? null : toLocalISODate(new Date(historyLoadedFrom()));
+        if (this.kind === 'day') return { from: this.day, to: this.day };
+        if (this.kind === 'month') {
+            const b = monthBounds(this.month);
+            return { from: toLocalISODate(new Date(b.from)), to: toLocalISODate(addLocalDays(new Date(b.to), -1)) };
+        }
+        if (this.kind === 'csv' || this.kind === 'accountant') return { from: this.csvFrom, to: this.csvTo };
+        return { from: loadedFrom, to: todayLocalISO() };
     },
 
     notLoaded(label, from) {
@@ -350,38 +379,56 @@ export const StatementsManager = {
         return { title, html, share: `${title}\n${t('ui.statements.csv_ready', { lines: rows.length, bills })}`, csvHeader, csvRows };
     },
 
-    // ---- share
+    renderAccountant() {
+        const lang = getLang();
+        const from = (parseLocalDate(this.csvFrom) || new Date()).getTime();
+        const toD = parseLocalDate(this.csvTo) || new Date();
+        const to = endOfLocalDayExclusive(toD).getTime();
+        const label = `${formatDay(from, { lang })} – ${formatDay(toD, { lang })}`;
+        const title = `${t('ui.statements.accountant')} · ${label}`;
+        if (!this.covered(from)) return this.notLoaded(label, from);
+        const sessions = this.sessions({ from, to });
+        const rows = accountantLines(this.src(), { from, to }, { sessions: sessions.list });
+        const bills = rows.filter(r => r.entry === 'bill').length;
+        const ready = t('ui.statements.accountant_ready', { bills, payments: rows.length - bills });
+        const html = `<h3 class="st-title">${esc(title)}</h3>${this.duesCaveat(sessions)}`
+            + `<p>${esc(ready)}</p>`
+            + `<p class="ins-hint">${esc(t('ui.statements.accountant_hint'))}</p>`;
+        const blank = (v) => (v === null || v === undefined ? '' : v);
+        const csvRows = rows.map(r => [isoMinute(r.t), r.entry, r.billType, r.billNo, r.party, blank(r.total), r.cash, r.online, blank(r.due), blank(r.payment)]);
+        return { title, html, share: `${title}\n${ready}`, csvHeader: [...ACCOUNTANT_COLUMNS], csvRows, csvLang: 'en' };
+    },
+
+    // ---- share (owner only, confirmed, stamped and audited: services/exporter.js, #103)
+
+    exportJob(format, produce) {
+        const cur = this.current;
+        return Exporter.run({
+            kind: this.kind, format, period: { ...cur.period, label: format === 'csv' ? '' : cur.title }, rows: cur.csvRows.length,
+            names: NAMED_KINDS.includes(this.kind), produce
+        });
+    },
 
     shareWhatsApp() {
-        if (!this.current || !this.current.share) return;
-        const shop = AppState.settings?.shopName || APP_IDENTITY.appName;
-        openExternal(`https://wa.me/?text=${encodeURIComponent(`${shop}\n${this.current.share}`)}`);
+        if (!this.current || !this.current.share) return Promise.resolve(false);
+        return this.exportJob('whatsapp', (stamp) => {
+            openExternal(`https://wa.me/?text=${encodeURIComponent(`${stamp.shop}\n${this.current.share}\n${stampLine(stamp)}`)}`);
+        });
     },
 
     downloadCsv() {
-        if (!this.current || !this.current.csvHeader.length) return;
-        const csv = toCsv(this.current.csvHeader, this.current.csvRows);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${APP_IDENTITY.appName}_${this.kind}_${todayLocalISO()}.csv`;
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        if (!this.current || !this.current.csvHeader.length) return Promise.resolve(false);
+        const lang = this.current.csvLang || this.csvLang();
+        return this.exportJob('csv', (stamp) => {
+            const csv = stampedCsv(this.current.csvHeader, this.current.csvRows, stamp, lang);
+            return Exporter.saveBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), exportFilename(stamp, this.kind, 'csv'), { shareFirst: false });
+        });
     },
 
     print() {
-        if (!this.current) return;
-        const w = window.open('', '_blank');
-        if (!w) { UIManager.showToast(t('msg.statements.popup_blocked')); return; }
-        const shop = AppState.settings?.shopName || APP_IDENTITY.appName;
-        w.document.write(`<!doctype html><html lang="${getLang()}"><head><meta charset="utf-8"><title>${esc(this.current.title)}</title>`
-            + '<style>body{font-family:system-ui,sans-serif;margin:24px;color:#111}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid #ddd;padding:6px;text-align:left}td.num,th.num{text-align:right}.ins-row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:6px 0}.ins-total{font-weight:700}.ins-hero{border:1px solid #ccc;padding:10px;border-radius:8px;margin:8px 0}.ins-hero-value{font-size:22px;font-weight:700}button,.ins-hint{display:none}@page{size:A4;margin:14mm}</style>'
-            + `</head><body><h2>${esc(shop)}</h2>${this.current.html}<p style="color:#555;font-size:12px">${esc(formatDayTime(new Date(), { lang: getLang() }))}</p></body></html>`);
-        w.document.close();
-        w.onload = () => w.print();
+        if (!this.current) return Promise.resolve(false);
+        return this.exportJob('print', (stamp) => Exporter.printPage({
+            title: this.current.title, html: this.current.html, stampText: stampLine(stamp), lang: getLang()
+        }));
     }
 };

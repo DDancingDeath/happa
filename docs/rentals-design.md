@@ -762,3 +762,23 @@ cash drawer: rent money never goes into it."*
 - **Tests:** rules (prod + `dev_`: roles, signed, property/unit/category/mode/month/amount checks, owner-only
   edit/delete, read matrix); Jest (maths, store on the in-memory Firestore, the Rent page cards and the
   dialog); oracle RENT-17/18 (per property adds up to the total, net additive).
+
+## 16. Agreements, lease reminders and the yearly report (phase 3; #157)
+
+- **Agreement terms** on `rent_leases`: `agreementEnd` (`YYYY-MM`, the month the agreement ends, not before
+  `startMonth`; null = no end) and `noticeMonths` (whole months 0–12). The start (`startMonth` / `startDate`)
+  and the yearly increase % (`increasePct`) are the lease's own. Tenants › 📄 **Agreement** (owner and rentals
+  managers). **Rules:** a new lease carries neither (the move-in write stays inside the rules' expression budget);
+  afterwards only the owner or a rentals manager sets or changes them, on a full lease edit
+  (`rentAgreementOk`); a member's edit of other lease fields keeps them as stored.
+- **Today (REM-4):** when the Rent page shows this month with complete data it works out (lazily,
+  `rent-math-report.leaseReminders`) the agreements ending this month or in the next 2 months (or already
+  past) with the notice month, and the rent increases due (RENT-6), and keeps them on the phone for this person
+  and month (`utils/reminders.js`, like REM-2). Today shows them to rentals roles. No reads.
+- **Yearly report (RENT-19):** Properties › 📊 **Yearly report** (owner and rentals managers): per property
+  and month of a financial year (default) or calendar year: rent, collected, due, expenses (of which
+  property tax) and net; **Download CSV** for the owner (audited `RENT_REPORT_CSV`). Reads: the year's
+  charges and expenses, one `month` range query each (single-field, no index; at most 3,000 each).
+- **Files (lazy, not precached; budget 18 KB):** `rent-report.js` (screens), `rent-report-store.js`
+  (repository), `rent-math-report.js` (pure maths, oracle `tests/oracle/rent-report.test.js`). The
+  precached `rentals.js` only gained the buttons and the lazy calls (still under 137 KB).

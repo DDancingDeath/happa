@@ -144,6 +144,16 @@ export function sortItemsByUsage(items, frequency) {
         return (a.name || '').localeCompare(b.name || '');
     });
 }
+/**
+ * Items A–Z by the name shown (Q48 of #111), ties by id so the order is stable.
+ * @param {Array<Object>} items
+ * @param {(item: Object) => string} [nameOf]
+ * @returns {Array<Object>}
+ */
+export function sortItemsByName(items, nameOf = (i) => i.name) {
+    return [...(items || [])].sort((a, b) => String(nameOf(a) || '').localeCompare(String(nameOf(b) || ''), undefined, { sensitivity: 'base' })
+        || String(a.id).localeCompare(String(b.id)));
+}
 /** Spreadsheet column names (export writes these; import reads them). */
 export const ITEM_SHEET_COLUMNS = {
     id: 'ID',

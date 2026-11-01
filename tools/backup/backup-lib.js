@@ -21,7 +21,7 @@ const BACKUP_COLLECTIONS = [
     'personalExpenses', 'personalExpenseDays',
     // own match blocks
     'stockCheckpoints', 'rateHistory', 'anomalies', 'rateStats', 'monthStats',
-    'tipHealth', 'tipFailures', 'users', 'auditLogs', 'telemetry', 'deviceLog',
+    'tipHealth', 'tipFailures', 'users', 'auditLogs', 'telemetry', 'deviceLog', 'reminders',
     // Rentals
     'rent_public', 'rent_properties', 'rent_units', 'rent_tenants', 'rent_leases',
     'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters', 'rent_deposits', 'rent_expenses'

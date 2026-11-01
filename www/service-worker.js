@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v427';
+const CACHE_NAME = 'happa-v443';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -30,6 +30,7 @@ const STATIC_ASSETS = [
     '/js/firebase/repos/anomalies.js',
     '/js/firebase/repos/audit-logs.js',
     '/js/firebase/repos/bill-drafts.js',
+    '/js/firebase/repos/reminders.js',
     '/js/firebase/repos/bill-payments.js',
     '/js/firebase/repos/bill-stats.js',
     '/js/firebase/repos/cash-days.js',
@@ -75,6 +76,7 @@ const STATIC_ASSETS = [
     '/js/rentals/rent-views.js',
     '/js/rentals/rentals.js',
     '/js/services/audit.js',
+    '/js/services/exporter.js',
     '/js/services/install-prompt.js',
     '/js/services/printer.js',
     '/js/services/printer-link.js',
@@ -87,6 +89,8 @@ const STATIC_ASSETS = [
     '/js/ui/business-switcher.js',
     '/js/ui/clock-banner.js',
     '/js/ui/party-due-line.js',
+    '/js/ui/manual-reminders.js',
+    '/js/ui/period-compare.js',
     '/js/ui/infinite-scroll.js',
     '/js/ui/finance-breakdown-sheet.js',
     '/js/ui/navigation.js',
@@ -140,6 +144,8 @@ const STATIC_ASSETS = [
     '/js/utils/usage-stats.js',
     '/js/services/usage.js',
     '/js/ui/usage-view.js',
+    '/js/utils/manual-reminders.js',
+    '/js/utils/saved-ranges.js',
     '/js/utils/printer-settings.js',
     '/js/utils/qr-code.js',
     '/js/utils/labour.js',
@@ -167,6 +173,8 @@ const STATIC_ASSETS = [
     '/js/utils/security-flags.js',
     '/js/services/security-monitor.js',
     '/js/utils/scrub.js',
+    '/js/utils/export-stamp.js',
+    '/js/utils/error-report.js',
     '/js/utils/audit-changes.js',
     '/js/utils/login-backoff.js',
     '/js/utils/team-directory.js',
@@ -232,7 +240,7 @@ const STATIC_ASSETS = [
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
 ];
-// Loaded with import() only when used (Ask, rent receipts, unit picker, tenant link actions, deposits, expenses), so not in
+// Loaded with import() only when used (Ask, rent receipts, unit picker, tenant link actions, deposits, expenses, reports), so not in
 // the precache budget; install also caches them, best effort, so this version's copies (matching
 // the precached files) are there offline right after a deploy.
 const LAZY_ASSETS = [
@@ -247,6 +255,9 @@ const LAZY_ASSETS = [
     '/js/rentals/rent-math-ledger.js',
     '/js/rentals/rent-receipt.js',
     '/js/rentals/rent-receipt-store.js',
+    '/js/rentals/rent-report.js',
+    '/js/rentals/rent-report-store.js',
+    '/js/rentals/rent-math-report.js',
     '/js/rentals/rent-unit.js'
 ];
 
