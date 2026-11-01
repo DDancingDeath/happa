@@ -6,7 +6,7 @@
  * transactions; and, before firestore-service.js is split (phase 5, #69), the
  * FirebaseService methods that move out of it (items, rate stats, month
  * snapshots, backup, TIP, notifications, cash sessions, audit, anomalies, user
- * profiles). Every flow runs against the fake Firestore wrapped by
+ * profiles, settings/app, withdrawals). Every flow runs against the fake Firestore wrapped by
  * recording-firestore.js and pins the exact calls (collection, doc ids, queries,
  * limits, transaction reads and writes, write payloads) in
  * tests/fixtures/repositories-calls.json. Recorded against the code before the
