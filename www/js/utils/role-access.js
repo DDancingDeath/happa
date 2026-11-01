@@ -8,7 +8,7 @@
  * @module utils/role-access
  */
 
-import { isActiveBill } from './money.js';
+import { isActiveBill, isActiveExpense } from './money.js';
 
 /** Roles the owner configures ('staff' is shown as "Member"). The owner always has full access. */
 export const CONFIGURABLE_ROLES = ['manager', 'staff'];
@@ -216,6 +216,20 @@ export function canVoidBillWith(bill, { uid, role, now, raw } = {}) {
     if (role === 'owner') return true;
     if (!uid || !bill.userId || bill.userId !== uid) return false;
     return withinBillEditWindow(bill, { role, now, raw });
+}
+
+/**
+ * Void an expense (#99, firestore.rules expenseVoidOk): the owner any expense; a
+ * manager any expense and a member their own, inside the role's edit window
+ * (editDays) from the expense's save time (`timestamp`). Never one already voided.
+ */
+export function canVoidExpenseWith(expense, { uid, role, now = Date.now(), raw } = {}) {
+    if (!isActiveExpense(expense)) return false;
+    if (role === 'owner') return true;
+    const creator = expense.userId !== undefined ? expense.userId : expense.createdBy;
+    if (role !== 'manager' && !(uid && creator === uid)) return false;
+    const t = expense.timestamp;
+    return typeof t === 'number' && now < t + accessFor(role, raw).editDays * DAY_MS;
 }
 
 /** Delete for good: the owner only, and in the app only a voided bill (test data, mistakes). */

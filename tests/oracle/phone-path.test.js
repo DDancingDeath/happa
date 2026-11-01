@@ -55,12 +55,12 @@ const core = () => JSON.parse(JSON.stringify(Object.fromEntries(KEYS.map(k => [k
 const data = () => JSON.parse(JSON.stringify(Object.fromEntries(KEYS.map(k => [k, [...CORE[k], ...HISTORY[k]]]))));
 
 /**
- * VOID (#75): the phone's Firestore also holds a voided copy of every hand-made bill (no
- * later payments: a void is refused with them). The oracle never sees them (the audit
+ * VOID (#75, #99): the phone's Firestore also holds a voided copy of every hand-made bill (no
+ * later payments: a void is refused with them) and expense. The oracle never sees them (the audit
  * compares with O.withoutVoided), so every figure the phone shows must leave them out:
  * the window and dues listeners, the stock checkpoint, month snapshots and rate history.
  */
-const VOID_KEYS = ['purchases', 'retailSales', 'wholesaleSales'];
+const VOID_KEYS = ['purchases', 'retailSales', 'wholesaleSales', 'expenses'];
 const voidedCopy = (b) => {
     const v = JSON.parse(JSON.stringify(b));
     delete v.payments;

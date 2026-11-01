@@ -9,7 +9,7 @@
  *
  * An anomaly:
  *   { id, type, severity: 'high'|'medium'|'low', en, hi, rule?,
- *     refKind: 'bill'|'cash'|'stock'|'audit', refId, billType?, billNumber?,
+ *     refKind: 'bill'|'expense'|'cash'|'stock'|'audit', refId, billType?, billNumber?,
  *     party, item, userId, user, amount, at (ms), dayKey (IST YYYY-MM-DD), hour (IST),
  *     detectedBy: 'scan' }
  * The id is deterministic (type + ref), so scanning the same data again never
@@ -19,7 +19,7 @@
  */
 
 import { evaluateBill, evaluateCashCount, evaluateStockAdjustment, isEntryIssue, normalizeThresholds } from './bill-checks.js';
-import { activityBills, billTotal, readLineItem, readPayment, round2, toMoney } from './money.js';
+import { activityBills, billTotal, isPersonalExpense, readLineItem, readPayment, round2, toMoney } from './money.js';
 import { parseAnyBillDate, toJsDate } from './dates.js';
 import { isNotCounted } from './cash-session.js';
 import { cleanText } from './due-reminder.js';
@@ -92,6 +92,7 @@ export const ANOMALY_TYPES = Object.freeze({
     'bill-deleted': { en: 'Bill deleted', hi: 'बिल मिटाया', severity: 'high' },
     'bill-voided': { en: 'Bill voided', hi: 'बिल रद्द किया', severity: 'medium' },
     'expense-deleted': { en: 'Expense deleted', hi: 'खर्च मिटाया', severity: 'medium' },
+    'expense-voided': { en: 'Expense voided', hi: 'खर्च रद्द किया', severity: 'medium' },
     'night-entry': { en: 'Night-time entry', hi: 'रात में एंट्री', severity: 'low' },
     // #124: from the security entries phones write to the audit log
     'access-denied': { en: 'Changes refused again and again', hi: 'बार-बार बदलाव मना हुए', severity: 'high' },
@@ -181,30 +182,33 @@ export function billTime(bill) {
  * audit entry's id (same bill number, same person) is left out, and the other way round (an older app's
  * entry seen without its bill); a flag built from the audit entry (`auditTwin`) never rewrites the record
  * already stored under the bill's id, so scans that see the bill and scans that only see the entry don't
- * overwrite each other.
+ * overwrite each other. An expense void's flag built from its audit entry (#99) likewise never rewrites
+ * the record stored from the voided expense.
  * @param {Array} detected
  * @param {Array|null} stored
  * @returns {Array}
  */
 export function withoutStoredVoidTwins(detected, stored) {
-    const voids = (stored || []).filter(d => d && d.type === 'bill-voided');
-    if (!voids.length) return detected;
+    const allVoids = (stored || []).filter(d => d && (d.type === 'bill-voided' || d.type === 'expense-voided'));
+    if (!allVoids.length) return detected;
+    const voids = allVoids.filter(d => d.type === 'bill-voided');
     const keyOf = (d) => `${d.billNumber}|${d.userId || ''}`;
     const storedAs = (kind) => new Set(voids.filter(d => d.refKind === kind && d.billNumber).map(keyOf));
     const byAudit = storedAs('audit');
     const byBill = storedAs('bill');
-    const ids = new Set(voids.map(d => d.id));
-    return detected.filter(a => !(a.type === 'bill-voided' && (a.refKind === 'bill'
-        ? (a.auditTwin && ids.has(a.id)) || (!!a.billNumber && byAudit.has(keyOf(a)))
-        : a.refKind === 'audit' && !!a.billNumber && byBill.has(keyOf(a)))));
+    const ids = new Set(allVoids.map(d => d.id));
+    return detected.filter(a => !((a.type === 'expense-voided' && a.auditTwin && ids.has(a.id))
+        || (a.type === 'bill-voided' && (a.refKind === 'bill'
+            ? (a.auditTwin && ids.has(a.id)) || (!!a.billNumber && byAudit.has(keyOf(a)))
+            : a.refKind === 'audit' && !!a.billNumber && byBill.has(keyOf(a))))));
 }
 
 const billParty = (bill) => String(bill?.customerName || bill?.supplierName || '').trim();
 const billUserId = (bill) => String(bill?.userId || bill?.createdBy || '');
 
 /**
- * A voided bill (by kind, as detectAnomalies `voided`) voided within [from, to) by someone
- * other than `uid` (#75): only then does a scan need to know who the owners are.
+ * A voided bill or expense (by kind, as detectAnomalies `voided`) voided within [from, to) by someone
+ * other than `uid` (#75, #99): only then does a scan need to know who the owners are.
  */
 export function voidedByOthers(voided, uid, from, to) {
     return Object.values(voided || {}).some(list => (list || []).some(b => {
@@ -336,8 +340,8 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {Object[]} [input.sessions] - cash sessions (`cashManagement` docs)
  * @param {Object[]} [input.adjustments] - stock adjustments
  * @param {Object[]} [input.auditLogs] - audit log entries (owner devices only)
- * @param {{purchase?: Object[], retail?: Object[], wholesale?: Object[]}} [input.voided] - voided bills loaded
- *   (FirebaseService.voidedBills): a void by anyone but an owner is flagged (#75), no read of its own
+ * @param {{purchase?: Object[], retail?: Object[], wholesale?: Object[], expense?: Object[]}} [input.voided] - voided bills
+ *   and expenses loaded (FirebaseService.voidedBills, voidedExpenses): a void by anyone but an owner is flagged (#75, #99), no read of its own
  * @param {Object[]} [input.people] - user profiles `{id, name, role}` (owner devices): names on audit-based flags
  * @param {Object[]} [input.catalogue] - items
  * @param {Object} [input.thresholds] - settings/app checkThresholds (+ ANOMALY_DEFAULTS keys)
@@ -495,14 +499,16 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         }
     });
 
-    const AUDIT_TYPES = { DELETE_BILL: 'bill-deleted', DELETE_SALE: 'bill-deleted', DELETE_EXPENSE: 'expense-deleted', VOID_BILL: 'bill-voided' };
+    const AUDIT_TYPES = { DELETE_BILL: 'bill-deleted', DELETE_SALE: 'bill-deleted', DELETE_EXPENSE: 'expense-deleted', VOID_BILL: 'bill-voided', VOID_EXPENSE: 'expense-voided' };
+    const reasonText = (reason) => {
+        const why = cleanText(reason).slice(0, 120);
+        return why ? ` — ${why}` : '';
+    };
     const AUDIT_TEXT = {
         'bill-deleted': (no, amount) => ({ en: `Bill${no} deleted (₹${amount})`, hi: `बिल${no} मिटाया (₹${amount})` }),
-        'bill-voided': (no, amount, reason) => {
-            const why = cleanText(reason).slice(0, 120);
-            return { en: `Bill${no} voided (₹${amount})${why ? ` — ${why}` : ''}`, hi: `बिल${no} रद्द किया (₹${amount})${why ? ` — ${why}` : ''}` };
-        },
-        'expense-deleted': (no, amount) => ({ en: `Expense deleted (₹${amount})`, hi: `खर्च मिटाया (₹${amount})` })
+        'bill-voided': (no, amount, reason) => ({ en: `Bill${no} voided (₹${amount})${reasonText(reason)}`, hi: `बिल${no} रद्द किया (₹${amount})${reasonText(reason)}` }),
+        'expense-deleted': (no, amount) => ({ en: `Expense deleted (₹${amount})`, hi: `खर्च मिटाया (₹${amount})` }),
+        'expense-voided': (no, amount, reason) => ({ en: `Expense voided (₹${amount})${reasonText(reason)}`, hi: `खर्च रद्द किया (₹${amount})${reasonText(reason)}` })
     };
     // #75: a void needs no approval, but one by anyone except an owner is flagged. Owners come from the
     // profiles (owner's scan) or the owners' list (else an audit entry's stored role).
@@ -533,6 +539,25 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
             ...AUDIT_TEXT['bill-voided'](no, amount, bill.voidReason)
         }));
     }));
+    // #99: the same for voided expenses, from the expense itself; its audit entry names it (expenseId), so both
+    // give one flag. A personal expense's flag carries no type or name (managers read flags, maybe not those rows).
+    const expenseRef = (expense, id, userId, user, amount) => {
+        const personal = isPersonalExpense(expense);
+        return {
+            refKind: 'expense', refId: id, party: personal ? '' : String(expense?.personName || '').trim(),
+            item: personal ? '' : String(expense?.type || '').trim(), userId, user, amount
+        };
+    };
+    (voided?.expense || []).forEach(expense => {
+        if (!expense || expense.id == null || expense.voided !== true) return;
+        const by = String(expense.voidedBy || '');
+        if (!by || !ownersKnown || isOwnerUid(by)) return;
+        const amount = round2(Number(expense.amount) || 0);
+        add(makeAnomaly('expense-voided', expenseRef(expense, String(expense.id), by, nameOf(by, expense.voidedByName), amount), {
+            at: toJsDate(expense.voidedAt)?.getTime(),
+            ...AUDIT_TEXT['expense-voided']('', amount, expense.voidReason)
+        }));
+    });
     // An entry's userId is the writer's (rules); its stored userName is whatever the phone sent,
     // so the name comes from the profile when the owner's scan has the profiles (#85)
     const logUser = (log) => {
@@ -547,8 +572,19 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         const d = log.details && typeof log.details === 'object' ? log.details : {};
         // Deleting a bill that was already voided (flagged then) changes nothing.
         if (type === 'bill-deleted' && d.voided === true) return;
-        if (type === 'bill-voided' && isOwnerUid(log.userId, log.userRole)) return;
+        if ((type === 'bill-voided' || type === 'expense-voided') && isOwnerUid(log.userId, log.userRole)) return;
         const amount = round2(Number(d.amount) || 0);
+        if (type === 'expense-voided') {
+            const expenseId = d.expenseId != null && String(d.expenseId) !== '' ? String(d.expenseId) : null;
+            const { userId, user } = logUser(log);
+            const ref = expenseId
+                ? expenseRef({ type: d.type, category: d.category }, expenseId, userId, user, amount)
+                : { ...expenseRef({ type: d.type, category: d.category }, log.id, userId, user, amount), refKind: 'audit' };
+            const flag = makeAnomaly(type, ref, { at: Number(log.timestamp), ...AUDIT_TEXT[type]('', amount, d.reason) });
+            if (expenseId) flag.auditTwin = true;
+            add(flag);
+            return;
+        }
         const billNumber = d.billNumber && d.billNumber !== 'N/A' ? String(d.billNumber) : null;
         const no = billNumber ? ` #${billNumber}` : '';
         // A void shares its bill's flag id (named in the entry, or for older entries the loaded voided

@@ -568,9 +568,9 @@ describe('review fixes (2)', () => {
         await FirebaseService.saveStockAdjustment({ itemId: 'gehu', itemName: 'Gehu', adjustType: 'add', quantity: 1, rate: 0, date: new Date().toISOString() });
         await settle();
         const sale = [...fake.raw('retailSales').values()].find(d => d.total === 5 && d.payment?.due === 3);
-        expect(sale).toMatchObject({ clientVersion: 4, openDue: true });
+        expect(sale).toMatchObject({ clientVersion: 5, openDue: true });
         expect(typeof sale.timestamp).toBe('number');
-        expect([...fake.raw('stockAdjustments').values()].some(d => d.clientVersion === 4 && d.quantity === 1 && d.itemName === 'Gehu')).toBe(true);
+        expect([...fake.raw('stockAdjustments').values()].some(d => d.clientVersion === 5 && d.quantity === 1 && d.itemName === 'Gehu')).toBe(true);
     });
 
     it('#6 an edit based on a stale copy does not overwrite a payment recorded elsewhere', async () => {
@@ -750,7 +750,7 @@ describe('review fixes (2)', () => {
         await settle();
         expect(AppState.stockReady).toBe(true);
         expect(AppState.stock).toEqual(fullStock());
-        expect(cpDoc()).toMatchObject({ formatVersion: STOCK_REPLAY_FORMAT, clientVersion: 4, writtenAt: expect.any(Number), rebuildingUntil: 0, stale: false });
+        expect(cpDoc()).toMatchObject({ formatVersion: STOCK_REPLAY_FORMAT, clientVersion: 5, writtenAt: expect.any(Number), rebuildingUntil: 0, stale: false });
     }, 30000);
 
     it('#13 deferred stock: not ready at the first screen, computed right after the first paint', async () => {

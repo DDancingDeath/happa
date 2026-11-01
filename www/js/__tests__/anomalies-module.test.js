@@ -241,6 +241,37 @@ describe('Day report card', () => {
             }
         });
     });
+
+    describe('expense voids (#99): flagged on Today like bill voids', () => {
+        const voidedExpense = (id, voidedBy) => ({
+            id, type: 'Tea', amount: 150, category: 'business', voided: true, voidedBy, voidedByName: 'Ravi',
+            voidedAt: { toDate: () => new Date(now - 60000) }, voidReason: 'Wrong amount'
+        });
+        beforeEach(() => {
+            AppState.retailSalesHistory = [];
+            FirebaseService.voidedExpenses = jest.fn(() => [voidedExpense('e1', 'staff1'), voidedExpense('e2', 'own1')]);
+        });
+        afterEach(() => { delete FirebaseService.voidedExpenses; });
+
+        test('owner: a member\'s expense void shows with the reason and amount once the owners are read; the owner\'s own does not', async () => {
+            FirebaseService.loadPeople.mockResolvedValue([{ id: 'own1', role: 'owner' }, { id: 'staff1', role: 'staff' }]);
+            AnomaliesManager.renderDayReport({}, null);
+            await AnomaliesManager.refreshing;
+            expect(AnomaliesManager.reportList.map(a => [a.id, a.severity])).toEqual([['expense-voided~expense~e1', 'medium']]);
+            expect(document.getElementById('dayReportCard').textContent).toContain('Expense voided (₹150) — Wrong amount');
+            expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
+            expect(FirebaseService.loadAuditLogsSince).not.toHaveBeenCalled();
+            expect(FirebaseService.saveAnomalies.mock.calls[0][0].map(w => w.id)).toEqual(['expense-voided~expense~e1']);
+        });
+
+        test('only the owner\'s own expense voids loaded: no owners read', async () => {
+            FirebaseService.voidedExpenses.mockReturnValue([voidedExpense('e2', 'own1')]);
+            AnomaliesManager.renderDayReport({}, null);
+            await AnomaliesManager.refreshing;
+            expect(AnomaliesManager.reportList).toEqual([]);
+            expect(FirebaseService.loadPeople).not.toHaveBeenCalled();
+        });
+    });
 });
 
 describe('read budget (free plan)', () => {
