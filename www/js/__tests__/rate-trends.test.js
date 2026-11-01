@@ -153,6 +153,8 @@ describe('roll-forward', () => {
         expect(changed({ timestamp: sep2, enteredAt: sep2, editedAt: new Date(OCT15).toISOString() })).toBe(true);
         expect(changed({ timestamp: sep2, voidedAt: { seconds: OCT15 / 1000, nanoseconds: 0 } })).toBe(true);
         expect(changed({ timestamp: sep2, voidedAt: { toMillis: () => sep2 } })).toBe(false);
+        // saved offline on the day, reached the server weeks later
+        expect(changed({ timestamp: sep2, enteredAt: sep2, createdAt: { seconds: OCT15 / 1000, nanoseconds: 0 } })).toBe(true);
         expect(changed({ timestamp: to, enteredAt: OCT15 })).toBe(false);
         expect(changed({ date: '2026-09-02', enteredAt: OCT15 })).toBe(false);
     });

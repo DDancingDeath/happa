@@ -307,11 +307,11 @@ export function rollForwardWeekGap(win, loadedFrom) {
     return start < loadedFrom ? start : null;
 }
 
-/** Latest time (ms) a bill was entered, edited or voided; NaN when unknown. */
+const stampMs = (v) => (typeof v?.toMillis === 'function' ? v.toMillis() : (typeof v?.seconds === 'number' ? v.seconds * 1000 : Number(v)));
+
+/** Latest time (ms) a bill was entered, reached the server (`createdAt`: saved offline), edited or voided; NaN when unknown. */
 function lastChangeMs(b) {
-    const v = b?.voidedAt;
-    const voided = typeof v?.toMillis === 'function' ? v.toMillis() : (typeof v?.seconds === 'number' ? v.seconds * 1000 : Number(v));
-    const times = [Number(b?.enteredAt), Date.parse(b?.editedAt || ''), voided].filter(Number.isFinite);
+    const times = [Number(b?.enteredAt), stampMs(b?.createdAt), Date.parse(b?.editedAt || ''), stampMs(b?.voidedAt)].filter(Number.isFinite);
     return times.length ? Math.max(...times) : NaN;
 }
 
