@@ -47,7 +47,7 @@ const FILLER = words([
     'kitna', 'kitni', 'kitne', 'hai', 'he', 'h', 'hain', 'kya', 'batao', 'bata', 'bataiye', 'bataye', 'dikhao', 'please', 'plz',
     'what', 'whats', 'is', 'are', 'was', 'the', 'how', 'much', 'many', 'show', 'me', 'tell', 'my', 'do', 'does', 'did', 'us',
     'we', 'i', 'in', 'hamara', 'mera', 'now', 'left', 'tak', 'paas', 'pass', 'hua', 'hui', 'hue', 'gaya', 'gayi',
-    'rahi', 'raha', 'rahe', 'kaisi', 'kaisa', 'kaise', 'na', 'so', 'far', 'amount', 'figure', 'till', 'until',
+    'rahi', 'raha', 'rahe', 'kaisi', 'kaisa', 'kaise', 'na', 'so', 'far', 'amount', 'figure', 'till', 'until', 'to', 'तो',
     'कितना', 'कितनी', 'कितने', 'है', 'हैं', 'क्या', 'बताओ', 'बताइए', 'दिखाओ', 'मेरा', 'हमारा', 'तक', 'पास', 'हुआ', 'हुई', 'गया', 'गई',
     'रही', 'रहा', 'रहे', 'कैसी', 'कैसा', 'ना'
 ]);
@@ -69,6 +69,8 @@ const DEVANAGARI = /[\u0900-\u097F]/;
 export function questionWords(text) {
     return String(text || '').normalize('NFC').toLowerCase()
         .replace(/['’]s\b/g, '')
+        // "abhi tak" / "ab tak" = so far, never a name
+        .replace(/(^|\s)(abhi|ab|अभी|अब)\s+(tak|तक)(?=\s|$)/g, ' ')
         .replace(/[?!.,;:।"“”‘’()[\]{}]+/g, ' ')
         .split(/\s+/)
         .filter(w => w && !FILLER.has(w));
@@ -88,13 +90,15 @@ export function parseQuestion(text) {
 
     if (hasAny(tokens, DUES)) {
         const subject = leftover();
-        return subject ? { intent: 'party_due', subject } : { intent: 'total_due' };
+        if (!subject || (tokens.some((w, i) => TOTAL.has(w) && !named(i)) && AMBIGUOUS.has(subject))) return { intent: 'total_due' };
+        return { intent: 'party_due', subject };
     }
     const money = hasAny(tokens, SALES) ? 'sales_today' : hasAny(tokens, PURCHASES) ? 'purchases_today'
         : hasAny(tokens, EXPENSES) ? 'expenses_today' : null;
     if (hasAny(tokens, STOCK) || (!money && hasAny(tokens, GOODS))) return { intent: 'item_stock', subject: leftover() };
-    // Only today's totals are known here: "kal ki bikri" must not get today's total (one item: see answerQuestion).
-    if (money) return hasAny(tokens, OTHER_DAY) || tokens.some(w => /\d/.test(w)) ? { intent: 'today_only' } : { intent: money, rest: leftover() };
+    // Only today's totals are known here: "kal ki bikri", "chawal kitna becha" or "Ramesh ko kitna becha"
+    // must not get today's total, so any word left over gets no figure.
+    if (money) return leftover() || hasAny(tokens, OTHER_DAY) || tokens.some(w => /[\d\u0966-\u096F]/.test(w)) ? { intent: 'today_only' } : { intent: money };
     return { intent: 'unknown' };
 }
 
@@ -159,8 +163,6 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
     const bills = src.bills || {};
 
     if (intent === 'sales_today' || intent === 'purchases_today' || intent === 'expenses_today') {
-        // "chawal kitna becha": one item's sales are not known here, so no total that reads as the item's
-        if (q.rest && matchItems(src.items, [], q.rest).length) return { intent: 'today_only', spec: null, page: null };
         const s = todaySummary({
             bills: { purchase: bills.purchases || [], wholesale: bills.wholesaleSales || [], retail: bills.retailSales || [] },
             expenses: src.expenses || [],
