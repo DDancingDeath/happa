@@ -76,7 +76,10 @@ const PRICE_AFTER = wordSet([
     'रुपये', 'रुपए', 'रुपया', 'रूपये', 'रूपए', 'ka', 'ke', 'का', 'के'
 ]);
 /** Words just before a number that make it the rate ("at 30", "₹30", "rate 30"). */
-const PRICE_BEFORE = wordSet(['₹', 'rs', 'at', '@', 'rate', 'bhav', 'bhaav', 'रेट', 'भाव', 'दर', 'daam', 'दाम', 'hisaab', 'hisab', 'हिसाब']);
+const RATE_WORDS = wordSet(['at', '@', 'rate', 'bhav', 'bhaav', 'रेट', 'भाव', 'दर', 'daam', 'दाम', 'hisaab', 'hisab', 'हिसाब']);
+/** "₹60" is "60 rupaye": a price, maybe a total. */
+const CURRENCY_BEFORE = wordSet(['₹', 'rs']);
+const PRICE_BEFORE = new Set([...RATE_WORDS, ...CURRENCY_BEFORE]);
 /** "30 per kilo", "प्रति kg 30": a rate. */
 const PER_WORDS = wordSet(['per', 'prati', 'प्रति', 'pratee', 'fi']);
 const POSSESSIVE = wordSet(['ka', 'ke', 'ki', 'का', 'के', 'की']);
@@ -230,7 +233,7 @@ function numberKind(rest, groups, gi) {
         if (w) [prevWord, lastWord] = [lastWord, w];
         if (TOTAL_AFTER_A_WEIGHT.has(w) && prevWord !== 'give') {
             mein = true;
-            meinAfterRateWord = PRICE_BEFORE.has(prevWord);
+            meinAfterRateWord = RATE_WORDS.has(prevWord);
         }
         if (POSSESSIVE.has(w)) possessive = true;
         else if (PRICE_AFTER.has(w)) rupees = true;
@@ -245,25 +248,30 @@ function numberKind(rest, groups, gi) {
         } else if (after === 'rate' && (OTHER_UNITS.has(w) || total)) after = 'other';
         else if (after === 'rate' && (WEIGHT_UNITS.has(w) || (PER_WORDS.has(w) && WEIGHT_UNITS.has(rest[k + 1])))) after = 'rate-kg';
     }
+    const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
+    if (CURRENCY_BEFORE.has(b1)) {
+        rupees = true;
+        if (after === null) after = 'rate';
+        else if (after === 'weight') after = 'rate-kg';
+    }
     if (after === 'other') return 'other';
     // "300 rupaye ke 10 kilo" / "300 ka 10 kilo": the price of that weight, a total (but "30 ka 1 kilo" is a rate)
     // and so is "60 rupaye mein 2 kilo"
     const next = groups[gi + 1];
     const nextIsWeight = next && next.value !== 1 && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]));
     if (after !== 'weight' && after !== 'gram' && POSSESSIVE.has(lastWord) && nextIsWeight) return 'other';
-    if ((after === null || after === 'rate') && mein && !meinAfterRateWord && nextIsWeight && !PRICE_BEFORE.has(rest[g.start - 1])) return 'other';
-    const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
+    if ((after === null || after === 'rate') && mein && !meinAfterRateWord && nextIsWeight && !RATE_WORDS.has(b1)) return 'other';
     if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2) && after !== 'weight') return 'rate-kg';
-    if (PRICE_BEFORE.has(b1)) {
-        // "30 ka bhav 10 kilo": the rate word belongs to the 30, and 10 is the weight
-        const prevEnd = gi > 0 ? groups[gi - 1].end : -1;
-        const earlier = prevEnd === g.start - 1 || (prevEnd === g.start - 2 && POSSESSIVE.has(b2));
+    if (RATE_WORDS.has(b1)) {
+        // "30 (rupaye) ka bhav 10 kilo": the rate word belongs to the 30, and 10 is the weight
+        const between = gi > 0 ? rest.slice(groups[gi - 1].end, g.start - 1) : null;
+        const earlier = between !== null && between.every(w => !w || PRICE_AFTER.has(w) || POSSESSIVE.has(w));
         if (!(earlier && (after === 'weight' || after === 'gram'))) return after === 'rate-kg' || after === 'weight' ? 'rate-kg' : 'rate';
     }
     // "2 kilo 60 (rupaye) mein" is a total; "30 ke bhav mein" a rate
     if (gi > 0 && (((after === null || after === 'rate') && mein && !meinAfterRateWord)
         || (after !== 'weight' && after !== 'gram' && TOTAL_AFTER_A_WEIGHT.has(b1)))) return 'other';
-    if (TOTAL_BEFORE.has(b1)) return 'other';
+    if (TOTAL_BEFORE.has(b1) || (CURRENCY_BEFORE.has(b1) && TOTAL_BEFORE.has(b2))) return 'other';
     // "10 kilo ke 300" is a total, "kilo ka 30" a rate per kg
     if (POSSESSIVE.has(b1) && GRAM_UNITS.has(b2)) return 'other';
     if (POSSESSIVE.has(b1) && WEIGHT_UNITS.has(b2)) return gi > 0 && groups[gi - 1].end === g.start - 2 ? 'other' : 'rate-kg';
