@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v306';
+const CACHE_NAME = 'happa-v312';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -92,6 +92,8 @@ const STATIC_ASSETS = [
     '/js/ui/sync-status.js',
     '/js/ui/ui-manager.js',
     '/js/ui/voice-mic.js',
+    '/js/modules/voice-billing.js',
+    '/js/utils/voice-parse.js',
     '/js/i18n/index.js',
     '/js/i18n/en.js',
     '/js/i18n/hi.js',
@@ -221,7 +223,7 @@ const STATIC_ASSETS = [
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
 ];
-// Loaded with import() only when used (rent receipts, unit picker, tenant link actions, voice billing), so not in
+// Loaded with import() only when used (rent receipts, unit picker, tenant link actions), so not in
 // the precache budget; install also caches them, best effort, so this version's copies (matching
 // the precached files) are there offline right after a deploy.
 const LAZY_ASSETS = [
@@ -229,9 +231,7 @@ const LAZY_ASSETS = [
     '/js/rentals/rent-link.js',
     '/js/rentals/rent-receipt.js',
     '/js/rentals/rent-receipt-store.js',
-    '/js/rentals/rent-unit.js',
-    '/js/modules/voice-billing.js',
-    '/js/utils/voice-parse.js'
+    '/js/rentals/rent-unit.js'
 ];
 
 /**
