@@ -8,7 +8,7 @@ jest.mock('../rentals/rent-store.js', () => ({
     snapshot: jest.fn(), truncatedKeys: () => [], isAttached: () => false, attach: jest.fn(), detach: jest.fn(), loadSettings: jest.fn()
 }));
 jest.mock('../rentals/rent-deposit-store.js', () => ({
-    loadDeposit: jest.fn(), depositsHeld: jest.fn(), addDepositEntry: jest.fn(), changeDepositEntry: jest.fn()
+    loadDeposit: jest.fn(), depositsHeld: jest.fn(), addDepositEntry: jest.fn(), changeDepositEntry: jest.fn(), advancesLeft: jest.fn(async () => []), advanceToDeposit: jest.fn()
 }));
 jest.mock('../ui/business-switcher.js', () => ({ rentalsRole: jest.fn(() => 'member') }));
 jest.mock('../ui/ui-manager.js', () => ({ UIManager: { showToast: jest.fn(), showModal: jest.fn(async () => true) } }));

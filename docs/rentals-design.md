@@ -141,8 +141,7 @@ months are charged per visit. Cost: 1 read + 2 writes per lease per month.
 
 **Payments** run in a transaction on the charge: `paid = round2(paid + x)`,
 `payments` grows by one entry (at most 12 per month, so the rules can add them
-up), `open = paid < amount`. Never read-modify-write outside a transaction. Overpaying is refused in phase 1 (advance carried forward is
-phase 2).
+up), `open = paid < amount`. Never read-modify-write outside a transaction. Overpaying the lease's latest month is an advance carried forward (§14); any other month refuses it.
 
 **Move-out** (review of #10): the last month can't be in the future. Missing
 months up to it are charged first (as above); then one transaction ends the lease
@@ -256,7 +255,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **129.0 KiB** (132,138 bytes) as served (LF), 982 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Outside this budget (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used; the service worker's install also caches them, best effort (a failure never blocks the update), into the new version's cache, so they match the precached files and work offline right after a deploy: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 11 KiB; its amounts and checks are in the precached `rent-math.js`) the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway) and the deposit ledger (§13: `rent-deposit.js`, `rent-deposit-store.js`, ≈ 13 KiB). The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 133 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again). **Recorded exception, 130 → 133 KB (#157, deposit ledger):** the ledger's screens and data access are lazy, but its maths (RENT-14/15) must live in `rent-math.js` (owner rule: all rentals maths there, with spec IDs and oracle tests), which is precached, plus the Tenants page buttons and the link's balance; ≈ 2.7 KB. Lazy files: receipts ≤ 24 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, deposits ≤ 18 KB, reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
+| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **129.0 KiB** (132,138 bytes) as served (LF), 982 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Outside this budget (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used; the service worker's install also caches them, best effort (a failure never blocks the update), into the new version's cache, so they match the precached files and work offline right after a deploy: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 11 KiB; its amounts and checks are in the precached `rent-math.js`) the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway) and the deposit ledger (§13: `rent-deposit.js`, `rent-deposit-store.js`, ≈ 13 KiB). The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 140 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again). **Recorded exception, 130 → 133 KB (#157, deposit ledger):** the ledger's screens and data access are lazy, but its maths (RENT-14/15) must live in `rent-math.js` (owner rule: all rentals maths there, with spec IDs and oracle tests), which is precached, plus the Tenants page buttons and the link's balance; ≈ 2.7 KB. **Recorded exception, 133 → 140 KB (#157, advance, §14):** the advance is part of Record payment (an overpayment pays the unpaid months oldest first, with the split confirmed), the monthly-charge and move-out transactions in `rent-store.js` and their maths in `rent-math.js`, which must stay precached (payments work offline, charges are made on entering Rentals); ≈ 6.6 KB. Lazy files: receipts ≤ 24 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, deposits ≤ 22 KB (raised from 18 KB for moving a left advance into the deposit), reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -655,7 +654,8 @@ Owner: *"record the deposit received, refunds and adjustments against dues at mo
 Rent and deposits never go into the Aadhat cash drawer.
 
 - **One ledger per tenant**, `rent_deposits/{tenantId}` (`dev_` in development): `{tenantId, tenantName,
-  held, entries[≤ 24], created*, updated*}`. Per tenant rather than per lease because a change of unit
+  held, entries[≤ 24], created*, updated*}` (a *received* entry may also come from an advance left when a
+  lease ended, mode `advance`, §14). Per tenant rather than per lease because a change of unit
   keeps the deposit (§12) and ends one lease for another; every entry records the lease it was made under
   (`leaseId`). Entry: `{kind: received | adjust | refund, amount, date, mode (cash / UPI / bank / cheque;
   not for an adjustment), chargeId + month (adjustment), leaseId, note, at, by, byName}`.
@@ -688,3 +688,49 @@ Rent and deposits never go into the Aadhat cash drawer.
   owner edits with the sum checked, adjustment only together with its month's `deposit` payment and never
   above held, link `dep`); Jest (math, store on the in-memory Firestore, the screens); oracle RENT-14/15 on
   generated ledgers (`tests/oracle/rent.test.js`).
+
+## 14. Advance carried forward (phase 2; owner, 2026-11-01, #157)
+
+Owner: *"an overpayment on a month becomes an advance applied to the next month's charge automatically."*
+
+- **Where it lives:** on the charge of the lease's **latest charged month** (`adv`, and on the payment entry
+  that made it), never on the lease. So the lease rules (at their limits for a change of unit) are not
+  touched, and the monthly-charge transaction, which already moves `chargedThrough` one month at a time,
+  finds it on the month before (one more read per month charged).
+- **Paying more than is due (RENT-5, RENT-16; orchestrator decision 2026-11-01):** the app first pays the
+  lease's unpaid months **oldest first** and shows the split to confirm (one payment and receipt per month);
+  only what is left after every unpaid month is an advance, and only on the active lease's latest month (the
+  rules read the lease; they are unchanged by the oldest-first split): that month is paid off (entry `amount` = the due, `paid` = its amount) and `adv` = typed − due (whole
+  rupees typed); the month's `adv` grows by it. Any older month still refuses more than is due (the app
+  says the advance is only for the latest month). The payment's receipt carries `adv` (rules: equal to the
+  entry's) and shows "Advance for next month" and "Total received".
+- **Next month (automatic):** `chargeLease` reads the month before; the new month is created paid
+  min(advance, amount) by one payment `{mode: 'advance'}` (no receipt, not listed as "without a receipt"),
+  the rest carried as its own `adv`, and the month before's `adv` set to 0 — in the same transaction. The
+  rules require exactly that: a new month whose month before carries an advance must take it, and an
+  `adv` goes to 0 only with the next month created from it (or into the deposit, below).
+- **Ending before a month already paid from the advance** (a back-dated move-out, a change of unit on the
+  1st): that one later month (only advance-paid, no other payment) is deleted as usual and its paid + advance
+  go back to the last month's `adv` in the same write (rules check both sides; more than one such month, or
+  one with a cash payment, still stops it: "a later month has a payment").
+- **Change of unit with an advance:** the new lease's first month (made by `chargeLease` right after the
+  change) takes the old lease's last month's advance like any next month: paid from it, the rest carried,
+  the old month's `adv` set to 0 in the same transaction. The rules find that month through the new lease's
+  `fromLeaseId` (the old lease's `endMonth`) and, on the old side, through the old lease's `movedTo`; such
+  an advance can't go into the deposit. The change confirmation shows the amount (`rent-math.advanceLeft`).
+- **Lease moved out with an advance left:** right after, the app moves it into the
+  tenant's deposit ledger (§13: *received*, from advance, `chargeId`) and clears the month's `adv` in one
+  transaction; rules match the two and require the lease to have ended. If that step fails (offline),
+  Tenants › Deposits held lists "Advance not used (moved out)" with **Add to deposit** (one query `adv > 0`).
+- **Shown:** the unit row "Advance for next month: ₹X" (this month's charge, already loaded), the toast after
+  the payment, the receipt, and the tenant link (`months[].adv`; still one read).
+- **Not done:** paying ahead when nothing is due (no open month to overpay), or more than the unpaid months
+  when the latest month is already paid; a meter bill added after an
+  advance does not take from it (the advance pays the next month).
+- **Cost:** start-up unchanged. Monthly charges: +1 read per lease per month charged (the month before).
+  A payment: unchanged (the lease was already read).
+- **Tests:** rules (prod + `dev_`): only the latest month of an active lease, only once paid off, adv equal
+  to the entry's; the next month must take the advance and clear the month before; more than a month's rent
+  carries on; into the deposit only after the lease ended and only together; the receipt's `adv`; Jest (math,
+  store on the optimistic fake: overpay, receipt, next months and the link, into the deposit; the dialog and
+  unit row); oracle RENT-16 (one running credit, generated months and payments).

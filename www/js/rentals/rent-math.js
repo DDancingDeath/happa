@@ -233,8 +233,11 @@ export function rentTotals(charges, month = '') {
     return { expected: round2(expected), collected: round2(collected), pending: round2(Math.max(0, expected - collected)), due: round2(due) };
 }
 
-/** RENT-12: receipt amounts of payment `e` on charge `ch` as written (balance = due after it). */
-export const receiptAmounts = (ch, e) => ({ months: [ch.month], rent: ch.rent, elec: ch.electricity || null, total: ch.amount, paid: e.amount, balance: chargeDue(ch) });
+/** RENT-12: receipt amounts of payment `e` on charge `ch` as written (balance = due after it; adv = RENT-16 carried). */
+export const receiptAmounts = (ch, e) => ({ months: [ch.month], rent: ch.rent, elec: ch.electricity || null, total: ch.amount, paid: e.amount, balance: chargeDue(ch), ...(e.adv > 0 ? { adv: e.adv } : {}) });
+
+/** RENT-12, RENT-16: received with a receipt = paid for the month + advance carried. */
+export const receiptReceived = (r) => round2((Number(r.paid) || 0) + (Number(r.adv) || 0));
 
 /** RENT-12: paid before this payment = total − paid now − balance (never below 0). */
 export const paidEarlier = (r) => Math.max(0, round2((Number(r.total) || 0) - (Number(r.paid) || 0) - (Number(r.balance) || 0)));
@@ -256,18 +259,82 @@ export function chargeStatus(charge, today = new Date()) {
 
 /**
  * Validates a payment against a charge and returns the new totals. Whole
- * rupees, except exactly a due with paise (DUE-CHECK, #129).
+ * rupees, except exactly a due with paise (DUE-CHECK, #129); `exact`: a part of
+ * payOldestFirst, already worked out from the typed amount, taken as it is. RENT-16, `advance`
+ * (the lease's latest month): more than is due pays the month off and the rest
+ * (adv) is carried to the next month; `carried` = the month's advance after it (both only then).
  * @throws {Error} message 'amount' (not > 0) or 'over' (more than is due)
  */
-export function applyPayment(charge, amount) {
-    const check = validateDuePayment(amount, 0, chargeDue(charge), 0.001);
+export function applyPayment(charge, amount, advance = false, exact = false) {
+    const due = chargeDue(charge);
+    const a = round2(Number(amount) || 0);
+    const check = !exact ? validateDuePayment(amount, 0, due, 0.001) : a <= 0 ? { error: 'empty' } : a > due + 0.001 ? { error: 'exceeds-due' } : { ok: true, total: a };
     if (!check.ok && check.error !== 'exceeds-due') throw new Error('amount');
     if ((charge.payments || []).length >= MAX_PAYMENTS_PER_CHARGE) throw new Error('too_many');
-    if (!check.ok) throw new Error('over');
-    const amt = check.total;
+    if (!check.ok && !(advance && due > 0)) throw new Error('over');
+    const amt = check.ok ? check.total : due;
+    const adv = check.ok ? 0 : round2((exact ? a : entryAmount(amount)) - due);
     const total = round2(Number(charge.amount) || 0);
     const paid = round2((Number(charge.paid) || 0) + amt);
-    return { amount: amt, paid, open: paid < total - 0.001 };
+    return { amount: amt, paid, open: paid < total - 0.001, ...(adv > 0 ? { adv, carried: round2((Number(charge.adv) || 0) + adv) } : {}) };
+}
+
+/** RENT-16: on a move-out before it, the one later month paid only from (or just carrying) the advance gives back paid + its advance (else 0). */
+export function advanceBack(later) {
+    const c = later.length === 1 ? later[0] : null;
+    const p = c?.payments || [];
+    return (p.length === 1 && p[0].mode === 'advance') || (!p.length && c?.adv > 0) ? round2((Number(c.paid) || 0) + (Number(c.adv) || 0)) : 0;
+}
+
+/** RENT-16: an advance plus what comes back to it. */
+export const addAdvance = (a, b) => round2((Number(a) || 0) + (Number(b) || 0));
+
+/** RENT-16: the advance a lease ending with `endMonth` leaves (its last month's, plus one later month given back). */
+export function advanceLeft(charges, leaseId, endMonth) {
+    const mine = charges.filter(c => c.leaseId === leaseId);
+    return addAdvance(mine.find(c => c.month === endMonth)?.adv, advanceBack(mine.filter(c => c.month > endMonth)));
+}
+
+/**
+ * RENT-5, RENT-16: a payment above the chosen month's due pays the lease's unpaid months
+ * (`open`, oldest first) oldest first; only what is left after all of them is an advance
+ * (`adv` on the last part), and only when that last month is `latest` (the active lease's
+ * last charged month). Parts are paid exactly (applyPayment `exact`), so they add up to the typed amount.
+ * @returns {Array<{id: string, month: string, amount: number, adv?: number}>}
+ * @throws {Error} 'amount' | 'over'
+ */
+export function payOldestFirst(open, amount, latest) {
+    // Exactly the total due with paise is paid off as it is (DUE-CHECK), else whole rupees.
+    const total = rentTotals(open).due;
+    let left = Math.abs(round2(Number(amount) || 0) - total) <= 0.001 ? total : entryAmount(amount);
+    if (!(left > 0)) throw new Error('amount');
+    const parts = [];
+    for (const c of open) {
+        const due = chargeDue(c);
+        const a = Math.min(left, due);
+        if (!(a > 0)) continue;
+        parts.push({ id: c.id, month: c.month, amount: a });
+        left = round2(left - a);
+    }
+    const last = parts[parts.length - 1];
+    if (left > 0 && last?.month !== latest) throw new Error('over');
+    if (left > 0) last.adv = left;
+    return parts;
+}
+
+/** What is paid for a part of payOldestFirst: its month's share plus its advance. */
+export const payAmount = (p) => addAdvance(p.amount, p.adv);
+
+/**
+ * RENT-16: a new month's charge starts paid from the advance carried on the month before
+ * (at most its amount; a payment with mode 'advance', no receipt); the rest is carried on.
+ */
+export function withAdvance(charge, adv, entry) {
+    const a = round2(Number(adv) || 0);
+    if (!(a > 0)) return charge;
+    const paid = Math.min(a, charge.amount);
+    const left = round2(a - paid);
+    return { ...charge, paid, open: paid < charge.amount - 0.001, payments: paid > 0 ? [{ ...entry, amount: paid, mode: 'advance' }] : [], ...(left > 0 ? { adv: left } : {}) };
 }
 
 /** Deposit ledger (RENT-14): received from the tenant, adjusted against a month's rent, refunded. */

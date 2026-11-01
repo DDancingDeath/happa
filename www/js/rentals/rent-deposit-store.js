@@ -8,7 +8,8 @@
 
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
-import { applyPayment, chargeDue, depositEntry, depositHeld } from './rent-math.js';
+import { todayLocalISO } from '../utils/dates.js';
+import { applyPayment, chargeDue, chargeId as chargeIdOf, depositEntry, depositHeld, MAX_DEPOSIT_ENTRIES } from './rent-math.js';
 import { withMonth } from './rent-public.js';
 import { rentCol, uid, clip, readPublic } from './rent-store.js';
 
@@ -100,4 +101,48 @@ export function changeDepositEntry({ tenantId, leaseId = '', entry, fields = nul
         if (pub) tx.set(pub.ref, { ...pub.data, dep: held, updatedAt: now });
         return held;
     });
+}
+
+/**
+ * RENT-16: an advance left on the last month of a lease that ended (move-out, change of unit)
+ * goes into the tenant's deposit ledger ('received', mode 'advance'), to be refunded or adjusted
+ * with the deposit. Same write: the month's advance becomes 0 (rules match the two).
+ * `leaseId` instead of `chId`: the month the lease ended with.
+ * @returns {Promise<number>} the amount moved (0 when there is none or the lease is still active)
+ */
+export function advanceToDeposit(chId, leaseId = '') {
+    return FirebaseService.db.runTransaction(async (tx) => {
+        const byLease = leaseId ? (await tx.get(coll('rent_leases').doc(leaseId))).data() : null;
+        if (leaseId && byLease?.status !== 'ended') return 0;
+        const chargeId = leaseId ? chargeIdOf(leaseId, byLease.endMonth) : chId;
+        const chRef = coll('rent_charges').doc(chargeId);
+        const ch = (await tx.get(chRef)).data();
+        if (!(ch?.adv > 0)) return 0;
+        const lease = byLease || (await tx.get(coll('rent_leases').doc(ch.leaseId))).data();
+        // After a change of unit the advance opens the new unit's first month instead (chargeLease).
+        if (lease?.status !== 'ended' || lease.movedTo) return 0;
+        const ref = depRef(ch.tenantId);
+        const snap = await tx.get(ref);
+        const pub = await readPublic(tx, lease, true);
+        const entries = snap.exists ? snap.data().entries || [] : [];
+        if (entries.length >= MAX_DEPOSIT_ENTRIES) throw new Error('too_many');
+        const now = Date.now();
+        const all = [...entries, {
+            kind: 'received', amount: ch.adv, date: todayLocalISO(), mode: 'advance', chargeId, month: ch.month, leaseId: ch.leaseId,
+            note: '', at: now, by: uid(), byName: clip(AppState.userName, 80)
+        }];
+        const held = depositHeld(all);
+        const doc = { tenantId: ch.tenantId, tenantName: clip(snap.exists ? snap.data().tenantName : ch.tenantName, 80), held, entries: all, updatedAt: now, updatedBy: uid() };
+        if (snap.exists) tx.update(ref, doc);
+        else tx.set(ref, { ...doc, createdAt: now, createdBy: uid() });
+        tx.update(chRef, { adv: 0, updatedAt: now, updatedBy: uid() });
+        if (pub) tx.set(pub.ref, { ...withMonth(pub.data, { ...ch, adv: 0 }, now, pub.old), dep: held, updatedAt: now });
+        return ch.adv;
+    });
+}
+
+/** Months still carrying an advance (one bounded query; Deposits held lists those of leases that ended). */
+export async function advancesLeft(max = 200) {
+    const snap = await coll('rent_charges').where('adv', '>', 0).limit(max).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }

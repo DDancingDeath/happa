@@ -3,12 +3,13 @@
  * deliberately simple recomputation of the rentals numbers from leases and
  * payments, compared with rentals/rent-math.js on generated histories; RENT-13
  * (change of unit, the move month) against the same module; RENT-14 / RENT-15
- * (deposit ledger) on generated entries.
+ * (deposit ledger) on generated entries; RENT-16 (advance carried forward) on
+ * generated payments.
  */
 import fc from 'fast-check';
 import {
     monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, moveMonthRent, oldMonth,
-    depositEntry, depositHeld, depositsTotal
+    depositEntry, depositHeld, depositsTotal, withAdvance, payOldestFirst, payAmount
 } from '../../www/js/rentals/rent-math.js';
 
 jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: {} }));
@@ -168,5 +169,71 @@ describe('deposit ledger (RENT-14, RENT-15)', () => {
             for (const h of held) sum += h;
             expect(depositsTotal(held.map(h => ({ held: h })))).toBe(sum);
         }), { seed: 157, numRuns: Number(process.env.FC_RUNS) || 100 });
+    });
+});
+
+describe('advance carried forward (RENT-16)', () => {
+    test('each month paid from the credit first, then payments; the rest carried; nothing lost or counted twice', () => {
+        const monthArb = fc.record({ rent: fc.integer({ min: 0, max: 20000 }), pays: fc.array(fc.integer({ min: 1, max: 50000 }), { maxLength: 4 }) });
+        fc.assert(fc.property(fc.array(monthArb, { minLength: 1, maxLength: 8 }), (months) => {
+            // Oracle: one running credit, whole rupees.
+            let credit = 0;
+            const want = months.map(({ rent, pays }) => {
+                let paid = Math.min(credit, rent);
+                credit -= paid;
+                for (const p of pays) {
+                    if (paid >= rent) continue; // the app refuses a payment on a month with nothing due
+                    const use = Math.min(p, rent - paid);
+                    paid += use;
+                    credit += p - use;
+                }
+                return paid;
+            });
+            // App: the month before's advance opens the month (withAdvance); payments with applyPayment(…, true).
+            let adv = 0;
+            let received = 0;
+            const got = months.map(({ rent, pays }, i) => {
+                let c = withAdvance({ amount: rent, rent, paid: 0, open: rent > 0, payments: [] }, adv, { by: 'u' });
+                for (const p of pays) {
+                    let next;
+                    try { next = applyPayment(c, p, true); } catch (e) { continue; }
+                    received += p;
+                    c = { ...c, paid: next.paid, open: next.open, payments: [...c.payments, {}], ...(next.adv ? { adv: next.carried } : {}) };
+                }
+                adv = Number(c.adv) || 0;
+                expect(c.paid).toBeLessThanOrEqual(c.amount);
+                return c.paid;
+            });
+            expect(got).toEqual(want);
+            expect(adv).toBe(credit);
+            // Money in = Σ months' paid that came from payments + what is still carried.
+            const fromPayments = got.reduce((s, x) => s + x, 0);
+            expect(fromPayments + adv).toBe(received);
+        }), { seed: 1571, numRuns: Number(process.env.FC_RUNS) || 100 });
+    });
+});
+
+describe('an overpayment pays the oldest unpaid months first (RENT-5, RENT-16)', () => {
+    test('each month gets min(what is left, its due) oldest first; only the rest is an advance, on the latest month', () => {
+        const arb = fc.tuple(fc.array(fc.integer({ min: 1, max: 20000 }), { minLength: 1, maxLength: 6 }), fc.integer({ min: 1, max: 150000 }), fc.boolean());
+        fc.assert(fc.property(arb, ([dues, amount, latestOpen]) => {
+            const months = dues.map((_, i) => `2026-${String(i + 1).padStart(2, '0')}`);
+            const open = dues.map((d, i) => ({ id: `L1_${months[i]}`, month: months[i], amount: d, paid: 0 }));
+            const latest = latestOpen ? months[months.length - 1] : '2027-01';
+            // Oracle: walk the months with what is left.
+            let left = amount;
+            const want = [];
+            for (let i = 0; i < dues.length && left > 0; i++) {
+                const a = Math.min(left, dues[i]);
+                want.push(a);
+                left -= a;
+            }
+            let got;
+            try { got = payOldestFirst(open, amount, latest); } catch (e) { got = e.message; }
+            if (left > 0 && !latestOpen) return expect(got).toBe('over');
+            expect(got.map(p => p.amount)).toEqual(want);
+            expect(got[got.length - 1].adv || 0).toBe(left);
+            expect(got.reduce((s, p) => s + payAmount(p), 0)).toBe(amount);
+        }), { seed: 1573, numRuns: Number(process.env.FC_RUNS) || 100 });
     });
 });

@@ -16,7 +16,7 @@ import { AuditService } from '../services/audit.js';
 import { openExternal } from '../utils/open-external.js';
 import { cleanText, whatsAppReminderUrl } from '../utils/due-reminder.js';
 import { round2 } from '../utils/money.js';
-import { monthLabel, dateLabel, PAYMENT_MODES, paidEarlier } from './rent-math.js';
+import { monthLabel, dateLabel, PAYMENT_MODES, paidEarlier, receiptReceived } from './rent-math.js';
 import { typedPlace, UNIT_TYPES } from './rent-views.js';
 import * as store from './rent-store.js';
 import * as rs from './rent-receipt-store.js';
@@ -38,7 +38,8 @@ export function receiptPlace(r, lang = getLang()) {
 /**
  * The receipt's amount lines in one language (RENT-12): [label, value, bold].
  * Electricity lines only when the month has a meter bill. Amounts: rent-math
- * (receiptAmounts when issued, paidEarlier).
+ * (receiptAmounts when issued, paidEarlier); an advance carried (RENT-16) adds
+ * its line and the total received.
  */
 export function receiptRows(r, lang = getLang()) {
     const tr = (k, p) => t(k, p, lang);
@@ -59,9 +60,10 @@ export function receiptRows(r, lang = getLang()) {
     const earlier = paidEarlier(r);
     if (earlier > 0) rows.push([tr('ui.rcpt.paid_earlier'), inr(earlier)]);
     rows.push(
-        [tr('ui.rcpt.paid_now'), inr(r.paid), true],
-        [tr('ui.rcpt.mode'), tr(`ui.rcpt.mode_${mode}`)]
+        [tr('ui.rcpt.paid_now'), inr(r.paid), true]
     );
+    if (r.adv > 0) rows.push([tr('ui.rcpt.advance'), inr(r.adv)], [tr('ui.rcpt.received'), inr(receiptReceived(r)), true]);
+    rows.push([tr('ui.rcpt.mode'), tr(`ui.rcpt.mode_${mode}`)]);
     if (cleanText(r.ref)) rows.push([tr('ui.rcpt.ref'), cleanText(r.ref)]);
     rows.push([tr('ui.rcpt.balance'), inr(r.balance), true]);
     return rows;

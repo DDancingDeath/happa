@@ -34,9 +34,9 @@ function tenantOf(tenantId) {
 const act = (c, action, tenantId, key, cls = '', i = '') => `<button type="button" class="rent-btn${cls}" data-rent-dep onclick="window.app.rentals.depositAction('${action}', '${c.js(tenantId)}'${i !== '' ? `, ${i}` : ''})">${c.esc(t(key))}</button>`;
 
 function entryLine(c, e, i, tenantId, owner) {
-    const what = [dateLabel(e.date), t(`ui.rent.dep_${e.kind}`), e.month ? monthLabel(e.month, getLang()) : '', e.mode ? t(`ui.rent.mode_${e.mode}`) : '']
+    const what = [dateLabel(e.date), t(`ui.rent.dep_${e.kind}`), e.month ? monthLabel(e.month, getLang()) : '', e.mode ? t(e.mode === 'advance' ? 'ui.rent.dep_from_advance' : `ui.rent.mode_${e.mode}`) : '']
         .filter(Boolean).join(' · ');
-    const edit = owner && e.kind !== 'adjust'
+    const edit = owner && e.kind !== 'adjust' && e.mode !== 'advance'
         ? ` ${act(c, 'edit', tenantId, 'ui.rent.edit', ' rent-btn-small', i)}${act(c, 'remove', tenantId, 'ui.rent.remove', ' rent-btn-small', i)}` : '';
     return `<li>${c.esc(what)}: <strong>${c.esc(formatINR(e.amount))}</strong>${e.note ? ` · ${c.esc(e.note)}` : ''}
         <span class="rent-sub">${c.esc(e.byName || '')}</span>${edit}</li>`;
@@ -70,10 +70,34 @@ export async function showDeposit(c, tenantId, dep) {
         <div class="rent-actions">${add}</div>`, { info: true });
 }
 
-/** After a move-out: the ledger opens when a deposit is still held (to adjust it against dues or refund it). */
-export async function afterMoveOut(c, tenantId) {
+/** Advance left on an ended lease's last month goes into the deposit (RENT-16); says so. */
+async function moveAdvance(chId, leaseId) {
+    try {
+        const adv = await ds.advanceToDeposit(chId, leaseId);
+        if (!(adv > 0)) return;
+        UIManager.showToast(t('msg.rent.adv_to_deposit', { amount: formatINR(adv) }), 'success');
+        AuditService.log('RENT_ADVANCE_TO_DEPOSIT', { chargeId: chId || '', leaseId: leaseId || '', amount: adv }).catch(auditWarn);
+    } catch (e) {
+        console.warn('Advance not moved to the deposit:', e?.code || e);
+    }
+}
+
+/**
+ * After a move-out (or a change of unit, `open` false): an advance left on the lease's last month
+ * moves into the deposit, then the ledger opens when a deposit is held (to adjust or refund it).
+ */
+export async function afterMoveOut(c, tenantId, leaseId, open = true) {
+    if (leaseId) await moveAdvance('', leaseId);
+    if (!open) return;
     const dep = await ds.loadDeposit(tenantId).catch(e => console.warn('Deposit not loaded after move-out:', e?.code || e));
     if (depositHeld(dep?.entries) > 0) await showDeposit(c, tenantId, dep);
+}
+
+/** Deposits held › an advance left after a move-out: into the deposit, then the list again. */
+export async function advanceAction(c, chId) {
+    c.closeDialog();
+    await moveAdvance(chId);
+    setTimeout(() => showHeld(c), 300);
 }
 
 const lbl = (c, key, field) => `<label class="rent-label">${c.esc(t(key))}${field}</label>`;
@@ -154,7 +178,8 @@ async function ownerChange(c, kind, tenantId, lease, entries, i) {
 /** Tenants › Deposits held: every tenant whose deposit is still held, and the total (RENT-15). */
 export async function showHeld(c) {
     let list;
-    try { list = await ds.depositsHeld(); } catch (e) {
+    let left;
+    try { [list, left] = await Promise.all([ds.depositsHeld(), ds.advancesLeft()]); } catch (e) {
         console.error('Deposits not loaded:', e);
         UIManager.showToast(t('msg.rent.could_not_load'), 'error');
         return;
@@ -164,5 +189,15 @@ export async function showHeld(c) {
     await c.dialog(`<h3>💰 ${c.esc(t('ui.rent.dep_held_list'))}</h3>
         <div class="rent-cards"><div class="rent-card"><div class="rent-card-label">${c.esc(t('ui.rent.dep_total'))}</div><div class="rent-card-value">${c.esc(formatINR(depositsTotal(list)))}</div></div></div>
         <p class="rent-help">${c.esc(t('ui.rent.dep_help'))}</p>
-        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="rent-empty">${c.esc(t('ui.rent.dep_none_held'))}</p>`}`, { info: true });
+        ${rows ? `<ul class="rent-months">${rows}</ul>` : `<p class="rent-empty">${c.esc(t('ui.rent.dep_none_held'))}</p>`}
+        ${advLeftHtml(c, left)}`, { info: true });
+}
+
+/** RENT-16: advances left on months of leases that ended (no active lease), to move into the deposit. */
+function advLeftHtml(c, left) {
+    // A tenant still renting (a change of unit) gets the advance on the new unit's first month instead.
+    const active = new Set(store.snapshot().leases.map(l => l.tenantId));
+    const rows = left.filter(ch => !active.has(ch.tenantId)).map(ch => `<li>${c.esc(ch.tenantName || t('ui.rent.no_name'))} · ${c.esc(monthLabel(ch.month, getLang()))}: <strong>${c.esc(formatINR(ch.adv))}</strong>
+        <button type="button" class="rent-btn rent-btn-small" onclick="window.app.rentals.advanceToDeposit('${c.js(ch.id)}')">${c.esc(t('ui.rent.adv_to_deposit'))}</button></li>`).join('');
+    return rows ? `<p class="rent-label">${c.esc(t('ui.rent.adv_left'))}</p><ul class="rent-months">${rows}</ul>` : '';
 }

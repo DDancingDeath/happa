@@ -13,7 +13,7 @@ import { formatINR } from '../utils/due-reminder.js';
 import * as store from './rent-store.js';
 import { isShareToken, withLease, withMonth, PUBLIC_MONTHS } from './rent-public.js';
 import { vacantByProperty, typedPlace, moveTarget } from './rent-views.js';
-import { monthLabel, dateLabel, leaseDues, chargeId, isDate, moveMonthRent, oldMonth, moveMonthSplit, changeUnitPlan, keptTerms } from './rent-math.js';
+import { monthLabel, dateLabel, leaseDues, chargeId, isDate, moveMonthRent, oldMonth, moveMonthSplit, changeUnitPlan, keptTerms, advanceLeft } from './rent-math.js';
 
 const el = (id) => document.getElementById(id);
 const toast = (key) => UIManager.showToast(t(key), 'error');
@@ -108,7 +108,9 @@ async function changeDialog(c, { d, ix, from, unit, occ, defs, mgr, on, typed })
         : ` ${!on ? t('msg.rent.change_unit_both', { month })
             : paidOld?.kept ? t('msg.rent.change_unit_old_paid', { month, from: place, to, new: formatINR(lease.firstRent) })
                 : paidOld?.capped ? t('msg.rent.change_unit_old_capped', { month, from: place, old: formatINR(paidOld.amount), to, new: formatINR(lease.firstRent) })
-                    : t('msg.rent.change_unit_split', { month, from: place, old: formatINR(oldRent === 'auto' ? s.old : oldRent), to, new: formatINR(lease.firstRent) })}`);
+                    : t('msg.rent.change_unit_split', { month, from: place, old: formatINR(oldRent === 'auto' ? s.old : oldRent), to, new: formatINR(lease.firstRent) })}`)
+        // RENT-16: an advance carried on the old lease pays the new unit's first month.
+        + (advanceLeft(d.charges, from.id, s.endMonth) > 0 ? ` ${t('msg.rent.change_unit_adv', { amount: formatINR(advanceLeft(d.charges, from.id, s.endMonth)) })}` : '');
     if (!await UIManager.showModal(ask, t('ui.rent.change_unit'), true)) return;
     return c.saveMoveIn({
         unit, newUnit: false, occ, defs, from,
@@ -158,6 +160,8 @@ export async function changeUnit({ unitId, tenantId, tenantName, fromLeaseId, en
         if (old.status !== 'active' || old.tenantId !== tenantId) throw new Error('tenant_changed');
         if (endMonth < old.startMonth) throw new Error('bad_move_date');
         const end = await store.endInTx(tx, old, endMonth);
+        // A pro-rated move month can't also take back an advance from the month after (RENT-16) in one write.
+        if (end.back && endMonth === month && oldRent !== null) throw new Error('later_paid');
         const chId = chargeId(fromLeaseId, endMonth);
         const ch = oldRent !== null && endMonth === month ? await store.chargeInTx(tx, chId) : null;
         let split = null;
