@@ -2705,6 +2705,32 @@ const FirebaseService = {
     },
 
     /**
+     * What the printed bill shows, for every phone (#107): settings/app.receipt
+     * { footer, qr, lang, density, logo }. Owner, or a manager allowed in Roles & access;
+     * firestore.rules check the shape and the logo's size.
+     * @param {{footer: string, qr: boolean, lang: string, density: string, logo: ?{width: number, height: number, bits: string}}} receipt
+     * @returns {Promise<void>}
+     */
+    async saveReceiptSettings({ footer, qr, lang, density, logo }) {
+        const fields = {
+            receipt: {
+                footer: String(footer || ''),
+                qr: !!qr,
+                lang,
+                density,
+                logo: logo ? { width: logo.width, height: logo.height, bits: logo.bits } : null
+            },
+            receiptUpdatedAt: Date.now(),
+            receiptUpdatedBy: AppState.currentUser?.uid || 'unknown'
+        };
+        const write = getDb().collection(col('settings')).doc('app').set(fields, { merge: true });
+        if (appSettingsPromise) {
+            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
+        }
+        await settleWrite(write, 'saveReceiptSettings');
+    },
+
+    /**
      * Test in Production settings for every device (#217): rollback policies.
      * settings/app is owner-only.
      * @param {Object} policies - normalized (tip/tip.js normalizePolicies)

@@ -764,6 +764,55 @@ function defineSuite(prefix) {
         await assertSucceeds(app('legacyOwner').set({ businessName: 'Owner set' }, { merge: true }));
     });
 
+    // ---- Printed bill shared by every phone (#107): settings/app.receipt ----
+
+    t('settings/app.receipt: owner and allowed managers write it; shape and logo size are checked', async () => {
+        const app = (uid) => as(uid).collection(`${prefix}settings`).doc('app');
+        const seedApp = (shopSettings) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(`${prefix}settings`).doc('app')
+            .set({ minClientVersion: 3, roleAccess: { manager: { shopSettings }, staff: {} } }));
+        const logo = { width: 384, height: 120, bits: 'A'.repeat(7680) };
+        const receipt = { footer: 'धन्यवाद, फिर पधारें', qr: true, lang: 'hi', density: 'dark', logo };
+        const stamp = { receiptUpdatedAt: 1, receiptUpdatedBy: 'x' };
+        await seedApp(false);
+        await assertFails(app('manager1').set({ receipt, ...stamp }, { merge: true }));
+        await assertFails(app('staff1').set({ receipt, ...stamp }, { merge: true }));
+        await seedApp(true);
+        await assertFails(app('staff1').set({ receipt, ...stamp }, { merge: true }));
+        await assertSucceeds(app('manager1').set({ receipt, ...stamp }, { merge: true }));
+        await assertSucceeds(app('manager1').set({ receipt: { ...receipt, logo: null }, ...stamp }, { merge: true }));
+        await assertSucceeds(app('legacyOwner').set({ receipt: { footer: '', qr: false, lang: 'app', density: 'normal', logo: null } }, { merge: true }));
+        // everyone approved reads it with settings/app
+        await assertSucceeds(app('staff1').get());
+        // bad shapes are refused, for the owner too
+        const bad = [
+            { ...receipt, logo: { ...logo, bits: 'A'.repeat(7684) } },
+            { ...receipt, logo: { ...logo, width: 385 } },
+            { ...receipt, logo: { ...logo, height: 121 } },
+            { ...receipt, logo: { ...logo, width: 1.5 } },
+            { ...receipt, logo: { ...logo, bits: 'not base64!' } },
+            { ...receipt, logo: { ...logo, extra: 1 } },
+            { ...receipt, logo: 'data:image/png;base64,AAAA' },
+            { ...receipt, footer: 'x'.repeat(81) },
+            { ...receipt, lang: 'both' },
+            { ...receipt, density: 'max' },
+            { ...receipt, qr: 'yes' },
+            { ...receipt, widthMm: 80 },
+            { footer: 'x', qr: false, lang: 'en', density: 'normal' }
+        ];
+        await assertSucceeds(app('legacyOwner').update({ receipt }));
+        await assertSucceeds(app('manager1').update({ receipt, ...stamp }));
+        for (const r of bad) {
+            await assertFails(app('legacyOwner').update({ receipt: r }));
+            await assertFails(app('manager1').update({ receipt: r, ...stamp }));
+        }
+        // a manager still may not touch anything but the shop fields alongside it
+        await assertFails(app('manager1').set({ receipt, minClientVersion: 99 }, { merge: true }));
+        // the owner creating settings/app with a bad receipt is refused too
+        await env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(`${prefix}settings`).doc('app').delete());
+        await assertFails(app('legacyOwner').set({ receipt: { ...receipt, lang: 'fr' } }));
+        await assertSucceeds(app('legacyOwner').set({ receipt }));
+    });
+
     t('settings/app: a manager cannot create it even when allowed elsewhere', async () => {
         await assertFails(as('manager1').collection(`${prefix}settings`).doc('app').set({ laborRate: 8 }));
     });
