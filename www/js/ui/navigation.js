@@ -5,6 +5,7 @@ import { AppState } from '../utils/state.js';
 import { canOpenTab, canOpenPage, canOpenSection, roleMayOpenTab, SECTION_TABS } from '../utils/role-access.js';
 import { t } from '../i18n/index.js';
 import { closeTopDialog } from '../utils/keyboard-shortcuts.js';
+import { TemplateLoader } from '../utils/template-loader.js';
 
 // Routes: every id that showTab() accepts besides plain page ids (the .tab element id).
 //   tab     page element to show            section  sub-view handed to the page (see showTabFromNav)
@@ -192,6 +193,11 @@ const NavigationManager = {
             event.preventDefault();
         }
         const route = resolveRoute(tabId);
+        // A page loaded on first visit (#66): put it in, then show it as usual
+        if (!opts.pageReady && !refusal(route) && TemplateLoader.pageMissing(route.tab)) {
+            this.setMenuOpen(false);
+            return TemplateLoader.ensurePage(route.tab).then(() => this.showTabFromNav(tabId, null, { ...opts, pageReady: true }));
+        }
         if (refusal(route)) {
             UIManager.showToast(this.refusedMessage(tabId));
             this.showTabFromNav(this.refusedTabFallback(tabId), null, opts);
@@ -318,6 +324,10 @@ const NavigationManager = {
     // Show tab
     showTab(tabId, evt, opts = {}) {
         const route = resolveRoute(tabId);
+        if (!opts.pageReady && !refusal(route) && TemplateLoader.pageMissing(route.tab)) {
+            const target = evt?.currentTarget ? { currentTarget: evt.currentTarget } : undefined;
+            return TemplateLoader.ensurePage(route.tab).then(() => this.showTab(tabId, target, { ...opts, pageReady: true }));
+        }
         // Refused for this role (#84, F23), also for direct navigation
         if (refusal(route)) {
             UIManager.showToast(this.refusedMessage(tabId));

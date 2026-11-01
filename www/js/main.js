@@ -42,7 +42,7 @@ import { NotificationsManager } from './modules/notifications.js';
 import { markStartup, noteStartup, logStartupTimings } from './utils/startup-timings.js';
 
 // Import template loader utility
-import { TemplateLoader, SHELL_TEMPLATES, PAGE_TEMPLATES } from './utils/template-loader.js';
+import { TemplateLoader, SHELL_TEMPLATES, EAGER_PAGES } from './utils/template-loader.js';
 import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { SecurityMonitor } from './services/security-monitor.js';
@@ -56,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbnq-dead-code';
+const BUILD_ID = '20261101zzuzieecmbbkhbozb-lazy-pages';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -149,12 +149,27 @@ function scheduleTipNumberChecks() {
 }
 
 // Load and inject HTML templates from separate .html files. The login screen
-// and app shell go in first; the pages load while Firebase restores the
-// sign-in (#66), and nothing that uses them runs before pagesReady.
+// and app shell go in first; Billing, Today and Cash load while Firebase restores
+// the sign-in, and nothing that uses them runs before pagesReady. Every other
+// page is put in the first time it is opened (#66, TemplateLoader.ensurePage).
 let pagesReady = Promise.resolve();
+
+/** What startup renders into a page that is put in later, run when it is added. */
+const PAGE_ADDED = {
+    items: () => ItemsManager.renderItems(),
+    'wholesale-sales': () => WholesaleSalesManager.loadItemsDropdown(),
+    expenses: () => { ExpensesManager.updateExpensePersonOptions(); ExpensesManager.renderexpensesHistory(); },
+    settings: () => PrinterService.updateStatus()
+};
+TemplateLoader.onPageAdded = (name, el) => {
+    applyTranslations(el);
+    if (!AppState.currentUser) return;
+    try { PAGE_ADDED[name]?.(); } catch (e) { console.error(`First render of ${name} failed:`, e); }
+};
+
 async function injectTemplates() {
     TemplateLoader.injectShell(await TemplateLoader.loadTemplates(SHELL_TEMPLATES));
-    const pages = TemplateLoader.loadTemplates(PAGE_TEMPLATES);
+    const pages = TemplateLoader.loadTemplates(EAGER_PAGES);
     document.documentElement.lang = getLang();
     applyTranslations(document);
     pagesReady = pages.then(templates => {
@@ -1138,9 +1153,14 @@ window.app = {
         showParty: (kind, name) => {
             const tab = kind === 'wholesale' ? 'wholesale-sales' : 'due';
             NavigationManager.setActiveNavLink(tab);
-            NavigationManager.showTab(tab);
-            if (kind === 'wholesale') WholesaleSalesManager.showOutstandingParty(name);
-            else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : kind === 'sale' ? 'sale' : 'retail', name);
+            const open = () => {
+                if (kind === 'wholesale') WholesaleSalesManager.showOutstandingParty(name);
+                else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : kind === 'sale' ? 'sale' : 'retail', name);
+            };
+            // A page loaded on first visit (#66) is put in first
+            const shown = NavigationManager.showTab(tab);
+            if (shown && typeof shown.then === 'function') return shown.then(open);
+            open();
         }
     },
     
