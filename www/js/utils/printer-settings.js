@@ -1,6 +1,8 @@
 // Printer settings on this phone (#130, #107): saved printers, which one is in
-// use, each printer's paper width, the preview-before-print choice and what the
-// printed bill shows. Pure: the caller stores the returned object.
+// use, each printer's paper width and the preview-before-print choice. What the
+// printed bill shows is shared by every phone (settings/app.receipt); the older
+// per-phone choices are only used until a shared one exists. Pure: the caller
+// stores the returned object.
 
 /** Printable dots per line at 203 dpi. */
 export const PAPER_DOTS = Object.freeze({ 58: 384, 80: 576 });
@@ -45,8 +47,7 @@ export const RECEIPT_LANGS = Object.freeze(['app', 'en', 'hi']);
 export const MAX_FOOTER_CHARS = 80;
 
 /**
- * What the printed bill shows (#107), on this phone:
- * { footer, qr, lang: 'app'|'en'|'hi', density: 'light'|'normal'|'dark' }.
+ * Receipt options (#107): { footer, qr, lang: 'app'|'en'|'hi', density: 'light'|'normal'|'dark' }.
  */
 export function normalizeReceiptOptions(raw) {
     const r = raw && typeof raw === 'object' ? raw : {};
@@ -63,23 +64,63 @@ export function setReceiptOptions(settings, patch) {
     return { ...s, receipt: normalizeReceiptOptions({ ...s.receipt, ...patch }) };
 }
 
+/** Receipt options from a receipt ({ lang, density, … }) or printer settings ({ receipt }). */
+const receiptOf = (r) => normalizeReceiptOptions(r?.receipt || r);
+
 /** Language to print in: undefined = the app language. */
-export function receiptLang(settings) {
-    const { lang } = normalizePrinterSettings(settings).receipt;
+export function receiptLang(receipt) {
+    const { lang } = receiptOf(receipt);
     return lang === 'app' ? undefined : lang;
 }
 
-export function rasterThreshold(settings) {
-    return DENSITY_THRESHOLDS[normalizePrinterSettings(settings).receipt.density];
+export function rasterThreshold(receipt) {
+    return DENSITY_THRESHOLDS[receiptOf(receipt).density];
 }
 
 /** Logo size on the slip: at most 384 × 120 dots, aspect kept, never enlarged. */
 export const LOGO_MAX = Object.freeze({ width: 384, height: 120 });
+/** Longest logo `bits` (base64 of 384 × 120 1-bit dots, 5,760 bytes); firestore.rules allow no more. */
+export const LOGO_BITS_MAX = 7680;
 export function logoSize(width, height) {
     const w = Math.max(1, Number(width) || 1);
     const h = Math.max(1, Number(height) || 1);
     const k = Math.min(1, LOGO_MAX.width / w, LOGO_MAX.height / h);
     return { width: Math.max(1, Math.round(w * k)), height: Math.max(1, Math.round(h * k)) };
+}
+
+/** A receipt logo { width, height, bits } (1-bit rows, base64) of the right size, or null. */
+export function normalizeLogo(raw) {
+    try {
+        const ok = raw && Number.isInteger(raw.width) && Number.isInteger(raw.height)
+            && raw.width > 0 && raw.height > 0 && raw.width <= LOGO_MAX.width && raw.height <= LOGO_MAX.height
+            && typeof raw.bits === 'string' && raw.bits.length <= LOGO_BITS_MAX
+            && atob(raw.bits).length === ((raw.width + 7) >> 3) * raw.height;
+        return ok ? { width: raw.width, height: raw.height, bits: raw.bits } : null;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * The shop's receipt, shared by every phone (settings/app.receipt, #107):
+ * { footer, qr, lang, density, logo }, or null when none has been saved yet.
+ */
+export function normalizeSharedReceipt(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    return { ...normalizeReceiptOptions(raw), logo: normalizeLogo(raw.logo) };
+}
+
+/** What bills print with: the shared receipt, or this phone's own older choices until one is shared. */
+export function effectiveReceipt(printerSettings, shared, localLogo) {
+    return normalizeSharedReceipt(shared)
+        || { ...normalizePrinterSettings(printerSettings).receipt, logo: normalizeLogo(localLogo) };
+}
+
+/** This phone has receipt choices of its own (not the defaults, or a logo) that could be shared. */
+export function hasOwnReceipt(printerSettings, localLogo) {
+    const own = normalizePrinterSettings(printerSettings).receipt;
+    const plain = normalizeReceiptOptions({});
+    return !!normalizeLogo(localLogo) || Object.keys(plain).some(k => own[k] !== plain[k]);
 }
 
 /** The printer in use, or null. */
