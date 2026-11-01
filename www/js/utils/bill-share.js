@@ -183,6 +183,6 @@ export function buildDraftShareText({ kind, customer, date = new Date(), note, i
         lines.push(`*${t('ui.bill.payable')}: ${money(total - labour)}*`);
     }
     if (kind === 'wholesale' && expenses > 0) lines.push(`${t('ui.bill.expenses')}: ${money(expenses)}`);
-    if (kind === 'wholesale' && profit !== 0) lines.push(`${t('ui.bill.profit')}: ${money(profit)}`);
+    if (kind === 'wholesale' && Number.isFinite(profit) && profit !== 0) lines.push(`${t('ui.bill.profit')}: ${money(profit)}`);
     return lines.join('\n');
 }
