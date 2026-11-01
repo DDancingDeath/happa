@@ -1905,18 +1905,20 @@ service cloud.firestore {
       let leaseAfter = getAfter(rentLeasePath(usersCol, resource.data.leaseId)).data;
       return (role in ['owner', 'manager']
           || (role == 'member' && leaseAfter.get('movedTo', null) != null && resource.data.month == nextMonth(leaseAfter.endMonth)))
-        && ((resource.data.get('paid', 0) == 0 && resource.data.get('payments', []).size() == 0) || rentAdvBackOk(usersCol, leaseAfter))
+        && ((resource.data.get('paid', 0) == 0 && resource.data.get('payments', []).size() == 0 && resource.data.get('adv', 0) == 0)
+          || rentAdvBackOk(usersCol, leaseAfter))
         && leaseBefore.status == 'active' && leaseAfter.status == 'ended'
         && resource.data.month > leaseAfter.endMonth;
     }
 
-    // RENT-16: the one month right after the new last month, paid only from the advance, may go
+    // RENT-16: the one month right after the new last month, paid only from the advance (or just carrying it), may go
     // when the lease ends before it: paid + its advance go back to the last month's advance.
     function rentAdvBackOk(usersCol, leaseAfter) {
       let r = resource.data;
       let p = r.get('payments', []);
       let endCh = rentChargePath(usersCol, r.leaseId, leaseAfter.endMonth);
-      return p.size() == 1 && p[0].get('mode', '') == 'advance' && r.month == nextMonth(leaseAfter.endMonth)
+      return ((p.size() == 1 && p[0].get('mode', '') == 'advance') || (p.size() == 0 && r.get('adv', 0) > 0))
+        && r.month == nextMonth(leaseAfter.endMonth)
         && rentPaidMatches(getAfter(endCh).data.get('adv', 0), get(endCh).data.get('adv', 0) + r.paid + r.get('adv', 0));
     }
 

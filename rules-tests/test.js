@@ -4361,6 +4361,24 @@ function defineRentSuite(prefix) {
         b2.update(chargeOn(g, CUR), { paid: 5000, open: false, adv: 1000, updatedAt: 3, updatedBy: 'rentMember', payments: [{ ...entry('rentMember', 5000), mode: 'deposit', adv: 1000 }] });
         await assertFails(b2.commit());
     });
+
+    t('advance: a later month that only carries it (rent 0) gives it back too; it is never deleted with the advance', async () => {
+        await seed('rent_units', 'U1', unit());
+        await seed('rent_leases', 'L1', lease({ startMonth: PREV2, chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV, { paid: 5000, open: false }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { rent: 0, amount: 0, paid: 0, open: false, adv: 2000 }));
+        const out = (uid, back) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.delete(chargeOn(f, CUR));
+            if (back) b.update(chargeOn(f, PREV), { adv: back, updatedAt: 3, updatedBy: uid });
+            b.update(leaseOn(f), { status: 'ended', endMonth: PREV, chargedThrough: PREV, updatedAt: 3, updatedBy: uid });
+            b.update(unitOn(f), { leaseId: null, updatedAt: 3, updatedBy: uid });
+            return b.commit();
+        };
+        await assertFails(out('rentManager', 0));
+        await assertSucceeds(out('rentManager', 2000));
+    });
 }
 
 defineRentSuite('');

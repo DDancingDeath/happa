@@ -277,11 +277,11 @@ export function applyPayment(charge, amount, advance = false) {
     return { amount: amt, paid, open: paid < total - 0.001, ...(adv > 0 ? { adv, carried: round2((Number(charge.adv) || 0) + adv) } : {}) };
 }
 
-/** RENT-16: on a move-out before it, the one later month paid only from the advance gives back paid + its advance (else 0). */
+/** RENT-16: on a move-out before it, the one later month paid only from (or just carrying) the advance gives back paid + its advance (else 0). */
 export function advanceBack(later) {
     const c = later.length === 1 ? later[0] : null;
     const p = c?.payments || [];
-    return p.length === 1 && p[0].mode === 'advance' ? round2((Number(c.paid) || 0) + (Number(c.adv) || 0)) : 0;
+    return (p.length === 1 && p[0].mode === 'advance') || (!p.length && c?.adv > 0) ? round2((Number(c.paid) || 0) + (Number(c.adv) || 0)) : 0;
 }
 
 /** RENT-16: an advance plus what comes back to it. */
