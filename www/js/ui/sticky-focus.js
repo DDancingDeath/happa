@@ -31,18 +31,24 @@ function onFocusIn(event) {
     const tab = field.closest('.tab');
     if (!card || !row || !tab || card.contains(field) || row.contains(field)) return;
     if (getComputedStyle(card).position !== 'sticky') return;
-    // After the browser's own scroll to the focused field
-    requestAnimationFrame(() => {
+    const reveal = () => {
         const delta = scrollIntoGap(field.getBoundingClientRect(), card.getBoundingClientRect().bottom, row.getBoundingClientRect().top);
         if (delta) tab.scrollBy({ top: delta, behavior: 'instant' });
-    });
+    };
+    // A click: move the field only once it is released, or the click (a date picker) is lost
+    if (pointerDown) field.ownerDocument.addEventListener('pointerup', () => requestAnimationFrame(reveal), { once: true });
+    else requestAnimationFrame(reveal);
 }
 
 let installed = false;
+let pointerDown = false;
 
 /** Listens once for focus in the bill summary columns. */
 export function installStickyFocus(doc = document) {
     if (installed || !doc) return;
     installed = true;
+    doc.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+    doc.addEventListener('pointerup', () => { pointerDown = false; }, true);
+    doc.addEventListener('pointercancel', () => { pointerDown = false; }, true);
     doc.addEventListener('focusin', onFocusIn);
 }
