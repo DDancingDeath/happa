@@ -1399,6 +1399,19 @@ function oldestTimestamp() {
 
 /** What a stale copy of a bill would differ in (#127): payments, edits, void. */
 const billStateKey = (b) => `${paymentSignature(b)}|${editCountOf(b) || 0}|${isActiveBill(b) ? 1 : 0}`;
+/** The read before an edit (#127): a failed read falls back to the copy in memory, so it waits less. */
+const LATEST_BILL_TIMEOUT_MS = 5000;
+/** The whole stored bill, to spot any change (createdAt: an estimate locally). */
+const billContentJson = (b) => {
+    const rest = { ...b };
+    delete rest.createdAt;
+    return stableJson(rest);
+};
+/** Whether a listener that has heard from the server keeps this bill (its copy is current). */
+const keptLiveFromServer = (collKey, docId) => {
+    const c = windowState?.colls?.[collKey];
+    return !!c && [c.live, ...c.dues].some(l => l.server && l.docs.some(r => docIdOf(r) === docId));
+};
 
 /**
  * Puts a bill just read from the server in memory when no listener keeps it (an older,
@@ -1412,6 +1425,15 @@ function adoptFreshBill(collKey, prev, fresh) {
     c.extended.set(docId, fresh);
     if (c.spec.stock && prev) noteObservedChange(c, prev, fresh, 'modified');
     publishCollection(c);
+    markDirty(c.spec.views, !!c.spec.stock);
+}
+
+/** Drops a bill the server no longer has from memory when no listener keeps it. @private */
+function dropGoneBill(collKey, prev, docId) {
+    const c = windowState?.colls?.[collKey];
+    if (!c || liveIdSet(c).has(docId)) return;
+    if (c.spec.stock && prev) noteObservedChange(c, prev, null, 'deleted');
+    forgetRecord(collKey, docId);
     markDirty(c.spec.views, !!c.spec.stock);
 }
 
@@ -2236,13 +2258,21 @@ const FirebaseService = {
      */
     async latestBill(collKey, bill) {
         if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
-        const ref = getDb().collection(col(collKey)).doc(String(docIdOf(bill)));
-        const snap = await getWithRetry(() => ({ get: () => ref.get({ source: 'server' }) }), `${collKey} latest`, { attempts: 1 });
-        if (!snap.exists) return { bill: null, changed: true };
+        const docId = String(docIdOf(bill));
+        // A listener with server data already has the latest copy: no read
+        if (keptLiveFromServer(collKey, docId)) return { bill, changed: false };
+        const ref = getDb().collection(col(collKey)).doc(docId);
+        const snap = await getWithRetry(() => ({ get: () => ref.get({ source: 'server' }) }), `${collKey} latest`, { attempts: 1, timeoutMs: LATEST_BILL_TIMEOUT_MS });
+        const prev = findRecord(collKey, docId) || bill;
+        if (!snap.exists) {
+            dropGoneBill(collKey, prev, docId);
+            return { bill: null, changed: true };
+        }
         const fresh = mapDoc(snap);
-        if (billStateKey(fresh) === billStateKey(bill)) return { bill, changed: false };
-        adoptFreshBill(collKey, findRecord(collKey, fresh.id) || bill, fresh);
-        return { bill: fresh, changed: true };
+        if (billContentJson(fresh) === billContentJson(bill)) return { bill, changed: false };
+        adoptFreshBill(collKey, prev, fresh);
+        // Notes and other unrecorded fields: edit the latest copy without asking
+        return { bill: fresh, changed: billStateKey(fresh) !== billStateKey(bill) };
     },
 
     /**

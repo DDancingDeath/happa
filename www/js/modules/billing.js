@@ -1217,7 +1217,7 @@ const BillingManager = {
             UIManager.showToast(t('msg.void.already'));
             return null;
         }
-        if (!res.changed) return bill;
+        if (!res.changed) return res.bill;
         const reload = await UIManager.showModal(t('msg.billing.changed_elsewhere_reload'), t('ui.billing.changed_elsewhere_title'), true);
         return reload ? res.bill : null;
     },

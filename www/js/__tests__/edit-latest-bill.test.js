@@ -54,6 +54,13 @@ describe('FirebaseService.latestBill', () => {
         expect(res.bill).toMatchObject({ id: 'p1', ...over });
     });
 
+    test('only the notes changed elsewhere: no question, but the editor gets the latest copy', async () => {
+        stored({ comments: 'GPay 98xxxx' });
+        const res = await FirebaseService.latestBill('purchases', { ...BILL });
+        expect(res.changed).toBe(false);
+        expect(res.bill.comments).toBe('GPay 98xxxx');
+    });
+
     test('gone from the server: no bill', async () => {
         await expect(FirebaseService.latestBill('purchases', { ...BILL })).resolves.toEqual({ bill: null, changed: true });
     });
@@ -80,6 +87,9 @@ describe('BillingManager.latestCopyForEdit', () => {
         const bill = { ...BILL };
         jest.spyOn(FirebaseService, 'latestBill').mockResolvedValue({ bill, changed: false });
         await expect(BillingManager.latestCopyForEdit('purchase', bill)).resolves.toBe(bill);
+        const latest = { ...BILL, comments: 'new note' };
+        FirebaseService.latestBill.mockResolvedValueOnce({ bill: latest, changed: false });
+        await expect(BillingManager.latestCopyForEdit('purchase', bill)).resolves.toBe(latest);
         expect(modal).not.toHaveBeenCalled();
     });
 
