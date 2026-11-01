@@ -31,6 +31,10 @@ const UNCERTAIN_TTL_MS = 24 * 60 * 60 * 1000;
 const STOPPED_KEY = 'printerDisconnected';
 const LOGO_KEY = 'receiptLogo';
 const SHARED_RECEIPT_KEY = 'receiptShared';
+/** A bill whose print failed can be tried again from its preview, this many tries in all (#77, Q16). */
+export const BILL_PRINT_TRIES = 3;
+const CONNECT_PERMISSION = 'android.permission.BLUETOOTH_CONNECT';
+const PERMISSION_CHECK_MS = 3000;
 
 /** settings/app.receipt as last read (undefined = not looked at yet: the offline copy is read on first use). */
 let sharedReceipt;
@@ -924,7 +928,8 @@ const PrinterService = {
             no_printer: 'msg.settings.printer_not_connected',
             stopped: 'msg.settings.printer_not_connected',
             unavailable: 'msg.printer.android_app_only',
-            bluetooth_off: 'msg.printer.bluetooth_off'
+            bluetooth_off: 'msg.printer.bluetooth_off',
+            permission: 'msg.printer.err_permission'
         };
         const key = keys[error?.kind];
         return key ? t(key) : String(error?.message || error || '');
@@ -1131,6 +1136,111 @@ const PrinterService = {
         }
     },
 
+    /** Last answer about the Bluetooth permission: 'granted' | 'denied' | 'unknown'. */
+    permissionState: 'unknown',
+    permissionBannerClosed: false,
+
+    /** The Android permissions plugin, when the app runs on Android 12+ (else null). */
+    _permissions() {
+        const perms = typeof window !== 'undefined' ? window.cordova?.plugins?.permissions : null;
+        if (!perms || typeof perms.checkPermission !== 'function' || !this.isAvailable()) return null;
+        return getAndroidMajorVersion() >= 12 ? perms : null;
+    },
+
+    /**
+     * Does Android let the app use the printer link (BLUETOOTH_CONNECT, Android 12+)? Never asks
+     * the user; shows or hides the "Bluetooth permission needed" banner (#77).
+     * @returns {Promise<'granted'|'denied'|'unknown'>} 'unknown' on the web, older Android or no plugin
+     */
+    async bluetoothPermission() {
+        const perms = this._permissions();
+        if (!perms) {
+            if (this.permissionState !== 'unknown') this.setPermissionState('unknown');
+            return 'unknown';
+        }
+        const name = perms.BLUETOOTH_CONNECT || CONNECT_PERMISSION;
+        let timer;
+        const state = await Promise.race([
+            new Promise((resolve) => {
+                try {
+                    perms.checkPermission(name, (st) => resolve(st?.hasPermission ? 'granted' : 'denied'), () => resolve('unknown'));
+                } catch {
+                    resolve('unknown');
+                }
+            }),
+            new Promise((resolve) => { timer = setTimeout(() => resolve('unknown'), PERMISSION_CHECK_MS); })
+        ]);
+        clearTimeout(timer);
+        this.setPermissionState(state);
+        return state;
+    },
+
+    /** Asks Android for the permission (system dialog). @returns {Promise<boolean>} granted */
+    async requestBluetoothPermission() {
+        const perms = this._permissions();
+        if (!perms || typeof perms.requestPermission !== 'function') return false;
+        const name = perms.BLUETOOTH_CONNECT || CONNECT_PERMISSION;
+        const granted = await new Promise((resolve) => {
+            try {
+                perms.requestPermission(name, (r) => resolve(!!r?.hasPermission), () => resolve(false));
+            } catch {
+                resolve(false);
+            }
+        });
+        this.setPermissionState(granted ? 'granted' : 'denied');
+        if (!granted) UIManager.showToast(t('msg.printer.permission_in_settings'), 'warning');
+        return granted;
+    },
+
+    /** @param {'granted'|'denied'|'unknown'} state */
+    setPermissionState(state) {
+        this.permissionState = state;
+        if (state === 'granted') this.permissionBannerClosed = false;
+        this.renderPermissionBanner();
+        this.updateStatus();
+    },
+
+    /**
+     * "Bluetooth permission needed" banner: shown while the permission is refused and a
+     * printer is in use on this phone; Allow asks Android, × hides it until the app restarts.
+     */
+    renderPermissionBanner() {
+        if (typeof document === 'undefined' || !document.body) return;
+        let banner = document.getElementById('printerPermissionBanner');
+        const saved = this.settings();
+        const show = this.permissionState === 'denied' && !this.permissionBannerClosed && !!(saved.enabled && saved.deviceId);
+        if (!show) {
+            banner?.remove();
+            return;
+        }
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'printerPermissionBanner';
+            banner.className = 'printer-perm-banner';
+            banner.setAttribute('role', 'alert');
+            document.body.appendChild(banner);
+        }
+        banner.textContent = '';
+        const text = document.createElement('span');
+        text.className = 'printer-perm-banner__text';
+        text.textContent = t('ui.printer.permission_banner');
+        const allow = document.createElement('button');
+        allow.type = 'button';
+        allow.className = 'printer-perm-banner__allow';
+        allow.textContent = t('ui.printer.permission_allow');
+        allow.addEventListener('click', () => { this.requestBluetoothPermission().catch(e => console.warn('Permission request failed:', e)); });
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'printer-perm-banner__close';
+        close.setAttribute('aria-label', t('ui.common.close'));
+        close.textContent = '×';
+        close.addEventListener('click', () => {
+            this.permissionBannerClosed = true;
+            this.renderPermissionBanner();
+        });
+        banner.append(text, allow, close);
+    },
+
     /**
      * Printer link in one word for Settings and Diagnostics › Status (#119):
      * unavailable / bluetooth_off / connected / saved (a printer is saved but not
@@ -1165,10 +1275,14 @@ const PrinterService = {
         const { checkedAt, lastError, lastJob, bluetoothOff } = this.manager.link.status;
         const btOff = available && !connected && bluetoothOff;
 
+        const noPermission = available && this.permissionState === 'denied';
         let text;
         let color = '#666';
         if (!available) {
             text = t('ui.settings.printer_android_only');
+        } else if (noPermission) {
+            text = t('ui.settings.printer_permission_needed');
+            color = '#b45309';
         } else if (btOff) {
             text = t('ui.settings.printer_bluetooth_off');
         } else if (connected) {
@@ -1190,7 +1304,7 @@ const PrinterService = {
         if (statusText) {
             statusText.innerHTML = `<span style="color: ${color};">${connected ? '●' : '○'} ${Helpers.escapeHtml(text)}</span>`
                 + (detail ? `<br><small class="printer-status-detail">${Helpers.escapeHtml(detail)}</small>` : '');
-            statusText.dataset.state = !available ? 'unavailable' : btOff ? 'bluetooth_off' : connected ? 'connected' : 'disconnected';
+            statusText.dataset.state = !available ? 'unavailable' : noPermission ? 'permission' : btOff ? 'bluetooth_off' : connected ? 'connected' : 'disconnected';
         }
         if (disconnectBtn) disconnectBtn.style.display = connected ? 'block' : 'none';
         if (testPrintBtn) testPrintBtn.style.display = available && !btOff && (connected || saved.deviceId) ? 'block' : 'none';
@@ -1201,6 +1315,7 @@ const PrinterService = {
     async refreshStatus() {
         this.updateStatus();
         if (!this.isAvailable()) return;
+        await this.bluetoothPermission();
         await this.manager.link.bluetoothOn();
         if (this.isConnected()) await this.checkConnection();
         this.updateStatus();
@@ -1261,11 +1376,25 @@ const PrinterService = {
         return this._printBillNow(billData);
     },
 
-    /** @private Bluetooth when it can print, else the image preview. */
-    async _printBillNow(billData) {
+    /**
+     * @private Bluetooth when it can print, else the image preview. A failed try opens the
+     * preview with Print, so the bill can be tried again once the printer is back (the
+     * printer link itself makes one quick reconnect per try), up to BILL_PRINT_TRIES (#77).
+     * @param {Object} billData
+     * @param {number} [tries] this try's number
+     */
+    async _printBillNow(billData, tries = 1) {
         if (this.canPrint()) {
-            const key = jobKey('bill', billData.billNumber || billData.id);
-            const { outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job));
+            let outcome;
+            let error;
+            if (await this.bluetoothPermission() === 'denied') {
+                outcome = 'failed';
+                error = { kind: 'permission', message: 'Bluetooth permission needed' };
+            } else {
+                const key = jobKey('bill', billData.billNumber || billData.id);
+                ({ outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job)));
+                if (error?.kind === 'permission' && this._permissions()) this.setPermissionState('denied');
+            }
             if (outcome !== 'cancelled') recordPrint(billData, outcome, outcome === 'failed' ? { errorKind: error?.kind, error: error?.message } : {});
             if (outcome === 'printed') {
                 track('print.bill');
@@ -1274,9 +1403,24 @@ const PrinterService = {
             }
             if (outcome !== 'failed') return false;
             console.error('Bluetooth print failed:', error);
-            UIManager.showToast(t('msg.printer.print_failed', { message: this.errorText(error) }));
+            const last = tries >= BILL_PRINT_TRIES;
+            UIManager.showToast(last
+                ? t('msg.printer.print_failed_last', { message: this.errorText(error), tries })
+                : t('msg.printer.print_failed', { message: this.errorText(error) }));
+            if (!last) return await this.showBillPreview(billData, { onPrint: () => this._retryBillPrint(billData, tries + 1) });
+            await this.showBillPreview(billData);
+            return false;
         }
         return await this.showBillPreview(billData);
+    },
+
+    /** @private Print from the preview after a failed try: asks Android first when the permission was refused. */
+    async _retryBillPrint(billData, tries) {
+        // Still refused: keep the "allow it in Android settings" message and this try; the picture stays
+        if (this.permissionState === 'denied' && !(await this.requestBluetoothPermission())) {
+            return this.showBillPreview(billData, { onPrint: () => this._retryBillPrint(billData, tries) });
+        }
+        return this._printBillNow(billData, tries);
     },
 
     /**

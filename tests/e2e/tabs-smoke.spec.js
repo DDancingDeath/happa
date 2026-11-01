@@ -73,6 +73,7 @@ const STEPS = [
     { name: 'Statements › Party', route: 'statements-party', page: 'statements', roles: OM, expect: `#statementsControls [onchange*="set('partyKey'"]` },
     { name: 'Statements › Item', route: 'statements-item', page: 'statements', roles: OM, expect: `#statementsControls [onchange*="set('itemKey'"]` },
     { name: 'Statements › CSV', route: 'statements-csv', page: 'statements', roles: OM, expect: `#statementsControls [onchange*="set('csvFrom'"]` },
+    { name: 'Ask', route: 'ask', page: 'ask', act: "window.app.ask.ask(document.documentElement.lang === 'hi' ? 'आज की बिक्री' : 'aaj ki bikri')", roles: A, expect: '#askAnswers .ask-answer' },
     { name: 'Anomalies › List', route: 'anomalies', page: 'anomalies', roles: OM, expect: '#anomalyListView' },
     { name: 'Anomalies › Patterns', route: 'anomalies', page: 'anomalies', act: "window.app.anomalies.showView('patterns')", roles: OM, expect: '#anomalyTabPatterns.active' },
     { name: 'App health', route: 'health', page: 'health', roles: OM },

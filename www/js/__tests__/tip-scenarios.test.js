@@ -228,6 +228,7 @@ describe('Print (#161)', () => {
         expect(record('failed', { kind: 'dropped' })).toEqual({ result: 'f', reason: reasons.send_failed });
         expect(record('failed', new Error('plugin said no'))).toEqual({ result: 'f', reason: reasons.send_failed });
         expect(record('failed', { kind: 'bluetooth_off' })).toEqual({ result: 'w', reason: reasons.printer_not_ready });
+        expect(record('failed', { kind: 'permission' })).toEqual({ result: 'w', reason: reasons.printer_not_ready });
         expect(record('uncertain', { kind: 'timeout_write' })).toEqual({ result: 'w', reason: reasons.may_have_printed });
     });
 });

@@ -225,6 +225,9 @@ In order:
   The header pill (`ui/sync-status.js`: Offline / N changes waiting to sync / Synced) uses
   online/offline events, `hasPendingWrites` of the existing listeners, the writes
   `saveBill` / `startSaveExpense` send and `waitForPendingWrites()`: no Firestore reads.
+  Offline it adds "data as of HH:MM" (the last server snapshot, kept in localStorage); History /
+  Expenses rows carry `SyncStatus.chipHtml(id)` (Waiting to sync / Saved, kept up to date by
+  `fillSyncChips`), and Close cash asks while `pendingCount()` > 0.
 - **Two phones, one item or setting (#113)**: item, settings and user writes need the
   internet (`utils/write-conflict.js`, code `needs-internet`). The item dialog saves with
   `FirebaseService.saveItem(item, { expectedRev })` (a transaction on the item's `rev`) and a
@@ -568,8 +571,8 @@ fails unless the baseline's `exceptions` records it
       count went down (docs/architecture.md).
 - [ ] New user-facing text in both `i18n/en.js` and `i18n/hi.js`; no "staff".
 - [ ] Changed what a page shows or does (or how a number on it is worked out) →
-      updated `docs/owner-guide.md` and `docs/owner-guide.hi.md` in the same PR
-      (`tests/ci/owner-guide.test.js` checks their spec IDs).
+      updated that page's doc, `docs/pages/<page>.md` and `docs/pages/<page>.hi.md`, in
+      the same PR (`tests/ci/owner-guide.test.js` checks their spec IDs, en = hi).
 
 ---
 
