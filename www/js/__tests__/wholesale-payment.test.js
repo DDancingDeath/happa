@@ -178,9 +178,12 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
     test('a retry after a timeout writes the same sale id and number again — one bill (#70, #91)', async () => {
         setVal('wholesaleCashPayment', 4025);
         FirebaseService.saveWholesaleSale.mockRejectedValueOnce(new Error('Timed out'));
+        const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
         expect(WholesaleSalesManager.getItems()).toHaveLength(1);
+        now.mockReturnValue(2000);
         const sale = await WholesaleSalesManager.completeSale();
+        now.mockRestore();
         const calls = FirebaseService.saveWholesaleSale.mock.calls;
         expect(calls).toHaveLength(2);
         expect(calls[1][0].id).toBe(calls[0][0].id);
