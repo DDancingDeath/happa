@@ -2688,6 +2688,7 @@ export default {
     'ui.health.test_sync': "बदलाव सर्वर तक पहुँचना",
     'ui.health.test_stock_checkpoint': "स्टॉक चेकपॉइंट दोबारा बनाना",
     'ui.health.test_number_checks': "रोज़ की आँकड़ों की जाँच",
+    'ui.health.test_main_thread': "स्क्रीन अटकी नहीं",
     'ui.admin.counts': "मालिक {owner} · मैनेजर {manager} · सदस्य {member} · मंज़ूरी बाकी {pending} · हटाए गए {removed}",
     'ui.admin.activity_title': "हर व्यक्ति का काम",
     'ui.admin.activity_hint': "इस फ़ोन पर लोड बिलों से बिल, और ऑडिट लॉग से भुगतान, बदलाव और रद्द। ऑडिट लॉग तभी पढ़ा जाता है जब आप कोई अवधि चुनें।",
