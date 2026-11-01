@@ -21,6 +21,7 @@ import { todayLocalISO } from '../utils/dates.js';
 import { historyCutoff } from '../utils/role-access.js';
 import { OutstandingManager } from './outstanding.js';
 import { normalizePartyName } from '../utils/aging.js';
+import { partyDues } from '../utils/due-payments.js';
 import { getLang, t } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
@@ -44,6 +45,9 @@ const PAYMENT_TOLERANCE = 0.01;
 const WHOLESALE_BUTTONS = '[onclick*="wholesaleSales.completeSale"], [onclick*="wholesaleSales.printWholesaleSale"]';
 
 let wholesaleSaleItems = [];
+
+/** Most bills one "Complete all due" settles (one transaction; the oldest first). */
+const COMPLETE_ALL_MAX = 100;
 
 /** Live profit last shown on the form (WS-PROFIT), used by the WhatsApp text. */
 let shownProfit = 0;
@@ -690,6 +694,123 @@ export class WholesaleSalesManager {
         if (cleared) this.renderSalesHistory();
     }
 
+    /** "Complete all due" is for the owner and managers (#150, Q36). */
+    static canCompleteAllDue() {
+        return AppState.userRole === 'owner' || AppState.userRole === 'manager';
+    }
+
+    /**
+     * "Complete all due" for one party (#150): asks how the money came (cash /
+     * online) with the bill count and total (DUE-ALL), then settles every open
+     * bill of the party in one transaction (OutstandingManager.settleAllDues).
+     * @param {string} name - the party as written on a bill
+     */
+    static async completeAllDue(name) {
+        if (Helpers.isBusy('due-payment')) return;
+        if (!this.canCompleteAllDue()) {
+            UIManager.showToast(t('msg.common.access_denied'), 'error');
+            return;
+        }
+        const group = partyDues((AppState.salesHistory || []).filter(s => s.source === 'sales-tab'), normalizePartyName(name), normalizePartyName);
+        if (!group.bills.length) {
+            UIManager.showToast(t('msg.outstanding.nothing_due_party'));
+            return;
+        }
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.common.internet_required_record_payment'));
+            return;
+        }
+        const chosen = group.bills.slice(0, COMPLETE_ALL_MAX);
+        const bills = chosen.map(x => x.bill);
+        const shown = bills.length < group.bills.length ? partyDues(bills, normalizePartyName(name), normalizePartyName) : group;
+        const esc = (v) => Helpers.escapeHtml(v);
+        const amount = Helpers.formatCurrency(shown.total);
+        const html = `
+            <div style="text-align: left;">
+                <div style="margin-bottom: 10px;"><strong>${esc(String(name).trim())}</strong><br>
+                    ${esc(t('msg.wholesale.complete_all_due_summary', { count: shown.bills.length, total: amount }))}</div>
+                ${shown.bills.length < group.bills.length ? `<div style="margin-bottom: 8px;">${esc(t('msg.wholesale.complete_all_due_oldest', { count: shown.bills.length, all: group.bills.length }))}</div>` : ''}
+                <div style="margin-bottom: 6px; font-weight: 600;">${esc(t('ui.wholesale.complete_all_due_how'))}</div>
+                <label style="display: block; margin: 4px 0;"><input type="radio" name="completeAllMethod" value="cash"> ${esc(t('ui.wholesale.complete_all_due_cash'))}</label>
+                <label style="display: block; margin: 4px 0;"><input type="radio" name="completeAllMethod" value="online"> ${esc(t('ui.wholesale.complete_all_due_online'))}</label>
+            </div>`;
+        const confirmed = await UIManager.showModalWithHtml(html, t('ui.wholesale.complete_all_due'), true);
+        if (!confirmed) return;
+        const method = document.querySelector('input[name="completeAllMethod"]:checked')?.value || '';
+        if (!method) {
+            UIManager.showToast(t('msg.outstanding.choose_how_due_was_settled'));
+            return;
+        }
+        await Helpers.runExclusive('due-payment', '[data-record-payment], [data-mark-cleared], [data-complete-all]',
+            () => this._completeAllDue(String(name).trim(), bills, method, chosen.map(x => x.due)));
+    }
+
+    /**
+     * Payment entry ids of a Complete all due, kept for the same party, method and bills until a definite
+     * result (#70): a retry after a write that reached the server but answered with an error finds its own
+     * entries, so it is reported (and audited) as done, never recorded twice.
+     */
+    static settleEntryIds(name, method, bills) {
+        const key = [normalizePartyName(name), method, ...bills.map(b => (FirebaseService.documentIdOf ? FirebaseService.documentIdOf(b) : String(b.id)))].join('|');
+        if (this.pendingSettle?.key !== key) this.pendingSettle = { key, ids: bills.map(() => Helpers.generateId()) };
+        return this.pendingSettle.ids;
+    }
+
+    static async _completeAllDue(name, bills, method, confirmed) {
+        let result;
+        const entryIds = this.settleEntryIds(name, method, bills);
+        try {
+            result = await OutstandingManager.settleAllDues('wholesale', bills, method, confirmed, entryIds);
+        } catch (error) {
+            console.error('Complete all due failed:', error);
+            // A definite refusal forgets the ids; any other error may have reached the server: a retry reuses them
+            if (['due-changed', 'voided', 'not-found', 'permission-denied', 'invalid-argument'].includes(error?.code)) this.pendingSettle = null;
+            if (OutstandingManager.isOfflineError(error)) {
+                UIManager.showToast(t('msg.common.internet_required_record_payment'));
+            } else if (error?.code === 'due-changed') {
+                UIManager.showToast(t('msg.wholesale.complete_all_due_changed'));
+            } else if (error?.code === 'not-found') {
+                UIManager.showToast(t('msg.outstanding.error_transaction_not_found'));
+            } else {
+                UIManager.showToast(await OutstandingManager.paymentRefusedText(error));
+            }
+            this.renderSalesOutstanding();
+            return;
+        }
+        this.pendingSettle = null;
+        const { settled, total } = result;
+        if (!settled.length) {
+            // Nothing was due on the server: an earlier attempt went through (its answer was lost) or someone settled them
+            UIManager.showToast(t('msg.wholesale.complete_all_due_already'));
+            try {
+                OutstandingManager.refreshAfterPayment();
+                this.renderSalesOutstanding();
+            } catch (e) {
+                console.warn('Redraw after Complete all due failed:', e);
+            }
+            return;
+        }
+        settled.forEach(s => Object.assign(s.bill, s.fields));
+        AuditService.log(AuditService.ACTIONS.UPDATE_PAYMENT, {
+            bulk: true,
+            transactionType: 'wholesale',
+            customer: name,
+            method,
+            paymentAmount: total,
+            billNumbers: settled.map(s => s.bill.billNumber || String(s.bill.id)).join(', ').slice(0, 900)
+        }).catch(e => console.warn('Audit log failed:', e));
+        UIManager.showToast(t('msg.wholesale.complete_all_due_done', { count: settled.length, total: Helpers.formatCurrency(total) }));
+        UIManager.hapticFeedback('light');
+        // Saved: a screen that fails to redraw must not look like a failed payment
+        try {
+            OutstandingManager.refreshAfterPayment();
+            this.renderSalesOutstanding();
+            this.renderSalesHistory();
+        } catch (e) {
+            console.warn('Redraw after Complete all due failed:', e);
+        }
+    }
+
     /** Party opened from the bill's "Already owes" line (#166): {key, name} or null. */
     static outstandingParty = null;
 
@@ -738,6 +859,7 @@ export class WholesaleSalesManager {
             <div class="party-filter-note">
                 <span>${L('ui.outstanding.showing_only')} <strong>${Helpers.escapeHtml(party.name)}</strong></span>
                 <button type="button" class="aging-btn" onclick="window.app.wholesaleSales.clearOutstandingParty()">${L('ui.outstanding.show_all')}</button>
+                ${this.canCompleteAllDue() ? `<button type="button" class="aging-btn" data-complete-all onclick="window.app.wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(party.name)}')">${L('ui.wholesale.complete_all_due')}</button>` : ''}
             </div>` : '';
 
         if (outstandingSales.length === 0) {
@@ -782,6 +904,7 @@ export class WholesaleSalesManager {
                                 <input type="checkbox" data-mark-cleared id="clear_${Helpers.escapeHtml(sale.id)}" onchange="window.app.wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />
                                 <label for="clear_${Helpers.escapeHtml(sale.id)}" style="cursor: pointer; font-weight: 500;">${L('ui.wholesale.mark_as_cleared')}</label>
                             </div>
+                            ${this.canCompleteAllDue() && sale.customerName && !party ? `<button type="button" data-complete-all onclick="window.app.wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(sale.customerName)}')" style="margin-top: 8px; padding: 6px 12px; background: #fff; color: #15803d; border: 1px solid #15803d; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.wholesale.complete_all_due_party', { party: sale.customerName })}</button>` : ''}
                         </div>
                     </div>
                 `;
