@@ -202,6 +202,8 @@ describe('Day report card', () => {
             AppState.currentUser = { uid: 'man1' };
             FirebaseService.loadPeople.mockResolvedValue([{ id: 'own1', role: 'owner' }, { id: 'staff1', role: 'staff' }]);
             AnomaliesManager.renderDayReport({}, null);
+            // owners not known yet: nothing shown, not even the owner's own void
+            expect(AnomaliesManager.reportList).toEqual([]);
             await AnomaliesManager.refreshing;
             expect(AnomaliesManager.reportList.map(a => a.id)).toEqual(['bill-voided~bill~1']);
             expect(FirebaseService.saveAnomalies.mock.calls[0][0].map(w => w.id)).toEqual(['bill-voided~bill~1']);

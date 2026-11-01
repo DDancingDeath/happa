@@ -19,7 +19,7 @@ import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
     addDaysToKey, anomalyPatterns, billTime, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
     istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, summarizeAnomalies, summaryLine, typeLabel,
-    voidedByOthers, withoutUnstockedOversell
+    voidedByOthers, withoutStoredVoidTwins, withoutUnstockedOversell
 } from '../utils/anomalies.js';
 import { firstStockTimes } from '../utils/stock-check.js';
 import { auditScanCap } from '../utils/security-flags.js';
@@ -28,10 +28,10 @@ const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
 const DAY_MS = 86400000;
 
-/** Detected + stored anomalies as shown: oversells of items whose stock was never set are left out (F15). */
+/** Detected + stored anomalies as shown: oversells of items whose stock was never set (F15) and voids already stored under their audit entry (#75) are left out. */
 function mergeVisible(detected, stored) {
     const stockFrom = firstStockTimes({ purchases: AppState.purchaseHistory, stockAdjustments: AppState.stockAdjustments }, AppState.items);
-    return withoutUnstockedOversell(mergeAnomalies(detected, stored), { stockFrom, catalogue: AppState.items || [], stock: AppState.stock || {} });
+    return withoutUnstockedOversell(mergeAnomalies(withoutStoredVoidTwins(detected, stored), stored), { stockFrom, catalogue: AppState.items || [], stock: AppState.stock || {} });
 }
 const STORED_TTL_MS = 2 * 60 * 1000;
 /** Today card: server read at most every 30 min per user/device (persisted across reopens). */
@@ -201,7 +201,7 @@ export const AnomaliesManager = {
             console.warn('Anomaly scan: stored records not read (offline?):', e?.code || e);
         }
         if (stored) {
-            const writes = planAnomalyWrites(detected, stored, Date.now());
+            const writes = planAnomalyWrites(withoutStoredVoidTwins(detected, stored), stored, Date.now());
             if (writes.length) {
                 try {
                     await FirebaseService.saveAnomalies(writes);
