@@ -13,7 +13,7 @@ import { AuditService } from '../services/audit.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { buildBackup, isDeleteConfirmed, DELETE_CONFIRM_WORD, canClearCollection } from '../utils/data-export.js';
 import { t } from '../i18n/index.js';
-import { UserAdmin, isDisabledProfile } from '../services/user-admin.js';
+import { UserAdmin, isRemovedProfile, logUserAction } from '../services/user-admin.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 
@@ -123,6 +123,12 @@ const AdminManager = {
                     <p style="text-align: center; color: #888;">${tx('ui.navigation.loading')}</p>
                 </div>
             </div>
+
+            <div class="settings-card" id="adminRemovedCard" hidden>
+                <h3>${tx('ui.admin.removed_users')}</h3>
+                <p class="setting-description">${tx('ui.admin.removed_users_hint')}</p>
+                <div id="adminRemovedUsers"></div>
+            </div>
         `;
 
         await this.loadUsers();
@@ -137,9 +143,13 @@ const AdminManager = {
             
             const pendingUsers = [];
             const activeUsers = [];
+            const removedUsers = [];
             
             users.forEach(user => {
-                if (isDisabledProfile(user)) return;
+                if (isRemovedProfile(user)) {
+                    removedUsers.push(user);
+                    return;
+                }
                 // Match logic from users.js: pending if status is pending OR no role assigned
                 if (user.status === 'pending' || !user.role) {
                     pendingUsers.push(user);
@@ -150,10 +160,38 @@ const AdminManager = {
 
             this.renderPendingUsers(pendingUsers);
             this.renderActiveUsers(activeUsers);
+            this.renderRemovedUsers(removedUsers);
         } catch (error) {
             console.error('Error loading users:', error);
             UIManager.showToast(t('msg.common.failed_load_users'), 'error');
         }
+    },
+
+    /**
+     * Removed and rejected people (#84), each with Restore (back to pending).
+     * @param {Array} users
+     */
+    renderRemovedUsers(users) {
+        const card = document.getElementById('adminRemovedCard');
+        const container = document.getElementById('adminRemovedUsers');
+        if (!card || !container) return;
+        card.hidden = users.length === 0;
+        container.innerHTML = users.map(user => `
+            <div class="active-user-card">
+                <div class="user-card-header">
+                    <div>
+                        <div class="user-name">${Helpers.escapeHtml(user.name || t('ui.reports.unknown'))}</div>
+                        <div class="user-email">${Helpers.escapeHtml(user.email || '')}</div>
+                    </div>
+                    <span class="user-role-badge pending">${tx(user.status === 'rejected' ? 'ui.admin.status_rejected' : 'ui.admin.status_removed')}</span>
+                </div>
+                <div class="user-actions">
+                    <button type="button" onclick="window.app.admin.restoreUser('${Helpers.escapeJsAttr(user.id)}', '${Helpers.escapeJsAttr(user.name || '')}')">
+                        ↩️ ${tx('ui.admin.restore')}
+                    </button>
+                </div>
+            </div>
+        `).join('');
     },
 
     /**
@@ -267,6 +305,7 @@ const AdminManager = {
                 approvedBy: AppState.currentUser?.uid
             });
 
+            logUserAction(AuditService.ACTIONS.APPROVE_USER, { targetUserId: userId, role });
             UIManager.showToast(t('msg.common.user_approved_as', { roleLabel: Helpers.roleLabel(role) }));
             await this.loadUsers();
         } catch (error) {
@@ -282,25 +321,20 @@ const AdminManager = {
      * @param {string} userId - User ID
      */
     async rejectUser(userId) {
-        const confirmed = await UIManager.showModal(
-            t('msg.admin.are_sure_want_reject_user'),
-            t('msg.admin.reject_user'),
-            true
-        );
-        if (!confirmed) return;
+        const rejected = await UserAdmin.rejectUser(userId);
+        if (rejected) await this.loadUsers();
+        return rejected;
+    },
 
-        try {
-            UIManager.showLoading();
-            await FirebaseService.deleteUserProfile(userId);
-
-            UIManager.showToast(t('msg.admin.user_rejected'));
-            await this.loadUsers();
-        } catch (error) {
-            console.error('Error rejecting user:', error);
-            UIManager.showToast(t('msg.common.failed_reject_user'), 'error');
-        } finally {
-            UIManager.hideLoading();
-        }
+    /**
+     * Restore a removed or rejected person as a pending registration (#84)
+     * @param {string} userId - User ID
+     * @param {string} userName - User name
+     */
+    async restoreUser(userId, userName) {
+        const restored = await UserAdmin.restoreUser(userId, userName);
+        if (restored) await this.loadUsers();
+        return restored;
     },
 
     /**
@@ -326,6 +360,7 @@ const AdminManager = {
                 role: newRole
             });
 
+            logUserAction(AuditService.ACTIONS.CHANGE_USER_ROLE, { targetUserId: userId, from: currentRole, to: newRole });
             UIManager.showToast(t('msg.admin.role_changed', { roleLabel: Helpers.roleLabel(newRole) }));
             await this.loadUsers();
         } catch (error) {

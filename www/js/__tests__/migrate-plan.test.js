@@ -168,6 +168,11 @@ describe('plan: copies, settings, counters, dev_', () => {
         renamed.collections.users.find(d => d.id === 'uid-member').data.name = 'staging-readonly';
         const r = plan({}, renamed);
         expect(writesOf(r.bundle, 'copy:users').map(w => w.id)).toEqual(['uid-owner', 'uid-member']);
+        // The team directory (#87) names the same people, never a service account or an email
+        const team = writesOf(bundle, 'team');
+        expect(team.map(w => `${w.coll}/${w.id}`)).toEqual(['settings/team']);
+        expect(Object.keys(team[0].data.people).sort()).toEqual(['uid-member', 'uid-owner']);
+        expect(JSON.stringify(team[0].data)).not.toContain('@');
         const none = load();
         none.collections.users = none.collections.users.filter(d => d.id !== 'uid-staging-ro');
         expect(plan({}, none).summary.serviceAccounts).toEqual({ skipped: 0, docs: {} });
@@ -327,8 +332,8 @@ describe('plan: write order and budget', () => {
 
     test('settings, counters, users, opening records and items first; bulk history last', () => {
         const groups = [...new Set(bundle.writes.map(w => w.group))];
-        expect(groups).toEqual(['settings', 'counters', 'copy:users', 'opening', 'copy:items', 'copy:rateHistory', 'copy:itemFrequency', 'rateStats', 'rateStatsMeta']);
-        expect(summary.writes).toMatchObject({ total: bundle.writes.length, essential: 15, perDay: 12000, shopReserve: 8000, days: 1, leftForShopOnLastDay: 20000 - bundle.writes.length });
+        expect(groups).toEqual(['settings', 'counters', 'copy:users', 'team', 'opening', 'copy:items', 'copy:rateHistory', 'copy:itemFrequency', 'rateStats', 'rateStatsMeta']);
+        expect(summary.writes).toMatchObject({ total: bundle.writes.length, essential: 16, perDay: 12000, shopReserve: 8000, days: 1, leftForShopOnLastDay: 20000 - bundle.writes.length });
     });
 
     test('days and what is left for the shop scale with the write count', () => {
