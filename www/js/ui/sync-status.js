@@ -92,6 +92,12 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     const syncedIds = new Set();
     let serverDataAt = Number(storage?.getItem?.(SERVER_DATA_AT_KEY)) || null;
     let serverDataSavedAt = 0;
+    // Listeners heard from the server since the phone came online: live until it goes offline.
+    let serverSinceOnline = false;
+    const saveServerDataAt = (at) => {
+        serverDataSavedAt = at;
+        try { storage?.setItem?.(SERVER_DATA_AT_KEY, String(at)); } catch (_) { /* storage full: the time is only shown */ }
+    };
 
     const idOf = (path) => String(path).split('/').pop();
     // Only an acknowledged write proves a row reached the server: a listener's pending
@@ -208,8 +214,18 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         paint('', '');
     }
 
-    const onOnline = () => { online = true; render(); };
-    const onOffline = () => { online = false; ++waitSeq; render(); };
+    const onOnline = () => { online = true; serverSinceOnline = false; render(); };
+    const onOffline = () => {
+        online = false;
+        ++waitSeq;
+        // The figures were current until now, not only until the last change arrived
+        if (serverSinceOnline) {
+            serverDataAt = Date.now();
+            saveServerDataAt(serverDataAt);
+            serverSinceOnline = false;
+        }
+        render();
+    };
     const onLang = () => render();
 
     return {
@@ -286,9 +302,9 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
          */
         noteServerData(at = Date.now()) {
             serverDataAt = at;
+            if (online) serverSinceOnline = true;
             if (!storage || at - serverDataSavedAt < SERVER_DATA_SAVE_MS) return;
-            serverDataSavedAt = at;
-            try { storage.setItem(SERVER_DATA_AT_KEY, String(at)); } catch (_) { /* storage full: the time is only shown */ }
+            saveServerDataAt(at);
         },
         /**
          * Sync state of one document on this phone.

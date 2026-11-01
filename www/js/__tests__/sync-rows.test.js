@@ -58,15 +58,22 @@ describe('"as of" on the offline pill', () => {
     test('offline shows when the server last sent data; the time is kept for the next start', () => {
         const at = Date.now() - 60 * 60 * 1000;
         status.noteServerData(at);
-        go(false);
-        expect(pill().textContent).toBe(`Offline · data as of ${asOfText(at)}`);
         expect(store.get(SERVER_DATA_AT_KEY)).toBe(String(at));
 
         status.stop();
+        online = false;
         const again = createSyncStatus({ win: window, doc: document, storage: { getItem: k => store.get(k) ?? null, setItem: () => {} } });
         again.start();
         expect(pill().textContent).toBe(`Offline · data as of ${asOfText(at)}`);
         again.stop();
+    });
+
+    test('going offline after server data arrived: the data was current until then', () => {
+        status.noteServerData(Date.now() - 3 * 60 * 60 * 1000);
+        const before = Date.now();
+        go(false);
+        expect(Number(store.get(SERVER_DATA_AT_KEY))).toBeGreaterThanOrEqual(before);
+        expect(pill().textContent).toBe(`Offline · data as of ${asOfText(Number(store.get(SERVER_DATA_AT_KEY)))}`);
     });
 
     test('never had server data: plain "Offline"', () => {
