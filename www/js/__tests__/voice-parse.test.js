@@ -103,6 +103,12 @@ describe('parseVoiceLine (VB-1)', () => {
         expect(flagged('aloo 10 kilo in 300 rupees')).toEqual({ weight: 10, rate: null, extraNumbers: true });
         expect(flagged('aloo 30 rupees ka 1 kilo')).toEqual({ weight: 1, rate: 30, extraNumbers: false });
         expect(flagged('aloo 30 rupees per kilo 10 kilo')).toEqual({ weight: 10, rate: 30, extraNumbers: false });
+        expect(flagged('aloo 500 gram ka 22')).toEqual({ weight: 0.5, rate: null, extraNumbers: true });
+        expect(flagged('100 रुपये का चावल दे दो')).toEqual({ weight: null, rate: null, extraNumbers: true });
+        expect(flagged('चावल 60 रुपये का')).toEqual({ weight: null, rate: null, extraNumbers: true });
+        expect(flagged('aloo 30 rupees per kilo mein')).toEqual({ weight: null, rate: 30, extraNumbers: false });
+        expect(flagged('चावल 10 kg 30 के भाव में')).toEqual({ weight: 10, rate: 30, extraNumbers: false });
+        expect(flagged('aloo 30 me 10 kilo')).toEqual({ weight: 10, rate: 30, extraNumbers: false });
         expect(flagged('चावल 10 kg 300 रुपये टोटल')).toEqual({ weight: 10, rate: null, extraNumbers: true });
         expect(flagged('aloo 10 kilo at 30 total 300')).toEqual({ weight: 10, rate: 30, extraNumbers: true });
         expect(flagged('aloo ten kilos thirty rupees a kilo')).toEqual({ weight: 10, rate: 30, extraNumbers: false });

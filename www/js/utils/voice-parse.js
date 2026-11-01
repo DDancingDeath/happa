@@ -209,7 +209,7 @@ function matchItem(tokens, items) {
 
 /**
  * What a number group is, from the words around it: 'weight' (kg), 'gram', 'rate'
- * (₹, unit not said), 'rate-kg' (₹ per kg said), 'other' (another unit or a total: not used) or null (no word).
+ * (₹, unit not said), 'rate-kg' (₹ per kg said), 'rate-of' ("₹N ka": a rate only if a weight is said too), 'other' (another unit or a total: not used) or null (no word).
  * @param {string[]} rest tokens, the item's words blanked
  * @param {Array<{start: number, end: number}>} groups
  * @param {number} gi
@@ -220,9 +220,11 @@ function numberKind(rest, groups, gi) {
     const stop = gi + 1 < groups.length ? groups[gi + 1].start : rest.length;
     let after = null;
     let lastWord = null;
+    let possessive = false;
     for (let k = g.end; k < stop; k++) {
         const w = rest[k];
         if (w) lastWord = w;
+        if (POSSESSIVE.has(w)) possessive = true;
         // a total word just before the next number belongs to that number ("30 rupees total 300")
         const total = TOTAL_AFTER.has(w) && !(k + 1 === stop && gi + 1 < groups.length);
         if (!after) {
@@ -241,11 +243,15 @@ function numberKind(rest, groups, gi) {
         && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]))) return 'other';
     const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
     if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2) && after !== 'weight') return 'rate-kg';
-    if (gi > 0 && (TOTAL_AFTER_A_WEIGHT.has(lastWord) || TOTAL_AFTER_A_WEIGHT.has(b1))) return 'other';
+    if (gi > 0 && ((after === null && TOTAL_AFTER_A_WEIGHT.has(lastWord))
+        || (after !== 'weight' && after !== 'gram' && TOTAL_AFTER_A_WEIGHT.has(b1)))) return 'other';
     if (PRICE_BEFORE.has(b1)) return after === 'rate-kg' ? after : 'rate';
     if (TOTAL_BEFORE.has(b1)) return 'other';
     // "10 kilo ke 300" is a total, "kilo ka 30" a rate per kg
+    if (POSSESSIVE.has(b1) && GRAM_UNITS.has(b2)) return 'other';
     if (POSSESSIVE.has(b1) && WEIGHT_UNITS.has(b2)) return gi > 0 && groups[gi - 1].end === g.start - 2 ? 'other' : 'rate-kg';
+    // "60 rupaye ka" with no kilo word: maybe a rate, maybe what to buy for ₹60
+    if (after === 'rate' && possessive) return 'rate-of';
     return after;
 }
 
@@ -288,6 +294,7 @@ export function parseVoiceLine(text, items = []) {
         && !groups.some(g => g.end === k) && !PER_WORDS.has(rest[k - 1]) && !PRICE_AFTER.has(rest[k - 1]) && !(rest[k - 1] === 'a' && PRICE_AFTER.has(rest[k - 2]))
         && !POSSESSIVE.has(rest[k + 1]));
     let ratePerKg = false;
+    let rateOf = false;
     groups.forEach((g, gi) => {
         const kind = numberKind(rest, groups, gi);
         const lone = g.end === g.start + 1 && GIVE_WORDS.has(rest[g.start]);
@@ -303,9 +310,10 @@ export function parseVoiceLine(text, items = []) {
             kgJustSet = true;
         } else if (kind === 'gram' && weight === null) weight = g.value / 1000;
         else if (kind === 'gram' && wasKg && g.value < 1000) weight = Math.round((weight + g.value / 1000) * 1000) / 1000;
-        else if ((kind === 'rate' || kind === 'rate-kg') && rate === null) {
+        else if ((kind === 'rate' || kind === 'rate-kg' || kind === 'rate-of') && rate === null) {
             rate = g.value;
             ratePerKg = kind === 'rate-kg';
+            rateOf = kind === 'rate-of';
         }
         else if (!kind) unmarked.push(g.value);
         else unmarked.push(NaN);
@@ -317,8 +325,9 @@ export function parseVoiceLine(text, items = []) {
         else if (rate === null) rate = n;
         else extraNumbers = true;
     }
-    // With quintals or bags in the line, a rate said only in rupees may be per quintal / bag
-    if (otherUnit && rate !== null && !ratePerKg) {
+    // With quintals or bags in the line, a rate said only in rupees may be per quintal / bag;
+    // "100 rupaye ka chawal" with no weight is an amount to buy, not a rate
+    if (rate !== null && ((otherUnit && !ratePerKg) || (rateOf && weight === null))) {
         rate = null;
         extraNumbers = true;
     }
