@@ -2,7 +2,7 @@
     <div class="cash-body" style="padding: 20px;">
         
         <!-- Cash Status Card -->
-        <div id="cashStatusCard" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+        <div id="cashStatusCard" style="background: linear-gradient(135deg, #5560d6 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
             <h3 style="margin: 0 0 15px 0; font-size: 18px; color: #fff;" data-i18n="ui.cash.today_s_cash_status">Today's Cash Status</h3>
             <div id="statusCardsContainer" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 14px;">
                 <!-- For ongoing session: Opening Balance, Cash In, Cash Out, Available Cash -->
@@ -132,7 +132,7 @@
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                             <span data-i18n="ui.cash.cash_sales">Cash Sales:</span>
-                            <strong style="color: #22c55e;" id="cashSalesTotal">₹0</strong>
+                            <strong style="color: #15803d;" id="cashSalesTotal">₹0</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span data-i18n="ui.common.due_received">Due Received:</span>
@@ -152,7 +152,7 @@
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                             <span data-i18n="ui.common.due_paid">Due Paid:</span>
-                            <strong style="color: #dc2626;" id="duePaidTotal">₹0</strong>
+                            <strong style="color: #b91c1c;" id="duePaidTotal">₹0</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                             <span data-i18n="ui.cash.business_expenses">Business Expenses:</span>
@@ -162,14 +162,14 @@
                             <span data-i18n="ui.cash.personal_expenses">Personal Expenses:</span>
                             <strong style="color: #f59e0b;" id="cashPersonalExpensesTotal">₹0</strong>
                         </div>
-                        <div style="border-top: 2px solid #dc2626; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 600;">
+                        <div style="border-top: 2px solid #b91c1c; margin-top: 8px; padding-top: 8px; display: flex; justify-content: space-between; font-weight: 600;">
                             <span data-i18n="ui.cash.total_cash_out">Total Cash Out:</span>
-                            <strong style="color: #dc2626;" id="totalCashOut">₹0</strong>
+                            <strong style="color: #b91c1c;" id="totalCashOut">₹0</strong>
                         </div>
                     </div>
                     
                     <!-- Expected Cash -->
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 12px; border-radius: 8px; margin-top: 4px;">
+                    <div style="background: linear-gradient(135deg, #5560d6 0%, #764ba2 100%); padding: 12px; border-radius: 8px; margin-top: 4px;">
                         <div style="display: flex; justify-content: space-between; font-size: 16px;">
                             <span style="color: white; font-weight: 600;" data-i18n="ui.cash.expected_cash">Expected Cash:</span>
                             <strong style="color: white;" id="expectedCashAmount">₹0</strong>
@@ -190,7 +190,7 @@
                 <input type="text" id="cashSignOutNotes" maxlength="200" placeholder="e.g., Took ₹2,000 home" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;"  data-i18n-placeholder="ui.cash.took_2_000_home"/>
             </div>
             
-            <button class="save-btn" data-cash-save="close" onclick="window.app.cashManagement.signOut()" style="width: 100%; padding: 14px; margin-top: 10px; background: #dc2626; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_out_close_day">
+            <button class="save-btn" data-cash-save="close" onclick="window.app.cashManagement.signOut()" style="width: 100%; padding: 14px; margin-top: 10px; background: #b91c1c; font-size: 16px; font-weight: 600;" data-i18n="ui.cash.sign_out_close_day">
                 ✓ Close cash & end day
             </button>
         </div>

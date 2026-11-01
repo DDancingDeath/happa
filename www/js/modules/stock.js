@@ -32,7 +32,7 @@ const stockKg = (q) => (Number(q) || 0).toLocaleString('en-IN', { minimumFractio
 
 const DEAD_STOCK_DAYS_KEY = 'aadhat.deadStockDays';
 
-const stockUpdatingHtml = () => `<p class="stock-updating" style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(t('ui.stock.updating'))}</p>`;
+const stockUpdatingHtml = () => `<p class="stock-updating" style="text-align: center; color: #666; margin-top: 40px;">${Helpers.escapeHtml(t('ui.stock.updating'))}</p>`;
 
 /**
  * Banner for approximate stock (member device, stale checkpoint; #129).
@@ -128,7 +128,7 @@ export class StockManager {
                 // Orphan rows: highlight in red so the user can spot the
                 // discrepancy. Always shown to all users (including staff)
                 // because they signal a data integrity issue.
-                const qtyColor = item.quantity < 0 ? '#dc3545' : '#f0ad4e';
+                const qtyColor = item.quantity < 0 ? '#b02a37' : '#f0ad4e';
                 div.innerHTML = `
                     <div style="display: flex; justify-content: space-between; align-items: center; border-left: 3px solid ${qtyColor}; padding-left: 8px;">
                         <div>
@@ -172,7 +172,7 @@ export class StockManager {
                         </div>${alertLine}
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 18px; font-weight: 700; color: #28a745;">
+                        <div style="font-size: 18px; font-weight: 700; color: #1c7430;">
                             ${quantityDisplay}
                         </div>
                         ${valueDisplay}
@@ -184,7 +184,7 @@ export class StockManager {
             });
         } catch (error) {
             console.error('Error loading stock:', error);
-            container.innerHTML = `<p style="text-align: center; color: #dc3545; margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: #b02a37; margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
         }
     }
 
@@ -430,7 +430,7 @@ export class StockManager {
             if (!noResultsMsg) {
                 noResultsMsg = document.createElement('p');
                 noResultsMsg.className = 'no-results-message';
-                noResultsMsg.style.cssText = 'text-align: center; color: #888; margin-top: 40px;';
+                noResultsMsg.style.cssText = 'text-align: center; color: #666; margin-top: 40px;';
                 noResultsMsg.textContent = t('ui.stock.no_items_found');
                 container.appendChild(noResultsMsg);
             }
@@ -572,7 +572,7 @@ export class StockManager {
             }
 
             if (rows.length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 30px;">${e(t('ui.deadstock.all_sold', { days: minDays }))}</p>`;
+                container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 30px;">${e(t('ui.deadstock.all_sold', { days: minDays }))}</p>`;
                 return;
             }
 
@@ -589,18 +589,18 @@ export class StockManager {
                             <div style="color: #666; font-size: 12px; margin-top: 2px;">${e(t('ui.deadstock.last_purchase'))}: ${e(purchase)}</div>
                         </div>
                         <div style="text-align: right;">
-                            <div style="font-size: 18px; font-weight: 700; color: #dc3545;">${e(stockKg(r.quantity))} kg</div>
+                            <div style="font-size: 18px; font-weight: 700; color: #b02a37;">${e(stockKg(r.quantity))} kg</div>
                             <div style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${e(formatRupees(r.value))}</div>
-                            <div style="color: #888; font-size: 12px;">avg ₹${e(r.rate.toFixed(2))}/kg</div>
+                            <div style="color: #666; font-size: 12px;">avg ₹${e(r.rate.toFixed(2))}/kg</div>
                         </div>
                     </div>
                 </div>`;
             }).join('') + (rows.some(r => r.uncertain)
-                ? `<p style="font-size: 12px; color: #888; margin-top: 8px;">* ${e(t('ui.deadstock.uncertain_note', { windowDays, days: minDays }))}</p>`
+                ? `<p style="font-size: 12px; color: #666; margin-top: 8px;">* ${e(t('ui.deadstock.uncertain_note', { windowDays, days: minDays }))}</p>`
                 : '');
         } catch (error) {
             console.error('Error loading dead stock:', error);
-            container.innerHTML = `<p style="text-align: center; color: #dc3545; margin-top: 30px;">${Helpers.escapeHtml(t('ui.deadstock.failed_load'))}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: #b02a37; margin-top: 30px;">${Helpers.escapeHtml(t('ui.deadstock.failed_load'))}</p>`;
         }
     }
 
@@ -848,7 +848,7 @@ export class StockManager {
 
             if (adjustments.length === 0) {
                 const message = isFullHistoryLoaded() ? t('ui.stock.no_adjustments_yet') : t('ui.stock.no_adjustments_since', { date: formatWindowDate(historyLoadedFrom()) });
-                container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
+                container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
                 return;
             }
 
@@ -860,7 +860,7 @@ export class StockManager {
                 div.className = "history-item";
                 
                 const typeLabels = { add: t('ui.stock.adj_added'), remove: t('ui.stock.adj_removed'), set: t('ui.stock.adj_set_to') };
-                const typeColors = { add: '#28a745', remove: '#dc3545', set: '#007bff' };
+                const typeColors = { add: '#1c7430', remove: '#b02a37', set: '#0058b8' };
                 
                 // Handle legacy data that might not have adjustType or quantity
                 const adjustType = adj.adjustType || 'set';
@@ -889,7 +889,7 @@ export class StockManager {
                             ${(adj.previousStock || 0).toFixed(1)} kg → ${(adj.newStock || 0).toFixed(1)} kg
                             ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: adj.rawQuantity })}` : ''}
                         </div>
-                        ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : `<div style="font-size: 13px; color: #999; margin-top: 4px;"><em>${tx('ui.stock.no_reason')}</em></div>`}
+                        ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${tx('ui.stock.no_reason')}</em></div>`}
                         ${adj.reversesId ? `<div class="stock-adj-note">↩ ${tx('ui.stock.reverses_note')}</div>` : ''}
                     </div>
                     ${this.reverseControlHtml(adj, adjustments, canReverse)}
@@ -899,7 +899,7 @@ export class StockManager {
             });
         } catch (error) {
             console.error('Error loading adjustment history:', error);
-            container.innerHTML = `<p style="text-align: center; color: #dc3545; margin-top: 20px;">${tx('ui.stock.history_failed')}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: #b02a37; margin-top: 20px;">${tx('ui.stock.history_failed')}</p>`;
         }
     }
 }

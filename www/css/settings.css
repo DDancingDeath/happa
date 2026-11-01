@@ -65,17 +65,17 @@
 .lang-switch-btn {
   flex: 1;
   padding: 10px 12px;
-  border: 2px solid var(--primary-color, #667eea);
+  border: 2px solid var(--primary-color, #5560d6);
   border-radius: 8px;
   background: transparent;
-  color: var(--primary-color, #667eea);
+  color: var(--primary-color, #5560d6);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .lang-switch-btn[aria-pressed="true"] {
-  background: var(--primary-color, #667eea);
+  background: var(--primary-color, #5560d6);
   color: white;
 }
 

@@ -8,24 +8,24 @@
 .rt-card-head h3 { margin: 0; }
 .rt-card-head select { width: auto; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; }
 .rt-sub { margin-top: 12px !important; }
-.rt-muted { color: var(--text-secondary, #6b7280); font-size: 12px; margin-top: 6px; }
-.rt-empty { color: var(--text-secondary, #6b7280); padding: 12px; text-align: center; font-size: 14px; }
+.rt-muted { color: var(--text-secondary, #4b5563); font-size: 12px; margin-top: 6px; }
+.rt-empty { color: var(--text-secondary, #4b5563); padding: 12px; text-align: center; font-size: 14px; }
 .rt-note { font-size: 14px; line-height: 1.45; }
 .rt-ok { font-size: 14px; line-height: 1.45; color: #065f46; }
 .rt-warn { font-size: 13px; line-height: 1.45; color: #92400e; background: #fffbeb; border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
 .rt-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 6px; }
 .rt-actions .btn { white-space: normal; text-align: left; }
-.rt-budget { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #6b7280; margin-top: 6px; }
+.rt-budget { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: #4b5563; margin-top: 6px; }
 .rt-budget select { width: auto; padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 6px; }
 
 .rt-controls { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.rt-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #6b7280; min-width: 0; }
+.rt-controls label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4b5563; min-width: 0; }
 .rt-controls select { padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; width: 100%; min-width: 0; box-sizing: border-box; }
 
 .rt-outlook { border-left: 4px solid #9ca3af; border-radius: 8px; background: #f9fafb; padding: 10px; margin-bottom: 8px; }
-.rt-outlook-up { border-left-color: #dc2626; background: #fef2f2; }
+.rt-outlook-up { border-left-color: #b91c1c; background: #fef2f2; }
 .rt-outlook-down { border-left-color: #059669; background: #ecfdf5; }
-.rt-outlook-flat { border-left-color: #6b7280; }
+.rt-outlook-flat { border-left-color: #4b5563; }
 .rt-outlook-head { font-weight: 600; font-size: 14px; }
 .rt-outlook-meta { font-size: 12px; margin-top: 4px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .rt-arrow { font-size: 16px; }
@@ -55,7 +55,7 @@
 .rt-line { display: inline-block; width: 18px; height: 0; border-top: 2px solid #374151; margin-right: 4px; vertical-align: middle; }
 .rt-line-dashed { border-top-style: dashed; }
 .rt-warn-inline { color: #92400e; }
-.rt-src { font-size: 11px; color: #6b7280; text-align: left !important; }
+.rt-src { font-size: 11px; color: #4b5563; text-align: left !important; }
 .rt-click { cursor: pointer; }
 .rt-selected td { background: #eff6ff; }
 .rt-week td { background: #f9fafb; font-weight: 600; }

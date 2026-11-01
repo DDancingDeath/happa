@@ -102,7 +102,7 @@ if (APP_ENV !== 'production' || IS_PREVIEW_HOST) {
       top: 0;
       left: 50%;
       transform: translateX(-50%);
-      background: ${IS_PREVIEW_HOST && APP_ENV === 'production' ? '#c62828' : '#ff6b35'};
+      background: ${IS_PREVIEW_HOST && APP_ENV === 'production' ? '#c62828' : '#b93d0b'};
       color: white;
       padding: 2px 12px;
       font-size: 10px;

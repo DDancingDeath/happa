@@ -2,8 +2,8 @@
 
 .health-page { padding: 16px; }
 .health-title { margin: 0 0 6px; font-size: 20px; }
-.health-muted { color: var(--text-secondary, #6b7280); font-size: 13px; }
-.health-empty { color: var(--text-secondary, #6b7280); padding: 10px; text-align: center; font-size: 14px; }
+.health-muted { color: var(--text-secondary, #4b5563); font-size: 13px; }
+.health-empty { color: var(--text-secondary, #4b5563); padding: 10px; text-align: center; font-size: 14px; }
 .health-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
 .health-card { margin-bottom: 12px; }
 .health-card h3 { margin: 0 0 8px; font-size: 16px; }
@@ -12,17 +12,17 @@
 .health-table th, .health-table td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; text-align: left; white-space: nowrap; }
 .health-table thead th { font-weight: 600; color: #374151; background: #f9fafb; }
 .health-rate { font-weight: 700; text-align: center !important; }
-.health-rate small { display: block; font-weight: 400; font-size: 10px; color: #6b7280; }
+.health-rate small { display: block; font-weight: 400; font-size: 10px; color: #4b5563; }
 .health-ok { background: #d1fae5; color: #065f46; }
 .health-near { background: #fef3c7; color: #92400e; }
 .health-bad { background: #fee2e2; color: #991b1b; }
-.health-none { color: #6b7280; }
+.health-none { color: #4b5563; }
 .health-row-bad td { color: #991b1b; }
 .health-list { margin: 0; padding-left: 20px; font-size: 14px; }
 .health-list li { margin: 3px 0; overflow-wrap: anywhere; }
-.health-count { color: #6b7280; }
+.health-count { color: #4b5563; }
 .health-failures { display: flex; flex-direction: column; gap: 6px; }
-.health-failure { padding: 8px 10px; border: 1px solid #e5e7eb; border-left: 4px solid #dc2626; border-radius: 8px; font-size: 13px; overflow-wrap: anywhere; }
+.health-failure { padding: 8px 10px; border: 1px solid #e5e7eb; border-left: 4px solid #b91c1c; border-radius: 8px; font-size: 13px; overflow-wrap: anywhere; }
 .health-policies { width: 100%; box-sizing: border-box; font-family: monospace; font-size: 12px; margin: 6px 0; }
 .health-policy-effect { font-size: 13px; margin: 6px 0; padding: 8px 10px; border-radius: 8px; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
 

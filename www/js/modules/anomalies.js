@@ -41,8 +41,8 @@ const REPORT_LIMIT = 200;
 const SCAN_LIMIT = 500;
 const SCAN_KEY = 'aadhatAnomalyScanDay';
 const PAGE_SIZE = 200;
-const SEV_COLORS = { high: '#dc2626', medium: '#d97706', low: '#6b7280' };
-const TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#9333ea', '#be123c', '#15803d', '#1d4ed8', '#a16207'];
+const SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' };
+const TYPE_COLORS = ['#b91c1c', '#2563eb', '#92400e', '#059669', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#9333ea', '#be123c', '#15803d', '#1d4ed8', '#a16207'];
 
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
 const todayKey = () => istDayKey(Date.now());
@@ -534,7 +534,7 @@ export const AnomaliesManager = {
         return `
             <div class="anomaly-row sev-${esc(a.severity)}${compact ? ' compact' : ''}">
                 <div class="anomaly-row-main"${canOpen ? ` onclick="window.app.anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
-                    <div class="anomaly-row-title"><span class="anomaly-dot" style="background:${SEV_COLORS[a.severity] || '#6b7280'}"></span>${loc(label)} ${statusBadge}</div>
+                    <div class="anomaly-row-title"><span class="anomaly-dot" style="background:${SEV_COLORS[a.severity] || '#4b5563'}"></span>${loc(label)} ${statusBadge}</div>
                     <div class="anomaly-row-why">${loc(a)}</div>
                     <div class="anomaly-row-meta">${meta}</div>
                     ${a.note ? `<div class="anomaly-row-note">📝 ${esc(a.note)}${a.reviewedByName ? ` — ${esc(a.reviewedByName)}` : ''}</div>` : ''}
@@ -581,7 +581,7 @@ export const AnomaliesManager = {
             const html = `
                 <div style="text-align:left;">
                     <div style="margin-bottom:6px;"><strong>${loc(typeLabel(a.type))}</strong></div>
-                    <div style="margin-bottom:8px; color:#6b7280;">${loc(a)}</div>
+                    <div style="margin-bottom:8px; color:#4b5563;">${loc(a)}</div>
                     <label for="anomalyReviewNote">${esc(t('ui.anom.note_optional'))}:</label>
                     <textarea id="anomalyReviewNote" rows="2" maxlength="300" style="width:100%; box-sizing:border-box; padding:6px;">${esc(note)}</textarea>
                 </div>`;
@@ -863,7 +863,7 @@ export const AnomaliesManager = {
         }
         const byDay = new Map(p.days.map(d => [d.dayKey, d]));
         if (!days.length || !p.days.length) {
-            ctx.fillStyle = '#6b7280';
+            ctx.fillStyle = '#4b5563';
             ctx.font = '14px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(t('ui.anom.no_data'), canvas.width / 2, canvas.height / 2);
@@ -875,7 +875,7 @@ export const AnomaliesManager = {
         const chartH = canvas.height - bottom - 10;
         const slot = (canvas.width - left - 10) / days.length;
         const barW = Math.max(2, slot * 0.7);
-        ctx.fillStyle = '#6b7280';
+        ctx.fillStyle = '#4b5563';
         ctx.font = '11px sans-serif';
         ctx.textAlign = 'right';
         ctx.fillText(String(max), left - 4, 16);
@@ -896,7 +896,7 @@ export const AnomaliesManager = {
             }
             const every = Math.ceil(days.length / 10);
             if (i % every === 0) {
-                ctx.fillStyle = '#6b7280';
+                ctx.fillStyle = '#4b5563';
                 ctx.textAlign = 'center';
                 ctx.fillText(d.slice(8, 10) + '/' + d.slice(5, 7), x + barW / 2, canvas.height - 12);
             }

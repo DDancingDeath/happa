@@ -196,8 +196,8 @@ const BillingManager = {
             saleSection.style.display = 'block';
             
             if (saleBtn.classList.contains('active')) {
-                saleBtn.style.background = '#22c55e';
-                saleBtn.style.borderColor = '#22c55e';
+                saleBtn.style.background = '#15803d';
+                saleBtn.style.borderColor = '#15803d';
             }
             
             // Preserve current selections (the picker keeps its item by id)
@@ -715,7 +715,7 @@ const BillingManager = {
         try {
             const currentUser = firebase.auth().currentUser;
             if (!currentUser) {
-                content.innerHTML = `<p style="text-align: center; color: #888; padding: 40px;">${Helpers.escapeHtml(t('ui.billing.login_to_view_drafts'))}</p>`;
+                content.innerHTML = `<p style="text-align: center; color: #666; padding: 40px;">${Helpers.escapeHtml(t('ui.billing.login_to_view_drafts'))}</p>`;
                 overlay.classList.add('active');
                 return;
             }
@@ -724,7 +724,7 @@ const BillingManager = {
                 .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
             if (drafts.length === 0) {
-                content.innerHTML = `<p style="text-align: center; color: #888; padding: 40px;">${Helpers.escapeHtml(t('ui.billing.no_saved_drafts'))}</p>`;
+                content.innerHTML = `<p style="text-align: center; color: #666; padding: 40px;">${Helpers.escapeHtml(t('ui.billing.no_saved_drafts'))}</p>`;
             } else {
                 content.innerHTML = drafts.map((draft) => `
                     <div class="history-item" style="margin-bottom: 12px;">
@@ -738,7 +738,7 @@ const BillingManager = {
                             <button onclick="window.app.billing.loadDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
                                 ${Helpers.escapeHtml(t('ui.billing.load'))}
                             </button>
-                            <button onclick="window.app.billing.deleteDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #dc2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
+                            <button onclick="window.app.billing.deleteDraft('${Helpers.escapeJsAttr(draft.id)}')" style="flex: 1; padding: 8px; background: #b91c1c; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
                                 ${Helpers.escapeHtml(t('ui.modals.delete'))}
                             </button>
                         </div>

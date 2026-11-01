@@ -99,7 +99,7 @@ export class OutstandingManager {
             if (!noResultsMsg) {
                 noResultsMsg = document.createElement('p');
                 noResultsMsg.className = 'no-results-message';
-                noResultsMsg.style.cssText = 'text-align: center; color: #888; margin-top: 40px;';
+                noResultsMsg.style.cssText = 'text-align: center; color: #666; margin-top: 40px;';
                 noResultsMsg.textContent = t('ui.outstanding.no_matching');
                 container.appendChild(noResultsMsg);
             }
@@ -179,14 +179,14 @@ export class OutstandingManager {
                 : currentDueFilter === 'purchase' ? 'ui.outstanding.no_purchase_due'
                 : currentDueFilter === 'retail' ? 'ui.outstanding.no_retail_due'
                 : currentDueFilter === 'wholesale' ? 'ui.outstanding.no_wholesale_due' : 'ui.outstanding.no_sale_due');
-            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
             return;
         }
 
         container.innerHTML = "";
         
         const isPurchase = currentDueFilter === 'purchase';
-        const headerColor = '#dc3545';
+        const headerColor = '#b02a37';
         const bgColor = '#d1ecf1';
         const borderColor = '#17a2b8';
         const tt = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -203,7 +203,7 @@ export class OutstandingManager {
             const ageDays = billDate ? ageInDays(billDate, today) : null;
             const ageBadge = `<span class="aging-age aging-b${bucketIndex(ageDays)}">${tt(...ageKey(ageDays))}</span>`;
             
-            const itemColor = transaction.transactionType === 'purchase' ? '#007bff' : '#28a745';
+            const itemColor = transaction.transactionType === 'purchase' ? '#0058b8' : '#1c7430';
             const billNumber = transaction.billNumber || transaction.id?.toString().substring(0, 8) || 'N/A';
             
             div.innerHTML = `
@@ -230,10 +230,10 @@ export class OutstandingManager {
                         <label style="flex-shrink: 0;">${tt(isPurchase ? 'ui.outstanding.pay_label' : 'ui.outstanding.received_label')}</label>
                         <input type="number" inputmode="decimal" min="0" id="${Helpers.escapeHtml(this.paymentInputIds(transaction.id, transaction.transactionType).cash)}" placeholder="${tt('ui.outstanding.cash_placeholder')}" aria-label="${tt('ui.outstanding.cash_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
                         <input type="number" inputmode="decimal" min="0" id="${Helpers.escapeHtml(this.paymentInputIds(transaction.id, transaction.transactionType).online)}" placeholder="${tt('ui.outstanding.online_placeholder')}" aria-label="${tt('ui.outstanding.online_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
-                        <button data-record-payment onclick="window.app.outstanding.recordPayment('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background-color: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.record')}</button>
+                        <button data-record-payment onclick="window.app.outstanding.recordPayment('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background-color: #1c7430; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.record')}</button>
                     </div>
                     <div style="margin-top: 8px;">
-                        <button type="button" data-mark-cleared onclick="window.app.outstanding.markAsCleared('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background: white; color: #333; border: 1px solid #999; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.mark_as_cleared')}</button>
+                        <button type="button" data-mark-cleared onclick="window.app.outstanding.markAsCleared('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background: white; color: #333; border: 1px solid #666; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.mark_as_cleared')}</button>
                     </div>
                 </div>
             `;

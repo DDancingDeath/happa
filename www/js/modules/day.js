@@ -504,7 +504,7 @@ export const DayManager = {
                 party: e.description || (e.category === 'personal' ? t('ui.expenses.personal_expenses') : e.category === 'business' ? t('ui.expenses.business_expenses') : (e.category || t('ui.today.misc'))),
                 amount: e.amount || 0,
                 date: e.date,
-                color: '#d97706',
+                color: '#92400e',
                 bgColor: '#fef3c7'
             }));
         }

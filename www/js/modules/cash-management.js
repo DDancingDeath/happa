@@ -33,7 +33,7 @@ import { cashCloseProps } from '../tip/scenarios/cash-close.js';
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
 /** Colour of a cash difference band (calc/cash differenceBand). */
-const DIFF_COLORS = Object.freeze({ ok: '#22c55e', warn: '#f59e0b', high: '#ef4444' });
+const DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' });
 
 /** TIP CashClose run (#217); never throws. */
 function startCashCloseRun(session, expected, counted, difference) {
@@ -1152,7 +1152,7 @@ export class CashManagementManager {
             const uncounted = isNotCounted(session);
 
             const status = !session.signedOut
-                ? `<span style="color: #22c55e; font-weight: 600;">● ${L('ui.cash.active')}</span>`
+                ? `<span style="color: #15803d; font-weight: 600;">● ${L('ui.cash.active')}</span>`
                 : (uncounted ? `<span style="color: #c2410c; font-weight: 600;">⚠ ${L('ui.cash.not_counted')}</span>` : `<span style="color: #6c757d;">✓ ${L('ui.cash.closed')}</span>`);
 
             const diff = Number(session.difference) || 0;
@@ -1309,7 +1309,7 @@ export class CashManagementManager {
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.cash_sales')}</span>
-                            <strong style="color: #22c55e;">₹${Helpers.escapeHtml(txns.cashSales || 0)}</strong>
+                            <strong style="color: #15803d;">₹${Helpers.escapeHtml(txns.cashSales || 0)}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.common.due_received')}</span>
@@ -1332,7 +1332,7 @@ export class CashManagementManager {
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.common.due_paid')}</span>
-                            <strong style="color: #dc2626;">₹${Helpers.escapeHtml(txns.duePaid || 0)}</strong>
+                            <strong style="color: #b91c1c;">₹${Helpers.escapeHtml(txns.duePaid || 0)}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.business_expenses')}</span>
@@ -1342,9 +1342,9 @@ export class CashManagementManager {
                             <span>${L('ui.cash.personal_expenses')}</span>
                             <strong style="color: #f59e0b;">₹${Helpers.escapeHtml(txns.personalExpenses || 0)}</strong>
                         </div>
-                        <div style="border-top: 2px solid #dc2626; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;">
+                        <div style="border-top: 2px solid #b91c1c; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;">
                             <span>${L('ui.cash.total_cash_out')}</span>
-                            <strong style="color: #dc2626;">₹${Helpers.escapeHtml(totalCashOut)}</strong>
+                            <strong style="color: #b91c1c;">₹${Helpers.escapeHtml(totalCashOut)}</strong>
                         </div>
                     </div>
                 </div>

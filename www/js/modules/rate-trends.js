@@ -47,8 +47,8 @@ const HISTORY_MAX = 500;
 const YEAR_MAX = 300;
 const TRAFFIC_WEEK_OPTIONS = [12, 26, 52, 104];
 const META_TTL_MS = 5 * 60 * 1000;
-const COLORS = { purchase: '#2563eb', retail: '#059669', wholesale: '#d97706', bought: '#93c5fd', sold: '#6ee7b7' };
-const YEAR_COLORS = ['#dc2626', '#2563eb', '#059669', '#7c3aed', '#d97706'];
+const COLORS = { purchase: '#2563eb', retail: '#059669', wholesale: '#92400e', bought: '#93c5fd', sold: '#6ee7b7' };
+const YEAR_COLORS = ['#b91c1c', '#2563eb', '#059669', '#7c3aed', '#92400e'];
 const DASH = [5, 4];
 const STOP_KEYS = { quota: 'ui.trends.stop_quota', budget: 'ui.trends.stop_budget', error: 'ui.trends.stop_error', save: 'ui.trends.stop_save' };
 
@@ -827,7 +827,7 @@ export const RateTrendsManager = {
 
     noData(c) {
         c.ctx.font = '14px Arial';
-        c.ctx.fillStyle = '#888';
+        c.ctx.fillStyle = '#666';
         c.ctx.textAlign = 'center';
         c.ctx.fillText(t('ui.trends.no_data'), c.canvas.width / 2, c.canvas.height / 2);
     },
@@ -859,7 +859,7 @@ export const RateTrendsManager = {
 
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1;
-        ctx.fillStyle = '#6b7280';
+        ctx.fillStyle = '#4b5563';
         ctx.font = '10px Arial';
         ctx.textAlign = 'right';
         for (let g = 0; g <= 4; g++) {
@@ -882,7 +882,7 @@ export const RateTrendsManager = {
 
         if (marker && marker.index >= 0 && marker.index < labels.length) {
             const x = xAt(marker.index);
-            ctx.strokeStyle = '#6b7280';
+            ctx.strokeStyle = '#4b5563';
             ctx.lineWidth = 1.5;
             setDash([2, 3]);
             ctx.beginPath();
@@ -956,7 +956,7 @@ export const RateTrendsManager = {
         const h = canvas.height - bottom - 8;
         const slot = (canvas.width - left - 12) / periods.length;
         const barW = Math.max(1, Math.min(14, slot / 2 - 1));
-        ctx.fillStyle = '#6b7280';
+        ctx.fillStyle = '#4b5563';
         ctx.font = '10px Arial';
         ctx.textAlign = 'right';
         ctx.fillText(kgText(max), left - 4, 14);
