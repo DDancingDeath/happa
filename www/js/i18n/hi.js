@@ -86,6 +86,8 @@ export default {
     'msg.billing.edit_offline': "बिल बदलने के लिए इंटरनेट चाहिए",
     'msg.billing.edit_timeout': "बदलाव सेव होने में बहुत देर लग रही है — इंटरनेट देखकर फिर कोशिश करें",
     'msg.billing.editing_bill_modify_save': "✏️ बिल बदल रहे हैं — बदलकर सेव करें",
+    'msg.billing.changed_elsewhere_reload': "यह बिल दूसरे फ़ोन पर बदला गया है (भुगतान, बदलाव या रद्द)। नई कॉपी खोलकर उसे बदलें?",
+    'ui.billing.changed_elsewhere_title': "दूसरे फ़ोन पर बदला गया",
     'msg.billing.editing_sale_modify_save': "✏️ बिक्री बदल रहे हैं — बदलकर सेव करें",
     'msg.billing.failed_delete_draft': "ड्राफ्ट नहीं हटा",
     'msg.billing.failed_load_bill': "बिल नहीं खुला",

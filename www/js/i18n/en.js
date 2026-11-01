@@ -86,6 +86,8 @@ export default {
     'msg.billing.edit_offline': "Internet required to edit a bill",
     'msg.billing.edit_timeout': "Saving the edit is taking too long — check the internet connection and try again",
     'msg.billing.editing_bill_modify_save': "✏️ Editing bill - modify and save",
+    'msg.billing.changed_elsewhere_reload': "This bill was changed on another phone (a payment, an edit or a void). Load the latest copy and edit that?",
+    'ui.billing.changed_elsewhere_title': "Changed on another phone",
     'msg.billing.editing_sale_modify_save': "✏️ Editing sale - modify and save",
     'msg.billing.failed_delete_draft': "Failed to delete draft",
     'msg.billing.failed_load_bill': "Failed to load bill",

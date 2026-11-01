@@ -1192,6 +1192,37 @@ const BillingManager = {
     // -------------------- EDIT BILL --------------------
 
     /**
+     * The copy of a bill the editor starts from (#127): the server's, read once, because an
+     * older bill isn't live and may have changed on another phone. Changed → asks before
+     * loading the latest; voided or gone → says so. Offline: the copy in memory (saving an
+     * edit needs the internet and checks payments again).
+     * @param {'purchase'|'retail'|'wholesale'} billType
+     * @param {Object} bill
+     * @returns {Promise<?Object>} the bill to edit, null to stop
+     */
+    async latestCopyForEdit(billType, bill) {
+        const collKey = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' }[billType];
+        let res;
+        try {
+            res = await UIManager.withLoading(() => FirebaseService.latestBill(collKey, bill));
+        } catch (error) {
+            console.warn('Reading the latest bill before editing failed:', error?.code || error);
+            return bill;
+        }
+        if (!res.bill) {
+            UIManager.showToast(t('msg.common.bill_not_found'));
+            return null;
+        }
+        if (!isActiveBill(res.bill)) {
+            UIManager.showToast(t('msg.void.already'));
+            return null;
+        }
+        if (!res.changed) return bill;
+        const reload = await UIManager.showModal(t('msg.billing.changed_elsewhere_reload'), t('ui.billing.changed_elsewhere_title'), true);
+        return reload ? res.bill : null;
+    },
+
+    /**
      * Edit an existing bill
      * @async
      * @param {number} billIndex - Index of bill in history
@@ -1212,8 +1243,8 @@ const BillingManager = {
                 return;
             }
             // Prefer the id stored by viewBill: indices shift when records are added
-            const resolvedIndex = findBillIndex(history, window.currentBillId, billIndex);
-            const bill = history[resolvedIndex];
+            let resolvedIndex = findBillIndex(history, window.currentBillId, billIndex);
+            let bill = history[resolvedIndex];
             if (!bill) {
                 UIManager.showToast(t('msg.common.bill_not_found'));
                 return;
@@ -1225,6 +1256,13 @@ const BillingManager = {
                 }
                 UIManager.showToast(editRefusedMessage(bill));
                 return;
+            }
+            const latest = await this.latestCopyForEdit(billType, bill);
+            if (!latest) return;
+            if (latest !== bill) {
+                bill = latest;
+                const i = findBillIndex(history, bill.id, -1);
+                if (i !== -1) resolvedIndex = i;
             }
 
             this.editingBillIndex = resolvedIndex;

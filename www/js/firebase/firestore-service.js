@@ -1397,6 +1397,24 @@ function oldestTimestamp() {
     return oldestTimestampPromise;
 }
 
+/** What a stale copy of a bill would differ in (#127): payments, edits, void. */
+const billStateKey = (b) => `${paymentSignature(b)}|${editCountOf(b) || 0}|${isActiveBill(b) ? 1 : 0}`;
+
+/**
+ * Puts a bill just read from the server in memory when no listener keeps it (an older,
+ * on-demand bill), with the stock checkpoint check a listener change gets. @private
+ */
+function adoptFreshBill(collKey, prev, fresh) {
+    const c = windowState?.colls?.[collKey];
+    if (!c) return;
+    const docId = docIdOf(fresh);
+    if (liveIdSet(c).has(docId)) return;
+    c.extended.set(docId, fresh);
+    if (c.spec.stock && prev) noteObservedChange(c, prev, fresh, 'modified');
+    publishCollection(c);
+    markDirty(c.spec.views, !!c.spec.stock);
+}
+
 /** Re-reads an old bill that left a dues query (paid off, or deleted). */
 function refetchAfterDueRemoval(c, docId, prev) {
     const gen = sessionGen;
@@ -2205,6 +2223,26 @@ const FirebaseService = {
     async deleteVoidedBill(collKey, bill) {
         if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
         return deleteVoidedBillDoc(collKey, bill);
+    },
+
+    /**
+     * The server's copy of a bill before it is edited (#127): one read, never the cache.
+     * An older bill isn't listened to, so its copy here may be stale; a payment, edit or
+     * void made on another phone shows as `changed`, and the server copy replaces the
+     * one in memory. Rejects when the server can't be reached.
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {Object} bill - the copy in memory
+     * @returns {Promise<{bill: ?Object, changed: boolean}>} bill null when it no longer exists
+     */
+    async latestBill(collKey, bill) {
+        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
+        const ref = getDb().collection(col(collKey)).doc(String(docIdOf(bill)));
+        const snap = await getWithRetry(() => ({ get: () => ref.get({ source: 'server' }) }), `${collKey} latest`, { attempts: 1 });
+        if (!snap.exists) return { bill: null, changed: true };
+        const fresh = mapDoc(snap);
+        if (billStateKey(fresh) === billStateKey(bill)) return { bill, changed: false };
+        adoptFreshBill(collKey, findRecord(collKey, fresh.id) || bill, fresh);
+        return { bill: fresh, changed: true };
     },
 
     /**
