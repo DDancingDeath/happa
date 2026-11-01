@@ -26,7 +26,8 @@ const place = (page, sel) => page.$eval(sel, (el) => {
     const hit = document.elementFromPoint(x, y);
     const tab = document.querySelector('.tab.active');
     const nav = document.querySelector('.bottom-nav');
-    const navTop = nav && nav.offsetParent !== null ? nav.getBoundingClientRect().top : window.innerHeight;
+    const navBox = nav && getComputedStyle(nav).display !== 'none' ? nav.getBoundingClientRect() : null;
+    const navTop = navBox && navBox.height > 0 ? navBox.top : window.innerHeight;
     return {
         top: Math.round(r.top), bottom: Math.round(r.bottom), right: Math.round(r.right),
         vw: window.innerWidth, vh: Math.round(Math.min(window.innerHeight, navTop)),
@@ -56,14 +57,30 @@ async function tap(page, sel) {
     await page.click(sel);
 }
 
-async function addLine(page, mode) {
+/** Whether scrolling the tab, at some point, shows the element whole and on top. */
+async function reachable(page, sel) {
+    return page.evaluate(async (s) => {
+        const tab = document.querySelector('.tab.active');
+        const el = document.querySelector(s);
+        for (let y = 0; y <= tab.scrollHeight; y += 20) {
+            tab.scrollTo({ top: y, behavior: 'instant' });
+            await new Promise(requestAnimationFrame);
+            const r = el.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            if (r.top >= 0 && r.bottom <= window.innerHeight && hit && (hit === el || el.contains(hit))) return true;
+        }
+        return false;
+    }, sel);
+}
+
+async function addLine(page, mode, rate = 30) {
     const m = MODES[mode];
     await tap(page, m.btn);
     await expect(page.locator(m.section)).toBeVisible();
     const value = await page.$eval(m.item, (sel) => [...sel.options].find(o => o.value && /Rice|Wheat/.test(o.textContent))?.value);
     expect(value, 'a seeded item is in the list').toBeTruthy();
     await page.selectOption(m.item, value);
-    await page.fill(m.rate, '30');
+    await page.fill(m.rate, String(rate));
     await page.fill(m.weight, '10');
     await tap(page, `${m.section} .quick-add-btn-inline`);
     await tap(page, `${m.section} .add-to-bill-btn`);
@@ -95,10 +112,8 @@ for (const size of SIZES) {
                 expect(p.onTop, `nothing covers it (${where})`).toBe(true);
             }
             if (size.fold) {
-                // Scrolled to the end, the fields under the totals are reachable, not under Save/Print.
-                await scrollTab(page, 'end');
-                const last = await place(page, m.last);
-                expect(last.onTop, `${m.last} reachable at the end (${JSON.stringify(last)})`).toBe(true);
+                // The fields between the totals and Save/Print (notes, date) can be reached by scrolling.
+                expect(await reachable(page, m.last), `${m.last} reachable by scrolling`).toBe(true);
                 await scrollTab(page, 'top');
             }
             await testInfo.attach(`billing-${mode}-${size.width}x${size.height}.png`, {
@@ -108,3 +123,19 @@ for (const size of SIZES) {
         expect(problems.pageErrors).toEqual([]);
     });
 }
+
+test('a long bill on a laptop: the total and Save stay on screen while scrolling its lines', async ({ page, problems }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'laptop only');
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await login(page, 'owner');
+    await showTab(page, 'billing');
+    const m = MODES.purchase;
+    for (let i = 0; i < 14; i++) await addLine(page, 'purchase', 30 + i);
+    await expect(page.locator('#billTable tbody tr')).toHaveCount(14);
+    await page.$eval('#billTable tbody tr:last-child', el => el.scrollIntoView({ block: 'end', behavior: 'instant' }));
+    for (const sel of ['#amountPayable', ...m.actions]) {
+        const p = await place(page, sel);
+        expect(p.top >= 0 && p.bottom <= p.vh && p.onTop, `${sel} on screen at the last line (${JSON.stringify(p)})`).toBe(true);
+    }
+    expect(problems.pageErrors).toEqual([]);
+});

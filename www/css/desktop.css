@@ -500,13 +500,21 @@
     margin-top: 0 !important;
   }
 
-  /* Banners above the bill push the column below the fold: it scrolls with the
-     page instead of inside itself (every field stays reachable), and its
-     Save/Print row sticks to the bottom of the screen (#104). */
+  /* Banners above the bill push the column below the fold (#104). The column
+     scrolls with the page, as tall as the bill beside it: its totals card sticks
+     to the top and its Save/Print row to the bottom of the screen, and the fields
+     between them (notes, date) scroll past in the gap, never hidden for good. */
   .bill-col-summary {
     position: static;
+    align-self: stretch;
     max-height: none;
     overflow: visible;
+  }
+
+  .bill-col-summary > .bill-totals:first-child {
+    position: sticky;
+    top: 0;
+    z-index: 2;
   }
 
   .bill-col-summary > div[style*="display: flex"]:last-child {
