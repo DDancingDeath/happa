@@ -60,6 +60,26 @@ rules:
     severity: warn
     learned_at: 2026-05-21
 
+  - id: record-date-raw-parse
+    pattern: "new Date\\(\\s*[\\w$.?]+\\.date\\s*\\)"
+    applies_to: ["www/js/**/*.js"]
+    excludes: ["www/js/utils/dates.js", "www/js/utils/helpers.js", "www/js/__tests__/**"]
+    message: |
+      new Date(x.date) on a bill / expense / session date misparses DD/MM/YYYY and reads YYYY-MM-DD as UTC (#80).
+      Use parseAnyBillDate(x.date) (utils/dates.js).
+    severity: block
+    learned_at: 2026-11-01
+
+  - id: bill-total-or-chain
+    pattern: "\\b(billTotal|grandTotal|saleTotal|amountPayable)\\s*\\|\\|\\s*[\\w$.?]*\\b(billTotal|grandTotal|saleTotal|amountPayable|total)\\b"
+    applies_to: ["www/js/**/*.js"]
+    excludes: ["www/js/utils/money.js", "www/js/__tests__/**"]
+    message: |
+      A || chain of bill total fields skips a real 0 (#80). Use billTotal() (BILL-TOTAL) or
+      billLineTotal() (BILL-LINES) from utils/money.js.
+    severity: block
+    learned_at: 2026-11-01
+
   - id: iso-string-date-key
     pattern: "toISOString\\(\\)\\s*\\.\\s*(split|slice|substring|substr)\\("
     applies_to: ["www/js/**/*.js"]
