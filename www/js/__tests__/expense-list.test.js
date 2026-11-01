@@ -52,6 +52,11 @@ describe('expense-list helpers (#90)', () => {
         // history loaded only from the 20th: the month total is "since" that day
         expect(expenseTotals(ROWS, { now: NOW, loadedFrom: new Date(2026, 9, 20).getTime() })).toMatchObject({ monthFrom: '2026-10-20', partialMonth: true });
         expect(expenseTotals(ROWS, { now: NOW, loadedFrom: new Date(2026, 8, 1) }).partialMonth).toBe(false);
+        // an expense saved after that day but dated before it (#118) is not in "since"
+        const backDated = { id: 'bd', type: 'Tea', amount: 70, date: '05/10/2026, 10:00:00 am', timestamp: new Date(2026, 9, 21).getTime() };
+        expect(expenseTotals([...ROWS, backDated], { now: NOW, loadedFrom: new Date(2026, 9, 20).getTime() }).month)
+            .toBe(expenseTotals(ROWS, { now: NOW, loadedFrom: new Date(2026, 9, 20).getTime() }).month);
+        expect(expenseTotals([...ROWS, backDated], { now: NOW }).month).toBe(410);
     });
 });
 

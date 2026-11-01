@@ -126,7 +126,7 @@ export function expenseTotals(expenses, { now = new Date(), loadedFrom = null, s
     const out = { today: 0, todayCount: 0, month: 0, monthCount: 0, monthFrom: partialMonth ? loadedDay : monthStart, partialMonth, shown: 0, shownCount: 0 };
     activeExpenses(expenses).forEach(e => {
         const day = personalDayKey(e.date);
-        if (!day || day > today || day < monthStart) return;
+        if (!day || day > today || day < out.monthFrom) return;
         out.month += amountOf(e);
         out.monthCount++;
         if (day === today) {
