@@ -32,7 +32,7 @@ const stockKg = (q) => (Number(q) || 0).toLocaleString('en-IN', { minimumFractio
 
 const DEAD_STOCK_DAYS_KEY = 'aadhat.deadStockDays';
 
-const stockUpdatingHtml = () => `<p class="stock-updating" style="text-align: center; color: #666; margin-top: 40px;">${Helpers.escapeHtml(t('ui.stock.updating'))}</p>`;
+const stockUpdatingHtml = () => `<p class="stock-updating" style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(t('ui.stock.updating'))}</p>`;
 
 /**
  * Banner for approximate stock (member device, stale checkpoint; #129).
@@ -172,7 +172,7 @@ export class StockManager {
         } catch (error) {
             console.error('Error loading stock:', error);
             this.renderSummary(null);
-            container.innerHTML = `<p style="text-align: center; color: #b02a37; margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: var(--danger-color); margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
         }
     }
 
@@ -440,7 +440,7 @@ export class StockManager {
             if (!noResultsMsg) {
                 noResultsMsg = document.createElement('p');
                 noResultsMsg.className = 'no-results-message';
-                noResultsMsg.style.cssText = 'text-align: center; color: #666; margin-top: 40px;';
+                noResultsMsg.style.cssText = 'text-align: center; color: var(--text-secondary); margin-top: 40px;';
                 noResultsMsg.textContent = t('ui.stock.no_items_found');
                 container.appendChild(noResultsMsg);
             }
@@ -870,7 +870,7 @@ export class StockManager {
                 div.className = "history-item";
                 
                 const typeLabels = { add: t('ui.stock.adj_added'), remove: t('ui.stock.adj_removed'), set: t('ui.stock.adj_set_to') };
-                const typeColors = { add: '#1c7430', remove: '#b02a37', set: '#0058b8' };
+                const typeColors = { add: 'var(--success-color)', remove: 'var(--danger-color)', set: 'var(--info-color)' };
                 
                 // Handle legacy data that might not have adjustType or quantity
                 const adjustType = adj.adjustType || 'set';
@@ -909,7 +909,7 @@ export class StockManager {
             });
         } catch (error) {
             console.error('Error loading adjustment history:', error);
-            container.innerHTML = `<p style="text-align: center; color: #b02a37; margin-top: 20px;">${tx('ui.stock.history_failed')}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: var(--danger-color); margin-top: 20px;">${tx('ui.stock.history_failed')}</p>`;
         }
     }
 }

@@ -99,7 +99,7 @@ export class OutstandingManager {
             if (!noResultsMsg) {
                 noResultsMsg = document.createElement('p');
                 noResultsMsg.className = 'no-results-message';
-                noResultsMsg.style.cssText = 'text-align: center; color: #666; margin-top: 40px;';
+                noResultsMsg.style.cssText = 'text-align: center; color: var(--text-secondary); margin-top: 40px;';
                 noResultsMsg.textContent = t('ui.outstanding.no_matching');
                 container.appendChild(noResultsMsg);
             }
@@ -179,7 +179,7 @@ export class OutstandingManager {
                 : currentDueFilter === 'purchase' ? 'ui.outstanding.no_purchase_due'
                 : currentDueFilter === 'retail' ? 'ui.outstanding.no_retail_due'
                 : currentDueFilter === 'wholesale' ? 'ui.outstanding.no_wholesale_due' : 'ui.outstanding.no_sale_due');
-            container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
             return;
         }
 
