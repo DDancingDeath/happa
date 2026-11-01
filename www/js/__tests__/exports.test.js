@@ -224,5 +224,7 @@ describe('Diagnostics exports', () => {
         expect(report.errors[0].stack).toBe('at <person>');
         expect(report.status).toBe('signed in as <person>');
         expect(nameScrubber(['Al', '', null])('Al Pacino')).toBe('Al Pacino');
+        const placeholders = buildErrorReport([{ type: 'x', message: 'auth/user-not-found; Unknown error in User list', source: 'https://myhappa.web.app/js/services/user-admin.js', line: 3, userName: 'User', occurrences: [{ userName: 'Unknown' }] }], { names: ['Shop Staff', 'Unknown User'] });
+        expect(placeholders.errors[0]).toMatchObject({ message: 'auth/user-not-found; Unknown error in User list', source: 'https://myhappa.web.app/js/services/user-admin.js:3' });
     });
 });

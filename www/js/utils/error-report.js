@@ -19,6 +19,13 @@ const iso = (v) => {
 /** Shortest name replaced: shorter ones ("Ra") would cut through ordinary words. */
 export const MIN_NAME_LENGTH = 3;
 
+/**
+ * Not people: the app's stand-in names (state.js 'User', telemetry 'Unknown') and
+ * role / shop words a display name may contain ("Shop Staff"); never scrubbed, so an
+ * error about "user-not-found" or "staff.js" stays readable.
+ */
+const NOT_NAMES = new Set(['user', 'unknown', 'unknown user', 'staff', 'member', 'owner', 'manager', 'shop', 'admin', 'test']);
+
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
@@ -31,7 +38,7 @@ export function nameScrubber(names) {
     // Each word of a longer name too ("Ram Kumar" → also "Kumar"), when it is long enough to be a name.
     const full = (names || []).map(n => String(n ?? '').trim());
     const words = full.flatMap(n => n.split(/\s+/)).filter(w => w.length > MIN_NAME_LENGTH);
-    const list = [...new Set([...full, ...words].filter(n => n.length >= MIN_NAME_LENGTH))]
+    const list = [...new Set([...full, ...words].filter(n => n.length >= MIN_NAME_LENGTH && !NOT_NAMES.has(n.toLowerCase())))]
         .sort((a, b) => b.length - a.length);
     if (!list.length) return (text) => text;
     const re = new RegExp(`(?<![\\p{L}\\p{M}\\p{N}])(?:${list.map(escapeRe).join('|')})(?![\\p{L}\\p{M}\\p{N}])`, 'giu');
@@ -72,7 +79,8 @@ export function buildErrorReport(errors, { status = '', appVersion = '', buildId
             firstSeen: iso(e?.firstSeen ?? e?.lastSeen),
             lastSeen: iso(e?.lastSeen),
             message: clean(String(e?.message || '')),
-            source: e?.source ? `${people(scrubUrl(String(e.source)))}:${e.line ?? '?'}` : '',
+            // An app file path, not user text: scrubUrl only
+            source: e?.source ? `${scrubUrl(String(e.source))}:${e.line ?? '?'}` : '',
             stack: e?.stack ? clean(String(e.stack)).slice(0, STACK_MAX) : ''
         }))
     };
