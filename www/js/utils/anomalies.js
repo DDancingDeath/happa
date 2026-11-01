@@ -69,6 +69,7 @@ export const ANOMALY_TYPES = Object.freeze({
     'rate-round': { en: 'Round-number line', hi: 'गोल रकम वाली लाइन', severity: 'low' },
     'qty-invalid': { en: 'Zero weight/quantity', hi: 'शून्य वज़न/मात्रा', severity: 'high' },
     'below-cost': { en: 'Sold below cost', hi: 'लागत से कम में बिक्री', severity: 'medium' },
+    'cost-unknown': { en: 'Sold with cost not known', hi: 'लागत पता नहीं, फिर भी बिक्री', severity: 'medium' },
     'oversell': { en: 'Sold more than stock', hi: 'स्टॉक से ज़्यादा बिक्री', severity: 'medium' },
     'payment-split': { en: 'Payment does not match total', hi: 'भुगतान कुल से मेल नहीं खाता', severity: 'high' },
     'payment-none': { en: 'No payment recorded', hi: 'कोई भुगतान नहीं लिखा', severity: 'high' },
@@ -263,7 +264,7 @@ function recheckBill(bill, kind, ts, earlier, base) {
     }
     const items = Array.isArray(bill.items) ? bill.items : [];
     const byRule = new Map();
-    issues.filter(i => !isEntryIssue(i) && i.id !== 'oversell' && i.id !== 'below-cost').forEach(i => {
+    issues.filter(i => !isEntryIssue(i) && i.id !== 'oversell' && i.id !== 'below-cost' && i.id !== 'cost-unknown').forEach(i => {
         const lines = [i.line, ...(i.lines || [])].filter(n => Number.isInteger(n));
         const names = lines.map(n => readLineItem(items[n]).name).filter(Boolean);
         const prev = byRule.get(i.id);

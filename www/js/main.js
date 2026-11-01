@@ -48,7 +48,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieebo-bill-date';
+const BUILD_ID = '20261101zzuzieebw-bill-date';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -756,7 +756,8 @@ window.app = {
         register: () => AuthManager.handleRegister(),
         logout: () => AuthManager.handleLogout(),
         forgotPassword: () => AuthManager.handleForgotPassword(),
-        sendPasswordReset: () => AuthManager.handleSendPasswordReset()
+        sendPasswordReset: () => AuthManager.handleSendPasswordReset(),
+        togglePassword: (inputId, btn) => AuthManager.togglePassword(inputId, btn)
     },
     
     // App language (#143): Settings switch + login card links
@@ -1145,6 +1146,7 @@ window.app = {
         loadTodayData: () => DayManager.loadTodayData(),
         filterTransactions: () => DayManager.filterTransactions(),
         showLabourBreakdown: () => DayManager.showLabourBreakdown(),
+        toggleAllBills: () => DayManager.toggleAllBills(),
         returnCashBody: () => DayManager.returnCashBody()
     },
     
