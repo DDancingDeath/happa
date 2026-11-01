@@ -48,6 +48,10 @@ const billTime = (value) => {
     return d ? d.getTime() : NaN;
 };
 
+/** BILL-TIME of a bill: its numeric `timestamp` (the time the rules check, #147), else its `date`. */
+export const billDayTime = (bill) => (typeof bill?.timestamp === 'number' && Number.isFinite(bill.timestamp) && bill.timestamp > 0
+    ? bill.timestamp : billTime(bill?.date));
+
 /**
  * DAY of a cash session: local midnight of `date` to the next local midnight.
  * @param {string} date YYYY-MM-DD
@@ -95,11 +99,15 @@ export function drawerDay({ date, bills = {}, expenses = [], session = null, per
 
     // BILL-AT-SAVE cash (payment.* is canonical); cash collected later on the
     // bill counts as a due payment on its own day.
+    const billInDay = (bill) => {
+        const t = billDayTime(bill);
+        return t >= dateStart && t < dateEnd;
+    };
     [...sales, ...retailSales].forEach(sale => {
-        if (inDay(sale.date)) transactions.cashSales += saleTimePayment(sale).cash;
+        if (billInDay(sale)) transactions.cashSales += saleTimePayment(sale).cash;
     });
     purchases.forEach(purchase => {
-        if (inDay(purchase.date)) transactions.cashPurchases += saleTimePayment(purchase).cash;
+        if (billInDay(purchase)) transactions.cashPurchases += saleTimePayment(purchase).cash;
     });
 
     // EXP-KIND; only cash expenses leave the drawer (EXP-MODE, #118: no mode = cash).

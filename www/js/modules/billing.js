@@ -25,6 +25,7 @@ import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KE
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
 import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
 import { askReason } from '../ui/bill-status.js';
+import { prepareBillDate } from '../ui/bill-date-input.js';
 import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
 import { formatDateTimeIN } from '../utils/dates.js';
 import { isArchivedItem } from '../utils/item-catalog.js';
@@ -57,7 +58,7 @@ export function editRefusedMessage(bill) {
 
 /** Draft fields that make the bill checks treat the form as an edit of `bill` (#37). */
 const editCheckContext = (bill) => ({
-    isEdit: true, id: bill.id, editingBill: bill, date: bill.date, enteredAt: bill.timestamp
+    isEdit: true, id: bill.id, editingBill: bill, date: bill.date, enteredAt: bill.enteredAt || bill.timestamp
 });
 
 /**
@@ -229,9 +230,17 @@ const BillingManager = {
             PurchaseManager.updateTotals();
         }
         
+        this.prepareBillDates();
         if (this.pendingRecovery) this.showRecoveryBanner(this.pendingRecovery);
         this.focusFirstItem();
         UIManager.hapticFeedback();
+    },
+
+    /** The Date boxes (#147): the role's days; an edited bill shows its own day, locked. */
+    prepareBillDates() {
+        const editing = this.editingBillIndex === undefined ? null : this.getEditingBill();
+        prepareBillDate('billDate', editing && this.editingBillType !== 'retail' ? editing : null);
+        prepareBillDate('saleDate', editing && this.editingBillType === 'retail' ? editing : null);
     },
 
     /**
@@ -690,6 +699,8 @@ const BillingManager = {
         } else {
             RetailSaleManager.clearSale();
         }
+        // Still editing (Clear keeps edit mode): the box stays on the bill's own day
+        this.prepareBillDates();
         this.deleteAutoSave().catch(e => console.warn('Auto-save cleanup failed:', e));
     },
 
@@ -1261,6 +1272,7 @@ const BillingManager = {
                 
                 PurchaseManager.renderBill();
                 PurchaseManager.updateTotals();
+                this.prepareBillDates();
                 
                 window.app.nav.showTab('billing');
                 UIManager.showToast(t('msg.billing.editing_bill_modify_save'));
@@ -1294,6 +1306,7 @@ const BillingManager = {
                 
                 RetailSaleManager.renderSalesBill();
                 RetailSaleManager.updateSaleTotals();
+                this.prepareBillDates();
                 
                 window.app.nav.showTab('billing');
                 // Switch to sale mode for retail sales
@@ -1591,6 +1604,16 @@ const BillingManager = {
 export { BillingManager, PurchaseManager, RetailSaleManager };
 
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
+// Showing Billing (or the app again) sets the Date boxes: the role's days, today if the day changed (#147)
+if (typeof window !== 'undefined') {
+    window.addEventListener('aadhat:tabshown', (event) => {
+        if (event.detail?.tabId === 'billing') BillingManager.prepareBillDates();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') BillingManager.prepareBillDates();
+    });
+}
+
 on(REFRESH.billingDropdown, () => {
     BillingManager.loadItemsDropdown();
     BillingManager.loadSaleItemsDropdown();

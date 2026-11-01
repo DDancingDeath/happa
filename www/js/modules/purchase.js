@@ -20,6 +20,8 @@ import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { lineItemIdentity, isArchivedItem } from '../utils/item-catalog.js';
+import { billTimeFor, validateBillDay } from '../utils/bill-date.js';
+import { allowBackdatedCash, billDateWho, lockBillDate, pickedBillDay, resetBillDate } from '../ui/bill-date-input.js';
 
 /** Name to show for a catalogue item or bill line in the chosen item-name language. */
 const lineLabel = (line) => lineItemIdentity(line && 'itemId' in line ? line : { itemId: line?.id, name: line?.name }, AppState.items, AppState.settings.showHindi).label;
@@ -575,6 +577,16 @@ const PurchaseManager = {
         const comments = Helpers.getInputText('billComments');
         const printComments = document.getElementById('billPrintComments')?.checked || false;
         
+        // The bill's day (#147), fixed by the first attempt (a retry is written identically)
+        const day = pickedBillDay('billDate');
+        const dayProblem = pendingBill?.timestamp ? null : validateBillDay(day, billDateWho());
+        if (dayProblem) {
+            UIManager.showToast(t(dayProblem.key, dayProblem.params), 'warning');
+            return;
+        }
+        // Cash on a back-dated bill: owner only (that day's drawer may be closed)
+        if (!(await allowBackdatedCash(day, cashPayment, pendingBill))) return;
+        
         // Payment, name-for-Due and the other bill checks (#23, #68, #37)
         this.updatePaymentTotal();
         const checks = await BillChecksUI.confirmSave('purchase');
@@ -593,8 +605,12 @@ const PurchaseManager = {
             if (!pending.billNumber) pending.billNumber = await Helpers.generateBillNumber('P', 'purchases');
             // A retry keeps the first attempt's time so an unchanged bill is written identically
             if (!pending.timestamp) {
-                pending.timestamp = Date.now();
-                pending.date = new Date().toISOString();
+                const now = new Date();
+                const at = billTimeFor(pickedBillDay('billDate', now), now);
+                pending.timestamp = at.getTime();
+                pending.date = at.toISOString();
+                pending.enteredAt = now.getTime();
+                lockBillDate('billDate', pending.timestamp);
             }
             
             const bill = {
@@ -618,6 +634,7 @@ const PurchaseManager = {
                 date: pending.date,
                 userId: AppState.currentUser ? AppState.currentUser.uid : 'unknown',
                 timestamp: pending.timestamp,
+                enteredAt: pending.enteredAt || pending.timestamp,
                 payment: buildPaymentSplit(split),
                 ...BillChecksUI.billFields(checks)
             };
@@ -661,8 +678,9 @@ const PurchaseManager = {
             this.resetForm();
             
             UIManager.hideLoading();
-            UIManager.showToast(FirebaseService.keptServerPayment(bill) ? t(KEPT_SERVER_PAYMENT_KEY)
-                : FirebaseService.savedOnPhoneOnly(bill) ? t(SAVED_ON_PHONE_KEY) : t('msg.purchase.bill_saved_successfully'));
+            if (FirebaseService.keptServerPayment(bill)) UIManager.showToast(t(KEPT_SERVER_PAYMENT_KEY));
+            else if (FirebaseService.savedOnPhoneOnly(bill)) UIManager.showToast(t(SAVED_ON_PHONE_KEY));
+            else UIManager.showToast(t('msg.purchase.bill_saved_successfully'));
             UIManager.hapticFeedback('success');
             
             return bill;
@@ -691,6 +709,7 @@ const PurchaseManager = {
             if (el) el.checked = false;
         });
         
+        resetBillDate('billDate');
         this.updateTotals();
         this.billingManager?.focusFirstItem?.();
     },
@@ -753,14 +772,14 @@ const PurchaseManager = {
             total: this.computeTotals().grandTotal,
             payment: this.readPaymentSplit(),
             partyName: Helpers.getInputText('customerName'),
-            date: editing ? original?.date : pendingBill?.date,
-            enteredAt: editing ? original?.timestamp : pendingBill?.timestamp,
+            date: editing ? original?.date : (pendingBill?.date || billTimeFor(pickedBillDay('billDate')).toISOString()),
+            enteredAt: editing ? (original?.enteredAt || original?.timestamp) : (pendingBill?.enteredAt || pendingBill?.timestamp),
             entry: item ? { itemId: item.id, name: item.name, rate: readTypedNumber('billRate'), qty: readTypedNumber('newWeight') } : null
         };
     },
 
     ensurePendingBill() {
-        if (!pendingBill) pendingBill = { id: Helpers.generateId(), billNumber: null, attempted: false, date: null, timestamp: null };
+        if (!pendingBill) pendingBill = { id: Helpers.generateId(), billNumber: null, attempted: false, date: null, timestamp: null, enteredAt: null };
         return pendingBill;
     },
 
@@ -776,8 +795,12 @@ const PurchaseManager = {
             billNumber: pending.billNumber || null,
             attempted: !!pending.attempted,
             date: pending.date || null,
-            timestamp: pending.timestamp || null
+            timestamp: pending.timestamp || null,
+            enteredAt: pending.enteredAt || null
         } : null;
+        // A restored attempt keeps its day, shown locked; otherwise the box starts again
+        if (pendingBill?.timestamp) lockBillDate('billDate', pendingBill.timestamp);
+        else resetBillDate('billDate');
     },
 
     /**
