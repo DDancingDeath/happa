@@ -85,7 +85,10 @@ export function createWatchdog(start, { freezeMs = FREEZE_MS, windowMs = WINDOW_
         /** The page is hidden, frozen or closed: judge what was seen if it was long enough. */
         hidden(now) {
             try {
-                close(run !== null && last !== null && last - windowStart >= minJudgedMs && now - last < sleepMs);
+                // A screen frozen until the user left: the timer's late tick never runs, so count the gap here.
+                const gap = last === null ? 0 : now - last;
+                if (gap >= freezeMs && gap < sleepMs && gap > longest) longest = gap;
+                close(run !== null && last !== null && (longest >= freezeMs || last - windowStart >= minJudgedMs) && gap < sleepMs);
                 last = null;
             } catch (_) { /* never break the app */ }
         }

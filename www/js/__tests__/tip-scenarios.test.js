@@ -375,6 +375,15 @@ describe('MainThread watchdog (#83)', () => {
         expect(h.tip.activeCount()).toBe(0);
     });
 
+    it('a screen frozen until the user leaves the app still fails', () => {
+        const { h, w } = setup();
+        w.tick(h.now());
+        run(h, w, 10000);
+        h.advance(FREEZE_MS + 500);
+        w.hidden(h.now());
+        expect(counts(h).n).toEqual({ f: 1 });
+    });
+
     it('a short block or the phone asleep is not a freeze', () => {
         const { h, w } = setup();
         w.tick(h.now());
