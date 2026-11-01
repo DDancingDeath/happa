@@ -752,6 +752,7 @@ export default {
     'ui.numchecks.ac5': "बिल पर उधार दोनों जगह एक जैसा",
     'ui.numchecks.ac6': "आज का गल्ला: अपेक्षित = शुरुआती + नकद आया − नकद गया",
     'ui.numchecks.ac8': "किसी माल का स्टॉक शून्य से कम नहीं",
+    'ui.numchecks.flag_found': "होना था {expected}, मिला {actual}",
     'ui.numchecks.checked': "{count} जाँचे",
     'ui.numchecks.col_difference': "अंतर",
     'ui.numchecks.col_expected': "होना चाहिए",
