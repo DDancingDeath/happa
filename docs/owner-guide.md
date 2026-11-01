@@ -147,7 +147,7 @@ year (CMP; "not known" when that period's figures are not available).
 | Personal expenses, withdrawals (M8, M9) | Shown apart from profit. |
 | Kept in business (M10) | Profit − personal expenses − withdrawals. |
 | Money in / out / net (M12–M14) | Paid at save + due payments, and expenses; cash and online. |
-| Net worth (M15) | Stock value + to receive + other accounts + counted drawer cash − to pay. |
+| Net worth (M15) | Stock value + to receive + other accounts + counted drawer cash − to pay. Other accounts (bank, savings, loans) are the same on all your phones, in whole rupees; you and managers with Money add or remove them. |
 | Purchases (M16) | Sum of purchase bill totals (after labour). |
 | Stock movement check (M17) | Opening stock value + purchases − cost of goods sold ± corrections = closing value. |
 

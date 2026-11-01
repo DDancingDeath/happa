@@ -318,6 +318,9 @@ function sameMoment(now) {
     };
 }
 
+/** The settings/accounts map (#74) for a list of accounts. */
+const sharedAccounts = (accounts) => Object.fromEntries((accounts || []).map((a, i) => [`a${i}`, a]));
+
 /**
  * Audits the phone path for each date and records into the collector (scope 'phone').
  * @param {Object} args
@@ -327,7 +330,7 @@ function sameMoment(now) {
  * @param {string} args.appRoot checkout whose www/ templates are used
  * @param {{firstDip: number, cleanAgrees: boolean}} args.stockEvidence from the full-history audit
  * @param {ReadonlyArray<{role: string, checkpoint: 'fresh'|'month-end', tag: string}>} [args.passes] how each day is opened (PHONE_PASSES)
- * @param {Array<{name: string, balance: number, type: 'asset'|'liability'}>} [args.accounts] other accounts entered on the device (M15)
+ * @param {Array<{name: string, balance: number, type: 'asset'|'liability'}>} [args.accounts] other accounts (M15), shared in settings/accounts (#74)
  * @returns {Promise<{dates: Array<Object>, evidence: Object}>}
  */
 export async function auditPhone({ C, data, dates, appRoot, stockEvidence, passes = PHONE_PASSES, accounts = [] }) {
@@ -340,8 +343,8 @@ export async function auditPhone({ C, data, dates, appRoot, stockEvidence, passe
     setRole('owner');
     AppState.userName = 'Audit';
     localStorage.clear();
-    // Other accounts (M15) are owner-entered on the device.
-    if (accounts.length) localStorage.setItem('financeCustomAccounts', JSON.stringify(accounts));
+    // Other accounts (M15) are owner-entered and shared by every phone (settings/accounts, #74).
+    if (accounts.length) fake.seed('settings', [{ id: 'accounts', accounts: sharedAccounts(accounts) }]);
 
     const T = { money: tpl(appRoot, 'money.html'), statements: tpl(appRoot, 'statements.html') };
     const scope = 'phone';
@@ -657,7 +660,7 @@ async function auditOneDay({ fake, moment, at, label, open, cmp, unknown, T, pas
     const counted = O.lastCountedCash(now.sessions);
     const recent = counted && counted.date >= isoDay(new Date(new Date(at).getFullYear(), new Date(at).getMonth(), new Date(at).getDate() - 30).getTime());
     const drawerLabel = document.getElementById('moneyWorthTerms')?.textContent || '';
-    const accountsTotal = accounts.reduce((a, x) => a + (x.type === 'liability' ? -1 : 1) * Number(x.balance || 0), 0);
+    const accountsTotal = O.otherAccounts(sharedAccounts(accounts));
     if (counted && !recent) {
         if (/not counted lately/i.test(drawerLabel)) unknown('C9_drawer', 'Worth (phone)', P('now'), 'last count older than 30 days: "not counted lately" shown', counted.amount);
         else cmp('C9_drawer_old_hidden', 'Worth (phone)', P('now'), 1, 0, null, at + 1, 'count');

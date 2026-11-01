@@ -641,8 +641,23 @@ export function lastCountedCash(sessions) {
 }
 
 /**
- * M15 net worth: stock value (S4) + to receive (O4) + other accounts (owner-entered,
- * liabilities negative) + last counted drawer cash (C9) − to pay (O3).
+ * M15 "other accounts" term (#74): the shared list in settings/accounts (the same on
+ * every phone), each balance in whole rupees, liabilities negative.
+ * @param {?Object<string, {balance: *, type?: string}>} map settings/accounts `accounts`
+ */
+export function otherAccounts(map) {
+    let total = 0;
+    for (const a of Object.values(map || {})) {
+        if (!a || !String(a.name ?? '').trim()) continue;
+        const b = Math.round(n(a.balance));
+        total += a.type === 'liability' ? -b : b;
+    }
+    return total;
+}
+
+/**
+ * M15 net worth: stock value (S4) + to receive (O4) + other accounts (shared,
+ * owner-entered, liabilities negative; otherAccounts) + last counted drawer cash (C9) − to pay (O3).
  */
 export function netWorth(data, { accounts = 0, drawer = 0 } = {}) {
     const d = dueTotals(data);

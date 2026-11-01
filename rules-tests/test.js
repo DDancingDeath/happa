@@ -929,6 +929,55 @@ function defineSuite(prefix) {
         await assertFails(as('manager1').collection(settings).get());
     });
 
+    t('settings/accounts (Money › Worth, #74): read with Money on; owner writes; managers with Money one account at a time', async () => {
+        const settings = `${prefix}settings`;
+        const doc = (uid) => as(uid).collection(settings).doc('accounts');
+        const app = (roleAccess) => env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(settings).doc('app').set({ roleAccess }));
+        const stamp = (uid, id = 'a4') => ({ updatedAt: serverTimestamp(), updatedBy: uid, changedId: id });
+        const bank = { name: 'Bank', balance: 25000, type: 'asset' };
+        // owner: the one-tap move writes many accounts at once
+        await assertSucceeds(doc('legacyOwner').set({ accounts: { a1: bank, a2: { name: 'Loan', balance: 500, type: 'liability' } }, ...stamp('legacyOwner') }));
+        await assertSucceeds(doc('legacyOwner').get());
+        // managers: Money on by default
+        await assertSucceeds(doc('manager1').get());
+        await assertSucceeds(doc('manager1').set({ accounts: { a3: { name: 'Savings', balance: 100, type: 'asset' } }, ...stamp('manager1', 'a3') }, { merge: true }));
+        await assertSucceeds(doc('manager1').set({ accounts: { a3: { name: 'Savings', balance: 150, type: 'asset' } }, ...stamp('manager1', 'a3') }, { merge: true }));
+        await assertSucceeds(doc('manager1').set({ accounts: { a3: FieldValue.delete() }, ...stamp('manager1', 'a3') }, { merge: true }));
+        // one account per write, whole rupees, known fields, own uid, server time
+        await assertFails(doc('manager1').set({ accounts: { a4: bank, a5: bank }, ...stamp('manager1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: { ...bank, balance: 10.5 } }, ...stamp('manager1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: { ...bank, balance: -1 } }, ...stamp('manager1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: { ...bank, type: 'cash' } }, ...stamp('manager1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: { ...bank, name: '' } }, ...stamp('manager1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: { ...bank, note: 'x' } }, ...stamp('manager1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: bank }, ...stamp('staff1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: bank }, updatedAt: 1, updatedBy: 'manager1', changedId: 'a4' }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: bank }, updatedAt: serverTimestamp(), updatedBy: 'manager1' }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: bank }, ...stamp('manager1', 'a1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a4: bank }, extra: 1, ...stamp('manager1') }, { merge: true }));
+        await assertFails(doc('manager1').set({ accounts: { a9: bank }, ...stamp('manager1', 'a9') }));
+        await assertSucceeds(doc('manager1').set({ accounts: { a4: bank }, ...stamp('manager1') }, { merge: true }));
+        await assertFails(doc('manager1').delete());
+        // members: no reads or writes without Money; with Money on, read only
+        await assertFails(doc('staff1').get());
+        await assertFails(doc('staff1').set({ accounts: { a6: bank }, ...stamp('staff1', 'a6') }, { merge: true }));
+        await assertFails(doc('pending1').get());
+        await assertFails(doc('rentOnly').get());
+        await assertFails(as('manager1').collection(settings).get());
+        await app({ staff: { finance: true }, manager: { finance: false, reports: true } });
+        await assertSucceeds(doc('staff1').get());
+        await assertFails(doc('staff1').set({ accounts: { a6: bank }, ...stamp('staff1', 'a6') }, { merge: true }));
+        await assertFails(doc('manager1').get());
+        await assertFails(doc('manager1').set({ accounts: { a6: bank }, ...stamp('manager1', 'a6') }, { merge: true }));
+        await assertSucceeds(doc('legacyOwner').set({ accounts: { a6: bank }, ...stamp('legacyOwner', 'a6') }, { merge: true }));
+    });
+
+    t('settings/accounts: a manager may create the doc with one account (#74)', async () => {
+        const ref = as('manager1').collection(`${prefix}settings`).doc('accounts');
+        await assertFails(ref.set({ accounts: {}, updatedAt: serverTimestamp(), updatedBy: 'manager1', changedId: 'a1' }));
+        await assertSucceeds(ref.set({ accounts: { a1: { name: 'Bank', balance: 0, type: 'asset' } }, updatedAt: serverTimestamp(), updatedBy: 'manager1', changedId: 'a1' }, { merge: true }));
+    });
+
     t('registration as pending staff succeeds (server createdAt)', () =>
         assertSucceeds(asEmail('newbie', 'new@x.com').collection(users).doc('newbie').set({
             name: 'New', email: 'new@x.com', role: 'staff', status: 'pending', createdAt: serverTimestamp()

@@ -110,6 +110,14 @@ export function canReadWithdrawals(role, raw) {
     return WITHDRAWAL_PERMISSIONS.some(p => can(role, p, raw));
 }
 
+/**
+ * Money › Worth's shared accounts (#74, settings/accounts): firestore.rules let the
+ * owner and managers with Money (finance) on change them; others with Money only read.
+ */
+export function canEditWorthAccounts(role, raw) {
+    return role === 'owner' || (role === 'manager' && can(role, 'finance', raw));
+}
+
 /** Pages whose rules are fixed by role (not configurable in Roles & access). */
 export const TAB_ROLES = Object.freeze({
     admin: Object.freeze(['owner']),

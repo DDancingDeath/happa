@@ -327,12 +327,13 @@ rejected / no profile / unknown role.
 | `cashManagement` | Cash page (latest page, last counted day, open past days, uncounted days, by date, between dates), Today, Outstanding (cash leg), Money, Anomalies | today, the last counted day (carry-forward, any age) and uncounted days; other past days only with `oldCashSessions` |
 | `withdrawals` | history queries; shown only on Money, Statements, Insights | only with `finance`, `reports` or `analytics` (default off) |
 | `cashSessions` (legacy) | none (backup only) | no |
-| `settings/app` | one get per app start (version gate, Roles & access, labour, bill checks, business name, TIP policy) | yes; no other `settings` doc is read |
+| `settings/app` | one get per app start (version gate, Roles & access, labour, bill checks, business name, TIP policy) | yes; besides it members read only `settings/accounts` with Money on |
 | `notifications` | own only (`where('userId', '==', uid)`) | own |
 | `drafts` | own only (`where('userId', '==', uid)`, get by id) | own |
 | `autoSaves/{uid}` | own doc | own |
 | `users` | own profile at start-up / login / registration; full list: Admin and Roles & access › People (owner only) | **own only**. Names shown on bills, payments and audit rows are stored on those records |
 | `settings/team` (#87) | names and roles of the approved people, written by the owner's phone whenever it reads the profiles (Admin, App health, notification fan-out; and once a day 3 minutes after start-up, one read per profile + the doc; it writes only when a name or role differs) and by `tools/migrate`; one get for managers' App health device names and their notification fan-out on item and rate edits | no (managers only) |
+| `settings/accounts` (#74) | Money › Worth's bank, savings and other accounts, shared by every phone: one get each time Money opens on Worth (the page's own saves update it on the phone) | only with Money on |
 | `users/{uid}/preferences` | own | own |
 | `auditLogs`, `telemetry` | append by everyone; read in Settings/Diagnostics and the anomaly scan by the owner only | no |
 | `deviceLog/{uid}` (#124) | own doc at start-up, once per person per phone (then remembered on the phone) | own only |
@@ -361,6 +362,7 @@ except `rent_public` get.
 | `users`: own profile | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ |
 | `users`: other profiles (G, L) | ✓ → ✓ | ✓ → **✗** (#87) | ✓ → **✗** | ✗ → ✗ | ✗ → ✗ |
 | `settings/team` (G, #87) | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `settings/accounts` (G, #74) | ✓ | ✓ with Money (`finance`, default on) | ✓ only with Money on (default off) | ✗ | ✗ |
 | `users/{uid}/preferences` | own only (unchanged) | own | own | ✗ | ✗ |
 | `auditLogs`, `telemetry` | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `deviceLog` (#124): own / other people's | ✓ / ✓ | ✓ / ✗ | ✓ / ✗ | ✗ | ✗ |
@@ -400,6 +402,8 @@ profile was already read for every business read; `isOwnerIn` / `isManagerIn` re
 | Profile list (owner) | profile → profile | none |
 | Team directory `settings/team` (managers, #87) | profile | replaces the managers' profile list: **1 read** instead of one per profile; the owner's phone reads it once a session (when it reads the profiles) and rewrites it only when a name or role changed |
 | Business collections, notifications, drafts, auto-save, settings | profile → profile | none |
+| Worth accounts `settings/accounts` (#74), owner | profile | **+1 read** each time Money opens on Worth (this phone kept them in localStorage before) |
+| Worth accounts, manager or member with Money on | profile + `settings/app` | **+2 reads** (the doc, and `settings/app` in the rules) each time Money opens on Worth |
 | Withdrawals, owner | profile → profile | none |
 | Withdrawals, manager or member allowed by Roles & access | profile → profile + `settings/app` | **+1 read** per listener start, per change to the withdrawals it shows and per reconnect; +1 per older-history query |
 | Withdrawals, member without Money/Statements/Insights | listener + queries → not sent | **saves** the whole withdrawals window and older-history reads |
@@ -553,6 +557,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `itemFrequency` | approved user, `global` only (billing ranks items) | approved user: merges into `global.purchase` / `global.sale`, never removing an item | **owner** (#64) |
 | `stockCheckpoints` | `current`: managers (anyone approved: the stale mark); `legacyScan`: managers; no other ids, owner included | same | managers |
 | `settings/app` | owner | owner; managers only the Aadhat fields with `shopSettings` | owner |
+| `settings/accounts` (#74, Money › Worth accounts) | owner; managers with **Money** on: one account per write (`changedId`), `name` 1–40 characters, `balance` a whole number of rupees 0–10,000,000,000, `type` asset or liability, `updatedBy` = self, `updatedAt` = server time, at most 30 accounts (`worthAccountsWriteOk`) | same | **owner** |
 | other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
 | `users/{uid}/preferences` (never used by the app) | nobody (#64) | nobody | nobody |
 | bills (`purchases`, `retailSales`, `wholesaleSales`) | approved user, own `userId`, and `createdAt` = the server time (#115: every happa version sends it; the edit window counts from it) | see "Bill edit window" | owner |

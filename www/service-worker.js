@@ -40,6 +40,7 @@ const STATIC_ASSETS = [
     '/js/firebase/repos/tip-health.js',
     '/js/firebase/repos/user-profiles.js',
     '/js/firebase/repos/users.js',
+    '/js/firebase/repos/worth-accounts.js',
     '/js/main.js',
     '/js/modules/admin.js',
     '/js/modules/anomalies.js',
