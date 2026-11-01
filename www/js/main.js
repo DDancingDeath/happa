@@ -48,7 +48,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieebl-today-channels';
+const BUILD_ID = '20261101zzuzieebn-today-channels';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -505,6 +505,13 @@ async function initializeUserData() {
         // Daily anomaly scan (#187): owner/manager devices, once per day, over loaded data
         AnomaliesManager.scheduleDailyScan();
 
+        // Team directory (#87): managers read names and roles from it; once a day the owner's phone
+        // rebuilds it from the profiles when they differ (late, so it never slows the first screens)
+        if (AppState.userRole === 'owner') {
+            setTimeout(() => FirebaseService.ensureTeamDirectory()
+                .catch(e => console.warn('Team directory not checked:', e?.code || e)), 180000);
+        }
+
         // Rate trends (#65): roll monthly rate stats forward from loaded bills (owner/manager)
         if (AppState.userRole === 'owner' || AppState.userRole === 'manager') {
             setTimeout(() => {
@@ -550,6 +557,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             } else {
                 // Clean up Firebase listeners when user signs out
                 FirebaseService.cleanup();
+                FirebaseService.forgetPeopleCaches();
                 NotificationsManager.stop();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
@@ -1235,6 +1243,7 @@ window.app = {
         saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
         approveUser: (userId) => AdminManager.approveUser(userId),
         rejectUser: (userId) => AdminManager.rejectUser(userId),
+        restoreUser: (userId, userName) => AdminManager.restoreUser(userId, userName),
         showChangeRole: (userId, userName, currentRole) => AdminManager.showChangeRole(userId, userName, currentRole),
         resetUserPassword: (userId, email) => AdminManager.resetUserPassword(userId, email),
         deleteUser: (userId, userName) => AdminManager.deleteUser(userId, userName),

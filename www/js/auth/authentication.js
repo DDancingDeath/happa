@@ -116,7 +116,7 @@ const AuthManager = {
     // Returns true if a profile was created, false if one already existed.
     async createPendingProfile(user, name, email) {
         return createProfileIfMissing(user.uid, {
-            name: name || email.split('@')[0],
+            name: String(name || email.split('@')[0]).slice(0, 80),
             email: email,
             role: 'staff', // Default role for new registrations - can be changed by admin
             status: 'pending'
