@@ -40,7 +40,10 @@ const ROUTES = Object.freeze({
     'settings-aadhat': { tab: 'settings', section: 'shop', id: 'settings-shop' },
     'settings-rentals': { tab: 'settings', section: 'rentals' },
     'settings-roles': { tab: 'settings', section: 'roles' },
-    'admin-configure': { tab: 'settings', section: 'shop', id: 'settings-shop' }
+    'admin-configure': { tab: 'settings', section: 'shop', id: 'settings-shop' },
+
+    // Ask (#88) replaced the unused Chat page.
+    chat: { tab: 'ask', id: 'ask' }
 });
 
 // Money / Insights / Statements (redesign): '<page>-<section>' opens a section, e.g. 'money-cash'.
@@ -255,6 +258,11 @@ const NavigationManager = {
         // Statements (redesign §5.4): its code loads on first open
         if (route.tab === 'statements' && window.app?.statements) {
             setTimeout(() => window.app.statements.init(route.section), 100);
+        }
+
+        // Ask (#88): its code loads on first open
+        if (route.tab === 'ask' && window.app?.ask) {
+            setTimeout(() => window.app.ask.init(), 100);
         }
 
         // Initialize Anomalies page (owner/manager, #187)

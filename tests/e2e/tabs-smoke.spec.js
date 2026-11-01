@@ -76,6 +76,7 @@ const STEPS = [
     { name: 'Statements › Accountant CSV', route: 'statements-accountant', page: 'statements', roles: O, expect: `#statementsControls [onchange*="set('csvFrom'"]` },
     // Exports are the owner's (#103): a manager is sent back to the list, with no export buttons.
     { name: 'Statements › CSV stays closed', route: 'statements-csv', page: 'statements', roles: ['manager'], expect: '#statementsList', hidden: ['#statementsActions', '#statementsView'] },
+    { name: 'Ask', route: 'ask', page: 'ask', act: "window.app.ask.ask(document.documentElement.lang === 'hi' ? 'आज की बिक्री' : 'aaj ki bikri')", roles: A, expect: '#askAnswers .ask-answer' },
     { name: 'Anomalies › List', route: 'anomalies', page: 'anomalies', roles: OM, expect: '#anomalyListView' },
     { name: 'Anomalies › Patterns', route: 'anomalies', page: 'anomalies', act: "window.app.anomalies.showView('patterns')", roles: OM, expect: '#anomalyTabPatterns.active' },
     { name: 'App health', route: 'health', page: 'health', roles: OM },
