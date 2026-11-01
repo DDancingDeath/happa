@@ -32,7 +32,7 @@
 
 .history-date {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 8px;
 }
 
@@ -64,7 +64,7 @@
   padding: 6px 12px;
   border-radius: var(--radius);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .payment-online {
@@ -92,6 +92,35 @@
   color: #5b21b6;
   vertical-align: middle;
 }
+
+/* Print status on this phone (#132) */
+.print-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.print-chip--failed { background: #fee2e2; color: #991b1b; }
+.print-chip--uncertain { background: #fef3c7; color: #92400e; }
+
+.bill-print-status {
+  margin: 0 16px 16px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.bill-print-status__text { flex: 1 1 180px; }
 
 .history-items-detail {
   margin-top: 12px;
@@ -128,7 +157,7 @@
   padding: 10px 0 16px;
   text-align: center;
   color: var(--text-secondary, #888);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .infinite-scroll-sentinel[data-state="idle"] {
@@ -145,7 +174,7 @@
   background: white;
   color: #6366f1;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -175,7 +204,7 @@
   border-radius: 8px;
   background: #eef2ff;
   color: #3730a3;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -221,7 +250,7 @@
 }
 
 .history-date-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary, #6b7280);
 }
@@ -260,7 +289,7 @@
 
 .history-range-label {
   flex: 1 1 100%;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary, #6b7280);
 }
 
@@ -279,7 +308,7 @@
 
 .history-range-hint {
   flex: 1 1 100%;
-  font-size: 13px;
+  font-size: 14px;
   color: #b42318;
 }
 
@@ -367,7 +396,7 @@
   align-items: center;
   gap: 4px 6px;
   min-width: 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
@@ -384,12 +413,15 @@
   flex: 1 1 4.5rem;
   min-width: 0;
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 
+/* Chips wrap inside the card instead of running off a narrow phone (#68: 14 px text) */
 .bill-row .bill-row__chips {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   gap: 4px;
   font-size: 12px;
@@ -397,7 +429,7 @@
 
 .bill-row .payment-badge {
   padding: 2px 6px;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .bill-row .old-app-chip {
@@ -485,7 +517,7 @@
   align-items: center;
   gap: 8px;
   margin: 2px 0 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
@@ -496,13 +528,13 @@
 
 .history-stale-refresh {
   flex: 0 0 auto;
-  min-height: 32px;
+  min-height: 44px;
   padding: 4px 12px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   background: var(--card-bg);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -563,14 +595,14 @@
 }
 
 .bill-table__by {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
 .bill-table__chips .payment-badge {
   margin: 0 4px 4px 0;
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .bill-table__group th {

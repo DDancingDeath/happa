@@ -7,7 +7,7 @@
 
 import { AppState } from '../utils/state.js';
 import { SecurityMonitor } from '../services/security-monitor.js';
-import { on, REFRESH } from '../utils/events.js';
+import { on, PRINT_STATUS_CHANGED, REFRESH } from '../utils/events.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
@@ -23,7 +23,9 @@ import {
     validateCustomRange, olderMonthsToLoad, normalizeHistoryTab, isWholesaleHistoryLink,
     HISTORY_FILTER_KEY, HISTORY_TAB_KEY, WIDE_LOAD_MONTHS
 } from '../utils/history-filters.js';
-import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml } from '../ui/bill-row.js';
+import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml, printStatusText } from '../ui/bill-row.js';
+import { printStatusOf, recordPrint } from '../utils/print-status.js';
+import { STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { accessFor, canDeleteBillWith, canVoidBillWith, historyCutoff, withinBillEditWindow } from '../utils/role-access.js';
 import { askReason, editsRowHtml, renderEditsList, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
 import { voidBlocker } from '../utils/bill-edits.js';
@@ -631,6 +633,7 @@ export class HistoryManager {
             document.getElementById('billDetailsContent').insertAdjacentHTML('beforeend',
                 `<div class="bill-window-note" style="margin: 0 16px 16px; padding: 10px; background: #f8f9fa; border-radius: 8px; color: #6c757d; font-size: 13px;">🔒 ${L('msg.roles.edit_window_closed', { days: accessFor(AppState.userRole, who.raw).editDays })}</div>`);
         }
+        this.renderPrintStatus();
         
         document.getElementById('billDetailsOverlay').classList.add('active');
     }
@@ -1002,6 +1005,48 @@ export class HistoryManager {
         }
     }
 
+    /**
+     * The open bill's print status on this phone (#132). After a failed or
+     * may-have-printed print: Print again (no COPY mark, the customer has no slip
+     * yet); until printed: Mark printed by hand.
+     */
+    static renderPrintStatus() {
+        const host = document.getElementById('billDetailsContent');
+        const current = this.currentBill();
+        host?.querySelector('#billPrintStatus')?.remove();
+        if (!host || !current || !isActiveBill(current.bill) || isOpeningRecord(current.bill)) return;
+        const st = printStatusOf(current.bill);
+        const retry = !!st && (st.s === 'failed' || st.s === 'uncertain');
+        const markHand = !st || st.s === 'failed' || st.s === 'uncertain';
+        host.insertAdjacentHTML('beforeend', `
+            <div class="bill-print-status" id="billPrintStatus" data-state="${Helpers.escapeHtml(st ? st.s : 'none')}">
+                <span class="bill-print-status__text">🖨️ ${Helpers.escapeHtml(printStatusText(current.bill, (e) => PrinterService.errorText(e)))}</span>
+                ${retry ? `<button type="button" class="filter-btn" onclick="window.app.history.retryPrint()">${L('ui.print_status.retry')}</button>` : ''}
+                ${markHand ? `<button type="button" class="filter-btn" onclick="window.app.history.markPrintedByHand()">${L('ui.print_status.mark_hand')}</button>` : ''}
+            </div>`);
+    }
+
+    static async retryPrint() {
+        const current = this.currentBill();
+        if (!current) return;
+        try {
+            await PrinterService.printBill({ ...buildReprintPayload(current.bill, current.type), isCopy: false });
+        } catch (error) {
+            console.error('Print again failed:', error);
+            UIManager.showToast(t('msg.history.reprint_failed'));
+        }
+    }
+
+    static markPrintedByHand() {
+        const current = this.currentBill();
+        if (!current) return;
+        if (!recordPrint(current.bill, 'hand')) {
+            UIManager.showToast(t(STORAGE_FULL_KEY), 'error');
+            return;
+        }
+        UIManager.showToast(t('msg.print_status.marked'));
+    }
+
     /** Share the open bill on WhatsApp (bill date, COPY mark, bilingual). */
     static shareBill() {
         const current = this.currentBill();
@@ -1041,3 +1086,8 @@ export class HistoryManager {
 
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
 on(REFRESH.history, () => HistoryManager.refreshHistory());
+// Only redraw an open History: a hidden one redraws when it is shown.
+on(PRINT_STATUS_CHANGED, () => {
+    if (document.getElementById('history')?.classList.contains('active')) HistoryManager.refreshHistory();
+    if (document.getElementById('billDetailsOverlay')?.classList.contains('active')) HistoryManager.renderPrintStatus();
+});
