@@ -15,6 +15,7 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, normalizeLabourSettings, normalizePackageKg } from '../utils/money.js';
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
+import { CHANGED_ELSEWHERE, NEEDS_INTERNET, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
 import { safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { auditActionLabel } from '../i18n/localize.js';
@@ -236,7 +237,9 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving shared labour settings failed:', error);
-            UIManager.showToast(t('msg.settings.labour_rate_not_saved_everyone'));
+            const messageKey = writeErrorKey(error, 'msg.settings.labour_rate_not_saved_everyone');
+            UIManager.showToast(t(messageKey));
+            await this.afterRefusedSave(error, () => this.applyLabourLocally(current));
             return false;
         }
     }
@@ -263,7 +266,7 @@ export class SettingsManager {
         if (AppState.userRole === 'owner') {
             const seed = normalizeLabourSettings(AppState.settings);
             this.applyLabourLocally(seed);
-            await FirebaseService.saveSharedLabourSettings(seed);
+            await FirebaseService.saveSharedLabourSettings(seed, { checked: false });
         }
     }
 
@@ -391,9 +394,7 @@ export class SettingsManager {
         CHECK_THRESHOLD_FIELDS.forEach(([key]) => { typed[key] = document.getElementById(`settingCheck_${key}`)?.value; });
         const next = normalizeThresholds(typed);
         const previous = normalizeThresholds(AppState.settings?.checkThresholds);
-        AppState.settings.checkThresholds = next;
-        storeLocalSettings();
-        CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', next[key]));
+        this.applyChecksLocally(next);
         try {
             await FirebaseService.saveSharedCheckThresholds(next);
             noteSettingsChange('bill_checks', previous, next);
@@ -401,7 +402,9 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving bill-check limits failed:', error);
-            UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
+            const messageKey = writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet');
+            UIManager.showToast(t(messageKey));
+            await this.afterRefusedSave(error, () => this.applyChecksLocally(previous));
             return false;
         }
     }
@@ -415,9 +418,7 @@ export class SettingsManager {
         const clean = (id, max) => String(document.getElementById(id)?.value ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
         const details = { businessName: clean('settingBusinessName', MAX_BUSINESS_NAME), businessDetails: clean('settingBusinessDetails', MAX_BUSINESS_DETAILS) };
         const previous = { businessName: AppState.settings.shopName || '', businessDetails: AppState.settings.businessDetails || '' };
-        AppState.settings.shopName = details.businessName;
-        AppState.settings.businessDetails = details.businessDetails;
-        storeLocalSettings();
+        this.applyBusinessLocally(details);
         try {
             await FirebaseService.saveBusinessDetails(details);
             noteSettingsChange('business', previous, details);
@@ -425,8 +426,48 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving business details failed:', error);
-            UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
+            const messageKey = writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet');
+            UIManager.showToast(t(messageKey));
+            await this.afterRefusedSave(error, () => {
+                this.applyBusinessLocally(previous);
+                setField('settingBusinessName', 'value', previous.businessName);
+                setField('settingBusinessDetails', 'value', previous.businessDetails);
+            });
             return false;
+        }
+    }
+
+    /** Bill-check limits on this phone (AppState, local copy, form). */
+    static applyChecksLocally(thresholds) {
+        AppState.settings.checkThresholds = thresholds;
+        storeLocalSettings();
+        CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', thresholds[key]));
+    }
+
+    /** Business name and details on this phone (AppState, local copy). */
+    static applyBusinessLocally({ businessName, businessDetails }) {
+        AppState.settings.shopName = businessName;
+        AppState.settings.businessDetails = businessDetails;
+        storeLocalSettings();
+    }
+
+    /**
+     * A shared setting the server refused (#113): this phone goes back to what it had;
+     * changed on another phone → it shows the values stored now.
+     * @param {*} error
+     * @param {function(): void} restore puts this phone's previous values back
+     */
+    static async afterRefusedSave(error, restore) {
+        if (error?.code !== CHANGED_ELSEWHERE && error?.code !== NEEDS_INTERNET) return;
+        restore();
+        if (error.code !== CHANGED_ELSEWHERE) return;
+        try {
+            await this.applySharedSettings(await FirebaseService.loadAppSettings());
+            // The forms show the stored values now (another phone's), not this phone's stale ones
+            const shop = document.getElementById('settingsShop');
+            if (shop && !shop.hidden) this.renderShop(this.canEditShop());
+        } catch (e) {
+            console.warn('Settings not read again:', e);
         }
     }
 
