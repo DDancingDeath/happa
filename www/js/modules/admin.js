@@ -123,7 +123,7 @@ const AdminManager = {
                 <h3>${tx('ui.users.pending_registrations')}</h3>
                 <p class="setting-description">${tx('ui.users.approve_new_users_and_assign')}</p>
                 <div id="adminPendingUsers">
-                    <p style="text-align: center; color: #666;">${tx('ui.navigation.loading')}</p>
+                    <p style="text-align: center; color: var(--text-secondary);">${tx('ui.navigation.loading')}</p>
                 </div>
             </div>
             
@@ -131,7 +131,7 @@ const AdminManager = {
                 <h3>${tx('ui.users.active_users')}</h3>
                 <p class="setting-description">${tx('ui.users.manage_existing_user_roles')}</p>
                 <div id="adminActiveUsers">
-                    <p style="text-align: center; color: #666;">${tx('ui.navigation.loading')}</p>
+                    <p style="text-align: center; color: var(--text-secondary);">${tx('ui.navigation.loading')}</p>
                 </div>
             </div>
 
@@ -241,7 +241,7 @@ const AdminManager = {
         const host = document.getElementById('adminActivity');
         if (!host || !ACTIVITY_RANGES.includes(range)) return;
         document.querySelectorAll('#adminActivityRange [data-range]').forEach(b => b.classList.toggle('active', b.dataset.range === range));
-        host.innerHTML = `<p style="text-align: center; color: #666;">${tx('ui.navigation.loading')}</p>`;
+        host.innerHTML = `<p style="text-align: center; color: var(--text-secondary);">${tx('ui.navigation.loading')}</p>`;
         const seq = ++this.activitySeq;
         const { from, to } = activityRange(range);
         let audit = [];
@@ -352,7 +352,7 @@ const AdminManager = {
             <div class="active-user-card">
                 <div class="user-card-header">
                     <div>
-                        <div class="user-name">${Helpers.escapeHtml(user.name || t('ui.reports.unknown'))} ${isCurrentUser ? `<span style="color: #666; font-size: 12px;">${tx('ui.admin.you')}</span>` : ''}</div>
+                        <div class="user-name">${Helpers.escapeHtml(user.name || t('ui.reports.unknown'))} ${isCurrentUser ? `<span style="color: var(--text-secondary); font-size: 12px;">${tx('ui.admin.you')}</span>` : ''}</div>
                         <div class="user-email">${Helpers.escapeHtml(user.email)}</div>
                     </div>
                     <span class="user-role-badge ${Helpers.escapeHtml(user.role)}">${Helpers.escapeHtml(Helpers.roleLabel(user.role))}</span>

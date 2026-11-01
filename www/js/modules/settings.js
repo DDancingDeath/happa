@@ -782,7 +782,7 @@ export class SettingsManager {
         if (!container) return;
         
         if (!devices || devices.length === 0) {
-            container.innerHTML = `<p style="color: #666; padding: 12px;">${Helpers.escapeHtml(t('ui.settings.no_devices_found'))}</p>`;
+            container.innerHTML = `<p style="color: var(--text-secondary); padding: 12px;">${Helpers.escapeHtml(t('ui.settings.no_devices_found'))}</p>`;
             return;
         }
         
@@ -801,7 +801,7 @@ export class SettingsManager {
             deviceCard.innerHTML = `
                 <div>
                     <strong>${Helpers.escapeHtml(name)}</strong><br>
-                    <small style="color: #666;">${Helpers.escapeHtml(address)}</small>
+                    <small style="color: var(--text-secondary);">${Helpers.escapeHtml(address)}</small>
                 </div>
                 <button class="add-item-btn" data-device-index="${index}">${Helpers.escapeHtml(t('ui.settings.connect'))}</button>
             `;

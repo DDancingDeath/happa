@@ -409,13 +409,13 @@ export class Helpers {
         const amount = Math.abs(Math.round(check.difference * 100) / 100).toLocaleString('en-IN');
         if (check.ok) {
             el.textContent = '✓ ₹0';
-            el.style.color = '#15803d';
+            el.style.color = 'var(--success-color)';
         } else if (check.difference > 0) {
             el.textContent = t('ui.billing.split_left', { amount });
-            el.style.color = '#b91c1c';
+            el.style.color = 'var(--danger-color)';
         } else {
             el.textContent = t('ui.billing.split_extra', { amount });
-            el.style.color = '#b91c1c';
+            el.style.color = 'var(--danger-color)';
         }
     }
 
