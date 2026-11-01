@@ -4676,7 +4676,7 @@ function defineReminderSuite(prefix) {
         await assertFails(db.doc('b').set(rem('manager1', { dueDate: '2026-13-01' })));
         await assertFails(db.doc('c').set(rem('manager1', { dueDate: istDay(900) })));
         await assertFails(db.doc('d').set(rem('legacyOwner')));
-        await assertFails(db.doc('e').set(rem('manager1', { createdAt: Timestamp.fromMillis(Date.now()) })));
+        await assertFails(db.doc('e').set(rem('manager1', { createdAt: Timestamp.fromMillis(Date.now() - MIN) })));
         await assertFails(db.doc('f').set(rem('manager1', { status: 'done' })));
         await assertFails(db.doc('g').set(rem('manager1', { title: '' })));
         await assertFails(db.doc('h').set(rem('manager1', { title: 'x'.repeat(121) })));
@@ -4698,7 +4698,7 @@ function defineReminderSuite(prefix) {
         const done = (uid, extra = {}) => ({ status: 'done', doneBy: uid, doneAt: serverTimestamp(), ...extra });
         await assertFails(as('staff1').collection(reminders).doc('r1').update(done('manager1')));
         await assertFails(as('staff1').collection(reminders).doc('r1').update(done('staff1', { title: 'changed' })));
-        await assertFails(as('staff1').collection(reminders).doc('r1').update(done('staff1', { doneAt: Timestamp.fromMillis(Date.now()) })));
+        await assertFails(as('staff1').collection(reminders).doc('r1').update(done('staff1', { doneAt: Timestamp.fromMillis(Date.now() - MIN) })));
         await assertFails(as('pending1').collection(reminders).doc('r1').update(done('pending1')));
         await assertSucceeds(as('staff1').collection(reminders).doc('r1').update(done('staff1', { doneByName: 'S' })));
         // final: not done again, not cancelled, not reopened
