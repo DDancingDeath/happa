@@ -22,6 +22,7 @@ import {
     withoutUnstockedOversell
 } from '../utils/anomalies.js';
 import { firstStockTimes } from '../utils/stock-check.js';
+import { auditScanCap } from '../utils/security-flags.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
@@ -38,8 +39,6 @@ const REPORT_TTL_MS = 30 * 60 * 1000;
 const REPORT_KEY = 'aadhatAnomalyReportRead';
 const REPORT_LIMIT = 200;
 const SCAN_LIMIT = 500;
-/** Audit entries read per scanned day at most (paged by FirebaseService). */
-const AUDIT_PER_DAY = 1000;
 const SCAN_KEY = 'aadhatAnomalyScanDay';
 const PAGE_SIZE = 200;
 const SEV_COLORS = { high: '#dc2626', medium: '#d97706', low: '#6b7280' };
@@ -115,7 +114,7 @@ export const AnomaliesManager = {
                 return [];
             }),
             audit && AppState.userRole === 'owner'
-                ? FirebaseService.loadAuditLogsSince(from, Math.max(1, Math.ceil((to - from) / DAY_MS)) * AUDIT_PER_DAY).catch(e => {
+                ? FirebaseService.loadAuditLogsSince(from, auditScanCap(from, to)).catch(e => {
                     console.warn('Anomaly scan: audit log not read:', e?.code || e);
                     return [];
                 })

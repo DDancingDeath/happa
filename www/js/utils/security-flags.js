@@ -16,6 +16,17 @@ export const SECURITY_ACTIONS = Object.freeze({
 /** Different bills past their edit window one person tries in a day before a (low) flag. */
 export const OLD_BILL_TRIES_PER_DAY = 3;
 
+/** Audit entries the owner's daily scan reads per scanned day at most (paged). */
+export const AUDIT_PER_DAY = 1000;
+
+/**
+ * How many audit entries the daily scan may read for [from, to).
+ * @param {number} from - ms
+ * @param {number} to - ms
+ * @returns {number}
+ */
+export const auditScanCap = (from, to) => Math.max(1, Math.ceil((to - from) / 86400000)) * AUDIT_PER_DAY;
+
 // "x (doc) transaction" is a read inside a transaction; the transaction itself is "transaction"
 const WRITE_OPS = ['set', 'update', 'delete', 'add'];
 
