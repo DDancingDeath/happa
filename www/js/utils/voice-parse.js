@@ -220,11 +220,14 @@ function numberKind(rest, groups, gi) {
     const stop = gi + 1 < groups.length ? groups[gi + 1].start : rest.length;
     let after = null;
     let lastWord = null;
+    let beforeLast = null;
     let possessive = false;
+    let rupees = false;
     for (let k = g.end; k < stop; k++) {
         const w = rest[k];
-        if (w) lastWord = w;
+        if (w) [beforeLast, lastWord] = [lastWord, w];
         if (POSSESSIVE.has(w)) possessive = true;
+        else if (PRICE_AFTER.has(w)) rupees = true;
         // a total word just before the next number belongs to that number ("30 rupees total 300")
         const total = TOTAL_AFTER.has(w) && !(k + 1 === stop && gi + 1 < groups.length);
         if (!after) {
@@ -243,7 +246,8 @@ function numberKind(rest, groups, gi) {
         && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]))) return 'other';
     const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
     if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2) && after !== 'weight') return 'rate-kg';
-    if (gi > 0 && ((after === null && TOTAL_AFTER_A_WEIGHT.has(lastWord))
+    // "2 kilo 60 (rupaye) mein" is a total; "30 ke bhav mein" a rate
+    if (gi > 0 && (((after === null || after === 'rate') && TOTAL_AFTER_A_WEIGHT.has(lastWord) && !PRICE_BEFORE.has(beforeLast))
         || (after !== 'weight' && after !== 'gram' && TOTAL_AFTER_A_WEIGHT.has(b1)))) return 'other';
     if (PRICE_BEFORE.has(b1)) return after === 'rate-kg' ? after : 'rate';
     if (TOTAL_BEFORE.has(b1)) return 'other';
@@ -251,7 +255,7 @@ function numberKind(rest, groups, gi) {
     if (POSSESSIVE.has(b1) && GRAM_UNITS.has(b2)) return 'other';
     if (POSSESSIVE.has(b1) && WEIGHT_UNITS.has(b2)) return gi > 0 && groups[gi - 1].end === g.start - 2 ? 'other' : 'rate-kg';
     // "60 rupaye ka" with no kilo word: maybe a rate, maybe what to buy for ₹60
-    if (after === 'rate' && possessive) return 'rate-of';
+    if (after === 'rate' && possessive && rupees) return 'rate-of';
     return after;
 }
 
