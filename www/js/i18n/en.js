@@ -2556,5 +2556,7 @@ export default {
     'msg.outstanding.party_pay_changed': "A bill's due changed meanwhile. Nothing was recorded; please try again.",
     'msg.outstanding.party_pay_done': "✓ {total} recorded on {count} bills",
     'ui.outstanding.party_pay_oldest': "Only the oldest {count} of {all} bills are listed; receive or pay again for the rest.",
-    'ui.outstanding.party_pay_not_placed': "{amount} is not placed yet: change a bill's part"
+    'ui.outstanding.party_pay_not_placed': "{amount} is not placed yet: change a bill's part",
+    'msg.outstanding.party_pay_parts_more': "The parts add up to {total}: {diff} more than the amount {amount}. Change the parts or the amount.",
+    'msg.outstanding.party_pay_parts_less': "The parts add up to {total}: {diff} less than the amount {amount}. Change the parts or the amount."
 };

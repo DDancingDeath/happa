@@ -15,7 +15,6 @@
 
 import { isActiveBill, isOpeningRecord, outstandingDue, readPayment, round2 } from './money.js';
 import { parseAnyBillDate } from './dates.js';
-import { hasPaise, typedAmount } from './calc/billing.js';
 
 /** Bill type → collection key. */
 export const BILL_COLLECTIONS = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
@@ -246,6 +245,29 @@ export function duePaymentUpdate(fresh, { cash, online }, entry, tolerance = 0.0
     return { ok: true, update, due: newDue };
 }
 
+/** When a bill was saved for oldest-first order: its numeric `timestamp`, else its date (0 when neither). */
+function orderTime(bill) {
+    const n = Number(bill?.timestamp);
+    if (Number.isFinite(n) && n > 0) return n;
+    const d = parseAnyBillDate(bill?.date);
+    return d ? d.getTime() : 0;
+}
+
+/**
+ * DUE-ALL / DUE-FIFO order, oldest first: numeric `timestamp`, else the bill date
+ * (`parseAnyBillDate`), then the document id, so equal times always sort the same.
+ * @param {Object} a
+ * @param {Object} b
+ * @returns {number}
+ */
+export function billAgeOrder(a, b) {
+    const d = orderTime(a) - orderTime(b);
+    if (d) return d;
+    const ia = String(a?.docId ?? a?.id ?? '');
+    const ib = String(b?.docId ?? b?.id ?? '');
+    return ia < ib ? -1 : ia > ib ? 1 : 0;
+}
+
 /**
  * DUE-ALL: what "Complete all due" settles for one party: every open bill whose
  * party is `partyKey` (by `keyOf`, e.g. aging.js normalizePartyName) with its
@@ -260,7 +282,7 @@ export function partyDues(bills, partyKey, keyOf) {
         .filter(b => partyKey && keyOf(b?.customerName) === partyKey)
         .map(bill => ({ bill, due: outstandingDue(bill) }))
         .filter(x => x.due > 0)
-        .sort((a, b) => (Number(a.bill.timestamp) || 0) - (Number(b.bill.timestamp) || 0));
+        .sort((a, b) => billAgeOrder(a.bill, b.bill));
     return { bills: list, total: round2(list.reduce((sum, x) => sum + x.due, 0)) };
 }
 
@@ -282,65 +304,4 @@ export function settleDueUpdate(fresh, method, entry, tolerance = 0.01, confirme
     const parts = method === 'online' ? { cash: 0, online: due } : { cash: due, online: 0 };
     const { update } = duePaymentUpdate(fresh, parts, { ...entry, amount: due, ...parts }, tolerance);
     return { amount: due, update };
-}
-
-/**
- * DUE-FIFO: one part of a party payment as saved. A part that pays its bill's whole
- * due keeps that due's paise (an old due saved before #129); any other part is whole
- * rupees (ROUNDING.payment), as "Record payment" saves it (DUE-CHECK).
- * @param {number} part
- * @param {number} due
- * @param {number} [tolerance=0.01]
- * @returns {number}
- */
-export function partAsSaved(part, due, tolerance = 0.01) {
-    const p = round2(part);
-    const d = round2(due);
-    if (hasPaise(d) && Math.abs(p - d) <= tolerance) return d;
-    return typedAmount(p);
-}
-
-/**
- * DUE-FIFO: one payment from a party spread over their open bills, oldest first
- * (#152): the amount (whole rupees) fills each bill up to its due until it runs
- * out, so only the last bill reached can be part-paid, with the whole rupees left
- * (never above its due). What is not allocated is `left`.
- * @param {number[]} dues - BILL-DUE per bill, oldest first
- * @param {number} amount
- * @returns {{amounts: number[], allocated: number, left: number}}
- */
-export function allocateOldestFirst(dues, amount) {
-    let rest = typedAmount(Math.max(0, Number(amount) || 0));
-    const amounts = (dues || []).map(d => {
-        const due = round2(Math.max(0, Number(d) || 0));
-        // Never more than was received: a part-paid bill gets the whole rupees left.
-        const part = rest >= due ? due : Math.min(Math.floor(rest + 0.001), Math.floor(due));
-        rest = round2(rest - part);
-        return part;
-    });
-    return { amounts, allocated: round2(amounts.reduce((s, a) => s + a, 0)), left: rest };
-}
-
-/**
- * DUE-FIFO: checks a (possibly hand-edited) split of one payment: every part is
- * a number from 0 to that bill's due (+ tolerance), saved as partAsSaved, and at
- * least one is above 0.
- * @param {number[]} dues
- * @param {Array<number|string>} parts - per bill, same order
- * @param {number} [tolerance=0.01]
- * @returns {{ok: true, amounts: number[], total: number}|{ok: false, error: 'invalid'|'exceeds-due'|'empty', index?: number}}
- */
-export function checkAllocation(dues, parts, tolerance = 0.01) {
-    const amounts = [];
-    for (let i = 0; i < dues.length; i++) {
-        const raw = parts[i];
-        const n = raw === '' || raw === null || raw === undefined ? 0 : Number(raw);
-        if (!Number.isFinite(n) || n < 0) return { ok: false, error: 'invalid', index: i };
-        const a = partAsSaved(n, dues[i], tolerance);
-        if (a > round2(dues[i]) + tolerance) return { ok: false, error: 'exceeds-due', index: i };
-        amounts.push(a);
-    }
-    const total = round2(amounts.reduce((s, a) => s + a, 0));
-    if (!(total > 0)) return { ok: false, error: 'empty' };
-    return { ok: true, amounts, total };
 }

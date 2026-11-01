@@ -14,8 +14,8 @@ import { Helpers } from '../utils/helpers.js';
 import { AuditService } from '../services/audit.js';
 import { activeBills, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2, sumMoney } from '../utils/money.js';
 import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
-import { allocateOldestFirst, checkAllocation, directionFor, duePaymentUpdate, partyDues, settleDueUpdate } from '../utils/due-payments.js';
-import { hasPaise, validateDuePayment } from '../utils/calc/billing.js';
+import { directionFor, duePaymentUpdate, partyDues, settleDueUpdate } from '../utils/due-payments.js';
+import { allocateOldestFirst, checkAllocation, hasPaise, validateDuePayment } from '../utils/calc/billing.js';
 import { CashManagementManager } from './cash-management.js';
 import { PrinterService } from '../services/printer.js';
 import { openExternal } from '../utils/open-external.js';
@@ -972,7 +972,7 @@ export class OutstandingManager {
                 <div style="margin-bottom:8px"><strong>${esc(name)}</strong><br>${esc(t('ui.outstanding.party_pay_summary', { count: chosen.length, total: paiseText(sumMoney(chosen, x => x.due)) }))}</div>
                 ${chosen.length < all ? `<div style="margin-bottom:8px">${esc(t('ui.outstanding.party_pay_oldest', { count: chosen.length, all }))}</div>` : ''}
                 <label style="display:block;margin-bottom:6px">${esc(t(isPay ? 'ui.outstanding.party_pay_amount_paid' : 'ui.outstanding.party_pay_amount_received'))}
-                    <input type="number" inputmode="decimal" min="0" step="0.01" id="ppAmount" oninput="window.app.outstanding.partyPayFill()" style="width:100%"></label>
+                    <input type="number" inputmode="decimal" min="0" step="1" id="ppAmount" required oninput="window.app.outstanding.partyPayFill()" style="width:100%"></label>
                 <div style="margin:4px 0;font-weight:600">${esc(t('ui.outstanding.party_pay_how'))}</div>
                 <label style="display:block;margin:2px 0"><input type="radio" name="partyPayMethod" value="cash"> ${esc(t('ui.wholesale.complete_all_due_cash'))}</label>
                 <label style="display:block;margin:2px 0"><input type="radio" name="partyPayMethod" value="online"> ${esc(t('ui.wholesale.complete_all_due_online'))}</label>
@@ -986,9 +986,9 @@ export class OutstandingManager {
         const ok = await UIManager.showModalWithHtml(html, t(isPay ? 'ui.outstanding.party_pay_title_pay' : 'ui.outstanding.party_pay_title_receive'), true);
         if (!ok) return;
         const method = document.querySelector('input[name="partyPayMethod"]:checked')?.value || '';
-        const check = checkAllocation(dues, chosen.map((_, i) => document.getElementById(`ppPart-${i}`)?.value ?? ''), PAYMENT_TOLERANCE);
+        const check = this.partyPayCheck();
         if (!check.ok) {
-            UIManager.showToast(t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'msg.common.enter_valid_payment_amount'));
+            UIManager.showToast(this.partyPayProblem(check));
             return;
         }
         if (!method) {
@@ -1003,26 +1003,42 @@ export class OutstandingManager {
     /** Dialog: the amount typed fills the bills oldest first (DUE-FIFO). */
     static partyPayFill() {
         const dues = this.partyPay?.dues || [];
-        const { amounts, left } = allocateOldestFirst(dues, document.getElementById('ppAmount')?.value);
+        const { amounts } = allocateOldestFirst(dues, document.getElementById('ppAmount')?.value);
         amounts.forEach((a, i) => {
             const el = document.getElementById(`ppPart-${i}`);
             if (el) el.value = a > 0 ? String(a) : '';
         });
-        // Above all the dues, or paise that only fit a part-paid bill by hand
-        const allFilled = amounts.every((a, i) => a >= dues[i]);
-        this.partyPaySum(left, allFilled);
+        this.partyPaySum();
+    }
+
+    /** The dialog's amount and parts checked against each other (DUE-FIFO, checkAllocation). */
+    static partyPayCheck() {
+        const dues = this.partyPay?.dues || [];
+        return checkAllocation(dues, dues.map((_, i) => document.getElementById(`ppPart-${i}`)?.value ?? ''),
+            document.getElementById('ppAmount')?.value ?? '', PAYMENT_TOLERANCE);
+    }
+
+    /** What is wrong with the amount or the parts, in the app language. */
+    static partyPayProblem(check) {
+        if (check.error === 'no-amount') return t('ui.outstanding.party_pay_enter');
+        if (check.error === 'exceeds-due') return t('msg.common.payment_amount_exceeds_outstanding_amount');
+        if (check.error === 'mismatch') {
+            return t(check.diff > 0 ? 'msg.outstanding.party_pay_parts_more' : 'msg.outstanding.party_pay_parts_less', {
+                total: paiseText(check.total), amount: paiseText(check.received), diff: paiseText(check.gap)
+            });
+        }
+        return t('msg.common.enter_valid_payment_amount');
     }
 
     /** Dialog: the total of the parts (or what is wrong with them). */
-    static partyPaySum(left = 0, allFilled = true) {
+    static partyPaySum() {
         const el = document.getElementById('ppSum');
-        const dues = this.partyPay?.dues || [];
         if (!el) return;
-        const check = checkAllocation(dues, dues.map((_, i) => document.getElementById(`ppPart-${i}`)?.value ?? ''), PAYMENT_TOLERANCE);
+        const check = this.partyPayCheck();
         el.textContent = check.ok
             ? t('ui.outstanding.party_pay_total', { total: paiseText(check.total) })
-                + (left > 0 ? ` · ${t(allFilled ? 'ui.outstanding.party_pay_more_than_due' : 'ui.outstanding.party_pay_not_placed', { amount: paiseText(left) })}` : '')
-            : t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'ui.outstanding.party_pay_enter');
+                + (check.excess > 0 ? ` · ${t(check.allFull ? 'ui.outstanding.party_pay_more_than_due' : 'ui.outstanding.party_pay_not_placed', { amount: paiseText(check.excess) })}` : '')
+            : this.partyPayProblem(check);
     }
 
     /**

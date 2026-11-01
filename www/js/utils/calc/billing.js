@@ -505,6 +505,82 @@ export function nextBillNumberHint(prefix, bills, now = new Date()) {
     return `${prefix}${day}-${String(highest + 1).padStart(3, '0')}`;
 }
 
+/**
+ * DUE-FIFO: one part of a party payment as saved. A part that pays its bill's whole
+ * due keeps that due's paise (an old due saved before #129); any other part is whole
+ * rupees (ROUNDING.payment), as "Record payment" saves it (DUE-CHECK).
+ * @param {number} part
+ * @param {number} due
+ * @param {number} [tolerance=0.01]
+ * @returns {number}
+ */
+export function partAsSaved(part, due, tolerance = 0.01) {
+    const p = round2(part);
+    const d = round2(due);
+    if (hasPaise(d) && Math.abs(p - d) <= tolerance) return d;
+    return typedAmount(p);
+}
+
+/**
+ * DUE-FIFO: one payment from a party spread over their open bills, oldest first
+ * (#152): the amount (whole rupees) fills each bill up to its due until it runs
+ * out, so only the last bill reached can be part-paid, with the whole rupees left
+ * (never above its due). What is not allocated is `left`.
+ * @param {number[]} dues - BILL-DUE per bill, oldest first
+ * @param {number} amount
+ * @returns {{amounts: number[], allocated: number, left: number}}
+ */
+export function allocateOldestFirst(dues, amount) {
+    let rest = typedAmount(Math.max(0, Number(amount) || 0));
+    const amounts = (dues || []).map(d => {
+        const due = round2(Math.max(0, Number(d) || 0));
+        // Never more than was received: a part-paid bill gets the whole rupees left.
+        const part = rest >= due ? due : Math.min(Math.floor(rest + 0.001), Math.floor(due));
+        rest = round2(rest - part);
+        return part;
+    });
+    return { amounts, allocated: round2(amounts.reduce((s, a) => s + a, 0)), left: rest };
+}
+
+/**
+ * DUE-FIFO: checks the parts of one party payment against the amount received.
+ * The amount is required (whole rupees, ROUNDING.payment). Every part is a number
+ * from 0 to its bill's due (+ tolerance), saved as partAsSaved. The parts must add
+ * up to the amount, with two exceptions only: (a) the amount is more than all the
+ * dues and every bill is paid in full (Σ parts = Σ dues; the rest is `excess`, not
+ * recorded); (b) an old due with paise is paid in full, so Σ parts differs from the
+ * whole-rupee amount by those paise only (less than ₹1).
+ * @param {number[]} dues
+ * @param {Array<number|string>} parts - per bill, same order
+ * @param {number|string} amount - the amount typed as received / paid
+ * @param {number} [tolerance=0.01]
+ * @returns {{ok: true, amounts: number[], total: number, received: number, excess: number, allFull: boolean}
+ *   |{ok: false, error: 'no-amount'|'invalid'|'exceeds-due'|'empty'|'mismatch', index?: number, total?: number, received?: number, diff?: number, gap?: number}}
+ */
+export function checkAllocation(dues, parts, amount, tolerance = 0.01) {
+    const rawAmount = amount === '' || amount === null || amount === undefined ? NaN : Number(amount);
+    const received = Number.isFinite(rawAmount) && rawAmount > 0 ? typedAmount(rawAmount) : 0;
+    if (!(received > 0)) return { ok: false, error: 'no-amount' };
+    const amounts = [];
+    for (let i = 0; i < dues.length; i++) {
+        const raw = parts[i];
+        const n = raw === '' || raw === null || raw === undefined ? 0 : Number(raw);
+        if (!Number.isFinite(n) || n < 0) return { ok: false, error: 'invalid', index: i };
+        const a = partAsSaved(n, dues[i], tolerance);
+        if (a > round2(dues[i]) + tolerance) return { ok: false, error: 'exceeds-due', index: i };
+        amounts.push(a);
+    }
+    const total = round2(amounts.reduce((s, a) => s + a, 0));
+    if (!(total > 0)) return { ok: false, error: 'empty' };
+    const diff = round2(total - received);
+    const allFull = amounts.every((a, i) => a >= round2(dues[i]) - tolerance);
+    const ok = Math.abs(diff) <= tolerance
+        || (allFull && diff < 0)
+        || (Math.abs(diff) < 1 && hasPaise(total));
+    if (!ok) return { ok: false, error: 'mismatch', total, received, diff, gap: Math.abs(diff) };
+    return { ok: true, amounts, total, received, excess: round2(Math.max(0, received - total)), allFull };
+}
+
 /** Function → its spec IDs in docs/calculations.md. */
 export const BILLING_SPEC = Object.freeze({
     sumWeights: 'BF-KG',
@@ -532,6 +608,9 @@ export const BILLING_SPEC = Object.freeze({
     restInDue: 'BF-FILL',
     validatePaymentSplit: 'BF-SPLIT',
     validateDuePayment: 'DUE-CHECK',
+    partAsSaved: 'DUE-FIFO',
+    allocateOldestFirst: 'DUE-FIFO',
+    checkAllocation: 'DUE-FIFO',
     autoSaveSummary: 'BF-RECOVER',
     nextBillNumberHint: 'BF-NO'
 });

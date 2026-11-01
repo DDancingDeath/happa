@@ -27,7 +27,8 @@ import { AuditService } from '../services/audit.js';
 import { OutstandingManager } from '../modules/outstanding.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
-import { allocateOldestFirst, checkAllocation, dueEvents, sumDueEvents } from '../utils/due-payments.js';
+import { billAgeOrder, dueEvents, partyDues, sumDueEvents } from '../utils/due-payments.js';
+import { allocateOldestFirst, checkAllocation } from '../utils/calc/billing.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { outstandingDue } from '../utils/money.js';
 
@@ -72,14 +73,50 @@ describe('DUE-FIFO allocation', () => {
         expect(allocateOldestFirst([100], 'abc')).toEqual({ amounts: [0], allocated: 0, left: 0 });
     });
 
-    test('hand-edited parts: each from 0 to its due, at least one above 0', () => {
-        expect(checkAllocation([100, 50], ['40', ''])).toEqual({ ok: true, amounts: [40, 0], total: 40 });
-        expect(checkAllocation([100, 50], ['40', '50.004'])).toEqual({ ok: true, amounts: [40, 50], total: 90 });
-        expect(checkAllocation([100, 250.5], ['99.6', '250.5'])).toEqual({ ok: true, amounts: [100, 250.5], total: 350.5 });
-        expect(checkAllocation([100, 250.5], ['', '120.4'])).toEqual({ ok: true, amounts: [0, 120], total: 120 });
-        expect(checkAllocation([100, 50], ['40', '51'])).toEqual({ ok: false, error: 'exceeds-due', index: 1 });
-        expect(checkAllocation([100, 50], ['-1', '0'])).toEqual({ ok: false, error: 'invalid', index: 0 });
-        expect(checkAllocation([100, 50], ['', '0'])).toEqual({ ok: false, error: 'empty' });
+    test('the parts must add up to the amount received', () => {
+        const ok = (amounts, total, received, excess = 0, allFull = false) => ({ ok: true, amounts, total, received, excess, allFull });
+        expect(checkAllocation([100, 50], ['40', ''], 40)).toEqual(ok([40, 0], 40, 40));
+        expect(checkAllocation([100, 50], ['40', '50.004'], '90')).toEqual(ok([40, 50], 90, 90));
+        expect(checkAllocation([100, 250.5], ['', '120.4'], 120)).toEqual(ok([0, 120], 120, 120));
+        // Parts edited up, or down, so they no longer match: blocked, with the difference
+        expect(checkAllocation([100, 50], ['100', '50'], 100)).toEqual({ ok: false, error: 'mismatch', total: 150, received: 100, diff: 50, gap: 50 });
+        expect(checkAllocation([100, 50], ['40', ''], 100)).toEqual({ ok: false, error: 'mismatch', total: 40, received: 100, diff: -60, gap: 60 });
+        // The amount box is required
+        expect(checkAllocation([100, 50], ['40', ''], '')).toEqual({ ok: false, error: 'no-amount' });
+        expect(checkAllocation([100, 50], ['40', ''], 0)).toEqual({ ok: false, error: 'no-amount' });
+        expect(checkAllocation([100, 50], ['40', ''], 'abc')).toEqual({ ok: false, error: 'no-amount' });
+        expect(checkAllocation([100, 50], ['40', '51'], 91)).toEqual({ ok: false, error: 'exceeds-due', index: 1 });
+        expect(checkAllocation([100, 50], ['-1', '0'], 10)).toEqual({ ok: false, error: 'invalid', index: 0 });
+        expect(checkAllocation([100, 50], ['', '0'], 10)).toEqual({ ok: false, error: 'empty' });
+    });
+
+    test('only two exceptions: more than all the dues with every bill paid in full, and an old due with paise', () => {
+        // (a) over-payment: every bill to its due, the rest is not recorded
+        expect(checkAllocation([100, 50], ['100', '50'], 200)).toEqual({ ok: true, amounts: [100, 50], total: 150, received: 200, excess: 50, allFull: true });
+        // …but not when a bill is left part-paid
+        expect(checkAllocation([100, 50], ['100', '40'], 200).error).toBe('mismatch');
+        // (b) an old ₹100.50 due paid in full: the parts carry its 50 paise
+        expect(checkAllocation([100.5, 250], ['100.5', '49'], 150)).toEqual({ ok: true, amounts: [100.5, 49], total: 149.5, received: 150, excess: 0.5, allFull: false });
+        expect(checkAllocation([100.5], ['100.5'], 100)).toMatchObject({ ok: true, total: 100.5, received: 100, excess: 0 });
+        // …but never a rupee or more off
+        expect(checkAllocation([100.5, 250], ['100.5', '51'], 150).error).toBe('mismatch');
+        // Whatever the fill gives always passes
+        [[[100, 250.5, 80], 300], [[100.5, 250], 150], [[100, 50], 500], [[7.25, 3], 9]].forEach(([dues, amount]) => {
+            const { amounts } = allocateOldestFirst(dues, amount);
+            expect(checkAllocation(dues, amounts.map(String), amount).ok).toBe(true);
+        });
+    });
+
+    test('oldest first: numeric time, else the bill date, then the document id', () => {
+        const a = { id: 'b', timestamp: 2000 };
+        const b = { id: 'a', timestamp: 2000 };
+        const c = { id: 'z', timestamp: 'not a number', date: '01/01/1970' };
+        const d = { id: 'y', date: '15/10/2026' };
+        const e = { id: 'x', timestamp: new Date(2026, 9, 1).getTime() };
+        expect([a, b, c, d, e].sort(billAgeOrder).map(x => x.id)).toEqual(['z', 'a', 'b', 'x', 'y']);
+        const bills = [bill('r2', 'Ravi', 10, 5), bill('r1', 'Ravi', 10, 5), bill('r0', 'Ravi', 10, undefined, { date: '01/01/2020' })];
+        // Same time: by document id; no time: the bill date (2020 is after 5 ms past 1970)
+        expect(partyDues(bills, normalizePartyName('Ravi'), normalizePartyName).bills.map(x => x.bill.id)).toEqual(['r1', 'r2', 'r0']);
     });
 });
 
@@ -179,6 +216,23 @@ describe('Receive payment dialog', () => {
         answer(100, 'cash', () => { document.getElementById('ppPart-0').value = '101'; });
         await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
         expect(updateBillsInTransaction).not.toHaveBeenCalled();
+    });
+
+    test('parts edited so they no longer add up to the amount, or no amount: nothing is written', async () => {
+        const server = { r1: bill('r1', 'Ravi', 100, 1), r2: bill('r2', 'Ravi', 250, 2) };
+        serverTx(server);
+        answer(100, 'cash', () => { document.getElementById('ppPart-1').value = '250'; OutstandingManager.partyPaySum(); });
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('The parts add up to ₹350: ₹250 more than the amount ₹100. Change the parts or the amount.');
+        expect(document.getElementById('ppSum').textContent).toContain('₹250 more than the amount');
+        answer('', 'cash', () => {
+            document.getElementById('ppPart-0').value = '100';
+            document.getElementById('ppPart-1').value = '250';
+        });
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Enter the amount');
+        expect(updateBillsInTransaction).not.toHaveBeenCalled();
+        expect(server.r1.payments).toEqual([]);
     });
 
     test('kept retry ids are forgotten once that payment is on the bills, so a new equal payment is saved', async () => {

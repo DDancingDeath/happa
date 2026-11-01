@@ -60,7 +60,9 @@ setting is missing or invalid.
   like any payment (its own `payments[]` entry with `at` = now, #184), so it adds no new right.
   **"Receive payment" / "Pay"** on a party (Outstanding and Wholesale › Outstanding: one amount
   spread over the party's bills, oldest first, #152) follows the same rule: owner and managers
-  (app), each bill's write an ordinary payment for the rules.
+  (app only), each bill's write an ordinary payment for the rules. The rules can't tell a bulk
+  payment from single ones (a member may record the same payments one by one), so a rules-level
+  check would add no protection; the owner/manager limit is the app's (#152).
   The same days limit how far back a new expense may be dated (#118): 2 = today, yesterday
   and the day before; 0 = today only (`utils/expense-entry.js`; the rules check it with 3
   more days for a phone that saved offline, `expenseDayInWindow`, on every non-owner expense
