@@ -8172,7 +8172,7 @@ body.dark-mode .notif-panel-actions {
 
 /* Statements */
 .st-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.st-list[hidden], .st-view[hidden] { display: none; }
+.st-list[hidden], .st-view[hidden], .st-item[hidden], .st-actions[hidden] { display: none; }
 .st-item {
     display: grid;
     grid-template-columns: 36px 1fr 20px;

@@ -17,3 +17,6 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [settin
   its bill, item or cash day); tap "Mark OK" or "Mark fixed" on each.
 - **Diagnostics › Number checks**: the always-true checks run on this phone's data
   (bill split, payments, dates, dues, drawer, stock).
+- **Diagnostics › Audit logs**: CSV (in English) or Print / PDF of the entries listed;
+  **Errors**: Export report (the errors with names, numbers and secrets removed, plus this
+  phone's status) to send to whoever fixes the app. Both are written in the audit log.
