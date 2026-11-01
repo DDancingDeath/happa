@@ -27,7 +27,7 @@ import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpen
 import { toLocalISODate } from '../utils/dates.js';
 import { personalDayKey } from '../utils/personal-expenses.js';
 import { sessionForDate } from '../utils/cash-session.js';
-import { expenseTemplates, expenseTotals, expenseTypes, filterExpenses, isExpenseSearch } from '../utils/expense-list.js';
+import { expenseTemplates, expenseTotals, expenseTypes, filterExpenses, isExpenseSearch, sameExpenseType } from '../utils/expense-list.js';
 
 /** Expense save / print buttons, disabled while one is being saved (#95). */
 const EXPENSE_BUTTONS = '[data-expense-save]';
@@ -449,9 +449,13 @@ export class ExpensesManager {
         if (filter) {
             const want = this.search[category].type;
             const types = expenseTypes(counted);
-            if (want && !types.some(type => type.toLowerCase() === want.toLowerCase())) types.unshift(want);
+            const picked = want ? types.find(type => sameExpenseType(type, want)) : '';
+            if (want && !picked) types.unshift(want);
+            // The list's spelling of the picked type (a newer entry may spell it in another case)
+            if (picked) this.search[category].type = picked;
+            const selected = picked || want;
             filter.innerHTML = `<option value="">${tx('ui.expenses.all_types')}</option>`
-                + types.map(type => `<option value="${Helpers.escapeHtml(type)}"${type === want ? ' selected' : ''}>${Helpers.escapeHtml(type)}</option>`).join('');
+                + types.map(type => `<option value="${Helpers.escapeHtml(type)}"${type === selected ? ' selected' : ''}>${Helpers.escapeHtml(type)}</option>`).join('');
         }
         const chips = formField(category, 'Templates');
         if (chips) {

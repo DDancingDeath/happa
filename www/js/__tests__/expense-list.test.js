@@ -103,6 +103,16 @@ describe('Expenses page: search, templates and totals (#90)', () => {
         expect(list().textContent).toContain('No expenses match this search');
     });
 
+    test('the picked type stays selected when a newer entry spells it in another case', () => {
+        const filter = document.getElementById('businessExpenseTypeFilter');
+        filter.value = 'Labour';
+        ExpensesManager.onSearch('business');
+        AppState.expensesHistory = [{ id: 'n', category: 'business', type: 'LABOUR', amount: 50, date: '31/10/2026, 11:00:00 am', timestamp: NOW.getTime() }, ...AppState.expensesHistory];
+        ExpensesManager.renderexpensesHistory();
+        expect(document.getElementById('businessExpenseTypeFilter').value).toBe('LABOUR');
+        expect(cards()).toBe(2);
+    });
+
     test('a template chip fills type, name and amount; nothing is saved', () => {
         const save = jest.spyOn(FirebaseService, 'startSaveExpense');
         const chips = document.querySelectorAll('#businessExpenseTemplates .expense-template-chip');

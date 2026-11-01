@@ -26,6 +26,16 @@ const amountOf = (e) => Number(e?.amount) || 0;
 const typeOf = (e) => String(e?.type ?? '').replace(/\s+/g, ' ').trim();
 
 /**
+ * Whether two expense types are the same type (case and spaces ignored).
+ * @param {*} a
+ * @param {*} b
+ * @returns {boolean}
+ */
+export function sameExpenseType(a, b) {
+    return fold(a) === fold(b);
+}
+
+/**
  * Distinct expense types of a list (case-insensitive), A–Z, for the type filter.
  * @param {Array<Expense>} expenses
  * @returns {Array<string>}
