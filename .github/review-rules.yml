@@ -214,7 +214,7 @@ rules:
     severity: warn
     learned_at: 2026-10-25
   - id: inline-rupee-format
-    pattern: "₹\\$\\{|['\"`]₹['\"`]\\s*\\+"
+    pattern: "₹\\s*\\$\\{|₹\\s*['\"`]\\s*\\+"
     applies_to: ["www/js/**/*.js", "www/*.js"]
     excludes: ["www/js/__tests__/**", "www/js/utils/money.js"]
     message: |

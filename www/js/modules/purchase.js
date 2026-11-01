@@ -117,14 +117,14 @@ const PurchaseManager = {
         
         const total = sumWeights(weights);
         
-        if (totalWeightsSpan) totalWeightsSpan.textContent = total.toFixed(1);
+        if (totalWeightsSpan) totalWeightsSpan.textContent = formatKg(total);
         if (totalPacketsSpan) totalPacketsSpan.textContent = weights.length;
         
         container.innerHTML = `
             <div class="weights-compact-list">
                 ${weights.map((w, i) => `
                     <div class="weight-chip">
-                        <span>${w.toFixed(1)}</span>
+                        <span>${formatKg(w)}</span>
                         <button class="weight-chip-remove" onclick="window.app.purchase.removeWeight(${i})">×</button>
                     </div>
                 `).join('')}
@@ -267,7 +267,7 @@ const PurchaseManager = {
                     const weightLines = [];
                     for (let i = 0; i < item.weights.length; i += weightsPerLine) {
                         const lineWeights = item.weights.slice(i, i + weightsPerLine);
-                        weightLines.push(lineWeights.map(w => parseFloat(w).toFixed(1)).join('&nbsp;&nbsp;'));
+                        weightLines.push(lineWeights.map(w => formatKg(w)).join('&nbsp;&nbsp;'));
                     }
                     
                     return `

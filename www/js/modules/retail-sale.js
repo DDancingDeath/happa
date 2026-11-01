@@ -115,14 +115,14 @@ const RetailSaleManager = {
         
         const total = sumWeights(saleWeights);
         
-        if (totalWeightsSpan) totalWeightsSpan.textContent = total.toFixed(1);
+        if (totalWeightsSpan) totalWeightsSpan.textContent = formatKg(total);
         if (totalPacketsSpan) totalPacketsSpan.textContent = saleWeights.length;
         
         container.innerHTML = `
             <div class="weights-compact-list">
                 ${saleWeights.map((w, i) => `
                     <div class="weight-chip">
-                        <span>${w.toFixed(1)}</span>
+                        <span>${formatKg(w)}</span>
                         <button class="weight-chip-remove" onclick="window.app.retailSale.removeSaleWeight(${i})">×</button>
                     </div>
                 `).join('')}
@@ -269,7 +269,7 @@ const RetailSaleManager = {
                     const weightLines = [];
                     for (let i = 0; i < item.weights.length; i += weightsPerLine) {
                         const lineWeights = item.weights.slice(i, i + weightsPerLine);
-                        weightLines.push(lineWeights.map(w => parseFloat(w).toFixed(1)).join('&nbsp;&nbsp;'));
+                        weightLines.push(lineWeights.map(w => formatKg(w)).join('&nbsp;&nbsp;'));
                     }
                     
                     return `
@@ -384,7 +384,7 @@ const RetailSaleManager = {
         const runningTotalEl = document.getElementById('saleRunningTotal');
         const packetCountEl = document.getElementById('salePacketCount');
         
-        if (runningTotalEl) runningTotalEl.textContent = totalQty.toFixed(1);
+        if (runningTotalEl) runningTotalEl.textContent = formatKg(totalQty);
         if (packetCountEl) packetCountEl.textContent = packetCount;
     },
 

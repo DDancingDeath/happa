@@ -59,6 +59,8 @@ describe('review-rules.yml', () => {
         ['bill-total-or-chain', 'www/js/services/printer.js', 'const s = billData.billTotal || billData.saleTotal || 0;', 'const s = billLineTotal(billData, true);'],
         ['inline-rupee-format', 'www/js/modules/day.js', 'el.textContent = `₹${total}`;', 'el.textContent = formatRupees(total);'],
         ['inline-rupee-format', 'www/js/services/printer.js', "const text = '₹' + Math.round(due);", "const text = formatRupees(due);"],
+        ['inline-rupee-format', 'www/js/modules/day.js', "el.textContent = 'Total: ₹' + total;", "el.textContent = t('ui.x', { amount: formatAmount(total) });"],
+        ['inline-rupee-format', 'www/js/modules/day.js', 'el.textContent = `₹ ${total}`;', "el.textContent = formatRupees(total);"],
     ];
     test.each(cases)('%s flags the mistake and allows the fix', (id, file, bad, good) => {
         expect(byId[id]).toBeDefined();

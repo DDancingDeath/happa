@@ -322,7 +322,7 @@ class BluetoothPrinterManager {
                 
                 y = utils.drawLeft(`${displayName} (${this._tn('ui.print.packets_kg', item.weights.length, { kg: formatKg(item.qty) })})`, y, { size: 18, weight: 'bold' });
                 
-                const weightsText = item.weights.map(w => parseFloat(w).toFixed(1)).join('  ');
+                const weightsText = item.weights.map(w => formatKg(w)).join('  ');
                 const maxWidth = 380;
                 ctx.font = '17px Arial';
                 const words = weightsText.split(' ');
@@ -473,7 +473,7 @@ class BluetoothPrinterManager {
             ctx.textAlign = 'left';
             ctx.fillText(displayName.substring(0, 11), config.columns.item, y);
             ctx.fillText(item.rate.toString(), config.columns.rate, y);
-            ctx.fillText((item.qty || 0).toFixed(1), config.columns.quantity, y);
+            ctx.fillText(formatKg(item.qty), config.columns.quantity, y);
             ctx.fillText(Math.round(item.total).toString(), config.columns.total, y);
             y += config.spacing.line;
         });

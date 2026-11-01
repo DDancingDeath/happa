@@ -37,7 +37,7 @@ import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
 import { t, tn } from '../i18n/index.js';
-import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment, formatRupees } from '../utils/money.js';
+import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment, formatRupees, formatAmount, formatKg } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -487,10 +487,10 @@ export class HistoryManager {
         bill.items.forEach(item => {
             // Only show weight breakdown if there are 2 or more packets
             if (item.weights && item.weights.length >= 2) {
-                const weightsDisplay = item.weights.map(w => parseFloat(w).toFixed(1)).join('&nbsp;&nbsp;');
+                const weightsDisplay = item.weights.map(w => formatKg(w)).join('&nbsp;&nbsp;');
                 weightBreakdownHTML += `
                     <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid ${billColor};">
-                        <div style="font-weight: 600; color: #495057; margin-bottom: 6px;">${Helpers.escapeHtml(item.name)} (${Helpers.escapeHtml(tn('ui.history.packets_kg', item.weights.length, { packets: item.weights.length, kg: (item.qty || 0).toFixed(1) }))})</div>
+                        <div style="font-weight: 600; color: #495057; margin-bottom: 6px;">${Helpers.escapeHtml(item.name)} (${Helpers.escapeHtml(tn('ui.history.packets_kg', item.weights.length, { packets: item.weights.length, kg: formatKg(item.qty) }))})</div>
                         <div style="color: #6c757d; font-size: 14px; white-space: pre;">${weightsDisplay}</div>
                     </div>
                 `;
@@ -501,9 +501,9 @@ export class HistoryManager {
         const itemsHTML = bill.items.map(item => `
             <tr>
                 <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb;">${Helpers.escapeHtml(item.name)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${Helpers.escapeHtml(item.rate)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${Number(item.qty || item.quantity || 0).toFixed(1)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${Helpers.escapeHtml(item.total)}</strong></td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${formatAmount(item.rate, { decimals: 2 })}</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${formatKg(item.qty || item.quantity)}</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${formatAmount(item.total, { exact: true })}</strong></td>
             </tr>
         `).join('');
         

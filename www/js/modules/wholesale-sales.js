@@ -169,8 +169,8 @@ export class WholesaleSalesManager {
             sellRateEl.value = "";
             return;
         } else {
-            availableStockEl.textContent = (stockData.quantity || 0).toFixed(2);
-            avgRateEl.textContent = (stockData.rate || 0).toFixed(2);
+            availableStockEl.textContent = formatKg(stockData.quantity);
+            avgRateEl.textContent = formatAmount(stockData.rate, { decimals: 2 });
         }
         
         // Check if item has predefined wholesale rates

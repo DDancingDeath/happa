@@ -377,7 +377,7 @@ describe('wholesale item stats hide their placeholders until an item is picked (
         document.getElementById('sellItem').value = 'Rice';
         WholesaleSalesManager.loadItemDetails();
         expect(box.hidden).toBe(false);
-        expect(document.getElementById('availableStock').textContent).toBe('20.00');
+        expect(document.getElementById('availableStock').textContent).toBe('20');
         expect(document.getElementById('availableStockUnit').hidden).toBe(false);
         expect(document.getElementById('avgPurchaseRateRow').hidden).toBe(false);
     });

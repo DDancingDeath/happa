@@ -113,7 +113,7 @@ describe('live marks', () => {
         const rows = document.querySelectorAll('#testTable tbody tr');
         expect(rows[0].classList.contains('bill-check-warn')).toBe(true);
         expect(rows[1].className).toBe('bill-check-row');
-        expect(rows[1].textContent).toContain('⚠️ Rate ₹90 is 2.3× the usual ₹40');
+        expect(rows[1].textContent).toContain('⚠️ Rate ₹90.00 is 2.3× the usual ₹40.00');
         expect($('testSection').classList.contains('bill-checks-warn')).toBe(true);
         expect($('saveBtn').hasAttribute('aria-disabled')).toBe(false);
     });
@@ -212,7 +212,7 @@ describe('save gate', () => {
         $('cash').value = '900';
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(false);
         expect((await BillChecksUI.confirmSave('test')).ok).toBe(false);
-        expect(modal).toHaveBeenCalledWith(expect.stringMatching(/Rate ₹90 is 2\.3× .*\n\nSave anyway\?$/), 'Check before saving', true);
+        expect(modal).toHaveBeenCalledWith(expect.stringMatching(/Rate ₹90\.00 is 2\.3× .*\n\nSave anyway\?$/), 'Check before saving', true);
         modal.mockResolvedValue(true);
         const ok = await BillChecksUI.confirmSave('test');
         expect(ok.ok).toBe(true);

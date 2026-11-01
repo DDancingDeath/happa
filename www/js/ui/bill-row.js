@@ -214,8 +214,8 @@ function tableItemsHtml(bill) {
     const items = Array.isArray(bill?.items) ? bill.items : [];
     if (isOpeningRecord(bill) || items.length === 0) return Helpers.escapeHtml(billItemsText(bill));
     return items.map(item => {
-        const qty = Number(item?.qty || item?.quantity || 0).toFixed(1);
-        return `<div class="bill-table__item">${Helpers.escapeHtml(item?.name || '')} · ${formatKg(qty)} kg × ${formatRate(item?.rate)}</div>`;
+        const rate = item?.rate === undefined || item?.rate === null || item?.rate === '' ? '—' : formatRate(item.rate);
+        return `<div class="bill-table__item">${Helpers.escapeHtml(item?.name || '')} · ${formatKg(item?.qty || item?.quantity)} kg × ${rate}</div>`;
     }).join('');
 }
 

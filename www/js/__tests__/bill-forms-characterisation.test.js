@@ -135,7 +135,7 @@ describe('purchase form', () => {
         setVal('newWeight', 20.3);
         await PurchaseManager.addWeight();
         expect([text('totalWeights'), text('totalPackets')]).toEqual(['60.3', '2']);
-        expect([...document.querySelectorAll('#weightsDisplay .weight-chip span')].map(s => s.textContent)).toEqual(['40.0', '20.3']);
+        expect([...document.querySelectorAll('#weightsDisplay .weight-chip span')].map(s => s.textContent)).toEqual(['40', '20.3']);
         await PurchaseManager.addToBill();
         setVal('billItem', 1);
         setVal('billRate', 33.5);
@@ -153,7 +153,7 @@ describe('purchase form', () => {
             ['Rice', '₹25.50', '60.3 kg', '₹1,538'],
             ['Wheat', '₹33.50', '12.4 kg', '₹415']
         ]);
-        expect($('weightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (2 packets, 60.3 kg) 40.0 20.3');
+        expect($('weightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (2 packets, 60.3 kg) 40 20.3');
         expect([text('totalWeights'), text('totalPackets')]).toEqual(['0', '0']);
         expect(text('billTotal')).toBe('1953');
         expect(text('totalPacketsInBill')).toBe('3');
@@ -312,13 +312,13 @@ describe('retail sale form', () => {
             ['Rice', '₹41.75', '60.35 kg', '₹2,520'],
             ['Wheat', '₹33.33', '7 kg', '₹233']
         ]);
-        expect($('saleWeightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (3 packets, 60.35 kg) 25.5 24.7 10.2');
+        expect($('saleWeightBreakdownSection').textContent.replace(/\s+/g, ' ').trim()).toBe('Rice (3 packets, 60.35 kg) 25.5 24.7 10.15');
         expect(text('saleTotal')).toBe('2753');
         expect(text('amountReceivable')).toBe('2753');
         expect(text('totalSalePacketsInBill')).toBe('4');
         expect([text('saleRunningTotal'), text('salePacketCount')]).toEqual(['0', '0']);
         RetailSaleManager.renderSalesBill();
-        expect([text('saleRunningTotal'), text('salePacketCount')]).toEqual(['67.3', '2']);
+        expect([text('saleRunningTotal'), text('salePacketCount')]).toEqual(['67.35', '2']);
         expect(text('totalReceived')).toBe('0');
         expect(text('saleSplitRemaining')).toBe('₹2,753 left');
         expect(RetailSaleManager.getCheckDraft()).toMatchObject({ kind: 'retail', total: 2753 });
