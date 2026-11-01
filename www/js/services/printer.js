@@ -1420,7 +1420,10 @@ const PrinterService = {
 
     /** @private Print from the preview after a failed try: asks Android first when the permission was refused. */
     async _retryBillPrint(billData, tries) {
-        if (this.permissionState === 'denied') await this.requestBluetoothPermission();
+        // Still refused: keep the "allow it in Android settings" message and this try; the picture stays
+        if (this.permissionState === 'denied' && !(await this.requestBluetoothPermission())) {
+            return this.showBillPreview(billData, { onPrint: () => this._retryBillPrint(billData, tries) });
+        }
         return this._printBillNow(billData, tries);
     },
 
