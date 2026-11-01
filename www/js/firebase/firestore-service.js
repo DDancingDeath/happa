@@ -2070,6 +2070,8 @@ function settleWrite(writePromise, label = 'write') {
 /** Users list cache for notification fan-out (avoids a query per edit). */
 const USERS_CACHE_TTL_MS = 10 * 60 * 1000;
 let usersCache = null;
+/** Every profile, for naming audit entries (owner; Diagnostics, Settings, the anomaly scan). */
+let auditPeopleCache = null;
 
 // Owner: every profile; managers: the team directory (#87), never other profiles.
 const getUsersForNotifications = async () => {
@@ -4372,9 +4374,21 @@ const FirebaseService = {
         return teamPeople(await readTeamDirectory());
     },
 
+    /**
+     * Every profile (owner), to name the writer of audit entries (#85); reused for 10 minutes.
+     * @returns {Promise<Object[]>}
+     */
+    async loadAuditPeople() {
+        if (auditPeopleCache && Date.now() - auditPeopleCache.at < USERS_CACHE_TTL_MS) return auditPeopleCache.users;
+        const users = await this.loadUsers();
+        auditPeopleCache = { at: Date.now(), users };
+        return users;
+    },
+
     /** Forgets the cached people lists (sign-out: the next user may have another role). */
     forgetPeopleCaches() {
         usersCache = null;
+        auditPeopleCache = null;
         knownTeam = undefined;
     },
 
@@ -4403,6 +4417,7 @@ const FirebaseService = {
     async updateUser(userId, fields) {
         await getDb().collection(col('users')).doc(userId).update(fields);
         usersCache = null;
+        auditPeopleCache = null;
     },
 
     /**
@@ -4416,6 +4431,7 @@ const FirebaseService = {
             rejectedBy: byUid || null
         });
         usersCache = null;
+        auditPeopleCache = null;
     },
 
     /**
@@ -4433,6 +4449,7 @@ const FirebaseService = {
             rejectedBy: del
         });
         usersCache = null;
+        auditPeopleCache = null;
     },
 
     /**
@@ -4452,6 +4469,7 @@ const FirebaseService = {
             disabledBy: byUid || null
         });
         usersCache = null;
+        auditPeopleCache = null;
     },
 
     /** Number of documents in a collection (full read; Admin → Storage). */

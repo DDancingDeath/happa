@@ -428,7 +428,7 @@ const DiagnosticsManager = {
             // Profiles name the writer: an entry's stored name and role are whatever the phone sent (#85)
             const [logs, people] = await Promise.all([
                 AuditService.getRecentLogs(100),
-                FirebaseService.loadUsers().catch(e => {
+                FirebaseService.loadAuditPeople().catch(e => {
                     console.warn('Audit: profiles not read:', e?.code || e);
                     return [];
                 })
