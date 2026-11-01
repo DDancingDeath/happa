@@ -23,7 +23,7 @@ import {
     DEFAULT_DAILY_READ_BUDGET, DIRECTION_KEYS, CONFIDENCE_KEYS, READ_BUDGET_OPTIONS,
     addMonths, addWeeks, aggregateBills, backfillDays, clampWindowToMigration, isCarriedHistory, estimateBackfillReads, explainOutlook, finalizeStats,
     istDayStartMs, istMonthKey, istMonthStartMs, istWeekStart, itemsByUsage, monthBuckets, monthLabel, monthSeries,
-    newCursor, parseCursor, hasBackdatedBill, planRollForward, rollForwardWeekGap, rollForwardWindow, runBackfillReads, seasonalOutlookCombined,
+    newCursor, parseCursor, billChangedSince, planRollForward, rollForwardWeekGap, weekGapSince, rollForwardWindow, runBackfillReads, seasonalOutlookCombined,
     trendRows, weekBuckets, yearOverlay
 } from '../utils/rate-trends.js';
 import { ITEM_RATE_KINDS, cutoffMonth, cutoffWeek, itemRateSeries, mergeHistoryEntries, rateChangeRows } from '../utils/item-rate-series.js';
@@ -457,9 +457,10 @@ export const RateTrendsManager = {
             let loadedFrom = Number(AppState.historyLoadedFrom) || 0;
             const first = rollForwardWindow(loadedFrom, Date.now());
             const gap = rollForwardWeekGap(first, loadedFrom);
-            // Only when a bill was dated back into that week (no reads otherwise)
+            // Only when a bill of that week was entered (dated back), edited or voided since the week left the window: no reads otherwise
+            const voided = ['purchases', 'retailSales', 'wholesaleSales'].map(k => (typeof FirebaseService.voidedBills === 'function' ? FirebaseService.voidedBills(k) : []));
             if (gap !== null && typeof FirebaseService.ensureHistoryFrom === 'function'
-                && hasBackdatedBill(loadedBills(), gap, istDayStartMs(first.fromWeek))
+                && billChangedSince([...Object.values(loadedBills()), ...voided], gap, istDayStartMs(first.fromWeek), weekGapSince(first.fromMonth))
                 && clampWindowToMigration(rollForwardWindow(gap, Date.now()), meta).fromWeek <= istWeekStart(gap)) {
                 // The first week of the window starts before the loaded history: load those days
                 // so a bill dated back into them reaches the week stats (#147). On failure the week stays as stored.

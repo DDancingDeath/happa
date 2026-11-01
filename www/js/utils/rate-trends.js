@@ -308,15 +308,28 @@ export function rollForwardWeekGap(win, loadedFrom) {
 }
 
 /**
- * True when a loaded bill dated in [fromMs, toMs) was entered on a later IST day (#147:
- * dated back), i.e. the week stats of those days may be missing it. No reads.
- * @param {{purchase?: Object[], retail?: Object[], wholesale?: Object[]}} bills
+ * When the window's first week left the window (ms): the 1st of the month after `fromMonth`,
+ * a day early for a roll-forward that hadn't run yet. Changes from then on aren't in its stats.
  */
-export function hasBackdatedBill(bills, fromMs, toMs) {
-    return Object.values(bills || {}).some(list => (list || []).some(b => {
+export const weekGapSince = (fromMonth) => istMonthStartMs(addMonths(fromMonth, 1)) - DAY_MS;
+
+/** Latest time (ms) a bill was entered, edited or voided; NaN when unknown. */
+function lastChangeMs(b) {
+    const v = b?.voidedAt;
+    const voided = typeof v?.toMillis === 'function' ? v.toMillis() : (typeof v?.seconds === 'number' ? v.seconds * 1000 : Number(v));
+    const times = [Number(b?.enteredAt), Date.parse(b?.editedAt || ''), voided].filter(Number.isFinite);
+    return times.length ? Math.max(...times) : NaN;
+}
+
+/**
+ * True when a bill dated in [fromMs, toMs) was entered (#147: dated back), edited or voided
+ * at or after `sinceMs`, i.e. the week stats of those days may be out of date. No reads.
+ * @param {Array<Object[]>} lists loaded bills (and voided ones)
+ */
+export function billChangedSince(lists, fromMs, toMs, sinceMs) {
+    return (lists || []).some(list => (list || []).some(b => {
         const ts = b?.timestamp;
-        const entered = Number(b?.enteredAt);
-        return typeof ts === 'number' && ts >= fromMs && ts < toMs && Number.isFinite(entered) && istDayKey(entered) > istDayKey(ts);
+        return typeof ts === 'number' && ts >= fromMs && ts < toMs && lastChangeMs(b) >= sinceMs;
     }));
 }
 

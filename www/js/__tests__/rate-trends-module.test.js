@@ -136,6 +136,13 @@ test('#147: loads the first week of the window when the loaded bills start insid
     // No bill dated back into that week: nothing loaded
     await expect(RateTrendsManager.rollForward({ force: true })).resolves.toBe('written');
     expect(FirebaseService.ensureHistoryFrom).not.toHaveBeenCalled();
+    // A bill of that week voided this month: loaded (the void must leave the week stats)
+    FirebaseService.voidedBills = jest.fn(k => (k === 'purchases' ? [{ id: 'v', timestamp: istDayStartMs('2026-09-03'), voidedAt: { seconds: Math.floor(now / 1000), nanoseconds: 0 } }] : []));
+    FirebaseService.ensureHistoryFrom.mockImplementationOnce(async () => {});
+    await RateTrendsManager.rollForward({ force: true });
+    expect(FirebaseService.ensureHistoryFrom).toHaveBeenCalledTimes(1);
+    delete FirebaseService.voidedBills;
+    FirebaseService.ensureHistoryFrom.mockClear();
     FirebaseService.saveRateStats.mockClear();
     AppState.purchaseHistory = [...bills.purchase, sep2];
     FirebaseService.ensureHistoryFrom.mockImplementation(async (from) => {

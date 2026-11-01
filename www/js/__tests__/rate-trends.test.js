@@ -1,7 +1,7 @@
 import {
     addBillToAcc, aggregateBills, billMonth, billsToYearDocs, createCatalogueResolver, estimateBackfillReads, explainOutlook,
     finalizeStats, istMonthKey, istWeekStart, lineKg, monthBuckets, monthSeries, newCursor, parseCursor, planRollForward,
-    rollForwardFromMonth, rollForwardWeekGap, rollForwardWindow, runBackfillReads, seasonalOutlook, seasonalOutlookCombined, combinedChange,
+    rollForwardFromMonth, rollForwardWeekGap, rollForwardWindow, runBackfillReads, billChangedSince, seasonalOutlook, seasonalOutlookCombined, combinedChange,
     trendRows, weekBuckets, yearOverlay, addMonths, addWeeks, istMonthStartMs, istDayStartMs, itemsByUsage
 } from '../utils/rate-trends.js';
 
@@ -138,6 +138,21 @@ describe('roll-forward', () => {
         // 1 Jun 2026 is a Monday: nothing left out
         const jun = istMonthStartMs('2026-06');
         expect(rollForwardWeekGap(rollForwardWindow(jun, Date.UTC(2026, 6, 10)), jun)).toBeNull();
+    });
+
+    test('#147: a bill of those days entered, edited or voided since a time; others and older changes do not count', () => {
+        const from = istDayStartMs('2026-08-31');
+        const to = istDayStartMs('2026-09-07');
+        const since = istMonthStartMs('2026-10') - 86400000;
+        const sep2 = istDayStartMs('2026-09-02') + 3600000;
+        const changed = (b) => billChangedSince([[b]], from, to, since);
+        expect(changed({ timestamp: sep2, enteredAt: sep2 })).toBe(false);
+        expect(changed({ timestamp: sep2, enteredAt: OCT15 })).toBe(true);
+        expect(changed({ timestamp: sep2, enteredAt: sep2, editedAt: new Date(OCT15).toISOString() })).toBe(true);
+        expect(changed({ timestamp: sep2, voidedAt: { seconds: OCT15 / 1000, nanoseconds: 0 } })).toBe(true);
+        expect(changed({ timestamp: sep2, voidedAt: { toMillis: () => sep2 } })).toBe(false);
+        expect(changed({ timestamp: to, enteredAt: OCT15 })).toBe(false);
+        expect(changed({ date: '2026-09-02', enteredAt: OCT15 })).toBe(false);
     });
 
     test('replaces only buckets in the window, keeps older ones, drops emptied ones; writes changed docs only', () => {
