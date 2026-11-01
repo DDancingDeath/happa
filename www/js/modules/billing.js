@@ -199,20 +199,12 @@ const BillingManager = {
                 saleBtn.style.borderColor = '#22c55e';
             }
             
-            // Preserve current selections
-            const currentItem = document.getElementById('saleItem')?.value;
+            // Preserve current selections (the picker keeps its item by id)
             const currentRate = document.getElementById('saleRate')?.value;
             const currentWeight = document.getElementById('saleWeight')?.value;
             
             this.loadSaleItemsDropdown();
             
-            if (currentItem) {
-                const saleItemSelect = document.getElementById('saleItem');
-                if (saleItemSelect) {
-                    saleItemSelect.value = currentItem;
-                    this.loadSaleRates();
-                }
-            }
             if (currentRate) {
                 setTimeout(() => {
                     const saleRateInput = document.getElementById('saleRate');
@@ -384,7 +376,7 @@ const BillingManager = {
     loadItemsDropdown() {
         const select = document.getElementById('billItem');
         if (!select) return;
-        const keptId = select.selectedOptions?.[0]?.dataset.itemId;
+        const kept = { ...(select.selectedOptions?.[0]?.dataset || {}) };
         
         select.innerHTML = '';
         
@@ -409,7 +401,7 @@ const BillingManager = {
             select.appendChild(opt);
         });
         
-        this.keepSelection('billItem', keptId);
+        this.keepSelection('billItem', kept);
         if (AppState.items.length > 0) {
             this.loadRates();
         }
@@ -421,7 +413,7 @@ const BillingManager = {
     loadSaleItemsDropdown() {
         const select = document.getElementById('saleItem');
         if (!select) return;
-        const keptId = select.selectedOptions?.[0]?.dataset.itemId;
+        const kept = { ...(select.selectedOptions?.[0]?.dataset || {}) };
         
         select.innerHTML = '';
         
@@ -446,7 +438,7 @@ const BillingManager = {
             select.appendChild(opt);
         });
         
-        this.keepSelection('saleItem', keptId);
+        this.keepSelection('saleItem', kept);
         if (AppState.items.length > 0) {
             this.loadSaleRates();
         }
@@ -465,6 +457,7 @@ const BillingManager = {
         const opt = document.createElement('option');
         opt.value = itemIndex;
         if (item.id) opt.dataset.itemId = item.id;
+        opt.dataset.editLine = '1';
         opt.textContent = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
         select.appendChild(opt);
     },
@@ -472,17 +465,21 @@ const BillingManager = {
     /**
      * A rebuilt picker (another phone's bill, an item change) keeps the item that
      * was selected, found again by id since positions in AppState.items can
-     * shift; an archived one is put back, so a line being edited can't move its
-     * weights to another item.
+     * shift. An archived item comes back only for a bill line being edited, so
+     * its weights can't move to another item; otherwise it drops out.
      * @param {string} selectId
-     * @param {string} [keptId] id of the item selected before the rebuild
+     * @param {{itemId?: string, editLine?: string}} kept dataset of the option selected before the rebuild
      */
-    keepSelection(selectId, keptId) {
-        if (!keptId) return;
-        const index = AppState.items.findIndex(i => i && i.id === keptId);
+    keepSelection(selectId, kept) {
+        if (!kept?.itemId) return;
+        const index = AppState.items.findIndex(i => i && i.id === kept.itemId);
         if (index === -1) return;
-        this.ensureItemOption(selectId, index);
-        document.getElementById(selectId).value = String(index);
+        if (isArchivedItem(AppState.items[index])) {
+            if (kept.editLine !== '1') return;
+            this.ensureItemOption(selectId, index);
+        }
+        const select = document.getElementById(selectId);
+        if ([...select.options].some(o => o.value === String(index))) select.value = String(index);
     },
 
     /**

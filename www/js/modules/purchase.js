@@ -227,8 +227,11 @@ const PurchaseManager = {
         }
         
         UIManager.hapticFeedback();
-        if (isArchivedItem(item)) UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
-        else UIManager.showToast(t('msg.purchase.added_bill', { displayName }));
+        if (isArchivedItem(item)) {
+            // The edited line is back on the bill: a later picker rebuild may drop this item
+            delete document.getElementById('billItem')?.selectedOptions?.[0]?.dataset.editLine;
+            UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
+        } else UIManager.showToast(t('msg.purchase.added_bill', { displayName }));
     },
 
     /**

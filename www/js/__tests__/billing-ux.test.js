@@ -277,6 +277,17 @@ describe('archived items (#123)', () => {
         expect(names('billItem').sort()).toEqual(['New', 'Rice']);
     });
 
+    test('an item archived while it is merely selected (not a line being edited) drops out of the picker', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        document.getElementById('billItem').value = '1';
+        AppState.items = [AppState.items[0], { ...AppState.items[1], archived: true }];
+        BillingManager.loadItemsDropdown();
+        expect([...document.getElementById('billItem').options].map(o => o.textContent)).toEqual(['Rice']);
+        expect(document.getElementById('billItem').value).toBe('0');
+    });
+
     test('adding a line of an archived item ends with the archived warning, not "added"', async () => {
         AppState.settings = { ...(AppState.settings || {}), showHindi: false };
         AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Old Dal', archived: true, rates: [5] }];
@@ -288,5 +299,8 @@ describe('archived items (#123)', () => {
         await PurchaseManager.addToBill();
         expect(PurchaseManager.getBillItems().map(i => i.itemId)).toEqual(['b']);
         expect(UIManager.showToast.mock.calls.at(-1)[0]).toMatch(/"Old Dal" is archived/);
+        // The line is back on the bill, so the next rebuild drops the archived item
+        BillingManager.loadItemsDropdown();
+        expect([...document.getElementById('billItem').options].map(o => o.textContent)).toEqual(['Rice']);
     });
 });

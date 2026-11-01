@@ -228,8 +228,11 @@ const RetailSaleManager = {
         itemSelect.focus();
         
         UIManager.hapticFeedback();
-        if (isArchivedItem(item)) UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
-        else UIManager.showToast(t('msg.retail.added_sale', { itemName }));
+        if (isArchivedItem(item)) {
+            // The edited line is back on the bill: a later picker rebuild may drop this item
+            delete document.getElementById('saleItem')?.selectedOptions?.[0]?.dataset.editLine;
+            UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
+        } else UIManager.showToast(t('msg.retail.added_sale', { itemName }));
     },
 
     /**
