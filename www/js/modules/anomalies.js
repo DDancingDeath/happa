@@ -19,7 +19,7 @@ import {
     ANOMALY_DEFAULTS, ANOMALY_TYPES, DETECTION_FIELDS, SEVERITIES, SEVERITY_LABELS, STATUS_LABELS,
     addDaysToKey, anomalyPatterns, billTime, buildDayReportText, detectAnomalies, filterAnomalies, formatDayKey,
     istDayKey, istDayStartMs, mergeAnomalies, planAnomalyWrites, presetRange, summarizeAnomalies, summaryLine, typeLabel,
-    withoutUnstockedOversell
+    voidedByOthers, withoutStoredVoidTwins, withoutUnstockedOversell
 } from '../utils/anomalies.js';
 import { firstStockTimes } from '../utils/stock-check.js';
 import { auditScanCap } from '../utils/security-flags.js';
@@ -28,10 +28,10 @@ const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
 const DAY_MS = 86400000;
 
-/** Detected + stored anomalies as shown: oversells of items whose stock was never set are left out (F15). */
+/** Detected + stored anomalies as shown: oversells of items whose stock was never set (F15) and voids already stored under their audit entry (#75) are left out. */
 function mergeVisible(detected, stored) {
     const stockFrom = firstStockTimes({ purchases: AppState.purchaseHistory, stockAdjustments: AppState.stockAdjustments }, AppState.items);
-    return withoutUnstockedOversell(mergeAnomalies(detected, stored), { stockFrom, catalogue: AppState.items || [], stock: AppState.stock || {} });
+    return withoutUnstockedOversell(mergeAnomalies(withoutStoredVoidTwins(detected, stored), stored), { stockFrom, catalogue: AppState.items || [], stock: AppState.stock || {} });
 }
 const STORED_TTL_MS = 2 * 60 * 1000;
 /** Today card: server read at most every 30 min per user/device (persisted across reopens). */
@@ -59,6 +59,16 @@ function loadedBills() {
         wholesale: AppState.salesHistory || []
     };
 }
+
+const VOIDED_COLLECTIONS = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
+
+/** Voided bills the listeners already hold (#75), by kind: no read. */
+function loadedVoided() {
+    const out = {};
+    Object.entries(VOIDED_COLLECTIONS).forEach(([kind, coll]) => { out[kind] = FirebaseService.voidedBills?.(coll) || []; });
+    return out;
+}
+
 
 /** A loaded bill entered (as the scan sees it, billTime) on a later IST day than it is dated, by someone other than `uid` (#147). */
 function datedBackByOthers(bills, uid) {
@@ -121,13 +131,18 @@ export const AnomaliesManager = {
 
     /**
      * Reads who the owners are once per session (owner: the profiles; manager: the team
-     * directory, #87). On failure they stay unknown and back-dated bills follow Q20.
+     * directory, #87). On failure they stay unknown and back-dated bills follow Q20. Not
+     * offline: the phone's cached copy may miss an owner, and the list is kept for the session.
      */
     async loadOwnerIds() {
         const uid = AppState.currentUser?.uid;
         if (!uid || this.knownOwnerIds() || typeof FirebaseService.loadPeople !== 'function') return this.knownOwnerIds();
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
         try {
-            const ids = (await FirebaseService.loadPeople() || []).filter(p => p && p.role === 'owner').map(p => String(p.id));
+            // The owner's daily scan reads the profiles for the audit log too: the same cached read
+            const read = AppState.userRole === 'owner' && typeof FirebaseService.loadAuditPeople === 'function'
+                ? FirebaseService.loadAuditPeople() : FirebaseService.loadPeople();
+            const ids = (await read || []).filter(p => p && p.role === 'owner').map(p => String(p.id));
             if (AppState.userRole === 'owner' && !ids.includes(uid)) ids.push(uid);
             if (ids.length) this.owners = { uid, ids };
         } catch (e) {
@@ -137,11 +152,13 @@ export const AnomaliesManager = {
     },
 
     async runScan(fromKey, toKey, { audit = false, storedLimit = REPORT_LIMIT } = {}) {
-        // Who the owners are matters only for bills dated back by someone else (#147): no read otherwise
-        if (datedBackByOthers(loadedBills(), AppState.currentUser?.uid)) await this.loadOwnerIds();
         const loadedFrom = Number(AppState.historyLoadedFrom) || 0;
         const from = Math.max(istDayStartMs(fromKey), loadedFrom);
         const to = istDayStartMs(toKey) + DAY_MS;
+        const voided = loadedVoided();
+        // Who the owners are matters only for bills dated back (#147) or voided (#75) by someone else: no read otherwise
+        const uid = AppState.currentUser?.uid;
+        if (datedBackByOthers(loadedBills(), uid) || voidedByOthers(voided, uid, from, to)) await this.loadOwnerIds();
         const [sessions, auditLogs] = await Promise.all([
             FirebaseService.loadCashSessionsBetween(fromKey, toKey).catch(e => {
                 console.warn('Anomaly scan: cash sessions not read:', e?.code || e);
@@ -172,6 +189,7 @@ export const AnomaliesManager = {
             thresholds: AppState.settings?.checkThresholds || {},
             // #147: anyone but an owner is flagged from 1 day back (owners not known yet: Q20)
             ownerIds: this.knownOwnerIds(),
+            voided,
             from,
             to
         });
@@ -184,7 +202,7 @@ export const AnomaliesManager = {
             console.warn('Anomaly scan: stored records not read (offline?):', e?.code || e);
         }
         if (stored) {
-            const writes = planAnomalyWrites(detected, stored, Date.now());
+            const writes = planAnomalyWrites(withoutStoredVoidTwins(detected, stored), stored, Date.now());
             if (writes.length) {
                 try {
                     await FirebaseService.saveAnomalies(writes);
@@ -270,6 +288,7 @@ export const AnomaliesManager = {
             thresholds: AppState.settings?.checkThresholds || {},
             // #147: anyone but an owner is flagged from 1 day back (owners not known yet: Q20)
             ownerIds: this.knownOwnerIds(),
+            voided: loadedVoided(),
             from: Math.max(istDayStartMs(yesterday), Number(AppState.historyLoadedFrom) || 0),
             to: istDayStartMs(today) + DAY_MS
         });
@@ -318,6 +337,13 @@ export const AnomaliesManager = {
         this.refreshing = (async () => {
             const prev = this.stored && this.stored.key === key ? this.stored.docs : [];
             if (!force && this.reportFresh(key)) {
+                // Someone else's void (#75) is told apart from an owner's by the owners' list, read once a session
+                const uid = AppState.currentUser?.uid;
+                if (!this.knownOwnerIds() && this.ownersAskedBy !== uid && navigator.onLine !== false
+                    && voidedByOthers(loadedVoided(), uid, istDayStartMs(yesterday), istDayStartMs(addDaysToKey(today, 1)))) {
+                    this.ownersAskedBy = uid;
+                    await this.loadOwnerIds();
+                }
                 let cached = [];
                 try {
                     cached = (await FirebaseService.loadAnomalies(yesterday, today, { limit: REPORT_LIMIT, cacheOnly: true })).docs;
@@ -530,7 +556,8 @@ export const AnomaliesManager = {
         if (a.refKind === 'bill') {
             const list = a.billType === 'purchase' ? AppState.purchaseHistory
                 : a.billType === 'retail' ? AppState.retailSalesHistory : AppState.salesHistory;
-            if (!(list || []).some(b => String(b.id) === String(a.refId))) {
+            const voided = loadedVoided()[a.billType] || [];
+            if (![...(list || []), ...voided].some(b => String(b.id) === String(a.refId))) {
                 UIManager.showToast(t('msg.anomalies.bill_not_loaded_older_or'));
                 return;
             }

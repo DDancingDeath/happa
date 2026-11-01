@@ -9,6 +9,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { CHANGED_ELSEWHERE, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
 import { tip, tipTargets, tipReasons } from '../tip/index.js';
 import { dayKeyOf, normalizePolicies } from '../tip/tip.js';
@@ -264,7 +265,17 @@ export const HealthManager = {
             this.renderPolicyCard();
             UIManager.showToast(t('msg.health.policies_saved', { count: Object.keys(policies).length }));
         } catch (error) {
-            UIManager.showToast(t('msg.health.policies_not_saved', { message: error?.message || error }));
+            const key = writeErrorKey(error, null);
+            UIManager.showToast(key ? t(key) : t('msg.health.policies_not_saved', { message: error?.message || error }));
+            if (error?.code === CHANGED_ELSEWHERE) {
+                // Show the policies stored now (another phone's), not this stale form
+                try {
+                    tip.setPolicies((await FirebaseService.loadAppSettings())?.tipPolicies || {});
+                    this.renderPolicyCard();
+                } catch (e) {
+                    console.warn('TIP policies not read again:', e);
+                }
+            }
         }
     },
 
