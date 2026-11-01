@@ -22,7 +22,6 @@ import { HistoryManager } from './modules/history.js';
 import { OutstandingManager } from './modules/outstanding.js';
 import { ExpensesManager } from './modules/miscellaneous.js';
 import { SettingsManager } from './modules/settings.js';
-import { UsersManager } from './modules/users.js';
 import { CashManagementManager } from './modules/cash-management.js';
 import { DayManager } from './modules/day.js';
 import { AnomaliesManager } from './modules/anomalies.js';
@@ -142,7 +141,10 @@ function scheduleTipNumberChecks() {
         try {
             if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
             const run = tip.start('NumberChecks');
-            run.complete(numberChecksProps(DiagnosticsManager.numberCheckResults()));
+            const results = DiagnosticsManager.numberCheckResults();
+            run.complete(numberChecksProps(results));
+            // #160: each mismatch also reaches Anomalies, once
+            AnomaliesManager.recordNumberChecks(results).catch(e => console.warn('Number-check flags failed:', e?.message || e));
         } catch (e) {
             console.warn('TIP number checks failed:', e?.message || e);
         }
@@ -1284,8 +1286,6 @@ window.app = {
         disconnectPrinter: () => SettingsManager.disconnectPrinter(),
         updatePrinterStatus: () => SettingsManager.updatePrinterStatus(),
         testPrint: () => SettingsManager.testPrint(),
-        loadAuditLogs: () => SettingsManager.loadAuditLogs(),
-        filterAuditLogs: () => SettingsManager.filterAuditLogs(),
         loadStorageStats: () => SettingsManager.loadStorageStats()
     },
 
@@ -1301,16 +1301,6 @@ window.app = {
         save: () => RolesAccessManager.saveForm(),
         loadPeople: () => RolesAccessManager.loadPeople(),
         setRentRole: (userId, role) => RolesAccessManager.setRentRole(userId, role)
-    },
-    
-    // Users
-    users: {
-        load: () => UsersManager.loadUsers(),
-        approveUser: (userId, role) => UsersManager.approveUser(userId, role),
-        rejectUser: (userId) => UsersManager.rejectUser(userId),
-        showChangeRoleDialog: (userId, userName, currentRole) => UsersManager.showChangeRoleDialog(userId, userName, currentRole),
-        resetUserPassword: (userId, email) => UsersManager.resetUserPassword(userId, email),
-        deleteUser: (userId, userName) => UsersManager.deleteUser(userId, userName)
     },
     
     // Diagnostics (owner; managers see Number checks only)
