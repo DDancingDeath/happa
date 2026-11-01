@@ -2395,7 +2395,7 @@
       "where",
       "timestamp",
       "<",
-      1789965000000
+      1789964999999
     ],
     [
       "orderBy",
@@ -3098,6 +3098,40 @@
       "dev_users"
     ],
     [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "set",
+      {
+        "people": {
+          "u1": {
+            "name": "Owner",
+            "role": "owner"
+          }
+        },
+        "updatedAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
       "doc",
       "u4"
     ],
@@ -3111,6 +3145,20 @@
         "rejectedAt": "delete(true)",
         "rejectedBy": "delete(true)"
       }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
     ],
     [
       "collection",
@@ -3131,6 +3179,20 @@
         "disabledAt": "SERVER_TIME",
         "disabledBy": "u1"
       }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
     ],
     [
       "collection",

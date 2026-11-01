@@ -548,7 +548,8 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         await FirebaseService.loadUsers();
         await settle();
         rec.clear();
-        const fromMillis = jest.fn(ms => ms);
+        // A different number than the cutoff, so the log shows the converted value reaches the query
+        const fromMillis = jest.fn(ms => ms - 1);
         global.firebase.firestore.Timestamp = { fromMillis };
         const sent = await FirebaseService.sendNotification('evt-1', ['u2', 'u3', 'u1'], { type: 'x' });
         await FirebaseService.notifyRateChanges({ id: 'i1', name: 'Rice' }, [{ rateType: 'wholesale', oldRate: 1, newRate: 2 }, { rateType: 'sale', oldRate: 3, newRate: 4 }], 'evt-r');
@@ -657,10 +658,17 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         const audit3 = await FirebaseService.loadAuditPeople();
         await FirebaseService.notifyItemEdit({ id: 'i1', name: 'Rice' }, 'updated');
         await settle();
-        await FirebaseService.rejectUserProfile('u4', 'u1');
-        await FirebaseService.restoreUserProfile('u4');
-        await FirebaseService.disableUserProfile('u4', 'u1');
-        await settle();
+        const afterChanges = [];
+        for (const change of [
+            () => FirebaseService.rejectUserProfile('u4', 'u1'),
+            () => FirebaseService.restoreUserProfile('u4'),
+            () => FirebaseService.disableUserProfile('u4', 'u1')
+        ]) {
+            await change();
+            afterChanges.push(await FirebaseService.loadAuditPeople());
+            await FirebaseService.notifyItemEdit({ id: 'i1', name: 'Rice' }, 'updated');
+            await settle();
+        }
         FirebaseService.forgetPeopleCaches();
         AppState.userRole = 'manager';
         const managerPeople = await FirebaseService.loadPeople();
@@ -669,6 +677,8 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         expect(people).toHaveLength(2);
         expect(audit2).toBe(audit1);
         expect(audit3).not.toBe(audit1);
+        [audit3, ...afterChanges].reduce((prev, next) => { expect(next).not.toBe(prev); return next; });
+        expect(afterChanges.map(list => list.find(u => u.id === 'u4').status)).toEqual(['rejected', 'pending', 'disabled']);
         expect(audit3.find(u => u.id === 'u4')).toMatchObject({ role: 'manager' });
         expect(rec.log.filter(c => c[0] === 'collection' && c[1] === 'dev_users').length).toBeGreaterThanOrEqual(5);
         expect(fake.raw('dev_users').get('u4')).toMatchObject({ status: 'disabled', disabledBy: 'u1' });
