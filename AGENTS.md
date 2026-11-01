@@ -545,6 +545,9 @@ fails unless the baseline's `exceptions` records it
 - [ ] Architecture ratchet green; lowered `tests/architecture-baseline.json` if a
       count went down (docs/architecture.md).
 - [ ] New user-facing text in both `i18n/en.js` and `i18n/hi.js`; no "staff".
+- [ ] Changed what a page shows or does (or how a number on it is worked out) →
+      updated `docs/owner-guide.md` and `docs/owner-guide.hi.md` in the same PR
+      (`tests/ci/owner-guide.test.js` checks their spec IDs).
 
 ---
 
