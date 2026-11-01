@@ -191,6 +191,19 @@ describe('Expenses form (#118)', () => {
         expect(voidExpense).not.toHaveBeenCalled();
     });
 
+    test('Void & re-enter is refused before the void when the day is past the back-dating window (plain Void stays)', async () => {
+        // saved an hour ago, back-dated to 27 Oct: inside the void window, outside today's back-dating window
+        const old = { id: 'x1', category: 'business', type: 'Tea', amount: 40, date: '27/10/2026, 9:00:00 am', day: '2026-10-27', userId: 'u1', createdBy: 'u1', timestamp: NOW.getTime() - 3600000 };
+        AppState.expensesHistory = [old];
+        const voidExpense = jest.spyOn(FirebaseService, 'voidExpense').mockResolvedValue({ ...old, voided: true });
+        ExpensesManager.viewExpenseDetails('x1', 'business');
+        expect(document.getElementById('expenseVoidBtn').style.display).toBe('');
+        expect(document.getElementById('expenseReenterBtn').style.display).toBe('none');
+        await ExpensesManager.reenterExpenseFromModal();
+        expect(voidExpense).not.toHaveBeenCalled();
+        expect(toast.mock.calls.at(-1)[0]).toMatch(/older than you can enter now/);
+    });
+
     test('the void dialog says whether the cash goes back into the drawer or that day is closed', async () => {
         const old = { id: 'x1', category: 'business', type: 'Tea', amount: 40, date: '30/10/2026, 9:00:00 am', day: '2026-10-30', userId: 'u1', createdBy: 'u1', timestamp: NOW.getTime() - 3600000 };
         AppState.expensesHistory = [old];

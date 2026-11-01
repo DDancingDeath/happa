@@ -211,6 +211,7 @@ export default {
     'msg.expenses.void_failed': "खर्च रद्द नहीं हुआ। इंटरनेट देखकर फिर करें।",
     'msg.expenses.voided': "✓ खर्च रद्द हुआ: अब यह किसी जोड़ में नहीं गिना जाएगा",
     'msg.expenses.reenter_hint': "रद्द हो गया। नीचे जानकारी देखें और सही खर्च सेव करें।",
+    'msg.expenses.reenter_too_old': "इस खर्च का दिन अब आप नहीं डाल सकते। रद्द करें, फिर नए दिन पर दोबारा लिखें।",
     'msg.expenses.expense_saved_but_printing_failed': "खर्च सेव हुआ, प्रिंट नहीं हुआ",
     'msg.expenses.locked': "यह खर्च अब सिर्फ़ मालिक रद्द कर सकते हैं (मैनेजर: कोई भी खर्च, सदस्य: अपना खर्च, भूमिका और अनुमति में तय दिनों के अंदर)",
     'msg.expenses.personal_expense_saved': "✓ निजी खर्च सेव हुआ",

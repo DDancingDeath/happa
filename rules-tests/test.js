@@ -1373,7 +1373,7 @@ function defineSuite(prefix) {
         m: { M1: 1000, M1c: 3, M2: 800, M6: 150, close: 5000 },
         items: { wheat: { s: 1000, c: 800, q: 40, r: 1000, w: 0 } },
         customers: [{ k: 'ram', n: 'Ram', t: 1000, c: 3 }], suppliers: [],
-        categories: { rent: 50 }, days: { 1: { s: 1000, p: 150 } }, builtAt: 1700000000000, ...V4(), ...extra
+        categories: { rent: 50 }, days: { 1: { s: 1000, p: 150 } }, builtAt: 1700000000000, ...V4(5), ...extra
     });
 
     t('monthStats: owner and manager can write and read month snapshots', async () => {
@@ -1481,6 +1481,8 @@ function defineSuite(prefix) {
         await assertSucceeds(as('staff1').collection(checkpoints).doc('current').set({ stale: true, staleCount: 7 }, { merge: true }));
         const ms = (uid) => as(uid).collection(monthStats).doc('2026-09');
         await assertFails(ms('manager1').set(snap({ month: '2026-09', ...V4(3) })));
+        // an app that doesn't know voided expenses (#99, clientVersion 4) can't build month figures
+        await assertFails(ms('manager1').set(snap({ month: '2026-09', ...V4(4) })));
         const { clientVersion: _c, writtenAt: _w, ...unstamped } = snap({ month: '2026-09' });
         await assertFails(ms('legacyOwner').set(unstamped));
         await assertSucceeds(ms('manager1').set(snap({ month: '2026-09' })));
@@ -2338,7 +2340,8 @@ function defineSuite(prefix) {
         await assertFails(db.collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
         await assertFails(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 7), { merge: true }));
         await assertSucceeds(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
-        // void (#99): the key leaves with it, and never comes back
+        // void (#99): the key leaves with it (a void that leaves it is refused), and never comes back
+        await assertFails(db.collection(personal).doc('b1').update(voidOf('staff1')));
         b = db.batch();
         b.update(db.collection(personal).doc('b1'), voidOf('staff1'));
         b.set(db.collection(personalDays).doc(D), dayKey('b1', null), { merge: true });

@@ -211,6 +211,7 @@ export default {
     'msg.expenses.void_failed': "Could not void the expense. Check the internet and try again.",
     'msg.expenses.voided': "✓ Expense voided: it counts in no total now",
     'msg.expenses.reenter_hint': "Voided. Check the details below and save the corrected expense.",
+    'msg.expenses.reenter_too_old': "This expense's day is older than you can enter now. Use Void, then enter it again on a newer day.",
     'msg.expenses.expense_saved_but_printing_failed': "Expense saved, but printing failed",
     'msg.expenses.locked': "Only the owner can void this expense now (managers: any expense, members: their own, within the edit window in Roles & access)",
     'msg.expenses.personal_expense_saved': "✓ Personal expense saved",

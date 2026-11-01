@@ -373,8 +373,8 @@ const mapDoc = (doc) => {
     return rec;
 };
 
-/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). 4: knows voided bills (#75). */
-const CLIENT_VERSION = 4;
+/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). 4: knows voided bills (#75); 5: voided expenses (#99). */
+const CLIENT_VERSION = 5;
 const STOCK_COLLECTION_KEYS = ['purchases', 'retailSales', 'wholesaleSales', 'stockAdjustments'];
 /** Only owners/managers write checkpoint state (firestore.rules); staff devices never rebuild/roll forward. */
 const canManageCheckpoint = () => ['owner', 'manager'].includes(AppState.userRole);

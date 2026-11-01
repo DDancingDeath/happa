@@ -61,13 +61,15 @@ const inRange = (t, [from, to]) => t >= from && t < to;
 export const isOpening = (bill) => !!bill && typeof bill.openingBalance === 'object' && bill.openingBalance !== null;
 
 /**
- * VOID (#75): a voided bill (`voided: true`) is as if it had never been saved. Every
- * oracle function takes data without them: callers pass withoutVoided(data).
+ * VOID (#75) / VOID-EXP (#99): a voided bill or expense (`voided: true`) is as if it had
+ * never been saved. Every oracle function takes data without them: callers pass withoutVoided(data).
  */
 export const isVoided = (bill) => !!bill && bill.voided === true;
 export function withoutVoided(data) {
     const keep = (list) => (list || []).filter(b => !isVoided(b));
-    return { ...data, purchases: keep(data.purchases), wholesaleSales: keep(data.wholesaleSales), retailSales: keep(data.retailSales) };
+    const out = { ...data, purchases: keep(data.purchases), wholesaleSales: keep(data.wholesaleSales), retailSales: keep(data.retailSales), expenses: keep(data.expenses) };
+    if (Array.isArray(data.personalExpenses)) out.personalExpenses = keep(data.personalExpenses);
+    return out;
 }
 /** Bills that are activity in a period (opening records left out). */
 const activity = (list) => (list || []).filter(b => !isOpening(b));

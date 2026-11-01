@@ -608,10 +608,11 @@ export class ExpensesManager {
         document.getElementById('expenseDetailsContent').innerHTML = content;
         // Hide what the rules would refuse (#99): void inside the role's edit window
         const allowed = canVoidExpenseWith(expense, currentUserInfo());
-        ['expenseVoidBtn', 'expenseReenterBtn'].forEach(id => {
-            const btn = document.getElementById(id);
-            if (btn) btn.style.display = allowed ? '' : 'none';
-        });
+        const voidBtn = document.getElementById('expenseVoidBtn');
+        if (voidBtn) voidBtn.style.display = allowed ? '' : 'none';
+        // Re-entry on the same day must still be inside the role's back-dating window
+        const reenterBtn = document.getElementById('expenseReenterBtn');
+        if (reenterBtn) reenterBtn.style.display = allowed && !this.reenterProblem(expense) ? '' : 'none';
         document.getElementById('expenseDetailsOverlay').classList.add('active');
     }
 
@@ -644,6 +645,10 @@ export class ExpensesManager {
             return false;
         }
         const day = expense.day || personalDayKey(expense.date);
+        if (reenter && this.reenterProblem(expense)) {
+            UIManager.showToast(t('msg.expenses.reenter_too_old'), 5000);
+            return false;
+        }
         const cash = expenseMode(expense) === 'cash';
         const explainKey = !cash ? 'ui.expenses.void_explain'
             : (day && await this.cashDayClosed(day)) ? 'ui.expenses.void_explain_closed' : 'ui.expenses.void_explain_cash';
@@ -681,6 +686,17 @@ export class ExpensesManager {
         if (reenter) this.startReentry(expense, category);
         else UIManager.showToast(t('msg.expenses.voided'));
         return true;
+    }
+
+    /**
+     * Why the voided expense couldn't be saved again on its own day (back-dating
+     * window of the role, #118), or null. Checked before the void.
+     * @param {Object} expense
+     * @returns {?Object}
+     */
+    static reenterProblem(expense) {
+        return validateExpenseEntry({ day: expense.day || personalDayKey(expense.date), mode: expenseMode(expense) },
+            { role: AppState.userRole, roleAccess: AppState.settings?.roleAccess, now: new Date() });
     }
 
     /** "Void & re-enter" of the open expense. */

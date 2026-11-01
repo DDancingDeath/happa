@@ -1012,7 +1012,7 @@
         "dueAmount": 200,
         "paidAt": 1792557000000,
         "openDue": true,
-        "clientVersion": 4
+        "clientVersion": 5
       }
     ],
     [
@@ -1119,7 +1119,7 @@
         "dueAmount": 400,
         "paidAt": 1792557000000,
         "openDue": true,
-        "clientVersion": 4
+        "clientVersion": 5
       }
     ]
   ],
@@ -1170,7 +1170,7 @@
         "paidAt": 1792557000000,
         "dueAmount": 0,
         "openDue": false,
-        "clientVersion": 4
+        "clientVersion": 5
       }
     ]
   ],

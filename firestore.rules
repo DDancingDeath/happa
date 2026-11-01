@@ -544,6 +544,12 @@ service cloud.firestore {
 
     // --- expense void (#99, as bills #75) ---
 
+    // A voided personal expense leaves its day total in the same write (personalExpenseDays).
+    function personalVoidLeavesDay(u, docId) {
+      let p = /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenseDays')/$(resource.data.get('day', '-'));
+      return !existsAfter(p) || !(docId in getAfter(p).data.get('amounts', {}));
+    }
+
     function expenseVoidFields() {
       return ['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'];
     }
@@ -899,7 +905,8 @@ service cloud.firestore {
         : base in ['expenses', 'personalExpenses'] && resource.data.get('voided', false) == true ? false
         : base in ['expenses', 'personalExpenses']
           && request.resource.data.diff(resource.data).affectedKeys().hasAny(expenseVoidFields())
-          ? (base == 'expenses' || personalOn(u)) && expenseVoidOk(u, request.resource.data.diff(resource.data).affectedKeys())
+          ? (base == 'expenses' || (personalOn(u) && personalVoidLeavesDay(u, docId)))
+            && expenseVoidOk(u, request.resource.data.diff(resource.data).affectedKeys())
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canUpdateExpense(u)
@@ -2128,6 +2135,8 @@ service cloud.firestore {
       let d = request.resource.data;
       return isManagerIn(usersCol)
         && voidAwareWriter()
+        // Month figures include expenses: built only by an app that knows voided expenses (#99)
+        && d.get('clientVersion', 0) >= 5
         && docId.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
         && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale', 'staleAt', 'clientVersion', 'writtenAt'])
         && d.keys().hasAll(['month', 'v', 'm'])
