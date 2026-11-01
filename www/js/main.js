@@ -884,6 +884,7 @@ window.app = {
         saveItemFromModal: () => ItemsManager.saveItemFromModal(),
         archiveFromModal: () => ItemsManager.archiveFromModal(),
         toggleArchived: (show) => ItemsManager.toggleArchived(show),
+        setSortAz: (on) => ItemsManager.setSortAz(on),
         loadModalHistory: () => ItemsManager.loadModalHistory(),
         onModalNameInput: (field) => ItemsManager.onModalNameInput(field),
         acceptNameSuggestion: (field) => ItemsManager.acceptNameSuggestion(field),

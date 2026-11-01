@@ -14,7 +14,7 @@ import { isActiveBill, isActiveExpense } from './money.js';
 export const CONFIGURABLE_ROLES = ['manager', 'staff'];
 
 export const PAGE_PERMISSIONS = ['finance', 'reports', 'analytics', 'wholesale'];
-export const SECTION_PERMISSIONS = ['personalExpenses', 'profit', 'stockValue', 'oldCashSessions', 'purchaseRates'];
+export const SECTION_PERMISSIONS = ['personalExpenses', 'profit', 'stockValue', 'oldCashSessions', 'purchaseRates', 'contacts'];
 /** Managers only: may edit the Aadhat settings (Settings › Aadhat; firestore.rules check it on settings/app). */
 export const SETTINGS_PERMISSIONS = ['shopSettings'];
 export const SWITCH_PERMISSIONS = [...PAGE_PERMISSIONS, ...SECTION_PERMISSIONS, ...SETTINGS_PERMISSIONS];
@@ -28,12 +28,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const ROLE_ACCESS_DEFAULTS = Object.freeze({
     manager: Object.freeze({
         finance: true, reports: true, analytics: true, wholesale: true,
-        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true,
+        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true, contacts: true,
         shopSettings: false, historyDays: 0, editDays: DEFAULT_EDIT_DAYS
     }),
     staff: Object.freeze({
         finance: false, reports: false, analytics: false, wholesale: false,
-        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true,
+        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true, contacts: true,
         shopSettings: false, historyDays: 0, editDays: DEFAULT_EDIT_DAYS
     })
 });

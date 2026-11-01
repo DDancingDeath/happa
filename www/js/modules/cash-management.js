@@ -11,9 +11,9 @@ import { updateSessionChecked, updateSession, addSessionEntry } from '../firebas
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
-import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale, localISODaysAgo } from '../utils/dates.js';
+import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale, localISODaysAgo, formatTimeOfDay } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
-import { parseCashAmount, isNotCounted, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
+import { parseCashAmount, isNotCounted, autoCloseFields, sessionForDate, duplicateSessionDays, CASH_NEEDS_INTERNET, openHours } from '../utils/cash-session.js';
 import {
     drawerDay, expectedCash, drawerStatus, signOutSummary, countCheck, closeCheck, openingCheck,
     savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
@@ -23,7 +23,7 @@ import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
 import { normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
-import { t, tn } from '../i18n/index.js';
+import { t, tn, getLang } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 import { tip } from '../tip/index.js';
@@ -489,6 +489,7 @@ export class CashManagementManager {
                 
                 this.updateStatusCard();
                 this.updateSignOutSummary();
+                this.renderLongOpen();
             }
         } else {
             // No session - show sign in with empty status
@@ -500,6 +501,15 @@ export class CashManagementManager {
             
             this.updateStatusCard();
         }
+    }
+
+    /** C10 (Q25 of #111): the drawer open for 14 hours or more is called out above Close cash. */
+    static renderLongOpen(now = Date.now()) {
+        const box = document.getElementById('cashLongOpen');
+        if (!box) return;
+        const open = openHours(this.todaySession, now);
+        box.hidden = !open?.long;
+        box.textContent = open?.long ? t('ui.cash.long_open', { hours: open.hours, time: formatTimeOfDay(open.since, { lang: getLang() }) }) : '';
     }
 
     static updateStatusCard() {

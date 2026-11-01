@@ -635,3 +635,5 @@ body.dark-mode .today-cash-prompt {
 .today-reminder-party { display: flex; gap: 8px; justify-content: space-between; font-size: 14px; padding: 2px 0; }
 .today-reminder-party span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .today-reminder-days, .today-reminder-more { color: #6b7280; font-size: 12px; }
+/* Cash open 14 h or more (C10, Q25 of #111) */
+.cash-long-open { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: 600; }

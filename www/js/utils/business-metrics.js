@@ -161,6 +161,19 @@ export function change(now, then, sameWithin = INSIGHTS_DEFAULTS.sameWithinPct) 
     return { pct, diff: round2(now - then), dir };
 }
 
+/**
+ * M19: business expenses per ₹100 of sales = M4 ÷ M1 × 100, to 1 decimal (personal expenses are
+ * not business expenses: Q7 of #111), and whether it is above the nudge level.
+ * @param {{M1: {total: number}, M4: {total: number}}} m moneySummary()
+ * @returns {?{value: number, high: boolean}} null without sales
+ */
+export function expensePer100Sales(m, cfg = INSIGHTS_DEFAULTS) {
+    const sales = num(m?.M1?.total);
+    if (!(sales > 0)) return null;
+    const value = roundTo((num(m?.M4?.total) / sales) * 100, 1);
+    return { value, high: value > cfg.expenseNudgePer100 };
+}
+
 // ------------------------------------------------------------------ BILL-COUNT
 
 /**

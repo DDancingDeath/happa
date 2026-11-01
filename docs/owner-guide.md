@@ -125,6 +125,7 @@ Only cash counts here, for one day's cash session.
 | Expected cash (C7) | Opening + cash sales + due received + deposits − cash purchases − due paid − expenses. |
 | Difference (C8) | Counted cash − expected: short or extra. Within ₹1 it matches. |
 | Counted cash (C9) | The last counted closing; it is the drawer part of Net worth. |
+| Open for N hours (C10) | When today's cash has been open 14 hours or more, Close cash says so with the time it was opened. |
 
 One session per day: the second phone joins it. Opening needs internet. A closed
 day can't be reopened; a day closed without a count shows "Not counted" and can
@@ -151,6 +152,7 @@ year (CMP; "not known" when that period's figures are not available).
 | **Profit (M6)** | Gross profit − business expenses − bad debts. Labour is **not** taken off (it is already off the purchase bills). |
 | Labour (M7, M18) | Labour deducted on purchases; labour to pay, worked out day by day. |
 | Personal expenses, withdrawals (M8, M9) | Shown apart from profit. |
+| Expenses per ₹100 of sales (M19) | Spending says so when business expenses are more than ₹10 for every ₹100 of sales (personal expenses not counted). |
 | Kept in business (M10) | Profit − personal expenses − withdrawals. |
 | Money in / out / net (M12–M14) | Paid at save + due payments, and expenses; cash and online. |
 | Net worth (M15) | Stock value + to receive + other accounts + counted drawer cash − to pay. Other accounts (bank, savings, loans) are the same on all your phones, in whole rupees; you and managers with Money add or remove them. Members don't see bank balances: their net worth leaves them out and says so. |
@@ -180,7 +182,8 @@ WhatsApp, print or PDF.
 ### Rates
 
 The item list with purchase, sale and wholesale rates. Every change is kept in the
-rate history (also Excel imports).
+rate history (also Excel imports). The most used items come first; tick **A–Z order** to sort
+by name (kept on this phone). Renaming an item asks first and is kept in the rate history.
 
 ### Rentals
 
