@@ -259,19 +259,21 @@ export function chargeStatus(charge, today = new Date()) {
 
 /**
  * Validates a payment against a charge and returns the new totals. Whole
- * rupees, except exactly a due with paise (DUE-CHECK, #129). RENT-16, `advance`
+ * rupees, except exactly a due with paise (DUE-CHECK, #129); `exact`: a part of
+ * payOldestFirst, already worked out from the typed amount, taken as it is. RENT-16, `advance`
  * (the lease's latest month): more than is due pays the month off and the rest
  * (adv) is carried to the next month; `carried` = the month's advance after it (both only then).
  * @throws {Error} message 'amount' (not > 0) or 'over' (more than is due)
  */
-export function applyPayment(charge, amount, advance = false) {
+export function applyPayment(charge, amount, advance = false, exact = false) {
     const due = chargeDue(charge);
-    const check = validateDuePayment(amount, 0, due, 0.001);
+    const a = round2(Number(amount) || 0);
+    const check = !exact ? validateDuePayment(amount, 0, due, 0.001) : a <= 0 ? { error: 'empty' } : a > due + 0.001 ? { error: 'exceeds-due' } : { ok: true, total: a };
     if (!check.ok && check.error !== 'exceeds-due') throw new Error('amount');
     if ((charge.payments || []).length >= MAX_PAYMENTS_PER_CHARGE) throw new Error('too_many');
     if (!check.ok && !(advance && due > 0)) throw new Error('over');
     const amt = check.ok ? check.total : due;
-    const adv = check.ok ? 0 : round2(entryAmount(amount) - due);
+    const adv = check.ok ? 0 : round2((exact ? a : entryAmount(amount)) - due);
     const total = round2(Number(charge.amount) || 0);
     const paid = round2((Number(charge.paid) || 0) + amt);
     return { amount: amt, paid, open: paid < total - 0.001, ...(adv > 0 ? { adv, carried: round2((Number(charge.adv) || 0) + adv) } : {}) };
@@ -297,7 +299,7 @@ export function advanceLeft(charges, leaseId, endMonth) {
  * RENT-5, RENT-16: a payment above the chosen month's due pays the lease's unpaid months
  * (`open`, oldest first) oldest first; only what is left after all of them is an advance
  * (`adv` on the last part), and only when that last month is `latest` (the active lease's
- * last charged month). Each part as a payment of that month would take it (else 'amount').
+ * last charged month). Parts are paid exactly (applyPayment `exact`), so they add up to the typed amount.
  * @returns {Array<{id: string, month: string, amount: number, adv?: number}>}
  * @throws {Error} 'amount' | 'over'
  */
@@ -309,7 +311,6 @@ export function payOldestFirst(open, amount, latest) {
         const due = chargeDue(c);
         const a = Math.min(left, due);
         if (!(a > 0)) continue;
-        if (validateDuePayment(a, 0, due, 0.001).total !== a) throw new Error('amount');
         parts.push({ id: c.id, month: c.month, amount: a });
         left = round2(left - a);
     }

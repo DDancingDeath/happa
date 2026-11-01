@@ -1517,7 +1517,8 @@ service cloud.firestore {
         && existsAfter(rentPath(usersCol, 'rent_tenants', d.tenantId))
         && (owner || d.get('startDate', '') >= rentDaysAgo(2))
         && (mgr || d.get('firstRent', null) == null || rentFirstRentOk(d))
-        && (d.get('fromLeaseId', null) == null ? d.get('shareToken', null) == null : rentUnitChangeOk(usersCol, docId, d));
+        // A change of unit's first month is charged after (its opening advance, RENT-16, comes from the old lease).
+        && (d.get('fromLeaseId', null) == null ? d.get('shareToken', null) == null : d.get('chargedThrough', null) == null && rentUnitChangeOk(usersCol, docId, d));
     }
 
     // Change of unit (rent-unit.js): the same tenant's active lease (fromLeaseId)

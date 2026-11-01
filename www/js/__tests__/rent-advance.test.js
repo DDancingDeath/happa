@@ -71,10 +71,12 @@ describe('RENT-5 / RENT-16: an overpayment pays the oldest unpaid months first',
         expect(() => payOldestFirst(open, 13000, undefined)).toThrow('over');
         expect(payOldestFirst(open, 11000, undefined)).toHaveLength(3);
         expect(() => payOldestFirst(open, 0, '2026-10')).toThrow('amount');
-        // An old due with paise is paid off exactly; a part payment with paise after it is refused.
         const paise = [charge('2026-09', { amount: 1234.5 }), charge('2026-10')];
+        // An old due with paise is paid off exactly and the parts still add up to the typed amount (paid exactly).
         expect(payOldestFirst(paise, 6235, '2026-10').map(payAmount)).toEqual([1234.5, 5000.5]);
-        expect(() => payOldestFirst(paise, 3000, '2026-10')).toThrow('amount');
+        expect(payOldestFirst(paise, 3000, '2026-10').map(payAmount)).toEqual([1234.5, 1765.5]);
+        const p2 = payOldestFirst(paise, 10000, '2026-10');
+        expect(applyPayment(paise[1], payAmount(p2[1]), true, true)).toMatchObject({ amount: 5000, adv: 3765.5 });
     });
 
     test('a change of unit: the advance the old lease leaves (last month, plus one later month given back)', () => {

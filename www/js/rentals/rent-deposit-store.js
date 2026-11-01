@@ -119,7 +119,8 @@ export function advanceToDeposit(chId, leaseId = '') {
         const ch = (await tx.get(chRef)).data();
         if (!(ch?.adv > 0)) return 0;
         const lease = byLease || (await tx.get(coll('rent_leases').doc(ch.leaseId))).data();
-        if (lease?.status !== 'ended') return 0;
+        // After a change of unit the advance opens the new unit's first month instead (chargeLease).
+        if (lease?.status !== 'ended' || lease.movedTo) return 0;
         const ref = depRef(ch.tenantId);
         const snap = await tx.get(ref);
         const pub = await readPublic(tx, lease, true);

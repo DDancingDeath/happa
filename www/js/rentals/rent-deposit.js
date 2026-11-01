@@ -195,8 +195,9 @@ export async function showHeld(c) {
 
 /** RENT-16: advances left on months of leases that ended (no active lease), to move into the deposit. */
 function advLeftHtml(c, left) {
-    const active = new Set(store.snapshot().leases.map(l => l.id));
-    const rows = left.filter(ch => !active.has(ch.leaseId)).map(ch => `<li>${c.esc(ch.tenantName || t('ui.rent.no_name'))} · ${c.esc(monthLabel(ch.month, getLang()))}: <strong>${c.esc(formatINR(ch.adv))}</strong>
+    // A tenant still renting (a change of unit) gets the advance on the new unit's first month instead.
+    const active = new Set(store.snapshot().leases.map(l => l.tenantId));
+    const rows = left.filter(ch => !active.has(ch.tenantId)).map(ch => `<li>${c.esc(ch.tenantName || t('ui.rent.no_name'))} · ${c.esc(monthLabel(ch.month, getLang()))}: <strong>${c.esc(formatINR(ch.adv))}</strong>
         <button type="button" class="rent-btn rent-btn-small" onclick="window.app.rentals.advanceToDeposit('${c.js(ch.id)}')">${c.esc(t('ui.rent.adv_to_deposit'))}</button></li>`).join('');
     return rows ? `<p class="rent-label">${c.esc(t('ui.rent.adv_left'))}</p><ul class="rent-months">${rows}</ul>` : '';
 }

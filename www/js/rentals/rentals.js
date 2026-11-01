@@ -465,7 +465,7 @@ async function pay(leaseId) {
         }
         const adv = parts[parts.length - 1].adv;
         const lines = parts.map(p => `${monthLabel(p.month, lang)}: ${formatINR(p.amount)}`).concat(adv ? [t('ui.rent.adv_next', { amount: formatINR(adv) })] : []).join(' · ');
-        if (!await UIManager.showModal(t('msg.rent.pay_split', { lines }), t('ui.rent.record_payment'))) return;
+        if (!await UIManager.showModal(t('msg.rent.pay_split', { lines }), t('ui.rent.record_payment'), true)) return;
     }
     await Helpers.runExclusive('rent-pay', '[data-rent-pay]', () => savePayment(parts, dues.charges, { mode, ref, date }));
 }
@@ -479,7 +479,7 @@ async function savePayment(parts, charges, { mode, ref, date }) {
     let no = false;
     try {
         for (const p of parts) {
-            res = await store.recordPayment(p.id, { amount: payAmount(p), mode, ref, date }, rcOf(ch(p.id)));
+            res = await store.recordPayment(p.id, { amount: payAmount(p), mode, ref, date, exact: !!p.month }, rcOf(ch(p.id)));
             n++;
             adv = res.adv || adv;
             no = no || res.noReceipt;

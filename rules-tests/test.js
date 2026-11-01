@@ -3723,7 +3723,7 @@ function defineRentSuite(prefix) {
     // carry: the token the new lease takes (the old one clears its own unless clear=false; the snapshot moves to LN);
     // split: the old lease's move month {rent, amount} (RENT-13).
     const changeUnit = (uid, { date = today, unitId = 'U2', propertyId = 'P1', tenantId = 'T1', from = 'L1', freeOld = true, del = [], pub = '', endMonth = '',
-        moved = 'LN', carry = '', clear = !!carry, split = null, first = null } = {}) => {
+        moved = 'LN', carry = '', clear = !!carry, split = null, first = null, charged = false } = {}) => {
         const f = db(uid);
         const b = f.batch();
         const month = date.slice(0, 7);
@@ -3736,7 +3736,8 @@ function defineRentSuite(prefix) {
         if (freeOld) b.update(unitOn(f), { leaseId: null, updatedAt: 2, updatedBy: uid });
         b.set(f.collection(c('rent_leases')).doc('LN'), { unitId, propertyId, tenantId, rent: 6000, dueDay: 10, startMonth: month, startDate: date,
             proRate: false, endMonth: null, deposit: 0, increasePct: 5, rentSince: month, elecMode: 'included', status: 'active',
-            chargedThrough: null, fromLeaseId: from, ...(carry ? { shareToken: carry } : {}), ...(first != null ? { proRate: true, firstRent: first } : {}), ...meta(uid) });
+            chargedThrough: charged ? month : null, fromLeaseId: from, ...(carry ? { shareToken: carry } : {}), ...(first != null ? { proRate: true, firstRent: first } : {}), ...meta(uid) });
+        if (charged) b.set(f.collection(c('rent_charges')).doc(`LN_${month}`), charge(month, { leaseId: 'LN', unitId, rent: 6000, amount: 6000, updatedBy: uid }));
         b.update(f.collection(c('rent_units')).doc(unitId), { leaseId: 'LN', updatedAt: 2, updatedBy: uid });
         return b.commit();
     };
@@ -3793,6 +3794,12 @@ function defineRentSuite(prefix) {
         await assertFails(changeUnit('rentManager', { from: 'L9' }));
         await assertFails(changeUnit('rentManager', { freeOld: false }));
         await assertSucceeds(changeUnit('rentManager', { unitId: 'U3', propertyId: 'P2' }));
+    });
+
+    t('change of unit: the new lease\'s first month is never charged in the change write (its advance comes after)', async () => {
+        await seedChange(CUR);
+        await assertFails(changeUnit('legacyOwner', { charged: true }));
+        await assertSucceeds(changeUnit('legacyOwner'));
     });
 
     t('change of unit: only rentals roles', async () => {

@@ -463,7 +463,7 @@ export function putReceipt(tx, id, ch, pi, rc, year, seq, extra = {}) {
     return { id: rid, ...r, createdAt: now };
 }
 
-async function recordPaymentOnce(id, { amount, mode, ref, date }, rc, year) {
+async function recordPaymentOnce(id, { amount, mode, ref, date, exact }, rc, year) {
     const db = FirebaseService.db;
     const chargeRef = coll('rent_charges').doc(id);
     return db.runTransaction(async (tx) => {
@@ -473,7 +473,7 @@ async function recordPaymentOnce(id, { amount, mode, ref, date }, rc, year) {
         const leaseSnap = await tx.get(coll('rent_leases').doc(charge.leaseId));
         // RENT-16: more than is due on the lease's latest month is carried to the next month.
         const l = leaseSnap.data();
-        const next = applyPayment(charge, amount, l?.status === 'active' && l.chargedThrough === charge.month);
+        const next = applyPayment(charge, amount, l?.status === 'active' && l.chargedThrough === charge.month, exact);
         const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data(), true) : null;
         const seq = rc && Number.isFinite(charge.rent) ? await nextSeq(tx, year) : 0;
         const now = Date.now();

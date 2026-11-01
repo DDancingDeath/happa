@@ -157,6 +157,7 @@ test('more than the month\'s due pays the unpaid months oldest first after confi
     await done;
     await flush();
     expect(UIManager.showModal.mock.calls[0][0]).toContain('Jan 2000: ₹4,000');
+    expect(UIManager.showModal.mock.calls[0][2]).toBe(true);
     expect(UIManager.showModal.mock.calls[0][0]).toContain('Advance for next month: ₹1,000');
     expect(store.recordPayment.mock.calls.map(c => [c[0], c[1].amount])).toEqual([[old.id, 4000], [CHARGE.id, 6000]]);
     expect(UIManager.showToast).toHaveBeenCalledWith('✓ 2 payments saved (₹1,000 carried to next month as an advance)', 'success');
