@@ -90,6 +90,36 @@
             </div>
         </div>
 
+        <div class="settings-card" id="receiptSettingsCard">
+            <h3 data-i18n="ui.settings.printed_bill">Printed bill</h3>
+            <p class="setting-description" data-i18n="ui.settings.printed_bill_hint">The business name and address come from Settings › Aadhat. These choices are saved on this phone.</p>
+            <label for="settingReceiptFooter" data-i18n="ui.settings.receipt_footer">Line at the bottom</label>
+            <input type="text" id="settingReceiptFooter" maxlength="80" data-i18n-placeholder="ui.settings.receipt_footer_placeholder" placeholder="Thank you, visit again" onchange="window.app.settings.saveReceiptOptions()" />
+            <label class="checkbox-label">
+                <input type="checkbox" id="settingReceiptQr" onchange="window.app.settings.saveReceiptOptions()">
+                <span data-i18n="ui.settings.receipt_qr">Print a QR code with the bill number, date and total</span>
+            </label>
+            <label for="settingReceiptLang" data-i18n="ui.settings.receipt_lang">Bill language</label>
+            <select id="settingReceiptLang" onchange="window.app.settings.saveReceiptOptions()">
+                <option value="app" data-i18n="ui.settings.receipt_lang_app">Same as the app</option>
+                <option value="en" data-i18n="ui.settings.receipt_lang_en">English</option>
+                <option value="hi" data-i18n="ui.settings.receipt_lang_hi">Hindi</option>
+            </select>
+            <label for="settingReceiptDensity" data-i18n="ui.settings.receipt_density">Print darkness</label>
+            <select id="settingReceiptDensity" onchange="window.app.settings.saveReceiptOptions()">
+                <option value="light" data-i18n="ui.settings.receipt_density_light">Light</option>
+                <option value="normal" data-i18n="ui.settings.receipt_density_normal">Normal</option>
+                <option value="dark" data-i18n="ui.settings.receipt_density_dark">Dark</option>
+            </select>
+            <p class="setting-description" id="receiptLogoStatus" data-i18n="ui.settings.receipt_logo_none">No logo</p>
+            <input type="file" id="settingReceiptLogo" accept="image/*" hidden onchange="window.app.settings.chooseReceiptLogo(this)">
+            <div class="app-updates-actions">
+                <button class="filter-btn" type="button" onclick="window.app.settings.pickReceiptLogo()" data-i18n="ui.settings.receipt_logo_choose">Choose logo</button>
+                <button class="filter-btn" type="button" id="receiptLogoRemoveBtn" hidden onclick="window.app.settings.removeReceiptLogo()" data-i18n="ui.settings.receipt_logo_remove">Remove logo</button>
+                <button class="add-item-btn" type="button" onclick="window.app.settings.previewReceipt()" data-i18n="ui.settings.receipt_preview">Preview the bill</button>
+            </div>
+        </div>
+
         <div class="settings-card" id="installAppCard" style="display: none;">
             <h3 data-i18n="ui.settings.install_app">Install App</h3>
             <button class="add-item-btn" id="installAppBtn" onclick="window.app.install.prompt()" style="display: none;" data-i18n="ui.settings.install_app_on_device">
