@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v264';
+const CACHE_NAME = 'happa-v272';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -30,12 +30,15 @@ const STATIC_ASSETS = [
     '/js/firebase/repos/bill-drafts.js',
     '/js/firebase/repos/bill-payments.js',
     '/js/firebase/repos/bill-stats.js',
+    '/js/firebase/repos/cash-days.js',
     '/js/firebase/repos/cash-sessions.js',
     '/js/firebase/repos/collection-admin.js',
     '/js/firebase/repos/counters.js',
     '/js/firebase/repos/items.js',
+    '/js/firebase/repos/notifications.js',
     '/js/firebase/repos/telemetry.js',
     '/js/firebase/repos/tip-health.js',
+    '/js/firebase/repos/user-profiles.js',
     '/js/firebase/repos/users.js',
     '/js/main.js',
     '/js/modules/admin.js',
@@ -122,6 +125,9 @@ const STATIC_ASSETS = [
     '/js/utils/user-activity.js',
     '/js/utils/perf-probe.js',
     '/js/utils/status-report.js',
+    '/js/utils/usage-stats.js',
+    '/js/services/usage.js',
+    '/js/ui/usage-view.js',
     '/js/utils/printer-settings.js',
     '/js/utils/qr-code.js',
     '/js/utils/labour.js',
@@ -178,6 +184,10 @@ const STATIC_ASSETS = [
     '/js/tip/scenarios/payment-record.js',
     '/js/tip/scenarios/cash-close.js',
     '/js/tip/scenarios/session-reads.js',
+    '/js/tip/scenarios/print.js',
+    '/js/tip/scenarios/sync.js',
+    '/js/tip/scenarios/stock-checkpoint.js',
+    '/js/tip/scenarios/number-checks.js',
     '/js/version.js',
     '/templates/admin.html',
     '/templates/anomalies.html',
