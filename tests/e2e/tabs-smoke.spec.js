@@ -61,6 +61,7 @@ const STEPS = [
     { name: 'Money › Cash', route: 'money-cash', page: 'money', roles: OM, expect: '#moneyCash' },
     { name: 'Money › Spending', route: 'money-spending', page: 'money', roles: OM, expect: '#moneySpending' },
     { name: 'Money › Worth', route: 'money-worth', page: 'money', roles: OM, expect: '#moneyWorth' },
+    { name: 'Money › Compare with last month', route: 'money-profit', page: 'money', act: "window.app.money.setCompare('last-month')", roles: OM, expect: '#moneyCmpCard:not([hidden]) [data-cmp-row="M1"]' },
     { name: 'Insights › Actions', route: 'insights-actions', page: 'insights', roles: OM, expect: '#insights [data-insights-pane="actions"]' },
     { name: 'Insights › Items', route: 'insights-items', page: 'insights', roles: OM, expect: '#insights [data-insights-pane="items"]' },
     { name: 'Insights › Parties', route: 'insights-parties', page: 'insights', roles: OM, expect: '#insights [data-insights-pane="parties"]' },
