@@ -27,6 +27,7 @@ import { SECURITY_ACTIONS, deniedWriteSource, deviceCheck, planDeniedNote } from
 /** This phone already recorded for the person ("uid|deviceId"). */
 const DEVICE_KEY = 'happaDeviceKnown';
 const DEVICE_TRIED_KEY = 'happaDeviceTried';
+const DEVICE_FLAG_KEY = 'happaDeviceFlagPending';
 
 /** Time for the caller to mark a refusal as expected (the clock check takes up to 5 s). */
 export const DENIED_DECIDE_MS = 8000;
@@ -105,15 +106,27 @@ export const SecurityMonitor = {
             if (localStorage.getItem(DEVICE_TRIED_KEY) === `${known}|${today}`) return false;
         } catch (_) { /* no storage: check with the server */ }
         const check = deviceCheck(await readOwnDevices(uid), deviceId, today);
+        const readStore = (k) => { try { return localStorage.getItem(k); } catch (_) { return null; } };
+        const dropStore = (k) => { try { localStorage.removeItem(k); } catch (_) { /* no storage */ } };
+        // A flag owed from an earlier start whose save was queued (offline / app closed) but not confirmed
+        let flag = readStore(DEVICE_FLAG_KEY) === known;
         if (check.isNew) {
+            if (check.flag) {
+                safeSetItem(DEVICE_FLAG_KEY, known);
+                flag = true;
+            }
             // Added with arrayUnion (another phone may add itself meanwhile); a full list is replaced
             try {
                 await addOwnDevice(uid, check.entry, check.full ? check.next : null);
             } catch (e) {
                 safeSetItem(DEVICE_TRIED_KEY, `${known}|${today}`);
+                dropStore(DEVICE_FLAG_KEY);
                 throw e;
             }
-            if (check.flag) record(SECURITY_ACTIONS.NEW_DEVICE, { device: deviceId.slice(0, 10) });
+        }
+        if (flag) {
+            record(SECURITY_ACTIONS.NEW_DEVICE, { device: deviceId.slice(0, 10) });
+            dropStore(DEVICE_FLAG_KEY);
         }
         safeSetItem(DEVICE_KEY, known);
         return check.isNew;

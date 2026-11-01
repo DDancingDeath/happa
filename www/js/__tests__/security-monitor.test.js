@@ -214,6 +214,22 @@ describe('SecurityMonitor on the phone', () => {
         expect(await SecurityMonitor.checkDevice('u1')).toBe(false);
         expect(read).toHaveBeenCalledTimes(1);
         localStorage.removeItem('happaDeviceTried');
+        // the save queued but the app closed before the server confirmed it: the next start still flags
+        localStorage.removeItem('happaDeviceKnown');
+        note.mockClear();
+        save.mockImplementation(() => new Promise(() => {}));
+        SecurityMonitor.checkDevice('u1');
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(note).not.toHaveBeenCalled();
+        save.mockResolvedValue();
+        read.mockResolvedValue(['otherphone1:20200101', `${entry.split(':')[0]}:20261101`]);
+        expect(await SecurityMonitor.checkDevice('u1')).toBe(false);
+        expect(note).toHaveBeenCalledTimes(1);
+        expect(note).toHaveBeenCalledWith('NEW_DEVICE', expect.objectContaining({ device: expect.any(String) }));
+        localStorage.removeItem('happaDeviceKnown');
+        expect(await SecurityMonitor.checkDevice('u1')).toBe(false);
+        expect(note).toHaveBeenCalledTimes(1);
     });
 
     test('a try on an old bill is recorded for everyone but the owner, once per bill and action, never with editDays 0', () => {
