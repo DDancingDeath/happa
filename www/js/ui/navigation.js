@@ -51,7 +51,7 @@ const ROUTES = Object.freeze({
 const SECTION_PAGES = Object.freeze({
     money: ['profit', 'cash', 'spending', 'worth'],
     insights: ['actions', 'items', 'parties', 'seasons', 'trends', 'traffic'],
-    statements: ['day', 'month', 'party', 'item', 'csv']
+    statements: ['day', 'month', 'party', 'item', 'csv', 'accountant']
 });
 
 function sectionRoute(tabId) {
