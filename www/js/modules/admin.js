@@ -10,7 +10,8 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
-import { todayLocalISO, formatDateTimeIN, formatDay } from '../utils/dates.js';
+import { todayLocalISO, formatDateTimeIN, formatDay, formatDayTime, toLocalISODate } from '../utils/dates.js';
+import { verifyBackup, verifyBackupText, recordDrill, readLimited } from '../utils/backup-verify.js';
 import { userCounts, activityByUser, activityRange, ACTIVITY_RANGES } from '../utils/user-activity.js';
 import { historyLoadedFrom } from '../utils/history-window.js';
 import { getLang } from '../i18n/index.js';
@@ -21,6 +22,10 @@ import { UserAdmin, isRemovedProfile, logUserAction } from '../services/user-adm
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 /** Most audit entries the activity report reads per tap. */
 const ACTIVITY_LIMIT = 300;
+/** Largest backup file checked on a phone (memory). */
+const BACKUP_MAX_BYTES = 80 * 1024 * 1024;
+/** Reasons readBackupFile gives; anything else thrown (a file moved away, a lapsed permission) is 'unreadable'. */
+const BACKUP_READ_CODES = ['too_big', 'encrypted', 'gzip'];
 
 /**
  * Admin Manager - owner-only panel
@@ -489,6 +494,26 @@ const AdminManager = {
                 <div id="adminStorageStats"></div>
             </div>
 
+            <div class="settings-card" id="adminBackupCheck">
+                <h3>🗄️ ${tx('ui.backup.title')}</h3>
+                <p class="setting-description">${tx('ui.backup.hint')}</p>
+                <label class="add-item-btn backup-pick" style="display: inline-block; padding: 8px 16px; margin-bottom: 12px; cursor: pointer;">
+                    📂 ${tx('ui.backup.pick')}
+                    <input type="file" id="adminBackupFile" accept=".json,.gz,application/json,application/gzip" hidden onchange="window.app.admin.checkBackupFile(this.files && this.files[0]); this.value = ''">
+                </label>
+                <div id="adminBackupResult" aria-live="polite"></div>
+                <details class="backup-restore-guide">
+                    <summary><strong>${tx('ui.backup.restore_title')}</strong></summary>
+                    <ol>
+                        <li>${tx('ui.backup.step_get')}</li>
+                        <li>${tx('ui.backup.step_check')}</li>
+                        <li>${tx('ui.backup.step_drill')}</li>
+                        <li>${tx('ui.backup.step_restore')}</li>
+                    </ol>
+                    <p class="setting-description">${tx('ui.backup.restore_note')}</p>
+                </details>
+            </div>
+
             <div class="settings-card danger-zone">
                 <h4>⚠️ ${tx('ui.admin.danger_zone')}</h4>
                 <p>${tx('ui.admin.danger_hint')}</p>
@@ -502,6 +527,78 @@ const AdminManager = {
         if (this.storageStats) {
             this.displayStorageStats(this.storageStats);
         }
+    },
+
+    /**
+     * The text of a chosen backup file (#63): a .json, or a .json.gz unpacked on the
+     * phone; an encrypted .enc file is refused (decrypt it first, tools/backup/README.md).
+     * @param {File} file
+     * @returns {Promise<string>} throws an Error whose `code` is a backup problem code
+     */
+    async readBackupFile(file) {
+        const fail = (code) => Object.assign(new Error(code), { code });
+        if (file.size > BACKUP_MAX_BYTES) throw fail('too_big');
+        const head = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+        if (String.fromCharCode(...head) === 'Salted__' || /\.enc$/i.test(file.name || '')) throw fail('encrypted');
+        if (head[0] === 0x1f && head[1] === 0x8b) {
+            if (typeof DecompressionStream === 'undefined') throw fail('gzip');
+            // Unpacked size counts too: a small .gz can unpack to more than a phone can hold.
+            const text = await readLimited(file.stream().pipeThrough(new DecompressionStream('gzip')), BACKUP_MAX_BYTES);
+            if (text === null) throw fail('too_big');
+            return text;
+        }
+        return file.text();
+    },
+
+    /**
+     * Checks a backup file on this phone, read-only (#63): nothing is uploaded or written
+     * to the database. A good one is the owner's restore drill: recorded on this phone
+     * (REM-3 on Today) and in the audit log.
+     * @param {File} file
+     * @returns {Promise<Object|null>} verifyBackup() result
+     */
+    async checkBackupFile(file) {
+        if (!file || AppState.userRole !== 'owner') return null;
+        const box = document.getElementById('adminBackupResult');
+        if (box) box.innerHTML = `<p>${tx('ui.backup.checking')}</p>`;
+        const now = Date.now();
+        let result;
+        try {
+            result = verifyBackupText(await this.readBackupFile(file), now);
+        } catch (e) {
+            result = verifyBackup(null, now);
+            result.problems[0] = { code: typeof e?.code === 'string' && BACKUP_READ_CODES.includes(e.code) ? e.code : 'unreadable' };
+        }
+        if (result.ok) {
+            const uid = AppState.currentUser?.uid || '';
+            recordDrill(localStorage, { uid, at: now, exportedAt: result.exportedAt, docs: result.totalDocs });
+            AuditService.note(AuditService.ACTIONS.BACKUP_CHECK, {
+                recordsChecked: result.totalDocs,
+                date: result.exportedAt ? toLocalISODate(new Date(result.exportedAt)) : null
+            });
+        }
+        if (box) box.innerHTML = this.backupResultHtml(result);
+        return result;
+    },
+
+    backupResultHtml(r) {
+        const e = (v) => Helpers.escapeHtml(String(v ?? ''));
+        const lang = getLang();
+        if (!r.ok) {
+            const items = r.problems.map(p => `<li>${e(t(`ui.backup.p_${p.code}`, { coll: p.coll, at: p.at, id: p.id, file: p.file, manifest: p.manifest }))}</li>`).join('');
+            const more = r.problemCount > r.problems.length ? `<p>${e(t('ui.backup.more_problems', { count: r.problemCount - r.problems.length }))}</p>` : '';
+            return `<div class="backup-result backup-bad" data-backup-ok="false"><p><strong>✗ ${e(t('ui.backup.bad'))}</strong></p><ul>${items}</ul>${more}</div>`;
+        }
+        const rows = [...r.collections, ...r.subcollections].map(c => `<tr><td lang="en" translate="no">${e(c.name)}</td><td style="text-align:right">${e(c.docs.toLocaleString('en-IN'))}</td></tr>`).join('');
+        const lines = [
+            t('ui.backup.good_docs', { docs: r.totalDocs.toLocaleString('en-IN'), collections: r.collections.length }),
+            r.exportedAt ? t('ui.backup.good_saved', { when: formatDayTime(r.exportedAt, { lang }), days: r.ageDays }) : '',
+            r.newestBillAt ? t('ui.backup.good_newest', { when: formatDay(r.newestBillAt, { lang }) }) : ''
+        ].filter(Boolean);
+        return `<div class="backup-result backup-good" data-backup-ok="true"><p><strong>✓ ${e(t('ui.backup.good'))}</strong></p>`
+            + lines.map(l => `<p>${e(l)}</p>`).join('')
+            + (r.ageDays > 2 ? `<p class="backup-warn">⚠️ ${e(t('ui.backup.old', { days: r.ageDays }))}</p>` : '')
+            + `<details><summary>${e(t('ui.backup.counts'))}</summary><table class="backup-counts" style="width:100%;font-size:13px">${rows}</table></details></div>`;
     },
 
     /**

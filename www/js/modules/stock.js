@@ -14,7 +14,7 @@ import { Helpers } from '../utils/helpers.js';
 import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { formatAmount, formatRupees } from '../utils/money.js';
 import { parseAnyBillDate } from '../utils/dates.js';
-import { stockRows, itemValue, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
+import { stockRows, itemValue, stockValue, stockSummary, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { planStockAdjustment, adjustReasonText, canReverseAdjustment, reversalPlan, stockCountPlan, adjustmentDelta, lastPurchaseRate, restockCost } from '../utils/stock-adjust.js';
@@ -70,6 +70,7 @@ export class StockManager {
             // placeholder instead of blocking the whole app.
             let stock;
             if (AppState.stockReady === false) {
+                this.renderSummary(null);
                 container.innerHTML = stockUpdatingHtml();
                 stock = await FirebaseService.getStock();
             } else {
@@ -82,11 +83,13 @@ export class StockManager {
             // Still waiting (e.g. another device is rebuilding the stock checkpoint, #194):
             // the numbers are not current yet; the data listeners re-render once they are.
             if (AppState.stockReady === false) {
+                this.renderSummary(null);
                 container.innerHTML = stockUpdatingHtml();
                 return;
             }
 
             if (Object.keys(stock).length === 0) {
+                this.renderSummary(null);
                 container.innerHTML = this.emptyStockHtml();
                 return;
             }
@@ -107,6 +110,7 @@ export class StockManager {
             }
         
         if (stockWithDetails.length === 0) {
+            this.renderSummary(null);
             container.innerHTML = this.emptyStockHtml();
             return;
         }
@@ -114,6 +118,7 @@ export class StockManager {
         // Check if user is staff (show limited quantity info for items > 100kg)
         const isStaff = AppState.userRole === 'staff';
 
+        this.renderSummary(stockSummary(stockWithDetails), stockValue(stock), isStaff);
         const approxNote = stockApproxNoteHtml(AppState.stockApprox);
         if (approxNote) container.insertAdjacentHTML('beforeend', approxNote);
         container.insertAdjacentHTML('beforeend', this.lowStockHtml(stock, isStaff));
@@ -130,21 +135,11 @@ export class StockManager {
                 // because they signal a data integrity issue.
                 const qtyColor = item.quantity < 0 ? 'var(--danger-color)' : '#f0ad4e';
                 div.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-left: 3px solid ${qtyColor}; padding-left: 8px;">
-                        <div>
-                            <div style="font-weight: 600; font-size: 15px;">${Helpers.escapeHtml(displayName)}</div>
-                            <div style="color: ${qtyColor}; font-size: 12px; margin-top: 4px;">
-                                ⚠ ${tx('ui.stock.unmatched')}
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-size: 18px; font-weight: 700; color: ${qtyColor};">
-                                ${stockKg(item.quantity)} kg
-                            </div>
-                            <div data-perm="profit" style="color: #666; font-size: 12px; margin-top: 4px;">
-                                ${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}
-                            </div>
-                        </div>
+                    <div class="stock-row stock-row--orphan" style="border-left: 3px solid ${qtyColor}; padding-left: 8px;">
+                        <div class="stock-row__name">${Helpers.escapeHtml(displayName)}</div>
+                        <div class="stock-row__note" style="color: ${qtyColor};">⚠ ${tx('ui.stock.unmatched')}</div>
+                        <div class="stock-row__qty" style="color: ${qtyColor};">${stockKg(item.quantity)} kg</div>
+                        <div class="stock-row__rate" data-perm="profit">${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}</div>
                     </div>
                 `;
                 container.appendChild(div);
@@ -155,28 +150,20 @@ export class StockManager {
             // Rate is always shown, value is hidden when showing "Available"
             const showLimitedQty = isStaff && item.quantity > 100;
             const quantityDisplay = showLimitedQty ? tx('ui.stock.available') : `${stockKg(item.quantity)} kg`;
-            const valueDisplay = showLimitedQty ? '' : `<div data-perm="stockValue" style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${formatRupees(itemValue(item))}</div>`;
+            const valueDisplay = showLimitedQty ? '' : `<div class="stock-row__value" data-perm="stockValue">≈ ${formatRupees(itemValue(item))}</div>`;
             
             const catalogueItem = AppState.items.find(i => i.id === item.itemId);
             const level = lowStockLevel(catalogueItem);
             const alertLine = canSetAlerts && catalogueItem ? `
-                        <button type="button" class="stock-alert-link" onclick="window.app.stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
+                        <button type="button" class="stock-alert-link stock-row__alert" onclick="window.app.stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
                             ${level > 0 ? tx('ui.stock.alert_below', { level: stockKg(level) }) : tx('ui.stock.alert_off')} ✎
                         </button>` : '';
             div.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div>
-                        <div style="font-weight: 600; font-size: 15px;">${Helpers.escapeHtml(displayName)}</div>
-                        <div data-perm="profit" style="color: #666; font-size: 13px; margin-top: 4px;">
-                            ${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}
-                        </div>${alertLine}
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-size: 18px; font-weight: 700; color: var(--success-color);">
-                            ${quantityDisplay}
-                        </div>
-                        ${valueDisplay}
-                    </div>
+                <div class="stock-row">
+                    <div class="stock-row__name">${Helpers.escapeHtml(displayName)}</div>
+                    <div class="stock-row__rate" data-perm="profit">${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}</div>${alertLine}
+                    <div class="stock-row__qty">${quantityDisplay}</div>
+                    ${valueDisplay}
                 </div>
             `;
             
@@ -184,8 +171,31 @@ export class StockManager {
             });
         } catch (error) {
             console.error('Error loading stock:', error);
+            this.renderSummary(null);
             container.innerHTML = `<p style="text-align: center; color: #b02a37; margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
         }
+    }
+
+    /**
+     * Summary card above the list (#92): items in stock and their kg (S7), stock value (S4).
+     * Members see the item count only: like the list, no exact kg above 100 kg and no value.
+     * @param {?{items: number, kg: number}} summary null hides the card
+     * @param {number} [value] S4
+     * @param {boolean} [isStaff]
+     */
+    static renderSummary(summary, value = 0, isStaff = false) {
+        const box = document.getElementById('stockSummary');
+        if (!box) return;
+        box.hidden = !summary || summary.items === 0;
+        if (box.hidden) return;
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+        set('stockSummaryItems', formatAmount(summary.items));
+        set('stockSummaryKg', `${stockKg(summary.kg)} kg`);
+        set('stockSummaryValue', `≈ ${formatRupees(value)}`);
+        const kgCell = document.getElementById('stockSummaryKgCell');
+        if (kgCell) kgCell.hidden = isStaff;
+        const valueCell = document.getElementById('stockSummaryValueCell');
+        if (valueCell) valueCell.hidden = isStaff;
     }
 
     /** Owners and managers adjust stock and set low-stock levels (firestore.rules: items and stockAdjustments). */

@@ -3883,6 +3883,104 @@ body.dark-mode .due-kind-chip {
   color: #4b5563;
 }
 
+
+/* Simpler stock list (#92): name and kg on one line, rate and value under them */
+.stock-item {
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+.stock-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "name qty"
+    "rate value"
+    "alert alert";
+  column-gap: 12px;
+  row-gap: 2px;
+  align-items: baseline;
+}
+
+.stock-row__name {
+  grid-area: name;
+  font-weight: 600;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.stock-row__qty {
+  grid-area: qty;
+  font-size: 17px;
+  font-weight: 700;
+  color: #15803d;
+  text-align: right;
+  white-space: nowrap;
+}
+
+body.dark-mode .stock-row__qty {
+  color: #4ade80;
+}
+
+.stock-row__rate,
+.stock-row__note,
+.stock-row__value {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.stock-row__rate,
+.stock-row__note {
+  grid-area: rate;
+}
+
+.stock-row__value,
+.stock-row--orphan .stock-row__rate {
+  grid-area: value;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.stock-row__alert {
+  grid-area: alert;
+  justify-self: start;
+}
+
+.stock-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.stock-summary[hidden],
+.stock-summary__cell[hidden] {
+  display: none;
+}
+
+.stock-summary__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stock-summary__label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.stock-summary__value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
 /* ---- css/reports.css ---- */
 /* ==================== REPORTS PAGE STYLES ==================== */
 
