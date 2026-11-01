@@ -356,7 +356,7 @@ describe('plan report', () => {
     });
 
     test('CLIENT_VERSION matches the app', () => {
-        const src = fs.readFileSync(path.join(ROOT, 'www', 'js', 'firebase', 'firestore-service.js'), 'utf8');
-        expect(src).toContain(`const CLIENT_VERSION = ${CLIENT_VERSION};`);
+        const src = fs.readFileSync(path.join(ROOT, 'www', 'js', 'firebase', 'db.js'), 'utf8');
+        expect(src).toContain(`export const CLIENT_VERSION = ${CLIENT_VERSION};`);
     });
 });
