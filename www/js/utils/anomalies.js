@@ -176,8 +176,42 @@ export function billTime(bill) {
     return hasTs ? ts : timeOf(bill?.date);
 }
 
+/**
+ * Voids, one record each (#75): a void flagged under its bill's id that an older scan stored under its
+ * audit entry's id (same bill number, same person) is left out, and the other way round (an older app's
+ * entry seen without its bill); a flag built from the audit entry (`auditTwin`) never rewrites the record
+ * already stored under the bill's id, so scans that see the bill and scans that only see the entry don't
+ * overwrite each other.
+ * @param {Array} detected
+ * @param {Array|null} stored
+ * @returns {Array}
+ */
+export function withoutStoredVoidTwins(detected, stored) {
+    const voids = (stored || []).filter(d => d && d.type === 'bill-voided');
+    if (!voids.length) return detected;
+    const keyOf = (d) => `${d.billNumber}|${d.userId || ''}`;
+    const storedAs = (kind) => new Set(voids.filter(d => d.refKind === kind && d.billNumber).map(keyOf));
+    const byAudit = storedAs('audit');
+    const byBill = storedAs('bill');
+    const ids = new Set(voids.map(d => d.id));
+    return detected.filter(a => !(a.type === 'bill-voided' && (a.refKind === 'bill'
+        ? (a.auditTwin && ids.has(a.id)) || (!!a.billNumber && byAudit.has(keyOf(a)))
+        : a.refKind === 'audit' && !!a.billNumber && byBill.has(keyOf(a)))));
+}
+
 const billParty = (bill) => String(bill?.customerName || bill?.supplierName || '').trim();
 const billUserId = (bill) => String(bill?.userId || bill?.createdBy || '');
+
+/**
+ * A voided bill (by kind, as detectAnomalies `voided`) voided within [from, to) by someone
+ * other than `uid` (#75): only then does a scan need to know who the owners are.
+ */
+export function voidedByOthers(voided, uid, from, to) {
+    return Object.values(voided || {}).some(list => (list || []).some(b => {
+        const at = toJsDate(b?.voidedAt)?.getTime();
+        return !!b?.voidedBy && String(b.voidedBy) !== String(uid || '') && at >= from && at < to;
+    }));
+}
 const lineNames = (items) => [...new Set((Array.isArray(items) ? items : [])
     .map(it => readLineItem(it).name).filter(Boolean))];
 
@@ -302,6 +336,8 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {Object[]} [input.sessions] - cash sessions (`cashManagement` docs)
  * @param {Object[]} [input.adjustments] - stock adjustments
  * @param {Object[]} [input.auditLogs] - audit log entries (owner devices only)
+ * @param {{purchase?: Object[], retail?: Object[], wholesale?: Object[]}} [input.voided] - voided bills loaded
+ *   (FirebaseService.voidedBills): a void by anyone but an owner is flagged (#75), no read of its own
  * @param {Object[]} [input.people] - user profiles `{id, name, role}` (owner devices): names on audit-based flags
  * @param {Object[]} [input.catalogue] - items
  * @param {Object} [input.thresholds] - settings/app checkThresholds (+ ANOMALY_DEFAULTS keys)
@@ -311,7 +347,7 @@ const isNight = (hour, t) => (t.nightStartHour > t.nightEndHour
  * @param {number} input.to - exclusive (ms)
  * @returns {Array<Object>} anomalies, one per id, high severity and newest first
  */
-export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], people = [], catalogue = [], thresholds = {}, stock = {}, ownerIds = null, from, to }) {
+export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], auditLogs = [], people = [], catalogue = [], thresholds = {}, stock = {}, ownerIds = null, voided = {}, from, to }) {
     const peopleMap = peopleById(people);
     const t = { ...ANOMALY_DEFAULTS, ...normalizeThresholds(thresholds) };
     Object.keys(ANOMALY_DEFAULTS).forEach(k => {
@@ -462,9 +498,41 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
     const AUDIT_TYPES = { DELETE_BILL: 'bill-deleted', DELETE_SALE: 'bill-deleted', DELETE_EXPENSE: 'expense-deleted', VOID_BILL: 'bill-voided' };
     const AUDIT_TEXT = {
         'bill-deleted': (no, amount) => ({ en: `Bill${no} deleted (₹${amount})`, hi: `बिल${no} मिटाया (₹${amount})` }),
-        'bill-voided': (no, amount) => ({ en: `Bill${no} voided (₹${amount})`, hi: `बिल${no} रद्द किया (₹${amount})` }),
+        'bill-voided': (no, amount, reason) => {
+            const why = cleanText(reason).slice(0, 120);
+            return { en: `Bill${no} voided (₹${amount})${why ? ` — ${why}` : ''}`, hi: `बिल${no} रद्द किया (₹${amount})${why ? ` — ${why}` : ''}` };
+        },
         'expense-deleted': (no, amount) => ({ en: `Expense deleted (₹${amount})`, hi: `खर्च मिटाया (₹${amount})` })
     };
+    // #75: a void needs no approval, but one by anyone except an owner is flagged. Owners come from the
+    // profiles (owner's scan) or the owners' list (else an audit entry's stored role).
+    const isOwnerUid = (uid, storedRole) => {
+        const role = peopleMap.get(String(uid))?.role;
+        if (role) return role === 'owner';
+        if (base.ownerIds) return base.ownerIds.has(String(uid));
+        return storedRole === 'owner';
+    };
+    // Until a phone knows the owners (read once a session when someone else voided a loaded bill), it flags no bill void
+    const ownersKnown = peopleMap.size > 0 || !!base.ownerIds;
+    const voidKey = (kind, billNumber, uid) => `${kind}|${String(billNumber || '')}|${String(uid || '')}`;
+    const loadedVoids = new Map();
+    // Voids of loaded bills: who and when come from the bill (rules: voidedBy = the writer, voidedAt = server time).
+    // The name is the one stored on the bill on every phone, so scans never rewrite each other's record.
+    ['purchase', 'retail', 'wholesale'].forEach(kind => (voided?.[kind] || []).forEach(bill => {
+        if (!bill || bill.id == null || bill.voided !== true) return;
+        const by = String(bill.voidedBy || '');
+        if (bill.billNumber) loadedVoids.set(voidKey(kind, bill.billNumber, by), String(bill.id));
+        if (!by || !ownersKnown || isOwnerUid(by)) return;
+        const amount = round2(billTotal(bill));
+        const no = bill.billNumber ? ` #${bill.billNumber}` : '';
+        add(makeAnomaly('bill-voided', {
+            refKind: 'bill', refId: bill.id, billType: kind, billNumber: bill.billNumber || null,
+            party: billParty(bill), item: lineNames(bill.items).join(', '), userId: by, user: nameOf(by, bill.voidedByName), amount
+        }, {
+            at: toJsDate(bill.voidedAt)?.getTime(),
+            ...AUDIT_TEXT['bill-voided'](no, amount, bill.voidReason)
+        }));
+    }));
     // An entry's userId is the writer's (rules); its stored userName is whatever the phone sent,
     // so the name comes from the profile when the owner's scan has the profiles (#85)
     const logUser = (log) => {
@@ -472,21 +540,33 @@ export function detectAnomalies({ bills = {}, sessions = [], adjustments = [], a
         const profile = peopleMap.get(uid);
         return { userId: uid, user: String(profile?.name || '').trim() || nameOf(uid, log.userName === 'Unknown User' ? '' : log.userName) };
     };
+    const KINDS = ['purchase', 'retail', 'wholesale'];
     (auditLogs || []).forEach(log => {
         const type = AUDIT_TYPES[log?.action];
         if (!type || log.id == null) return;
         const d = log.details && typeof log.details === 'object' ? log.details : {};
         // Deleting a bill that was already voided (flagged then) changes nothing.
         if (type === 'bill-deleted' && d.voided === true) return;
+        if (type === 'bill-voided' && isOwnerUid(log.userId, log.userRole)) return;
         const amount = round2(Number(d.amount) || 0);
-        const no = d.billNumber && d.billNumber !== 'N/A' ? ` #${d.billNumber}` : '';
-        add(makeAnomaly(type, {
-            refKind: 'audit', refId: log.id, billNumber: d.billNumber && d.billNumber !== 'N/A' ? String(d.billNumber) : null,
-            party: d.customer && d.customer !== 'N/A' ? String(d.customer) : '', ...logUser(log), amount
+        const billNumber = d.billNumber && d.billNumber !== 'N/A' ? String(d.billNumber) : null;
+        const no = billNumber ? ` #${billNumber}` : '';
+        // A void shares its bill's flag id (named in the entry, or for older entries the loaded voided
+        // bill of that kind and number voided by the same person), so the bill and its entry give one flag.
+        // Such a twin only creates the record (auditTwin: withoutStoredVoidTwins); the bill's version wins.
+        const kind = KINDS.includes(d.billType) ? d.billType : null;
+        const billId = type !== 'bill-voided' || !kind ? null
+            : d.billId != null && String(d.billId) !== '' ? String(d.billId)
+                : (billNumber && loadedVoids.get(voidKey(kind, billNumber, log.userId))) || null;
+        const flag = makeAnomaly(type, {
+            ...(billId ? { refKind: 'bill', refId: billId, billType: kind } : { refKind: 'audit', refId: log.id }),
+            billNumber, party: d.customer && d.customer !== 'N/A' ? String(d.customer) : '', ...logUser(log), amount
         }, {
             at: Number(log.timestamp),
-            ...AUDIT_TEXT[type](no, amount)
-        }));
+            ...AUDIT_TEXT[type](no, amount, d.reason)
+        });
+        if (billId) flag.auditTwin = true;
+        add(flag);
     });
 
     // #124: refused writes in a burst, new phones, tries on bills past their edit window

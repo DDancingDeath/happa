@@ -732,6 +732,7 @@ export class HistoryManager {
             UIManager.showLoading();
             await FirebaseService.voidBill(BILL_COLLECTION[type], bill, reason);
             AuditService.log(AuditService.ACTIONS.VOID_BILL, {
+                billId: bill.id != null ? String(bill.id) : null,
                 billNumber: bill.billNumber || 'N/A',
                 billType: type,
                 amount: billTotal(bill),
