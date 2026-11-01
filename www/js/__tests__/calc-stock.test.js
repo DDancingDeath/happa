@@ -4,7 +4,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { STOCK_SPEC, stockRows, itemValue, stockValue, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
+import { STOCK_SPEC, stockRows, itemValue, stockValue, stockSummary, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { stateValue } from '../utils/stock-replay.js';
 
 const ITEMS = [
@@ -71,6 +71,24 @@ describe('itemValue (S3) and stockValue (S4 = F6)', () => {
     test('S6 dead stock value = S4 of its rows', () => {
         expect(deadStockValue([{ quantity: 120.5, rate: 31.333333 }, { quantity: 3.333, rate: 7.777 }])).toBeCloseTo(120.5 * 31.333333 + 3.333 * 7.777, 8);
         expect(deadStockValue([])).toBe(0);
+    });
+});
+
+describe('stockSummary (S7): the Stock page summary', () => {
+    test('counts catalogue rows in stock and adds their kg; unmatched and empty rows are left out', () => {
+        const rows = [
+            { itemId: 'a', quantity: 40.5 },
+            { itemId: 'b', quantity: 9.5 },
+            { itemId: 'c', quantity: 0 },
+            { itemId: '__orphan__x', quantity: 12, isOrphan: true },
+            { itemId: '__orphan__y', quantity: -3, isOrphan: true }
+        ];
+        expect(stockSummary(rows)).toEqual({ items: 2, kg: 50 });
+    });
+
+    test('nothing in stock', () => {
+        expect(stockSummary([])).toEqual({ items: 0, kg: 0 });
+        expect(stockSummary(undefined)).toEqual({ items: 0, kg: 0 });
     });
 });
 
