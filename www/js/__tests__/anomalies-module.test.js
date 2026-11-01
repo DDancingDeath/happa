@@ -229,6 +229,17 @@ describe('Day report card', () => {
             expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
             expect(AnomaliesManager.reportList).toEqual([]);
         });
+
+        test('owner: the owners come from the same cached profile read the daily scan uses for the audit log', async () => {
+            FirebaseService.loadAuditPeople = jest.fn(async () => [{ id: 'own1', role: 'owner' }, { id: 'staff1', role: 'staff' }]);
+            try {
+                expect(await AnomaliesManager.loadOwnerIds()).toEqual(['own1']);
+                expect(FirebaseService.loadAuditPeople).toHaveBeenCalledTimes(1);
+                expect(FirebaseService.loadPeople).not.toHaveBeenCalled();
+            } finally {
+                delete FirebaseService.loadAuditPeople;
+            }
+        });
     });
 });
 

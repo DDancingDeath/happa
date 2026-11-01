@@ -139,7 +139,10 @@ export const AnomaliesManager = {
         if (!uid || this.knownOwnerIds() || typeof FirebaseService.loadPeople !== 'function') return this.knownOwnerIds();
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return null;
         try {
-            const ids = (await FirebaseService.loadPeople() || []).filter(p => p && p.role === 'owner').map(p => String(p.id));
+            // The owner's daily scan reads the profiles for the audit log too: the same cached read
+            const read = AppState.userRole === 'owner' && typeof FirebaseService.loadAuditPeople === 'function'
+                ? FirebaseService.loadAuditPeople() : FirebaseService.loadPeople();
+            const ids = (await read || []).filter(p => p && p.role === 'owner').map(p => String(p.id));
             if (AppState.userRole === 'owner' && !ids.includes(uid)) ids.push(uid);
             if (ids.length) this.owners = { uid, ids };
         } catch (e) {
