@@ -8,3 +8,5 @@ every edit (who, when, why). A bill can be **voided** (with a reason) within the
 role's edit window; only the owner deletes, and only a voided bill. A void needs no
 owner approval, but one by anyone except an owner shows on the owner's Today (Day report,
 medium) with who voided it and the reason, and stays in the audit log.
+A bill that stored no total shows **—** instead of ₹0, and a date the app can't
+read shows **Date?** next to it.
