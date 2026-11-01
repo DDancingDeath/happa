@@ -215,3 +215,9 @@
   color: #4b5563;
 }
 
+/* Item name suggested from the other language (#134), until the user takes it */
+.autofill-suggest {
+  color: #9ca3af;
+  font-style: italic;
+}
+
