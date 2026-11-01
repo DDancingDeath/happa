@@ -383,7 +383,8 @@ describe('PrinterService with the fake transport', () => {
             offers.push(typeof opts.onPrint === 'function');
             return opts.onPrint ? opts.onPrint() : true;
         });
-        expect(await PrinterService.printBill(bill)).toBe(true);
+        // Not printed: the caller must not say "saved and printed"
+        expect(await PrinterService.printBill(bill)).toBe(false);
         expect(transport.calls.connect).toBe(BILL_PRINT_TRIES);
         expect(offers).toEqual([...Array(BILL_PRINT_TRIES - 1).fill(true), false]);
         expect(toast).toHaveBeenLastCalledWith(`Print failed after ${BILL_PRINT_TRIES} tries: Unable to connect to device. Use the picture, or print it again later from History.`);
@@ -433,6 +434,30 @@ describe('PrinterService with the fake transport', () => {
             expect(banner()).toBeNull();
             expect(await PrinterService.printBill(billB)).toBe(true);
             expect(transport.written).toEqual([BYTES]);
+        });
+
+        test('Print in the preview after a refusal asks Android first, then prints', async () => {
+            preview.mockImplementationOnce(async (_bill, opts) => opts.onPrint());
+            expect(await PrinterService.printBill(bill)).toBe(true);
+            expect(asked).toBe(1);
+            expect(transport.written).toEqual([BYTES]);
+            expect(banner()).toBeNull();
+        });
+
+        test('Android 11: a link error mentioning permission does not leave "permission needed" behind', async () => {
+            jest.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Linux; Android 11; X) wv');
+            transport.connectPlan = ['denied'];
+            await PrinterService.printBill(bill);
+            expect(PrinterService.permissionState).toBe('unknown');
+            expect(banner()).toBeNull();
+        });
+
+        test('turning the printer off in Settings hides the banner', async () => {
+            await PrinterService.bluetoothPermission();
+            expect(banner()).not.toBeNull();
+            AppState.printerSettings = { ...AppState.printerSettings, enabled: false };
+            PrinterService.renderPermissionBanner();
+            expect(banner()).toBeNull();
         });
 
         test('Android still says no: the banner stays and says where to allow it', async () => {

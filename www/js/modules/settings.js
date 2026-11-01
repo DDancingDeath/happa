@@ -554,6 +554,7 @@ export class SettingsManager {
     static _setPrinterSettings(next) {
         AppState.printerSettings = normalizePrinterSettings(next);
         storeLocalSettings('printerSettings', AppState.printerSettings);
+        PrinterService.renderPermissionBanner();
     }
 
     static toggleBluetoothPrinter() {

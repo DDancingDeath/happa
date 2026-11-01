@@ -1158,7 +1158,10 @@ const PrinterService = {
      */
     async bluetoothPermission() {
         const perms = this._permissions();
-        if (!perms) return 'unknown';
+        if (!perms) {
+            if (this.permissionState !== 'unknown') this.setPermissionState('unknown');
+            return 'unknown';
+        }
         const name = perms.BLUETOOTH_CONNECT || CONNECT_PERMISSION;
         let timer;
         const state = await Promise.race([
@@ -1394,7 +1397,7 @@ const PrinterService = {
             } else {
                 const key = jobKey('bill', billData.billNumber || billData.id);
                 ({ outcome, error } = await this.runJob(key, (job) => this.manager.write(billData, job)));
-                if (error?.kind === 'permission') this.setPermissionState('denied');
+                if (error?.kind === 'permission' && this._permissions()) this.setPermissionState('denied');
             }
             if (outcome !== 'cancelled') recordPrint(billData, outcome, outcome === 'failed' ? { errorKind: error?.kind, error: error?.message } : {});
             if (outcome === 'printed') {
@@ -1408,9 +1411,17 @@ const PrinterService = {
             UIManager.showToast(last
                 ? t('msg.printer.print_failed_last', { message: this.errorText(error), tries })
                 : t('msg.printer.print_failed', { message: this.errorText(error) }));
-            if (!last) return await this.showBillPreview(billData, { onPrint: () => this._printBillNow(billData, tries + 1) });
+            if (!last) return await this.showBillPreview(billData, { onPrint: () => this._retryBillPrint(billData, tries + 1) });
+            await this.showBillPreview(billData);
+            return false;
         }
         return await this.showBillPreview(billData);
+    },
+
+    /** @private Print from the preview after a failed try: asks Android first when the permission was refused. */
+    async _retryBillPrint(billData, tries) {
+        if (this.permissionState === 'denied') await this.requestBluetoothPermission();
+        return this._printBillNow(billData, tries);
     },
 
     /**

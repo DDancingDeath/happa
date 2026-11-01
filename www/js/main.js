@@ -625,6 +625,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 NotificationsManager.stop();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
+                document.getElementById('printerPermissionBanner')?.remove();
                 document.getElementById('authScreen').style.display = 'flex';
             }
         });
