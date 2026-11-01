@@ -13,6 +13,8 @@ import { t, tn, getLang } from '../i18n/index.js';
 import { formatRupees } from '../utils/money.js';
 import { can } from '../utils/role-access.js';
 import { parseQuestion, answerQuestion } from '../utils/ask.js';
+import { approxStockNote } from '../utils/stock-check.js';
+import { pickLang } from '../i18n/localize.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
 const EXAMPLES = 6;
@@ -52,13 +54,15 @@ export const AskManager = {
     async ask(text) {
         const q = parseQuestion(text);
         let stockReady = true;
+        let stockFailed = false;
         if (q.intent === 'item_stock' && q.subject) {
             try {
                 await FirebaseService.getStock();
             } catch (e) {
                 console.warn('Ask: stock not loaded:', e?.message || e);
+                stockFailed = true;
             }
-            stockReady = AppState.stockReady !== false;
+            stockReady = !stockFailed && AppState.stockReady !== false;
         }
         const answer = answerQuestion(q, {
             bills: { purchases: AppState.purchaseHistory, retailSales: AppState.retailSalesHistory, wholesaleSales: AppState.salesHistory },
@@ -72,14 +76,26 @@ export const AskManager = {
             stockReady,
             today: new Date()
         });
-        this.answers = [{ question: text, answer }, ...this.answers].slice(0, MAX_ANSWERS);
+        if (answer.intent === 'item_stock') Object.assign(answer, { failed: stockFailed, approx: stockFailed ? null : AppState.stockApprox || null });
+        this.answers = [{ uid: this.uid(), question: text, answer }, ...this.mine()].slice(0, MAX_ANSWERS);
         this.renderAnswers();
         return answer;
+    },
+
+    uid() {
+        return AppState.currentUser?.uid || null;
+    },
+
+    /** Answers asked by the person signed in now (another sign-in on this phone never sees them). */
+    mine() {
+        const uid = this.uid();
+        return this.answers.filter(a => a.uid === uid);
     },
 
     renderAnswers() {
         const host = document.getElementById('askAnswers');
         if (!host) return;
+        this.answers = this.mine();
         host.innerHTML = this.answers.map(a => `<div class="ask-answer"><div class="ask-question">${esc(a.question)}</div>${this.answerHtml(a.answer)}</div>`).join('');
     },
 
@@ -92,6 +108,8 @@ export const AskManager = {
         const itemName = (n) => (getLang() === 'hi' && n.hindiName ? n.hindiName : n.name);
 
         switch (a.intent) {
+        case 'today_only':
+            return line(t('ui.ask.today_only'));
         case 'help':
             return line(t('ui.ask.help'));
         case 'sales_today':
@@ -110,13 +128,15 @@ export const AskManager = {
                 + open;
         case 'item_stock':
             if (a.needsItem) return line(t('ui.ask.which_item'));
+            if (a.failed) return line(t('ui.ask.stock_failed')) + open;
             if (a.updating) return line(t('ui.ask.stock_updating')) + open;
             if (!a.name) {
                 return (a.matches.length ? choose(a.matches.map(itemName), a.more) : line(t('ui.ask.no_item', { name: a.subject }))) + open;
             }
             return line(a.limited ? t('ui.ask.ans_stock_available', { name: itemName(a) })
                 : a.quantity > 0 ? t('ui.ask.ans_stock', { name: itemName(a), kg: kg(a.quantity) })
-                    : t('ui.ask.ans_stock_none', { name: itemName(a) })) + open;
+                    : t('ui.ask.ans_stock_none', { name: itemName(a) }))
+                + (a.approx ? line(pickLang(approxStockNote(a.approx))) : '') + open;
         default:
             return line(t('ui.ask.unknown'));
         }

@@ -34,16 +34,23 @@ const SALES = words(['bikri', 'bikree', 'bechi', 'becha', 'beche', 'bechaa', 'sa
 const PURCHASES = words(['kharid', 'khareed', 'kharida', 'kharidi', 'khareeda', 'khareedi', 'purchase', 'purchases', 'bought', 'खरीद', 'खरीदा', 'खरीदी']);
 const EXPENSES = words(['kharcha', 'kharch', 'kharche', 'expense', 'expenses', 'spent', 'खर्च', 'खर्चा', 'खर्चे']);
 const DUES = words(['baaki', 'baki', 'bakaya', 'baqaya', 'udhaar', 'udhar', 'udhari', 'due', 'dues', 'owe', 'owes', 'balance', 'बाकी', 'बाक़ी', 'बकाया', 'उधार', 'उधारी']);
-const STOCK = words(['stock', 'stok', 'maal', 'स्टॉक', 'स्टाक', 'माल', 'bacha', 'bachaa', 'बचा']);
-const TOTAL = words(['kul', 'total', 'sab', 'sabka', 'sabhi', 'saara', 'sara', 'all', 'कुल', 'सब', 'सबका', 'सभी', 'सारा']);
+// "maal" alone may also mean goods bought or sold ("aaj kitna maal becha"): sales / purchase words win over it.
+const STOCK = words(['stock', 'stok', 'स्टॉक', 'स्टाक', 'bacha', 'bachaa', 'बचा']);
+const GOODS = words(['maal', 'mal', 'माल']);
+const TOTAL = words(['kul', 'total', 'sab', 'sabka', 'sabhi', 'saara', 'all', 'कुल', 'सब', 'सबका', 'सभी', 'सारा']);
 const HELP = words(['help', 'madad', 'मदद', 'सहायता']);
 const LINK = words(['ka', 'ki', 'ke', 'ko', 'se', 'of', 'for', 'from', 'by', 'का', 'की', 'के', 'को', 'से']);
+// Words around a name or an amount that are never part of it ("Ramesh ji ka kitna paisa baaki").
+const NOISE = words(['paisa', 'paise', 'rupaye', 'rupay', 'rupees', 'rupee', 'rs', 'ji', 'jee', 'hisab', 'hisaab', 'lena', 'dena',
+    'पैसा', 'पैसे', 'रुपये', 'रुपया', 'जी', 'हिसाब', 'लेना', 'देना']);
 const FILLER = words([
     'kitna', 'kitni', 'kitne', 'hai', 'he', 'h', 'hain', 'kya', 'batao', 'bata', 'bataiye', 'bataye', 'dikhao', 'please', 'plz',
     'what', 'whats', 'is', 'are', 'was', 'the', 'how', 'much', 'many', 'show', 'me', 'tell', 'my', 'do', 'does', 'did', 'us',
-    'we', 'i', 'in', 'hamara', 'mera', 'abhi', 'now', 'left', 'tak', 'paas', 'pass', 'hua', 'hui', 'hue', 'gaya', 'gayi', 'ab',
-    'कितना', 'कितनी', 'कितने', 'है', 'हैं', 'क्या', 'बताओ', 'बताइए', 'दिखाओ', 'मेरा', 'हमारा', 'अभी', 'तक', 'पास', 'हुआ', 'हुई', 'गया', 'गई'
+    'we', 'i', 'in', 'hamara', 'mera', 'now', 'left', 'tak', 'paas', 'pass', 'hua', 'hui', 'hue', 'gaya', 'gayi',
+    'कितना', 'कितनी', 'कितने', 'है', 'हैं', 'क्या', 'बताओ', 'बताइए', 'दिखाओ', 'मेरा', 'हमारा', 'तक', 'पास', 'हुआ', 'हुई', 'गया', 'गई'
 ]);
+// Dropped only when other words remain, since they can be names too ("Abhi ka baaki", "Sara ka baaki").
+const SOFT = words(['abhi', 'ab', 'sara', 'अभी', 'अब']);
 
 const hasAny = (tokens, set) => tokens.some(w => set.has(w));
 const DEVANAGARI = /[\u0900-\u097F]/;
@@ -55,7 +62,7 @@ const DEVANAGARI = /[\u0900-\u097F]/;
  */
 export function questionWords(text) {
     return String(text || '').normalize('NFC').toLowerCase()
-        .replace(/['’]s\b/g, 's')
+        .replace(/['’]s\b/g, '')
         .replace(/[?!.,;:।"“”‘’()[\]{}]+/g, ' ')
         .split(/\s+/)
         .filter(w => w && !FILLER.has(w));
@@ -64,21 +71,27 @@ export function questionWords(text) {
 /**
  * What the question asks.
  * @param {string} text
- * @returns {{intent: 'help'|'sales_today'|'purchases_today'|'expenses_today'|'party_due'|'total_due'|'item_stock'|'unknown', subject?: string}}
+ * @returns {{intent: 'help'|'sales_today'|'purchases_today'|'expenses_today'|'today_only'|'party_due'|'total_due'|'item_stock'|'unknown', subject?: string}}
  */
 export function parseQuestion(text) {
     const tokens = questionWords(text);
     if (!tokens.length || hasAny(tokens, HELP)) return { intent: 'help' };
-    const rest = (...sets) => tokens.filter(w => !LINK.has(w) && !TODAY.has(w) && !TOTAL.has(w) && !sets.some(s => s.has(w))).join(' ');
+    const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES];
+    const leftover = () => {
+        const left = tokens.filter(w => !KEYWORDS.some(s => s.has(w)));
+        const strong = left.filter(w => !SOFT.has(w));
+        return (strong.length ? strong : left).join(' ');
+    };
 
     if (hasAny(tokens, DUES)) {
-        const subject = rest(DUES);
+        const subject = leftover();
         return subject ? { intent: 'party_due', subject } : { intent: 'total_due' };
     }
-    if (hasAny(tokens, STOCK)) return { intent: 'item_stock', subject: rest(STOCK) };
-    if (hasAny(tokens, SALES)) return { intent: 'sales_today' };
-    if (hasAny(tokens, PURCHASES)) return { intent: 'purchases_today' };
-    if (hasAny(tokens, EXPENSES)) return { intent: 'expenses_today' };
+    const money = hasAny(tokens, SALES) ? 'sales_today' : hasAny(tokens, PURCHASES) ? 'purchases_today'
+        : hasAny(tokens, EXPENSES) ? 'expenses_today' : null;
+    if (hasAny(tokens, STOCK) || (!money && hasAny(tokens, GOODS))) return { intent: 'item_stock', subject: leftover() };
+    // Only today's totals are known here: "kal ki bikri" or "chawal kitna becha" must not get today's total.
+    if (money) return leftover() ? { intent: 'today_only' } : { intent: money };
     return { intent: 'unknown' };
 }
 

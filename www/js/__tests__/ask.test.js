@@ -4,6 +4,9 @@
  * items). The figures themselves are checked against the oracle in tests/oracle/ask.test.js.
  */
 import { answerQuestion, parseQuestion } from '../utils/ask.js';
+import { AskManager } from '../modules/ask.js';
+import { FirebaseService } from '../firebase/firestore-service.js';
+import { AppState } from '../utils/state.js';
 
 describe('parseQuestion', () => {
     test.each([
@@ -21,7 +24,18 @@ describe('parseQuestion', () => {
         ['stock', { intent: 'item_stock', subject: '' }],
         ['help', { intent: 'help' }],
         ['   ', { intent: 'help' }],
-        ['weather kal', { intent: 'unknown' }]
+        ['weather kal', { intent: 'unknown' }],
+        ["Ramesh's due", { intent: 'party_due', subject: 'ramesh' }],
+        ['Ramesh ji ka kitna paisa baaki hai', { intent: 'party_due', subject: 'ramesh' }],
+        ['रमेश जी का बाकी', { intent: 'party_due', subject: 'रमेश' }],
+        ['bikri ka baaki', { intent: 'total_due' }],
+        ['Abhi ka baaki', { intent: 'party_due', subject: 'abhi' }],
+        ['Sara ka baaki', { intent: 'party_due', subject: 'sara' }],
+        ['kal ki bikri', { intent: 'today_only' }],
+        ['chawal kitna becha', { intent: 'today_only' }],
+        ['aaj kitna maal becha', { intent: 'sales_today' }],
+        ['abhi chawal ka stock', { intent: 'item_stock', subject: 'chawal' }],
+        ['chawal ka maal', { intent: 'item_stock', subject: 'chawal' }]
     ])('%s', (text, want) => expect(parseQuestion(text)).toEqual(want));
 });
 
@@ -61,5 +75,28 @@ describe('answerQuestion', () => {
     test('stock: archived items are not offered; still updating says so', () => {
         expect(ask('dal ka stock').matches).toEqual([]);
         expect(ask('rice stock', { stockReady: false }).updating).toBe(true);
+    });
+});
+
+describe('Ask page', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '<div id="askExamples"></div><div id="askAnswers"></div>';
+        AskManager.answers = [];
+        Object.assign(AppState, { purchaseHistory: [], retailSalesHistory: [], salesHistory: [], expensesHistory: [], items: [{ id: 'i1', name: 'Rice', hindiName: '' }], stock: { i1: { quantity: 20, rate: 30 } }, userRole: 'owner', stockReady: true, stockApprox: null });
+    });
+    test('answers stay with the person who asked: another sign-in on this phone sees none', async () => {
+        AppState.currentUser = { uid: 'owner1' };
+        await AskManager.ask('kul baaki');
+        expect(document.querySelectorAll('.ask-answer')).toHaveLength(1);
+        AppState.currentUser = { uid: 'member1' };
+        AskManager.init();
+        expect(document.querySelectorAll('.ask-answer')).toHaveLength(0);
+    });
+    test('stock that could not be worked out is not shown as "no stock"', async () => {
+        AppState.currentUser = { uid: 'owner1' };
+        jest.spyOn(FirebaseService, 'getStock').mockRejectedValueOnce(new Error('offline'));
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        await AskManager.ask('rice stock');
+        expect(document.getElementById('askAnswers').textContent).toContain('could not be worked out');
     });
 });
