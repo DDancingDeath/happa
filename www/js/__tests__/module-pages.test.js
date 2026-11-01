@@ -136,6 +136,18 @@ describe('Rates page (items list)', () => {
         }
     });
 
+    test('a refused bill-check save puts this phone back on the values stored now (#113)', async () => {
+        AppState.userRole = 'owner';
+        AppState.settings.checkThresholds = { ...AppState.settings.checkThresholds, rateMultiple: 2 };
+        document.body.insertAdjacentHTML('beforeend', '<input id="settingCheck_rateMultiple" value="9">');
+        jest.spyOn(FirebaseService, 'saveSharedCheckThresholds').mockRejectedValue(Object.assign(new Error('x'), { code: 'changed-elsewhere' }));
+        jest.spyOn(FirebaseService, 'loadAppSettings').mockResolvedValue({ checkThresholds: { rateMultiple: 3 }, laborRate: 6, heavyWeightThreshold: 30 });
+        jest.spyOn(FirebaseService, 'saveSharedLabourSettings').mockResolvedValue(undefined);
+        expect(await SettingsManager.saveCheckThresholds()).toBe(false);
+        expect(AppState.settings.checkThresholds.rateMultiple).toBe(3);
+        expect(toast.mock.calls.at(-1)[0]).toMatch(/another phone/);
+    });
+
     test('a settings section saved over another phone\'s newer save is refused, then works once read again (#113)', async () => {
         const fake = createFakeFirestore();
         window.firebase = fake.firebase;
@@ -152,6 +164,12 @@ describe('Rates page (items list)', () => {
             await FirebaseService.saveRoleAccess(ROLE_ACCESS_DEFAULTS);
             expect(fake.raw('settings').get('app').roleAccessUpdatedAt).not.toBe(2);
             expect(fake.raw('settings').get('app').laborRate).toBe(7);
+            // two quick saves of one section on this phone are no conflict
+            await Promise.all([
+                FirebaseService.saveSharedLabourSettings({ laborRate: 8, heavyWeightThreshold: 30 }),
+                FirebaseService.saveSharedLabourSettings({ laborRate: 9, heavyWeightThreshold: 30 })
+            ]);
+            expect(fake.raw('settings').get('app').laborRate).toBe(9);
         } finally {
             delete window.firebase;
             delete global.firebase;

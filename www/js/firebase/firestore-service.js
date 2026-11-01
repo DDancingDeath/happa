@@ -367,7 +367,17 @@ let appSettingsPromise = null;
  * owner's first-start seed, which must not fail offline).
  * @private
  */
-async function saveSettingsSection(fields, stampKey, { checked = true } = {}) {
+const settingsSectionQueue = new Map();
+function saveSettingsSection(fields, stampKey, opts = {}) {
+    // One save of a section at a time on this phone: two quick edits are not a "conflict"
+    const run = (settingsSectionQueue.get(stampKey) || Promise.resolve())
+        .catch(() => {})
+        .then(() => saveSettingsSectionNow(fields, stampKey, opts));
+    settingsSectionQueue.set(stampKey, run);
+    return run;
+}
+
+async function saveSettingsSectionNow(fields, stampKey, { checked = true } = {}) {
     const ref = getDb().collection(col('settings')).doc('app');
     const keepInCache = () => {
         if (appSettingsPromise) {

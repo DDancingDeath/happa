@@ -15,7 +15,7 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, normalizeLabourSettings, normalizePackageKg } from '../utils/money.js';
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
-import { writeErrorKey } from '../utils/write-conflict.js';
+import { CHANGED_ELSEWHERE, NEEDS_INTERNET, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
 import { safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { auditActionLabel } from '../i18n/localize.js';
@@ -238,6 +238,7 @@ export class SettingsManager {
         } catch (error) {
             console.error('Saving shared labour settings failed:', error);
             UIManager.showToast(t(writeErrorKey(error, 'msg.settings.labour_rate_not_saved_everyone')));
+            await this.afterRefusedSave(error, () => this.applyLabourLocally(current));
             return false;
         }
     }
@@ -403,6 +404,11 @@ export class SettingsManager {
         } catch (error) {
             console.error('Saving bill-check limits failed:', error);
             UIManager.showToast(t(writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet')));
+            await this.afterRefusedSave(error, () => {
+                AppState.settings.checkThresholds = previous;
+                storeLocalSettings();
+                CHECK_THRESHOLD_FIELDS.forEach(([key]) => setField(`settingCheck_${key}`, 'value', previous[key]));
+            });
             return false;
         }
     }
@@ -427,7 +433,31 @@ export class SettingsManager {
         } catch (error) {
             console.error('Saving business details failed:', error);
             UIManager.showToast(t(writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet')));
+            await this.afterRefusedSave(error, () => {
+                AppState.settings.shopName = previous.businessName;
+                AppState.settings.businessDetails = previous.businessDetails;
+                storeLocalSettings();
+                setField('settingBusinessName', 'value', previous.businessName);
+                setField('settingBusinessDetails', 'value', previous.businessDetails);
+            });
             return false;
+        }
+    }
+
+    /**
+     * A shared setting the server refused (#113): this phone goes back to what it had;
+     * changed on another phone → it shows the values stored now.
+     * @param {*} error
+     * @param {function(): void} restore puts this phone's previous values back
+     */
+    static async afterRefusedSave(error, restore) {
+        if (error?.code !== CHANGED_ELSEWHERE && error?.code !== NEEDS_INTERNET) return;
+        restore();
+        if (error.code !== CHANGED_ELSEWHERE) return;
+        try {
+            await this.applySharedSettings(await FirebaseService.loadAppSettings());
+        } catch (e) {
+            console.warn('Settings not read again:', e);
         }
     }
 

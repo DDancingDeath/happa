@@ -1237,7 +1237,8 @@
       {
         "id": "i1",
         "name": "Rice",
-        "rate": 31
+        "rate": 31,
+        "rev": "increment(1)"
       },
       {
         "merge": true

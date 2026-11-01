@@ -11,7 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { AuthManager } from '../auth/authentication.js';
 import { Helpers } from '../utils/helpers.js';
-import { writeErrorKey } from '../utils/write-conflict.js';
+import { CHANGED_ELSEWHERE, NEEDS_INTERNET, writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
 import {
     CONFIGURABLE_ROLES, PAGE_PERMISSIONS, SECTION_PERMISSIONS, SETTINGS_PERMISSIONS, MAX_EDIT_DAYS, MAX_HISTORY_DAYS,
@@ -144,6 +144,16 @@ export class RolesAccessManager {
         } catch (error) {
             console.error('Saving roles & access failed:', error);
             UIManager.showToast(t(writeErrorKey(error, 'msg.roles.not_saved')));
+            if (error?.code === CHANGED_ELSEWHERE || error?.code === NEEDS_INTERNET) {
+                // Not saved: back to what is stored (the other phone's values when it changed meanwhile)
+                AppState.settings.roleAccess = before;
+                if (error.code === CHANGED_ELSEWHERE) {
+                    try { this.applyShared(await FirebaseService.loadAppSettings()); } catch (e) { console.warn('Roles & access not read again:', e); }
+                }
+                try { localStorage.setItem('settings', JSON.stringify(AppState.settings)); } catch (_) { /* storage full/blocked */ }
+                AuthManager.applyRoleBasedRestrictions();
+                this.render();
+            }
             return false;
         }
         if (changes.length) {

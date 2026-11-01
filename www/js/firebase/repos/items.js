@@ -47,7 +47,8 @@ export const itemMethods = {
             delete data.rev;
             const ref = getDb().collection(col('items')).doc(item.id);
             if (expectedRev === undefined) {
-                await ref.set(data, { merge: true });
+                // Not checked (inline edits, older callers), but an item dialog open elsewhere notices it
+                await ref.set({ ...data, rev: firebase.firestore.FieldValue.increment(1) }, { merge: true });
                 return item;
             }
             if (isOffline()) throw needsInternetError();
