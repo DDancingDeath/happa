@@ -1,7 +1,7 @@
 /**
  * @fileoverview Tests for money helpers / payment schema normalisation
  */
-import { round2, sumMoney, readPayment, billTotal, outstandingDue, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingOldTotals, wholesaleOutstanding } from '../utils/money.js';
+import { round2, sumMoney, readPayment, billTotal, billLineTotal, outstandingDue, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingOldTotals, wholesaleOutstanding } from '../utils/money.js';
 import { perUnitRate, normalizePackageKg, normalizeLabourSettings, toMoney, readLineItem, formatAmount, formatRupees } from '../utils/money.js';
 
 describe('round2', () => {
@@ -135,6 +135,21 @@ describe('wholesaleOutstanding (the old app Wholesale page rule, tools/migrate o
         expect(wholesaleOutstanding({ total: 300 })).toBe(300);
         expect(wholesaleOutstanding({ total: 300, cleared: true })).toBe(0);
         expect(wholesaleOutstanding(null)).toBe(0);
+    });
+});
+
+describe('billLineTotal (BILL-LINES, #80)', () => {
+    test('purchases: billTotal, a present 0 counts; else BILL-TOTAL + labour', () => {
+        expect(billLineTotal({ billTotal: 1000, grandTotal: 988, laborCharges: 12 }, true)).toBe(1000);
+        expect(billLineTotal({ billTotal: 0, grandTotal: 500, total: 70 }, true)).toBe(0);
+        expect(billLineTotal({ grandTotal: 950, laborCharges: 50 }, true)).toBe(1000);
+        expect(billLineTotal({ total: 970, labour: 30 }, true)).toBe(1000);
+    });
+    test('sales: billTotal, saleTotal, total (0 counts), else BILL-TOTAL', () => {
+        expect(billLineTotal({ saleTotal: 0, total: 500 }, false)).toBe(0);
+        expect(billLineTotal({ total: 795 }, false)).toBe(795);
+        expect(billLineTotal({ grandTotal: 400 }, false)).toBe(400);
+        expect(billLineTotal(null, false)).toBe(0);
     });
 });
 
