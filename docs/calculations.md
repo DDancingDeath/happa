@@ -132,6 +132,7 @@ rupees.
 | WS-PROFIT | Wholesale "Profit" (live) and the saved `profit` | BF-TOTAL − cost − expenses as saved, all whole rupees; cost = Σ kg × WS-COST, rounded to the rupee. When any line's WS-COST is unknown the profit is **not known**: shown as "—" (also WS-MARGIN), saved as `profit: null`, left out of the WhatsApp draft (#102; it used to count those lines at cost ₹0). Shown the same; the WhatsApp draft uses the shown figure and the saved expenses. Can differ from I1 / M6 (AVG-COST at the moment of the sale) once an earlier-dated record is saved later. | `computeWholesaleTotals`, `wholesaleLiveProfit` |
 | WS-MARGIN | Wholesale "Profit %" and the saved `profitPercent` | WS-PROFIT ÷ BF-TOTAL × 100, one decimal (`ROUNDING.margin`); 0 when the total is 0; not known ("—", `null`) with WS-PROFIT. | `computeWholesaleTotals`, `wholesaleLiveProfit` |
 | DUE-CHECK | Recording a due payment (Outstanding, Wholesale › Outstanding, a bill picked on the Cash tab; rent payments, RENT-5) | Cash and online each in whole rupees (`ROUNDING.payment`). Only when the bill's due itself has paise (saved before #129) and the payment is exactly that due (within ₹0.01): whole-rupee legs with the paise remainder in one leg (the one typed with paise, else the largest), so the due is paid off and only the old remainder carries paise; a ₹100 due paid 0.01 + 99.99 is ₹0 + ₹100. Neither negative, together > 0 and at most the bill's BILL-DUE + ₹0.01. | `validateDuePayment`, `settleSplit`, `hasPaise` |
+| DUE-ALL | Wholesale › Outstanding "Complete all due" (#150, owner / manager): the confirm's bill count and total, and what is settled | The party's open wholesale bills (party name compared after trimming, collapsing spaces and ignoring case), each with its BILL-DUE (> 0), oldest first; total = Σ those dues (an old bill's due may still have paise, #129; it is settled exactly). At most the oldest 100 in one go. On saving, each bill's due is re-read on the server and settled in full (cash or online, as picked): its own `payments[]` entry (amount = that due, `at` = the same now for all, `settlesDue`, `bulk`), due 0, cleared; all bills in one transaction (all or none). Σ the entries = the total settled; a bill paid meanwhile is skipped, a part-paid one settles what is left. | `partyDues`, `settleDueUpdate`, `duePaymentUpdate` (`utils/due-payments.js`) |
 | BF-RECOVER | The "Unsaved bill" banner at start (#117): lines and total | The auto-save's form (purchase or retail sale, `mode`): its number of lines and its saved total (`billTotal` / `saleTotal`, else the lines' plain sum), to the rupee. | `autoSaveSummary` |
 | BF-NO | "Next bill no. (given on save)" above Save (#117) | One more than the highest `{P\|S}{YYYYMMDD}-NNN` among today's loaded bills of that type (001 when none). Only a hint: the shared counter sets the real number at save, which can be higher (voided bills, another phone); offline the bill gets a device number (#41). While editing: the bill's own number. | `nextBillNumberHint` |
 
@@ -403,6 +404,17 @@ Which function computes each of these (all pure, in `utils/`; the pages only ren
 | `business-metrics.weeklyKgWindow`, `weeklyKgByItem`, `stockUpItems` | I9 (weekly kg over the loaded weeks, at most 8) |
 | `business-metrics.addsUp` | AC10, AC11 (the "add up" check line on Money and Insights) |
 | `business-metrics.roundTo` | display rounding only: profit per ₹100 (M3, I1, I7) and season index / weeks of cover to 1 decimal, kg to whole numbers |
+
+## Diagnostics › Status (owner; not money) — #119, #83
+
+Counts about this phone, never business figures. Nothing is read from the server.
+
+| ID | Shown | Definition |
+|---|---|---|
+| DIAG-IO | Reads / writes sent / writes refused or failed / reads failed / app errors | Since the app opened: reads as in "Data reads" (`firestore-meter`); each `set`, `update`, `delete`, `add` and batch commit once, a transaction once when it wrote something; a refused or failed write (for a transaction only the database's own errors, not the app's checks) or failed read/listener once (`getIoCounts`); each caught error that is not a toast or a warning (`TelemetryService.sessionErrors`) |
+| DIAG-SYNC | Changes waiting to sync / last change reached the server | The header pill's pending count (`ui/sync-status.js`); the last time one of this phone's writes was acknowledged by the server (meter) or the pill confirmed "Synced" |
+| DIAG-SCORE | Speed score | 100 − 25 per high − 12 per medium − 4 per low suspect from `utils/perf-probe.js analyseProbes`, never below 0. Suspects: history list ≥ 3,000 (high) / ≥ 1,500 (medium), items ≥ 800, stock entries ≥ 1,500, memory ≥ 80% (high) or ≥ 250 MB, phone memory ≤ 2 GB, offline or 2G (high), no service worker (low), app open ≥ 5 s, ≥ 8 long tasks in the last minute (high), app storage ≥ 85% |
+
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and
