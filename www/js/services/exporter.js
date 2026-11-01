@@ -120,6 +120,8 @@ export const Exporter = {
                 reader.onerror = () => reject(reader.error);
                 reader.readAsDataURL(blob);
             });
+            // One export file at a time in the app's cache: the last one goes when the next is made.
+            await Filesystem.rmdir({ path: 'exports', directory: 'CACHE', recursive: true }).catch(() => {});
             const { uri } = await Filesystem.writeFile({ path: `exports/${filename}`, data, directory: 'CACHE', recursive: true });
             await Share.share({ title: filename, files: [uri] });
             return true;

@@ -114,10 +114,12 @@ describe('Exporter.run (#103)', () => {
         global.Blob = RealBlob;
         const writeFile = jest.fn(async () => ({ uri: 'file:///data/cache/exports/x.csv' }));
         const share = jest.fn(async () => ({}));
-        window.Capacitor = { isNativePlatform: () => true, Plugins: { Filesystem: { writeFile }, Share: { share } } };
+        const rmdir = jest.fn(async () => { throw new Error('missing'); });
+        window.Capacitor = { isNativePlatform: () => true, Plugins: { Filesystem: { writeFile, rmdir }, Share: { share } } };
         expect(Exporter.canShareNative()).toBe(true);
         expect(await Exporter.saveBlob(new Blob(['a,b'], { type: 'text/csv' }), 'x.csv', { shareFirst: false })).toBe(true);
         expect(writeFile).toHaveBeenCalledWith({ path: 'exports/x.csv', data: 'YSxi', directory: 'CACHE', recursive: true });
+        expect(rmdir).toHaveBeenCalledWith({ path: 'exports', directory: 'CACHE', recursive: true });
         expect(share).toHaveBeenCalledWith({ title: 'x.csv', files: ['file:///data/cache/exports/x.csv'] });
         const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         share.mockRejectedValueOnce(new Error('Share canceled'));
