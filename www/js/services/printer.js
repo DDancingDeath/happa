@@ -1277,7 +1277,7 @@ const PrinterService = {
 
         const noPermission = available && this.permissionState === 'denied';
         let text;
-        let color = '#999';
+        let color = '#666';
         if (!available) {
             text = t('ui.settings.printer_android_only');
         } else if (noPermission) {
@@ -1542,7 +1542,7 @@ const PrinterService = {
             downloadBtn.textContent = t('ui.print.download');
             downloadBtn.style.cssText = `
                 padding: 12px 24px;
-                background: #22c55e;
+                background: #15803d;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -1602,7 +1602,7 @@ const PrinterService = {
             closeBtn.textContent = t('ui.common.close');
             closeBtn.style.cssText = `
                 padding: 12px 24px;
-                background: #007bff;
+                background: #0058b8;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -1713,7 +1713,7 @@ const PrinterService = {
             downloadBtn.textContent = t('ui.print.download');
             downloadBtn.style.cssText = `
                 padding: 12px 24px;
-                background: #22c55e;
+                background: #15803d;
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -1775,7 +1775,7 @@ const PrinterService = {
             closeBtn.textContent = t('ui.common.close');
             closeBtn.style.cssText = `
                 padding: 12px 24px;
-                background: #007bff;
+                background: #0058b8;
                 color: white;
                 border: none;
                 border-radius: 8px;

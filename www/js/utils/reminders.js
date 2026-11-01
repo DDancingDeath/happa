@@ -3,7 +3,8 @@
  * from / pay (Outstanding's "chase first": dues older than 30 days, from the
  * open bills already on the phone) and rent still due (the totals Rentals last
  * showed on this phone this month, kept in localStorage). No reads.
- * Specs: docs/calculations.md REM-1, REM-2.
+ * Lease reminders (agreement ending, rent increase due) are kept the same way (REM-4).
+ * Specs: docs/calculations.md REM-1, REM-2, REM-4.
  * @module utils/reminders
  */
 
@@ -15,6 +16,9 @@ import { toLocalISODate } from './dates.js';
 /** Parties listed per reminder; the rest are counted. */
 export const REMINDER_LIMIT = 3;
 const RENT_KEY = 'happa.rentDueSummary';
+const LEASE_KEY = 'happa.rentLeaseNotes';
+/** Lease reminders kept for Today (the rest are counted). */
+export const LEASE_REMINDER_LIMIT = 20;
 
 /**
  * REM-1: parties whose oldest open due is older than 30 days (Outstanding's
@@ -83,4 +87,35 @@ export function noteRent(state, rows, truncated = []) {
         rows.forEach(r => { due += Number(r.due) || 0; if (r.late) late++; });
         saveRentReminder(localStorage, { uid: AppState.currentUser?.uid, month: state.month, due: round2(due), late, dueUnits: unitsWithDue(rows) });
     } catch (_) { /* never break the Rent page */ }
+}
+
+/**
+ * Rentals keeps its lease reminders for Today (REM-4, worked out by rent-math-report.leaseReminders
+ * when the Rent page shows this month with complete data).
+ * @param {Storage} store
+ * @param {{uid: string, month: string, items: Array<Object>, at?: number}} s
+ */
+export function saveLeaseReminders(store, { uid, month, items, at = Date.now() }) {
+    const list = (items || []).slice(0, LEASE_REMINDER_LIMIT).map(x => ({
+        kind: x.kind === 'increase' ? 'increase' : 'ending', place: String(x.place || ''), tenant: String(x.tenant || ''),
+        end: x.end || '', left: Number(x.left) || 0, notice: x.notice || '', newRent: Number(x.newRent) || 0, pct: Number(x.pct) || 0
+    }));
+    try {
+        store.setItem(LEASE_KEY, JSON.stringify({ uid, month, items: list, more: Math.max(0, (items || []).length - list.length), at }));
+    } catch (_) { /* storage full: Today just shows no lease lines */ }
+}
+
+/**
+ * REM-4: this person's lease reminders for this month, or null (Rentals not opened this
+ * month on this phone, or nothing to remind).
+ * @returns {?{items: Array<Object>, more: number, at: number}}
+ */
+export function leaseReminder(store, uid, month) {
+    try {
+        const s = JSON.parse(store.getItem(LEASE_KEY) || 'null');
+        if (!s || s.uid !== uid || s.month !== month || !Array.isArray(s.items) || !s.items.length) return null;
+        return { items: s.items, more: Number(s.more) || 0, at: s.at };
+    } catch (_) {
+        return null;
+    }
 }

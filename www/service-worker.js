@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v443';
+const CACHE_NAME = 'happa-v445';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -240,7 +240,7 @@ const STATIC_ASSETS = [
     '/vendor/firebase/10.7.1/firebase-auth-compat.js',
     '/vendor/firebase/10.7.1/firebase-firestore-compat.js'
 ];
-// Loaded with import() only when used (Ask, rent receipts, unit picker, tenant link actions, deposits, expenses), so not in
+// Loaded with import() only when used (Ask, rent receipts, unit picker, tenant link actions, deposits, expenses, reports), so not in
 // the precache budget; install also caches them, best effort, so this version's copies (matching
 // the precached files) are there offline right after a deploy.
 const LAZY_ASSETS = [
@@ -255,6 +255,9 @@ const LAZY_ASSETS = [
     '/js/rentals/rent-math-ledger.js',
     '/js/rentals/rent-receipt.js',
     '/js/rentals/rent-receipt-store.js',
+    '/js/rentals/rent-report.js',
+    '/js/rentals/rent-report-store.js',
+    '/js/rentals/rent-math-report.js',
     '/js/rentals/rent-unit.js'
 ];
 

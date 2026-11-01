@@ -11,7 +11,7 @@
  * Each test starts from a freshly seeded emulator (support/seed.js), so its read
  * counts do not depend on which specs ran before it in the shard.
  */
-const { test, expect, login, openApp, showTab } = require('./support/app');
+const { test, expect, login, openApp, showTab, settle } = require('./support/app');
 const { TENANT_TOKEN } = require('./support/emulator');
 const { seed } = require('./support/seed');
 const { RECORD, settledReads, overBudget, recordBaselines } = require('./support/read-budget');
@@ -167,23 +167,6 @@ function screenFindings({ lang, roots }) {
         root.querySelectorAll('select').forEach(el => { if (vis(el)) [...el.options].slice(0, 20).forEach(o => look(o.text, 'option: ')); });
     }
     return out;
-}
-
-/** Waits until the screen stops changing (no "Loading…", same text twice); returns false if it never did. */
-async function settle(page, timeout = 10000) {
-    const ok = await page.waitForFunction(() => {
-        const tab = document.querySelector('.tab.active');
-        const ov = document.getElementById('loadingOverlay');
-        if (ov && ov.classList.contains('active')) return false;
-        const txt = tab ? tab.innerText : '';
-        const busy = /Loading|लोड हो रह/.test(txt) || (tab && [...tab.querySelectorAll('.loading-spinner, .spinner')].some(e => e.offsetParent));
-        const s = window.__smokeSettle || (window.__smokeSettle = { len: -1, n: 0 });
-        if (!busy && txt.length === s.len) s.n++; else s.n = 0;
-        s.len = txt.length;
-        return s.n >= 2;
-    }, null, { polling: 250, timeout }).then(() => true, () => false);
-    await page.evaluate(() => { window.__smokeSettle = null; });
-    return ok;
 }
 
 const activeTab = (page) => page.evaluate(() => document.querySelector('.tab.active')?.id || null);

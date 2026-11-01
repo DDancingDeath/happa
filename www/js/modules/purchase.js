@@ -249,7 +249,7 @@ const PurchaseManager = {
         const billTotalSpan = document.getElementById('billTotal');
         
         if (billItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #999; padding: 24px;" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 24px;" data-i18n="msg.common.no_items_in_bill">${Helpers.escapeHtml(t('msg.common.no_items_in_bill'))}</td></tr>`;
             if (billTotalSpan) billTotalSpan.textContent = '0';
             if (totalPacketsInBillSpan) totalPacketsInBillSpan.textContent = '0';
             if (weightBreakdownSection) weightBreakdownSection.innerHTML = '';
@@ -271,7 +271,7 @@ const PurchaseManager = {
                     }
                     
                     return `
-                        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #007bff;">
+                        <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #0058b8;">
                             <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
                                 ${Helpers.escapeHtml(lineLabel(item))} (${Helpers.escapeHtml(tn('ui.print.packets_kg', item.weights.length, { kg: formatKg(item.qty) }))})
                             </div>

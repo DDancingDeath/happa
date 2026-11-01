@@ -63,7 +63,7 @@
         <div class="bill-totals">
             <div class="total-row grand-total" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9); color: #2e7d32;">
                 <span data-i18n="ui.common.total_receivable">Total Receivable:</span>
-                <strong style="color: #22c55e !important;">₹ <span id="salesTotalAmount">0</span></strong>
+                <strong style="color: #15803d !important;">₹ <span id="salesTotalAmount">0</span></strong>
             </div>
 
             <div class="payment-row">
@@ -79,8 +79,8 @@
             </div>
 
             <div class="payment-row payment-total" style="background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;">
-                <span style="color: #22c55e !important; font-weight: 600;" data-i18n="ui.common.total_received">Total Received:</span>
-                <strong style="color: #22c55e !important;">₹ <span id="wholesaleTotalReceived" style="color: #22c55e !important;">0</span></strong>
+                <span style="color: #166534 !important; font-weight: 600;" data-i18n="ui.common.total_received">Total Received:</span>
+                <strong style="color: #166534 !important;">₹ <span id="wholesaleTotalReceived" style="color: #166534 !important;">0</span></strong>
             </div>
 
             <div class="payment-row">
@@ -104,12 +104,12 @@
             
             <div class="payment-row" data-perm="profit">
                 <span data-i18n="ui.wholesale.profit">Profit:</span>
-                <strong style="color: #22c55e;">₹ <span id="salesProfitAmount">0</span></strong>
+                <strong style="color: var(--success-color);">₹ <span id="salesProfitAmount">0</span></strong>
             </div>
             
             <div class="payment-row" data-perm="profit">
                 <span data-i18n="ui.wholesale.profit_2">Profit %:</span>
-                <strong style="color: #22c55e;"><span id="salesProfitPercent">0</span>%</strong>
+                <strong style="color: var(--success-color);"><span id="salesProfitPercent">0</span>%</strong>
             </div>
         </div>
 
@@ -135,7 +135,7 @@
 
         <h3 data-i18n="ui.wholesale.recent_sales">Recent wholesale bills</h3>
         <div id="salesRecentList">
-            <p style="text-align: center; color: #888; margin-top: 20px;" data-i18n="ui.wholesale.no_sales_yet">No sales yet</p>
+            <p style="text-align: center; color: #666; margin-top: 20px;" data-i18n="ui.wholesale.no_sales_yet">No sales yet</p>
         </div>
         <div style="text-align: center; margin: 8px 0 16px;">
             <button type="button" class="history-view-toggle" onclick="window.app.wholesaleSales.filterTab('history')" data-i18n="ui.wholesale.see_all_history">See all in History</button>
@@ -170,13 +170,13 @@
             </div>
 
             <div id="salesHistoryList">
-                <p style="text-align: center; color: #888; margin-top: 20px;" data-i18n="ui.wholesale.no_sales_yet">No sales yet</p>
+                <p style="text-align: center; color: #666; margin-top: 20px;" data-i18n="ui.wholesale.no_sales_yet">No sales yet</p>
             </div>
         </div>
 
         <div id="salesOutstandingSection" style="display: none;">
             <div id="salesOutstandingList">
-                <p style="text-align: center; color: #888; margin-top: 20px;" data-i18n="ui.wholesale.no_outstanding_payments">No outstanding payments</p>
+                <p style="text-align: center; color: #666; margin-top: 20px;" data-i18n="ui.wholesale.no_outstanding_payments">No outstanding payments</p>
             </div>
         </div>
     </div>

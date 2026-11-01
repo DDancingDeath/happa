@@ -207,26 +207,26 @@ const DiagnosticsManager = {
         }
         const cards = this.numberChecks.results.map(r => {
             const badge = r.status === 'pass' ? `<span style="color:#15803d;font-weight:600">${e(t('ui.numchecks.passed'))}</span>`
-                : r.status === 'skip' ? `<span style="color:#6b7280;font-weight:600">${e(t('ui.numchecks.skipped'))}</span>`
+                : r.status === 'skip' ? `<span style="color:#4b5563;font-weight:600">${e(t('ui.numchecks.skipped'))}</span>`
                     : `<span style="color:#b91c1c;font-weight:600">${e(t('ui.numchecks.failed', { count: r.problems }))}</span>`;
-            const note = r.note ? `<div style="font-size:0.8rem;color:#6b7280;margin-top:4px;">${e(t(r.note))}</div>` : '';
+            const note = r.note ? `<div style="font-size:0.8rem;color:#4b5563;margin-top:4px;">${e(t(r.note))}</div>` : '';
             const table = r.rows.length ? `
                 <table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;">
                     <thead><tr><th style="text-align:left">${e(t('ui.numchecks.col_what'))}</th><th style="text-align:right">${e(t('ui.numchecks.col_expected'))}</th>
                     <th style="text-align:right">${e(t('ui.numchecks.col_found'))}</th><th style="text-align:right">${e(t('ui.numchecks.col_difference'))}</th></tr></thead>
                     <tbody>${r.rows.map(row => this.numberCheckRowHtml(row)).join('')}</tbody>
                 </table>
-                ${r.problems > r.rows.length ? `<div style="font-size:0.8rem;color:#6b7280;margin-top:4px;">${e(t('ui.numchecks.more', { count: r.problems - r.rows.length }))}</div>` : ''}` : '';
+                ${r.problems > r.rows.length ? `<div style="font-size:0.8rem;color:#4b5563;margin-top:4px;">${e(t('ui.numchecks.more', { count: r.problems - r.rows.length }))}</div>` : ''}` : '';
             return `
                 <div class="diag-error-card diag-numcheck" data-check="${e(r.id)}" data-status="${e(r.status)}">
                     <div class="diag-error-header"><span class="diag-error-type">${e(r.id)}</span>
                         <span class="diag-error-message" style="margin:0">${e(t(r.key))}</span></div>
-                    <div>${badge} <span style="font-size:0.8rem;color:#6b7280">${e(t('ui.numchecks.checked', { count: r.checked }))}</span></div>
+                    <div>${badge} <span style="font-size:0.8rem;color:#4b5563">${e(t('ui.numchecks.checked', { count: r.checked }))}</span></div>
                     ${note}${table}
                 </div>`;
         }).join('');
         container.innerHTML = `${head}<div class="diagnostics-list">${cards}</div>
-            <p style="font-size:0.8rem;color:#6b7280;margin-top:12px;">${e(t('ui.numchecks.footer'))}</p>`;
+            <p style="font-size:0.8rem;color:#4b5563;margin-top:12px;">${e(t('ui.numchecks.footer'))}</p>`;
     },
 
     /**
@@ -243,7 +243,7 @@ const DiagnosticsManager = {
         return `
             <details class="diagnostics-reads" style="margin-bottom: 16px;">
                 <summary><strong>📊 ${tx('ui.diag.reads_title')}</strong> ≈ ${Helpers.escapeHtml(String(s.reads))}${s.heavy ? ' ⚠️' : ''}</summary>
-                <div style="font-size:12px;color:#6b7280;margin-top:6px;">${tx('ui.diag.reads_note', { at: formatDateTimeIN(new Date(s.since)) })}</div>
+                <div style="font-size:12px;color:#4b5563;margin-top:6px;">${tx('ui.diag.reads_note', { at: formatDateTimeIN(new Date(s.since)) })}</div>
                 ${rows ? `<table style="width:100%;font-size:13px;margin-top:8px;border-collapse:collapse;"><thead><tr><th style="text-align:left">${tx('ui.diag.top_sources')}</th><th style="text-align:right">${tx('ui.diag.reads')}</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
                 ${quota}
             </details>
@@ -260,7 +260,7 @@ const DiagnosticsManager = {
         const rows = startupRows(marks).map((r, i) => {
             const detail = marks[i].detail ? JSON.stringify(marks[i].detail) : '';
             return `<tr><td>${Helpers.escapeHtml(r.name)}</td><td style="text-align:right">${Helpers.escapeHtml(r.at)}</td>` +
-                `<td style="text-align:right">+${Helpers.escapeHtml(r.delta)}</td><td style="font-size:11px;color:#6b7280">${Helpers.escapeHtml(detail)}</td></tr>`;
+                `<td style="text-align:right">+${Helpers.escapeHtml(r.delta)}</td><td style="font-size:11px;color:#4b5563">${Helpers.escapeHtml(detail)}</td></tr>`;
         }).join('');
         const listeners = Object.entries(info.listeners || {}).map(([label, l]) =>
             `${label}: ${l.first} (${l.docs} docs) → ${l.readyBy || '?'}`).join('; ');
@@ -271,7 +271,7 @@ const DiagnosticsManager = {
                     <thead><tr><th style="text-align:left">${tx('ui.diag.col_step')}</th><th style="text-align:right">${tx('ui.diag.col_at')}</th><th style="text-align:right">${tx('ui.diag.col_step_time')}</th><th style="text-align:left">${tx('ui.diag.col_details')}</th></tr></thead>
                     <tbody>${rows}</tbody>
                 </table>
-                ${listeners ? `<div style="font-size:11px;color:#6b7280;margin-top:6px;">${tx('ui.diag.listeners', { list: listeners })}</div>` : ''}
+                ${listeners ? `<div style="font-size:11px;color:#4b5563;margin-top:6px;">${tx('ui.diag.listeners', { list: listeners })}</div>` : ''}
             </details>
         `;
     },
@@ -329,7 +329,7 @@ const DiagnosticsManager = {
                 ${canShare ? `<button class="diag-btn" onclick="window.app.diagnostics.shareStatus()">${tx('ui.status.share')}</button>` : ''}
             </div>
             ${speed}
-            <p style="font-size:0.8rem;color:#6b7280;margin-top:12px;">${tx('ui.status.copy_note')}</p>`;
+            <p style="font-size:0.8rem;color:#4b5563;margin-top:12px;">${tx('ui.status.copy_note')}</p>`;
     },
 
     /** Speed check (#83): local probes only, no reads. */
@@ -490,7 +490,7 @@ const DiagnosticsManager = {
             'console.error': '#eab308',
             'warning': '#3b82f6',
             'manual': '#8b5cf6',
-            'toast': '#dc2626'
+            'toast': '#b91c1c'
         };
 
         const typeLabels = {

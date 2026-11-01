@@ -1454,7 +1454,8 @@ service cloud.firestore {
           : base == 'rent_leases'
           ? d.keys().hasOnly(['unitId', 'propertyId', 'tenantId', 'rent', 'dueDay', 'startMonth', 'endMonth',
                               'deposit', 'status', 'chargedThrough', 'increasePct', 'rentSince', 'shareToken',
-                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo', 'fromLeaseId', 'movedTo'].concat(rentMeta()))
+                              'startDate', 'proRate', 'firstRent', 'elecMode', 'meterNo', 'fromLeaseId', 'movedTo',
+                              'agreementEnd', 'noticeMonths'].concat(rentMeta()))
             && rentStr(d, 'unitId', 1, 64) && rentStr(d, 'propertyId', 1, 64) && rentStr(d, 'tenantId', 1, 64)
             && rentMoney(d, 'rent') && rentMoney(d, 'deposit')
             && d.get('dueDay', 0) is int && d.dueDay >= 1 && d.dueDay <= 28
@@ -1507,7 +1508,7 @@ service cloud.firestore {
       let d = request.resource.data;
       let unit = getAfter(rentPath(usersCol, 'rent_units', d.unitId)).data;
       return d.get('status', '') == 'active' && d.get('endMonth', null) == null
-        && d.get('movedTo', null) == null
+        && d.get('movedTo', null) == null && d.get('agreementEnd', null) == null && d.get('noticeMonths', 0) == 0
         // No charges yet, or the first month's charge written in the same batch (move-in).
         && (d.get('chargedThrough', null) == null
             || (d.chargedThrough == d.startMonth && d.startMonth <= rentThisMonth()
@@ -1574,7 +1575,8 @@ service cloud.firestore {
             && d.startMonth == r.startMonth && d.unitId == r.unitId && d.tenantId == r.tenantId
             && d.get('startDate', null) == r.get('startDate', null) && d.get('firstRent', null) == r.get('firstRent', null)
             && d.get('proRate', false) == r.get('proRate', false)
-            && d.get('fromLeaseId', null) == r.get('fromLeaseId', null))
+            && d.get('fromLeaseId', null) == r.get('fromLeaseId', null)
+            && rentAgreementOk(d, r, mgr))
         && (d.get('movedTo', null) == r.get('movedTo', null) || moved)
         && (d.get('shareToken', null) == r.get('shareToken', null) || mgr
             || (moved && d.get('shareToken', null) == null
@@ -1595,6 +1597,16 @@ service cloud.firestore {
               && (next == before
                   || (next < before && (mgr || (moved && nextMonth(next) == before))
                       && !existsAfter(rentChargePath(usersCol, docId, before)))));
+    }
+
+    // Agreement terms (#157 phase 3): the month the agreement ends (not before the start) and the notice
+    // period in months; set or changed only by the owner or a rentals manager, on a full lease edit (the
+    // app never writes them at move-in, and a new lease may not carry them: rentLeaseCreateOk).
+    function rentAgreementOk(d, r, mgr) {
+      return (d.get('agreementEnd', null) == r.get('agreementEnd', null) && d.get('noticeMonths', 0) == r.get('noticeMonths', 0))
+        || (mgr
+          && (d.get('agreementEnd', null) == null || (rentMonth(d.agreementEnd) && d.agreementEnd >= d.startMonth))
+          && d.get('noticeMonths', 0) is int && d.get('noticeMonths', 0) >= 0 && d.get('noticeMonths', 0) <= 12);
     }
 
     // Only the lease's state changed (charging, move-out, change of unit, link): the
