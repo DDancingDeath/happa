@@ -1788,6 +1788,27 @@ body.typing .bottom-nav {
   }
 }
 
+/* Archived item (#123) */
+.item-archived-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.items-archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
 /* ---- css/billing.css ---- */
 .form-row {
   display: flex;

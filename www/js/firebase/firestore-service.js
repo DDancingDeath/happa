@@ -2243,13 +2243,21 @@ const FirebaseService = {
     },
 
     /**
-     * Deletes an item from Firestore.
+     * Archives or unarchives an item (#123): one field-level update, so other
+     * fields changed on another phone are kept. Items are never deleted.
      * @async
-     * @param {string} itemId - The ID of the item to delete
-     * @returns {Promise<void>}
+     * @param {string} itemId
+     * @param {boolean} archived
+     * @returns {Promise<Object>} the fields written
      */
-    async deleteItem(itemId) {
-        await getDb().collection(col('items')).doc(itemId).delete();
+    async setItemArchived(itemId, archived) {
+        const by = AppState.userName || AppState.currentUser?.email || '';
+        const byUserId = AppState.currentUser?.uid || '';
+        const fields = archived
+            ? { archived: true, archivedAt: Date.now(), archivedBy: by, archivedByUserId: byUserId }
+            : { archived: false, unarchivedAt: Date.now(), unarchivedBy: by, unarchivedByUserId: byUserId };
+        await getDb().collection(col('items')).doc(itemId).update(fields);
+        return fields;
     },
 
     /**

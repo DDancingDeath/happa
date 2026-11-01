@@ -45,7 +45,7 @@ describe('Rates page (items list)', () => {
           <div id="itemsActionButtons"></div>
           <div id="itemEditOverlay" style="display:none"></div>
           <input id="itemModalName"><input id="itemModalHindiName"><input id="itemModalContactPerson">
-          <button id="itemModalDeleteBtn"></button>
+          <button id="itemModalArchiveBtn"></button>
           <div id="itemModalPurchaseRates"></div><div id="itemModalWholesaleRates"></div><div id="itemModalSaleRates"></div>`;
     });
     const rowNames = () => [...document.querySelectorAll('#itemsViewTableBody tr')].map(r => r.cells[0].textContent.trim());

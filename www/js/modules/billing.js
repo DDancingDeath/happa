@@ -27,6 +27,7 @@ import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
 import { askReason } from '../ui/bill-status.js';
 import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
 import { formatDateTimeIN } from '../utils/dates.js';
+import { isArchivedItem } from '../utils/item-catalog.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
 const EDIT_TIMEOUT_MS = 20000;
@@ -397,6 +398,7 @@ const BillingManager = {
         });
         
         sortedItems.forEach((item) => {
+            if (isArchivedItem(item)) return;
             const opt = document.createElement('option');
             const originalIndex = AppState.items.findIndex(i => i.id === item.id || i.name === item.name);
             opt.value = originalIndex;
@@ -430,6 +432,7 @@ const BillingManager = {
         });
         
         sortedItems.forEach((item) => {
+            if (isArchivedItem(item)) return;
             const opt = document.createElement('option');
             const originalIndex = AppState.items.findIndex(i => i.id === item.id || i.name === item.name);
             opt.value = originalIndex;
@@ -441,6 +444,22 @@ const BillingManager = {
         if (AppState.items.length > 0) {
             this.loadSaleRates();
         }
+    },
+
+    /**
+     * Editing a bill line of an archived item (#123): the pickers leave archived
+     * items out, so add that one option back for this line.
+     * @param {string} selectId
+     * @param {number} itemIndex position in AppState.items
+     */
+    ensureItemOption(selectId, itemIndex) {
+        const select = document.getElementById(selectId);
+        const item = AppState.items[itemIndex];
+        if (!select || !item || [...select.options].some(o => o.value === String(itemIndex))) return;
+        const opt = document.createElement('option');
+        opt.value = itemIndex;
+        opt.textContent = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
+        select.appendChild(opt);
     },
 
     /**

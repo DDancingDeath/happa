@@ -249,3 +249,18 @@ describe('calc (BF-RECOVER, BF-NO)', () => {
             { billNumber: 'S20261101-K7P-030' }, { billNumber: 'P20261101-040' }, {}], now)).toBe('S20261101-013');
     });
 });
+
+describe('archived items (#123)', () => {
+    test('the item pickers leave archived items out; editing a line of one adds it back', () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Old Dal', archived: true, rates: [5] }];
+        BillingManager.loadItemsDropdown();
+        BillingManager.loadSaleItemsDropdown();
+        const names = (id) => [...document.getElementById(id).options].map(o => o.textContent);
+        expect(names('billItem')).toEqual(['Rice']);
+        expect(names('saleItem')).toEqual(['Rice']);
+        BillingManager.ensureItemOption('billItem', 1);
+        BillingManager.ensureItemOption('billItem', 1);
+        expect(names('billItem')).toEqual(['Rice', 'Old Dal']);
+    });
+});

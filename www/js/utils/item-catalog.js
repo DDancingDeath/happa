@@ -33,6 +33,26 @@ export function findItemById(items, id) {
 }
 
 /**
+ * An archived item (#123) is kept for old bills, stock and reports but is not
+ * offered for new bills. Items are never deleted from the app.
+ * @param {?Object} item
+ * @returns {boolean}
+ */
+export function isArchivedItem(item) {
+    return item?.archived === true;
+}
+
+/**
+ * Items to offer in the Items list: archived ones only when asked for.
+ * @param {Array<Object>} items
+ * @param {{showArchived?: boolean}} [opts]
+ * @returns {Array<Object>}
+ */
+export function visibleItems(items, { showArchived = false } = {}) {
+    return (items || []).filter(i => i && (showArchived || !isArchivedItem(i)));
+}
+
+/**
  * Which catalogue item a bill line is: by itemId, else by its English or Hindi
  * name (lines saved while item names were shown in Hindi carry the Hindi name).
  * `key` groups lines of one item; `label` is the name to show in the chosen
@@ -78,12 +98,13 @@ export function findDuplicateItem(items, candidate, excludeId = null) {
 }
 
 /**
- * Bilingual "name already exists" message.
+ * "Name already exists" message; for an archived item it says to unarchive it.
  * @param {string} name
+ * @param {?Object} [item] the clashing item
  * @returns {string}
  */
-export function duplicateItemMessage(name) {
-    return t('msg.items.duplicate_name', { name });
+export function duplicateItemMessage(name, item = null) {
+    return t(isArchivedItem(item) ? 'msg.items.duplicate_name_archived' : 'msg.items.duplicate_name', { name });
 }
 
 /**

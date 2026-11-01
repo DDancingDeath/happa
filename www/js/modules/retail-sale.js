@@ -19,7 +19,7 @@ import { BillChecksUI, readTypedNumber } from '../ui/bill-highlight.js';
 import { t, tn } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
-import { lineItemIdentity } from '../utils/item-catalog.js';
+import { lineItemIdentity, isArchivedItem } from '../utils/item-catalog.js';
 
 /** Name to show for a catalogue item or bill line in the chosen item-name language. */
 const lineLabel = (line) => lineItemIdentity(line && 'itemId' in line ? line : { itemId: line?.id, name: line?.name }, AppState.items, AppState.settings.showHindi).label;
@@ -196,6 +196,7 @@ const RetailSaleManager = {
             UIManager.showToast(t('msg.common.item_not_found'));
             return;
         }
+        if (isArchivedItem(item)) UIManager.showToast(t('msg.items.archived_item_billed', { name: item.name || '' }), 4000);
         this.ensurePendingBill();
         
         // Bill lines keep the catalogue name; Hindi is only for display (#143, Reports group by item).
@@ -335,6 +336,7 @@ const RetailSaleManager = {
         
         const itemIndex = AppState.items.findIndex(i => i.id === item.itemId || i.name === item.name);
         if (itemIndex !== -1) {
+            if (this.billingManager) this.billingManager.ensureItemOption('saleItem', itemIndex);
             document.getElementById('saleItem').value = itemIndex;
             if (this.billingManager) this.billingManager.loadSaleRates();
             

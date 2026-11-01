@@ -24,7 +24,7 @@ import { normalizePartyName } from '../utils/aging.js';
 import { getLang, t } from '../i18n/index.js';
 import { saveFailedText, SAVED_ON_PHONE_KEY, SAVE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
-import { lineItemIdentity } from '../utils/item-catalog.js';
+import { lineItemIdentity, isArchivedItem } from '../utils/item-catalog.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 import {
@@ -84,6 +84,7 @@ export class WholesaleSalesManager {
 
         // Load only items that have stock
         AppState.items.forEach(item => {
+            if (isArchivedItem(item)) return;
             // Check stock by itemId first, then by name
             const stockData = AppState.stock[item.id] || AppState.stock[item.name];
             
