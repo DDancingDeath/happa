@@ -198,6 +198,7 @@ Separate from the shop: rent money never counts in shop figures.
 | Receipts (RENT-12) | Numbered R-year-number, one per payment; a cancelled one keeps its number. |
 | Deposit held (RENT-14) | Tenants › 💰 Deposit: what the tenant gave as deposit, minus what was adjusted against unpaid rent and what was refunded. Adjusting pays that month (no receipt). Anyone with a rentals role records; only you edit or remove an entry. Not Aadhat cash. |
 | Advance (RENT-16) | Paying more than a month's due first pays the unpaid months, oldest first (the app shows the split before saving). What is left after the latest month is an advance that pays next month's rent as soon as that month starts (no receipt for it; the payment's receipt shows the advance). On a change of unit it pays the new unit's first month; if the tenant moves out with an advance left, it is added to their deposit. |
+| Expenses and net (RENT-17, RENT-18) | Properties › 💸 Expenses: repairs, property tax, maintenance, insurance, broker or other paid for a property (or one unit). The Rent page shows this month's expenses and the net (collected − expenses) in all and per property. Anyone with a rentals role adds one; only you change or remove one. Not Aadhat cash. |
 | Deposits held (RENT-15) | Tenants › Deposits held: every deposit still held and their total. |
 
 ### Settings, Admin, App health

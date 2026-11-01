@@ -56,7 +56,7 @@ beforeEach(() => {
 
 test('the Tenants page offers 💰 Deposit per tenant and Deposits held', () => {
     _test.state.page = 'tenants';
-    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges'].forEach(k => _test.state.loaded.add(k));
+    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
     _test.render();
     const html = document.getElementById('rentalsBody').innerHTML;
     expect(html).toContain("window.app.rentals.deposit('T1')");

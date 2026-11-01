@@ -88,6 +88,7 @@ const SKIP_DIRS = new Set(['www/js/__tests__', 'www/js/tip']);
 const CATEGORIES = ['firestore', 'moneyMath', 'domNumber', 'appStateWrite', 'dateMath'];
 const PURE_RENTALS = new Set([
     'www/js/rentals/rent-math.js',
+    'www/js/rentals/rent-math-ledger.js',
     'www/js/rentals/rent-views.js',
     'www/js/rentals/rent-public.js'
 ]);
@@ -95,7 +96,8 @@ const PURE_RENTALS = new Set([
 const RENTALS_REPOSITORIES = new Set([
     'www/js/rentals/rent-store.js',
     'www/js/rentals/rent-receipt-store.js',
-    'www/js/rentals/rent-deposit-store.js'
+    'www/js/rentals/rent-deposit-store.js',
+    'www/js/rentals/rent-expense-store.js'
 ]);
 /** Files that may talk to Firestore (docs/architecture.md: repositories). */
 const isRepository = (file) => file.startsWith('www/js/firebase/') || RENTALS_REPOSITORIES.has(file);

@@ -25,7 +25,8 @@ export const LISTEN_LIMITS = {
     leases: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
     openCharges: 2 * MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
     linked: 2 * MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
-    monthCharges: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY
+    monthCharges: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY,
+    monthExpenses: MAX_PROPERTIES * MAX_UNITS_PER_PROPERTY
 };
 
 /** Environment-prefixed collection name (window.getCollection adds the dev prefix in development). */
@@ -38,7 +39,7 @@ export const uid = () => AppState.currentUser?.uid || null;
 
 const data = {
     properties: new Map(), units: new Map(), tenants: new Map(), leases: new Map(),
-    openCharges: new Map(), monthCharges: new Map(), linked: new Map()
+    openCharges: new Map(), monthCharges: new Map(), linked: new Map(), monthExpenses: new Map()
 };
 let unsubs = [];
 const truncated = new Set();
@@ -74,6 +75,8 @@ export function attach(month, onChange) {
     listen('linked', coll('rent_leases').where('shareToken', '>', ''));
     listen('openCharges', coll('rent_charges').where('open', '==', true));
     listen('monthCharges', coll('rent_charges').where('month', '==', month));
+    // RENT-17: this month's property expenses (Rent page totals and property cards).
+    listen('monthExpenses', coll('rent_expenses').where('month', '==', month));
 }
 
 export function detach() {
@@ -95,7 +98,8 @@ export function snapshot() {
         tenants: [...data.tenants.values()],
         leases: [...data.leases.values()],
         linked: [...data.linked.values()],
-        charges: [...charges.values()]
+        charges: [...charges.values()],
+        expenses: [...data.monthExpenses.values()]
     };
 }
 

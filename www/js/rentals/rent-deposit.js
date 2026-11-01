@@ -16,7 +16,8 @@ import { formatINR } from '../utils/due-reminder.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as ds from './rent-deposit-store.js';
-import { PAYMENT_MODES, DEPOSIT_KINDS, monthLabel, dateLabel, chargeDue, depositHeld, depositFill, depositsTotal, isDate } from './rent-math.js';
+import { PAYMENT_MODES, monthLabel, dateLabel, chargeDue, isDate } from './rent-math.js';
+import { DEPOSIT_KINDS, depositHeld, depositFill, depositsTotal } from './rent-math-ledger.js';
 
 const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.code || e);
 const ERRORS = { amount: 'msg.rent.bad_amount', over: 'msg.rent.dep_over', too_many: 'msg.rent.dep_full', missing: 'msg.rent.save_failed', changed: 'msg.rent.dep_changed' };

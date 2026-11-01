@@ -3238,7 +3238,7 @@ function defineReadMatrix(prefix) {
         get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: MANAGERS,
         list: (db) => db.collection(c(name)).get(), listAllowed: MANAGERS
     }));
-    ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters', 'rent_deposits'].forEach(name => add(name, {
+    ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters', 'rent_deposits', 'rent_expenses'].forEach(name => add(name, {
         seed: [[`${c(name)}/d1`, { archived: false }]],
         get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: RENTALS,
         list: (db) => db.collection(c(name)).get(), listAllowed: RENTALS
@@ -4608,6 +4608,44 @@ function defineRentSuite(prefix) {
         b.update(chargeOn(f, CUR), { adv: 0, updatedAt: 3, updatedBy: 'rentMember' });
         await assertFails(b.commit());
         await assertSucceeds(first('rentMember'));
+    });
+
+    // ---- Property expenses (#157, RENT-17): rent_expenses/{id} ----
+    const expense = (uid, over = {}) => ({ propertyId: 'P1', unitId: null, category: 'repairs', amount: 1500, date: '2026-10-05', month: '2026-10',
+        mode: 'cash', note: 'Tap', byName: 'x', createdAt: 1, createdBy: uid, updatedAt: 1, updatedBy: uid, ...over });
+    const expOn = (f, id = 'E1') => f.collection(c('rent_expenses')).doc(id);
+    const seedProperty = () => seed('rent_properties', 'P1', { name: 'Gali 2', address: '', kind: 'house', notes: '', ...meta('legacyOwner') });
+
+    t('expenses: any rentals role adds one for a property or its unit, signed with its uid; shape checked', async () => {
+        await seedProperty();
+        await seed('rent_units', 'U1', unit());
+        await seed('rent_units', 'U9', unit({ propertyId: 'P9' }));
+        await assertFails(expOn(db('staff1')).set(expense('staff1')));
+        await assertFails(expOn(db('rentMember')).set(expense('rentOnly')));
+        await assertFails(expOn(db('rentMember')).set(expense('rentMember', { propertyId: 'P9' })));
+        await assertFails(expOn(db('rentMember')).set(expense('rentMember', { unitId: 'U9' })));
+        await assertFails(expOn(db('rentMember')).set(expense('rentMember', { category: 'party' })));
+        await assertFails(expOn(db('rentMember')).set(expense('rentMember', { amount: 0 })));
+        await assertFails(expOn(db('rentMember')).set(expense('rentMember', { amount: '1500' })));
+        await assertFails(expOn(db('rentMember')).set(expense('rentMember', { month: '2026-11' })));
+        await assertFails(expOn(db('rentMember')).set(expense('rentMember', { mode: 'gold' })));
+        await assertFails(expOn(db('rentMember')).set(expense('rentMember', { extra: 1 })));
+        await assertSucceeds(expOn(db('rentOnly'), 'E2').set(expense('rentOnly', { unitId: 'U1', category: 'tax', mode: 'bank' })));
+        await assertSucceeds(expOn(db('rentMember')).set(expense('rentMember')));
+    });
+
+    t('expenses: only the owner edits or deletes; who added it never changes', async () => {
+        await seedProperty();
+        await seed('rent_expenses', 'E1', expense('rentMember'));
+        const upd = (uid, over = {}) => expOn(db(uid)).update({ amount: 1800, updatedAt: 2, updatedBy: uid, ...over });
+        await assertFails(upd('rentMember'));
+        await assertFails(upd('rentManager'));
+        await assertFails(upd('legacyOwner', { createdBy: 'legacyOwner' }));
+        await assertFails(upd('legacyOwner', { amount: -5 }));
+        await assertSucceeds(upd('legacyOwner'));
+        await assertFails(expOn(db('rentManager')).delete());
+        await assertFails(expOn(db('rentMember')).delete());
+        await assertSucceeds(expOn(db('legacyOwner')).delete());
     });
 }
 

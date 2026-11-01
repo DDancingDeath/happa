@@ -13,7 +13,7 @@ global.__fakeDb = fake.db;
 
 import { AppState } from '../utils/state.js';
 import * as ds from '../rentals/rent-deposit-store.js';
-import { depositHeld, depositEntry, depositFill, depositsTotal, MAX_DEPOSIT_ENTRIES } from '../rentals/rent-math.js';
+import { depositHeld, depositEntry, depositFill, depositsTotal, MAX_DEPOSIT_ENTRIES } from '../rentals/rent-math-ledger.js';
 
 const TOKEN = 'AbCdEfGhIjKlMnOpQrStUvWx';
 const charge = (id, over = {}) => ({

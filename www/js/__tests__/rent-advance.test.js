@@ -14,7 +14,8 @@ global.__fakeDb = fake.db;
 import { AppState } from '../utils/state.js';
 import * as store from '../rentals/rent-store.js';
 import * as ds from '../rentals/rent-deposit-store.js';
-import { applyPayment, withAdvance, receiptReceived, receiptAmounts, payOldestFirst, payAmount, advanceLeft } from '../rentals/rent-math.js';
+import { applyPayment, withAdvance, receiptAmounts, payOldestFirst, payAmount } from '../rentals/rent-math.js';
+import { receiptReceived, advanceLeft } from '../rentals/rent-math-ledger.js';
 import { receiptRows } from '../rentals/rent-receipt.js';
 
 const TOKEN = 'AbCdEfGhIjKlMnOpQrStUvWx';

@@ -89,7 +89,7 @@ export function mobile10(v) {
     return /^[6-9]\d{9}$/.test(d) ? d : '';
 }
 
-const daysIn = (y, m) => new Date(y, m, 0).getDate();
+export const daysIn = (y, m) => new Date(y, m, 0).getDate();
 
 /** RENT-11, RENT-13: rent × days ÷ the days it is for, rounded to the rupee. */
 export const proRateRent = (rent, days, of) => Math.round(rent * days / of);
@@ -106,48 +106,6 @@ export function firstMonthRent(rent, startDate, proRate) {
     const days = daysIn(y, m);
     return proRateRent(r, days - d + 1, days);
 }
-
-/** RENT-13: old unit's move month = full × (move day − s) ÷ (days in month − s + 1); s = 1, or a pro-rated first month's start day. */
-export function moveMonthRent(full, lease, month, moveDate) {
-    const s = month === lease?.startMonth && lease?.firstRent != null && isDate(lease.startDate) ? Number(lease.startDate.slice(8)) : 1;
-    const [y, m, d] = moveDate.split('-').map(Number);
-    return Math.max(0, proRateRent(Number(full) || 0, d - s, daysIn(y, m) - s + 1));
-}
-
-/** RENT-13: old month `ch` at rent `rent`; more than rent + electricity paid closes it at what is paid (capped), fully paid stays (kept). */
-export function oldMonth(ch, rent) {
-    const e = Number(ch?.electricity?.amount) || 0;
-    const paid = Number(ch?.paid) || 0;
-    const over = paid > rent + e + 0.001;
-    const r = over ? round2(paid - e) : rent;
-    const amount = round2(r + e);
-    return { rent: r, amount, open: paid < amount - 0.001, capped: over && r < ch.rent, kept: over && r >= ch.rent };
-}
-
-/** RENT-13, move on `date`: old unit's last month, its charge, full rent and share (null on the 1st) till oldEnd; new unit's first month. */
-export function moveMonthSplit(from, charges, date, rent) {
-    const month = date.slice(0, 7);
-    const prev = addMonths(month, -1);
-    const endMonth = date.endsWith('-01') && prev >= from.startMonth ? prev : month;
-    const ch = charges.find(x => x.leaseId === from.id && x.month === month);
-    const full = Number.isFinite(ch?.rent) ? ch.rent : month === from.startMonth && from.firstRent != null ? from.firstRent : from.rent;
-    const old = endMonth === month ? moveMonthRent(full, from, month, date) : null;
-    return { month, endMonth, ch, full, old, oldEnd: `${month}-${pad2(Number(date.slice(8)) - 1)}`, next: firstMonthRent(rent, date, true) };
-}
-
-/** Change of unit (RENT-13): {error}, or split s, firstRent, oldRent ('auto': worked out when saved; null: full) and paidOld. Members: worked-out amounts. */
-export function changeUnitPlan(from, charges, lease, { mgr = false, on = true, typed = {} } = {}) {
-    const s = moveMonthSplit(from, charges, lease.startDate, lease.rent);
-    if (!mgr && from.chargedThrough > addMonths(s.endMonth, 1)) return { error: 'msg.rent.change_backdate' };
-    if (!on) return { s, oldRent: null, paidOld: null };
-    const next = mgr ? Number(typed.next) : s.next;
-    const old = s.old === null ? null : mgr ? Number(typed.old) : s.old;
-    if (!Number.isFinite(next) || next < 0 || next > lease.rent || (old !== null && !(old >= 0 && old <= s.full))) return { error: 'msg.rent.bad_split' };
-    return { s, firstRent: round2(next), oldRent: old === null ? null : old === s.old ? 'auto' : round2(old), paidOld: old !== null && s.ch ? oldMonth(s.ch, old) : null };
-}
-
-/** A change of unit keeps the old lease's due day, yearly %, deposit and electricity mode. */
-export const keptTerms = (l, defs) => ({ defs: { ...defs, dueDay: l.dueDay, increasePct: l.increasePct ?? defs.increasePct }, deposit: l.deposit || 0, elec: elecMode(l) });
 
 /** 'YYYY-MM' of a date in local time. */
 export function monthKey(date = new Date()) {
@@ -236,12 +194,6 @@ export function rentTotals(charges, month = '') {
 /** RENT-12: receipt amounts of payment `e` on charge `ch` as written (balance = due after it; adv = RENT-16 carried). */
 export const receiptAmounts = (ch, e) => ({ months: [ch.month], rent: ch.rent, elec: ch.electricity || null, total: ch.amount, paid: e.amount, balance: chargeDue(ch), ...(e.adv > 0 ? { adv: e.adv } : {}) });
 
-/** RENT-12, RENT-16: received with a receipt = paid for the month + advance carried. */
-export const receiptReceived = (r) => round2((Number(r.paid) || 0) + (Number(r.adv) || 0));
-
-/** RENT-12: paid before this payment = total − paid now − balance (never below 0). */
-export const paidEarlier = (r) => Math.max(0, round2((Number(r.total) || 0) - (Number(r.paid) || 0) - (Number(r.balance) || 0)));
-
 /** Local date the month's rent falls due. */
 export function dueDate(month, dueDay = DEFAULT_DUE_DAY) {
     const [y, m] = month.split('-').map(Number);
@@ -289,12 +241,6 @@ export function advanceBack(later) {
 /** RENT-16: an advance plus what comes back to it. */
 export const addAdvance = (a, b) => round2((Number(a) || 0) + (Number(b) || 0));
 
-/** RENT-16: the advance a lease ending with `endMonth` leaves (its last month's, plus one later month given back). */
-export function advanceLeft(charges, leaseId, endMonth) {
-    const mine = charges.filter(c => c.leaseId === leaseId);
-    return addAdvance(mine.find(c => c.month === endMonth)?.adv, advanceBack(mine.filter(c => c.month > endMonth)));
-}
-
 /**
  * RENT-5, RENT-16: a payment above the chosen month's due pays the lease's unpaid months
  * (`open`, oldest first) oldest first; only what is left after all of them is an advance
@@ -337,37 +283,20 @@ export function withAdvance(charge, adv, entry) {
     return { ...charge, paid, open: paid < charge.amount - 0.001, payments: paid > 0 ? [{ ...entry, amount: paid, mode: 'advance' }] : [], ...(left > 0 ? { adv: left } : {}) };
 }
 
-/** Deposit ledger (RENT-14): received from the tenant, adjusted against a month's rent, refunded. */
-export const DEPOSIT_KINDS = ['received', 'adjust', 'refund'];
-export const MAX_DEPOSIT_ENTRIES = 24;
-
-/** RENT-14: deposit held = Σ received − Σ adjusted − Σ refunded. */
-export function depositHeld(entries) {
-    let s = 0;
-    for (const e of entries || []) s += (e.kind === 'received' ? 1 : -1) * (Number(e.amount) || 0);
-    return round2(s);
+/** RENT-17: Σ amount of `month`'s expenses, in all and per property; RENT-18: net = collected − expenses. */
+export function expenseTotals(expenses, month) {
+    const byProperty = {};
+    let total = 0;
+    for (const e of expenses || []) {
+        if (e.month !== month) continue;
+        const a = Number(e.amount) || 0;
+        total += a;
+        byProperty[e.propertyId] = round2((byProperty[e.propertyId] || 0) + a);
+    }
+    return { total: round2(total), byProperty };
 }
 
-/**
- * RENT-14: a new entry's amount and the deposit held after it. Whole rupees, except exactly a due
- * with paise (adjust, as RENT-5's applyPayment) or exactly a held with paise (refund). Adjusted ≤ the
- * month's due and ≤ held; refunded ≤ held.
- * @throws {Error} 'amount' | 'over' | 'too_many'
- */
-export function depositEntry(entries, kind, amount, due = 0) {
-    if ((entries || []).length >= MAX_DEPOSIT_ENTRIES) throw new Error('too_many');
-    const held = depositHeld(entries);
-    const c = kind === 'received' ? { ok: true, total: entryAmount(amount) } : validateDuePayment(amount, 0, kind === 'adjust' ? due : held, 0.001);
-    if (!DEPOSIT_KINDS.includes(kind) || (!c.ok && c.error !== 'exceeds-due') || !(c.total > 0 || !c.ok)) throw new Error('amount');
-    if (!c.ok || (kind !== 'received' && c.total > held + 0.001)) throw new Error('over');
-    return { amount: c.total, held: round2(held + (kind === 'received' ? c.total : -c.total)) };
-}
-
-/** RENT-15: Σ deposit held over the tenants' ledgers. */
-export const depositsTotal = (ledgers) => depositHeld((ledgers || []).map(l => ({ kind: 'received', amount: l.held })));
-
-/** RENT-14: amount filled in: received = the agreed deposit while nothing is held; refund = all held; adjust = the due, else held in whole rupees. */
-export const depositFill = (kind, held, due = 0, agreed = 0) => (kind === 'received' ? (held > 0 ? '' : agreed || '') : kind === 'refund' ? held : due <= held ? due : Math.floor(held));
+export const netOf = (collected, expenses) => round2((Number(collected) || 0) - (Number(expenses) || 0));
 
 /** Open charges of one lease, oldest first, and their total (RENT-5). */
 export function leaseDues(charges, leaseId) {

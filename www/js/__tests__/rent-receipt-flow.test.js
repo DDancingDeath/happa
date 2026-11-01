@@ -82,7 +82,7 @@ test('saved without a receipt (refused): a distinct warning, reported, then the 
 
 test('Receipts on a tenant opens their payment history; managers may cancel', async () => {
     _test.state.page = 'tenants';
-    _test.state.loaded = new Set(['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges']);
+    _test.state.loaded = new Set(['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses']);
     _test.render();
     expect(document.getElementById('rentalsBody').innerHTML).toContain("window.app.rentals.receipts('T1')");
     await RentalsModule.api.receipts('T1');
@@ -137,7 +137,7 @@ test('a unit whose month carries an advance says so on the Rent page', () => {
     store.snapshot.mockReturnValue({ ...SNAP, charges: [{ ...CHARGE, paid: 5000, open: false, adv: 2000 }] });
     _test.state.page = 'rent';
     _test.state.view = 'units';
-    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges'].forEach(k => _test.state.loaded.add(k));
+    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
     _test.render();
     expect(document.getElementById('rentalsBody').textContent).toContain('Advance for next month: ₹2,000');
 });

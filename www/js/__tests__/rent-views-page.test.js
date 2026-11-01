@@ -44,7 +44,7 @@ function show() {
     window.app = { rentals: { ...RentalsModule.api } };
     _test.state.page = 'rent';
     _test.state.month = M;
-    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges'].forEach(k => _test.state.loaded.add(k));
+    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
     _test.render();
     return document.getElementById('rentalsBody');
 }

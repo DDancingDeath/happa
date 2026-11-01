@@ -2260,6 +2260,25 @@ service cloud.firestore {
               || (role == 'owner' && rentPaidMatches(d.held, rentDepSum(d.entries)))));
     }
 
+    // ---- Property expenses (#157, RENT-17): rent_expenses/{id} ----
+    // Paid for a property (or one of its units): repairs, tax, maintenance, insurance, broker, other.
+    // Any rentals role adds one signed with its uid; only the owner edits or deletes. Never Aadhat cash.
+    function validRentExpense(usersCol) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['propertyId', 'unitId', 'category', 'amount', 'date', 'month', 'mode', 'note', 'byName',
+                               'createdAt', 'createdBy', 'updatedAt', 'updatedBy'])
+        && rentWriterOk()
+        && rentStr(d, 'propertyId', 1, 64) && exists(rentPath(usersCol, 'rent_properties', d.propertyId))
+        && (d.get('unitId', null) == null
+          || (rentStr(d, 'unitId', 1, 64) && get(rentPath(usersCol, 'rent_units', d.unitId)).data.propertyId == d.propertyId))
+        && d.get('category', '') in ['repairs', 'tax', 'maintenance', 'insurance', 'broker', 'other']
+        && d.get('amount', null) is number && d.amount > 0 && d.amount <= 100000000
+        && rentDate(d.get('date', '')) && d.get('month', '') == d.date[0:7]
+        && d.get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
+        && rentStr(d, 'note', 0, 200) && rentStr(d, 'byName', 0, 80)
+        && d.get('createdAt', null) is number && rentStr(d, 'createdBy', 1, 128);
+    }
+
     // The 'deposit' payment of charge `chargeId`: the tenant's ledger gains its adjustment in this write.
     function rentDepPaysOk(usersCol, chargeId, amount) {
       let path = rentPath(usersCol, 'rent_deposits', resource.data.get('tenantId', '-'));
@@ -2686,6 +2705,20 @@ service cloud.firestore {
     match /dev_rent_deposits/{tenantId} {
       allow read: if rentRoleIn('dev_users') != '';
       allow create, update: if validRentDeposit('dev_users', tenantId);
+      allow delete: if rentRoleIn('dev_users') == 'owner';
+    }
+
+    match /rent_expenses/{id} {
+      allow read: if rentRoleIn('users') != '';
+      allow create: if rentRoleIn('users') != '' && validRentExpense('users') && request.resource.data.createdBy == request.auth.uid;
+      allow update: if rentRoleIn('users') == 'owner' && validRentExpense('users') && rentCreationKept();
+      allow delete: if rentRoleIn('users') == 'owner';
+    }
+
+    match /dev_rent_expenses/{id} {
+      allow read: if rentRoleIn('dev_users') != '';
+      allow create: if rentRoleIn('dev_users') != '' && validRentExpense('dev_users') && request.resource.data.createdBy == request.auth.uid;
+      allow update: if rentRoleIn('dev_users') == 'owner' && validRentExpense('dev_users') && rentCreationKept();
       allow delete: if rentRoleIn('dev_users') == 'owner';
     }
 

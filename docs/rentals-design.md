@@ -34,7 +34,7 @@ business of the same type. It is not built now.
 | Agreements | End month, notice period, lock-in, escalation % and next escalation month, agreement type | 2 |
 | Deposits ledger | Received / adjusted against dues / refund entries; shown as money held, **not** Aadhat cash (built: §13) | 2 |
 | Receipts | Plain, **non-GST** rent receipt (tenant, unit, month, amount, mode, balance): WhatsApp text and printable/thermal. No GST fields | 2 |
-| Maintenance expenses | Per property: repairs, property tax, society, insurance, broker; cash/bank mode | 2 |
+| Maintenance expenses | Per property (or unit): repairs, property tax, society, insurance, broker; cash/UPI/bank/cheque (built: §15) | 2 |
 | Electricity | **Sub-meter** per unit: previous and current reading, rate per unit; (current − previous) × rate added to that month's charge | **1** (small: one dialog, one transaction, rules check the arithmetic) |
 | Rent increase reminder | Yearly, on the lease anniversary: "Rent increase due: 5% → ₹X" on the Rent page. **Never applied automatically**; the new rent is saved by hand after agreeing with the tenant. % editable per lease (default 5) | 1 |
 | Water / other utilities | Fixed or metered, like electricity | 3 |
@@ -120,7 +120,7 @@ All names go through `window.getCollection()`: production `rent_x`, development
 | `rent_charges` | `{leaseId}_{YYYY-MM}` | `leaseId`, `unitId`, `propertyId`, `tenantId`, `tenantName`, `unitLabel`, `month`, `dueDay`, `rent`, `electricity` (`{prev, curr, rate, units, amount}` or `null`), `amount` (= rent + electricity), `paid`, `open` (bool, `paid < amount`), `payments[]` (`{amount, mode, ref, date YYYY-MM-DD, at, by, byName}`), `createdAt`, `updatedAt` |
 
 Phase 2 adds `rent_deposits` (one ledger per tenant, §13),
-`rent_expenses` (`{propertyId, category, amount, mode, date, note}`) and agreement
+`rent_expenses` (§15) and agreement
 fields on `rent_leases`. Rent receipts (`rent_receipts`, `rent_counters`) are built: §11.
 
 **Limits (owner: up to 100 properties, 3 today).** At most 100 properties and 20
@@ -255,7 +255,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **129.0 KiB** (132,138 bytes) as served (LF), 982 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Outside this budget (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used; the service worker's install also caches them, best effort (a failure never blocks the update), into the new version's cache, so they match the precached files and work offline right after a deploy: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 11 KiB; its amounts and checks are in the precached `rent-math.js`) the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway) and the deposit ledger (§13: `rent-deposit.js`, `rent-deposit-store.js`, ≈ 13 KiB). The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 140 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again). **Recorded exception, 130 → 133 KB (#157, deposit ledger):** the ledger's screens and data access are lazy, but its maths (RENT-14/15) must live in `rent-math.js` (owner rule: all rentals maths there, with spec IDs and oracle tests), which is precached, plus the Tenants page buttons and the link's balance; ≈ 2.7 KB. **Recorded exception, 133 → 140 KB (#157, advance, §14):** the advance is part of Record payment (an overpayment pays the unpaid months oldest first, with the split confirmed), the monthly-charge and move-out transactions in `rent-store.js` and their maths in `rent-math.js`, which must stay precached (payments work offline, charges are made on entering Rentals); ≈ 6.6 KB. Lazy files: receipts ≤ 24 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, deposits ≤ 22 KB (raised from 18 KB for moving a left advance into the deposit), reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
+| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **129.0 KiB** (132,138 bytes) as served (LF), 982 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Outside this budget (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used; the service worker's install also caches them, best effort (a failure never blocks the update), into the new version's cache, so they match the precached files and work offline right after a deploy: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 11 KiB; its move-month amounts and checks are in the lazy `rent-math-ledger.js`) the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway) and the deposit ledger (§13: `rent-deposit.js`, `rent-deposit-store.js`, ≈ 13 KiB) property expenses (§15: `rent-expense.js`, `rent-expense-store.js`, ≈ 9 KiB) and `rent-math-ledger.js` (≈ 7 KiB): the pure maths only those lazy screens use (deposit ledger RENT-14/15, the expense form RENT-17, receipt amounts RENT-12/16, the change of unit's move month RENT-13 and its advance), with their spec IDs and oracle tests unchanged. The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 137 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again). **Recorded exception, 130 → 133 KB (#157, deposit ledger):** the ledger's screens and data access are lazy, but its maths (RENT-14/15) must live in `rent-math.js` (owner rule: all rentals maths there, with spec IDs and oracle tests), which is precached, plus the Tenants page buttons and the link's balance; ≈ 2.7 KB. **Recorded exception, 133 → 140 KB (#157, advance, §14):** the advance is part of Record payment (an overpayment pays the unpaid months oldest first, with the split confirmed), the monthly-charge and move-out transactions in `rent-store.js` and their maths in `rent-math.js`, which must stay precached (payments work offline, charges are made on entering Rentals); ≈ 6.6 KB. **Lowered, 140 → 137 KB (#157, property expenses, §15):** the maths only lazy screens use moved from `rent-math.js` to the lazy `rent-math-ledger.js` (≈ 7 KiB out of the precache), which more than pays for the expense summary on the Rent page (≈ 1.8 KB). Lazy files: receipts ≤ 24 KB, ledger maths ≤ 10 KB, expenses ≤ 12 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, deposits ≤ 22 KB (raised from 18 KB for moving a left advance into the deposit), reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -640,7 +640,7 @@ Owner: *"maybe we should have unit option in tenant page"*.
   that changes only its state (`status`, `endMonth`, `chargedThrough`, `movedTo`,
   `shareToken`; a unit's `leaseId`) checks only those fields, and the caller's role is read
   once per rule.
-- **Size:** `rent-unit.js` (picker, move in / change dialogs, `changeUnit`; the RENT-13 amounts and checks it shows are `rent-math.moveMonthSplit` / `changeUnitPlan`) and `rent-link.js`
+- **Size:** `rent-unit.js` (picker, move in / change dialogs, `changeUnit`; the RENT-13 amounts and checks it shows are `rent-math-ledger.moveMonthSplit` / `changeUnitPlan`) and `rent-link.js`
   (make / share / replace / turn off a tenant link; needs the network anyway) are not precached:
   `LAZY_ASSETS`, loaded with `import()` from `rentals.js` on first use and cached by the service worker's install (§4).
 - **Not done:** a tenant `activeLeaseId` mirror for a rules-level "one lease per tenant"
@@ -717,7 +717,7 @@ Owner: *"an overpayment on a month becomes an advance applied to the next month'
   change) takes the old lease's last month's advance like any next month: paid from it, the rest carried,
   the old month's `adv` set to 0 in the same transaction. The rules find that month through the new lease's
   `fromLeaseId` (the old lease's `endMonth`) and, on the old side, through the old lease's `movedTo`; such
-  an advance can't go into the deposit. The change confirmation shows the amount (`rent-math.advanceLeft`).
+  an advance can't go into the deposit. The change confirmation shows the amount (`rent-math-ledger.advanceLeft`).
 - **Lease moved out with an advance left:** right after, the app moves it into the
   tenant's deposit ledger (§13: *received*, from advance, `chargeId`) and clears the month's `adv` in one
   transaction; rules match the two and require the lease to have ended. If that step fails (offline),
@@ -734,3 +734,31 @@ Owner: *"an overpayment on a month becomes an advance applied to the next month'
   carries on; into the deposit only after the lease ended and only together; the receipt's `adv`; Jest (math,
   store on the optimistic fake: overpay, receipt, next months and the link, into the deposit; the dialog and
   unit row); oracle RENT-16 (one running credit, generated months and payments).
+
+## 15. Property expenses (phase 2; owner, 2026-11-01, #157)
+
+Owner: *"per property/unit (repairs, tax, maintenance), shown in the rentals summary. Not in the Aadhat
+cash drawer: rent money never goes into it."*
+
+- **Data:** `rent_expenses/{id}` (`dev_` in development): `{propertyId, unitId (or null = whole property),
+  category: repairs | tax | maintenance | insurance | broker | other, amount (> 0, whole rupees), date,
+  month (= the date's month, for the summary query), mode: cash | UPI | bank | cheque, note, byName,
+  created*, updated*}`. Never Aadhat's `expenses` collection, Finance or the cash drawer.
+- **Who (rules):** any rentals role creates one signed with its uid (`createdBy` = `updatedBy` = writer),
+  for a property that exists, a unit of that property, a known category and mode, a real date with its
+  month; only the **owner** updates (same checks, creation fixed) or deletes. Audit: `RENT_EXPENSE`,
+  `RENT_EXPENSE_EDIT`, `RENT_EXPENSE_DELETE`.
+- **Summary (RENT-17 / RENT-18):** Rent → Property wise shows "Expenses this month" and "Net this month"
+  (collected − expenses) in the page cards and a property's cards, and "expenses ₹X" on each property
+  card that has some. From one more listener while Rentals is open: `rent_expenses` where `month ==` this
+  month (single-field index, limit 2,000; 1 read when there are none). Unit wise is unchanged (filters
+  would make the sum ambiguous).
+- **Screens** (`rent-expense.js` + repository `rent-expense-store.js`, lazy): Properties › **💸 Expenses** on
+  each property: this month's total, the newest 60 (`propertyId ==`, `date desc`; composite index
+  `rent_expenses (propertyId ASC, date DESC)` + `dev_`), **Add expense** (category, unit or whole property,
+  amount, date, mode, note); the owner gets Edit / Remove on each.
+- **Cost:** start-up unchanged. Entering Rentals: one more listener (this month's expenses). The dialog:
+  one bounded query. Adding: one write (works offline).
+- **Tests:** rules (prod + `dev_`: roles, signed, property/unit/category/mode/month/amount checks, owner-only
+  edit/delete, read matrix); Jest (maths, store on the in-memory Firestore, the Rent page cards and the
+  dialog); oracle RENT-17/18 (per property adds up to the total, net additive).
