@@ -22,7 +22,6 @@ import { HistoryManager } from './modules/history.js';
 import { OutstandingManager } from './modules/outstanding.js';
 import { ExpensesManager } from './modules/miscellaneous.js';
 import { SettingsManager } from './modules/settings.js';
-import { UsersManager } from './modules/users.js';
 import { CashManagementManager } from './modules/cash-management.js';
 import { DayManager } from './modules/day.js';
 import { AnomaliesManager } from './modules/anomalies.js';
@@ -57,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbnza-exports-owner';
+const BUILD_ID = '20261101zzuzieecmbbkhboi-exports-owner';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1284,8 +1283,6 @@ window.app = {
         disconnectPrinter: () => SettingsManager.disconnectPrinter(),
         updatePrinterStatus: () => SettingsManager.updatePrinterStatus(),
         testPrint: () => SettingsManager.testPrint(),
-        loadAuditLogs: () => SettingsManager.loadAuditLogs(),
-        filterAuditLogs: () => SettingsManager.filterAuditLogs(),
         loadStorageStats: () => SettingsManager.loadStorageStats()
     },
 
@@ -1301,16 +1298,6 @@ window.app = {
         save: () => RolesAccessManager.saveForm(),
         loadPeople: () => RolesAccessManager.loadPeople(),
         setRentRole: (userId, role) => RolesAccessManager.setRentRole(userId, role)
-    },
-    
-    // Users
-    users: {
-        load: () => UsersManager.loadUsers(),
-        approveUser: (userId, role) => UsersManager.approveUser(userId, role),
-        rejectUser: (userId) => UsersManager.rejectUser(userId),
-        showChangeRoleDialog: (userId, userName, currentRole) => UsersManager.showChangeRoleDialog(userId, userName, currentRole),
-        resetUserPassword: (userId, email) => UsersManager.resetUserPassword(userId, email),
-        deleteUser: (userId, userName) => UsersManager.deleteUser(userId, userName)
     },
     
     // Diagnostics (owner; managers see Number checks only)

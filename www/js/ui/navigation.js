@@ -207,11 +207,6 @@ const NavigationManager = {
         this.showTab(tabId, undefined, opts);
         UIManager.hapticFeedback('light');
         
-        // Load users when Users tab is shown
-        if (tabId === 'users' && window.app?.users) {
-            setTimeout(() => window.app.users.load(), 100);
-        }
-        
         // Reset billing mode when Billing tab is shown
         if (tabId === 'billing' && window.app?.billing) {
             this.resetFilterButtons('billing');

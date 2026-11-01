@@ -510,7 +510,7 @@ const DiagnosticsManager = {
                     <span class="diag-error-count">${Helpers.escapeHtml(error.count || 1)}×</span>
                     <button onclick="window.app.diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn" title="${tx('msg.diagnostics.hide_error_title')}" aria-label="${tx('msg.diagnostics.hide_error_title')}">×</button>
                 </div>
-                <div class="diag-error-message">${this.escapeHtml(error.message || t('ui.diag.no_message'))}</div>
+                <div class="diag-error-message">${Helpers.escapeHtml(error.message || t('ui.diag.no_message'))}</div>
                 ${error.source ? `<div class="diag-error-source">📍 ${Helpers.escapeHtml(error.source)}:${Helpers.escapeHtml(error.line || '?')}</div>` : ''}
                 <div class="diag-error-meta">
                     <span>${tx('ui.diag.first', { at: firstSeen })}</span>
@@ -519,7 +519,7 @@ const DiagnosticsManager = {
                 ${error.stack ? `
                     <details class="diag-error-stack">
                         <summary>${tx('ui.diag.stack')}</summary>
-                        <pre>${this.escapeHtml(error.stack)}</pre>
+                        <pre>${Helpers.escapeHtml(error.stack)}</pre>
                     </details>
                 ` : ''}
                 ${error.occurrences && error.occurrences.length > 0 ? `
@@ -764,21 +764,6 @@ const DiagnosticsManager = {
                 return Exporter.saveBlob(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }), exportFilename(stamp, 'errors', 'json'));
             }
         });
-    },
-
-    /**
-     * Escape HTML to prevent XSS
-     * @param {string} str - String to escape
-     * @returns {string} Escaped string
-     */
-    escapeHtml(str) {
-        if (!str) return '';
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
     },
 
     /**
