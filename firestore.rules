@@ -845,20 +845,23 @@ service cloud.firestore {
         && d.amounts.diff(before.get('amounts', {})).affectedKeys().hasOnly([d.last])
         && d.get('online', {}).diff(before.get('online', {})).affectedKeys().hasOnly([d.last])
         && personalDayKeyOk(u, docId, d,
-             /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenses')/$(d.last));
+             /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenses')/$(d.last),
+             d.amounts.diff(before.get('amounts', {})).affectedKeys().size() == 0
+               && d.get('online', {}).diff(before.get('online', {})).affectedKeys().size() == 0);
     }
 
     // `online` flags an expense paid online (#118): set exactly when the expense's
     // paymentMode is 'online', so nobody can move a cash expense out of the drawer.
     // A removed expense may keep a stale flag (older apps don't clear it); it counts nowhere.
-    function personalDayKeyOk(u, docId, d, p) {
+    // `same`: the write changes no key (an unchanged re-send of a save, #153), always harmless.
+    function personalDayKeyOk(u, docId, d, p, same) {
       return d.last in d.amounts
         ? existsAfter(p) && getAfter(p).data.get('voided', false) != true
           && getAfter(p).data.get('amount', null) == d.amounts[d.last]
           && getAfter(p).data.get('day', '') == docId
           && ((d.last in d.get('online', {}) && d.online[d.last] == true)
               == (getAfter(p).data.get('paymentMode', 'cash') == 'online'))
-          && (isManagerIn(u) || !exists(p) || get(p).data != getAfter(p).data)
+          && (isManagerIn(u) || same || !exists(p) || get(p).data != getAfter(p).data)
         : !existsAfter(p) || getAfter(p).data.get('voided', false) == true;
     }
 

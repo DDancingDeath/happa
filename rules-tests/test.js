@@ -2347,13 +2347,24 @@ function defineSuite(prefix) {
         await assertFails(db.collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
         await assertFails(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 7), { merge: true }));
         await assertSucceeds(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
+        // an unchanged re-send of the save (#153): the same batch again is a no-op, accepted
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(personal).doc('rs1').set(pexp('staff1', { amount: 30, timestamp: 1 })));
+        await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(personalDays).doc(D).set({ amounts: { rs1: 30 } }, { merge: true }));
+        b = db.batch();
+        b.set(db.collection(personal).doc('rs1'), pexp('staff1', { amount: 30, timestamp: 1 }));
+        b.set(db.collection(personalDays).doc(D), dayKey('rs1', 30), { merge: true });
+        await assertSucceeds(b.commit());
+        b = db.batch();
+        b.set(db.collection(personal).doc('rs1'), pexp('staff1', { amount: 35, timestamp: 1 }));
+        b.set(db.collection(personalDays).doc(D), dayKey('rs1', 35), { merge: true });
+        await assertFails(b.commit());
         // void (#99): the key leaves with it (a void that leaves it is refused), and never comes back
         await assertFails(db.collection(personal).doc('b1').update(voidOf('staff1')));
         b = db.batch();
         b.update(db.collection(personal).doc('b1'), voidOf('staff1'));
         b.set(db.collection(personalDays).doc(D), dayKey('b1', null), { merge: true });
         await assertSucceeds(b.commit());
-        if (Object.keys((await dayDoc()).amounts).length) throw new Error('the voided key is still there');
+        if ('b1' in (await dayDoc()).amounts) throw new Error('the voided key is still there');
         await assertFails(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
         await assertSucceeds(db.collection(personalDays).doc(D).set(dayKey('b1', null), { merge: true }));
         // the owner deletes, then the same delete again: harmless
@@ -2364,7 +2375,7 @@ function defineSuite(prefix) {
             b.set(owner.collection(personalDays).doc(D), dayKey('b1', null), { merge: true });
             await assertSucceeds(b.commit());
         }
-        if (Object.keys((await dayDoc()).amounts).length) throw new Error('the deleted key is still there');
+        if ('b1' in (await dayDoc()).amounts) throw new Error('the deleted key is still there');
         await assertFails(db.collection(personalDays).doc(D).delete());
         await assertFails(as('manager1').collection(personalDays).doc(D).delete());
         await assertSucceeds(as('legacyOwner').collection(personalDays).doc(D).delete());
