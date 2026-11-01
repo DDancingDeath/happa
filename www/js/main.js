@@ -1176,7 +1176,7 @@ window.app = {
         init: (section) => loadMoney().then(m => m.init(section))
             .catch(e => console.warn('Money not loaded:', e?.message || e)),
         ...Object.fromEntries(['setSection', 'setPreset', 'step', 'loadOlder', 'buildHistory', 'toggleWithdrawalForm',
-            'saveWithdrawal', 'saveAccount', 'removeAccount', 'render']
+            'saveWithdrawal', 'saveAccount', 'removeAccount', 'useThisPhonesAccounts', 'render']
             .map(name => [name, (...args) => loadMoney().then(m => m[name](...args))]))
     },
     // Insights (redesign §5.3): insights.js is imported on first use
