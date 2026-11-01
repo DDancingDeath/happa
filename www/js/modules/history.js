@@ -30,6 +30,7 @@ import { accessFor, canDeleteBillWith, canVoidBillWith, historyCutoff, withinBil
 import { askReason, editsRowHtml, renderEditsList, setBillActions, voidedBannerHtml } from '../ui/bill-status.js';
 import { voidBlocker } from '../utils/bill-edits.js';
 import { buildReprintPayload, buildBillShareText } from '../utils/bill-share.js';
+import { billTimes } from '../utils/clock-skew.js';
 import { todayLocalISO } from '../utils/dates.js';
 import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
@@ -72,6 +73,25 @@ const billRef = (bill) => Helpers.escapeJsAttr(`id:${bill.id}`);
  * History Manager - Manages transaction history
  * @class HistoryManager
  */
+/**
+ * The bill's two times (#115): entered on the phone (its own clock) and saved on the
+ * server, with a note when they are far apart. '' when the bill has neither.
+ * @param {Object} bill
+ * @returns {string} HTML
+ */
+function billTimesHtml(bill) {
+    const waiting = !!(FirebaseService.savedOnPhoneOnly?.(bill) || FirebaseService.saveUnconfirmed?.(bill));
+    const { entered, server, far } = billTimes(bill, { waiting });
+    if (!entered && !server) return '';
+    const row = (key, d) => (d ? `
+                        <div class="bill-info-row bill-time-row">
+                            <div class="bill-info-label">${L(key)}</div>
+                            <div class="bill-info-value">${Helpers.escapeHtml(Helpers.formatDateTime(d))}</div>
+                        </div>` : '');
+    return row('ui.history.entered_at', entered) + row('ui.history.server_at', server)
+        + (far ? `<div class="bill-times-note" role="note">${L('ui.history.times_differ')}</div>` : '');
+}
+
 export class HistoryManager {
     /**
      * Current view mode for history display
@@ -560,6 +580,7 @@ export class HistoryManager {
                             <div class="bill-info-value"><strong>${Helpers.escapeHtml(bill.customerName)}</strong></div>
                         </div>
                     ` : ''}
+                    ${billTimesHtml(bill)}
                     ${billTraceId(bill, type) ? `
                         <div class="bill-info-row bill-trace-row">
                             <div class="bill-info-label">${L('ui.status.trace_id')}</div>
