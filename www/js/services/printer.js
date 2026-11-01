@@ -1069,6 +1069,23 @@ const PrinterService = {
     },
 
     /**
+     * Printer link in one word for Settings and Diagnostics › Status (#119):
+     * unavailable / bluetooth_off / connected / saved (a printer is saved but not
+     * connected) / none, plus the last problem kind on this phone.
+     */
+    linkState() {
+        const available = this.isAvailable();
+        const connected = this.isConnected();
+        const saved = this.settings();
+        const { lastError, lastJob, bluetoothOff } = this.manager.link.status;
+        const state = !available ? 'unavailable'
+            : (!connected && bluetoothOff) ? 'bluetooth_off'
+                : connected ? 'connected'
+                    : saved.deviceId ? 'saved' : 'none';
+        return { state, lastErrorKind: available ? (lastError?.kind || null) : null, mayHavePrinted: available && lastJob?.outcome === 'uncertain' };
+    },
+
+    /**
      * Settings → Bluetooth Printer status line and buttons, from the real
      * connection state (AadhatManagementApp#133), when it was last checked and
      * the last problem (#77).
