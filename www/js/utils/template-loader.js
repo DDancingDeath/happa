@@ -22,6 +22,7 @@ export const PAGE_TEMPLATES = [
     'statements',
     'health',
     'cash-management',
+    'chat',
     'diagnostics',
     'admin'
 ];

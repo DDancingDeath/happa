@@ -202,6 +202,7 @@ const STATIC_ASSETS = [
     '/templates/auth.html',
     '/templates/billing.html',
     '/templates/cash-management.html',
+    '/templates/chat.html',
     '/templates/day.html',
     '/templates/diagnostics.html',
     '/templates/due.html',
