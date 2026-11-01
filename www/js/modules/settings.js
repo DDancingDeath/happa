@@ -460,6 +460,9 @@ export class SettingsManager {
         if (error.code !== CHANGED_ELSEWHERE) return;
         try {
             await this.applySharedSettings(await FirebaseService.loadAppSettings());
+            // The forms show the stored values now (another phone's), not this phone's stale ones
+            const shop = document.getElementById('settingsShop');
+            if (shop && !shop.hidden) this.renderShop(this.canEditShop());
         } catch (e) {
             console.warn('Settings not read again:', e);
         }

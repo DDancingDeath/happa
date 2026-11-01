@@ -369,11 +369,15 @@ let appSettingsPromise = null;
  */
 const settingsSectionQueue = new Map();
 function saveSettingsSection(fields, stampKey, opts = {}) {
-    // One save of a section at a time on this phone: two quick edits are not a "conflict"
-    const run = (settingsSectionQueue.get(stampKey) || Promise.resolve())
-        .catch(() => {})
-        .then(() => saveSettingsSectionNow(fields, stampKey, opts));
+    // One save of a section at a time on this phone: two quick edits are not a "conflict".
+    // A save queued behind one that was refused is refused too: its form was as stale.
+    const before = settingsSectionQueue.get(stampKey);
+    const run = before
+        ? before.then(() => saveSettingsSectionNow(fields, stampKey, opts))
+        : saveSettingsSectionNow(fields, stampKey, opts);
     settingsSectionQueue.set(stampKey, run);
+    const done = () => { if (settingsSectionQueue.get(stampKey) === run) settingsSectionQueue.delete(stampKey); };
+    run.then(done, done);
     return run;
 }
 
@@ -392,12 +396,18 @@ async function saveSettingsSectionNow(fields, stampKey, { checked = true } = {})
     }
     if (isOffline()) throw needsInternetError();
     const loaded = appSettingsPromise ? await appSettingsPromise.catch(() => undefined) : undefined;
-    const expected = loaded === undefined ? undefined : (loaded?.[stampKey] ?? null);
+    if (loaded === undefined) {
+        // settings/app was never read on this phone: the form may not show what is stored,
+        // so refuse and read it (the screen then shows the stored values)
+        FirebaseService.loadAppSettings({ refresh: true }).catch(() => {});
+        throw changedElsewhereError('Settings');
+    }
+    const expected = loaded?.[stampKey] ?? null;
     try {
         await getDb().runTransaction(async tx => {
             const snap = await tx.get(ref);
             const current = snap.exists ? (snap.data()?.[stampKey] ?? null) : null;
-            if (expected !== undefined && current !== expected) throw changedElsewhereError('Settings');
+            if (current !== expected) throw changedElsewhereError('Settings');
             tx.set(ref, fields, { merge: true });
         });
     } catch (error) {

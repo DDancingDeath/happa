@@ -139,13 +139,19 @@ describe('Rates page (items list)', () => {
     test('a refused bill-check save puts this phone back on the values stored now (#113)', async () => {
         AppState.userRole = 'owner';
         AppState.settings.checkThresholds = { ...AppState.settings.checkThresholds, rateMultiple: 2 };
-        document.body.insertAdjacentHTML('beforeend', '<input id="settingCheck_rateMultiple" value="9">');
+        document.body.insertAdjacentHTML('beforeend', '<div id="settingsShop"><div id="settingsChecks"></div><input id="settingBusinessName"></div>');
+        SettingsManager.renderCheckThresholds(true);
+        document.getElementById('settingCheck_rateMultiple').value = '9';
         jest.spyOn(FirebaseService, 'saveSharedCheckThresholds').mockRejectedValue(Object.assign(new Error('x'), { code: 'changed-elsewhere' }));
-        jest.spyOn(FirebaseService, 'loadAppSettings').mockResolvedValue({ checkThresholds: { rateMultiple: 3 }, laborRate: 6, heavyWeightThreshold: 30 });
+        jest.spyOn(FirebaseService, 'loadAppSettings').mockResolvedValue({ checkThresholds: { rateMultiple: 3 }, businessName: 'Other phone', laborRate: 6, heavyWeightThreshold: 30 });
         jest.spyOn(FirebaseService, 'saveSharedLabourSettings').mockResolvedValue(undefined);
         expect(await SettingsManager.saveCheckThresholds()).toBe(false);
         expect(AppState.settings.checkThresholds.rateMultiple).toBe(3);
+        // the forms show the stored values now
+        expect(document.getElementById('settingCheck_rateMultiple').value).toBe('3');
+        expect(document.getElementById('settingBusinessName').value).toBe('Other phone');
         expect(toast.mock.calls.at(-1)[0]).toMatch(/another phone/);
+        document.getElementById('settingsShop').remove();
     });
 
     test('a settings section saved over another phone\'s newer save is refused, then works once read again (#113)', async () => {
@@ -170,6 +176,22 @@ describe('Rates page (items list)', () => {
                 FirebaseService.saveSharedLabourSettings({ laborRate: 9, heavyWeightThreshold: 30 })
             ]);
             expect(fake.raw('settings').get('app').laborRate).toBe(9);
+            // a save queued behind a refused one is refused too (its form is as stale)
+            fake.raw('settings').get('app').labourUpdatedAt = 1;
+            const queued = [
+                FirebaseService.saveSharedLabourSettings({ laborRate: 10, heavyWeightThreshold: 30 }),
+                FirebaseService.saveSharedLabourSettings({ laborRate: 11, heavyWeightThreshold: 30 })
+            ];
+            await expect(queued[0]).rejects.toMatchObject({ code: 'changed-elsewhere' });
+            await expect(queued[1]).rejects.toMatchObject({ code: 'changed-elsewhere' });
+            expect(fake.raw('settings').get('app').laborRate).toBe(9);
+            // settings never read on this phone: refused (and read), then saved
+            FirebaseService.cleanup();
+            await expect(FirebaseService.saveSharedLabourSettings({ laborRate: 12, heavyWeightThreshold: 30 })).rejects.toMatchObject({ code: 'changed-elsewhere' });
+            expect(fake.raw('settings').get('app').laborRate).toBe(9);
+            await FirebaseService.loadAppSettings();
+            await FirebaseService.saveSharedLabourSettings({ laborRate: 12, heavyWeightThreshold: 30 });
+            expect(fake.raw('settings').get('app').laborRate).toBe(12);
         } finally {
             delete window.firebase;
             delete global.firebase;
