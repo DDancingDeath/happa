@@ -4,12 +4,13 @@
  * payments, compared with rentals/rent-math.js on generated histories; RENT-13
  * (change of unit, the move month) against the same module; RENT-14 / RENT-15
  * (deposit ledger) on generated entries; RENT-16 (advance carried forward) on
- * generated payments.
+ * generated payments; RENT-17 / RENT-18 (property expenses, net) on generated
+ * expenses.
  */
 import fc from 'fast-check';
 import {
     monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, moveMonthRent, oldMonth,
-    depositEntry, depositHeld, depositsTotal, withAdvance, payOldestFirst, payAmount
+    depositEntry, depositHeld, depositsTotal, withAdvance, payOldestFirst, payAmount, expenseTotals, netOf
 } from '../../www/js/rentals/rent-math.js';
 
 jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: {} }));
@@ -235,5 +236,24 @@ describe('an overpayment pays the oldest unpaid months first (RENT-5, RENT-16)',
             expect(got[got.length - 1].adv || 0).toBe(left);
             expect(got.reduce((s, p) => s + payAmount(p), 0)).toBe(amount);
         }), { seed: 1573, numRuns: Number(process.env.FC_RUNS) || 100 });
+describe('property expenses and net (RENT-17, RENT-18)', () => {
+    test('this month\'s expenses per property add up to the total; net per property adds up to the page net', () => {
+        const expArb = fc.record({ p: fc.constantFrom('P1', 'P2', 'P3'), amount: fc.integer({ min: 1, max: 50000 }), month: fc.constantFrom('2026-09', '2026-10') });
+        const collArb = fc.record({ P1: fc.integer({ min: 0, max: 90000 }), P2: fc.integer({ min: 0, max: 90000 }), P3: fc.integer({ min: 0, max: 90000 }) });
+        fc.assert(fc.property(fc.array(expArb, { maxLength: 30 }), collArb, (list, collected) => {
+            const want = { P1: 0, P2: 0, P3: 0 };
+            for (const e of list) if (e.month === '2026-10') want[e.p] += e.amount;
+            const got = expenseTotals(list.map(e => ({ propertyId: e.p, amount: e.amount, month: e.month })), '2026-10');
+            for (const p of ['P1', 'P2', 'P3']) expect(got.byProperty[p] || 0).toBe(want[p]);
+            expect(got.total).toBe(want.P1 + want.P2 + want.P3);
+            let net = 0;
+            let coll = 0;
+            for (const p of ['P1', 'P2', 'P3']) {
+                expect(netOf(collected[p], got.byProperty[p] || 0)).toBe(collected[p] - want[p]);
+                net += collected[p] - want[p];
+                coll += collected[p];
+            }
+            expect(netOf(coll, got.total)).toBe(net);
+        }), { seed: 1572, numRuns: Number(process.env.FC_RUNS) || 100 });
     });
 });

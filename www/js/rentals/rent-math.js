@@ -369,6 +369,31 @@ export const depositsTotal = (ledgers) => depositHeld((ledgers || []).map(l => (
 /** RENT-14: amount filled in: received = the agreed deposit while nothing is held; refund = all held; adjust = the due, else held in whole rupees. */
 export const depositFill = (kind, held, due = 0, agreed = 0) => (kind === 'received' ? (held > 0 ? '' : agreed || '') : kind === 'refund' ? held : due <= held ? due : Math.floor(held));
 
+/** Property expenses (RENT-17): what was paid for a property or one of its units. Never Aadhat cash. */
+export const EXPENSE_CATEGORIES = ['repairs', 'tax', 'maintenance', 'insurance', 'broker', 'other'];
+
+/** Error key for an expense form ('' when fine): a category, a whole-rupee amount > 0, a real date. */
+export function expenseError(e) {
+    if (!EXPENSE_CATEGORIES.includes(e?.category) || !PAYMENT_MODES.includes(e.mode)) return 'msg.rent.bad_amount';
+    if (!(entryAmount(e.amount) > 0)) return 'msg.rent.bad_amount';
+    return isDate(e.date) ? '' : 'msg.rent.bad_date';
+}
+
+/** RENT-17: Σ amount of `month`'s expenses, in all and per property; RENT-18: net = collected − expenses. */
+export function expenseTotals(expenses, month) {
+    const byProperty = {};
+    let total = 0;
+    for (const e of expenses || []) {
+        if (e.month !== month) continue;
+        const a = Number(e.amount) || 0;
+        total += a;
+        byProperty[e.propertyId] = round2((byProperty[e.propertyId] || 0) + a);
+    }
+    return { total: round2(total), byProperty };
+}
+
+export const netOf = (collected, expenses) => round2((Number(collected) || 0) - (Number(expenses) || 0));
+
 /** Open charges of one lease, oldest first, and their total (RENT-5). */
 export function leaseDues(charges, leaseId) {
     const open = charges.filter(c => c.leaseId === leaseId && chargeDue(c) > 0)

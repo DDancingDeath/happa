@@ -29,7 +29,7 @@ import {
     PROPERTY_KINDS, PAYMENT_MODES, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, normalizeRentSettings,
     monthKey, monthLabel, monthsToCharge, chargeStatus, chargeDue, leaseDues, buildRentReminderText,
     increaseDue, meterBill, propertyError, unitError, tenantError, leaseError, moveInError, isMonth, addMonths,
-    ELEC_MODES, elecMode, mobile10, dateLabel, firstMonthRent, payOldestFirst, payAmount
+    ELEC_MODES, elecMode, mobile10, dateLabel, firstMonthRent, payOldestFirst, payAmount, expenseTotals, netOf
 } from './rent-math.js';
 
 const PAGES = ['rent', 'tenants', 'properties'];
@@ -191,7 +191,7 @@ function render() {
         notice.hidden = state.errors.size === 0 && !limited;
         notice.textContent = state.errors.size ? t('msg.rent.could_not_load') : limited ? t('msg.rent.limit_reached') : '';
     }
-    if (!['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges'].every(k => state.loaded.has(k))) {
+    if (!['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].every(k => state.loaded.has(k))) {
         root.innerHTML = `<p class="rent-empty">${et('ui.rent.loading')}</p>`;
         return;
     }
@@ -265,12 +265,14 @@ function rowBadge(r) {
         : badge('due', 'ui.rent.status_due');
 }
 
-function totalsCards(sum) {
+/** RENT-9 cards; with this month's expenses (RENT-17) also the net (RENT-18). */
+function totalsCards(sum, exp) {
     return [
         ['ui.rent.expected', sum.expected],
         ['ui.rent.collected', sum.collected],
         ['ui.rent.pending_month', sum.pending],
-        ['ui.rent.outstanding', sum.due]
+        ['ui.rent.outstanding', sum.due],
+        ...(exp === undefined ? [] : [['ui.rent.exp_month', exp], ['ui.rent.net_month', netOf(sum.collected, exp)]])
     ].map(([k, v]) => `<div class="rent-card"><div class="rent-card-label">${et(k)}</div><div class="rent-card-value">${money(v)}</div></div>`).join('');
 }
 
@@ -299,6 +301,7 @@ function renderRent(d) {
 function renderPropertyView(d, ix, rows) {
     if (state.openProperty && d.properties.some(p => p.id === state.openProperty)) return renderPropertyDetail(d, ix, rows);
     state.openProperty = '';
+    const ex = expenseTotals(d.expenses, state.month);
     const cards = propertySummaries(d.properties, rows).map(({ property: p, summary: s }) => `
         <button type="button" class="rent-row rent-prop-card" onclick="window.app.rentals.openProperty('${js(p.id)}')">
             <div class="rent-row-head">
@@ -307,11 +310,11 @@ function renderPropertyView(d, ix, rows) {
                     <div class="rent-sub">${et('ui.rent.occupancy', { occupied: s.occupied, vacant: s.vacant })}${s.late ? ` · ${et('ui.rent.late_count', { n: s.late })}` : ''}</div></div>
                 <div class="rent-row-right"><div class="rent-due">${money(s.pending)}</div><div class="rent-sub">${et('ui.rent.pending_month')}</div></div>
             </div>
-            <div class="rent-sub">${et('ui.rent.prop_month_line', { expected: formatINR(s.expected), collected: formatINR(s.collected) })}</div>
+            <div class="rent-sub">${et('ui.rent.prop_month_line', { expected: formatINR(s.expected), collected: formatINR(s.collected) })}${ex.byProperty[p.id] ? ` · ${et('ui.rent.exp_line', { amount: formatINR(ex.byProperty[p.id]) })}` : ''}</div>
         </button>`).join('');
     const empty = `<p class="rent-empty">${et('ui.rent.no_properties')}</p>`
         + (canWrite() ? btn(' rent-btn-primary', 'page', `'properties'`, 'ui.rent.add_property') : '');
-    return `<div class="rent-cards">${totalsCards(summarize(rows))}</div>
+    return `<div class="rent-cards">${totalsCards(summarize(rows), ex.total)}</div>
         ${cards || empty}`;
 }
 
@@ -327,7 +330,7 @@ function renderPropertyDetail(d, ix, rows) {
             <h3 class="rent-name">${esc(p.name)}</h3>
             <div class="rent-sub">${esc(typeCounts(s.byType))} · ${et('ui.rent.occupancy', { occupied: s.occupied, vacant: s.vacant })}</div>
         </div>
-        <div class="rent-cards">${totalsCards(s)}</div>
+        <div class="rent-cards">${totalsCards(s, expenseTotals(d.expenses, state.month).byProperty[p.id] || 0)}</div>
         ${groups || `<p class="rent-empty">${et('ui.rent.no_units')}</p>`}`;
 }
 
@@ -864,7 +867,7 @@ const unitCtx = () => ({
 
 /** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
 function lazyUi(file, fn, ...args) {
-    return (file === './rent-unit.js' ? unitMod() : file === './rent-deposit.js' ? import('./rent-deposit.js') : import('./rent-link.js')).then(
+    return (file === './rent-unit.js' ? unitMod() : file === './rent-deposit.js' ? import('./rent-deposit.js') : file === './rent-expense.js' ? import('./rent-expense.js') : import('./rent-link.js')).then(
         (m) => Promise.resolve().then(() => m[fn](unitCtx(), ...args)).catch((e) => {
             console.error(`Rentals ${fn} failed:`, e);
             fail('msg.rent.save_failed');
@@ -876,6 +879,7 @@ function lazyUi(file, fn, ...args) {
 }
 const unitUi = (fn, ...args) => lazyUi('./rent-unit.js', fn, ...args);
 const depUi = (fn, ...args) => lazyUi('./rent-deposit.js', fn, ...args);
+const expUi = (fn, ...args) => lazyUi('./rent-expense.js', fn, ...args);
 
 /** Tenants page: move an existing tenant into a vacant unit. */
 async function moveIn(tenantId) {
@@ -959,6 +963,7 @@ function renderProperties(d) {
             ${manage ? `<div class="rent-actions">
                 ${btn(' rent-btn-primary', 'addUnit', `'${pid}'`, 'ui.rent.add_unit')}
                 ${btn('', 'editProperty', `'${pid}'`, 'ui.rent.edit')}
+                ${btn('', 'expenses', `'${pid}'`, 'ui.rent.exp_btn', '💸 ')}
                 ${occupied ? '' : btn('', 'archiveProperty', `'${pid}'`, 'ui.rent.remove')}
             </div>` : ''}
         </div>`;
@@ -1136,7 +1141,8 @@ export const RentalsModule = {
         addTenantToUnit: (unitId) => unitUi('toUnit', null, unitId), tenantToggle, tenantPick, tenantElec,
         receipts: (tenantId) => receiptUi('showHistory', tenantId),
         receiptAction: (name, id) => receiptUi('action', name, id),
-        deposit: (id) => depUi('showDeposit', id), deposits: () => depUi('showHeld'), depositAction: (a, id, i) => depUi('action', a, id, i), advanceToDeposit: (id) => depUi('advanceAction', id)
+        deposit: (id) => depUi('showDeposit', id), deposits: () => depUi('showHeld'), depositAction: (a, id, i) => depUi('action', a, id, i), advanceToDeposit: (id) => depUi('advanceAction', id),
+        expenses: (pid) => expUi('showExpenses', pid), expenseAction: (a, pid, id) => expUi('action', a, pid, id)
     }
 };
 

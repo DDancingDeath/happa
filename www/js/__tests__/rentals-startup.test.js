@@ -32,14 +32,15 @@ const PRECACHE_BUDGET_BYTES = 140 * 1024;
 /** Loaded with import() only when used (file: its only importer); not precached, own budget per feature. */
 const LAZY = {
     'rent-receipt.js': 'rentals.js', 'rent-receipt-store.js': 'rent-receipt.js', 'rent-unit.js': 'rentals.js', 'rent-link.js': 'rentals.js',
-    'rent-deposit.js': 'rentals.js', 'rent-deposit-store.js': 'rent-deposit.js'
+    'rent-deposit.js': 'rentals.js', 'rent-deposit-store.js': 'rent-deposit.js', 'rent-expense.js': 'rentals.js', 'rent-expense-store.js': 'rent-expense.js'
 };
 const LAZY_URLS = [...Object.keys(LAZY).map(n => `/js/rentals/${n}`), '/css/rent-receipt.css'];
 const LAZY_BUDGETS = {
     receipts: [['/js/rentals/rent-receipt.js', '/js/rentals/rent-receipt-store.js', '/css/rent-receipt.css'], 24 * 1024],
     'unit picker': [['/js/rentals/rent-unit.js'], 16 * 1024],
     'tenant link actions': [['/js/rentals/rent-link.js'], 6 * 1024],
-    deposits: [['/js/rentals/rent-deposit.js', '/js/rentals/rent-deposit-store.js'], 22 * 1024]
+    deposits: [['/js/rentals/rent-deposit.js', '/js/rentals/rent-deposit-store.js'], 22 * 1024],
+    expenses: [['/js/rentals/rent-expense.js', '/js/rentals/rent-expense-store.js'], 12 * 1024]
 };
 /** Size as served (LF line endings), the same on a Windows checkout and in CI. */
 const sizeOf = (f) => Buffer.byteLength(read(f).replace(/\r\n/g, '\n'));
@@ -131,7 +132,7 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
             expect(files.filter(f => path.basename(f) !== name && read(f).includes(`./${name}`)).map(f => path.basename(f))).toEqual([by]);
         });
         const src = read(path.join(RENTALS, 'rentals.js'));
-        ['rent-receipt', 'rent-unit', 'rent-link', 'rent-deposit'].forEach((n) => {
+        ['rent-receipt', 'rent-unit', 'rent-link', 'rent-deposit', 'rent-expense'].forEach((n) => {
             expect(src).toMatch(new RegExp(`import\\(\\s*'\\./${n}\\.js'\\s*\\)`));
             expect(src).not.toMatch(new RegExp(`^import .*${n}`, 'm'));
         });
