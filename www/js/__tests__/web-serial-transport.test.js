@@ -2,7 +2,7 @@
  * @fileoverview Desktop printing spike (#133): the Web Serial transport works
  * with PrinterLink (connect once, write the raster, drop = uncertain).
  */
-import { webSerialTransport, SPP_SERVICE_CLASS_ID } from '../services/web-serial-transport.js';
+import { webSerialTransport, SPP_SERVICE_CLASS_ID } from '../../spike/web-serial-transport.js';
 import { PrinterLink } from '../services/printer-link.js';
 
 function fakePort({ bluetooth = true, openFails = false } = {}) {

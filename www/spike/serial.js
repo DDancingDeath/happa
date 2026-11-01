@@ -4,7 +4,7 @@
 import { applyTranslations, t } from '/js/i18n/index.js';
 import { PrinterService, packMonochromeRaster, buildRasterPrintCommand } from '/js/services/printer.js';
 import { PrinterLink } from '/js/services/printer-link.js';
-import { webSerialTransport } from '/js/services/web-serial-transport.js';
+import { webSerialTransport } from '/spike/web-serial-transport.js';
 
 const $ = (id) => document.getElementById(id);
 const transport = webSerialTransport();

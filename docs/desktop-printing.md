@@ -24,19 +24,19 @@ and "Bluetooth RFCOMM updates in Web Serial" (Chrome 130).
 `firebase.json` sends `Permissions-Policy: … serial=() …` on every path
 (#89 / PR #198). With that header, `navigator.serial.requestPort()` is refused
 on myhappa.web.app however the browser behaves. This PR relaxes it to
-`serial=(self)` **only for `/spike/**`**, so the test page can run. A test in
+`serial=(self)` **only for the test page's two files (`/spike/serial.html`, `/spike/serial.js`)**, so it can run. A test in
 `tests/ci/security-headers.test.js` checks that it's the only exception.
 Shipping Web Serial printing in the app itself needs `serial=(self)` on the app's
 pages: a security-header decision for the owner/reviewer.
 
 ## What's built
 
-- **`www/js/services/web-serial-transport.js`:** a transport with the same
+- **`www/spike/web-serial-transport.js`:** a transport with the same
   shape as `cordovaTransport()` (`available`, `canCheck`, `connect(id, onDrop)`,
   `disconnect`, `isConnected`, `write`, `list`), plus `request()` for the browser
   picker, which needs a click. `PrinterLink` uses it as is, so the timeouts, the
   one-at-a-time queue and the "may have printed" handling are the same as on the
-  phone. It's a lazy asset: the app never loads it.
+  phone. It lives in `www/spike/`, outside the service worker's lists: the app never loads it.
 - **`/spike/serial.html`:** a test page that isn't linked anywhere, needs no login
   and saves nothing. It draws the app's own test bill (the same renderer and the
   same `GS v 0` raster bytes as the phone) and offers:

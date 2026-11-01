@@ -1,7 +1,8 @@
 // Desktop printing spike (#133): a PrinterLink transport over the Web Serial API
 // (Chrome / Edge 117+ on a computer). A paired Bluetooth receipt printer shows up
 // as a Serial Port Profile port, or as its Windows "outgoing" COM port. Not used
-// by the app yet; only the test page /spike/serial.html loads it.
+// by the app yet (so not in the service worker's lists); only the test page
+// /spike/serial.html loads it.
 
 /** Serial Port Profile service class id. */
 export const SPP_SERVICE_CLASS_ID = '00001101-0000-1000-8000-00805f9b34fb';

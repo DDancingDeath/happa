@@ -116,8 +116,7 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
     });
 
     test('receipt, unit picker and tenant link files are not precached, load only on use and stay within their budgets', () => {
-        // The desktop printing spike's transport (#133) is lazy too, but is not part of Rentals.
-        expect(readLazyAssets().filter(u => u !== '/js/services/web-serial-transport.js').sort()).toEqual([...LAZY_URLS].sort());
+        expect(readLazyAssets().sort()).toEqual([...LAZY_URLS].sort());
         expect(readStaticAssets().filter(u => LAZY_URLS.includes(u))).toEqual([]);
         const files = listJs(RENTALS);
         Object.entries(LAZY).forEach(([name, by]) => {

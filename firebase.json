@@ -153,7 +153,7 @@
           ]
         },
         {
-          "source": "/spike/**",
+          "source": "/spike/@(serial.html|serial.js)",
           "headers": [
             {
               "key": "Permissions-Policy",
