@@ -82,6 +82,13 @@ export const AskManager = {
         return answer;
     },
 
+    /** Sign-out: nothing of this person's answers stays on the page. */
+    reset() {
+        this.answers = [];
+        const host = document.getElementById('askAnswers');
+        if (host) host.innerHTML = '';
+    },
+
     uid() {
         return AppState.currentUser?.uid || null;
     },

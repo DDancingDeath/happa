@@ -635,6 +635,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 FirebaseService.cleanup();
                 FirebaseService.forgetPeopleCaches();
                 NotificationsManager.stop();
+                ask?.reset();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
                 document.getElementById('authScreen').style.display = 'flex';

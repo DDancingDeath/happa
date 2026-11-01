@@ -32,11 +32,26 @@ describe('parseQuestion', () => {
         ['Abhi ka baaki', { intent: 'party_due', subject: 'abhi' }],
         ['Sara ka baaki', { intent: 'party_due', subject: 'sara' }],
         ['kal ki bikri', { intent: 'today_only' }],
-        ['chawal kitna becha', { intent: 'today_only' }],
+        ['chawal kitna becha', { intent: 'sales_today', rest: 'chawal' }],
         ['aaj kitna maal becha', { intent: 'sales_today' }],
         ['abhi chawal ka stock', { intent: 'item_stock', subject: 'chawal' }],
         ['chawal ka maal', { intent: 'item_stock', subject: 'chawal' }]
-    ])('%s', (text, want) => expect(parseQuestion(text)).toEqual(want));
+    ])('%s', (text, want) => expect(parseQuestion(text)).toMatchObject(want));
+
+    test.each([
+        ['abhi kitna baaki hai', { intent: 'total_due' }],
+        ['अभी कितना बाकी है', { intent: 'total_due' }],
+        ['sara baaki', { intent: 'total_due' }],
+        ['Sara ji ka baaki', { intent: 'party_due', subject: 'sara' }],
+        ['abhi stock kitna hai', { intent: 'item_stock', subject: '' }],
+        ['aaj ki bikri kitni rahi', { intent: 'sales_today' }],
+        ['आज की बिक्री कितनी रही', { intent: 'sales_today' }],
+        ["today's sales so far", { intent: 'sales_today' }],
+        ['abhi tak ki bikri', { intent: 'sales_today' }],
+        ['aaj abhi tak kitna kharcha hua', { intent: 'expenses_today' }],
+        ['pichle hafte ki bikri', { intent: 'today_only' }],
+        ['1 tarikh ki bikri', { intent: 'today_only' }]
+    ])('now / all / today phrasings: %s', (text, want) => expect(parseQuestion(text)).toMatchObject(want));
 });
 
 const TODAY = new Date(2026, 10, 15, 12, 0);
@@ -71,6 +86,19 @@ describe('answerQuestion', () => {
     test('stock: romanised Hindi name; members see "available" above 100 kg', () => {
         expect(ask('chawal ka stock')).toMatchObject({ name: 'Rice', quantity: 150, limited: false });
         expect(ask('chawal ka stock', { role: 'staff' }).limited).toBe(true);
+    });
+    test('one item\'s sales are not given as today\'s total', () => {
+        expect(ask('chawal kitna becha').intent).toBe('today_only');
+        expect(ask('aaj ki sale kaisi rahi').intent).toBe('sales_today');
+    });
+    test('sign-out clears the answers on the page', async () => {
+        AppState.currentUser = { uid: 'owner1' };
+        document.body.innerHTML = '<div id="askAnswers"></div>';
+        Object.assign(AppState, { purchaseHistory: [], retailSalesHistory: [], salesHistory: [], expensesHistory: [] });
+        await AskManager.ask('kul baaki');
+        AskManager.reset();
+        expect(document.getElementById('askAnswers').innerHTML).toBe('');
+        expect(AskManager.answers).toEqual([]);
     });
     test('stock: archived items are not offered; still updating says so', () => {
         expect(ask('dal ka stock').matches).toEqual([]);

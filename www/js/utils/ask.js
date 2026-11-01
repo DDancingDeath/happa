@@ -37,7 +37,7 @@ const DUES = words(['baaki', 'baki', 'bakaya', 'baqaya', 'udhaar', 'udhar', 'udh
 // "maal" alone may also mean goods bought or sold ("aaj kitna maal becha"): sales / purchase words win over it.
 const STOCK = words(['stock', 'stok', 'स्टॉक', 'स्टाक', 'bacha', 'bachaa', 'बचा']);
 const GOODS = words(['maal', 'mal', 'माल']);
-const TOTAL = words(['kul', 'total', 'sab', 'sabka', 'sabhi', 'saara', 'all', 'कुल', 'सब', 'सबका', 'सभी', 'सारा']);
+const TOTAL = words(['kul', 'total', 'sab', 'sabka', 'sabhi', 'saara', 'sara', 'all', 'कुल', 'सब', 'सबका', 'सभी', 'सारा']);
 const HELP = words(['help', 'madad', 'मदद', 'सहायता']);
 const LINK = words(['ka', 'ki', 'ke', 'ko', 'se', 'of', 'for', 'from', 'by', 'का', 'की', 'के', 'को', 'से']);
 // Words around a name or an amount that are never part of it ("Ramesh ji ka kitna paisa baaki").
@@ -47,10 +47,16 @@ const FILLER = words([
     'kitna', 'kitni', 'kitne', 'hai', 'he', 'h', 'hain', 'kya', 'batao', 'bata', 'bataiye', 'bataye', 'dikhao', 'please', 'plz',
     'what', 'whats', 'is', 'are', 'was', 'the', 'how', 'much', 'many', 'show', 'me', 'tell', 'my', 'do', 'does', 'did', 'us',
     'we', 'i', 'in', 'hamara', 'mera', 'now', 'left', 'tak', 'paas', 'pass', 'hua', 'hui', 'hue', 'gaya', 'gayi',
-    'कितना', 'कितनी', 'कितने', 'है', 'हैं', 'क्या', 'बताओ', 'बताइए', 'दिखाओ', 'मेरा', 'हमारा', 'तक', 'पास', 'हुआ', 'हुई', 'गया', 'गई'
+    'rahi', 'raha', 'rahe', 'kaisi', 'kaisa', 'kaise', 'na', 'so', 'far', 'amount', 'figure', 'till', 'until',
+    'कितना', 'कितनी', 'कितने', 'है', 'हैं', 'क्या', 'बताओ', 'बताइए', 'दिखाओ', 'मेरा', 'हमारा', 'तक', 'पास', 'हुआ', 'हुई', 'गया', 'गई',
+    'रही', 'रहा', 'रहे', 'कैसी', 'कैसा', 'ना'
 ]);
-// Dropped only when other words remain, since they can be names too ("Abhi ka baaki", "Sara ka baaki").
-const SOFT = words(['abhi', 'ab', 'sara', 'अभी', 'अब']);
+// "now" / "all", but also names: a name only right before ka / ki / ji ("Abhi ka baaki", "Sara ji ka baaki").
+const AMBIGUOUS = words(['abhi', 'ab', 'sara', 'अभी', 'अब']);
+const NAME_NEXT = words([...LINK, 'ji', 'jee', 'जी']);
+// Another day or period: Ask knows only today's totals.
+const OTHER_DAY = words(['kal', 'parso', 'parson', 'yesterday', 'tomorrow', 'week', 'hafta', 'hafte', 'mahina', 'mahine', 'month',
+    'saal', 'year', 'pichle', 'pichhle', 'last', 'कल', 'परसों', 'हफ़्ता', 'हफ्ता', 'हफ़्ते', 'हफ्ते', 'महीना', 'महीने', 'साल', 'पिछले']);
 
 const hasAny = (tokens, set) => tokens.some(w => set.has(w));
 const DEVANAGARI = /[\u0900-\u097F]/;
@@ -77,11 +83,8 @@ export function parseQuestion(text) {
     const tokens = questionWords(text);
     if (!tokens.length || hasAny(tokens, HELP)) return { intent: 'help' };
     const KEYWORDS = [LINK, TODAY, TOTAL, NOISE, DUES, STOCK, GOODS, SALES, PURCHASES, EXPENSES];
-    const leftover = () => {
-        const left = tokens.filter(w => !KEYWORDS.some(s => s.has(w)));
-        const strong = left.filter(w => !SOFT.has(w));
-        return (strong.length ? strong : left).join(' ');
-    };
+    const named = (i) => AMBIGUOUS.has(tokens[i]) && NAME_NEXT.has(tokens[i + 1]);
+    const leftover = () => tokens.filter((w, i) => named(i) || (!AMBIGUOUS.has(w) && !KEYWORDS.some(s => s.has(w)))).join(' ');
 
     if (hasAny(tokens, DUES)) {
         const subject = leftover();
@@ -90,8 +93,8 @@ export function parseQuestion(text) {
     const money = hasAny(tokens, SALES) ? 'sales_today' : hasAny(tokens, PURCHASES) ? 'purchases_today'
         : hasAny(tokens, EXPENSES) ? 'expenses_today' : null;
     if (hasAny(tokens, STOCK) || (!money && hasAny(tokens, GOODS))) return { intent: 'item_stock', subject: leftover() };
-    // Only today's totals are known here: "kal ki bikri" or "chawal kitna becha" must not get today's total.
-    if (money) return leftover() ? { intent: 'today_only' } : { intent: money };
+    // Only today's totals are known here: "kal ki bikri" must not get today's total (one item: see answerQuestion).
+    if (money) return hasAny(tokens, OTHER_DAY) || tokens.some(w => /\d/.test(w)) ? { intent: 'today_only' } : { intent: money, rest: leftover() };
     return { intent: 'unknown' };
 }
 
@@ -121,6 +124,22 @@ function matchNames(list, namesOf, typed) {
 }
 
 /**
+ * Catalogue items (not archived) and "Unmatched" stock rows whose English or Hindi name matches
+ * the typed one, also through the item-name table (#134: "chawal" = चावल = Rice).
+ */
+function matchItems(items, rows, text) {
+    const entries = [
+        ...(items || []).filter(i => i && !i.archived).map(i => ({ itemId: i.id, name: i.name, hindiName: i.hindiName || '' })),
+        ...(rows || []).filter(r => r.isOrphan).map(r => ({ itemId: r.itemId, name: r.name, hindiName: '' }))
+    ];
+    const namesOf = (e) => [e.name, e.hindiName, suggestHindiName(e.name), suggestEnglishName(e.hindiName)]
+        .map(normalizePartyName).filter(Boolean);
+    const subject = normalizePartyName(text);
+    const typed = [...new Set([subject, normalizePartyName(suggestHindiName(subject)), normalizePartyName(suggestEnglishName(subject))].filter(Boolean))];
+    return matchNames(entries, namesOf, typed);
+}
+
+/**
  * The questions Ask understands, with the data each needs. `role` decides
  * what the role may see, as on the pages: wholesale dues only with Wholesale
  * (`wholesale`), members see "Available" above 100 kg on Stock.
@@ -140,6 +159,8 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
     const bills = src.bills || {};
 
     if (intent === 'sales_today' || intent === 'purchases_today' || intent === 'expenses_today') {
+        // "chawal kitna becha": one item's sales are not known here, so no total that reads as the item's
+        if (q.rest && matchItems(src.items, [], q.rest).length) return { intent: 'today_only', spec: null, page: null };
         const s = todaySummary({
             bills: { purchase: bills.purchases || [], wholesale: bills.wholesaleSales || [], retail: bills.retailSales || [] },
             expenses: src.expenses || [],
@@ -181,15 +202,7 @@ export function answerQuestion(q, src = {}, { role = 'staff', wholesale = false,
         if (stockReady === false) return { intent, spec, page: 'stock', subject: q.subject, updating: true };
         const { rows } = stockRows(src.stock || {}, src.items || []);
         const byId = new Map(rows.map(r => [r.itemId, r]));
-        const entries = [
-            ...(src.items || []).filter(i => i && !i.archived).map(i => ({ itemId: i.id, name: i.name, hindiName: i.hindiName || '' })),
-            ...rows.filter(r => r.isOrphan).map(r => ({ itemId: r.itemId, name: r.name, hindiName: '' }))
-        ];
-        const namesOf = (e) => [e.name, e.hindiName, suggestHindiName(e.name), suggestEnglishName(e.hindiName)]
-            .map(normalizePartyName).filter(Boolean);
-        const subject = normalizePartyName(q.subject);
-        const typed = [...new Set([subject, normalizePartyName(suggestHindiName(subject)), normalizePartyName(suggestEnglishName(subject))].filter(Boolean))];
-        const hits = matchNames(entries, namesOf, typed);
+        const hits = matchItems(src.items, rows, q.subject);
         if (hits.length !== 1) {
             return { intent, spec, page: 'stock', subject: q.subject, matches: hits.slice(0, ASK_MATCH_LIMIT).map(h => ({ name: h.name, hindiName: h.hindiName })), more: Math.max(0, hits.length - ASK_MATCH_LIMIT) };
         }
