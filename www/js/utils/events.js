@@ -25,6 +25,12 @@ export const ITEM_FREQUENCY_CHANGED = 'itemFrequency:changed';
 
 export const READS_ALERT = 'reads:alert';
 
+/** A bill's print status on this phone changed (utils/print-status.js, #132); payload: its key. */
+export const PRINT_STATUS_CHANGED = 'printStatus:changed';
+
+/** An error toast was shown (ui-manager.js); payload `{ message, ref }`. Telemetry logs it under `ref`. */
+export const TOAST_ERROR = 'toast:error';
+
 const handlers = new Map();
 
 /**

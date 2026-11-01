@@ -238,7 +238,13 @@ greyed with a "Voided" chip and the reason, and its details show who voided it, 
 - **Final.** A voided bill never changes again, for anyone, the owner included: no un-void, edit,
   payment or second void (rules: the first check of `billUpdateAs`; the app's edit and payment
   transactions refuse it too). A mistaken void is fixed by entering the bill again.
-- **Delete for good: owner only.** Rules allow only the owner to delete a bill (Clear Data, repairs);
+- **Delete for good: owner only.** Rules allow only the owner to delete a bill (Clear Data on `dev_`
+  data, repairs); on the live data Admin › Clear Data offers only drafts, auto-saves and item
+  frequency (an allow-list, `LIVE_CLEARABLE_COLLECTIONS`: a new collection is never offered),
+  never bills, cash, expenses, stock adjustments, withdrawals, items or users. It deletes
+  nothing until its JSON backup download (or share) was started and the owner ticked
+  "I have saved the backup file" and tapped OK; the app can't check the file itself. The audit entry
+  records `backupOffered` and `ownerConfirmedBackup` (#63);
   the app offers "Delete permanently" only on a voided bill (test data), together with its edit
   records. Members and managers can no longer delete bills; a delete the rules refuse shows "Bills
   can't be deleted; void it instead". An older app (rc1: its web code is inside the APK) can't be

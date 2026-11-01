@@ -29,6 +29,9 @@ export const DayManager = {
         this.updateTodayHeader();
         this.loadTodayData();
         this.loadTodaySession();
+        // The Cash page may have taken the cash body back while Today › Cash stayed selected
+        if (this.currentSubTab === 'cash' && document.getElementById('day')?.classList.contains('active')
+            && !document.querySelector('#dayCashManagementContainer .cash-body')) this.loadCashManagement();
     },
 
     /** Every cash session of `date` (usually one; legacy days can have more), from one query. */
@@ -226,7 +229,7 @@ export const DayManager = {
             return `
                 <div class="stat-card ${cardClass}" style="text-align: left; padding: 14px;">
                     <div style="font-weight: 600; color: var(--text-primary); font-size: 15px; margin-bottom: 8px;">${Helpers.escapeHtml(item.name)}</div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 14px;">
                         <div><span style="color: var(--text-secondary);">${label(type === 'purchase' ? 'ui.today.purchases_label' : 'ui.today.sales_label')}</span> <strong>${item.count}x</strong></div>
                         <div><span style="color: var(--text-secondary);">${label('ui.today.qty_label')}</span> <strong>${item.quantity.toFixed(2)} kg</strong></div>
                         <div><span style="color: var(--text-secondary);">${label('ui.billing.total_colon')}</span> <strong class="${labelClass}">${formatCurrency(item.totalValue)}</strong></div>
@@ -401,28 +404,25 @@ export const DayManager = {
     },
 
     /**
-     * Load cash management content into the sub-tab
+     * Today › Cash shows the Cash page itself: its one body moves here, so
+     * there is a single copy of every cash element id (#96).
      */
     loadCashManagement() {
         const container = document.getElementById('dayCashManagementContainer');
-        const cashManagementTab = document.getElementById('cash-management');
-        
-        if (container && cashManagementTab) {
-            // Clone the inner content of cash management (skip the outer div)
-            const innerContent = cashManagementTab.querySelector('div[style*="padding"]');
-            if (innerContent) {
-                container.innerHTML = innerContent.innerHTML;
-            } else {
-                container.innerHTML = cashManagementTab.innerHTML;
-            }
-            
-            // Re-initialize cash management
-            if (window.app && window.app.cashManagement) {
-                setTimeout(() => {
-                    window.app.cashManagement.init()
-                        .catch(e => console.error('Cash management re-init failed:', e));
-                }, 100);
-            }
-        }
+        const body = document.querySelector('#cash-management .cash-body, #dayCashManagementContainer .cash-body');
+        if (!container || !body) return;
+        if (body.parentElement !== container) container.appendChild(body);
+        if (this.cashInit) return this.cashInit;
+        this.cashInit = Promise.resolve(window.app?.cashManagement?.init())
+            .catch(e => console.error('Cash management init failed:', e))
+            .finally(() => { this.cashInit = null; });
+        return this.cashInit;
+    },
+
+    /** Moves the cash body back to the Cash page before that page opens. */
+    returnCashBody() {
+        const page = document.getElementById('cash-management');
+        const body = document.querySelector('#dayCashManagementContainer .cash-body');
+        if (page && body) page.appendChild(body);
     }
 };
