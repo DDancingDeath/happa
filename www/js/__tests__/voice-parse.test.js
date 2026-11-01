@@ -61,6 +61,40 @@ describe('parseVoiceLine (VB-1)', () => {
         expect(line('paune do kilo aloo 40')).toEqual({ itemIndex: 0, weight: 1.75, rate: 40 });
     });
 
+    test('sava / paune / saadhe before a bare sau or hazaar', () => {
+        expect(line(`सवा सौ ${KILO} चावल`).weight).toBe(125);
+        expect(line('paune sau kilo aloo').weight).toBe(75);
+        expect(line('saadhe sau kilo aloo').weight).toBe(150);
+        expect(line('sava hazaar kilo aloo').weight).toBe(1250);
+        expect(line('dedh sau kilo aloo').weight).toBe(150);
+        expect(line('ek sau bees kilo aloo').weight).toBe(120);
+        expect(line('aloo one hundred and twenty kilo thirty')).toEqual({ itemIndex: 0, weight: 120, rate: 30 });
+    });
+
+    test('per kilo makes a rate', () => {
+        expect(line('aloo 10 kg 30 per kilo')).toEqual({ itemIndex: 0, weight: 10, rate: 30 });
+        expect(line('aloo 30 per kilo')).toEqual({ itemIndex: 0, weight: null, rate: 30 });
+        expect(line(`चावल 30 प्रति ${KILO}`)).toEqual({ itemIndex: 2, weight: null, rate: 30 });
+        expect(line(`चावल प्रति ${KILO} 30`)).toEqual({ itemIndex: 2, weight: null, rate: 30 });
+        expect(line('aloo per kg 30 10 kilo')).toEqual({ itemIndex: 0, weight: 10, rate: 30 });
+        expect(line(`आलू ${KILO} का 30`)).toEqual({ itemIndex: 0, weight: null, rate: 30 });
+    });
+
+    test('other units and totals are never guessed into weight or rate', () => {
+        const flagged = (text) => {
+            const p = parseVoiceLine(text, ITEMS);
+            return { weight: p.weight, rate: p.rate, extraNumbers: p.extraNumbers };
+        };
+        expect(flagged('चावल 1 क्विंटल 2500')).toEqual({ weight: null, rate: null, extraNumbers: true });
+        expect(flagged('rice 1121 1 quintal 2500 rupees')).toEqual({ weight: null, rate: null, extraNumbers: true });
+        expect(flagged('rice 1121 2 bori 50 kilo 30 per kilo')).toEqual({ weight: 50, rate: 30, extraNumbers: true });
+        expect(flagged('aloo 2 bori 30')).toEqual({ weight: null, rate: null, extraNumbers: true });
+        expect(flagged('aloo 5 kilo 2 packet')).toEqual({ weight: 5, rate: null, extraNumbers: true });
+        expect(flagged('aloo rate 2500 per quintal')).toEqual({ weight: null, rate: null, extraNumbers: true });
+        expect(flagged('aloo 10 kilo for 300')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('aloo 10 kilo total 300')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged(`चावल 10 ${KILO} के 300 रुपये`)).toEqual({ weight: 10, rate: null, extraNumbers: true });
+    });
     test('grams are read as kg', () => {
         expect(line('500 gram aloo 40 rupees')).toEqual({ itemIndex: 0, weight: 0.5, rate: 40 });
         expect(line('चावल 250 ग्राम 40 रुपये')).toEqual({ itemIndex: 2, weight: 0.25, rate: 40 });

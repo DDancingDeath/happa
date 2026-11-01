@@ -26,8 +26,11 @@ Understood: digits (also Devanagari ०–९), Hindi number words 1–99, स�
 weight words kg / kilo (also in Devanagari), and grams as kg (500 gram = 0.5 kg,
 1 kilo 500 gram = 1.5 kg); rupee words and "का" / "ka" after a rate, "at" / "₹" /
 "rate" / "भाव" before it. Numbers without such a word are weight first, then rate.
-Items match by English or Hindi name (archived items never). More numbers than a
-weight and a rate are flagged in the dialog.
+"per kilo" / "प्रति kg" and "kilo ka 30" make a rate. Items match by English or Hindi name
+(archived items never). A number with another unit (quintal, bori, bag, packet…)
+or said as a total ("for 300", "10 kilo ke 300") is never used, and then the
+line's unmarked numbers and a rupee-only rate are not guessed either: the dialog
+warns and the user types them. More numbers than a weight and a rate are flagged too.
 
 ## Findings (validated 1 Nov 2026)
 

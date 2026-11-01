@@ -73,9 +73,24 @@ const PRICE_AFTER = wordSet([
 ]);
 /** Words just before a number that make it the rate ("at 30", "₹30", "rate 30"). */
 const PRICE_BEFORE = wordSet(['₹', 'rs', 'at', '@', 'rate', 'bhav', 'bhaav', 'रेट', 'भाव', 'दर']);
+/** "30 per kilo", "प्रति kg 30": a rate. */
+const PER_WORDS = wordSet(['per', 'prati', 'प्रति', 'pratee', 'fi']);
+const POSSESSIVE = wordSet(['ka', 'ke', 'ki', 'का', 'के', 'की']);
+/**
+ * Units the form doesn't take (it is kg and ₹ per kg): a number with one of these is
+ * not used, and the line's other unmarked numbers aren't guessed either.
+ */
+const OTHER_UNITS = wordSet([
+    'quintal', 'quintals', 'qtl', 'kuntal', 'क्विंटल', 'कुंतल', 'कुन्तल', 'ton', 'tonne', 'टन',
+    'bori', 'boriya', 'boriyan', 'बोरी', 'बोरियां', 'बोरियाँ', 'bag', 'bags', 'बैग', 'katta', 'katte', 'कट्टा', 'कट्टे',
+    'packet', 'packets', 'पैकेट', 'peti', 'पेटी', 'dozen', 'दर्जन', 'piece', 'pieces', 'नग', 'litre', 'liter', 'लीटर'
+]);
+/** Before a number: the line's total, not the rate ("for 300", "कुल 300"). */
+const TOTAL_BEFORE = wordSet(['for', 'total', 'kul', 'कुल', 'टोटल']);
 /** Words never taken as the start of an item name. */
 const NOT_ITEM_WORDS = wordSet([...WEIGHT_UNITS, ...PRICE_AFTER, ...PRICE_BEFORE, ...NUMBER_MODIFIERS.keys(), ...GRAM_UNITS,
-    'and', 'aur', 'also', 'then', 'phir', 'with', 'per', 'prati', 'wala', 'wale', 'वाला', 'वाले', 'और', 'प्रति', 'फिर']);
+    ...PER_WORDS, ...OTHER_UNITS, ...TOTAL_BEFORE,
+    'and', 'aur', 'also', 'then', 'phir', 'with', 'wala', 'wale', 'वाला', 'वाले', 'और', 'फिर']);
 
 const toAsciiDigits = (s) => s.replace(/[\u0966-\u096F]/g, (d) => String(d.charCodeAt(0) - 0x0966));
 
@@ -118,10 +133,13 @@ function numberGroups(tokens) {
         const first = numberOf(tokens[i]);
         if (first === undefined || !Number.isFinite(first)) continue;
         let total = 0;
-        let cur = first + modifier;
+        // "sava sau" = 125: a quarter / half before a bare hundred or thousand scales it
+        let cur = modifier && (first === 100 || first === 1000) && !isDigits(tokens[i]) ? (1 + modifier) * first : first + modifier;
         let lastWord = tokens[i];
         let j = i + 1;
         for (; j < tokens.length; j++) {
+            if (tokens[j] === 'and' && !isDigits(lastWord) && cur >= 100 && cur % 100 === 0
+                && numberOf(tokens[j + 1]) < 100 && !isDigits(tokens[j + 1])) continue;
             const n = numberOf(tokens[j]);
             if (n === undefined) break;
             const word = !isDigits(tokens[j]);
@@ -174,6 +192,36 @@ function matchItem(tokens, items) {
 }
 
 /**
+ * What a number group is, from the words around it: 'weight' (kg), 'gram', 'rate'
+ * (₹, unit not said), 'rate-kg' (₹ per kg said), 'other' (another unit or a total: not used) or null (no word).
+ * @param {string[]} rest tokens, the item's words blanked
+ * @param {Array<{start: number, end: number}>} groups
+ * @param {number} gi
+ * @returns {?string}
+ */
+function numberKind(rest, groups, gi) {
+    const g = groups[gi];
+    const stop = gi + 1 < groups.length ? groups[gi + 1].start : rest.length;
+    let after = null;
+    for (let k = g.end; !after && k < stop; k++) {
+        const w = rest[k];
+        if (PER_WORDS.has(w)) after = WEIGHT_UNITS.has(rest[k + 1]) ? 'rate-kg' : 'other';
+        else if (WEIGHT_UNITS.has(w)) after = 'weight';
+        else if (GRAM_UNITS.has(w)) after = 'gram';
+        else if (OTHER_UNITS.has(w)) after = 'other';
+        else if (PRICE_AFTER.has(w)) after = 'rate';
+    }
+    if (after === 'other') return 'other';
+    const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
+    if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2)) return 'rate-kg';
+    if (PRICE_BEFORE.has(b1)) return after === 'rate-kg' ? after : 'rate';
+    if (TOTAL_BEFORE.has(b1)) return 'other';
+    // "10 kilo ke 300" is a total, "kilo ka 30" a rate per kg
+    if (POSSESSIVE.has(b1) && WEIGHT_UNITS.has(b2)) return gi > 0 && groups[gi - 1].end === g.start - 2 ? 'other' : 'rate-kg';
+    return after;
+}
+
+/**
  * Parses one spoken bill line.
  *
  * A number followed by a weight word is the weight (grams become kg), one followed by a rupee word
@@ -194,15 +242,11 @@ export function parseVoiceLine(text, items = []) {
     let rate = null;
     const unmarked = [];
     let kgJustSet = false;
+    let otherUnit = false;
+    let ratePerKg = false;
     groups.forEach((g, gi) => {
-        const before = rest[g.start - 1];
-        const stop = gi + 1 < groups.length ? groups[gi + 1].start : rest.length;
-        let kind = PRICE_BEFORE.has(before) ? 'rate' : null;
-        for (let k = g.end; !kind && k < stop; k++) {
-            if (WEIGHT_UNITS.has(rest[k])) kind = 'weight';
-            else if (GRAM_UNITS.has(rest[k])) kind = 'gram';
-            else if (PRICE_AFTER.has(rest[k])) kind = 'rate';
-        }
+        const kind = numberKind(rest, groups, gi);
+        if (kind === 'other') otherUnit = true;
         const wasKg = kgJustSet;
         kgJustSet = false;
         if (kind === 'weight' && weight === null) {
@@ -210,15 +254,24 @@ export function parseVoiceLine(text, items = []) {
             kgJustSet = true;
         } else if (kind === 'gram' && weight === null) weight = g.value / 1000;
         else if (kind === 'gram' && wasKg && g.value < 1000) weight = Math.round((weight + g.value / 1000) * 1000) / 1000;
-        else if (kind === 'rate' && rate === null) rate = g.value;
+        else if ((kind === 'rate' || kind === 'rate-kg') && rate === null) {
+            rate = g.value;
+            ratePerKg = kind === 'rate-kg';
+        }
         else if (!kind) unmarked.push(g.value);
         else unmarked.push(NaN);
     });
     let extraNumbers = unmarked.some(n => Number.isNaN(n));
     for (const n of unmarked.filter(v => !Number.isNaN(v))) {
-        if (weight === null) weight = n;
+        if (otherUnit) extraNumbers = true;
+        else if (weight === null) weight = n;
         else if (rate === null) rate = n;
         else extraNumbers = true;
+    }
+    // With quintals or bags in the line, a rate said only in rupees may be per quintal / bag
+    if (otherUnit && rate !== null && !ratePerKg) {
+        rate = null;
+        extraNumbers = true;
     }
     return { itemIndex: item ? item.index : null, weight, rate, extraNumbers, heard };
 }
