@@ -12,7 +12,7 @@
                 <label style="width: 100px;" data-i18n="ui.common.customer">Customer:</label>
                 <div style="display: flex; gap: 8px; flex: 1; align-items: center;">
                     <input type="text" id="wholesaleCustomerName" list="wholesaleCustomerOptions" placeholder="Enter customer name" style="flex: 1;"  data-i18n-placeholder="ui.common.enter_customer_name"/>
-                    <button onclick="window.app.wholesaleSales.pickContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 40px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
+                    <button data-perm="contacts" onclick="window.app.wholesaleSales.pickContact()" style="padding: 8px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; min-width: 40px; display: flex; align-items: center; justify-content: center;" title="Pick Contact" data-i18n-title="ui.common.pick_contact">👤</button>
                 </div>
                 <datalist id="wholesaleCustomerOptions"></datalist>
             </div>

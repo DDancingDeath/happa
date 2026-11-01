@@ -26,7 +26,7 @@ import { refusedForClock } from '../utils/clock-skew.js';
 import {
     moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth, fiscalYearLabel, periodCompare,
     itemSummary, biggestChange, profitPerDay, billTime, roundTo, sharePct, addsUp, netMoneyByDay,
-    accountsTotal, accountsList, accountEntry, accountsFromPhone, MAX_WORTH_ACCOUNTS
+    accountsTotal, accountsList, accountEntry, accountsFromPhone, MAX_WORTH_ACCOUNTS, expensePer100Sales
 } from '../utils/business-metrics.js';
 import { insightsSettings } from '../utils/insights-config.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
@@ -606,7 +606,8 @@ export const MoneyManager = {
         this.html('moneySpendTakeaway', takeawayHtml(spendingTakeaways({
             business: m.M4.total, vsLastYear: vsLy, topCategory: cats[0] ? catName(cats[0].category) : null,
             withdrawn: m.M9, kept: m.M10, personal: m.M8.total,
-            show: { profit: this.can('profit'), personal: this.can('personalExpenses') }
+            show: { profit: this.can('profit'), personal: this.can('personalExpenses') },
+            per100Sales: expensePer100Sales(m, this.cfg()), nudgeAt: this.cfg().expenseNudgePer100
         })));
         this.html('moneySpendCaveats', this.caveatsHtml(m, ['M4']));
         const max = Math.max(1, ...cats.map(c => c.total));

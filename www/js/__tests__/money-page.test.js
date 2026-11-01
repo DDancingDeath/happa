@@ -646,10 +646,13 @@ describe('what each role sees (Roles & access)', () => {
         expect(spendText()).not.toContain(amount(w().M9_withdrawals + w().M8_personalExpenses));
         expect(spendText()).not.toContain(amount(w().M10_kept));
     });
-    test('without either: only the business expenses sentence', () => {
+    test('without either: only the business expenses sentences', () => {
         asMember({ profit: false, personalExpenses: false });
         MoneyManager.init('spending');
-        expect(document.querySelectorAll('#moneySpendTakeaway p').length).toBe(1);
+        // M19 above the nudge (Q7, #111) and the category sentence
+        const lines = [...document.querySelectorAll('#moneySpendTakeaway p')].map(p => p.textContent);
+        expect(lines.length).toBe(2);
+        expect(lines[0]).toMatch(/for every ₹100 of sales/);
         expect(spendText()).not.toMatch(/personal|profit/i);
     });
     test('without profit the cash takeaway does not compare with the profit', () => {

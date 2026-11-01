@@ -40,6 +40,24 @@ export function sessionTotals(session, transactions = session?.transactions) {
     return { opening, cashIn, cashOut, expected: round2(opening + cashIn - cashOut) };
 }
 
+/** Q25 (#111): an open drawer is called out after this many hours (C10). */
+export const LONG_SESSION_HOURS = 14;
+
+/**
+ * C10: whole hours the drawer has been open (from `signInTime`), and whether that is
+ * LONG_SESSION_HOURS or more. null when the session is closed or its open time is unknown.
+ * @param {?Object} session
+ * @param {number} [now]
+ * @returns {?{hours: number, long: boolean, since: number}}
+ */
+export function openHours(session, now = Date.now()) {
+    if (!session || session.signedOut) return null;
+    const since = Date.parse(session.signInTime || '');
+    if (!Number.isFinite(since) || since > now) return null;
+    const hours = Math.floor((now - since) / 3600000);
+    return { hours, long: hours >= LONG_SESSION_HOURS, since };
+}
+
 /**
  * A closed session whose cash was never counted: auto-closed by the app
  * (`counted: false`), or auto-closed by an older app version that stored a

@@ -250,6 +250,8 @@ export class Helpers {
      * @returns {Promise<void>}
      */
     static async pickContact(inputElementId) {
+        // Roles & access › Phone contacts (Q52 of #111): sign-in adds this class when the owner turned it off for the role
+        if (typeof document !== 'undefined' && document.body?.classList.contains('no-perm-contacts')) return;
         try {
             if ('contacts' in navigator && 'ContactsManager' in window) {
                 const contacts = await navigator.contacts.select(['name', 'tel'], { multiple: false });
