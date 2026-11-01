@@ -18,6 +18,7 @@ import { tip, tipDeviceId } from '../tip/index.js';
 import { APP_VERSION } from '../version.js';
 import { runProbes, analyseProbes } from '../utils/perf-probe.js';
 import { statusRows, statusText, speedLines } from '../utils/status-report.js';
+import { track } from '../services/usage.js';
 import { t } from '../i18n/index.js';
 import { auditActionLabel } from '../i18n/localize.js';
 import { formatAuditDetails, auditWho, auditWhoText, peopleById } from '../utils/audit-changes.js';
@@ -324,6 +325,7 @@ const DiagnosticsManager = {
         try {
             const probes = await runProbes(AppState);
             this.speed = { ...analyseProbes(probes), at: Date.now() };
+            track('perf.diagnostic_run');
         } catch (err) {
             console.warn('Speed check failed:', err?.message || err);
             this.speed = null;
