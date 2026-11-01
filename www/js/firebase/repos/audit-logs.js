@@ -37,6 +37,24 @@ export async function recentAuditLogs(q) {
 }
 
 /**
+ * Entries in [from, to) (ms), newest first, at most `limit`
+ * (Admin activity report, #145; owner only by the rules).
+ * @param {number} from
+ * @param {number} to
+ * @param {number} limit
+ * @returns {Promise<Object[]>}
+ */
+export async function auditLogsBetween(from, to, limit) {
+    const snapshot = await auditLogs()
+        .where('timestamp', '>=', from)
+        .where('timestamp', '<', to)
+        .orderBy('timestamp', 'desc')
+        .limit(limit)
+        .get();
+    return rows(snapshot);
+}
+
+/**
  * Deletes up to `max` entries older than `cutoff` in one batch.
  * @param {number} cutoff - ms
  * @param {number} [max=100]
