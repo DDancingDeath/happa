@@ -499,6 +499,22 @@
   .bill-col-summary > div:has(> img[id$="DebugPreview"][style*="none"]) {
     margin-top: 0 !important;
   }
+
+  /* Banners above the bill push the column below the fold: it grows with the page
+     instead of scrolling inside itself, so its Save/Print row can stick to the
+     bottom of the screen (#104). */
+  .bill-col-summary {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .bill-col-summary > div[style*="display: flex"]:last-child {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    padding: 8px 0;
+    background: var(--light-bg);
+  }
 }
 
 @media (min-width: 1440px) {
