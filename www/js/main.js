@@ -43,6 +43,7 @@ import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { SecurityMonitor } from './services/security-monitor.js';
 import { startLongTaskRecorder } from './utils/perf-probe.js';
+import { shortcutFromSearch, withoutShortcut } from './utils/launch-shortcut.js';
 import { UsageView } from './ui/usage-view.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
