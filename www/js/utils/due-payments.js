@@ -15,6 +15,7 @@
 
 import { isActiveBill, isOpeningRecord, outstandingDue, readPayment, round2 } from './money.js';
 import { parseAnyBillDate } from './dates.js';
+import { hasPaise, typedAmount } from './calc/billing.js';
 
 /** Bill type → collection key. */
 export const BILL_COLLECTIONS = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
@@ -284,19 +285,36 @@ export function settleDueUpdate(fresh, method, entry, tolerance = 0.01, confirme
 }
 
 /**
+ * DUE-FIFO: one part of a party payment as saved. A part that pays its bill's whole
+ * due keeps that due's paise (an old due saved before #129); any other part is whole
+ * rupees (ROUNDING.payment), as "Record payment" saves it (DUE-CHECK).
+ * @param {number} part
+ * @param {number} due
+ * @param {number} [tolerance=0.01]
+ * @returns {number}
+ */
+export function partAsSaved(part, due, tolerance = 0.01) {
+    const p = round2(part);
+    const d = round2(due);
+    if (hasPaise(d) && Math.abs(p - d) <= tolerance) return d;
+    return typedAmount(p);
+}
+
+/**
  * DUE-FIFO: one payment from a party spread over their open bills, oldest first
- * (#152): each bill gets up to its due until the amount runs out, so only the
- * last bill reached can be part-paid. Paise; anything above the total due is
- * not allocated (`left`).
+ * (#152): the amount (whole rupees) fills each bill up to its due until it runs
+ * out, so only the last bill reached can be part-paid, with the whole rupees left
+ * (never above its due). What is not allocated is `left`.
  * @param {number[]} dues - BILL-DUE per bill, oldest first
  * @param {number} amount
  * @returns {{amounts: number[], allocated: number, left: number}}
  */
 export function allocateOldestFirst(dues, amount) {
-    let rest = round2(Math.max(0, Number(amount) || 0));
+    let rest = typedAmount(Math.max(0, Number(amount) || 0));
     const amounts = (dues || []).map(d => {
         const due = round2(Math.max(0, Number(d) || 0));
-        const part = round2(Math.min(due, rest));
+        // Never more than was received: a part-paid bill gets the whole rupees left.
+        const part = rest >= due ? due : Math.min(Math.floor(rest + 0.001), Math.floor(due));
         rest = round2(rest - part);
         return part;
     });
@@ -305,7 +323,8 @@ export function allocateOldestFirst(dues, amount) {
 
 /**
  * DUE-FIFO: checks a (possibly hand-edited) split of one payment: every part is
- * a number from 0 to that bill's due (+ tolerance) and at least one is above 0.
+ * a number from 0 to that bill's due (+ tolerance), saved as partAsSaved, and at
+ * least one is above 0.
  * @param {number[]} dues
  * @param {Array<number|string>} parts - per bill, same order
  * @param {number} [tolerance=0.01]
@@ -317,7 +336,7 @@ export function checkAllocation(dues, parts, tolerance = 0.01) {
         const raw = parts[i];
         const n = raw === '' || raw === null || raw === undefined ? 0 : Number(raw);
         if (!Number.isFinite(n) || n < 0) return { ok: false, error: 'invalid', index: i };
-        const a = round2(n);
+        const a = partAsSaved(n, dues[i], tolerance);
         if (a > round2(dues[i]) + tolerance) return { ok: false, error: 'exceeds-due', index: i };
         amounts.push(a);
     }

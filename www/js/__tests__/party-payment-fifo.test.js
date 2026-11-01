@@ -64,7 +64,10 @@ afterEach(() => jest.restoreAllMocks());
 describe('DUE-FIFO allocation', () => {
     test('fills the oldest bills first; the last one reached is part-paid; the rest gets nothing', () => {
         expect(allocateOldestFirst([100, 250.5, 80], 300)).toEqual({ amounts: [100, 200, 0], allocated: 300, left: 0 });
-        expect(allocateOldestFirst([100, 250.5, 80], 430.5)).toEqual({ amounts: [100, 250.5, 80], allocated: 430.5, left: 0 });
+        expect(allocateOldestFirst([100, 250.5, 80], 431)).toEqual({ amounts: [100, 250.5, 80], allocated: 430.5, left: 0.5 });
+        // Typed paise are whole rupees, as Record payment saves them; a part-paid bill gets whole rupees
+        expect(allocateOldestFirst([100, 250.5], 299.6)).toEqual({ amounts: [100, 200], allocated: 300, left: 0 });
+        expect(allocateOldestFirst([100.5, 250], 150)).toEqual({ amounts: [100.5, 49], allocated: 149.5, left: 0.5 });
         expect(allocateOldestFirst([100, 50], 200)).toEqual({ amounts: [100, 50], allocated: 150, left: 50 });
         expect(allocateOldestFirst([100], 'abc')).toEqual({ amounts: [0], allocated: 0, left: 0 });
     });
@@ -72,6 +75,8 @@ describe('DUE-FIFO allocation', () => {
     test('hand-edited parts: each from 0 to its due, at least one above 0', () => {
         expect(checkAllocation([100, 50], ['40', ''])).toEqual({ ok: true, amounts: [40, 0], total: 40 });
         expect(checkAllocation([100, 50], ['40', '50.004'])).toEqual({ ok: true, amounts: [40, 50], total: 90 });
+        expect(checkAllocation([100, 250.5], ['99.6', '250.5'])).toEqual({ ok: true, amounts: [100, 250.5], total: 350.5 });
+        expect(checkAllocation([100, 250.5], ['', '120.4'])).toEqual({ ok: true, amounts: [0, 120], total: 120 });
         expect(checkAllocation([100, 50], ['40', '51'])).toEqual({ ok: false, error: 'exceeds-due', index: 1 });
         expect(checkAllocation([100, 50], ['-1', '0'])).toEqual({ ok: false, error: 'invalid', index: 0 });
         expect(checkAllocation([100, 50], ['', '0'])).toEqual({ ok: false, error: 'empty' });
@@ -174,6 +179,36 @@ describe('Receive payment dialog', () => {
         answer(100, 'cash', () => { document.getElementById('ppPart-0').value = '101'; });
         await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
         expect(updateBillsInTransaction).not.toHaveBeenCalled();
+    });
+
+    test('kept retry ids are forgotten once that payment is on the bills, so a new equal payment is saved', async () => {
+        const server = { r1: bill('r1', 'Ravi', 2000, 1), r2: bill('r2', 'Ravi', 250, 2) };
+        serverTx(server);
+        jest.spyOn(console, 'warn').mockImplementation(() => {});
+        // First try: committed on the server, answer lost
+        updateBillsInTransaction.mockImplementationOnce(async (collKey, ids, change) => {
+            const fresh = ids.map(id => JSON.parse(JSON.stringify(server[id])));
+            const out = change(fresh);
+            out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...fields }; });
+            throw Object.assign(new Error('deadline'), { code: 'deadline-exceeded' });
+        });
+        AppState.retailSalesHistory = [server.r1, server.r2];
+        answer(500, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(server.r1.payment.due).toBe(1500);
+        // The listener brings the landed payment; the customer pays ₹500 again
+        AppState.retailSalesHistory = [server.r1, server.r2];
+        answer(500, 'cash');
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(server.r1.payments).toHaveLength(2);
+        expect(server.r1.payment.due).toBe(1000);
+    });
+
+    test('more than 100 open bills: says only the oldest 100 are listed', async () => {
+        AppState.retailSalesHistory = Array.from({ length: 105 }, (_, i) => bill(`b${i}`, 'Ravi', 10, i));
+        jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => { document.body.innerHTML = html; return false; });
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(document.body.textContent).toContain('Only the oldest 100 of 105 bills are listed');
     });
 
     test('members can not use it', async () => {

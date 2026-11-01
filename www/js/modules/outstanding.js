@@ -41,6 +41,8 @@ import {
 const PAYMENT_TOLERANCE = 0.01;
 /** Most bills one party payment is spread over (oldest first), as Complete all due. */
 const PARTY_PAY_MAX = 100;
+/** How long the ids of an unclear party payment are kept for its retry (the rules' ±10 min for `at`). */
+const PARTY_PAY_RETRY_MS = 10 * 60 * 1000;
 const COLLECTION_BY_TYPE = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
 
 /** Record / Mark cleared buttons disabled while a due payment is being saved (#70, #95) */
@@ -915,13 +917,17 @@ export class OutstandingManager {
         return AppState.userRole === 'owner' || AppState.userRole === 'manager';
     }
 
-    /** A party's open bills of one kind, oldest first (DUE-ALL list, at most PARTY_PAY_MAX). */
-    static partyOpenBills(billType, partyKey) {
-        const list = billType === 'purchase' ? AppState.purchaseHistory
+    /** The bills of one Outstanding list (wholesale: the sales-tab bills). */
+    static partyPayList(billType) {
+        return (billType === 'purchase' ? AppState.purchaseHistory
             : billType === 'retail' ? AppState.retailSalesHistory
-                : (AppState.salesHistory || []).filter(s => s && s.source === 'sales-tab');
-        const group = partyDues(list || [], partyKey, normalizePartyName);
-        return group.bills.slice(0, PARTY_PAY_MAX);
+                : (AppState.salesHistory || []).filter(s => s && s.source === 'sales-tab')) || [];
+    }
+
+    /** A party's open bills of one kind, oldest first (DUE-ALL list): the first PARTY_PAY_MAX and how many in all. */
+    static partyOpenBills(billType, partyKey) {
+        const group = partyDues(this.partyPayList(billType), partyKey, normalizePartyName);
+        return { chosen: group.bills.slice(0, PARTY_PAY_MAX), all: group.bills.length };
     }
 
     /**
@@ -937,7 +943,8 @@ export class OutstandingManager {
             UIManager.showToast(t('msg.common.access_denied'), 'error');
             return;
         }
-        const chosen = this.partyOpenBills(billType, String(partyKey ?? ''));
+        const { chosen, all } = this.partyOpenBills(billType, String(partyKey ?? ''));
+        this.forgetLandedPartyPay(billType);
         if (!chosen.length) {
             UIManager.showToast(t('msg.outstanding.nothing_due_party'));
             return;
@@ -959,6 +966,7 @@ export class OutstandingManager {
         const html = `
             <div style="text-align:left">
                 <div style="margin-bottom:8px"><strong>${esc(name)}</strong><br>${esc(t('ui.outstanding.party_pay_summary', { count: chosen.length, total: Helpers.formatCurrency(sumMoney(chosen, x => x.due)) }))}</div>
+                ${chosen.length < all ? `<div style="margin-bottom:8px">${esc(t('ui.outstanding.party_pay_oldest', { count: chosen.length, all }))}</div>` : ''}
                 <label style="display:block;margin-bottom:6px">${esc(t(isPay ? 'ui.outstanding.party_pay_amount_paid' : 'ui.outstanding.party_pay_amount_received'))}
                     <input type="number" inputmode="decimal" min="0" step="0.01" id="ppAmount" oninput="window.app.outstanding.partyPayFill()" style="width:100%"></label>
                 <div style="margin:4px 0;font-weight:600">${esc(t('ui.outstanding.party_pay_how'))}</div>
@@ -1010,12 +1018,28 @@ export class OutstandingManager {
             : t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'ui.outstanding.party_pay_enter');
     }
 
-    /** Payment entry ids kept for the same party, method and split until a definite result (#70). */
+    /**
+     * Payment entry ids kept for the same party, method and split until a definite result (#70),
+     * at most PARTY_PAY_RETRY_MS: a retry after an unclear error finds its own entries and writes nothing twice.
+     */
     static partyPayEntryIds(billType, name, picked, method) {
         const key = [billType, normalizePartyName(name), method,
             ...picked.map(x => `${FirebaseService.documentIdOf ? FirebaseService.documentIdOf(x.bill) : String(x.bill.id)}:${x.amount}`)].join('|');
-        if (this.pendingPartyPay?.key !== key) this.pendingPartyPay = { key, ids: picked.map(() => Helpers.generateId()) };
+        const p = this.pendingPartyPay;
+        if (p?.key !== key || Date.now() - p.at > PARTY_PAY_RETRY_MS) this.pendingPartyPay = { key, at: Date.now(), ids: picked.map(() => Helpers.generateId()) };
         return this.pendingPartyPay.ids;
+    }
+
+    /**
+     * Kept ids whose payment has reached this phone's bills (the earlier attempt went through)
+     * or that are too old are forgotten, so a new payment of the same split is never taken for it.
+     */
+    static forgetLandedPartyPay(billType) {
+        const p = this.pendingPartyPay;
+        if (!p) return;
+        const ids = new Set(p.ids);
+        const landed = this.partyPayList(billType).some(b => (Array.isArray(b?.payments) ? b.payments : []).some(e => e && ids.has(e.id)));
+        if (landed || Date.now() - p.at > PARTY_PAY_RETRY_MS) this.pendingPartyPay = null;
     }
 
     static async _receiveFromParty(billType, name, picked, method) {
