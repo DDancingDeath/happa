@@ -846,20 +846,34 @@ export function accountsList(map) {
 
 /**
  * The accounts saved on this phone before #74 (localStorage), as a shared map for
- * the owner's one-tap move; invalid ones are left out, a repeated name keeps the last.
+ * the owner's one-tap move. Names are cut to 40 characters; names that differ only
+ * in case or spacing become one account with their total (a negative balance meant
+ * the other side); accounts that can't be moved (no name, unreadable or too large
+ * balance, more than 30) are returned in `skipped`, to stay on the phone.
  * @param {Array<{name: *, balance: *, type?: string}>} list
- * @returns {Object<string, {name: string, balance: number, type: string}>}
+ * @returns {{map: Object<string, {name: string, balance: number, type: string}>, skipped: Array<Object>}}
  */
 export function accountsFromPhone(list) {
-    const out = {};
+    const groups = new Map();
+    const skipped = [];
     (Array.isArray(list) ? list : []).forEach(a => {
+        const name = String(a?.name ?? '').trim().replace(/\s+/g, ' ').slice(0, ACCOUNT_NAME_MAX).trim();
         const b = Number(a?.balance);
-        const owe = a?.type === 'liability';
-        // A negative balance on the old phone list meant the other side.
-        const e = a && accountEntry({ name: a.name, balance: Math.abs(b), type: (b < 0) !== owe ? 'liability' : 'asset' });
-        if (e && (out[e.id] || Object.keys(out).length < MAX_WORTH_ACCOUNTS)) out[e.id] = e.entry;
+        if (!name || a?.balance === '' || a?.balance === null || !Number.isFinite(b)) { if (a) skipped.push(a); return; }
+        const id = accountId(name);
+        const g = groups.get(id) || { name, total: 0, items: [] };
+        g.total += (a.type === 'liability' ? -1 : 1) * b;
+        g.items.push(a);
+        groups.set(id, g);
     });
-    return out;
+    const map = {};
+    groups.forEach((g, id) => {
+        const total = Math.round(g.total);
+        const e = accountEntry({ name: g.name, balance: Math.abs(total), type: total < 0 ? 'liability' : 'asset' });
+        if (e && Object.keys(map).length < MAX_WORTH_ACCOUNTS) map[id] = e.entry;
+        else skipped.push(...g.items);
+    });
+    return { map, skipped };
 }
 
 // ------------------------------------------------------------------ Drivers (I6)

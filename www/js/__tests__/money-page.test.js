@@ -69,6 +69,7 @@ beforeEach(() => {
     MoneyManager.section = 'profit';
     MoneyManager.summaryCache = { sig: null, map: new Map(), computed: 0 };
     MoneyManager.sharedAccounts = { state: 'idle', list: null, map: null };
+    MoneyManager.accountEdits = 0;
     jest.spyOn(FirebaseService, 'loadWorthAccounts').mockResolvedValue({});
 });
 afterEach(() => {
@@ -885,7 +886,8 @@ describe('Money › Worth shared accounts (#74, settings/accounts)', () => {
             [accountId('Bank')]: { name: 'Bank', balance: 2500, type: 'asset' },
             [accountId('Loan')]: { name: 'Loan', balance: 1000, type: 'liability' }
         });
-        expect(localStorage.getItem('financeCustomAccounts')).toBeNull();
+        // the nameless one can't be moved and stays on the phone
+        expect(JSON.parse(localStorage.getItem('financeCustomAccounts'))).toEqual([{ name: '', balance: 5 }]);
         expect(document.getElementById('moneyAccountsMove').hidden).toBe(true);
     });
 
@@ -898,6 +900,53 @@ describe('Money › Worth shared accounts (#74, settings/accounts)', () => {
         AppState.userRole = 'manager';
         await openWorth();
         expect(document.getElementById('moneyAccountsMove').hidden).toBe(true);
+    });
+
+    test('migration keeps the accounts it could not move on the phone and says how many', async () => {
+        const toast = jest.spyOn(require('../ui/ui-manager.js').UIManager, 'showToast').mockImplementation(() => {});
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 1, type: 'asset' }, { name: 'Odd', balance: 'x' }]));
+        jest.spyOn(FirebaseService, 'useAccountsForAllPhones').mockResolvedValue(true);
+        await openWorth();
+        await MoneyManager.useThisPhonesAccounts();
+        expect(JSON.parse(localStorage.getItem('financeCustomAccounts'))).toEqual([{ name: 'Odd', balance: 'x' }]);
+        expect(toast).toHaveBeenCalledWith(t('msg.money.accounts_moved_some_one', { n: 1 }), 'warning');
+    });
+
+    test('Money opened again after a failed load reads again; a refresh never undoes a save made meanwhile', async () => {
+        FirebaseService.loadWorthAccounts.mockRejectedValueOnce(new Error('offline'));
+        await openWorth();
+        expect(MoneyManager.sharedAccounts.state).toBe('error');
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 5, type: 'asset' } });
+        await openWorth();
+        expect(MoneyManager.accountsTotal()).toBe(5);
+        let resolve;
+        FirebaseService.loadWorthAccounts.mockReturnValue(new Promise(r => { resolve = r; }));
+        jest.spyOn(FirebaseService, 'saveWorthAccount').mockResolvedValue();
+        jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        MoneyManager.init('worth');
+        expect(document.getElementById('moneyAccForm').hidden).toBe(false);
+        document.getElementById('moneyAccName').value = 'Cash box';
+        document.getElementById('moneyAccBalance').value = '20';
+        MoneyManager.saveAccount();
+        resolve({ a1: { name: 'Bank', balance: 5, type: 'asset' } });
+        await flush();
+        expect(MoneyManager.accountsTotal()).toBe(25);
+    });
+
+    test('saving an account unchanged writes nothing', async () => {
+        FirebaseService.loadWorthAccounts.mockResolvedValue({ [accountId('Bank')]: { name: 'Bank', balance: 5, type: 'asset' } });
+        const save = jest.spyOn(FirebaseService, 'saveWorthAccount').mockResolvedValue();
+        await openWorth();
+        document.getElementById('moneyAccName').value = 'Bank';
+        document.getElementById('moneyAccBalance').value = '5';
+        MoneyManager.saveAccount();
+        expect(save).not.toHaveBeenCalled();
+    });
+
+    test('while the accounts are not loaded the takeaway says so (not "stock value")', async () => {
+        FirebaseService.loadWorthAccounts.mockRejectedValue(new Error('offline'));
+        await openWorth();
+        expect(document.getElementById('moneyWorthTakeaway').textContent).toBe(t('ui.tk.worth_accounts_unknown'));
     });
 
     test('migration that lost the race (another phone saved first) keeps this phone\'s list and changes nothing', async () => {
@@ -926,10 +975,25 @@ describe('shared accounts helpers (#74)', () => {
             .toEqual([{ id: 'a', name: 'Abc', balance: 0, type: 'asset' }, { id: 'b', name: 'Zed', balance: 11, type: 'liability' }]);
         expect(accountsList(null)).toEqual([]);
     });
-    test('accountsFromPhone: old phone list → shared map (negative balance = the other side; invalid left out)', () => {
-        expect(accountsFromPhone([{ name: 'A', balance: -50, type: 'asset' }, { name: 'B', balance: 'x' }, { name: 'C', balance: 7.4, type: 'liability' }]))
-            .toEqual({ [accountId('A')]: { name: 'A', balance: 50, type: 'liability' }, [accountId('C')]: { name: 'C', balance: 7, type: 'liability' } });
-        expect(accountsFromPhone('x')).toEqual({});
+    test('accountsFromPhone: old phone list → shared map; nothing is lost without being returned', () => {
+        const long = 'स्टेट बैंक ऑफ़ इंडिया बचत खाता रमेश कुमार शर्मा';
+        const b = { name: 'B', balance: 'x' };
+        const huge = { name: 'Huge', balance: 2e10 };
+        const { map, skipped } = accountsFromPhone([
+            { name: 'A', balance: -50, type: 'asset' }, b, { name: 'C', balance: 7.4, type: 'liability' },
+            { name: 'SBI', balance: 100 }, { name: ' sbi ', balance: 30, type: 'liability' }, { name: long, balance: 5 }, huge, { name: '', balance: 1 }
+        ]);
+        // negative = the other side; same name in another case = one account with the total; long names cut to 40
+        expect(map).toEqual({
+            [accountId('A')]: { name: 'A', balance: 50, type: 'liability' }, [accountId('C')]: { name: 'C', balance: 7, type: 'liability' },
+            [accountId('SBI')]: { name: 'SBI', balance: 70, type: 'asset' }, [accountId(long.slice(0, 40))]: { name: long.slice(0, 40).trim(), balance: 5, type: 'asset' }
+        });
+        expect(skipped).toEqual([b, { name: '', balance: 1 }, huge]);
+        const many = Array.from({ length: 32 }, (_, i) => ({ name: `N${i}`, balance: i }));
+        const r = accountsFromPhone(many);
+        expect(Object.keys(r.map)).toHaveLength(30);
+        expect(r.skipped).toEqual(many.slice(30));
+        expect(accountsFromPhone('x')).toEqual({ map: {}, skipped: [] });
     });
     test('netWorth (M15): unknown while the accounts are not loaded', () => {
         expect(netWorth({ stock: 100, receivable: 0, payable: 0, accounts: null, drawer: 0 })).toBeNull();

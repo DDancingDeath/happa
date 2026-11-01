@@ -1051,7 +1051,7 @@ service cloud.firestore {
         && d.get('updatedAt', null) == request.time
         && id is string && id.size() > 0
         && after is map && before is map
-        && after.diff(before).affectedKeys() == [id].toSet()
+        && after.diff(before).affectedKeys().hasOnly([id])
         && after.size() <= 30
         && (!(id in after) || worthAccountOk(after[id]));
     }

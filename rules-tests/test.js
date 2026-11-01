@@ -957,6 +957,8 @@ function defineSuite(prefix) {
         await assertFails(doc('manager1').set({ accounts: { a4: bank }, extra: 1, ...stamp('manager1') }, { merge: true }));
         await assertFails(doc('manager1').set({ accounts: { a9: bank }, ...stamp('manager1', 'a9') }));
         await assertSucceeds(doc('manager1').set({ accounts: { a4: bank }, ...stamp('manager1') }, { merge: true }));
+        // saving it again unchanged (two phones, or a confirmed balance) is not refused
+        await assertSucceeds(doc('manager1').set({ accounts: { a4: bank }, ...stamp('manager1') }, { merge: true }));
         await assertFails(doc('manager1').delete());
         // members: no reads or writes without Money; with Money on, read only
         await assertFails(doc('staff1').get());
@@ -974,7 +976,7 @@ function defineSuite(prefix) {
 
     t('settings/accounts: a manager may create the doc with one account (#74)', async () => {
         const ref = as('manager1').collection(`${prefix}settings`).doc('accounts');
-        await assertFails(ref.set({ accounts: {}, updatedAt: serverTimestamp(), updatedBy: 'manager1', changedId: 'a1' }));
+        await assertFails(ref.set({ accounts: { a1: { name: 'Bank', balance: 0, type: 'asset' }, a2: { name: 'B', balance: 0, type: 'asset' } }, updatedAt: serverTimestamp(), updatedBy: 'manager1', changedId: 'a1' }));
         await assertSucceeds(ref.set({ accounts: { a1: { name: 'Bank', balance: 0, type: 'asset' } }, updatedAt: serverTimestamp(), updatedBy: 'manager1', changedId: 'a1' }, { merge: true }));
     });
 

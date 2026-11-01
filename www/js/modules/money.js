@@ -9,7 +9,7 @@
 
 import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
-import { SAVED_ON_PHONE_KEY, saveFailedText } from '../utils/storage-full.js';
+import { SAVED_ON_PHONE_KEY, saveFailedText, safeSetItem } from '../utils/storage-full.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
@@ -132,6 +132,7 @@ export const MoneyManager = {
     staleSeen: {},
     sessionCache: new Map(),
     sharedAccounts: { state: 'idle', list: null, map: null },
+    accountEdits: 0,
     building: false,
     lastSummary: null,
     summaryCache: { sig: null, map: new Map(), computed: 0 },
@@ -140,7 +141,7 @@ export const MoneyManager = {
     init(section) {
         if (section && SECTIONS.includes(section)) this.section = section;
         this.setupTaps();
-        if (this.sharedAccounts.state === 'ready') this.sharedAccounts = { ...this.sharedAccounts, state: 'idle' };
+        this.sharedAccounts = { ...this.sharedAccounts, stale: true };
         const sel = document.getElementById('moneyPreset');
         const { preset } = getInsightsContext();
         if (sel) sel.value = /^month:/.test(preset) ? 'this-month' : preset;
@@ -608,24 +609,27 @@ export const MoneyManager = {
     },
 
     /**
-     * The shared accounts (#74, settings/accounts): loaded once per Money open of
-     * Worth, then kept in step with this phone's own saves. null until known.
+     * The shared accounts (#74, settings/accounts): read again each time Money opens
+     * (`stale`), kept in step with this phone's own saves. null until first known.
      */
     accounts() {
         const s = this.sharedAccounts;
-        if (!s || s.state === 'idle' || (s.state === 'error' && Date.now() - s.at >= SESSION_TTL_MS)) this.loadAccounts();
+        if (s.state === 'idle' || (s.stale && s.state !== 'loading') || (s.state === 'error' && Date.now() - s.at >= SESSION_TTL_MS)) this.loadAccounts();
         return this.sharedAccounts.list;
     },
 
     loadAccounts() {
         const prev = this.sharedAccounts;
-        this.sharedAccounts = { state: 'loading', at: Date.now(), list: prev?.list || null, map: prev?.map || null };
+        const edits = this.accountEdits;
+        this.sharedAccounts = { ...prev, state: prev.map ? 'ready' : 'loading', stale: false, at: Date.now() };
         return Promise.resolve(FirebaseService.loadWorthAccounts?.()).then(map => {
-            this.sharedAccounts = { state: 'ready', at: Date.now(), map: map || {}, list: accountsList(map) };
+            // A save made on this phone meanwhile is already in the list; this read may predate it.
+            if (this.accountEdits === edits) this.sharedAccounts = { state: 'ready', stale: false, at: Date.now(), map: map || {}, list: accountsList(map) };
             if (this.isOpen()) this.render();
         }).catch(e => {
             console.error('Money: loading accounts failed:', e);
-            this.sharedAccounts = { state: 'error', at: Date.now(), list: prev?.list || null, map: prev?.map || null };
+            const cur = this.sharedAccounts;
+            this.sharedAccounts = { ...cur, state: cur.map ? 'ready' : 'error', at: Date.now() };
             if (this.isOpen()) this.render();
         });
     },
@@ -651,6 +655,7 @@ export const MoneyManager = {
     setLocalAccount(id, entry) {
         const map = { ...(this.sharedAccounts.map || {}) };
         if (entry) map[id] = entry; else delete map[id];
+        this.accountEdits += 1;
         this.sharedAccounts = { ...this.sharedAccounts, map, list: accountsList(map) };
     },
 
@@ -661,38 +666,46 @@ export const MoneyManager = {
     },
 
     saveAccount() {
-        if (!this.canEditAccounts() || this.sharedAccounts?.state !== 'ready') return;
+        if (!this.canEditAccounts() || this.sharedAccounts.state !== 'ready') return;
         const e = accountEntry({
             name: document.getElementById('moneyAccName')?.value,
             balance: document.getElementById('moneyAccBalance')?.value,
             type: document.getElementById('moneyAccType')?.value
         });
         if (!e) { UIManager.showToast(t('msg.common.enter_valid_amount'), 'error'); return; }
-        if (!this.sharedAccounts.map?.[e.id] && (this.sharedAccounts.list || []).length >= MAX_WORTH_ACCOUNTS) {
+        const was = this.sharedAccounts.map?.[e.id];
+        if (!was && (this.sharedAccounts.list || []).length >= MAX_WORTH_ACCOUNTS) {
             UIManager.showToast(t('msg.money.accounts_full', { n: MAX_WORTH_ACCOUNTS }), 'error');
             return;
         }
+        ['moneyAccName', 'moneyAccBalance'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        if (was && was.name === e.entry.name && Number(was.balance) === e.entry.balance && was.type === e.entry.type) return;
         this.setLocalAccount(e.id, e.entry);
         Promise.resolve(FirebaseService.saveWorthAccount(e.id, e.entry)).catch(err => this.accountWriteFailed(err));
-        ['moneyAccName', 'moneyAccBalance'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
         this.render();
     },
 
     removeAccount(id) {
-        if (!this.canEditAccounts() || !this.sharedAccounts?.map?.[id]) return;
+        if (!this.canEditAccounts() || this.sharedAccounts.state !== 'ready' || !this.sharedAccounts.map?.[id]) return;
         this.setLocalAccount(id, null);
         Promise.resolve(FirebaseService.removeWorthAccount(id)).catch(err => this.accountWriteFailed(err));
         this.render();
     },
 
-    /** Owner, one tap: this phone's old accounts become the shared list (only while it is empty). */
+    /**
+     * Owner, one tap: this phone's old accounts become the shared list (only while it is
+     * empty). Accounts that can't be moved stay on the phone, and the owner is told.
+     */
     useThisPhonesAccounts() {
-        const map = accountsFromPhone(this.phoneAccounts());
+        const { map, skipped } = accountsFromPhone(this.phoneAccounts());
         if (AppState.userRole !== 'owner' || !Object.keys(map).length) return;
         return Helpers.runExclusive('money-accounts-move', '#moneyAccountsMove button', async () => {
             try {
                 const done = await FirebaseService.useAccountsForAllPhones(map);
-                if (done) {
+                if (done && skipped.length) {
+                    safeSetItem(ACCOUNTS_KEY, JSON.stringify(skipped));
+                    UIManager.showToast(tn('msg.money.accounts_moved_some', skipped.length), 'warning');
+                } else if (done) {
                     try { localStorage.removeItem(ACCOUNTS_KEY); } catch { /* storage blocked */ }
                     UIManager.showToast(t('msg.money.accounts_moved'), 'success');
                 } else {
@@ -722,7 +735,7 @@ export const MoneyManager = {
         // Compared on the stock + dues part only (old dues and accounts are not kept per month).
         const cmp = { ...vsItem(stock, lyClose, t('ui.money.stock_vs', { when: sinceLabel })), unknownText: t('ui.money.stock_vs_not_known', { when: sinceLabel }) };
         this.html('moneyWorthCompare', seeStock && Number.isFinite(stock) && (cmp.c || cmp.unknown) ? compareHtml([cmp]) : '');
-        this.html('moneyWorthTakeaway', seeStock ? takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel })) : '');
+        this.html('moneyWorthTakeaway', seeStock ? takeawayHtml(worthTakeaways({ worth, change: null, receivable: dues.receivable.total, sinceLabel, accountsKnown: accounts !== null || !this.cfg().netWorthTerms.includes('accounts') })) : '');
         const term = (label, value, link, ref) => `<div class="ins-row"><span>${esc(t(label))}</span><span><span${ref ? ` data-metric-ref="${ref}"` : ''}>${money(value)}</span> <button type="button" class="ins-link" data-go="${link}">${esc(t(`ui.money.home_${link.replace(/-/g, '_')}`))} ›</button></span></div>`;
         const cfg = this.cfg();
         this.html('moneyWorthTerms',
@@ -742,9 +755,9 @@ export const MoneyManager = {
                 ? list.map(a => `<div class="ins-row"><span>${icon(a)} ${esc(a.name)}</span><span>${a.type === 'liability' ? '−' : ''}${money(a.balance)}${edit ? ` <button type="button" class="ins-link" onclick="window.app.money.removeAccount('${Helpers.escapeJsAttr(a.id)}')" aria-label="${esc(t('ui.money.acc_remove'))}">✕</button>` : ''}</span></div>`).join('')
                 : `<p class="ins-empty-text">${esc(t(edit ? 'ui.money.no_accounts' : 'ui.money.no_accounts_view'))}</p>`);
         const form = document.getElementById('moneyAccForm');
-        if (form) form.hidden = !edit || !list;
+        if (form) form.hidden = !edit || state !== 'ready';
         const phone = AppState.userRole === 'owner' && state === 'ready' && list && !list.length
-            ? Object.keys(accountsFromPhone(this.phoneAccounts())).length : 0;
+            ? Object.keys(accountsFromPhone(this.phoneAccounts()).map).length : 0;
         const move = document.getElementById('moneyAccountsMove');
         if (move) {
             move.hidden = !phone;
