@@ -11,7 +11,14 @@ import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatDateTimeIN } from '../utils/dates.js';
 import { getStartupTimings, startupRows } from '../utils/startup-timings.js';
-import { getQuotaStatus } from '../firebase/firestore-meter.js';
+import { getQuotaStatus, getIoCounts } from '../firebase/firestore-meter.js';
+import { SyncStatus } from '../ui/sync-status.js';
+import { PrinterService } from '../services/printer.js';
+import { tip, tipDeviceId } from '../tip/index.js';
+import { APP_VERSION } from '../version.js';
+import { runProbes, analyseProbes } from '../utils/perf-probe.js';
+import { statusRows, statusText, speedLines } from '../utils/status-report.js';
+import { track } from '../services/usage.js';
 import { t } from '../i18n/index.js';
 import { auditActionLabel } from '../i18n/localize.js';
 import { formatAuditDetails, auditWho, auditWhoText, peopleById } from '../utils/audit-changes.js';
@@ -101,6 +108,10 @@ const DiagnosticsManager = {
                         onclick="window.app.diagnostics.showTab('audit')">
                     📋 ${tx('ui.admin.col_audit_logs')}
                 </button>
+                <button class="filter-btn ${this.activeTab === 'status' ? 'active' : ''}"
+                        onclick="window.app.diagnostics.showTab('status')">
+                    📱 ${tx('ui.status.tab')}
+                </button>
                 ${numbersBtn}
             </div>
             ${this.technicalDetailsHtml()}
@@ -139,7 +150,14 @@ const DiagnosticsManager = {
      */
     runNumberChecks() {
         if (!canRunNumberChecks()) return;
-        const results = runNumberChecks({
+        const results = this.numberCheckResults();
+        this.numberChecks = { results, at: Date.now() };
+        this.renderNumberChecks();
+    },
+
+    /** The accounting checks on this phone's loaded data (also TIP NumberChecks, #161). */
+    numberCheckResults() {
+        return runNumberChecks({
             items: AppState.items || [],
             purchases: AppState.purchaseHistory || [],
             wholesaleSales: AppState.salesHistory || [],
@@ -150,8 +168,6 @@ const DiagnosticsManager = {
             session: CashManagementManager.todaySession || null,
             transactionsFor: (date, session) => CashManagementManager.calculateTransactionsForDate(date, session)
         });
-        this.numberChecks = { results, at: Date.now() };
-        this.renderNumberChecks();
     },
 
     /** One difference row: what it is about, expected, found, difference. */
@@ -252,9 +268,107 @@ const DiagnosticsManager = {
         `;
     },
 
+    /** Last speed check on this page (#83): { score, suspects, at } or null. */
+    speed: null,
+
+    /** This phone's state for the Status tab (#119): codes, counts, states and times only. */
+    phoneStatus() {
+        const io = getIoCounts();
+        const q = getQuotaStatus();
+        const conn = typeof navigator !== 'undefined' ? (navigator.connection || null) : null;
+        return {
+            appVersion: APP_VERSION,
+            buildId: (typeof window !== 'undefined' && window.__AADHAT_BUILD__) || tip.getVersion().buildId,
+            deviceId: tipDeviceId(AppState.currentUser?.uid),
+            online: SyncStatus.isOnline(),
+            connection: conn?.effectiveType || null,
+            pending: SyncStatus.pendingCount(),
+            lastSyncAt: Math.max(SyncStatus.lastSyncAt() || 0, io.lastWriteAckAt || 0) || null,
+            printer: PrinterService.linkState(),
+            reads: q.reads,
+            writes: io.writes,
+            writeErrors: io.writeErrors,
+            readErrors: io.readErrors,
+            errors: TelemetryService.sessionErrors,
+            openedAt: q.since
+        };
+    },
+
+    renderStatus() {
+        const container = document.getElementById('diagnosticsContainer');
+        if (!container || !isOwner()) return;
+        const e = (v) => Helpers.escapeHtml(String(v ?? ''));
+        const rows = statusRows(this.phoneStatus()).map(r => `
+            <tr data-status-row="${e(r.key)}"><td>${e(r.label)}</td>
+                <td style="text-align:right"${r.code ? ' lang="zxx" translate="no"' : ''}>${e(r.value)}</td></tr>`).join('');
+        const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+        let speed = '';
+        if (this.speed) {
+            const [score, ...rest] = speedLines(this.speed);
+            speed = `<div class="diag-error-card diag-speed" data-score="${e(this.speed.score)}" style="margin-top:12px;">
+                <strong>${e(score)}</strong>
+                <ul style="margin:8px 0 0 0;padding-left:20px;">${rest.map(l => `<li>${e(l.replace(/^- /, ''))}</li>`).join('')}</ul>
+            </div>`;
+        }
+        container.innerHTML = `
+            <p style="margin:0 0 8px 0;color:var(--text-muted,#666);font-size:0.9rem;">${tx('ui.status.intro')}</p>
+            <table class="diag-status-table" style="width:100%;font-size:14px;border-collapse:collapse;">
+                <tbody>${rows}</tbody>
+            </table>
+            <div class="diagnostics-controls" style="margin-top:12px;">
+                <button class="diag-btn refresh" onclick="window.app.diagnostics.runSpeedCheck()">${tx('ui.speed.run')}</button>
+                <button class="diag-btn" onclick="window.app.diagnostics.copyStatus()">${tx('ui.status.copy')}</button>
+                ${canShare ? `<button class="diag-btn" onclick="window.app.diagnostics.shareStatus()">${tx('ui.status.share')}</button>` : ''}
+            </div>
+            ${speed}
+            <p style="font-size:0.8rem;color:#6b7280;margin-top:12px;">${tx('ui.status.copy_note')}</p>`;
+    },
+
+    /** Speed check (#83): local probes only, no reads. */
+    async runSpeedCheck() {
+        if (!isOwner()) return;
+        try {
+            const probes = await runProbes(AppState);
+            this.speed = { ...analyseProbes(probes), at: Date.now() };
+            track('perf.diagnostic_run');
+        } catch (err) {
+            console.warn('Speed check failed:', err?.message || err);
+            this.speed = null;
+            UIManager.showToast(t('msg.speed.failed'), 'error');
+        }
+        if (this.activeTab === 'status') this.renderStatus();
+    },
+
+    statusText() {
+        return statusText(this.phoneStatus(), this.speed);
+    },
+
+    async copyStatus() {
+        const text = this.statusText();
+        try {
+            await navigator.clipboard.writeText(text);
+            UIManager.showToast(t('msg.status.copied'), 'success');
+        } catch (_) {
+            // No clipboard: show the text with its line breaks so it can be selected.
+            const msg = document.getElementById('modalMessage');
+            const closed = UIManager.showModal(text, t('ui.status.copy'));
+            if (msg) msg.style.whiteSpace = 'pre-line';
+            Promise.resolve(closed).finally(() => { if (msg) msg.style.whiteSpace = ''; });
+        }
+    },
+
+    async shareStatus() {
+        const text = this.statusText();
+        try {
+            await navigator.share({ text });
+        } catch (err) {
+            if (err?.name !== 'AbortError') await this.copyStatus();
+        }
+    },
+
     /**
      * Switch tab
-     * @param {string} tab - Tab name ('errors' or 'audit')
+     * @param {string} tab - Tab name ('errors', 'audit', 'status' or 'numbers')
      */
     async showTab(tab) {
         this.activeTab = !isOwner() ? 'numbers' : tab;
@@ -262,6 +376,8 @@ const DiagnosticsManager = {
 
         if (this.activeTab === 'numbers') {
             this.renderNumberChecks();
+        } else if (tab === 'status') {
+            this.renderStatus();
         } else if (tab === 'errors') {
             await this.loadData();
         } else {

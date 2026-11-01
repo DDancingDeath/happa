@@ -641,6 +641,62 @@ function defineSuite(prefix) {
         await assertSucceeds(as('staff1').collection(coll).doc('five').update(voidFields('staff1')));
     });
 
+    t('bill date (#147): members date a new bill back at most editDays (+1 calendar day) from its entry, never after it', async () => {
+        await setRoleAccess({ staff: { editDays: 2 }, manager: { editDays: 0 } });
+        const now = Date.now();
+        const bill = (id, timestamp, enteredAt, extra = {}) => ({ userId: id, total: 5, clientVersion: 4, createdAt: serverTimestamp(), timestamp, enteredAt, ...extra });
+        for (const coll of bills) {
+            const db = as('staff1').collection(coll);
+            await assertSucceeds(db.doc('d0').set(bill('staff1', now, now)));
+            await assertSucceeds(db.doc('d2').set(bill('staff1', now - 2 * DAY - HOUR, now)));
+            await assertFails(db.doc('d4').set(bill('staff1', now - 3 * DAY - HOUR, now)));
+            // never after its entry; a fast phone clock (entry ahead of the server) is not refused
+            await assertFails(db.doc('d5').set(bill('staff1', now + HOUR, now)));
+            await assertSucceeds(db.doc('d6').set(bill('staff1', now + 2 * HOUR, now + 2 * HOUR)));
+            await assertFails(db.doc('d7').set(bill('staff1', now, 'today')));
+            // queued offline days ago: entered then, synced now
+            await assertSucceeds(db.doc('d8').set(bill('staff1', now - 5 * DAY, now - 5 * DAY)));
+            // apps before #147 send no enteredAt: not limited, as before
+            await assertSucceeds(db.doc('d9').set({ userId: 'staff1', total: 5, clientVersion: 4, createdAt: serverTimestamp(), timestamp: now - 9 * DAY }));
+            // the window is per role; the owner is not limited
+            await assertFails(as('manager1').collection(coll).doc('m1').set(bill('manager1', now - DAY - 2 * HOUR, now)));
+            await assertSucceeds(as('manager1').collection(coll).doc('m2').set(bill('manager1', now - 20 * HOUR, now)));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('o1').set(bill('legacyOwner', now - 40 * DAY, now)));
+        }
+    });
+
+    t('bill date (#147): a bill dated before the day it was entered takes no cash from anyone but the owner', async () => {
+        const now = Date.now();
+        const yesterday = now - DAY;
+        // 20:00 IST yesterday: a bill entered then (offline) and synced now
+        const evening = now - ((now + 19800000) % DAY) - 4 * HOUR;
+        const pay = (cash, online, due) => ({ payment: { cash, online, due, total: cash + online + due }, cashPayment: cash, onlinePayment: online, dueAmount: due });
+        const bill = (id, timestamp, enteredAt, money) => ({ userId: id, total: 100, clientVersion: 4, createdAt: serverTimestamp(), timestamp, ...(enteredAt === undefined ? {} : { enteredAt }), ...money });
+        for (const coll of bills) {
+            const db = as('staff1').collection(coll);
+            await assertSucceeds(db.doc('c0').set(bill('staff1', now, now, pay(100, 0, 0))));
+            // entered today, dated yesterday, with cash: refused
+            await assertFails(db.doc('c1').set(bill('staff1', yesterday, now, pay(100, 0, 0))));
+            await assertFails(db.doc('c2').set(bill('staff1', yesterday, now, pay(40, 60, 0))));
+            await assertSucceeds(db.doc('c3').set(bill('staff1', yesterday, now, pay(0, 60, 40))));
+            // entered yesterday 20:00 offline (not dated back), synced today: kept
+            await assertSucceeds(db.doc('off').set(bill('staff1', evening, evening, pay(100, 0, 0))));
+            // ... but a cash bill's entry time may be at most 3 days old; a fast phone clock is not refused
+            await assertFails(db.doc('old').set(bill('staff1', now - 3 * DAY - HOUR, now - 3 * DAY - HOUR, pay(100, 0, 0))));
+            await assertSucceeds(db.doc('ahead').set(bill('staff1', now + HOUR, now + HOUR, pay(100, 0, 0))));
+            await assertFails(db.doc('textAt').set(bill('staff1', now, String(now), pay(100, 0, 0))));
+            // an old app (no enteredAt) can't date a bill back: not checked, its offline bills are kept
+            await assertSucceeds(db.doc('c4').set(bill('staff1', yesterday, undefined, pay(100, 0, 0))));
+            // the top-level copy or a missing timestamp does not get round it
+            await assertFails(db.doc('c5').set({ ...bill('staff1', yesterday, now, pay(0, 0, 0)), cashPayment: 100 }));
+            const noTime = bill('staff1', yesterday, now, pay(100, 0, 0));
+            delete noTime.timestamp;
+            await assertFails(db.doc('c6').set(noTime));
+            // managers too; the owner may
+            await assertFails(as('manager1').collection(coll).doc('c7').set(bill('manager1', yesterday, now, pay(100, 0, 0))));
+            await assertSucceeds(as('legacyOwner').collection(coll).doc('c8').set(bill('legacyOwner', yesterday, now, pay(100, 0, 0))));
+        }
+    });
     t('edit window: per-role days still refuse made-up and old-app clocks', async () => {
         await setRoleAccess({ staff: { editDays: 30 }, manager: { editDays: 30 } });
         for (const coll of bills) {
@@ -1544,6 +1600,35 @@ function defineSuite(prefix) {
         dueAmount: 100 - cash, openDue: 100 - cash > 0, clientVersion: 3, ...extra
     });
 
+    t('payment edits (#229): a manager settles in full bills saved with createdAt, Roles & access set (1 bill, many, Mark as cleared)', async () => {
+        await setRoleAccess({ staff: { editDays: 2 }, manager: { editDays: 5 } });
+        const settle = (id) => ({
+            payment: { online: 0, cash: 100, due: 0, total: 100 },
+            payments: [...dueBill.payments, { id: `s-${id}`, amount: 100, cash: 100, online: 0, at: PAID_AT, settlesDue: true }],
+            dueAmount: 0, openDue: false, paidAt: PAID_AT, clientVersion: 4
+        });
+        const cleared = { cleared: true, clearedAt: 'x', clearedBy: 'manager1', clearedByName: 'M' };
+        for (const coll of bills) {
+            const saved = { ...dueBill, userId: 'staff1', createdAt: savedAgo(HOUR) };
+            const db = as('manager1');
+            await seedBill(coll, 'one', saved);
+            await assertSucceeds(db.collection(coll).doc('one').update(settle('one')));
+            await seedBill(coll, 'mark', saved);
+            await assertSucceeds(db.collection(coll).doc('mark').update({ ...settle('mark'), ...cleared }));
+            const batch = db.batch();
+            for (let i = 0; i < 8; i++) {
+                await seedBill(coll, `many${i}`, saved);
+                batch.update(db.collection(coll).doc(`many${i}`), { ...settle(`many${i}`), ...cleared });
+            }
+            await assertSucceeds(batch.commit());
+            // The same routing still refuses a manager's payment that moves no due
+            await seedBill(coll, 'bad', saved);
+            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), payment: { online: 0, cash: 100, due: 100, total: 100 }, dueAmount: 100, openDue: true }));
+            // and a full edit that also touches payments
+            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), total: 90 }));
+        }
+    });
+
     t('payment edits: a member records a payment and a write-off on another user\'s bill', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'b', dueBill);
@@ -1555,6 +1640,34 @@ function defineSuite(prefix) {
                 payments: [...paid(40).payments, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone', at: PAID_AT + 60000 }],
                 cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3, paidAt: PAID_AT + 60000
             }));
+        }
+    });
+
+    t('payment edits: "Complete all due" (#150) settles several bills in one write, each with its own entry at now', async () => {
+        const settle = (at, extra = {}) => ({
+            payment: { online: 0, cash: 100, due: 0, total: 100 },
+            payments: [...dueBill.payments, { id: `s${at}`, amount: 100, cash: 100, online: 0, at, settlesDue: true, bulk: true }],
+            dueAmount: 0, openDue: false, paidAt: at,
+            cleared: true, clearedAt: 'x', clearedBy: 'manager1', clearedByName: 'M', clientVersion: 4, ...extra
+        });
+        for (const coll of bills) {
+            await seedBill(coll, 'all1', dueBill);
+            await seedBill(coll, 'all2', dueBill);
+            const db = as('manager1');
+            const ok = db.batch();
+            ok.update(db.collection(coll).doc('all1'), settle(PAID_AT));
+            ok.update(db.collection(coll).doc('all2'), settle(PAID_AT));
+            await assertSucceeds(ok.commit());
+
+            // All or none: one entry dated 20 minutes back refuses the whole write
+            await seedBill(coll, 'all3', dueBill);
+            await seedBill(coll, 'all4', dueBill);
+            const bad = db.batch();
+            bad.update(db.collection(coll).doc('all3'), settle(PAID_AT));
+            bad.update(db.collection(coll).doc('all4'), settle(PAID_AT - 1200000));
+            await assertFails(bad.commit());
+            const left = await as('legacyOwner').collection(coll).doc('all3').get();
+            if (left.data().payment.due !== 100) throw new Error('a refused batch must leave every bill unchanged');
         }
     });
 
@@ -1788,7 +1901,8 @@ function defineSuite(prefix) {
     t('bill create (#65): paid + due at most the total + Rs 1; money in paise; no opening records', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
-            const bill = (payment, extra = {}) => ({ userId: 'staff1', total: 99.6, payment, clientVersion: 3, createdAt: serverTimestamp(), ...extra });
+            // cash on a non-owner's bill needs a timestamp from today (#147, noBackdatedCash)
+            const bill = (payment, extra = {}) => ({ userId: 'staff1', total: 99.6, payment, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now(), ...extra });
             await assertSucceeds(c.doc('rounded').set(bill({ cash: 100, online: 0, due: 0, total: 100 }, { cashPayment: 100, onlinePayment: 0, dueAmount: 0 })));
             await assertSucceeds(c.doc('split').set(bill({ cash: 50, online: 20.6, due: 29, total: 99.6 })));
             await assertFails(c.doc('over').set(bill({ cash: 101, online: 0, due: 0, total: 101 })));
@@ -1797,18 +1911,18 @@ function defineSuite(prefix) {
             await assertFails(c.doc('paise').set(bill({ cash: 10.005, online: 0, due: 0 })));
             await assertFails(c.doc('neg').set(bill({ cash: 120, online: -20, due: 0 })));
             await assertFails(c.doc('nan').set(bill({ cash: NaN, online: 0, due: 0 })));
-            await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertFails(c.doc('opening').set({ ...bill({ cash: 0, online: 0, due: 0 }), openingBalance: { amount: 5000 } }));
             await assertFails(c.doc('amountPaid').set({ userId: 'staff1', total: 100, amountPaid: 5000, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('legacyDue').set({ userId: 'staff1', total: 100, due: 5000, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('payable').set({ userId: 'staff1', amountPayable: 100, total: 1000000,
-                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
+                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertFails(c.doc('payableText').set({ userId: 'staff1', amountPayable: '100', total: 100, clientVersion: 3, createdAt: serverTimestamp() }));
             // purchase: the total is after labour (grandTotal)
             await assertSucceeds(c.doc('p').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
-                payment: { cash: 90, online: 0, due: 0, total: 90 }, clientVersion: 3, createdAt: serverTimestamp() }));
+                payment: { cash: 90, online: 0, due: 0, total: 90 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertFails(c.doc('p2').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
-                payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 3, createdAt: serverTimestamp() }));
+                payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertSucceeds(as('legacyOwner').collection(coll).doc('restored').set(bill({ cash: 500, online: 0, due: 0 })));
         }
     });
@@ -1816,7 +1930,7 @@ function defineSuite(prefix) {
     t('bill create (#65): no payments[], paidAt or cleared on a new bill (non-owners)', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
-            const bill = { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, clientVersion: 3, createdAt: serverTimestamp() };
+            const bill = { userId: 'staff1', total: 100, payment: { cash: 0, online: 0, due: 100, total: 0 }, dueAmount: 100, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() };
             await assertSucceeds(c.doc('ok').set(bill));
             await assertFails(c.doc('p').set({ ...bill, payment: { cash: 100, online: 0, due: 0, total: 100 }, dueAmount: 0,
                 payments: [{ id: 'x', amount: 100, cash: 100, online: 0, at: Date.now() - 5 * DAY }] }));
@@ -1861,7 +1975,7 @@ function defineSuite(prefix) {
     t('bill create: a member may only create bills as themselves, with numeric money fields', async () => {
         for (const coll of bills) {
             const c = as('staff1').collection(coll);
-            await assertSucceeds(c.doc('own').set({ userId: 'staff1', total: 10, payment: { cash: 10, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertSucceeds(c.doc('own').set({ userId: 'staff1', total: 10, payment: { cash: 10, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertFails(c.doc('other').set({ userId: 'manager1', total: 10, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('text').set({ userId: 'staff1', total: '10', clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('textPay').set({ userId: 'staff1', total: 10, payment: { cash: 'ten' }, clientVersion: 3, createdAt: serverTimestamp() }));

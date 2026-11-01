@@ -396,7 +396,11 @@ service cloud.firestore {
         : changed.hasAny(['editCount']) && !editCountOk(usersCol, base, docId) ? false
         : role == 'owner' ? (!changed.hasAny(editLoggedFields()) || voidAwareBill() || bookkeepingOnly(docId, changed))
         : changed.hasAny(['userId']) ? false
-        : canFullyEditBill(usersCol, role) && !changed.hasAny(['payments', 'paidAt'])
+        // A payment (payments[] / paidAt) is bookkeeping only: checked straight away, so the
+        // edit-window lookups of canFullyEditBill don't use up the 1000 expressions a payment's
+        // checks need (a manager's full settle on a bill with createdAt was refused, #229).
+        : changed.hasAny(['payments', 'paidAt']) ? bookkeepingOnly(docId, changed) && paymentEditOk(changed)
+        : canFullyEditBill(usersCol, role)
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount'])) ? changedMoneyOk(changed)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;
@@ -406,8 +410,45 @@ service cloud.firestore {
     // no payment history, cleared state, edit count or void (the app never sends them on a
     // new bill), and createdAt = the server time of this write (#115: every happa version,
     // rc1 included, sends it; the edit window counts from it). The owner (restores) skips this.
-    function validBillCreate() {
+    // A bill's date (#147): `timestamp` is the time it counts at (BILL-TIME), `enteredAt`
+    // when this app entered it. Anyone but the owner may date a bill back at most the
+    // role's editDays (+ 1 day: the window is in calendar days) before it was entered, and
+    // never after (10 minutes). `enteredAt` itself is the phone's clock and is not bounded:
+    // a bill queued offline arrives later, and a phone whose clock is fast must not lose its
+    // bills. Bills without `enteredAt` (apps before #147) are not limited, as before.
+    function billTimeOk(usersCol) {
+      let d = request.resource.data;
+      return !('enteredAt' in d)
+        || (d.enteredAt is number && d.get('timestamp', null) is number
+            && d.timestamp <= d.enteredAt + 600000
+            && d.timestamp >= d.enteredAt - (billEditDays(usersCol) + 1) * 86400000);
+    }
+
+    // A bill dated before the day it was entered (IST) takes no cash from anyone but the owner
+    // (#147): that day's drawer may already be counted and closed, so the cash would show in no
+    // open drawer. Judged against the IST day of `enteredAt`, not the server's time, so a cash
+    // bill entered offline yesterday and synced today is kept. For cash bills `enteredAt` must be
+    // within the last 3 days (a phone that saved offline). It has no upper bound: a later
+    // `enteredAt` can't move cash onto an earlier day (`timestamp` must be on or after its day),
+    // and a phone whose clock is fast must not lose its bills. A cash bill with `enteredAt` but no
+    // numeric `timestamp` counts as dated back. Bills without `enteredAt`
+    // (apps before #147, which can't date a bill back) are not checked: refusing them would lose
+    // their offline bills; the app check and the anomaly scan cover the new app.
+    function noBackdatedCash() {
+      let d = request.resource.data;
+      let now = request.time.toMillis();
+      return !('enteredAt' in d)
+        || (d.get('payment', {}).get('cash', 0) == 0 && d.get('cashPayment', 0) == 0)
+        || (d.enteredAt is number
+            && d.enteredAt >= now - 259200000
+            && d.get('timestamp', null) is number
+            && d.timestamp >= d.enteredAt - ((d.enteredAt + 19800000) % 86400000));
+    }
+
+    function validBillCreate(usersCol) {
       return request.resource.data.get('userId', request.auth.uid) == request.auth.uid
+        && billTimeOk(usersCol)
+        && noBackdatedCash()
         && !request.resource.data.keys().hasAny(['payments', 'paidAt', 'cleared', 'editCount',
              'voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'])
         && changedMoneyOk(request.resource.data.keys())
@@ -830,7 +871,7 @@ service cloud.firestore {
         : base == 'expenses' && personalTagged(request.resource.data) ? false
         : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
         : (isOwnerIn(u)
-        || (base in billCollections() ? validBillCreate()
+        || (base in billCollections() ? validBillCreate(u)
           : base == 'expenses' ? validLedgerCreate() && expenseDayInWindow(u)
           : base == 'withdrawals' ? validLedgerCreate() && moneyPageOn(u)
           : base == 'stockAdjustments' ? isManagerIn(u) && validAdjustmentCreate()

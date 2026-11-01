@@ -225,8 +225,7 @@ describe('new purchase save', () => {
         savePurchase.mockImplementation(() => new Promise(r => { release = r; }));
         const first = PurchaseManager.saveBillToHistory();
         const second = PurchaseManager.saveBillToHistory();
-        await Promise.resolve();
-        await Promise.resolve();
+        for (let i = 0; i < 20 && !release; i++) await Promise.resolve();
         release();
         await Promise.all([first, second]);
         expect(savePurchase).toHaveBeenCalledTimes(1);
@@ -393,6 +392,28 @@ describe('new retail sale save', () => {
         expect(await RetailSaleManager.completeSale()).toBeUndefined();
         expect(saveRetailSale).not.toHaveBeenCalled();
         expect(toast).toHaveBeenCalledWith(expect.stringContaining('₹260 less than the bill total'));
+    });
+
+    test('a retry after a timeout writes the same sale id and number again — one bill (#70, #91)', async () => {
+        await addLine(0, 36, [10]);
+        setVal('saleCashPayment', 360);
+        saveRetailSale.mockRejectedValueOnce(new Error('Timed out'));
+        const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
+        await expect(RetailSaleManager.completeSale()).rejects.toThrow('Timed out');
+        now.mockReturnValue(2000);
+        const sale = await RetailSaleManager.completeSale();
+        now.mockRestore();
+        expect(saveRetailSale).toHaveBeenCalledTimes(2);
+        const [first, second] = saveRetailSale.mock.calls;
+        expect(second[0].id).toBe(first[0].id);
+        expect(second[0].billNumber).toBe(first[0].billNumber);
+        expect([first[1], second[1]]).toEqual([{ retry: false }, { retry: true }]);
+        expect(second[0].timestamp).toBe(first[0].timestamp);
+        expect(Helpers.generateBillNumber).toHaveBeenCalledTimes(1);
+        expect(sale.id).toBe(first[0].id);
+        await addLine(0, 36, [10]);
+        setVal('saleCashPayment', 360);
+        expect((await RetailSaleManager.completeSale()).id).not.toBe(sale.id);
     });
 });
 

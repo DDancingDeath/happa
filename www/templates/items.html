@@ -15,6 +15,7 @@
                    oninput="window.app.items.search(this.value)"
                    onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
                    onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'">
+            <label class="items-archived-toggle"><input type="checkbox" id="itemsShowArchived" onchange="window.app.items.toggleArchived(this.checked)"> <span data-i18n="ui.items.show_archived">Show archived</span></label>
         </div>
         
         <div class="scroll-cue">

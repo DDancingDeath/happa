@@ -1788,6 +1788,27 @@ body.typing .bottom-nav {
   }
 }
 
+/* Archived item (#123) */
+.item-archived-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.items-archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
 /* Item name suggested from the other language (#134), until the user takes it */
 .autofill-suggest {
   color: #9ca3af;
@@ -1811,6 +1832,7 @@ body.typing .bottom-nav {
   margin: 0;
 }
 
+.form-row input.bill-date-input,
 .form-row select,
 .form-row input[type="number"],
 .form-row input[type="text"] {

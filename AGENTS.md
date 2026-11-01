@@ -224,6 +224,10 @@ In order:
   `saveBill` / `startSaveExpense` send and `waitForPendingWrites()`: no Firestore reads.
 - **State**: a single `AppState` object lives in `state.js`. Never invent
   a parallel cache.
+- **Usage counters (#136)**: `track('<event>')` from `services/usage.js` counts a
+  feature use per day on this phone only (IndexedDB, never Firestore; Settings ›
+  Usage on this phone). Only the documented names in `utils/usage-stats.js`
+  (`USAGE_EVENTS`, `page.<id>` from `aadhat:tabshown`) count; never pass user text.
 - **Businesses / Rentals (#149, #170)**: one app, an `Aadhat | Rentals` switch
   (`js/ui/business-switcher.js`). The first business is shown as **Aadhat** /
   **आढ़त** (formerly "Shop"); code ids, the switcher key, `users.role`,
@@ -545,6 +549,9 @@ fails unless the baseline's `exceptions` records it
 - [ ] Architecture ratchet green; lowered `tests/architecture-baseline.json` if a
       count went down (docs/architecture.md).
 - [ ] New user-facing text in both `i18n/en.js` and `i18n/hi.js`; no "staff".
+- [ ] Changed what a page shows or does (or how a number on it is worked out) →
+      updated `docs/owner-guide.md` and `docs/owner-guide.hi.md` in the same PR
+      (`tests/ci/owner-guide.test.js` checks their spec IDs).
 
 ---
 

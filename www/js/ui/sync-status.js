@@ -45,6 +45,8 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     let started = false;
     let waitSeq = 0;
     let el = null;
+    let lastSyncAt = null;
+    const watchers = new Set();
 
     const pendingKeys = () => {
         const all = new Set(writes.keys());
@@ -52,6 +54,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         return all;
     };
     const pendingCount = () => pendingKeys().size;
+    const notifyStopped = () => watchers.forEach(fn => { try { fn({ online, pending: 0, stopped: true }); } catch (_) { /* never */ } });
 
     const element = () => {
         if (el && el.isConnected) return el;
@@ -79,6 +82,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
 
     const flashSynced = () => {
         synced = true;
+        lastSyncAt = Date.now();
         clearTimeout(syncedTimer);
         syncedTimer = setTimeout(() => { synced = false; shown = false; render(); }, SYNCED_SHOW_MS);
         render();
@@ -101,6 +105,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
     function render() {
         if (!started) return;
         const pending = pendingCount();
+        watchers.forEach(fn => { try { fn({ online, pending }); } catch (_) { /* a watcher never breaks the pill */ } });
         if (!online) {
             clearTimeout(pendingShowTimer);
             clearTimeout(syncedTimer);
@@ -163,6 +168,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
                 win.removeEventListener(LANG_CHANGE_EVENT, onLang);
             }
             started = false;
+            notifyStopped();
             clearTimeout(pendingShowTimer);
             clearTimeout(syncedTimer);
             pendingShowTimer = null;
@@ -186,7 +192,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
                 if (writes.get(key) === token) writes.delete(key);
                 render();
             };
-            Promise.resolve(promise).then(done, done);
+            Promise.resolve(promise).then(() => { lastSyncAt = Date.now(); done(); }, done);
         },
         /**
          * Notes the documents of a listener snapshot that are not yet on the server.
@@ -211,12 +217,24 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         },
         /** Forgets listener state (listeners torn down, e.g. sign-out). */
         clearListeners() {
+            // Sign-out / listeners torn down: an open TIP Sync run is not judged.
+            notifyStopped();
             if (!listened.size) return;
             listened.clear();
             render();
         },
         pendingCount,
-        isOnline: () => online
+        isOnline: () => online,
+        /** When this phone last saw one of its changes reach the server (ms), null this session. */
+        lastSyncAt: () => lastSyncAt,
+        /**
+         * Calls fn({online, pending}) on every state change (TIP Sync, #161).
+         * @returns {Function} unsubscribe
+         */
+        watch(fn) {
+            watchers.add(fn);
+            return () => watchers.delete(fn);
+        }
     };
 }
 

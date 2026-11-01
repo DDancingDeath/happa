@@ -13,7 +13,6 @@ import { Helpers } from '../utils/helpers.js';
 import { isActiveBill, isOnlineExpense, outstandingDue } from '../utils/money.js';
 import { billEditChanges, cleanReason, editCountOf, editRecord, hasEditChanges, nextEditNumber, voidBlocker } from '../utils/bill-edits.js';
 import { localISODaysAgo, parseAnyBillDate } from '../utils/dates.js';
-import { planNotificationDocs, newEventId } from '../utils/notification-format.js';
 import {
     STOCK_REPLAY_FORMAT,
     eventTime,
@@ -34,19 +33,25 @@ import { markStartup } from '../utils/startup-timings.js';
 import { canReadWithdrawals } from '../utils/role-access.js';
 import { canReadPersonalExpenses, dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, personalOnlineFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
 import { isQuotaExhaustedError } from '../utils/quota-guard.js';
-import { isStorageFullError, safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
+import { isStorageFullError, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { SyncStatus } from '../ui/sync-status.js';
-import { historyIdBound } from '../utils/rate-history.js';
-import { cashSessionDocId, sessionForDate, CASH_NEEDS_INTERNET } from '../utils/cash-session.js';
 import { entryTime } from '../utils/due-payments.js';
+import { getDb, col, CLIENT_VERSION, serverCreatedAt, voidAwareStamp } from './db.js';
+import { itemMethods } from './repos/items.js';
+import { billStatsMethods } from './repos/bill-stats.js';
+import { collectionAdminMethods } from './repos/collection-admin.js';
+import { tipMethods } from './repos/tip-health.js';
+import { anomalyMethods } from './repos/anomalies.js';
+import { userProfileMethods } from './repos/user-profiles.js';
+import { notificationMethods } from './repos/notifications.js';
+import { cashDayMethods } from './repos/cash-days.js';
 import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed, pauseBackgroundReads } from './firestore-meter.js';
-import { readTeamDirectory, writeTeamDirectory } from './repos/users.js';
-import { buildTeamDirectory, isTeamMember, sameTeam, teamPeople } from '../utils/team-directory.js';
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
+import { track } from '../services/usage.js';
 import { billSaveProps } from '../tip/scenarios/bill-save.js';
-import { buildHealthDoc, buildFailureDoc, healthDocId, failureDocId, validFailureSeq } from '../tip/report.js';
+import { checkpointProps } from '../tip/scenarios/stock-checkpoint.js';
 
 // Count reads and catch quota errors for every Firestore call in the app (#194).
 if (typeof firebase !== 'undefined' && firebase.firestore) {
@@ -56,44 +61,6 @@ if (typeof firebase !== 'undefined' && firebase.firestore) {
         console.warn('Read counter not installed:', e);
     }
 }
-
-/**
- * Gets the Firestore database reference.
- * Attempts to get firebase.firestore() first, falls back to global db.
- * @returns {firebase.firestore.Firestore} The Firestore database instance
- * @throws {Error} If Firestore is not initialized
- * @private
- */
-const getDb = () => {
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
-        return firebase.firestore();
-    }
-    // Fallback to global db if available
-    if (typeof db !== 'undefined') {
-        return db;
-    }
-    throw new Error('Firestore not initialized');
-};
-
-/**
- * Gets the prefixed collection name based on environment.
- * In development: 'items' -> 'dev_items'
- * In production: 'items' -> 'items'
- * @param {string} name - The base collection name
- * @returns {string} The prefixed collection name
- * @private
- */
-const col = (name) => {
-    const prefix = window.COLLECTION_PREFIX || '';
-    return prefix + name;
-};
-
-/**
- * Document reference of a cash session (openCashSession's transaction). Not on
- * FirebaseService: refs stay inside the data layer (repos/cash-sessions.js has its own).
- * @param {string} sessionId
- */
-const cashSessionRef = (sessionId) => FirebaseService.db.collection(col('cashManagement')).doc(String(sessionId));
 
 /** @type {Function[]} Array of unsubscribe functions for real-time listeners */
 const unsubscribeFunctions = [];
@@ -373,8 +340,6 @@ const mapDoc = (doc) => {
     return rec;
 };
 
-/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). 4: knows voided bills (#75). */
-const CLIENT_VERSION = 4;
 const STOCK_COLLECTION_KEYS = ['purchases', 'retailSales', 'wholesaleSales', 'stockAdjustments'];
 /** Only owners/managers write checkpoint state (firestore.rules); staff devices never rebuild/roll forward. */
 const canManageCheckpoint = () => ['owner', 'manager'].includes(AppState.userRole);
@@ -864,26 +829,7 @@ function prepareStockRecord(collKey, record, isNew) {
 /** Bill fields that Outstanding / other devices change after a bill is created. */
 const BILL_MONEY_FIELDS = ['payment', 'payments', 'dueAmount', 'cashPayment', 'onlinePayment', 'openDue', 'cleared'];
 
-/**
- * `createdAt` of a new bill as written: the server time (firestore.rules
- * checks it for the 2-day edit window, #87); a plain time where the SDK has no
- * FieldValue (tests).
- */
-function serverCreatedAt() {
-    const fv = typeof firebase !== 'undefined' ? firebase.firestore?.FieldValue : null;
-    return typeof fv?.serverTimestamp === 'function' ? fv.serverTimestamp() : Date.now();
-}
 const withServerCreatedAt = (record) => ({ ...record, createdAt: serverCreatedAt() });
-
-/**
- * Fields on every write of a figure built from bills (stock checkpoint, month snapshots, rate
- * stats): this app's version and the server time of the write. firestore.rules accept such a
- * write only from clientVersion >= 4 (knows voided bills, #75), stamped by that same write, so
- * an older app can't write one (not even a merge riding on a newer app's stored version).
- */
-function voidAwareStamp() {
-    return { clientVersion: CLIENT_VERSION, writtenAt: serverCreatedAt() };
-}
 
 /** Keeps the bill's stored `createdAt` on an overwrite (the rules refuse a change). */
 function keepStoredCreatedAt(record, stored) {
@@ -1037,6 +983,7 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
 
 /** TIP BillSave run (#217) for a new bill; never throws. @private */
 function startBillSaveRun(collKey, record, retry) {
+    if (!retry) track(`bill.save.${collKey}`);
     try {
         return tip.start('BillSave', {
             flags: { retry: !!retry, offline: typeof navigator !== 'undefined' && navigator.onLine === false },
@@ -1877,6 +1824,9 @@ async function rollForwardCheckpoint(cp, newAsOf) {
     return 'rolled';
 }
 
+/** Lease release after a rebuild that did not build: result → Promise<boolean> (TIP StockCheckpoint). */
+const leaseReleases = new WeakMap();
+
 /** See FirebaseService.rebuildStockCheckpoint(). @private */
 async function rebuildCheckpointNow(gen) {
     if (!canManageCheckpoint()) return { status: 'not-allowed' };
@@ -1960,12 +1910,12 @@ async function rebuildCheckpointNow(gen) {
         throw e;
     } finally {
         if (result.status !== 'built') {
-            db.runTransaction(async tx => {
+            leaseReleases.set(result, db.runTransaction(async tx => {
                 const snap = await tx.get(ref);
                 if (snap.exists && snap.data().rebuildingBy === token) {
                     tx.update(ref, { rebuildingUntil: 0, rebuildingBy: null, ...voidAwareStamp() });
                 }
-            }).catch(() => {});
+            }).then(() => true, () => false));
         }
     }
 }
@@ -2071,75 +2021,6 @@ function settleWrite(writePromise, label = 'write') {
     });
 }
 
-/** Users list cache for notification fan-out (avoids a query per edit). */
-const USERS_CACHE_TTL_MS = 10 * 60 * 1000;
-let usersCache = null;
-/** Every profile, for naming audit entries (owner; Diagnostics, Settings, the anomaly scan). */
-let auditPeopleCache = null;
-
-// Owner: every profile; managers: the team directory (#87), never other profiles.
-const getUsersForNotifications = async () => {
-    if (usersCache && Date.now() - usersCache.at < USERS_CACHE_TTL_MS) {
-        return usersCache.users;
-    }
-    let users;
-    if (AppState.userRole === 'owner') {
-        const snapshot = await getDb().collection(col('users')).get();
-        const profiles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        // Only from the server: a cached list could undo another owner device's change
-        if (!snapshot.metadata?.fromCache) queueTeamSync(profiles);
-        users = profiles.filter(isTeamMember).map(u => ({ id: u.id, role: u.role }));
-    } else {
-        users = teamPeople(await readTeamDirectory()).map(p => ({ id: p.id, role: p.role }));
-    }
-    usersCache = { at: Date.now(), users };
-    return users;
-};
-
-/** The team directory as last read or written on this phone (undefined: not read yet). */
-let knownTeam;
-/** Syncs run one after another, so two reads of the profiles never write twice. */
-let teamSync = Promise.resolve(false);
-
-/** Owner only: rewrites settings/team when the profiles say something else (#87). */
-async function syncTeamDirectory(users) {
-    const next = buildTeamDirectory(users);
-    if (knownTeam === undefined) knownTeam = await readTeamDirectory();
-    if (knownTeam && sameTeam(knownTeam, next)) return false;
-    await writeTeamDirectory(next);
-    knownTeam = next;
-    return true;
-}
-
-/** Queues a sync after any running one; never rejects. @returns {Promise<boolean>} true when it wrote */
-function queueTeamSync(users) {
-    teamSync = teamSync.catch(() => false).then(() => syncTeamDirectory(users))
-        .catch(e => {
-            console.warn('Team directory not updated:', e?.code || e);
-            return false;
-        });
-    return teamSync;
-}
-
-/**
- * Writes planned notification docs ({id, data}) with batched writes. Doc ids
- * are per event + recipient, so re-sending an event never duplicates it.
- */
-const writeNotificationDocs = async (docs) => {
-    const db = getDb();
-    const ref = db.collection(col('notifications'));
-    for (let i = 0; i < docs.length; i += 450) {
-        const batch = db.batch();
-        docs.slice(i, i + 450).forEach(({ id, data }) => batch.set(ref.doc(id), data));
-        await batch.commit();
-    }
-};
-
-const notificationFromDoc = (doc) => {
-    const data = typeof doc.data === 'function' ? (doc.data({ serverTimestamps: 'estimate' }) || {}) : {};
-    return { ...data, id: doc.id };
-};
-
 /**
  * Firebase Service object containing all database operations.
  * Provides methods for CRUD operations on all collections.
@@ -2212,270 +2093,11 @@ const FirebaseService = {
         AppState.historyLoadedFrom = 0;
     },
 
-    /**
-     * Loads all items from Firestore.
-     * @async
-     * @returns {Promise<Array<{id: string, name: string, hindiName?: string, rate?: number}>>} Array of item objects
-     */
-    async loadItems() {
-        const snapshot = await getDb().collection(col('items')).get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
+    ...itemMethods,
 
-    /**
-     * Saves an item to Firestore. Creates new if no ID, updates if ID exists.
-     * @async
-     * @param {Object} item - The item to save
-     * @param {string} [item.id] - Item ID (if updating existing)
-     * @param {string} item.name - Item name
-     * @param {string} [item.hindiName] - Item name in Hindi
-     * @param {number} [item.rate] - Default rate for the item
-     * @returns {Promise<Object>} The saved item with ID
-     */
-    async saveItem(item) {
-        if (item.id) {
-            await getDb().collection(col('items')).doc(item.id).set(item);
-        } else {
-            const docRef = await getDb().collection(col('items')).add(item);
-            item.id = docRef.id;
-        }
-        return item;
-    },
-
-    /**
-     * Deletes an item from Firestore.
-     * @async
-     * @param {string} itemId - The ID of the item to delete
-     * @returns {Promise<void>}
-     */
-    async deleteItem(itemId) {
-        await getDb().collection(col('items')).doc(itemId).delete();
-    },
-
-    /**
-     * Appends item rate/name history entries (#82) in one batch. Entries are
-     * create-only (rules forbid update/delete); ids sort newest first per item.
-     * @async
-     * @param {Array<{id: string, data: Object}>} entries
-     * @returns {Promise<void>}
-     */
-    async addRateHistoryEntries(entries) {
-        if (!entries || entries.length === 0) return;
-        const db = getDb();
-        const ref = db.collection(col('rateHistory'));
-        const batch = db.batch();
-        entries.forEach(e => batch.set(ref.doc(e.id), e.data));
-        await batch.commit();
-    },
-
-    /**
-     * Reads the newest history entries of one item (document-id range, so no
-     * composite index is needed). Owner/manager only (rules).
-     * @async
-     * @param {string} itemId
-     * @param {number} [max=30]
-     * @param {{since?: number}} [opts] only entries newer than this (ms)
-     * @returns {Promise<Array<Object>>} newest first
-     */
-    async loadRateHistory(itemId, max = 30, { since = null } = {}) {
-        let query = getDb().collection(col('rateHistory'))
-            .orderBy(firebase.firestore.FieldPath.documentId())
-            .startAt(`${itemId}_`);
-        query = Number(since) > 0 ? query.endBefore(historyIdBound(itemId, Number(since))) : query.endAt(`${itemId}_\uf8ff`);
-        const snapshot = await query.limit(max).get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-
-    // ---- Rate trends (#65): rateStats/{itemId}_{YYYY-MM}, owner/manager only (rules) ----
-
-    /**
-     * One page of a bill collection in document-id order, from the server
-     * (rate-trends backfill). Billed reads = docs returned (min 1).
-     * @param {string} collKey purchases | retailSales | wholesaleSales
-     * @param {?string} after last document id of the previous page
-     * @param {number} limit
-     * @returns {Promise<{docs: Array<Object>, reads: number}>}
-     */
-    async loadBillPageById(collKey, after, limit) {
-        let query = getDb().collection(col(collKey))
-            .orderBy(firebase.firestore.FieldPath.documentId())
-            .limit(limit);
-        if (after) query = query.startAfter(after);
-        const snapshot = await query.get({ source: 'server' });
-        return { docs: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })), reads: Math.max(1, snapshot.size) };
-    },
-
-    /**
-     * Oldest numeric bill timestamp across the three bill collections (3 reads).
-     * @returns {Promise<number>} ms, or Infinity when there are no bills
-     */
-    async oldestBillTimestamp() {
-        const db = getDb();
-        const values = await Promise.all(['purchases', 'retailSales', 'wholesaleSales'].map(key =>
-            db.collection(col(key)).orderBy('timestamp', 'asc').limit(1).get()
-                .then(s => (s.docs.length ? Number(s.docs[0].data().timestamp) : Infinity))));
-        return Math.min(...values);
-    },
-
-    /**
-     * Year stats docs of one item (document-id range, no index needed):
-     * one read per year of history.
-     * @param {string} itemId
-     * @param {number} [max=30]
-     * @returns {Promise<Array<Object>>} oldest year first
-     */
-    async loadRateStatsForItem(itemId, max = 30) {
-        const snapshot = await getDb().collection(col('rateStats'))
-            .orderBy(firebase.firestore.FieldPath.documentId())
-            .startAt(`${itemId}_`)
-            .endAt(`${itemId}_\uf8ff`)
-            .limit(max)
-            .get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(d => /^\d{4}$/.test(String(d.year || '')));
-    },
-
-    /**
-     * Year stats docs of every item for one year (single-field equality, so no
-     * composite index is needed). Bounded: at most `max` reads.
-     * @param {string} year YYYY
-     * @param {number} [max=300]
-     * @returns {Promise<{docs: Array<Object>, more: boolean}>}
-     */
-    async loadRateStatsForYear(year, max = 300) {
-        const snapshot = await getDb().collection(col('rateStats'))
-            .where('year', '==', String(year))
-            .limit(max)
-            .get();
-        return { docs: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), more: snapshot.size >= max };
-    },
-
-    /**
-     * Year stats docs of years >= fromYear from the SERVER (never the offline
-     * cache), bounded, so a roll-forward compares with what everyone sees.
-     * @param {string} fromYear YYYY
-     * @param {number} [max=300]
-     * @returns {Promise<{docs: Array<Object>, more: boolean}>}
-     */
-    async loadServerRateStatsFromYear(fromYear, max = 300) {
-        const snapshot = await getDb().collection(col('rateStats'))
-            .where('year', '>=', String(fromYear))
-            .limit(max)
-            .get({ source: 'server' });
-        return { docs: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), more: snapshot.size >= max };
-    },
-
-    /**
-     * Writes whole stats docs (set, so re-running is idempotent), 400 per batch.
-     * @param {Array<{id: string, data: Object}>} writes
-     * @returns {Promise<void>}
-     */
-    async saveRateStats(writes) {
-        if (!writes || writes.length === 0) return;
-        const db = getDb();
-        const ref = db.collection(col('rateStats'));
-        const updatedAt = Date.now();
-        for (let i = 0; i < writes.length; i += 400) {
-            const batch = db.batch();
-            writes.slice(i, i + 400).forEach(w => batch.set(ref.doc(w.id), { ...w.data, updatedAt, ...voidAwareStamp() }));
-            await batch.commit();
-        }
-    },
-
-    /**
-     * Backfill status doc (rateStats/_meta), or null when it doesn't exist.
-     * @param {{server?: boolean}} [opts]
-     * @returns {Promise<?Object>}
-     */
-    async loadRateStatsMeta({ server = false } = {}) {
-        const ref = getDb().collection(col('rateStats')).doc('_meta');
-        const snap = server ? await ref.get({ source: 'server' }) : await ref.get();
-        return snap.exists ? snap.data() : null;
-    },
-
-    /**
-     * @param {Object} data merged into rateStats/_meta
-     * @returns {Promise<void>}
-     */
-    async saveRateStatsMeta(data) {
-        await getDb().collection(col('rateStats')).doc('_meta').set({ ...data, ...voidAwareStamp() }, { merge: true });
-    },
+    ...billStatsMethods,
 
     // ---- Month snapshots (redesign §7.6): monthStats/{YYYY-MM}, owner/manager only (rules) ----
-
-    /**
-     * Month snapshot docs from `fromMonth` on (document-id range, no index): at most `max` reads.
-     * @param {string} fromMonth 'YYYY-MM'
-     * @param {number} [max=40]
-     * @returns {Promise<Object<string, Object>>} month → doc
-     */
-    async loadMonthStats(fromMonth, max = 40) {
-        const snapshot = await getDb().collection(col('monthStats'))
-            .orderBy(firebase.firestore.FieldPath.documentId())
-            .startAt(String(fromMonth))
-            .limit(max)
-            .get();
-        const out = {};
-        snapshot.docs.forEach(doc => { if (/^\d{4}-\d{2}$/.test(doc.id)) out[doc.id] = { ...doc.data(), month: doc.id }; });
-        return out;
-    },
-
-    /**
-     * Writes whole month snapshots (set, idempotent), 400 per batch.
-     * @param {Array<Object>} docs buildSnapshot() results
-     * @returns {Promise<void>}
-     */
-    async saveMonthStats(docs) {
-        if (!docs || docs.length === 0) return;
-        const db = getDb();
-        const ref = db.collection(col('monthStats'));
-        for (let i = 0; i < docs.length; i += 400) {
-            const batch = db.batch();
-            docs.slice(i, i + 400).forEach(d => batch.set(ref.doc(d.month), { ...d, ...voidAwareStamp() }));
-            await batch.commit();
-        }
-    },
-
-    /**
-     * Writes a rebuilt month snapshot over a stale one, in a transaction (1 read + 1 write):
-     * skipped when it was marked stale again since `staleAt` (that change may not be in this
-     * device's bills) or is no longer stale (another device rebuilt it).
-     * @param {Object} doc buildSnapshot() result
-     * @param {*} staleAt the `staleAt` of the stale mark this device saw
-     * @returns {Promise<{status: 'written'|'newer'|'fresh', doc: Object}>} doc = what is stored now
-     */
-    async rebuildMonthStat(doc, staleAt) {
-        const db = getDb();
-        const ref = db.collection(col('monthStats')).doc(doc.month);
-        return db.runTransaction(async tx => {
-            const snap = await tx.get(ref);
-            const stored = snap.exists ? { ...snap.data(), month: doc.month } : null;
-            if (stored && !stored.stale) return { status: 'fresh', doc: stored };
-            if (stored && stored.staleAt !== staleAt) return { status: 'newer', doc: stored };
-            tx.set(ref, { ...doc, ...voidAwareStamp() });
-            return { status: 'written', doc };
-        });
-    },
-
-    /**
-     * Writes a month snapshot unless the stored one carries a stale mark this device has not
-     * handled (`handled` = { staleAt } of a mark whose change is in this device's bills), in a
-     * transaction (1 read + 1 write). Build month history writes older months this way, so a mark
-     * set by another phone after this one loaded the snapshots is never overwritten.
-     * @param {Object} doc buildSnapshot() result
-     * @param {?{staleAt: *}} handled
-     * @returns {Promise<{status: 'written'|'newer', doc: Object}>} doc = what is stored now
-     */
-    async saveMonthStatGuarded(doc, handled = null) {
-        const db = getDb();
-        const ref = db.collection(col('monthStats')).doc(doc.month);
-        return db.runTransaction(async tx => {
-            const snap = await tx.get(ref);
-            const stored = snap.exists ? { ...snap.data(), month: doc.month } : null;
-            if (stored?.stale && !(handled && stored.staleAt === handled.staleAt)) return { status: 'newer', doc: stored };
-            tx.set(ref, { ...doc, ...voidAwareStamp() });
-            return { status: 'written', doc };
-        });
-    },
 
     /**
      * Local time this device started its last fresh server read of all history (0 = none this
@@ -2491,65 +2113,7 @@ const FirebaseService = {
         return lastMonthMark;
     },
 
-    /**
-     * Applies an item import plan with batched writes (merge updates + new
-     * docs). Never deletes. One batch for typical catalogues, so a failure
-     * leaves the catalogue unchanged; very large imports are chunked.
-     * @async
-     * @param {Array<{id: string, fields: Object}>} updates
-     * @param {Array<{fields: Object}>} adds
-     * @returns {Promise<Array<Object>>} the added items with their new ids
-     */
-    async importItems(updates, adds) {
-        const db = getDb();
-        const ref = db.collection(col('items'));
-        const ops = [
-            ...(updates || []).map(u => ({ doc: ref.doc(u.id), data: u.fields, merge: true })),
-            ...(adds || []).map(a => ({ doc: ref.doc(), data: a.fields, merge: false }))
-        ];
-        const added = [];
-        for (let i = 0; i < ops.length; i += 450) {
-            const batch = db.batch();
-            ops.slice(i, i + 450).forEach(op => {
-                if (op.merge) batch.set(op.doc, op.data, { merge: true });
-                else {
-                    batch.set(op.doc, op.data);
-                    added.push({ ...op.data, id: op.doc.id });
-                }
-            });
-            await batch.commit();
-        }
-        return added;
-    },
-
-    /**
-     * Reads every document of a collection (env-prefixed) for a backup.
-     * @async
-     * @param {string} name unprefixed collection name
-     * @returns {Promise<Array<{id: string, data: Object}>>}
-     */
-    async readCollectionForBackup(name) {
-        const snapshot = await getDb().collection(col(name)).get();
-        return snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
-    },
-
-    /**
-     * Deletes the given documents of a collection with batched writes.
-     * @async
-     * @param {string} name unprefixed collection name
-     * @param {Array<string>} ids
-     * @returns {Promise<number>} number of documents deleted
-     */
-    async deleteDocsInBatches(name, ids) {
-        const db = getDb();
-        const ref = db.collection(col(name));
-        for (let i = 0; i < ids.length; i += 450) {
-            const batch = db.batch();
-            ids.slice(i, i + 450).forEach(id => batch.delete(ref.doc(id)));
-            await batch.commit();
-        }
-        return ids.length;
-    },
+    ...collectionAdminMethods,
 
     /**
      * Loads all purchases from Firestore, ordered by date descending.
@@ -3030,6 +2594,16 @@ const FirebaseService = {
         return hasDue(collKey, bill);
     },
 
+    /**
+     * Firestore document id of a loaded record (a legacy doc may carry an `id`
+     * field that differs from its document id).
+     * @param {Object} record
+     * @returns {string}
+     */
+    documentIdOf(record) {
+        return docIdOf(record);
+    },
+
     /** Version written as `clientVersion` on stock records (see firestore.rules). */
     CLIENT_VERSION,
 
@@ -3168,56 +2742,7 @@ const FirebaseService = {
         await settleWrite(write, 'saveRoleAccess');
     },
 
-    /**
-     * Write TIP counters (one set+merge with FieldValue.increment per day doc)
-     * and failure samples (create-only, one doc each). Failure samples whose
-     * write failed for a retryable reason are returned for a later try;
-     * permission-denied ones (e.g. id already used) are dropped.
-     * @param {{uid: string, deviceId: string, delta: ?Object, failures: ?Array, appVersion: string, buildId: string, platform: string}} p
-     * @returns {Promise<{retryFailures: Array}>}
-     */
-    async writeTip({ uid, deviceId, delta, failures, appVersion, buildId, platform }) {
-        if (!uid) throw new Error('not signed in');
-        const db = getDb();
-        const fv = firebase.firestore.FieldValue;
-        const inc = (n) => fv.increment(n);
-        const days = Object.entries(delta || {});
-        if (days.length) {
-            const batch = db.batch();
-            days.forEach(([day, perVersion]) => {
-                batch.set(db.collection(col('tipHealth')).doc(healthDocId(deviceId, day)), buildHealthDoc({
-                    deviceId, day, uid, delta: perVersion, appVersion, buildId, platform, inc, serverTime: fv.serverTimestamp()
-                }), { merge: true });
-            });
-            await batch.commit();
-        }
-        const list = (failures || []).filter(f => validFailureSeq(f.seq));
-        const results = await Promise.allSettled(list.map(f => db.collection(col('tipFailures')).doc(failureDocId(deviceId, f))
-            .set(buildFailureDoc({ uid, deviceId, platform, failure: f, serverTime: fv.serverTimestamp() }))));
-        const retryFailures = list.filter((f, i) => results[i].status === 'rejected' && results[i].reason?.code !== 'permission-denied');
-        return { retryFailures };
-    },
-
-    /**
-     * tipHealth docs for the Health page / Today banner: one doc per device per
-     * day from `sinceDay` (YYYYMMDD) on, at most `limit` (bounded reads).
-     * @returns {Promise<Array<Object>>}
-     */
-    async loadTipHealth({ sinceDay, untilDay = null, limit = 300 }) {
-        let q = getDb().collection(col('tipHealth')).where('day', '>=', sinceDay);
-        if (untilDay) q = q.where('day', '<=', untilDay);
-        const snap = await q.orderBy('day', 'desc').limit(limit).get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    },
-
-    /**
-     * Latest TIP failure samples (newest first), at most `limit`.
-     * @returns {Promise<Array<Object>>}
-     */
-    async loadTipFailures({ limit = 30 } = {}) {
-        const snap = await getDb().collection(col('tipFailures')).orderBy('at', 'desc').limit(limit).get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    },
+    ...tipMethods,
 
     /**
      * Startup: computes stock if that needs no full-history read; otherwise
@@ -3627,8 +3152,11 @@ const FirebaseService = {
         }
         rebuildAttempted = true;
         const gen = sessionGen;
+        const run = tip.start('StockCheckpoint');
         const p = rebuildCheckpointNow(gen);
         rebuildPromise = p;
+        p.then(res => Promise.resolve(leaseReleases.get(res) ?? null).then(released => run.complete(checkpointProps(res, released))),
+            () => run.complete(checkpointProps(null)));
         const done = () => {
             if (gen !== sessionGen || rebuildPromise !== p) return;
             rebuildPromise = null;
@@ -3907,216 +3435,7 @@ const FirebaseService = {
         });
     },
 
-    /**
-     * Sends one notification event to the given recipients (actor excluded)
-     * in batched writes. Callers fire-and-forget with `.catch(...)` logging.
-     * @param {string} eventId - same id → same docs, so an event never notifies twice
-     * @param {string[]} recipientIds
-     * @param {Object} data - notification fields (type, …)
-     * @returns {Promise<number>} number of recipients
-     */
-    async sendNotification(eventId, recipientIds, data) {
-        const docs = planNotificationDocs(eventId, recipientIds, AppState.currentUser?.uid, {
-            ...data,
-            read: false,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        if (docs.length) await writeNotificationDocs(docs);
-        return docs.length;
-    },
-
-    /**
-     * Notifies users about item rate changes (one event per rate type).
-     * Wholesale rates are only visible to owners/managers, so only they hear
-     * about wholesale changes. Never rejects.
-     * @param {Object} item - the saved item
-     * @param {Array<{rateType: string, oldRate: *, newRate: *}>} changes
-     * @param {string} [eventPrefix] - stable id prefix for this save
-     * @returns {Promise<void>}
-     */
-    async notifyRateChanges(item, changes, eventPrefix = newEventId('rate')) {
-        try {
-            if (!changes?.length) return;
-            const users = await getUsersForNotifications();
-            const labels = { purchase: 'Purchase', sale: 'Sale', wholesale: 'Wholesale' };
-            for (const ch of changes) {
-                const recipients = ch.rateType === 'wholesale'
-                    ? users.filter(u => u.role === 'owner' || u.role === 'manager')
-                    : users;
-                await this.sendNotification(`${eventPrefix}-${ch.rateType}`, recipients.map(u => u.id), {
-                    type: 'rate_change',
-                    itemId: item.id || null,
-                    itemName: item.name || '',
-                    itemHindiName: item.hindiName || '',
-                    rateType: ch.rateType,
-                    rateTypeLabel: labels[ch.rateType] || ch.rateType,
-                    oldRate: ch.oldRate,
-                    newRate: ch.newRate,
-                    changedBy: AppState.userName || 'Unknown',
-                    changedByUserId: AppState.currentUser?.uid || null
-                });
-            }
-        } catch (error) {
-            console.error('Error notifying rate change:', error);
-        }
-    },
-
-    /**
-     * Notifies all users when one item rate is changed (inline rate editor).
-     * Callers need not await this; it never rejects.
-     * @param {Object} item - The item with changed rate
-     * @param {string} rateType - 'purchase' | 'sale' | 'wholesale'
-     * @param {number} oldRate - value when editing started
-     * @param {number} newRate - committed value
-     * @returns {Promise<void>}
-     */
-    async notifyRateChange(item, rateType, oldRate, newRate) {
-        return this.notifyRateChanges(item, [{ rateType, oldRate, newRate }]);
-    },
-
-    /**
-     * Tells owners that an item was added or its name/contact changed
-     * (rate changes go through notifyRateChanges). Never rejects.
-     * @param {Object} item
-     * @param {'added'|'updated'} action
-     * @param {string[]} [fields] - changed non-rate fields
-     * @returns {Promise<void>}
-     */
-    async notifyItemEdit(item, action, fields = []) {
-        try {
-            const users = await getUsersForNotifications();
-            const ownerIds = users.filter(u => u.role === 'owner').map(u => u.id);
-            await this.sendNotification(newEventId('item'), ownerIds, {
-                type: 'item_edit',
-                action,
-                fields,
-                itemId: item.id || null,
-                itemName: item.name || '',
-                itemHindiName: item.hindiName || '',
-                changedBy: AppState.userName || 'Unknown',
-                changedByUserId: AppState.currentUser?.uid || null
-            });
-        } catch (error) {
-            console.error('Error notifying item edit:', error);
-        }
-    },
-
-    /**
-     * Live listener on the user's newest unread notifications
-     * (index: userId + read + timestamp desc).
-     * @param {string} uid
-     * @param {number} limit
-     * @param {function(Array<Object>, Array<{type: string, id: string}>, Object): void} onNext
-     * @param {function(Error): void} onError
-     * @returns {function(): void} unsubscribe
-     */
-    listenUnreadNotifications(uid, limit, onNext, onError) {
-        return getDb().collection(col('notifications'))
-            .where('userId', '==', uid)
-            .where('read', '==', false)
-            .orderBy('timestamp', 'desc')
-            .limit(limit)
-            .onSnapshot(snapshot => {
-                const list = snapshot.docs.map(notificationFromDoc);
-                const changes = snapshot.docChanges().map(ch => ({ type: ch.type, id: ch.doc.id }));
-                onNext(list, changes, snapshot.metadata || {});
-            }, onError);
-    },
-
-    /**
-     * One page of the user's notifications, newest first (read and unread).
-     * `read in [false, true]` lets the existing userId + read + timestamp
-     * index serve this query, so no new index has to be deployed.
-     * @param {string} uid
-     * @param {{limit?: number, after?: Object}} [opts] - `after` = cursor from the previous page
-     * @returns {Promise<{items: Array<Object>, cursor: ?Object, hasMore: boolean}>}
-     */
-    async loadNotificationsPage(uid, { limit = 30, after = null } = {}) {
-        let query = getDb().collection(col('notifications'))
-            .where('userId', '==', uid)
-            .where('read', 'in', [false, true])
-            .orderBy('timestamp', 'desc');
-        if (after) query = query.startAfter(after);
-        const snapshot = await query.limit(limit).get();
-        const docs = snapshot.docs;
-        return {
-            items: docs.map(notificationFromDoc),
-            cursor: docs.length ? docs[docs.length - 1] : after,
-            hasMore: docs.length === limit
-        };
-    },
-
-    /**
-     * Marks notifications read (batched). Fire-and-forget callers add `.catch`.
-     * @param {string[]} ids
-     * @returns {Promise<void>}
-     */
-    async markNotificationsRead(ids) {
-        const unique = [...new Set((ids || []).filter(Boolean))];
-        if (!unique.length) return;
-        const db = getDb();
-        const ref = db.collection(col('notifications'));
-        for (let i = 0; i < unique.length; i += 450) {
-            const batch = db.batch();
-            unique.slice(i, i + 450).forEach(id => batch.update(ref.doc(id), { read: true, readAt: Date.now() }));
-            await batch.commit();
-        }
-    },
-
-    /**
-     * Marks all of this user's unread notifications read, in bounded pages
-     * (`pageSize` docs per batch, at most `maxPages` pages) so a huge backlog
-     * can't run away with reads/writes.
-     * @param {string} uid
-     * @param {{pageSize?: number, maxPages?: number}} [opts]
-     * @returns {Promise<number>} number marked read
-     */
-    async markAllNotificationsRead(uid, { pageSize = 450, maxPages = 3 } = {}) {
-        if (!uid) return 0;
-        const db = getDb();
-        let total = 0;
-        for (let page = 0; page < maxPages; page++) {
-            const snapshot = await db.collection(col('notifications'))
-                .where('userId', '==', uid)
-                .where('read', '==', false)
-                .limit(pageSize)
-                .get();
-            if (snapshot.empty) break;
-            const batch = db.batch();
-            snapshot.docs.forEach(doc => batch.update(doc.ref, { read: true, readAt: Date.now() }));
-            await batch.commit();
-            total += snapshot.size;
-            if (snapshot.size < pageSize) break;
-        }
-        return total;
-    },
-
-    /**
-     * Deletes this user's notifications older than `cutoffMs` (at most `max`
-     * per run, to keep reads cheap).
-     * @param {string} uid
-     * @param {number} cutoffMs
-     * @param {number} [max=100]
-     * @returns {Promise<number>} deleted count
-     */
-    async deleteOldNotifications(uid, cutoffMs, max = 100) {
-        const db = getDb();
-        const cutoff = typeof firebase !== 'undefined' && firebase.firestore?.Timestamp?.fromMillis
-            ? firebase.firestore.Timestamp.fromMillis(cutoffMs)
-            : cutoffMs;
-        const snapshot = await db.collection(col('notifications'))
-            .where('userId', '==', uid)
-            .where('read', 'in', [false, true])
-            .where('timestamp', '<', cutoff)
-            .orderBy('timestamp', 'desc')
-            .limit(max)
-            .get();
-        if (snapshot.empty) return 0;
-        const batch = db.batch();
-        snapshot.docs.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-        return snapshot.size;
-    },
+    ...notificationMethods,
 
     /**
      * Loads withdrawals from Firestore ordered by timestamp (secondary method).
@@ -4158,342 +3477,12 @@ const FirebaseService = {
         return { id: docRef.id, ...withdrawal };
     },
 
-    /**
-     * Loads all cash management sessions from Firestore, ordered by date descending.
-     * @async
-     * @returns {Promise<Array<Object>>} Array of cash session objects
-     */
-    async loadCashSessions() {
-        const snapshot = await getDb().collection(col('cashManagement')).orderBy('date', 'desc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
+    ...cashDayMethods,
 
-    /**
-     * One page of cash sessions, newest first (#34): Cash Management reads the
-     * latest few, and older days only when asked ("Load older").
-     * @param {number} max
-     * @param {?Object} [after] Last document snapshot of the previous page
-     * @returns {Promise<{sessions: Object[], last: ?Object, more: boolean}>}
-     */
-    async loadCashSessionsPage(max, after = null) {
-        let query = getDb().collection(col('cashManagement')).orderBy('date', 'desc');
-        if (after) query = query.startAfter(after);
-        const snapshot = await query.limit(max).get();
-        return {
-            sessions: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
-            last: snapshot.docs[snapshot.docs.length - 1] || after,
-            more: snapshot.docs.length === max
-        };
-    },
+    ...anomalyMethods,
 
-    /**
-     * The few sessions Cash needs beyond the latest page (#34), each a small
-     * targeted query: the newest counted day (carry-forward and the opening
-     * check), past days still open (auto-close) and days closed without a
-     * count (review list, newest 30).
-     * @param {string} today YYYY-MM-DD
-     * @returns {Promise<Object[]>}
-     */
-    async loadCashSessionsNeeded(today) {
-        const coll = getDb().collection(col('cashManagement'));
-        const rows = (snap) => snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const [counted, open, uncounted] = await Promise.all([
-            coll.where('signedOut', '==', true).where('counted', '==', true).orderBy('date', 'desc').limit(1).get(),
-            coll.where('signedOut', '==', false).where('date', '<', today).get(),
-            coll.where('counted', '==', false).orderBy('date', 'desc').limit(30).get()
-        ]);
-        return [...rows(counted), ...rows(open), ...rows(uncounted)];
-    },
+    ...userProfileMethods,
 
-    /**
-     * Cash sessions for one local day (YYYY-MM-DD); usually one. One small
-     * query instead of loadCashSessions() (which reads every session).
-     * @param {string} date
-     * @param {Object} [getOptions] e.g. `{ source: 'server' }`
-     * @returns {Promise<Array<Object>>}
-     */
-    async loadCashSessionsForDate(date, getOptions) {
-        const snapshot = await this.db.collection(col('cashManagement')).where('date', '==', date).get(getOptions);
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-
-    /**
-     * Opens the day's cash session once (#38). The session lives at
-     * `cash_<date>`, created in a transaction: a phone that comes second gets
-     * the existing session back (`joined: true`) instead of a second one. A
-     * session opened earlier that day by an older app (random id) is joined too.
-     * Opening needs a connection: a write queued offline could not see another
-     * phone's session and would overwrite its opening or reopen a closed day.
-     * @param {Object} session New session (needs `date`)
-     * @returns {Promise<{session: Object, joined: boolean}>}
-     * @throws {Error} code `cash/needs-internet` when offline
-     */
-    async openCashSession(session) {
-        const needsInternet = () => Object.assign(new Error('Open cash needs internet'), { code: CASH_NEEDS_INTERNET });
-        if (typeof navigator !== 'undefined' && navigator.onLine === false) throw needsInternet();
-        const ref = cashSessionRef(cashSessionDocId(session.date));
-        const fresh = { ...session, id: ref.id };
-        try {
-            const legacy = sessionForDate(await this.loadCashSessionsForDate(session.date, { source: 'server' }), session.date);
-            if (legacy) return { session: legacy, joined: true };
-            return await getDb().runTransaction(async tx => {
-                const snap = await tx.get(ref);
-                if (snap.exists) return { session: { id: ref.id, ...snap.data() }, joined: true };
-                tx.set(ref, fresh);
-                return { session: fresh, joined: false };
-            });
-        } catch (error) {
-            if (error?.code === 'unavailable') throw needsInternet();
-            throw error;
-        }
-    },
-
-    /**
-     * Updates an existing cash management session in Firestore.
-     * @async
-     * @param {Object} session - The session to update
-     * @param {string} session.id - Session ID (required)
-     * @returns {Promise<Object>} The updated session
-     * @throws {Error} If session.id is not provided
-     */
-    async updateCashSession(session) {
-        if (!session.id) {
-            throw new Error('Session ID is required for update');
-        }
-        await getDb().collection(col('cashManagement')).doc(session.id).set(session);
-        return session;
-    },
-
-    /**
-     * Cash sessions for local days fromDate..toDate (YYYY-MM-DD, inclusive):
-     * a few docs, unlike loadCashSessions() which reads every session.
-     * @param {string} fromDate
-     * @param {string} toDate
-     * @returns {Promise<Array<Object>>}
-     */
-    async loadCashSessionsBetween(fromDate, toDate) {
-        const snapshot = await this.db.collection(col('cashManagement'))
-            .where('date', '>=', fromDate).where('date', '<=', toDate).get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-
-    /**
-     * Audit log entries since `sinceMs`, newest first (owner only by rules), read in
-     * pages of `pageSize` until all are read or `max` is reached.
-     * @param {number} sinceMs
-     * @param {number} [max=1000]
-     * @param {number} [pageSize=300]
-     * @returns {Promise<Array<Object>>}
-     */
-    async loadAuditLogsSince(sinceMs, max = 1000, pageSize = 300) {
-        const logs = [];
-        let after = null;
-        while (logs.length < max) {
-            let query = this.db.collection(col('auditLogs'))
-                .where('timestamp', '>=', sinceMs).orderBy('timestamp', 'desc');
-            if (after) query = query.startAfter(after);
-            const want = Math.min(pageSize, max - logs.length);
-            const snapshot = await query.limit(want).get();
-            snapshot.docs.forEach(doc => logs.push({ id: doc.id, ...doc.data() }));
-            if (snapshot.docs.length < want) break;
-            after = snapshot.docs[snapshot.docs.length - 1];
-        }
-        if (logs.length >= max) console.warn(`Audit log: stopped at ${max} entries since ${new Date(sinceMs).toISOString()}`);
-        return logs;
-    },
-
-    // ---- Anomalies (#187): owner/manager only (rules) ---------------------
-
-    /**
-     * One page of anomaly records for IST days fromKey..toKey, newest day first.
-     * @param {string} fromKey - YYYY-MM-DD
-     * @param {string} toKey - YYYY-MM-DD
-     * @param {{limit?: number, after?: Object|null, server?: boolean, cacheOnly?: boolean}} [opts] - `after` = `last`
-     *   of the previous page; `server` fails instead of answering from the offline cache;
-     *   `cacheOnly` answers from the offline cache only (no billed reads);
-     *   otherwise: server first, offline cache when the server can't be reached
-     * @returns {Promise<{docs: Array<Object>, last: Object|null, more: boolean}>}
-     */
-    async loadAnomalies(fromKey, toKey, { limit = 200, after = null, server = false, cacheOnly = false } = {}) {
-        let query = this.db.collection(col('anomalies'))
-            .where('dayKey', '>=', fromKey).where('dayKey', '<=', toKey)
-            .orderBy('dayKey', 'desc').limit(limit);
-        if (after) query = query.startAfter(after);
-        let snapshot;
-        if (cacheOnly) {
-            snapshot = await query.get({ source: 'cache' });
-            return { docs: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })), last: null, more: false };
-        }
-        try {
-            snapshot = await query.get({ source: 'server' });
-        } catch (e) {
-            if (server) throw e;
-            snapshot = await query.get({ source: 'cache' });
-        }
-        return {
-            docs: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
-            last: snapshot.docs[snapshot.docs.length - 1] || null,
-            more: snapshot.size === limit
-        };
-    },
-
-    /**
-     * Write anomaly records with set-merge (deterministic ids: re-writing the
-     * same anomaly updates it, never duplicates it).
-     * @param {Array<{id: string, data: Object}>} writes
-     * @returns {Promise<void>}
-     */
-    async saveAnomalies(writes) {
-        if (!writes || writes.length === 0) return;
-        const db = this.db;
-        const ref = db.collection(col('anomalies'));
-        for (let i = 0; i < writes.length; i += 400) {
-            const batch = db.batch();
-            writes.slice(i, i + 400).forEach(w => batch.set(ref.doc(w.id), w.data, { merge: true }));
-            await batch.commit();
-        }
-    },
-
-    // ---- Users (admin.js / users.js) -------------------------------------
-
-    /** Server timestamp sentinel for user-profile writes. */
-    serverTimestamp() {
-        return firebase.firestore.FieldValue.serverTimestamp();
-    },
-
-    /**
-     * All user profiles, newest `createdAt` first (sorted client-side so legacy
-     * profiles without `createdAt` are kept, at the end). On the owner's phone the
-     * team directory (`settings/team`, #87) is brought in line with them.
-     * @returns {Promise<Object[]>} `{ id, ...data }` per profile
-     */
-    async loadUsers() {
-        const snapshot = await getDb().collection(col('users')).get();
-        const createdMs = (u) => {
-            const c = u.createdAt;
-            return c?.toMillis ? c.toMillis() : (c ? new Date(c).getTime() || 0 : 0);
-        };
-        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-            .sort((a, b) => createdMs(b) - createdMs(a));
-        if (AppState.userRole === 'owner' && !snapshot.metadata?.fromCache) {
-            queueTeamSync(users);
-        }
-        return users;
-    },
-
-    /**
-     * The people of the team as `[{ id, name, role, ... }]`: the owner reads the
-     * profiles; managers read only the team directory (#87, one read).
-     * @returns {Promise<Object[]>}
-     */
-    async loadPeople() {
-        if (AppState.userRole === 'owner') return this.loadUsers();
-        return teamPeople(await readTeamDirectory());
-    },
-
-    /**
-     * Every profile (owner), to name the writer of audit entries (#85); reused for 10 minutes.
-     * @returns {Promise<Object[]>}
-     */
-    async loadAuditPeople() {
-        if (auditPeopleCache && Date.now() - auditPeopleCache.at < USERS_CACHE_TTL_MS) return auditPeopleCache.users;
-        const users = await this.loadUsers();
-        auditPeopleCache = { at: Date.now(), users };
-        return users;
-    },
-
-    /** Forgets the cached people lists (sign-out: the next user may have another role). */
-    forgetPeopleCaches() {
-        usersCache = null;
-        auditPeopleCache = null;
-        knownTeam = undefined;
-    },
-
-    /**
-     * Owner only, at most once a day per phone: reads the profiles (one read each,
-     * plus the directory) and rewrites the team directory when it is missing or
-     * says something else, e.g. a name changed in Settings › account.
-     * @returns {Promise<boolean>} true when it wrote the directory
-     */
-    async ensureTeamDirectory() {
-        const uid = AppState.currentUser?.uid;
-        if (AppState.userRole !== 'owner' || !uid) return false;
-        const key = 'happaTeamDirectoryDay';
-        const mark = `${uid}|${localISODaysAgo(0)}`;
-        if (localStorage.getItem(key) === mark) return false;
-        // Offline the profiles come from the cache, which must not overwrite the directory;
-        // a heavy session skips this background read (read guard)
-        if ((typeof navigator !== 'undefined' && navigator.onLine === false) || !backgroundReadsAllowed()) return false;
-        await this.loadUsers();
-        const wrote = await teamSync;
-        safeSetItem(key, mark);
-        return wrote;
-    },
-
-    /** Partial update of a user profile (role/status/approval fields). */
-    async updateUser(userId, fields) {
-        await getDb().collection(col('users')).doc(userId).update(fields);
-        usersCache = null;
-        auditPeopleCache = null;
-    },
-
-    /**
-     * Rejects a registration (#84): the profile stays as `status: 'rejected'`, so
-     * the person can't register again as pending; the owner can restore it.
-     */
-    async rejectUserProfile(userId, byUid) {
-        await getDb().collection(col('users')).doc(userId).update({
-            status: 'rejected',
-            rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            rejectedBy: byUid || null
-        });
-        usersCache = null;
-        auditPeopleCache = null;
-    },
-
-    /**
-     * Restores a removed or rejected person as a pending registration (#84): the
-     * owner then approves them with a role like any new registration.
-     */
-    async restoreUserProfile(userId) {
-        const del = firebase.firestore.FieldValue.delete();
-        await getDb().collection(col('users')).doc(userId).update({
-            status: 'pending',
-            role: 'staff',
-            disabledAt: del,
-            disabledBy: del,
-            rejectedAt: del,
-            rejectedBy: del
-        });
-        usersCache = null;
-        auditPeopleCache = null;
-    },
-
-    /**
-     * Removes a user's access (#74): role and approval are cleared and the profile
-     * is kept as `status: 'disabled'`, so the rules refuse it and the person can't
-     * re-register as pending. The Auth account itself needs the Admin SDK.
-     */
-    async disableUserProfile(userId, byUid) {
-        const del = firebase.firestore.FieldValue.delete();
-        await getDb().collection(col('users')).doc(userId).update({
-            status: 'disabled',
-            role: del,
-            rentRole: del,
-            approvedAt: del,
-            approvedBy: del,
-            disabledAt: firebase.firestore.FieldValue.serverTimestamp(),
-            disabledBy: byUid || null
-        });
-        usersCache = null;
-        auditPeopleCache = null;
-    },
-
-    /** Number of documents in a collection (full read; Admin → Storage). */
-    async countDocuments(name) {
-        const snapshot = await getDb().collection(col(name)).get();
-        return snapshot.size;
-    }
 };
 
 // Export FirebaseService and cleanup function

@@ -28,6 +28,10 @@ import { AnomaliesManager } from './modules/anomalies.js';
 import { HealthManager } from './modules/health.js';
 import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
+import { dayKeyOf } from './tip/tip.js';
+import { createSyncWatcher } from './tip/scenarios/sync.js';
+import { claimToday, numberChecksProps } from './tip/scenarios/number-checks.js';
+import { whenIdle } from './utils/background-tasks.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
 import { TelemetryService } from './services/telemetry.js';
@@ -42,6 +46,8 @@ import { TemplateLoader, SHELL_TEMPLATES, PAGE_TEMPLATES } from './utils/templat
 import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { SecurityMonitor } from './services/security-monitor.js';
+import { startLongTaskRecorder } from './utils/perf-probe.js';
+import { UsageView } from './ui/usage-view.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
 // Build stamp — bumped on every deploy that ships new JS so you can verify
@@ -49,7 +55,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieece-monitor';
+const BUILD_ID = '20261101zzuzieecmbbkhbb-items-archive';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -58,6 +64,8 @@ console.log(
 window.__AADHAT_BUILD__ = BUILD_ID;
 // Deferred Firebase SDK + firebaseConfig.js have run before any module code.
 markStartup('sdk-and-modules-loaded');
+// Speed check (#83): long tasks are only counted, read when Diagnostics › Status runs a check.
+startLongTaskRecorder();
 
 InstallManager.init();
 // #124: writes refused by the rules leave a small audit entry for the owner's review
@@ -118,6 +126,26 @@ on(REFRESH.statements, () => loadStatements().then(m => m.render()));
 
 // Read meter alerts (#159) become TIP SessionReads failures, which reach the daily tip-auto issues.
 on(READS_ALERT, ({ kind, reads }) => tip.start('SessionReads').complete({ [kind]: true, reads }));
+// TIP Sync (#161): changes waiting to sync reach the server within the limit.
+const tipSyncWatcher = createSyncWatcher((opts) => tip.start('Sync', opts));
+SyncStatus.watch((s) => tipSyncWatcher.update(s));
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') tipSyncWatcher.hidden();
+});
+
+/** TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle. */
+function scheduleTipNumberChecks() {
+    if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
+    whenIdle(() => {
+        try {
+            if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
+            const run = tip.start('NumberChecks');
+            run.complete(numberChecksProps(DiagnosticsManager.numberCheckResults()));
+        } catch (e) {
+            console.warn('TIP number checks failed:', e?.message || e);
+        }
+    }, { minDelayMs: 30000 });
+}
 
 // Load and inject HTML templates from separate .html files. The login screen
 // and app shell go in first; the pages load while Firebase restores the
@@ -174,7 +202,7 @@ function refreshForLanguage(lang) {
         items: () => ItemsManager.renderItemsTable(document.getElementById('itemsSearchInput')?.value || ''),
         diagnostics: () => {
             DiagnosticsManager.renderTabs();
-            const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks' }[DiagnosticsManager.activeTab];
+            const view = { errors: 'renderErrors', audit: 'renderAuditLogs', numbers: 'renderNumberChecks', status: 'renderStatus' }[DiagnosticsManager.activeTab];
             if (view) DiagnosticsManager[view]();
         },
         money: () => money?.render(),
@@ -452,6 +480,7 @@ async function initializeUserData() {
             onRefreshed: () => UIManager.showToast(t('msg.nav.refreshed'))
         });
         NavigationManager.showTab('billing');
+        BillingManager.prepareBillDates();
         NavigationManager.setActiveNavLink('billing');
         NavigationManager.initBackNavigation();
         
@@ -503,7 +532,10 @@ async function initializeUserData() {
         // Offline / waiting-to-sync pill (#70)
         SyncStatus.start({ pendingWrites: () => FirebaseService.pendingWritesWaiter() });
         FirebaseService.prepareStock({ defer: true })
-            .then(() => markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox }));
+            .then(() => {
+                markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox });
+                scheduleTipNumberChecks();
+            });
 
         // What's new + Android update banner (non-blocking, best effort)
         AppUpdatesManager.onAppReady();
@@ -817,7 +849,8 @@ window.app = {
         updateModalRate: (type, idx, val) => ItemsManager.updateModalRate(type, idx, val),
         deleteModalRate: (type, idx) => ItemsManager.deleteModalRate(type, idx),
         saveItemFromModal: () => ItemsManager.saveItemFromModal(),
-        deleteItemFromModal: () => ItemsManager.deleteItemFromModal(),
+        archiveFromModal: () => ItemsManager.archiveFromModal(),
+        toggleArchived: (show) => ItemsManager.toggleArchived(show),
         loadModalHistory: () => ItemsManager.loadModalHistory(),
         onModalNameInput: (field) => ItemsManager.onModalNameInput(field),
         acceptNameSuggestion: (field) => ItemsManager.acceptNameSuggestion(field),
@@ -837,7 +870,7 @@ window.app = {
         updateSaleRate: (id, rIdx, val) => ItemsManager.updateSaleRate(id, rIdx, val),
         commitSaleRate: (id, rIdx) => ItemsManager.commitSaleRate(id, rIdx),
         deleteSaleRate: (id, rIdx) => ItemsManager.deleteSaleRate(id, rIdx),
-        deleteItem: (id) => ItemsManager.deleteItem(id),
+        archiveItem: (id) => ItemsManager.archiveItem(id),
         exportExcel: () => ItemsManager.exportToExcel(),
         importExcel: (evt) => ItemsManager.importFromExcel(evt)
     },
@@ -1004,6 +1037,7 @@ window.app = {
         renderOutstanding: () => WholesaleSalesManager.renderSalesOutstanding(),
         recordPayment: (saleId) => WholesaleSalesManager.recordPayment(saleId),
         markSaleAsCleared: (saleId) => WholesaleSalesManager.markSaleAsCleared(saleId),
+        completeAllDue: (name) => WholesaleSalesManager.completeAllDue(name),
         reprintSale: (index) => WholesaleSalesManager.reprintSale(index),
         reprintSaleById: (saleId) => WholesaleSalesManager.reprintSaleById(saleId),
         updateProfitCalculation: () => WholesaleSalesManager.updateProfitCalculation(),
@@ -1036,6 +1070,7 @@ window.app = {
         retryPrint: () => HistoryManager.retryPrint(),
         markPrintedByHand: () => HistoryManager.markPrintedByHand(),
         shareBill: () => HistoryManager.shareBill(),
+        copyTraceId: () => HistoryManager.copyTraceId(),
         editBillDetails: (billIndex) => {
             if (billIndex !== undefined) {
                 // Pass the bill type along with index
@@ -1247,9 +1282,19 @@ window.app = {
         filterByType: (type) => DiagnosticsManager.filterByType(type),
         filterAuditLogs: (action) => DiagnosticsManager.filterAuditLogs(action),
         deleteError: (errorId) => DiagnosticsManager.deleteError(errorId),
-        clearAll: () => DiagnosticsManager.clearAll()
+        clearAll: () => DiagnosticsManager.clearAll(),
+        runSpeedCheck: () => DiagnosticsManager.runSpeedCheck(),
+        copyStatus: () => DiagnosticsManager.copyStatus(),
+        shareStatus: () => DiagnosticsManager.shareStatus()
     },
     
+    // Settings › Usage on this phone (#136, local only)
+    usage: {
+        setRange: (range) => UsageView.setRange(range),
+        copy: () => UsageView.copy(),
+        clear: () => UsageView.clear()
+    },
+
     // Admin (owner only)
     admin: {
         init: () => AdminManager.init(),

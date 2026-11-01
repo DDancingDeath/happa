@@ -25,8 +25,10 @@ import { isStorageFullError, saveFailedText, STORAGE_FULL_KEY, SAVED_ON_PHONE_KE
 import { accessFor, canEditBillWith } from '../utils/role-access.js';
 import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
 import { askReason } from '../ui/bill-status.js';
+import { prepareBillDate } from '../ui/bill-date-input.js';
 import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
 import { formatDateTimeIN } from '../utils/dates.js';
+import { isArchivedItem } from '../utils/item-catalog.js';
 
 const EDIT_OFFLINE_KEY = 'msg.billing.edit_offline';
 const EDIT_TIMEOUT_MS = 20000;
@@ -56,7 +58,7 @@ export function editRefusedMessage(bill) {
 
 /** Draft fields that make the bill checks treat the form as an edit of `bill` (#37). */
 const editCheckContext = (bill) => ({
-    isEdit: true, id: bill.id, editingBill: bill, date: bill.date, enteredAt: bill.timestamp
+    isEdit: true, id: bill.id, editingBill: bill, date: bill.date, enteredAt: bill.enteredAt || bill.timestamp
 });
 
 /**
@@ -198,20 +200,12 @@ const BillingManager = {
                 saleBtn.style.borderColor = '#22c55e';
             }
             
-            // Preserve current selections
-            const currentItem = document.getElementById('saleItem')?.value;
+            // Preserve current selections (the picker keeps its item by id)
             const currentRate = document.getElementById('saleRate')?.value;
             const currentWeight = document.getElementById('saleWeight')?.value;
             
             this.loadSaleItemsDropdown();
             
-            if (currentItem) {
-                const saleItemSelect = document.getElementById('saleItem');
-                if (saleItemSelect) {
-                    saleItemSelect.value = currentItem;
-                    this.loadSaleRates();
-                }
-            }
             if (currentRate) {
                 setTimeout(() => {
                     const saleRateInput = document.getElementById('saleRate');
@@ -236,9 +230,17 @@ const BillingManager = {
             PurchaseManager.updateTotals();
         }
         
+        this.prepareBillDates();
         if (this.pendingRecovery) this.showRecoveryBanner(this.pendingRecovery);
         this.focusFirstItem();
         UIManager.hapticFeedback();
+    },
+
+    /** The Date boxes (#147): the role's days; an edited bill shows its own day, locked. */
+    prepareBillDates() {
+        const editing = this.editingBillIndex === undefined ? null : this.getEditingBill();
+        prepareBillDate('billDate', editing && this.editingBillType !== 'retail' ? editing : null);
+        prepareBillDate('saleDate', editing && this.editingBillType === 'retail' ? editing : null);
     },
 
     /**
@@ -383,6 +385,7 @@ const BillingManager = {
     loadItemsDropdown() {
         const select = document.getElementById('billItem');
         if (!select) return;
+        const kept = { ...(select.selectedOptions?.[0]?.dataset || {}) };
         
         select.innerHTML = '';
         
@@ -397,16 +400,21 @@ const BillingManager = {
         });
         
         sortedItems.forEach((item) => {
+            if (isArchivedItem(item)) return;
             const opt = document.createElement('option');
             const originalIndex = AppState.items.findIndex(i => i.id === item.id || i.name === item.name);
             opt.value = originalIndex;
+            if (item.id) opt.dataset.itemId = item.id;
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
             opt.textContent = displayName;
             select.appendChild(opt);
         });
         
+        const typedRate = document.getElementById('billRate')?.value;
+        this.keepSelection('billItem', kept);
         if (AppState.items.length > 0) {
             this.loadRates();
+            this.keepTypedRate('billItem', 'billRate', kept, typedRate);
         }
     },
 
@@ -416,6 +424,7 @@ const BillingManager = {
     loadSaleItemsDropdown() {
         const select = document.getElementById('saleItem');
         if (!select) return;
+        const kept = { ...(select.selectedOptions?.[0]?.dataset || {}) };
         
         select.innerHTML = '';
         
@@ -430,17 +439,93 @@ const BillingManager = {
         });
         
         sortedItems.forEach((item) => {
+            if (isArchivedItem(item)) return;
             const opt = document.createElement('option');
             const originalIndex = AppState.items.findIndex(i => i.id === item.id || i.name === item.name);
             opt.value = originalIndex;
+            if (item.id) opt.dataset.itemId = item.id;
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
             opt.textContent = displayName;
             select.appendChild(opt);
         });
         
+        const typedRate = document.getElementById('saleRate')?.value;
+        this.keepSelection('saleItem', kept);
         if (AppState.items.length > 0) {
             this.loadSaleRates();
+            this.keepTypedRate('saleItem', 'saleRate', kept, typedRate);
         }
+    },
+
+    /**
+     * Editing a bill line (#123): the pickers leave archived items out, so add
+     * that one option back for this line, and mark the line's option so a picker
+     * rebuild keeps it even if the item is archived meanwhile.
+     * @param {string} selectId
+     * @param {number} itemIndex position in AppState.items
+     */
+    ensureItemOption(selectId, itemIndex) {
+        const select = document.getElementById(selectId);
+        const item = AppState.items[itemIndex];
+        if (!select || !item) return;
+        const existing = [...select.options].find(o => o.value === String(itemIndex));
+        if (existing) {
+            existing.dataset.editLine = '1';
+            return;
+        }
+        const opt = document.createElement('option');
+        opt.value = itemIndex;
+        if (item.id) opt.dataset.itemId = item.id;
+        opt.dataset.editLine = '1';
+        opt.textContent = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
+        select.appendChild(opt);
+    },
+
+    /**
+     * A rebuild that kept the same item keeps the rate typed for it.
+     * @param {string} selectId
+     * @param {string} rateId
+     * @param {{itemId?: string}} kept dataset of the option selected before the rebuild
+     * @param {string} [typedRate]
+     */
+    keepTypedRate(selectId, rateId, kept, typedRate) {
+        const rateInput = document.getElementById(rateId);
+        if (!rateInput || !typedRate || !kept?.itemId) return;
+        if (document.getElementById(selectId)?.selectedOptions?.[0]?.dataset.itemId === kept.itemId) rateInput.value = typedRate;
+    },
+
+    /**
+     * Restoring an auto-save taken while a line of an archived item was being
+     * edited: its weights need that item back in the picker.
+     * @param {string} selectId
+     * @param {string|number} selected saved picker value (index in AppState.items)
+     * @param {Array} [weights] restored weights
+     */
+    restoreEditedLineOption(selectId, selected, weights) {
+        const index = Number(selected);
+        if (Array.isArray(weights) && weights.length > 0 && isArchivedItem(AppState.items[index])) this.ensureItemOption(selectId, index);
+    },
+
+    /**
+     * A rebuilt picker (another phone's bill, an item change) keeps the item that
+     * was selected, found again by id since positions in AppState.items can
+     * shift. An archived item comes back only for a bill line being edited or
+     * while weights are entered for it, so they can't move to another item;
+     * otherwise it drops out.
+     * @param {string} selectId
+     * @param {{itemId?: string, editLine?: string}} kept dataset of the option selected before the rebuild
+     */
+    keepSelection(selectId, kept) {
+        if (!kept?.itemId) return;
+        const index = AppState.items.findIndex(i => i && i.id === kept.itemId);
+        if (index === -1) return;
+        if (isArchivedItem(AppState.items[index])) {
+            const pending = selectId === 'saleItem' ? RetailSaleManager.getSaleWeights() : PurchaseManager.getWeights();
+            if (kept.editLine !== '1' && !(pending?.length > 0)) return;
+            this.ensureItemOption(selectId, index);
+        }
+        const select = document.getElementById(selectId);
+        if ([...select.options].some(o => o.value === String(index))) select.value = String(index);
     },
 
     /**
@@ -614,6 +699,8 @@ const BillingManager = {
         } else {
             RetailSaleManager.clearSale();
         }
+        // Still editing (Clear keeps edit mode): the box stays on the bill's own day
+        this.prepareBillDates();
         this.deleteAutoSave().catch(e => console.warn('Auto-save cleanup failed:', e));
     },
 
@@ -1030,6 +1117,7 @@ const BillingManager = {
                 if (purchaseData.selectedItem) {
                     const itemSelect = document.getElementById('billItem');
                     if (itemSelect) {
+                        this.restoreEditedLineOption('billItem', purchaseData.selectedItem, purchaseData.weights);
                         itemSelect.value = purchaseData.selectedItem;
                         this.loadRates();
                     }
@@ -1066,6 +1154,7 @@ const BillingManager = {
                 if (saleData.selectedItem) {
                     const saleItemSelect = document.getElementById('saleItem');
                     if (saleItemSelect) {
+                        this.restoreEditedLineOption('saleItem', saleData.selectedItem, saleData.weights);
                         saleItemSelect.value = saleData.selectedItem;
                         this.loadSaleRates();
                     }
@@ -1183,6 +1272,7 @@ const BillingManager = {
                 
                 PurchaseManager.renderBill();
                 PurchaseManager.updateTotals();
+                this.prepareBillDates();
                 
                 window.app.nav.showTab('billing');
                 UIManager.showToast(t('msg.billing.editing_bill_modify_save'));
@@ -1216,6 +1306,7 @@ const BillingManager = {
                 
                 RetailSaleManager.renderSalesBill();
                 RetailSaleManager.updateSaleTotals();
+                this.prepareBillDates();
                 
                 window.app.nav.showTab('billing');
                 // Switch to sale mode for retail sales
@@ -1513,8 +1604,19 @@ const BillingManager = {
 export { BillingManager, PurchaseManager, RetailSaleManager };
 
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
+// Showing Billing (or the app again) sets the Date boxes: the role's days, today if the day changed (#147)
+if (typeof window !== 'undefined') {
+    window.addEventListener('aadhat:tabshown', (event) => {
+        if (event.detail?.tabId === 'billing') BillingManager.prepareBillDates();
+    });
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') BillingManager.prepareBillDates();
+    });
+}
+
 on(REFRESH.billingDropdown, () => {
     BillingManager.loadItemsDropdown();
+    BillingManager.loadSaleItemsDropdown();
     BillingManager.renderBillNumber();
 });
 on(ITEM_FREQUENCY_CHANGED, () => {

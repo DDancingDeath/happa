@@ -57,11 +57,10 @@ export const MockFirebaseService = {
         return item;
     },
 
-    async deleteItem(itemId) {
-        const index = mockDataStore.items.findIndex(i => i.id === itemId);
-        if (index >= 0) {
-            mockDataStore.items.splice(index, 1);
-        }
+    async setItemArchived(itemId, archived) {
+        const item = mockDataStore.items.find(i => i.id === itemId);
+        if (item) item.archived = archived;
+        return { archived };
     },
 
     // Purchases

@@ -128,6 +128,9 @@ const TelemetryService = {
      */
     errorBuffer: [],
 
+    /** Errors caught since the app opened (toasts not counted), for the Diagnostics Status tab. */
+    sessionErrors: 0,
+
     /**
      * Sync timer ID
      * @type {number|null}
@@ -226,7 +229,10 @@ const TelemetryService = {
         }
         // TIP error watcher (#217): errors during an open scenario run turn a pass into a warning.
         // An error toast may be a typing mistake; a real failure also reaches console.error.
-        if (errorData?.type !== 'toast') noteTipError();
+        if (errorData?.type !== 'toast') {
+            noteTipError();
+            if (errorData?.type !== 'warning') this.sessionErrors++;
+        }
         const error = {
             ...errorData,
             timestamp: Date.now(),

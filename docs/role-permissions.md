@@ -49,6 +49,15 @@ setting is missing or invalid.
 - `editDays`: whole days, 0–30; 0 = never. Managers may edit any bill and void their own;
   members edit and void only their own bills. Recording a payment, clearing or writing off
   a due is **not** limited (it is bookkeeping, not an edit). The owner has no limit.
+  The same days limit how far back a new bill may be dated on its form (#147; `utils/bill-date.js`,
+  rules `billTimeOk`: `timestamp` at most `editDays` + 1 day before `enteredAt` and never after it;
+  `enteredAt` (the phone's clock) is not bounded; bills from apps without `enteredAt` are not limited; the owner back to
+  the 1st of last month, in the app only). A bill dated before today (IST) takes no cash from anyone but the
+  owner (rules `noBackdatedCash`: `timestamp` before the IST day of `enteredAt`, so a cash bill entered offline and synced after midnight is kept; for cash bills `enteredAt` must be at most 3 days old (no upper bound: a fast phone clock keeps its bills); bills without `enteredAt`, from older apps that can't date a bill back, are not checked):
+  online or due only.
+  Wholesale › Outstanding **"Complete all due"** (settle every open bill of a party at once,
+  #150, Q36) is shown to the owner and managers only (app); the rules check each bill's write
+  like any payment (its own `payments[]` entry with `at` = now, #184), so it adds no new right.
   The same days limit how far back a new expense may be dated (#118): 2 = today, yesterday
   and the day before; 0 = today only (`utils/expense-entry.js`; the rules check it with 3
   more days for a phone that saved offline, `expenseDayInWindow`, on every non-owner expense
@@ -534,7 +543,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
 | `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
-| `items` | managers | managers | owner |
+| `items` | managers | managers (the app archives and unarchives with `archived`, never deletes, #123) | owner (no app path) |
 | `counters` | approved user (bill numbers) | +1 per bill | owner |
 | `itemFrequency` | approved user, `global` only (billing ranks items) | approved user: merges into `global.purchase` / `global.sale`, never removing an item | **owner** (#64) |
 | `stockCheckpoints` | `current`: managers (anyone approved: the stale mark); `legacyScan`: managers; no other ids, owner included | same | managers |

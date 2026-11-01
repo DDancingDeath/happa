@@ -30,15 +30,22 @@ modules/*.js      ── 24 page modules (~19k lines) and rentals/rentals.js:
      │                        month-snapshots; rentals/rent-math, rent-views,
      │                        rent-public
      │
-firebase/firestore-service.js ── ~4,370 lines / 195 KB: listeners, retries,
-                     cache, transactions, stock checkpoint, month snapshots,
+firebase/firestore-service.js ── ~4,000 lines / 180 KB: listeners, retries,
+                     cache, transactions, stock checkpoint, month marks,
                      notifications; says which views' data changed by emitting
                      `refresh:<view>` / `itemFrequency:changed` (utils/events.js),
                      never calls a page (phase 4)
+firebase/db.js    ── getDb, col (env prefix), CLIENT_VERSION and the write stamp
+                     shared by the data layer (phase 5)
 firebase/repos/*.js ── repositories (phase 4): bill-drafts (drafts, auto-save,
                      item order), bill-payments (due-payment / write-off
                      transactions), cash-sessions, counters, users, audit-logs,
-                     telemetry. Rentals: rentals/rent-store.js and
+                     telemetry; phase 5 moves FirebaseService methods out of
+                     firestore-service.js into method objects it spreads in
+                     (same FirebaseService API): items, bill-stats (rate stats,
+                     month snapshots), collection-admin, tip-health, anomalies,
+                     user-profiles, notifications, cash-days.
+                     Rentals: rentals/rent-store.js and
                      rent-receipt-store.js (loaded only with Rentals)
 utils/state.js    ── AppState: one global mutable object, written in 83 lines of
                      12 files (firestore-service 25, settings.js 19, stock.js 8, …)
@@ -295,7 +302,7 @@ on the three cache-bump lines (index.html, main.js `BUILD_ID`, service-worker.js
 | 2k | Receipt amounts (services/printer.js:350-431) from `readPayment` / `billTotal`; move main.js's debug stock replay (`debugStockForName`, main.js:527-695) onto `stock-replay` | S | main.js (#181, #182) |
 | 3 | Services / use cases: `bills` (save/edit/void/delete), `payments` (record, write-off: the rules now inside outstanding.js's `updateBillInTransaction` callbacks), `cash` (open/close/count), `stock` (adjust), `rent`; pages stop building documents | L | every save handler |
 | 4 | ✅ Repositories (`www/js/firebase/repos/`): `bill-drafts` (drafts, auto-save, item order: billing.js's 11 sites), `bill-payments` (the due-payment and write-off transactions with the legacy-id retry: outstanding.js), `cash-sessions` (auto-close / late-count transactions, close, deposits and "No bill" legs: cash-management.js), `counters` (bill numbers: helpers.js), `users` (profile read and pending profile: authentication.js, main.js), `audit-logs`, `telemetry` (services). Rentals keep their repository in `rentals/rent-store.js` + `rent-receipt-store.js` (lazy, #170); `coll()` is no longer exported, rent-unit.js uses `leaseInTx` / `chargeInTx` / `updateChargeInTx`. The sync pill gets `FirebaseService.pendingWritesWaiter` instead of the db. Calls, queries, limits, transaction shapes and payloads unchanged, pinned first (`repositories-characterisation.test.js`, `tests/fixtures/repositories-calls.json`). Also from phase 5: `VIEWS` / the item-order listener emit events (`utils/events.js`) instead of calling `window.app`. Ratchet firestore 57 → 0, now absolute | M | done |
-| 5 | Split firestore-service.js (~4,370 lines): realtime coordinator, retry, cache, checkpoint, snapshots, notifications; its remaining collection code (cash sessions, users, settings…) into `firebase/repos/` | L | firestore-service |
+| 5 | ◐ Split firestore-service.js (~4,370 lines): realtime coordinator, retry, cache, checkpoint, snapshots, notifications; its remaining collection code (cash sessions, users, settings…) into `firebase/repos/`. Step by step, calls pinned first (`repositories-characterisation.test.js`, the `service.*` entries of `tests/fixtures/repositories-calls.json`; #69): each moved group is a method object in `firebase/repos/` spread into `FirebaseService`, so callers, `this` and test spies are unchanged. Done: shared `firebase/db.js`; items, bill-stats, collection-admin, tip-health, anomalies; user-profiles (with the people caches and team sync), notifications, cash-days. Left: settings (`appSettingsPromise`, `settleWrite`), withdrawals, the core (window, checkpoint, listeners, bill saves) | L | firestore-service |
 | 6 | AppState store API (`setStock`, `upsertItem`, `setSettings`, `setUser`); settings.js and firestore-service first | M | settings.js, security |
 | 7 | Inline handlers → delegated listeners (and page-to-page calls through events or services); prove the layering with one alternative UI | L | later |
 
