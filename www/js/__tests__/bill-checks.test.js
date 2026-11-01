@@ -398,12 +398,14 @@ describe('cost-unknown (#102, Q58): wholesale lines need an average cost', () =>
         expect(ids(evaluateBill(draft({ items: [{ itemId: 'gone', name: 'Maize', rate: 20, qty: 1, total: 20 }] }), ctx()))).not.toContain('cost-unknown');
     });
 
-    test('found by name / Hindi name like the stock replay; wording for stock without a rate; none while stock loads or on an edit', () => {
+    test('found by name / Hindi name like the stock replay; wording for stock without a rate and while stock loads; none on an edit', () => {
         expect(ids(ws([{ name: 'चावल', rate: 40, qty: 10, total: 400 }]))).not.toContain('cost-unknown');
         const unknown = [{ itemId: 'dal', name: 'Dal', rate: 90, qty: 1, total: 90 }];
         expect(find(ws(unknown, { ctx: { stock: { dal: { quantity: 50, rate: 0 } } } }), 'cost-unknown').en).toContain('(its stock has no rate)');
         expect(find(ws(unknown, { ctx: { stock: { dal: { quantity: 0, rate: 0 } } } }), 'cost-unknown').en).toContain('(no stock)');
-        expect(ids(ws(unknown, { ctx: { stock: {}, stockReady: false } }))).not.toContain('cost-unknown');
+        // While stock loads nothing has a cost yet: every line warns, even one with a rate
+        expect(find(ws([{ itemId: 'rice', name: 'Rice', rate: 40, qty: 1, total: 40 }], { ctx: { stockReady: false } }), 'cost-unknown'))
+            .toMatchObject({ severity: 'warn', en: 'Rice: average cost not known yet (stock is still loading) — this bill is saved without a profit' });
         expect(ids(ws(unknown, { isEdit: true, ctx: { stock: {} } }))).not.toContain('cost-unknown');
     });
 });

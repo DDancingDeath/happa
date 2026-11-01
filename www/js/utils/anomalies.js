@@ -255,7 +255,7 @@ function recheckBill(bill, kind, ts, earlier, base) {
     }
     const items = Array.isArray(bill.items) ? bill.items : [];
     const byRule = new Map();
-    issues.filter(i => !isEntryIssue(i) && i.id !== 'oversell' && i.id !== 'below-cost').forEach(i => {
+    issues.filter(i => !isEntryIssue(i) && i.id !== 'oversell' && i.id !== 'below-cost' && i.id !== 'cost-unknown').forEach(i => {
         const lines = [i.line, ...(i.lines || [])].filter(n => Number.isInteger(n));
         const names = lines.map(n => readLineItem(items[n]).name).filter(Boolean);
         const prev = byRule.get(i.id);

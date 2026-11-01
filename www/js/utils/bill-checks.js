@@ -204,13 +204,21 @@ function oversellIssues(items, ctx, extraLine) {
  * profit (costUnknown) after the user confirms this warning. Not a block: the stock
  * replay drops the average to 0 when an item sells out and a later count without a
  * rate keeps it at 0, so "no cost now" can't tell a never-bought item from a bought
- * one and a block would stop members selling bought goods. Skipped while stock loads.
+ * one and a block would stop members selling bought goods. While stock is still loading no cost is known yet:
+ * every line warns.
  */
 function costUnknownIssues(items, ctx, draft) {
-    if (ctx.kind !== 'wholesale' || draft.isEdit || !ctx.stockReady) return [];
+    if (ctx.kind !== 'wholesale' || draft.isEdit) return [];
     return items.flatMap((line, i) => {
-        if (wholesaleCostRate(line, ctx.stock, ctx.catalogue) !== null) return [];
         const name = readLineItem(line).name || '?';
+        // While stock loads no cost is known yet: the bill is saved without a profit
+        if (!ctx.stockReady) {
+            return [issue('cost-unknown', `items.${i}`, 'warn',
+                `${name}: average cost not known yet (stock is still loading) — this bill is saved without a profit`,
+                `${name}: औसत लागत अभी पता नहीं (स्टॉक लोड हो रहा है) — यह बिल बिना मुनाफ़े के सेव होगा`,
+                { line: i })];
+        }
+        if (wholesaleCostRate(line, ctx.stock, ctx.catalogue) !== null) return [];
         const key = stockKeyFor(line, ctx.catalogue);
         const entry = [key, line?.itemId, readLineItem(line).name].map(k => k && ctx.stock?.[k]).find(Boolean) || null;
         const onHand = (Number(entry?.quantity) || 0) > 0;

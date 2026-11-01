@@ -191,6 +191,19 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         expect(sale.flags).toEqual(expect.arrayContaining([expect.objectContaining({ rule: 'cost-unknown', by: 'owner1' })]));
         expect(saved).toHaveLength(1);
     });
+    test('while stock is still loading: no profit, a confirm, the bill and its lines marked (#102)', async () => {
+        AppState.stockReady = false;
+        WholesaleSalesManager.updateProfitCalculation();
+        expect(document.getElementById('salesProfitAmount').textContent).toBe('—');
+        setVal('wholesaleCashPayment', 4025);
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValue(true);
+        const sale = await WholesaleSalesManager.completeSale();
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('stock is still loading'), expect.any(String), true);
+        expect(sale).toMatchObject({ profit: null, profitPercent: null, costUnknown: true });
+        expect(sale.items[0].costUnknown).toBe(true);
+        AppState.stockReady = true;
+    });
+
     test('a mismatched split, a Due without a name, or no payment is refused', async () => {
         setVal('wholesaleCashPayment', 4000);
         expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
