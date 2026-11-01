@@ -8,9 +8,7 @@
 // -------------------- FIREBASE DATA OPERATIONS --------------------
 
 import { AppState } from '../utils/state.js';
-import { APP_CONFIG } from '../utils/constants.js';
 import { Helpers } from '../utils/helpers.js';
-import { changedElsewhereError, isOffline, needsInternetError } from '../utils/write-conflict.js';
 import { isActiveBill, isActiveExpense, isOnlineExpense, outstandingDue } from '../utils/money.js';
 import { billEditChanges, cleanReason, editCountOf, editRecord, hasEditChanges, nextEditNumber, voidBlocker } from '../utils/bill-edits.js';
 import { localISODaysAgo, parseAnyBillDate } from '../utils/dates.js';
@@ -33,11 +31,8 @@ import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_
 import { markStartup } from '../utils/startup-timings.js';
 import { canReadWithdrawals } from '../utils/role-access.js';
 import { canReadPersonalExpenses, dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, personalOnlineFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
-import { isQuotaExhaustedError } from '../utils/quota-guard.js';
-import { isStorageFullError, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { SyncStatus } from '../ui/sync-status.js';
 import { entryTime } from '../utils/due-payments.js';
-import { normalizeSharedReceipt } from '../utils/printer-settings.js';
 import { getDb, col, CLIENT_VERSION, serverCreatedAt, voidAwareStamp } from './db.js';
 import { itemMethods } from './repos/items.js';
 import { billStatsMethods } from './repos/bill-stats.js';
@@ -49,7 +44,10 @@ import { notificationMethods } from './repos/notifications.js';
 import { cashDayMethods } from './repos/cash-days.js';
 import { worthAccountMethods } from './repos/worth-accounts.js';
 import { reminderMethods } from './repos/reminders.js';
-import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed, pauseBackgroundReads } from './firestore-meter.js';
+import { settingsMethods, forgetAppSettings } from './repos/settings.js';
+import { getWithRetry } from './core/reads.js';
+import { settleWrite, whenStoredLocally, LOCAL_STORE_WAIT_MS, EXPENSE_STORE_WAIT_MS } from './core/write-settle.js';
+import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed } from './firestore-meter.js';
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
@@ -265,8 +263,6 @@ const INVALIDATION_MARGIN_MS = 2 * DAY_MS;
 const BACKFILL_MAX_WRITES = 5000;
 const BACKFILL_BATCH_SIZE = 400;
 const ROLL_FORWARD_RETRY_MS = 30000;
-/** Per-attempt timeout of one-shot history reads (see getWithRetry). */
-const GET_TIMEOUT_MS = 15000;
 const RETRY_LIMIT_BASE = 1000000;
 /** Retry delay after the full-history read for stock failed. */
 const FULL_LOAD_RETRY_MS = 30000;
@@ -344,7 +340,6 @@ const mapDoc = (doc) => {
     return rec;
 };
 
-const STOCK_COLLECTION_KEYS = ['purchases', 'retailSales', 'wholesaleSales', 'stockAdjustments'];
 /** Only owners/managers write checkpoint state (firestore.rules); staff devices never rebuild/roll forward. */
 const canManageCheckpoint = () => ['owner', 'manager'].includes(AppState.userRole);
 const isPermissionDenied = (e) => e?.code === 'permission-denied' || /insufficient permissions/i.test(String(e?.message || ''));
@@ -359,67 +354,7 @@ let checkpointDoc;
 /** Checkpoint in use for stock (parsed), or null. */
 let activeCheckpoint = null;
 let checkpointItemsCheck = { items: null, checkpoint: null, ok: false };
-/** settings/app read once per app open (version check + shared labour settings) */
-let appSettingsPromise = null;
 
-/**
- * Saves one section of settings/app (#113): a transaction that refuses it (code
- * 'changed-elsewhere') when another phone saved the same section since this phone
- * read settings/app (its `<section>UpdatedAt` stamp moved), so a stale form can't
- * overwrite it; needs the internet. `{ checked: false }`: a plain merge write (the
- * owner's first-start seed, which must not fail offline).
- * @private
- */
-const settingsSectionQueue = new Map();
-function saveSettingsSection(fields, stampKey, opts = {}) {
-    // One save of a section at a time on this phone: two quick edits are not a "conflict".
-    // A save queued behind one that was refused is refused too: its form was as stale.
-    const before = settingsSectionQueue.get(stampKey);
-    const run = before
-        ? before.then(() => saveSettingsSectionNow(fields, stampKey, opts))
-        : saveSettingsSectionNow(fields, stampKey, opts);
-    settingsSectionQueue.set(stampKey, run);
-    const done = () => { if (settingsSectionQueue.get(stampKey) === run) settingsSectionQueue.delete(stampKey); };
-    run.then(done, done);
-    return run;
-}
-
-async function saveSettingsSectionNow(fields, stampKey, { checked = true } = {}) {
-    const ref = getDb().collection(col('settings')).doc('app');
-    const keepInCache = () => {
-        if (appSettingsPromise) {
-            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), ...fields }), () => ({ ...fields }));
-        }
-    };
-    if (!checked) {
-        const write = ref.set(fields, { merge: true });
-        keepInCache();
-        await settleWrite(write, `settings:${stampKey}`);
-        return;
-    }
-    if (isOffline()) throw needsInternetError();
-    const loaded = appSettingsPromise ? await appSettingsPromise.catch(() => undefined) : undefined;
-    if (loaded === undefined) {
-        // settings/app was never read on this phone: the form may not show what is stored,
-        // so refuse and read it (the screen then shows the stored values)
-        FirebaseService.loadAppSettings({ refresh: true }).catch(() => {});
-        throw changedElsewhereError('Settings');
-    }
-    const expected = loaded?.[stampKey] ?? null;
-    try {
-        await getDb().runTransaction(async tx => {
-            const snap = await tx.get(ref);
-            const current = snap.exists ? (snap.data()?.[stampKey] ?? null) : null;
-            if (current !== expected) throw changedElsewhereError('Settings');
-            tx.set(ref, fields, { merge: true });
-        });
-    } catch (error) {
-        // Read again so the next save compares with what is stored now
-        if (error?.code === 'changed-elsewhere') FirebaseService.loadAppSettings({ refresh: true }).catch(() => {});
-        throw error;
-    }
-    keepInCache();
-}
 let rebuildPromise = null;
 let rebuildRequestedAgain = false;
 /** Stock objects returned while another device rebuilds the checkpoint (not exact yet). */
@@ -1300,39 +1235,6 @@ function requestRebuild(after = Promise.resolve()) {
     }).catch(e => console.error('Stock checkpoint rebuild failed:', e));
 }
 
-/**
- * One-shot read that cannot hang. query.get() is served through the watch
- * stream and resolves only once its target is CURRENT; when the backend never
- * marks it current (reproduced on the emulator: ADD without CURRENT) the
- * promise never settles, and a plain retry of the same query would join the
- * same stuck target. So each attempt times out and the retry uses a
- * different-but-equivalent query (`makeQuery(attempt)`), i.e. a new target.
- * @param {Object|Function} query query/doc ref, or attempt => query
- * @private
- */
-async function getWithRetry(query, label, { attempts = 4, timeoutMs = GET_TIMEOUT_MS } = {}) {
-    const makeQuery = typeof query === 'function' ? query : () => query;
-    let lastError = null;
-    for (let i = 0; i < attempts; i++) {
-        let timer = null;
-        try {
-            return await Promise.race([
-                makeQuery(i).get(),
-                new Promise((_, reject) => {
-                    // Escalating timeout so a slow (not stuck) connection isn't charged repeated reads.
-                    timer = setTimeout(() => reject(Object.assign(new Error(`${label}: read timed out`), { code: 'deadline-exceeded' })), timeoutMs * 2 ** i);
-                })
-            ]);
-        } catch (e) {
-            lastError = e;
-            if (e?.code !== 'deadline-exceeded' && e?.code !== 'unavailable') throw e;
-            console.warn(`${label}: one-shot read attempt ${i + 1} failed (${e.code}), retrying`);
-        } finally {
-            clearTimeout(timer);
-        }
-    }
-    throw lastError;
-}
 
 /**
  * One-shot fetch of history older than the loaded window (target 0 = all
@@ -1998,106 +1900,6 @@ async function rebuildCheckpointNow(gen) {
 }
 
 
-/** Max time a bill save waits for the server to acknowledge a write. */
-const WRITE_ACK_TIMEOUT_MS = 1500;
-/** Max time a bill save waits for this phone to confirm it stored the write. */
-const LOCAL_STORE_WAIT_MS = 10000;
-/** Same for a new expense (shown at once, so a shorter wait behind the spinner). */
-const EXPENSE_STORE_WAIT_MS = 4000;
-
-/**
- * Resolves true once a write issued before this call is in this device's local
- * cache, false if the device refused it (e.g. storage full, #153), null if that
- * is still unknown after `timeoutMs`. The SDK runs its operations in order, so a
- * cache-only read queued after the write ends only after the write was stored.
- * Reads nothing from the server.
- * @param {Promise} writePromise
- * @param {number} [timeoutMs]
- * @returns {Promise<boolean|null>}
- */
-function whenStoredLocally(writePromise, timeoutMs = LOCAL_STORE_WAIT_MS) {
-    let refused = false;
-    let timer = null;
-    const outcome = Promise.resolve(writePromise).then(() => true, () => { refused = true; return false; });
-    let barrier;
-    try {
-        barrier = Promise.resolve(getDb().collection(col('items')).doc('__localWriteBarrier').get({ source: 'cache' }));
-    } catch (e) {
-        barrier = Promise.reject(e);
-    }
-    const afterBarrier = barrier.catch(() => null).then(() => !refused);
-    const timeout = new Promise(resolve => { timer = setTimeout(() => resolve(null), timeoutMs); });
-    return Promise.race([outcome, afterBarrier, timeout]).finally(() => clearTimeout(timer));
-}
-
-/**
- * Waits for a Firestore write without blocking the UI on the server round trip.
- * With offline persistence the write is applied to the local cache and queued as
- * soon as it is issued, so this resolves when the server acknowledges it, or once
- * this device has confirmed it stored the write: offline at once, online after
- * WRITE_ACK_TIMEOUT_MS (the write keeps syncing in the background). If that is
- * not confirmed within LOCAL_STORE_WAIT_MS it resolves with stored=false, and
- * the caller must not report the write as saved. Errors before resolving reject
- * (a write the device refused is never reported as saved); errors after it are
- * logged and surfaced as a toast so a rejected write is never silent.
- * @param {Promise<void>} writePromise - Promise returned by set()/update()/add()
- * @param {string} label - Name used in logs
- * @returns {Promise<{pending: boolean, stored: boolean}>} pending=true if not yet
- *   acknowledged; stored=false if not even confirmed on this device
- */
-function settleWrite(writePromise, label = 'write') {
-    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-    return new Promise((resolve, reject) => {
-        let released = false;
-        let storedHere = false;
-        let ackWindowOver = offline;
-        let ackTimer = null;
-        const finish = (result) => {
-            if (released) return;
-            released = true;
-            clearTimeout(ackTimer);
-            resolve(result);
-        };
-        const releaseIfStored = () => {
-            if (ackWindowOver && storedHere) finish({ pending: true, stored: true });
-        };
-        writePromise.then(
-            () => finish({ pending: false, stored: true }),
-            (error) => {
-                clearTimeout(ackTimer);
-                if (!released) {
-                    released = true;
-                    reject(error);
-                    return;
-                }
-                console.error(`[${label}] write failed after it was queued:`, error);
-                // The quota banner already explains this one (#194).
-                if (isQuotaExhaustedError(error)) return;
-                const text = isStorageFullError(error)
-                    ? t(STORAGE_FULL_KEY)
-                    : t('msg.sync.save_failed_on_server', { value: error?.message || error });
-                import('../ui/ui-manager.js')
-                    .then(({ UIManager }) => UIManager.showToast(text, 'error'))
-                    .catch(() => {});
-            }
-        );
-        whenStoredLocally(writePromise, LOCAL_STORE_WAIT_MS).then(stored => {
-            if (stored) {
-                storedHere = true;
-                releaseIfStored();
-            } else if (stored === null) {
-                finish({ pending: true, stored: false });
-            }
-        });
-        if (!offline) {
-            ackTimer = setTimeout(() => {
-                ackWindowOver = true;
-                releaseIfStored();
-            }, WRITE_ACK_TIMEOUT_MS);
-        }
-    });
-}
-
 /**
  * Firebase Service object containing all database operations.
  * Provides methods for CRUD operations on all collections.
@@ -2151,7 +1953,7 @@ const FirebaseService = {
         activeCheckpoint = null;
         checkpointItemsCheck = { items: null, checkpoint: null, ok: false };
         rebuildPromise = null;
-        appSettingsPromise = null;
+        forgetAppSettings();
         rebuildRequestedAgain = false;
         rebuildAttempted = false;
         clearTimeout(leaseWaitTimer);
@@ -2191,16 +1993,6 @@ const FirebaseService = {
     },
 
     ...collectionAdminMethods,
-
-    /**
-     * Loads all purchases from Firestore, ordered by date descending.
-     * @async
-     * @returns {Promise<Array<Object>>} Array of purchase objects
-     */
-    async loadPurchases() {
-        const snapshot = await getDb().collection(col('purchases')).orderBy('date', 'desc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
 
     /**
      * See settleWrite(): resolves when a write is acknowledged, or stored on this
@@ -2253,16 +2045,6 @@ const FirebaseService = {
     },
 
     /**
-     * Loads all wholesale sales from Firestore, ordered by date descending.
-     * @async
-     * @returns {Promise<Array<Object>>} Array of sale objects
-     */
-    async loadSales() {
-        const snapshot = await getDb().collection(col('wholesaleSales')).orderBy('date', 'desc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-
-    /**
      * Saves a wholesale sale to Firestore. Creates new if no ID, updates if ID exists.
      * @async
      * @param {Object} sale - The sale to save
@@ -2302,16 +2084,6 @@ const FirebaseService = {
      */
     async saveRetailSale(sale, options) {
         return saveBill('retailSales', sale, 'saveRetailSale', options);
-    },
-
-    /**
-     * Loads all retail sales from Firestore, ordered by date descending.
-     * @async
-     * @returns {Promise<Array<Object>>} Array of retail sale objects
-     */
-    async loadRetailSales() {
-        const snapshot = await getDb().collection(col('retailSales')).orderBy('date', 'desc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     },
 
     /**
@@ -2458,16 +2230,6 @@ const FirebaseService = {
         const ref = billEditsRef(getDb().collection(col(collKey)).doc(String(docIdOf(bill))));
         const snap = await getWithRetry(ref.orderBy('n'), 'Bill edits');
         return snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
-    },
-
-    /**
-     * Loads all expenses from Firestore, ordered by date descending.
-     * @async
-     * @returns {Promise<Array<Object>>} Array of expense objects
-     */
-    async loadExpenses() {
-        const snapshot = await getDb().collection(col('expenses')).orderBy('date', 'desc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     },
 
     /**
@@ -2744,153 +2506,7 @@ const FirebaseService = {
     /** Version written as `clientVersion` on stock records (see firestore.rules). */
     CLIENT_VERSION,
 
-    /**
-     * Startup check against settings/app.minClientVersion. Resolves false when
-     * this app is older than the minimum (caller shows an update message).
-     * Unreadable/missing settings never block.
-     * @returns {Promise<boolean>}
-     */
-    async isClientVersionSupported() {
-        try {
-            const data = await this.loadAppSettings();
-            const min = data ? Number(data.minClientVersion) : NaN;
-            return !(Number.isFinite(min) && min > CLIENT_VERSION);
-        } catch (e) {
-            console.warn('Reading minClientVersion failed:', e?.code || e);
-            return true;
-        }
-    },
-
-    /**
-     * Reads the shared settings/app document once per app open (the version check
-     * and the shared labour settings use the same read). Resolves null when the
-     * document does not exist; rejects when it cannot be read.
-     * @param {{refresh?: boolean}} [options]
-     * @returns {Promise<Object|null>}
-     */
-    loadAppSettings({ refresh = false } = {}) {
-        if (!appSettingsPromise || refresh) {
-            appSettingsPromise = getWithRetry(getDb().collection(col('settings')).doc('app'), 'App settings', { attempts: 2, timeoutMs: 8000 })
-                .then(snap => (snap.exists ? snap.data() || {} : null))
-                .then(data => {
-                    // The owner's kill switch for optional background reads (#159)
-                    pauseBackgroundReads(data?.pauseBackgroundReads === true);
-                    return data;
-                });
-            appSettingsPromise.catch(() => { appSettingsPromise = null; });
-        }
-        return appSettingsPromise;
-    },
-
-    /**
-     * Saves the labour rate, heavy-packet weight and labour package weight for every device (#20).
-     * settings/app is owner-only (firestore.rules); merge keeps minClientVersion etc.
-     * @param {{laborRate: number, heavyWeightThreshold: number, labourPackageKg?: number}} labour
-     * @returns {Promise<void>}
-     */
-    async saveSharedLabourSettings({ laborRate, heavyWeightThreshold, labourPackageKg }, opts) {
-        const fields = {
-            laborRate,
-            heavyWeightThreshold,
-            ...(labourPackageKg !== undefined ? { labourPackageKg } : {}),
-            labourUpdatedAt: Date.now(),
-            labourUpdatedBy: AppState.currentUser?.uid || 'unknown'
-        };
-        await saveSettingsSection(fields, 'labourUpdatedAt', opts);
-    },
-
-    /**
-     * Saves the bill-check limits for every device (#37). settings/app is owner-only.
-     * @param {Object} thresholds - normalized (utils/bill-checks.js normalizeThresholds)
-     * @returns {Promise<void>}
-     */
-    async saveSharedCheckThresholds(thresholds, opts) {
-        const fields = {
-            checkThresholds: { ...thresholds },
-            checksUpdatedAt: Date.now(),
-            checksUpdatedBy: AppState.currentUser?.uid || 'unknown'
-        };
-        await saveSettingsSection(fields, 'checksUpdatedAt', opts);
-    },
-
-    /**
-     * Business name and details printed on bills (Settings › Aadhat). settings/app:
-     * owner, or a manager allowed in Roles & access (firestore.rules).
-     * @param {{businessName: string, businessDetails: string}} details
-     * @returns {Promise<void>}
-     */
-    async saveBusinessDetails({ businessName, businessDetails }, opts) {
-        const fields = {
-            businessName: String(businessName || ''),
-            businessDetails: String(businessDetails || ''),
-            businessUpdatedAt: Date.now(),
-            businessUpdatedBy: AppState.currentUser?.uid || 'unknown'
-        };
-        await saveSettingsSection(fields, 'businessUpdatedAt', opts);
-    },
-
-    /**
-     * What the printed bill shows, for every phone (#107): settings/app.receipt
-     * { footer, qr, lang, density, logo }. Owner, or a manager allowed in Roles & access;
-     * firestore.rules check the shape and the logo's size. A transaction (needs the
-     * internet) applies only the changed fields onto the receipt saved now, so a phone
-     * with an old copy never overwrites what another phone changed since.
-     * @param {Object} patch - the fields this phone changed
-     * @param {{base?: Object, onlyIfMissing?: boolean}} [options] - base: the whole receipt when none
-     *   is saved yet; onlyIfMissing: change nothing when one is already saved
-     * @returns {Promise<{receipt: Object, applied: boolean}>} the receipt saved after this call
-     */
-    async saveReceiptSettings(patch, { base = null, onlyIfMissing = false } = {}) {
-        const ref = getDb().collection(col('settings')).doc('app');
-        const result = await getDb().runTransaction(async tx => {
-            const snap = await tx.get(ref);
-            const current = normalizeSharedReceipt(snap.exists ? snap.data()?.receipt : null);
-            if (current && onlyIfMissing) return { receipt: current, applied: false };
-            const receipt = normalizeSharedReceipt({ ...(current || base || {}), ...patch });
-            const fields = {
-                receipt,
-                receiptUpdatedAt: Date.now(),
-                receiptUpdatedBy: AppState.currentUser?.uid || 'unknown'
-            };
-            if (snap.exists) tx.update(ref, fields);
-            else tx.set(ref, fields);
-            return { receipt, applied: true };
-        });
-        if (appSettingsPromise) {
-            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), receipt: result.receipt }), () => ({ receipt: result.receipt }));
-        }
-        return result;
-    },
-
-    /**
-     * Test in Production settings for every device (#217): rollback policies.
-     * settings/app is owner-only.
-     * @param {Object} policies - normalized (tip/tip.js normalizePolicies)
-     * @returns {Promise<void>}
-     */
-    async saveTipPolicies(policies, opts) {
-        const fields = {
-            tipPolicies: { ...policies },
-            tipUpdatedAt: Date.now(),
-            tipUpdatedBy: AppState.currentUser?.uid || 'unknown'
-        };
-        await saveSettingsSection(fields, 'tipUpdatedAt', opts);
-    },
-
-    /**
-     * Roles & access for every device (#84). settings/app is owner-only;
-     * firestore.rules read roleAccess.<role>.editDays for bill edits.
-     * @param {{manager: Object, staff: Object}} roleAccess - normalized (utils/role-access.js)
-     * @returns {Promise<void>}
-     */
-    async saveRoleAccess(roleAccess, opts) {
-        const fields = {
-            roleAccess: { manager: { ...roleAccess.manager }, staff: { ...roleAccess.staff } },
-            roleAccessUpdatedAt: Date.now(),
-            roleAccessUpdatedBy: AppState.currentUser?.uid || 'unknown'
-        };
-        await saveSettingsSection(fields, 'roleAccessUpdatedAt', opts);
-    },
+    ...settingsMethods,
 
     ...tipMethods,
 
@@ -2932,16 +2548,6 @@ const FirebaseService = {
     },
 
     /**
-     * Loads all stock adjustments from Firestore, ordered by date descending.
-     * @async
-     * @returns {Promise<Array<Object>>} Array of stock adjustment objects
-     */
-    async loadStockAdjustments() {
-        const snapshot = await getDb().collection(col('stockAdjustments')).orderBy('date', 'desc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-
-    /**
      * Saves a stock adjustment to Firestore.
      * @async
      * @param {Object} adjustment - The stock adjustment to save
@@ -2979,44 +2585,6 @@ const FirebaseService = {
         noteStockWrite('stockAdjustments', null, adjustment);
         noteMonthWrite('stockAdjustments', null, adjustment);
         return started;
-    },
-
-    /**
-     * Loads all withdrawals from Firestore, ordered by date descending.
-     * Converts Firestore Timestamp to JavaScript Date objects.
-     * @async
-     * @returns {Promise<Array<Object>>} Array of withdrawal objects
-     */
-    async loadWithdrawals() {
-        try {
-            const snapshot = await getDb().collection(col('withdrawals')).orderBy('date', 'desc').get();
-            return snapshot.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    id: doc.id,
-                    ...data,
-                    date: parseAnyBillDate(data.date) || new Date(NaN)
-                };
-            });
-        } catch (error) {
-            console.error('Error loading withdrawals:', error);
-            return [];
-        }
-    },
-
-    /**
-     * Saves a withdrawal to Firestore.
-     * @async
-     * @param {Object} withdrawal - The withdrawal to save
-     * @param {number} withdrawal.amount - Withdrawal amount
-     * @param {string} withdrawal.date - Withdrawal date
-     * @param {string} [withdrawal.description] - Description of withdrawal
-     * @returns {Promise<Object>} The saved withdrawal with ID
-     */
-    async saveWithdrawal(withdrawal) {
-        const { record, committed } = this.startSaveWithdrawal(withdrawal);
-        await committed;
-        return record;
     },
 
     /**
@@ -3587,46 +3155,6 @@ const FirebaseService = {
     },
 
     ...notificationMethods,
-
-    /**
-     * Loads withdrawals from Firestore ordered by timestamp (secondary method).
-     * @async
-     * @returns {Promise<Array<Object>>} Array of withdrawal objects
-     */
-    async loadWithdrawalsByTimestamp() {
-        const snapshot = await getDb().collection(col('withdrawals')).orderBy('timestamp', 'desc').get();
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    },
-
-    /**
-     * Saves a withdrawal with additional tracking information.
-     * Adds withdrawnBy and withdrawnByName fields for audit trail.
-     * @async
-     * @param {Object} withdrawal - The withdrawal to save
-     * @param {number} withdrawal.amount - Withdrawal amount
-     * @param {string} withdrawal.date - Withdrawal date
-     * @returns {Promise<Object>} The saved withdrawal with ID and tracking info
-     */
-    async saveWithdrawalWithTracking(withdrawal) {
-        if (!withdrawal.userId && AppState.currentUser) {
-            withdrawal.userId = AppState.currentUser.uid;
-        }
-        if (!withdrawal.withdrawnBy && AppState.currentUser) {
-            withdrawal.withdrawnBy = AppState.currentUser.uid;
-        }
-        if (!withdrawal.withdrawnByName && AppState.userName) {
-            withdrawal.withdrawnByName = AppState.userName;
-        }
-        
-        // The window queries filter on `timestamp`; `date` is a user-picked day, so use the
-        // later of creation time and that day (a backdated withdrawal is then an extra older record).
-        if (typeof withdrawal.timestamp !== 'number') {
-            withdrawal.timestamp = Math.max(Date.now(), parseAnyBillDate(withdrawal.date)?.getTime() || 0);
-        }
-        const docRef = await getDb().collection(col('withdrawals')).add(withdrawal);
-        noteMonthWrite('withdrawals', null, withdrawal);
-        return { id: docRef.id, ...withdrawal };
-    },
 
     ...cashDayMethods,
 
