@@ -351,8 +351,9 @@ describe('Money page (all time) == oracle', () => {
         setInsightsContext({ preset: 'all' });
         document.body.innerHTML = TEMPLATE;
         document.getElementById('money').classList.add('active');
-        Object.assign(MoneyManager, { snapshots: {}, snapshotsLoaded: true, sessionCache: new Map(), drawerCache: null });
+        Object.assign(MoneyManager, { snapshots: {}, snapshotsLoaded: true, sessionCache: new Map(), drawerCache: null, sharedAccounts: { state: 'idle', list: null, map: null } });
         jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        jest.spyOn(FirebaseService, 'loadWorthAccounts').mockResolvedValue({});
     });
 
     test('Profit: M1, M2, M3, M6, M16', () => {
@@ -385,11 +386,17 @@ describe('Money page (all time) == oracle', () => {
         expect(Object.fromEntries(terms.filter(([id]) => ['S4', 'O3', 'O4'].includes(id)).map(([id, v]) => [id, Math.abs(v)])))
             .toEqual({ S4: rupee(O.stockReplay(data).closing), O3: rupee(dues.payable), O4: rupee(dues.receivable) });
     });
-    test('Worth: other accounts (M15 term) = assets − liabilities', () => {
-        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 2500.4, type: 'asset' }, { name: 'Loan', balance: 1000, type: 'liability' }]));
+    test('Worth: other accounts (M15 term) = the shared assets − liabilities (#74), and M15 uses them', async () => {
+        const shared = { a1: { name: 'Bank', balance: 2500, type: 'asset' }, a2: { name: 'Loan', balance: 1000, type: 'liability' }, a3: { name: 'FD', balance: 700.6, type: 'asset' } };
+        FirebaseService.loadWorthAccounts.mockResolvedValue(shared);
+        // the accounts saved on this phone before #74 no longer count
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Phone', balance: 99999, type: 'asset' }]));
         MoneyManager.init('worth');
+        for (let i = 0; i < 6; i += 1) await Promise.resolve();
         const row = [...document.querySelectorAll('#moneyWorthTerms .ins-row')].find(el => el.querySelector('[data-input]'));
-        expect(Number(row.querySelector('[data-input]').textContent.replace(/[^\d.-]/g, ''))).toBe(rupee(2500.4 - 1000));
+        expect(Number(row.querySelector('[data-input]').textContent.replace(/[^\d.-]/g, ''))).toBe(O.otherAccounts(shared));
+        expect(O.otherAccounts(shared)).toBe(2201);
+        expect(shown('moneyWorthValue')).toBe(rupee(O.netWorth(data, { accounts: O.otherAccounts(shared) })));
         localStorage.removeItem('financeCustomAccounts');
     });
 });

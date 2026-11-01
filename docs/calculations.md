@@ -381,7 +381,7 @@ and close on the figure of the home page:
 | M12 | Money in | BILL-AT-SAVE of the period's sales + DUE-PAYs received; split cash / online. |
 | M13 | Money out | BILL-AT-SAVE of the period's purchases + DUE-PAYs paid + all expenses; split cash / online, expenses by their mode (EXP-MODE; no mode = cash). |
 | M14 | Net money in / out | M12 − M13. Same as F7. |
-| M15 | Net worth | S4 + O4 + other accounts (owner-entered) + last counted drawer cash − O3 (owner decision #39, 2026-10-26; `netWorthTerms`). Each due counted once. |
+| M15 | Net worth | S4 + O4 + other accounts + last counted drawer cash − O3 (owner decision #39, 2026-10-26; `netWorthTerms`). Each due counted once. Other accounts (#74): the bank, savings and other accounts in the shared `settings/accounts` doc, the same on every phone (owner and managers with Money enter them), each balance in whole rupees, "I owe this" ones negative (`accountsList` → `accountsTotal`). Until that doc is loaded the term and M15 show "—". Bank balances are private to the owner and managers with Money on (rules and app): a member's phone never reads them, and a member's M15 leaves the accounts term out (S4 + O4 + C9 − O3), with the note "Bank balances: owner and managers only". Accounts saved on one phone before #74 (the owner's or a manager's) no longer count; while the shared list is empty the owner can move them in with one tap (same name in another case = one account with their total; any that can't be moved stay on that phone, and the owner is told). |
 | M16 | Purchases | Σ BILL-TOTAL (after labour) of purchases with BILL-TIME in the period; BILL-COUNT; line value before labour and M7 as its two parts. |
 | M17 | Stock movement check | Opening stock value + purchases at their saved line amounts (AVG-COST; the screen says "at line rate") − M2 ± adjustments = closing (as F8). |
 | M18 | Labour to pay | T-LAB-2 for each day of the period (purchase bills by BILL-TIME, local day), each day rounded up on its own, summed (`labourToPayByDay()`). Money › Spending shows it under M7 with T-LAB-3's more / less / matches. |
@@ -404,7 +404,7 @@ Which function computes each of these (all pure, in `utils/`; the pages only ren
 |---|---|
 | `business-metrics.moneySummary` | M1–M10, M12–M14, M16, M17 |
 | `business-metrics.netMoneyByDay` | M14 per local day (Money › Cash chart; the days add up to M14) |
-| `business-metrics.netWorth`, `accountsTotal` | M15 (and its "other accounts" term) |
+| `business-metrics.netWorth`, `accountsTotal`, `accountsList`, `accountEntry`, `accountsFromPhone` | M15 (and its "other accounts" term, #74) |
 | `labour.labourSummary`, `labourToPayByDay`, `periodLabourGap` | M7, M18, T-LAB-3 for the period |
 | `business-metrics.itemSummary`, `sharePct` | I1, I2 (and the retail / wholesale % of M1) |
 | `month-snapshots.snapshotItemSales` | I1 "vs last year" from month snapshots (whole months) |

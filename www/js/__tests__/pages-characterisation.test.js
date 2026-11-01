@@ -130,6 +130,8 @@ beforeEach(() => {
     MoneyManager.drawerCache = null;
     MoneyManager.summaryCache = { sig: null, map: new Map(), computed: 0 };
     MoneyManager.section = 'profit';
+    MoneyManager.sharedAccounts = { state: 'idle', list: null, map: null };
+    jest.spyOn(FirebaseService, 'loadWorthAccounts').mockResolvedValue({});
 });
 afterEach(() => {
     jest.useRealTimers();
@@ -348,9 +350,10 @@ function moneyPage(name, { loadedFrom = 0 } = {}) {
 describe('Money screen, pinned (M1–M18, net worth, day chart)', () => {
     test.each(Object.keys(NOWS))('%s: every section, full history', async (name) => {
         const { asked } = moneyPage(name);
-        localStorage.setItem('financeCustomAccounts', JSON.stringify([
-            { name: 'Bank', balance: 12345.678, type: 'asset' }, { name: 'Loan', balance: 5000.5, type: 'liability' }, { name: 'Odd', balance: 'x', type: 'asset' }
-        ]));
+        // the shared accounts (#74, settings/accounts)
+        FirebaseService.loadWorthAccounts.mockResolvedValue({
+            a1: { name: 'Bank', balance: 12345.678, type: 'asset' }, a2: { name: 'Loan', balance: 5000.5, type: 'liability' }, a3: { name: 'Odd', balance: 'x', type: 'asset' }
+        });
         const got = {};
         MoneyManager.init('profit');
         for (const section of ['profit', 'cash', 'spending', 'worth']) {

@@ -920,7 +920,8 @@ service cloud.firestore {
           : base == 'withdrawals' ? validLedgerCreate() && moneyPageOn(u)
           : base == 'stockAdjustments' ? isManagerIn(u) && validAdjustmentCreate()
           : base == 'cashManagement' ? validCashCreate(docId)
-          // legacy cashSessions (backup only) and settings: owner only (#64)
+          // legacy cashSessions (backup only) and settings: owner only (#64), but settings/accounts (#74)
+          : base == 'settings' && docId == 'accounts' ? worthAccountsWriteOk(u)
           : base in ['cashSessions', 'settings'] ? false
           : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.keys())
           : base == 'counters' ? validCounterCreate()
@@ -940,7 +941,8 @@ service cloud.firestore {
     function canUpdateRecord(base, u, docId) {
       // settings first, on its own: the settings/app receipt check uses most of the 1,000-expression budget.
       // settings/app is guarded in the match (appSettingsGuard / managerShopSettingsOk); other docs owner only
-      return base == 'settings' ? settingsReceiptOk() && settingsStampsOk(docId) && (docId == 'app' || isOwnerIn(u))
+      return base == 'settings' ? settingsReceiptOk() && settingsStampsOk(docId)
+          && (docId == 'app' || isOwnerIn(u) || (docId == 'accounts' && worthAccountsWriteOk(u)))
         : base in billCollections() ? canUpdateBill(u, base, docId)
         : base in ['cashManagement', 'cashSessions'] && !cashStaysClosed() ? false
         : base == 'autoSaves' ? ownAutoSaveWrite(docId)
@@ -1095,7 +1097,8 @@ service cloud.firestore {
           : base == 'autoSaves' ? docId == request.auth.uid
           // settings/team: names and roles of the team (owner-written) for managers' App health
           // and notification fan-out, so they never read other profiles (#87)
-          : base == 'settings' ? single && (docId == 'app' || (docId == 'team' && isManagerIn(u)))
+          : base == 'settings' ? single && (docId == 'app' || (docId == 'team' && isManagerIn(u))
+              || (docId == 'accounts' && isManagerIn(u) && moneyPageOn(u)))
           : base == 'withdrawals' ? roleSeesMoneyPages(u)
           : base == 'personalExpenses' ? personalOn(u)
           : base == 'cashSessions' ? isManagerIn(u)
@@ -1125,6 +1128,35 @@ service cloud.firestore {
       let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
       let r = access is map ? access.get(role, {}) : {};
       return (r is map ? r : {}).get('finance', role == 'manager') == true;
+    }
+
+    // Money › Worth accounts (settings/accounts, #74): one doc shared by every phone,
+    // { accounts: { <id>: { name, balance, type } }, updatedAt, updatedBy, changedId }; read by the owner and managers with Money on
+    // (canReadRecord). The owner writes anything (moving one phone's accounts in one write);
+    // a manager with Money on adds, changes or removes one account per write (named in changedId),
+    // in whole rupees.
+    function worthAccountOk(a) {
+      return a is map
+        && a.keys().hasOnly(['name', 'balance', 'type']) && a.keys().hasAll(['name', 'balance', 'type'])
+        && a.name is string && a.name.size() > 0 && a.name.size() <= 40
+        && a.balance is int && a.balance >= 0 && a.balance <= 10000000000
+        && a.type in ['asset', 'liability'];
+    }
+
+    function worthAccountsWriteOk(usersCol) {
+      let d = request.resource.data;
+      let after = d.get('accounts', {});
+      let before = resource == null ? {} : resource.data.get('accounts', {});
+      let id = d.get('changedId', '');
+      return isManagerIn(usersCol) && moneyPageOn(usersCol)
+        && d.keys().hasOnly(['accounts', 'updatedAt', 'updatedBy', 'changedId'])
+        && d.get('updatedBy', null) == request.auth.uid
+        && d.get('updatedAt', null) == request.time
+        && id is string && id.size() > 0
+        && after is map && before is map
+        && after.diff(before).affectedKeys().hasOnly([id])
+        && after.size() <= 30
+        && (!(id in after) || worthAccountOk(after[id]));
     }
 
     // --- stock checkpoint (stockCheckpoints/current) ---
