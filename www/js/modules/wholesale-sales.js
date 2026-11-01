@@ -715,6 +715,11 @@ export class WholesaleSalesManager {
         if (cleared) this.renderSalesHistory();
     }
 
+    /** One payment from a party spread over their bills, oldest first (#152). */
+    static receiveFromParty(name) {
+        return OutstandingManager.receiveFromParty(normalizePartyName(name), 'wholesale');
+    }
+
     /** "Complete all due" is for the owner and managers (#150, Q36). */
     static canCompleteAllDue() {
         return AppState.userRole === 'owner' || AppState.userRole === 'manager';
@@ -880,7 +885,8 @@ export class WholesaleSalesManager {
             <div class="party-filter-note">
                 <span>${L('ui.outstanding.showing_only')} <strong>${Helpers.escapeHtml(party.name)}</strong></span>
                 <button type="button" class="aging-btn" onclick="window.app.wholesaleSales.clearOutstandingParty()">${L('ui.outstanding.show_all')}</button>
-                ${this.canCompleteAllDue() ? `<button type="button" class="aging-btn" data-complete-all onclick="window.app.wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(party.name)}')">${L('ui.wholesale.complete_all_due')}</button>` : ''}
+                ${OutstandingManager.canReceiveFromParty() ? `<button type="button" class="aging-btn" data-party-pay onclick="window.app.wholesaleSales.receiveFromParty('${Helpers.escapeJsAttr(party.name)}')">${L('ui.outstanding.party_pay_receive')}</button>` : ''}
+                            ${this.canCompleteAllDue() ? `<button type="button" class="aging-btn" data-complete-all onclick="window.app.wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(party.name)}')">${L('ui.wholesale.complete_all_due')}</button>` : ''}
             </div>` : '';
 
         if (outstandingSales.length === 0) {

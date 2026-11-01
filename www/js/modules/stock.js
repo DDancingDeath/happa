@@ -17,8 +17,8 @@ import { parseAnyBillDate } from '../utils/dates.js';
 import { stockRows, itemValue, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
-import { planStockAdjustment, adjustReasonText } from '../utils/stock-adjust.js';
-import { approxStockNote } from '../utils/stock-check.js';
+import { planStockAdjustment, adjustReasonText, canReverseAdjustment, reversalPlan, stockCountPlan, adjustmentDelta, lastPurchaseRate, restockCost } from '../utils/stock-adjust.js';
+import { approxStockNote, lowStockItems, lowStockLevel, stockedItemKeys, DEFAULT_LOW_STOCK_KG } from '../utils/stock-check.js';
 import { isArchivedItem } from '../utils/item-catalog.js';
 import { evaluateStockAdjustment, toFlags } from '../utils/bill-checks.js';
 import { findDeadStock, daysSinceLabel, localDaysBetween, DEAD_STOCK_DAY_OPTIONS, DEFAULT_DEAD_STOCK_DAYS } from '../utils/dead-stock.js';
@@ -133,6 +133,8 @@ export class StockManager {
 
         const approxNote = stockApproxNoteHtml(AppState.stockApprox);
         if (approxNote) container.insertAdjacentHTML('beforeend', approxNote);
+        container.insertAdjacentHTML('beforeend', this.lowStockHtml(stock, isStaff));
+        const canSetAlerts = this.canManageStock();
         
         stockWithDetails.forEach(item => {
             const displayName = (AppState.settings.showHindi && item.hindiName) ? item.hindiName : item.name;
@@ -172,13 +174,19 @@ export class StockManager {
             const quantityDisplay = showLimitedQty ? tx('ui.stock.available') : `${stockKg(item.quantity)} kg`;
             const valueDisplay = showLimitedQty ? '' : `<div data-perm="stockValue" style="color: #666; font-size: 12px; margin-top: 4px;">≈ ${formatRupees(itemValue(item))}</div>`;
             
+            const catalogueItem = AppState.items.find(i => i.id === item.itemId);
+            const level = lowStockLevel(catalogueItem);
+            const alertLine = canSetAlerts && catalogueItem ? `
+                        <button type="button" class="stock-alert-link" onclick="window.app.stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
+                            ${level > 0 ? tx('ui.stock.alert_below', { level: stockKg(level) }) : tx('ui.stock.alert_off')} ✎
+                        </button>` : '';
             div.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <div style="font-weight: 600; font-size: 15px;">${Helpers.escapeHtml(displayName)}</div>
                         <div data-perm="profit" style="color: #666; font-size: 13px; margin-top: 4px;">
                             ${tx('ui.stock.rate_per_kg', { rate: item.rate ? item.rate.toFixed(2) : '0.00' })}
-                        </div>
+                        </div>${alertLine}
                     </div>
                     <div style="text-align: right;">
                         <div style="font-size: 18px; font-weight: 700; color: #28a745;">
@@ -194,6 +202,182 @@ export class StockManager {
         } catch (error) {
             console.error('Error loading stock:', error);
             container.innerHTML = `<p style="text-align: center; color: #dc3545; margin-top: 40px;">${tx('ui.stock.load_failed')}</p>`;
+        }
+    }
+
+    /** Owners and managers adjust stock and set low-stock levels (firestore.rules: items and stockAdjustments). */
+    static canManageStock() {
+        return ['owner', 'manager'].includes(AppState.userRole);
+    }
+
+    /**
+     * "Low stock (N)" card at the top of Current stock (#146, S-LOW): items below
+     * their own level (default 10 kg), lowest first.
+     * @param {Object} stock AppState.stock
+     * @param {boolean} isStaff members see "Available" above 100 kg, as in the list
+     * @returns {string} HTML ('' when nothing is low)
+     */
+    static lowStockHtml(stock, isStaff) {
+        const stocked = stockedItemKeys({ purchases: AppState.purchaseHistory, stockAdjustments: AppState.stockAdjustments }, AppState.items, stock);
+        const rows = lowStockItems(stock, AppState.items, stocked, { lang: AppState.settings?.showHindi ? 'hi' : 'en' });
+        if (!rows.length) return '';
+        const lines = rows.map(r => `<li><strong>${Helpers.escapeHtml(r.name)}</strong> ${isStaff && r.quantity > 100 ? tx('ui.stock.available')
+            : tx('ui.stock.low_row', { qty: stockKg(r.quantity), level: stockKg(r.level) })}</li>`).join('');
+        return `<div class="stock-low-card" role="status"><div class="stock-low-card__title">⚠ ${tx('ui.stock.low_title', { n: rows.length })}</div><ul>${lines}</ul></div>`;
+    }
+
+    /**
+     * Owner/manager: the low-stock level of one item (#146). Blank = the default
+     * level, 0 = never alert. Needs the internet (an item write).
+     * @param {string} itemId
+     */
+    static async editLowStock(itemId) {
+        const item = AppState.items.find(i => i.id === itemId);
+        if (!item || !this.canManageStock()) return;
+        const name = (AppState.settings?.showHindi && item.hindiName) ? item.hindiName : item.name;
+        const own = typeof item.lowStockKg === 'number' ? item.lowStockKg : '';
+        const html = `<div class="reason-dialog">
+            <label class="reason-dialog__label" for="lowStockInput">${tx('ui.stock.set_alert_label', { def: DEFAULT_LOW_STOCK_KG })}</label>
+            <input type="number" inputmode="decimal" min="0" id="lowStockInput" class="reason-dialog__input" value="${Helpers.escapeHtml(own)}">
+        </div>`;
+        const ok = await UIManager.showModalWithHtml(html, t('ui.stock.set_alert_title', { item: name }), true);
+        if (!ok) return;
+        const raw = String(document.getElementById('lowStockInput')?.value ?? '').trim();
+        const kg = raw === '' ? null : Number(raw);
+        if (kg !== null && !(Number.isFinite(kg) && kg >= 0)) {
+            UIManager.showToast(t('msg.stock.alert_invalid'));
+            return;
+        }
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.stock.needs_internet'));
+            return;
+        }
+        try {
+            await FirebaseService.setItemLowStock(itemId, kg);
+            const current = AppState.items.find(i => i.id === itemId);
+            if (current) {
+                if (kg === null) delete current.lowStockKg;
+                else current.lowStockKg = kg;
+            }
+            UIManager.showToast(t('msg.stock.alert_saved'));
+            this.renderStock();
+        } catch (error) {
+            console.error('Low-stock level not saved:', error);
+            UIManager.showToast(t('msg.stock.alert_failed'));
+        }
+    }
+
+    /**
+     * Reverse on an adjustment row (#146, owner/manager): saves the opposite
+     * adjustment, linked by `reversesId`; the original is never changed or deleted.
+     * @param {string} adjustmentId
+     */
+    static async reverseAdjustment(adjustmentId) {
+        if (Helpers.isBusy('stock-adjust') || !this.canManageStock()) return;
+        if (AppState.stockReady === false) {
+            UIManager.showToast(t('msg.wholesale.stock_still_updating_try_again'));
+            return;
+        }
+        const adjustments = AppState.stockAdjustments || [];
+        const adj = adjustments.find(a => String(a.id) === String(adjustmentId));
+        if (!adj || !canReverseAdjustment(adj, adjustments)) {
+            UIManager.showToast(t('msg.stock.cannot_reverse'));
+            return;
+        }
+        const item = AppState.items.find(i => i.id === adj.itemId || i.name === adj.itemName);
+        if (!item) {
+            UIManager.showToast(t('msg.common.item_not_found'));
+            return;
+        }
+        const plan = reversalPlan(adj, AppState.stock[item.id]?.quantity || 0);
+        if (!plan.quantity) {
+            UIManager.showToast(t('msg.stock.no_stock_to_remove'));
+            return;
+        }
+        const name = (AppState.settings?.showHindi && item.hindiName) ? item.hindiName : item.name;
+        const full = Math.abs(adjustmentDelta(adj));
+        const message = [t('msg.stock.reverse_confirm', { item: name, from: stockKg(plan.previousStock), to: stockKg(plan.newStock) }),
+            plan.capped ? t('msg.stock.reverse_capped', { qty: stockKg(plan.quantity), full: stockKg(full) }) : ''].filter(Boolean).join(' ');
+        const ok = await UIManager.showModal(message, t('ui.stock.reverse_title'), true);
+        if (!ok) return;
+        // Kg put back keep a cost (S2), also after a mistaken "remove everything" left it at 0
+        const rate = plan.adjustType === 'add' ? this.restockRate(item, adj.rate) : 0;
+        const saved = await Helpers.runExclusive('stock-adjust', '[data-stock-adjust]', () => {
+            // Reversed meanwhile (another phone): nothing to do
+            if (!canReverseAdjustment(adj, AppState.stockAdjustments || [])) {
+                UIManager.showToast(t('msg.stock.cannot_reverse'));
+                return false;
+            }
+            return this._saveAdjustment(item,
+                { quantity: plan.quantity, rawQuantity: full, newStock: plan.newStock, reason: t('ui.stock.reason_reverse') },
+                plan.previousStock, { adjustType: plan.adjustType, rate, reasonCode: 'reverse', reversesId: String(adj.id) });
+        });
+        if (saved) await this.refreshAfterAdjustment();
+    }
+
+    /** @private Cost per kg for kg put back or counted up from nothing (restockCost). */
+    static restockRate(item, ownRate = 0) {
+        return restockCost({
+            ownRate,
+            stockRate: AppState.stock[item.id]?.rate,
+            lastPurchaseRate: lastPurchaseRate(item, AppState.purchaseHistory),
+            catalogueRate: (item.rates || [])[0]
+        });
+    }
+
+    /**
+     * Stock count (#146, owner/manager): every item with its stock now and a box for
+     * the counted kg; each item whose count differs gets a "set" adjustment with the
+     * reason Physical count. Blank boxes change nothing.
+     */
+    static async openStockCount() {
+        if (Helpers.isBusy('stock-adjust') || !this.canManageStock()) return;
+        if (AppState.stockReady === false) {
+            UIManager.showToast(t('msg.wholesale.stock_still_updating_try_again'));
+            return;
+        }
+        const show = (i) => (AppState.settings?.showHindi && i.hindiName) ? i.hindiName : i.name;
+        const items = [...AppState.items].filter(i => i && i.id && !i.archived).sort((a, b) => String(show(a)).localeCompare(String(show(b))));
+        const rows = items.map(i => `<div class="stock-count-row">
+                <label for="count_${Helpers.escapeHtml(i.id)}">${Helpers.escapeHtml(show(i))}
+                    <span class="stock-count-row__now">${tx('ui.stock.count_now', { qty: stockKg(AppState.stock[i.id]?.quantity) })}</span></label>
+                <input type="number" inputmode="decimal" min="0" id="count_${Helpers.escapeHtml(i.id)}" data-count-item="${Helpers.escapeHtml(i.id)}" placeholder="${tx('ui.stock.counted_kg')}">
+            </div>`).join('');
+        const html = `<div class="stock-count"><p class="reason-dialog__explain">${tx('ui.stock.count_explain')}</p>${rows}</div>`;
+        const ok = await UIManager.showModalWithHtml(html, t('ui.stock.count_title'), true);
+        if (!ok) return;
+        const counted = [...document.querySelectorAll('[data-count-item]')].map(input => ({
+            itemId: input.dataset.countItem,
+            counted: input.value.trim(),
+            current: AppState.stock[input.dataset.countItem]?.quantity || 0
+        }));
+        const { changes, invalid } = stockCountPlan(counted);
+        if (invalid.length) {
+            UIManager.showToast(t('msg.stock.count_invalid'));
+            return;
+        }
+        if (!changes.length) {
+            UIManager.showToast(t('msg.stock.count_none'));
+            return;
+        }
+        const sure = await UIManager.showModal(t('msg.stock.count_confirm', { n: changes.length }), t('ui.stock.count_title'), true);
+        if (!sure) return;
+        const saved = await Helpers.runExclusive('stock-adjust', '[data-stock-adjust]', () => {
+            let n = 0;
+            changes.forEach(c => {
+                const item = AppState.items.find(i => i.id === c.itemId);
+                // Counted up from nothing: the kg need a cost; otherwise the replay keeps the average cost
+                const rate = item && c.previousStock <= 0 && c.newStock > 0 ? this.restockRate(item) : 0;
+                const ok1 = item && this._saveAdjustment(item,
+                    { quantity: c.newStock, rawQuantity: c.newStock, newStock: c.newStock, reason: t('ui.stock.reason_count') },
+                    c.previousStock, { adjustType: 'set', rate, reasonCode: 'count', quiet: true });
+                if (ok1) n++;
+            });
+            return n;
+        });
+        if (saved) {
+            UIManager.showToast(t('msg.stock.count_saved', { n: saved }));
+            await this.refreshAfterAdjustment();
         }
     }
 
@@ -561,7 +745,7 @@ export class StockManager {
         if (saved) await this.refreshAfterAdjustment();
     }
 
-    static _saveAdjustment(item, plan, currentStock, { adjustType, rate, reasonCode }) {
+    static _saveAdjustment(item, plan, currentStock, { adjustType, rate, reasonCode, reversesId, quiet = false }) {
         const itemName = item.name;
         const newStock = plan.newStock;
         const reason = plan.reason;
@@ -582,6 +766,7 @@ export class StockManager {
             createdBy: AppState.currentUser?.uid || 'unknown',
             createdByName: AppState.userName || 'User'
         };
+        if (reversesId) adjustment.reversesId = reversesId;
         // Q17 (#37): a large adjustment is saved with a flag for review
         const adjustFlags = toFlags(evaluateStockAdjustment(newStock - currentStock, AppState.settings?.checkThresholds),
             adjustment.createdBy, adjustment.timestamp);
@@ -589,7 +774,9 @@ export class StockManager {
 
         let committed;
         try {
-            ({ committed } = FirebaseService.startSaveStockAdjustment(adjustment));
+            ({ committed } = reversesId
+                ? FirebaseService.startSaveStockAdjustment(adjustment, { id: `rev_${reversesId}` })
+                : FirebaseService.startSaveStockAdjustment(adjustment));
         } catch (error) {
             console.error("Stock adjustment error:", error);
             UIManager.showToast(t('msg.stock.failed_apply_adjustment'));
@@ -598,7 +785,8 @@ export class StockManager {
         // Saved on the phone at once (also offline); a refused write is taken out again.
         // One audit entry once the server has answered (#85)
         const auditDetails = {
-            itemId: item.id, itemName, adjustType, from: currentStock, to: newStock, reason: String(reason || '').slice(0, 200)
+            itemId: item.id, itemName, adjustType, from: currentStock, to: newStock, reason: String(reason || '').slice(0, 200),
+            ...(reversesId ? { reversesId } : {})
         };
         committed.then(
             () => AuditService.note(AuditService.ACTIONS.ADJUST_STOCK, { ...auditDetails, outcome: 'saved' }),
@@ -614,14 +802,17 @@ export class StockManager {
         }
         AppState.stock[item.id].quantity = newStock;
 
-        document.getElementById("adjustQuantity").value = "";
-        document.getElementById("adjustRate").value = "0";
-        document.getElementById("adjustReason").value = "";
-        const reasonSelect = document.getElementById("adjustReasonCode");
-        if (reasonSelect) reasonSelect.value = "";
+        if (quiet) return true;
+        if (!reversesId) {
+            document.getElementById("adjustQuantity").value = "";
+            document.getElementById("adjustRate").value = "0";
+            document.getElementById("adjustReason").value = "";
+            const reasonSelect = document.getElementById("adjustReasonCode");
+            if (reasonSelect) reasonSelect.value = "";
+        }
 
         const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-        UIManager.showToast(t(offline ? SAVED_ON_PHONE_KEY : 'msg.stock.stock_adjustment_applied_successfully'));
+        UIManager.showToast(t(offline ? SAVED_ON_PHONE_KEY : (reversesId ? 'msg.stock.reversed' : 'msg.stock.stock_adjustment_applied_successfully')));
         return true;
     }
 
@@ -638,6 +829,19 @@ export class StockManager {
         } catch (error) {
             console.error("Stock refresh after adjustment failed:", error);
         }
+    }
+
+    /**
+     * Reverse button / "Reversed" chip of an adjustment row (#146).
+     * @returns {string} HTML
+     */
+    static reverseControlHtml(adj, adjustments, canReverse) {
+        if (adjustments.some(a => a?.reversesId && String(a.reversesId) === String(adj.id))) {
+            return `<span class="voided-chip">${tx('ui.stock.reversed_chip')}</span>`;
+        }
+        if (!canReverse || !canReverseAdjustment(adj, adjustments)) return '';
+        if (!AppState.items.some(i => i.id === adj.itemId || i.name === adj.itemName)) return '';
+        return `<button type="button" class="filter-btn" data-stock-adjust onclick="window.app.stock.reverseAdjustment('${Helpers.escapeJsAttr(adj.id)}')">${tx('ui.stock.reverse_btn')}</button>`;
     }
 
     static async renderAdjustmentHistory() {
@@ -666,6 +870,7 @@ export class StockManager {
             }
 
             container.innerHTML = "";
+            const canReverse = this.canManageStock();
             
             adjustments.forEach(adj => {
                 const div = document.createElement("div");
@@ -702,7 +907,9 @@ export class StockManager {
                             ${Number(adj.rawQuantity) > Number(adj.quantity) ? ` ${tx('ui.stock.capped', { qty: adj.rawQuantity })}` : ''}
                         </div>
                         ${adj.reason ? `<div style="font-size: 13px; color: #666; margin-top: 4px;"><em>${Helpers.escapeHtml(adjustReasonText(adj))}</em></div>` : `<div style="font-size: 13px; color: #999; margin-top: 4px;"><em>${tx('ui.stock.no_reason')}</em></div>`}
+                        ${adj.reversesId ? `<div class="stock-adj-note">↩ ${tx('ui.stock.reverses_note')}</div>` : ''}
                     </div>
+                    ${this.reverseControlHtml(adj, adjustments, canReverse)}
                 `;
                 
                 container.appendChild(div);

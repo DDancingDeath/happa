@@ -242,17 +242,33 @@ export function stockedItemKeys(sources, items = [], stock = {}) {
     });
     return keys;
 }
+/** Low-stock level when an item has none of its own (kg; #146, Q26). */
+export const DEFAULT_LOW_STOCK_KG = 10;
+
 /**
- * Low-stock alert rows: catalogue items whose stock has been set at some
- * point and is now below `threshold` kg, named in the app language. Stock
- * buckets that match no catalogue item are left out (no raw ids on screen).
+ * An item's low-stock level (kg, S-LOW): its own `lowStockKg` (0 = never alert),
+ * else the default.
+ * @param {?Object} item
+ * @param {number} [fallback]
+ * @returns {number}
+ */
+export function lowStockLevel(item, fallback = DEFAULT_LOW_STOCK_KG) {
+    const own = item?.lowStockKg;
+    return typeof own === 'number' && Number.isFinite(own) && own >= 0 ? own : fallback;
+}
+
+/**
+ * Low-stock alert rows (S-LOW): catalogue items whose stock has been set at some
+ * point and is now below their level (lowStockLevel; `threshold` is the default
+ * level), named in the app language. Stock buckets that match no catalogue item
+ * are left out (no raw ids on screen).
  * @param {Object} stock AppState.stock ({ [key]: { quantity } })
  * @param {Array<Object>} items catalogue
  * @param {Set<string>} stocked from stockedItemKeys()
  * @param {{lang?: string, threshold?: number}} [opts]
- * @returns {Array<{key: string, name: string, quantity: number}>} lowest first
+ * @returns {Array<{key: string, name: string, quantity: number, level: number}>} lowest first
  */
-export function lowStockItems(stock, items, stocked, { lang = 'en', threshold = 10 } = {}) {
+export function lowStockItems(stock, items, stocked, { lang = 'en', threshold = DEFAULT_LOW_STOCK_KG } = {}) {
     const catalogue = Array.isArray(items) ? items : [];
     const out = [];
     Object.entries(stock || {}).forEach(([key, data]) => {
@@ -260,8 +276,9 @@ export function lowStockItems(stock, items, stocked, { lang = 'en', threshold = 
             || catalogue.find(i => normalize(i.name) === normalize(key) || normalize(i.hindiName) === normalize(key));
         if (!item) return;
         const q = Number(data?.quantity) || 0;
-        if (q >= threshold || !(stocked.has(item.id) || stocked.has(key))) return;
-        out.push({ key: item.id, name: (lang === 'hi' && item.hindiName) ? item.hindiName : item.name, quantity: q });
+        const level = lowStockLevel(item, threshold);
+        if (level <= 0 || q >= level || !(stocked.has(item.id) || stocked.has(key))) return;
+        out.push({ key: item.id, name: (lang === 'hi' && item.hindiName) ? item.hindiName : item.name, quantity: q, level });
     });
     return out.sort((a, b) => a.quantity - b.quantity || a.name.localeCompare(b.name));
 }
