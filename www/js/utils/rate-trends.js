@@ -292,6 +292,41 @@ export function rollForwardWindow(loadedFrom, now, maxMonths = 2) {
     return { fromMonth, fromWeek, fromYear };
 }
 
+/**
+ * Start (ms) of the week holding the window's first month day when the loaded
+ * history begins inside that week, so rollForwardWindow() leaves the week as
+ * stored; null when nothing is missing. A bill dated back into that week (#147:
+ * the owner may date back to the 1st of last month) would never reach the week
+ * stats: the roll-forward loads the history from here first.
+ */
+export function rollForwardWeekGap(win, loadedFrom) {
+    if (!(Number(loadedFrom) > 0) || !win?.fromMonth) return null;
+    const firstWeek = istWeekStart(istMonthStartMs(win.fromMonth));
+    if (win.fromWeek <= firstWeek) return null;
+    const start = istDayStartMs(firstWeek);
+    return start < loadedFrom ? start : null;
+}
+
+const stampMs = (v) => (typeof v?.toMillis === 'function' ? v.toMillis() : (typeof v?.seconds === 'number' ? v.seconds * 1000 : Number(v)));
+
+/** Latest time (ms) a bill was entered, reached the server (`createdAt`: saved offline), edited or voided; NaN when unknown. */
+function lastChangeMs(b) {
+    const times = [Number(b?.enteredAt), stampMs(b?.createdAt), Date.parse(b?.editedAt || ''), stampMs(b?.voidedAt)].filter(Number.isFinite);
+    return times.length ? Math.max(...times) : NaN;
+}
+
+/**
+ * True when a bill dated in [fromMs, toMs) was entered (#147: dated back), edited or voided
+ * at or after `sinceMs`, i.e. the week stats of those days may be out of date. No reads.
+ * @param {Array<Object[]>} lists loaded bills (and voided ones)
+ */
+export function billChangedSince(lists, fromMs, toMs, sinceMs) {
+    return (lists || []).some(list => (list || []).some(b => {
+        const ts = b?.timestamp;
+        return typeof ts === 'number' && ts >= fromMs && ts < toMs && lastChangeMs(b) >= sinceMs;
+    }));
+}
+
 const pickBuckets = (map, inRange, keep) => {
     const out = {};
     Object.keys(map || {}).forEach(k => { if (inRange(k) === keep) out[k] = map[k]; });

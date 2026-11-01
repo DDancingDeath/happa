@@ -49,6 +49,12 @@ setting is missing or invalid.
 - `editDays`: whole days, 0–30; 0 = never. Managers may edit any bill and void their own;
   members edit and void only their own bills. Recording a payment, clearing or writing off
   a due is **not** limited (it is bookkeeping, not an edit). The owner has no limit.
+  The same days limit how far back a new bill may be dated on its form (#147; `utils/bill-date.js`,
+  rules `billTimeOk`: `timestamp` at most `editDays` + 1 day before `enteredAt` and never after it;
+  `enteredAt` (the phone's clock) is not bounded; bills from apps without `enteredAt` are not limited; the owner back to
+  the 1st of last month, in the app only). A bill dated before today (IST) takes no cash from anyone but the
+  owner (rules `noBackdatedCash`: `timestamp` before the IST day of `enteredAt`, so a cash bill entered offline and synced after midnight is kept; for cash bills `enteredAt` must be at most 3 days old (no upper bound: a fast phone clock keeps its bills); bills without `enteredAt`, from older apps that can't date a bill back, are not checked):
+  online or due only.
   Wholesale › Outstanding **"Complete all due"** (settle every open bill of a party at once,
   #150, Q36) is shown to the owner and managers only (app); the rules check each bill's write
   like any payment (its own `payments[]` entry with `at` = now, #184), so it adds no new right.
