@@ -56,6 +56,6 @@ export const VoiceMic = {
     start(mode) {
         const engine = voiceEngine();
         if (!engine || !this.isOn()) return Promise.resolve(false);
-        return import('../modules/voice-billing.js').then(m => m.VoiceBilling.listen(mode, engine));
+        return import('../modules/voice-billing.js').then(m => m.VoiceBilling.listenOnce(mode, engine));
     }
 };

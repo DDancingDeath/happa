@@ -54,6 +54,20 @@ describe('parseVoiceLine (VB-1)', () => {
         expect(line('aloo 100 50')).toEqual({ itemIndex: 0, weight: 100, rate: 50 });
     });
 
+    test('saadhe / sava / paune change the number they come before, also before sau', () => {
+        expect(line(`साढ़े तीन सौ ${KILO} चावल 30 रुपये`)).toEqual({ itemIndex: 2, weight: 350, rate: 30 });
+        expect(line('saadhe chaar hazaar kilo 30').weight).toBe(4500);
+        expect(line('sava do kilo rice 1121 40')).toEqual({ itemIndex: 2, weight: 2.25, rate: 40 });
+        expect(line('paune do kilo aloo 40')).toEqual({ itemIndex: 0, weight: 1.75, rate: 40 });
+    });
+
+    test('grams are read as kg', () => {
+        expect(line('500 gram aloo 40 rupees')).toEqual({ itemIndex: 0, weight: 0.5, rate: 40 });
+        expect(line('चावल 250 ग्राम 40 रुपये')).toEqual({ itemIndex: 2, weight: 0.25, rate: 40 });
+        expect(line('aloo 750g 40')).toEqual({ itemIndex: 0, weight: 0.75, rate: 40 });
+        expect(line(`आलू 1 ${KILO} 500 ग्राम 40 रुपये`)).toEqual({ itemIndex: 0, weight: 1.5, rate: 40 });
+        expect(parseVoiceLine('aloo 2 kg 30 rupees 500 gram', ITEMS)).toMatchObject({ weight: 2, rate: 30, extraNumbers: true });
+    });
     test('only a weight, only a rate, or only the item leaves the rest empty', () => {
         expect(line('do kilo aloo')).toEqual({ itemIndex: 0, weight: 2, rate: null });
         expect(line('rate 30')).toEqual({ itemIndex: null, weight: null, rate: 30 });

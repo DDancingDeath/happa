@@ -53,8 +53,14 @@ const NUMBER_WORDS = (() => {
 })();
 /** 1½ and 2½ said as one word. */
 const FRACTION_WORDS = new Map([['डेढ़', 1.5], ['डेढ', 1.5], ['dedh', 1.5], ['dhai', 2.5], ['dhaai', 2.5], ['ढाई', 2.5]].map(([w, n]) => [nfc(w), n]));
-/** "saadhe das" = 10.5. */
-const HALF_MORE_WORDS = wordSet(['साढ़े', 'साढे', 'saadhe', 'sadhe', 'sade']);
+/** Before a number: "saadhe das" = 10.5, "sava do" = 2.25, "paune do" = 1.75 ("saadhe teen sau" = 350). */
+const NUMBER_MODIFIERS = new Map([
+    ['साढ़े', 0.5], ['साढे', 0.5], ['saadhe', 0.5], ['sadhe', 0.5], ['sade', 0.5],
+    ['सवा', 0.25], ['sava', 0.25], ['sawa', 0.25],
+    ['पौने', -0.25], ['paune', -0.25], ['pone', -0.25]
+].map(([w, n]) => [nfc(w), n]));
+/** Grams: "500 gram" is 0.5 kg, "1 kilo 500 gram" 1.5 kg. */
+const GRAM_UNITS = wordSet(['g', 'gm', 'gms', 'gram', 'grams', 'gramme', 'ग्राम']);
 
 const WEIGHT_UNITS = wordSet([
     'kg', 'kgs', 'kilo', 'kilos', 'kilogram', 'kilograms', 'keelo', 'kilogramme',
@@ -68,7 +74,7 @@ const PRICE_AFTER = wordSet([
 /** Words just before a number that make it the rate ("at 30", "₹30", "rate 30"). */
 const PRICE_BEFORE = wordSet(['₹', 'rs', 'at', '@', 'rate', 'bhav', 'bhaav', 'रेट', 'भाव', 'दर']);
 /** Words never taken as the start of an item name. */
-const NOT_ITEM_WORDS = wordSet([...WEIGHT_UNITS, ...PRICE_AFTER, ...PRICE_BEFORE, ...HALF_MORE_WORDS,
+const NOT_ITEM_WORDS = wordSet([...WEIGHT_UNITS, ...PRICE_AFTER, ...PRICE_BEFORE, ...NUMBER_MODIFIERS.keys(), ...GRAM_UNITS,
     'and', 'aur', 'also', 'then', 'phir', 'with', 'per', 'prati', 'wala', 'wale', 'वाला', 'वाले', 'और', 'प्रति', 'फिर']);
 
 const toAsciiDigits = (s) => s.replace(/[\u0966-\u096F]/g, (d) => String(d.charCodeAt(0) - 0x0966));
@@ -96,23 +102,23 @@ const isEnglishTens = (w, n) => Object.prototype.hasOwnProperty.call(ENGLISH_NUM
 
 /**
  * Number groups in spoken order: "do sau pachas" → 250, "twenty five" → 25,
- * "saadhe das" → 10.5, but "das tees" stays 10 and 30.
+ * "saadhe das" → 10.5, "saadhe teen sau" → 350, but "das tees" stays 10 and 30.
  * @param {string[]} tokens
  * @returns {Array<{value: number, start: number, end: number}>} end is exclusive
  */
 function numberGroups(tokens) {
     const groups = [];
     for (let i = 0; i < tokens.length; i++) {
-        let half = false;
-        let start = i;
-        if (HALF_MORE_WORDS.has(tokens[i]) && numberOf(tokens[i + 1]) !== undefined) {
-            half = true;
+        let modifier = 0;
+        const start = i;
+        if (NUMBER_MODIFIERS.has(tokens[i]) && numberOf(tokens[i + 1]) !== undefined) {
+            modifier = NUMBER_MODIFIERS.get(tokens[i]);
             i += 1;
         }
         const first = numberOf(tokens[i]);
         if (first === undefined || !Number.isFinite(first)) continue;
         let total = 0;
-        let cur = first;
+        let cur = first + modifier;
         let lastWord = tokens[i];
         let j = i + 1;
         for (; j < tokens.length; j++) {
@@ -125,7 +131,7 @@ function numberGroups(tokens) {
             else break;
             lastWord = tokens[j];
         }
-        groups.push({ value: total + cur + (half ? 0.5 : 0), start, end: j });
+        groups.push({ value: total + cur, start, end: j });
         i = j - 1;
     }
     return groups;
@@ -170,7 +176,7 @@ function matchItem(tokens, items) {
 /**
  * Parses one spoken bill line.
  *
- * A number followed by a weight word is the weight, one followed by a rupee word
+ * A number followed by a weight word is the weight (grams become kg), one followed by a rupee word
  * (or after "at" / "₹" / "rate") is the rate; numbers with no such word fill the
  * weight first, then the rate, in spoken order ("10 kilo aloo 30" → 10 kg at ₹30).
  * @param {string} text what the speech recogniser heard
@@ -187,15 +193,23 @@ export function parseVoiceLine(text, items = []) {
     let weight = null;
     let rate = null;
     const unmarked = [];
+    let kgJustSet = false;
     groups.forEach((g, gi) => {
         const before = rest[g.start - 1];
         const stop = gi + 1 < groups.length ? groups[gi + 1].start : rest.length;
         let kind = PRICE_BEFORE.has(before) ? 'rate' : null;
         for (let k = g.end; !kind && k < stop; k++) {
             if (WEIGHT_UNITS.has(rest[k])) kind = 'weight';
+            else if (GRAM_UNITS.has(rest[k])) kind = 'gram';
             else if (PRICE_AFTER.has(rest[k])) kind = 'rate';
         }
-        if (kind === 'weight' && weight === null) weight = g.value;
+        const wasKg = kgJustSet;
+        kgJustSet = false;
+        if (kind === 'weight' && weight === null) {
+            weight = g.value;
+            kgJustSet = true;
+        } else if (kind === 'gram' && weight === null) weight = g.value / 1000;
+        else if (kind === 'gram' && wasKg && g.value < 1000) weight = Math.round((weight + g.value / 1000) * 1000) / 1000;
         else if (kind === 'rate' && rate === null) rate = g.value;
         else if (!kind) unmarked.push(g.value);
         else unmarked.push(NaN);

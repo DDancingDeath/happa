@@ -81,8 +81,19 @@ export async function listenNative(lang, plugin) {
     let perm = await plugin.checkPermissions();
     if (perm?.speechRecognition !== 'granted') perm = await plugin.requestPermissions();
     if (perm?.speechRecognition !== 'granted') throw new Error('not-allowed');
-    const res = await plugin.start({ language: lang, maxResults: 3, partialResults: false, popup: false });
-    return res?.matches || [];
+    let timer = null;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => {
+            Promise.resolve(plugin.stop?.()).catch(() => {});
+            reject(new Error('no-speech'));
+        }, LISTEN_TIMEOUT_MS);
+    });
+    try {
+        const res = await Promise.race([plugin.start({ language: lang, maxResults: 3, partialResults: false, popup: false }), timeout]);
+        return res?.matches || [];
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 const byId = (id) => document.getElementById(id);
@@ -97,7 +108,7 @@ export const VoiceBilling = {
      * @param {'native'|'web'} engine
      * @returns {Promise<boolean>} true when the line was filled
      */
-    async listen(mode, engine) {
+    async listenOnce(mode, engine) {
         const f = FIELDS[mode === 'sale' ? 'sale' : 'purchase'];
         if (this.busy) return false;
         this.busy = true;
@@ -120,8 +131,9 @@ export const VoiceBilling = {
                 UIManager.showToast(t('msg.voice.not_understood', { heard: line.heard }), 4000);
                 return false;
             }
-            const ok = await UIManager.showModalWithHtml(this.previewHtml(line), t('ui.voice.check_title'), true);
-            return ok ? this.fill(f, line) : false;
+            const item = line.itemIndex !== null ? AppState.items[line.itemIndex] : null;
+            const ok = await UIManager.showModalWithHtml(this.previewHtml(line, item), t('ui.voice.check_title'), true);
+            return ok ? this.fill(f, line, item) : false;
         } catch (e) {
             const key = voiceErrorKey(e?.message || e);
             if (key) UIManager.showToast(t(key), 4000);
@@ -134,9 +146,8 @@ export const VoiceBilling = {
     },
 
     /** The check dialog: what was heard and what will be filled. */
-    previewHtml(line) {
+    previewHtml(line, item) {
         const esc = (s) => Helpers.escapeHtml(String(s));
-        const item = line.itemIndex !== null ? AppState.items[line.itemIndex] : null;
         const missing = `<em>${esc(t('ui.voice.not_heard'))}</em>`;
         const row = (label, value) => `<tr><th scope="row">${esc(label)}</th><td>${value}</td></tr>`;
         return `<p class="voice-heard">${esc(t('ui.voice.heard'))} <q>${esc(line.heard)}</q></p>`
@@ -149,16 +160,24 @@ export const VoiceBilling = {
             + `<p class="voice-note">${esc(t('ui.voice.check_note', { ok: t('ui.modals.ok'), add: t('ui.common.add_bill') }))}</p>`;
     },
 
-    /** Puts the checked values in the form; the user still taps Add to Bill and Save. */
-    fill(f, line) {
+    /**
+     * Puts the checked values in the form; the user still taps Add to Bill and Save.
+     * The item is found again by identity: the list can change while the dialog is open.
+     */
+    fill(f, line, item) {
         const select = byId(f.item);
-        const want = line.itemIndex !== null ? String(line.itemIndex) : null;
-        if (want !== null && select && select.value !== want) {
-            if (f.pending().length > 0) {
-                UIManager.showToast(t('msg.voice.finish_weights'), 4000);
+        if (item) {
+            const at = AppState.items.findIndex(i => i === item || (item.id && i?.id === item.id));
+            const want = String(at);
+            if (at === -1 || !select || ![...select.options].some(o => o.value === want)) {
+                UIManager.showToast(t('msg.voice.item_changed'), 4000);
                 return false;
             }
-            if ([...select.options].some(o => o.value === want)) {
+            if (select.value !== want) {
+                if (f.pending().length > 0) {
+                    UIManager.showToast(t('msg.voice.finish_weights'), 4000);
+                    return false;
+                }
                 select.value = want;
                 f.loadRates();
             }

@@ -98,7 +98,7 @@ describe('VoiceMic switch', () => {
     });
 });
 
-describe('VoiceBilling.listen', () => {
+describe('VoiceBilling.listenOnce', () => {
     const val = (id) => document.getElementById(id).value;
 
     test('OK fills item, rate and weight; nothing is added to the bill or saved', async () => {
@@ -107,7 +107,7 @@ describe('VoiceBilling.listen', () => {
         const addToBill = jest.spyOn(PurchaseManager, 'addToBill');
         const save = jest.spyOn(BillingManager, 'saveBillToHistory');
 
-        await expect(VoiceBilling.listen('purchase', 'web')).resolves.toBe(true);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(true);
 
         expect(modal.mock.calls[0][0]).toContain('10 kg wheat 25 rupees');
         expect(modal.mock.calls[0][0]).toContain('Wheat');
@@ -122,14 +122,14 @@ describe('VoiceBilling.listen', () => {
         window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 25']);
         jest.spyOn(UIManager, 'showModalWithHtml').mockResolvedValue(false);
         document.getElementById('billRate').value = '28';
-        await expect(VoiceBilling.listen('purchase', 'web')).resolves.toBe(false);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
         expect([val('billItem'), val('billRate'), val('newWeight')]).toEqual(['0', '28', '']);
     });
 
     test('heard text is escaped in the check dialog', async () => {
         window.webkitSpeechRecognition = fakeWebSpeech(['<img src=x onerror=alert(1)> 10 kg rice']);
         const modal = jest.spyOn(UIManager, 'showModalWithHtml').mockResolvedValue(false);
-        await VoiceBilling.listen('purchase', 'web');
+        await VoiceBilling.listenOnce('purchase', 'web');
         expect(modal.mock.calls[0][0]).not.toContain('<img');
     });
 
@@ -137,15 +137,25 @@ describe('VoiceBilling.listen', () => {
         window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 25']);
         jest.spyOn(UIManager, 'showModalWithHtml').mockResolvedValue(true);
         PurchaseManager.setWeights([40]);
-        await expect(VoiceBilling.listen('purchase', 'web')).resolves.toBe(false);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
         expect(val('billItem')).toBe('0');
         expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringMatching(/weights already entered/), 4000);
     });
 
+    test('the item list changing while the dialog is open fills nothing', async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 25']);
+        jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async () => {
+            AppState.items = [{ id: 'n', name: 'New' }, ...AppState.items];
+            return true;
+        });
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
+        expect([val('billItem'), val('billRate'), val('newWeight')]).toEqual(['0', '', '']);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringMatching(/item list changed/), 4000);
+    });
     test('nothing understood: no dialog, the heard words are shown', async () => {
         window.webkitSpeechRecognition = fakeWebSpeech(['hello there']);
         const modal = jest.spyOn(UIManager, 'showModalWithHtml');
-        await expect(VoiceBilling.listen('purchase', 'web')).resolves.toBe(false);
+        await expect(VoiceBilling.listenOnce('purchase', 'web')).resolves.toBe(false);
         expect(modal).not.toHaveBeenCalled();
         expect(UIManager.showToast).toHaveBeenLastCalledWith(expect.stringContaining('hello there'), 4000);
     });
@@ -167,6 +177,21 @@ describe('Android speech plugin', () => {
         expect(plugin.start).toHaveBeenCalledWith({ language: 'hi-IN', maxResults: 3, partialResults: false, popup: false });
     });
 
+    test('a recogniser that never answers is stopped', async () => {
+        jest.useFakeTimers();
+        const plugin = {
+            available: jest.fn().mockResolvedValue({ available: true }),
+            checkPermissions: jest.fn().mockResolvedValue({ speechRecognition: 'granted' }),
+            start: jest.fn(() => new Promise(() => {})),
+            stop: jest.fn().mockResolvedValue(undefined)
+        };
+        const heard = listenNative('en-IN', plugin);
+        const settled = expect(heard).rejects.toThrow('no-speech');
+        await jest.advanceTimersByTimeAsync(15000);
+        await settled;
+        expect(plugin.stop).toHaveBeenCalled();
+        jest.useRealTimers();
+    });
     test('engine errors map to plain messages', () => {
         expect(['no-speech', 'No match', 'not-allowed', 'network', 'Network error', 'aborted', 'unavailable', 'weird'].map(voiceErrorKey))
             .toEqual(['msg.voice.no_speech', 'msg.voice.no_speech', 'msg.voice.mic_denied', 'msg.voice.offline', 'msg.voice.offline', '', 'msg.voice.unavailable', 'msg.voice.failed']);

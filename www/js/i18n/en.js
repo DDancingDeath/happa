@@ -393,6 +393,7 @@ export default {
     'msg.voice.failed': "Voice didn't work. Try again or type.",
     'msg.voice.filled': "Filled. Check the line, then tap {add}.",
     'msg.voice.finish_weights': "First add the weights already entered to the bill, then speak the next line.",
+    'msg.voice.item_changed': "The item list changed while you were checking. Speak the line again.",
     'msg.voice.listening': "Listening… say the item, weight and rate",
     'msg.voice.mic_denied': "Microphone permission is off. Allow it in the phone's settings to use voice.",
     'msg.voice.no_speech': "Didn't hear anything. Tap 🎤 and try again.",

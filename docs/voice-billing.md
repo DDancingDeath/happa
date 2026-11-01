@@ -22,8 +22,9 @@ for another item are already entered (they would move to the spoken item). Nothi
 heard is stored, logged or sent anywhere by the app.
 
 Understood: digits (also Devanagari ०–९), Hindi number words 1–99, सौ / hundred,
-हज़ार / thousand, डेढ़ (1½), ढाई (2½), साढ़े (+½), English number words; weight words
-kg / kilo (also in Devanagari); rupee words and "का" / "ka" after a rate, "at" / "₹" /
+हज़ार / thousand, डेढ़ (1½), ढाई (2½), साढ़े (+½), सवा (+¼), पौने (−¼), English number words;
+weight words kg / kilo (also in Devanagari), and grams as kg (500 gram = 0.5 kg,
+1 kilo 500 gram = 1.5 kg); rupee words and "का" / "ka" after a rate, "at" / "₹" /
 "rate" / "भाव" before it. Numbers without such a word are weight first, then rate.
 Items match by English or Hindi name (archived items never). More numbers than a
 weight and a rate are flagged in the dialog.
