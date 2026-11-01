@@ -557,6 +557,30 @@
   .ins-hero-value { font-size: 40px; }
 }
 
+/* Today (#141): the cash prompt (now before the day report), bill types and the bills list span both columns; bill types side by side */
+@media (min-width: 1024px) {
+  #dayTodayContent > #todayCashPrompt,
+  #dayTodayContent > #dayReportCard,
+  #dayTodayContent > #todayChannelsCard,
+  #dayTodayContent > #todayBillsCard {
+    grid-column: 1 / -1;
+  }
+
+  /* Full-width cards would otherwise leave a hole beside a lone half-width card */
+  #dayTodayContent:not([style*="none"]) {
+    grid-auto-flow: row dense;
+  }
+
+  .today-channels {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  /* Four stat cards in a half-width card wrapped their amounts mid-number */
+  #dayTodayContent .stats-grid-2:has(> :nth-child(3)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+}
+
 /* Phone bottom bar and its settings (#142): the sidebar is permanent here */
 @media (min-width: 1024px) {
   .bottom-nav,
