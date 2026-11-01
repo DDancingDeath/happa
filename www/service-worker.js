@@ -113,6 +113,7 @@ const STATIC_ASSETS = [
     '/js/utils/money.js',
     '/js/utils/print-status.js',
     '/js/utils/printer-settings.js',
+    '/js/utils/qr-code.js',
     '/js/utils/labour.js',
     '/js/utils/calc/billing.js',
     '/js/utils/calc/today.js',
