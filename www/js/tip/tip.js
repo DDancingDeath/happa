@@ -59,6 +59,7 @@ export const STORE_KEYS = {
     pending: 'aadhat.tip.pending',
     failures: 'aadhat.tip.failures',
     failCount: 'aadhat.tip.failCount',
+    testFailCount: 'aadhat.tip.testFailCount',
     history: 'aadhat.tip.history',
     rolledBack: 'aadhat.tip.rolledBack',
     tabs: 'aadhat.tip.tabs'
@@ -287,6 +288,18 @@ export function createTip(opts = {}) {
         write(STORE_KEYS.active, all);
     };
 
+    /** A test with maxSamplesPerDay keeps at most that many samples a day, so it can't use up the shared budget. */
+    function overTestCap(testId, day) {
+        const cap = tests.get(testId)?.maxSamplesPerDay;
+        if (!Number.isFinite(cap)) return false;
+        const fc = read(STORE_KEYS.testFailCount, {});
+        const counts = fc.day === day && fc.counts ? fc.counts : {};
+        const n = counts[testId] || 0;
+        if (n >= cap) return true;
+        write(STORE_KEYS.testFailCount, { day, counts: { ...counts, [testId]: n + 1 } });
+        return false;
+    }
+
     function nextFailureSeq(day) {
         const fc = read(STORE_KEYS.failCount, {});
         const n = fc.day === day ? fc.n : 0;
@@ -314,7 +327,7 @@ export function createTip(opts = {}) {
         write(STORE_KEYS.history, history);
 
         const failure = SAMPLE_KEYS.includes(key);
-        if (failure) {
+        if (failure && !overTestCap(testId, day)) {
             const n = nextFailureSeq(day);
             if (n) {
                 const failures = read(STORE_KEYS.failures, []);

@@ -135,9 +135,23 @@ SyncStatus.watch((s) => tipSyncWatcher.update(s));
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') tipSyncWatcher.hidden();
 });
-// TIP MainThread (#83): a watchdog timer notices a frozen screen; no reads.
+// TIP MainThread (#83): a watchdog timer notices a frozen screen; no reads. It runs only while the page is on screen.
 const tipWatchdog = createWatchdog(() => tip.start('MainThread'));
-setInterval(() => tipWatchdog.tick(Date.now(), document.visibilityState !== 'hidden'), WATCHDOG_TICK_MS);
+let watchdogTimer = null;
+const watchdogOn = () => {
+    if (watchdogTimer === null && document.visibilityState !== 'hidden') watchdogTimer = setInterval(() => tipWatchdog.tick(performance.now()), WATCHDOG_TICK_MS);
+};
+const watchdogOff = () => {
+    if (watchdogTimer !== null) clearInterval(watchdogTimer);
+    watchdogTimer = null;
+    tipWatchdog.hidden(performance.now());
+};
+document.addEventListener('visibilitychange', () => (document.visibilityState === 'hidden' ? watchdogOff() : watchdogOn()));
+document.addEventListener('freeze', watchdogOff);
+document.addEventListener('resume', watchdogOn);
+window.addEventListener('pagehide', watchdogOff);
+window.addEventListener('pageshow', watchdogOn);
+watchdogOn();
 
 /** TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle. */
 function scheduleTipNumberChecks() {

@@ -1,12 +1,16 @@
 /**
  * @fileoverview TIP scenario MainThread (#83 watchdog): the app answers taps.
- * A 1-second timer notes when it last ran; when it runs again after
- * FREEZE_MS or more while the page was visible, the main thread was blocked
- * (a frozen screen). Each WINDOW_MS of visible time is one run: it fails
- * 'frozen' at the first freeze, else succeeds. Hidden pages and long gaps
- * (the phone asleep, the app suspended) are not judged. Reads and writes
- * nothing; the counts go out with the other TIP counters.
- * A stuck sync is the Sync scenario's `not_flushed` (#161).
+ * While the page is on screen a 1-second timer notes when it last ran
+ * (performance.now(), so clock changes don't count); when it runs again
+ * FREEZE_MS or more late, the main thread was blocked (a frozen screen).
+ * Each WINDOW_MS on screen is one run: it fails 'frozen' at the first freeze,
+ * else succeeds; a shorter stretch on screen (the page hidden, frozen by the
+ * browser or closed) is judged when it lasted MIN_JUDGED_MS, else not.
+ * main.js stops the timer whenever the page is hidden, so time away is never
+ * a gap; a gap of SLEEP_MS or more (the phone asleep) is not judged.
+ * Reads and writes nothing; the counts go out with the other TIP counters,
+ * with at most MAX_SAMPLES failure samples a day. A stuck sync is the Sync
+ * scenario's `not_flushed` (#161).
  * Reason codes are stable: never renumber or reuse them.
  * @module tip/scenarios/main-thread
  */
@@ -14,8 +18,10 @@
 export const TICK_MS = 1000;
 export const FREEZE_MS = 5000;
 export const WINDOW_MS = 5 * 60 * 1000;
+export const MIN_JUDGED_MS = 60 * 1000;
 /** A gap this long is the phone asleep or the app suspended, not a freeze. */
 export const SLEEP_MS = 2 * 60 * 1000;
+export const MAX_SAMPLES = 2;
 
 export const MainThreadTest = {
     id: 'MainThread',
@@ -23,6 +29,7 @@ export const MainThreadTest = {
     timeoutMs: 3 * WINDOW_MS,
     target: 99,
     onAbandon: 'discard',
+    maxSamplesPerDay: MAX_SAMPLES,
     evaluate(props, flags, ctx) {
         if (ctx?.expired || !props?.checked) return 'discard';
         return props.longestMs >= FREEZE_MS ? { result: 'fail', reason: 'frozen' } : 'succeed';
@@ -30,12 +37,12 @@ export const MainThreadTest = {
 };
 
 /**
- * Turns timer ticks into MainThread runs.
+ * Turns timer ticks into MainThread runs. Times are performance.now() values.
  * @param {() => {complete: Function, discard: Function}} start tip.start('MainThread')
- * @param {{freezeMs?: number, windowMs?: number, sleepMs?: number}} [opts]
- * @returns {{tick: (now: number, visible: boolean) => void, stop: () => void}}
+ * @param {{freezeMs?: number, windowMs?: number, sleepMs?: number, minJudgedMs?: number}} [opts]
+ * @returns {{tick: (now: number) => void, hidden: (now: number) => void}}
  */
-export function createWatchdog(start, { freezeMs = FREEZE_MS, windowMs = WINDOW_MS, sleepMs = SLEEP_MS } = {}) {
+export function createWatchdog(start, { freezeMs = FREEZE_MS, windowMs = WINDOW_MS, sleepMs = SLEEP_MS, minJudgedMs = MIN_JUDGED_MS } = {}) {
     let run = null;
     let last = null;
     let windowStart = 0;
@@ -45,18 +52,17 @@ export function createWatchdog(start, { freezeMs = FREEZE_MS, windowMs = WINDOW_
         windowStart = now;
         longest = 0;
     };
-    const drop = () => {
-        if (run) run.discard();
+    const close = (judged) => {
+        if (run) {
+            if (judged) run.complete({ checked: true, longestMs: Math.round(longest) });
+            else run.discard();
+        }
         run = null;
     };
     return {
-        tick(now, visible) {
+        /** A timer tick while the page is on screen. */
+        tick(now) {
             try {
-                if (!visible) {
-                    drop();
-                    last = null;
-                    return;
-                }
                 if (last === null) {
                     last = now;
                     open(now);
@@ -65,20 +71,23 @@ export function createWatchdog(start, { freezeMs = FREEZE_MS, windowMs = WINDOW_
                 const gap = now - last;
                 last = now;
                 if (gap >= sleepMs || gap < 0) {
-                    drop();
+                    close(false);
                     open(now);
                     return;
                 }
                 if (gap > longest) longest = gap;
                 if (longest >= freezeMs || now - windowStart >= windowMs) {
-                    if (run) run.complete({ checked: true, longestMs: Math.round(longest) });
+                    close(true);
                     open(now);
                 }
             } catch (_) { /* never break the app */ }
         },
-        stop() {
-            drop();
-            last = null;
+        /** The page is hidden, frozen or closed: judge what was seen if it was long enough. */
+        hidden(now) {
+            try {
+                close(run !== null && last !== null && last - windowStart >= minJudgedMs && now - last < sleepMs);
+                last = null;
+            } catch (_) { /* never break the app */ }
         }
     };
 }
