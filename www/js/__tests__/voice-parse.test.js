@@ -2,7 +2,7 @@
  * @fileoverview Voice billing parser (#81, spec VB-1): one spoken line → item,
  * weight and rate exactly as heard, in English, Hindi and mixed speech.
  */
-import { parseVoiceLine, pickVoiceLine, hasVoiceValues, voiceTokens } from '../utils/voice-parse.js';
+import { parseVoiceLine, pickVoiceLine, hasVoiceValues, isUnusualRate, voiceTokens } from '../utils/voice-parse.js';
 
 const ITEMS = [
     { id: 'a', name: 'Aloo', hindiName: 'आलू' },
@@ -96,6 +96,13 @@ describe('parseVoiceLine (VB-1)', () => {
         expect(flagged(`चावल 10 ${KILO} के 300 रुपये`)).toEqual({ weight: 10, rate: null, extraNumbers: true });
         expect(flagged('aloo 10 kilo 300 total')).toEqual({ weight: 10, rate: null, extraNumbers: true });
         expect(flagged('aloo 10 kilo 300 rupees total')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('चावल 300 रुपये के 10 kg')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('चावल तीन सौ रुपये का दस kg')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('aloo 300 ka 10 kilo')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('aloo 10 kilo 300 mein')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('aloo 10 kilo in 300 rupees')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('aloo 30 rupees ka 1 kilo')).toEqual({ weight: 1, rate: 30, extraNumbers: false });
+        expect(flagged('aloo 30 rupees per kilo 10 kilo')).toEqual({ weight: 10, rate: 30, extraNumbers: false });
         expect(flagged('चावल 10 kg 300 रुपये टोटल')).toEqual({ weight: 10, rate: null, extraNumbers: true });
         expect(flagged('aloo 10 kilo at 30 total 300')).toEqual({ weight: 10, rate: 30, extraNumbers: true });
         expect(flagged('aloo ten kilos thirty rupees a kilo')).toEqual({ weight: 10, rate: 30, extraNumbers: false });
@@ -151,6 +158,17 @@ describe('parseVoiceLine (VB-1)', () => {
     });
 });
 
+describe('isUnusualRate', () => {
+    const rice = { name: 'Rice', rates: [28, 30], saleRates: [34] };
+    test('more than 3× above or below every kept rate', () => {
+        expect([30, 90, 102, 103, 11, 9].map(r => isUnusualRate(r, rice))).toEqual([false, false, false, true, false, true]);
+        expect(isUnusualRate(500, { name: 'New' })).toBe(false);
+    });
+    test('flags a spoken total', () => {
+        expect(parseVoiceLine('rice 10 kilo 300', [rice])).toMatchObject({ weight: 10, rate: 300, rateUnusual: true });
+        expect(parseVoiceLine('rice 10 kilo 30', [rice]).rateUnusual).toBe(false);
+    });
+});
 describe('pickVoiceLine', () => {
     test('prefers the alternative with an item and a weight', () => {
         const p = pickVoiceLine(['10 kilo allu 30', '10 kilo aloo 30'], ITEMS);

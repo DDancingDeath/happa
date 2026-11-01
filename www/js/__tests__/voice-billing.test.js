@@ -118,6 +118,12 @@ describe('VoiceBilling.listenOnce', () => {
         expect(PurchaseManager.getBillItems()).toEqual([]);
     });
 
+    test("a rate far from the item's rates is flagged in the dialog", async () => {
+        window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 240']);
+        const modal = jest.spyOn(UIManager, 'showModalWithHtml').mockResolvedValue(false);
+        await VoiceBilling.listenOnce('purchase', 'web');
+        expect(modal.mock.calls[0][0]).toContain('far from the item');
+    });
     test('Cancel leaves the form as it was', async () => {
         window.webkitSpeechRecognition = fakeWebSpeech(['10 kg wheat 25']);
         jest.spyOn(UIManager, 'showModalWithHtml').mockResolvedValue(false);

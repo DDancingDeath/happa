@@ -157,6 +157,7 @@ export const VoiceBilling = {
             + row(t('ui.billing.rate'), line.rate !== null ? esc(line.rate) : missing)
             + '</table>'
             + (line.extraNumbers ? `<p class="voice-warn">${esc(t('ui.voice.extra_numbers'))}</p>` : '')
+            + (line.rateUnusual ? `<p class="voice-warn">${esc(t('ui.voice.rate_unusual'))}</p>` : '')
             + `<p class="voice-note">${esc(t('ui.voice.check_note', { ok: t('ui.modals.ok'), add: t('ui.common.add_bill') }))}</p>`;
     },
 

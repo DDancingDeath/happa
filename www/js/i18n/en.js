@@ -1663,6 +1663,7 @@ export default {
     'ui.voice.mic': "🎤 Speak the line",
     'ui.voice.mic_title': "Say item, weight and rate",
     'ui.voice.not_heard': "not heard",
+    'ui.voice.rate_unusual': "This rate is far from the item's usual rates; it may be a total. Check it.",
     'ui.settings.no_audit_logs': "No audit logs found",
     'ui.settings.audit_bill': "Bill: {value}",
     'ui.settings.audit_amount': "Amount: ₹{value}",

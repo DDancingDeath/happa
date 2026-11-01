@@ -93,12 +93,14 @@ const OTHER_UNITS = wordSet([
 const TOTAL_BEFORE = wordSet(['for', 'total', 'kul', 'कुल', 'टोटल']);
 /** After a number: the line's total ("300 total"). */
 const TOTAL_AFTER = wordSet(['total', 'kul', 'कुल', 'टोटल']);
+/** Around a later number: "10 kilo 300 mein", "10 kilo in 300": a total. */
+const TOTAL_AFTER_A_WEIGHT = wordSet(['mein', 'me', 'mai', 'में', 'in']);
 /** "de do" / "दो" at the end means "give", not 2. */
 const GIVE_WORDS = wordSet(['do', 'दो']);
 const GIVE_BEFORE = wordSet(['de', 'दे', 'dena', 'देना']);
 /** Words never taken as the start of an item name. */
 const NOT_ITEM_WORDS = wordSet([...WEIGHT_UNITS, ...PRICE_AFTER, ...PRICE_BEFORE, ...NUMBER_MODIFIERS.keys(), ...GRAM_UNITS,
-    ...PER_WORDS, ...OTHER_UNITS, ...TOTAL_BEFORE,
+    ...PER_WORDS, ...OTHER_UNITS, ...TOTAL_BEFORE, ...TOTAL_AFTER_A_WEIGHT,
     'and', 'aur', 'also', 'then', 'phir', 'with', 'wala', 'wale', 'वाला', 'वाले', 'और', 'फिर']);
 
 const toAsciiDigits = (s) => s.replace(/[\u0966-\u096F]/g, (d) => String(d.charCodeAt(0) - 0x0966));
@@ -217,8 +219,10 @@ function numberKind(rest, groups, gi) {
     const g = groups[gi];
     const stop = gi + 1 < groups.length ? groups[gi + 1].start : rest.length;
     let after = null;
+    let lastWord = null;
     for (let k = g.end; k < stop; k++) {
         const w = rest[k];
+        if (w) lastWord = w;
         // a total word just before the next number belongs to that number ("30 rupees total 300")
         const total = TOTAL_AFTER.has(w) && !(k + 1 === stop && gi + 1 < groups.length);
         if (!after) {
@@ -231,13 +235,31 @@ function numberKind(rest, groups, gi) {
         else if (after === 'rate' && (WEIGHT_UNITS.has(w) || (PER_WORDS.has(w) && WEIGHT_UNITS.has(rest[k + 1])))) after = 'rate-kg';
     }
     if (after === 'other') return 'other';
+    // "300 rupaye ke 10 kilo" / "300 ka 10 kilo": the price of that weight, a total (but "30 ka 1 kilo" is a rate)
+    const next = groups[gi + 1];
+    if (after !== 'weight' && after !== 'gram' && POSSESSIVE.has(lastWord) && next && next.value !== 1
+        && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]))) return 'other';
     const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
-    if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2)) return 'rate-kg';
+    if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2) && after !== 'weight') return 'rate-kg';
+    if (gi > 0 && (TOTAL_AFTER_A_WEIGHT.has(lastWord) || TOTAL_AFTER_A_WEIGHT.has(b1))) return 'other';
     if (PRICE_BEFORE.has(b1)) return after === 'rate-kg' ? after : 'rate';
     if (TOTAL_BEFORE.has(b1)) return 'other';
     // "10 kilo ke 300" is a total, "kilo ka 30" a rate per kg
     if (POSSESSIVE.has(b1) && WEIGHT_UNITS.has(b2)) return gi > 0 && groups[gi - 1].end === g.start - 2 ? 'other' : 'rate-kg';
     return after;
+}
+
+/**
+ * A rate more than 3 times above or below every rate kept for the item (purchase,
+ * sale, wholesale) is likely a total or a slip: the check dialog warns.
+ * @param {number} rate
+ * @param {?Object} item
+ */
+export function isUnusualRate(rate, item) {
+    const known = [...(item?.rates || []), ...(item?.saleRates || []), ...(item?.wholesaleRates || [])]
+        .map(Number).filter(r => Number.isFinite(r) && r > 0);
+    if (known.length === 0) return false;
+    return rate > 3 * Math.max(...known) || rate * 3 < Math.min(...known);
 }
 
 /**
@@ -248,7 +270,7 @@ function numberKind(rest, groups, gi) {
  * weight first, then the rate, in spoken order ("10 kilo aloo 30" → 10 kg at ₹30).
  * @param {string} text what the speech recogniser heard
  * @param {Array<Object>} items AppState.items
- * @returns {{itemIndex: ?number, weight: ?number, rate: ?number, extraNumbers: boolean, heard: string}}
+ * @returns {{itemIndex: ?number, weight: ?number, rate: ?number, extraNumbers: boolean, rateUnusual: boolean, heard: string}}
  */
 export function parseVoiceLine(text, items = []) {
     const heard = String(text || '').trim();
@@ -300,7 +322,8 @@ export function parseVoiceLine(text, items = []) {
         rate = null;
         extraNumbers = true;
     }
-    return { itemIndex: item ? item.index : null, weight, rate, extraNumbers, heard };
+    const rateUnusual = rate !== null && item !== null && isUnusualRate(rate, items[item.index]);
+    return { itemIndex: item ? item.index : null, weight, rate, extraNumbers, rateUnusual, heard };
 }
 
 /**

@@ -1663,6 +1663,7 @@ export default {
     'ui.voice.mic': "🎤 लाइन बोलें",
     'ui.voice.mic_title': "आइटम, वज़न और रेट बोलें",
     'ui.voice.not_heard': "नहीं सुना",
+    'ui.voice.rate_unusual': "यह रेट इस आइटम के आम रेट से बहुत अलग है; शायद यह कुल रकम है। जांच लें।",
     'ui.settings.no_audit_logs': "बदलावों का कोई रिकॉर्ड नहीं",
     'ui.settings.audit_bill': "बिल: {value}",
     'ui.settings.audit_amount': "रकम: ₹{value}",
