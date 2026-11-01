@@ -56,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhblj-stock-alerts';
+const BUILD_ID = '20261101zzuzieecmbbkhblr-party-payment';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1055,6 +1055,7 @@ window.app = {
         recordPayment: (saleId) => WholesaleSalesManager.recordPayment(saleId),
         markSaleAsCleared: (saleId) => WholesaleSalesManager.markSaleAsCleared(saleId),
         completeAllDue: (name) => WholesaleSalesManager.completeAllDue(name),
+        receiveFromParty: (name) => WholesaleSalesManager.receiveFromParty(name),
         reprintSale: (index) => WholesaleSalesManager.reprintSale(index),
         reprintSaleById: (saleId) => WholesaleSalesManager.reprintSaleById(saleId),
         updateProfitCalculation: () => WholesaleSalesManager.updateProfitCalculation(),
@@ -1112,6 +1113,9 @@ window.app = {
         setAgingSort: (by) => OutstandingManager.setAgingSort(by),
         setPartiesOpen: (open) => OutstandingManager.setPartiesOpen(open),
         sendReminder: (partyKey) => OutstandingManager.sendReminder(partyKey),
+        receiveFromParty: (partyKey) => OutstandingManager.receiveFromParty(partyKey),
+        partyPayFill: () => OutstandingManager.partyPayFill(),
+        partyPaySum: () => OutstandingManager.partyPaySum(),
         printStatement: (partyKey) => OutstandingManager.printStatement(partyKey),
         clearPartyFilter: () => OutstandingManager.clearPartyFilter(),
         // Tap on a bill's "Already owes" line (#166); wholesale dues live on the Wholesale page
