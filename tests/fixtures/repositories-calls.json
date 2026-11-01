@@ -1204,5 +1204,1862 @@
     [
       "get"
     ]
+  ],
+  "service.items": [
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "add",
+      {
+        "name": "Wheat",
+        "rate": 25
+      }
+    ],
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "doc",
+      "i1"
+    ],
+    [
+      "set",
+      {
+        "id": "i1",
+        "name": "Rice",
+        "rate": 31
+      }
+    ],
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "doc",
+      "i1"
+    ],
+    [
+      "delete"
+    ],
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "doc",
+      "i9"
+    ],
+    [
+      "doc"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "batch.set",
+      "ref(dev_items/i9)",
+      {
+        "rate": 5
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "batch.set",
+      "ref(dev_items/auto000002)",
+      {
+        "name": "Dal"
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "collection",
+      "dev_rateHistory"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "i1_5"
+    ],
+    [
+      "batch.set",
+      "ref(dev_rateHistory/i1_5)",
+      {
+        "itemId": "i1",
+        "rate": 31
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_rateHistory"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "startAt",
+      "i1_"
+    ],
+    [
+      "endAt",
+      "i1_"
+    ],
+    [
+      "limit",
+      2
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_rateHistory"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "startAt",
+      "i1_"
+    ],
+    [
+      "endBefore",
+      "i1_8207442999999"
+    ],
+    [
+      "limit",
+      30
+    ],
+    [
+      "get"
+    ]
+  ],
+  "service.rateStats": [
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "startAfter",
+      "p1"
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "asc"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "asc"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "asc"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_rateStats"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "startAt",
+      "i1_"
+    ],
+    [
+      "endAt",
+      "i1_"
+    ],
+    [
+      "limit",
+      30
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_rateStats"
+    ],
+    [
+      "where",
+      "year",
+      "==",
+      "2026"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_rateStats"
+    ],
+    [
+      "where",
+      "year",
+      ">=",
+      "2026"
+    ],
+    [
+      "limit",
+      300
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "collection",
+      "dev_rateStats"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "i3_2026"
+    ],
+    [
+      "batch.set",
+      "ref(dev_rateStats/i3_2026)",
+      {
+        "year": "2026",
+        "updatedAt": 1792557000000,
+        "clientVersion": 4,
+        "writtenAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_rateStats"
+    ],
+    [
+      "doc",
+      "_meta"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_rateStats"
+    ],
+    [
+      "doc",
+      "_meta"
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "collection",
+      "dev_rateStats"
+    ],
+    [
+      "doc",
+      "_meta"
+    ],
+    [
+      "set",
+      {
+        "done": false,
+        "clientVersion": 4,
+        "writtenAt": "SERVER_TIME"
+      },
+      {
+        "merge": true
+      }
+    ]
+  ],
+  "service.monthStats": [
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "orderBy",
+      "__name__"
+    ],
+    [
+      "startAt",
+      "2026-09"
+    ],
+    [
+      "limit",
+      40
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "2026-07"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-07)",
+      {
+        "month": "2026-07",
+        "sales": 0,
+        "clientVersion": 4,
+        "writtenAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "doc",
+      "2026-09"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_monthStats/2026-09)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_monthStats/2026-09)",
+      {
+        "month": "2026-09",
+        "sales": 5,
+        "clientVersion": 4,
+        "writtenAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "doc",
+      "2026-10"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_monthStats/2026-10)"
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "doc",
+      "2026-08"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_monthStats/2026-08)"
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "doc",
+      "2026-10"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_monthStats/2026-10)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_monthStats/2026-10)",
+      {
+        "month": "2026-10",
+        "sales": 6,
+        "clientVersion": 4,
+        "writtenAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "doc",
+      "2026-11"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_monthStats/2026-11)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_monthStats/2026-11)",
+      {
+        "month": "2026-11",
+        "sales": 6,
+        "clientVersion": 4,
+        "writtenAt": "SERVER_TIME"
+      }
+    ]
+  ],
+  "service.backup": [
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_telemetry"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "a"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_telemetry/a)"
+    ],
+    [
+      "doc",
+      "b"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_telemetry/b)"
+    ],
+    [
+      "batch.commit"
+    ]
+  ],
+  "service.tip": [
+    [
+      "batch"
+    ],
+    [
+      "collection",
+      "dev_tipHealth"
+    ],
+    [
+      "doc",
+      "dev1_20261021"
+    ],
+    [
+      "batch.set",
+      "ref(dev_tipHealth/dev1_20261021)",
+      {
+        "uid": "u1",
+        "deviceId": "dev1",
+        "day": "20261021",
+        "platform": "web",
+        "appVersion": "1.0.0",
+        "buildId": "b",
+        "updatedAt": "SERVER_TIME",
+        "v": {
+          "1.0.0": {
+            "BillSave": {
+              "ok": "increment(1)"
+            }
+          }
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_tipFailures"
+    ],
+    [
+      "doc",
+      "dev1_undefined_1"
+    ],
+    [
+      "set",
+      {
+        "uid": "u1",
+        "deviceId": "dev1",
+        "test": "undefined",
+        "reason": 0,
+        "reasonName": "",
+        "flags": {},
+        "props": {},
+        "errors": 0,
+        "appVersion": "unknown",
+        "buildId": "",
+        "platform": "web",
+        "at": 1792557000000,
+        "createdAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_tipHealth"
+    ],
+    [
+      "where",
+      "day",
+      ">=",
+      "20261020"
+    ],
+    [
+      "where",
+      "day",
+      "<=",
+      "20261021"
+    ],
+    [
+      "orderBy",
+      "day",
+      "desc"
+    ],
+    [
+      "limit",
+      5
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_tipHealth"
+    ],
+    [
+      "where",
+      "day",
+      ">=",
+      "20261021"
+    ],
+    [
+      "orderBy",
+      "day",
+      "desc"
+    ],
+    [
+      "limit",
+      300
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_tipFailures"
+    ],
+    [
+      "orderBy",
+      "at",
+      "desc"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ]
+  ],
+  "service.notifications": [
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "evt-1_u2"
+    ],
+    [
+      "batch.set",
+      "ref(dev_notifications/evt-1_u2)",
+      {
+        "type": "x",
+        "read": false,
+        "timestamp": "SERVER_TIME",
+        "userId": "u2",
+        "eventKey": "evt-1"
+      }
+    ],
+    [
+      "doc",
+      "evt-1_u3"
+    ],
+    [
+      "batch.set",
+      "ref(dev_notifications/evt-1_u3)",
+      {
+        "type": "x",
+        "read": false,
+        "timestamp": "SERVER_TIME",
+        "userId": "u3",
+        "eventKey": "evt-1"
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "evt-r-wholesale_u2"
+    ],
+    [
+      "batch.set",
+      "ref(dev_notifications/evt-r-wholesale_u2)",
+      {
+        "type": "rate_change",
+        "itemId": "i1",
+        "itemName": "Rice",
+        "itemHindiName": "",
+        "rateType": "wholesale",
+        "rateTypeLabel": "Wholesale",
+        "oldRate": 1,
+        "newRate": 2,
+        "changedBy": "Owner",
+        "changedByUserId": "u1",
+        "read": false,
+        "timestamp": "SERVER_TIME",
+        "userId": "u2",
+        "eventKey": "evt-r-wholesale"
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "set",
+      {
+        "people": {
+          "u1": {
+            "name": "Owner",
+            "role": "owner"
+          },
+          "u2": {
+            "name": "Man",
+            "role": "manager"
+          },
+          "u3": {
+            "name": "Ram",
+            "role": "staff"
+          }
+        },
+        "updatedAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "evt-r-sale_u2"
+    ],
+    [
+      "batch.set",
+      "ref(dev_notifications/evt-r-sale_u2)",
+      {
+        "type": "rate_change",
+        "itemId": "i1",
+        "itemName": "Rice",
+        "itemHindiName": "",
+        "rateType": "sale",
+        "rateTypeLabel": "Sale",
+        "oldRate": 3,
+        "newRate": 4,
+        "changedBy": "Owner",
+        "changedByUserId": "u1",
+        "read": false,
+        "timestamp": "SERVER_TIME",
+        "userId": "u2",
+        "eventKey": "evt-r-sale"
+      }
+    ],
+    [
+      "doc",
+      "evt-r-sale_u3"
+    ],
+    [
+      "batch.set",
+      "ref(dev_notifications/evt-r-sale_u3)",
+      {
+        "type": "rate_change",
+        "itemId": "i1",
+        "itemName": "Rice",
+        "itemHindiName": "",
+        "rateType": "sale",
+        "rateTypeLabel": "Sale",
+        "oldRate": 3,
+        "newRate": 4,
+        "changedBy": "Owner",
+        "changedByUserId": "u1",
+        "read": false,
+        "timestamp": "SERVER_TIME",
+        "userId": "u3",
+        "eventKey": "evt-r-sale"
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "rate-mvhm5lc0-i-purchase_u2"
+    ],
+    [
+      "batch.set",
+      "ref(dev_notifications/rate-mvhm5lc0-i-purchase_u2)",
+      {
+        "type": "rate_change",
+        "itemId": "i1",
+        "itemName": "Rice",
+        "itemHindiName": "",
+        "rateType": "purchase",
+        "rateTypeLabel": "Purchase",
+        "oldRate": 5,
+        "newRate": 6,
+        "changedBy": "Owner",
+        "changedByUserId": "u1",
+        "read": false,
+        "timestamp": "SERVER_TIME",
+        "userId": "u2",
+        "eventKey": "rate-mvhm5lc0-i-purchase"
+      }
+    ],
+    [
+      "doc",
+      "rate-mvhm5lc0-i-purchase_u3"
+    ],
+    [
+      "batch.set",
+      "ref(dev_notifications/rate-mvhm5lc0-i-purchase_u3)",
+      {
+        "type": "rate_change",
+        "itemId": "i1",
+        "itemName": "Rice",
+        "itemHindiName": "",
+        "rateType": "purchase",
+        "rateTypeLabel": "Purchase",
+        "oldRate": 5,
+        "newRate": 6,
+        "changedBy": "Owner",
+        "changedByUserId": "u1",
+        "read": false,
+        "timestamp": "SERVER_TIME",
+        "userId": "u3",
+        "eventKey": "rate-mvhm5lc0-i-purchase"
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "where",
+      "read",
+      "==",
+      false
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "limit",
+      10
+    ],
+    [
+      "onSnapshot",
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "where",
+      "read",
+      "in",
+      [
+        false,
+        true
+      ]
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "where",
+      "read",
+      "in",
+      [
+        false,
+        true
+      ]
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "startAfter",
+      {
+        "id": "n1",
+        "exists": true,
+        "ref": "ref(dev_notifications/n1)",
+        "data": "fn",
+        "metadata": {
+          "fromCache": false,
+          "hasPendingWrites": false
+        }
+      }
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "n1"
+    ],
+    [
+      "batch.update",
+      "ref(dev_notifications/n1)",
+      {
+        "read": true,
+        "readAt": 1792557000000
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u2"
+    ],
+    [
+      "where",
+      "read",
+      "==",
+      false
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "batch.update",
+      "ref(dev_notifications/evt-1_u2)",
+      {
+        "read": true,
+        "readAt": 1792557000000
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u2"
+    ],
+    [
+      "where",
+      "read",
+      "==",
+      false
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "batch.update",
+      "ref(dev_notifications/evt-r-sale_u2)",
+      {
+        "read": true,
+        "readAt": 1792557000000
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u2"
+    ],
+    [
+      "where",
+      "read",
+      "==",
+      false
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "batch.update",
+      "ref(dev_notifications/evt-r-wholesale_u2)",
+      {
+        "read": true,
+        "readAt": 1792557000000
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "where",
+      "userId",
+      "==",
+      "u1"
+    ],
+    [
+      "where",
+      "read",
+      "in",
+      [
+        false,
+        true
+      ]
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1789965000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "limit",
+      10
+    ],
+    [
+      "get"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "batch.delete",
+      "ref(dev_notifications/n2)"
+    ],
+    [
+      "batch.commit"
+    ]
+  ],
+  "service.notifications-manager": [
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_notifications"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "item-mvhm5lc0-i_u1"
+    ],
+    [
+      "batch.set",
+      "ref(dev_notifications/item-mvhm5lc0-i_u1)",
+      {
+        "type": "item_edit",
+        "action": "added",
+        "fields": [],
+        "itemId": "i1",
+        "itemName": "Rice",
+        "itemHindiName": "",
+        "changedBy": "Owner",
+        "changedByUserId": "u2",
+        "read": false,
+        "timestamp": "SERVER_TIME",
+        "userId": "u1",
+        "eventKey": "item-mvhm5lc0-i"
+      }
+    ],
+    [
+      "batch.commit"
+    ]
+  ],
+  "service.cashSessions": [
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "orderBy",
+      "date",
+      "desc"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "orderBy",
+      "date",
+      "desc"
+    ],
+    [
+      "limit",
+      2
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "orderBy",
+      "date",
+      "desc"
+    ],
+    [
+      "startAfter",
+      {
+        "id": "s19",
+        "exists": true,
+        "ref": "ref(dev_cashManagement/s19)",
+        "data": "fn",
+        "metadata": {
+          "fromCache": false,
+          "hasPendingWrites": false
+        }
+      }
+    ],
+    [
+      "limit",
+      2
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "where",
+      "signedOut",
+      "==",
+      true
+    ],
+    [
+      "where",
+      "counted",
+      "==",
+      true
+    ],
+    [
+      "orderBy",
+      "date",
+      "desc"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "where",
+      "signedOut",
+      "==",
+      false
+    ],
+    [
+      "where",
+      "date",
+      "<",
+      "2026-10-21"
+    ],
+    [
+      "get"
+    ],
+    [
+      "where",
+      "counted",
+      "==",
+      false
+    ],
+    [
+      "orderBy",
+      "date",
+      "desc"
+    ],
+    [
+      "limit",
+      30
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "where",
+      "date",
+      "==",
+      "2026-10-20"
+    ],
+    [
+      "get",
+      null
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "where",
+      "date",
+      ">=",
+      "2026-10-19"
+    ],
+    [
+      "where",
+      "date",
+      "<=",
+      "2026-10-20"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "cash_2026-10-21"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "where",
+      "date",
+      "==",
+      "2026-10-21"
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_cashManagement/cash_2026-10-21)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_cashManagement/cash_2026-10-21)",
+      {
+        "date": "2026-10-21",
+        "openingBalance": 500,
+        "id": "cash_2026-10-21"
+      }
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "cash_2026-10-21"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "where",
+      "date",
+      "==",
+      "2026-10-21"
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "cash_2026-10-20"
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "where",
+      "date",
+      "==",
+      "2026-10-20"
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "collection",
+      "dev_cashManagement"
+    ],
+    [
+      "doc",
+      "s20"
+    ],
+    [
+      "set",
+      {
+        "id": "s20",
+        "date": "2026-10-20",
+        "counted": true
+      }
+    ]
+  ],
+  "service.auditAnomalies": [
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1792556999000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "limit",
+      2
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_auditLogs"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1792556999000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "startAfter",
+      {
+        "id": "a2",
+        "exists": true,
+        "ref": "ref(dev_auditLogs/a2)",
+        "data": "fn",
+        "metadata": {
+          "fromCache": false,
+          "hasPendingWrites": false
+        }
+      }
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_anomalies"
+    ],
+    [
+      "where",
+      "dayKey",
+      ">=",
+      "2026-10-01"
+    ],
+    [
+      "where",
+      "dayKey",
+      "<=",
+      "2026-10-31"
+    ],
+    [
+      "orderBy",
+      "dayKey",
+      "desc"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "collection",
+      "dev_anomalies"
+    ],
+    [
+      "where",
+      "dayKey",
+      ">=",
+      "2026-10-01"
+    ],
+    [
+      "where",
+      "dayKey",
+      "<=",
+      "2026-10-31"
+    ],
+    [
+      "orderBy",
+      "dayKey",
+      "desc"
+    ],
+    [
+      "limit",
+      1
+    ],
+    [
+      "startAfter",
+      {
+        "id": "x2",
+        "exists": true,
+        "ref": "ref(dev_anomalies/x2)",
+        "data": "fn",
+        "metadata": {
+          "fromCache": false,
+          "hasPendingWrites": false
+        }
+      }
+    ],
+    [
+      "get",
+      {
+        "source": "server"
+      }
+    ],
+    [
+      "collection",
+      "dev_anomalies"
+    ],
+    [
+      "where",
+      "dayKey",
+      ">=",
+      "2026-10-01"
+    ],
+    [
+      "where",
+      "dayKey",
+      "<=",
+      "2026-10-31"
+    ],
+    [
+      "orderBy",
+      "dayKey",
+      "desc"
+    ],
+    [
+      "limit",
+      200
+    ],
+    [
+      "get",
+      {
+        "source": "cache"
+      }
+    ],
+    [
+      "collection",
+      "dev_anomalies"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "x3"
+    ],
+    [
+      "batch.set",
+      "ref(dev_anomalies/x3)",
+      {
+        "dayKey": "2026-10-21",
+        "kind": "k"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "batch.commit"
+    ]
+  ],
+  "service.users": [
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "set",
+      {
+        "people": {
+          "u1": {
+            "name": "Owner",
+            "role": "owner"
+          }
+        },
+        "updatedAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "doc",
+      "u4"
+    ],
+    [
+      "update",
+      {
+        "role": "manager",
+        "status": "active"
+      }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "doc",
+      "u4"
+    ],
+    [
+      "update",
+      {
+        "status": "rejected",
+        "rejectedAt": "SERVER_TIME",
+        "rejectedBy": "u1"
+      }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "doc",
+      "u4"
+    ],
+    [
+      "update",
+      {
+        "status": "pending",
+        "role": "staff",
+        "disabledAt": "delete(true)",
+        "disabledBy": "delete(true)",
+        "rejectedAt": "delete(true)",
+        "rejectedBy": "delete(true)"
+      }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "doc",
+      "u4"
+    ],
+    [
+      "update",
+      {
+        "status": "disabled",
+        "role": "delete(true)",
+        "rentRole": "delete(true)",
+        "approvedAt": "delete(true)",
+        "approvedBy": "delete(true)",
+        "disabledAt": "SERVER_TIME",
+        "disabledBy": "u1"
+      }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "get"
+    ]
   ]
 }
