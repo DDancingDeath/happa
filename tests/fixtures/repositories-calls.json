@@ -1729,6 +1729,38 @@
         "clientVersion": 4,
         "writtenAt": "SERVER_TIME"
       }
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "doc",
+      "2026-06"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_monthStats/2026-06)"
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "doc",
+      "2026-06"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_monthStats/2026-06)"
     ]
   ],
   "service.backup": [
@@ -1985,45 +2017,6 @@
     ],
     [
       "batch.commit"
-    ],
-    [
-      "collection",
-      "dev_settings"
-    ],
-    [
-      "doc",
-      "team"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_settings"
-    ],
-    [
-      "doc",
-      "team"
-    ],
-    [
-      "set",
-      {
-        "people": {
-          "u1": {
-            "name": "Owner",
-            "role": "owner"
-          },
-          "u2": {
-            "name": "Man",
-            "role": "manager"
-          },
-          "u3": {
-            "name": "Ram",
-            "role": "staff"
-          }
-        },
-        "updatedAt": "SERVER_TIME"
-      }
     ],
     [
       "collection",
@@ -2425,6 +2418,50 @@
     ],
     [
       "batch.commit"
+    ]
+  ],
+  "service.notifications-owner-sync": [
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "set",
+      {
+        "people": {
+          "u1": {
+            "name": "Owner",
+            "role": "owner"
+          },
+          "u2": {
+            "name": "Man",
+            "role": "manager"
+          }
+        },
+        "updatedAt": "SERVER_TIME"
+      }
     ]
   ],
   "service.notifications-manager": [
@@ -2978,6 +3015,13 @@
       "dev_users"
     ],
     [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
       "doc",
       "u4"
     ],
@@ -2987,6 +3031,51 @@
         "role": "manager",
         "status": "active"
       }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "team"
+    ],
+    [
+      "set",
+      {
+        "people": {
+          "u1": {
+            "name": "Owner",
+            "role": "owner"
+          },
+          "u4": {
+            "name": "New",
+            "role": "manager"
+          }
+        },
+        "updatedAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_users"
+    ],
+    [
+      "get"
     ],
     [
       "collection",
@@ -3042,13 +3131,6 @@
         "disabledAt": "SERVER_TIME",
         "disabledBy": "u1"
       }
-    ],
-    [
-      "collection",
-      "dev_users"
-    ],
-    [
-      "get"
     ],
     [
       "collection",

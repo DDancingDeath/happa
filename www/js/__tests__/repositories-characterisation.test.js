@@ -485,7 +485,8 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         fake.seed('dev_monthStats', [
             { id: '2026-08', sales: 1 },
             { id: '2026-09', sales: 2, stale: true, staleAt: 7 },
-            { id: '2026-10', sales: 3, stale: true, staleAt: 9 }
+            { id: '2026-10', sales: 3, stale: true, staleAt: 9 },
+            { id: '2026-06', sales: 4, stale: true, staleAt: 3 }
         ]);
         const months = await FirebaseService.loadMonthStats('2026-09');
         await FirebaseService.saveMonthStats([{ month: '2026-07', sales: 0 }]);
@@ -494,10 +495,14 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         const newer = await FirebaseService.rebuildMonthStat({ month: '2026-10', sales: 5 }, 8);
         const fresh = await FirebaseService.rebuildMonthStat({ month: '2026-08', sales: 5 }, 1);
         const guarded = await FirebaseService.saveMonthStatGuarded({ month: '2026-10', sales: 6 }, { staleAt: 9 });
-        const refused = await FirebaseService.saveMonthStatGuarded({ month: '2026-11', sales: 6 });
+        const unseeded = await FirebaseService.saveMonthStatGuarded({ month: '2026-11', sales: 6 });
+        const refused = await FirebaseService.saveMonthStatGuarded({ month: '2026-06', sales: 6 });
+        const otherMark = await FirebaseService.saveMonthStatGuarded({ month: '2026-06', sales: 6 }, { staleAt: 2 });
         pin('service.monthStats', rec.log);
         expect(Object.keys(months)).toEqual(['2026-09', '2026-10']);
-        expect([rebuilt.status, newer.status, fresh.status, guarded.status, refused.status]).toEqual(['written', 'newer', 'fresh', 'written', 'written']);
+        expect([rebuilt.status, newer.status, fresh.status, guarded.status, unseeded.status, refused.status, otherMark.status])
+            .toEqual(['written', 'newer', 'fresh', 'written', 'written', 'newer', 'newer']);
+        expect(fake.raw('dev_monthStats').get('2026-06')).toMatchObject({ sales: 4, stale: true });
     });
 
     test('backup and storage: read a collection, delete in batches, count documents', async () => {
@@ -538,6 +543,13 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
             { id: 'n3', userId: 'u2', read: false, timestamp: NOW - DAY }
         ]);
         AppState.userRole = 'owner';
+        // The owner's fan-out also syncs the team directory in the background: done here
+        // first, so the pinned log holds only the fan-out (the sync has its own flow below).
+        await FirebaseService.loadUsers();
+        await settle();
+        rec.clear();
+        const fromMillis = jest.fn(ms => ms);
+        global.firebase.firestore.Timestamp = { fromMillis };
         const sent = await FirebaseService.sendNotification('evt-1', ['u2', 'u3', 'u1'], { type: 'x' });
         await FirebaseService.notifyRateChanges({ id: 'i1', name: 'Rice' }, [{ rateType: 'wholesale', oldRate: 1, newRate: 2 }, { rateType: 'sale', oldRate: 3, newRate: 4 }], 'evt-r');
         await FirebaseService.notifyRateChange({ id: 'i1', name: 'Rice' }, 'purchase', 5, 6);
@@ -560,6 +572,19 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         expect(page.items).toHaveLength(1);
         expect(page2.items).toHaveLength(1);
         expect([all, none, old]).toEqual([3, 0, 1]);
+        expect(fromMillis).toHaveBeenCalledWith(NOW - 30 * DAY);
+    });
+
+    test('owner fan-out: the profiles are read and the team directory brought in line (no recipient left)', async () => {
+        fake.seed('dev_users', [
+            { id: 'u1', name: 'Owner', role: 'owner', status: 'active' },
+            { id: 'u2', name: 'Man', role: 'manager', status: 'active' }
+        ]);
+        AppState.userRole = 'owner';
+        await FirebaseService.notifyItemEdit({ id: 'i1', name: 'Rice' }, 'updated', ['name']);
+        await settle();
+        pin('service.notifications-owner-sync', rec.log);
+        expect(fake.raw('dev_settings').get('team').people).toMatchObject({ u1: { role: 'owner' }, u2: { role: 'manager' } });
     });
 
     test('notifications as a manager: recipients from the team directory, no profile read', async () => {
@@ -624,13 +649,18 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         const people = await FirebaseService.loadPeople();
         const audit1 = await FirebaseService.loadAuditPeople();
         const audit2 = await FirebaseService.loadAuditPeople();
+        await FirebaseService.notifyItemEdit({ id: 'i1', name: 'Rice' }, 'updated');
+        await settle();
         await FirebaseService.updateUser('u4', { role: 'manager', status: 'active' });
+        const wrote = await FirebaseService.ensureTeamDirectory();
+        const again = await FirebaseService.ensureTeamDirectory();
+        const audit3 = await FirebaseService.loadAuditPeople();
+        await FirebaseService.notifyItemEdit({ id: 'i1', name: 'Rice' }, 'updated');
+        await settle();
         await FirebaseService.rejectUserProfile('u4', 'u1');
         await FirebaseService.restoreUserProfile('u4');
         await FirebaseService.disableUserProfile('u4', 'u1');
         await settle();
-        const wrote = await FirebaseService.ensureTeamDirectory();
-        const again = await FirebaseService.ensureTeamDirectory();
         FirebaseService.forgetPeopleCaches();
         AppState.userRole = 'manager';
         const managerPeople = await FirebaseService.loadPeople();
@@ -638,8 +668,11 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         expect(users.map(u => u.id)).toEqual(['u4', 'u1']);
         expect(people).toHaveLength(2);
         expect(audit2).toBe(audit1);
+        expect(audit3).not.toBe(audit1);
+        expect(audit3.find(u => u.id === 'u4')).toMatchObject({ role: 'manager' });
+        expect(rec.log.filter(c => c[0] === 'collection' && c[1] === 'dev_users').length).toBeGreaterThanOrEqual(5);
         expect(fake.raw('dev_users').get('u4')).toMatchObject({ status: 'disabled', disabledBy: 'u1' });
-        expect([typeof wrote, again]).toEqual(['boolean', false]);
+        expect([wrote, again]).toEqual([true, false]);
         expect(Array.isArray(managerPeople)).toBe(true);
         expect(FirebaseService.serverTimestamp()).toBe('SERVER_TIME');
     });
