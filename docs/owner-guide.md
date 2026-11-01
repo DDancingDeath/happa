@@ -214,7 +214,8 @@ Separate from the shop: rent money never counts in shop figures.
   link), Delete (removes access; Restore brings them back as a pending
   registration).
 - **Anomalies**: bills that look wrong (a possible duplicate bill, a rate far off,
-  a big cash gap…); tap "Mark OK" or "Mark fixed" on each.
+  a big cash gap…) and the daily number checks that failed ("Number check: …"; tap it to
+  open Diagnostics › Number checks); tap "Mark OK" or "Mark fixed" on each.
 - **Diagnostics › Number checks**: the always-true checks run on this phone's data
   (bill split, payments, dates, dues, drawer, stock).
 

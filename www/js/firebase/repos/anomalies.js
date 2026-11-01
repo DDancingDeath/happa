@@ -82,5 +82,24 @@ export const anomalyMethods = {
             writes.slice(i, i + 400).forEach(w => batch.set(ref.doc(w.id), w.data, { merge: true }));
             await batch.commit();
         }
+    },
+
+    /**
+     * Creates only the records that don't exist yet (number-check flags, #160): one
+     * server read per record, so a flag already reviewed keeps its status and note.
+     * @param {Array<{id: string, data: Object}>} writes - a handful (one per failed check)
+     * @returns {Promise<number>} how many were created
+     */
+    async addAnomaliesIfMissing(writes) {
+        if (!writes || writes.length === 0) return 0;
+        const db = this.db;
+        const ref = db.collection(col('anomalies'));
+        const snaps = await Promise.all(writes.map(w => ref.doc(w.id).get({ source: 'server' })));
+        const missing = writes.filter((w, i) => !snaps[i].exists);
+        if (!missing.length) return 0;
+        const batch = db.batch();
+        missing.forEach(w => batch.set(ref.doc(w.id), w.data));
+        await batch.commit();
+        return missing.length;
     }
 };

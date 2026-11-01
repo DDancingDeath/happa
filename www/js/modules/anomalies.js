@@ -23,6 +23,7 @@ import {
 } from '../utils/anomalies.js';
 import { firstStockTimes } from '../utils/stock-check.js';
 import { auditScanCap } from '../utils/security-flags.js';
+import { numberCheckFlags } from '../utils/number-check-flags.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
@@ -253,6 +254,26 @@ export const AnomaliesManager = {
         setTimeout(() => {
             this.dailyScan().catch(e => console.warn('Daily anomaly scan failed:', e));
         }, delayMs);
+    },
+
+    /**
+     * The daily number checks' failures become flags (#160): one record per failed
+     * check and set of mismatches, created only when it isn't stored yet (so a
+     * reviewed one stays reviewed). Reads one doc per failed check; nothing when all pass.
+     * @param {Array} results runNumberChecks()
+     * @returns {Promise<number>} flags created
+     */
+    async recordNumberChecks(results, now = Date.now()) {
+        if (!canSee()) return 0;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) return 0;
+        const flags = numberCheckFlags(results, now);
+        if (!flags.length) return 0;
+        try {
+            return await FirebaseService.addAnomaliesIfMissing(planAnomalyWrites(flags, [], now).map(w => ({ id: w.id, data: w.data })));
+        } catch (e) {
+            console.warn('Number-check flags not saved:', e?.code || e);
+            return 0;
+        }
     },
 
     // ---------- Today: Day report card ----------
@@ -525,7 +546,7 @@ export const AnomaliesManager = {
             esc(when)
         ].filter(Boolean).join(' · ');
         const id = jsAttr(a.id);
-        const canOpen = a.refKind === 'bill' || a.refKind === 'cash' || a.refKind === 'stock';
+        const canOpen = a.refKind === 'bill' || a.refKind === 'cash' || a.refKind === 'stock' || a.refKind === 'check';
         const statusBadge = status === 'open' ? '' : `<span class="anomaly-status anomaly-status-${esc(status)}">${loc(STATUS_LABELS[status] || STATUS_LABELS.open)}</span>`;
         const review = status === 'open'
             ? `<button type="button" class="anomaly-btn ok" onclick="window.app.anomalies.review('${id}', 'ok')">✓ ${esc(t('ui.anom.btn_ok'))}</button>
@@ -568,6 +589,9 @@ export const AnomaliesManager = {
             setTimeout(() => window.app?.day?.showSubTab('cash'), 150);
         } else if (a.refKind === 'stock') {
             window.app?.nav?.showTab('stock');
+        } else if (a.refKind === 'check') {
+            window.app?.nav?.showTab('diagnostics');
+            setTimeout(() => window.app?.diagnostics?.showTab('numbers'), 150);
         }
     },
 
