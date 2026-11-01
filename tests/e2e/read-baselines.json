@@ -6,7 +6,7 @@
   "reads": {
     "owner": {
       "startup": 42,
-      "day": 9,
+      "day": 10,
       "billing": 0,
       "wholesale-sales": 1,
       "expenses": 1,
@@ -30,7 +30,7 @@
     },
     "manager": {
       "startup": 40,
-      "day": 8,
+      "day": 9,
       "billing": 0,
       "wholesale-sales": 1,
       "expenses": 1,
@@ -53,7 +53,7 @@
     },
     "staff": {
       "startup": 32,
-      "day": 6,
+      "day": 7,
       "billing": 0,
       "expenses": 0,
       "items": 0,

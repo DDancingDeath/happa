@@ -26,6 +26,7 @@ import { ExpensesManager } from './modules/miscellaneous.js';
 import { SettingsManager } from './modules/settings.js';
 import { CashManagementManager } from './modules/cash-management.js';
 import { DayManager } from './modules/day.js';
+import { ManualReminders } from './ui/manual-reminders.js';
 import { AnomaliesManager } from './modules/anomalies.js';
 import { HealthManager } from './modules/health.js';
 import { RolesAccessManager } from './modules/roles-access.js';
@@ -59,7 +60,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozzs-lazy-pages';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzu-lazy-pages';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -365,6 +366,7 @@ function blockOutdatedApp() {
     outdatedBlocked = true;
     FirebaseService.cleanup();
     NotificationsManager.stop();
+    ManualReminders.reset();
     document.getElementById('appContent')?.classList.add('hidden');
     UIManager.hideLoading();
     AuthManager.showLoginNotice(t('msg.app.app_version_outdated_update_app'));
@@ -684,6 +686,7 @@ document.addEventListener('DOMContentLoaded', async function() {
                 FirebaseService.cleanup();
                 FirebaseService.forgetPeopleCaches();
                 NotificationsManager.stop();
+                ManualReminders.reset();
                 ask?.reset();
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
@@ -1309,7 +1312,11 @@ window.app = {
         filterTransactions: () => DayManager.filterTransactions(),
         showLabourBreakdown: () => DayManager.showLabourBreakdown(),
         toggleAllBills: () => DayManager.toggleAllBills(),
-        returnCashBody: () => DayManager.returnCashBody()
+        returnCashBody: () => DayManager.returnCashBody(),
+        reminderForm: (open) => ManualReminders.form(open),
+        reminderSave: () => ManualReminders.save(),
+        reminderDone: (id) => ManualReminders.markReminderDone(id),
+        reminderCancel: (id) => ManualReminders.cancelReminderNow(id)
     },
     
     // Cash Management
