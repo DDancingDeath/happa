@@ -5,6 +5,7 @@
  */
 import fc from 'fast-check';
 import { overdueReminder } from '../../www/js/utils/reminders.js';
+import { groupReminders } from '../../www/js/utils/manual-reminders.js';
 
 const TODAY = new Date(2026, 10, 15, 10, 0, 0);
 const dmy = (age) => {
@@ -34,5 +35,20 @@ describe('REM-1: who to collect from / pay', () => {
                 expect(r.total).toBe(overdue.reduce((s, [, p]) => s + p.total, 0));
             }
         ), { numRuns: 200, seed: 86 });
+    });
+});
+
+describe('REM-3: manual reminders on Today', () => {
+    test('due = date today or earlier (most late first), next 7 days, later counted', () => {
+        const iso = (n) => new Date(Date.UTC(2026, 10, 15 + n)).toISOString().slice(0, 10);
+        fc.assert(fc.property(fc.array(fc.integer({ min: -40, max: 40 }), { maxLength: 30 }), (offsets) => {
+            const list = offsets.map((n, i) => ({ id: String(i), title: `t${String(i).padStart(2, '0')}`, dueDate: iso(n) }));
+            const g = groupReminders(list, iso(0));
+            const byDays = (a, b) => a.n - b.n || a.title.localeCompare(b.title);
+            const rows = offsets.map((n, i) => ({ id: String(i), n, title: list[i].title }));
+            expect(g.due.map(r => [r.id, r.days])).toEqual(rows.filter(r => r.n <= 0).sort(byDays).map(r => [r.id, r.n]));
+            expect(g.soon.map(r => [r.id, r.days])).toEqual(rows.filter(r => r.n > 0 && r.n <= 7).sort(byDays).map(r => [r.id, r.n]));
+            expect(g.later).toBe(rows.filter(r => r.n > 7).length);
+        }), { numRuns: 200, seed: 86 });
     });
 });

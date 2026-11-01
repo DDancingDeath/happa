@@ -635,3 +635,12 @@ body.dark-mode .today-cash-prompt {
 .today-reminder-party { display: flex; gap: 8px; justify-content: space-between; font-size: 14px; padding: 2px 0; }
 .today-reminder-party span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .today-reminder-days, .today-reminder-more { color: #6b7280; font-size: 12px; }
+/* Manual reminders (#86) */
+.today-reminder-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; padding: 4px 0; }
+.today-reminder-title { font-weight: 600; }
+.today-reminder-days.late { color: #b91c1c; font-weight: 600; }
+.today-reminder-actions { display: flex; gap: 6px; margin-left: auto; }
+.today-reminder-actions .filter-btn, .today-reminder > .filter-btn { min-height: 44px; }
+.today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.today-reminder-form input { min-height: 44px; font-size: 16px; padding: 6px 10px; }
+.today-reminder-form-buttons { display: flex; gap: 8px; }

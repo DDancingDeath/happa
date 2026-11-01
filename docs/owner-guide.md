@@ -60,6 +60,7 @@ Today's figures, from today's bills, expenses and cash sessions.
 | Labour: deducted from farmers (T-LAB-1) | Sum of the labour on today's purchase bills. |
 | Labour: to pay (T-LAB-2) | Today's purchase kg ÷ the package weight (Settings › Aadhat, default 35 kg), **rounded up**, × the labour rate. |
 | More / less than deducted (T-LAB-3) | The gap between the two. Not an error: it happens when labour was unticked on a bill or packets were light. |
+| Reminders: To do (REM-3) | Your own reminders ("Collect from Ramesh", a date, a party). You and managers add them with **＋ Add reminder**; everyone sees the ones due today or late and the next 7 days, and anyone may tap **✓ Done** (it goes for everyone). **✕ Cancel** is for you and managers. They show in the app only, no phone notification. |
 
 ### Billing (purchase, retail sale) and Wholesale
 

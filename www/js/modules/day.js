@@ -19,6 +19,7 @@ import { overdueReminder, rentReminder } from '../utils/reminders.js';
 import { billsForKind } from '../utils/party-due.js';
 import { rentalsRole } from '../ui/business-switcher.js';
 import { formatINR } from '../utils/due-reminder.js';
+import { ManualReminders } from '../ui/manual-reminders.js';
 
 // Use helper functions
 const formatCurrency = (amount) => Helpers.formatCurrency(amount);
@@ -35,6 +36,7 @@ export const DayManager = {
      * Initialize the Day page
      */
     init() {
+        ManualReminders.start(() => this.renderReminders());
         this.updateTodayHeader();
         this.loadTodayData();
         this.loadTodaySession();
@@ -245,7 +247,8 @@ export const DayManager = {
     },
 
     /**
-     * Reminders (#86): REM-1 who to collect from / pay (dues older than 30 days,
+     * Reminders (#86): REM-3 manual reminders (owner/manager add them, anyone marks done),
+     * REM-1 who to collect from / pay (dues older than 30 days,
      * Outstanding's chase-first order) and REM-2 rent still due as Rentals last
      * showed it this month on this phone. Nothing is read from the server.
      */
@@ -266,6 +269,9 @@ export const DayManager = {
             + (r.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: r.more }))}</div>` : '')
             + `<button type="button" class="filter-btn" onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div>`;
         const parts = [];
+        // Manual reminders (#86) first: what someone asked to be done today
+        const manual = ManualReminders.html(toLocalISODate(now));
+        if (manual) parts.push(manual);
         const add = (kind, bills, open) => {
             const r = overdueReminder(bills, { today: now });
             if (r.parties.length) parts.push(block(kind, r, open));

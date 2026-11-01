@@ -625,6 +625,25 @@ not checked one by one (rules can't loop over map keys), so a member can still c
   first, then Restore and approve them after the reset.
 - Admin › Clear Data › Users still deletes profiles (a fresh start); those people can register again.
 
+## Manual reminders on Today (#86)
+
+Shop-wide to-dos ("Collect from Ramesh on Friday") in `reminders/{id}` (+ `dev_`), in-app only (#58: no push).
+Default chosen (the owner can ask for another): **reminders belong to the shop, not to one person**.
+
+| | Owner | Manager | Member |
+|---|---|---|---|
+| See open reminders on Today (due, next 7 days, later counted) | ✓ | ✓ | ✓ |
+| Add a reminder (title, date today or later, optional party) | ✓ | ✓ | – |
+| Mark one done (it goes for everyone) | ✓ | ✓ | ✓ |
+| Cancel one | ✓ | ✓ | – |
+| Delete (cleanup) | ✓ | – | – |
+
+The rules check the shape (title 1–120 letters, `dueDate` 'YYYY-MM-DD' not before yesterday in India, at most
+about two years ahead, party ≤ 80), that the writer names themself with the server time (`createdBy` /
+`createdAt`, `doneBy` / `doneAt`, `cancelledBy` / `cancelledAt`), and that done and cancelled are
+final: nothing else of a reminder can change. Today listens to the open ones only (`status == 'open'`, at
+most 50, one listener per sign-in: 1 read when there are none, then only changes).
+
 ## Settings sections (who sees what)
 
 Settings shows **Common** to everyone, plus the section of the business open in the switcher, with a

@@ -48,6 +48,7 @@ import { userProfileMethods } from './repos/user-profiles.js';
 import { notificationMethods } from './repos/notifications.js';
 import { cashDayMethods } from './repos/cash-days.js';
 import { worthAccountMethods } from './repos/worth-accounts.js';
+import { reminderMethods } from './repos/reminders.js';
 import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed, pauseBackgroundReads } from './firestore-meter.js';
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
@@ -3631,6 +3632,7 @@ const FirebaseService = {
 
     ...anomalyMethods,
     ...worthAccountMethods,
+    ...reminderMethods,
 
     ...userProfileMethods,
 
