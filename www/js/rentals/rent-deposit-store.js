@@ -9,7 +9,7 @@
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { todayLocalISO } from '../utils/dates.js';
-import { applyPayment, chargeDue, depositEntry, depositHeld, MAX_DEPOSIT_ENTRIES } from './rent-math.js';
+import { applyPayment, chargeDue, chargeId as chargeIdOf, depositEntry, depositHeld, MAX_DEPOSIT_ENTRIES } from './rent-math.js';
 import { withMonth } from './rent-public.js';
 import { rentCol, uid, clip, readPublic } from './rent-store.js';
 
@@ -107,14 +107,18 @@ export function changeDepositEntry({ tenantId, leaseId = '', entry, fields = nul
  * RENT-16: an advance left on the last month of a lease that ended (move-out, change of unit)
  * goes into the tenant's deposit ledger ('received', mode 'advance'), to be refunded or adjusted
  * with the deposit. Same write: the month's advance becomes 0 (rules match the two).
+ * `leaseId` instead of `chId`: the month the lease ended with.
  * @returns {Promise<number>} the amount moved (0 when there is none or the lease is still active)
  */
-export function advanceToDeposit(chargeId) {
+export function advanceToDeposit(chId, leaseId = '') {
     return FirebaseService.db.runTransaction(async (tx) => {
+        const byLease = leaseId ? (await tx.get(coll('rent_leases').doc(leaseId))).data() : null;
+        if (leaseId && byLease?.status !== 'ended') return 0;
+        const chargeId = leaseId ? chargeIdOf(leaseId, byLease.endMonth) : chId;
         const chRef = coll('rent_charges').doc(chargeId);
         const ch = (await tx.get(chRef)).data();
         if (!(ch?.adv > 0)) return 0;
-        const lease = (await tx.get(coll('rent_leases').doc(ch.leaseId))).data();
+        const lease = byLease || (await tx.get(coll('rent_leases').doc(ch.leaseId))).data();
         if (lease?.status !== 'ended') return 0;
         const ref = depRef(ch.tenantId);
         const snap = await tx.get(ref);

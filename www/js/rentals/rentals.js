@@ -822,7 +822,7 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, save = null }
         AuditService.log(from ? 'RENT_UNIT_CHANGE' : 'RENT_MOVE_IN', {
             tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate, fromLeaseId: from?.id || null
         }).catch(auditWarn);
-        if (from) void depUi('afterMoveOut', from.tenantId, from.id, from.chargedThrough, false);
+        if (from) void depUi('afterMoveOut', from.tenantId, from.id, false);
         if (defs?.tenantLink && isManager() && !moved) await lazyUi('./rent-link.js', 'linkNewLease', { unit, res, occ, defs });
         return true;
     } catch (e) {
@@ -898,7 +898,7 @@ async function moveOut(leaseId) {
         await store.endLease(leaseId, end, state.month, names);
         UIManager.showToast(t('msg.rent.saved'), 'success');
         AuditService.log('RENT_MOVE_OUT', { leaseId, endMonth: end }).catch(auditWarn);
-        void depUi('afterMoveOut', lease.tenantId, leaseId, end);
+        void depUi('afterMoveOut', lease.tenantId, leaseId);
     } catch (e) {
         console.warn('Move-out failed:', e?.code || e?.message || e);
         const key = e?.message === 'later_paid' ? 'msg.rent.later_paid'

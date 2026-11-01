@@ -1576,7 +1576,8 @@ service cloud.firestore {
         && list[n].keys().hasOnly(['amount', 'adv', 'mode', 'ref', 'date', 'at', 'by', 'byName', 'rno'])
         && list[n].amount > 0
         && list[n].get('by', null) == request.auth.uid
-        && (!('adv' in list[n]) || request.resource.data.get('adv', 0) != resource.data.get('adv', 0))
+        && (!('adv' in list[n]) || (request.resource.data.get('adv', 0) != resource.data.get('adv', 0)
+            && list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']))
         && (list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
             || (list[n].get('mode', '') == 'deposit' && !('rno' in list[n]) && rentDepPaysOk(usersCol, docId, list[n].amount)))
         && (!('rno' in list[n])
@@ -1604,12 +1605,15 @@ service cloud.firestore {
     // month is paid off: the payment's adv (> 0) is added to the month's advance, carried
     // to the next month (rentChargeOpeningOk). Otherwise the month's advance is unchanged.
     function rentPayAdvOk(usersCol, d, r, e) {
-      let l = get(rentLeasePath(usersCol, r.leaseId)).data;
       return !('adv' in e)
         ? d.get('adv', 0) == r.get('adv', 0)
         : e.adv is number && e.adv > 0 && d.paid >= r.amount - 0.01
           && rentPaidMatches(d.get('adv', 0), r.get('adv', 0) + e.adv)
-          && l.status == 'active' && l.get('chargedThrough', '') == r.month;
+          && rentLatestActive(get(rentLeasePath(usersCol, r.leaseId)).data, r.month);
+    }
+
+    function rentLatestActive(l, month) {
+      return l.status == 'active' && l.get('chargedThrough', '') == month;
     }
 
     // RENT-16: a month's advance goes to 0 only (a) in the write that creates the next month
@@ -1619,8 +1623,7 @@ service cloud.firestore {
       let d = request.resource.data;
       let r = resource.data;
       let n = rentChargePath(usersCol, r.leaseId, nextMonth(r.month));
-      return d.diff(r).affectedKeys().hasOnly(['adv', 'updatedAt', 'updatedBy']) && rentWriterOk()
-        && r.get('adv', 0) > 0 && d.get('adv', 0) == 0
+      return rentWriterOk() && r.get('adv', 0) > 0 && d.get('adv', 0) == 0
         && ((!exists(n) && existsAfter(n) && rentPaidMatches(getAfter(n).data.paid + getAfter(n).data.get('adv', 0), r.adv))
           || (get(rentLeasePath(usersCol, r.leaseId)).data.status == 'ended'
             && rentAdvToDepOk(getAfter(rentPath(usersCol, 'rent_deposits', r.tenantId)).data.get('entries', []), docId, r.adv)));
@@ -1902,9 +1905,33 @@ service cloud.firestore {
       let leaseAfter = getAfter(rentLeasePath(usersCol, resource.data.leaseId)).data;
       return (role in ['owner', 'manager']
           || (role == 'member' && leaseAfter.get('movedTo', null) != null && resource.data.month == nextMonth(leaseAfter.endMonth)))
-        && resource.data.get('paid', 0) == 0 && resource.data.get('payments', []).size() == 0
+        && ((resource.data.get('paid', 0) == 0 && resource.data.get('payments', []).size() == 0) || rentAdvBackOk(usersCol, leaseAfter))
         && leaseBefore.status == 'active' && leaseAfter.status == 'ended'
         && resource.data.month > leaseAfter.endMonth;
+    }
+
+    // RENT-16: the one month right after the new last month, paid only from the advance, may go
+    // when the lease ends before it: paid + its advance go back to the last month's advance.
+    function rentAdvBackOk(usersCol, leaseAfter) {
+      let r = resource.data;
+      let p = r.get('payments', []);
+      let endCh = rentChargePath(usersCol, r.leaseId, leaseAfter.endMonth);
+      return p.size() == 1 && p[0].get('mode', '') == 'advance' && r.month == nextMonth(leaseAfter.endMonth)
+        && rentPaidMatches(getAfter(endCh).data.get('adv', 0), get(endCh).data.get('adv', 0) + r.paid + r.get('adv', 0));
+    }
+
+    // RENT-16, the other side: the last month's advance grows only by that month, deleted in this
+    // write, as the lease ends with this month.
+    function rentAdvBackInOk(usersCol) {
+      let d = request.resource.data;
+      let r = resource.data;
+      let n = rentChargePath(usersCol, r.leaseId, nextMonth(r.month));
+      return d.get('adv', 0) > r.get('adv', 0) && rentWriterOk()
+        && getAfter(rentLeasePath(usersCol, r.leaseId)).data.status == 'ended'
+        && getAfter(rentLeasePath(usersCol, r.leaseId)).data.endMonth == r.month
+        && get(rentLeasePath(usersCol, r.leaseId)).data.status == 'active'
+        && exists(n) && !existsAfter(n)
+        && rentPaidMatches(d.get('adv', 0), r.get('adv', 0) + get(n).data.paid + get(n).data.get('adv', 0));
     }
 
     function rentCreateOk(base, usersCol, docId) {
@@ -1939,7 +1966,10 @@ service cloud.firestore {
     function rentUpdateAs(base, usersCol, docId, mgr) {
       return base == 'rent_charges'
           ? (rentCreationKept() && (rentPaymentOk(usersCol, docId) || rentChargeRnoOk(usersCol, docId) || rentMeterOk(usersCol, docId, mgr)
-              || rentChargeMoveOk(usersCol, mgr) || rentAdvOutOk(usersCol, docId)))
+              || rentChargeMoveOk(usersCol, mgr)
+              // RENT-16, only the advance changes (gated here: the expression budget of a correction).
+              || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['adv', 'updatedAt', 'updatedBy'])
+                && (rentAdvOutOk(usersCol, docId) || rentAdvBackInOk(usersCol)))))
             || (mgr && (rentChargeEditOk(usersCol, docId) || rentChargeVoidOk(usersCol, docId)))
         : base == 'rent_leases'
           ? rentLeaseUpdateOk(usersCol, docId, mgr)
@@ -2048,7 +2078,8 @@ service cloud.firestore {
       return d.entries.size() == n + 1 && rentDepEntryOk(e)
         && rentPaidMatches(d.held, held + (e.kind == 'received' ? e.amount : 0 - e.amount))
         && (e.get('mode', '') != 'advance'
-          || (get(ch).data.tenantId == docId && get(ch).data.get('adv', 0) == e.amount && getAfter(ch).data.get('adv', 0) == 0))
+          || (get(ch).data.tenantId == docId && get(ch).data.get('adv', 0) == e.amount && getAfter(ch).data.get('adv', 0) == 0
+            && get(rentLeasePath(usersCol, get(ch).data.leaseId)).data.status == 'ended'))
         && (e.kind != 'adjust'
           || (getAfter(ch).data.tenantId == docId
             && getAfter(ch).data.payments.size() == get(ch).data.get('payments', []).size() + 1

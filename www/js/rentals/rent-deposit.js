@@ -16,7 +16,7 @@ import { formatINR } from '../utils/due-reminder.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import * as store from './rent-store.js';
 import * as ds from './rent-deposit-store.js';
-import { PAYMENT_MODES, DEPOSIT_KINDS, monthLabel, dateLabel, chargeDue, chargeId, depositHeld, depositFill, depositsTotal, isDate } from './rent-math.js';
+import { PAYMENT_MODES, DEPOSIT_KINDS, monthLabel, dateLabel, chargeDue, depositHeld, depositFill, depositsTotal, isDate } from './rent-math.js';
 
 const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.code || e);
 const ERRORS = { amount: 'msg.rent.bad_amount', over: 'msg.rent.dep_over', too_many: 'msg.rent.dep_full', missing: 'msg.rent.save_failed', changed: 'msg.rent.dep_changed' };
@@ -71,12 +71,12 @@ export async function showDeposit(c, tenantId, dep) {
 }
 
 /** Advance left on an ended lease's last month goes into the deposit (RENT-16); says so. */
-async function moveAdvance(chId) {
+async function moveAdvance(chId, leaseId) {
     try {
-        const adv = await ds.advanceToDeposit(chId);
+        const adv = await ds.advanceToDeposit(chId, leaseId);
         if (!(adv > 0)) return;
         UIManager.showToast(t('msg.rent.adv_to_deposit', { amount: formatINR(adv) }), 'success');
-        AuditService.log('RENT_ADVANCE_TO_DEPOSIT', { chargeId: chId, amount: adv }).catch(auditWarn);
+        AuditService.log('RENT_ADVANCE_TO_DEPOSIT', { chargeId: chId || '', leaseId: leaseId || '', amount: adv }).catch(auditWarn);
     } catch (e) {
         console.warn('Advance not moved to the deposit:', e?.code || e);
     }
@@ -86,8 +86,8 @@ async function moveAdvance(chId) {
  * After a move-out (or a change of unit, `open` false): an advance left on the lease's last month
  * moves into the deposit, then the ledger opens when a deposit is held (to adjust or refund it).
  */
-export async function afterMoveOut(c, tenantId, leaseId, month, open = true) {
-    if (leaseId && month) await moveAdvance(chargeId(leaseId, month));
+export async function afterMoveOut(c, tenantId, leaseId, open = true) {
+    if (leaseId) await moveAdvance('', leaseId);
     if (!open) return;
     const dep = await ds.loadDeposit(tenantId).catch(e => console.warn('Deposit not loaded after move-out:', e?.code || e));
     if (depositHeld(dep?.entries) > 0) await showDeposit(c, tenantId, dep);

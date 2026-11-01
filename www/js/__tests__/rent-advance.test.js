@@ -110,4 +110,21 @@ describe('advance in the store', () => {
         expect(await ds.advanceToDeposit('L1_2026-10')).toBe(0);
         expect((await ds.advancesLeft()).length).toBe(0);
     });
+
+    test('a move-out before a month paid only from the advance takes it back, then it goes into the deposit', async () => {
+        fake.seed('rent_units', [{ id: 'U1', propertyId: 'P1', label: '2B', leaseId: 'L1' }]);
+        fake.seed('rent_leases', [lease({ chargedThrough: '2026-11' })]);
+        fake.seed('rent_charges', [charge('2026-10', { paid: 5000, open: false }),
+            charge('2026-11', { paid: 2000, payments: [{ amount: 2000, mode: 'advance' }], adv: 0 })]);
+        await store.endLease('L1', '2026-10', '2026-11');
+        expect(fake.raw('rent_charges').get('L1_2026-11')).toBeUndefined();
+        expect(fake.raw('rent_charges').get('L1_2026-10').adv).toBe(2000);
+        expect(await ds.advanceToDeposit('', 'L1')).toBe(2000);
+        expect(fake.raw('rent_deposits').get('T1').held).toBe(2000);
+        // A later month with a cash payment still stops it.
+        fake.seed('rent_leases', [lease({ id: 'L2', chargedThrough: '2026-11' })]);
+        fake.seed('rent_charges', [charge('2026-10', { id: 'L2_2026-10', leaseId: 'L2' }),
+            charge('2026-11', { id: 'L2_2026-11', leaseId: 'L2', paid: 3000, payments: [{ amount: 2000, mode: 'advance' }, { amount: 1000, mode: 'cash' }] })]);
+        await expect(store.endLease('L2', '2026-10', '2026-11')).rejects.toThrow('later_paid');
+    });
 });

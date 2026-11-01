@@ -9,7 +9,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { todayLocalISO } from '../utils/dates.js';
 import {
-    applyPayment, withAdvance, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
+    applyPayment, withAdvance, advanceBack, addAdvance, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
     receiptNo, receiptAmounts, istYear, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
 import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth, withNames, PUBLIC_MONTHS } from './rent-public.js';
@@ -354,16 +354,23 @@ export const updateChargeInTx = (tx, id, fields) => tx.update(coll('rent_charges
 /** Move-out reads in a transaction; returns the writes (+ `fields`, `snap`: the link). @throws {Error} 'later_paid' */
 export async function endInTx(tx, lease, endMonth) {
     const later = await Promise.all(monthRange(addMonths(endMonth, 1), lease.chargedThrough).map(m => tx.get(coll('rent_charges').doc(chargeId(lease.id, m)))));
-    if (later.some(hasPayment)) throw new Error('later_paid');
+    // RENT-16: one later month paid only from the advance goes; its money goes back to the last month's advance.
+    const back = advanceBack(later.map(s => s.data()));
+    if (later.some(hasPayment) && !back) throw new Error('later_paid');
+    const endRef = back ? coll('rent_charges').doc(chargeId(lease.id, endMonth)) : null;
+    const endAdv = endRef ? (await tx.get(endRef)).data()?.adv : 0;
     const pub = await readPublic(tx, lease);
-    return (fields = {}, snap = (s) => withLease(s, { ...lease, status: 'ended', endMonth })) => {
+    const write = (fields = {}, snap = (s) => withLease(s, { ...lease, status: 'ended', endMonth })) => {
         const by = { updatedAt: Date.now(), updatedBy: uid() };
         later.filter(s => s.exists).forEach(s => tx.delete(s.ref));
+        if (endRef) tx.update(endRef, { adv: addAdvance(endAdv, back), ...by });
         tx.update(coll('rent_leases').doc(lease.id), { status: 'ended', endMonth, chargedThrough: endMonth, ...fields, ...by });
         if (pub) tx.set(pub.ref, snap(pub.data));
         tx.update(coll('rent_units').doc(lease.unitId), { leaseId: null, ...by });
         return later.length;
     };
+    write.back = back;
+    return write;
 }
 
 /**

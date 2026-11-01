@@ -707,6 +707,10 @@ Owner: *"an overpayment on a month becomes an advance applied to the next month'
   the rest carried as its own `adv`, and the month before's `adv` set to 0 — in the same transaction. The
   rules require exactly that: a new month whose month before carries an advance must take it, and an
   `adv` goes to 0 only with the next month created from it (or into the deposit, below).
+- **Ending before a month already paid from the advance** (a back-dated move-out, a change of unit on the
+  1st): that one later month (only advance-paid, no other payment) is deleted as usual and its paid + advance
+  go back to the last month's `adv` in the same write (rules check both sides; more than one such month, or
+  one with a cash payment, still stops it: "a later month has a payment").
 - **Lease ends with an advance left** (move-out, change of unit): right after, the app moves it into the
   tenant's deposit ledger (§13: *received*, from advance, `chargeId`) and clears the month's `adv` in one
   transaction; rules match the two and require the lease to have ended. If that step fails (offline),

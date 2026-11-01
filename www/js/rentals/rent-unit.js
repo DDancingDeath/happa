@@ -158,6 +158,8 @@ export async function changeUnit({ unitId, tenantId, tenantName, fromLeaseId, en
         if (old.status !== 'active' || old.tenantId !== tenantId) throw new Error('tenant_changed');
         if (endMonth < old.startMonth) throw new Error('bad_move_date');
         const end = await store.endInTx(tx, old, endMonth);
+        // A pro-rated move month can't also take back an advance from the month after (RENT-16) in one write.
+        if (end.back && endMonth === month && oldRent !== null) throw new Error('later_paid');
         const chId = chargeId(fromLeaseId, endMonth);
         const ch = oldRent !== null && endMonth === month ? await store.chargeInTx(tx, chId) : null;
         let split = null;

@@ -4284,6 +4284,83 @@ function defineRentSuite(prefix) {
         await assertFails(w('rentMember', 1000));
         await assertSucceeds(w('rentMember', 2000));
     });
+
+    t('advance: a move-out before a month paid only from the advance takes it back to the last month', async () => {
+        await seed('rent_units', 'U1', unit());
+        await seed('rent_leases', 'L1', lease({ startMonth: PREV2, chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV, { paid: 5000, open: false, adv: 0 }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 2000, open: true, payments: [advEntry('rentMember', 2000)] }));
+        const out = (uid, { back = 2000, upd = true } = {}) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.delete(chargeOn(f, CUR));
+            if (upd) b.update(chargeOn(f, PREV), { adv: back, updatedAt: 3, updatedBy: uid });
+            b.update(leaseOn(f), { status: 'ended', endMonth: PREV, chargedThrough: PREV, updatedAt: 3, updatedBy: uid });
+            b.update(unitOn(f), { leaseId: null, updatedAt: 3, updatedBy: uid });
+            return b.commit();
+        };
+        await assertFails(out('rentManager', { upd: false }));
+        await assertFails(out('rentManager', { back: 3000 }));
+        await assertFails(out('rentMember'));
+        await assertSucceeds(out('rentManager'));
+    });
+
+    t('advance: a later month with a cash payment still blocks a back-dated move-out by a manager', async () => {
+        await seed('rent_units', 'U1', unit());
+        await seed('rent_leases', 'L1', lease({ startMonth: PREV2, chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV, { paid: 5000, open: false }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 3000, open: true, payments: [advEntry('rentMember', 2000), entry('rentMember', 1000)] }));
+        const f = db('rentManager');
+        const b = f.batch();
+        b.delete(chargeOn(f, CUR));
+        b.update(chargeOn(f, PREV), { adv: 3000, updatedAt: 3, updatedBy: 'rentManager' });
+        b.update(leaseOn(f), { status: 'ended', endMonth: PREV, chargedThrough: PREV, updatedAt: 3, updatedBy: 'rentManager' });
+        b.update(unitOn(f), { leaseId: null, updatedAt: 3, updatedBy: 'rentManager' });
+        await assertFails(b.commit());
+    });
+
+    t('advance: a change of unit on the 1st takes the advance-paid month back too', async () => {
+        await seedChange(PREV, null, { through: CUR });
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV, { paid: 5000, open: false }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 2000, payments: [advEntry('rentMember', 2000)] }));
+        const f = db('legacyOwner');
+        const w = (back) => {
+            const b = f.batch();
+            b.delete(chargeOn(f, CUR));
+            b.update(chargeOn(f, PREV), { adv: back, updatedAt: 3, updatedBy: 'legacyOwner' });
+            b.update(leaseOn(f), { status: 'ended', endMonth: PREV, chargedThrough: PREV, movedTo: 'LN', updatedAt: 2, updatedBy: 'legacyOwner' });
+            b.update(unitOn(f), { leaseId: null, updatedAt: 2, updatedBy: 'legacyOwner' });
+            b.set(f.collection(c('rent_leases')).doc('LN'), { unitId: 'U2', propertyId: 'P1', tenantId: 'T1', rent: 6000, dueDay: 10, startMonth: CUR, startDate: `${CUR}-01`,
+                proRate: false, endMonth: null, deposit: 0, increasePct: 5, rentSince: CUR, elecMode: 'included', status: 'active',
+                chargedThrough: null, fromLeaseId: 'L1', ...meta('legacyOwner') });
+            b.update(f.collection(c('rent_units')).doc('U2'), { leaseId: 'LN', updatedAt: 2, updatedBy: 'legacyOwner' });
+            return b.commit();
+        };
+        await assertFails(w(5000));
+        await assertSucceeds(w(2000));
+    });
+
+    t('advance: never both paying the next month and going into the deposit; never on a deposit payment', async () => {
+        await seedTenant();
+        await seed('rent_leases', 'L1', lease({ startMonth: PREV, chargedThrough: PREV }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV, { paid: 5000, open: false, adv: 2000 }));
+        const f = db('rentMember');
+        const b = f.batch();
+        b.set(chargeOn(f, CUR), charge(CUR, { paid: 2000, open: true, payments: [advEntry('rentMember', 2000)], updatedBy: 'rentMember' }));
+        b.update(leaseOn(f), { chargedThrough: CUR, updatedAt: 2, updatedBy: 'rentMember' });
+        b.update(chargeOn(f, PREV), { adv: 0, updatedAt: 2, updatedBy: 'rentMember' });
+        b.set(depOn(f), depDoc('rentMember', [dEntry('rentMember', 'received', 2000, { mode: 'advance', chargeId: `L1_${PREV}`, month: PREV })], 2000));
+        await assertFails(b.commit());
+        // A month paid off from the deposit can't also claim an advance.
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await seed('rent_leases', 'L1', lease({ startMonth: PREV, chargedThrough: CUR }));
+        await seed('rent_deposits', 'T1', depDoc('legacyOwner', [dEntry('legacyOwner', 'received', 9000)], 9000));
+        const g = db('rentMember');
+        const b2 = g.batch();
+        b2.update(depOn(g), { entries: [dEntry('legacyOwner', 'received', 9000), dEntry('rentMember', 'adjust', 5000, { chargeId: `L1_${CUR}`, month: CUR })], held: 4000, updatedAt: 3, updatedBy: 'rentMember' });
+        b2.update(chargeOn(g, CUR), { paid: 5000, open: false, adv: 1000, updatedAt: 3, updatedBy: 'rentMember', payments: [{ ...entry('rentMember', 5000), mode: 'deposit', adv: 1000 }] });
+        await assertFails(b2.commit());
+    });
 }
 
 defineRentSuite('');
