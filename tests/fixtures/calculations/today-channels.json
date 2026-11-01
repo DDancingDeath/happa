@@ -1,0 +1,34 @@
+{
+  "about": "Today › By bill type (T18) edge cases (#141): a wholesale bill part-paid later the same day, a retail bill fully paid later the same day, a voided retail bill, a purchase written off later the same day, and a bill from yesterday paid today (not today's bill). Money in rupees.",
+  "now": "2026-11-01T20:00:00+05:30",
+  "retailSales": [
+    { "id": "r1", "billNumber": "S-1", "type": "retail", "date": "2026-11-01T10:00:00+05:30", "total": 300,
+      "cashPayment": 0, "onlinePayment": 300, "dueAmount": 0, "payment": { "cash": 0, "online": 300, "due": 0, "total": 300 },
+      "payments": [ { "id": "p-r1", "cash": 0, "online": 300, "at": 1793530800000 } ] },
+    { "id": "r2", "billNumber": "S-2", "type": "retail", "date": "2026-11-01T11:00:00+05:30", "total": 450,
+      "cashPayment": 450, "onlinePayment": 0, "dueAmount": 0, "payment": { "cash": 450, "online": 0, "due": 0, "total": 450 },
+      "voided": true, "voidedAt": 1793534400000, "voidReason": "Entered twice" },
+    { "id": "r3", "billNumber": "S-3", "type": "retail", "date": "2026-11-01T12:00:00+05:30", "total": 200,
+      "cashPayment": 150, "onlinePayment": 50, "dueAmount": 0, "payment": { "cash": 150, "online": 50, "due": 0, "total": 200 } }
+  ],
+  "wholesaleSales": [
+    { "id": "w1", "billNumber": "W-1", "type": "wholesale", "date": "2026-11-01T09:30:00+05:30", "total": 5000,
+      "cashPayment": 2500, "onlinePayment": 500, "dueAmount": 2000, "payment": { "cash": 2500, "online": 500, "due": 2000, "total": 5000 },
+      "payments": [ { "id": "p-w1", "cash": 1500, "online": 500, "at": 1793534400000 } ] },
+    { "id": "w0", "billNumber": "W-0", "type": "wholesale", "date": "2026-10-31T09:30:00+05:30", "total": 1000,
+      "cashPayment": 1000, "onlinePayment": 0, "dueAmount": 0, "payment": { "cash": 1000, "online": 0, "due": 0, "total": 1000 },
+      "payments": [ { "id": "p-w0", "cash": 600, "online": 0, "at": 1793534400000 } ] }
+  ],
+  "purchases": [
+    { "id": "pu1", "billNumber": "P-1", "type": "purchase", "isPurchase": true, "date": "2026-11-01T08:00:00+05:30",
+      "billTotal": 1000, "grandTotal": 1000, "amountPayable": 1000,
+      "cashPayment": 400, "onlinePayment": 0, "dueAmount": 600, "payment": { "cash": 400, "online": 0, "due": 600, "total": 1000 },
+      "cleared": true, "payments": [ { "id": "p-pu1", "kind": "writeOff", "amount": 600, "at": 1793538000000 } ] }
+  ],
+  "expected": {
+    "retail": { "count": 2, "total": 500, "cash": 150, "online": 50, "paidLater": 300, "writtenOff": 0, "due": 0 },
+    "wholesale": { "count": 1, "total": 5000, "cash": 1000, "online": 0, "paidLater": 2000, "writtenOff": 0, "due": 2000 },
+    "purchase": { "count": 1, "total": 1000, "cash": 400, "online": 0, "paidLater": 0, "writtenOff": 600, "due": 0 }
+  }
+}
+
