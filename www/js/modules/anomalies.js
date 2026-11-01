@@ -144,11 +144,19 @@ export const AnomaliesManager = {
                 })
                 : Promise.resolve([])
         ]);
+        // Audit-based flags name the profile behind the entry's userId, not the name the phone stored (#85)
+        const people = auditLogs.length
+            ? await FirebaseService.loadAuditPeople().catch(e => {
+                console.warn('Anomaly scan: profiles not read:', e?.code || e);
+                return [];
+            })
+            : [];
         const detected = detectAnomalies({
             bills: loadedBills(),
             sessions,
             adjustments: AppState.stockAdjustments || [],
             auditLogs,
+            people,
             catalogue: AppState.items || [],
             stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},

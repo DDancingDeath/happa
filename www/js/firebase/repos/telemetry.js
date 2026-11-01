@@ -1,7 +1,8 @@
 /**
  * @fileoverview Repository of error reports (`telemetry`, docs/architecture.md
- * phase 4): create-only report documents (#122), the owner's list, delete and
- * clear. services/telemetry.js groups errors and decides when to send them.
+ * phase 4): create-only report documents (#122), the owner's list, hiding
+ * (#116) and the 90-day retention. services/telemetry.js
+ * groups errors and decides when to send them.
  * @module firebase/repos/telemetry
  */
 
@@ -30,24 +31,35 @@ export async function recentTelemetryReports(max = 300) {
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
-/** Deletes every report (reads the whole collection, #159). */
-export async function deleteAllTelemetryReports() {
+/**
+ * Deletes up to `max` reports last seen before `cutoff` (owner; retention), one batch.
+ * @param {number} cutoff - ms
+ * @param {number} [max=450]
+ * @returns {Promise<number>} how many were deleted
+ */
+export async function deleteTelemetryReportsBefore(cutoff, max = 450) {
     const db = firebase.firestore();
-    const snapshot = await telemetry(db).get();
+    const snapshot = await telemetry(db).where('lastSeen', '<', cutoff).limit(max).get();
+    if (snapshot.empty) return 0;
     const batch = db.batch();
-    snapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-    });
+    snapshot.docs.forEach(doc => batch.delete(doc.ref));
     await batch.commit();
+    return snapshot.size;
 }
 
 /**
- * Deletes report documents by id (at most 450, one batch).
+ * Hides report documents (owner, #116): `hidden: true` with who and the server
+ * time, in batches of 450. Nothing is deleted.
  * @param {string[]} ids
+ * @param {string|null} uid
  */
-export async function deleteTelemetryReports(ids) {
+export async function hideTelemetryReports(ids, uid) {
     const db = firebase.firestore();
-    const batch = db.batch();
-    ids.slice(0, 450).forEach(id => batch.delete(telemetry(db).doc(id)));
-    await batch.commit();
+    for (let i = 0; i < ids.length; i += 450) {
+        const batch = db.batch();
+        ids.slice(i, i + 450).forEach(id => batch.update(telemetry(db).doc(id), {
+            hidden: true, hiddenBy: uid, hiddenAt: firebase.firestore.FieldValue.serverTimestamp()
+        }));
+        await batch.commit();
+    }
 }

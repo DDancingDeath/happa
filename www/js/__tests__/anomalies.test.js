@@ -190,6 +190,13 @@ describe('cash, stock and audit rules', () => {
         ]);
     });
 
+    test('audit-based flags name the profile behind userId, not the stored name (#85)', () => {
+        const logs = [{ id: 'l1', action: 'DELETE_BILL', userId: 'u1', userName: 'Owner', userRole: 'owner', timestamp: T(13), details: { amount: 500 } }];
+        expect(run({ auditLogs: logs, people: [{ id: 'u1', name: 'Amit', role: 'staff' }] })[0]).toMatchObject({ userId: 'u1', user: 'Amit' });
+        // no profiles (not the owner's scan): the stored name stays the fallback
+        expect(run({ auditLogs: logs })[0].user).toBe('Owner');
+    });
+
     test('a void is flagged (#75); deleting the voided bill afterwards is not flagged again', () => {
         const logs = [
             { id: 'l4', action: 'VOID_BILL', userId: 'u1', userName: 'Amit', timestamp: T(13), details: { billNumber: 'R9', billType: 'retail', amount: 500, customer: 'Shyam', reason: 'Entered twice' } },

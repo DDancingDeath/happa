@@ -211,6 +211,7 @@ const ItemsManager = {
             const savedItem = await FirebaseService.saveItem(newItem);
             AppState.items.push(savedItem);
             this.renderItems();
+            AuditService.note(AuditService.ACTIONS.CREATE_ITEM, { itemId: savedItem.id || null, source: 'row' });
         });
         UIManager.showToast(t('msg.items.item_added'));
     },
@@ -961,6 +962,7 @@ const ItemsManager = {
                 const savedItem = await FirebaseService.saveItem(itemData);
                 AppState.items.push(savedItem);
                 this.recordHistory(savedItem, changes, 'modal');
+                AuditService.note(AuditService.ACTIONS.CREATE_ITEM, { itemId: savedItem.id || null, itemName: savedItem.name || '', source: 'modal' });
                 UIManager.showToast(t('msg.items.item_added'));
                 this.notifyItemAdded(savedItem);
             }
