@@ -53,6 +53,7 @@
 - [हिसाब (मुनाफ़ा, नकद, खर्च, कुल पूंजी)](pages/money.hi.md)
 - [कारोबार (करना है, माल, पार्टी, मौसम)](pages/insights.hi.md)
 - [बही-खाता](pages/statements.hi.md)
+- [पूछें](pages/ask.hi.md)
 - [रेट](pages/rates.hi.md)
 - [किराया](pages/rentals.hi.md)
 - [सेटिंग, एडमिन, ऐप की सेहत](pages/settings.hi.md)

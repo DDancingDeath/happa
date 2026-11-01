@@ -19,11 +19,11 @@ import {
     renderStaleHistoryHint, rangeStatus, retryRange, applyRangeState, needsHistoryFrom, loadOlderHistory, monthStart
 } from '../utils/history-window.js';
 import {
-    filterHistoryBills, resolveHistoryRange, normalizeHistoryFilter, formatHistoryRange, billDateOf, billTimeMs,
+    filterHistoryBills, resolveHistoryRange, normalizeHistoryFilter, formatHistoryRange, billTimeMs,
     validateCustomRange, olderMonthsToLoad, normalizeHistoryTab, isWholesaleHistoryLink,
     HISTORY_FILTER_KEY, HISTORY_TAB_KEY, WIDE_LOAD_MONTHS
 } from '../utils/history-filters.js';
-import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml, printStatusText } from '../ui/bill-row.js';
+import { buildBillRow, buildOpeningGroup, addOpeningToggle, addVoidedToggle, billTableHtml, printStatusText, billRowDate, badDateBadgeHtml } from '../ui/bill-row.js';
 import { printStatusOf, recordPrint } from '../utils/print-status.js';
 import { STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { accessFor, canDeleteBillWith, canVoidBillWith, historyCutoff, withinBillEditWindow } from '../utils/role-access.js';
@@ -38,7 +38,7 @@ import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
 import { t, tn } from '../i18n/index.js';
-import { billLabour, billLineTotal, billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
+import { billLabour, billLineTotal, billTotal, hasBillAmount, isActiveBill, isOpeningRecord, readPayment, UNKNOWN_AMOUNT } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -552,6 +552,9 @@ export class HistoryManager {
             </div>
         ` : '';
                 const billNumber = bill.billNumber || (typeof bill.id === 'string' ? bill.id.substring(0, 8) : bill.id);
+        // A bill that stores no amount shows "—", not ₹0 (#80)
+        const known = hasBillAmount(bill);
+        const shownDate = billRowDate(bill);
         
         const content = `
             <div style="padding: 16px; max-width: 100%;">
@@ -563,7 +566,7 @@ export class HistoryManager {
                     </div>
                     <div class="bill-info-row">
                         <div class="bill-info-label">${L('ui.history.date_label')}</div>
-                        <div class="bill-info-value">${Helpers.formatDateTime(billDateOf(bill) || bill.date)}</div>
+                        <div class="bill-info-value">${Helpers.escapeHtml(shownDate.text)}${shownDate.bad ? badDateBadgeHtml() : ''}</div>
                     </div>
                     ${bill.createdByName || bill.userName ? `
                         <div class="bill-info-row">
@@ -624,7 +627,7 @@ export class HistoryManager {
                     ${isPurchase ? `
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                             <span style="font-weight: 600;">${L('ui.billing.purchase_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(billLineTotal(bill, true))}</strong>
+                            <strong style="font-size: 17px; color: ${billColor};">${known ? `₹${Math.round(billLineTotal(bill, true))}` : UNKNOWN_AMOUNT}</strong>
                         </div>
                         
                         ${billLabour(bill) > 0 ? `
@@ -635,13 +638,13 @@ export class HistoryManager {
                             
                             <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 16px; border-top: 2px solid ${billColor}; margin-top: 8px; background: linear-gradient(135deg, #e3f2fd, #bbdefb); margin: 8px -14px -14px -14px; padding: 12px 14px; border-radius: 0 0 10px 10px;">
                                 <span style="font-weight: 700;">${L('ui.billing.total_payable')}</span>
-                                <strong style="font-size: 18px; color: #1976d2;">₹${Math.round(billTotal(bill))}</strong>
+                                <strong style="font-size: 18px; color: #1976d2;">${known ? `₹${Math.round(billTotal(bill))}` : UNKNOWN_AMOUNT}</strong>
                             </div>
                         ` : ''}
                     ` : `
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                             <span style="font-weight: 600;">${L('ui.billing.sale_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">₹${Math.round(billTotal(bill))}</strong>
+                            <strong style="font-size: 17px; color: ${billColor};">${known ? `₹${Math.round(billTotal(bill))}` : UNKNOWN_AMOUNT}</strong>
                         </div>
                     `}
                 </div>
