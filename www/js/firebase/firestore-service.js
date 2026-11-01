@@ -2918,7 +2918,7 @@ const FirebaseService = {
                 return {
                     id: doc.id,
                     ...data,
-                    date: data.date?.toDate?.() || new Date(data.date)
+                    date: parseAnyBillDate(data.date) || new Date(NaN)
                 };
             });
         } catch (error) {

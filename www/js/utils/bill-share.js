@@ -5,7 +5,7 @@
  * @module utils/bill-share
  */
 
-import { billTotal, outstandingDue, readPayment, readLineItem } from './money.js';
+import { billLabour, billLineTotal, billTotal, outstandingDue, readPayment, readLineItem } from './money.js';
 import { billDateOf } from './history-filters.js';
 import { t } from '../i18n/index.js';
 
@@ -38,14 +38,12 @@ export function receiptDateTime(billData, now = new Date()) {
 }
 
 /**
- * Amount payable on the printed slip (BILL-TOTAL; a print payload without the
- * bill fields falls back to its subtotal less labour).
+ * Amount payable on the printed slip: BILL-TOTAL (a present 0 counts; #80).
  * @param {Object} billData
  * @returns {number}
  */
 export function receiptPayable(billData) {
-    const subtotal = billData.billTotal || billData.saleTotal || billData.total || 0;
-    return billTotal(billData) || (subtotal - (billData.laborCharges || 0));
+    return billTotal(billData);
 }
 
 /**
@@ -134,9 +132,9 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
     lines.push('');
 
     if (kind === 'purchase') {
-        const subtotal = p.billTotal || p.grandTotal || p.amountPayable || p.total || 0;
-        const labor = Number(p.laborCharges) || 0;
-        const payable = billTotal(p) || (subtotal - labor);
+        const subtotal = billLineTotal(p, true);
+        const labor = billLabour(p);
+        const payable = billTotal(p);
         lines.push(`*${t('ui.bill.total')}: ${money(subtotal)}*`);
         if (labor > 0) {
             lines.push(`${t('ui.bill.labour')}: ${money(labor)}`);
