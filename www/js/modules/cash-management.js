@@ -27,6 +27,7 @@ import { t, tn } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
 import { tip } from '../tip/index.js';
+import { track } from '../services/usage.js';
 import { cashCloseProps } from '../tip/scenarios/cash-close.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
@@ -865,6 +866,7 @@ export class CashManagementManager {
             // Field-level update: never overwrite deposits/due payments added on another device
             await updateSession(this.todaySession.id, closingFields);
             clearTimeout(waiting);
+            track('cash.close');
             run.complete();
             AuditService.note(AuditService.ACTIONS.CASH_CLOSE, {
                 date: this.todaySession.date, counted: actualAmount, expected, difference
