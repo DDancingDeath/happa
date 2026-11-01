@@ -158,7 +158,7 @@
         },
         "openDue": true,
         "cleared": false,
-        "clientVersion": 4,
+        "clientVersion": 5,
         "openingBalance": {
           "migrated": true,
           "kind": "receivable",

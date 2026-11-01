@@ -13,7 +13,7 @@
  * @module utils/calc/cash
  */
 
-import { isOnlineExpense, isPersonalExpense, round2 } from '../money.js';
+import { activeExpenses, isOnlineExpense, isPersonalExpense, round2 } from '../money.js';
 import { endOfLocalDayExclusive, parseAnyBillDate, parseLocalDate } from '../dates.js';
 import { dueEvents, saleTimePayment, sumDueEvents } from '../due-payments.js';
 import { personalForDay } from '../personal-expenses.js';
@@ -112,7 +112,8 @@ export function drawerDay({ date, bills = {}, expenses = [], session = null, per
 
     // EXP-KIND; only cash expenses leave the drawer (EXP-MODE, #118: no mode = cash).
     // Personal ones a role can't read come from the day total and its online part (#98).
-    const payments = (expenses || []).filter(p => inDay(p.date));
+    // A voided expense (#99) left no cash drawer; its cash is back in the day's drawer
+    const payments = activeExpenses(expenses).filter(p => inDay(p.date));
     payments.forEach(payment => {
         if (!isPersonalExpense(payment) && !isOnlineExpense(payment)) transactions.businessExpenses += Number(payment.amount) || 0;
     });
@@ -190,12 +191,16 @@ export function savedDifference(counted, expected) {
  * deposits + sales + due received), cash out (purchases + due paid +
  * expenses) and what should be in the drawer. Closed day: deposits, cash
  * purchases, cash sales, others (expenses + due paid), expected (C7), counted
- * and the difference (C8). Plain addition, as shown.
+ * and the difference (C8). Plain addition, as shown. A closed day shows what it
+ * was closed with (its stored `transactions`, `expectedBalance`, `difference`,
+ * as the history and the day details do), never the live figures: a later
+ * void (VOID-EXP) doesn't change a closed count.
  * @param {Object} session
- * @param {Object} transactions drawerDay()
+ * @param {Object} transactions drawerDay(), used only while the day is open
  */
 export function drawerStatus(session, transactions) {
-    const tx = transactions || {};
+    const closed = !!session.signedOut;
+    const tx = (closed ? session.transactions : transactions) || {};
     const opening = session.openingBalance || 0;
     const cashAdded = tx.cashDeposits || 0;
     const purchases = tx.cashPurchases || 0;
@@ -204,12 +209,12 @@ export function drawerStatus(session, transactions) {
     const totalExpenses = (tx.businessExpenses || 0) + (tx.personalExpenses || 0);
     const duePaid = tx.duePaid || 0;
     const others = totalExpenses + duePaid;
-    const expected = expectedCash(session, tx);
+    const expected = closed ? (Number(session.expectedBalance) || 0) : expectedCash(session, tx);
     const totalCashIn = opening + cashAdded + sales + dueReceived;
     const totalCashOut = purchases + duePaid + totalExpenses;
     const availableCash = totalCashIn - totalCashOut;
     const actual = session.closingBalance || 0;
-    const diff = difference(actual, expected);
+    const diff = closed ? (Number(session.difference) || 0) : difference(actual, expected);
     return {
         opening, cashAdded, purchases, sales, dueReceived, duePaid, totalExpenses, others,
         expected, totalCashIn, totalCashOut, availableCash,

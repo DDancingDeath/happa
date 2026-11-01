@@ -62,10 +62,11 @@ function loadedBills() {
 
 const VOIDED_COLLECTIONS = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
 
-/** Voided bills the listeners already hold (#75), by kind: no read. */
+/** Voided bills (#75) and expenses (#99) the listeners already hold, by kind: no read. */
 function loadedVoided() {
     const out = {};
     Object.entries(VOIDED_COLLECTIONS).forEach(([kind, coll]) => { out[kind] = FirebaseService.voidedBills?.(coll) || []; });
+    out.expense = FirebaseService.voidedExpenses?.() || [];
     return out;
 }
 
@@ -156,7 +157,7 @@ export const AnomaliesManager = {
         const from = Math.max(istDayStartMs(fromKey), loadedFrom);
         const to = istDayStartMs(toKey) + DAY_MS;
         const voided = loadedVoided();
-        // Who the owners are matters only for bills dated back (#147) or voided (#75) by someone else: no read otherwise
+        // Who the owners are matters only for bills dated back (#147), or bills or expenses voided (#75, #99), by someone else: no read otherwise
         const uid = AppState.currentUser?.uid;
         if (datedBackByOthers(loadedBills(), uid) || voidedByOthers(voided, uid, from, to)) await this.loadOwnerIds();
         const [sessions, auditLogs] = await Promise.all([
