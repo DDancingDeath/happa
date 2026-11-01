@@ -260,7 +260,7 @@ export class WholesaleSalesManager {
         if (!tbody || !totalEl) return;
         
         if (wholesaleSaleItems.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #666; padding: 24px;" data-i18n="msg.common.no_items_in_bill">${L('msg.common.no_items_in_bill')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary); padding: 24px;" data-i18n="msg.common.no_items_in_bill">${L('msg.common.no_items_in_bill')}</td></tr>`;
             totalEl.textContent = '0';
             if (expensesInput) expensesInput.value = '0';
             if (profitEl) profitEl.textContent = '0';
@@ -890,7 +890,7 @@ export class WholesaleSalesManager {
             </div>` : '';
 
         if (outstandingSales.length === 0) {
-            container.innerHTML = `${partyNote}<p style="text-align: center; color: #666; margin-top: 40px;">${L(party ? 'ui.outstanding.nothing_for_party' : 'ui.wholesale.no_outstanding_payments')}</p>`;
+            container.innerHTML = `${partyNote}<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${L(party ? 'ui.outstanding.nothing_for_party' : 'ui.wholesale.no_outstanding_payments')}</p>`;
             return;
         }
 
@@ -903,8 +903,8 @@ export class WholesaleSalesManager {
                 const billNumber = sale.billNumber || sale.id;
                 div.innerHTML = `
                     <div class="history-header">
-                        <span><span style="cursor: pointer; color: #15803d; text-decoration: underline;" onclick="window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')">#${Helpers.escapeHtml(billNumber)}</span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
-                        <span style="color: #b02a37; font-weight: 700;">${L('ui.outstanding.due_amount', { amount: Math.round(sale.outstanding) })}</span>
+                        <span><span style="cursor: pointer; color: var(--success-color); text-decoration: underline;" onclick="window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')">#${Helpers.escapeHtml(billNumber)}</span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
+                        <span style="color: var(--danger-color); font-weight: 700;">${L('ui.outstanding.due_amount', { amount: Math.round(sale.outstanding) })}</span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>
                     ${openingOldTotals(sale) ? `<div class="history-date">${L('ui.outstanding.opening_balance', { total: Math.round(openingOldTotals(sale).total), paid: Math.round(openingOldTotals(sale).paid) })}</div>` : ''}
@@ -977,7 +977,7 @@ export class WholesaleSalesManager {
         const recent = filterHistoryBills(this.wholesaleBills().filter(b => isActiveBill(b) && !isOpeningRecord(b)), {}).slice(0, RECENT_SALES);
         if (recent.length === 0) {
             const message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
-            container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
             return;
         }
         container.innerHTML = '';
@@ -1056,7 +1056,7 @@ export class WholesaleSalesManager {
             if (this.historySearch) message = t('ui.history.no_results_for', { searchTerm: this.historySearch });
             else if (ranged) message = t('ui.history.none_in_period', { noun: t('ui.history.noun_wholesale') });
             else message = isFullHistoryLoaded() ? t('ui.wholesale.no_sales_yet') : t('ui.wholesale.no_sales_since', { date: formatWindowDate(historyLoadedFrom()) });
-            container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(message)}</p>`;
             placeToggle();
             return;
         }
@@ -1204,7 +1204,7 @@ export class WholesaleSalesManager {
                 <div class="bill-info-section">
                     <div class="bill-info-row">
                         <div class="bill-info-label">${L('ui.history.bill_no')}</div>
-                        <div class="bill-info-value"><strong style="color: #1c7430;">#${Helpers.escapeHtml(billNumber)}</strong></div>
+                        <div class="bill-info-value"><strong style="color: var(--success-color);">#${Helpers.escapeHtml(billNumber)}</strong></div>
                     </div>
                     <div class="bill-info-row">
                         <div class="bill-info-label">${L('ui.history.date_label')}</div>

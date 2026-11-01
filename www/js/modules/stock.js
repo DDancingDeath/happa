@@ -582,7 +582,7 @@ export class StockManager {
             }
 
             if (rows.length === 0) {
-                container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 30px;">${e(t('ui.deadstock.all_sold', { days: minDays }))}</p>`;
+                container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 30px;">${e(t('ui.deadstock.all_sold', { days: minDays }))}</p>`;
                 return;
             }
 
@@ -858,7 +858,7 @@ export class StockManager {
 
             if (adjustments.length === 0) {
                 const message = isFullHistoryLoaded() ? t('ui.stock.no_adjustments_yet') : t('ui.stock.no_adjustments_since', { date: formatWindowDate(historyLoadedFrom()) });
-                container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
+                container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">${Helpers.escapeHtml(message)}</p>`;
                 return;
             }
 

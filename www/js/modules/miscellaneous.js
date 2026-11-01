@@ -495,7 +495,7 @@ export class ExpensesManager {
         this.renderSectionTools(category, expenses);
         if (expenses.length === 0) {
             const empty = isExpenseSearch(this.search[category]) ? t('ui.expenses.no_match') : this.emptyExpenseMessage(category);
-            container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 40px;">${Helpers.escapeHtml(empty)}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(empty)}</p>`;
             return;
         }
         container.innerHTML = expenses.map(payment => {
