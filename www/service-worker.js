@@ -149,6 +149,7 @@ const STATIC_ASSETS = [
     '/js/utils/role-access.js',
     '/js/utils/personal-expenses.js',
     '/js/utils/expense-entry.js',
+    '/js/utils/expense-list.js',
     '/js/utils/bill-date.js',
     '/js/utils/settings-sections.js',
     '/js/utils/release-info.js',

@@ -242,6 +242,17 @@ Quantities and average costs come from the stock replay (`utils/stock-replay.js`
 | S-LOW | Low stock (Stock › Current stock card, "Low stock (N)", #146) | Catalogue items whose stock was set at some point and whose S1 quantity is below their level: the item's own `lowStockKg` (0 = never alert; set by the owner or a manager per item on the Stock list), else 10 kg. Lowest first; members see "Available" above 100 kg as in the list. | `lowStockItems()`, `lowStockLevel()` (`utils/stock-check.js`) |
 | S-ADJ-REV | Reverse an adjustment / stock count (#146) | Reverse (owner/manager) saves the opposite adjustment, linked by `reversesId`: it takes back the adjustment's change (`newStock − previousStock`) from the stock now, as an add or a remove (a remove stops at the stock on hand, as any remove); a "set" is reversed by its change, not by setting the old number. An adjustment is reversed once; a reversal is not reversed. Stock count: each item whose counted kg differs from S1 gets a "set" adjustment with the reason Physical count; blank boxes change nothing. | `reversalPlan()`, `canReverseAdjustment()`, `stockCountPlan()` (`utils/stock-adjust.js`) |
 
+## Expenses (`templates/expenses.html`, `modules/miscellaneous.js`) — #90
+
+Each section (Business, Personal) shows its totals above its list, a search and one-tap templates. Pure helpers in `utils/expense-list.js`; the page only renders. Voided expenses (VOID-EXP) count in no total and never become a template. Tests: `www/js/__tests__/expense-list.test.js`, `tests/oracle/expense-list.test.js`.
+
+| ID | On screen | Definition | Owner (`utils/expense-list.js`) |
+|---|---|---|---|
+| EXP-LIST E1 | Today ₹X | Σ `amount` of the section's loaded expenses that count (`isActiveExpense`) whose day (local day of `date`, as T4/T5) is today. Cash and online both count. | `expenseTotals().today` |
+| EXP-LIST E2 | This month ₹X | Same, for the days from the 1st of this month to today. When the loaded history starts after the 1st (members' window), it says "since" that day: older expenses of the month are not loaded. | `expenseTotals().month` |
+| EXP-LIST E3 | N shown ₹X (only while searching) | Σ `amount` of the rows the search shows that count (voided rows shown by "Show voided" are not added). | `expenseTotals().shown` |
+| EXP-LIST E4 | Quick fill chips (not money) | The newest 6 distinct (type, name, amount) of the section's expenses that count, newest save first; a tap fills type, name and amount, the user checks the day and mode and saves. Search: every word in type, name, remarks, amount or date; the type filter matches the type ignoring case and spaces. | `expenseTemplates()`, `filterExpenses()`, `expenseTypes()` |
+
 ## Cash drawer (`templates/cash-management.html`, `modules/cash-management.js`)
 
 For one cash session's DAY. Only cash counts.
