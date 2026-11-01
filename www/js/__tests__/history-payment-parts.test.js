@@ -55,3 +55,9 @@ test('written off later', async () => {
     await HistoryManager.viewBill('id:w1', 'wholesale');
     expect(lines()).toEqual(['Cash at save: ₹3,000', 'Written off: ₹2,000']);
 });
+
+test('a voided bill still shows what was paid', async () => {
+    AppState.salesHistory = [sale({ voided: true, voidReason: 'Entered twice', payment: { cash: 4500, online: 500, due: 0, total: 5000 } })];
+    await HistoryManager.viewBill('id:w1', 'wholesale');
+    expect(lines()).toEqual(['Online: ₹500', 'Cash: ₹4,500']);
+});

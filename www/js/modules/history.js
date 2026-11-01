@@ -34,7 +34,7 @@ import { paymentBreakdown } from '../utils/due-payments.js';
 import { whatsAppShareUrl } from '../utils/release-info.js';
 import { openExternal } from '../utils/open-external.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, isActiveBill, isOpeningRecord } from '../utils/money.js';
+import { billTotal, isActiveBill, isOpeningRecord, readPayment } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -505,7 +505,11 @@ export class HistoryManager {
         `).join('');
         
         // Paid at save, paid later, written off and still due add up to the total (T18 on Today shows the same parts)
-        const parts = paymentBreakdown(bill);
+        // A voided bill counts nowhere, but its details still show what was paid (it may need refunding)
+        const voidPay = isActiveBill(bill) ? null : readPayment(bill);
+        const parts = voidPay
+            ? { atSave: { cash: voidPay.cash, online: voidPay.online }, later: { cash: 0, online: 0, total: 0 }, writtenOff: 0, due: 0 }
+            : paymentBreakdown(bill);
         const afterSave = parts.later.total > 0 || parts.writtenOff > 0;
         const money = (v) => Helpers.escapeHtml(Helpers.formatCurrency(v));
         const payRow = (key, value, bg, fg, note = '') => `
