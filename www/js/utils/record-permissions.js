@@ -8,6 +8,8 @@
 export const EXPENSE_LOCKED_KEY = 'msg.expenses.locked';
 export const ITEM_ARCHIVE_LOCKED_KEY = 'msg.items.archive_locked';
 
+const isOwnerOrManager = (role) => role === 'owner' || role === 'manager';
+
 // Who may void an expense: role-access.js canVoidExpenseWith (#99).
 
 /**
