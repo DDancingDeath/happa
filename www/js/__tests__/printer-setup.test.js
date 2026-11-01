@@ -85,7 +85,8 @@ describe('printer settings (pure)', () => {
         const s = normalizePrinterSettings({ enabled: true, deviceId: 'AA', deviceName: 'Shop', paperWidth: 48 });
         expect(s).toEqual({
             enabled: true, deviceId: 'AA', deviceName: 'Shop', previewFirst: false,
-            printers: [{ deviceId: 'AA', deviceName: 'Shop', widthMm: 58 }]
+            printers: [{ deviceId: 'AA', deviceName: 'Shop', widthMm: 58 }],
+            receipt: { footer: '', qr: false, lang: 'app', density: 'normal' }
         });
         expect(normalizePrinterSettings(null)).toMatchObject({ enabled: false, deviceId: null, printers: [] });
     });

@@ -396,7 +396,11 @@ service cloud.firestore {
         : changed.hasAny(['editCount']) && !editCountOk(usersCol, base, docId) ? false
         : role == 'owner' ? (!changed.hasAny(editLoggedFields()) || voidAwareBill() || bookkeepingOnly(docId, changed))
         : changed.hasAny(['userId']) ? false
-        : canFullyEditBill(usersCol, role) && !changed.hasAny(['payments', 'paidAt'])
+        // A payment (payments[] / paidAt) is bookkeeping only: checked straight away, so the
+        // edit-window lookups of canFullyEditBill don't use up the 1000 expressions a payment's
+        // checks need (a manager's full settle on a bill with createdAt was refused, #229).
+        : changed.hasAny(['payments', 'paidAt']) ? bookkeepingOnly(docId, changed) && paymentEditOk(changed)
+        : canFullyEditBill(usersCol, role)
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount'])) ? changedMoneyOk(changed)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;
@@ -404,13 +408,14 @@ service cloud.firestore {
 
     // New bills: the creator's own uid (when set), well-formed money (changedMoneyOk),
     // no payment history, cleared state, edit count or void (the app never sends them on a
-    // new bill), and, when sent, createdAt = the server time of this write (older apps don't send it).
+    // new bill), and createdAt = the server time of this write (#115: every happa version,
+    // rc1 included, sends it; the edit window counts from it). The owner (restores) skips this.
     function validBillCreate() {
       return request.resource.data.get('userId', request.auth.uid) == request.auth.uid
         && !request.resource.data.keys().hasAny(['payments', 'paidAt', 'cleared', 'editCount',
              'voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'])
         && changedMoneyOk(request.resource.data.keys())
-        && (!('createdAt' in request.resource.data) || request.resource.data.createdAt == request.time);
+        && request.resource.data.get('createdAt', null) == request.time;
     }
 
     // ============================================
@@ -831,7 +836,7 @@ service cloud.firestore {
         : (isOwnerIn(u)
         || (base in billCollections() ? validBillCreate()
           : base == 'expenses' ? validLedgerCreate() && expenseDayInWindow(u)
-          : base == 'withdrawals' ? validLedgerCreate()
+          : base == 'withdrawals' ? validLedgerCreate() && moneyPageOn(u)
           : base == 'stockAdjustments' ? isManagerIn(u) && validAdjustmentCreate()
           : base == 'cashManagement' ? validCashCreate(docId)
           // legacy cashSessions (backup only) and settings: owner only (#64)
@@ -868,6 +873,7 @@ service cloud.firestore {
         : base in ['withdrawals', 'stockAdjustments']
           ? (legacyBackfillOnly()
              || (isManagerIn(u)
+                 && (base != 'withdrawals' || moneyPageOn(u))
                  && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk())))
         : base == 'cashManagement' ? (cashAppendOk() || cashCloseOk() || cashLateCountOk())
         : base == 'cashSessions' ? false
@@ -886,7 +892,8 @@ service cloud.firestore {
         : base == 'expenses' ? canDeleteExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canDeleteExpense(u)
         : base == 'personalExpenseDays' ? false
-        : base in ['withdrawals', 'stockAdjustments'] ? isManagerIn(u)
+        : base == 'withdrawals' ? isManagerIn(u) && moneyPageOn(u)
+        : base == 'stockAdjustments' ? isManagerIn(u)
         : base in ['cashManagement', 'cashSessions', 'items', 'counters', 'settings', 'itemFrequency'] ? false
         : true;
     }
@@ -947,7 +954,9 @@ service cloud.firestore {
         || (base in ['notifications', 'drafts']
             ? (single && resource == null) || resource.data.get('userId', null) == request.auth.uid
           : base == 'autoSaves' ? docId == request.auth.uid
-          : base == 'settings' ? single && docId == 'app'
+          // settings/team: names and roles of the team (owner-written) for managers' App health
+          // and notification fan-out, so they never read other profiles (#87)
+          : base == 'settings' ? single && (docId == 'app' || (docId == 'team' && isManagerIn(u)))
           : base == 'withdrawals' ? roleSeesMoneyPages(u)
           : base == 'personalExpenses' ? personalOn(u)
           : base == 'cashSessions' ? isManagerIn(u)
@@ -966,6 +975,17 @@ service cloud.firestore {
       let r = access is map ? access.get(role, {}) : {};
       let a = r is map ? r : {};
       return a.get('finance', def) == true || a.get('reports', def) == true || a.get('analytics', def) == true;
+    }
+
+    // A withdrawal is recorded only on Money (roleAccess id finance; default on for managers,
+    // off for members), so only roles with Money on may create one (#64). One extra read
+    // (settings/app), never for the owner; withdrawals are rare.
+    function moneyPageOn(usersCol) {
+      let role = get(profilePath(usersCol)).data.get('role', '');
+      let p = settingsAppPath(usersCol);
+      let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
+      let r = access is map ? access.get(role, {}) : {};
+      return (r is map ? r : {}).get('finance', role == 'manager') == true;
     }
 
     // --- stock checkpoint (stockCheckpoints/current) ---
@@ -1010,18 +1030,27 @@ service cloud.firestore {
     // --- user profile rules (shared by users and dev_users) ---
 
     function canReadProfile(usersCol, userId) {
-      // Own profile (pending/rejected users too, at login); owner and managers read
-      // everyone (Admin, Roles & access, App health). Members never read others (#57).
-      return (isSignedIn() && request.auth.uid == userId) || isManagerIn(usersCol);
+      // Own profile (pending/rejected users too, at login); only the owner reads
+      // everyone (Admin, Roles & access). Managers read names and roles from
+      // settings/team instead (#87); members never read others (#57).
+      return (isSignedIn() && request.auth.uid == userId) || isOwnerIn(usersCol);
     }
 
     function canCreateProfile(userId) {
-      // Self-registration only, and always as a pending staff member.
+      // Self-registration only, always as a pending staff member, with the fields
+      // registration writes (repos/users.js createProfileIfMissing). A removed or
+      // rejected person keeps their profile, so they can't come back as pending (#84).
+      let d = request.resource.data;
       return isSignedIn()
         && request.auth.uid == userId
-        && request.resource.data.get('status', '') == 'pending'
-        && request.resource.data.get('role', '') == 'staff'
-        && !('rentRole' in request.resource.data);
+        && d.keys().hasOnly(['name', 'email', 'role', 'status', 'createdAt'])
+        && d.get('status', '') == 'pending'
+        && d.get('role', '') == 'staff'
+        && d.get('name', '') is string && d.get('name', '').size() <= 100
+        && d.get('email', '') is string && d.get('email', '').size() <= 254
+        && request.auth.token.get('email', '') is string
+        && d.get('email', '').lower() == request.auth.token.get('email', '').lower()
+        && d.get('createdAt', null) == request.time;
     }
 
     // An owner can't change their own role/status, nor demote or remove another
@@ -1031,12 +1060,17 @@ service cloud.firestore {
         || (request.auth.uid != userId && resource.data.get('role', '') != 'owner');
     }
 
+    // Users change only their own name (Settings › account) and the list of their
+    // phones (first sign-in on a new phone, #124); never while removed or rejected.
     function canUpdateProfile(usersCol, userId) {
+      let d = request.resource.data;
       return (isOwnerIn(usersCol) && ownerProfileGuardOk(userId))
         || (isSignedIn()
             && request.auth.uid == userId
-            && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['role', 'status', 'approvedAt', 'approvedBy', 'rentRole']));
+            && !(resource.data.get('status', '') in ['disabled', 'rejected'])
+            && d.diff(resource.data).affectedKeys().hasOnly(['name', 'devices'])
+            && d.get('name', '') is string && d.get('name', '').size() <= 100
+            && (!('devices' in d) || (d.devices is list && d.devices.size() <= 10)));
     }
 
     // --- audit logs (#55) and telemetry (#122): append-only ---
@@ -2143,8 +2177,10 @@ service cloud.firestore {
       allow delete: if isAdmin() && resource.data.get('role', '') != 'owner';
     }
 
+    // Never used by the app (#64): readable by its user, written by nobody.
     match /users/{userId}/preferences/{prefId} {
-      allow read, write: if isApproved() && request.auth.uid == userId;
+      allow read: if isApproved() && request.auth.uid == userId;
+      allow write: if false;
     }
 
     // Audit logs - approved users append entries as themselves; only owners read,
@@ -2305,7 +2341,8 @@ service cloud.firestore {
     }
 
     match /dev_users/{userId}/preferences/{prefId} {
-      allow read, write: if isApprovedIn('dev_users') && request.auth.uid == userId;
+      allow read: if isApprovedIn('dev_users') && request.auth.uid == userId;
+      allow write: if false;
     }
 
     match /dev_auditLogs/{logId} {

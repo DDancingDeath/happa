@@ -320,7 +320,8 @@ rejected / no profile / unknown role.
 | `notifications` | own only (`where('userId', '==', uid)`) | own |
 | `drafts` | own only (`where('userId', '==', uid)`, get by id) | own |
 | `autoSaves/{uid}` | own doc | own |
-| `users` | own profile at start-up / login / registration; full list: Admin and Roles & access › People (owner), App health device names (owner/manager), notification fan-out on item and rate edits (owner/manager) | **own only**. Names shown on bills, payments and audit rows are stored on those records, so no name mirror is needed |
+| `users` | own profile at start-up / login / registration; full list: Admin and Roles & access › People (owner only) | **own only**. Names shown on bills, payments and audit rows are stored on those records |
+| `settings/team` (#87) | names and roles of the approved people, written by the owner's phone whenever it reads the profiles (Admin, App health, notification fan-out; and once a day 3 minutes after start-up, one read per profile + the doc; it writes only when a name or role differs) and by `tools/migrate`; one get for managers' App health device names and their notification fan-out on item and rate edits | no (managers only) |
 | `users/{uid}/preferences` | own | own |
 | `auditLogs`, `telemetry` | append by everyone; read in Settings/Diagnostics and the anomaly scan by the owner only | no |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | App health, Anomalies, Rates history, Insights › Seasons, Money snapshots (the app loads them for owner/manager only) | no |
@@ -346,7 +347,8 @@ except `rent_public` get.
 | `notifications`, `drafts`: other users' (G, unfiltered L) | ✓ → ✓ | ✓ → ✗ | ✓ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `autoSaves`: own / other users' | ✓ / ✓ | ✓ / ✓ → ✗ | ✓ / ✓ → ✗ | ✗ | ✗ |
 | `users`: own profile | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ |
-| `users`: other profiles (G, L) | ✓ → ✓ | ✓ → ✓ | ✓ → **✗** | ✗ → ✗ | ✗ → ✗ |
+| `users`: other profiles (G, L) | ✓ → ✓ | ✓ → **✗** (#87) | ✓ → **✗** | ✗ → ✗ | ✗ → ✗ |
+| `settings/team` (G, #87) | ✓ | ✓ | ✗ | ✗ | ✗ |
 | `users/{uid}/preferences` | own only (unchanged) | own | own | ✗ | ✗ |
 | `auditLogs`, `telemetry` | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `tipHealth`, `tipFailures`, `anomalies`, `rateStats`, `rateHistory`, `monthStats` | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
@@ -382,7 +384,8 @@ profile was already read for every business read; `isOwnerIn` / `isManagerIn` re
 | Read | Docs the rules read before → after | Change |
 |---|---|---|
 | Own profile (every app start, login) | profile → none (own uid is checked first) | **−1 read** per start |
-| Profile list (owner/manager) | profile → profile | none |
+| Profile list (owner) | profile → profile | none |
+| Team directory `settings/team` (managers, #87) | profile | replaces the managers' profile list: **1 read** instead of one per profile; the owner's phone reads it once a session (when it reads the profiles) and rewrites it only when a name or role changed |
 | Business collections, notifications, drafts, auto-save, settings | profile → profile | none |
 | Withdrawals, owner | profile → profile | none |
 | Withdrawals, manager or member allowed by Roles & access | profile → profile + `settings/app` | **+1 read** per listener start, per change to the withdrawals it shows and per reconnect; +1 per older-history query |
@@ -528,7 +531,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 
 | Collection | Create | Update | Delete |
 |---|---|---|---|
-| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date) | expenses: own for 24 h (some fields), managers any; withdrawals: managers | expenses: own for 24 h, managers; withdrawals: managers |
+| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date); withdrawals only by roles with **Money** (`finance`) on, the only page that records them (#64; managers by default, members not; +1 read of `settings/app`) | expenses: own for 24 h (some fields), managers any; withdrawals: managers with **Money** on (#64) | expenses: own for 24 h, managers; withdrawals: managers with **Money** on (#64) |
 | `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
 | `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
@@ -538,6 +541,8 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `stockCheckpoints` | `current`: managers (anyone approved: the stale mark); `legacyScan`: managers; no other ids, owner included | same | managers |
 | `settings/app` | owner | owner; managers only the Aadhat fields with `shopSettings` | owner |
 | other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
+| `users/{uid}/preferences` (never used by the app) | nobody (#64) | nobody | nobody |
+| bills (`purchases`, `retailSales`, `wholesaleSales`) | approved user, own `userId`, and `createdAt` = the server time (#115: every happa version sends it; the edit window counts from it) | see "Bill edit window" | owner |
 
 Legacy timestamp backfill (`expenses`, `withdrawals`, `stockAdjustments`, `personalExpenses`, and bills
 through payment bookkeeping; anyone
@@ -545,6 +550,25 @@ approved): only fills a missing numeric `timestamp` (+ `clientVersion`), with th
 (`eventTime`): never after the server's time, equal to an old Firestore Timestamp in `timestamp` or
 `date`, and within a day of the record's `YYYY-MM-DD` or `DD/MM/YYYY` date. `itemFrequency` items are
 not checked one by one (rules can't loop over map keys), so a member can still change an item's numbers.
+
+## People: remove, reject, restore (#84)
+
+- **Remove** (Admin › Users › Delete) clears the role and keeps the profile as `status: 'disabled'`;
+  **Reject** (a pending registration) keeps it as `status: 'rejected'`. Neither deletes the profile, and
+  registration may only *create* a missing profile, so the person can't come back as a pending request.
+  The rules refuse them everything but reading their own profile; the app signs them out with "removed" /
+  "rejected, contact the owner". They can't change their profile either.
+- **Restore** (Admin › Users › Removed and rejected) puts the person back as a pending registration; the
+  owner approves them with a role like any new registration. Every approve, reject, role change, remove
+  and restore writes an audit entry (`APPROVE_USER`, `REJECT_USER`, `CHANGE_USER_ROLE`, `REMOVE_USER`,
+  `RESTORE_USER`).
+- **Own profile writes**: registration writes only `name`, `email` (the signed-in account's own, any case), `role: 'staff'`, `status: 'pending'`
+  and the server `createdAt`; afterwards a person changes only their `name` (Settings › account) and
+  `devices` (their phones, #124).
+- **Lost phone**: Admin › Users › Reset password. Changing the password ends every other sign-in of that
+  account within an hour (Firebase revokes its sessions). To stop the lost phone at once, Remove the person
+  first, then Restore and approve them after the reset.
+- Admin › Clear Data › Users still deletes profiles (a fresh start); those people can register again.
 
 ## Settings sections (who sees what)
 
