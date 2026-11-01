@@ -33,15 +33,24 @@ const place = (page, sel) => page.$eval(sel, (el) => {
     };
 });
 
-const scrollTab = (page, to) => page.evaluate((where) => {
-    const tab = document.querySelector('.tab.active');
-    window.scrollTo(0, 0);
-    if (tab) tab.scrollTop = where === 'end' ? tab.scrollHeight : 0;
-}, to);
+/** Scrolls the open tab to its top or end at once (the tab scrolls smoothly otherwise) and waits until it is still. */
+async function scrollTab(page, to) {
+    await page.evaluate((where) => {
+        const tab = document.querySelector('.tab.active');
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        if (tab) tab.scrollTo({ top: where === 'end' ? tab.scrollHeight : 0, behavior: 'instant' });
+    }, to);
+    await page.waitForFunction((where) => {
+        const tab = document.querySelector('.tab.active');
+        if (!tab) return true;
+        const end = tab.scrollHeight - tab.clientHeight;
+        return where === 'end' ? tab.scrollTop >= end - 1 : tab.scrollTop === 0;
+    }, to);
+}
 
 /** Taps a control after bringing it to the middle of the screen (clear of the phone's bottom bar). */
 async function tap(page, sel) {
-    await page.$eval(sel, el => el.scrollIntoView({ block: 'center' }));
+    await page.$eval(sel, el => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
     await page.click(sel);
 }
 
