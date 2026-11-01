@@ -9,7 +9,8 @@ jest.mock('../firebase/firestore-service.js', () => ({
         loadCashSessionsBetween: jest.fn(async () => []),
         loadAuditLogsSince: jest.fn(async () => []),
         loadAnomalies: jest.fn(async () => ({ docs: [], last: null, more: false })),
-        saveAnomalies: jest.fn(async () => {})
+        saveAnomalies: jest.fn(async () => {}),
+        loadPeople: jest.fn(async () => [])
     }
 }));
 jest.mock('../services/printer.js', () => ({ PrinterService: { showImagePreview: jest.fn(() => true) } }));
@@ -51,10 +52,36 @@ beforeEach(() => {
     AnomaliesManager.reportList = [];
     AnomaliesManager.refreshing = null;
     AnomaliesManager.scanQueue = null;
+    AnomaliesManager.owners = null;
     document.body.innerHTML = '<div id="dayReportCard" style="display:none"></div>';
 });
 
 describe('daily scan', () => {
+    test('#147: back-dated bills are flagged from 1 day for anyone but an owner (owners read once from the team)', async () => {
+        const dated = (id, userId) => ({ ...badBill, id, userId, payment: { cash: 400, online: 0, due: 0 }, timestamp: now - 86400000, date: new Date(now - 86400000).toISOString(), enteredAt: now });
+        // Nothing dated back by someone else: no read of the team
+        AppState.retailSalesHistory = [dated('mine', 'own1')];
+        await AnomaliesManager.scan('2026-10-21', '2026-10-21');
+        expect(FirebaseService.loadPeople).not.toHaveBeenCalled();
+        AppState.retailSalesHistory = [dated('s1', 'staff1'), dated('o2', 'own2')];
+        FirebaseService.loadPeople.mockResolvedValue([{ id: 'own2', role: 'owner' }, { id: 'staff1', role: 'staff' }]);
+        const { detected } = await AnomaliesManager.scan('2026-10-21', '2026-10-21');
+        expect(detected.map(a => [a.type, a.refId])).toEqual([['date-backdated', 's1']]);
+        await AnomaliesManager.scan('2026-10-21', '2026-10-21');
+        expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
+        // A bill without enteredAt that reached the server a day after its date also needs the owners
+        AnomaliesManager.owners = null;
+        FirebaseService.loadPeople.mockClear();
+        AppState.retailSalesHistory = [{ ...dated('s2', 'staff1'), enteredAt: undefined, createdAt: { seconds: Math.floor(now / 1000), nanoseconds: 0 } }];
+        expect((await AnomaliesManager.scan('2026-10-21', '2026-10-21')).detected.map(a => [a.type, a.refId])).toEqual([['date-backdated', 's2']]);
+        expect(FirebaseService.loadPeople).toHaveBeenCalledTimes(1);
+        AppState.retailSalesHistory = [dated('s1', 'staff1'), dated('o2', 'own2')];
+        // Not known (read failed): Q20 for all
+        AnomaliesManager.owners = null;
+        FirebaseService.loadPeople.mockRejectedValueOnce(new Error('offline'));
+        expect((await AnomaliesManager.scan('2026-10-21', '2026-10-21')).detected).toEqual([]);
+    });
+
     test('writes new records once per day; a second run the same day reads and writes nothing', async () => {
         await AnomaliesManager.dailyScan();
         expect(FirebaseService.loadAnomalies).toHaveBeenCalledWith(expect.any(String), expect.any(String), expect.objectContaining({ server: true }));
