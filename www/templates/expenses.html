@@ -7,6 +7,8 @@
 
         <!-- Business Expenses Section -->
         <div id="businessExpenseSection">
+            <div class="expense-templates" id="businessExpenseTemplates" hidden></div>
+
             <div class="form-row">
                 <label data-i18n="ui.expenses.expense_type">Expense Type:</label>
                 <input type="text" id="businessExpenseType" list="businessExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
@@ -56,6 +58,11 @@
             </div>
 
             <h3 data-i18n="ui.expenses.business_expense_history">Business Expense History</h3>
+            <div class="expense-totals" id="businessExpenseTotals" aria-live="polite"></div>
+            <div class="expense-search">
+                <input type="search" id="businessExpenseSearch" placeholder="Search expenses" data-i18n-placeholder="ui.expenses.search_placeholder" aria-label="Search expenses" data-i18n-aria-label="ui.expenses.search_placeholder" oninput="window.app.expenses.onSearch('business')" />
+                <select id="businessExpenseTypeFilter" aria-label="Expense type" data-i18n-aria-label="ui.expenses.expense_type" onchange="window.app.expenses.onSearch('business')"><option value="" data-i18n="ui.expenses.all_types">All types</option></select>
+            </div>
             <label class="expenses-voided-toggle"><input type="checkbox" data-expense-voided-toggle onchange="window.app.expenses.toggleVoided(this.checked)"> <span data-i18n="ui.expenses.show_voided">Show voided</span></label>
             <div id="businessExpenseHistoryList">
                 <p style="text-align: center; color: #888; margin-top: 40px;" data-i18n="ui.expenses.no_business_expenses_recorded_yet">No business expenses recorded yet</p>
@@ -64,6 +71,8 @@
 
         <!-- Personal Expenses Section -->
         <div id="personalExpenseSection" data-perm="personalExpenses" style="display: none;">
+            <div class="expense-templates" id="personalExpenseTemplates" hidden></div>
+
             <div class="form-row">
                 <label data-i18n="ui.expenses.expense_type">Expense Type:</label>
                 <input type="text" id="personalExpenseType" list="personalExpenseTypeOptions" placeholder="Enter expense type" data-i18n-placeholder="ui.expenses.enter_expense_type" />
@@ -112,6 +121,11 @@
             </div>
 
             <h3 data-i18n="ui.expenses.personal_expense_history">Personal Expense History</h3>
+            <div class="expense-totals" id="personalExpenseTotals" aria-live="polite"></div>
+            <div class="expense-search">
+                <input type="search" id="personalExpenseSearch" placeholder="Search expenses" data-i18n-placeholder="ui.expenses.search_placeholder" aria-label="Search expenses" data-i18n-aria-label="ui.expenses.search_placeholder" oninput="window.app.expenses.onSearch('personal')" />
+                <select id="personalExpenseTypeFilter" aria-label="Expense type" data-i18n-aria-label="ui.expenses.expense_type" onchange="window.app.expenses.onSearch('personal')"><option value="" data-i18n="ui.expenses.all_types">All types</option></select>
+            </div>
             <label class="expenses-voided-toggle"><input type="checkbox" data-expense-voided-toggle onchange="window.app.expenses.toggleVoided(this.checked)"> <span data-i18n="ui.expenses.show_voided">Show voided</span></label>
             <div id="personalExpenseHistoryList">
                 <p style="text-align: center; color: #888; margin-top: 40px;" data-i18n="ui.expenses.no_personal_expenses_recorded_yet">No personal expenses recorded yet</p>

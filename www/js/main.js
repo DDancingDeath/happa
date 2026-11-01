@@ -1158,7 +1158,9 @@ window.app = {
         closeExpenseDetails: () => ExpensesManager.closeExpenseDetails(),
         voidExpenseFromModal: () => ExpensesManager.voidExpenseFromModal(),
         reenterExpenseFromModal: () => ExpensesManager.reenterExpenseFromModal(),
-        toggleVoided: (show) => ExpensesManager.toggleVoided(show)
+        toggleVoided: (show) => ExpensesManager.toggleVoided(show),
+        onSearch: (category) => ExpensesManager.onSearch(category),
+        applyTemplate: (category, index) => ExpensesManager.applyTemplate(category, index)
     },
     
     // Anomalies (#187, #40): Day report card on Today + Anomalies page
