@@ -8,9 +8,10 @@
 import { getDb, col } from '../db.js';
 import { historyIdBound } from '../../utils/rate-history.js';
 import { AppState } from '../../utils/state.js';
+import { changedElsewhereError, isOffline, needsInternetError } from '../../utils/write-conflict.js';
 
-/** Changed only by setItemArchived (#123): an item save never writes them. */
-const ITEM_ARCHIVE_FIELDS = ['archived', 'archivedAt', 'archivedBy', 'archivedByUserId', 'unarchivedAt', 'unarchivedBy', 'unarchivedByUserId'];
+/** Changed only by setItemArchived (#123) and setItemLowStock (#146): an item save never writes them. */
+const ITEM_OWN_FIELDS = ['archived', 'archivedAt', 'archivedBy', 'archivedByUserId', 'unarchivedAt', 'unarchivedBy', 'unarchivedByUserId', 'lowStockKg'];
 
 /** FirebaseService methods for the item list and its rate history; spread into FirebaseService (`this` is FirebaseService). */
 export const itemMethods = {
@@ -45,14 +46,34 @@ export const itemMethods = {
      * @param {string} item.name - Item name
      * @param {string} [item.hindiName] - Item name in Hindi
      * @param {number} [item.rate] - Default rate for the item
-     * @returns {Promise<Object>} The saved item with ID
+     * @param {{expectedRev?: number}} [opts] expectedRev: the item's `rev` when it was
+     *   opened for editing; the save is a transaction that refuses it (code
+     *   'changed-elsewhere') when another phone saved the item since (#113), and
+     *   needs the internet. Without it: a plain merge (imports, older callers).
+     * @returns {Promise<Object>} The saved item with ID (and its new `rev`)
      */
-    async saveItem(item) {
+    async saveItem(item, { expectedRev } = {}) {
         if (item.id) {
-            // merge, and never the archive fields: a stale phone's save can't drop or flip them (#123)
+            // merge, and never the archive / low-stock fields: a stale phone's save can't drop or flip them (#123, #146)
             const data = { ...item };
-            ITEM_ARCHIVE_FIELDS.forEach(f => delete data[f]);
-            await getDb().collection(col('items')).doc(item.id).set(data, { merge: true });
+            ITEM_OWN_FIELDS.forEach(f => delete data[f]);
+            delete data.rev;
+            const ref = getDb().collection(col('items')).doc(item.id);
+            if (expectedRev === undefined) {
+                // Not checked (inline edits, older callers), but an item dialog open elsewhere notices it
+                await ref.set({ ...data, rev: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+                return item;
+            }
+            if (isOffline()) throw needsInternetError();
+            let rev = 0;
+            await getDb().runTransaction(async tx => {
+                const snap = await tx.get(ref);
+                const current = snap.exists ? (Number(snap.data().rev) || 0) : 0;
+                if (!snap.exists || current !== (Number(expectedRev) || 0)) throw changedElsewhereError('Item');
+                rev = current + 1;
+                tx.set(ref, { ...data, rev }, { merge: true });
+            });
+            item.rev = rev;
         } else {
             const docRef = await getDb().collection(col('items')).add(item);
             item.id = docRef.id;
@@ -125,7 +146,8 @@ export const itemMethods = {
         const db = getDb();
         const ref = db.collection(col('items'));
         const ops = [
-            ...(updates || []).map(u => ({ doc: ref.doc(u.id), data: u.fields, merge: true })),
+            // An import is a change too: an item dialog open elsewhere then can't save over it (#113)
+            ...(updates || []).map(u => ({ doc: ref.doc(u.id), data: { ...u.fields, rev: firebase.firestore.FieldValue.increment(1) }, merge: true })),
             ...(adds || []).map(a => ({ doc: ref.doc(), data: a.fields, merge: false }))
         ];
         const added = [];
