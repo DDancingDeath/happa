@@ -394,6 +394,24 @@ describe('new retail sale save', () => {
         expect(saveRetailSale).not.toHaveBeenCalled();
         expect(toast).toHaveBeenCalledWith(expect.stringContaining('₹260 less than the bill total'));
     });
+
+    test('a retry after a timeout writes the same sale id and number again — one bill (#70, #91)', async () => {
+        await addLine(0, 36, [10]);
+        setVal('saleCashPayment', 360);
+        saveRetailSale.mockRejectedValueOnce(new Error('Timed out'));
+        await expect(RetailSaleManager.completeSale()).rejects.toThrow('Timed out');
+        const sale = await RetailSaleManager.completeSale();
+        expect(saveRetailSale).toHaveBeenCalledTimes(2);
+        const [first, second] = saveRetailSale.mock.calls;
+        expect(second[0].id).toBe(first[0].id);
+        expect(second[0].billNumber).toBe(first[0].billNumber);
+        expect([first[1], second[1]]).toEqual([{ retry: false }, { retry: true }]);
+        expect(second[0].timestamp).toBe(first[0].timestamp);
+        expect(sale.id).toBe(first[0].id);
+        await addLine(0, 36, [10]);
+        setVal('saleCashPayment', 360);
+        expect((await RetailSaleManager.completeSale()).id).not.toBe(sale.id);
+    });
 });
 
 describe('recording a due payment (Outstanding)', () => {

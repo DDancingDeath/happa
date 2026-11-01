@@ -175,6 +175,22 @@ describe('wholesale sale save: payment split (#113, #23, #68, #26)', () => {
         expect(saved).toHaveLength(1);
     });
 
+    test('a retry after a timeout writes the same sale id and number again — one bill (#70, #91)', async () => {
+        setVal('wholesaleCashPayment', 4025);
+        FirebaseService.saveWholesaleSale.mockRejectedValueOnce(new Error('Timed out'));
+        expect(await WholesaleSalesManager.completeSale()).toBeUndefined();
+        expect(WholesaleSalesManager.getItems()).toHaveLength(1);
+        const sale = await WholesaleSalesManager.completeSale();
+        const calls = FirebaseService.saveWholesaleSale.mock.calls;
+        expect(calls).toHaveLength(2);
+        expect(calls[1][0].id).toBe(calls[0][0].id);
+        expect(calls[1][0].billNumber).toBe('W20261022-001');
+        expect([calls[0][1], calls[1][1]]).toEqual([{ retry: false }, { retry: true }]);
+        expect(calls[1][0].timestamp).toBe(calls[0][0].timestamp);
+        expect(Helpers.generateBillNumber).toHaveBeenCalledTimes(1);
+        expect(sale.id).toBe(calls[0][0].id);
+    });
+
     test('unknown average cost (#102, Q58): saved after a confirm, without a profit, lines marked', async () => {
         AppState.stock = { rice: { quantity: 500, rate: 0 } };
         AppState.userRole = 'staff';
