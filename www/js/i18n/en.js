@@ -744,7 +744,7 @@ export default {
     'ui.ask.example_6': "Rice stock",
     'ui.ask.help': "I can tell you: today's sales, purchases or expenses; what one party owes (e.g. “Ramesh ka baaki”); the total due; one item's stock (e.g. “chawal ka stock”).",
     'ui.ask.unknown': "Sorry, I didn't understand. Try one of the questions above, or type “help”.",
-    'ui.ask.today_only': "I can only tell today's total sales, purchases or expenses. Other days and single items are on Statements and Insights.",
+    'ui.ask.today_only': "I know today's total sales, purchases and expenses, and the dues and stock as they are now. Other days, one item's sales or one party's purchases are on Statements and Insights.",
     'ui.ask.stock_failed': "Stock could not be worked out right now. Open Stocks to see it.",
     'ui.ask.ans_sales_today': "Today's sales: {amount} ({bills})",
     'ui.ask.ans_purchases_today': "Today's purchases: {amount} ({bills})",

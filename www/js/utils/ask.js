@@ -88,17 +88,21 @@ export function parseQuestion(text) {
     const named = (i) => AMBIGUOUS.has(tokens[i]) && NAME_NEXT.has(tokens[i + 1]);
     const leftover = () => tokens.filter((w, i) => named(i) || (!AMBIGUOUS.has(w) && !KEYWORDS.some(s => s.has(w)))).join(' ');
 
+    // Dues and stock are known as they are now, sales only for today: another day gets no figure.
+    const otherDay = hasAny(tokens, OTHER_DAY) || tokens.some(w => /[\d\u0966-\u096F]/.test(w));
+    const sale = hasAny(tokens, SALES) || hasAny(tokens, PURCHASES);
     if (hasAny(tokens, DUES)) {
+        // "aaj ki udhaar bikri" asks about today's credit sales, not what is owed in all
+        if (otherDay || (sale && hasAny(tokens, TODAY))) return { intent: 'today_only' };
         const subject = leftover();
-        if (!subject || (tokens.some((w, i) => TOTAL.has(w) && !named(i)) && AMBIGUOUS.has(subject))) return { intent: 'total_due' };
-        return { intent: 'party_due', subject };
+        return subject ? { intent: 'party_due', subject } : { intent: 'total_due' };
     }
     const money = hasAny(tokens, SALES) ? 'sales_today' : hasAny(tokens, PURCHASES) ? 'purchases_today'
         : hasAny(tokens, EXPENSES) ? 'expenses_today' : null;
-    if (hasAny(tokens, STOCK) || (!money && hasAny(tokens, GOODS))) return { intent: 'item_stock', subject: leftover() };
+    if (hasAny(tokens, STOCK) || (!money && hasAny(tokens, GOODS))) return otherDay ? { intent: 'today_only' } : { intent: 'item_stock', subject: leftover() };
     // Only today's totals are known here: "kal ki bikri", "chawal kitna becha" or "Ramesh ko kitna becha"
     // must not get today's total, so any word left over gets no figure.
-    if (money) return leftover() || hasAny(tokens, OTHER_DAY) || tokens.some(w => /[\d\u0966-\u096F]/.test(w)) ? { intent: 'today_only' } : { intent: money };
+    if (money) return leftover() || otherDay ? { intent: 'today_only' } : { intent: money };
     return { intent: 'unknown' };
 }
 
