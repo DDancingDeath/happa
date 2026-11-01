@@ -96,6 +96,13 @@ describe('owner daily scan flags (detectAnomalies)', () => {
         expect(scan(logs).find(a => a.type === 'access-denied').id).toBe(flags[0].id);
     });
 
+    test('flags name the profile behind userId, not the name the phone stored (#85)', () => {
+        const logs = [denied('a1', 'u1', t0), denied('a2', 'u1', t0 + MIN), denied('a3', 'u1', t0 + 2 * MIN)];
+        const flag = detectAnomalies({ auditLogs: logs, people: [{ id: 'u1', name: 'Amit', role: 'staff' }], from: t0 - 86400000, to: t0 + 86400000 })
+            .find(a => a.type === 'access-denied');
+        expect(flag).toMatchObject({ userId: 'u1', user: 'Amit' });
+    });
+
     test('thresholds come from Settings › bill checks (deniedCount, deniedWindowMin)', () => {
         expect(DEFAULT_THRESHOLDS).toMatchObject({ deniedCount: 3, deniedWindowMin: 10 });
         const logs = [denied('c1', 'u3', t0), denied('c2', 'u3', t0 + 15 * MIN)];
