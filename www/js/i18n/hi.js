@@ -2472,6 +2472,7 @@ export default {
     'msg.export.confirm_title': "नाम और रकम निकालें?",
     'msg.export.confirm_names': "इस फ़ाइल में ग्राहकों और सप्लायरों के नाम और रकम हैं। इसे सिर्फ़ भरोसेमंद लोगों को दें। यह निकालना ऑडिट लॉग में लिखा जाता है।",
     'msg.export.nothing': "निकालने के लिए कुछ नहीं है।",
+    'msg.export.needs_website': "यह ऐप इस फ़ोन पर फ़ाइल सेव नहीं कर सकता। ब्राउज़र में वेबसाइट (myhappa.web.app) से निकालें।",
     'ui.statements.back': "वापस",
     'ui.statements.whatsapp': "व्हाट्सऐप",
     'ui.statements.print': "प्रिंट / PDF",

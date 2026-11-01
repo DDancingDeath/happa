@@ -390,12 +390,13 @@ export const StatementsManager = {
         const sessions = this.sessions({ from, to });
         const rows = accountantLines(this.src(), { from, to }, { sessions: sessions.list });
         const bills = rows.filter(r => r.entry === 'bill').length;
+        const ready = t('ui.statements.accountant_ready', { bills, payments: rows.length - bills });
         const html = `<h3 class="st-title">${esc(title)}</h3>${this.duesCaveat(sessions)}`
-            + `<p>${esc(t('ui.statements.accountant_ready', { bills, payments: rows.length - bills }))}</p>`
+            + `<p>${esc(ready)}</p>`
             + `<p class="ins-hint">${esc(t('ui.statements.accountant_hint'))}</p>`;
         const blank = (v) => (v === null || v === undefined ? '' : v);
         const csvRows = rows.map(r => [isoMinute(r.t), r.entry, r.billType, r.billNo, r.party, blank(r.total), r.cash, r.online, blank(r.due), blank(r.payment)]);
-        return { title, html, share: '', csvHeader: [...ACCOUNTANT_COLUMNS], csvRows, csvLang: 'en' };
+        return { title, html, share: `${title}\n${ready}`, csvHeader: [...ACCOUNTANT_COLUMNS], csvRows, csvLang: 'en' };
     },
 
     // ---- share (owner only, confirmed, stamped and audited: services/exporter.js, #103)
@@ -403,7 +404,7 @@ export const StatementsManager = {
     exportJob(format, produce) {
         const cur = this.current;
         return Exporter.run({
-            kind: this.kind, format, period: { ...cur.period, label: cur.title }, rows: cur.csvRows.length,
+            kind: this.kind, format, period: { ...cur.period, label: format === 'csv' ? '' : cur.title }, rows: cur.csvRows.length,
             names: NAMED_KINDS.includes(this.kind), produce
         });
     },

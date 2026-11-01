@@ -609,7 +609,7 @@ const AdminManager = {
      *   when sharing isn't available (its WebView drops downloads)
      */
     async saveJsonBackup(backup, filename) {
-        return Exporter.saveBlob(new Blob([JSON.stringify(backup)], { type: 'application/json' }), filename);
+        return Exporter.saveBlob(new Blob([JSON.stringify(backup)], { type: 'application/json' }), filename, { quiet: true });
     },
 
     /**

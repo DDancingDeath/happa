@@ -2472,6 +2472,7 @@ export default {
     'msg.export.confirm_title': "Export names and amounts?",
     'msg.export.confirm_names': "This file has customer and supplier names and amounts. Share it only with people you trust. The export is written in the audit log.",
     'msg.export.nothing': "Nothing to export.",
+    'msg.export.needs_website': "This app can't save files on this phone. Export from the website (myhappa.web.app) in a browser.",
     'ui.statements.back': "Back",
     'ui.statements.whatsapp': "WhatsApp",
     'ui.statements.print': "Print / PDF",

@@ -47,12 +47,12 @@ export const Exporter = {
      * share files (so it can go to Drive / WhatsApp), else a download.
      * @param {Blob} blob
      * @param {string} filename
-     * @param {{shareFirst?: boolean}} [opts]
+     * @param {{shareFirst?: boolean, quiet?: boolean}} [opts] quiet: no message when the Android app can't save it
      * @returns {Promise<boolean>} true when the share sheet or download was started (the browser
      *   can't confirm the file was kept); false when sharing was cancelled, or in the Android app
-     *   when sharing isn't available (its WebView drops downloads)
+     *   when sharing isn't available (its WebView drops downloads; it says so unless `quiet`)
      */
-    async saveBlob(blob, filename, { shareFirst = true } = {}) {
+    async saveBlob(blob, filename, { shareFirst = true, quiet = false } = {}) {
         const native = !!window.Capacitor?.isNativePlatform?.();
         if ((shareFirst || native) && typeof File !== 'undefined' && navigator.canShare) {
             const file = new File([blob], filename, { type: blob.type });
@@ -66,7 +66,10 @@ export const Exporter = {
                 }
             }
         }
-        if (native) return false;
+        if (native) {
+            if (!quiet) UIManager.showToast(t('msg.export.needs_website'), 'error');
+            return false;
+        }
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;

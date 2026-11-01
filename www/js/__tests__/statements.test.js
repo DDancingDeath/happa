@@ -350,7 +350,7 @@ describe('Statements page', () => {
         await StatementsManager.downloadCsv();
         global.Blob = Real;
         const lines = saved[0].blob.text.split('\r\n');
-        expect(lines.slice(0, 2)).toEqual(['\uFEFFShop,Gupta Traders', expect.stringMatching(/^Period,Accountant CSV · /)]);
+        expect(lines.slice(0, 2)).toEqual(['\uFEFFShop,Gupta Traders', `Period,2026-10-01 – ${StatementsManager.csvTo}`]);
         expect(lines[3]).toBe('By,Asha');
         expect(lines[5]).toBe('date,entry,bill_type,bill_no,party,bill_total,cash,online,due,payment_amount');
         expect(saved[0].name).toMatch(new RegExp(`^Gupta-Traders_accountant_2026-10-01_${StatementsManager.csvTo}_\\d{8}-\\d{4}\\.csv$`));

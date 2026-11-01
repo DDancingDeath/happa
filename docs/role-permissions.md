@@ -150,7 +150,7 @@ Code: `www/js/utils/role-access.js` (pure: defaults, `normalizeRoleAccess`, `acc
   personal expenses, stock value and purchase rate lines (also left out of WhatsApp, CSV and PDF; and
   only the owner exports at all, #103: Statements' WhatsApp / Print / CSV buttons, the CSV and accountant CSV
   statements, the audit log and error report exports, each confirmed when it names parties, stamped and
-  written in the audit log as EXPORT; client-side, a page's data is already on the phone); wholesale
+  written in the audit log as `EXPORT`; client-side, a page's data is already on the phone); wholesale
   profit rows; Stock page rate (average cost) and ₹ value; the Personal expenses tab.
 - **Actions and lists**: Expenses refuses the Personal tab and draws no personal rows; Stock
   "Not selling" also needs `profit` and `stockValue`; Cash history without `oldCashSessions`

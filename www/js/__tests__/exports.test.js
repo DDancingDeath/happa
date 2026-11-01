@@ -110,7 +110,11 @@ describe('Exporter.run (#103)', () => {
         expect(await Exporter.saveBlob(new TextBlob(['a'], { type: 'text/csv' }), 'x.csv', { shareFirst: false })).toBe(true);
         expect(navigator.share.mock.calls[0][0].files[0].name).toBe('x.csv');
         navigator.canShare = () => false;
+        const toast = jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         expect(await Exporter.saveBlob(new TextBlob(['a']), 'x.csv')).toBe(false);
+        expect(toast).toHaveBeenCalledWith(expect.stringMatching(/website/), 'error');
+        expect(await Exporter.saveBlob(new TextBlob(['a']), 'x.json', { quiet: true })).toBe(false);
+        expect(toast).toHaveBeenCalledTimes(1);
         delete window.Capacitor;
         delete navigator.canShare;
         delete navigator.share;

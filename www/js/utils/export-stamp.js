@@ -36,7 +36,8 @@ export function exportStamp({ shop, period = {}, at, user }) {
  */
 export function stampPairs(stamp, lang) {
     const tl = (k) => t(k, null, lang);
-    const period = stamp.label || [stamp.from, stamp.to].filter(Boolean).join(' – ');
+    // No from day: everything loaded up to the to day.
+    const period = stamp.label || (stamp.from || stamp.to ? `${stamp.from || '…'} – ${stamp.to || '…'}` : '');
     return [
         [tl('ui.export.stamp_shop'), stamp.shop],
         [tl('ui.export.stamp_period'), period],
