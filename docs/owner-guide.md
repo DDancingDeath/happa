@@ -55,6 +55,7 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 - [Money (Profit, Cash, Spending, Worth)](pages/money.md)
 - [Insights (To do, Items, Parties, Seasons)](pages/insights.md)
 - [Statements](pages/statements.md)
+- [Ask](pages/ask.md)
 - [Rates](pages/rates.md)
 - [Rentals](pages/rentals.md)
 - [Settings, Admin, App health](pages/settings.md)

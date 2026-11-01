@@ -17,6 +17,7 @@
       "money": 2,
       "insights": 11,
       "statements": 0,
+      "ask": 0,
       "anomalies": 4,
       "health": 6,
       "admin": 12,
@@ -40,6 +41,7 @@
       "money": 2,
       "insights": 5,
       "statements": 0,
+      "ask": 0,
       "anomalies": 4,
       "health": 6,
       "diagnostics": 0,
@@ -62,7 +64,8 @@
       "rentals": 8,
       "back-to-aadhat": 0,
       "notifications": 1,
-      "whats-new": 0
+      "whats-new": 0,
+      "ask": 0
     }
   }
 }
