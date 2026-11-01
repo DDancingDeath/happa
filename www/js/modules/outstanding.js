@@ -878,6 +878,13 @@ export class OutstandingManager {
             const settled = [];
             freshList.forEach((fresh, i) => {
                 if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
+                // This run's entry is already there: the transaction is re-run after a commit whose answer was lost
+                const mine = (Array.isArray(fresh.payments) ? fresh.payments : []).find(p => p && p.id === ids[i]);
+                if (mine) {
+                    updates.push(null);
+                    settled.push({ index: i, amount: Number(mine.amount) || 0, fields: { ...fresh } });
+                    return;
+                }
                 const part = settleDueUpdate(fresh, method, {
                     id: ids[i], at, date: Helpers.getCurrentDateTime(), recordedBy, recordedById, settlesDue: true, bulk: true
                 }, PAYMENT_TOLERANCE, confirmed[i] ?? Infinity);

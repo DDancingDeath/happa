@@ -141,6 +141,26 @@ describe('OutstandingManager.settleAllDues', () => {
         expect(voided.w3.payments).toEqual([]);
     });
 
+    test('re-run after a commit whose answer was lost: this run\'s entries count as settled, nothing written twice', async () => {
+        const server = { w1: bill('w1', 'Gupta', 120), w2: bill('w2', 'Gupta', 80) };
+        let runs = 0;
+        updateBillsInTransaction.mockImplementation(async (collKey, ids, change) => {
+            let out;
+            // The SDK re-runs the change once more after the first commit (answer lost)
+            for (let k = 0; k < 2; k++) {
+                runs++;
+                out = change(ids.map(id => JSON.parse(JSON.stringify(server[id]))));
+                out.bills.forEach((fields, i) => { if (fields) server[ids[i]] = { ...server[ids[i]], ...fields }; });
+            }
+            return out.result;
+        });
+        const { settled, total } = await OutstandingManager.settleAllDues('wholesale', [server.w1, server.w2], 'cash', [120, 80]);
+        expect(runs).toBe(2);
+        expect([settled.length, total]).toEqual([2, 200]);
+        expect([server.w1, server.w2].map(b => [b.payments.length, readPayment(b).cash, readPayment(b).due])).toEqual([[1, 220, 0], [1, 180, 0]]);
+        expect(settled[0].fields.payments).toHaveLength(1);
+    });
+
     test('a legacy bill is written at its document id, not its `id` field', async () => {
         const legacy = { ...bill('w9', 'Gupta', 30), docId: 'doc-9' };
         const server = { 'doc-9': bill('w9', 'Gupta', 30) };
