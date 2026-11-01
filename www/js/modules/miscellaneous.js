@@ -21,12 +21,13 @@ import { refusedForClock } from '../utils/clock-skew.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can, canVoidExpenseWith } from '../utils/role-access.js';
-import { expenseMode, isActiveExpense, isPersonalExpense } from '../utils/money.js';
+import { expenseMode, formatAmount, isActiveExpense, isPersonalExpense } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpenseEntry } from '../utils/expense-entry.js';
 import { toLocalISODate } from '../utils/dates.js';
 import { personalDayKey } from '../utils/personal-expenses.js';
 import { sessionForDate } from '../utils/cash-session.js';
+import { expenseTemplates, expenseTotals, expenseTypes, filterExpenses, isExpenseSearch, sameExpenseType } from '../utils/expense-list.js';
 
 /** Expense save / print buttons, disabled while one is being saved (#95). */
 const EXPENSE_BUTTONS = '[data-expense-save]';
@@ -57,6 +58,12 @@ export class ExpensesManager {
 
     /** Voided expenses are shown in the lists (struck through) when on. */
     static showVoided = false;
+
+    /** Search of each section's list (#90): words and an expense type ('' = any). */
+    static search = { business: { text: '', type: '' }, personal: { text: '', type: '' } };
+
+    /** Template chips on screen per section (#90), in chip order. */
+    static templates = { business: [], personal: [] };
 
     /**
      * New expense whose save this phone has not confirmed yet ({ id, category }):
@@ -403,7 +410,77 @@ export class ExpensesManager {
         const ofCategory = (e) => e && e.id && (category === 'personal') === isPersonalExpense(e);
         const rows = AppState.expensesHistory.filter(ofCategory);
         if (this.showVoided) rows.push(...FirebaseService.voidedExpenses().filter(ofCategory));
-        return rows.sort((a, b) => (Helpers.parseDate(b.date)?.getTime() || 0) - (Helpers.parseDate(a.date)?.getTime() || 0));
+        const listed = filterExpenses(rows, this.search[category]);
+        return listed.sort((a, b) => (Helpers.parseDate(b.date)?.getTime() || 0) - (Helpers.parseDate(a.date)?.getTime() || 0));
+    }
+
+    /**
+     * The search box and type filter of a section changed (#90): redraw its list.
+     * @param {'business'|'personal'} category
+     */
+    static onSearch(category) {
+        this.search[category] = {
+            text: formField(category, 'Search')?.value || '',
+            type: formField(category, 'TypeFilter')?.value || ''
+        };
+        if (category === 'personal') this.renderPersonalExpenseHistory();
+        else this.renderBusinessExpenseHistory();
+    }
+
+    /**
+     * Above a section's list (#90): today's and this month's totals (EXP-LIST),
+     * the total of what a search shows, the type filter and the template chips.
+     * @param {'business'|'personal'} category
+     * @param {Array<Object>} listed rows on screen
+     */
+    static renderSectionTools(category, listed) {
+        const counted = AppState.expensesHistory.filter(e => e && (category === 'personal') === isPersonalExpense(e));
+        const totals = expenseTotals(counted, { now: new Date(), loadedFrom: isFullHistoryLoaded() ? null : historyLoadedFrom(), shown: listed });
+        const box = formField(category, 'Totals');
+        if (box) {
+            const month = totals.partialMonth
+                ? tx('ui.expenses.total_month_since', { amount: formatAmount(totals.month), date: formatWindowDate(historyLoadedFrom()) })
+                : tx('ui.expenses.total_month', { amount: formatAmount(totals.month) });
+            const shown = isExpenseSearch(this.search[category])
+                ? ` · <strong>${tx('ui.expenses.total_shown', { count: totals.shownCount, amount: formatAmount(totals.shown) })}</strong>` : '';
+            box.innerHTML = `${tx('ui.expenses.total_today', { amount: formatAmount(totals.today) })} · ${month}${shown}`;
+        }
+        const filter = formField(category, 'TypeFilter');
+        if (filter) {
+            const want = this.search[category].type;
+            const types = expenseTypes(counted);
+            const picked = want ? types.find(type => sameExpenseType(type, want)) : '';
+            if (want && !picked) types.unshift(want);
+            // The list's spelling of the picked type (a newer entry may spell it in another case)
+            if (picked) this.search[category].type = picked;
+            const selected = picked || want;
+            filter.innerHTML = `<option value="">${tx('ui.expenses.all_types')}</option>`
+                + types.map(type => `<option value="${Helpers.escapeHtml(type)}"${type === selected ? ' selected' : ''}>${Helpers.escapeHtml(type)}</option>`).join('');
+        }
+        const chips = formField(category, 'Templates');
+        if (chips) {
+            const templates = expenseTemplates(counted);
+            this.templates[category] = templates;
+            chips.hidden = templates.length === 0;
+            chips.innerHTML = templates.length === 0 ? '' : `<span class="expense-templates__label">${tx('ui.expenses.templates_label')}</span>`
+                + templates.map((tpl, i) => `<button type="button" class="expense-template-chip" onclick="window.app.expenses.applyTemplate('${category}', ${i})">${Helpers.escapeHtml(tpl.type)}${tpl.personName ? ` · ${Helpers.escapeHtml(tpl.personName)}` : ''} · ₹${Helpers.escapeHtml(formatAmount(tpl.amount, { small: true }))}</button>`).join('');
+        }
+    }
+
+    /**
+     * A template chip (#90): fills the type, name and amount of the form; the
+     * user checks the day and mode and saves it (never saved by the tap).
+     * @param {'business'|'personal'} category
+     * @param {number} index
+     */
+    static applyTemplate(category, index) {
+        const tpl = this.templates[category]?.[index];
+        if (!tpl) return;
+        const set = (name, value) => { const el = formField(category, name); if (el) el.value = value; };
+        set('Type', tpl.type);
+        set('Person', tpl.personName);
+        set('Amount', String(tpl.amount));
+        formField(category, 'Amount')?.focus?.();
     }
 
     /**
@@ -415,8 +492,10 @@ export class ExpensesManager {
         if (!container) return;
         const expenses = this.listedExpenses(category);
         this.attachExpenseScroll(container);
+        this.renderSectionTools(category, expenses);
         if (expenses.length === 0) {
-            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(this.emptyExpenseMessage(category))}</p>`;
+            const empty = isExpenseSearch(this.search[category]) ? t('ui.expenses.no_match') : this.emptyExpenseMessage(category);
+            container.innerHTML = `<p style="text-align: center; color: #888; margin-top: 40px;">${Helpers.escapeHtml(empty)}</p>`;
             return;
         }
         container.innerHTML = expenses.map(payment => {

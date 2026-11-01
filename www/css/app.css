@@ -3476,6 +3476,47 @@ body.dark-mode .party-due-line.party-due-old {
   color: #4b5563;
 }
 
+/* Expenses: totals, search and template chips (#90) */
+.expense-totals {
+  margin: 4px 0 8px;
+  font-size: 14px;
+  color: #374151;
+}
+.expense-search {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.expense-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.expense-search select {
+  flex: 0 1 40%;
+  min-width: 0;
+}
+.expense-templates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.expense-templates__label {
+  font-size: 13px;
+  color: #6b7280;
+}
+.expense-template-chip {
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #f9fafb;
+  color: #1f2937;
+  padding: 6px 12px;
+  font-size: 13px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
 /* ---- css/outstanding.css ---- */
 /* Outstanding: dues aging panel and party rows (#46, #77) */
 
