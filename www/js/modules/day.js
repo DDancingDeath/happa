@@ -5,7 +5,7 @@ import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { formatKg, labourCalcText } from '../utils/labour.js';
-import { parseAnyBillDate, todayLocalISO, displayLocale, toLocalISODate, formatTimeOfDay } from '../utils/dates.js';
+import { parseAnyBillDate, todayLocalISO, displayLocale, toLocalISODate, formatDayTime } from '../utils/dates.js';
 import { todaySummary } from '../utils/calc/today.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { CashManagementManager } from './cash-management.js';
@@ -260,33 +260,38 @@ export const DayManager = {
             + ` <strong>${e(formatINR(p.total))}</strong>`
             + (p.oldestDays !== null && p.oldestDays !== undefined ? ` <span class="today-reminder-days">${e(t('ui.today.reminder_days', { count: p.oldestDays }))}</span>` : '')
             + '</li>';
-        const block = (kind, r, route) => `<div class="today-reminder" data-reminder="${kind}">`
+        const block = (kind, r, open) => `<div class="today-reminder" data-reminder="${kind}">`
             + `<div class="today-reminder-head"><strong>${e(t(`ui.today.reminder_${kind}`))}</strong> ${e(formatINR(r.total))}</div>`
             + `<ul>${r.parties.map(party).join('')}</ul>`
             + (r.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: r.more }))}</div>` : '')
-            + `<button type="button" class="filter-btn" onclick="window.app.nav.showTab('${route}', event)">${e(t('ui.today.reminder_open_dues'))}</button></div>`;
+            + `<button type="button" class="filter-btn" onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div>`;
         const parts = [];
-        if (canDue || canWholesale) {
-            const receivables = [...(canDue ? AppState.retailSalesHistory || [] : []), ...(canWholesale ? billsForKind(AppState, 'wholesale') : [])];
-            const collect = overdueReminder(receivables, { today: now });
-            if (collect.parties.length) parts.push(block('collect', collect, canDue ? 'due' : 'wholesale-sales'));
-        }
-        if (canDue) {
-            const pay = overdueReminder(AppState.purchaseHistory || [], { today: now });
-            if (pay.parties.length) parts.push(block('pay', pay, 'due'));
-        }
+        const add = (kind, bills, open) => {
+            const r = overdueReminder(bills, { today: now });
+            if (r.parties.length) parts.push(block(kind, r, open));
+        };
+        // Outstanding lists retail customers and suppliers; wholesale dues live on the Wholesale page.
+        if (canDue) add('collect', AppState.retailSalesHistory || [], "window.app.day.openDues('sale')");
+        if (canWholesale) add('collect_wholesale', billsForKind(AppState, 'wholesale'), "window.app.nav.showTab('wholesale-outstanding')");
+        if (canDue) add('pay', AppState.purchaseHistory || [], "window.app.day.openDues('purchase')");
         if (rentalsRole(AppState)) {
             let rent = null;
             try { rent = rentReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { rent = null; }
             if (rent) {
                 parts.push(`<div class="today-reminder" data-reminder="rent"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_rent'))}</strong> ${e(formatINR(rent.due))}</div>`
                     + `<div>${e(t('ui.today.reminder_rent_units', { count: rent.dueUnits, late: rent.late }))}</div>`
-                    + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatTimeOfDay(rent.at, { lang: getLang() }) }))}</div>`
+                    + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatDayTime(rent.at, { lang: getLang() }) }))}</div>`
                     + `<button type="button" class="filter-btn" onclick="window.app.rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div>`);
             }
         }
         host.hidden = parts.length === 0;
         host.innerHTML = parts.length ? `<h3 class="today-reminders-title">${e(t('ui.today.reminders'))}</h3>${parts.join('')}` : '';
+    },
+
+    /** Outstanding on its Purchases or Sales list (navigation opens it on Purchases first). */
+    openDues(kind) {
+        window.app?.nav?.showTab?.('due');
+        setTimeout(() => window.app?.outstanding?.filterDue(kind, { target: document.querySelector(`#due .filter-${kind}`) }), 150);
     },
 
     /** Wholesale cards and bills only for roles that may open the Wholesale page. */

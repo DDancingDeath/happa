@@ -283,7 +283,7 @@ function renderRent(d) {
     const ix = index(d);
     const lang = getLang();
     const rows = unitRows(d, state.month);
-    if (state.month === monthKey() && !store.truncatedKeys().length) noteRent(state.month, summarize(rows), rows);
+    noteRent(state, rows, store.truncatedKeys());
     const view = state.view === 'units' ? 'units' : 'properties';
     const sw = `<div class="rent-viewswitch" role="group">
         <button type="button" class="filter-btn${view === 'properties' ? ' active' : ''}" aria-pressed="${view === 'properties'}" onclick="window.app.rentals.setView('properties')">${et('ui.rent.view_properties')}</button>

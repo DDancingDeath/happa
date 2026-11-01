@@ -1154,6 +1154,7 @@ window.app = {
         init: () => DayManager.init(),
         showSubTab: (tab) => DayManager.showSubTab(tab),
         loadTodayData: () => DayManager.loadTodayData(),
+        openDues: (kind) => DayManager.openDues(kind),
         filterTransactions: () => DayManager.filterTransactions(),
         showLabourBreakdown: () => DayManager.showLabourBreakdown(),
         toggleAllBills: () => DayManager.toggleAllBills(),

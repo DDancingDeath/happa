@@ -2472,12 +2472,13 @@ export default {
     'ui.speed.storage_full_fix': "Free some space on the phone",
     'ui.today.reminders': "Reminders",
     'ui.today.reminder_collect': "Collect udhaar",
+    'ui.today.reminder_collect_wholesale': "Collect wholesale dues",
     'ui.today.reminder_pay': "Pay suppliers",
     'ui.today.reminder_days': "{count} days",
     'ui.today.reminder_more': "+{count} more",
     'ui.today.reminder_open_dues': "Open dues",
     'ui.today.reminder_rent': "Rent due",
     'ui.today.reminder_rent_units': "{count} units owe rent · {late} late",
-    'ui.today.reminder_as_of': "As Rentals showed it at {time}",
+    'ui.today.reminder_as_of': "As the Rent page showed it on {time}",
     'ui.today.reminder_open_rent': "Open Rent"
 };

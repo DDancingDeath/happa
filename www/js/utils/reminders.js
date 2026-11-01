@@ -9,6 +9,8 @@
 
 import { buildAging, chaseFirst } from './aging.js';
 import { AppState } from './state.js';
+import { round2 } from './money.js';
+import { toLocalISODate } from './dates.js';
 
 /** Parties listed per reminder; the rest are counted. */
 export const REMINDER_LIMIT = 3;
@@ -67,14 +69,18 @@ export function unitsWithDue(rows) {
 }
 
 /**
- * Called by the Rent page when it shows the current month with complete data:
- * keeps its RENT-9 due / late and the units owing for Today (REM-2).
- * @param {string} month 'YYYY-MM'
- * @param {{due: number, late: number}} summary RENT-9
- * @param {Array<Object>} rows RENT-10
+ * Called by the Rent page on every render: keeps REM-2 for Today when it shows
+ * the current month with complete data (no load error, nothing truncated).
+ * @param {{month: string, errors: Set}} state Rentals page state
+ * @param {Array<Object>} rows RENT-10 rows
+ * @param {Array<string>} [truncated] rent-store keys cut at their limit
  */
-export function noteRent(month, summary, rows) {
+export function noteRent(state, rows, truncated = []) {
     try {
-        saveRentReminder(localStorage, { uid: AppState.currentUser?.uid, month, due: summary.due, late: summary.late, dueUnits: unitsWithDue(rows) });
+        if (state.errors?.size || truncated.length || state.month !== toLocalISODate(new Date()).slice(0, 7)) return;
+        let due = 0;
+        let late = 0;
+        rows.forEach(r => { due += Number(r.due) || 0; if (r.late) late++; });
+        saveRentReminder(localStorage, { uid: AppState.currentUser?.uid, month: state.month, due: round2(due), late, dueUnits: unitsWithDue(rows) });
     } catch (_) { /* never break the Rent page */ }
 }

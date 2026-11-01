@@ -2,7 +2,7 @@
  * Reminders on Today (#86): udhaar to collect / pay (REM-1) and rent due (REM-2).
  */
 import { jest } from '@jest/globals';
-import { overdueReminder, saveRentReminder, rentReminder, unitsWithDue } from '../utils/reminders.js';
+import { overdueReminder, saveRentReminder, rentReminder, unitsWithDue, noteRent } from '../utils/reminders.js';
 import { DayManager } from '../modules/day.js';
 import { AppState } from '../utils/state.js';
 import { setLang } from '../i18n/index.js';
@@ -46,6 +46,23 @@ describe('REM-2 rent due', () => {
     });
 });
 
+describe('Rent page note (REM-2)', () => {
+    afterEach(() => { localStorage.clear(); AppState.currentUser = null; });
+    const month = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
+    const rows = [{ due: 5000, late: true }, { due: 0 }, { due: 2500.5, late: false }];
+
+    test('kept for the current month with complete data only', () => {
+        AppState.currentUser = { uid: 'u9' };
+        noteRent({ month, errors: new Set() }, rows, []);
+        expect(rentReminder(localStorage, 'u9', month)).toEqual({ due: 7500.5, late: 1, dueUnits: 2, at: expect.any(Number) });
+        localStorage.clear();
+        noteRent({ month, errors: new Set(['monthCharges']) }, rows, []);
+        noteRent({ month, errors: new Set() }, rows, ['openCharges']);
+        noteRent({ month: '2001-01', errors: new Set() }, rows, []);
+        expect(rentReminder(localStorage, 'u9', month)).toBeNull();
+    });
+});
+
 describe('Today › Reminders card', () => {
     beforeEach(() => {
         document.body.innerHTML = '<div id="todayReminders" hidden></div>';
@@ -71,10 +88,10 @@ describe('Today › Reminders card', () => {
         DayManager.renderReminders(TODAY);
         const host = document.getElementById('todayReminders');
         expect(host.hidden).toBe(false);
-        const collect = host.querySelector('[data-reminder="collect"]').textContent;
-        expect(collect).toContain('Hotel Raj');
-        expect(collect).toContain('Ravi');
-        expect(collect.indexOf('Hotel Raj')).toBeLessThan(collect.indexOf('Ravi'));
+        expect(host.querySelector('[data-reminder="collect"]').textContent).toContain('Ravi');
+        expect(host.querySelector('[data-reminder="collect_wholesale"]').textContent).toContain('Hotel Raj');
+        expect(host.querySelector('[data-reminder="collect_wholesale"] button').getAttribute('onclick')).toBe("window.app.nav.showTab('wholesale-outstanding')");
+        expect(host.querySelector('[data-reminder="collect"] button').getAttribute('onclick')).toBe("window.app.day.openDues('sale')");
         expect(host.querySelector('[data-reminder="pay"]').textContent).toContain('Farmer Ram');
         expect(host.querySelector('[data-reminder="rent"]')).toBeNull();
     });
@@ -92,9 +109,8 @@ describe('Today › Reminders card', () => {
         AppState.userRole = 'staff';
         AppState.settings = { roleAccess: { staff: { wholesale: false } } };
         DayManager.renderReminders(TODAY);
-        const collect = document.querySelector('[data-reminder="collect"]').textContent;
-        expect(collect).toContain('Ravi');
-        expect(collect).not.toContain('Hotel Raj');
+        expect(document.querySelector('[data-reminder="collect"]').textContent).toContain('Ravi');
+        expect(document.querySelector('[data-reminder="collect_wholesale"]')).toBeNull();
     });
 
     test('Hindi', () => {
