@@ -51,23 +51,6 @@ export function stockApproxNoteHtml(approx) {
  */
 export class StockManager {
     /**
-     * Update stock for a specific item
-     * Adds quantity to existing stock or creates new entry
-     * @param {string} itemName - Name of the item
-     * @param {number} quantity - Quantity to add (can be negative)
-     * @param {number} [rate] - Optional rate per kg
-     */
-    static updateStock(itemName, quantity, rate) {
-        if (!AppState.stock[itemName]) {
-            AppState.stock[itemName] = { quantity: 0, rate: rate || 0 };
-        }
-        AppState.stock[itemName].quantity += quantity;
-        if (rate) {
-            AppState.stock[itemName].rate = rate;
-        }
-    }
-
-    /**
      * Render current stock levels with loading indicator
      * Calculates stock from Firebase and displays in the UI
      * @async
