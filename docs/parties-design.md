@@ -235,7 +235,7 @@ as "Also known as". Hence:
 - **A removed phone stays removed.** If the loser has `phoneRemovedAt` (section 10), the merge also
   writes the winner (the 4th write): `phoneRemovedAt` set and `legacyPhone` deleted, because the
   loser's opening records with that number now resolve to the winner. The preview says so; an
-  unmerge doesn't undo it. Tested in phase 7.
+  unmerge doesn't undo it. Tested in phase 9 (when "Remove phone" ships).
 
 ### 5.2 Option B: batched backfill of `partyId` on the bills
 
@@ -412,7 +412,8 @@ with a lawyer or CA). The design keeps the personal data small and removable:
   (and `legacyPhone`) and sets `phoneRemovedAt` (server time) in one update. While it is set the
   PHONE rule (section 9) never falls back to a phone on the party's bills (migrated opening records
   carry the same number), so a withdrawal takes effect at once even while old dues are open.
-  Saving a new consented `phone` clears it.
+  Saving a new consented `phone` clears it. Like erasure, it applies to the party **and every party
+  merged into it**, so a later unmerge can't bring the number back.
 - **Erasure (owner):** "Erase party" works on the party **and every party merged into it** (their
   names live on the losers, section 5.1). Once no due is open, it removes their phones
   (`phone`, `phoneConsent`, `legacyPhone`), Hindi names and aliases, replaces each display name with
