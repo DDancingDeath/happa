@@ -1524,7 +1524,7 @@ function defineSuite(prefix) {
             await assertSucceeds(batch.commit());
             // The same routing still refuses a manager's payment that moves no due
             await seedBill(coll, 'bad', saved);
-            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), payment: { online: 0, cash: 100, due: 100, total: 100 } }));
+            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), payment: { online: 0, cash: 100, due: 100, total: 100 }, dueAmount: 100, openDue: true }));
             // and a full edit that also touches payments
             await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), total: 90 }));
         }
