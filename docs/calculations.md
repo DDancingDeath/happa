@@ -403,6 +403,17 @@ Which function computes each of these (all pure, in `utils/`; the pages only ren
 | `business-metrics.weeklyKgWindow`, `weeklyKgByItem`, `stockUpItems` | I9 (weekly kg over the loaded weeks, at most 8) |
 | `business-metrics.addsUp` | AC10, AC11 (the "add up" check line on Money and Insights) |
 | `business-metrics.roundTo` | display rounding only: profit per ₹100 (M3, I1, I7) and season index / weeks of cover to 1 decimal, kg to whole numbers |
+
+## Diagnostics › Status (owner; not money) — #119, #83
+
+Counts about this phone, never business figures. Nothing is read from the server.
+
+| ID | Shown | Definition |
+|---|---|---|
+| DIAG-IO | Reads / writes sent / writes refused or failed / reads failed / app errors | Since the app opened: reads as in "Data reads" (`firestore-meter`), each write call (`set`, `update`, `delete`, `add`, batch commit, transaction) once, each refused write or failed read/listener once (`getIoCounts`), each caught error that is not a toast (`TelemetryService.sessionErrors`) |
+| DIAG-SYNC | Changes waiting to sync / last change reached the server | The header pill's pending count (`ui/sync-status.js`); the last time one of this phone's writes was acknowledged or the pill confirmed "Synced" |
+| DIAG-SCORE | Speed score | 100 − 25 per high − 12 per medium − 4 per low suspect from `utils/perf-probe.js analyseProbes`, never below 0. Suspects: history list ≥ 3,000 (high) / ≥ 1,500 (medium), items ≥ 800, stock entries ≥ 1,500, memory ≥ 80% (high) or ≥ 250 MB, phone memory ≤ 2 GB, offline or 2G (high), no service worker (low), app open ≥ 5 s, ≥ 8 long tasks in the last minute (high), app storage ≥ 85% |
+
 ## Checking real data
 
 `npm run audit:numbers -- <backup.json>` (`tools/audit/`, local only, never in CI) runs the oracle and

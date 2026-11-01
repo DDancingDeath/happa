@@ -63,12 +63,19 @@ export function sourceLabel(ref, kind) {
     return `${collection}${isDoc ? ' (doc)' : ''} ${kind}`;
 }
 
+/** Writes sent and failed reads/writes since the app opened (#119 Status tab). */
+const ioCounts = { writes: 0, writeErrors: 0, readErrors: 0 };
+const isWriteSource = (source) => / (set|update|delete|add)$|^batch commit$|^transaction$/.test(String(source));
+
 const checkError = (err, source) => {
+    if (isWriteSource(source)) ioCounts.writeErrors++;
+    else ioCounts.readErrors++;
     if (isQuotaExhaustedError(err)) quotaGuard.noteQuotaExhausted(source);
     if (err?.code === 'permission-denied') emit(FIRESTORE_DENIED, source, err);
 };
 
 const wrapPromise = (result, source, onValue) => {
+    if (isWriteSource(source)) ioCounts.writes++;
     if (!result || typeof result.then !== 'function') return result;
     return result.then(
         (value) => {
@@ -198,3 +205,6 @@ export function installFirestoreMeter(fs) {
 
 /** Diagnostics snapshot (reads since app open, top sources, quota events). */
 export const getQuotaStatus = () => quotaGuard.status();
+
+/** Writes sent, failed writes and failed reads/listeners since the app opened. */
+export const getIoCounts = () => ({ ...ioCounts });
