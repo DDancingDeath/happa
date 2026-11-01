@@ -1154,7 +1154,7 @@ export class CashManagementManager {
             const uncounted = isNotCounted(session);
 
             const status = !session.signedOut
-                ? `<span style="color: var(--success-color); font-weight: 600;">● ${L('ui.cash.active')}</span>`
+                ? `<span style="color: #15803d; font-weight: 600;">● ${L('ui.cash.active')}</span>`
                 : (uncounted ? `<span style="color: #c2410c; font-weight: 600;">⚠ ${L('ui.cash.not_counted')}</span>` : `<span style="color: #6c757d;">✓ ${L('ui.cash.closed')}</span>`);
 
             const diff = Number(session.difference) || 0;
@@ -1311,7 +1311,7 @@ export class CashManagementManager {
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.cash_sales')}</span>
-                            <strong style="color: var(--success-color);">₹${Helpers.escapeHtml(txns.cashSales || 0)}</strong>
+                            <strong style="color: #15803d;">₹${Helpers.escapeHtml(txns.cashSales || 0)}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.common.due_received')}</span>
@@ -1334,7 +1334,7 @@ export class CashManagementManager {
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.common.due_paid')}</span>
-                            <strong style="color: var(--danger-color);">₹${Helpers.escapeHtml(txns.duePaid || 0)}</strong>
+                            <strong style="color: #b91c1c;">₹${Helpers.escapeHtml(txns.duePaid || 0)}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.business_expenses')}</span>
@@ -1346,7 +1346,7 @@ export class CashManagementManager {
                         </div>
                         <div style="border-top: 2px solid #b91c1c; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;">
                             <span>${L('ui.cash.total_cash_out')}</span>
-                            <strong style="color: var(--danger-color);">₹${Helpers.escapeHtml(totalCashOut)}</strong>
+                            <strong style="color: #b91c1c;">₹${Helpers.escapeHtml(totalCashOut)}</strong>
                         </div>
                     </div>
                 </div>
@@ -1398,7 +1398,7 @@ export class CashManagementManager {
                 ${session.openingNotes || session.closingNotes ? `
                 <!-- Notes -->
                 <div style="background: #fffbeb; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;">
-                    <h4 style="margin: 0 0 8px 0; font-size: 13px; color: var(--warning-dark);">📝 ${L('ui.cash.notes_title')}</h4>
+                    <h4 style="margin: 0 0 8px 0; font-size: 13px; color: #92400e;">📝 ${L('ui.cash.notes_title')}</h4>
                     ${session.openingNotes ? `<div style="font-size: 12px; color: #78350f; margin-bottom: 6px;"><strong>${L('ui.cash.sign_in_label')}</strong> ${Helpers.escapeHtml(session.openingNotes)}</div>` : ''}
                     ${session.closingNotes ? `<div style="font-size: 12px; color: #78350f;"><strong>${L('ui.cash.sign_out_label')}</strong> ${Helpers.escapeHtml(session.closingNotes)}</div>` : ''}
                 </div>

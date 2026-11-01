@@ -169,7 +169,7 @@ const ItemsManager = {
                     <button class="delete-item-btn" onclick="window.app.items.archiveItem(${id})">${Helpers.escapeHtml(t('ui.items.archive_item'))}</button>
                 </div>
                 <div style="margin-bottom: 12px;">
-                    <label style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px; display: block;">${Helpers.escapeHtml(t('ui.items.hindi_name_label'))}</label>
+                    <label style="font-size: 13px; font-weight: 600; color: #666; margin-bottom: 4px; display: block;">${Helpers.escapeHtml(t('ui.items.hindi_name_label'))}</label>
                     <input type="text" 
                            value="${Helpers.escapeHtml(item.hindiName || '')}" 
                            oninput="window.app.items.updateHindiName(${id}, this.value)"
@@ -178,7 +178,7 @@ const ItemsManager = {
                 </div>
                 <div class="item-row">
                     <div style="margin-bottom: 8px;">
-                        <label style="font-size: 14px; font-weight: 600; color: var(--info-color); margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.purchase_rates_kg'))}</label>
+                        <label style="font-size: 14px; font-weight: 600; color: #0058b8; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.purchase_rates_kg'))}</label>
                         <div class="rates-container">${purchaseRatesHTML}<button class="add-rate-plus purchase" onclick="window.app.items.addRate(${id})">+</button></div>
                     </div>
                     <div style="margin-bottom: 8px;">
@@ -186,7 +186,7 @@ const ItemsManager = {
                         <div class="rates-container">${wholesaleRatesHTML}<button class="add-rate-plus wholesale" onclick="window.app.items.addWholesaleRate(${id})">+</button></div>
                     </div>
                     <div>
-                        <label style="font-size: 14px; font-weight: 600; color: var(--success-color); margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.retail_rates_kg'))}</label>
+                        <label style="font-size: 14px; font-weight: 600; color: #1c7430; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.retail_rates_kg'))}</label>
                         <div class="rates-container">${saleRatesHTML}<button class="add-rate-plus sale" onclick="window.app.items.addSaleRate(${id})">+</button></div>
                     </div>
                 </div>
@@ -542,7 +542,7 @@ const ItemsManager = {
                 <div>✔️ ${e(t('ui.items.import_unchanged'))}: <strong>${e(plan.unchanged.length)}</strong></div>
                 <div>⚠️ ${e(t('ui.items.import_errors'))}: <strong>${e(plan.errors.length)}</strong></div>
                 ${plan.skipped ? `<div>${e(t('ui.items.import_skipped'))}: ${e(plan.skipped)}</div>` : ''}
-                ${errorList ? `<ul style="margin:8px 0 0 16px; color: var(--danger-color); font-size:13px">${errorList}${more}</ul>` : ''}
+                ${errorList ? `<ul style="margin:8px 0 0 16px; color:#b91c1c; font-size:13px">${errorList}${more}</ul>` : ''}
                 <p style="margin-top:10px; font-size:13px; color:#555">${e(t('ui.items.import_kept_note'))}</p>
             </div>`;
     },
@@ -722,16 +722,16 @@ const ItemsManager = {
                     <td style="padding: 16px; font-weight: 600; color: #1f2937; font-size: 15px; border-right: 1px solid #f3f4f6;">
                         ${Helpers.escapeHtml(displayName || item.name || '-')}${archivedChip}
                     </td>
-                    <td data-perm="purchaseRates" style="padding: 16px; color: var(--info-color); font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
-                    <td style="padding: 16px; color: var(--success-color); font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(saleRates)}</td>
+                    <td data-perm="purchaseRates" style="padding: 16px; color: #0058b8; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
+                    <td style="padding: 16px; color: #1c7430; font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(saleRates)}</td>
                 `;
             } else {
                 row.innerHTML = `
                     <td style="padding: 16px; font-weight: 600; color: #1f2937; font-size: 15px; border-right: 1px solid #f3f4f6;">
                         ${Helpers.escapeHtml(displayName || item.name || '-')}${archivedChip}
                     </td>
-                    <td data-perm="purchaseRates" style="padding: 16px; color: var(--info-color); font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
-                    <td style="padding: 16px; color: var(--success-color); font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(saleRates)}</td>
+                    <td data-perm="purchaseRates" style="padding: 16px; color: #0058b8; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(purchaseRates)}</td>
+                    <td style="padding: 16px; color: #1c7430; font-size: 14px; font-weight: 600; border-right: 1px solid #f3f4f6;">${Helpers.escapeHtml(saleRates)}</td>
                     <td class="wholesale-column" style="padding: 16px; color: #9333ea; font-size: 14px; font-weight: 600;">${Helpers.escapeHtml(wholesaleRates)}</td>
                 `;
             }
@@ -740,7 +740,7 @@ const ItemsManager = {
         
         if (sortedItems.length === 0) {
             const colspan = isStaff ? '3' : '4';
-            tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 24px; text-align: center; color: var(--text-secondary);">${Helpers.escapeHtml(t('ui.stock.no_items_found'))}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="${colspan}" style="padding: 24px; text-align: center; color: #666;">${Helpers.escapeHtml(t('ui.stock.no_items_found'))}</td></tr>`;
         }
         attachScrollCue(document.getElementById('itemsTableScroll'));
     },

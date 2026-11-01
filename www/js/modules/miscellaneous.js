@@ -495,7 +495,7 @@ export class ExpensesManager {
         this.renderSectionTools(category, expenses);
         if (expenses.length === 0) {
             const empty = isExpenseSearch(this.search[category]) ? t('ui.expenses.no_match') : this.emptyExpenseMessage(category);
-            container.innerHTML = `<p style="text-align: center; color: var(--text-secondary); margin-top: 40px;">${Helpers.escapeHtml(empty)}</p>`;
+            container.innerHTML = `<p style="text-align: center; color: #666; margin-top: 40px;">${Helpers.escapeHtml(empty)}</p>`;
             return;
         }
         container.innerHTML = expenses.map(payment => {
@@ -508,14 +508,14 @@ export class ExpensesManager {
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                     <div>
                         ${payment.personName ? `<div style="font-weight: 600; font-size: 16px; color: #333;">${Helpers.escapeHtml(payment.personName)}</div>` : ''}
-                        <div style="font-size: 13px; color: var(--text-secondary); margin-top: 4px;">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="voided-chip">${tx('ui.void.chip')}</span>` : ''}</div>
+                        <div style="font-size: 13px; color: #666; margin-top: 4px;">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="voided-chip">${tx('ui.void.chip')}</span>` : ''}</div>
                     </div>
                     <div style="text-align: right;">
                         <div class="expense-card__amount" style="font-size: 18px; font-weight: bold; color: #2c3e50;">₹${Helpers.escapeHtml(payment.amount)}</div>
                     </div>
                 </div>
                 ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
-                <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
+                <div style="font-size: 12px; color: #666; margin-top: 8px;">📅 ${Helpers.escapeHtml(payment.date)} • ${modeLabel(payment)}${payment.createdByName ? ` • ${tx('ui.stock.by', { name: payment.createdByName })}` : ''}</div>
             </div>`;
         }).join('');
     }
@@ -625,7 +625,7 @@ export class ExpensesManager {
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <div style="display: flex; align-items: center;">
                                 <span style="font-size: 20px; margin-right: 12px;">🏷️</span>
-                                <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_category')}</span>
+                                <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_category')}</span>
                             </div>
                             <span style="font-size: 15px; color: #333; font-weight: 600; text-transform: capitalize;">${tx(category === 'personal' ? 'ui.expenses.personal_expenses' : 'ui.expenses.business_expenses')}</span>
                         </div>
@@ -633,7 +633,7 @@ export class ExpensesManager {
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <div style="display: flex; align-items: center;">
                                 <span style="font-size: 20px; margin-right: 12px;">📅</span>
-                                <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.history.date')}</span>
+                                <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.history.date')}</span>
                             </div>
                             <span style="font-size: 14px; color: #333; font-weight: 500;">${Helpers.escapeHtml(expense.date)}</span>
                         </div>
@@ -641,7 +641,7 @@ export class ExpensesManager {
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <div style="display: flex; align-items: center;">
                                 <span style="font-size: 20px; margin-right: 12px;">💳</span>
-                                <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_paid_by')}</span>
+                                <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_paid_by')}</span>
                             </div>
                             <span style="font-size: 14px; color: #333; font-weight: 500;">${modeLabel(expense)}</span>
                         </div>
@@ -650,7 +650,7 @@ export class ExpensesManager {
                         <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <div style="display: flex; align-items: center;">
                                 <span style="font-size: 20px; margin-right: 12px;">👨‍💼</span>
-                                <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_created_by')}</span>
+                                <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_created_by')}</span>
                             </div>
                             <span style="font-size: 14px; color: #333; font-weight: 500;">${Helpers.escapeHtml(expense.createdByName)}</span>
                         </div>
@@ -660,18 +660,18 @@ export class ExpensesManager {
                 
                 <div style="background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0;">
-                        <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.reports.pdf_type')}</span>
+                        <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.reports.pdf_type')}</span>
                         <span style="font-size: 18px; font-weight: 600; color: #2c3e50;">${Helpers.escapeHtml(expense.type)}</span>
                     </div>
                     
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0;">
-                        <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.outstanding.sort_amount')}</span>
+                        <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.outstanding.sort_amount')}</span>
                         <span style="font-size: 36px; font-weight: bold; color: #5560d6; letter-spacing: 1px;">₹${Helpers.escapeHtml(expense.amount)}</span>
                     </div>
                     
                     ${expense.personName ? `
                     <div style="display: flex; align-items: center; justify-content: space-between;">
-                        <span style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_person')}</span>
+                        <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.expenses.d_person')}</span>
                         <span style="font-size: 18px; font-weight: 500; color: #2c3e50;">👤 ${Helpers.escapeHtml(expense.personName)}</span>
                     </div>
                     ` : ''}

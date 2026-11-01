@@ -620,7 +620,7 @@ export const AnomaliesManager = {
             const html = `
                 <div style="text-align:left;">
                     <div style="margin-bottom:6px;"><strong>${loc(typeLabel(a.type))}</strong></div>
-                    <div style="margin-bottom:8px; color: var(--text-secondary);">${loc(a)}</div>
+                    <div style="margin-bottom:8px; color:#4b5563;">${loc(a)}</div>
                     <label for="anomalyReviewNote">${esc(t('ui.anom.note_optional'))}:</label>
                     <textarea id="anomalyReviewNote" rows="2" maxlength="300" style="width:100%; box-sizing:border-box; padding:6px;">${esc(note)}</textarea>
                 </div>`;
