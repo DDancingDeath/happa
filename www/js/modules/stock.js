@@ -13,6 +13,7 @@ import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
 import { SAVED_ON_PHONE_KEY } from '../utils/storage-full.js';
 import { formatAmount, formatRupees } from '../utils/money.js';
+import { parseAnyBillDate } from '../utils/dates.js';
 import { stockRows, itemValue, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
@@ -853,8 +854,8 @@ export class StockManager {
             
             // Sort by timestamp/date (newest first)
             adjustments.sort((a, b) => {
-                const timeA = a.timestamp || new Date(a.date).getTime();
-                const timeB = b.timestamp || new Date(b.date).getTime();
+                const timeA = a.timestamp || parseAnyBillDate(a.date)?.getTime() || 0;
+                const timeB = b.timestamp || parseAnyBillDate(b.date)?.getTime() || 0;
                 return timeB - timeA;
             });
 
