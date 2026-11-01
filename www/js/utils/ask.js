@@ -94,7 +94,8 @@ export function parseQuestion(text) {
     const otherDay = hasAny(tokens, OTHER_DAY) || tokens.some(w => /[\d\u0966-\u096F]/.test(w));
     const sale = hasAny(tokens, SALES) || hasAny(tokens, PURCHASES) || hasAny(tokens, EXPENSES);
     // "baaki" also means "left": "kitna stock baaki hai" is a stock question
-    const stockAsked = hasAny(tokens, STOCK) || (!sale && hasAny(tokens, GOODS));
+    // "Ramesh ka maal baaki" (a name left over) is still Ramesh's due
+    const stockAsked = hasAny(tokens, STOCK) || (!sale && hasAny(tokens, GOODS) && (!hasAny(tokens, DUES) || !leftover()));
     if (hasAny(tokens, DUES) && !stockAsked) {
         // "aaj kitna udhaar hua", "udhaar bikri": credit given today or sold on credit, not what is owed in all
         if (otherDay || sale || hasAny(tokens, TODAY)) return { intent: 'today_only' };

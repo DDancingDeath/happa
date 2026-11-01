@@ -55,6 +55,7 @@ describe('parseQuestion', () => {
         ['kitna udhaar becha', { intent: 'today_only' }],
         ['kitna kharcha baaki hai', { intent: 'today_only' }],
         ['cash balance', { intent: 'unknown' }],
+        ['Ramesh ka maal baaki', { intent: 'party_due', subject: 'ramesh' }],
         ['aaj to kitni bikri hui', { intent: 'sales_today' }],
         ['aaj kitna maal becha', { intent: 'sales_today' }],
         ['abhi chawal ka stock', { intent: 'item_stock', subject: 'chawal' }],
