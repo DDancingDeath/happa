@@ -277,7 +277,7 @@ const DiagnosticsManager = {
             online: SyncStatus.isOnline(),
             connection: conn?.effectiveType || null,
             pending: SyncStatus.pendingCount(),
-            lastSyncAt: SyncStatus.lastSyncAt(),
+            lastSyncAt: Math.max(SyncStatus.lastSyncAt() || 0, io.lastWriteAckAt || 0) || null,
             printer: PrinterService.linkState(),
             reads: q.reads,
             writes: io.writes,
@@ -342,7 +342,11 @@ const DiagnosticsManager = {
             await navigator.clipboard.writeText(text);
             UIManager.showToast(t('msg.status.copied'), 'success');
         } catch (_) {
-            UIManager.showModal(text);
+            // No clipboard: show the text with its line breaks so it can be selected.
+            const msg = document.getElementById('modalMessage');
+            const closed = UIManager.showModal(text, t('ui.status.copy'));
+            if (msg) msg.style.whiteSpace = 'pre-line';
+            Promise.resolve(closed).finally(() => { if (msg) msg.style.whiteSpace = ''; });
         }
     },
 

@@ -231,7 +231,7 @@ const TelemetryService = {
         // An error toast may be a typing mistake; a real failure also reaches console.error.
         if (errorData?.type !== 'toast') {
             noteTipError();
-            this.sessionErrors++;
+            if (errorData?.type !== 'warning') this.sessionErrors++;
         }
         const error = {
             ...errorData,

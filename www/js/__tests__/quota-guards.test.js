@@ -126,7 +126,9 @@ describe('read counter', () => {
             get() { return Promise.resolve({ exists: true, metadata: { fromCache: false } }); }
             set() { return Promise.resolve(); }
         }
-        const sdk = { Query, CollectionReference, DocumentReference };
+        class Transaction { set() { return this; } }
+        class Firestore { runTransaction(fn) { return Promise.resolve().then(() => fn(new Transaction())); } }
+        const sdk = { Query, CollectionReference, DocumentReference, Transaction, Firestore };
         const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
         expect(installFirestoreMeter(sdk)).toBe(true);
         const before = getQuotaStatus().reads;
@@ -163,6 +165,19 @@ describe('read counter', () => {
         expect(io.writes - io0.writes).toBe(2);
         expect(io.writeErrors - io0.writeErrors).toBe(1);
         expect(io.readErrors - io0.readErrors).toBe(1);
+        expect(io.lastWriteAckAt).toEqual(expect.any(Number));
+
+        // Transactions: one write only when they wrote; only the SDK's own errors are refused writes.
+        const db = new Firestore();
+        await db.runTransaction(async () => 'read only');
+        await db.runTransaction(async (tx) => { tx.set({}, {}); tx.set({}, {}); });
+        await expect(db.runTransaction(async () => { throw new Error('app check'); })).rejects.toThrow('app check');
+        const sdkErr = Object.assign(new Error('aborted'), { name: 'FirebaseError', code: 'aborted' });
+        await expect(db.runTransaction(async () => { throw sdkErr; })).rejects.toBe(sdkErr);
+        const io2 = getIoCounts();
+        expect(io2.writes - io.writes).toBe(1);
+        expect(io2.writeErrors - io.writeErrors).toBe(1);
+        expect(io2.readErrors - io.readErrors).toBe(0);
         expect(document.getElementById('quotaBanner')).not.toBeNull();
         warn.mockRestore();
         document.body.innerHTML = '';
