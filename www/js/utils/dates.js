@@ -84,8 +84,14 @@ export function parseAnyBillDate(value) {
         const period = m[7] ? m[7].toLowerCase() : null;
         if (period === 'pm' && hours !== 12) hours += 12;
         if (period === 'am' && hours === 12) hours = 0;
+        const year = parseInt(m[3], 10);
+        const day = parseInt(m[1], 10);
+        const month = parseInt(m[2], 10) - 1;
+        // Reject a day/month overflow like 31/31/2025 (#80): it is not a date, not a day two years later
+        const calendarDay = new Date(year, month, day);
+        if (calendarDay.getMonth() !== month || calendarDay.getDate() !== day) return null;
         return new Date(
-            parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10),
+            year, month, day,
             hours, m[5] ? parseInt(m[5], 10) : 0, m[6] ? parseInt(m[6], 10) : 0
         );
     }

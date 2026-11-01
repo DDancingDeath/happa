@@ -947,6 +947,60 @@ body.typing .bottom-nav {
   visibility: visible;
 }
 
+/* Wrong phone clock banner (#115) */
+.clock-banner {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9001;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(92vw, 560px);
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #7f1d1d;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+}
+
+.clock-banner__text {
+  flex: 1;
+}
+
+.clock-banner__recheck {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clock-banner__close {
+  min-width: 40px;
+  min-height: 40px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.bill-times-note {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+}
+
 /* ---- css/tabs.css ---- */
 .tab {
   display: none;
@@ -3535,6 +3589,18 @@ body.dark-mode .party-due-line.party-due-old {
   font-size: 13px;
   min-height: 36px;
   cursor: pointer;
+}
+
+/* A bill date that can't be read (#80) */
+.bad-date-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 /* ---- css/outstanding.css ---- */
