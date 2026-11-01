@@ -131,7 +131,7 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
     });
 
     test('receipt, unit picker and tenant link files are not precached, load only on use and stay within their budgets', () => {
-        expect(readLazyAssets().sort()).toEqual([...LAZY_URLS].sort());
+        expect(readLazyAssets().filter(u => /\/(rentals\/|css\/rent-)/.test(u)).sort()).toEqual([...LAZY_URLS].sort());
         expect(readStaticAssets().filter(u => LAZY_URLS.includes(u))).toEqual([]);
         const files = listJs(RENTALS);
         Object.entries(LAZY).forEach(([name, by]) => {

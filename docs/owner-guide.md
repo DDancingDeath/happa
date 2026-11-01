@@ -55,6 +55,7 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 - [Money (Profit, Cash, Spending, Worth)](pages/money.md)
 - [Insights (To do, Items, Parties, Seasons)](pages/insights.md)
 - [Statements](pages/statements.md)
+- [Ask](pages/ask.md)
 - [Rates](pages/rates.md)
 - [Rentals](pages/rentals.md)
 - [Settings, Admin, App health](pages/settings.md)
@@ -92,12 +93,20 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 4. Android stops apps in the background to save battery. Open Android Settings ›
    Apps › happa › Battery and choose **Unrestricted** (or "Don't optimise"), so the
    printer link is not cut.
-5. The bill is saved even when printing fails: reprint later from History.
+5. The bill is saved even when printing fails: its picture opens with **Print**,
+   to try again once the printer is on (3 tries in all), or reprint later from History.
+6. "Bluetooth permission needed" banner (Android 12 and newer): tap **Allow**, or
+   allow **Nearby devices** in Android Settings › Apps › happa › Permissions.
 
 ### Changes are not syncing
 
 - The header pill shows **Offline** or "N changes waiting to sync". Saved bills are
   kept on the phone and sent when the internet is back. Do not enter them again.
+  Offline, it also says how old the figures are ("data as of 2:05 pm").
+- In History and Expenses a row this phone has not sent yet shows **Waiting to sync**,
+  and **Saved** once it reached the server.
+- Close cash asks first while this phone still has changes waiting: other phones
+  don't see them yet.
 - "Saving… not confirmed on this phone yet": look in History before typing the
   bill again.
 - "Save failed — storage full": free space on the phone; until then nothing new
