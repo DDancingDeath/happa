@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Every stock figure on the Stock page and the stock value used
  * by Money › Worth (M15) and Insights (docs/calculations.md S1–S6, F6). Pure:
@@ -20,7 +21,9 @@ export const STOCK_SPEC = Object.freeze({
     stockSummary: 'S7'
 });
 
-const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
+/** @typedef {{itemId: string, name: string, hindiName: string, quantity: number, rate: number, isOrphan?: boolean}} StockRow */
+
+const normalize = (/** @type {*} */ s) => (s == null ? '' : String(s).trim().toLowerCase());
 
 /**
  * S1 / S2 per catalogue item: the replay's stock buckets merged onto the
@@ -32,7 +35,7 @@ const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
  * (|q| > 0.001, negative included).
  * @param {Object<string, {quantity: number, rate: number}>} stock FirebaseService.getStock()
  * @param {Array<{id: string, name: string, hindiName?: string}>} items catalogue
- * @returns {{rows: Array<{itemId: string, name: string, hindiName: string, quantity: number, rate: number, isOrphan?: boolean}>, orphanKeys: string[]}}
+ * @returns {{rows: StockRow[], orphanKeys: string[]}}
  */
 export function stockRows(stock, items) {
     const catalogue = items || [];
@@ -48,14 +51,16 @@ export function stockRows(stock, items) {
         const h = normalize(i.hindiName);
         if (!indexByName.has(h)) indexByName.set(h, idx);
     });
-    const findCatalogueItem = (key) => {
+    const findCatalogueItem = (/** @type {string} */ key) => {
         const byId = indexById.has(key) ? indexById.get(key) : Infinity;
         const nk = normalize(key);
         const byName = indexByName.has(nk) ? indexByName.get(nk) : Infinity;
         const idx = Math.min(byId, byName);
         return idx === Infinity ? undefined : catalogue[idx];
     };
+    /** @type {Object<string, Rec>} */
     const merged = {};
+    /** @type {string[]} */
     const orphanKeys = [];
     Object.keys(stock || {}).forEach(key => {
         const item = findCatalogueItem(key);
@@ -71,7 +76,7 @@ export function stockRows(stock, items) {
     });
     const rates = finalizeStock(merged);
     const rows = Object.keys(merged).map(k => {
-        const row = { ...merged[k], rate: rates[k].rate };
+        const row = /** @type {StockRow & {totalValue?: number}} */ ({ ...merged[k], rate: rates[k].rate });
         delete row.totalValue;
         return row;
     })
@@ -99,13 +104,14 @@ export function itemValue(entry) {
  * ({quantity, totalValue}: its value as replayed) or a stock / rows list
  * ({quantity, rate}: S3 of each); items with quantity ≤ 0 carry no value.
  * Money's stock (M15, M17) and the Stock page use this one function.
- * @param {Object|Array} stock
+ * @param {Rec|Rec[]} stock
  * @returns {number}
  */
 export function stockValue(stock) {
+    /** @type {Rec} */
     const state = {};
     Object.keys(stock || {}).forEach(k => {
-        const s = stock[k];
+        const s = /** @type {Rec} */ (stock)[k];
         state[k] = s && s.totalValue !== undefined ? s : { quantity: Number(s?.quantity) || 0, totalValue: itemValue(s) };
     });
     return stateValue(state);
@@ -118,7 +124,7 @@ export function stockValue(stock) {
  * @returns {{quantity: number, avgRate: ?number}}
  */
 export function adjustItemStock(entry) {
-    const stockData = entry || {};
+    const stockData = /** @type {{quantity?: number, rate?: number}} */ (entry || {});
     const quantity = stockData.quantity || 0;
     const totalValue = quantity * (stockData.rate || 0);
     return { quantity, avgRate: quantity > 0 && totalValue > 0 ? totalValue / quantity : null };
@@ -128,7 +134,7 @@ export function adjustItemStock(entry) {
  * S5: value of a stock adjustment on its history card: its quantity × its own
  * rate, else the item's current average rate. null when the quantity is not
  * recorded or no rate is known.
- * @param {Object} adj stock adjustment
+ * @param {Rec} adj stock adjustment
  * @param {Object<string, {rate: number}>} stock current stock (by item id, legacy: name)
  * @returns {{rate: number, value: ?number, rounded: ?number}} rate shown (0 = none), value and its whole rupees
  */
