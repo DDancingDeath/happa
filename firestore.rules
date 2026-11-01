@@ -442,7 +442,9 @@ service cloud.firestore {
         || (d.enteredAt is number
             && d.enteredAt >= now - 259200000
             && d.get('timestamp', null) is number
-            && d.timestamp >= d.enteredAt - ((d.enteredAt + 19800000) % 86400000));
+            // on the same or a later IST day (math.floor like moneyOk's math.*; the % operator,
+            // new to these rules, is avoided: every rules deploy after it got a 503 from the compile check)
+            && math.floor((d.timestamp + 19800000) / 86400000) >= math.floor((d.enteredAt + 19800000) / 86400000));
     }
 
     function validBillCreate(usersCol) {

@@ -681,6 +681,11 @@ function defineSuite(prefix) {
             await assertSucceeds(db.doc('c3').set(bill('staff1', yesterday, now, pay(0, 60, 40))));
             // entered yesterday 20:00 offline (not dated back), synced today: kept
             await assertSucceeds(db.doc('off').set(bill('staff1', evening, evening, pay(100, 0, 0))));
+            // the IST midnight of the entry day is the edge
+            const midnight = now - ((now + 19800000) % DAY);
+            const entered = Math.max(midnight + MIN, now - 3 * DAY + HOUR);
+            await assertSucceeds(db.doc('edge0').set(bill('staff1', midnight, entered, pay(100, 0, 0))));
+            await assertFails(db.doc('edge1').set(bill('staff1', midnight - 1, entered, pay(100, 0, 0))));
             // ... but a cash bill's entry time may be at most 3 days old; a fast phone clock is not refused
             await assertFails(db.doc('old').set(bill('staff1', now - 3 * DAY - HOUR, now - 3 * DAY - HOUR, pay(100, 0, 0))));
             await assertSucceeds(db.doc('ahead').set(bill('staff1', now + HOUR, now + HOUR, pay(100, 0, 0))));
