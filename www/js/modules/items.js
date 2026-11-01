@@ -23,6 +23,7 @@ import { createRateEditTracker, diffItemRates, diffItemFields } from '../utils/n
 import { canArchiveItem, ITEM_ARCHIVE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
 import { attachScrollCue } from '../ui/scroll-cue.js';
+import { suggestHindiName, suggestEnglishName, autofillValue } from '../utils/item-name-autofill.js';
 
 /**
  * Items Manager - Manages inventory items and rates
@@ -743,6 +744,53 @@ const ItemsManager = {
         attachScrollCue(document.getElementById('itemsTableScroll'));
     },
     
+    /** Name fields of the dialog (#134): typed by the user / holding a suggestion. */
+    nameFill: { name: { typed: false, suggested: false }, hindiName: { typed: false, suggested: false } },
+
+    /** @private */
+    nameInput(field) {
+        return document.getElementById(field === 'name' ? 'itemModalName' : 'itemModalHindiName');
+    },
+
+    /** @private Resets the suggestion state; a saved name counts as typed. */
+    resetNameFill(item) {
+        ['name', 'hindiName'].forEach(f => {
+            this.nameFill[f] = { typed: !!(item && String(item[f] || '').trim()), suggested: false };
+            this.nameInput(f)?.classList.remove('autofill-suggest');
+        });
+    },
+
+    /**
+     * Typing an item name suggests the other language's name (offline, #134).
+     * The other field is filled only while empty or holding a suggestion,
+     * never over a value the user typed.
+     * @param {'name'|'hindiName'} field
+     */
+    onModalNameInput(field) {
+        const other = field === 'name' ? 'hindiName' : 'name';
+        const input = this.nameInput(field);
+        const otherInput = this.nameInput(other);
+        if (!input || !otherInput) return;
+        input.classList.remove('autofill-suggest');
+        this.nameFill[field] = { typed: !!input.value.trim(), suggested: false };
+        const suggestion = field === 'name' ? suggestHindiName(input.value) : suggestEnglishName(input.value);
+        const next = autofillValue({ ...this.nameFill[other], value: otherInput.value }, suggestion);
+        if (next === null) return;
+        otherInput.value = next;
+        this.nameFill[other].suggested = !!next;
+        otherInput.classList.toggle('autofill-suggest', !!next);
+    },
+
+    /**
+     * Tapping into a suggested name keeps it as the user's own.
+     * @param {'name'|'hindiName'} field
+     */
+    acceptNameSuggestion(field) {
+        if (!this.nameFill[field]?.suggested) return;
+        this.nameFill[field] = { typed: true, suggested: false };
+        this.nameInput(field)?.classList.remove('autofill-suggest');
+    },
+
     // Open modal to add new item
     openAddModal() {
         this.currentEditingItemId = null;
@@ -752,6 +800,7 @@ const ItemsManager = {
         document.getElementById('itemModalHindiName').value = '';
         document.getElementById('itemModalContactPerson').value = '';
         document.getElementById('itemModalArchiveBtn').style.display = 'none';
+        this.resetNameFill(null);
         this.editStartSnapshot = null;
         this.resetModalHistory(false);
         
@@ -768,6 +817,7 @@ const ItemsManager = {
         document.getElementById('itemModalName').value = item.name || '';
         document.getElementById('itemModalHindiName').value = item.hindiName || '';
         document.getElementById('itemModalContactPerson').value = item.contactPerson || '';
+        this.resetNameFill(item);
         const archiveBtn = document.getElementById('itemModalArchiveBtn');
         archiveBtn.style.display = canArchiveItem(AppState.userRole) ? 'block' : 'none';
         archiveBtn.textContent = t(isArchivedItem(item) ? 'ui.items.unarchive_item' : 'ui.items.archive_item');
