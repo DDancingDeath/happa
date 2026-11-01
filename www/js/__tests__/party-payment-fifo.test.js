@@ -211,6 +211,13 @@ describe('Receive payment dialog', () => {
         expect(document.body.textContent).toContain('Only the oldest 100 of 105 bills are listed');
     });
 
+    test('paise left by a paise due are not called "more than the dues"', async () => {
+        AppState.retailSalesHistory = [bill('r1', 'Ravi', 100.5, 1), bill('r2', 'Ravi', 50, 2)];
+        answer(150, null);
+        await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
+        expect(document.getElementById('ppSum').textContent).toBe('Total: ₹149.50 · ₹0.50 is not placed yet: change a bill\'s part');
+    });
+
     test('members can not use it', async () => {
         AppState.userRole = 'staff';
         const modal = jest.spyOn(UIManager, 'showModalWithHtml');

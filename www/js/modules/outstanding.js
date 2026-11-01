@@ -15,7 +15,7 @@ import { AuditService } from '../services/audit.js';
 import { activeBills, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, openingOldTotals, readPayment, round2, sumMoney } from '../utils/money.js';
 import { parseAnyBillDate, startOfLocalDay, todayLocalISO } from '../utils/dates.js';
 import { allocateOldestFirst, checkAllocation, directionFor, duePaymentUpdate, partyDues, settleDueUpdate } from '../utils/due-payments.js';
-import { validateDuePayment } from '../utils/calc/billing.js';
+import { hasPaise, validateDuePayment } from '../utils/calc/billing.js';
 import { CashManagementManager } from './cash-management.js';
 import { PrinterService } from '../services/printer.js';
 import { openExternal } from '../utils/open-external.js';
@@ -41,6 +41,8 @@ import {
 const PAYMENT_TOLERANCE = 0.01;
 /** Most bills one party payment is spread over (oldest first), as Complete all due. */
 const PARTY_PAY_MAX = 100;
+/** ₹ with paise only when there are any (party payment dialog: old dues may carry paise). */
+const paiseText = (v) => formatRupees(v, { decimals: hasPaise(v) ? 2 : 0 });
 /** How long the ids of an unclear party payment are kept for its retry (the rules' ±10 min for `at`). */
 const PARTY_PAY_RETRY_MS = 10 * 60 * 1000;
 const COLLECTION_BY_TYPE = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
@@ -959,13 +961,13 @@ export class OutstandingManager {
         const name = String(chosen[0].bill.customerName || '').trim();
         const rows = chosen.map((x, i) => `<tr>
                 <td>${esc(x.bill.billNumber || String(x.bill.id))}<br><small>${esc(Helpers.formatDate(billDateOf(x.bill) || x.bill.date))}</small></td>
-                <td style="text-align:right">${esc(Helpers.formatCurrency(x.due))}</td>
+                <td style="text-align:right">${esc(paiseText(x.due))}</td>
                 <td style="text-align:right"><input type="number" inputmode="decimal" min="0" step="0.01" id="ppPart-${i}" data-party-part
                     style="width:90px" oninput="window.app.outstanding.partyPaySum()" aria-label="${esc(t('ui.outstanding.party_pay_part', { bill: x.bill.billNumber || '' }))}"></td></tr>`).join('');
         const isPay = billType === 'purchase';
         const html = `
             <div style="text-align:left">
-                <div style="margin-bottom:8px"><strong>${esc(name)}</strong><br>${esc(t('ui.outstanding.party_pay_summary', { count: chosen.length, total: Helpers.formatCurrency(sumMoney(chosen, x => x.due)) }))}</div>
+                <div style="margin-bottom:8px"><strong>${esc(name)}</strong><br>${esc(t('ui.outstanding.party_pay_summary', { count: chosen.length, total: paiseText(sumMoney(chosen, x => x.due)) }))}</div>
                 ${chosen.length < all ? `<div style="margin-bottom:8px">${esc(t('ui.outstanding.party_pay_oldest', { count: chosen.length, all }))}</div>` : ''}
                 <label style="display:block;margin-bottom:6px">${esc(t(isPay ? 'ui.outstanding.party_pay_amount_paid' : 'ui.outstanding.party_pay_amount_received'))}
                     <input type="number" inputmode="decimal" min="0" step="0.01" id="ppAmount" oninput="window.app.outstanding.partyPayFill()" style="width:100%"></label>
@@ -1004,17 +1006,20 @@ export class OutstandingManager {
             const el = document.getElementById(`ppPart-${i}`);
             if (el) el.value = a > 0 ? String(a) : '';
         });
-        this.partyPaySum(left);
+        // Above all the dues, or paise that only fit a part-paid bill by hand
+        const allFilled = amounts.every((a, i) => a >= dues[i]);
+        this.partyPaySum(left, allFilled);
     }
 
     /** Dialog: the total of the parts (or what is wrong with them). */
-    static partyPaySum(left = 0) {
+    static partyPaySum(left = 0, allFilled = true) {
         const el = document.getElementById('ppSum');
         const dues = this.partyPay?.dues || [];
         if (!el) return;
         const check = checkAllocation(dues, dues.map((_, i) => document.getElementById(`ppPart-${i}`)?.value ?? ''), PAYMENT_TOLERANCE);
         el.textContent = check.ok
-            ? t('ui.outstanding.party_pay_total', { total: Helpers.formatCurrency(check.total) }) + (left > 0 ? ` · ${t('ui.outstanding.party_pay_more_than_due', { amount: Helpers.formatCurrency(left) })}` : '')
+            ? t('ui.outstanding.party_pay_total', { total: paiseText(check.total) })
+                + (left > 0 ? ` · ${t(allFilled ? 'ui.outstanding.party_pay_more_than_due' : 'ui.outstanding.party_pay_not_placed', { amount: paiseText(left) })}` : '')
             : t(check.error === 'exceeds-due' ? 'msg.common.payment_amount_exceeds_outstanding_amount' : 'ui.outstanding.party_pay_enter');
     }
 
@@ -1075,7 +1080,7 @@ export class OutstandingManager {
             paymentAmount: total,
             billNumbers: settled.map(s => s.bill.billNumber || String(s.bill.id)).join(', ').slice(0, 900)
         }).catch(e => console.warn('Audit log failed:', e));
-        UIManager.showToast(t('msg.outstanding.party_pay_done', { count: settled.length, total: Helpers.formatCurrency(total) }));
+        UIManager.showToast(t('msg.outstanding.party_pay_done', { count: settled.length, total: paiseText(total) }));
         UIManager.hapticFeedback('light');
         try {
             this.refreshAfterPayment();

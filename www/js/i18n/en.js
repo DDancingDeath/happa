@@ -2488,5 +2488,6 @@ export default {
     'ui.outstanding.party_pay_title_pay': "Pay supplier",
     'msg.outstanding.party_pay_changed': "A bill's due changed meanwhile. Nothing was recorded; please try again.",
     'msg.outstanding.party_pay_done': "✓ {total} recorded on {count} bills",
-    'ui.outstanding.party_pay_oldest': "Only the oldest {count} of {all} bills are listed; receive or pay again for the rest."
+    'ui.outstanding.party_pay_oldest': "Only the oldest {count} of {all} bills are listed; receive or pay again for the rest.",
+    'ui.outstanding.party_pay_not_placed': "{amount} is not placed yet: change a bill's part"
 };
