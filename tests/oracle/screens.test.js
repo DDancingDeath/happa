@@ -464,9 +464,27 @@ describe('Outstanding screen == oracle', () => {
         return { byParty, total };
     }
     test('O1 payable per party', () => expect(screen('purchase').byParty).toEqual(want.O1_payableByParty));
-    test('O2 receivable per party (retail)', () => expect(screen('sale').byParty).toEqual(want.O2_receivableByParty));
+    test('O2 receivable per party (All: retail and wholesale, #125)', () => expect(screen('sale').byParty).toEqual(want.O2_receivableByParty));
     test('O3 payable total (aging panel)', () => expect(screen('purchase').total).toBe(rupee(want.O3_payableTotal)));
-    test('O4 receivable total (aging panel)', () => expect(screen('sale').total).toBe(rupee(want.O4_receivableTotal)));
+    test('O4 receivable total (aging panel) = Money\'s "to receive" (#125)', () => {
+        expect(screen('sale').total).toBe(rupee(want.O4_receivableTotal));
+        expect(want.O4_receivableTotal).toBe(O.dueTotals(data).receivable);
+    });
+    test('Retail and Wholesale lists (#125): their parties and totals, adding up to All', () => {
+        const retail = screen('retail');
+        const wholesale = screen('wholesale');
+        expect(retail.byParty).toEqual(want.O2_retailByParty);
+        expect(wholesale.byParty).toEqual(want.O2_wholesaleByParty);
+        expect(retail.total).toBe(rupee(want.O4_retailTotal));
+        expect(wholesale.total).toBe(rupee(want.O4_wholesaleTotal));
+        expect(O.r2(want.O4_retailTotal + want.O4_wholesaleTotal)).toBe(want.O4_receivableTotal);
+    });
+    test('a role without Wholesale sees retail dues only, and no Retail / Wholesale choice', () => {
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess: { staff: { wholesale: false } } };
+        expect(screen('sale').byParty).toEqual(want.O2_retailByParty);
+        expect(screen('wholesale').byParty).toEqual(want.O2_retailByParty);
+    });
 });
 
 // ------------------------------------------------------------------ Cash drawer

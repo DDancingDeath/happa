@@ -3717,6 +3717,23 @@ body.dark-mode .party-filter-note {
     color: #bfdbfe;
 }
 
+/* Retail / wholesale chip on a bill in Outstanding's "All" sales list (#125) */
+.due-kind-chip {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #ecfdf5;
+    color: #065f46;
+    vertical-align: middle;
+}
+
+body.dark-mode .due-kind-chip {
+    background: #064e3b;
+    color: #a7f3d0;
+}
+
 /* ---- css/stock.css ---- */
 .stock-item {
   background: var(--card-bg);

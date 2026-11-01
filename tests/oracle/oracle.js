@@ -733,7 +733,11 @@ export function dueTotals(data) {
 
 // ---------------------------------------------------------------- Outstanding (O*)
 
-/** O1–O4: open dues per party and in total. Receivable = retail only until #130 decides. */
+/**
+ * O1–O4: open dues per party and in total. Receivables (O2, O4) are retail and wholesale
+ * sales together (#125: Outstanding's "All" sales list, the same total as Money's "to receive");
+ * O2_retail / O2_wholesale and O4_retail / O4_wholesale are its Retail and Wholesale lists.
+ */
 export function outstanding(data) {
     const byParty = (bills) => {
         const out = {};
@@ -741,9 +745,14 @@ export function outstanding(data) {
         return out;
     };
     const payable = byParty(data.purchases || []);
-    const receivable = byParty(data.retailSales || []);
+    const receivable = byParty([...(data.retailSales || []), ...(data.wholesaleSales || [])]);
+    const retail = byParty(data.retailSales || []);
+    const wholesale = byParty(data.wholesaleSales || []);
     const total = (o) => r2(Object.values(o).reduce((a, b) => a + b, 0));
-    return { O1_payableByParty: payable, O2_receivableByParty: receivable, O3_payableTotal: total(payable), O4_receivableTotal: total(receivable) };
+    return {
+        O1_payableByParty: payable, O2_receivableByParty: receivable, O3_payableTotal: total(payable), O4_receivableTotal: total(receivable),
+        O2_retailByParty: retail, O2_wholesaleByParty: wholesale, O4_retailTotal: total(retail), O4_wholesaleTotal: total(wholesale)
+    };
 }
 
 // ---------------------------------------------------------------- Cash drawer (C*)

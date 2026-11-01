@@ -57,7 +57,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbmt-expense-void';
+const BUILD_ID = '20261101zzuzieecmbbkhbmy-expense-void';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1130,7 +1130,7 @@ window.app = {
         setAgingSort: (by) => OutstandingManager.setAgingSort(by),
         setPartiesOpen: (open) => OutstandingManager.setPartiesOpen(open),
         sendReminder: (partyKey) => OutstandingManager.sendReminder(partyKey),
-        receiveFromParty: (partyKey) => OutstandingManager.receiveFromParty(partyKey),
+        receiveFromParty: (partyKey, billType) => OutstandingManager.receiveFromParty(partyKey, billType),
         partyPayFill: () => OutstandingManager.partyPayFill(),
         partyPaySum: () => OutstandingManager.partyPaySum(),
         printStatement: (partyKey) => OutstandingManager.printStatement(partyKey),
@@ -1141,7 +1141,7 @@ window.app = {
             NavigationManager.setActiveNavLink(tab);
             NavigationManager.showTab(tab);
             if (kind === 'wholesale') WholesaleSalesManager.showOutstandingParty(name);
-            else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : 'sale', name);
+            else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : kind === 'sale' ? 'sale' : 'retail', name);
         }
     },
     

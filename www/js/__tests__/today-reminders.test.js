@@ -91,7 +91,7 @@ describe('Today › Reminders card', () => {
         expect(host.querySelector('[data-reminder="collect"]').textContent).toContain('Ravi');
         expect(host.querySelector('[data-reminder="collect_wholesale"]').textContent).toContain('Hotel Raj');
         expect(host.querySelector('[data-reminder="collect_wholesale"] button').getAttribute('onclick')).toBe("window.app.nav.showTab('wholesale-outstanding')");
-        expect(host.querySelector('[data-reminder="collect"] button').getAttribute('onclick')).toBe("window.app.day.openDues('sale')");
+        expect(host.querySelector('[data-reminder="collect"] button').getAttribute('onclick')).toBe("window.app.day.openDues('retail')");
         expect(host.querySelector('[data-reminder="pay"]').textContent).toContain('Farmer Ram');
         expect(host.querySelector('[data-reminder="rent"]')).toBeNull();
     });
