@@ -407,13 +407,17 @@ async function initializeUserData() {
             return ok;
         });
         // Shared labour rate / heavy-packet weight (#20) come from the same settings/app read
-        FirebaseService.loadAppSettings()
+        const appSettingsApplied = FirebaseService.loadAppSettings()
             .then(data => {
                 configureTip(data);
                 RolesAccessManager.applyShared(data);
                 return SettingsManager.applySharedSettings(data);
             })
-            .catch(e => console.warn('Shared labour settings not loaded:', e?.code || e));
+            .then(() => true)
+            .catch(e => {
+                console.warn('Shared labour settings not loaded:', e?.code || e);
+                return false;
+            });
         // TIP reporting (#217): approved user only; writes are batched (≤ 1 counter write / 30 min)
         startTipReporting({ sink: writeTipReport, buildId: BUILD_ID });
 
@@ -558,6 +562,9 @@ async function initializeUserData() {
         // What's new + Android update banner (non-blocking, best effort)
         AppUpdatesManager.onAppReady();
 
+        // Printed bill (#107): none shared yet → offer this phone's own choices for every phone (once)
+        appSettingsApplied.then(loaded => (loaded ? SettingsManager.offerReceiptShare() : false))
+            .catch(e => console.warn('Receipt share offer skipped:', e?.code || e));
         // Daily anomaly scan (#187): owner/manager devices, once per day, over loaded data
         AnomaliesManager.scheduleDailyScan();
 
@@ -1268,6 +1275,7 @@ window.app = {
         pickReceiptLogo: () => SettingsManager.pickReceiptLogo(),
         chooseReceiptLogo: (input) => SettingsManager.chooseReceiptLogo(input),
         removeReceiptLogo: () => SettingsManager.removeReceiptLogo(),
+        shareOwnReceipt: () => SettingsManager.shareOwnReceipt(),
         previewReceipt: () => SettingsManager.previewReceipt(),
         scanBluetoothDevices: () => SettingsManager.scanBluetoothDevices(),
         connectToPrinter: (id, name) => SettingsManager.connectToPrinter(id, name),

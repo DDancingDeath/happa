@@ -13,7 +13,10 @@ import { track } from './usage.js';
 import { tip } from '../tip/index.js';
 import { printProps } from '../tip/scenarios/print.js';
 import { recordPrint } from '../utils/print-status.js';
-import { currentPrinter, normalizePrinterSettings, PAPER_DOTS, paperDots, rasterThreshold, receiptLang, LOGO_MAX, logoSize } from '../utils/printer-settings.js';
+import {
+    currentPrinter, effectiveReceipt, hasOwnReceipt, logoSize, normalizeLogo, normalizePrinterSettings, normalizeSharedReceipt,
+    PAPER_DOTS, paperDots, rasterThreshold, receiptLang
+} from '../utils/printer-settings.js';
 import { encodeQr } from '../utils/qr-code.js';
 import { safeSetItem } from '../utils/storage-full.js';
 
@@ -27,6 +30,20 @@ const UNCERTAIN_KEY = 'printerMayHavePrinted';
 const UNCERTAIN_TTL_MS = 24 * 60 * 60 * 1000;
 const STOPPED_KEY = 'printerDisconnected';
 const LOGO_KEY = 'receiptLogo';
+const SHARED_RECEIPT_KEY = 'receiptShared';
+
+/** settings/app.receipt as last read (undefined = not looked at yet: the offline copy is read on first use). */
+let sharedReceipt;
+const sharedReceiptNow = () => {
+    if (sharedReceipt === undefined) {
+        try {
+            sharedReceipt = normalizeSharedReceipt(JSON.parse(localStorage.getItem(SHARED_RECEIPT_KEY)));
+        } catch {
+            sharedReceipt = null;
+        }
+    }
+    return sharedReceipt;
+};
 
 const clockTime = (ms) => {
     const d = new Date(ms);
@@ -928,31 +945,56 @@ const PrinterService = {
         return { deviceId, deviceName };
     },
 
-    /** What the printed bill shows on this phone (#107): footer, QR, language, density, logo. */
-    receiptOptions() {
-        const s = this.settings();
-        return { footer: s.receipt.footer, qr: s.receipt.qr, lang: receiptLang(s), threshold: rasterThreshold(s), logo: this.logo() };
+    /** What the printed bill shows (#107): the shop's shared receipt, or this phone's own until one is shared. */
+    receipt() {
+        return effectiveReceipt(this.settings(), sharedReceiptNow(), this.localLogo());
     },
 
-    /** The receipt logo saved on this phone: { width, height, bits } (1-bit rows, base64), or null. */
+    /** Footer, QR, language, darkness and logo for a print job. */
+    receiptOptions() {
+        const r = this.receipt();
+        return { footer: r.footer, qr: r.qr, lang: receiptLang(r), threshold: rasterThreshold(r), logo: r.logo };
+    },
+
+    /** The receipt saved for every phone (settings/app.receipt), or null when none is yet. */
+    sharedReceipt() {
+        return sharedReceiptNow();
+    },
+
+    /** Takes the shared receipt from settings/app and keeps a copy on this phone for offline starts. */
+    setSharedReceipt(raw) {
+        sharedReceipt = normalizeSharedReceipt(raw);
+        if (sharedReceipt) safeSetItem(SHARED_RECEIPT_KEY, JSON.stringify(sharedReceipt));
+        else localStorage.removeItem(SHARED_RECEIPT_KEY);
+        return sharedReceipt;
+    },
+
+    /** This phone's own receipt choices and logo (from before they were shared), or null when it has none. */
+    ownReceipt() {
+        const logo = this.localLogo();
+        return hasOwnReceipt(this.settings(), logo) ? effectiveReceipt(this.settings(), null, logo) : null;
+    },
+
+    /** The logo the bill prints with, or null. */
     logo() {
+        return this.receipt().logo;
+    },
+
+    /** The logo this phone saved for itself before receipts were shared. */
+    localLogo() {
         try {
-            const logo = JSON.parse(localStorage.getItem(LOGO_KEY));
-            const ok = logo && Number.isInteger(logo.width) && Number.isInteger(logo.height)
-                && logo.width > 0 && logo.height > 0 && logo.width <= LOGO_MAX.width && logo.height <= LOGO_MAX.height
-                && typeof logo.bits === 'string' && atob(logo.bits).length === ((logo.width + 7) >> 3) * logo.height;
-            return ok ? logo : null;
+            return normalizeLogo(JSON.parse(localStorage.getItem(LOGO_KEY)));
         } catch {
             return null;
         }
     },
 
     /**
-     * Saves a picture as the receipt logo: fitted into 384 × 120 dots and made black and white.
+     * Turns a picture into a receipt logo: fitted into 384 × 120 dots and made black and white.
      * @param {HTMLImageElement|HTMLCanvasElement} image
-     * @returns {{ok: boolean, full: boolean}}
+     * @returns {{width: number, height: number, bits: string}|null}
      */
-    saveLogo(image) {
+    makeLogo(image) {
         const { width, height } = logoSize(image.naturalWidth || image.width, image.naturalHeight || image.height);
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -964,16 +1006,12 @@ const PrinterService = {
         const raster = packMonochromeRaster(ctx.getImageData(0, 0, width, height).data, width, height);
         let bin = '';
         raster.forEach((b) => { bin += String.fromCharCode(b); });
-        return safeSetItem(LOGO_KEY, JSON.stringify({ width, height, bits: btoa(bin) }));
-    },
-
-    removeLogo() {
-        localStorage.removeItem(LOGO_KEY);
+        return normalizeLogo({ width, height, bits: btoa(bin) });
     },
 
     /** The sample bill used by Test Print and the receipt preview in Settings. */
     sampleBill() {
-        const lang = receiptLang(this.settings());
+        const lang = receiptLang(this.receipt());
         return {
             type: 'TEST',
             billNumber: 'TEST-1',
@@ -1635,7 +1673,7 @@ const PrinterService = {
         const billData = {
             id: saleData.id || Date.now(),
             billNumber: saleData.billNumber,
-            customerName: saleData.customerName || t('ui.print.walk_in_customer', undefined, receiptLang(this.settings())),
+            customerName: saleData.customerName || t('ui.print.walk_in_customer', undefined, receiptLang(this.receipt())),
             items: saleData.items.map(item => ({
                 name: item.name,
                 rate: item.rate,

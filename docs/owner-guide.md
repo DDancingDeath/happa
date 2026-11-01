@@ -201,7 +201,9 @@ Separate from the shop: rent money never counts in shop figures.
 
 - **Settings › Common**: language, account (Change password), notifications,
   Bluetooth Printer (Test Print), install the app; the owner's **Roles & access** (what each role may see, edit
-  window in days).
+  window in days). **Printed bill**: the bottom line, the bill's QR code, the bill language, print darkness
+  and logo are the same on every phone; the owner, or a manager allowed in Roles & access, changes them.
+  The printer and paper width stay on each phone.
 - **Settings › Aadhat**: business name and UPI ID, labour rate and package
   weight, bill checks, bill numbers, opening stock.
 - **Admin › Users**: approve, change role, Reset Password (emails the person a

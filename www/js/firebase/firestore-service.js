@@ -37,6 +37,7 @@ import { isQuotaExhaustedError } from '../utils/quota-guard.js';
 import { isStorageFullError, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { SyncStatus } from '../ui/sync-status.js';
 import { entryTime } from '../utils/due-payments.js';
+import { normalizeSharedReceipt } from '../utils/printer-settings.js';
 import { getDb, col, CLIENT_VERSION, serverCreatedAt, voidAwareStamp } from './db.js';
 import { itemMethods } from './repos/items.js';
 import { billStatsMethods } from './repos/bill-stats.js';
@@ -2824,6 +2825,39 @@ const FirebaseService = {
             businessUpdatedBy: AppState.currentUser?.uid || 'unknown'
         };
         await saveSettingsSection(fields, 'businessUpdatedAt', opts);
+    },
+
+    /**
+     * What the printed bill shows, for every phone (#107): settings/app.receipt
+     * { footer, qr, lang, density, logo }. Owner, or a manager allowed in Roles & access;
+     * firestore.rules check the shape and the logo's size. A transaction (needs the
+     * internet) applies only the changed fields onto the receipt saved now, so a phone
+     * with an old copy never overwrites what another phone changed since.
+     * @param {Object} patch - the fields this phone changed
+     * @param {{base?: Object, onlyIfMissing?: boolean}} [options] - base: the whole receipt when none
+     *   is saved yet; onlyIfMissing: change nothing when one is already saved
+     * @returns {Promise<{receipt: Object, applied: boolean}>} the receipt saved after this call
+     */
+    async saveReceiptSettings(patch, { base = null, onlyIfMissing = false } = {}) {
+        const ref = getDb().collection(col('settings')).doc('app');
+        const result = await getDb().runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            const current = normalizeSharedReceipt(snap.exists ? snap.data()?.receipt : null);
+            if (current && onlyIfMissing) return { receipt: current, applied: false };
+            const receipt = normalizeSharedReceipt({ ...(current || base || {}), ...patch });
+            const fields = {
+                receipt,
+                receiptUpdatedAt: Date.now(),
+                receiptUpdatedBy: AppState.currentUser?.uid || 'unknown'
+            };
+            if (snap.exists) tx.update(ref, fields);
+            else tx.set(ref, fields);
+            return { receipt, applied: true };
+        });
+        if (appSettingsPromise) {
+            appSettingsPromise = appSettingsPromise.then(data => ({ ...(data || {}), receipt: result.receipt }), () => ({ receipt: result.receipt }));
+        }
+        return result;
     },
 
     /**
