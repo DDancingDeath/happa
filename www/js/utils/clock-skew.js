@@ -10,6 +10,8 @@
  * @module utils/clock-skew
  */
 
+import { toJsDate, toLocalISODate } from './dates.js';
+
 /** firestore.rules entryTimeOk: a payment's `at` must be within this of the server's time. */
 export const PAYMENT_CLOCK_LIMIT_MS = 10 * 60 * 1000;
 
@@ -84,4 +86,64 @@ export async function refusedForClock(error, opts) {
     // A refusal caused by the phone's clock is not misuse (#124: services/security-monitor.js)
     if (wrong && error && typeof error === 'object') error.aadhatExpected = true;
     return wrong;
+}
+
+/** localStorage: the day's start-up clock check, {day, skewMs} (#115). */
+export const CLOCK_CHECK_KEY = 'happa.clockCheck';
+
+/**
+ * The start-up check stored for a day, or null.
+ * @param {?Storage} storage
+ * @returns {?{day: string, skewMs: number}}
+ */
+export function readClockCheck(storage) {
+    try {
+        const saved = JSON.parse(storage?.getItem?.(CLOCK_CHECK_KEY) || 'null');
+        return saved && typeof saved.day === 'string' && Number.isFinite(saved.skewMs) ? saved : null;
+    } catch (_) {
+        return null;
+    }
+}
+
+/**
+ * Start-up clock check (#115): measured at most once a day on this phone (one ID-token
+ * refresh, no Firestore read) and kept for that day. Offline or signed out nothing is
+ * kept, so the next start tries again. `force` measures now (the banner's Check again).
+ * @param {{storage?: Storage, now?: function(): number, measure?: function(): Promise<?number>, force?: boolean}} [opts]
+ * @returns {Promise<?number>} server time minus phone time (ms), null when unknown
+ */
+export async function dailyClockSkew({ storage = null, now = Date.now, measure = measureClockSkew, force = false } = {}) {
+    const day = toLocalISODate(new Date(now()));
+    if (!force) {
+        const saved = readClockCheck(storage);
+        if (saved && saved.day === day) return saved.skewMs;
+    }
+    const skew = await measure();
+    if (!Number.isFinite(skew)) return null;
+    try {
+        storage?.setItem?.(CLOCK_CHECK_KEY, JSON.stringify({ day, skewMs: Math.round(skew) }));
+    } catch (_) { /* storage full: checked again next start */ }
+    return skew;
+}
+
+/**
+ * Whole minutes a clock is off, for the banner.
+ * @param {number} skewMs
+ * @returns {number}
+ */
+export function skewMinutes(skewMs) {
+    return Math.max(1, Math.round(Math.abs(skewMs) / 60000));
+}
+
+/**
+ * A bill's two times (#115): when it was entered on the phone (`enteredAt`, the phone's
+ * clock) and when the server first saved it (`createdAt`). `far`: they are at least
+ * CLOCK_WRONG_MS apart (a wrong phone clock, or a bill saved offline and sent later).
+ * @param {Object} bill
+ * @returns {{entered: ?Date, server: ?Date, far: boolean}}
+ */
+export function billTimes(bill) {
+    const entered = toJsDate(bill?.enteredAt);
+    const server = toJsDate(bill?.createdAt);
+    return { entered, server, far: !!(entered && server) && Math.abs(server.getTime() - entered.getTime()) >= CLOCK_WRONG_MS };
 }

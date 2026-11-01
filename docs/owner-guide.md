@@ -253,6 +253,15 @@ Separate from the shop: rent money never counts in shop figures.
    printer link is not cut.
 5. The bill is saved even when printing fails: reprint later from History.
 
+### The phone's clock is wrong
+
+Once a day, at start, the app compares the phone's clock with the server's. When
+it is off by 9 minutes or more a red banner says by how much: set the date and time
+to automatic in Android settings, then tap **Check again**. Until then bills get the
+phone's wrong time and payments are refused. Bill details show both times: **Entered
+on the phone** and **Saved on the server** (far apart: a wrong clock, or a bill saved
+offline and sent later).
+
 ### Changes are not syncing
 
 - The header pill shows **Offline** or "N changes waiting to sync". Saved bills are

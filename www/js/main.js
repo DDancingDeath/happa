@@ -8,6 +8,7 @@ import { VoiceMic } from './ui/voice-mic.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
+import { startClockCheck } from './ui/clock-banner.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { userProfile } from './firebase/repos/users.js';
@@ -57,7 +58,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbnk-split-settings';
+const BUILD_ID = '20261101zzuzieecmbbkhbnt-clock-banner';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -543,6 +544,7 @@ async function initializeUserData() {
         
         // Clean up old audit logs (runs silently for owners)
         AuditService.cleanupOldLogs().catch(e => console.warn('Audit log cleanup failed:', e));
+        startClockCheck({ toast: (m) => UIManager.showToast(m) }).catch(e => console.warn('Clock check failed:', e));
         
         UIManager.hideLoading();
         markStartup('app-shown', { online: navigator.onLine });
