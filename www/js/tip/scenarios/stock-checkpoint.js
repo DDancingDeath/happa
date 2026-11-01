@@ -19,8 +19,9 @@ export const StockCheckpointTest = {
     evaluate(props, flags, ctx) {
         if (props.status === 'built') return 'succeed';
         if (NOT_BUILDING.includes(props.status)) return 'ignore';
-        if (props.released === false) return { result: 'fail', reason: 'lease_not_released' };
         if (props.status === 'offline') return 'discard';
+        // A release can't run offline; the lease then just expires.
+        if (props.released === false) return ctx.online ? { result: 'fail', reason: 'lease_not_released' } : 'discard';
         if (props.status === 'error') return ctx.online ? { result: 'fail', reason: 'rebuild_error' } : 'discard';
         if (props.status === 'too-large') return { result: 'fail', reason: 'too_large' };
         if (props.status === 'backfill-failed') return { result: 'fail', reason: 'backfill_failed' };

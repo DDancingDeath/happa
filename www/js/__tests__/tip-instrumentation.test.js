@@ -30,9 +30,20 @@ describe('Print runs around PrinterService.runJob', () => {
         const err = Object.assign(new Error('no answer'), { kind: 'timeout_connect' });
         const res = await PrinterService.runJob('bill:2', async () => { throw err; });
         expect(res).toEqual({ outcome: 'failed', error: err });
-        const c = printCounts();
+        await new Promise(r => setTimeout(r, 0));
+        let c = printCounts();
+        expect(c.n).toEqual({ w: 1 });
+        expect(c.r).toEqual({ w1: 1 });
+
+        jest.spyOn(PrinterService.manager.link, 'bluetoothOn').mockResolvedValue(false);
+        await PrinterService.runJob('bill:3', async () => { throw err; });
+        await new Promise(r => setTimeout(r, 0));
+        expect(printCounts().r).toEqual({ w4: 1 });
+
+        await PrinterService.runJob('bill:4', async () => { throw Object.assign(new Error('gone'), { kind: 'dropped' }); });
+        c = printCounts();
         expect(c.n).toEqual({ f: 1 });
-        expect(c.r).toEqual({ f1: 1 });
+        expect(c.r).toEqual({ f2: 1 });
     });
 });
 
@@ -49,6 +60,8 @@ describe('SyncStatus.watch', () => {
         resolve();
         await new Promise(r => setTimeout(r, 0));
         expect(seen.at(-1)).toEqual({ online: true, pending: 0 });
+        s.clearListeners();
+        expect(seen.at(-1)).toEqual({ online: true, pending: 0, stopped: true });
         s.stop();
         expect(seen.at(-1)).toEqual({ online: true, pending: 0, stopped: true });
         off();

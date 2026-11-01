@@ -1054,8 +1054,21 @@ const PrinterService = {
             res = await this._runJobNow(key, send, mode);
             return res;
         } finally {
-            run.complete(printProps(res.outcome, res.error, mode));
+            this._completePrintRun(run, res, mode);
         }
+    },
+
+    /** @private A failed connect may just be Bluetooth off: ask (without holding up the caller) before reporting. */
+    _completePrintRun(run, res, mode) {
+        const kind = res.error?.kind;
+        if (res.outcome !== 'failed' || (kind !== 'connect' && kind !== 'timeout_connect')) {
+            run.complete(printProps(res.outcome, res.error, mode));
+            return;
+        }
+        Promise.resolve()
+            .then(() => this.manager.link.bluetoothOn())
+            .then(on => (on ? res.error : { kind: 'bluetooth_off' }), () => res.error)
+            .then(error => run.complete(printProps(res.outcome, error, mode)));
     },
 
     /** @private See runJob. */

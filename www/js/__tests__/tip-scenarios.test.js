@@ -222,8 +222,8 @@ describe('Print (#161)', () => {
         expect(record('cancelled')).toEqual({ result: 'i', reason: 0 });
     });
 
-    it('a ready printer that fails to connect or send fails; set-up problems and may-have-printed warn', () => {
-        expect(record('failed', { kind: 'timeout_connect' })).toEqual({ result: 'f', reason: reasons.connect_failed });
+    it('a send that fails on a connected printer fails; connect / set-up problems and may-have-printed warn', () => {
+        expect(record('failed', { kind: 'timeout_connect' })).toEqual({ result: 'w', reason: reasons.connect_failed });
         expect(record('failed', { kind: 'dropped' })).toEqual({ result: 'f', reason: reasons.send_failed });
         expect(record('failed', new Error('plugin said no'))).toEqual({ result: 'f', reason: reasons.send_failed });
         expect(record('failed', { kind: 'bluetooth_off' })).toEqual({ result: 'w', reason: reasons.printer_not_ready });
@@ -259,6 +259,16 @@ describe('Sync (#161)', () => {
         expect(h2.outcome('Sync')).toEqual({ result: 'x', reason: 0 });
     });
 
+    it('a run that went to the background is not judged', () => {
+        const h = harness();
+        const w = createSyncWatcher((o) => h.tip.start('Sync', o));
+        w.update({ online: true, pending: 1 });
+        w.hidden();
+        h.advance(SYNC_LIMIT_MS + 1);
+        h.tip.sweep();
+        expect(h.outcome('Sync')).toEqual({ result: 'x', reason: 0 });
+    });
+
     it('sign-out discards an open run', () => {
         const h = harness();
         const w = createSyncWatcher((o) => h.tip.start('Sync', o));
@@ -286,7 +296,9 @@ describe('StockCheckpoint (#161)', () => {
     it('a failed build must release its lease', () => {
         expect(record({ status: 'too-large' }, true)).toEqual({ result: 'f', reason: reasons.too_large });
         expect(record({ status: 'offline' }, true)).toEqual({ result: 'x', reason: 0 });
-        expect(record({ status: 'offline' }, false)).toEqual({ result: 'f', reason: reasons.lease_not_released });
+        expect(record({ status: 'offline' }, false)).toEqual({ result: 'x', reason: 0 });
+        expect(record({ status: 'too-large' }, false)).toEqual({ result: 'f', reason: reasons.lease_not_released });
+        expect(record({ status: 'too-large' }, false, false)).toEqual({ result: 'x', reason: 0 });
         expect(record({ status: 'conflict' }, true)).toEqual({ result: 'w', reason: reasons.conflict });
         expect(record(null)).toEqual({ result: 'f', reason: reasons.rebuild_error });
         expect(record(null, null, false)).toEqual({ result: 'x', reason: 0 });

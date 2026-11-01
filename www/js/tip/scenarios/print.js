@@ -1,9 +1,10 @@
 /**
  * @fileoverview TIP scenario Print (#161): a print job (Bluetooth connect +
  * send) ends printed. Instrumented in PrinterService.runJob, the one path
- * every bill, expense, statement and image print takes. A printer that is
- * off / not paired / Bluetooth off is the phone's set-up, reported as a
- * warning; a connect or send that fails on a ready printer is a failure.
+ * every bill, expense, statement and image print takes. Bluetooth off / no
+ * printer is the phone's set-up and a failed connect can't be told apart from a
+ * printer that is switched off, so both are warnings; a send that fails once
+ * the link is up is a failure.
  * Reason codes are stable: never renumber or reuse them.
  * @module tip/scenarios/print
  */
@@ -24,7 +25,7 @@ export const PrintTest = {
         if (props.outcome === 'uncertain') return { result: 'warn', reason: 'may_have_printed' };
         if (props.outcome === 'failed') {
             if (NOT_READY.includes(props.errorKind)) return { result: 'warn', reason: 'printer_not_ready' };
-            if (CONNECT.includes(props.errorKind)) return { result: 'fail', reason: 'connect_failed' };
+            if (CONNECT.includes(props.errorKind)) return { result: 'warn', reason: 'connect_failed' };
             return { result: 'fail', reason: 'send_failed' };
         }
         return ctx.expired ? 'discard' : 'ignore';

@@ -18,7 +18,8 @@ export const SyncTest = {
     // Closed with changes waiting: Firestore keeps them and sends them on the next start.
     onAbandon: 'discard',
     evaluate(props, flags, ctx) {
-        if (flags.offline) return 'discard';
+        // Offline, or the app went to the background (the phone may hold the network): not judged.
+        if (flags.offline || flags.hidden) return 'discard';
         if (ctx.expired) return ctx.online ? { result: 'fail', reason: 'not_flushed' } : 'discard';
         return 'succeed';
     }
@@ -27,7 +28,7 @@ export const SyncTest = {
 /**
  * Turns pending-count changes into Sync runs.
  * @param {(opts: Object) => {setFlag: Function, complete: Function, discard: Function}} start tip.start('Sync', opts)
- * @returns {{update: (s: {online: boolean, pending: number, stopped?: boolean}) => void}}
+ * @returns {{update: (s: {online: boolean, pending: number, stopped?: boolean}) => void, hidden: () => void}}
  */
 export function createSyncWatcher(start) {
     let run = null;
@@ -51,6 +52,10 @@ export function createSyncWatcher(start) {
                     r.complete({ online: !!online });
                 }
             } catch (_) { /* never break the pill */ }
+        },
+        /** The app went to the background with changes waiting. */
+        hidden() {
+            try { if (run) run.setFlag('hidden', true); } catch (_) { /* never */ }
         }
     };
 }

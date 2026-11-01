@@ -125,6 +125,9 @@ on(READS_ALERT, ({ kind, reads }) => tip.start('SessionReads').complete({ [kind]
 // TIP Sync (#161): changes waiting to sync reach the server within the limit.
 const tipSyncWatcher = createSyncWatcher((opts) => tip.start('Sync', opts));
 SyncStatus.watch((s) => tipSyncWatcher.update(s));
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') tipSyncWatcher.hidden();
+});
 
 /** TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle. */
 function scheduleTipNumberChecks() {

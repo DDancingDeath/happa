@@ -53,6 +53,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         return all;
     };
     const pendingCount = () => pendingKeys().size;
+    const notifyStopped = () => watchers.forEach(fn => { try { fn({ online, pending: 0, stopped: true }); } catch (_) { /* never */ } });
 
     const element = () => {
         if (el && el.isConnected) return el;
@@ -165,7 +166,7 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
                 win.removeEventListener(LANG_CHANGE_EVENT, onLang);
             }
             started = false;
-            watchers.forEach(fn => { try { fn({ online, pending: 0, stopped: true }); } catch (_) { /* never */ } });
+            notifyStopped();
             clearTimeout(pendingShowTimer);
             clearTimeout(syncedTimer);
             pendingShowTimer = null;
@@ -214,6 +215,8 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         },
         /** Forgets listener state (listeners torn down, e.g. sign-out). */
         clearListeners() {
+            // Sign-out / listeners torn down: an open TIP Sync run is not judged.
+            notifyStopped();
             if (!listened.size) return;
             listened.clear();
             render();
