@@ -6155,6 +6155,17 @@ body.dark-mode .today-cash-prompt {
   padding: 0 !important;
 }
 
+/* Reminders on Today (#86) */
+.today-reminders { padding: 12px 14px; }
+.today-reminders-title { margin: 0 0 8px; font-size: 16px; }
+.today-reminder { padding: 8px 0; border-top: 1px solid #eef0f3; }
+.today-reminder:first-of-type { border-top: 0; }
+.today-reminder-head { display: flex; justify-content: space-between; gap: 8px; }
+.today-reminder ul { list-style: none; margin: 6px 0; padding: 0; }
+.today-reminder-party { display: flex; gap: 8px; justify-content: space-between; font-size: 14px; padding: 2px 0; }
+.today-reminder-party span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-reminder-days, .today-reminder-more { color: #6b7280; font-size: 12px; }
+
 /* ---- css/anomalies.css ---- */
 /* ==================== ANOMALIES (#187, #40) ==================== */
 
