@@ -161,15 +161,19 @@ const timeOf = (v) => {
 
 /**
  * When a bill was entered (ms): `enteredAt` (#147: a back-dated bill's `timestamp` is its
- * day, not its entry), else the server `createdAt`, else its numeric timestamp, else its date.
+ * day, not its entry), else the server `createdAt` when it is more than a day after the
+ * timestamp (a bill without `enteredAt` dated back; a bill saved offline that synced within a day
+ * keeps its own time, so a sync after midnight or at night flags nothing), else its numeric
+ * timestamp, else its date.
  */
 export function billTime(bill) {
     const entered = Number(bill?.enteredAt);
     if (Number.isFinite(entered) && entered > 0) return entered;
     const created = bill?.createdAt != null ? toJsDate(bill.createdAt)?.getTime() : NaN;
-    if (Number.isFinite(created) && created > 0) return created;
     const ts = Number(bill?.timestamp);
-    return Number.isFinite(ts) && ts > 0 ? ts : timeOf(bill?.date);
+    const hasTs = Number.isFinite(ts) && ts > 0;
+    if (Number.isFinite(created) && created > 0 && (!hasTs || created - ts > DAY_MS)) return created;
+    return hasTs ? ts : timeOf(bill?.date);
 }
 
 const billParty = (bill) => String(bill?.customerName || bill?.supplierName || '').trim();
