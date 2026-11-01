@@ -1037,7 +1037,7 @@ export class OutstandingManager {
         const check = this.partyPayCheck();
         el.textContent = check.ok
             ? t('ui.outstanding.party_pay_total', { total: paiseText(check.total) })
-                + (check.excess > 0 ? ` · ${t(check.allFull ? 'ui.outstanding.party_pay_more_than_due' : 'ui.outstanding.party_pay_not_placed', { amount: paiseText(check.excess) })}` : '')
+                + (check.excess > 0 ? ` · ${t(check.allFull ? 'ui.outstanding.party_pay_more_than_due' : 'ui.outstanding.party_pay_paise_left', { amount: paiseText(check.excess) })}` : '')
             : this.partyPayProblem(check);
     }
 

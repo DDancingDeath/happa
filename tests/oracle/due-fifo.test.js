@@ -39,7 +39,7 @@ describe('DUE-FIFO: one payment over the oldest bills first', () => {
 });
 
 describe('DUE-FIFO: the parts must add up to the amount', () => {
-    test('accepted exactly when Σ parts = amount, or every bill is full and the amount is more, or < ₹1 of old paise', () => {
+    test('accepted exactly when Σ parts = amount, or every bill is full and the amount is more, or < ₹1 short by old paise', () => {
         fc.assert(fc.property(
             fc.array(fc.record({ due: fc.integer({ min: 100, max: 50000 }), paise: fc.boolean() }), { minLength: 1, maxLength: 6 }),
             fc.array(fc.integer({ min: 0, max: 600 }), { minLength: 6, maxLength: 6 }),
@@ -54,7 +54,7 @@ describe('DUE-FIFO: the parts must add up to the amount', () => {
                 const allFull = partsP.every((p, i) => p === duesP[i]);
                 const expectOk = total > 0 && (total === amountP
                     || (allFull && total < amountP)
-                    || (Math.abs(total - amountP) < 100 && total % 100 !== 0));
+                    || (total < amountP && amountP - total < 100 && total % 100 !== 0));
                 const got = checkAllocation(dues, partsP.map(p => String(p / 100)), rupees);
                 expect(got.ok).toBe(expectOk);
                 if (got.ok) expect(paise(got.total)).toBe(total);

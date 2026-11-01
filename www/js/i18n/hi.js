@@ -2556,7 +2556,7 @@ export default {
     'msg.outstanding.party_pay_changed': "इस बीच किसी बिल का बकाया बदल गया। कुछ दर्ज नहीं हुआ; फिर से कोशिश करें।",
     'msg.outstanding.party_pay_done': "✓ {count} बिलों पर {total} दर्ज हुआ",
     'ui.outstanding.party_pay_oldest': "{all} में से सिर्फ़ सबसे पुराने {count} बिल दिख रहे हैं; बाकी के लिए फिर से भुगतान दर्ज करें।",
-    'ui.outstanding.party_pay_not_placed': "{amount} अभी किसी बिल में नहीं गया: किसी बिल का हिस्सा बदलें",
     'msg.outstanding.party_pay_parts_more': "हिस्सों का जोड़ {total} है: रकम {amount} से {diff} ज़्यादा। हिस्से या रकम बदलें।",
-    'msg.outstanding.party_pay_parts_less': "हिस्सों का जोड़ {total} है: रकम {amount} से {diff} कम। हिस्से या रकम बदलें।"
+    'msg.outstanding.party_pay_parts_less': "हिस्सों का जोड़ {total} है: रकम {amount} से {diff} कम। हिस्से या रकम बदलें।",
+    'ui.outstanding.party_pay_paise_left': "{amount} (पुराने बकाया के पैसे) दर्ज नहीं होंगे"
 };

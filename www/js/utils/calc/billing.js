@@ -548,8 +548,8 @@ export function allocateOldestFirst(dues, amount) {
  * from 0 to its bill's due (+ tolerance), saved as partAsSaved. The parts must add
  * up to the amount, with two exceptions only: (a) the amount is more than all the
  * dues and every bill is paid in full (Σ parts = Σ dues; the rest is `excess`, not
- * recorded); (b) an old due with paise is paid in full, so Σ parts differs from the
- * whole-rupee amount by those paise only (less than ₹1).
+ * recorded); (b) an old due with paise is paid in full, so Σ parts is below the
+ * whole-rupee amount by those paise only (less than ₹1; never above it).
  * @param {number[]} dues
  * @param {Array<number|string>} parts - per bill, same order
  * @param {number|string} amount - the amount typed as received / paid
@@ -576,7 +576,7 @@ export function checkAllocation(dues, parts, amount, tolerance = 0.01) {
     const allFull = amounts.every((a, i) => a >= round2(dues[i]) - tolerance);
     const ok = Math.abs(diff) <= tolerance
         || (allFull && diff < 0)
-        || (Math.abs(diff) < 1 && hasPaise(total));
+        || (diff < 0 && diff > -1 && hasPaise(total));
     if (!ok) return { ok: false, error: 'mismatch', total, received, diff, gap: Math.abs(diff) };
     return { ok: true, amounts, total, received, excess: round2(Math.max(0, received - total)), allFull };
 }

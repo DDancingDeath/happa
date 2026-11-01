@@ -97,7 +97,10 @@ describe('DUE-FIFO allocation', () => {
         expect(checkAllocation([100, 50], ['100', '40'], 200).error).toBe('mismatch');
         // (b) an old ₹100.50 due paid in full: the parts carry its 50 paise
         expect(checkAllocation([100.5, 250], ['100.5', '49'], 150)).toEqual({ ok: true, amounts: [100.5, 49], total: 149.5, received: 150, excess: 0.5, allFull: false });
-        expect(checkAllocation([100.5], ['100.5'], 100)).toMatchObject({ ok: true, total: 100.5, received: 100, excess: 0 });
+        // …only below the amount, never above it
+        expect(checkAllocation([100.5], ['100.5'], 100).error).toBe('mismatch');
+        expect(checkAllocation([100.5, 500], ['100.5', '500'], 600).error).toBe('mismatch');
+        expect(checkAllocation([100.5], ['100.5'], 100.5)).toMatchObject({ ok: true, total: 100.5, received: 101, excess: 0.5, allFull: true });
         // …but never a rupee or more off
         expect(checkAllocation([100.5, 250], ['100.5', '51'], 150).error).toBe('mismatch');
         // Whatever the fill gives always passes
@@ -269,7 +272,7 @@ describe('Receive payment dialog', () => {
         AppState.retailSalesHistory = [bill('r1', 'Ravi', 100.5, 1), bill('r2', 'Ravi', 50, 2)];
         answer(150, null);
         await OutstandingManager.receiveFromParty(normalizePartyName('Ravi'));
-        expect(document.getElementById('ppSum').textContent).toBe('Total: ₹149.50 · ₹0.50 is not placed yet: change a bill\'s part');
+        expect(document.getElementById('ppSum').textContent).toBe('Total: ₹149.50 · ₹0.50 (paise of an old due) is not recorded');
     });
 
     test('members can not use it', async () => {
