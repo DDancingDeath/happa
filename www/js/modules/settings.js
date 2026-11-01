@@ -507,8 +507,10 @@ export class SettingsManager {
 
     /** Stocks › Set opening stock. */
     static openOpeningStock() {
-        window.app?.nav?.showTab?.('stock');
-        setTimeout(() => window.app?.stock?.startOpeningStock?.(), 150);
+        // After the page is in and its own first render (#66: it may load on first visit)
+        return Promise.resolve(window.app?.nav?.showTab?.('stock')).then(ok => {
+            if (ok !== false) setTimeout(() => window.app?.stock?.startOpeningStock?.(), 150);
+        });
     }
 
     /** Account: your name (your own profile; rules let you change it). */
