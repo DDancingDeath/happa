@@ -15,6 +15,7 @@ import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
 import { EXPENSE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { askReason, voidedBannerHtml } from '../ui/bill-status.js';
+import { SyncStatus } from '../ui/sync-status.js';
 import { t } from '../i18n/index.js';
 import { saveFailedText, EXPENSE_UNCONFIRMED_KEY } from '../utils/storage-full.js';
 import { refusedForClock } from '../utils/clock-skew.js';
@@ -508,7 +509,7 @@ export class ExpensesManager {
                 <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
                     <div>
                         ${payment.personName ? `<div style="font-weight: 600; font-size: 16px; color: #333;">${Helpers.escapeHtml(payment.personName)}</div>` : ''}
-                        <div style="font-size: 13px; color: #666; margin-top: 4px;">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="voided-chip">${tx('ui.void.chip')}</span>` : ''}</div>
+                        <div style="font-size: 13px; color: #666; margin-top: 4px;">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="voided-chip">${tx('ui.void.chip')}</span>` : ''} ${SyncStatus.chipHtml(payment.id)}</div>
                     </div>
                     <div style="text-align: right;">
                         <div class="expense-card__amount" style="font-size: 18px; font-weight: bold; color: #2c3e50;">${formatRupees(payment.amount, { exact: true })}</div>

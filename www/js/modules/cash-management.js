@@ -10,6 +10,7 @@ import { AuditService } from '../services/audit.js';
 import { updateSessionChecked, updateSession, addSessionEntry } from '../firebase/repos/cash-sessions.js';
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
+import { SyncStatus } from '../ui/sync-status.js';
 import { Helpers } from '../utils/helpers.js';
 import { todayLocalISO, parseLocalDate, parseAnyBillDate, displayLocale, localISODaysAgo } from '../utils/dates.js';
 import { needsHistoryFrom, ensureHistoryFrom } from '../utils/history-window.js';
@@ -817,6 +818,12 @@ export class CashManagementManager {
         if (typeof navigator !== 'undefined' && navigator.onLine === false) {
             UIManager.showToast(t('msg.cash.close_needs_internet'), 'warning');
             return;
+        }
+        // This phone's own entries not on the server yet are missing from the other phones' counts (#70).
+        const unsynced = SyncStatus.pendingCount();
+        if (unsynced > 0) {
+            const go = await UIManager.showModal(tn('msg.cash.close_unsynced', unsynced), t('msg.cash.confirm_sign_out'), true);
+            if (!go) return;
         }
 
         const expected = this.calculateExpectedCash();
