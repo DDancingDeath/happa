@@ -10,7 +10,7 @@
  */
 
 /** Error kinds that mean the printer or Bluetooth isn't ready (not an app failure). */
-const NOT_READY = ['bluetooth_off', 'no_printer', 'stopped', 'unavailable'];
+const NOT_READY = ['bluetooth_off', 'no_printer', 'stopped', 'unavailable', 'permission'];
 const CONNECT = ['connect', 'timeout_connect', 'timeout_list', 'timeout_check'];
 
 export const PrintTest = {

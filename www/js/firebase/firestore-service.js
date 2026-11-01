@@ -3033,7 +3033,10 @@ const FirebaseService = {
                 if (gen !== sessionGen) return;
                 SyncStatus.noteSnapshot(syncId, snapshot);
                 const { changed, changes } = applySnapshot(live, snapshot, mapFn);
-                if (!snapshot.metadata.fromCache) live.server = true;
+                if (!snapshot.metadata.fromCache) {
+                    live.server = true;
+                    SyncStatus.noteServerData();
+                }
                 live.delivered = true;
                 // Before startup is ready only AppState is updated; startup
                 // computes stock and renders the initial views itself.
