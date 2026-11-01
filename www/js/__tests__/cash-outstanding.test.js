@@ -63,6 +63,20 @@ describe('#69 session totals', () => {
         expect(text).toContain('Total Cash In: ₹4050');
         expect(text).toContain('Total Cash Out: ₹1830');
     });
+
+    test('a closed day\'s status card shows what it was closed with, not the live totals (a later void, #99)', () => {
+        document.body.innerHTML = CASH_TEMPLATE;
+        CashManagementManager.todaySession = {
+            id: 's1', date: '2026-10-20', openingBalance: 2000, signedOut: true, counted: true,
+            closingBalance: 2000, expectedBalance: 2220, difference: -220, transactions: TXNS
+        };
+        // a cash expense of ₹150 voided after the close: the live day no longer counts it
+        CashManagementManager.todayTransactions = { ...TXNS, businessExpenses: 0 };
+        CashManagementManager.updateUI();
+        const text = (id) => document.getElementById(id).textContent;
+        expect([text('statusOthers'), text('statusExpected'), text('statusActual'), text('statusDiff')])
+            .toEqual(['₹330', '₹2220', '₹2000', '₹-220.00']);
+    });
 });
 
 describe('#66 ₹0 opening/closing and session notes', () => {
@@ -759,15 +773,6 @@ describe('#89 expenses appear / disappear at once, before the server answers', (
         expect(listText()).toContain('Diesel');
         expect(listText()).toContain('Tea');
         expect(toast).toHaveBeenCalledWith('✓ Business expense saved');
-    });
-
-    test('a deleted expense disappears immediately', async () => {
-        ExpensesManager.renderexpensesHistory();
-        expect(listText()).toContain('Tea');
-        ExpensesManager.deleteExpense('old1', 'business', false); // server never answers
-        await Promise.resolve();
-        expect(AppState.expensesHistory).toEqual([]);
-        expect(listText()).not.toContain('Tea');
     });
 });
 

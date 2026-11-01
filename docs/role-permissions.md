@@ -36,7 +36,7 @@ setting is missing or invalid.
 | `finance` | Money page (the stored id kept the old Finance page's name) | हिसाब पेज | on | off | client; **rules** for withdrawals |
 | `reports` | Statements page (stored id of the old Reports page) | बही-खाता पेज | on | off | client; **rules** for withdrawals |
 | `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule, and `reports` opens Seasons too; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client; **rules** for withdrawals |
-| `wholesale` | Wholesale page | थोक पेज | on | off | client |
+| `wholesale` | Wholesale page, and the wholesale dues on Outstanding › Sales (All / Wholesale, #125) | थोक पेज | on | off | client |
 | `personalExpenses` | Personal expenses | निजी खर्च | on | on | client + **rules** (#98, see "Personal expenses") |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
@@ -231,6 +231,32 @@ document is billed once per request; limit 10 docs per single write, 20 per batc
 
 The edit-window branch is only evaluated after `isOwnerIn` fails, so the owner never pays for it.
 
+## Voided expenses (#99)
+
+Expenses are voided like bills, never edited or deleted in place. The expense details show **Void**
+and **Void & re-enter** (the second puts the voided expense back in the form, on its own day, and the
+save links the new one with `replacesId`). A void sets `voided: true`, `voidedAt` (server time),
+`voidedBy`, `voidedByName` and a required `voidReason` (3–300 characters) in one transaction
+(`FirebaseService.voidExpense`; a personal expense also leaves `personalExpenseDays`). It needs the
+internet. The list shows voided expenses behind "Show voided", struck through; they count in no figure
+(VOID-EXP in docs/calculations.md).
+
+- **Who** (default chosen until the owner answers #112): the owner any expense; a manager any expense
+  and a member only their own, inside the role's `editDays` (as bills) from the expense's save time.
+  Rules: `expenseVoidOk`; app: `canVoidExpenseWith`.
+- **Cash:** a voided cash expense's money is back in its day's expected drawer while that day's cash
+  is open (the void dialog says so); a day whose cash is already closed keeps the count it was closed with
+  (the Cash page's status card, the history and the day details all show the closed day's stored figures).
+- **Flagged, as bill voids:** a void by anyone except an owner is a **medium** `expense-voided` anomaly on
+  the owner's Today (Day report) and in Anomalies, with who, the amount and the reason. It comes from the
+  voided expenses the listeners already hold (`voidedExpenses()`; `voidedBy` / `voidedAt` set by the rules,
+  no extra read) and, for an expense outside the loaded history, from the `VOID_EXPENSE` audit entry
+  (`details.expenseId`, `details.reason`) in the owner's daily scan; both give the same flag id. The owners
+  are known the same way as for bill voids (read once a session, only when someone else voided). A personal
+  expense's flag leaves out its type and name (managers read flags).
+- **Final.** A voided expense never changes again, the owner included; only the owner deletes one
+  (not offered in the app). Older apps can no longer edit or delete expenses (refused by the rules).
+
 ## Void and edit records (#75, #121)
 
 **Void instead of delete.** The bill details show **Void** (रद्द करें) where Delete was. A void
@@ -343,6 +369,7 @@ rejected / no profile / unknown role.
 | `autoSaves/{uid}` | own doc | own |
 | `users` | own profile at start-up / login / registration; full list: Admin and Roles & access › People (owner only) | **own only**. Names shown on bills, payments and audit rows are stored on those records |
 | `settings/team` (#87) | names and roles of the approved people, written by the owner's phone whenever it reads the profiles (Admin, App health, notification fan-out; and once a day 3 minutes after start-up, one read per profile + the doc; it writes only when a name or role differs) and by `tools/migrate`; one get for managers' App health device names and their notification fan-out on item and rate edits | no (managers only) |
+| `settings/accounts` (#74) | Money › Worth's bank, savings and other accounts, shared by every phone: one get each time Money opens on Worth (the page's own saves update it on the phone); owner and managers with Money only | no (bank balances are private; a member's M15 leaves them out and says so) |
 | `users/{uid}/preferences` | own | own |
 | `auditLogs`, `telemetry` | append by everyone; read in Settings/Diagnostics and the anomaly scan by the owner only | no |
 | `deviceLog/{uid}` (#124) | own doc at start-up, once per person per phone (then remembered on the phone) | own only |
@@ -371,6 +398,7 @@ except `rent_public` get.
 | `users`: own profile | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ |
 | `users`: other profiles (G, L) | ✓ → ✓ | ✓ → **✗** (#87) | ✓ → **✗** | ✗ → ✗ | ✗ → ✗ |
 | `settings/team` (G, #87) | ✓ | ✓ | ✗ | ✗ | ✗ |
+| `settings/accounts` (G, #74) | ✓ | ✓ with Money (`finance`, default on) | ✗ (even with Money on) | ✗ | ✗ |
 | `users/{uid}/preferences` | own only (unchanged) | own | own | ✗ | ✗ |
 | `auditLogs`, `telemetry` | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `deviceLog` (#124): own / other people's | ✓ / ✓ | ✓ / ✗ | ✓ / ✗ | ✗ | ✗ |
@@ -410,6 +438,9 @@ profile was already read for every business read; `isOwnerIn` / `isManagerIn` re
 | Profile list (owner) | profile → profile | none |
 | Team directory `settings/team` (managers, #87) | profile | replaces the managers' profile list: **1 read** instead of one per profile; the owner's phone reads it once a session (when it reads the profiles) and rewrites it only when a name or role changed |
 | Business collections, notifications, drafts, auto-save, settings | profile → profile | none |
+| Worth accounts `settings/accounts` (#74), owner | profile | **+1 read** each time Money opens on Worth (this phone kept them in localStorage before) |
+| Worth accounts, manager with Money on | profile + `settings/app` | **+2 reads** (the doc, and `settings/app` in the rules) each time Money opens on Worth |
+| Worth accounts, member | not sent | none |
 | Withdrawals, owner | profile → profile | none |
 | Withdrawals, manager or member allowed by Roles & access | profile → profile + `settings/app` | **+1 read** per listener start, per change to the withdrawals it shows and per reconnect; +1 per older-history query |
 | Withdrawals, member without Money/Statements/Insights | listener + queries → not sent | **saves** the whole withdrawals window and older-history reads |
@@ -554,7 +585,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 
 | Collection | Create | Update | Delete |
 |---|---|---|---|
-| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date); withdrawals only by roles with **Money** (`finance`) on, the only page that records them (#64; managers by default, members not; +1 read of `settings/app`) | expenses: own for 24 h (some fields), managers any; withdrawals: managers with **Money** on (#64) | expenses: own for 24 h, managers; withdrawals: managers with **Money** on (#64) |
+| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date); withdrawals only by roles with **Money** (`finance`) on, the only page that records them (#64; managers by default, members not; +1 read of `settings/app`) | expenses: **void only** (#99, "Voided expenses"), never edited in place (an unconfirmed save sent again unchanged over its id, #153, is a no-op update its creator may write); withdrawals: managers with **Money** on (#64) | expenses: owner only (#99); withdrawals: managers with **Money** on (#64) |
 | `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
 | `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |
@@ -563,6 +594,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `itemFrequency` | approved user, `global` only (billing ranks items) | approved user: merges into `global.purchase` / `global.sale`, never removing an item | **owner** (#64) |
 | `stockCheckpoints` | `current`: managers (anyone approved: the stale mark); `legacyScan`: managers; no other ids, owner included | same | managers |
 | `settings/app` | owner | owner; managers only the Aadhat fields with `shopSettings` | owner |
+| `settings/accounts` (#74, Money › Worth accounts) | owner; managers with **Money** on: one account per write (`changedId`), `name` 1–40 characters, `balance` a whole number of rupees 0–10,000,000,000, `type` asset or liability, `updatedBy` = self, `updatedAt` = server time, at most 30 accounts (`worthAccountsWriteOk`) | same | **owner** |
 | other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
 | `users/{uid}/preferences` (never used by the app) | nobody (#64) | nobody | nobody |
 | bills (`purchases`, `retailSales`, `wholesaleSales`) | approved user, own `userId`, and `createdAt` = the server time (#115: every happa version sends it; the edit window counts from it) | see "Bill edit window" | owner |

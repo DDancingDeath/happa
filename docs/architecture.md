@@ -167,7 +167,7 @@ the migration. **Inline** = computed inside a page module.
 | ST2 | `business-metrics.moneySummary` for one month (modules/statements.js) | same |
 | M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M12, M13, M14, M16, M17 | `business-metrics.moneySummary`; M14 per day (Money › Cash chart) `business-metrics.netMoneyByDay`; per-₹100 display rounding `roundTo` | same |
 | M11 | `business-metrics.profitPerDay` + `month-snapshots.figuresFromSnapshot` | same |
-| M15 | `business-metrics.netWorth`, accounts term `business-metrics.accountsTotal` | same |
+| M15 | `business-metrics.netWorth`, accounts term `business-metrics.accountsTotal` (shared list `accountsList`, read and written by `firebase/repos/worth-accounts.js`, #74) | same |
 | M18 | `labour.labourToPayByDay`; more / less than M7 `labour.periodLabourGap` | same |
 | I1, I2 | `business-metrics.itemSummary`, split % `sharePct`; "vs last year" from snapshots `month-snapshots.snapshotItemSales` | same |
 | I3, I4 | `business-metrics.partySummary`, `stoppedComingCheck` | same |

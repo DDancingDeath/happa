@@ -34,8 +34,8 @@ export const col = (name) => {
     return prefix + name;
 };
 
-/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). 4: knows voided bills (#75). */
-export const CLIENT_VERSION = 4;
+/** Written on every stock-record write; firestore.rules rejects writes without it (blocks outdated apps). 4: knows voided bills (#75); 5: voided expenses (#99). */
+export const CLIENT_VERSION = 5;
 
 /**
  * `createdAt` of a new bill as written: the server time (firestore.rules

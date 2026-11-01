@@ -114,8 +114,10 @@
       "A5_payable": 5600, "A5_payableCount": 2, "A6_receivable": 253500, "A6_receivableCount": 6
     },
     "outstanding": {
-      "O1_payableByParty": { "Ram Lal": 600, "Old Supplier": 5000 }, "O2_receivableByParty": { "Sita": 250, "Kamla": 150, "Test Party A": 250000, "Test Party B": 100 },
-      "O3_payableTotal": 5600, "O4_receivableTotal": 250500
+      "O1_payableByParty": { "Ram Lal": 600, "Old Supplier": 5000 }, "O2_receivableByParty": { "Sita": 250, "Kamla": 150, "Test Party A": 250000, "Test Party B": 100, "Sharma Stores": 3000 },
+      "O3_payableTotal": 5600, "O4_receivableTotal": 253500,
+      "O2_retailByParty": { "Sita": 250, "Kamla": 150, "Test Party A": 250000, "Test Party B": 100 }, "O2_wholesaleByParty": { "Sharma Stores": 3000 },
+      "O4_retailTotal": 250500, "O4_wholesaleTotal": 3000
     },
     "drawer": {
       "C1_cashSales": 200, "C2_cashPurchases": 0, "C3_businessExpenses": 170, "C3_personalExpenses": 80,

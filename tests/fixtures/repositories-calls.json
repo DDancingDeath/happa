@@ -1012,7 +1012,7 @@
         "dueAmount": 200,
         "paidAt": 1792557000000,
         "openDue": true,
-        "clientVersion": 4
+        "clientVersion": 5
       }
     ],
     [
@@ -1119,7 +1119,7 @@
         "dueAmount": 400,
         "paidAt": 1792557000000,
         "openDue": true,
-        "clientVersion": 4
+        "clientVersion": 5
       }
     ]
   ],
@@ -1170,7 +1170,7 @@
         "paidAt": 1792557000000,
         "dueAmount": 0,
         "openDue": false,
-        "clientVersion": 4
+        "clientVersion": 5
       }
     ]
   ],
@@ -1535,7 +1535,7 @@
       {
         "year": "2026",
         "updatedAt": 1792557000000,
-        "clientVersion": 4,
+        "clientVersion": 5,
         "writtenAt": "SERVER_TIME"
       }
     ],
@@ -1579,7 +1579,7 @@
       "set",
       {
         "done": false,
-        "clientVersion": 4,
+        "clientVersion": 5,
         "writtenAt": "SERVER_TIME"
       },
       {
@@ -1624,7 +1624,7 @@
       {
         "month": "2026-07",
         "sales": 0,
-        "clientVersion": 4,
+        "clientVersion": 5,
         "writtenAt": "SERVER_TIME"
       }
     ],
@@ -1653,7 +1653,7 @@
       {
         "month": "2026-09",
         "sales": 5,
-        "clientVersion": 4,
+        "clientVersion": 5,
         "writtenAt": "SERVER_TIME"
       }
     ],
@@ -1711,7 +1711,7 @@
       {
         "month": "2026-10",
         "sales": 6,
-        "clientVersion": 4,
+        "clientVersion": 5,
         "writtenAt": "SERVER_TIME"
       }
     ],
@@ -1737,7 +1737,7 @@
       {
         "month": "2026-11",
         "sales": 6,
-        "clientVersion": 4,
+        "clientVersion": 5,
         "writtenAt": "SERVER_TIME"
       }
     ],

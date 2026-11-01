@@ -96,8 +96,8 @@ medium) with who voided it and the reason, and stays in the audit log.
 | On screen | How it is worked out |
 |---|---|
 | Purchase dues per party (O1) | Sum of the due on that supplier's purchases. |
-| Sale dues per party (O2) | Sum of the due on that customer's retail sales. Wholesale dues are on Wholesale › Outstanding. |
-| Payables / receivables totals (O3, O4) | Sum over all parties. |
+| Sale dues per party (O2) | Sum of the due on that customer's sales. Sales shows **All** (retail and wholesale), **Retail** or **Wholesale**; in All each bill has a Retail / Wholesale tag. Wholesale › Outstanding still lists the wholesale dues too. |
+| Payables / receivables totals (O3, O4) | Sum over all parties. The All total is the same as "To receive" on Money › Worth. |
 
 Recording a payment (DUE-CHECK): cash and online in whole rupees, never more than
 the due. Names match with case and extra spaces ignored (PARTY).
@@ -153,7 +153,7 @@ year (CMP; "not known" when that period's figures are not available).
 | Personal expenses, withdrawals (M8, M9) | Shown apart from profit. |
 | Kept in business (M10) | Profit − personal expenses − withdrawals. |
 | Money in / out / net (M12–M14) | Paid at save + due payments, and expenses; cash and online. |
-| Net worth (M15) | Stock value + to receive + other accounts + counted drawer cash − to pay. |
+| Net worth (M15) | Stock value + to receive + other accounts + counted drawer cash − to pay. Other accounts (bank, savings, loans) are the same on all your phones, in whole rupees; you and managers with Money add or remove them. Members don't see bank balances: their net worth leaves them out and says so. |
 | Purchases (M16) | Sum of purchase bill totals (after labour). |
 | Stock movement check (M17) | Opening stock value + purchases − cost of goods sold ± corrections = closing value. |
 

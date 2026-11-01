@@ -10,7 +10,7 @@
 
 import { can } from './role-access.js';
 import { parseAnyBillDate, toLocalISODate } from './dates.js';
-import { isOnlineExpense, round2 } from './money.js';
+import { activeExpenses, isOnlineExpense, round2 } from './money.js';
 
 export const PERSONAL_COLLECTION = 'personalExpenses';
 export const PERSONAL_DAYS_COLLECTION = 'personalExpenseDays';
@@ -73,7 +73,7 @@ export function dayDocTotals(doc) {
  */
 export function personalDaysFromRows(rows) {
     const out = {};
-    (Array.isArray(rows) ? rows : []).forEach(r => {
+    activeExpenses(rows).forEach(r => {
         const day = r?.day || personalDayKey(r?.date);
         if (!day || r?.id === undefined || r?.id === null) return;
         (out[day] = out[day] || {})[String(r.id)] = Number(r.amount) || 0;
@@ -89,7 +89,7 @@ export function personalDaysFromRows(rows) {
  */
 export function personalOnlineFromRows(rows) {
     const out = {};
-    (Array.isArray(rows) ? rows : []).forEach(r => {
+    activeExpenses(rows).forEach(r => {
         const day = r?.day || personalDayKey(r?.date);
         if (!day || r?.id === undefined || r?.id === null || !isOnlineExpense(r)) return;
         (out[day] = out[day] || {})[String(r.id)] = true;

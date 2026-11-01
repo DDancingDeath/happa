@@ -528,6 +528,7 @@ service cloud.firestore {
     // A queued offline record arrives later, so there is no lower bound.
     function validLedgerCreate() {
       return amountOk() && request.resource.data.get('userId', null) == request.auth.uid
+        && !request.resource.data.keys().hasAny(expenseVoidFields())
         && request.resource.data.get('timestamp', null) is number
         && request.resource.data.timestamp <= request.time.toMillis() + 600000;
     }
@@ -567,15 +568,53 @@ service cloud.firestore {
             && request.time < expenseDayStart(d.day) + duration.value(billEditDays(usersCol) + 4, 'd'));
     }
 
+    // Expenses are voided, never edited or deleted in place (#99): apart from the owner
+    // (repairs), only the legacy timestamp backfill changes one. A save this phone couldn't
+    // confirm, sent again over the same id (#153, miscellaneous.js pendingExpense), lands as
+    // an update that changes nothing: its creator may write it. A change is a void plus a
+    // new expense (replacesId); only the owner deletes.
     function canUpdateExpense(usersCol) {
       return legacyBackfillOnly()
-        || (isManagerIn(usersCol)
-            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk()))
-        || (createdByCaller() && withinEditWindow() && expenseEditOk());
+        || (createdByCaller() && request.resource.data.diff(resource.data).affectedKeys().size() == 0);
     }
 
     function canDeleteExpense(usersCol) {
-      return isManagerIn(usersCol) || resource == null || (createdByCaller() && withinEditWindow());
+      return resource == null;
+    }
+
+    // --- expense void (#99, as bills #75) ---
+
+    // A voided personal expense leaves its day total in the same write (personalExpenseDays).
+    function personalVoidLeavesDay(u, docId) {
+      let p = /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenseDays')/$(resource.data.get('day', '-'));
+      return !existsAfter(p) || !(docId in getAfter(p).data.get('amounts', {}));
+    }
+
+    function expenseVoidFields() {
+      return ['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'];
+    }
+
+    // The role's edit window (roleAccess.<role>.editDays, as bills) from the expense's
+    // `timestamp`, which validLedgerCreate keeps from running ahead of its creation.
+    function withinExpenseWindow(usersCol, role) {
+      let t = resource.data.get('timestamp', null);
+      return t is number && request.time.toMillis() < t + billEditDaysFor(usersCol, role) * 86400000;
+    }
+
+    // A void: only the void fields, by the caller at the server time, with a reason; the
+    // owner any expense, a manager any expense and a member their own, inside the role's
+    // edit window. A voided expense never changes again (canUpdateRecord).
+    function expenseVoidOk(usersCol, changed) {
+      let d = request.resource.data;
+      let role = get(profilePath(usersCol)).data.get('role', '');
+      return changed.hasOnly(expenseVoidFields())
+        && d.get('voided', false) == true
+        && d.get('voidedAt', null) == request.time
+        && d.get('voidedBy', null) == request.auth.uid
+        && reasonOk(d.get('voidReason', null))
+        && (!('voidedByName' in d) || (d.voidedByName is string && d.voidedByName.size() <= 200))
+        && (role == 'owner'
+            || ((role == 'manager' || createdByCaller()) && withinExpenseWindow(usersCol, role)));
     }
 
     // Stock adjustments: owner/manager record them (stock.js applyStockAdjustment; the
@@ -843,20 +882,24 @@ service cloud.firestore {
         && d.amounts.diff(before.get('amounts', {})).affectedKeys().hasOnly([d.last])
         && d.get('online', {}).diff(before.get('online', {})).affectedKeys().hasOnly([d.last])
         && personalDayKeyOk(u, docId, d,
-             /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenses')/$(d.last));
+             /databases/$(database)/documents/$((u == 'dev_users' ? 'dev_' : '') + 'personalExpenses')/$(d.last),
+             d.amounts.diff(before.get('amounts', {})).affectedKeys().size() == 0
+               && d.get('online', {}).diff(before.get('online', {})).affectedKeys().size() == 0);
     }
 
     // `online` flags an expense paid online (#118): set exactly when the expense's
     // paymentMode is 'online', so nobody can move a cash expense out of the drawer.
     // A removed expense may keep a stale flag (older apps don't clear it); it counts nowhere.
-    function personalDayKeyOk(u, docId, d, p) {
+    // `same`: the write changes no key (an unchanged re-send of a save, #153), always harmless.
+    function personalDayKeyOk(u, docId, d, p, same) {
       return d.last in d.amounts
-        ? existsAfter(p) && getAfter(p).data.get('amount', null) == d.amounts[d.last]
+        ? existsAfter(p) && getAfter(p).data.get('voided', false) != true
+          && getAfter(p).data.get('amount', null) == d.amounts[d.last]
           && getAfter(p).data.get('day', '') == docId
           && ((d.last in d.get('online', {}) && d.online[d.last] == true)
               == (getAfter(p).data.get('paymentMode', 'cash') == 'online'))
-          && (isManagerIn(u) || !exists(p) || get(p).data != getAfter(p).data)
-        : !existsAfter(p);
+          && (isManagerIn(u) || same || !exists(p) || get(p).data != getAfter(p).data)
+        : !existsAfter(p) || getAfter(p).data.get('voided', false) == true;
     }
 
     // Older apps tagged personal expenses in `expenses`, where every member reads them (#98).
@@ -877,7 +920,8 @@ service cloud.firestore {
           : base == 'withdrawals' ? validLedgerCreate() && moneyPageOn(u)
           : base == 'stockAdjustments' ? isManagerIn(u) && validAdjustmentCreate()
           : base == 'cashManagement' ? validCashCreate(docId)
-          // legacy cashSessions (backup only) and settings: owner only (#64)
+          // legacy cashSessions (backup only) and settings: owner only (#64), but settings/accounts (#74)
+          : base == 'settings' && docId == 'accounts' ? worthAccountsWriteOk(u)
           : base in ['cashSessions', 'settings'] ? false
           : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.keys())
           : base == 'counters' ? validCounterCreate()
@@ -895,14 +939,23 @@ service cloud.firestore {
     }
 
     function canUpdateRecord(base, u, docId) {
-      return base in billCollections() ? canUpdateBill(u, base, docId)
+      // settings first, on its own: the settings/app receipt check uses most of the 1,000-expression budget.
+      // settings/app is guarded in the match (appSettingsGuard / managerShopSettingsOk); other docs owner only
+      return base == 'settings' ? settingsReceiptOk() && settingsStampsOk(docId)
+          && (docId == 'app' || isOwnerIn(u) || (docId == 'accounts' && worthAccountsWriteOk(u)))
+        : base in billCollections() ? canUpdateBill(u, base, docId)
         : base in ['cashManagement', 'cashSessions'] && !cashStaysClosed() ? false
         : base == 'autoSaves' ? ownAutoSaveWrite(docId)
         : base == 'drafts' ? draftUpdateOk()
         : base == 'notifications' ? notificationReadOnly()
         : base == 'expenses' && personalTagged(request.resource.data) && !personalTagged(resource.data) ? false
         : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
-        : base == 'settings' && (!settingsReceiptOk() || !settingsStampsOk(docId)) ? false
+        // A voided expense never changes (owner included); a void is expenseVoidOk (#99)
+        : base in ['expenses', 'personalExpenses'] && resource.data.get('voided', false) == true ? false
+        : base in ['expenses', 'personalExpenses']
+          && request.resource.data.diff(resource.data).affectedKeys().hasAny(expenseVoidFields())
+          ? (base == 'expenses' || (personalOn(u) && personalVoidLeavesDay(u, docId)))
+            && expenseVoidOk(u, request.resource.data.diff(resource.data).affectedKeys())
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canUpdateExpense(u)
@@ -916,8 +969,6 @@ service cloud.firestore {
                  && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk())))
         : base == 'cashManagement' ? (cashAppendOk() || cashCloseOk() || cashLateCountOk())
         : base == 'cashSessions' ? false
-        // settings/app is guarded in the match (appSettingsGuard / managerShopSettingsOk); other docs owner only
-        : base == 'settings' ? docId == 'app'
         : base == 'items' ? isManagerIn(u) && itemFieldsOk(request.resource.data.diff(resource.data).affectedKeys())
         : base == 'counters' ? counterIncrementOk()
         : base == 'itemFrequency' ? itemFrequencyOk(docId)
@@ -1046,7 +1097,8 @@ service cloud.firestore {
           : base == 'autoSaves' ? docId == request.auth.uid
           // settings/team: names and roles of the team (owner-written) for managers' App health
           // and notification fan-out, so they never read other profiles (#87)
-          : base == 'settings' ? single && (docId == 'app' || (docId == 'team' && isManagerIn(u)))
+          : base == 'settings' ? single && (docId == 'app' || (docId == 'team' && isManagerIn(u))
+              || (docId == 'accounts' && isManagerIn(u) && moneyPageOn(u)))
           : base == 'withdrawals' ? roleSeesMoneyPages(u)
           : base == 'personalExpenses' ? personalOn(u)
           : base == 'cashSessions' ? isManagerIn(u)
@@ -1076,6 +1128,35 @@ service cloud.firestore {
       let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
       let r = access is map ? access.get(role, {}) : {};
       return (r is map ? r : {}).get('finance', role == 'manager') == true;
+    }
+
+    // Money › Worth accounts (settings/accounts, #74): one doc shared by every phone,
+    // { accounts: { <id>: { name, balance, type } }, updatedAt, updatedBy, changedId }; read by the owner and managers with Money on
+    // (canReadRecord). The owner writes anything (moving one phone's accounts in one write);
+    // a manager with Money on adds, changes or removes one account per write (named in changedId),
+    // in whole rupees.
+    function worthAccountOk(a) {
+      return a is map
+        && a.keys().hasOnly(['name', 'balance', 'type']) && a.keys().hasAll(['name', 'balance', 'type'])
+        && a.name is string && a.name.size() > 0 && a.name.size() <= 40
+        && a.balance is int && a.balance >= 0 && a.balance <= 10000000000
+        && a.type in ['asset', 'liability'];
+    }
+
+    function worthAccountsWriteOk(usersCol) {
+      let d = request.resource.data;
+      let after = d.get('accounts', {});
+      let before = resource == null ? {} : resource.data.get('accounts', {});
+      let id = d.get('changedId', '');
+      return isManagerIn(usersCol) && moneyPageOn(usersCol)
+        && d.keys().hasOnly(['accounts', 'updatedAt', 'updatedBy', 'changedId'])
+        && d.get('updatedBy', null) == request.auth.uid
+        && d.get('updatedAt', null) == request.time
+        && id is string && id.size() > 0
+        && after is map && before is map
+        && after.diff(before).affectedKeys().hasOnly([id])
+        && after.size() <= 30
+        && (!(id in after) || worthAccountOk(after[id]));
     }
 
     // --- stock checkpoint (stockCheckpoints/current) ---
@@ -2363,6 +2444,8 @@ service cloud.firestore {
       let d = request.resource.data;
       return isManagerIn(usersCol)
         && voidAwareWriter()
+        // Month figures include expenses: built only by an app that knows voided expenses (#99)
+        && d.get('clientVersion', 0) >= 5
         && docId.matches('^[0-9]{4}-(0[1-9]|1[0-2])$')
         && d.keys().hasOnly(['month', 'v', 'm', 'items', 'customers', 'suppliers', 'categories', 'days', 'builtAt', 'stale', 'staleAt', 'clientVersion', 'writtenAt'])
         && d.keys().hasAll(['month', 'v', 'm'])

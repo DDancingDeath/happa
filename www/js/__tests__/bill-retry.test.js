@@ -42,7 +42,7 @@ const doc = () => fake.raw('purchases').get('p1');
 test('first save creates the bill', async () => {
     const saved = await FirebaseService.savePurchase(bill(), { retry: false });
     expect(fake.raw('purchases').size).toBe(1);
-    expect(doc()).toMatchObject({ dueAmount: 60, payment: { due: 60, cash: 40 }, openDue: true, clientVersion: 4 });
+    expect(doc()).toMatchObject({ dueAmount: 60, payment: { due: 60, cash: 40 }, openDue: true, clientVersion: 5 });
     expect(FirebaseService.keptServerPayment(saved)).toBe(false);
 });
 

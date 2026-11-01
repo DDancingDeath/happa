@@ -142,7 +142,7 @@ describe('the stale mark on a late save, edit or delete', () => {
 describe('the guarded rebuild write', () => {
     const doc = { month: '2026-05', v: 1, m: { M1: 1000 }, builtAt: NOW };
     // as stored: stamped by an app that knows voided bills (#75)
-    const written = { ...doc, clientVersion: 4, writtenAt: NOW };
+    const written = { ...doc, clientVersion: 5, writtenAt: NOW };
 
     test('replaces the stale mark it saw; keeps a newer mark; skips a month already rebuilt', async () => {
         fake.seed('monthStats', [{ id: '2026-05', month: '2026-05', v: 1, m: { M1: 900 }, stale: true, staleAt: 5 }]);

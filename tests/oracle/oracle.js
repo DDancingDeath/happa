@@ -61,13 +61,15 @@ const inRange = (t, [from, to]) => t >= from && t < to;
 export const isOpening = (bill) => !!bill && typeof bill.openingBalance === 'object' && bill.openingBalance !== null;
 
 /**
- * VOID (#75): a voided bill (`voided: true`) is as if it had never been saved. Every
- * oracle function takes data without them: callers pass withoutVoided(data).
+ * VOID (#75) / VOID-EXP (#99): a voided bill or expense (`voided: true`) is as if it had
+ * never been saved. Every oracle function takes data without them: callers pass withoutVoided(data).
  */
 export const isVoided = (bill) => !!bill && bill.voided === true;
 export function withoutVoided(data) {
     const keep = (list) => (list || []).filter(b => !isVoided(b));
-    return { ...data, purchases: keep(data.purchases), wholesaleSales: keep(data.wholesaleSales), retailSales: keep(data.retailSales) };
+    const out = { ...data, purchases: keep(data.purchases), wholesaleSales: keep(data.wholesaleSales), retailSales: keep(data.retailSales), expenses: keep(data.expenses) };
+    if (Array.isArray(data.personalExpenses)) out.personalExpenses = keep(data.personalExpenses);
+    return out;
 }
 /** Bills that are activity in a period (opening records left out). */
 const activity = (list) => (list || []).filter(b => !isOpening(b));
@@ -641,8 +643,23 @@ export function lastCountedCash(sessions) {
 }
 
 /**
- * M15 net worth: stock value (S4) + to receive (O4) + other accounts (owner-entered,
- * liabilities negative) + last counted drawer cash (C9) − to pay (O3).
+ * M15 "other accounts" term (#74): the shared list in settings/accounts (the same on
+ * every phone), each balance in whole rupees, liabilities negative.
+ * @param {?Object<string, {balance: *, type?: string}>} map settings/accounts `accounts`
+ */
+export function otherAccounts(map) {
+    let total = 0;
+    for (const a of Object.values(map || {})) {
+        if (!a || !String(a.name ?? '').trim()) continue;
+        const b = Math.round(n(a.balance));
+        total += a.type === 'liability' ? -b : b;
+    }
+    return total;
+}
+
+/**
+ * M15 net worth: stock value (S4) + to receive (O4) + other accounts (shared,
+ * owner-entered, liabilities negative; otherAccounts) + last counted drawer cash (C9) − to pay (O3).
  */
 export function netWorth(data, { accounts = 0, drawer = 0 } = {}) {
     const d = dueTotals(data);
@@ -731,7 +748,11 @@ export function dueTotals(data) {
 
 // ---------------------------------------------------------------- Outstanding (O*)
 
-/** O1–O4: open dues per party and in total. Receivable = retail only until #130 decides. */
+/**
+ * O1–O4: open dues per party and in total. Receivables (O2, O4) are retail and wholesale
+ * sales together (#125: Outstanding's "All" sales list, the same total as Money's "to receive");
+ * O2_retail / O2_wholesale and O4_retail / O4_wholesale are its Retail and Wholesale lists.
+ */
 export function outstanding(data) {
     const byParty = (bills) => {
         const out = {};
@@ -739,9 +760,14 @@ export function outstanding(data) {
         return out;
     };
     const payable = byParty(data.purchases || []);
-    const receivable = byParty(data.retailSales || []);
+    const receivable = byParty([...(data.retailSales || []), ...(data.wholesaleSales || [])]);
+    const retail = byParty(data.retailSales || []);
+    const wholesale = byParty(data.wholesaleSales || []);
     const total = (o) => r2(Object.values(o).reduce((a, b) => a + b, 0));
-    return { O1_payableByParty: payable, O2_receivableByParty: receivable, O3_payableTotal: total(payable), O4_receivableTotal: total(receivable) };
+    return {
+        O1_payableByParty: payable, O2_receivableByParty: receivable, O3_payableTotal: total(payable), O4_receivableTotal: total(receivable),
+        O2_retailByParty: retail, O2_wholesaleByParty: wholesale, O4_retailTotal: total(retail), O4_wholesaleTotal: total(wholesale)
+    };
 }
 
 // ---------------------------------------------------------------- Cash drawer (C*)

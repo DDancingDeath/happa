@@ -293,6 +293,15 @@ current and last month's snapshots (2 writes, version 2). Older month
 snapshots stay in use: no bill was voided before #196, and rc1 can't write
 them any more.
 
+**After the next RC: lock out rc2 (`minClientVersion: 5`).** rc2 (and any APK
+built before #99) writes `clientVersion: 4` and doesn't know voided expenses:
+its Today, cash drawer and Money still count a voided expense, a cash day it
+closes is counted against that, and it can no longer edit or delete expenses
+(the server refuses it). The rules refuse month snapshots (`monthStats`, which
+hold expense totals) below version 5, so rc2 can't write a wrong month. Same
+steps as above: tag the next RC from a main that has #99, have every tester
+install it, then set `minClientVersion: 5` on `settings/app`.
+
 ## 12. Install on the phones
 
 On each phone, open `https://myhappa.web.app/download`, download `happa.apk`

@@ -82,7 +82,8 @@ function loadAppState() {
     AppState.salesHistory = withVoided(copy(FIX.wholesaleSales));
     AppState.retailSalesHistory = withVoided(copy(FIX.retailSales));
     AppState.stockAdjustments = copy(FIX.stockAdjustments);
-    AppState.expensesHistory = copy(FIX.expenses);
+    // Voided expenses (#99) count nowhere either
+    AppState.expensesHistory = withVoided(copy(FIX.expenses));
     AppState.withdrawalsHistory = copy(FIX.withdrawals);
     AppState.historyLoadedFrom = 0;
     AppState.userRole = 'owner';
@@ -350,8 +351,9 @@ describe('Money page (all time) == oracle', () => {
         setInsightsContext({ preset: 'all' });
         document.body.innerHTML = TEMPLATE;
         document.getElementById('money').classList.add('active');
-        Object.assign(MoneyManager, { snapshots: {}, snapshotsLoaded: true, sessionCache: new Map(), drawerCache: null });
+        Object.assign(MoneyManager, { snapshots: {}, snapshotsLoaded: true, sessionCache: new Map(), drawerCache: null, sharedAccounts: { state: 'idle', list: null, map: null } });
         jest.spyOn(FirebaseService, 'loadCashSessionsBetween').mockResolvedValue([]);
+        jest.spyOn(FirebaseService, 'loadWorthAccounts').mockResolvedValue({});
     });
 
     test('Profit: M1, M2, M3, M6, M16', () => {
@@ -384,11 +386,17 @@ describe('Money page (all time) == oracle', () => {
         expect(Object.fromEntries(terms.filter(([id]) => ['S4', 'O3', 'O4'].includes(id)).map(([id, v]) => [id, Math.abs(v)])))
             .toEqual({ S4: rupee(O.stockReplay(data).closing), O3: rupee(dues.payable), O4: rupee(dues.receivable) });
     });
-    test('Worth: other accounts (M15 term) = assets − liabilities', () => {
-        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Bank', balance: 2500.4, type: 'asset' }, { name: 'Loan', balance: 1000, type: 'liability' }]));
+    test('Worth: other accounts (M15 term) = the shared assets − liabilities (#74), and M15 uses them', async () => {
+        const shared = { a1: { name: 'Bank', balance: 2500, type: 'asset' }, a2: { name: 'Loan', balance: 1000, type: 'liability' }, a3: { name: 'FD', balance: 700.6, type: 'asset' } };
+        FirebaseService.loadWorthAccounts.mockResolvedValue(shared);
+        // the accounts saved on this phone before #74 no longer count
+        localStorage.setItem('financeCustomAccounts', JSON.stringify([{ name: 'Phone', balance: 99999, type: 'asset' }]));
         MoneyManager.init('worth');
+        for (let i = 0; i < 6; i += 1) await Promise.resolve();
         const row = [...document.querySelectorAll('#moneyWorthTerms .ins-row')].find(el => el.querySelector('[data-input]'));
-        expect(Number(row.querySelector('[data-input]').textContent.replace(/[^\d.-]/g, ''))).toBe(rupee(2500.4 - 1000));
+        expect(Number(row.querySelector('[data-input]').textContent.replace(/[^\d.-]/g, ''))).toBe(O.otherAccounts(shared));
+        expect(O.otherAccounts(shared)).toBe(2201);
+        expect(shown('moneyWorthValue')).toBe(rupee(O.netWorth(data, { accounts: O.otherAccounts(shared) })));
         localStorage.removeItem('financeCustomAccounts');
     });
 });
@@ -463,9 +471,27 @@ describe('Outstanding screen == oracle', () => {
         return { byParty, total };
     }
     test('O1 payable per party', () => expect(screen('purchase').byParty).toEqual(want.O1_payableByParty));
-    test('O2 receivable per party (retail)', () => expect(screen('sale').byParty).toEqual(want.O2_receivableByParty));
+    test('O2 receivable per party (All: retail and wholesale, #125)', () => expect(screen('sale').byParty).toEqual(want.O2_receivableByParty));
     test('O3 payable total (aging panel)', () => expect(screen('purchase').total).toBe(rupee(want.O3_payableTotal)));
-    test('O4 receivable total (aging panel)', () => expect(screen('sale').total).toBe(rupee(want.O4_receivableTotal)));
+    test('O4 receivable total (aging panel) = Money\'s "to receive" (#125)', () => {
+        expect(screen('sale').total).toBe(rupee(want.O4_receivableTotal));
+        expect(want.O4_receivableTotal).toBe(O.dueTotals(data).receivable);
+    });
+    test('Retail and Wholesale lists (#125): their parties and totals, adding up to All', () => {
+        const retail = screen('retail');
+        const wholesale = screen('wholesale');
+        expect(retail.byParty).toEqual(want.O2_retailByParty);
+        expect(wholesale.byParty).toEqual(want.O2_wholesaleByParty);
+        expect(retail.total).toBe(rupee(want.O4_retailTotal));
+        expect(wholesale.total).toBe(rupee(want.O4_wholesaleTotal));
+        expect(O.r2(want.O4_retailTotal + want.O4_wholesaleTotal)).toBe(want.O4_receivableTotal);
+    });
+    test('a role without Wholesale sees retail dues only, and no Retail / Wholesale choice', () => {
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess: { staff: { wholesale: false } } };
+        expect(screen('sale').byParty).toEqual(want.O2_retailByParty);
+        expect(screen('wholesale').byParty).toEqual(want.O2_retailByParty);
+    });
 });
 
 // ------------------------------------------------------------------ Cash drawer

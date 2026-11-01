@@ -7,7 +7,7 @@
  */
 
 import { billsInRange } from './finance-calc.js';
-import { activeBills, activityBills, billLabour, billTotal, isOpeningRecord, isOnlineExpense, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
+import { activeBills, activeExpenses, activityBills, billLabour, billTotal, isOpeningRecord, isOnlineExpense, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
 import { saleTimePayment, entryParts, entryTime, dueEvents } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayWithValues, eventTime } from './stock-replay.js';
 import { normalizePartyName } from './aging.js';
@@ -46,7 +46,7 @@ export function dayBook(src, { from, to }, { personal = true, sessions = [] } = 
     addBills(src.purchases, 'purchase');
     addBills(src.retailSales, 'retail');
     addBills(src.wholesaleSales, 'wholesale');
-    (src.expenses || []).forEach(e => {
+    activeExpenses(src.expenses).forEach(e => {
         const t = recTime(e);
         if (t === null || t < from || t >= to) return;
         if (!personal && isPersonalExpense(e)) return;

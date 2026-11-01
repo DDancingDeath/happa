@@ -136,10 +136,14 @@
             <div class="ins-card">
                 <h3 class="ins-card-title" data-i18n="ui.money.other_accounts">Bank, savings and other accounts</h3>
                 <div class="ins-list" data-input id="moneyAccounts"></div>
-                <p class="ins-hint" data-i18n="ui.money.accounts_this_phone">Saved on this phone only. Your other phones don't see these accounts.</p>
-                <div class="ins-form ins-inline">
-                    <input type="text" id="moneyAccName" class="form-control" placeholder="Name" data-i18n-placeholder="ui.money.acc_name">
-                    <input type="number" inputmode="decimal" id="moneyAccBalance" class="form-control" placeholder="Balance" data-i18n-placeholder="ui.money.acc_balance">
+                <p class="ins-hint" data-i18n="ui.money.accounts_shared">The same on all your phones. Balances in whole rupees.</p>
+                <div id="moneyAccountsMove" hidden>
+                    <p id="moneyAccountsMoveText"></p>
+                    <button type="button" class="btn btn-secondary" onclick="window.app.money.useThisPhonesAccounts()" data-i18n="ui.money.accounts_use_phone">Use this phone's accounts for all phones</button>
+                </div>
+                <div class="ins-form ins-inline" id="moneyAccForm" hidden>
+                    <input type="text" id="moneyAccName" class="form-control" maxlength="40" placeholder="Name" data-i18n-placeholder="ui.money.acc_name">
+                    <input type="number" inputmode="numeric" min="0" step="1" id="moneyAccBalance" class="form-control" placeholder="Balance" data-i18n-placeholder="ui.money.acc_balance">
                     <select id="moneyAccType" class="form-control">
                         <option value="asset" data-i18n="ui.money.acc_have">I have this</option>
                         <option value="liability" data-i18n="ui.money.acc_owe">I owe this</option>

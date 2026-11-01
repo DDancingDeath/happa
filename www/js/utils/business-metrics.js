@@ -11,7 +11,7 @@
  */
 
 import { computeFinanceSummary, billsInRange, profitByDay } from './finance-calc.js';
-import { activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
+import { activeExpenses, activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
 import { eventTime, createItemKeyResolver } from './stock-replay.js';
 import { parseAnyBillDate, toLocalISODate } from './dates.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
@@ -282,7 +282,7 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
  */
 export function expenseCategories(expenses, from, to) {
     const out = new Map();
-    (expenses || []).forEach(e => {
+    activeExpenses(expenses).forEach(e => {
         if (isPersonalExpense(e)) return;
         const t = recordTime(e?.date);
         const ok = t !== null ? inRange(t, from, to) : from === -Infinity && to === Infinity;
@@ -770,13 +770,15 @@ export function netMoneyByDay(detail, dayKeys) {
 /**
  * M15 net worth = the chosen terms − payables (#39 default: stock + receivable
  * + other accounts + drawer cash − payable). Each due counted once.
- * @param {{stock: ?number, receivable: number, payable: number, accounts: number, drawer: ?number}} t
+ * @param {{stock: ?number, receivable: number, payable: number, accounts: ?number, drawer: ?number}} t
+ *   accounts null = the shared accounts (#74) are not loaded yet
  * @param {typeof INSIGHTS_DEFAULTS} [cfg]
- * @returns {?number} null when the stock value isn't known
+ * @returns {?number} null when the stock value or the accounts aren't known
  */
 export function netWorth(t, cfg = INSIGHTS_DEFAULTS) {
     const terms = cfg.netWorthTerms;
     if (terms.includes('stock') && (t.stock === null || t.stock === undefined)) return null;
+    if (terms.includes('accounts') && t.accounts === null) return null;
     let v = -num(t.payable);
     if (terms.includes('stock')) v += num(t.stock);
     if (terms.includes('receivable')) v += num(t.receivable);
@@ -792,6 +794,86 @@ export function netWorth(t, cfg = INSIGHTS_DEFAULTS) {
  */
 export function accountsTotal(accounts) {
     return round2((accounts || []).reduce((a, x) => a + (x.type === 'liability' ? -1 : 1) * (Number(x.balance) || 0), 0));
+}
+
+/** Most accounts the shared list keeps (firestore.rules: settings/accounts). */
+export const MAX_WORTH_ACCOUNTS = 30;
+const ACCOUNT_NAME_MAX = 40;
+const ACCOUNT_BALANCE_MAX = 1e10;
+
+/**
+ * The shared id of an account (#74): a hash of its name (case and spaces ignored),
+ * so saving a name again on any phone replaces that account.
+ * @param {string} name
+ * @returns {string} "a" + 8 hex digits (safe as a Firestore field name)
+ */
+export function accountId(name) {
+    const key = String(name ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+    let h = 0x811c9dc5;
+    for (let i = 0; i < key.length; i += 1) {
+        h ^= key.charCodeAt(i);
+        h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return `a${h.toString(16).padStart(8, '0')}`;
+}
+
+/**
+ * One account as stored in settings/accounts (#74), or null when the input is not
+ * valid: a name (1–40 characters) and a balance of 0 or more, kept in whole rupees.
+ * @param {{name: *, balance: *, type?: string}} input
+ * @returns {?{id: string, entry: {name: string, balance: number, type: 'asset'|'liability'}}}
+ */
+export function accountEntry({ name, balance, type } = {}) {
+    const n = String(name ?? '').trim().replace(/\s+/g, ' ');
+    const b = Math.round(Number(balance)) + 0; // + 0: no -0 (a decimal in Firestore)
+    if (!n || n.length > ACCOUNT_NAME_MAX || balance === '' || balance === null || !Number.isFinite(b) || b < 0 || b > ACCOUNT_BALANCE_MAX) return null;
+    return { id: accountId(n), entry: { name: n, balance: b, type: type === 'liability' ? 'liability' : 'asset' } };
+}
+
+/**
+ * The shared accounts map as a list for the screen and accountsTotal, sorted by
+ * name; balances in whole rupees (#74), unreadable entries dropped.
+ * @param {?Object<string, {name: *, balance: *, type?: string}>} map
+ * @returns {Array<{id: string, name: string, balance: number, type: 'asset'|'liability'}>}
+ */
+export function accountsList(map) {
+    if (!map || typeof map !== 'object') return [];
+    return Object.entries(map)
+        .filter(([, a]) => a && typeof a === 'object' && String(a.name ?? '').trim())
+        .map(([id, a]) => ({ id, name: String(a.name).trim(), balance: Math.round(Number(a.balance) || 0), type: a.type === 'liability' ? 'liability' : 'asset' }))
+        .sort((x, y) => x.name.localeCompare(y.name) || x.id.localeCompare(y.id));
+}
+
+/**
+ * The accounts saved on this phone before #74 (localStorage), as a shared map for
+ * the owner's one-tap move. Names are cut to 40 characters; names that differ only
+ * in case or spacing become one account with their total (a negative balance meant
+ * the other side); accounts that can't be moved (no name, unreadable or too large
+ * balance, more than 30) are returned in `skipped`, to stay on the phone.
+ * @param {Array<{name: *, balance: *, type?: string}>} list
+ * @returns {{map: Object<string, {name: string, balance: number, type: string}>, skipped: Array<Object>}}
+ */
+export function accountsFromPhone(list) {
+    const groups = new Map();
+    const skipped = [];
+    (Array.isArray(list) ? list : []).forEach(a => {
+        const name = String(a?.name ?? '').trim().replace(/\s+/g, ' ').slice(0, ACCOUNT_NAME_MAX).trim();
+        const b = Number(a?.balance);
+        if (!name || a?.balance === '' || a?.balance === null || !Number.isFinite(b)) { if (a) skipped.push(a); return; }
+        const id = accountId(name);
+        const g = groups.get(id) || { name, total: 0, items: [] };
+        g.total += (a.type === 'liability' ? -1 : 1) * b;
+        g.items.push(a);
+        groups.set(id, g);
+    });
+    const map = {};
+    groups.forEach((g, id) => {
+        const total = Math.round(g.total);
+        const e = accountEntry({ name: g.name, balance: Math.abs(total), type: total < 0 ? 'liability' : 'asset' });
+        if (e && Object.keys(map).length < MAX_WORTH_ACCOUNTS) map[id] = e.entry;
+        else skipped.push(...g.items);
+    });
+    return { map, skipped };
 }
 
 // ------------------------------------------------------------------ Drivers (I6)
