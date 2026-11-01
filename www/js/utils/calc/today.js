@@ -6,7 +6,7 @@
  * @module utils/calc/today
  */
 
-import { activityBills, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, round2 } from '../money.js';
+import { activeExpenses, activityBills, billTotal, isOnlineExpense, isPersonalExpense, outstandingDue, round2 } from '../money.js';
 import { endOfLocalDayExclusive, parseAnyBillDate, startOfLocalDay } from '../dates.js';
 import { dueEvents, paymentBreakdown, saleTimePayment, sumDueEvents } from '../due-payments.js';
 import { labourGap, labourSummary } from '../labour.js';
@@ -107,7 +107,7 @@ export function todaySummary({ bills = {}, expenses = [], personalDay = null, se
     const wholesaleBills = activityBills(bills.wholesale).filter(onDay);
     const retailBills = activityBills(bills.retail).filter(onDay);
     const saleBills = [...wholesaleBills, ...retailBills];
-    const dayExpenses = (expenses || []).filter(onDay);
+    const dayExpenses = activeExpenses(expenses).filter(onDay);
 
     const purchases = sumOf(purchaseBills, billTotal);
     const sales = sumOf(wholesaleBills, billTotal) + sumOf(retailBills, billTotal);

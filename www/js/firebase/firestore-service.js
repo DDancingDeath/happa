@@ -10,7 +10,7 @@
 import { AppState } from '../utils/state.js';
 import { APP_CONFIG } from '../utils/constants.js';
 import { Helpers } from '../utils/helpers.js';
-import { isActiveBill, isOnlineExpense, outstandingDue } from '../utils/money.js';
+import { isActiveBill, isActiveExpense, isOnlineExpense, outstandingDue } from '../utils/money.js';
 import { billEditChanges, cleanReason, editCountOf, editRecord, hasEditChanges, nextEditNumber, voidBlocker } from '../utils/bill-edits.js';
 import { localISODaysAgo, parseAnyBillDate } from '../utils/dates.js';
 import { planNotificationDocs, newEventId } from '../utils/notification-format.js';
@@ -310,10 +310,10 @@ const HISTORY_COLLECTIONS = [
         views: ['billingDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
     { key: 'wholesaleSales', stateKey: 'salesHistory', label: 'Sales', stock: true, dues: true,
         views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
-    { key: 'expenses', stateKey: 'expensesHistory', label: 'Expenses',
+    { key: 'expenses', stateKey: 'expensesHistory', label: 'Expenses', voidable: true,
         views: ['expensesHistory', 'money', 'insights', 'statements', 'today'] },
     // Shares AppState.expensesHistory with `expenses` (publishCollection merges them, #98)
-    { key: 'personalExpenses', stateKey: 'expensesHistory', label: 'Personal expenses', optional: true, timestamped: true,
+    { key: 'personalExpenses', stateKey: 'expensesHistory', label: 'Personal expenses', optional: true, timestamped: true, voidable: true,
         views: ['expensesHistory', 'money', 'insights', 'statements', 'today'] },
     { key: 'stockAdjustments', stateKey: 'stockAdjustments', label: 'Stock adjustments', stock: true,
         views: ['stockAdjustmentHistory', 'stockView', 'money', 'insights', 'statements'] },
@@ -484,8 +484,8 @@ function publishCollection(c) {
     const voided = [];
     merged.forEach(rec => {
         if (rec.date === undefined) return;
-        // Voided bills (#75) never reach AppState's bill lists, so no figure counts them; History asks for them.
-        if (c.spec.dues && !isActiveBill(rec)) voided.push(rec);
+        // Voided bills (#75) and expenses (#99) never reach AppState's lists, so no figure counts them; History / Expenses ask for them.
+        if ((c.spec.dues || c.spec.voidable) && !isActiveBill(rec)) voided.push(rec);
         else list.push(rec);
     });
     list.sort(byDateDesc);
@@ -777,6 +777,20 @@ function noteMonthWrite(collKey, oldRec, newRec) {
         console.error('Month snapshot stale mark failed:', e);
         return Promise.resolve([]);
     }
+}
+
+/**
+ * Puts this device's version of a live record in its listener's list at once
+ * (a void: published lists drop it before the listener's own update arrives).
+ * @private
+ */
+function replaceLiveRecord(collKey, docId, record) {
+    const docs = windowState?.colls?.[collKey]?.live?.docs;
+    const i = docs ? docs.findIndex(r => docIdOf(r) === String(docId)) : -1;
+    if (i === -1) return;
+    const rec = { ...record };
+    docIds.set(rec, String(docId));
+    docs[i] = rec;
 }
 
 /** Finds the in-memory version of a history record by document id or `id` field. */
@@ -2948,6 +2962,66 @@ const FirebaseService = {
             if (prev) noteLocalRecordWrite('expenses', ref.id, { ...prev, ...fields });
             noteMonthWrite('expenses', prev, prev ? { ...prev, ...fields } : fields);
         });
+    },
+
+    /**
+     * Voids an expense (#99): never edited or deleted in place. One transaction
+     * sets voided, voidedAt (server time), voidedBy, voidedByName and voidReason;
+     * a personal expense also leaves its day total (personalExpenseDays) in the
+     * same write. From then on it counts in no figure (money.isActiveExpense):
+     * it leaves AppState.expensesHistory (voidedExpenses() lists it). Needs a
+     * connection. Throws with `code` 'reason-required' | 'not-found' | 'already-voided'.
+     * @param {string|number} expenseId
+     * @param {string} reason
+     * @returns {Promise<Object>} the voided expense
+     */
+    async voidExpense(expenseId, reason) {
+        const why = cleanReason(reason);
+        if (!why) throw Object.assign(new Error('A reason is needed to void an expense'), { code: 'reason-required' });
+        const where = locateExpense(expenseId);
+        const collKey = where.collKey;
+        const previous = where.rec || findRecord(collKey, expenseId);
+        let docId = previous ? docIdOf(previous) : where.docId;
+        if (!previous && collKey === 'expenses' && /^\d+$/.test(String(expenseId))) {
+            // Old-app rows carry a numeric `id` field, not their document id
+            const snap = await getWithRetry(getDb().collection(col('expenses')).where('id', '==', Number(expenseId)), 'Expense lookup');
+            if (snap.empty) throw Object.assign(new Error('Expense not found'), { code: 'not-found' });
+            docId = snap.docs[0].id;
+        }
+        const ref = getDb().collection(col(collKey)).doc(String(docId));
+        const fields = {
+            voided: true,
+            voidedAt: serverCreatedAt(),
+            voidedBy: AppState.currentUser?.uid || null,
+            voidedByName: String(AppState.userName || '').slice(0, 200),
+            voidReason: why
+        };
+        let stored = null;
+        await getDb().runTransaction(async tx => {
+            const snap = await tx.get(ref);
+            if (!snap.exists) throw Object.assign(new Error('Expense not found'), { code: 'not-found' });
+            stored = snap.data();
+            if (!isActiveExpense(stored)) throw Object.assign(new Error('This expense is already voided'), { code: 'already-voided' });
+            tx.update(ref, fields);
+            const day = collKey === 'personalExpenses' ? personalDayOf(stored) : null;
+            if (day) tx.set(...personalDayWrite(day, String(docId), null));
+        });
+        const voided = { ...stored, ...fields, id: previous?.id ?? stored.id ?? docId, voidedAt: Date.now() };
+        docIds.set(voided, String(docId));
+        noteMonthWrite(collKey, previous || stored, null);
+        if (collKey === 'personalExpenses') personalDayCache.delete(personalDayOf(stored));
+        replaceLiveRecord(collKey, docId, voided);
+        noteLocalRecordWrite(collKey, docId, voided);
+        return voided;
+    },
+
+    /**
+     * Voided expenses loaded (business and personal), newest first; kept out of
+     * AppState.expensesHistory so no figure counts them (#99).
+     * @returns {Array<Object>}
+     */
+    voidedExpenses() {
+        return [...voidedOf('expenses'), ...voidedOf('personalExpenses')].sort(byDateDesc);
     },
 
     /**

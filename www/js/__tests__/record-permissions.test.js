@@ -1,29 +1,32 @@
-import { canChangeExpense, canDeleteItem, isPermissionDenied, MEMBER_EDIT_WINDOW_MS } from '../utils/record-permissions.js';
+import { canDeleteItem, isPermissionDenied } from '../utils/record-permissions.js';
+import { canVoidExpenseWith } from '../utils/role-access.js';
 import { buildTelemetryDoc, mergeTelemetryReports } from '../services/telemetry.js';
 
 const NOW = 1_800_000_000_000;
 
-describe('canChangeExpense (mirrors firestore.rules, #18)', () => {
+describe('canVoidExpenseWith (mirrors firestore.rules expenseVoidOk, #99)', () => {
+    const DAY = 24 * 60 * 60 * 1000;
     const own = { userId: 'u1', timestamp: NOW - 60 * 60 * 1000 };
 
-    test('owner and manager may change any expense, however old', () => {
-        const old = { userId: 'u2', timestamp: NOW - 90 * MEMBER_EDIT_WINDOW_MS };
-        expect(canChangeExpense(old, { uid: 'o', role: 'owner', now: NOW })).toBe(true);
-        expect(canChangeExpense(old, { uid: 'm', role: 'manager', now: NOW })).toBe(true);
+    test('owner any expense, however old; never one already voided', () => {
+        expect(canVoidExpenseWith({ userId: 'u2', timestamp: NOW - 400 * DAY }, { uid: 'o', role: 'owner', now: NOW })).toBe(true);
+        expect(canVoidExpenseWith({ ...own, voided: true }, { uid: 'o', role: 'owner', now: NOW })).toBe(false);
     });
 
-    test('a member may change only their own expense within 24 hours', () => {
-        expect(canChangeExpense(own, { uid: 'u1', role: 'staff', now: NOW })).toBe(true);
-        expect(canChangeExpense(own, { uid: 'u2', role: 'staff', now: NOW })).toBe(false);
-        expect(canChangeExpense({ ...own, timestamp: NOW - MEMBER_EDIT_WINDOW_MS - 1 }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
-        expect(canChangeExpense({ ...own, timestamp: NOW + MEMBER_EDIT_WINDOW_MS + 1 }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+    test('manager any expense, member only their own, inside the role edit window (default 2 days)', () => {
+        const others = { userId: 'u2', timestamp: NOW - DAY };
+        expect(canVoidExpenseWith(others, { uid: 'm', role: 'manager', now: NOW })).toBe(true);
+        expect(canVoidExpenseWith(others, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+        expect(canVoidExpenseWith(own, { uid: 'u1', role: 'staff', now: NOW })).toBe(true);
+        expect(canVoidExpenseWith({ ...own, timestamp: NOW - 2 * DAY - 1 }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+        expect(canVoidExpenseWith({ ...others, timestamp: NOW - 2 * DAY - 1 }, { uid: 'm', role: 'manager', now: NOW })).toBe(false);
+        expect(canVoidExpenseWith(own, { uid: 'u1', role: 'staff', now: NOW, raw: { staff: { editDays: 0 } } })).toBe(false);
     });
 
-    test('falls back to createdBy; legacy expenses without a numeric timestamp are locked for members', () => {
-        expect(canChangeExpense({ createdBy: 'u1', timestamp: NOW }, { uid: 'u1', role: 'staff', now: NOW })).toBe(true);
-        expect(canChangeExpense({ userId: 'u1', date: '01/10/2026' }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
-        expect(canChangeExpense({ userId: 'u1', timestamp: String(NOW) }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
-        expect(canChangeExpense(own, { role: 'staff', now: NOW })).toBe(false);
+    test('falls back to createdBy; no numeric timestamp = outside the window', () => {
+        expect(canVoidExpenseWith({ createdBy: 'u1', timestamp: NOW }, { uid: 'u1', role: 'staff', now: NOW })).toBe(true);
+        expect(canVoidExpenseWith({ userId: 'u1', date: '01/10/2026' }, { uid: 'u1', role: 'staff', now: NOW })).toBe(false);
+        expect(canVoidExpenseWith(own, { role: 'staff', now: NOW })).toBe(false);
     });
 });
 

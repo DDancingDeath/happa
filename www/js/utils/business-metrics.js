@@ -11,7 +11,7 @@
  */
 
 import { computeFinanceSummary, billsInRange, profitByDay } from './finance-calc.js';
-import { activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
+import { activeExpenses, activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
 import { eventTime, createItemKeyResolver } from './stock-replay.js';
 import { parseAnyBillDate, toLocalISODate } from './dates.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
@@ -265,7 +265,7 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
  */
 export function expenseCategories(expenses, from, to) {
     const out = new Map();
-    (expenses || []).forEach(e => {
+    activeExpenses(expenses).forEach(e => {
         if (isPersonalExpense(e)) return;
         const t = recordTime(e?.date);
         const ok = t !== null ? inRange(t, from, to) : from === -Infinity && to === Infinity;

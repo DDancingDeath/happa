@@ -140,20 +140,86 @@ describe('Expenses form (#118)', () => {
         expect(modal.mock.calls.map(c => c[0])).toEqual(['You can enter an expense only up to 2 days back', "The date can't be in the future"]);
     });
 
-    test('editing keeps the date and may correct the mode', async () => {
+    test('Void & re-enter (#99): voids with a reason, refills the form on the same day, saves a new expense linked by replacesId', async () => {
         const old = { id: 'x1', category: 'business', type: 'Tea', amount: 40, date: '30/10/2026, 9:00:00 am', day: '2026-10-30', userId: 'u1', createdBy: 'u1', timestamp: NOW.getTime() - 3600000 };
         AppState.expensesHistory = [old];
-        AppState.userRole = 'owner';
-        const update = jest.spyOn(FirebaseService, 'updateExpense').mockResolvedValue();
-        await ExpensesManager.editExpense('x1', 'business');
+        const update = jest.spyOn(FirebaseService, 'updateExpense');
+        const voidExpense = jest.spyOn(FirebaseService, 'voidExpense').mockResolvedValue({ ...old, voided: true });
+        jest.spyOn(FirebaseService, 'loadCashSessionsForDate').mockResolvedValue([]);
+        jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (html) => {
+            document.body.insertAdjacentHTML('beforeend', html);
+            document.getElementById('reasonInput').value = 'wrong amount';
+            return true;
+        });
+        ExpensesManager.viewExpenseDetails('x1', 'business');
+        expect(document.getElementById('expenseReenterBtn').style.display).toBe('');
+        await ExpensesManager.reenterExpenseFromModal();
+        expect(voidExpense).toHaveBeenCalledWith('x1', 'wrong amount');
+        expect(AuditService.log).toHaveBeenCalledWith('VOID_EXPENSE', expect.objectContaining({ expenseId: 'x1', reason: 'wrong amount' }));
         const date = document.getElementById('businessExpenseDate');
-        expect([date.value, date.disabled, document.getElementById('businessExpenseMode').value]).toEqual(['2026-10-30', true, 'cash']);
-        setVal('businessExpenseMode', 'online');
+        expect([date.value, document.getElementById('businessExpenseAmount').value]).toEqual(['2026-10-30', '40']);
+        setVal('businessExpenseAmount', 45);
         await ExpensesManager.saveBusinessExpense();
-        expect(update).toHaveBeenCalledWith('x1', expect.objectContaining({ amount: 40, paymentMode: 'online' }));
-        const fields = update.mock.calls[0][1];
-        expect('date' in fields || 'day' in fields || 'timestamp' in fields).toBe(false);
-        expect([date.value, date.disabled]).toEqual(['2026-10-31', false]);
+        expect(update).not.toHaveBeenCalled();
+        expect(saved).toEqual([expect.objectContaining({ amount: 45, day: '2026-10-30', replacesId: 'x1' })]);
+        // the next save is a plain new expense again
+        fill('business');
+        await ExpensesManager.saveBusinessExpense();
+        expect(saved[1].replacesId).toBeUndefined();
+    });
+
+    test('void needs a reason and the internet; out of the window it is refused', async () => {
+        const old = { id: 'x1', category: 'business', type: 'Tea', amount: 40, date: '30/10/2026, 9:00:00 am', day: '2026-10-30', userId: 'u1', createdBy: 'u1', timestamp: NOW.getTime() - 3600000 };
+        AppState.expensesHistory = [old];
+        const voidExpense = jest.spyOn(FirebaseService, 'voidExpense').mockResolvedValue({ ...old, voided: true });
+        jest.spyOn(FirebaseService, 'loadCashSessionsForDate').mockResolvedValue([]);
+        const ask = jest.spyOn(UIManager, 'showModalWithHtml').mockResolvedValue(true);
+        ExpensesManager.viewExpenseDetails('x1', 'business');
+        await ExpensesManager.voidExpenseFromModal();
+        expect(voidExpense).not.toHaveBeenCalled();
+        expect(toast).toHaveBeenLastCalledWith('Write a reason (at least 3 letters).');
+        const offline = jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+        ExpensesManager.viewExpenseDetails('x1', 'business');
+        await ExpensesManager.voidExpenseFromModal();
+        offline.mockRestore();
+        expect(toast).toHaveBeenLastCalledWith('Voiding an expense needs the internet.');
+        AppState.expensesHistory = [{ ...old, timestamp: NOW.getTime() - 3 * 86400000 }];
+        ExpensesManager.viewExpenseDetails('x1', 'business');
+        expect(document.getElementById('expenseVoidBtn').style.display).toBe('none');
+        await ExpensesManager.voidExpenseFromModal();
+        expect(ask).toHaveBeenCalledTimes(1);
+        expect(voidExpense).not.toHaveBeenCalled();
+    });
+
+    test('the void dialog says whether the cash goes back into the drawer or that day is closed', async () => {
+        const old = { id: 'x1', category: 'business', type: 'Tea', amount: 40, date: '30/10/2026, 9:00:00 am', day: '2026-10-30', userId: 'u1', createdBy: 'u1', timestamp: NOW.getTime() - 3600000 };
+        AppState.expensesHistory = [old];
+        const sessions = jest.spyOn(FirebaseService, 'loadCashSessionsForDate').mockResolvedValue([]);
+        const ask = jest.spyOn(UIManager, 'showModalWithHtml').mockResolvedValue(false);
+        ExpensesManager.viewExpenseDetails('x1', 'business');
+        await ExpensesManager.voidExpenseFromModal();
+        expect(ask.mock.calls[0][0]).toMatch(/cash goes back into that day/);
+        sessions.mockResolvedValue([{ date: '2026-10-30', signedOut: true }]);
+        ExpensesManager.viewExpenseDetails('x1', 'business');
+        await ExpensesManager.voidExpenseFromModal();
+        expect(ask.mock.calls[1][0]).toMatch(/already closed/);
+    });
+
+    test('voided expenses: off the list unless "Show voided" (struck through, with the reason in the details)', () => {
+        AppState.expensesHistory = [{ id: 'a1', category: 'business', type: 'Tea', amount: 40, date: '30/10/2026, 9:00:00 am' }];
+        jest.spyOn(FirebaseService, 'voidedExpenses').mockReturnValue([
+            { id: 'v1', category: 'business', type: 'Diesel', amount: 90, date: '30/10/2026, 8:00:00 am', voided: true, voidReason: 'typed twice', voidedByName: 'Owner' }
+        ]);
+        ExpensesManager.renderexpensesHistory();
+        const list = () => document.getElementById('businessExpenseHistoryList');
+        expect(list().textContent).not.toContain('Diesel');
+        ExpensesManager.toggleVoided(true);
+        expect(list().querySelectorAll('.expense-card--voided')).toHaveLength(1);
+        expect(list().textContent).toContain('Diesel');
+        ExpensesManager.viewExpenseDetails('v1', 'business');
+        expect(document.getElementById('expenseDetailsContent').textContent).toContain('typed twice');
+        expect(document.getElementById('expenseVoidBtn').style.display).toBe('none');
+        ExpensesManager.toggleVoided(false);
     });
 
     test('a form left open over midnight saves on the new day; showing it again moves the inputs', async () => {

@@ -17,7 +17,6 @@ const ALLOWED = {
     'firebase/firestore-service.js flushPendingWork': 'tab-shown render flush; catches stock errors itself',
     'main.js updateDraftCount': 'draft badge refresh; has its own try/catch',
     'main.js editBill': 'editBillDetails handler; editBill() catches and toasts its own errors',
-    'modules/miscellaneous.js editExpense': 'no awaits inside (only fills the form), runs synchronously',
     'modules/purchase.js addToBill': 'no awaits inside, runs synchronously before editBillItem continues',
     'modules/retail-sale.js addToSalesBill': 'no awaits inside, runs synchronously',
     'modules/settings.js connectToPrinter': 'has its own try/catch with a user toast',

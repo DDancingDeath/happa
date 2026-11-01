@@ -223,6 +223,25 @@ export function isActiveBill(bill) {
 }
 
 /**
+ * Whether an expense counts (#99): a voided expense is kept for the record but
+ * counts in no total (Today, cash drawer, Money, Statements, Insights).
+ * @param {Object} expense
+ * @returns {boolean}
+ */
+export function isActiveExpense(expense) {
+    return !!expense && typeof expense === 'object' && expense.voided !== true;
+}
+
+/**
+ * The expenses of a list that count (isActiveExpense).
+ * @param {Array<Object>} expenses
+ * @returns {Array<Object>}
+ */
+export function activeExpenses(expenses) {
+    return (Array.isArray(expenses) ? expenses : []).filter(isActiveExpense);
+}
+
+/**
  * The bills of a list that count (isActiveBill).
  * @param {Array<Object>} bills
  * @returns {Array<Object>}

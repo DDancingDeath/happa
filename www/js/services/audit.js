@@ -37,6 +37,8 @@ export class AuditService {
         // Finance
         RECORD_WITHDRAWAL: 'RECORD_WITHDRAWAL',
         RECORD_EXPENSE: 'RECORD_EXPENSE',
+        // An expense kept but left out of every total (#99)
+        VOID_EXPENSE: 'VOID_EXPENSE',
         // Cash day opened / counted and closed (#85)
         CASH_OPEN: 'CASH_OPEN',
         CASH_CLOSE: 'CASH_CLOSE',

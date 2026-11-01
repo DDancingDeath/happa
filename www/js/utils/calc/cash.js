@@ -13,7 +13,7 @@
  * @module utils/calc/cash
  */
 
-import { isOnlineExpense, isPersonalExpense, round2 } from '../money.js';
+import { activeExpenses, isOnlineExpense, isPersonalExpense, round2 } from '../money.js';
 import { endOfLocalDayExclusive, parseAnyBillDate, parseLocalDate } from '../dates.js';
 import { dueEvents, saleTimePayment, sumDueEvents } from '../due-payments.js';
 import { personalForDay } from '../personal-expenses.js';
@@ -104,7 +104,8 @@ export function drawerDay({ date, bills = {}, expenses = [], session = null, per
 
     // EXP-KIND; only cash expenses leave the drawer (EXP-MODE, #118: no mode = cash).
     // Personal ones a role can't read come from the day total and its online part (#98).
-    const payments = (expenses || []).filter(p => inDay(p.date));
+    // A voided expense (#99) left no cash drawer; its cash is back in the day's drawer
+    const payments = activeExpenses(expenses).filter(p => inDay(p.date));
     payments.forEach(payment => {
         if (!isPersonalExpense(payment) && !isOnlineExpense(payment)) transactions.businessExpenses += Number(payment.amount) || 0;
     });

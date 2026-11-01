@@ -760,15 +760,6 @@ describe('#89 expenses appear / disappear at once, before the server answers', (
         expect(listText()).toContain('Tea');
         expect(toast).toHaveBeenCalledWith('✓ Business expense saved');
     });
-
-    test('a deleted expense disappears immediately', async () => {
-        ExpensesManager.renderexpensesHistory();
-        expect(listText()).toContain('Tea');
-        ExpensesManager.deleteExpense('old1', 'business', false); // server never answers
-        await Promise.resolve();
-        expect(AppState.expensesHistory).toEqual([]);
-        expect(listText()).not.toContain('Tea');
-    });
 });
 
 describe('#98 review: the Cash-tab bill picker never guesses the bill', () => {

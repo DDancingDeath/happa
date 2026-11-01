@@ -1085,10 +1085,9 @@ window.app = {
         saveAndPrintPersonal: () => ExpensesManager.saveAndPrintPersonal(),
         viewExpenseDetails: (index, category) => ExpensesManager.viewExpenseDetails(index, category),
         closeExpenseDetails: () => ExpensesManager.closeExpenseDetails(),
-        editExpenseFromModal: () => ExpensesManager.editExpenseFromModal(),
-        confirmDeleteExpense: () => ExpensesManager.confirmDeleteExpense(),
-        editExpense: (expenseId, category) => ExpensesManager.editExpense(expenseId, category),
-        deleteExpense: (expenseId, category) => ExpensesManager.deleteExpense(expenseId, category)
+        voidExpenseFromModal: () => ExpensesManager.voidExpenseFromModal(),
+        reenterExpenseFromModal: () => ExpensesManager.reenterExpenseFromModal(),
+        toggleVoided: (show) => ExpensesManager.toggleVoided(show)
     },
     
     // Anomalies (#187, #40): Day report card on Today + Anomalies page

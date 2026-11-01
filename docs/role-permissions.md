@@ -214,6 +214,24 @@ document is billed once per request; limit 10 docs per single write, 20 per batc
 
 The edit-window branch is only evaluated after `isOwnerIn` fails, so the owner never pays for it.
 
+## Voided expenses (#99)
+
+Expenses are voided like bills, never edited or deleted in place. The expense details show **Void**
+and **Void & re-enter** (the second puts the voided expense back in the form, on its own day, and the
+save links the new one with `replacesId`). A void sets `voided: true`, `voidedAt` (server time),
+`voidedBy`, `voidedByName` and a required `voidReason` (3–300 characters) in one transaction
+(`FirebaseService.voidExpense`; a personal expense also leaves `personalExpenseDays`). It needs the
+internet. The list shows voided expenses behind "Show voided", struck through; they count in no figure
+(VOID-EXP in docs/calculations.md).
+
+- **Who** (default chosen until the owner answers #112): the owner any expense; a manager any expense
+  and a member only their own, inside the role's `editDays` (as bills) from the expense's save time.
+  Rules: `expenseVoidOk`; app: `canVoidExpenseWith`.
+- **Cash:** a voided cash expense's money is back in its day's expected drawer while that day's cash
+  is open (the void dialog says so); a day whose cash is already closed keeps the count it was closed with.
+- **Final.** A voided expense never changes again, the owner included; only the owner deletes one
+  (not offered in the app). Older apps can no longer edit or delete expenses (refused by the rules).
+
 ## Void and edit records (#75, #121)
 
 **Void instead of delete.** The bill details show **Void** (रद्द करें) where Delete was. A void
@@ -530,7 +548,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 
 | Collection | Create | Update | Delete |
 |---|---|---|---|
-| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date); withdrawals only by roles with **Money** (`finance`) on, the only page that records them (#64; managers by default, members not; +1 read of `settings/app`) | expenses: own for 24 h (some fields), managers any; withdrawals: managers with **Money** on (#64) | expenses: own for 24 h, managers; withdrawals: managers with **Money** on (#64) |
+| `expenses`, `withdrawals` | approved user, own `userId`, numeric amount, numeric `timestamp` at most 10 minutes ahead of the server (no future-dated records; Money refuses a future withdrawal date); withdrawals only by roles with **Money** (`finance`) on, the only page that records them (#64; managers by default, members not; +1 read of `settings/app`) | expenses: **void only** (#99, "Voided expenses"), never edited in place; withdrawals: managers with **Money** on (#64) | expenses: owner only (#99); withdrawals: managers with **Money** on (#64) |
 | `stockAdjustments` | **owner/manager** (#64; members never see Stock › Adjustment) | managers (anyone: legacy timestamp backfill, see below) | managers |
 | `cashManagement` | approved user, own day `cash_<date>` only, with the fields sign-in sends and no entries | append entries, close, late count; a closed day stays closed | owner |
 | `cashSessions` (legacy, backup only) | **owner** (#64) | **owner** (#64) | owner |

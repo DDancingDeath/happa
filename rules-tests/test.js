@@ -2114,6 +2114,7 @@ function defineSuite(prefix) {
         createdBy: uid, createdByName: 'S', userId: uid, userName: 'S', timestamp: Date.now(), ...extra
     });
     const edit = (extra = {}) => ({ type: 'Tea', amount: 60, remarks: 'fixed', updatedAt: 'x', updatedBy: 'staff1', updatedByName: 'S', ...extra });
+    const voidOf = (uid, extra = {}) => ({ voided: true, voidedAt: FieldValue.serverTimestamp(), voidedBy: uid, voidedByName: 'S', voidReason: 'typed twice', ...extra });
 
     t('expenses: approved users record their own expense with a numeric amount', async () => {
         await assertSucceeds(as('staff1').collection(expenses).doc('e1').set(expense('staff1')));
@@ -2124,10 +2125,29 @@ function defineSuite(prefix) {
         await assertFails(as('pending1').collection(expenses).doc('e6').set(expense('pending1')));
     });
 
-    t('expenses: a member edits or deletes their own expense within 24 hours', async () => {
+    t('expenses (#99): no edit or delete in place; a member voids their own expense inside the window, with a reason', async () => {
         await seedBill(expenses, 'mine', expense('staff1', { timestamp: Date.now() - 2 * HOUR }));
-        await assertSucceeds(as('staff1').collection(expenses).doc('mine').update(edit()));
-        await assertSucceeds(as('staff1').collection(expenses).doc('mine').delete());
+        await seedBill(expenses, 'mine2', expense('staff1', { timestamp: Date.now() - 2 * HOUR }));
+        const c = as('staff1').collection(expenses);
+        await assertFails(c.doc('mine').update(edit()));
+        await assertFails(c.doc('mine').delete());
+        await assertFails(c.doc('mine').update(voidOf('staff1', { voidReason: 'no' })));
+        await assertFails(c.doc('mine').update({ ...voidOf('staff1'), amount: 1 }));
+        await assertFails(c.doc('mine').update(voidOf('manager1')));
+        await assertFails(c.doc('mine').update(voidOf('staff1', { voidedAt: Date.now() })));
+        await assertFails(c.doc('mine').update(voidOf('staff1', { voided: false })));
+        await assertSucceeds(c.doc('mine').update(voidOf('staff1')));
+        // a voided expense never changes again, owner included; only the owner deletes it
+        await assertFails(c.doc('mine').update({ voidReason: 'another reason' }));
+        await assertFails(as('legacyOwner').collection(expenses).doc('mine').update({ amount: 5 }));
+        await assertFails(as('legacyOwner').collection(expenses).doc('mine').update({ voided: false }));
+        await assertFails(c.doc('mine').delete());
+        await assertSucceeds(as('legacyOwner').collection(expenses).doc('mine').delete());
+        // nobody but the owner saves a new expense already voided
+        await assertFails(c.doc('v1').set(expense('staff1', voidOf('staff1'))));
+        // the window is the role's edit days (as bills): 0 days = no void
+        await setPersonalAccess({ staff: { editDays: 0 } });
+        await assertFails(c.doc('mine2').update(voidOf('staff1')));
     });
 
     t('expenses: a member cannot change other users\' or older expenses, or protected fields', async () => {
@@ -2138,6 +2158,7 @@ function defineSuite(prefix) {
         const c = as('staff1').collection(expenses);
         await assertFails(c.doc('theirs').update(edit()));
         await assertFails(c.doc('theirs').delete());
+        await assertFails(c.doc('theirs').update(voidOf('staff1')));
         await assertFails(c.doc('old').update(edit()));
         await assertFails(c.doc('old').delete());
         await assertFails(c.doc('legacy').delete());
@@ -2147,12 +2168,17 @@ function defineSuite(prefix) {
         await assertFails(c.doc('mine').update(edit({ amount: 'free' })));
     });
 
-    t('expenses: owner and manager edit and delete any expense', async () => {
+    t('expenses (#99): the owner changes, voids or deletes any expense; a manager voids any inside the window, never edits or deletes', async () => {
         await seedBill(expenses, 'a', expense('staff1', { timestamp: Date.now() - 30 * DAY }));
         await seedBill(expenses, 'b', expense('staff1', { timestamp: Date.now() - 30 * DAY }));
-        await assertSucceeds(as('manager1').collection(expenses).doc('a').update(edit({ updatedBy: 'manager1' })));
-        await assertFails(as('manager1').collection(expenses).doc('a').update({ amount: 'x' }));
-        await assertSucceeds(as('manager1').collection(expenses).doc('a').delete());
+        await seedBill(expenses, 'c', expense('staff1', { timestamp: Date.now() - HOUR }));
+        const m = as('manager1').collection(expenses);
+        await assertFails(m.doc('a').update(edit({ updatedBy: 'manager1' })));
+        await assertFails(m.doc('a').update({ amount: 'x' }));
+        await assertFails(m.doc('a').delete());
+        await assertFails(m.doc('a').update(voidOf('manager1')));
+        await assertSucceeds(m.doc('c').update(voidOf('manager1')));
+        await assertSucceeds(as('legacyOwner').collection(expenses).doc('a').update(voidOf('legacyOwner')));
         await assertSucceeds(as('legacyOwner').collection(expenses).doc('b').update({ amount: 1, category: 'other' }));
         await assertSucceeds(as('legacyOwner').collection(expenses).doc('b').delete());
     });
@@ -2197,14 +2223,14 @@ function defineSuite(prefix) {
         await assertFails(anon().collection(personal).get());
     });
 
-    t('personal expenses (#98): own personal rows only; the 24-hour edit rules of expenses', async () => {
+    t('personal expenses (#98, #99): own personal rows only; voided like expenses, never edited in place', async () => {
         const c = as('staff1').collection(personal);
         await assertSucceeds(c.doc('mine').set(pexp('staff1')));
         await assertFails(c.doc('noDay').set(expense('staff1', { category: 'personal' })));
         await assertFails(c.doc('biz').set(expense('staff1')));
         await assertFails(c.doc('other').set(pexp('manager1')));
         await assertFails(c.doc('text').set(pexp('staff1', { amount: '50' })));
-        await assertSucceeds(c.doc('mine').update(edit()));
+        await assertFails(c.doc('mine').update(edit()));
         await assertFails(c.doc('mine').update(edit({ category: 'business' })));
         await assertFails(as('manager1').collection(personal).doc('mine').update({ day: istDay(-1) }));
         await seedBill(personal, 'theirs', pexp('manager1'));
@@ -2212,10 +2238,17 @@ function defineSuite(prefix) {
         await assertFails(c.doc('theirs').update(edit()));
         await assertFails(c.doc('theirs').delete());
         await assertFails(c.doc('old').delete());
-        await assertSucceeds(c.doc('mine').delete());
-        await assertSucceeds(as('manager1').collection(personal).doc('old').update(edit({ updatedBy: 'manager1' })));
-        await assertSucceeds(as('manager1').collection(personal).doc('old').delete());
+        await assertFails(c.doc('mine').delete());
+        await assertFails(c.doc('theirs').update(voidOf('staff1')));
+        await assertSucceeds(c.doc('mine').update(voidOf('staff1')));
+        await assertFails(as('manager1').collection(personal).doc('old').update(edit({ updatedBy: 'manager1' })));
+        await assertFails(as('manager1').collection(personal).doc('old').delete());
+        await assertSucceeds(as('manager1').collection(personal).doc('old').update(voidOf('manager1')));
         await assertSucceeds(as('legacyOwner').collection(personal).doc('theirs').delete());
+        // a member whose personal switch is off can't void one either
+        await seedBill(personal, 'mine3', pexp('staff1'));
+        await setPersonalAccess({ staff: { personalExpenses: false } });
+        await assertFails(c.doc('mine3').update(voidOf('staff1')));
     });
 
     t('personal expenses (#98): a day doc key follows its expense, written in the same batch', async () => {
@@ -2248,16 +2281,20 @@ function defineSuite(prefix) {
         await assertFails(db.collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
         await assertFails(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 7), { merge: true }));
         await assertSucceeds(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
-        // edit: new amount
+        // void (#99): the key leaves with it, and never comes back
         b = db.batch();
-        b.update(db.collection(personal).doc('b1'), edit({ amount: 65 }));
-        b.set(db.collection(personalDays).doc(D), dayKey('b1', 65), { merge: true });
+        b.update(db.collection(personal).doc('b1'), voidOf('staff1'));
+        b.set(db.collection(personalDays).doc(D), dayKey('b1', null), { merge: true });
         await assertSucceeds(b.commit());
-        // delete, then the same delete again: harmless
+        if (Object.keys((await dayDoc()).amounts).length) throw new Error('the voided key is still there');
+        await assertFails(as('manager1').collection(personalDays).doc(D).set(dayKey('b1', 50), { merge: true }));
+        await assertSucceeds(db.collection(personalDays).doc(D).set(dayKey('b1', null), { merge: true }));
+        // the owner deletes, then the same delete again: harmless
+        const owner = as('legacyOwner');
         for (let i = 0; i < 2; i++) {
-            b = db.batch();
-            b.delete(db.collection(personal).doc('b1'));
-            b.set(db.collection(personalDays).doc(D), dayKey('b1', null), { merge: true });
+            b = owner.batch();
+            b.delete(owner.collection(personal).doc('b1'));
+            b.set(owner.collection(personalDays).doc(D), dayKey('b1', null), { merge: true });
             await assertSucceeds(b.commit());
         }
         if (Object.keys((await dayDoc()).amounts).length) throw new Error('the deleted key is still there');
@@ -2279,11 +2316,11 @@ function defineSuite(prefix) {
         await assertFails(c.doc('m5').set(dated('staff1', 0, { day: '2026-13-01' })));
         await assertFails(as('legacyOwner').collection(expenses).doc('m6').set(dated('legacyOwner', 2)));
         await assertFails(as('legacyOwner').collection(expenses).doc('m7').set(dated('legacyOwner', 0, { paymentMode: 'upi' })));
-        // the mode can be corrected on an edit; the 24-hour member rules still apply
-        await assertSucceeds(c.doc('m2').update(edit({ paymentMode: 'online' })));
-        await assertFails(c.doc('m2').update(edit({ paymentMode: 'cheque' })));
-        await assertFails(as('manager1').collection(expenses).doc('m2').update({ paymentMode: 'cheque' }));
-        await assertSucceeds(as('manager1').collection(expenses).doc('m2').update({ paymentMode: 'cash' }));
+        // never corrected in place (#99: void and enter again); the owner's repair keeps the mode valid
+        await assertFails(c.doc('m2').update(edit({ paymentMode: 'online' })));
+        await assertFails(as('manager1').collection(expenses).doc('m2').update({ paymentMode: 'cash' }));
+        await assertFails(as('legacyOwner').collection(expenses).doc('m2').update({ paymentMode: 'cheque' }));
+        await assertSucceeds(as('legacyOwner').collection(expenses).doc('m2').update({ paymentMode: 'online' }));
         // older apps send neither field
         await assertSucceeds(c.doc('m8').set(expense('staff1')));
     });
@@ -2334,20 +2371,17 @@ function defineSuite(prefix) {
         // a flag on someone else's key, or a flag that isn't `true`
         await assertFails(create('o5', 'cash', { ...key('o5', 40, false), online: { o5: FieldValue.delete(), o4: true } }));
         await assertFails(create('o6', 'online', { ...dayKey('o6', 40), online: { o6: 'yes' } }));
-        // changing the mode moves the flag with it
+        // a void (#99) takes the key and its flag out
         let b = db.batch();
-        b.update(db.collection(personal).doc('o1'), edit({ amount: 40, paymentMode: 'cash' }));
-        b.set(db.collection(personalDays).doc(D), key('o1', 40, true), { merge: true });
-        await assertFails(b.commit());
-        b = db.batch();
-        b.update(db.collection(personal).doc('o1'), edit({ amount: 40, paymentMode: 'cash' }));
-        b.set(db.collection(personalDays).doc(D), key('o1', 40, false), { merge: true });
+        b.update(db.collection(personal).doc('o1'), voidOf('staff1'));
+        b.set(db.collection(personalDays).doc(D), key('o1', null, false), { merge: true });
         await assertSucceeds(b.commit());
-        // an older app deletes without touching the flags: allowed, the stale flag counts nowhere
+        // a delete (owner) without touching the flags: allowed, the stale flag counts nowhere
         await assertSucceeds(create('o7', 'online', key('o7', 40, true)));
-        b = db.batch();
-        b.delete(db.collection(personal).doc('o7'));
-        b.set(db.collection(personalDays).doc(D), dayKey('o7', null), { merge: true });
+        const owner = as('legacyOwner');
+        b = owner.batch();
+        b.delete(owner.collection(personal).doc('o7'));
+        b.set(owner.collection(personalDays).doc(D), dayKey('o7', null), { merge: true });
         await assertSucceeds(b.commit());
     });
 
@@ -2359,9 +2393,9 @@ function defineSuite(prefix) {
         await seedBill(expenses, 'biz', expense('staff1'));
         await assertFails(as('manager1').collection(expenses).doc('biz').update({ category: 'personal' }));
         await assertFails(as('legacyOwner').collection(expenses).doc('biz').update({ category: 'personal' }));
-        // rows saved before #98 stay editable
+        // rows saved before #98 can still be voided
         await seedBill(expenses, 'old', expense('staff1', { category: 'personal' }));
-        await assertSucceeds(as('staff1').collection(expenses).doc('old').update(edit()));
+        await assertSucceeds(as('staff1').collection(expenses).doc('old').update(voidOf('staff1')));
     });
 
     // ---- legacy timestamp backfill (any approved device) ----
@@ -2410,9 +2444,9 @@ function defineSuite(prefix) {
             await assertFails(fill('odd', Date.now() + HOUR));
             await assertFails(fill('odd', Number.MAX_SAFE_INTEGER));
             await assertSucceeds(fill('odd', Date.UTC(2025, 9, 1)));
-            // managers correct records freely
+            // managers correct records freely, but expenses only by a void (#99)
             await seed('m', { date: '2025-10-01' });
-            await assertSucceeds(as('manager1').collection(coll).doc('m')
+            await (c === 'expenses' ? assertFails : assertSucceeds)(as('manager1').collection(coll).doc('m')
                 .update(c === 'stockAdjustments' ? { timestamp: old, clientVersion: 3 } : { timestamp: old }));
         }
     });

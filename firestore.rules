@@ -487,6 +487,7 @@ service cloud.firestore {
     // A queued offline record arrives later, so there is no lower bound.
     function validLedgerCreate() {
       return amountOk() && request.resource.data.get('userId', null) == request.auth.uid
+        && !request.resource.data.keys().hasAny(expenseVoidFields())
         && request.resource.data.get('timestamp', null) is number
         && request.resource.data.timestamp <= request.time.toMillis() + 600000;
     }
@@ -526,15 +527,44 @@ service cloud.firestore {
             && request.time < expenseDayStart(d.day) + duration.value(billEditDays(usersCol) + 4, 'd'));
     }
 
+    // Expenses are voided, never edited or deleted in place (#99): apart from the owner
+    // (repairs), only the legacy timestamp backfill changes one. A change is a void plus a
+    // new expense (replacesId); only the owner deletes.
     function canUpdateExpense(usersCol) {
-      return legacyBackfillOnly()
-        || (isManagerIn(usersCol)
-            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['amount']) || amountOk()))
-        || (createdByCaller() && withinEditWindow() && expenseEditOk());
+      return legacyBackfillOnly();
     }
 
     function canDeleteExpense(usersCol) {
-      return isManagerIn(usersCol) || resource == null || (createdByCaller() && withinEditWindow());
+      return resource == null;
+    }
+
+    // --- expense void (#99, as bills #75) ---
+
+    function expenseVoidFields() {
+      return ['voided', 'voidedAt', 'voidedBy', 'voidedByName', 'voidReason'];
+    }
+
+    // The role's edit window (roleAccess.<role>.editDays, as bills) from the expense's
+    // `timestamp`, which validLedgerCreate keeps from running ahead of its creation.
+    function withinExpenseWindow(usersCol, role) {
+      let t = resource.data.get('timestamp', null);
+      return t is number && request.time.toMillis() < t + billEditDaysFor(usersCol, role) * 86400000;
+    }
+
+    // A void: only the void fields, by the caller at the server time, with a reason; the
+    // owner any expense, a manager any expense and a member their own, inside the role's
+    // edit window. A voided expense never changes again (canUpdateRecord).
+    function expenseVoidOk(usersCol, changed) {
+      let d = request.resource.data;
+      let role = get(profilePath(usersCol)).data.get('role', '');
+      return changed.hasOnly(expenseVoidFields())
+        && d.get('voided', false) == true
+        && d.get('voidedAt', null) == request.time
+        && d.get('voidedBy', null) == request.auth.uid
+        && reasonOk(d.get('voidReason', null))
+        && (!('voidedByName' in d) || (d.voidedByName is string && d.voidedByName.size() <= 200))
+        && (role == 'owner'
+            || ((role == 'manager' || createdByCaller()) && withinExpenseWindow(usersCol, role)));
     }
 
     // Stock adjustments: owner/manager record them (stock.js applyStockAdjustment; the
@@ -810,12 +840,13 @@ service cloud.firestore {
     // A removed expense may keep a stale flag (older apps don't clear it); it counts nowhere.
     function personalDayKeyOk(u, docId, d, p) {
       return d.last in d.amounts
-        ? existsAfter(p) && getAfter(p).data.get('amount', null) == d.amounts[d.last]
+        ? existsAfter(p) && getAfter(p).data.get('voided', false) != true
+          && getAfter(p).data.get('amount', null) == d.amounts[d.last]
           && getAfter(p).data.get('day', '') == docId
           && ((d.last in d.get('online', {}) && d.online[d.last] == true)
               == (getAfter(p).data.get('paymentMode', 'cash') == 'online'))
           && (isManagerIn(u) || !exists(p) || get(p).data != getAfter(p).data)
-        : !existsAfter(p);
+        : !existsAfter(p) || getAfter(p).data.get('voided', false) == true;
     }
 
     // Older apps tagged personal expenses in `expenses`, where every member reads them (#98).
@@ -860,6 +891,11 @@ service cloud.firestore {
         : base == 'notifications' ? notificationReadOnly()
         : base == 'expenses' && personalTagged(request.resource.data) && !personalTagged(resource.data) ? false
         : base in ['expenses', 'personalExpenses'] && !expenseFieldsOk(request.resource.data) ? false
+        // A voided expense never changes (owner included); a void is expenseVoidOk (#99)
+        : base in ['expenses', 'personalExpenses'] && resource.data.get('voided', false) == true ? false
+        : base in ['expenses', 'personalExpenses']
+          && request.resource.data.diff(resource.data).affectedKeys().hasAny(expenseVoidFields())
+          ? (base == 'expenses' || personalOn(u)) && expenseVoidOk(u, request.resource.data.diff(resource.data).affectedKeys())
         : isOwnerIn(u) ? true
         : base == 'expenses' ? canUpdateExpense(u)
         : base == 'personalExpenses' ? personalOn(u) && canUpdateExpense(u)
