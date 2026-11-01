@@ -51,8 +51,12 @@ const NUMBER_WORDS = (() => {
     }
     return map;
 })();
-/** 1½ and 2½ said as one word. */
-const FRACTION_WORDS = new Map([['डेढ़', 1.5], ['डेढ', 1.5], ['dedh', 1.5], ['dhai', 2.5], ['dhaai', 2.5], ['ढाई', 2.5]].map(([w, n]) => [nfc(w), n]));
+/** Fractions said as one word: ½, ¼, ¾, 1½, 2½. */
+const FRACTION_WORDS = new Map([
+    ['आधा', 0.5], ['आधी', 0.5], ['aadha', 0.5], ['adha', 0.5], ['aadhi', 0.5], ['half', 0.5],
+    ['पाव', 0.25], ['paav', 0.25], ['pav', 0.25], ['quarter', 0.25], ['पौना', 0.75], ['pauna', 0.75],
+    ['डेढ़', 1.5], ['डेढ', 1.5], ['dedh', 1.5], ['dhai', 2.5], ['dhaai', 2.5], ['ढाई', 2.5]
+].map(([w, n]) => [nfc(w), n]));
 /** Before a number: "saadhe das" = 10.5, "sava do" = 2.25, "paune do" = 1.75 ("saadhe teen sau" = 350). */
 const NUMBER_MODIFIERS = new Map([
     ['साढ़े', 0.5], ['साढे', 0.5], ['saadhe', 0.5], ['sadhe', 0.5], ['sade', 0.5],
@@ -87,6 +91,11 @@ const OTHER_UNITS = wordSet([
 ]);
 /** Before a number: the line's total, not the rate ("for 300", "कुल 300"). */
 const TOTAL_BEFORE = wordSet(['for', 'total', 'kul', 'कुल', 'टोटल']);
+/** After a number: the line's total ("300 total"). */
+const TOTAL_AFTER = wordSet(['total', 'kul', 'कुल', 'टोटल']);
+/** "de do" / "दो" at the end means "give", not 2. */
+const GIVE_WORDS = wordSet(['do', 'दो']);
+const GIVE_BEFORE = wordSet(['de', 'दे', 'dena', 'देना']);
 /** Words never taken as the start of an item name. */
 const NOT_ITEM_WORDS = wordSet([...WEIGHT_UNITS, ...PRICE_AFTER, ...PRICE_BEFORE, ...NUMBER_MODIFIERS.keys(), ...GRAM_UNITS,
     ...PER_WORDS, ...OTHER_UNITS, ...TOTAL_BEFORE,
@@ -126,6 +135,11 @@ function numberGroups(tokens) {
     for (let i = 0; i < tokens.length; i++) {
         let modifier = 0;
         const start = i;
+        // "sava kilo" = 1.25 kg
+        if (NUMBER_MODIFIERS.has(tokens[i]) && WEIGHT_UNITS.has(tokens[i + 1])) {
+            groups.push({ value: 1 + NUMBER_MODIFIERS.get(tokens[i]), start, end: i + 1 });
+            continue;
+        }
         if (NUMBER_MODIFIERS.has(tokens[i]) && numberOf(tokens[i + 1]) !== undefined) {
             modifier = NUMBER_MODIFIERS.get(tokens[i]);
             i += 1;
@@ -208,7 +222,7 @@ function numberKind(rest, groups, gi) {
         if (PER_WORDS.has(w)) after = WEIGHT_UNITS.has(rest[k + 1]) ? 'rate-kg' : 'other';
         else if (WEIGHT_UNITS.has(w)) after = 'weight';
         else if (GRAM_UNITS.has(w)) after = 'gram';
-        else if (OTHER_UNITS.has(w)) after = 'other';
+        else if (OTHER_UNITS.has(w) || TOTAL_AFTER.has(w)) after = 'other';
         else if (PRICE_AFTER.has(w)) after = 'rate';
     }
     if (after === 'other') return 'other';
@@ -242,10 +256,18 @@ export function parseVoiceLine(text, items = []) {
     let rate = null;
     const unmarked = [];
     let kgJustSet = false;
-    let otherUnit = false;
+    // Bags, quintals or a weight word with no number before it: don't guess the unmarked numbers
+    let otherUnit = rest.some(w => OTHER_UNITS.has(w)) || rest.some((w, k) => (WEIGHT_UNITS.has(w) || GRAM_UNITS.has(w))
+        && !groups.some(g => g.end === k) && !PER_WORDS.has(rest[k - 1]) && !PRICE_AFTER.has(rest[k - 1]) && !POSSESSIVE.has(rest[k + 1]));
     let ratePerKg = false;
     groups.forEach((g, gi) => {
         const kind = numberKind(rest, groups, gi);
+        const lone = g.end === g.start + 1 && GIVE_WORDS.has(rest[g.start]);
+        if (!kind && lone && (g.end === rest.length || GIVE_BEFORE.has(rest[g.start - 1]))) return;
+        if (!kind && lone) {
+            unmarked.push(NaN);
+            return;
+        }
         if (kind === 'other') otherUnit = true;
         const wasKg = kgJustSet;
         kgJustSet = false;

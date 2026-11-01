@@ -94,6 +94,25 @@ describe('parseVoiceLine (VB-1)', () => {
         expect(flagged('aloo 10 kilo for 300')).toEqual({ weight: 10, rate: null, extraNumbers: true });
         expect(flagged('aloo 10 kilo total 300')).toEqual({ weight: 10, rate: null, extraNumbers: true });
         expect(flagged(`चावल 10 ${KILO} के 300 रुपये`)).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('aloo 10 kilo 300 total')).toEqual({ weight: 10, rate: null, extraNumbers: true });
+        expect(flagged('aloo 25 kg bag 900')).toEqual({ weight: 25, rate: null, extraNumbers: true });
+        expect(flagged('aloo 25 kilo wala bag 900')).toEqual({ weight: 25, rate: null, extraNumbers: true });
+    });
+    test('half, quarter and sava kilo', () => {
+        expect(line('rice 1121 aadha kilo 40')).toEqual({ itemIndex: 2, weight: 0.5, rate: 40 });
+        expect(line(`चावल आधा ${KILO} 40`)).toEqual({ itemIndex: 2, weight: 0.5, rate: 40 });
+        expect(line('aloo half kg 40 rupees')).toEqual({ itemIndex: 0, weight: 0.5, rate: 40 });
+        expect(line('aloo paav kilo 40')).toEqual({ itemIndex: 0, weight: 0.25, rate: 40 });
+        expect(line('aloo sava kilo 40')).toEqual({ itemIndex: 0, weight: 1.25, rate: 40 });
+        expect(line('aloo paune kilo 40')).toEqual({ itemIndex: 0, weight: 0.75, rate: 40 });
+        expect(parseVoiceLine('aloo bada kilo 40', ITEMS)).toMatchObject({ weight: null, rate: null, extraNumbers: true });
+    });
+
+    test('"do" meaning "give" is not the number 2', () => {
+        expect(line(`चावल 10 ${KILO} दो`)).toEqual({ itemIndex: 2, weight: 10, rate: null });
+        expect(line('rice 1121 10 kilo de do')).toEqual({ itemIndex: 2, weight: 10, rate: null });
+        expect(parseVoiceLine('aloo 10 kilo do 30', ITEMS)).toMatchObject({ weight: 10, rate: 30, extraNumbers: true });
+        expect(line('do kilo aloo 30')).toEqual({ itemIndex: 0, weight: 2, rate: 30 });
     });
     test('grams are read as kg', () => {
         expect(line('500 gram aloo 40 rupees')).toEqual({ itemIndex: 0, weight: 0.5, rate: 40 });
