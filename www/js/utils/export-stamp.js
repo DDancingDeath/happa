@@ -81,17 +81,23 @@ export function exportFilename(stamp, kind, ext) {
     return [slug(stamp.shop, 40) || 'happa', slug(kind, 20), ...span, at].filter(Boolean).join('_') + `.${ext}`;
 }
 
+/** How an export ended (#103): written before the file goes out, then once more when it has. */
+export const EXPORT_STATUSES = Object.freeze(['started', 'done', 'cancelled', 'failed']);
+
 /**
  * Audit details of an export (bounded: the rules allow 40 keys).
- * @param {{kind: string, format: string, period?: {from?: ?string, to?: ?string}, rows?: number}} e
- * @returns {{exportKind: string, format: string, from: ?string, to: ?string, rows: number}}
+ * @param {{kind: string, format: string, period?: {from?: ?string, to?: ?string}, rows?: number, status?: string, ref?: string}} e
+ *   ref ties the 'started' row to its outcome row
+ * @returns {{exportKind: string, format: string, from: ?string, to: ?string, rows: number, exportStatus: string, exportRef: string}}
  */
-export function exportAuditDetails({ kind, format, period = {}, rows = 0 }) {
+export function exportAuditDetails({ kind, format, period = {}, rows = 0, status = 'done', ref = '' }) {
     return {
         exportKind: EXPORT_KINDS.includes(kind) ? kind : 'other',
         format: text(format, 16),
         from: text(period.from, 10) || null,
         to: text(period.to, 10) || null,
-        rows: Math.max(0, Math.floor(Number(rows) || 0))
+        rows: Math.max(0, Math.floor(Number(rows) || 0)),
+        exportStatus: EXPORT_STATUSES.includes(status) ? status : 'done',
+        exportRef: text(ref, 24)
     };
 }

@@ -5,7 +5,8 @@
  */
 import { jest } from '@jest/globals';
 import { exportStamp, stampPairs, stampLine, stampedCsv, exportFilename, exportAuditDetails } from '../utils/export-stamp.js';
-import { buildErrorReport, errorReportPeriod } from '../utils/error-report.js';
+import { buildErrorReport, errorReportPeriod, nameScrubber } from '../utils/error-report.js';
+import * as UsersRepo from '../firebase/repos/users.js';
 import { Exporter } from '../services/exporter.js';
 import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
@@ -57,8 +58,10 @@ describe('the export stamp (#103)', () => {
 
     test('audit details are bounded and the audit list says what was exported', () => {
         const d = exportAuditDetails({ kind: 'party', format: 'csv', period: { from: '2026-10-01', to: '2026-10-31' }, rows: 12.7 });
-        expect(d).toEqual({ exportKind: 'party', format: 'csv', from: '2026-10-01', to: '2026-10-31', rows: 12 });
-        expect(exportAuditDetails({ kind: 'nope', format: 'x'.repeat(40) })).toEqual({ exportKind: 'other', format: 'x'.repeat(16), from: null, to: null, rows: 0 });
+        expect(d).toEqual({ exportKind: 'party', format: 'csv', from: '2026-10-01', to: '2026-10-31', rows: 12, exportStatus: 'done', exportRef: '' });
+        expect(exportAuditDetails({ kind: 'nope', format: 'x'.repeat(40) })).toEqual({ exportKind: 'other', format: 'x'.repeat(16), from: null, to: null, rows: 0, exportStatus: 'done', exportRef: '' });
+        expect(formatAuditDetails(exportAuditDetails({ kind: 'day', format: 'csv', status: 'started' }), 'EXPORT')).toMatch(/Started/);
+        expect(exportAuditDetails({ kind: 'day', format: 'csv', status: 'bogus' }).exportStatus).toBe('done');
         const shown = formatAuditDetails(d, 'EXPORT');
         expect(shown).toMatch(/Exported: Party ledger · CSV/);
         expect(shown).toMatch(/2026-10-01.*2026-10-31/);
@@ -80,7 +83,7 @@ describe('Exporter.run (#103)', () => {
         expect(toast).toHaveBeenCalledWith('Only the owner can export.', 'error');
     });
 
-    test('names: a cancelled confirm exports nothing; a produced file writes one EXPORT row', async () => {
+    test('names: a cancelled confirm exports nothing; an export is on record before the file goes out, then how it ended', async () => {
         const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValueOnce(false).mockResolvedValueOnce(true);
         const note = jest.spyOn(AuditService, 'note').mockImplementation(() => {});
         const produce = jest.fn(() => true);
@@ -90,16 +93,21 @@ describe('Exporter.run (#103)', () => {
         expect(await Exporter.run(job)).toBe(true);
         expect(modal.mock.calls[0][0]).toMatch(/customer and supplier names/);
         expect(produce.mock.calls[0][0]).toMatchObject({ shop: 'Gupta Traders', user: 'Asha', from: '2026-10-01', to: '2026-11-01' });
-        expect(note).toHaveBeenCalledTimes(1);
-        expect(note).toHaveBeenCalledWith('EXPORT', { exportKind: 'party', format: 'print', from: '2026-10-01', to: '2026-11-01', rows: 3 });
+        expect(note.mock.calls.map(c => c[1].exportStatus)).toEqual(['started', 'done']);
+        expect(note.mock.calls[0][1]).toMatchObject({ exportKind: 'party', format: 'print', from: '2026-10-01', to: '2026-11-01', rows: 3 });
+        expect(note.mock.calls[1][1].exportRef).toBe(note.mock.calls[0][1].exportRef);
+        expect(note.mock.calls[0][1].exportRef).toMatch(/^[0-9a-z]+-[0-9a-z]+$/);
+        expect(produce.mock.invocationCallOrder[0]).toBeGreaterThan(note.mock.invocationCallOrder[0]);
     });
 
-    test('no confirm without names; a file the phone could not save is not logged', async () => {
+    test('no confirm without names; a share cancelled after it opened (iOS) or a failure is on record too', async () => {
         const modal = jest.spyOn(UIManager, 'showModal');
         const note = jest.spyOn(AuditService, 'note').mockImplementation(() => {});
         expect(await Exporter.run({ kind: 'month', format: 'csv', produce: () => false })).toBe(false);
         expect(modal).not.toHaveBeenCalled();
-        expect(note).not.toHaveBeenCalled();
+        expect(note.mock.calls.map(c => c[1].exportStatus)).toEqual(['started', 'cancelled']);
+        await expect(Exporter.run({ kind: 'month', format: 'csv', produce: () => { throw new Error('x'); } })).rejects.toThrow('x');
+        expect(note.mock.calls.map(c => c[1].exportStatus)).toEqual(['started', 'cancelled', 'started', 'failed']);
     });
 
     test('saveBlob: the Android app shares the file and never falls back to a download it would drop', async () => {
@@ -142,7 +150,25 @@ describe('Diagnostics exports', () => {
         expect(lines[5]).toBe('Time,Action,Who,Details');
         expect(lines[6]).toMatch(/^2026-10-31 10:00,Void Bill,Ravi.*R-7.*typo/);
         expect(saved[0].name).toMatch(/^Gupta-Traders_audit_2026-10-30_2026-10-31_\d{8}-\d{4}\.csv$/);
-        expect(note).toHaveBeenCalledWith('EXPORT', { exportKind: 'audit', format: 'csv', from: '2026-10-30', to: '2026-10-31', rows: 2 });
+        expect(note).toHaveBeenLastCalledWith('EXPORT', expect.objectContaining({ exportKind: 'audit', format: 'csv', from: '2026-10-30', to: '2026-10-31', rows: 2, exportStatus: 'done' }));
+    });
+
+    test('the audit CSV is English even in Hindi (headers, stamp, actions, details); the printed page follows the app', async () => {
+        jest.spyOn(AuditService, 'note').mockImplementation(() => {});
+        setLang('hi');
+        DiagnosticsManager.auditFilter = '';
+        DiagnosticsManager.auditPeople = new Map([['u1', { name: 'Ravi', role: 'manager', email: '' }]]);
+        DiagnosticsManager.auditLogs = [{ action: 'VOID_BILL', userId: 'u1', userName: 'Ravi', timestamp: new Date(2026, 9, 31, 10, 0).getTime(), details: { billNumber: 'R-7' } }];
+        await DiagnosticsManager.exportAuditCsv();
+        const lines = saved[0].text.split('\r\n');
+        expect(lines.slice(0, 4).map(l => l.replace('\uFEFF', '').split(',')[0])).toEqual(['Shop', 'Period', 'Exported', 'By']);
+        expect(lines[5]).toBe('Time,Action,Who,Details');
+        expect(lines[6]).toMatch(/Void Bill,Ravi \(Manager\),Bill: R-7/);
+        expect(saved[0].text).not.toMatch(/[\u0900-\u097F]/);
+        const doc = { write: jest.fn(), close: jest.fn() };
+        jest.spyOn(window, 'open').mockReturnValue({ document: doc, print: jest.fn() });
+        await DiagnosticsManager.printAudit();
+        expect(doc.write.mock.calls[0][0]).toMatch(/समय/);
     });
 
     test('an empty list exports nothing', async () => {
@@ -171,7 +197,7 @@ describe('Diagnostics exports', () => {
         expect(text).not.toMatch(/ram@example|9876543210|5,000|Ravi|u1|token=abc|eyJhbGci/);
         expect(report.errors[0]).toMatchObject({ type: 'uncaught', count: 3, source: 'https://myhappa.web.app/js/x.js:12' });
         expect(saved[0].name).toMatch(/_errors_2026-10-31_\d{8}-\d{4}\.json$/);
-        expect(note).toHaveBeenCalledWith('EXPORT', { exportKind: 'errors', format: 'json', from: '2026-10-31', to: '2026-10-31', rows: 1 });
+        expect(note).toHaveBeenLastCalledWith('EXPORT', expect.objectContaining({ exportKind: 'errors', format: 'json', from: '2026-10-31', to: '2026-10-31', rows: 1, exportStatus: 'done' }));
         AppState.userRole = 'manager';
         jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
         expect(await DiagnosticsManager.exportErrorReport()).toBe(false);
@@ -183,5 +209,20 @@ describe('Diagnostics exports', () => {
         expect(errorReportPeriod([{ lastSeen: Date.UTC(2026, 9, 3) }, { lastSeen: Date.UTC(2026, 9, 1) }], day)).toEqual({ from: '2026-10-01', to: '2026-10-03' });
         expect(errorReportPeriod([], day)).toEqual({ from: null, to: null });
         expect(buildErrorReport(null).errors).toEqual([]);
+    });
+
+    test('error report: the shop\'s people (team list, audit profiles, this user, who saw the error) become <person>', async () => {
+        jest.spyOn(AuditService, 'note').mockImplementation(() => {});
+        jest.spyOn(DiagnosticsManager, 'statusText').mockReturnValue('signed in as Asha');
+        jest.spyOn(UsersRepo, 'readTeamDirectory').mockResolvedValue({ people: { m1: { name: 'Mohan Lal', role: 'manager' }, s1: { name: 'गीता', role: 'staff' } } });
+        DiagnosticsManager.filter = 'all';
+        DiagnosticsManager.auditPeople = new Map([['p9', { name: 'Kiran', role: 'staff' }]]);
+        DiagnosticsManager.data = [{ id: 'g2', type: 'manual', message: 'Mohan Lal and lal-ji, गीता, KIRAN, Seema; Kiranmala stays', stack: 'at Mohan', occurrences: [{ userName: 'Seema' }], lastSeen: Date.now() }];
+        await DiagnosticsManager.exportErrorReport();
+        const report = JSON.parse(saved[0].text);
+        expect(report.errors[0].message).toBe('<person> and lal-ji, <person>, <person>, <person>; Kiranmala stays');
+        expect(report.errors[0].stack).toBe('at <person>');
+        expect(report.status).toBe('signed in as <person>');
+        expect(nameScrubber(['Al', '', null])('Al Pacino')).toBe('Al Pacino');
     });
 });

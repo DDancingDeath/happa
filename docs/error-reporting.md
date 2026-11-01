@@ -43,7 +43,8 @@ one on the website.
 1. App health: which check is failing, on which app version, since when.
 2. Diagnostics (owner): the grouped error, its count and the last stack. **Export
    report** (#83) saves the listed errors as a JSON file, scrubbed again with
-   `utils/scrub.js` (no user names or ids), with this phone's Status text, to send to
+   `utils/scrub.js` (no user names or ids; the shop's people's names from the team list, the audit
+   profiles and the reports themselves become `<person>`), with this phone's Status text, to send to
    whoever fixes the app; the export is an `EXPORT` audit row.
 3. A `tip-auto` issue is opened automatically when failures repeat; add what you
    found there (without customer names or amounts).

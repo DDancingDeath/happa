@@ -24,8 +24,12 @@ export const Exporter = {
     },
 
     /**
-     * Owner check, confirm when `names`, then `produce(stamp)`; a run that
-     * produced something (not `false`) writes the EXPORT audit row.
+     * Owner check, confirm when `names`, then an EXPORT audit row with status
+     * 'started' **before** `produce(stamp)` opens the share sheet / download / print
+     * (so a file that leaves the app is on record even if the phone never reports
+     * back), then a second row with how it ended: 'done', 'cancelled' (`produce`
+     * returned `false`) or 'failed' (it threw). Audit rows can't be updated
+     * (firestore.rules), so the two rows share an `exportRef`.
      * @param {{kind: string, format: string, period?: {from?: ?string, to?: ?string, label?: string}, rows?: number,
      *   names?: boolean, produce: (stamp: Object) => (boolean|void|Promise<boolean|void>)}} job
      * @returns {Promise<boolean>} true when exported
@@ -36,10 +40,18 @@ export const Exporter = {
             return false;
         }
         if (names && !(await UIManager.showModal(t('msg.export.confirm_names'), t('msg.export.confirm_title'), true))) return false;
-        const done = await produce(this.stamp(period));
-        if (done === false) return false;
-        AuditService.note(AuditService.ACTIONS.EXPORT, exportAuditDetails({ kind, format, period, rows }));
-        return true;
+        const ref = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        const record = (status) => AuditService.note(AuditService.ACTIONS.EXPORT, exportAuditDetails({ kind, format, period, rows, status, ref }));
+        record('started');
+        let done;
+        try {
+            done = await produce(this.stamp(period));
+        } catch (e) {
+            record('failed');
+            throw e;
+        }
+        record(done === false ? 'cancelled' : 'done');
+        return done !== false;
     },
 
     /**

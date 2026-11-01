@@ -299,7 +299,7 @@ describe('Statements page', () => {
         jest.spyOn(window, 'open').mockReturnValue({ document: doc, print: jest.fn() });
         await StatementsManager.print();
         expect(doc.write.mock.calls[0][0]).toMatch(/Month statement/);
-        expect(AuditService.note.mock.calls.map(c => c[1].format)).toEqual(['whatsapp', 'csv', 'print']);
+        expect(AuditService.note.mock.calls.map(c => `${c[1].format}:${c[1].exportStatus}`)).toEqual(['whatsapp:started', 'whatsapp:done', 'csv:started', 'csv:done', 'print:started', 'print:done']);
     });
 
     test('exports are the owner\'s (#103): no export buttons or export-only statements for anyone else', async () => {
@@ -340,7 +340,7 @@ describe('Statements page', () => {
         const text = decodeURIComponent(open.mock.calls[0][0].replace('https://wa.me/?text=', ''));
         expect(text.split('\n')[0]).toBe('Gupta Traders');
         expect(text).toMatch(/Period: Day book · .* · Exported: \d{4}-\d{2}-\d{2} \d{2}:\d{2} · By: Asha$/);
-        expect(note).toHaveBeenLastCalledWith('EXPORT', { exportKind: 'day', format: 'whatsapp', from: '2026-10-20', to: '2026-10-20', rows: StatementsManager.current.csvRows.length });
+        expect(note).toHaveBeenLastCalledWith('EXPORT', expect.objectContaining({ exportKind: 'day', format: 'whatsapp', from: '2026-10-20', to: '2026-10-20', rows: StatementsManager.current.csvRows.length, exportStatus: 'done' }));
         const saved = [];
         jest.spyOn(Exporter, 'saveBlob').mockImplementation(async (blob, name) => { saved.push({ blob, name }); return true; });
         const Real = global.Blob;

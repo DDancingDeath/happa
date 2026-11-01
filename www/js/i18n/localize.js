@@ -80,6 +80,6 @@ export const AUDIT_ACTIONS = ['PERMISSION_DENIED', 'NEW_DEVICE', 'OLD_BILL_EDIT_
  * @param {string} action
  * @returns {string}
  */
-export function auditActionLabel(action = '') {
-    return AUDIT_ACTIONS.includes(action) ? t(`ui.diag.a_${action.toLowerCase()}`) : String(action).replace(/_/g, ' ');
+export function auditActionLabel(action = '', lang = getLang()) {
+    return AUDIT_ACTIONS.includes(action) ? t(`ui.diag.a_${action.toLowerCase()}`, null, lang) : String(action).replace(/_/g, ' ');
 }
