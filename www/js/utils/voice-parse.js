@@ -251,10 +251,15 @@ function numberKind(rest, groups, gi) {
     const next = groups[gi + 1];
     const nextIsWeight = next && next.value !== 1 && (WEIGHT_UNITS.has(rest[next.end]) || GRAM_UNITS.has(rest[next.end]));
     if (after !== 'weight' && after !== 'gram' && POSSESSIVE.has(lastWord) && nextIsWeight) return 'other';
-    if ((after === null || after === 'rate') && mein && !meinAfterRateWord && nextIsWeight) return 'other';
+    if ((after === null || after === 'rate') && mein && !meinAfterRateWord && nextIsWeight && !PRICE_BEFORE.has(rest[g.start - 1])) return 'other';
     const [b1, b2] = [rest[g.start - 1], rest[g.start - 2]];
     if (WEIGHT_UNITS.has(b1) && PER_WORDS.has(b2) && after !== 'weight') return 'rate-kg';
-    if (PRICE_BEFORE.has(b1) && after !== 'weight' && after !== 'gram') return after === 'rate-kg' ? after : 'rate';
+    if (PRICE_BEFORE.has(b1)) {
+        // "30 ka bhav 10 kilo": the rate word belongs to the 30, and 10 is the weight
+        const prevEnd = gi > 0 ? groups[gi - 1].end : -1;
+        const earlier = prevEnd === g.start - 1 || (prevEnd === g.start - 2 && POSSESSIVE.has(b2));
+        if (!(earlier && (after === 'weight' || after === 'gram'))) return after === 'rate-kg' || after === 'weight' ? 'rate-kg' : 'rate';
+    }
     // "2 kilo 60 (rupaye) mein" is a total; "30 ke bhav mein" a rate
     if (gi > 0 && (((after === null || after === 'rate') && mein && !meinAfterRateWord)
         || (after !== 'weight' && after !== 'gram' && TOTAL_AFTER_A_WEIGHT.has(b1)))) return 'other';
