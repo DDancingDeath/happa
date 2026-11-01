@@ -75,6 +75,9 @@ describe('RENT-5 / RENT-16: an overpayment pays the oldest unpaid months first',
         // An old due with paise is paid off exactly and the parts still add up to the typed amount (paid exactly).
         expect(payOldestFirst(paise, 6235, '2026-10').map(payAmount)).toEqual([1234.5, 5000.5]);
         expect(payOldestFirst(paise, 3000, '2026-10').map(payAmount)).toEqual([1234.5, 1765.5]);
+        // Exactly the total due with paise: nothing left over, also without a latest month.
+        expect(payOldestFirst(paise, 6234.5, '2026-10')).toEqual([{ id: 'L1_2026-09', month: '2026-09', amount: 1234.5 }, { id: 'L1_2026-10', month: '2026-10', amount: 5000 }]);
+        expect(payOldestFirst(paise, 6234.5, undefined).map(payAmount)).toEqual([1234.5, 5000]);
         const p2 = payOldestFirst(paise, 10000, '2026-10');
         expect(applyPayment(paise[1], payAmount(p2[1]), true, true)).toMatchObject({ amount: 5000, adv: 3765.5 });
     });

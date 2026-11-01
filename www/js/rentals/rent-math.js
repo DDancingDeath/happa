@@ -304,7 +304,9 @@ export function advanceLeft(charges, leaseId, endMonth) {
  * @throws {Error} 'amount' | 'over'
  */
 export function payOldestFirst(open, amount, latest) {
-    let left = entryAmount(amount);
+    // Exactly the total due with paise is paid off as it is (DUE-CHECK), else whole rupees.
+    const total = rentTotals(open).due;
+    let left = Math.abs(round2(Number(amount) || 0) - total) <= 0.001 ? total : entryAmount(amount);
     if (!(left > 0)) throw new Error('amount');
     const parts = [];
     for (const c of open) {
