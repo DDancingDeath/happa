@@ -8,6 +8,7 @@
 
 import { AppState } from '../../utils/state.js';
 import { getDb, col } from '../db.js';
+import { isOffline, needsInternetError } from '../../utils/write-conflict.js';
 import { localISODaysAgo } from '../../utils/dates.js';
 import { safeSetItem } from '../../utils/storage-full.js';
 import { backgroundReadsAllowed } from '../firestore-meter.js';
@@ -140,8 +141,9 @@ export const userProfileMethods = {
         return wrote;
     },
 
-    /** Partial update of a user profile (role/status/approval fields). */
+    /** Partial update of a user profile (role/status/approval fields). Needs the internet (#113). */
     async updateUser(userId, fields) {
+        if (isOffline()) throw needsInternetError();
         await getDb().collection(col('users')).doc(userId).update(fields);
         usersCache = null;
         auditPeopleCache = null;
@@ -152,6 +154,7 @@ export const userProfileMethods = {
      * the person can't register again as pending; the owner can restore it.
      */
     async rejectUserProfile(userId, byUid) {
+        if (isOffline()) throw needsInternetError();
         await getDb().collection(col('users')).doc(userId).update({
             status: 'rejected',
             rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -166,6 +169,7 @@ export const userProfileMethods = {
      * owner then approves them with a role like any new registration.
      */
     async restoreUserProfile(userId) {
+        if (isOffline()) throw needsInternetError();
         const del = firebase.firestore.FieldValue.delete();
         await getDb().collection(col('users')).doc(userId).update({
             status: 'pending',
@@ -185,6 +189,7 @@ export const userProfileMethods = {
      * re-register as pending. The Auth account itself needs the Admin SDK.
      */
     async disableUserProfile(userId, byUid) {
+        if (isOffline()) throw needsInternetError();
         const del = firebase.firestore.FieldValue.delete();
         await getDb().collection(col('users')).doc(userId).update({
             status: 'disabled',

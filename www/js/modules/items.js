@@ -23,6 +23,7 @@ import { createRateEditTracker, diffItemRates, diffItemFields } from '../utils/n
 import { canArchiveItem, ITEM_ARCHIVE_LOCKED_KEY, isPermissionDenied } from '../utils/record-permissions.js';
 import { t } from '../i18n/index.js';
 import { attachScrollCue } from '../ui/scroll-cue.js';
+import { CHANGED_ELSEWHERE, isOffline, writeErrorKey } from '../utils/write-conflict.js';
 
 /**
  * Items Manager - Manages inventory items and rates
@@ -779,6 +780,8 @@ const ItemsManager = {
         };
         // Values at edit start; history is diffed against these once on save
         this.editStartSnapshot = snapshotItem(item);
+        // Its version when opened: saving over a newer one from another phone is refused (#113)
+        this.editStartRev = Number(item.rev) || 0;
         this.resetModalHistory(this.canUseHistory());
         
         this.renderModalRates();
@@ -974,13 +977,18 @@ const ItemsManager = {
             }
         }
         
+        // Item writes need the internet (#113, #143): an offline save would land later over newer changes
+        if (isOffline()) {
+            UIManager.showToast(t('msg.items.needs_internet'), 4000);
+            return;
+        }
         UIManager.showLoading();
         
         try {
             if (existing) {
                 // Keep fields this dialog doesn't edit; write by id, never by list position
                 const updated = { ...existing, ...itemData, id: editingId };
-                await FirebaseService.saveItem(updated);
+                await FirebaseService.saveItem(updated, { expectedRev: this.editStartRev });
                 const idx = AppState.items.findIndex(i => i.id === editingId);
                 if (idx !== -1) AppState.items[idx] = updated;
                 this.recordHistory(updated, changes, 'modal');
@@ -1002,7 +1010,7 @@ const ItemsManager = {
         } catch (error) {
             console.error('Error saving item:', error);
             UIManager.hideLoading();
-            UIManager.showToast(t('msg.items.failed_save_item'));
+            UIManager.showToast(error?.code === CHANGED_ELSEWHERE ? t('msg.items.changed_elsewhere') : t(writeErrorKey(error, 'msg.items.failed_save_item')), 5000);
         }
     },
     

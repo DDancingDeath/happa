@@ -1278,7 +1278,8 @@
       "batch.set",
       "ref(dev_items/i9)",
       {
-        "rate": 5
+        "rate": 5,
+        "rev": "increment(1)"
       },
       {
         "merge": true

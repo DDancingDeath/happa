@@ -15,6 +15,7 @@ import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { LABOUR_PACKAGE_KG_MAX, LABOUR_PACKAGE_KG_MIN, normalizeLabourSettings, normalizePackageKg } from '../utils/money.js';
 import { DEFAULT_THRESHOLDS, normalizeThresholds } from '../utils/bill-checks.js';
+import { writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
 import { safeSetItem, STORAGE_FULL_KEY } from '../utils/storage-full.js';
 import { auditActionLabel } from '../i18n/localize.js';
@@ -236,7 +237,7 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving shared labour settings failed:', error);
-            UIManager.showToast(t('msg.settings.labour_rate_not_saved_everyone'));
+            UIManager.showToast(t(writeErrorKey(error, 'msg.settings.labour_rate_not_saved_everyone')));
             return false;
         }
     }
@@ -263,7 +264,7 @@ export class SettingsManager {
         if (AppState.userRole === 'owner') {
             const seed = normalizeLabourSettings(AppState.settings);
             this.applyLabourLocally(seed);
-            await FirebaseService.saveSharedLabourSettings(seed);
+            await FirebaseService.saveSharedLabourSettings(seed, { checked: false });
         }
     }
 
@@ -401,7 +402,7 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving bill-check limits failed:', error);
-            UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
+            UIManager.showToast(t(writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet')));
             return false;
         }
     }
@@ -425,7 +426,7 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving business details failed:', error);
-            UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
+            UIManager.showToast(t(writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet')));
             return false;
         }
     }

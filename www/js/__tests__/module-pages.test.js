@@ -94,7 +94,7 @@ describe('Rates page (items list)', () => {
         document.getElementById('itemModalHindiName').value = 'गेहूँ';
         ItemsManager.updateModalRate('sale', 0, '29');
         await ItemsManager.saveItemFromModal();
-        expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-wheat', name: 'Wheat', hindiName: 'गेहूँ', saleRates: [29] }));
+        expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-wheat', name: 'Wheat', hindiName: 'गेहूँ', saleRates: [29] }), { expectedRev: 0 });
         expect(AppState.items.find(i => i.id === 'item-wheat').saleRates).toEqual([29]);
         expect(AppState.items.find(i => i.id === 'item-rice').saleRates).toEqual([36]);
     });
@@ -113,6 +113,49 @@ describe('Rates page (items list)', () => {
         await ItemsManager.saveItemFromModal();
         expect(save).toHaveBeenCalledWith(expect.objectContaining({ name: 'Barley', rates: [18] }));
         expect(AppState.items).toHaveLength(SAMPLE_ITEMS.length + 1);
+    });
+
+    test('an item saved over a newer version from another phone is refused; offline is refused (#113)', async () => {
+        const fake = createFakeFirestore();
+        window.firebase = fake.firebase;
+        global.firebase = fake.firebase;
+        try {
+            fake.seed('items', [{ id: 'x', name: 'X', rates: [1], rev: 2 }]);
+            await expect(FirebaseService.saveItem({ id: 'x', name: 'X', rates: [5] }, { expectedRev: 1 })).rejects.toMatchObject({ code: 'changed-elsewhere' });
+            expect(fake.raw('items').get('x')).toMatchObject({ rates: [1], rev: 2 });
+            const saved = await FirebaseService.saveItem({ id: 'x', name: 'X', rates: [6] }, { expectedRev: 2 });
+            expect(saved.rev).toBe(3);
+            expect(fake.raw('items').get('x')).toMatchObject({ rates: [6], rev: 3 });
+            const offline = jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+            await expect(FirebaseService.saveItem({ id: 'x', name: 'X', rates: [7] }, { expectedRev: 3 })).rejects.toMatchObject({ code: 'needs-internet' });
+            await expect(FirebaseService.updateUser('u1', { role: 'manager' })).rejects.toMatchObject({ code: 'needs-internet' });
+            offline.mockRestore();
+        } finally {
+            delete window.firebase;
+            delete global.firebase;
+        }
+    });
+
+    test('a settings section saved over another phone\'s newer save is refused, then works once read again (#113)', async () => {
+        const fake = createFakeFirestore();
+        window.firebase = fake.firebase;
+        global.firebase = fake.firebase;
+        try {
+            fake.seed('settings', [{ id: 'app', roleAccessUpdatedAt: 1, laborRate: 6 }]);
+            await FirebaseService.loadAppSettings({ refresh: true });
+            fake.raw('settings').get('app').roleAccessUpdatedAt = 2;
+            await expect(FirebaseService.saveRoleAccess(ROLE_ACCESS_DEFAULTS)).rejects.toMatchObject({ code: 'changed-elsewhere' });
+            expect(fake.raw('settings').get('app').roleAccessUpdatedAt).toBe(2);
+            // another section saved meanwhile is no conflict for this one
+            await expect(FirebaseService.saveSharedLabourSettings({ laborRate: 7, heavyWeightThreshold: 30 })).resolves.toBeUndefined();
+            await FirebaseService.loadAppSettings({ refresh: true });
+            await FirebaseService.saveRoleAccess(ROLE_ACCESS_DEFAULTS);
+            expect(fake.raw('settings').get('app').roleAccessUpdatedAt).not.toBe(2);
+            expect(fake.raw('settings').get('app').laborRate).toBe(7);
+        } finally {
+            delete window.firebase;
+            delete global.firebase;
+        }
     });
 
     test('item saves never write the archive fields: only Archive / Unarchive change them (#123)', async () => {
@@ -506,7 +549,7 @@ describe('Settings', () => {
         AppState.userRole = 'owner';
         AppState.settings.laborRate = 5;
         await SettingsManager.applySharedSettings({ minClientVersion: 3 });
-        expect(shared).toHaveBeenCalledWith({ laborRate: 5, heavyWeightThreshold: 30, labourPackageKg: 35 });
+        expect(shared).toHaveBeenCalledWith({ laborRate: 5, heavyWeightThreshold: 30, labourPackageKg: 35 }, { checked: false });
     });
 
     test('audit log: owner-only, filter by action, user text escaped', async () => {

@@ -170,6 +170,33 @@ describe('archive instead of delete (#123)', () => {
     });
 });
 
+describe('edits from two phones (#113)', () => {
+    test('the dialog saves against the version it opened; changed elsewhere → nothing saved, the user is told', async () => {
+        AppState.items[1].rev = 4;
+        ItemsManager.openEditModal('b');
+        AppState.items[1] = { ...AppState.items[1], rev: 5 };
+        FirebaseService.saveItem.mockImplementationOnce(async () => { throw Object.assign(new Error('x'), { code: 'changed-elsewhere' }); });
+        document.getElementById('itemModalName').value = 'Gehu Lokwan';
+        await ItemsManager.saveItemFromModal();
+        expect(FirebaseService.saveItem).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }), { expectedRev: 4 });
+        expect(UIManager.showToast.mock.calls.at(-1)[0]).toMatch(/changed on another phone/);
+        expect(AppState.items[1].name).toBe('Gehu');
+    });
+
+    test('offline: the dialog saves nothing', async () => {
+        const spy = jest.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+        try {
+            ItemsManager.openEditModal('b');
+            document.getElementById('itemModalName').value = 'Gehu Lokwan';
+            await ItemsManager.saveItemFromModal();
+            expect(FirebaseService.saveItem).not.toHaveBeenCalled();
+            expect(UIManager.showToast.mock.calls.at(-1)[0]).toMatch(/needs the internet/);
+        } finally {
+            spy.mockRestore();
+        }
+    });
+});
+
 describe('debounced saves target the item by id', () => {
     test('rate edit saves the same item after the list reorders', async () => {
         jest.useFakeTimers();

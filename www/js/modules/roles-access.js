@@ -11,6 +11,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { AuthManager } from '../auth/authentication.js';
 import { Helpers } from '../utils/helpers.js';
+import { writeErrorKey } from '../utils/write-conflict.js';
 import { t } from '../i18n/index.js';
 import {
     CONFIGURABLE_ROLES, PAGE_PERMISSIONS, SECTION_PERMISSIONS, SETTINGS_PERMISSIONS, MAX_EDIT_DAYS, MAX_HISTORY_DAYS,
@@ -142,7 +143,7 @@ export class RolesAccessManager {
             await FirebaseService.saveRoleAccess(next);
         } catch (error) {
             console.error('Saving roles & access failed:', error);
-            UIManager.showToast(t('msg.roles.not_saved'));
+            UIManager.showToast(t(writeErrorKey(error, 'msg.roles.not_saved')));
             return false;
         }
         if (changes.length) {
