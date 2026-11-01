@@ -328,6 +328,13 @@ describe('Settings › Printed bill', () => {
         await expect(SettingsManager.saveReceiptOptions()).resolves.toBe(false);
         expect(PrinterService.receipt().footer).toBe('Old');
         expect(document.getElementById('settingReceiptFooter').value).toBe('Old');
+        // a dropdown keeps focus after its picker closes: it is put back too
+        const density = document.getElementById('settingReceiptDensity');
+        density.focus();
+        density.value = 'dark';
+        await expect(SettingsManager.saveReceiptOptions()).resolves.toBe(false);
+        expect(document.activeElement).toBe(density);
+        expect(density.value).toBe('normal');
     });
 
     test('members see the shared choices but cannot change them', async () => {

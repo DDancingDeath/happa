@@ -533,12 +533,12 @@ export class SettingsManager {
     }
 
     /** Settings › Printed bill (#107): the shop's shared choices; only the owner or an allowed manager changes them. */
-    static renderReceiptOptions() {
+    static renderReceiptOptions({ force = false } = {}) {
         const receipt = PrinterService.receipt();
         const editable = this.canEditShop();
         const set = (id, prop, value) => {
             const el = document.getElementById(id);
-            if (el && document.activeElement !== el) el[prop] = value;
+            if (el && (force || document.activeElement !== el)) el[prop] = value;
         };
         set('settingReceiptFooter', 'value', receipt.footer);
         set('settingReceiptQr', 'checked', receipt.qr);
@@ -569,7 +569,7 @@ export class SettingsManager {
     static async saveSharedReceipt(patch, { base = PrinterService.receipt(), onlyIfMissing = false } = {}) {
         if (!this.canEditShop()) {
             UIManager.showToast(t('ui.settings.shop_view_only'));
-            this.renderReceiptOptions();
+            this.renderReceiptOptions({ force: true });
             return false;
         }
         const before = PrinterService.receipt();
@@ -577,7 +577,7 @@ export class SettingsManager {
         try {
             const { receipt, applied } = await FirebaseService.saveReceiptSettings(patch, { base, onlyIfMissing });
             PrinterService.setSharedReceipt(receipt);
-            this.renderReceiptOptions();
+            this.renderReceiptOptions({ force: true });
             if (!applied) {
                 UIManager.showToast(t('msg.settings.receipt_already_shared'));
                 return false;
@@ -587,7 +587,7 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving the printed bill settings failed:', error);
-            this.renderReceiptOptions();
+            this.renderReceiptOptions({ force: true });
             UIManager.showToast(t('msg.admin.not_saved_everyone_check_internet'));
             return false;
         }
