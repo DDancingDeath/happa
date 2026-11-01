@@ -1010,7 +1010,8 @@ const ItemsManager = {
         } catch (error) {
             console.error('Error saving item:', error);
             UIManager.hideLoading();
-            UIManager.showToast(error?.code === CHANGED_ELSEWHERE ? t('msg.items.changed_elsewhere') : t(writeErrorKey(error, 'msg.items.failed_save_item')), 5000);
+            const messageKey = error?.code === CHANGED_ELSEWHERE ? 'msg.items.changed_elsewhere' : writeErrorKey(error, 'msg.items.failed_save_item');
+            UIManager.showToast(t(messageKey), 5000);
         }
     },
     

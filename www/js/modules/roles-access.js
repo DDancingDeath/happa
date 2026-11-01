@@ -143,7 +143,8 @@ export class RolesAccessManager {
             await FirebaseService.saveRoleAccess(next);
         } catch (error) {
             console.error('Saving roles & access failed:', error);
-            UIManager.showToast(t(writeErrorKey(error, 'msg.roles.not_saved')));
+            const messageKey = writeErrorKey(error, 'msg.roles.not_saved');
+            UIManager.showToast(t(messageKey));
             if (error?.code === CHANGED_ELSEWHERE || error?.code === NEEDS_INTERNET) {
                 // Not saved: back to what is stored (the other phone's values when it changed meanwhile)
                 let stored = { roleAccess: before };

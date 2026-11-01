@@ -237,7 +237,8 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving shared labour settings failed:', error);
-            UIManager.showToast(t(writeErrorKey(error, 'msg.settings.labour_rate_not_saved_everyone')));
+            const messageKey = writeErrorKey(error, 'msg.settings.labour_rate_not_saved_everyone');
+            UIManager.showToast(t(messageKey));
             await this.afterRefusedSave(error, () => this.applyLabourLocally(current));
             return false;
         }
@@ -401,7 +402,8 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving bill-check limits failed:', error);
-            UIManager.showToast(t(writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet')));
+            const messageKey = writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet');
+            UIManager.showToast(t(messageKey));
             await this.afterRefusedSave(error, () => this.applyChecksLocally(previous));
             return false;
         }
@@ -424,7 +426,8 @@ export class SettingsManager {
             return true;
         } catch (error) {
             console.error('Saving business details failed:', error);
-            UIManager.showToast(t(writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet')));
+            const messageKey = writeErrorKey(error, 'msg.admin.not_saved_everyone_check_internet');
+            UIManager.showToast(t(messageKey));
             await this.afterRefusedSave(error, () => {
                 this.applyBusinessLocally(previous);
                 setField('settingBusinessName', 'value', previous.businessName);
