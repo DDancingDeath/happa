@@ -54,6 +54,8 @@ const FILLER = words([
 // "now" / "all", but also names: a name only right before ka / ki / ji ("Abhi ka baaki", "Sara ji ka baaki").
 const AMBIGUOUS = words(['abhi', 'ab', 'sara', 'अभी', 'अब']);
 const NAME_NEXT = words([...LINK, 'ji', 'jee', 'जी']);
+// Cash in hand or the bank: not a party's due (Cash, Money › Worth).
+const MONEY_PLACES = words(['cash', 'bank', 'galla', 'gulla', 'drawer', 'नकद', 'बैंक', 'गल्ला']);
 // Another day or period: Ask knows only today's totals.
 const OTHER_DAY = words(['kal', 'parso', 'parson', 'yesterday', 'tomorrow', 'week', 'hafta', 'hafte', 'mahina', 'mahine', 'month',
     'saal', 'year', 'pichle', 'pichhle', 'last', 'कल', 'परसों', 'हफ़्ता', 'हफ्ता', 'हफ़्ते', 'हफ्ते', 'महीना', 'महीने', 'साल', 'पिछले']);
@@ -69,8 +71,8 @@ const DEVANAGARI = /[\u0900-\u097F]/;
 export function questionWords(text) {
     return String(text || '').normalize('NFC').toLowerCase()
         .replace(/['’]s\b/g, '')
-        // "abhi tak" / "ab tak" = so far, never a name
-        .replace(/(^|\s)(abhi|ab|अभी|अब)\s+(tak|तक)(?=\s|$)/g, ' ')
+        // "abhi tak" / "ab tak" / "aaj tak" = so far: never a name, never "today"
+        .replace(/(^|\s)(abhi|ab|aaj|aj|अभी|अब|आज)\s+(tak|तक)(?=\s|$)/g, ' ')
         .replace(/[?!.,;:।"“”‘’()[\]{}]+/g, ' ')
         .split(/\s+/)
         .filter(w => w && !FILLER.has(w));
@@ -90,16 +92,19 @@ export function parseQuestion(text) {
 
     // Dues and stock are known as they are now, sales only for today: another day gets no figure.
     const otherDay = hasAny(tokens, OTHER_DAY) || tokens.some(w => /[\d\u0966-\u096F]/.test(w));
-    const sale = hasAny(tokens, SALES) || hasAny(tokens, PURCHASES);
-    if (hasAny(tokens, DUES)) {
-        // "aaj ki udhaar bikri" asks about today's credit sales, not what is owed in all
-        if (otherDay || (sale && hasAny(tokens, TODAY))) return { intent: 'today_only' };
+    const sale = hasAny(tokens, SALES) || hasAny(tokens, PURCHASES) || hasAny(tokens, EXPENSES);
+    // "baaki" also means "left": "kitna stock baaki hai" is a stock question
+    const stockAsked = hasAny(tokens, STOCK) || (!sale && hasAny(tokens, GOODS));
+    if (hasAny(tokens, DUES) && !stockAsked) {
+        // "aaj kitna udhaar hua", "udhaar bikri": credit given today or sold on credit, not what is owed in all
+        if (otherDay || sale || hasAny(tokens, TODAY)) return { intent: 'today_only' };
+        if (hasAny(tokens, MONEY_PLACES)) return { intent: 'unknown' };
         const subject = leftover();
         return subject ? { intent: 'party_due', subject } : { intent: 'total_due' };
     }
     const money = hasAny(tokens, SALES) ? 'sales_today' : hasAny(tokens, PURCHASES) ? 'purchases_today'
         : hasAny(tokens, EXPENSES) ? 'expenses_today' : null;
-    if (hasAny(tokens, STOCK) || (!money && hasAny(tokens, GOODS))) return otherDay ? { intent: 'today_only' } : { intent: 'item_stock', subject: leftover() };
+    if (stockAsked) return otherDay ? { intent: 'today_only' } : { intent: 'item_stock', subject: leftover() };
     // Only today's totals are known here: "kal ki bikri", "chawal kitna becha" or "Ramesh ko kitna becha"
     // must not get today's total, so any word left over gets no figure.
     if (money) return leftover() || otherDay ? { intent: 'today_only' } : { intent: money };
