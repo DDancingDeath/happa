@@ -633,6 +633,8 @@ export default {
     'ui.history.badge_cash': "नकद: ₹{amount}",
     'ui.history.badge_due': "उधार: ₹{amount}",
     'ui.history.old_app_chip': "पुराना ऐप",
+    'ui.history.bad_date': "तारीख?",
+    'ui.history.bad_date_title': "इस बिल की तारीख पढ़ी नहीं जा सकती",
     'ui.print_status.chip_printed': "प्रिंट हुआ",
     'ui.print_status.chip_failed': "प्रिंट नहीं हुआ",
     'ui.print_status.chip_uncertain': "शायद प्रिंट हुआ",
