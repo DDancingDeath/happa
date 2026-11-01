@@ -14,6 +14,7 @@ import { addBillToAcc, createCatalogueResolver, istDayKey, lineKg, lineRate, RAT
 import { buildRateStatsDocs, rateStatsMeta } from './rate-stats.js';
 import { personalDayKey, personalDaysFromRows, PERSONAL_COLLECTION, PERSONAL_DAYS_COLLECTION } from '../../../www/js/utils/personal-expenses.js';
 import { PER_USER_COLLECTIONS, serviceAccountUids } from './service-accounts.js';
+import { buildTeamDirectory } from '../../../www/js/utils/team-directory.js';
 
 export const BUNDLE_FORMAT = 'aadhat-migration-bundle-v1';
 export const OLD_PROJECT_ID = 'aadhat-management';
@@ -24,7 +25,7 @@ export const SPARK_DAILY_WRITES = 20000;
 export const SHOP_RESERVE_WRITES = 8000;
 export const MIGRATION_DAILY_WRITES = SPARK_DAILY_WRITES - SHOP_RESERVE_WRITES;
 /** Write order: what the shop needs to start first, bulk history last. */
-const GROUP_ORDER = ['settings', 'counters', 'copy:users', 'opening', 'copy:items'];
+const GROUP_ORDER = ['settings', 'counters', 'copy:users', 'team', 'opening', 'copy:items'];
 const BULK_LAST = ['copy:rateHistory', 'copy:itemFrequency', 'rateStats', 'rateStatsMeta'];
 
 export const DEFAULT_OPTIONS = Object.freeze({
@@ -329,6 +330,11 @@ export function buildPlan(backup, rawOptions = {}, { now = Date.now() } = {}) {
         copied[name] = docs.length;
         add(`copy:${name}`, docs.map(d => ({ coll: name, id: d.id, data: d.data })));
     });
+    // Managers read names and roles from settings/team, not the profiles (#87).
+    if (copied.users !== undefined) {
+        const team = toRecords('users').filter(u => !skippedUids.has(String(u.id)));
+        add('team', [{ coll: 'settings', id: 'team', data: buildTeamDirectory(team) }]);
+    }
 
     let counters = [];
     if (options.billNumbers === 'continue') {
