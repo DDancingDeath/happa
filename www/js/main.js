@@ -31,6 +31,7 @@ import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
 import { dayKeyOf } from './tip/tip.js';
 import { createSyncWatcher } from './tip/scenarios/sync.js';
+import { createWatchdog, TICK_MS as WATCHDOG_TICK_MS } from './tip/scenarios/main-thread.js';
 import { claimToday, numberChecksProps } from './tip/scenarios/number-checks.js';
 import { whenIdle } from './utils/background-tasks.js';
 import { APP_VERSION } from './version.js';
@@ -57,7 +58,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbnd-rent-expenses';
+const BUILD_ID = '20261101zzuzieecmbbkhbnm-watchdog';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -134,6 +135,9 @@ SyncStatus.watch((s) => tipSyncWatcher.update(s));
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') tipSyncWatcher.hidden();
 });
+// TIP MainThread (#83): a watchdog timer notices a frozen screen; no reads.
+const tipWatchdog = createWatchdog(() => tip.start('MainThread'));
+setInterval(() => tipWatchdog.tick(Date.now(), document.visibilityState !== 'hidden'), WATCHDOG_TICK_MS);
 
 /** TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle. */
 function scheduleTipNumberChecks() {
