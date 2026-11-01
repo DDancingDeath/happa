@@ -15,7 +15,7 @@
  */
 
 import {
-    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney
+    billTotal, dueNeedsName, NAME_REQUIRED_FOR_DUE_KEY, paymentSplitMessage, readLineItem, round2, toMoney, formatKg, formatRupees, formatRate
 } from './money.js';
 import { validatePaymentSplit, wholesaleCostRate } from './calc/billing.js';
 import { parseAnyBillDate, startOfLocalDay } from './dates.js';
@@ -56,8 +56,8 @@ const ITEM_RATE_FIELD = { purchase: 'rates', retail: 'saleRates', wholesale: 'wh
 const HARD_RULES = new Set(['payment-none', 'party-required', 'payment-split', 'qty-invalid', 'rate-invalid']);
 
 const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
-const fmtRs = (n) => `₹${round2(n).toLocaleString('en-IN')}`;
-const fmtKg = (n) => (Math.round(n * 10) / 10).toFixed(1);
+const fmtRs = (n) => formatRupees(n, { exact: true });
+const fmtKg = (n) => formatKg(n);
 
 /**
  * Thresholds with blank / invalid / non-positive values replaced by the defaults.
@@ -152,12 +152,12 @@ function rateIssues(line, field, ctx, rates, extra) {
         const ratio = rate / usual;
         if (ratio > m + 1e-9) {
             out.push(issue('rate-high', field, 'warn',
-                `Rate ${fmtRs(rate)} is ${ratio.toFixed(1)}× the usual ${fmtRs(usual)}`,
-                `रेट ${fmtRs(rate)} सामान्य ${fmtRs(usual)} का ${ratio.toFixed(1)} गुना है`, extra));
+                `Rate ${formatRate(rate)} is ${ratio.toFixed(1)}× the usual ${formatRate(usual)}`,
+                `रेट ${formatRate(rate)} सामान्य ${formatRate(usual)} का ${ratio.toFixed(1)} गुना है`, extra));
         } else if (ratio < 1 / m - 1e-9) {
             out.push(issue('rate-low', field, 'warn',
-                `Rate ${fmtRs(rate)} is less than 1/${m} of the usual ${fmtRs(usual)}`,
-                `रेट ${fmtRs(rate)} सामान्य ${fmtRs(usual)} के 1/${m} से कम है`, extra));
+                `Rate ${formatRate(rate)} is less than 1/${m} of the usual ${formatRate(usual)}`,
+                `रेट ${formatRate(rate)} सामान्य ${formatRate(usual)} के 1/${m} से कम है`, extra));
         }
     }
     if (ctx.kind !== 'purchase') {
@@ -165,8 +165,8 @@ function rateIssues(line, field, ctx, rates, extra) {
         if (cost && rate < cost - 1e-9) {
             // Cost figures are shown to owner/manager only (#84 is still open).
             out.push(issue('below-cost', field, 'warn',
-                ctx.showCost ? `Selling below average cost ${fmtRs(cost)}` : 'Selling below cost — check the rate',
-                ctx.showCost ? `औसत लागत ${fmtRs(cost)} से कम में बिक्री` : 'लागत से कम में बिक्री — रेट जाँचें', extra));
+                ctx.showCost ? `Selling below average cost ${formatRate(cost)}` : 'Selling below cost — check the rate',
+                ctx.showCost ? `औसत लागत ${formatRate(cost)} से कम में बिक्री` : 'लागत से कम में बिक्री — रेट जाँचें', extra));
         }
     }
     return out;

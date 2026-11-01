@@ -22,7 +22,7 @@ import { refusedForClock } from '../utils/clock-skew.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { can, canVoidExpenseWith } from '../utils/role-access.js';
-import { expenseMode, formatAmount, isActiveExpense, isPersonalExpense } from '../utils/money.js';
+import { expenseMode, formatAmount, isActiveExpense, isPersonalExpense, formatRupees } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { DEFAULT_EXPENSE_MODE, expenseDateFields, expenseDayRange, validateExpenseEntry } from '../utils/expense-entry.js';
 import { toLocalISODate } from '../utils/dates.js';
@@ -466,7 +466,7 @@ export class ExpensesManager {
             this.templates[category] = templates;
             chips.hidden = templates.length === 0;
             chips.innerHTML = templates.length === 0 ? '' : `<span class="expense-templates__label">${tx('ui.expenses.templates_label')}</span>`
-                + templates.map((tpl, i) => `<button type="button" class="expense-template-chip" onclick="window.app.expenses.applyTemplate('${category}', ${i})">${Helpers.escapeHtml(tpl.type)}${tpl.personName ? ` · ${Helpers.escapeHtml(tpl.personName)}` : ''} · ₹${Helpers.escapeHtml(formatAmount(tpl.amount, { small: true }))}</button>`).join('');
+                + templates.map((tpl, i) => `<button type="button" class="expense-template-chip" onclick="window.app.expenses.applyTemplate('${category}', ${i})">${Helpers.escapeHtml(tpl.type)}${tpl.personName ? ` · ${Helpers.escapeHtml(tpl.personName)}` : ''} · ${formatRupees(tpl.amount, { small: true })}</button>`).join('');
         }
     }
 
@@ -514,7 +514,7 @@ export class ExpensesManager {
                         <div style="font-size: 13px; color: #666; margin-top: 4px;">${Helpers.escapeHtml(payment.type)}${voided ? ` <span class="voided-chip">${tx('ui.void.chip')}</span>` : ''} ${SyncStatus.chipHtml(payment.id)}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div class="expense-card__amount" style="font-size: 18px; font-weight: bold; color: #2c3e50;">₹${Helpers.escapeHtml(payment.amount)}</div>
+                        <div class="expense-card__amount" style="font-size: 18px; font-weight: bold; color: #2c3e50;">${formatRupees(payment.amount, { exact: true })}</div>
                     </div>
                 </div>
                 ${payment.remarks ? `<div style="font-size: 13px; color: #777; font-style: italic; margin-top: 8px;">📝 ${Helpers.escapeHtml(payment.remarks)}</div>` : ''}
@@ -669,7 +669,7 @@ export class ExpensesManager {
                     
                     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f0f0f0;">
                         <span style="font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">${tx('ui.outstanding.sort_amount')}</span>
-                        <span style="font-size: 36px; font-weight: bold; color: #5560d6; letter-spacing: 1px;">₹${Helpers.escapeHtml(expense.amount)}</span>
+                        <span style="font-size: 36px; font-weight: bold; color: #5560d6; letter-spacing: 1px;">${formatRupees(expense.amount, { exact: true })}</span>
                     </div>
                     
                     ${expense.personName ? `

@@ -23,6 +23,7 @@ import {
 } from '../utils/anomalies.js';
 import { firstStockTimes } from '../utils/stock-check.js';
 import { auditScanCap } from '../utils/security-flags.js';
+import { formatRupees } from '../utils/money.js';
 import { numberCheckFlags } from '../utils/number-check-flags.js';
 import { safeSetItem } from '../utils/storage-full.js';
 
@@ -53,10 +54,7 @@ const TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db
 const canSee = () => AppState.userRole === 'owner' || AppState.userRole === 'manager';
 const todayKey = () => istDayKey(Date.now());
 const loc = (o) => esc(pickLang(o));
-const money = (n) => {
-    const v = Math.round((Number(n) || 0) * 100) / 100;
-    return `${v < 0 ? '-' : ''}₹${Math.abs(v).toLocaleString('en-IN')}`;
-};
+const money = (n) => formatRupees(n, { exact: true });
 
 function loadedBills() {
     return {

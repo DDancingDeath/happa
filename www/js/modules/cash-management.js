@@ -19,11 +19,11 @@ import {
     drawerDay, expectedCash, drawerStatus, signOutSummary, countCheck, closeCheck, openingCheck,
     savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
 } from '../utils/calc/cash.js';
-import { round2, outstandingDue } from '../utils/money.js';
+import { round2, outstandingDue, formatRupees, formatAmount } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';
-import { normalizeParty, sameParty, billParty } from '../utils/due-payments.js';
+import { normalizeParty, sameParty, billParty, legAmount as dueLegAmount } from '../utils/due-payments.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { pickLang } from '../i18n/localize.js';
 import { can } from '../utils/role-access.js';
@@ -195,7 +195,7 @@ export class CashManagementManager {
         bills.sort((a, b) => a.time - b.time); // oldest due first
         const options = [`<option value="${DUE_BILL_NONE}" selected>${L('ui.cash.choose_bill_option')}</option>`];
         bills.slice(0, 50).forEach(({ billType, bill, due }) => {
-            options.push(`<option value="${Helpers.escapeHtml(`${billType}|${bill.id}`)}">#${Helpers.escapeHtml(bill.billNumber || String(bill.id).slice(0, 8))} · ${Helpers.escapeHtml(Helpers.formatDate(bill.date))} · ${L('ui.cash.bill_due', { amount: round2(due) })}</option>`);
+            options.push(`<option value="${Helpers.escapeHtml(`${billType}|${bill.id}`)}">#${Helpers.escapeHtml(bill.billNumber || String(bill.id).slice(0, 8))} · ${Helpers.escapeHtml(Helpers.formatDate(bill.date))} · ${L('ui.cash.bill_due', { amount: formatAmount(due, { exact: true }) })}</option>`);
         });
         options.push(`<option value="${DUE_BILL_UNLINKED}">${L('ui.cash.no_bill_option')}</option>`);
         select.innerHTML = options.join('');
@@ -230,7 +230,7 @@ export class CashManagementManager {
         const choice = this.parseDueBillChoice(value);
         const bill = choice ? OutstandingManager.findBill(choice.billType, choice.billId) : null;
         hint.textContent = bill
-            ? t('ui.cash.bill_hint', { party: billParty(bill) || 'N/A', date: Helpers.formatDate(bill.date), amount: round2(outstandingDue(bill)) })
+            ? t('ui.cash.bill_hint', { party: billParty(bill) || 'N/A', date: Helpers.formatDate(bill.date), amount: formatAmount(outstandingDue(bill), { exact: true }) })
             : t('msg.cash.choose_bill_or_no_bill');
     }
 
@@ -292,7 +292,7 @@ export class CashManagementManager {
                     const idx = sessions.findIndex(s => s.id === session.id);
                     if (idx !== -1) sessions[idx] = updatedSession;
                     
-                    console.log(`Auto signed-out session for ${session.date} with expected ₹${updatedSession.expectedBalance}`);
+                    console.log(`Auto signed-out session for ${session.date} with expected ${updatedSession.expectedBalance}`);
                     return true;
                 } catch (err) {
                     // Transactions need the server; offline we simply retry on next load
@@ -583,15 +583,15 @@ export class CashManagementManager {
             
             const diffColor = DIFF_ON_CARD[diffLevel];
 
-            if (statusOpeningBalance) statusOpeningBalance.textContent = `₹${opening}`;
-            if (statusCashAdded) statusCashAdded.textContent = `₹${cashAdded}`;
-            if (statusBuy) statusBuy.textContent = `₹${purchases}`;
-            if (statusSale) statusSale.textContent = `₹${sales}`;
-            if (statusOthers) statusOthers.textContent = `₹${others}`;
-            if (statusExpected) statusExpected.textContent = `₹${expected}`;
-            if (statusActual) statusActual.textContent = `₹${actual}`;
+            if (statusOpeningBalance) statusOpeningBalance.textContent = formatRupees(opening, { exact: true });
+            if (statusCashAdded) statusCashAdded.textContent = formatRupees(cashAdded, { exact: true });
+            if (statusBuy) statusBuy.textContent = formatRupees(purchases, { exact: true });
+            if (statusSale) statusSale.textContent = formatRupees(sales, { exact: true });
+            if (statusOthers) statusOthers.textContent = formatRupees(others, { exact: true });
+            if (statusExpected) statusExpected.textContent = formatRupees(expected, { exact: true });
+            if (statusActual) statusActual.textContent = formatRupees(actual, { exact: true });
             if (statusDiff) {
-                statusDiff.textContent = `${diff >= 0 ? '+' : ''}₹${diff.toFixed(2)}`;
+                statusDiff.textContent = `${diff >= 0 ? '+' : ''}${formatRupees(diff, { decimals: 2 })}`;
                 statusDiff.style.color = diffColor;
             }
         } else {
@@ -608,10 +608,10 @@ export class CashManagementManager {
             if (statusActualCard) statusActualCard.style.display = 'none';
             if (statusDiffCard) statusDiffCard.style.display = 'none';
             
-            if (statusOpeningBalance) statusOpeningBalance.textContent = `₹${opening}`;
-            if (statusCashIn) statusCashIn.textContent = `₹${totalCashIn}`;
-            if (statusCashOut) statusCashOut.textContent = `₹${totalCashOut}`;
-            if (statusAvailable) statusAvailable.textContent = `₹${availableCash}`;
+            if (statusOpeningBalance) statusOpeningBalance.textContent = formatRupees(opening, { exact: true });
+            if (statusCashIn) statusCashIn.textContent = formatRupees(totalCashIn, { exact: true });
+            if (statusCashOut) statusCashOut.textContent = formatRupees(totalCashOut, { exact: true });
+            if (statusAvailable) statusAvailable.textContent = formatRupees(availableCash, { exact: true });
         }
     }
 
@@ -637,18 +637,18 @@ export class CashManagementManager {
             totalCashIn, totalCashOut, expected
         } = signOutSummary(this.todaySession, this.todayTransactions);
         
-        if (openingBalanceEl) openingBalanceEl.textContent = `₹${opening}`;
-        if (cashSalesEl) cashSalesEl.textContent = `₹${sales}`;
-        if (cashPurchasesEl) cashPurchasesEl.textContent = `₹${purchases}`;
-        if (businessExpensesEl) businessExpensesEl.textContent = `₹${businessExpenses}`;
-        if (personalExpensesEl) personalExpensesEl.textContent = `₹${personalExpenses}`;
-        if (dueReceivedEl) dueReceivedEl.textContent = `₹${dueReceived}`;
-        if (duePaidEl) duePaidEl.textContent = `₹${duePaid}`;
-        if (cashDepositsEl) cashDepositsEl.textContent = `₹${deposits}`;
-        if (totalCashInEl) totalCashInEl.textContent = `₹${totalCashIn}`;
-        if (totalCashOutEl) totalCashOutEl.textContent = `₹${totalCashOut}`;
+        if (openingBalanceEl) openingBalanceEl.textContent = formatRupees(opening, { exact: true });
+        if (cashSalesEl) cashSalesEl.textContent = formatRupees(sales, { exact: true });
+        if (cashPurchasesEl) cashPurchasesEl.textContent = formatRupees(purchases, { exact: true });
+        if (businessExpensesEl) businessExpensesEl.textContent = formatRupees(businessExpenses, { exact: true });
+        if (personalExpensesEl) personalExpensesEl.textContent = formatRupees(personalExpenses, { exact: true });
+        if (dueReceivedEl) dueReceivedEl.textContent = formatRupees(dueReceived, { exact: true });
+        if (duePaidEl) duePaidEl.textContent = formatRupees(duePaid, { exact: true });
+        if (cashDepositsEl) cashDepositsEl.textContent = formatRupees(deposits, { exact: true });
+        if (totalCashInEl) totalCashInEl.textContent = formatRupees(totalCashIn, { exact: true });
+        if (totalCashOutEl) totalCashOutEl.textContent = formatRupees(totalCashOut, { exact: true });
         
-        if (expectedCashEl) expectedCashEl.textContent = `₹${expected}`;
+        if (expectedCashEl) expectedCashEl.textContent = formatRupees(expected, { exact: true });
     }
 
     /**
@@ -666,7 +666,7 @@ export class CashManagementManager {
         const amount = Number(last.closingBalance);
         if (input.value === '') input.value = String(amount);
         if (hint) {
-            hint.textContent = t('ui.cash.suggested_from_last_count', { date: last.date, amount });
+            hint.textContent = t('ui.cash.suggested_from_last_count', { date: last.date, amount: formatAmount(amount, { exact: true }) });
             hint.style.display = 'block';
         }
     }
@@ -710,7 +710,7 @@ export class CashManagementManager {
             if (idx !== -1) this.cachedSessions[idx] = updated;
             UIManager.closeModal(true);
             this.renderHistoryFromCache();
-            UIManager.showToast(t('msg.cash.count_saved', { amount }));
+            UIManager.showToast(t('msg.cash.count_saved', { amount: formatAmount(amount, { exact: true }) }));
         } catch (error) {
             console.error('Late count error:', error);
             UIManager.showToast(t('msg.cash.failed_save_count', { message: error.message }));
@@ -732,12 +732,12 @@ export class CashManagementManager {
                 alertDiv.style.display = 'block';
                 alertDiv.style.background = '#fff3cd';
                 alertDiv.style.color = '#997404';
-                alertDiv.textContent = t('ui.cash.extra_verify', { amount: check.amount.toFixed(2) });
+                alertDiv.textContent = t('ui.cash.extra_verify', { amount: formatAmount(check.amount, { decimals: 2 }) });
             } else {
                 alertDiv.style.display = 'block';
                 alertDiv.style.background = '#f8d7da';
                 alertDiv.style.color = '#842029';
-                alertDiv.textContent = t('ui.cash.short_verify', { amount: check.amount.toFixed(2) });
+                alertDiv.textContent = t('ui.cash.short_verify', { amount: formatAmount(check.amount, { decimals: 2 }) });
             }
             // Q19 bands (#37): name a big difference or an impossible (negative) expected drawer
             const band = check.bands;
@@ -772,7 +772,7 @@ export class CashManagementManager {
                 const opening = openingCheck(lastClosing, amount);
                 if (opening.needsConfirm) {
                     const confirmed = await UIManager.showModal(
-                        t('msg.cash.last_counted_closing_was_but', { date: lastCounted.date, lastClosing, amount, diff: opening.difference.toFixed(2) }),
+                        t('msg.cash.last_counted_closing_was_but', { date: lastCounted.date, lastClosing: formatAmount(lastClosing, { exact: true }), amount: formatAmount(amount, { exact: true }), diff: formatAmount(opening.difference, { decimals: 2 }) }),
                         t('msg.cash.cash_mismatch_warning'),
                         true
                     );
@@ -800,7 +800,7 @@ export class CashManagementManager {
                 this.renderHistory();
 
                 UIManager.showToast(joined
-                    ? t('msg.cash.joined_open_session', { name: opened.userName || '', amount: opened.openingBalance })
+                    ? t('msg.cash.joined_open_session', { name: opened.userName || '', amount: formatAmount(opened.openingBalance, { exact: true }) })
                     : t('msg.cash.cash_signed_in_successfully'));
 
                 // Clear inputs
@@ -844,8 +844,8 @@ export class CashManagementManager {
         // Confirm if there's a difference
         if (check.needsConfirm) {
             const message = check.extra
-                ? t('msg.cash.signout_extra', { diff: check.amount.toFixed(2), expected, actual: actualAmount })
-                : t('msg.cash.signout_short', { diff: check.amount.toFixed(2), expected, actual: actualAmount });
+                ? t('msg.cash.signout_extra', { diff: formatAmount(check.amount, { decimals: 2 }), expected: formatAmount(expected, { exact: true }), actual: formatAmount(actualAmount, { exact: true }) })
+                : t('msg.cash.signout_short', { diff: formatAmount(check.amount, { decimals: 2 }), expected: formatAmount(expected, { exact: true }), actual: formatAmount(actualAmount, { exact: true }) });
             
             const confirmed = await UIManager.showModal(message, t('msg.cash.confirm_sign_out'), true);
             if (!confirmed) return;
@@ -974,7 +974,7 @@ export class CashManagementManager {
                 this.updateUI();
                 this.renderHistory();
                 
-                UIManager.showToast(t('msg.cash.added_cash_drawer', { amount: depositAmount }));
+                UIManager.showToast(t('msg.cash.added_cash_drawer', { amount: formatAmount(depositAmount, { exact: true }) }));
                 
                 // Clear inputs
                 document.getElementById('transactionAmount').value = '';
@@ -1056,7 +1056,7 @@ export class CashManagementManager {
                 this.updateUI();
                 this.renderHistory();
                 
-                UIManager.showToast(t(type === 'paid' ? 'msg.cash.recorded_paid_to' : 'msg.cash.recorded_received_from', { amount: legAmount, partyName }));
+                UIManager.showToast(t(type === 'paid' ? 'msg.cash.recorded_paid_to' : 'msg.cash.recorded_received_from', { amount: formatAmount(legAmount, { exact: true }), partyName }));
                 
                 // Clear inputs
                 document.getElementById('partyName').value = '';
@@ -1177,15 +1177,15 @@ export class CashManagementManager {
             const diff = Number(session.difference) || 0;
             const { abs: absDiff, level } = differenceBand(diff);
             const diffColor = DIFF_COLORS[level];
-            const diffText = absDiff < 1 ? L('ui.cash.matched') : (diff > 0 ? `+₹${diff.toFixed(2)}` : `-₹${absDiff.toFixed(2)}`);
+            const diffText = absDiff < 1 ? L('ui.cash.matched') : (diff > 0 ? `+${formatRupees(diff, { decimals: 2 })}` : formatRupees(-absDiff, { decimals: 2 }));
             const cashAdded = session.transactions?.cashDeposits || 0;
             const closedRows = uncounted ? `
                             <div>${L('ui.cash.closing')} <strong style="color: #c2410c;">${L('ui.cash.not_counted')}</strong></div>
-                            <div>${L('ui.cash.expected')} <strong>₹${Helpers.escapeHtml(session.expectedBalance || 0)}</strong></div>
+                            <div>${L('ui.cash.expected')} <strong>${formatRupees(session.expectedBalance || 0, { exact: true })}</strong></div>
                             ` : `
-                            <div>${L('ui.cash.closing')} <strong>₹${Helpers.escapeHtml(session.closingBalance)}</strong></div>
-                            ${cashAdded > 0 ? `<div>${L('ui.cash.added')} <strong style="color: #10b981;">+₹${Helpers.escapeHtml(cashAdded)}</strong></div>` : ''}
-                            <div>${L('ui.cash.expected')} <strong>₹${Helpers.escapeHtml(session.expectedBalance || 0)}</strong></div>
+                            <div>${L('ui.cash.closing')} <strong>${formatRupees(session.closingBalance, { exact: true })}</strong></div>
+                            ${cashAdded > 0 ? `<div>${L('ui.cash.added')} <strong style="color: #10b981;">+${formatRupees(cashAdded, { exact: true })}</strong></div>` : ''}
+                            <div>${L('ui.cash.expected')} <strong>${formatRupees(session.expectedBalance || 0, { exact: true })}</strong></div>
                             <div>${L('ui.cash.diff')} <strong style="color: ${diffColor};">${diffText}</strong></div>
                             `;
 
@@ -1196,7 +1196,7 @@ export class CashManagementManager {
                         ${status}
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;">
-                        <div>${L('ui.cash.opening')} <strong>₹${Helpers.escapeHtml(session.openingBalance)}</strong></div>
+                        <div>${L('ui.cash.opening')} <strong>${formatRupees(session.openingBalance, { exact: true })}</strong></div>
                         ${session.signedOut ? closedRows : `<div>${L('ui.cash.in_progress')}</div>`}
                     </div>
                     ${session.duePayments && session.duePayments.length > 0 ? `
@@ -1237,7 +1237,7 @@ export class CashManagementManager {
         const diff = session.difference || 0;
         const absDiff = differenceBand(diff).abs;
         const uncounted = isNotCounted(session);
-        const diffText = uncounted ? L('ui.cash.not_counted') : (absDiff < 1 ? L('ui.cash.matched') : (diff >= 0 ? `+₹${diff.toFixed(2)}` : `₹${diff.toFixed(2)}`));
+        const diffText = uncounted ? L('ui.cash.not_counted') : (absDiff < 1 ? L('ui.cash.matched') : `${diff >= 0 ? '+' : ''}${formatRupees(diff, { decimals: 2 })}`);
 
         // An open session has no saved snapshot yet: use today's live totals.
         const isLiveToday = !session.signedOut && this.todaySession && this.todaySession.date === session.date;
@@ -1265,19 +1265,19 @@ export class CashManagementManager {
                     <!-- Expenses & Others -->
                     <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.expenses_others')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">₹${Helpers.escapeHtml(totalCashOut)}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(totalCashOut, { exact: true })}</div>
                     </div>
                     
                     <!-- Expected Balance -->
                     <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.expected_balance')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">₹${Helpers.escapeHtml(session.expectedBalance || 0)}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(session.expectedBalance || 0, { exact: true })}</div>
                     </div>
                     
                     <!-- Actual Balance -->
                     <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.actual_balance')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${uncounted ? L('ui.cash.not_counted') : `₹${Helpers.escapeHtml(session.closingBalance)}`}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${uncounted ? L('ui.cash.not_counted') : `${formatRupees(session.closingBalance, { exact: true })}`}</div>
                     </div>
                     
                     <!-- Difference -->
@@ -1291,25 +1291,25 @@ export class CashManagementManager {
                     <!-- Opening Balance -->
                     <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.opening_balance')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">₹${Helpers.escapeHtml(session.openingBalance || 0)}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(session.openingBalance || 0, { exact: true })}</div>
                     </div>
                     
                     <!-- Cash In -->
                     <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.cash_in')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">₹${Helpers.escapeHtml(cashIn)}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(cashIn, { exact: true })}</div>
                     </div>
                     
                     <!-- Cash Out -->
                     <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.cash_out')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">₹${Helpers.escapeHtml(totalCashOut)}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(totalCashOut, { exact: true })}</div>
                     </div>
                     
                     <!-- Expected Cash -->
                     <div style="background: rgba(139, 92, 246, 0.1); padding: 10px; border-radius: 8px;">
                         <div style="font-size: 12px; color: #7c3aed; margin-bottom: 4px; font-weight: 600;">${L('ui.cash.expected_cash_title')}</div>
-                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">₹${Helpers.escapeHtml(isLiveToday ? totals.expected : (session.expectedBalance || 0))}</div>
+                        <div style="font-size: 20px; font-weight: 700; color: #6d28d9;">${formatRupees(isLiveToday ? totals.expected : (session.expectedBalance || 0), { exact: true })}</div>
                     </div>
                 </div>
                 `}
@@ -1320,23 +1320,23 @@ export class CashManagementManager {
                     <div style="display: grid; gap: 6px; font-size: 13px;">
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.opening_balance_2')}</span>
-                            <strong style="color: #6366f1;">₹${Helpers.escapeHtml(session.openingBalance)}</strong>
+                            <strong style="color: #6366f1;">${formatRupees(session.openingBalance, { exact: true })}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.cash_added_2')}</span>
-                            <strong style="color: #10b981;">₹${Helpers.escapeHtml(txns.cashDeposits || 0)}</strong>
+                            <strong style="color: #10b981;">${formatRupees(txns.cashDeposits || 0, { exact: true })}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.cash_sales')}</span>
-                            <strong style="color: #15803d;">₹${Helpers.escapeHtml(txns.cashSales || 0)}</strong>
+                            <strong style="color: #15803d;">${formatRupees(txns.cashSales || 0, { exact: true })}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.common.due_received')}</span>
-                            <strong style="color: #3b82f6;">₹${Helpers.escapeHtml(txns.dueReceived || 0)}</strong>
+                            <strong style="color: #3b82f6;">${formatRupees(txns.dueReceived || 0, { exact: true })}</strong>
                         </div>
                         <div style="border-top: 2px solid #059669; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;">
                             <span>${L('ui.cash.total_cash_in')}</span>
-                            <strong style="color: #059669;">₹${Helpers.escapeHtml(totalCashIn)}</strong>
+                            <strong style="color: #059669;">${formatRupees(totalCashIn, { exact: true })}</strong>
                         </div>
                     </div>
                 </div>
@@ -1347,23 +1347,23 @@ export class CashManagementManager {
                     <div style="display: grid; gap: 6px; font-size: 13px;">
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.cash_purchases')}</span>
-                            <strong style="color: #ef4444;">₹${Helpers.escapeHtml(txns.cashPurchases || 0)}</strong>
+                            <strong style="color: #ef4444;">${formatRupees(txns.cashPurchases || 0, { exact: true })}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.common.due_paid')}</span>
-                            <strong style="color: #b91c1c;">₹${Helpers.escapeHtml(txns.duePaid || 0)}</strong>
+                            <strong style="color: #b91c1c;">${formatRupees(txns.duePaid || 0, { exact: true })}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.business_expenses')}</span>
-                            <strong style="color: #f97316;">₹${Helpers.escapeHtml(txns.businessExpenses || 0)}</strong>
+                            <strong style="color: #f97316;">${formatRupees(txns.businessExpenses || 0, { exact: true })}</strong>
                         </div>
                         <div style="display: flex; justify-content: space-between;">
                             <span>${L('ui.cash.personal_expenses')}</span>
-                            <strong style="color: #f59e0b;">₹${Helpers.escapeHtml(txns.personalExpenses || 0)}</strong>
+                            <strong style="color: #f59e0b;">${formatRupees(txns.personalExpenses || 0, { exact: true })}</strong>
                         </div>
                         <div style="border-top: 2px solid #b91c1c; margin-top: 6px; padding-top: 6px; display: flex; justify-content: space-between; font-weight: 600;">
                             <span>${L('ui.cash.total_cash_out')}</span>
-                            <strong style="color: #b91c1c;">₹${Helpers.escapeHtml(totalCashOut)}</strong>
+                            <strong style="color: #b91c1c;">${formatRupees(totalCashOut, { exact: true })}</strong>
                         </div>
                     </div>
                 </div>
@@ -1376,7 +1376,7 @@ export class CashManagementManager {
                                 <div style="background: white; padding: 8px; border-radius: 6px; border-left: 3px solid #10b981;">
                                     <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
                                         <strong style="color: #333; font-size: 12px;">${Helpers.escapeHtml(d.reason || t('ui.cash.cash_added'))}</strong>
-                                        <strong style="color: #10b981; font-size: 13px;">₹${Helpers.escapeHtml(d.amount)}</strong>
+                                        <strong style="color: #10b981; font-size: 13px;">${formatRupees(d.amount, { exact: true })}</strong>
                                     </div>
                                     <div style="color: #6c757d; font-size: 10px;">
                                         ${L('ui.cash.added_by', { name: d.addedBy })}
@@ -1400,7 +1400,7 @@ export class CashManagementManager {
                                     <div style="background: white; padding: 8px; border-radius: 6px; border-left: 3px solid ${borderColor};">
                                         <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
                                             <strong style="color: #333; font-size: 12px;">${typeLabel} ${Helpers.escapeHtml(p.customer)}</strong>
-                                            <strong style="color: ${amountColor}; font-size: 13px;">${isReceived ? '+' : '-'}₹${Helpers.escapeHtml(p.amount)}</strong>
+                                            <strong style="color: ${amountColor}; font-size: 13px;">${isReceived ? '+' : '-'}${formatRupees(dueLegAmount(p), { exact: true })}</strong>
                                         </div>
                                         <div style="color: #6c757d; font-size: 10px;">
                                             ${Helpers.escapeHtml(p.method)} • ${Helpers.escapeHtml(p.notes || t('ui.cash.no_notes'))}

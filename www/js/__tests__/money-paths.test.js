@@ -334,7 +334,7 @@ describe('new retail sale save', () => {
         await addLine(0, 36, [10]);
         setVal('saleCashPayment', 360);
         expect(await RetailSaleManager.completeSale()).toBeUndefined();
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: selling 10.0 kg, only 5.0 kg'), 'Check before saving', true);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('Rice: selling 10 kg, only 5 kg'), 'Check before saving', true);
         expect(saveRetailSale).not.toHaveBeenCalled();
     });
 

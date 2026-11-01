@@ -123,7 +123,7 @@ describe('history list escapes record values', () => {
         HistoryManager.renderHistory('purchase');
         const list = document.getElementById('historyList');
         assertNoInjection(list);
-        expect(list.textContent).toContain(`× ₹${NUM}`);
+        expect(list.textContent).toContain('× ₹0.00');
         const row = list.querySelector('tr[onclick]');
         expect(runHandler(row.getAttribute('onclick'))).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
     });
@@ -225,7 +225,7 @@ describe('cash management escapes session values', () => {
         CashManagementManager.renderHistoryFromCache();
         const list = document.getElementById('cashHistoryList');
         assertNoInjection(list);
-        expect(list.textContent).toContain(`Opening: ₹${NUM}`);
+        expect(list.textContent).toContain('Opening: ₹0');
     });
 
     test('session details (signed out and in progress)', async () => {
@@ -234,7 +234,7 @@ describe('cash management escapes session values', () => {
             await CashManagementManager.showSessionDetails('2026-10-01');
             const modal = document.getElementById('modalMessage');
             assertNoInjection(modal);
-            expect(modal.textContent).toContain(`₹${NUM}`);
+            expect(modal.textContent).toContain('₹0');
             expect(modal.textContent).toContain(IMG);
         }
     });

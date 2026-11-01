@@ -869,7 +869,7 @@ export const RateTrendsManager = {
             ctx.moveTo(left, y);
             ctx.lineTo(canvas.width - right, y);
             ctx.stroke();
-            ctx.fillText(`₹${v.toFixed(v < 100 ? 1 : 0)}`, left - 4, y + 3);
+            ctx.fillText(formatRupees(v, { decimals: v < 100 ? 1 : 0 }), left - 4, y + 3);
         }
         ctx.textAlign = 'center';
         const every = Math.max(1, Math.ceil(labels.length / Math.max(1, Math.floor(w / 46))));

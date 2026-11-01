@@ -49,11 +49,11 @@ const SAMPLES = [
 describe('notification text', () => {
     test('rate change shows item, rate type and old → new in English and Hindi', () => {
         const d = describeNotification(SAMPLES[0]);
-        expect(d.en).toBe('Gehu: Retail rate ₹40 → ₹45');
-        expect(d.hi).toBe('गेहूं: फुटकर रेट ₹40 → ₹45');
+        expect(d.en).toBe('Gehu: Retail rate ₹40.00 → ₹45.00');
+        expect(d.hi).toBe('गेहूं: फुटकर रेट ₹40.00 → ₹45.00');
         expect(d.who).toBe('Ramesh');
         expect(d.target).toEqual({ tab: 'items', itemId: null, query: 'Gehu' });
-        expect(describeNotification(SAMPLES[1]).en).toBe('Chana: Wholesale rate ₹50, ₹52 → ₹55');
+        expect(describeNotification(SAMPLES[1]).en).toBe('Chana: Wholesale rate ₹50.00, ₹52.00 → ₹55.00');
     });
 
     test('item edits, document edits and unknown types all get bilingual text', () => {
@@ -304,7 +304,7 @@ describe('Firestore paths (fake Firestore)', () => {
 
             expect(UIManager.showToast).toHaveBeenCalledTimes(1);
             const [msg, ms] = UIManager.showToast.mock.calls[0];
-            expect(msg).toContain('Gehu: Retail rate ₹40 → ₹45');
+            expect(msg).toContain('Gehu: Retail rate ₹40.00 → ₹45.00');
             expect(msg).not.toMatch(/[\u0900-\u097F]/); // one language: English by default (#143)
             expect(msg).toContain('Manager');
             expect(ms).toBe(5000);

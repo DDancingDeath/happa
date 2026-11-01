@@ -95,7 +95,7 @@ describe('rate sanity (2× / ½× the usual rate, owner-confirmed 2×)', () => {
         expect(ids(evaluateBill(bill(80), ctx()))).toEqual([]); // exactly 2× is fine
         const high = find(evaluateBill(bill(81), ctx()), 'rate-high');
         expect(high).toMatchObject({ severity: 'warn', field: 'items.0', overridable: false });
-        expect(high.en).toBe('Rate ₹81 is 2.0× the usual ₹40');
+        expect(high.en).toBe('Rate ₹81.00 is 2.0× the usual ₹40.00');
         expect(high.hi).toContain('गुना');
         const cheap = ctx({ stock: { rice: { quantity: 100, rate: 1 } } });
         expect(ids(evaluateBill(bill(20), cheap))).toEqual([]); // exactly ½ is fine
@@ -115,7 +115,7 @@ describe('rate sanity (2× / ½× the usual rate, owner-confirmed 2×)', () => {
             { id: 'new', timestamp: NOW - 86400000, items: [{ itemId: 'rice', rate: 90, quantity: 2, total: 180 }] }
         ];
         expect(ids(evaluateBill(bill(80), ctx({ recentBills })))).toEqual([]);
-        expect(find(evaluateBill(bill(181), ctx({ recentBills })), 'rate-high').en).toContain('usual ₹90');
+        expect(find(evaluateBill(bill(181), ctx({ recentBills })), 'rate-high').en).toContain('usual ₹90.00');
     });
 
     test('an edited bill is not its own "usual" rate', () => {
@@ -129,7 +129,7 @@ describe('sale below average cost', () => {
     const below = draft({ items: [{ itemId: 'dal', name: 'Dal', rate: 70, qty: 1, total: 70 }], total: 70, payment: { cash: 70 } });
 
     test('retail and wholesale warn; purchase never', () => {
-        expect(find(evaluateBill(below, ctx()), 'below-cost')).toMatchObject({ severity: 'warn', en: 'Selling below average cost ₹80' });
+        expect(find(evaluateBill(below, ctx()), 'below-cost')).toMatchObject({ severity: 'warn', en: 'Selling below average cost ₹80.00' });
         expect(ids(evaluateBill({ ...below, kind: 'wholesale' }, ctx()))).toContain('below-cost');
         expect(ids(evaluateBill({ ...below, kind: 'purchase' }, ctx({ kind: 'purchase' })))).not.toContain('below-cost');
     });
@@ -150,7 +150,7 @@ describe('oversell', () => {
     test('wholesale: up to the 5 kg limit warns, beyond it blocks (overridable); lines aggregate by item incl. Hindi name', () => {
         const warn = find(evaluateBill(sale(105, { kind: 'wholesale' }), ctx({ oversellCanBlock: true })), 'oversell');
         expect(warn).toMatchObject({ severity: 'warn', field: 'items', lines: [0, 1] });
-        expect(warn.en).toBe('Rice: selling 105.0 kg, only 100.0 kg in stock (short 5.0 kg)');
+        expect(warn.en).toBe('Rice: selling 105 kg, only 100 kg in stock (short 5 kg)');
         const block = find(evaluateBill(sale(106, { kind: 'wholesale' }), ctx({ oversellCanBlock: true })), 'oversell');
         expect(block).toMatchObject({ severity: 'block', overridable: true });
     });

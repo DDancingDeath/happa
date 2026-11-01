@@ -8,6 +8,7 @@
  */
 
 import { t, getLang } from '../i18n/index.js';
+import { formatRate } from './money.js';
 
 /** Rate types in history entries -> item array field. */
 export const RATE_FIELDS = { purchase: 'rates', wholesale: 'wholesaleRates', retail: 'saleRates' };
@@ -226,5 +227,5 @@ export function historyIdBound(itemId, at) {
  */
 export function formatHistoryValue(field, value) {
     if (value === null || value === undefined || value === '') return '—';
-    return RATE_FIELDS[field] ? `₹${value}` : String(value);
+    return RATE_FIELDS[field] ? formatRate(value) : String(value);
 }

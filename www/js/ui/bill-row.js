@@ -10,7 +10,7 @@
 
 import { Helpers } from '../utils/helpers.js';
 import { t, tn } from '../i18n/index.js';
-import { billTotal, formatAmount, formatRupees, hasBillAmount, isActiveBill, isOpeningRecord, openingAmount, outstandingDue, readPayment, UNKNOWN_AMOUNT } from '../utils/money.js';
+import { billTotal, formatAmount, formatRupees, hasBillAmount, isActiveBill, isOpeningRecord, openingAmount, outstandingDue, readPayment, UNKNOWN_AMOUNT, formatKg, formatRate } from '../utils/money.js';
 import { billDateOf } from '../utils/history-filters.js';
 import { printStatusOf } from '../utils/print-status.js';
 import { SyncStatus } from './sync-status.js';
@@ -243,8 +243,8 @@ function tableItemsHtml(bill) {
     const items = Array.isArray(bill?.items) ? bill.items : [];
     if (isOpeningRecord(bill) || items.length === 0) return Helpers.escapeHtml(billItemsText(bill));
     return items.map(item => {
-        const qty = Number(item?.qty || item?.quantity || 0).toFixed(1);
-        return `<div class="bill-table__item">${Helpers.escapeHtml(item?.name || '')} · ${Helpers.escapeHtml(qty)} kg × ₹${Helpers.escapeHtml(item?.rate ?? '')}</div>`;
+        const rate = item?.rate === undefined || item?.rate === null || item?.rate === '' ? '—' : formatRate(item.rate);
+        return `<div class="bill-table__item">${Helpers.escapeHtml(item?.name || '')} · ${formatKg(item?.qty || item?.quantity)} kg × ${rate}</div>`;
     }).join('');
 }
 

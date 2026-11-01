@@ -38,7 +38,7 @@ import { openExternal } from '../utils/open-external.js';
 import { billTraceId } from '../utils/status-report.js';
 import { track } from '../services/usage.js';
 import { t, tn } from '../i18n/index.js';
-import { billLabour, billLineTotal, billTotal, hasBillAmount, isActiveBill, isOpeningRecord, readPayment, UNKNOWN_AMOUNT } from '../utils/money.js';
+import { billLabour, billLineTotal, billTotal, hasBillAmount, isActiveBill, isOpeningRecord, readPayment, UNKNOWN_AMOUNT, formatRupees, formatAmount, formatKg, toMoney } from '../utils/money.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 const NOUN_KEYS = { purchase: 'ui.history.noun_purchase', sale: 'ui.history.noun_sale' };
@@ -507,10 +507,10 @@ export class HistoryManager {
         bill.items.forEach(item => {
             // Only show weight breakdown if there are 2 or more packets
             if (item.weights && item.weights.length >= 2) {
-                const weightsDisplay = item.weights.map(w => parseFloat(w).toFixed(1)).join('&nbsp;&nbsp;');
+                const weightsDisplay = item.weights.map(w => formatKg(w)).join('&nbsp;&nbsp;');
                 weightBreakdownHTML += `
                     <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid ${billColor};">
-                        <div style="font-weight: 600; color: #495057; margin-bottom: 6px;">${Helpers.escapeHtml(item.name)} (${Helpers.escapeHtml(tn('ui.history.packets_kg', item.weights.length, { packets: item.weights.length, kg: (item.qty || 0).toFixed(1) }))})</div>
+                        <div style="font-weight: 600; color: #495057; margin-bottom: 6px;">${Helpers.escapeHtml(item.name)} (${Helpers.escapeHtml(tn('ui.history.packets_kg', item.weights.length, { packets: item.weights.length, kg: formatKg(item.qty) }))})</div>
                         <div style="color: #6c757d; font-size: 14px; white-space: pre;">${weightsDisplay}</div>
                     </div>
                 `;
@@ -521,9 +521,9 @@ export class HistoryManager {
         const itemsHTML = bill.items.map(item => `
             <tr>
                 <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb;">${Helpers.escapeHtml(item.name)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${Helpers.escapeHtml(item.rate)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${Number(item.qty || item.quantity || 0).toFixed(1)}</td>
-                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${Helpers.escapeHtml(item.total)}</strong></td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${toMoney(item.rate) === null ? '—' : formatAmount(item.rate, { decimals: 2 })}</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">${formatKg(item.qty || item.quantity)}</td>
+                <td style="padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: right;"><strong>${(toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })}</strong></td>
             </tr>
         `).join('');
         
@@ -627,24 +627,24 @@ export class HistoryManager {
                     ${isPurchase ? `
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                             <span style="font-weight: 600;">${L('ui.billing.purchase_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">${known ? `₹${Math.round(billLineTotal(bill, true))}` : UNKNOWN_AMOUNT}</strong>
+                            <strong style="font-size: 17px; color: ${billColor};">${known ? formatRupees(billLineTotal(bill, true)) : UNKNOWN_AMOUNT}</strong>
                         </div>
                         
                         ${billLabour(bill) > 0 ? `
                             <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px; border-top: 1px solid #e9ecef;">
                                 <span style="font-weight: 600;">${L('ui.billing.labor')}</span>
-                                <strong style="font-size: 17px; color: #ffc107;">₹${Math.round(billLabour(bill))}</strong>
+                                <strong style="font-size: 17px; color: #ffc107;">${formatRupees(billLabour(bill))}</strong>
                             </div>
                             
                             <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 16px; border-top: 2px solid ${billColor}; margin-top: 8px; background: linear-gradient(135deg, #e3f2fd, #bbdefb); margin: 8px -14px -14px -14px; padding: 12px 14px; border-radius: 0 0 10px 10px;">
                                 <span style="font-weight: 700;">${L('ui.billing.total_payable')}</span>
-                                <strong style="font-size: 18px; color: #1976d2;">${known ? `₹${Math.round(billTotal(bill))}` : UNKNOWN_AMOUNT}</strong>
+                                <strong style="font-size: 18px; color: #1976d2;">${known ? formatRupees(billTotal(bill)) : UNKNOWN_AMOUNT}</strong>
                             </div>
                         ` : ''}
                     ` : `
                         <div style="display: flex; justify-content: space-between; padding: 8px 0; font-size: 15px;">
                             <span style="font-weight: 600;">${L('ui.billing.sale_total')}</span>
-                            <strong style="font-size: 17px; color: ${billColor};">${known ? `₹${Math.round(billTotal(bill))}` : UNKNOWN_AMOUNT}</strong>
+                            <strong style="font-size: 17px; color: ${billColor};">${known ? formatRupees(billTotal(bill)) : UNKNOWN_AMOUNT}</strong>
                         </div>
                     `}
                 </div>

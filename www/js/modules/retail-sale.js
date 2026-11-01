@@ -10,7 +10,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { Helpers } from '../utils/helpers.js';
-import { KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage } from '../utils/money.js';
+import { KEPT_SERVER_PAYMENT_KEY, paymentSplitMessage, formatRate, formatRupees, formatKg } from '../utils/money.js';
 import {
     buildPaymentSplit, computeLine, computeRetailTotals, editSplitFor, paidOnScreen, paymentSplit, prefillPayment, restInDue,
     shownAmount, sumWeights, validatePaymentSplit, weightsForEdit
@@ -115,14 +115,14 @@ const RetailSaleManager = {
         
         const total = sumWeights(saleWeights);
         
-        if (totalWeightsSpan) totalWeightsSpan.textContent = total.toFixed(1);
+        if (totalWeightsSpan) totalWeightsSpan.textContent = formatKg(total);
         if (totalPacketsSpan) totalPacketsSpan.textContent = saleWeights.length;
         
         container.innerHTML = `
             <div class="weights-compact-list">
                 ${saleWeights.map((w, i) => `
                     <div class="weight-chip">
-                        <span>${w.toFixed(1)}</span>
+                        <span>${formatKg(w)}</span>
                         <button class="weight-chip-remove" onclick="window.app.retailSale.removeSaleWeight(${i})">×</button>
                     </div>
                 `).join('')}
@@ -269,13 +269,13 @@ const RetailSaleManager = {
                     const weightLines = [];
                     for (let i = 0; i < item.weights.length; i += weightsPerLine) {
                         const lineWeights = item.weights.slice(i, i + weightsPerLine);
-                        weightLines.push(lineWeights.map(w => parseFloat(w).toFixed(1)).join('&nbsp;&nbsp;'));
+                        weightLines.push(lineWeights.map(w => formatKg(w)).join('&nbsp;&nbsp;'));
                     }
                     
                     return `
                         <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid #15803d;">
                             <div style="font-weight: 600; margin-bottom: 6px; color: #333;">
-                                ${Helpers.escapeHtml(lineLabel(item))} (${Helpers.escapeHtml(tn('ui.print.packets_kg', item.weights.length, { kg: item.qty.toFixed(1) }))})
+                                ${Helpers.escapeHtml(lineLabel(item))} (${Helpers.escapeHtml(tn('ui.print.packets_kg', item.weights.length, { kg: formatKg(item.qty) }))})
                             </div>
                             <div style="font-family: monospace; font-size: 14px; line-height: 1.4; color: #555;">
                                 ${weightLines.join('<br>')}
@@ -292,9 +292,9 @@ const RetailSaleManager = {
         tbody.innerHTML = saleItems.map((item, index) => `
             <tr style="cursor: pointer;" onclick="window.app.retailSale.editSaleItem(${index})">
                 <td>${Helpers.escapeHtml(lineLabel(item))}</td>
-                <td>₹${item.rate.toFixed(2)}</td>
-                <td>${item.qty.toFixed(1)} kg</td>
-                <td>₹${shownAmount(item.total)}</td>
+                <td>${formatRate(item.rate)}</td>
+                <td>${formatKg(item.qty)} kg</td>
+                <td>${formatRupees(shownAmount(item.total))}</td>
                 <td><button onclick="event.stopPropagation(); window.app.retailSale.removeSaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
             </tr>
         `).join('');
@@ -384,7 +384,7 @@ const RetailSaleManager = {
         const runningTotalEl = document.getElementById('saleRunningTotal');
         const packetCountEl = document.getElementById('salePacketCount');
         
-        if (runningTotalEl) runningTotalEl.textContent = totalQty.toFixed(1);
+        if (runningTotalEl) runningTotalEl.textContent = formatKg(totalQty);
         if (packetCountEl) packetCountEl.textContent = packetCount;
     },
 

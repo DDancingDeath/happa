@@ -11,19 +11,16 @@ import { t, getLang, tn } from '../i18n/index.js';
 import {
     CARDS, buildBreakdown, searchRows, sortRows, groupRows, groupOptions, sumRows, PAGE_SIZE
 } from '../utils/finance-breakdown.js';
+import { formatKg, formatRupees, formatAmount } from '../utils/money.js';
 
 const esc = (v) => Helpers.escapeHtml(String(v ?? ''));
 const SHEET_ID = 'financeBreakdownSheet';
 
 const rupees = (n, { paise = false } = {}) => {
     if (n === null || n === undefined || !Number.isFinite(n)) return '—';
-    const abs = Math.abs(n);
-    const text = paise
-        ? abs.toLocaleString('en-IN', { maximumFractionDigits: 2 })
-        : Math.round(abs).toLocaleString('en-IN');
-    return `${n < 0 && (paise ? abs >= 0.005 : Math.round(abs) > 0) ? '-' : ''}₹${text}`;
+    return formatRupees(n, paise ? { exact: true } : undefined);
 };
-const qtyText = (q) => (Number(q) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+const qtyText = (q) => formatKg(q);
 const dateText = (ms) => (ms == null ? '' : Helpers.formatDate(ms));
 
 const BILL_TYPE_KEYS = { retail: 'ui.finance.bill_retail', wholesale: 'ui.finance.bill_wholesale', purchase: 'ui.finance.bill_purchase' };
@@ -45,10 +42,10 @@ export function describeRow(r, showTerm = false) {
         if (r.rest) sub = t('ui.finance.bill_difference');
         else if (r.writeOff) sub = t('ui.finance.written_off');
         else if (r.labour) sub = t('ui.finance.labour_on_bill');
-        else if (r.term === 'uncosted') sub = t('ui.finance.uncosted_line', { item, qty: qtyText(r.qty), rate: qtyText(r.rate) });
-        else if (r.cash !== undefined) sub = t('ui.finance.cash_online', { cash: qtyText(r.cash), online: qtyText(r.online) });
-        else if (r.term === 'cogs') sub = t('ui.finance.line_avg_cost', { item, qty: qtyText(r.qty), rate: qtyText(r.rate) });
-        else sub = t('ui.finance.line_rate', { item, qty: qtyText(r.qty), rate: qtyText(r.rate) });
+        else if (r.term === 'uncosted') sub = t('ui.finance.uncosted_line', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, { decimals: 2 }) });
+        else if (r.cash !== undefined) sub = t('ui.finance.cash_online', { cash: formatAmount(r.cash, { exact: true }), online: formatAmount(r.online, { exact: true }) });
+        else if (r.term === 'cogs') sub = t('ui.finance.line_avg_cost', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, { decimals: 2 }) });
+        else sub = t('ui.finance.line_rate', { item, qty: qtyText(r.qty), rate: formatAmount(r.rate, { decimals: 2 }) });
     } else if (r.category !== undefined) {
         const cat = r.category === 'personal' ? t('ui.finance.personal_expenses')
             : r.category === 'business' ? t('ui.finance.business_expenses') : t('ui.finance.no_type');
@@ -65,7 +62,7 @@ export function describeRow(r, showTerm = false) {
         sub = t('ui.finance.gap_hint');
     } else {
         title = item;
-        sub = t('ui.finance.qty_avg_cost', { qty: qtyText(r.qty), rate: qtyText(r.rate) });
+        sub = t('ui.finance.qty_avg_cost', { qty: qtyText(r.qty), rate: formatAmount(r.rate, { decimals: 2 }) });
     }
     if (showTerm && r.term) sub = `${t(CARDS[r.term]?.label || '')} · ${sub}`;
     return { title, sub };
