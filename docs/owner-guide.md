@@ -77,13 +77,19 @@ While a bill is being typed:
   bought, no opening stock).
 - "Save draft" keeps an unfinished bill; an unsaved bill is offered back at the
   next start.
+- **Voice** (VB-1; off until switched on in Settings › Voice billing): tap 🎤 and
+  say the item, weight and rate. The app shows what it heard and fills the line
+  only after OK; voice never adds to the bill or saves. See
+  [voice-billing.md](voice-billing.md).
 
 ### History
 
 Every saved bill, newest first, with its total, paid and due. Bill details show
 the lines, labour and payable, how it was paid, later payments, write-offs and
 every edit (who, when, why). A bill can be **voided** (with a reason) within the
-role's edit window; only the owner deletes, and only a voided bill.
+role's edit window; only the owner deletes, and only a voided bill. A void needs no
+owner approval, but one by anyone except an owner shows on the owner's Today (Day report,
+medium) with who voided it and the reason, and stays in the audit log.
 
 ### Outstanding (and Wholesale › Outstanding)
 

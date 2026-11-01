@@ -39,6 +39,7 @@
         </div>
 
         <div class="bill-totals" style="padding: 16px; margin-bottom: 16px;">
+            <button type="button" class="voice-mic-btn" id="voiceMicPurchase" hidden onclick="window.app.voice.start('purchase')" data-i18n="ui.voice.mic" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate">🎤 Speak the line</button>
             <div class="form-row">
                 <label data-i18n="ui.common.item">Item:</label>
                 <select id="billItem" onchange="window.app.billing.loadRates()"></select>
@@ -185,6 +186,7 @@
         </div>
 
         <div class="bill-totals" style="padding: 16px; margin-bottom: 16px; border-radius: 12px;">
+            <button type="button" class="voice-mic-btn" id="voiceMicSale" hidden onclick="window.app.voice.start('sale')" data-i18n="ui.voice.mic" data-i18n-title="ui.voice.mic_title" title="Say item, weight and rate">🎤 Speak the line</button>
             <div class="form-row">
                 <label data-i18n="ui.common.item">Item:</label>
                 <select id="saleItem" onchange="window.app.billing.loadSaleRates()"></select>
