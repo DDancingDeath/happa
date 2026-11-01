@@ -77,6 +77,10 @@ While a bill is being typed:
   bought, no opening stock).
 - "Save draft" keeps an unfinished bill; an unsaved bill is offered back at the
   next start.
+- **Voice** (VB-1; off until switched on in Settings › Voice billing): tap 🎤 and
+  say the item, weight and rate. The app shows what it heard and fills the line
+  only after OK; voice never adds to the bill or saves. See
+  [voice-billing.md](voice-billing.md).
 
 ### History
 

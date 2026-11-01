@@ -4,6 +4,7 @@ import { AppState } from './utils/state.js';
 import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
 import { BottomNav } from './ui/bottom-nav.js';
+import { VoiceMic } from './ui/voice-mic.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
@@ -462,6 +463,7 @@ async function initializeUserData() {
         
         // Initialize billing manager (connects purchase and retail-sale modules)
         BillingManager.init();
+        VoiceMic.apply();
         
         // Show app content
         const appContent = document.getElementById('appContent');
@@ -830,6 +832,12 @@ window.app = {
     // Phone bottom bar (#142): Settings › swipe between pages
     bottomNav: {
         setSwipe: (on) => BottomNav.setSwipe(on)
+    },
+
+    // Voice billing (#81): Settings switch (off by default) and the Billing mic buttons
+    voice: {
+        start: (mode) => VoiceMic.start(mode),
+        setOn: (on) => VoiceMic.setOn(on)
     },
     
     // Business switcher (#149) and Rentals (#170): rentals.* methods are added when the section loads
