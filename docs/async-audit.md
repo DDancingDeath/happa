@@ -48,7 +48,7 @@ Rule of thumb:
 
 Async functions called from `onclick` / `onchange` strings can't be awaited.
 Checked: admin.js (approve / reject / role / reset / delete / storage /
-clear data), users.js (same), billing.js `loadDraft` / `deleteDraft`,
+clear data), billing.js `loadDraft` / `deleteDraft`,
 outstanding.js `recordPayment` / `markAsCleared`, wholesale-sales.js
 `recordPayment` / `markSaleAsCleared`, diagnostics.js `clearAll` /
 `deleteError` / loaders, items.js `deleteItem` — all wrap their writes in
