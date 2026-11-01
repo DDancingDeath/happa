@@ -39,6 +39,8 @@ jobs:
       - run: npm ci
       - name: Lint
         run: npm run lint
+      - name: Type check (JSDoc, files with // @ts-check; #71)
+        run: npm run typecheck
       - name: Service worker asset list
         run: npm run check:sw
       - name: Release metadata
