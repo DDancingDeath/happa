@@ -173,11 +173,13 @@ describe('read counter', () => {
         await db.runTransaction(async (tx) => { tx.set({}, {}); tx.set({}, {}); });
         await expect(db.runTransaction(async () => { throw new Error('app check'); })).rejects.toThrow('app check');
         const sdkErr = Object.assign(new Error('aborted'), { name: 'FirebaseError', code: 'aborted' });
-        await expect(db.runTransaction(async () => { throw sdkErr; })).rejects.toBe(sdkErr);
+        await expect(db.runTransaction(async (tx) => { tx.set({}, {}); throw sdkErr; })).rejects.toBe(sdkErr);
+        const readErr = Object.assign(new Error('unavailable'), { name: 'FirebaseError', code: 'unavailable' });
+        await expect(db.runTransaction(async () => { throw readErr; })).rejects.toBe(readErr);
         const io2 = getIoCounts();
-        expect(io2.writes - io.writes).toBe(1);
+        expect(io2.writes - io.writes).toBe(2);
         expect(io2.writeErrors - io.writeErrors).toBe(1);
-        expect(io2.readErrors - io.readErrors).toBe(0);
+        expect(io2.readErrors - io.readErrors).toBe(1);
         expect(document.getElementById('quotaBanner')).not.toBeNull();
         warn.mockRestore();
         document.body.innerHTML = '';

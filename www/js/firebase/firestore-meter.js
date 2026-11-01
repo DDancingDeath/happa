@@ -75,9 +75,9 @@ const countError = (err, source) => {
         if (countedErrors.has(err)) return;
         countedErrors.add(err);
     }
-    if (source === 'transaction') {
-        // The app's own checks throw inside transactions; only the SDK's errors are refused writes.
-        if (err?.name === 'FirebaseError') ioCounts.writeErrors++;
+    if (source === 'transaction' || source === 'transaction read') {
+        // The app's own checks throw inside transactions; only the SDK's errors count.
+        if (err?.name === 'FirebaseError') ioCounts[source === 'transaction' ? 'writeErrors' : 'readErrors']++;
         return;
     }
     if (isWriteSource(source)) ioCounts.writeErrors++;
@@ -223,7 +223,9 @@ export function installFirestoreMeter(fs) {
                 return value;
             },
             (err) => {
-                checkError(err, 'transaction');
+                const wrote = !!lastTx && writingTx.has(lastTx);
+                if (wrote) ioCounts.writes++;
+                checkError(err, wrote ? 'transaction' : 'transaction read');
                 throw err;
             }
         );
