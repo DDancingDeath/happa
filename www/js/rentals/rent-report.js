@@ -16,14 +16,17 @@ import { toCsv } from '../utils/statements.js';
 import { saveLeaseReminders } from '../utils/reminders.js';
 import { APP_IDENTITY } from '../config/app-identity.js';
 import * as store from './rent-store.js';
-import { yearData } from './rent-report-store.js';
+import { yearData, propertyNames, REPORT_LIMIT } from './rent-report-store.js';
 import { monthLabel, isMonth } from './rent-math.js';
 import { agreementError, leaseReminders, noticeBy, reportMonths, yearReport, MAX_NOTICE_MONTHS } from './rent-math-report.js';
 
 const fail = (key) => UIManager.showToast(t(key), 'error');
+const propName = (p) => p.name || `${t('ui.rent.yr_no_property')} · ${String(p.id).slice(0, 6)}`;
 const lbl = (c, key, field) => `<label class="rent-label">${c.esc(t(key))}${field}</label>`;
 const FIELDS = ['rent', 'collected', 'due', 'expenses', 'tax', 'net'];
-const report = { year: null, fy: true, data: null };
+const report = { year: null, fy: true, data: null, seq: 0, cache: new Map() };
+/** A year's charges and expenses are read again after this (switching year or kind reuses them). */
+const CACHE_MS = 10 * 60 * 1000;
 
 /** The financial year (April–March) containing `month`: its first year. */
 const fyOf = (month) => (Number(month.slice(5, 7)) >= 4 ? Number(month.slice(0, 4)) : Number(month.slice(0, 4)) - 1);
@@ -76,7 +79,7 @@ function reportHtml(c) {
     const r = yearReport(report.data, reportMonths(report.year, report.fy));
     const head = `<tr><th></th>${FIELDS.map(f => `<th class="num">${c.esc(t(`ui.rent.yr_${f}`))}</th>`).join('')}</tr>`;
     const line = (label, x, cls = '') => `<tr${cls}><td>${c.esc(label)}</td>${FIELDS.map(f => `<td class="num">${c.esc(formatINR(x[f]))}</td>`).join('')}</tr>`;
-    const props = r.rows.map(p => `<h4>${c.esc(p.name || t('ui.rent.yr_no_property'))}</h4><div class="rent-scroll"><table class="rent-table">${head}`
+    const props = r.rows.map(p => `<h4>${c.esc(propName(p))}</h4><div class="rent-scroll"><table class="rent-table">${head}`
         + r.months.map(m => line(monthLabel(m, lang), p.months[m])).join('')
         + line(t('ui.rent.yr_total'), p.total, ' class="rent-total"') + '</table></div>').join('');
     const base = report.fy ? fyOf(c.month) : Number(c.month.slice(0, 4));
@@ -90,14 +93,25 @@ function reportHtml(c) {
     return `<h3>📊 ${c.esc(t('ui.rent.yr_title', { year: yearLabel(report.year) }))}</h3>${picker}
         <div class="rent-cards">${[['ui.rent.yr_collected', r.total.collected], ['ui.rent.yr_expenses', r.total.expenses], ['ui.rent.yr_net', r.total.net]]
         .map(([k, v]) => `<div class="rent-card"><div class="rent-card-label">${c.esc(t(k))}</div><div class="rent-card-value">${c.esc(formatINR(v))}</div></div>`).join('')}</div>
-        ${report.data.cut ? `<p class="rent-help">⚠ ${c.esc(t('msg.rent.limit_reached'))}</p>` : ''}
+        ${report.data.cut ? `<p class="rent-help">⚠ ${c.esc(t('msg.rent.yr_cut', { count: REPORT_LIMIT }))}</p>` : ''}
         <p class="rent-help">${c.esc(t('ui.rent.yr_help'))}</p>${props || `<p class="rent-empty">${c.esc(t('ui.rent.yr_none'))}</p>`}`;
 }
 
 async function load(c) {
     const months = reportMonths(report.year, report.fy);
-    const d = await yearData(months[0], months[11]);
-    report.data = { ...d, properties: store.snapshot().properties };
+    const key = `${months[0]}|${months[11]}`;
+    const seq = ++report.seq;
+    let hit = report.cache.get(key);
+    if (!hit || Date.now() - hit.at > CACHE_MS) {
+        const d = await yearData(months[0], months[11]);
+        const known = new Set(store.snapshot().properties.map(p => p.id));
+        const missing = [...new Set([...d.charges, ...d.expenses].map(x => x.propertyId).filter(id => id && !known.has(id)))];
+        hit = { at: Date.now(), ...d, removed: await propertyNames(missing) };
+        report.cache.set(key, hit);
+    }
+    // A slower earlier load must not replace the one asked for last.
+    if (seq !== report.seq) return null;
+    report.data = { ...hit, properties: [...store.snapshot().properties, ...hit.removed] };
     return reportHtml(c);
 }
 
@@ -110,6 +124,7 @@ export async function showYearReport(c) {
         console.error('Yearly report not loaded:', e);
         return fail('msg.rent.could_not_load');
     }
+    if (html === null) return;
     await c.dialog(`<div id="rentReport">${html}</div>`, { info: true });
 }
 
@@ -124,7 +139,7 @@ export async function action(c, name, value) {
     try {
         const html = await load(c);
         const box = document.getElementById('rentReport');
-        if (box) box.innerHTML = html;
+        if (box && html !== null) box.innerHTML = html;
     } catch (e) {
         console.error('Yearly report not loaded:', e);
         fail('msg.rent.could_not_load');
@@ -136,8 +151,8 @@ function downloadCsv() {
     const r = yearReport(report.data, reportMonths(report.year, report.fy));
     const header = [t('ui.rent.yr_property'), t('ui.rent.yr_month'), ...FIELDS.map(f => t(`ui.rent.yr_${f}`))];
     const rows = r.rows.flatMap(p => [
-        ...r.months.map(m => [p.name, m, ...FIELDS.map(f => p.months[m][f])]),
-        [p.name, t('ui.rent.yr_total'), ...FIELDS.map(f => p.total[f])]
+        ...r.months.map(m => [propName(p), m, ...FIELDS.map(f => p.months[m][f])]),
+        [propName(p), t('ui.rent.yr_total'), ...FIELDS.map(f => p.total[f])]
     ]);
     const blob = new Blob([toCsv(header, rows)], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

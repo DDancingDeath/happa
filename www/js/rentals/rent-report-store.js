@@ -23,3 +23,15 @@ export async function yearData(first, last) {
     const rows = (snap) => snap.docs.map(d => ({ id: d.id, ...d.data() }));
     return { charges: rows(ch), expenses: rows(ex), cut: ch.size >= REPORT_LIMIT || ex.size >= REPORT_LIMIT };
 }
+
+/**
+ * Names of properties no longer listed (removed during the year) that the report has figures for,
+ * one read each (a handful at most); a name that can't be read is left out.
+ * @param {string[]} ids
+ * @returns {Promise<Array<{id: string, name: string}>>}
+ */
+export async function propertyNames(ids) {
+    const out = await Promise.all((ids || []).slice(0, 50).map(id => FirebaseService.db.collection(rentCol('rent_properties')).doc(id).get()
+        .then(s => (s.exists ? { id, name: String(s.data().name || '') } : null)).catch(() => null)));
+    return out.filter(Boolean);
+}

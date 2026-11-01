@@ -2201,6 +2201,7 @@ export default {
     'ui.rent.yr_help': "Each month counts its own rent: collected = paid on that month's rent (also later), expenses by their date. Net = collected − expenses. For the CA: rent received and property tax.",
     'msg.rent.agr_end_bad': "The agreement can't end before it starts.",
     'msg.rent.agr_notice_bad': "Notice period: 0 to 12 whole months.",
+    'msg.rent.yr_cut': "Only the first {count} charges or expenses of this year are counted: the totals are not complete.",
     'ui.rent.exp_cat_maintenance': "Maintenance / society",
     'ui.rent.exp_cat_insurance': "Insurance",
     'ui.rent.exp_cat_broker': "Broker",
