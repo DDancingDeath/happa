@@ -862,14 +862,16 @@ export class OutstandingManager {
      * @param {'cash'|'online'} method
      * @param {number[]} [confirmed] - each bill's due the user confirmed: a higher due on the
      *   server (an edit meanwhile) aborts with code 'due-changed', so no more money is recorded
+     * @param {string[]} [entryIds] - one payments[] id per bill, reused when the same settle is retried
+     *   (#70): entries already on the server with these ids count as this settle's, written once
      * @returns {Promise<{settled: Array<{bill: Object, amount: number, fields: Object}>, total: number}>}
      */
-    static async settleAllDues(billType, bills, method, confirmed = []) {
+    static async settleAllDues(billType, bills, method, confirmed = [], entryIds = null) {
         const collKey = COLLECTION_BY_TYPE[billType] || 'wholesaleSales';
         const at = Date.now();
         const recordedBy = AppState.userName || (AppState.currentUser ? AppState.currentUser.email : 'Unknown');
         const recordedById = AppState.currentUser ? AppState.currentUser.uid : 'unknown';
-        const ids = bills.map(() => Helpers.generateId());
+        const ids = bills.map((_, i) => entryIds?.[i] || Helpers.generateId());
         const cleared = this.clearedFields();
         // The document id, not the id field: a legacy doc may carry a different one
         const docIds = bills.map(b => (FirebaseService.documentIdOf ? FirebaseService.documentIdOf(b) : String(b.id)));
@@ -878,7 +880,7 @@ export class OutstandingManager {
             const settled = [];
             freshList.forEach((fresh, i) => {
                 if (!isActiveBill(fresh)) throw Object.assign(new Error('This bill was voided'), { code: 'voided' });
-                // This run's entry is already there: the transaction is re-run after a commit whose answer was lost
+                // This settle's entry is already there: a re-run or a retry after a commit whose answer was lost
                 const mine = (Array.isArray(fresh.payments) ? fresh.payments : []).find(p => p && p.id === ids[i]);
                 if (mine) {
                     updates.push(null);

@@ -191,6 +191,7 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
         AppState.salesHistory = Object.values(server).map(b => ({ ...b }));
         serverTx(server);
         WholesaleSalesManager.outstandingParty = null;
+        WholesaleSalesManager.pendingSettle = null;
     });
 
     test('a member sees no button and is refused', async () => {
@@ -223,7 +224,7 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
         expect(UIManager.showToast).toHaveBeenLastCalledWith('2 bills settled, ₹200 received');
     });
 
-    test('a retry after a lost answer: nothing is recorded twice, and it says "already settled"', async () => {
+    test('a retry after a write that reached the server but errored: same entry ids, so it is done (audit + toast), recorded once', async () => {
         // The first transaction is written on the server, but its answer never comes back
         updateBillsInTransaction.mockImplementationOnce(async (collKey, ids, change) => {
             const out = change(ids.map(id => JSON.parse(JSON.stringify(server[id]))));
@@ -242,9 +243,39 @@ describe('Wholesale › Outstanding: "Complete all due" (owner / manager)', () =
         await WholesaleSalesManager.completeAllDue('Gupta');
         expect(updateBillsInTransaction).toHaveBeenCalledTimes(2);
         expect([server.w1, server.w2].map(b => [b.payments.length, readPayment(b).cash, readPayment(b).due])).toEqual([[1, 220, 0], [1, 180, 0]]);
-        expect(UIManager.showToast).toHaveBeenLastCalledWith('Already settled: nothing is due on these bills now. Nothing was recorded again');
+        const firstIds = [server.w1, server.w2].map(b => b.payments[0].id);
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('2 bills settled, ₹200 received');
         expect(UIManager.showToast).not.toHaveBeenCalledWith(expect.stringContaining('0 bills'));
+        expect(AuditService.log).toHaveBeenCalledTimes(1);
+        expect(AuditService.log.mock.calls[0][1]).toMatchObject({ bulk: true, method: 'cash', paymentAmount: 200 });
+
+        // Done: the ids are forgotten; another party's settle (or a later one) gets new ids
+        expect(WholesaleSalesManager.pendingSettle).toBeNull();
+        expect(WholesaleSalesManager.settleEntryIds('Gupta', 'cash', [server.w1, server.w2])).not.toEqual(firstIds);
+    });
+
+    test('settled elsewhere before this phone tried: "already settled", nothing recorded, no audit', async () => {
+        for (const id of ['w1', 'w2']) server[id] = { ...server[id], payment: { ...server[id].payment, due: 0 }, dueAmount: 0, cleared: true };
+        jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async () => {
+            document.body.insertAdjacentHTML('beforeend', '<input type="radio" name="completeAllMethod" value="online" checked>');
+            return true;
+        });
+        await WholesaleSalesManager.completeAllDue('Gupta');
+        expect(UIManager.showToast).toHaveBeenLastCalledWith('Already settled: nothing is due on these bills now. Nothing was recorded again');
+        expect([server.w1, server.w2].map(b => b.payments.length)).toEqual([0, 0]);
         expect(AuditService.log).not.toHaveBeenCalled();
+    });
+
+    test('a definite refusal (due changed) forgets the ids; a network error keeps them', async () => {
+        updateBillsInTransaction.mockRejectedValueOnce(Object.assign(new Error('x'), { code: 'unavailable' }));
+        await WholesaleSalesManager._completeAllDue('Gupta', [server.w1, server.w2], 'cash', [120, 80]);
+        const kept = WholesaleSalesManager.pendingSettle.ids;
+        expect(WholesaleSalesManager.settleEntryIds('Gupta', 'cash', [server.w1, server.w2])).toBe(kept);
+        // another method or bill list is another settle
+        expect(WholesaleSalesManager.settleEntryIds('Gupta', 'online', [server.w1, server.w2])).not.toBe(kept);
+        updateBillsInTransaction.mockRejectedValueOnce(Object.assign(new Error('x'), { code: 'due-changed' }));
+        await WholesaleSalesManager._completeAllDue('Gupta', [server.w1, server.w2], 'cash', [120, 80]);
+        expect(WholesaleSalesManager.pendingSettle).toBeNull();
     });
 
     test('cancelling, or not picking cash / online, writes nothing', async () => {

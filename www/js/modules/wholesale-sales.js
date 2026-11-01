@@ -745,12 +745,26 @@ export class WholesaleSalesManager {
             () => this._completeAllDue(String(name).trim(), bills, method, chosen.map(x => x.due)));
     }
 
+    /**
+     * Payment entry ids of a Complete all due, kept for the same party, method and bills until a definite
+     * result (#70): a retry after a write that reached the server but answered with an error finds its own
+     * entries, so it is reported (and audited) as done, never recorded twice.
+     */
+    static settleEntryIds(name, method, bills) {
+        const key = [normalizePartyName(name), method, ...bills.map(b => (FirebaseService.documentIdOf ? FirebaseService.documentIdOf(b) : String(b.id)))].join('|');
+        if (this.pendingSettle?.key !== key) this.pendingSettle = { key, ids: bills.map(() => Helpers.generateId()) };
+        return this.pendingSettle.ids;
+    }
+
     static async _completeAllDue(name, bills, method, confirmed) {
         let result;
+        const entryIds = this.settleEntryIds(name, method, bills);
         try {
-            result = await OutstandingManager.settleAllDues('wholesale', bills, method, confirmed);
+            result = await OutstandingManager.settleAllDues('wholesale', bills, method, confirmed, entryIds);
         } catch (error) {
             console.error('Complete all due failed:', error);
+            // A definite refusal forgets the ids; any other error may have reached the server: a retry reuses them
+            if (['due-changed', 'voided', 'not-found', 'permission-denied', 'invalid-argument'].includes(error?.code)) this.pendingSettle = null;
             if (OutstandingManager.isOfflineError(error)) {
                 UIManager.showToast(t('msg.common.internet_required_record_payment'));
             } else if (error?.code === 'due-changed') {
@@ -763,6 +777,7 @@ export class WholesaleSalesManager {
             this.renderSalesOutstanding();
             return;
         }
+        this.pendingSettle = null;
         const { settled, total } = result;
         if (!settled.length) {
             // Nothing was due on the server: an earlier attempt went through (its answer was lost) or someone settled them
