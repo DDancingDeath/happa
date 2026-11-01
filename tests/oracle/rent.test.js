@@ -2,10 +2,14 @@
  * Rent oracle (#170, docs/calculations.md RENT-1 … RENT-5): an independent,
  * deliberately simple recomputation of the rentals numbers from leases and
  * payments, compared with rentals/rent-math.js on generated histories; RENT-13
- * (change of unit, the move month) against the same module.
+ * (change of unit, the move month) against the same module; RENT-14 / RENT-15
+ * (deposit ledger) on generated entries.
  */
 import fc from 'fast-check';
-import { monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, moveMonthRent, oldMonth } from '../../www/js/rentals/rent-math.js';
+import {
+    monthsToCharge, newCharge, applyPayment, rentTotals, leaseDues, firstMonthRent, moveMonthRent, oldMonth,
+    depositEntry, depositHeld, depositsTotal
+} from '../../www/js/rentals/rent-math.js';
 
 jest.mock('../../www/js/firebase/firestore-service.js', () => ({ FirebaseService: {} }));
 
@@ -134,5 +138,35 @@ describe('change of unit, the move month (RENT-13)', () => {
         }
         expect(oldMonth({ rent: 5000, amount: 5000, paid: 3000 }, 2419)).toMatchObject({ rent: 3000, amount: 3000, open: false, capped: true, kept: false });
         expect(oldMonth({ rent: 5000, amount: 5000, paid: 5000 }, 2419)).toMatchObject({ kept: true, capped: false });
+    });
+});
+
+describe('deposit ledger (RENT-14, RENT-15)', () => {
+    test('held = received − adjusted − refunded; adjust/refund never above what is held (or the month due); total = Σ held', () => {
+        const opArb = fc.record({ kind: fc.constantFrom('received', 'adjust', 'refund'), amount: fc.integer({ min: 1, max: 30000 }), due: fc.integer({ min: 0, max: 20000 }) });
+        fc.assert(fc.property(fc.array(fc.array(opArb, { maxLength: 15 }), { minLength: 1, maxLength: 4 }), (ledgers) => {
+            const held = ledgers.map((ops) => {
+                // Oracle: a running balance in whole rupees, refusing what it can't cover.
+                let want = 0;
+                const entries = [];
+                for (const op of ops) {
+                    const cap = op.kind === 'received' ? Infinity : op.kind === 'refund' ? want : Math.min(want, op.due);
+                    const ok = op.amount <= cap;
+                    let got = null;
+                    try { got = depositEntry(entries, op.kind, op.amount, op.due); } catch (e) { got = null; }
+                    expect(got !== null).toBe(ok);
+                    if (!ok) continue;
+                    want += op.kind === 'received' ? op.amount : -op.amount;
+                    entries.push({ kind: op.kind, amount: op.amount });
+                    expect(got.held).toBe(want);
+                }
+                expect(depositHeld(entries)).toBe(want);
+                expect(want).toBeGreaterThanOrEqual(0);
+                return want;
+            });
+            let sum = 0;
+            for (const h of held) sum += h;
+            expect(depositsTotal(held.map(h => ({ held: h })))).toBe(sum);
+        }), { seed: 157, numRuns: Number(process.env.FC_RUNS) || 100 });
     });
 });

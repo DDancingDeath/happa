@@ -177,7 +177,9 @@ export async function rebuildShareSnapshot(leaseId, token, names) {
     return db.runTransaction(async (tx) => {
         const snap = await tx.get(leaseRef);
         if (!snap.exists || snap.data().shareToken !== token) return false;
-        tx.set(publicRef(token), buildPublicSnapshot({ lease: { id: leaseId, ...snap.data() }, ...names, charges }));
+        // RENT-14: the deposit held (every deposit write after this keeps it current).
+        const dep = (await tx.get(coll('rent_deposits').doc(snap.data().tenantId))).data()?.held;
+        tx.set(publicRef(token), buildPublicSnapshot({ lease: { id: leaseId, ...snap.data() }, ...names, dep, charges }));
         return true;
     });
 }

@@ -653,7 +653,7 @@ function renderTenants(d) {
                 ${btn('', 'moveOut', `'${js(lease.id)}'`, 'ui.rent.move_out')}`
                 : btn(' rent-btn-primary', 'moveIn', `'${id}'`, 'ui.rent.move_in')}
             ${btn('', 'editTenant', `'${id}'`, 'ui.rent.edit')}
-            ${receiptsBtn(tn.id)}
+            ${receiptsBtn(tn.id)}${btn('', 'deposit', `'${id}'`, 'ui.rent.dep_btn', '💰 ')}
             ${lease ? '' : btn('', 'archiveTenant', `'${id}'`, 'ui.rent.remove')}
         </div>`;
         return `<div class="rent-row"><div class="rent-name">${esc(tn.name)}</div>
@@ -666,7 +666,7 @@ function renderTenants(d) {
             <div class="rent-sub">${et('ui.rent.moved_out')} · ${esc(monthLabel(l.endMonth, getLang()))}</div>
             <div class="rent-actions">${btn('', 'shareLink', `'${js(l.id)}'`, 'ui.rent.link_on', '🔗 ')}</div>
         </div>`).join('') : '';
-    return form + (rows || `<p class="rent-empty">${et('ui.rent.no_tenants')}</p>`)
+    return form + (manage ? `<div class="rent-actions">${btn('', 'deposits', '', 'ui.rent.dep_held_list', '💰 ')}</div>` : '') + (rows || `<p class="rent-empty">${et('ui.rent.no_tenants')}</p>`)
         + (endedLinks ? `<h3 class="rent-month-title">${et('ui.rent.links_moved_out')}</h3>${endedLinks}` : '');
 }
 
@@ -837,12 +837,12 @@ const EDIT_DAYS = 2;
 const unitMod = () => import('./rent-unit.js');
 const unitCtx = () => ({
     esc, js, val, dialog, closeDialog: () => dialogResolve?.(false), index, placeOf, linkPlace, linkFor, findLease, knownType, typeWord,
-    defaults, headerName, tenantSectionHtml, readTenantSection, saveMoveIn, isManager: isManager(), month: state.month
+    defaults, headerName, tenantSectionHtml, readTenantSection, saveMoveIn, isManager: isManager(), isOwner: isOwner(), month: state.month
 });
 
 /** Runs function `fn` of a lazy file (rent-unit.js / rent-link.js) with what it needs from here. */
 function lazyUi(file, fn, ...args) {
-    return (file === './rent-unit.js' ? unitMod() : import('./rent-link.js')).then(
+    return (file === './rent-unit.js' ? unitMod() : file === './rent-deposit.js' ? import('./rent-deposit.js') : import('./rent-link.js')).then(
         (m) => Promise.resolve().then(() => m[fn](unitCtx(), ...args)).catch((e) => {
             console.error(`Rentals ${fn} failed:`, e);
             fail('msg.rent.save_failed');
@@ -853,6 +853,7 @@ function lazyUi(file, fn, ...args) {
         });
 }
 const unitUi = (fn, ...args) => lazyUi('./rent-unit.js', fn, ...args);
+const depUi = (fn, ...args) => lazyUi('./rent-deposit.js', fn, ...args);
 
 /** Tenants page: move an existing tenant into a vacant unit. */
 async function moveIn(tenantId) {
@@ -893,6 +894,7 @@ async function moveOut(leaseId) {
         await store.endLease(leaseId, end, state.month, names);
         UIManager.showToast(t('msg.rent.saved'), 'success');
         AuditService.log('RENT_MOVE_OUT', { leaseId, endMonth: end }).catch(auditWarn);
+        void depUi('afterMoveOut', lease.tenantId);
     } catch (e) {
         console.warn('Move-out failed:', e?.code || e?.message || e);
         const key = e?.message === 'later_paid' ? 'msg.rent.later_paid'
@@ -1111,7 +1113,8 @@ export const RentalsModule = {
         shareLink: (id) => lazyUi('./rent-link.js', 'shareLink', id), linkAction: (a, id) => lazyUi('./rent-link.js', 'linkAction', a, id), setView, openProperty, filterUnits,
         addTenantToUnit: (unitId) => unitUi('toUnit', null, unitId), tenantToggle, tenantPick, tenantElec,
         receipts: (tenantId) => receiptUi('showHistory', tenantId),
-        receiptAction: (name, id) => receiptUi('action', name, id)
+        receiptAction: (name, id) => receiptUi('action', name, id),
+        deposit: (id) => depUi('showDeposit', id), deposits: () => depUi('showHeld'), depositAction: (a, id, i) => depUi('action', a, id, i)
     }
 };
 

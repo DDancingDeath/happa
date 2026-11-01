@@ -31,6 +31,7 @@ test('a new link shows the newest 36 of 70 months', async () => {
     expect(snap.months[0].m).toBe(month(34));
     expect(snap.months[35].m).toBe(month(69));
     expect(fake.raw('rent_leases').get('L1').shareToken).toBe(token);
+    expect(snap).not.toHaveProperty('dep');
 });
 
 test('rebuild picks up a payment made while the link was being made; ignored once the token changed', async () => {
@@ -49,4 +50,10 @@ test('renames reach the linked snapshot; unknown names keep the old ones', async
     expect(fake.raw('rent_public').get(token)).toMatchObject({ tenant: 'Ram Kumar', place: 'Gali 3 · G1' });
     await store.renameInLink(lease, { tenantName: undefined, place: '' });
     expect(fake.raw('rent_public').get(token)).toMatchObject({ tenant: 'Ram Kumar', place: 'Gali 3 · G1' });
+});
+
+test('a new link shows the tenant\'s deposit held (RENT-14), also after the rebuild', async () => {
+    fake.seed('rent_deposits', [{ id: 'T1', tenantId: 'T1', held: 7000, entries: [] }]);
+    const token = await store.makeShareLink({ ...fake.raw('rent_leases').get('L1'), id: 'L1' }, { tenantName: 'Ram', place: 'Gali 2 · G1', shopName: 'Shop' });
+    expect(fake.raw('rent_public').get(token).dep).toBe(7000);
 });

@@ -18,7 +18,7 @@
             movedOut: (m) => `Moved out. Last month: ${m}`,
             rent: 'Rent', due: 'Due on day', totalDue: 'Total due', paidAll: 'Paid (shown months)',
             elec: (u) => `Electricity (${u} units)`, total: 'Total', paid: 'Paid', left: 'Due',
-            paidOn: 'Paid on', receipt: 'Receipt', st: { paid: 'Paid', partial: 'Part paid', due: 'Due', late: 'Late' },
+            paidOn: 'Paid on', receipt: 'Receipt', dep: 'Deposit held', st: { paid: 'Paid', partial: 'Part paid', due: 'Due', late: 'Late' },
             note: 'Read-only copy kept up to date by the owner. For questions, contact the owner.',
             ut: { flat: 'Flat', commercial: 'Shop', office: 'Office', godown: 'Godown', other: '' },
             since: (d) => `Tenant since ${d}`,
@@ -31,7 +31,7 @@
             movedOut: (m) => `मकान खाली किया। आखिरी महीना: ${m}`,
             rent: 'किराया', due: 'हर महीने की तारीख', totalDue: 'कुल बकाया', paidAll: 'चुकाया (दिखाए महीने)',
             elec: (u) => `बिजली (${u} यूनिट)`, total: 'कुल', paid: 'चुकाया', left: 'बकाया',
-            paidOn: 'भुगतान की तारीख', receipt: 'रसीद', st: { paid: 'चुकाया', partial: 'कुछ चुकाया', due: 'बकाया', late: 'देर' },
+            paidOn: 'भुगतान की तारीख', receipt: 'रसीद', dep: 'जमा जमानत', st: { paid: 'चुकाया', partial: 'कुछ चुकाया', due: 'बकाया', late: 'देर' },
             note: 'यह केवल देखने के लिए है, मालिक इसे अपडेट रखते हैं। सवाल हों तो मालिक से बात करें।',
             ut: { flat: 'फ़्लैट', commercial: 'दुकान', office: 'ऑफ़िस', godown: 'गोदाम', other: '' },
             since: (d) => `${d} से किरायेदार`,
@@ -170,6 +170,7 @@
                 <div class="rh-card"><span>${esc(L.due)}</span><b>${esc(data.dueDay)}</b></div>
                 <div class="rh-card"><span>${esc(L.totalDue)}</span><b>${esc(inr(totalDue))}</b></div>
                 <div class="rh-card"><span>${esc(L.paidAll)}</span><b>${esc(inr(totalPaid))}</b></div>
+                ${Number(data.dep) > 0 ? `<div class="rh-card"><span>${esc(L.dep)}</span><b>${esc(inr(data.dep))}</b></div>` : ''}
             </div>
             ${rows}
             <p class="rh-note">${esc(L.note)}</p>`;

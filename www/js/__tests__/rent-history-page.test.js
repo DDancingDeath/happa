@@ -131,6 +131,19 @@ describe('page behaviour (jsdom)', () => {
         expect(statusOf({ ...x, due: 0, st: 'late' }, 10, new Date(2027, 0, 1))).toBe('paid');
     });
 
+    test('deposit held (RENT-14) from the same single read, only when there is one', async () => {
+        let r = run({ body: { fields: enc({ ...SNAP, dep: 8000 }).mapValue.fields } });
+        await r.done;
+        expect(document.getElementById('rh').textContent).toMatch(/Deposit held\s*₹8,000/);
+        expect(r.calls.filter(u => /documents\//.test(u))).toHaveLength(1);
+        r = run({ lang: 'hi-IN', body: { fields: enc({ ...SNAP, dep: 8000 }).mapValue.fields } });
+        await r.done;
+        expect(document.getElementById('rh').textContent).toMatch(/जमा जमानत\s*₹8,000/);
+        r = run();
+        await r.done;
+        expect(document.getElementById('rh').textContent).not.toMatch(/Deposit/);
+    });
+
     test('receipt number next to each paid entry, from the same single read', async () => {
         const months = [{ ...SNAP.months[1], py: [{ d: '2026-10-05', a: 1500, r: 'R-2026-0007' }, { d: '2026-10-06', a: 500 }] }];
         const { calls, done } = run({ body: { fields: enc({ ...SNAP, months }).mapValue.fields } });

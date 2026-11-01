@@ -192,3 +192,16 @@ test('a device clock in another year: refused, then the server\'s IST year (Date
         delete global.fetch;
     }
 });
+
+test('a month paid from the deposit (#157) gets no receipt and is not listed as missing one', async () => {
+    fake.seed('rent_charges', [charge('L1_2026-10', { paid: 3000, payments: [{ amount: 3000, mode: 'deposit', ref: '', date: '2026-10-05', by: 'u1' }] })]);
+    store.attach('2026-10', () => {});
+    await new Promise(r => setTimeout(r, 0));
+    try {
+        expect(await rs.withoutReceipt('T1', true)).toEqual([]);
+    } finally {
+        store.detach();
+    }
+    expect(await rs.issueReceipt('L1_2026-10', 0, RC)).toBeNull();
+    expect(fake.raw('rent_receipts').size).toBe(0);
+});

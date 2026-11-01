@@ -3238,7 +3238,7 @@ function defineReadMatrix(prefix) {
         get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: MANAGERS,
         list: (db) => db.collection(c(name)).get(), listAllowed: MANAGERS
     }));
-    ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters'].forEach(name => add(name, {
+    ['rent_properties', 'rent_units', 'rent_tenants', 'rent_leases', 'rent_charges', 'rent_settings', 'rent_receipts', 'rent_counters', 'rent_deposits'].forEach(name => add(name, {
         seed: [[`${c(name)}/d1`, { archived: false }]],
         get: (db) => db.collection(c(name)).doc('d1').get(), getAllowed: RENTALS,
         list: (db) => db.collection(c(name)).get(), listAllowed: RENTALS
@@ -4295,6 +4295,92 @@ function defineRentSuite(prefix) {
         await assertFails(w({ receiptAddress: 'x'.repeat(201) }));
         await assertFails(w({ extra: 1 }));
         await assertSucceeds(w({ meterRate: null, receiptHeader: '', receiptAddress: 'Main Road, Kanpur' }));
+    });
+
+    // ---- Security deposit ledger (#157, RENT-14): rent_deposits/{tenantId} ----
+    const dEntry = (uid, kind, amount, over = {}) => ({ kind, amount, date: '2026-10-05', note: '', at: 2, by: uid, byName: 'x',
+        ...(kind === 'adjust' ? {} : { mode: 'cash' }), ...over });
+    const depOn = (f, id = 'T1') => f.collection(c('rent_deposits')).doc(id);
+    const depDoc = (uid, entries, held, over = {}) => ({ tenantId: 'T1', tenantName: 'Ram', held, entries, createdAt: 1, createdBy: uid, updatedAt: 2, updatedBy: uid, ...over });
+    const seedTenant = () => seed('rent_tenants', 'T1', { name: 'Ram', phone: '9876543210', notes: '', ...meta('legacyOwner') });
+
+    t('deposits: any rentals role records received / refund signed with its uid; held is the balance, never below 0', async () => {
+        await seedTenant();
+        const r1 = dEntry('rentMember', 'received', 10000);
+        await assertFails(depOn(db('staff1')).set(depDoc('staff1', [dEntry('staff1', 'received', 10000)], 10000)));
+        await assertFails(depOn(db('rentMember')).set(depDoc('rentMember', [r1], 9000)));
+        await assertFails(depOn(db('rentMember')).set(depDoc('rentMember', [dEntry('rentMember', 'refund', 100)], -100)));
+        await assertFails(depOn(db('rentMember')).set(depDoc('rentMember', [{ ...r1, by: 'rentOnly' }], 10000)));
+        await assertFails(depOn(db('rentMember')).set(depDoc('rentMember', [{ ...r1, mode: 'gold' }], 10000)));
+        await assertFails(depOn(db('rentMember')).set(depDoc('rentMember', [{ ...r1, amount: 0 }], 0)));
+        await assertFails(depOn(db('rentMember'), 'T9').set(depDoc('rentMember', [r1], 10000, { tenantId: 'T9' })));
+        await assertFails(depOn(db('rentMember')).set(depDoc('rentMember', [r1], 10000, { extra: 1 })));
+        await assertSucceeds(depOn(db('rentMember')).set(depDoc('rentMember', [r1], 10000)));
+        const up = (uid, entries, held) => depOn(db(uid)).update({ entries, held, updatedAt: 3, updatedBy: uid });
+        const r2 = dEntry('rentOnly', 'refund', 4000);
+        await assertFails(up('rentOnly', [r1, r2], 7000));
+        await assertFails(up('rentOnly', [r1, dEntry('rentOnly', 'refund', 12000)], -2000));
+        await assertFails(up('rentOnly', [r1, dEntry('rentMember', 'refund', 4000)], 6000));
+        await assertSucceeds(up('rentOnly', [r1, r2], 6000));
+        // Members and managers only append: no edit, removal or delete.
+        await assertFails(up('rentManager', [r1], 10000));
+        await assertFails(up('rentManager', [{ ...r1, amount: 5000 }, r2], 1000));
+        await assertFails(depOn(db('rentManager')).delete());
+        // The owner edits and removes entries; held stays their sum.
+        await assertFails(up('legacyOwner', [r1], 6000));
+        await assertFails(up('legacyOwner', [r2], -4000));
+        await assertSucceeds(up('legacyOwner', [{ ...r1, amount: 9000 }, r2], 5000));
+        await assertSucceeds(up('legacyOwner', [r1], 10000));
+        await assertSucceeds(depOn(db('legacyOwner')).delete());
+    });
+
+    t('deposits: an adjustment pays the month from the deposit in the same write; never alone, elsewhere or above held', async () => {
+        await seedTenant();
+        const r1 = dEntry('legacyOwner', 'received', 3000);
+        await seed('rent_deposits', 'T1', depDoc('legacyOwner', [r1], 3000));
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        const adj = (uid, amount, { ledger = true, payment = true, chargeId = `L1_${PREV}`, held = 3000 - amount, rno = null } = {}) => {
+            const f = db(uid);
+            const b = f.batch();
+            if (ledger) b.update(depOn(f), { entries: [r1, dEntry(uid, 'adjust', amount, { chargeId, month: PREV })], held, updatedAt: 3, updatedBy: uid });
+            if (payment) b.update(chargeOn(f, PREV), { paid: amount, open: amount < 5000, updatedAt: 3, updatedBy: uid,
+                payments: [{ ...entry(uid, amount), mode: 'deposit', ...(rno ? { rno } : {}) }] });
+            return b.commit();
+        };
+        await assertFails(adj('rentMember', 2000, { ledger: false }));
+        await assertFails(adj('rentMember', 2000, { payment: false }));
+        await assertFails(adj('rentMember', 4000));
+        await assertFails(adj('rentMember', 2000, { chargeId: `L1_${CUR}` }));
+        await assertFails(adj('rentMember', 2000, { held: 3000 }));
+        await assertFails(adj('rentMember', 2000, { rno: 'R-2026-0001' }));
+        await assertFails(adj('staff1', 2000));
+        await assertSucceeds(adj('rentMember', 2000));
+    });
+
+    t('deposits: a month paid from the deposit never gets a receipt, not even issued later', async () => {
+        const dep = { ...paid1('rentOnly', 1000), mode: 'deposit' };
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 3000, payments: [paid1('rentMember', 2000), dep] }));
+        await assertFails(later('rentManager', 1, 1, { payments: [paid1('rentMember', 2000), { ...dep, rno: rno(1) }], rcpt: { mode: 'deposit' } }));
+        await assertSucceeds(later('rentManager', 0, 1, { payments: [{ ...paid1('rentMember', 2000), rno: rno(1) }, dep] }));
+    });
+
+    t('deposits: the tenant link shows the balance (dep) in the same write; rentals roles only', async () => {
+        await seedTenant();
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));
+        await seed('rent_public', TOKEN, snap());
+        const w = (uid, dep) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.set(depOn(f), depDoc(uid, [dEntry(uid, 'received', 8000)], 8000));
+            b.set(pubOn(f, TOKEN), snap({ dep, updatedAt: 3 }));
+            return b.commit();
+        };
+        await assertFails(w('rentMember', -1));
+        await assertFails(w('rentMember', 'lots'));
+        await assertFails(w('staff1', 8000));
+        await assertSucceeds(w('rentMember', 8000));
     });
 }
 

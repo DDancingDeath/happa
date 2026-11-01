@@ -94,7 +94,8 @@ const PURE_RENTALS = new Set([
 /** Repositories outside firebase/: the Rentals data access, loaded only with Rentals (#170). */
 const RENTALS_REPOSITORIES = new Set([
     'www/js/rentals/rent-store.js',
-    'www/js/rentals/rent-receipt-store.js'
+    'www/js/rentals/rent-receipt-store.js',
+    'www/js/rentals/rent-deposit-store.js'
 ]);
 /** Files that may talk to Firestore (docs/architecture.md: repositories). */
 const isRepository = (file) => file.startsWith('www/js/firebase/') || RENTALS_REPOSITORIES.has(file);

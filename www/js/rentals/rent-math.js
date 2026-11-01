@@ -6,7 +6,7 @@
  */
 
 import { round2 } from '../utils/money.js';
-import { meterAmount, validateDuePayment } from '../utils/calc/billing.js';
+import { meterAmount, validateDuePayment, entryAmount } from '../utils/calc/billing.js';
 import { cleanText, formatINR } from '../utils/due-reminder.js';
 
 /** Oldest start month allowed (months back) and most months charged per visit. */
@@ -269,6 +269,38 @@ export function applyPayment(charge, amount) {
     const paid = round2((Number(charge.paid) || 0) + amt);
     return { amount: amt, paid, open: paid < total - 0.001 };
 }
+
+/** Deposit ledger (RENT-14): received from the tenant, adjusted against a month's rent, refunded. */
+export const DEPOSIT_KINDS = ['received', 'adjust', 'refund'];
+export const MAX_DEPOSIT_ENTRIES = 24;
+
+/** RENT-14: deposit held = Σ received − Σ adjusted − Σ refunded. */
+export function depositHeld(entries) {
+    let s = 0;
+    for (const e of entries || []) s += (e.kind === 'received' ? 1 : -1) * (Number(e.amount) || 0);
+    return round2(s);
+}
+
+/**
+ * RENT-14: a new entry's amount and the deposit held after it. Whole rupees, except exactly a due
+ * with paise (adjust, as RENT-5's applyPayment) or exactly a held with paise (refund). Adjusted ≤ the
+ * month's due and ≤ held; refunded ≤ held.
+ * @throws {Error} 'amount' | 'over' | 'too_many'
+ */
+export function depositEntry(entries, kind, amount, due = 0) {
+    if ((entries || []).length >= MAX_DEPOSIT_ENTRIES) throw new Error('too_many');
+    const held = depositHeld(entries);
+    const c = kind === 'received' ? { ok: true, total: entryAmount(amount) } : validateDuePayment(amount, 0, kind === 'adjust' ? due : held, 0.001);
+    if (!DEPOSIT_KINDS.includes(kind) || (!c.ok && c.error !== 'exceeds-due') || !(c.total > 0 || !c.ok)) throw new Error('amount');
+    if (!c.ok || (kind !== 'received' && c.total > held + 0.001)) throw new Error('over');
+    return { amount: c.total, held: round2(held + (kind === 'received' ? c.total : -c.total)) };
+}
+
+/** RENT-15: Σ deposit held over the tenants' ledgers. */
+export const depositsTotal = (ledgers) => depositHeld((ledgers || []).map(l => ({ kind: 'received', amount: l.held })));
+
+/** RENT-14: amount filled in: received = the agreed deposit while nothing is held; refund = all held; adjust = the due, else held in whole rupees. */
+export const depositFill = (kind, held, due = 0, agreed = 0) => (kind === 'received' ? (held > 0 ? '' : agreed || '') : kind === 'refund' ? held : due <= held ? due : Math.floor(held));
 
 /** Open charges of one lease, oldest first, and their total (RENT-5). */
 export function leaseDues(charges, leaseId) {
