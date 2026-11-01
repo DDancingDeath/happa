@@ -2207,14 +2207,13 @@ function defineSuite(prefix) {
         // the window is the role's edit days (as bills): 0 days = no void
         await setPersonalAccess({ staff: { editDays: 0 } });
         await assertFails(c.doc('mine2').update(voidOf('staff1')));
-        // a save sent again over the same id (#153): its creator, within 10 minutes, as a valid expense
-        await seedBill(expenses, 'fresh', expense('staff1', { timestamp: Date.now() - 2 * MIN }));
-        await assertSucceeds(c.doc('fresh').set(expense('staff1', { amount: 55 })));
-        await assertFails(c.doc('fresh').set(expense('staff1', { amount: -1 })));
-        await assertFails(as('manager1').collection(expenses).doc('fresh').set(expense('manager1')));
-        await assertFails(c.doc('mine2').set(expense('staff1', { amount: 55 })));
-        await seedBill(expenses, 'fresh2', expense('staff1', { timestamp: Date.now() - 2 * MIN }));
-        await assertFails(c.doc('fresh2').update(edit()));
+        // a save sent again unchanged over the same id (#153): its creator may; any change is refused
+        const sent = expense('staff1', { timestamp: Date.now() - 2 * DAY });
+        await seedBill(expenses, 'sent', sent);
+        await assertSucceeds(c.doc('sent').set(sent));
+        await assertFails(c.doc('sent').set({ ...sent, amount: 55 }));
+        await assertFails(c.doc('sent').set({ ...sent, timestamp: Date.now() }));
+        await assertFails(as('manager1').collection(expenses).doc('sent').set(sent));
     });
 
     t('expenses: a member cannot change other users\' or older expenses, or protected fields', async () => {

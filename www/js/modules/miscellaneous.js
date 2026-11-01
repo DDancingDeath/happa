@@ -78,6 +78,8 @@ export class ExpensesManager {
         // Shown at once (also offline); the listener reconciles it (#89). A save
         // after "not confirmed" reuses that expense's id so it can't duplicate.
         const pending = this.pendingExpense?.category === expense.category ? this.pendingExpense : null;
+        // Sent again unchanged, the second write changes nothing on the server (firestore.rules, #99)
+        if (pending && pending.day === expense.day) Object.assign(expense, { timestamp: pending.timestamp, date: pending.date });
         const { record, committed, stored } = FirebaseService.startSaveExpense(expense, { id: pending?.id });
         const forget = () => { if (this.pendingExpense?.id === record.id) this.pendingExpense = null; };
         committed.catch(async err => {
@@ -93,7 +95,7 @@ export class ExpensesManager {
         // still unconfirmed after a few seconds keeps the form
         const ok = stored ? await stored : true;
         if (ok === null) {
-            this.pendingExpense = { id: record.id, category: expense.category };
+            this.pendingExpense = { id: record.id, category: expense.category, day: expense.day, timestamp: expense.timestamp, date: expense.date };
             UIManager.showToast(t(EXPENSE_UNCONFIRMED_KEY), 'warning');
             return null;
         }

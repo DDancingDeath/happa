@@ -532,19 +532,13 @@ service cloud.firestore {
     }
 
     // Expenses are voided, never edited or deleted in place (#99): apart from the owner
-    // (repairs), only the legacy timestamp backfill changes one, and a save this phone
-    // couldn't confirm sent again over the same id (#153, miscellaneous.js pendingExpense):
-    // by its creator, as a valid new save, within 10 minutes of the first one.
-    // A change is a void plus a new expense (replacesId); only the owner deletes.
+    // (repairs), only the legacy timestamp backfill changes one. A save this phone couldn't
+    // confirm, sent again over the same id (#153, miscellaneous.js pendingExpense), lands as
+    // an update that changes nothing: its creator may write it. A change is a void plus a
+    // new expense (replacesId); only the owner deletes.
     function canUpdateExpense(usersCol) {
-      return legacyBackfillOnly() || pendingResendOk(usersCol);
-    }
-
-    function pendingResendOk(usersCol) {
-      let t = resource.data.get('timestamp', null);
-      // a re-send is a new save: a later `timestamp` (an edit keeps it)
-      return createdByCaller() && t is number && request.time.toMillis() < t + 600000
-        && validLedgerCreate() && request.resource.data.timestamp > t && expenseDayInWindow(usersCol);
+      return legacyBackfillOnly()
+        || (createdByCaller() && request.resource.data.diff(resource.data).affectedKeys().size() == 0);
     }
 
     function canDeleteExpense(usersCol) {
