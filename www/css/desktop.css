@@ -532,6 +532,10 @@
     padding: 8px 0;
     background: var(--light-bg);
   }
+
+  body.dark-mode .bill-col-summary > div[style*="display: flex"]:last-child {
+    background: var(--card-bg);
+  }
 }
 
 @media (min-width: 1440px) {

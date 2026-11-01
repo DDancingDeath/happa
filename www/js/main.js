@@ -8,6 +8,7 @@ import { VoiceMic } from './ui/voice-mic.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
+import { installStickyFocus } from './ui/sticky-focus.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
 import { userProfile } from './firebase/repos/users.js';
@@ -539,6 +540,7 @@ async function initializeUserData() {
         
         // Update printer status
         PrinterService.updateStatus();
+        installStickyFocus();
         
         // Clean up old audit logs (runs silently for owners)
         AuditService.cleanupOldLogs().catch(e => console.warn('Audit log cleanup failed:', e));

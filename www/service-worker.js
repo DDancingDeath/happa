@@ -92,6 +92,7 @@ const STATIC_ASSETS = [
     '/js/ui/bottom-nav.js',
     '/js/ui/heading-emoji.js',
     '/js/ui/scroll-cue.js',
+    '/js/ui/sticky-focus.js',
     '/js/ui/sync-status.js',
     '/js/ui/ui-manager.js',
     '/js/ui/voice-mic.js',
