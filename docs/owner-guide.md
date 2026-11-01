@@ -98,6 +98,15 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 6. "Bluetooth permission needed" banner (Android 12 and newer): tap **Allow**, or
    allow **Nearby devices** in Android Settings › Apps › happa › Permissions.
 
+### The phone's clock is wrong
+
+Once a day, at start, the app compares the phone's clock with the server's. When
+it is off by 9 minutes or more a red banner says by how much: set the date and time
+to automatic in Android settings, then tap **Check again**. Until then bills get the
+phone's wrong time and payments are refused. Bill details show both times: **Entered
+on the phone** and **Saved on the server** (far apart: a wrong clock, or a bill saved
+offline and sent later).
+
 ### Changes are not syncing
 
 - The header pill shows **Offline** or "N changes waiting to sync". Saved bills are

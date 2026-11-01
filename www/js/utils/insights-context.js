@@ -7,7 +7,10 @@
  */
 
 const KEY = 'aadhat.insightsContext';
-const PRESETS = /^(this-month|last-month|this-year|last-year|this-fy|last-fy|last-30|all|month:\d{4}-\d{2})$/;
+const PRESETS = /^(this-month|last-month|this-year|last-year|this-fy|last-fy|last-30|all|month:\d{4}-\d{2}|range:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})$/;
+
+/** A period preset Money / Insights understand (PERIOD, PERIOD-FY, PERIOD-CUSTOM). */
+export const isPeriodPreset = (p) => PRESETS.test(String(p));
 
 const store = () => {
     try { return typeof sessionStorage !== 'undefined' ? sessionStorage : null; } catch { return null; }
@@ -17,28 +20,30 @@ let ctx = null;
 
 function load() {
     if (ctx) return ctx;
-    ctx = { preset: 'this-month', itemId: null };
+    ctx = { preset: 'this-month', itemId: null, compare: null };
     try {
         const raw = JSON.parse(store()?.getItem(KEY) || 'null');
         if (raw && PRESETS.test(String(raw.preset))) ctx.preset = raw.preset;
         if (raw && typeof raw.itemId === 'string' && raw.itemId) ctx.itemId = raw.itemId;
+        if (raw && PRESETS.test(String(raw.compare))) ctx.compare = raw.compare;
     } catch { /* ignore a broken value */ }
     return ctx;
 }
 
-/** @returns {{preset: string, itemId: ?string}} */
+/** @returns {{preset: string, itemId: ?string, compare: ?string}} compare: period B of CMP-AB (#140), null = off */
 export function getInsightsContext() {
     return { ...load() };
 }
 
 /**
- * @param {{preset?: string, itemId?: ?string}} patch
- * @returns {{preset: string, itemId: ?string}}
+ * @param {{preset?: string, itemId?: ?string, compare?: ?string}} patch
+ * @returns {{preset: string, itemId: ?string, compare: ?string}}
  */
 export function setInsightsContext(patch = {}) {
     const c = load();
     if (patch.preset !== undefined && PRESETS.test(String(patch.preset))) c.preset = patch.preset;
     if (patch.itemId !== undefined) c.itemId = patch.itemId || null;
+    if (patch.compare !== undefined) c.compare = PRESETS.test(String(patch.compare)) ? patch.compare : null;
     try { store()?.setItem(KEY, JSON.stringify(c)); } catch { /* storage full or blocked */ }
     if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
         window.dispatchEvent(new CustomEvent('aadhat:insightscontext', { detail: { ...c } }));

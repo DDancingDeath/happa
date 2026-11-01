@@ -8,6 +8,7 @@ import { VoiceMic } from './ui/voice-mic.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
+import { startClockCheck } from './ui/clock-banner.js';
 import { installStickyFocus } from './ui/sticky-focus.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
@@ -59,7 +60,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozv-reminders';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzk-period-compare';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -581,6 +582,9 @@ async function initializeUserData() {
         
         // Clean up old audit logs (runs silently for owners)
         AuditService.cleanupOldLogs().catch(e => console.warn('Audit log cleanup failed:', e));
+        // Wrong phone clock (#115): checked once a day, after the first screens are up
+        setTimeout(() => startClockCheck({ toast: (m) => UIManager.showToast(m) })
+            .catch(e => console.warn('Clock check failed:', e)), 10000);
         
         UIManager.hideLoading();
         markStartup('app-shown', { online: navigator.onLine });
@@ -1233,14 +1237,16 @@ window.app = {
         init: (section) => loadMoney().then(m => m.init(section))
             .catch(e => console.warn('Money not loaded:', e?.message || e)),
         ...Object.fromEntries(['setSection', 'setPreset', 'step', 'loadOlder', 'buildHistory', 'toggleWithdrawalForm',
-            'saveWithdrawal', 'saveAccount', 'removeAccount', 'useThisPhonesAccounts', 'render']
+            'saveWithdrawal', 'saveAccount', 'removeAccount', 'useThisPhonesAccounts', 'render',
+            'setCompare', 'applyDates', 'applySaved', 'saveRange', 'removeRange', 'shareSummary', 'printSummary']
             .map(name => [name, (...args) => loadMoney().then(m => m[name](...args))]))
     },
     // Insights (redesign §5.3): insights.js is imported on first use
     insights: {
         init: (route) => loadInsights().then(m => m.init(route))
             .catch(e => console.warn('Insights not loaded:', e?.message || e)),
-        ...Object.fromEntries(['setSection', 'setPreset', 'step', 'setItemsType', 'setPartyKind', 'setSeasonView', 'render', 'loadOlder']
+        ...Object.fromEntries(['setSection', 'setPreset', 'step', 'setItemsType', 'setPartyKind', 'setSeasonView', 'render', 'loadOlder',
+            'setCompare', 'applyDates', 'applySaved', 'saveRange', 'removeRange']
             .map(name => [name, (...args) => loadInsights().then(m => m[name](...args))]))
     },
 
@@ -1368,7 +1374,10 @@ window.app = {
         clearAll: () => DiagnosticsManager.clearAll(),
         runSpeedCheck: () => DiagnosticsManager.runSpeedCheck(),
         copyStatus: () => DiagnosticsManager.copyStatus(),
-        shareStatus: () => DiagnosticsManager.shareStatus()
+        shareStatus: () => DiagnosticsManager.shareStatus(),
+        exportAuditCsv: () => DiagnosticsManager.exportAuditCsv(),
+        printAudit: () => DiagnosticsManager.printAudit(),
+        exportErrorReport: () => DiagnosticsManager.exportErrorReport()
     },
     
     // Settings › Usage on this phone (#136, local only)

@@ -1398,6 +1398,46 @@ function oldestTimestamp() {
     return oldestTimestampPromise;
 }
 
+/** What a stale copy of a bill would differ in (#127): payments, edits, void. */
+const billStateKey = (b) => `${paymentSignature(b)}|${editCountOf(b) || 0}|${isActiveBill(b) ? 1 : 0}`;
+/** The read before an edit (#127): a failed read falls back to the copy in memory, so it waits less. */
+const LATEST_BILL_TIMEOUT_MS = 5000;
+/** The whole stored bill, to spot any change (createdAt: an estimate locally). */
+const billContentJson = (b) => {
+    const rest = { ...b };
+    delete rest.createdAt;
+    return stableJson(rest);
+};
+/** Whether a listener that has heard from the server keeps this bill (its copy is current). */
+const keptLiveFromServer = (collKey, docId) => {
+    const c = windowState?.colls?.[collKey];
+    return !!c && [c.live, ...c.dues].some(l => l.server && l.docs.some(r => docIdOf(r) === docId));
+};
+
+/**
+ * Puts a bill just read from the server in memory when no listener keeps it (an older,
+ * on-demand bill), with the stock checkpoint check a listener change gets. @private
+ */
+function adoptFreshBill(collKey, prev, fresh) {
+    const c = windowState?.colls?.[collKey];
+    if (!c) return;
+    const docId = docIdOf(fresh);
+    if (liveIdSet(c).has(docId)) return;
+    c.extended.set(docId, fresh);
+    if (c.spec.stock && prev) noteObservedChange(c, prev, fresh, 'modified');
+    publishCollection(c);
+    markDirty(c.spec.views, !!c.spec.stock);
+}
+
+/** Drops a bill the server no longer has from memory when no listener keeps it. @private */
+function dropGoneBill(collKey, prev, docId) {
+    const c = windowState?.colls?.[collKey];
+    if (!c || liveIdSet(c).has(docId)) return;
+    if (c.spec.stock && prev) noteObservedChange(c, prev, null, 'deleted');
+    forgetRecord(collKey, docId);
+    markDirty(c.spec.views, !!c.spec.stock);
+}
+
 /** Re-reads an old bill that left a dues query (paid off, or deleted). */
 function refetchAfterDueRemoval(c, docId, prev) {
     const gen = sessionGen;
@@ -2206,6 +2246,34 @@ const FirebaseService = {
     async deleteVoidedBill(collKey, bill) {
         if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
         return deleteVoidedBillDoc(collKey, bill);
+    },
+
+    /**
+     * The server's copy of a bill before it is edited (#127): one read, never the cache.
+     * An older bill isn't listened to, so its copy here may be stale; a payment, edit or
+     * void made on another phone shows as `changed`, and the server copy replaces the
+     * one in memory. Rejects when the server can't be reached.
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {Object} bill - the copy in memory
+     * @returns {Promise<{bill: ?Object, changed: boolean}>} bill null when it no longer exists
+     */
+    async latestBill(collKey, bill) {
+        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
+        const docId = String(docIdOf(bill));
+        // A listener with server data already has the latest copy: no read
+        if (keptLiveFromServer(collKey, docId)) return { bill, changed: false };
+        const ref = getDb().collection(col(collKey)).doc(docId);
+        const snap = await getWithRetry(() => ({ get: () => ref.get({ source: 'server' }) }), `${collKey} latest`, { attempts: 1, timeoutMs: LATEST_BILL_TIMEOUT_MS });
+        const prev = findRecord(collKey, docId) || bill;
+        if (!snap.exists) {
+            dropGoneBill(collKey, prev, docId);
+            return { bill: null, changed: true };
+        }
+        const fresh = mapDoc(snap);
+        if (billContentJson(fresh) === billContentJson(bill)) return { bill, changed: false };
+        adoptFreshBill(collKey, prev, fresh);
+        // Notes and other unrecorded fields: edit the latest copy without asking
+        return { bill: fresh, changed: billStateKey(fresh) !== billStateKey(bill) };
     },
 
     /**
