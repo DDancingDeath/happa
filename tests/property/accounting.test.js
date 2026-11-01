@@ -257,8 +257,12 @@ test('AC5 Outstanding total = sum of open dues (Outstanding screen, Money › Wo
             return total;
         };
         const fin = dues();
+        // Sales › All = retail + wholesale = Money's "to receive" (#125)
         return screenTotal('purchase') === open(b => b.kind === 'purchase')
-            && screenTotal('sale') === open(b => b.kind === 'retail')
+            && screenTotal('retail') === open(b => b.kind === 'retail')
+            && close(screenTotal('wholesale'), open(b => b.kind === 'wholesale'))
+            && close(screenTotal('sale'), open(b => b.kind !== 'purchase'))
+            && close(screenTotal('sale'), fin.dueToReceive)
             && close(fin.dueToPay, open(b => b.kind === 'purchase'))
             && close(fin.dueToReceive, open(b => b.kind !== 'purchase'));
     }), FC);
@@ -376,12 +380,12 @@ test('AC5 with opening records: Outstanding and Money dues include them; aging u
             screen += Number(h.textContent.match(/Due: ₹([\d,.]+)/)[1].replace(/,/g, ''));
         });
         const fin = dues();
-        const openingRetailDue = allBills(s).filter(b => O.isOpening(b) && b.type === 'retail').reduce((a, b) => a + outstandingDue(b), 0);
+        const openingSaleDue = allBills(s).filter(b => O.isOpening(b) && b.type !== 'purchase').reduce((a, b) => a + outstandingDue(b), 0);
         const ages = buildAging(allBills(s).filter(b => O.isOpening(b) && outstandingDue(b) > 0), { today: new Date(s.truth.end) })
             .parties.flatMap(p => p.bills);
-        return screen === openDue(b => b.kind === 'retail')
+        return close(screen, openDue(b => b.kind !== 'purchase'))
             && close(fin.dueToReceive, openDue(b => b.kind !== 'purchase')) && close(fin.dueToPay, openDue(b => b.kind === 'purchase'))
-            && (openingRetailDue === 0 || screen >= openingRetailDue)
+            && (openingSaleDue === 0 || screen >= openingSaleDue - 0.01)
             && ages.every(a => a.date && a.date.getTime() === s.truth.bills[a.id].t);
     }), FC);
 });
