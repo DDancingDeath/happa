@@ -5,6 +5,7 @@
 
 import { t } from '../i18n/index.js';
 import { splitBilingual } from '../i18n/localize.js';
+import { isActiveBill } from './money.js';
 
 /** Reason picker options (catalogue keys); `other` needs a note, `opening` a cost per kg. */
 export const ADJUST_REASONS = {
@@ -127,6 +128,37 @@ export function reversalPlan(adj, currentStock) {
     if (delta < 0) return { adjustType: 'add', quantity: -delta, previousStock: round3(now), newStock: round3(now - delta), capped: false };
     const quantity = round3(Math.min(delta, Math.max(0, now)));
     return { adjustType: 'remove', quantity, previousStock: round3(now), newStock: round3(now - quantity), capped: quantity < delta };
+}
+
+/**
+ * The item's latest purchase rate in the loaded bills (₹/kg), or 0.
+ * @param {Object} item catalogue item
+ * @param {Array<Object>} purchases purchase bills
+ * @returns {number}
+ */
+export function lastPurchaseRate(item, purchases) {
+    let best = { t: -Infinity, rate: 0 };
+    (purchases || []).forEach(b => {
+        if (!isActiveBill(b)) return;
+        const t = Number(b.timestamp) || 0;
+        (b.items || []).forEach(line => {
+            const rate = Number(line?.rate);
+            const mine = line?.itemId ? line.itemId === item?.id : line?.name === item?.name;
+            if (mine && rate > 0 && t >= best.t) best = { t, rate };
+        });
+    });
+    return best.rate;
+}
+
+/**
+ * Cost per kg for kg put back by a reversal or counted up from nothing (#146): the
+ * adjustment's own rate, else the average cost now (S2; 0 when out of stock), else the
+ * latest purchase rate, else the item's first purchase rate on the Rates page; 0 if none.
+ * @param {{ownRate?: number, stockRate?: number, lastPurchaseRate?: number, catalogueRate?: number}} rates
+ * @returns {number}
+ */
+export function restockCost({ ownRate, stockRate, lastPurchaseRate: last, catalogueRate }) {
+    return [ownRate, stockRate, last, catalogueRate].map(Number).find(r => r > 0) || 0;
 }
 
 /**

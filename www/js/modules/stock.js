@@ -16,7 +16,7 @@ import { formatAmount, formatRupees } from '../utils/money.js';
 import { stockRows, itemValue, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
-import { planStockAdjustment, adjustReasonText, canReverseAdjustment, reversalPlan, stockCountPlan, adjustmentDelta } from '../utils/stock-adjust.js';
+import { planStockAdjustment, adjustReasonText, canReverseAdjustment, reversalPlan, stockCountPlan, adjustmentDelta, lastPurchaseRate, restockCost } from '../utils/stock-adjust.js';
 import { approxStockNote, lowStockItems, lowStockLevel, stockedItemKeys, DEFAULT_LOW_STOCK_KG } from '../utils/stock-check.js';
 import { evaluateStockAdjustment, toFlags } from '../utils/bill-checks.js';
 import { findDeadStock, daysSinceLabel, localDaysBetween, DEAD_STOCK_DAY_OPTIONS, DEFAULT_DEAD_STOCK_DAYS } from '../utils/dead-stock.js';
@@ -298,8 +298,8 @@ export class StockManager {
             plan.capped ? t('msg.stock.reverse_capped', { qty: stockKg(plan.quantity), full: stockKg(full) }) : ''].filter(Boolean).join(' ');
         const ok = await UIManager.showModal(message, t('ui.stock.reverse_title'), true);
         if (!ok) return;
-        // Kg put back keep a cost (S2): the adjustment's own rate, else the average cost now
-        const rate = plan.adjustType === 'add' ? (Number(adj.rate) > 0 ? Number(adj.rate) : (Number(AppState.stock[item.id]?.rate) || 0)) : 0;
+        // Kg put back keep a cost (S2), also after a mistaken "remove everything" left it at 0
+        const rate = plan.adjustType === 'add' ? this.restockRate(item, adj.rate) : 0;
         const saved = await Helpers.runExclusive('stock-adjust', '[data-stock-adjust]', () => {
             // Reversed meanwhile (another phone): nothing to do
             if (!canReverseAdjustment(adj, AppState.stockAdjustments || [])) {
@@ -311,6 +311,16 @@ export class StockManager {
                 plan.previousStock, { adjustType: plan.adjustType, rate, reasonCode: 'reverse', reversesId: String(adj.id) });
         });
         if (saved) await this.refreshAfterAdjustment();
+    }
+
+    /** @private Cost per kg for kg put back or counted up from nothing (restockCost). */
+    static restockRate(item, ownRate = 0) {
+        return restockCost({
+            ownRate,
+            stockRate: AppState.stock[item.id]?.rate,
+            lastPurchaseRate: lastPurchaseRate(item, AppState.purchaseHistory),
+            catalogueRate: (item.rates || [])[0]
+        });
     }
 
     /**
@@ -354,9 +364,11 @@ export class StockManager {
             let n = 0;
             changes.forEach(c => {
                 const item = AppState.items.find(i => i.id === c.itemId);
+                // Counted up from nothing: the kg need a cost; otherwise the replay keeps the average cost
+                const rate = item && c.previousStock <= 0 && c.newStock > 0 ? this.restockRate(item) : 0;
                 const ok1 = item && this._saveAdjustment(item,
                     { quantity: c.newStock, rawQuantity: c.newStock, newStock: c.newStock, reason: t('ui.stock.reason_count') },
-                    c.previousStock, { adjustType: 'set', rate: 0, reasonCode: 'count', quiet: true });
+                    c.previousStock, { adjustType: 'set', rate, reasonCode: 'count', quiet: true });
                 if (ok1) n++;
             });
             return n;

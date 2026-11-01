@@ -24,7 +24,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
 import { StockManager } from '../modules/stock.js';
-import { planStockAdjustment, adjustReasonText, reversalPlan, canReverseAdjustment, stockCountPlan } from '../utils/stock-adjust.js';
+import { planStockAdjustment, adjustReasonText, reversalPlan, canReverseAdjustment, stockCountPlan, restockCost, lastPurchaseRate } from '../utils/stock-adjust.js';
 import { lowStockItems, lowStockLevel } from '../utils/stock-check.js';
 import { computeStock } from '../utils/stock-replay.js';
 
@@ -228,6 +228,19 @@ describe('reverse an adjustment and stock count (#146)', () => {
         expect(reversalPlan({ id: 'old', quantity: 5 }, 6)).toBeNull();
     });
 
+    test('cost of kg put back: own rate, else average cost, else latest purchase, else Rates page; voided bills ignored', () => {
+        expect(restockCost({ ownRate: 0, stockRate: 0, lastPurchaseRate: 42, catalogueRate: 40 })).toBe(42);
+        expect(restockCost({ ownRate: 45, stockRate: 30 })).toBe(45);
+        expect(restockCost({ catalogueRate: '38' })).toBe(38);
+        expect(restockCost({})).toBe(0);
+        const item = { id: 'a', name: 'Chana' };
+        expect(lastPurchaseRate(item, [
+            { timestamp: 1, items: [{ itemId: 'a', rate: 40 }] },
+            { timestamp: 3, items: [{ itemId: 'a', rate: 44 }], voided: true },
+            { timestamp: 2, items: [{ name: 'Chana', rate: 41 }, { itemId: 'b', rate: 99 }] }
+        ])).toBe(41);
+    });
+
     test('Reverse is offered once, never on a reversal or an adjustment that changed nothing', () => {
         const a1 = adj('a1', 0, 5);
         const r1 = adj('r1', 5, 0, { reversesId: 'a1' });
@@ -282,6 +295,15 @@ describe('reverse an adjustment and stock count (#146)', () => {
             stockAdjustments: [{ ...AppState.stockAdjustments[0], itemId: 'a', timestamp: 2 }, { ...reversal, timestamp: 3 }]
         }, AppState.items);
         expect(stock.a).toMatchObject({ quantity: 30, rate: 50 });
+
+        // A mistaken "remove everything" (stock 0, average cost 0): the kg come back at the last purchase rate
+        AppState.purchaseHistory = [{ timestamp: 1, items: [{ itemId: 'a', name: 'Chana', qty: 50, rate: 40 }] }];
+        AppState.stock = { a: { quantity: 0, rate: 0 }, b: { quantity: 4, rate: 20 } };
+        AppState.stockAdjustments = [adj('z1', 50, 0, { adjustType: 'remove', quantity: 50, rate: 0, date: '3/10/2026', timestamp: 3 })];
+        FirebaseService.startSaveStockAdjustment.mockClear();
+        await StockManager.reverseAdjustment('z1');
+        expect(FirebaseService.startSaveStockAdjustment.mock.calls[0][0]).toMatchObject({ adjustType: 'add', quantity: 50, rate: 40 });
+        AppState.purchaseHistory = [];
 
         UIManager.showModalWithHtml = jest.fn(async (html) => {
             document.body.insertAdjacentHTML('beforeend', html);
