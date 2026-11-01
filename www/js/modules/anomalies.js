@@ -24,6 +24,7 @@ import {
 import { firstStockTimes } from '../utils/stock-check.js';
 import { auditScanCap } from '../utils/security-flags.js';
 import { numberCheckFlags } from '../utils/number-check-flags.js';
+import { safeSetItem } from '../utils/storage-full.js';
 
 const esc = (v) => Helpers.escapeHtml(v == null ? '' : String(v));
 const jsAttr = (v) => Helpers.escapeJsAttr(String(v ?? ''));
@@ -41,6 +42,10 @@ const REPORT_KEY = 'aadhatAnomalyReportRead';
 const REPORT_LIMIT = 200;
 const SCAN_LIMIT = 500;
 const SCAN_KEY = 'aadhatAnomalyScanDay';
+/** Number-check flag ids this phone already made sure are stored (#160). */
+const NUMCHECK_KNOWN_KEY = 'happa.numcheckFlags';
+const NUMCHECK_KNOWN_MAX = 500;
+const NUMCHECK_FLAGS_PER_RUN = 50;
 const PAGE_SIZE = 200;
 const SEV_COLORS = { high: '#dc2626', medium: '#d97706', low: '#6b7280' };
 const TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5', '#0d9488', '#9333ea', '#be123c', '#15803d', '#1d4ed8', '#a16207'];
@@ -257,19 +262,31 @@ export const AnomaliesManager = {
     },
 
     /**
-     * The daily number checks' failures become flags (#160): one record per failed
-     * check and set of mismatches, created only when it isn't stored yet (so a
-     * reviewed one stays reviewed). Reads one doc per failed check; nothing when all pass.
+     * The daily number checks' mismatches become flags (#160): one record per mismatch
+     * (check + bill / item / day), created only when it isn't stored yet, so a reviewed
+     * one stays reviewed. This phone remembers the ids it has already made sure of, so a
+     * mismatch that persists costs no read the next day; a new one costs one read. At most
+     * NUMCHECK_FLAGS_PER_RUN a run (the rest come the next day). Nothing when all pass.
      * @param {Array} results runNumberChecks()
      * @returns {Promise<number>} flags created
      */
     async recordNumberChecks(results, now = Date.now()) {
         if (!canSee()) return 0;
         if (typeof navigator !== 'undefined' && navigator.onLine === false) return 0;
-        const flags = numberCheckFlags(results, now);
+        const uid = AppState.currentUser?.uid || '';
+        let known = [];
+        try {
+            const k = JSON.parse(localStorage.getItem(NUMCHECK_KNOWN_KEY) || 'null');
+            if (k && k.uid === uid && Array.isArray(k.ids)) known = k.ids;
+        } catch (e) { known = []; }
+        const seen = new Set(known);
+        const flags = numberCheckFlags(results, now).filter(f => !seen.has(f.id)).slice(0, NUMCHECK_FLAGS_PER_RUN);
         if (!flags.length) return 0;
         try {
-            return await FirebaseService.addAnomaliesIfMissing(planAnomalyWrites(flags, [], now).map(w => ({ id: w.id, data: w.data })));
+            const created = await FirebaseService.addAnomaliesIfMissing(planAnomalyWrites(flags, [], now).map(w => ({ id: w.id, data: w.data })));
+            const ids = [...known, ...flags.map(f => f.id)].slice(-NUMCHECK_KNOWN_MAX);
+            safeSetItem(NUMCHECK_KNOWN_KEY, JSON.stringify({ uid, ids }));
+            return created;
         } catch (e) {
             console.warn('Number-check flags not saved:', e?.code || e);
             return 0;
@@ -546,7 +563,7 @@ export const AnomaliesManager = {
             esc(when)
         ].filter(Boolean).join(' · ');
         const id = jsAttr(a.id);
-        const canOpen = a.refKind === 'bill' || a.refKind === 'cash' || a.refKind === 'stock' || a.refKind === 'check';
+        const canOpen = a.refKind === 'bill' || a.refKind === 'cash' || a.refKind === 'stock';
         const statusBadge = status === 'open' ? '' : `<span class="anomaly-status anomaly-status-${esc(status)}">${loc(STATUS_LABELS[status] || STATUS_LABELS.open)}</span>`;
         const review = status === 'open'
             ? `<button type="button" class="anomaly-btn ok" onclick="window.app.anomalies.review('${id}', 'ok')">✓ ${esc(t('ui.anom.btn_ok'))}</button>
@@ -589,9 +606,6 @@ export const AnomaliesManager = {
             setTimeout(() => window.app?.day?.showSubTab('cash'), 150);
         } else if (a.refKind === 'stock') {
             window.app?.nav?.showTab('stock');
-        } else if (a.refKind === 'check') {
-            window.app?.nav?.showTab('diagnostics');
-            setTimeout(() => window.app?.diagnostics?.showTab('numbers'), 150);
         }
     },
 

@@ -752,7 +752,7 @@ export default {
     'ui.numchecks.ac5': "Due agrees in both places on the bill",
     'ui.numchecks.ac6': "Cash drawer today: expected = opening + cash in − cash out",
     'ui.numchecks.ac8': "No item below zero stock",
-    'ui.numchecks.flag_found': "{count} found",
+    'ui.numchecks.flag_found': "expected {expected}, found {actual}",
     'ui.numchecks.checked': "{count} checked",
     'ui.numchecks.col_difference': "Difference",
     'ui.numchecks.col_expected': "Should be",
