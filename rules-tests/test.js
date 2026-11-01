@@ -1801,18 +1801,18 @@ function defineSuite(prefix) {
             await assertFails(c.doc('paise').set(bill({ cash: 10.005, online: 0, due: 0 })));
             await assertFails(c.doc('neg').set(bill({ cash: 120, online: -20, due: 0 })));
             await assertFails(c.doc('nan').set(bill({ cash: NaN, online: 0, due: 0 })));
-            await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
+            await assertFails(c.doc('inf').set({ userId: 'staff1', total: Infinity, payment: { cash: 5000, due: 0 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertFails(c.doc('opening').set({ ...bill({ cash: 0, online: 0, due: 0 }), openingBalance: { amount: 5000 } }));
             await assertFails(c.doc('amountPaid').set({ userId: 'staff1', total: 100, amountPaid: 5000, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('legacyDue').set({ userId: 'staff1', total: 100, due: 5000, clientVersion: 3, createdAt: serverTimestamp() }));
             await assertFails(c.doc('payable').set({ userId: 'staff1', amountPayable: 100, total: 1000000,
-                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp() }));
+                payment: { cash: 1000000, online: 0, due: 0 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertFails(c.doc('payableText').set({ userId: 'staff1', amountPayable: '100', total: 100, clientVersion: 3, createdAt: serverTimestamp() }));
             // purchase: the total is after labour (grandTotal)
             await assertSucceeds(c.doc('p').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
                 payment: { cash: 90, online: 0, due: 0, total: 90 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertFails(c.doc('p2').set({ userId: 'staff1', billTotal: 100, laborCharges: 10, grandTotal: 90, amountPayable: 90,
-                payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 3, createdAt: serverTimestamp() }));
+                payment: { cash: 100, online: 0, due: 0, total: 100 }, clientVersion: 3, createdAt: serverTimestamp(), timestamp: Date.now() }));
             await assertSucceeds(as('legacyOwner').collection(coll).doc('restored').set(bill({ cash: 500, online: 0, due: 0 })));
         }
     });

@@ -13,6 +13,8 @@ import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { toLocalISODate } from '../utils/dates.js';
 import { evaluateBill, buildCheckContext } from '../utils/bill-checks.js';
+import { drawerDay } from '../utils/calc/cash.js';
+import { todaySummary } from '../utils/calc/today.js';
 import { sampleItems } from '../../../tests/fixtures/sample-items.js';
 
 const NOW = new Date(2026, 10, 1, 14, 30, 5); // 1 Nov 2026 14:30:05 IST
@@ -52,6 +54,18 @@ describe('utils/bill-date.js', () => {
         const early = billTimeFor('2026-10-31', new Date(2026, 10, 1, 0, 10));
         expect(toLocalISODate(early)).toBe('2026-10-31');
         expect(early.toISOString().slice(0, 10)).toBe('2026-10-30');
+    });
+});
+
+describe('the drawer and Today count a bill on its timestamp (what the rules check, #147)', () => {
+    test('a bill whose date text says yesterday but whose timestamp is today counts today', () => {
+        const bill = { id: 'x', total: 500, payment: { cash: 500, online: 0, due: 0 }, timestamp: NOW.getTime(), date: new Date(2026, 9, 31, 10).toISOString() };
+        expect(drawerDay({ date: '2026-11-01', bills: { retail: [bill] } }).cashSales).toBe(500);
+        expect(drawerDay({ date: '2026-10-31', bills: { retail: [bill] } }).cashSales).toBe(0);
+        expect(todaySummary({ bills: { retail: [bill] }, today: NOW }).channels.retail.cash).toBe(500);
+        // No timestamp: its date, as before
+        const legacy = { ...bill, timestamp: undefined };
+        expect(drawerDay({ date: '2026-10-31', bills: { retail: [legacy] } }).cashSales).toBe(500);
     });
 });
 

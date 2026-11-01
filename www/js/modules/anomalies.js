@@ -104,7 +104,31 @@ export const AnomaliesManager = {
         return next;
     },
 
+    /** The owners' uids when read this session for this user (#147), else null. */
+    knownOwnerIds() {
+        const o = this.owners;
+        return o && o.uid === AppState.currentUser?.uid ? o.ids : null;
+    },
+
+    /**
+     * Reads who the owners are once per session (owner: the profiles; manager: the team
+     * directory, #87). On failure they stay unknown and back-dated bills follow Q20.
+     */
+    async loadOwnerIds() {
+        const uid = AppState.currentUser?.uid;
+        if (!uid || this.knownOwnerIds() || typeof FirebaseService.loadPeople !== 'function') return this.knownOwnerIds();
+        try {
+            const ids = (await FirebaseService.loadPeople() || []).filter(p => p && p.role === 'owner').map(p => String(p.id));
+            if (AppState.userRole === 'owner' && !ids.includes(uid)) ids.push(uid);
+            if (ids.length) this.owners = { uid, ids };
+        } catch (e) {
+            console.warn('Anomaly scan: owners not read:', e?.code || e);
+        }
+        return this.knownOwnerIds();
+    },
+
     async runScan(fromKey, toKey, { audit = false, storedLimit = REPORT_LIMIT } = {}) {
+        await this.loadOwnerIds();
         const loadedFrom = Number(AppState.historyLoadedFrom) || 0;
         const from = Math.max(istDayStartMs(fromKey), loadedFrom);
         const to = istDayStartMs(toKey) + DAY_MS;
@@ -128,8 +152,8 @@ export const AnomaliesManager = {
             catalogue: AppState.items || [],
             stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
-            // Only an owner's device knows who the owner is (#147: anyone else's back-dated bill is flagged from 1 day)
-            ownerIds: AppState.userRole === 'owner' && AppState.currentUser?.uid ? [AppState.currentUser.uid] : null,
+            // #147: anyone but an owner is flagged from 1 day back (owners not known yet: Q20)
+            ownerIds: this.knownOwnerIds(),
             from,
             to
         });
@@ -226,8 +250,8 @@ export const AnomaliesManager = {
             catalogue: AppState.items || [],
             stock: AppState.stock || {},
             thresholds: AppState.settings?.checkThresholds || {},
-            // Only an owner's device knows who the owner is (#147: anyone else's back-dated bill is flagged from 1 day)
-            ownerIds: AppState.userRole === 'owner' && AppState.currentUser?.uid ? [AppState.currentUser.uid] : null,
+            // #147: anyone but an owner is flagged from 1 day back (owners not known yet: Q20)
+            ownerIds: this.knownOwnerIds(),
             from: Math.max(istDayStartMs(yesterday), Number(AppState.historyLoadedFrom) || 0),
             to: istDayStartMs(today) + DAY_MS
         });
