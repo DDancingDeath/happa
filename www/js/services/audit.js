@@ -49,6 +49,8 @@ export class AuditService {
         SETTINGS_CHANGE: 'SETTINGS_CHANGE',
         // Owner hid error reports in Diagnostics (#116; kept in Firestore)
         HIDE_ERRORS: 'HIDE_ERRORS',
+        // A file or shared text left the app (#103): details.exportKind, format, from, to, rows
+        EXPORT: 'EXPORT',
         
         // Data Management
         CLEAR_DATA: 'CLEAR_DATA',

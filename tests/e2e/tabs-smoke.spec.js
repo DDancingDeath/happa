@@ -72,7 +72,10 @@ const STEPS = [
     { name: 'Statements › Month', route: 'statements-month', page: 'statements', roles: OM, expect: `#statementsControls [onchange*="set('month'"]` },
     { name: 'Statements › Party', route: 'statements-party', page: 'statements', roles: OM, expect: `#statementsControls [onchange*="set('partyKey'"]` },
     { name: 'Statements › Item', route: 'statements-item', page: 'statements', roles: OM, expect: `#statementsControls [onchange*="set('itemKey'"]` },
-    { name: 'Statements › CSV', route: 'statements-csv', page: 'statements', roles: OM, expect: `#statementsControls [onchange*="set('csvFrom'"]` },
+    { name: 'Statements › CSV', route: 'statements-csv', page: 'statements', roles: O, expect: `#statementsControls [onchange*="set('csvFrom'"]` },
+    { name: 'Statements › Accountant CSV', route: 'statements-accountant', page: 'statements', roles: O, expect: `#statementsControls [onchange*="set('csvFrom'"]` },
+    // Exports are the owner's (#103): a manager is sent back to the list, with no export buttons.
+    { name: 'Statements › CSV stays closed', route: 'statements-csv', page: 'statements', roles: ['manager'], expect: '#statementsList', hidden: ['#statementsActions', '#statementsView'] },
     { name: 'Anomalies › List', route: 'anomalies', page: 'anomalies', roles: OM, expect: '#anomalyListView' },
     { name: 'Anomalies › Patterns', route: 'anomalies', page: 'anomalies', act: "window.app.anomalies.showView('patterns')", roles: OM, expect: '#anomalyTabPatterns.active' },
     { name: 'App health', route: 'health', page: 'health', roles: OM },

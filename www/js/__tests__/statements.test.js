@@ -13,12 +13,15 @@ import { StatementsManager } from '../modules/statements.js';
 import { MoneyManager } from '../modules/money.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
-import { dayBook, partyLedger, partyChoices, itemLedger, exportLines, toCsv, csvCell, plainLabel, isoMinute, CSV_ENGLISH_KEY } from '../utils/statements.js';
+import { dayBook, partyLedger, partyChoices, itemLedger, exportLines, accountantLines, toCsv, csvCell, plainLabel, isoMinute, CSV_ENGLISH_KEY } from '../utils/statements.js';
 import { t } from '../i18n/index.js';
 import { moneySummary } from '../utils/business-metrics.js';
 import { normalizePartyName } from '../utils/aging.js';
 import { computeStock } from '../utils/stock-replay.js';
 import * as openExternalMod from '../utils/open-external.js';
+import { UIManager } from '../ui/ui-manager.js';
+import { AuditService } from '../services/audit.js';
+import { Exporter } from '../services/exporter.js';
 
 const ROOT = path.resolve(__dirname, '../../..');
 const FIX = JSON.parse(fs.readFileSync(path.join(ROOT, 'tests/fixtures/calculations/shop-month.json'), 'utf8'));
@@ -115,6 +118,29 @@ describe('statements close on their home figures', () => {
         expect(lines.filter(x => x.type === 'purchase').reduce((a, x) => a + Number(x.labour || 0), 0)).toBeCloseTo(m.M7, 2);
     });
 
+    test('accountant CSV (ST6): bill rows add up to Money\'s sales and purchases, payment rows to the dues paid on old bills (#103)', () => {
+        const r = { from: new Date(2026, 9, 1).getTime(), to: NOW + 1 };
+        const session = {
+            id: 's-acc', date: '2026-10-20', signedOut: true,
+            duePayments: [
+                { id: 'leg-in', billId: 'w-old', billType: 'wholesale', billNumber: 'W-OLD', type: 'received', customer: 'Old Buyer', cash: 300, online: 200, timestamp: '2026-10-20T11:00:00' },
+                { id: 'leg-out', billId: 'p-old', billType: 'purchase', billNumber: 'P-OLD', type: 'paid', customer: 'Old Seller', cash: 0, online: 150, timestamp: '2026-10-20T12:00:00' }
+            ]
+        };
+        const lines = accountantLines(data, r, { sessions: [session] });
+        const m = moneySummary({ ...data, base: { state: {}, from: -Infinity }, sessions: [session] }, r);
+        const sum = (rows, f) => rows.reduce((a, x) => a + f(x), 0);
+        const bills = (types) => lines.filter(x => x.entry === 'bill' && types.includes(x.billType));
+        expect(sum(bills(['retail', 'wholesale']), x => x.total)).toBeCloseTo(m.M1.total, 2);
+        expect(sum(bills(['purchase']), x => x.total)).toBeCloseTo(m.M16.total, 2);
+        const received = lines.filter(x => x.entry === 'payment_received');
+        expect(sum(bills(['retail', 'wholesale']), x => x.cash + x.online) + sum(received, x => x.payment)).toBeCloseTo(m.M12.total, 2);
+        expect(received.find(x => x.billNo === 'W-OLD')).toMatchObject({ party: 'Old Buyer', cash: 300, online: 200, payment: 500, total: null, due: null });
+        expect(lines.find(x => x.billNo === 'P-OLD')).toMatchObject({ entry: 'payment_made', payment: 150 });
+        lines.filter(x => x.entry === 'bill').forEach(x => expect(x.total).toBeCloseTo(x.cash + x.online + x.due, 2));
+        expect(lines.map(x => x.t)).toEqual([...lines.map(x => x.t)].sort((a, b) => a - b));
+    });
+
     test('generated histories: every party ledger closes on Outstanding; CSV adds up (property)', () => {
         fc.assert(fc.property(fc.integer({ min: 1, max: 1e6 }), (seed) => {
             const s = generateShop({ seed, years: 1, openingRate: 0.5 });
@@ -196,8 +222,15 @@ describe('Statements: CSV language, dates and permissions', () => {
         StatementsManager.open('item');
         expect(StatementsManager.current.csvHeader).not.toContain(t('ui.statements.avg_cost'));
         expect(StatementsManager.current.share).not.toMatch(/₹/);
+    });
+
+    test('purchase lines of the CSV export have no rate without purchaseRates', () => {
+        AppState.settings = { roleAccess: { staff: { reports: true, purchaseRates: false } } };
+        const perms = jest.spyOn(StatementsManager, 'perms').mockReturnValue({ profit: true, personalExpenses: true, stockValue: true, purchaseRates: false });
         StatementsManager.open('csv');
+        expect(StatementsManager.current.csvRows.filter(r => r[1] === t('ui.statements.k_purchase')).length).toBeGreaterThan(0);
         StatementsManager.current.csvRows.filter(r => r[1] === t('ui.statements.k_purchase')).forEach(r => expect(r[6]).toBe(''));
+        perms.mockRestore();
     });
 
     test('owner sees every line', () => {
@@ -250,21 +283,78 @@ describe('Statements page', () => {
         expect(text).toMatch(/Matches Outstanding/);
     });
 
-    test('WhatsApp shares a short text; CSV downloads; Print opens a printable page', () => {
+    test('WhatsApp shares a short text; CSV downloads; Print opens a printable page', async () => {
+        jest.spyOn(AuditService, 'note').mockImplementation(() => {});
         const open = jest.spyOn(openExternalMod, 'openExternal').mockImplementation(() => 'tab');
         StatementsManager.open('month');
-        StatementsManager.shareWhatsApp();
+        await StatementsManager.shareWhatsApp();
         expect(open.mock.calls[0][0]).toMatch(/^https:\/\/wa\.me\/\?text=/);
         expect(decodeURIComponent(open.mock.calls[0][0])).toMatch(/Month statement · Oct 2026/);
         global.URL.createObjectURL = jest.fn(() => 'blob:x');
         global.URL.revokeObjectURL = jest.fn();
         const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-        StatementsManager.downloadCsv();
+        await StatementsManager.downloadCsv();
         expect(click).toHaveBeenCalled();
         const doc = { write: jest.fn(), close: jest.fn() };
         jest.spyOn(window, 'open').mockReturnValue({ document: doc, print: jest.fn() });
-        StatementsManager.print();
+        await StatementsManager.print();
         expect(doc.write.mock.calls[0][0]).toMatch(/Month statement/);
+        expect(AuditService.note.mock.calls.map(c => c[1].format)).toEqual(['whatsapp', 'csv', 'print']);
+    });
+
+    test('exports are the owner\'s (#103): no export buttons or export-only statements for anyone else', async () => {
+        AppState.userRole = 'manager';
+        AppState.settings = { roleAccess: { manager: { reports: true } } };
+        StatementsManager.init();
+        const ownerOnly = [...document.querySelectorAll('#statements [data-owner-only]')];
+        expect(ownerOnly.map(el => el.id || el.getAttribute('onclick'))).toEqual(expect.arrayContaining(['statementsActions']));
+        expect(ownerOnly.length).toBe(3);
+        ownerOnly.forEach(el => expect(el.hidden).toBe(true));
+        StatementsManager.open('accountant');
+        expect(StatementsManager.kind).toBe(null);
+        expect(document.getElementById('statementsView').hidden).toBe(true);
+        StatementsManager.open('day');
+        jest.spyOn(UIManager, 'showToast').mockImplementation(() => {});
+        const open = jest.spyOn(openExternalMod, 'openExternal').mockImplementation(() => 'tab');
+        const note = jest.spyOn(AuditService, 'note').mockImplementation(() => {});
+        expect(await StatementsManager.shareWhatsApp()).toBe(false);
+        expect(open).not.toHaveBeenCalled();
+        expect(note).not.toHaveBeenCalled();
+        AppState.userRole = 'owner';
+        StatementsManager.init();
+        ownerOnly.forEach(el => expect(el.hidden).toBe(false));
+    });
+
+    test('a statement with names asks first; the shared text and the CSV carry shop, period, time and user (#103)', async () => {
+        AppState.settings = { shopName: 'Gupta Traders' };
+        AppState.userName = 'Asha';
+        const modal = jest.spyOn(UIManager, 'showModal').mockResolvedValueOnce(false).mockResolvedValue(true);
+        const note = jest.spyOn(AuditService, 'note').mockImplementation(() => {});
+        const open = jest.spyOn(openExternalMod, 'openExternal').mockImplementation(() => 'tab');
+        StatementsManager.open('day');
+        StatementsManager.set('day', '2026-10-20');
+        expect(await StatementsManager.shareWhatsApp()).toBe(false);
+        expect(open).not.toHaveBeenCalled();
+        expect(note).not.toHaveBeenCalled();
+        expect(await StatementsManager.shareWhatsApp()).toBe(true);
+        const text = decodeURIComponent(open.mock.calls[0][0].replace('https://wa.me/?text=', ''));
+        expect(text.split('\n')[0]).toBe('Gupta Traders');
+        expect(text).toMatch(/Period: Day book · .* · Exported: \d{4}-\d{2}-\d{2} \d{2}:\d{2} · By: Asha$/);
+        expect(note).toHaveBeenLastCalledWith('EXPORT', { exportKind: 'day', format: 'whatsapp', from: '2026-10-20', to: '2026-10-20', rows: StatementsManager.current.csvRows.length });
+        const saved = [];
+        jest.spyOn(Exporter, 'saveBlob').mockImplementation(async (blob, name) => { saved.push({ blob, name }); return true; });
+        const Real = global.Blob;
+        global.Blob = class { constructor(parts) { this.text = parts.join(''); } };
+        StatementsManager.set('csvFrom', '2026-10-01');
+        StatementsManager.open('accountant');
+        await StatementsManager.downloadCsv();
+        global.Blob = Real;
+        const lines = saved[0].blob.text.split('\r\n');
+        expect(lines.slice(0, 2)).toEqual(['\uFEFFShop,Gupta Traders', expect.stringMatching(/^Period,Accountant CSV · /)]);
+        expect(lines[3]).toBe('By,Asha');
+        expect(lines[5]).toBe('date,entry,bill_type,bill_no,party,bill_total,cash,online,due,payment_amount');
+        expect(saved[0].name).toMatch(new RegExp(`^Gupta-Traders_accountant_2026-10-01_${StatementsManager.csvTo}_\\d{8}-\\d{4}\\.csv$`));
+        expect(modal).toHaveBeenCalledTimes(3);
     });
 
     test('a day before the loaded bills offers to load them', () => {

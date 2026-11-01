@@ -174,8 +174,11 @@ year (CMP; "not known" when that period's figures are not available).
 ### Statements
 
 Documents on request, each closing on a page's figure: day book (ST1), month
-statement (ST2), party ledger (ST3), item ledger (ST4) and CSV (ST5). Share by
-WhatsApp, print or PDF.
+statement (ST2), party ledger (ST3), item ledger (ST4), CSV (ST5) and the accountant CSV
+(ST6: one row per bill and per payment, English headers). Share by WhatsApp, print or PDF:
+**only the owner** sees these buttons, CSV and the accountant CSV. A file with customer or
+supplier names asks first, every file carries the shop, period, time and who exported it,
+and each export is written in the audit log.
 
 ### Rates
 
@@ -217,6 +220,9 @@ Separate from the shop: rent money never counts in shop figures.
   a big cash gap…); tap "Mark OK" or "Mark fixed" on each.
 - **Diagnostics › Number checks**: the always-true checks run on this phone's data
   (bill split, payments, dates, dues, drawer, stock).
+- **Diagnostics › Audit logs**: CSV or Print / PDF of the entries listed; **Errors**:
+  Export report (the errors with names, numbers and secrets removed, plus this phone's
+  status) to send to whoever fixes the app. Both are written in the audit log.
 
 ---
 

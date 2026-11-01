@@ -33,6 +33,13 @@ export function changedFields(before = {}, after = {}, keys) {
 
 const has = (v) => v !== undefined && v !== null && v !== '';
 
+/** Labels of an EXPORT entry's kind and format (#103). */
+const EXPORT_KIND_KEYS = {
+    day: 'ui.statements.day_book', month: 'ui.statements.month', party: 'ui.statements.party', item: 'ui.statements.item',
+    csv: 'ui.statements.csv', accountant: 'ui.statements.accountant', audit: 'ui.admin.col_audit_logs', errors: 'ui.diag.tab_errors'
+};
+const EXPORT_FORMAT_KEYS = { csv: 'ui.statements.download_csv', whatsapp: 'ui.statements.whatsapp', print: 'ui.statements.print', json: 'ui.export.format_file' };
+
 /**
  * An audit entry's details as one line in the app language (plain text; escape it).
  * @param {Object} details
@@ -59,6 +66,9 @@ export function formatAuditDetails(details, action) {
     if (has(d.reason)) parts.push(t('ui.settings.audit_reason', { value: d.reason }));
     if (has(d.changes)) parts.push(t('ui.settings.audit_changes', { value: d.changes }));
     if (has(d.reports)) parts.push(t('ui.settings.audit_reports', { value: d.reports }));
+    // #103 exports
+    if (has(d.exportKind)) parts.push(t('ui.settings.audit_export', { kind: t(EXPORT_KIND_KEYS[d.exportKind] || 'ui.export.kind_other'), format: t(EXPORT_FORMAT_KEYS[d.format] || 'ui.export.format_file') }));
+    if (has(d.rows)) parts.push(t('ui.settings.audit_rows', { value: d.rows }));
     // #124 security entries
     if (has(d.source)) parts.push(t(action === 'PERMISSION_DENIED' ? 'ui.settings.audit_source' : 'ui.settings.audit_from', { value: d.source }));
     if (d.what === 'edit' || d.what === 'void') parts.push(t(d.what === 'void' ? 'ui.settings.audit_tried_void' : 'ui.settings.audit_tried_edit'));

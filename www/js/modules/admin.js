@@ -10,6 +10,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
+import { Exporter } from '../services/exporter.js';
 import { todayLocalISO, formatDateTimeIN, formatDay } from '../utils/dates.js';
 import { userCounts, activityByUser, activityRange, ACTIVITY_RANGES } from '../utils/user-activity.js';
 import { historyLoadedFrom } from '../utils/history-window.js';
@@ -608,30 +609,7 @@ const AdminManager = {
      *   when sharing isn't available (its WebView drops downloads)
      */
     async saveJsonBackup(backup, filename) {
-        const json = JSON.stringify(backup);
-        const blob = new Blob([json], { type: 'application/json' });
-        if (typeof File !== 'undefined' && navigator.canShare) {
-            const file = new File([blob], filename, { type: 'application/json' });
-            if (navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({ files: [file], title: filename });
-                    return true;
-                } catch (e) {
-                    if (e?.name === 'AbortError') return false;
-                    console.warn('Share failed, falling back to download:', e);
-                }
-            }
-        }
-        if (window.Capacitor?.isNativePlatform?.()) return false;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-        return true;
+        return Exporter.saveBlob(new Blob([JSON.stringify(backup)], { type: 'application/json' }), filename);
     },
 
     /**
