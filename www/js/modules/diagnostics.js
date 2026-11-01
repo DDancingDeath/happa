@@ -332,6 +332,7 @@ const DiagnosticsManager = {
                     <option value="console.error" ${this.filter === 'console.error' ? 'selected' : ''}>${tx('ui.diag.console')}</option>
                     <option value="warning" ${this.filter === 'warning' ? 'selected' : ''}>${tx('ui.diag.warnings')}</option>
                     <option value="manual" ${this.filter === 'manual' ? 'selected' : ''}>${tx('ui.diag.manual')}</option>
+                    <option value="toast" ${this.filter === 'toast' ? 'selected' : ''}>${tx('ui.diag.t_toast')}</option>
                 </select>
                 <button onclick="window.app.diagnostics.loadData()" class="diag-btn refresh">🔄</button>
                 <button onclick="window.app.diagnostics.clearAll()" class="diag-btn danger">🗑️</button>
@@ -360,7 +361,8 @@ const DiagnosticsManager = {
             'unhandledrejection': '#f97316',
             'console.error': '#eab308',
             'warning': '#3b82f6',
-            'manual': '#8b5cf6'
+            'manual': '#8b5cf6',
+            'toast': '#dc2626'
         };
 
         const typeLabels = {
@@ -368,7 +370,8 @@ const DiagnosticsManager = {
             'unhandledrejection': `🟠 ${tx('ui.diag.t_promise')}`,
             'console.error': `🟡 ${tx('ui.diag.t_console')}`,
             'warning': `🔵 ${tx('ui.diag.t_warning')}`,
-            'manual': `🟣 ${tx('ui.diag.t_manual')}`
+            'manual': `🟣 ${tx('ui.diag.t_manual')}`,
+            'toast': `💬 ${tx('ui.diag.t_toast')}`
         };
 
         const lastSeen = formatDateTimeIN(error.lastSeen);
@@ -378,6 +381,7 @@ const DiagnosticsManager = {
             <div class="diag-error-card" style="border-left: 4px solid ${typeColors[error.type] || '#666'};">
                 <div class="diag-error-header">
                     <span class="diag-error-type">${typeLabels[error.type] || Helpers.escapeHtml(error.type)}</span>
+                    ${error.type === 'toast' ? `<span class="diag-error-ref">${tx('ui.diag.ref', { ref: error.id })}</span>` : ''}
                     <span class="diag-error-count">${Helpers.escapeHtml(error.count || 1)}×</span>
                     <button onclick="window.app.diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn">×</button>
                 </div>
