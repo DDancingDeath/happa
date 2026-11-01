@@ -193,3 +193,10 @@
     letter-spacing: 0 !important;
   }
 }
+
+/* Item name suggested from the other language (#134), until the user takes it */
+.autofill-suggest {
+  color: #9ca3af;
+  font-style: italic;
+}
+

@@ -1788,6 +1788,12 @@ body.typing .bottom-nav {
   }
 }
 
+/* Item name suggested from the other language (#134), until the user takes it */
+.autofill-suggest {
+  color: #9ca3af;
+  font-style: italic;
+}
+
 /* ---- css/billing.css ---- */
 .form-row {
   display: flex;
