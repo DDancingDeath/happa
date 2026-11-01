@@ -660,11 +660,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 FirebaseService.cleanup();
                 FirebaseService.forgetPeopleCaches();
                 NotificationsManager.stop();
-<<<<<<< HEAD
                 ManualReminders.reset();
-=======
                 ask?.reset();
->>>>>>> origin/main
                 BusinessSwitcher.reset();
                 AppState.currentUser = null;
                 document.getElementById('printerPermissionBanner')?.remove();
