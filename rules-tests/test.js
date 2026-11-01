@@ -1544,6 +1544,35 @@ function defineSuite(prefix) {
         dueAmount: 100 - cash, openDue: 100 - cash > 0, clientVersion: 3, ...extra
     });
 
+    t('payment edits (#229): a manager settles in full bills saved with createdAt, Roles & access set (1 bill, many, Mark as cleared)', async () => {
+        await setRoleAccess({ staff: { editDays: 2 }, manager: { editDays: 5 } });
+        const settle = (id) => ({
+            payment: { online: 0, cash: 100, due: 0, total: 100 },
+            payments: [...dueBill.payments, { id: `s-${id}`, amount: 100, cash: 100, online: 0, at: PAID_AT, settlesDue: true }],
+            dueAmount: 0, openDue: false, paidAt: PAID_AT, clientVersion: 4
+        });
+        const cleared = { cleared: true, clearedAt: 'x', clearedBy: 'manager1', clearedByName: 'M' };
+        for (const coll of bills) {
+            const saved = { ...dueBill, userId: 'staff1', createdAt: savedAgo(HOUR) };
+            const db = as('manager1');
+            await seedBill(coll, 'one', saved);
+            await assertSucceeds(db.collection(coll).doc('one').update(settle('one')));
+            await seedBill(coll, 'mark', saved);
+            await assertSucceeds(db.collection(coll).doc('mark').update({ ...settle('mark'), ...cleared }));
+            const batch = db.batch();
+            for (let i = 0; i < 8; i++) {
+                await seedBill(coll, `many${i}`, saved);
+                batch.update(db.collection(coll).doc(`many${i}`), { ...settle(`many${i}`), ...cleared });
+            }
+            await assertSucceeds(batch.commit());
+            // The same routing still refuses a manager's payment that moves no due
+            await seedBill(coll, 'bad', saved);
+            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), payment: { online: 0, cash: 100, due: 100, total: 100 }, dueAmount: 100, openDue: true }));
+            // and a full edit that also touches payments
+            await assertFails(db.collection(coll).doc('bad').update({ ...settle('bad'), total: 90 }));
+        }
+    });
+
     t('payment edits: a member records a payment and a write-off on another user\'s bill', async () => {
         for (const coll of bills) {
             await seedBill(coll, 'b', dueBill);
@@ -1555,6 +1584,34 @@ function defineSuite(prefix) {
                 payments: [...paid(40).payments, { id: 'w', kind: 'writeOff', amount: 60, reason: 'gone', at: PAID_AT + 60000 }],
                 cleared: true, clearedAt: 'x', clearedBy: 'staff1', clearedByName: 'S', clientVersion: 3, paidAt: PAID_AT + 60000
             }));
+        }
+    });
+
+    t('payment edits: "Complete all due" (#150) settles several bills in one write, each with its own entry at now', async () => {
+        const settle = (at, extra = {}) => ({
+            payment: { online: 0, cash: 100, due: 0, total: 100 },
+            payments: [...dueBill.payments, { id: `s${at}`, amount: 100, cash: 100, online: 0, at, settlesDue: true, bulk: true }],
+            dueAmount: 0, openDue: false, paidAt: at,
+            cleared: true, clearedAt: 'x', clearedBy: 'manager1', clearedByName: 'M', clientVersion: 4, ...extra
+        });
+        for (const coll of bills) {
+            await seedBill(coll, 'all1', dueBill);
+            await seedBill(coll, 'all2', dueBill);
+            const db = as('manager1');
+            const ok = db.batch();
+            ok.update(db.collection(coll).doc('all1'), settle(PAID_AT));
+            ok.update(db.collection(coll).doc('all2'), settle(PAID_AT));
+            await assertSucceeds(ok.commit());
+
+            // All or none: one entry dated 20 minutes back refuses the whole write
+            await seedBill(coll, 'all3', dueBill);
+            await seedBill(coll, 'all4', dueBill);
+            const bad = db.batch();
+            bad.update(db.collection(coll).doc('all3'), settle(PAID_AT));
+            bad.update(db.collection(coll).doc('all4'), settle(PAID_AT - 1200000));
+            await assertFails(bad.commit());
+            const left = await as('legacyOwner').collection(coll).doc('all3').get();
+            if (left.data().payment.due !== 100) throw new Error('a refused batch must leave every bill unchanged');
         }
     });
 

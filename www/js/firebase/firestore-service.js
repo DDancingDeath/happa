@@ -3104,6 +3104,16 @@ const FirebaseService = {
         return hasDue(collKey, bill);
     },
 
+    /**
+     * Firestore document id of a loaded record (a legacy doc may carry an `id`
+     * field that differs from its document id).
+     * @param {Object} record
+     * @returns {string}
+     */
+    documentIdOf(record) {
+        return docIdOf(record);
+    },
+
     /** Version written as `clientVersion` on stock records (see firestore.rules). */
     CLIENT_VERSION,
 

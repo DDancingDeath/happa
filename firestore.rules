@@ -396,7 +396,11 @@ service cloud.firestore {
         : changed.hasAny(['editCount']) && !editCountOk(usersCol, base, docId) ? false
         : role == 'owner' ? (!changed.hasAny(editLoggedFields()) || voidAwareBill() || bookkeepingOnly(docId, changed))
         : changed.hasAny(['userId']) ? false
-        : canFullyEditBill(usersCol, role) && !changed.hasAny(['payments', 'paidAt'])
+        // A payment (payments[] / paidAt) is bookkeeping only: checked straight away, so the
+        // edit-window lookups of canFullyEditBill don't use up the 1000 expressions a payment's
+        // checks need (a manager's full settle on a bill with createdAt was refused, #229).
+        : changed.hasAny(['payments', 'paidAt']) ? bookkeepingOnly(docId, changed) && paymentEditOk(changed)
+        : canFullyEditBill(usersCol, role)
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount'])) ? changedMoneyOk(changed)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;
