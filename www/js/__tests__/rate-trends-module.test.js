@@ -9,14 +9,15 @@ jest.mock('../firebase/firestore-service.js', () => ({
         loadRateStatsMeta: jest.fn(async () => ({ backfillDone: true })),
         loadServerRateStatsFromYear: jest.fn(async () => ({ docs: [], more: false })),
         saveRateStats: jest.fn(async () => {}),
-        saveRateStatsMeta: jest.fn(async () => {})
+        saveRateStatsMeta: jest.fn(async () => {}),
+        ensureHistoryFrom: jest.fn(async () => {})
     }
 }));
 
 import { RateTrendsManager } from '../modules/rate-trends.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
-import { aggregateBills, finalizeStats, istMonthKey } from '../utils/rate-trends.js';
+import { aggregateBills, finalizeStats, istDayStartMs, istMonthKey, istMonthStartMs } from '../utils/rate-trends.js';
 
 // A fixed day, mid-month and mid-week (IST). Weeks are stored under their Monday's year, so on
 // 1–3 January a bill's week goes to last year's doc and "one doc for the item" would depend on today.
@@ -123,4 +124,41 @@ describe('history carried from the old app (#15)', () => {
         RateTrendsManager.renderStatus();
         expect(document.getElementById('rtStatus').innerHTML).toContain('startBackfill');
     });
+});
+
+test('#147: loads the first week of the window when the loaded bills start inside it, so a bill dated back into it is counted', async () => {
+    // Loaded from 1 Sep (a Tuesday): the week of Mon 31 Aug would be left as stored
+    AppState.historyLoadedFrom = istMonthStartMs('2026-09');
+    const gap = istDayStartMs('2026-08-31');
+    const sep1 = { id: 'p0', timestamp: istDayStartMs('2026-09-01') + 3600000, items: [{ itemId: 'wheat', rate: 24, qty: 50 }] };
+    // Entered today, dated 2 Sep: in the loaded part of that week
+    const sep2 = { id: 'p2', timestamp: istDayStartMs('2026-09-02') + 3600000, enteredAt: now, items: [{ itemId: 'wheat', rate: 26, qty: 10 }] };
+    // No bill dated back into that week: nothing loaded
+    await expect(RateTrendsManager.rollForward({ force: true })).resolves.toBe('written');
+    expect(FirebaseService.ensureHistoryFrom).not.toHaveBeenCalled();
+    // A bill of that week voided this month: loaded (the void must leave the week stats)
+    FirebaseService.voidedBills = jest.fn(k => (k === 'purchases' ? [{ id: 'v', timestamp: istDayStartMs('2026-09-03'), voidedAt: { seconds: Math.floor(now / 1000), nanoseconds: 0 } }] : []));
+    FirebaseService.ensureHistoryFrom.mockImplementationOnce(async () => {});
+    await RateTrendsManager.rollForward({ force: true });
+    expect(FirebaseService.ensureHistoryFrom).toHaveBeenCalledTimes(1);
+    delete FirebaseService.voidedBills;
+    FirebaseService.ensureHistoryFrom.mockClear();
+    FirebaseService.saveRateStats.mockClear();
+    AppState.purchaseHistory = [...bills.purchase, sep2];
+    FirebaseService.ensureHistoryFrom.mockImplementation(async (from) => {
+        AppState.historyLoadedFrom = from;
+        AppState.purchaseHistory = [...bills.purchase, sep2, sep1];
+    });
+    await expect(RateTrendsManager.rollForward({ force: true })).resolves.toBe('written');
+    expect(FirebaseService.ensureHistoryFrom).toHaveBeenCalledWith(gap);
+    const doc = FirebaseService.saveRateStats.mock.calls[0][0].find(w => w.id === id).data;
+    expect(doc.weeks['w2026-08-31'].purchase.kg).toBe(60);
+
+    // Not loaded (offline cache, error): the week stays as stored, the rest is still written
+    FirebaseService.saveRateStats.mockClear();
+    AppState.historyLoadedFrom = istMonthStartMs('2026-09');
+    AppState.purchaseHistory = [...bills.purchase, sep2];
+    FirebaseService.ensureHistoryFrom.mockRejectedValueOnce(new Error('unavailable'));
+    await expect(RateTrendsManager.rollForward({ force: true })).resolves.toBe('written');
+    expect(FirebaseService.saveRateStats.mock.calls[0][0][0].data.weeks['w2026-08-31']).toBeUndefined();
 });
