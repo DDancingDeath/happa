@@ -15,12 +15,17 @@ Every site sends these on every path (the first `"source": "**"` entry):
 | `X-Frame-Options` | `DENY` | No clickjacking: the app can't be put in a frame (old browsers) |
 | `Content-Security-Policy` | `frame-ancestors 'none'` | The same for current browsers. This part is **enforced** (report-only ignores `frame-ancestors`) |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Other sites see only `https://myhappa.web.app`, never a path |
-| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=()` | The web app uses none of these (no barcode scanning, voice billing or location). Bluetooth is left alone: printing is native-only today, but a web printer would need it |
+| `Permissions-Policy` | `camera=(), microphone=(self), geolocation=(), payment=(), usb=(), serial=(), hid=()` | The web app uses none of these except the microphone, for its own pages only: voice billing (#81, `docs/voice-billing.md`) is off by default and asks for the microphone only when a user switches it on and taps 🎤 (the browser then asks once per site). Frames and other sites get no microphone. The redirect-only sites and the tenant link page keep `microphone=()`. Bluetooth is left alone: printing is native-only today, but a web printer would need it |
 
 - The tenant link page (`/r/**`, `/r.html`) keeps its stricter
   `Referrer-Policy: no-referrer` (its entries come after the `**` one, and the
   page also has `<meta name="referrer" content="no-referrer">`), so the link's
   token never leaks.
+- The tenant link page also sends `Permissions-Policy` with every feature off,
+  microphone included (its entries come after `**`, so they win there).
+- **Privacy (voice billing):** voice audio goes to the phone's speech service
+  (Google on most phones; Chrome's on the web), which turns it into text. The app keeps
+  no audio and no text. The in-app notice is the Settings › Voice billing hint (en/hi).
 - The redirect-only sites (`happaapp`, `happa-bfc07`) get the same headers from
   `scripts/happa-config.js` (`REDIRECT_SECURITY_HEADERS`; `npm run apply:happa-config`
   writes them) with an enforced `default-src 'none'`, since they only answer 301s.
