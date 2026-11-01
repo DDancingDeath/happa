@@ -2148,6 +2148,57 @@ select:focus, input:focus {
   transform: scale(0.95);
 }
 
+/* Unsaved-bill banner and bill number hint (#117) */
+.autosave-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid #f59e0b;
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 14px;
+}
+
+.autosave-banner[hidden] {
+  display: none;
+}
+
+.autosave-banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.autosave-banner-actions button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.autosave-restore {
+  background: #1d4ed8;
+  border: 1px solid #1d4ed8;
+  color: #fff;
+}
+
+.autosave-discard {
+  background: #fff;
+  border: 1px solid #b91c1c;
+  color: #b91c1c;
+}
+
+.bill-no-hint {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-secondary, #555);
+}
+
 /* ---- css/totals.css ---- */
 /* -------------------- BILL TOTALS -------------------- */
 .bill-totals {
@@ -5878,6 +5929,183 @@ body.dark-mode .today-labour-hint {
 body.dark-mode .today-labour-diff {
   color: #e5e7eb;
 }
+/* Today: bills but no cash session (#141) */
+.today-cash-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #78350f;
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.today-cash-prompt[hidden] {
+  display: none;
+}
+
+.today-cash-prompt-btn {
+  min-height: 44px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 10px;
+  background: #15803d;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Today › By bill type (T18) */
+.today-channels {
+  display: grid;
+  gap: 10px;
+}
+
+.today-channel {
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.today-channel[hidden] {
+  display: none;
+}
+
+.today-channel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+}
+
+.today-channel-name {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.today-channel-count {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.today-channel-total {
+  margin-left: auto;
+  font-size: 16px;
+}
+
+.today-channel-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.today-channel-split strong {
+  display: block;
+  color: var(--text-primary);
+}
+
+.today-channel-due strong {
+  color: #b45309;
+}
+
+.today-channel-writeoff {
+  grid-column: 1 / -1;
+}
+
+.today-channel-writeoff[hidden] {
+  display: none;
+}
+
+/* Today's bills (T19): each row opens the bill */
+.today-bill-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 4px;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.today-bill-row:hover,
+.today-bill-row:focus-visible {
+  background: var(--light-bg);
+}
+
+.today-bill-time {
+  flex: 0 0 auto;
+  min-width: 4.5em;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.today-bill-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.today-bill-party {
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-bill-kind {
+  font-size: 14px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.today-bill-total {
+  flex: 0 0 auto;
+  font-size: 15px;
+}
+
+.today-bills-more {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  background: none;
+  color: var(--primary-color);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.today-bills-more[hidden] {
+  display: none;
+}
+
+body.dark-mode .today-cash-prompt {
+  background: #3b2f12;
+  border-color: #a16207;
+  color: #fde68a;
+}
+
 /* Today › Cash holds the Cash page's own body (#96); the day page already pads it */
 #dayCashManagementContainer > .cash-body {
   padding: 0 !important;
@@ -8037,6 +8265,30 @@ body.dark-mode .notif-panel-actions {
   .ins-section > .ins-hero { grid-column: 1 / -1; }
   .ins-section > .ins-wide { grid-column: 1 / -1; }
   .ins-hero-value { font-size: 40px; }
+}
+
+/* Today (#141): the cash prompt (now before the day report), bill types and the bills list span both columns; bill types side by side */
+@media (min-width: 1024px) {
+  #dayTodayContent > #todayCashPrompt,
+  #dayTodayContent > #dayReportCard,
+  #dayTodayContent > #todayChannelsCard,
+  #dayTodayContent > #todayBillsCard {
+    grid-column: 1 / -1;
+  }
+
+  /* Full-width cards would otherwise leave a hole beside a lone half-width card */
+  #dayTodayContent:not([style*="none"]) {
+    grid-auto-flow: row dense;
+  }
+
+  .today-channels {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  /* Four stat cards in a half-width card wrapped their amounts mid-number */
+  #dayTodayContent .stats-grid-2:has(> :nth-child(3)) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 }
 
 /* Phone bottom bar and its settings (#142): the sidebar is permanent here */

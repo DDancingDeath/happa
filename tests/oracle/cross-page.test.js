@@ -21,6 +21,7 @@ import { billListAmount, paymentChipsHtml } from '../../www/js/ui/bill-row.js';
 import { HistoryManager } from '../../www/js/modules/history.js';
 import { ExpensesManager } from '../../www/js/modules/miscellaneous.js';
 import { billTotal, isPersonalExpense, outstandingDue } from '../../www/js/utils/money.js';
+import { billQrText, receiptPayable } from '../../www/js/utils/bill-share.js';
 import { AppState } from '../../www/js/utils/state.js';
 
 const NOW = new Date(2026, 9, 21, 15, 0, 0).getTime();
@@ -168,6 +169,13 @@ describe('C. BILL-TOTAL: one field order on Today, Money and History', () => {
         renderToday();
         expect(shown('todayTotalSales')).toBe(O.billValue(sale));
         expect(billListAmount(sale)).toBe(O.billValue(sale));
+    });
+    test('the printed receipt and its bill QR (#107) show the same payable, in rupees as printed', () => {
+        const sale = { id: 'r2', billNumber: 'R-2', date: '2026-10-21', timestamp: at(21, 12), total: 487.5, items: [], payment: { cash: 487.5, online: 0, due: 0 } };
+        [PURCHASES[0], sale].forEach((b) => {
+            expect(receiptPayable(b)).toBe(O.billValue(b));
+            expect(billQrText(b).endsWith(`| ₹${Math.round(O.billValue(b))}`)).toBe(true);
+        });
     });
 });
 

@@ -124,7 +124,7 @@ export const HealthManager = {
                     console.warn('TIP failures not loaded:', e?.code || e);
                     return [];
                 }),
-                FirebaseService.loadUsers().catch(e => {
+                FirebaseService.loadPeople().catch(e => {
                     console.warn('Users for device names not loaded:', e?.code || e);
                     return [];
                 })
@@ -275,8 +275,13 @@ export const HealthManager = {
             if (!canSee()) { el.style.display = 'none'; return; }
             const today = dayKeyOf(Date.now());
             if (!this.banner || this.banner.day !== today || Date.now() - this.banner.at > BANNER_TTL_MS) {
-                const docs = await FirebaseService.loadTipHealth({ sinceDay: today, untilDay: today, limit: BANNER_LIMIT });
-                this.banner = { day: today, docs, at: Date.now() };
+                // Today redraws on every data change: one query at a time
+                if (!this.bannerLoading) {
+                    this.bannerLoading = FirebaseService.loadTipHealth({ sinceDay: today, untilDay: today, limit: BANNER_LIMIT })
+                        .then(docs => { this.banner = { day: today, docs, at: Date.now() }; })
+                        .finally(() => { this.bannerLoading = null; });
+                }
+                await this.bannerLoading;
             }
             const low = belowTarget(this.banner.docs, { day: today, targets: tipTargets() });
             if (!low.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
