@@ -469,6 +469,18 @@ const BillingManager = {
     },
 
     /**
+     * Restoring an auto-save taken while a line of an archived item was being
+     * edited: its weights need that item back in the picker.
+     * @param {string} selectId
+     * @param {string|number} selected saved picker value (index in AppState.items)
+     * @param {Array} [weights] restored weights
+     */
+    restoreEditedLineOption(selectId, selected, weights) {
+        const index = Number(selected);
+        if (Array.isArray(weights) && weights.length > 0 && isArchivedItem(AppState.items[index])) this.ensureItemOption(selectId, index);
+    },
+
+    /**
      * A rebuilt picker (another phone's bill, an item change) keeps the item that
      * was selected, found again by id since positions in AppState.items can
      * shift. An archived item comes back only for a bill line being edited, so
@@ -1075,6 +1087,7 @@ const BillingManager = {
                 if (purchaseData.selectedItem) {
                     const itemSelect = document.getElementById('billItem');
                     if (itemSelect) {
+                        this.restoreEditedLineOption('billItem', purchaseData.selectedItem, purchaseData.weights);
                         itemSelect.value = purchaseData.selectedItem;
                         this.loadRates();
                     }
@@ -1111,6 +1124,7 @@ const BillingManager = {
                 if (saleData.selectedItem) {
                     const saleItemSelect = document.getElementById('saleItem');
                     if (saleItemSelect) {
+                        this.restoreEditedLineOption('saleItem', saleData.selectedItem, saleData.weights);
                         saleItemSelect.value = saleData.selectedItem;
                         this.loadSaleRates();
                     }
@@ -1560,6 +1574,7 @@ export { BillingManager, PurchaseManager, RetailSaleManager };
 // Data changes re-render this page (firestore-service.js emits, utils/events.js).
 on(REFRESH.billingDropdown, () => {
     BillingManager.loadItemsDropdown();
+    BillingManager.loadSaleItemsDropdown();
     BillingManager.renderBillNumber();
 });
 on(ITEM_FREQUENCY_CHANGED, () => {

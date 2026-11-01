@@ -327,6 +327,23 @@ describe('archived items (#123)', () => {
         expect(document.querySelectorAll('#saleItem option[data-edit-line]')).toHaveLength(0);
     });
 
+    test('restoring an auto-save of an archived line being edited brings its item back into the picker', async () => {
+        AppState.settings = { ...(AppState.settings || {}), showHindi: false };
+        AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Old Dal', archived: true, rates: [5] }];
+        BillDrafts.getAutoSave.mockResolvedValue({
+            mode: 'purchase', lastSaved: new Date(2026, 9, 31, 10, 42),
+            purchase: { items: [{ name: 'Rice', qty: 10, rate: 25, total: 250 }], weights: [20], selectedItem: '1', billTotal: 250 },
+            sale: { items: [] }
+        });
+        await BillingManager.checkAutoSave();
+        jest.useFakeTimers();
+        const done = BillingManager.resolveRecovery(true);
+        await jest.advanceTimersByTimeAsync(200);
+        await done;
+        jest.useRealTimers();
+        expect(document.getElementById('billItem').value).toBe('1');
+    });
+
     test('a line of an active item being edited survives a rebuild after the item is archived elsewhere', () => {
         AppState.settings = { ...(AppState.settings || {}), showHindi: false };
         AppState.items = [{ id: 'a', name: 'Rice', rates: [10] }, { id: 'b', name: 'Dal', rates: [5] }];
