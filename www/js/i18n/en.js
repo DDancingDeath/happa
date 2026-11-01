@@ -2540,5 +2540,8 @@ export default {
     'ui.today.reminder_rent': "Rent due",
     'ui.today.reminder_rent_units': "{count} units owe rent · {late} late",
     'ui.today.reminder_as_of': "As the Rent page showed it on {time}",
-    'ui.today.reminder_open_rent': "Open Rent"
+    'ui.today.reminder_open_rent': "Open Rent",
+    'ui.money.p_this_fy': "This financial year",
+    'ui.money.p_last_fy': "Last financial year",
+    'ui.money.fy_label': "FY {years}"
 };

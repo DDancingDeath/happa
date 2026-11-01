@@ -74,6 +74,8 @@ export function periodRange(preset, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
         case 'last-month': return mk(new Date(y, m - 1, 1), new Date(y, m, 1), { month: monthKey(new Date(y, m - 1, 1)) });
         case 'this-year': return mk(yearStart(0), endOfToday);
         case 'last-year': return mk(yearStart(-1), yearStart(0));
+        case 'this-fy': return mk(fyStart(now, 0), endOfToday, { fy: fyStart(now, 0).getFullYear() });
+        case 'last-fy': return mk(fyStart(now, -1), fyStart(now, 0), { fy: fyStart(now, -1).getFullYear() });
         case 'last-30': return mk(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29), endOfToday);
         case 'all': return mk(-Infinity, Infinity);
         default: {
@@ -86,6 +88,21 @@ export function periodRange(preset, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
             return mk(new Date(y, m, 1), endOfToday, { month: monthKey(now) });
         }
     }
+}
+
+/** PERIOD-FY: 1 April of the Indian financial year containing `now`, `offset` years away. */
+function fyStart(now, offset = 0) {
+    const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    return new Date(y + offset, 3, 1);
+}
+
+/**
+ * PERIOD-FY: the label of the financial year starting in April of `startYear`: "2026-27".
+ * @param {number} startYear
+ * @returns {string}
+ */
+export function fiscalYearLabel(startYear) {
+    return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
 }
 
 /** The same local date `years` / `months` away, clipped to the month's last day. */
