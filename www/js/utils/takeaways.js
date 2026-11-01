@@ -88,7 +88,8 @@ export function spendingTakeaways({ business, vsLastYear, topCategory, withdrawn
  * Worth (M15).
  * @param {{worth: ?number, change: ?Object, receivable: number, sinceLabel: string}} a
  */
-export function worthTakeaways({ worth, change, receivable, sinceLabel }) {
+export function worthTakeaways({ worth, change, receivable, sinceLabel, accountsKnown = true }) {
+    if (!accountsKnown && (worth === null || worth === undefined)) return [{ key: 'ui.tk.worth_accounts_unknown' }];
     if (worth === null || worth === undefined) return [{ key: 'ui.tk.worth_unknown', link: 'stock' }];
     const out = [];
     if (change && change.dir !== 'same') out.push({ key: `ui.tk.worth_${change.dir}`, params: { amount: Math.abs(Math.round(change.diff)), when: sinceLabel } });
