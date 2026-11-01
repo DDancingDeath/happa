@@ -24,14 +24,20 @@ const RENTALS = path.join(JS, 'rentals');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const rel = (p) => path.relative(WWW, p).split(path.sep).join('/');
 const RENT_COLLECTION = /['"`](?:dev_)?rent_[a-z]/;
-const PRECACHE_BUDGET_BYTES = 130 * 1024;
+// Recorded raises (docs/rentals-design.md §4): 130 → 133 KB for the deposit ledger (#157): its maths (RENT-14/15)
+// must be in rent-math.js (precached); its screens and data access are lazy (rent-deposit*.js).
+const PRECACHE_BUDGET_BYTES = 133 * 1024;
 /** Loaded with import() only when used (file: its only importer); not precached, own budget per feature. */
-const LAZY = { 'rent-receipt.js': 'rentals.js', 'rent-receipt-store.js': 'rent-receipt.js', 'rent-unit.js': 'rentals.js', 'rent-link.js': 'rentals.js' };
+const LAZY = {
+    'rent-receipt.js': 'rentals.js', 'rent-receipt-store.js': 'rent-receipt.js', 'rent-unit.js': 'rentals.js', 'rent-link.js': 'rentals.js',
+    'rent-deposit.js': 'rentals.js', 'rent-deposit-store.js': 'rent-deposit.js'
+};
 const LAZY_URLS = [...Object.keys(LAZY).map(n => `/js/rentals/${n}`), '/css/rent-receipt.css'];
 const LAZY_BUDGETS = {
     receipts: [['/js/rentals/rent-receipt.js', '/js/rentals/rent-receipt-store.js', '/css/rent-receipt.css'], 24 * 1024],
     'unit picker': [['/js/rentals/rent-unit.js'], 16 * 1024],
-    'tenant link actions': [['/js/rentals/rent-link.js'], 6 * 1024]
+    'tenant link actions': [['/js/rentals/rent-link.js'], 6 * 1024],
+    deposits: [['/js/rentals/rent-deposit.js', '/js/rentals/rent-deposit-store.js'], 18 * 1024]
 };
 /** Size as served (LF line endings), the same on a Windows checkout and in CI. */
 const sizeOf = (f) => Buffer.byteLength(read(f).replace(/\r\n/g, '\n'));
@@ -123,7 +129,7 @@ describe('Rentals are not loaded at start-up (#149, #170)', () => {
             expect(files.filter(f => path.basename(f) !== name && read(f).includes(`./${name}`)).map(f => path.basename(f))).toEqual([by]);
         });
         const src = read(path.join(RENTALS, 'rentals.js'));
-        ['rent-receipt', 'rent-unit', 'rent-link'].forEach((n) => {
+        ['rent-receipt', 'rent-unit', 'rent-link', 'rent-deposit'].forEach((n) => {
             expect(src).toMatch(new RegExp(`import\\(\\s*'\\./${n}\\.js'\\s*\\)`));
             expect(src).not.toMatch(new RegExp(`^import .*${n}`, 'm'));
         });

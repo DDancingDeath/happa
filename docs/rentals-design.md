@@ -32,7 +32,7 @@ business of the same type. It is not built now.
 | Rent due and collection | One charge per lease per month (deterministic id, so it is created once even from two phones), partial payments, mode cash/UPI/bank/cheque | 1 |
 | WhatsApp reminder | One tap: a bilingual text with the open months and the total, sent to the tenant's chat | 1 |
 | Agreements | End month, notice period, lock-in, escalation % and next escalation month, agreement type | 2 |
-| Deposits ledger | Received / deduction / refund entries; shown as money held, **not** Aadhat cash | 2 |
+| Deposits ledger | Received / adjusted against dues / refund entries; shown as money held, **not** Aadhat cash (built: §13) | 2 |
 | Receipts | Plain, **non-GST** rent receipt (tenant, unit, month, amount, mode, balance): WhatsApp text and printable/thermal. No GST fields | 2 |
 | Maintenance expenses | Per property: repairs, property tax, society, insurance, broker; cash/bank mode | 2 |
 | Electricity | **Sub-meter** per unit: previous and current reading, rate per unit; (current − previous) × rate added to that month's charge | **1** (small: one dialog, one transaction, rules check the arithmetic) |
@@ -119,7 +119,7 @@ All names go through `window.getCollection()`: production `rent_x`, development
 | `rent_leases` | auto | `unitId`, `propertyId`, `tenantId`, `rent` (number ≥ 0), `dueDay` (int 1–28), `startMonth` `YYYY-MM`, `endMonth` (`null` while active), `deposit` (number ≥ 0, recorded only), `status` ∈ active/ended, `chargedThrough` (`YYYY-MM` or `null`), `increasePct` (0–100, default 5), `rentSince` (`YYYY-MM` the rent was last set), `createdAt`, `createdBy`, `updatedAt`, `updatedBy` |
 | `rent_charges` | `{leaseId}_{YYYY-MM}` | `leaseId`, `unitId`, `propertyId`, `tenantId`, `tenantName`, `unitLabel`, `month`, `dueDay`, `rent`, `electricity` (`{prev, curr, rate, units, amount}` or `null`), `amount` (= rent + electricity), `paid`, `open` (bool, `paid < amount`), `payments[]` (`{amount, mode, ref, date YYYY-MM-DD, at, by, byName}`), `createdAt`, `updatedAt` |
 
-Phase 2 adds `rent_deposits` (`{leaseId, kind: received|deduction|refund, amount, date, note}`),
+Phase 2 adds `rent_deposits` (one ledger per tenant, §13),
 `rent_expenses` (`{propertyId, category, amount, mode, date, note}`) and agreement
 fields on `rent_leases`. Rent receipts (`rent_receipts`, `rent_counters`) are built: §11.
 
@@ -256,7 +256,7 @@ plus a one-off copy of a few hundred docs. Not done now.
 | Zero extra Firestore reads and zero listeners at start, **for everyone** (the app always starts on Aadhat) | All `rent_*` access is in `js/rentals/rent-store.js`; listeners attach in `enter()` and detach in `leave()` (switching to Aadhat, opening an Aadhat page, sign-out) | Same Jest test (no `rent_` in the start-up graph) + **Jest `rentals-cold-start.test.js`**: `BusinessSwitcher.init()` for Aadhat-only, rentals and owner users (with an old saved choice) imports nothing from `js/rentals` (the mocked module records any load) + **Playwright `rentals-startup.spec.js`** (nightly / `e2e` label): logs in as owner against the emulators, waits for the app, and asserts no `js/rentals/` request and no Firestore request whose body mentions `rent_`; then opens Rentals and asserts both appear (the probe works) and that leaving detaches |
 | Aadhat read counts and start-up timings unchanged | The Aadhat start-up code isn't changed apart from reading one more field from the already-loaded profile (`rentRole`) and drawing the switch after `app-shown` | Existing `realtime-listeners.test.js` / `quota-guards.test.js` stay green; the Playwright spec also compares `markStartup` timings (#183/#211): `app-shown` must exist and the rentals module must load **after** it |
 | Service worker | The rentals files are in `STATIC_ASSETS` (`check:sw` requires every app file). Precache runs in the SW `install` event in the background after the page has loaded, one `cache.add` per file, so it never blocks start-up or a page | `check:sw` + `load-perf.test.js` (existing) |
-| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **129.0 KiB** (132,138 bytes) as served (LF), 982 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Outside this budget (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used; the service worker's install also caches them, best effort (a failure never blocks the update), into the new version's cache, so they match the precached files and work offline right after a deploy: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 11 KiB; its amounts and checks are in the precached `rent-math.js`) and the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway). The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 130 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again); lazy files: receipts ≤ 24 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
+| Precache size | Measured (phase 1 + owner answers + tenant link + unit views + Settings › Rentals + tenant with the unit + receipts + unit picker): the Rentals files the service worker precaches (`STATIC_ASSETS`: `js/rentals/*` except the lazy files, `templates/rentals.html`, `css/rentals.css`) are **129.0 KiB** (132,138 bytes) as served (LF), 982 bytes under the budget, plus the 3.7 KB switcher that start-up loads. Outside this budget (`LAZY_ASSETS` in the service worker), loaded with `import()` only when used; the service worker's install also caches them, best effort (a failure never blocks the update), into the new version's cache, so they match the precached files and work offline right after a deploy: receipts (§11: `rent-receipt.js`, `rent-receipt-store.js`, `css/rent-receipt.css`, ≈ 22 KiB), the unit picker / move in / change of unit (§12: `rent-unit.js`, ≈ 11 KiB; its amounts and checks are in the precached `rent-math.js`) the tenant link actions (`rent-link.js`, ≈ 4.5 KiB; they need the network anyway) and the deposit ledger (§13: `rent-deposit.js`, `rent-deposit-store.js`, ≈ 13 KiB). The precached files are downloaded once per app version in the background, never at start-up. The tenant page (≈ 16 KB) is not precached | Budget: precached Rentals files ≤ 133 KB as served (raised from 80 → 100 → 120 → 130 KB as the owner added features; the unit picker went lazy instead of raising it again). **Recorded exception, 130 → 133 KB (#157, deposit ledger):** the ledger's screens and data access are lazy, but its maths (RENT-14/15) must live in `rent-math.js` (owner rule: all rentals maths there, with spec IDs and oracle tests), which is precached, plus the Tenants page buttons and the link's balance; ≈ 2.7 KB. Lazy files: receipts ≤ 24 KB, unit picker ≤ 16 KB, link actions ≤ 6 KB, deposits ≤ 18 KB, reached only through `rentals.js`'s `import()`; `rentals-startup.test.js` fails above any of them, and `check:sw` fails if a lazy file is precached |
 | i18n | Rentals strings live in `i18n/en.js` / `hi.js` (≈ 8 KB each, parsed with the rest) because the catalogue test requires every key in both files | Accepted cost: no reads, < 1 ms parse |
 
 **Start-up time budget in CI.** The Playwright spec records the existing
@@ -357,7 +357,7 @@ property."* Tenants still never log in or use the app; the link is a read-only p
   tenant's link keeps working (with a "Moved out" banner) until turned off; such
   links are listed under Tenants → "Moved out, link still on".
 - **Snapshot** `rent_public/{token}` (`dev_rent_public` in development): `lid` (the
-  lease id, needed by the rules), `v`, display name (Settings › Rentals header, else the business name from
+  lease id, needed by the rules), `v`, `dep` (the tenant's deposit held, RENT-14, when above 0), display name (Settings › Rentals header, else the business name from
   Settings › Aadhat, `settings/app.businessName`),
   tenant display name, property · unit, current rent, due day, `ended`/`endMonth`,
   and up to 36 months `{m, rent, elec, units, total, paid, due, st, pd[]}` (RENT-8).
@@ -648,3 +648,43 @@ Owner: *"maybe we should have unit option in tenant page"*.
   guarantee. It needs a migration of existing tenants, an extra checked document in move-in,
   move-out and change writes (the change is already at the limits). The transaction
   above enforces it for every app write path.
+
+## 13. Security deposit ledger (phase 2; owner, 2026-11-01, #157)
+
+Owner: *"record the deposit received, refunds and adjustments against dues at move-out. Show the balance."*
+Rent and deposits never go into the Aadhat cash drawer.
+
+- **One ledger per tenant**, `rent_deposits/{tenantId}` (`dev_` in development): `{tenantId, tenantName,
+  held, entries[≤ 24], created*, updated*}`. Per tenant rather than per lease because a change of unit
+  keeps the deposit (§12) and ends one lease for another; every entry records the lease it was made under
+  (`leaseId`). Entry: `{kind: received | adjust | refund, amount, date, mode (cash / UPI / bank / cheque;
+  not for an adjustment), chargeId + month (adjustment), leaseId, note, at, by, byName}`.
+- **Held (RENT-14)** = Σ received − Σ adjusted − Σ refunded, stored as `held` and checked by the rules on
+  every write, never below 0. The lease's `deposit` stays the *agreed* amount (not money).
+- **Adjust against dues** (at move-out, or any time): picks one open month of the tenant and pays it from
+  the deposit — at most min(held, that month's due) — in **one transaction**: the ledger gains the
+  `adjust` entry and the charge gains a payment entry `{mode: 'deposit'}` of the same amount (no receipt:
+  no money changed hands; such payments are not listed under *Payments without a receipt*, and the
+  receipt rules refuse one). So Rent,
+  Total due, status and the tenant link count it like any payment. The rules check both sides: a
+  `deposit` payment needs the ledger's new `adjust` entry for this charge and amount, and vice versa.
+- **Who:** anyone with a rentals role adds an entry signed with their uid (create or append exactly one).
+  Only the **owner** edits or removes entries (any rewrite whose `held` equals the entries' sum, ≥ 0) or
+  deletes a ledger. The app lets the owner change or remove *received* / *refunded* entries, applied in a
+  transaction to the entry found again in the saved ledger (so an entry another phone added meanwhile is
+  kept); an adjustment paid a month and is corrected on that month instead. Audit: `RENT_DEPOSIT`, `RENT_DEPOSIT_EDIT`.
+- **Screens** (`rent-deposit.js`, lazy): Tenants › **💰 Deposit** on every tenant (also one who moved out)
+  opens the ledger: agreed, held, entries newest first, **Deposit received / Adjust against dues / Refund
+  deposit**. After a move-out the ledger opens by itself when a deposit is held. Tenants › **Deposits
+  held** lists every ledger with `held > 0` and the total (RENT-15).
+- **Tenant link:** the snapshot carries `dep` (held), written in the same transaction as every entry
+  (and when a link is made: one more read of the ledger); an adjustment updates its month through the
+  month's own lease (after a change of unit: the tagged old-unit row on the moved link); the page shows a *Deposit held* card when it is
+  above 0. Still one read per open.
+- **Cost:** nothing at start-up or on entering Rentals. Opening a ledger: 1 read; an entry: a
+  transaction of 1–4 reads (ledger, the month, lease + link snapshot). Deposits held: one query
+  (`held > 0`, single-field index, limit 2,000).
+- **Tests:** rules (prod + `dev_`: roles, signed entries, held = balance ≥ 0, append-only for non-owners,
+  owner edits with the sum checked, adjustment only together with its month's `deposit` payment and never
+  above held, link `dep`); Jest (math, store on the in-memory Firestore, the screens); oracle RENT-14/15 on
+  generated ledgers (`tests/oracle/rent.test.js`).
