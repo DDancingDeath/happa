@@ -79,6 +79,8 @@ export const Exporter = {
             }
         }
         if (native) {
+            const shared = await this.shareNative(blob, filename);
+            if (shared !== null) return shared;
             if (!quiet) UIManager.showToast(t('msg.export.needs_website'), 'error');
             return false;
         }
@@ -92,6 +94,42 @@ export const Exporter = {
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 10000);
         return true;
+    },
+
+    /** True in the Android app when it has the file-sharing plugins (@capacitor/share + filesystem). */
+    canShareNative() {
+        const p = window.Capacitor?.Plugins;
+        return !!(window.Capacitor?.isNativePlatform?.() && p?.Filesystem?.writeFile && p?.Share?.share);
+    },
+
+    /**
+     * Android app: writes the file into the app's cache and opens the share sheet
+     * (its WebView has no Web Share and drops downloads).
+     * @param {Blob} blob
+     * @param {string} filename
+     * @returns {Promise<?boolean>} true shared, false cancelled or failed, null when the
+     *   plugins are missing (an APK built before they were added)
+     */
+    async shareNative(blob, filename) {
+        if (!this.canShareNative()) return null;
+        const { Filesystem, Share } = window.Capacitor.Plugins;
+        try {
+            const data = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+                reader.onerror = () => reject(reader.error);
+                reader.readAsDataURL(blob);
+            });
+            const { uri } = await Filesystem.writeFile({ path: `exports/${filename}`, data, directory: 'CACHE', recursive: true });
+            await Share.share({ title: filename, files: [uri] });
+            return true;
+        } catch (e) {
+            // The plugin rejects with "Share canceled" when the person closes the sheet.
+            if (/cancel/i.test(String(e?.message || e))) return false;
+            console.warn('Share failed:', e?.message || e);
+            UIManager.showToast(t('msg.export.share_failed'), 'error');
+            return false;
+        }
     },
 
     /**
