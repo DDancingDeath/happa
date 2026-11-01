@@ -73,13 +73,13 @@ export const AUDIT_ACTIONS = ['PERMISSION_DENIED', 'NEW_DEVICE', 'OLD_BILL_EDIT_
     'APPROVE_USER', 'REJECT_USER', 'CHANGE_USER_ROLE', 'REMOVE_USER', 'RESTORE_USER',
     'RENT_PAYMENT', 'RENT_METER', 'RENT_MOVE_IN', 'RENT_MOVE_OUT', 'RENT_UNIT_CHANGE', 'RENT_CHANGE', 'RENT_LINK_ON', 'RENT_LINK_OFF',
     'RENT_RECEIPT_ISSUE', 'RENT_RECEIPT_VOID', 'RENT_SETTINGS', 'RENT_DEPOSIT', 'RENT_DEPOSIT_EDIT', 'RENT_ADVANCE_TO_DEPOSIT', 'RENT_EXPENSE', 'RENT_EXPENSE_EDIT', 'RENT_EXPENSE_DELETE', 'RENT_REPORT_CSV',
-    'CASH_OPEN', 'CASH_CLOSE', 'SETTINGS_CHANGE', 'HIDE_ERRORS', 'BACKUP_CHECK'];
+    'CASH_OPEN', 'CASH_CLOSE', 'SETTINGS_CHANGE', 'HIDE_ERRORS', 'BACKUP_CHECK', 'EXPORT'];
 
 /**
  * Audit action code (CREATE_BILL) in the app language; unknown codes as plain words.
  * @param {string} action
  * @returns {string}
  */
-export function auditActionLabel(action = '') {
-    return AUDIT_ACTIONS.includes(action) ? t(`ui.diag.a_${action.toLowerCase()}`) : String(action).replace(/_/g, ' ');
+export function auditActionLabel(action = '', lang = getLang()) {
+    return AUDIT_ACTIONS.includes(action) ? t(`ui.diag.a_${action.toLowerCase()}`, null, lang) : String(action).replace(/_/g, ' ');
 }

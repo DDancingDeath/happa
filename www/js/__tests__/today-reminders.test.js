@@ -145,7 +145,9 @@ describe('REM-3 backup check (#63)', () => {
         recordDrill(localStorage, { uid: 'u1', at: TODAY.getTime() - 29 * 86400000, exportedAt: null, docs: 5 });
         DayManager.renderReminders(TODAY);
         expect(card()).toBeNull();
-        expect(document.getElementById('todayReminders').hidden).toBe(true);
+        // the owner's To do (REM-5, #86) stays, so the box is not hidden
+        expect(document.querySelectorAll('#todayReminders .today-reminder').length).toBe(1);
+        expect(document.querySelector('#todayReminders [data-reminder="manual"]')).not.toBeNull();
         recordDrill(localStorage, { uid: 'u1', at: TODAY.getTime() - 31 * 86400000, exportedAt: null, docs: 5 });
         DayManager.renderReminders(TODAY);
         expect(card().textContent).toContain('Last checked 31 days ago');

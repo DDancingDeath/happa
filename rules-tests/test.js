@@ -4680,6 +4680,82 @@ function defineRentSuite(prefix) {
 defineRentSuite('');
 defineRentSuite('dev_');
 
+// ---- Manual reminders on Today (#86): shop-wide; owner/manager create and cancel, anyone approved marks done ----
+function defineReminderSuite(prefix) {
+    const reminders = `${prefix}reminders`;
+    const t = (name, fn) => test(`[${prefix || 'prod'}] reminders: ${name}`, fn);
+    // India's date `n` days from now, as the app writes dueDate.
+    const istDay = (n = 0) => new Date(Date.now() + 330 * MIN + n * DAY).toISOString().slice(0, 10);
+    const rem = (uid, extra = {}) => ({ title: 'Collect from Ramesh', dueDate: istDay(0), status: 'open', createdBy: uid, createdAt: serverTimestamp(), ...extra });
+    const seed = (id, data) => env.withSecurityRulesDisabled((ctx) => ctx.firestore().collection(reminders).doc(id).set(data));
+    const open = (extra = {}) => ({ title: 'Pay Gupta', dueDate: istDay(1), status: 'open', createdBy: 'manager1', createdAt: Timestamp.fromMillis(Date.now() - HOUR), ...extra });
+
+    t('owner and manager create; members and pending users cannot', async () => {
+        await assertSucceeds(as('legacyOwner').collection(reminders).doc('r1').set(rem('legacyOwner', { party: 'Ramesh', createdByName: 'O' })));
+        await assertSucceeds(as('manager1').collection(reminders).doc('r2').set(rem('manager1', { dueDate: istDay(30) })));
+        await assertFails(as('staff1').collection(reminders).doc('r3').set(rem('staff1')));
+        await assertFails(as('pending1').collection(reminders).doc('r4').set(rem('pending1')));
+        await assertFails(anon().collection(reminders).doc('r5').set(rem('x')));
+    });
+
+    t('create: a past date, a bad date, someone else as creator, a client time or extra fields are refused', async () => {
+        const db = as('manager1').collection(reminders);
+        await assertFails(db.doc('a').set(rem('manager1', { dueDate: istDay(-3) })));
+        await assertFails(db.doc('b').set(rem('manager1', { dueDate: '2026-13-01' })));
+        await assertFails(db.doc('c').set(rem('manager1', { dueDate: istDay(900) })));
+        await assertFails(db.doc('d').set(rem('legacyOwner')));
+        await assertFails(db.doc('e').set(rem('manager1', { createdAt: Timestamp.fromMillis(Date.now() - MIN) })));
+        await assertFails(db.doc('f').set(rem('manager1', { status: 'done' })));
+        await assertFails(db.doc('g').set(rem('manager1', { title: '' })));
+        await assertFails(db.doc('h').set(rem('manager1', { title: 'x'.repeat(121) })));
+        await assertFails(db.doc('i').set(rem('manager1', { amount: 5 })));
+        // yesterday (India) is allowed: a phone near midnight
+        await assertSucceeds(db.doc('j').set(rem('manager1', { dueDate: istDay(-1) })));
+    });
+
+    t('every approved user reads (Today lists the open ones); pending users do not', async () => {
+        await seed('r1', open());
+        await assertSucceeds(as('staff1').collection(reminders).where('status', '==', 'open').limit(50).get());
+        await assertSucceeds(as('legacyStaff').collection(reminders).doc('r1').get());
+        await assertFails(as('pending1').collection(reminders).doc('r1').get());
+        await assertFails(anon().collection(reminders).doc('r1').get());
+    });
+
+    t('anyone approved marks an open one done, for everyone, as themself at the server time', async () => {
+        await seed('r1', open());
+        const done = (uid, extra = {}) => ({ status: 'done', doneBy: uid, doneAt: serverTimestamp(), ...extra });
+        await assertFails(as('staff1').collection(reminders).doc('r1').update(done('manager1')));
+        await assertFails(as('staff1').collection(reminders).doc('r1').update(done('staff1', { title: 'changed' })));
+        await assertFails(as('staff1').collection(reminders).doc('r1').update(done('staff1', { doneAt: Timestamp.fromMillis(Date.now() - MIN) })));
+        await assertFails(as('pending1').collection(reminders).doc('r1').update(done('pending1')));
+        await assertSucceeds(as('staff1').collection(reminders).doc('r1').update(done('staff1', { doneByName: 'S' })));
+        // final: not done again, not cancelled, not reopened
+        await assertFails(as('manager1').collection(reminders).doc('r1').update(done('manager1')));
+        await assertFails(as('manager1').collection(reminders).doc('r1').update({ status: 'cancelled', cancelledBy: 'manager1', cancelledAt: serverTimestamp() }));
+        await assertFails(as('legacyOwner').collection(reminders).doc('r1').update({ status: 'open' }));
+    });
+
+    t('owner and manager cancel an open one; members cannot; cancelled is final', async () => {
+        await seed('r1', open());
+        await seed('r2', open());
+        const cancel = (uid) => ({ status: 'cancelled', cancelledBy: uid, cancelledAt: serverTimestamp() });
+        await assertFails(as('staff1').collection(reminders).doc('r1').update(cancel('staff1')));
+        await assertSucceeds(as('manager1').collection(reminders).doc('r1').update(cancel('manager1')));
+        await assertSucceeds(as('legacyOwner').collection(reminders).doc('r2').update({ ...cancel('legacyOwner'), cancelledByName: 'O' }));
+        await assertFails(as('staff1').collection(reminders).doc('r1').update({ status: 'done', doneBy: 'staff1', doneAt: serverTimestamp() }));
+    });
+
+    t('only the owner deletes; edits of an open reminder are refused', async () => {
+        await seed('r1', open());
+        await assertFails(as('manager1').collection(reminders).doc('r1').update({ title: 'Other', dueDate: istDay(3) }));
+        await assertFails(as('manager1').collection(reminders).doc('r1').delete());
+        await assertFails(as('staff1').collection(reminders).doc('r1').delete());
+        await assertSucceeds(as('legacyOwner').collection(reminders).doc('r1').delete());
+    });
+}
+defineReminderSuite('');
+defineReminderSuite('dev_');
+
 test('[cross-env] prod approval does not grant dev access and vice versa', async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
         const db = ctx.firestore();

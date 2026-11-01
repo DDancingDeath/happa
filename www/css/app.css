@@ -947,6 +947,60 @@ body.typing .bottom-nav {
   visibility: visible;
 }
 
+/* Wrong phone clock banner (#115) */
+.clock-banner {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9001;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(92vw, 560px);
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #7f1d1d;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+}
+
+.clock-banner__text {
+  flex: 1;
+}
+
+.clock-banner__recheck {
+  min-height: 40px;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clock-banner__close {
+  min-width: 40px;
+  min-height: 40px;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.bill-times-note {
+  margin: 4px 0 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+}
+
 /* ---- css/tabs.css ---- */
 .tab {
   display: none;
@@ -3537,6 +3591,18 @@ body.dark-mode .party-due-line.party-due-old {
   cursor: pointer;
 }
 
+/* A bill date that can't be read (#80) */
+.bad-date-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 /* ---- css/outstanding.css ---- */
 /* Outstanding: dues aging panel and party rows (#46, #77) */
 
@@ -5763,7 +5829,8 @@ body.no-perm-personalExpenses [data-perm~="personalExpenses"],
 body.no-perm-profit [data-perm~="profit"],
 body.no-perm-stockValue [data-perm~="stockValue"],
 body.no-perm-oldCashSessions [data-perm~="oldCashSessions"],
-body.no-perm-purchaseRates [data-perm~="purchaseRates"] {
+body.no-perm-purchaseRates [data-perm~="purchaseRates"],
+body.no-perm-contacts [data-perm~="contacts"] {
   display: none !important;
 }
 
@@ -6526,6 +6593,19 @@ body.dark-mode .today-cash-prompt {
 .today-reminder-party { display: flex; gap: 8px; justify-content: space-between; font-size: 14px; padding: 2px 0; }
 .today-reminder-party span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .today-reminder-days, .today-reminder-more { color: #6b7280; font-size: 12px; }
+/* Cash open 14 h or more (C10, Q25 of #111) */
+.cash-long-open { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-weight: 600; }
+
+/* Manual reminders (#86) */
+.today-reminder-item { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; padding: 4px 0; }
+.today-reminder-title { font-weight: 600; }
+.today-reminder-days.late { color: #b91c1c; font-weight: 600; }
+.today-reminder-actions { display: flex; gap: 6px; margin-left: auto; }
+.today-reminder-actions .filter-btn, .today-reminder > .filter-btn { min-height: 44px; }
+.today-reminder-form { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.today-reminder-form input { min-height: 44px; font-size: 16px; padding: 6px 10px; }
+.today-reminder-form-buttons { display: flex; gap: 8px; }
+
 /* Ask (#88) */
 .ask-page { max-width: 720px; }
 .ask-intro { color: var(--text-secondary, #555); margin: 4px 0 12px; }
@@ -8106,7 +8186,7 @@ body.dark-mode .notif-panel-actions {
 
 /* Statements */
 .st-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-.st-list[hidden], .st-view[hidden] { display: none; }
+.st-list[hidden], .st-view[hidden], .st-item[hidden], .st-actions[hidden] { display: none; }
 .st-item {
     display: grid;
     grid-template-columns: 36px 1fr 20px;
@@ -8133,6 +8213,16 @@ body.dark-mode .notif-panel-actions {
 .st-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
 .st-actions .btn { min-height: 44px; }
 .st-balance { margin-top: 0; }
+
+/* Period A vs period B, saved ranges, summary (#140) */
+.ins-abbar { width: 100%; }
+.ins-ab-bar, .ins-ab-dates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 13px; }
+.ins-ab-pick { display: flex; align-items: center; gap: 6px; }
+.ins-ab-bar select, .ins-ab-dates input, .ins-ab-bar .btn, .ins-ab-dates .btn { min-height: 44px; font-size: 14px; }
+.ins-ab-bar .btn, .ins-ab-dates .btn { padding: 6px 12px; }
+.ins-ab-saved { max-width: 100%; }
+.ins-ab-table .ins-cmp-up { color: #047857; }
+.ins-ab-table .ins-cmp-down { color: #b91c1c; }
 
 /* ---- css/desktop.css ---- */
 /* ==================== DESKTOP LAYOUT (wide screens only) ====================
