@@ -57,6 +57,7 @@ no extra bill reads.
 | `hindiName` | string ≤ 60, optional | Display name in Hindi UI ("रमेश कुमार"). Suggested with the offline transliterator of PR #254 (items), never required |
 | `phone` | string, optional: 10 digits `^[6-9][0-9]{9}$` (stored without +91) | Personal data (section 10). Only with `phoneConsent` |
 | `legacyPhone` | string, optional, same format | Set only by the migration (old-app phones, no recorded consent, section 8); owner and manager may delete it, nobody sets it in the app. Used for reminders like `phone`; flagged "ask the customer to confirm"; deleted when a consented `phone` is saved or on "Remove phone" |
+| `phoneRemovedAt` | server time, optional | Set by "Remove phone" (owner/manager, section 10): no phone is taken from the party's bills any more; cleared when a consented `phone` is saved |
 | `phoneConsent` | map, optional: `{ at: server time, by: uid, byName, how: 'told' \| 'written', purpose: 'bills-reminders' }` | Set in the same write as `phone`; removed with it |
 | `type` | `'customer'` \| `'supplier'` \| `'both'` | Which side's bills it can resolve (section 3). A customer who also sells to the shop is `both` |
 | `aliases` | list of strings, ≤ 20, each ≤ 60 | Other spellings that mean this party ("Ramesh Ji", "R. Kumar"). A rename adds the old `name` here automatically |
@@ -274,7 +275,8 @@ are allowed with `clientVersion ≥ 4`), but nothing needs it.
   `phoneConsent` whose `at == request.time` and `by == request.auth.uid`; `getAfter` of
   `partyIndex/main` has the matching `p.<id>` leaves (1 get).
 - **Update:** owner/manager for `name`, `hindiName`, `aliases`, `phone`/`phoneConsent`, `type`,
-  `archived`, `updatedAt`, `updatedBy`, `clientVersion`, and **deleting** `legacyPhone` (never
+  `archived`, `updatedAt`, `updatedBy`, `clientVersion`, `phoneRemovedAt` (`== request.time` when
+  set, deleted only together with saving a consented `phone`), and **deleting** `legacyPhone` (never
   setting it) (field `hasOnly`); on an erased party (`erasedAt` set) only the owner may change
   `name`, `hindiName`, `aliases` or the phone, so a queued offline rename can't bring the real name
   back. Owner only: **merge** (`mergedInto` + `merged*` set, `mergedInto != docId`, the
@@ -295,7 +297,7 @@ are allowed with `clientVersion ≥ 4`), but nothing needs it.
   (phase 9) one narrow owner exception: deleting only `customerPhone` / `phone` / `mobile` on a
   **voided** bill (today a voided bill never changes, owner included).
 - Rules tests for prod and `dev_`: create/update by each role, consent required with a phone,
-  manager may delete but not set `legacyPhone`, merge and unmerge owner-only, no self-merge or
+  manager may delete but not set `legacyPhone`, `phoneRemovedAt` at server time, merge and unmerge owner-only, no self-merge or
   merge into a merged party, directory leaves must match and only `p.<last>` for non-owners, the
   edit record for a `partyId` change, a voided bill can't get a `partyId` but the owner can drop
   its phone.
@@ -339,9 +341,11 @@ records with the app's own `buildAging`. It also proposes one party per group:
 - `report.md` gets counts only (parties, merged spellings, with phone), never names (the repo is
   public); a private `parties-review.csv` next to the bundle lists the proposals and the
   "possible duplicates" for the owner. Writes: parties + 1 directory doc (a few hundred, far under
-  `apply`'s 12,000 budget). Idempotent: the id is `p-` + the first 16 hex digits of SHA-256 of the
+  `apply`'s 12,000 budget). Idempotent: the id is `p-` + the first 16 hex digits of SHA-256 of a
+  random salt (made once by `plan`, kept in the private bundle and cursor, never in the app) and the
   normalised name (the type is not part of it, so a rerun where a name gained the other side keeps
-  its id and just becomes `both`), so a rerun sets the same docs.
+  its id and just becomes `both`), so a rerun sets the same docs and the id can't be traced back to
+  the name.
 
 **(b) Data already in happa (if go-live comes first).** Owner action "Set up parties" (Settings ›
 Parties, shown while any name on the loaded bills is not claimed by a party, with that count): builds
@@ -376,8 +380,8 @@ setup can be rerun (it only adds parties for unclaimed names).
 
 **PHONE rule** (one function, `partyPhone()` in `utils/parties.js`, used by Outstanding, Wholesale ›
 Outstanding, REM-1 and statements): the party's consented `phone`, else its `legacyPhone`, else the
-newest open bill's `customerPhone` / `phone` / `mobile` (today's `billPhone`), never for an erased
-party. So migrated customers keep direct WhatsApp reminders on both migration paths (section 8),
+newest open bill's `customerPhone` / `phone` / `mobile` (today's `billPhone`), but never from the
+bills once the party has `phoneRemovedAt`, and nothing for an erased party. So migrated customers keep direct WhatsApp reminders on both migration paths (section 8),
 and a phone typed with consent wins from then on.
 
 ---
@@ -398,24 +402,30 @@ with a lawyer or CA). The design keeps the personal data small and removable:
   is typed (en/hi, one language per string: "Ramesh agreed to get bills and reminders on
   WhatsApp"). Without the tick the phone isn't saved.
 - **Withdrawal / correction:** "Remove phone" (owner/manager) deletes `phone` and `phoneConsent`
-  (and `legacyPhone`) in one update.
+  (and `legacyPhone`) and sets `phoneRemovedAt` (server time) in one update. While it is set the
+  PHONE rule (section 9) never falls back to a phone on the party's bills (migrated opening records
+  carry the same number), so a withdrawal takes effect at once even while old dues are open.
+  Saving a new consented `phone` clears it.
 - **Erasure (owner):** "Erase party" works on the party **and every party merged into it** (their
   names live on the losers, section 5.1). Once no due is open, it removes their phones
   (`phone`, `phoneConsent`, `legacyPhone`), Hindi names and aliases, replaces each display name with
-  "Erased party · <short id>" and sets `erasedAt`. So that old name-only bills keep grouping under
+  "Erased party · <n>" (a running number, not the id: migration ids are derived from names) and
+  sets `erasedAt`. So that old name-only bills keep grouping under
   the erased party instead of reappearing under the real name, its directory entry keeps `e`
   (erasedAt) and `ek`: SHA-256 hashes of the erased name keys; rule 2 uses `ek` only for bills
   dated **before** `e`, so the same person coming back later becomes a new party. The browser's
-  SHA-256 (`crypto.subtle`) is async, so the phone hashes the bills' name keys once per directory
-  snapshot, before grouping; the resolver itself stays synchronous. (The hashes add
-  no exposure: those bills keep the plain name anyway, see below.) Bills keep their snapshot
+  SHA-256 (`crypto.subtle`) is async, so the phone hashes each distinct name key once (memoised,
+  and only while some entry has `ek`) when bills or month snapshots load, then regroups; the
+  resolver itself stays synchronous. (While bills keep the plain name the hashes add no exposure;
+  the archive tool below deletes `ek` when it blanks the names.) Bills keep their snapshot
   `customerName` because books of account must be kept (Income Tax and GST: about 6–8 years;
   flagged: confirm the period), and the shop may keep a name while money is owed. Opening records
   carrying `customerPhone` get it removed: the owner's phone reads the opening records once (ids
   start with `opening-`, a document-id range in each bill collection, section 7), picks those the
   resolver puts on the erased party or its merged-away parties, and removes the phone (owner
   write, not edit-logged; voided ones through the narrow rules exception in section 6). After the
-  retention period the owner's archive tool (later) can blank the snapshot names too.
+  retention period the owner's archive tool (later) can blank the snapshot names too, and then
+  deletes the `ek` hashes.
 - **Minimisation:** the directory every phone reads has **no phones**; telemetry and TIP already
   drop `customerName`, `phone`, `partyId`; error reports never include party docs (#116); backups
   stay encrypted; exports with phones are owner-only and logged (#103).
@@ -457,7 +467,7 @@ Parties are **core** (dues / udhaar), not aadhat-specific:
 |---|---|---|---|---|
 | 0 | This doc | S | `docs/parties-design.md` | Owner answers the questions below |
 | 1 | One normaliser + resolver, no behaviour change | M | `utils/parties.js` (`partyNameKey`, `buildPartyResolver`); `normalizeParty` / `sameParty` become re-exports; thread `keyOf(bill)` through `buildAging`, `partyDues`, `partyDue`, `partyLedger`, `partyChoices`, `partySummary`, `stoppedComingCheck`, `overdueParties` (callers updated); characterisation tests pin today's screens | Every figure and screen text identical; guard counts not up |
-| 2 | **Rules + repository** (RULES: orchestrator review) | M | `parties`, `partyIndex` in rules, backup list, Clear Data, index exemption for `partyIndex.p`; `partyId` edit-logged; `firebase/repos/parties.js`; directory listener → `AppState.partyDirectory` (event, no page calls); `CLIENT_VERSION` bump; rules tests prod + `dev_`; read baselines +1 at startup | Rules tests green; E2E reads +1 only |
+| 2 | **Rules + repository** (RULES: orchestrator review) | M | `parties`, `partyIndex` in rules, backup list, Clear Data, `fieldOverrides` exempting `p` in `partyIndex` and `dev_partyIndex`; `partyId` edit-logged; `firebase/repos/parties.js`; directory listener → `AppState.partyDirectory` (event, no page calls); `CLIENT_VERSION` bump; rules tests prod + `dev_`; read baselines +1 at startup | Rules tests green; E2E reads +1 only |
 | 3 | "Set up parties" (owner, in-app) | M | Proposals from the loaded bills, review screen, batch write of parties + directory; i18n en + hi; cache bump | The owner can claim today's names before billing creates parties |
 | 4 | Billing picks parties | M | Suggestions on Purchase / Retail / Wholesale / cash page (fills the empty datalists); `partyId` on new bills; party auto-created on save; Hindi name shown in Hindi; i18n keys en + hi; cache bump | New bills carry `partyId` (issue AC 1) |
 | 5 | Dues by party (MONEY: orchestrator review) | M | Outstanding, Wholesale › Outstanding, party due, FIFO receive, complete-all, cash check, reminders use the resolver; phones by the PHONE rule (`partyPhone`); calculations.md PARTY rewritten + oracle tests (legacy bills still appear) | Issue AC 2; O3 / O4 unchanged on the fixtures |
