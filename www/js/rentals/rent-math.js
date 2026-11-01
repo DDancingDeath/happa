@@ -282,29 +282,25 @@ export function depositHeld(entries) {
 }
 
 /**
- * RENT-14: a new entry's amount (whole rupees; an adjustment may pay exactly a due with paise, as RENT-5)
- * and the deposit held after it. Adjusted ≤ min(held, the month's due); refunded ≤ held.
+ * RENT-14: a new entry's amount and the deposit held after it. Whole rupees, except exactly a due
+ * with paise (adjust, as RENT-5's applyPayment) or exactly a held with paise (refund). Adjusted ≤ the
+ * month's due and ≤ held; refunded ≤ held.
  * @throws {Error} 'amount' | 'over' | 'too_many'
  */
 export function depositEntry(entries, kind, amount, due = 0) {
     if ((entries || []).length >= MAX_DEPOSIT_ENTRIES) throw new Error('too_many');
     const held = depositHeld(entries);
-    let amt = entryAmount(amount);
-    if (kind === 'adjust') {
-        const c = validateDuePayment(amount, 0, Math.min(held, due), 0.001);
-        if (!c.ok) throw new Error(c.error === 'exceeds-due' ? 'over' : 'amount');
-        amt = c.total;
-    }
-    if (!DEPOSIT_KINDS.includes(kind) || !(amt > 0)) throw new Error('amount');
-    if (kind === 'refund' && amt > held + 0.001) throw new Error('over');
-    return { amount: amt, held: round2(held + (kind === 'received' ? amt : -amt)) };
+    const c = kind === 'received' ? { ok: true, total: entryAmount(amount) } : validateDuePayment(amount, 0, kind === 'adjust' ? due : held, 0.001);
+    if (!DEPOSIT_KINDS.includes(kind) || (!c.ok && c.error !== 'exceeds-due') || !(c.total > 0 || !c.ok)) throw new Error('amount');
+    if (!c.ok || (kind !== 'received' && c.total > held + 0.001)) throw new Error('over');
+    return { amount: c.total, held: round2(held + (kind === 'received' ? c.total : -c.total)) };
 }
 
 /** RENT-15: Σ deposit held over the tenants' ledgers. */
 export const depositsTotal = (ledgers) => depositHeld((ledgers || []).map(l => ({ kind: 'received', amount: l.held })));
 
-/** RENT-14: amount filled in: received = the agreed deposit while nothing is held; refund = all held; adjust = min(held, due). */
-export const depositFill = (kind, held, due = 0, agreed = 0) => (kind === 'received' ? (held > 0 ? '' : agreed || '') : kind === 'refund' ? held : Math.min(held, due));
+/** RENT-14: amount filled in: received = the agreed deposit while nothing is held; refund = all held; adjust = the due, else held in whole rupees. */
+export const depositFill = (kind, held, due = 0, agreed = 0) => (kind === 'received' ? (held > 0 ? '' : agreed || '') : kind === 'refund' ? held : due <= held ? due : Math.floor(held));
 
 /** Open charges of one lease, oldest first, and their total (RENT-5). */
 export function leaseDues(charges, leaseId) {

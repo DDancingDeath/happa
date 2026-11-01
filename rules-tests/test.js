@@ -4160,6 +4160,13 @@ function defineRentSuite(prefix) {
         await assertSucceeds(adj('rentMember', 2000));
     });
 
+    t('deposits: a month paid from the deposit never gets a receipt, not even issued later', async () => {
+        const dep = { ...paid1('rentOnly', 1000), mode: 'deposit' };
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 3000, payments: [paid1('rentMember', 2000), dep] }));
+        await assertFails(later('rentManager', 1, 1, { payments: [paid1('rentMember', 2000), { ...dep, rno: rno(1) }], rcpt: { mode: 'deposit' } }));
+        await assertSucceeds(later('rentManager', 0, 1, { payments: [{ ...paid1('rentMember', 2000), rno: rno(1) }, dep] }));
+    });
+
     t('deposits: the tenant link shows the balance (dep) in the same write; rentals roles only', async () => {
         await seedTenant();
         await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, shareToken: TOKEN }));

@@ -19,7 +19,7 @@ import * as ds from './rent-deposit-store.js';
 import { PAYMENT_MODES, DEPOSIT_KINDS, monthLabel, dateLabel, chargeDue, depositHeld, depositFill, depositsTotal, isDate } from './rent-math.js';
 
 const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.code || e);
-const ERRORS = { amount: 'msg.rent.bad_amount', over: 'msg.rent.dep_over', too_many: 'msg.rent.dep_full', missing: 'msg.rent.save_failed' };
+const ERRORS = { amount: 'msg.rent.bad_amount', over: 'msg.rent.dep_over', too_many: 'msg.rent.dep_full', missing: 'msg.rent.save_failed', changed: 'msg.rent.dep_changed' };
 const fail = (e) => UIManager.showToast(t(ERRORS[e?.message] || (e?.code === 'permission-denied' ? 'msg.rent.not_allowed' : 'msg.rent.save_failed')), 'error');
 
 /** The tenant, the lease whose link shows the balance (current, else a moved-out one with a link) and the open months. */
@@ -124,10 +124,9 @@ export async function action(c, kind, tenantId, i) {
 async function ownerChange(c, kind, tenantId, lease, entries, i) {
     const e = entries[i];
     if (!c.isOwner || !e || e.kind === 'adjust') return;
-    let next;
+    let fields = null;
     if (kind === 'remove') {
         if (!await UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true)) return;
-        next = entries.filter((_, j) => j !== i);
     } else {
         const ok = await c.dialog(`<h3>💰 ${c.esc(t('ui.rent.edit'))}: ${c.esc(t(`ui.rent.dep_${e.kind}`))}</h3>
             ${lbl(c, 'ui.rent.amount', `<input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${c.esc(e.amount)}">`)}
@@ -137,11 +136,11 @@ async function ownerChange(c, kind, tenantId, lease, entries, i) {
         const amount = entryAmount(c.val('rentPayAmount'));
         if (!(amount > 0)) { fail({ message: 'amount' }); return; }
         const date = isDate(c.val('rentDepDate')) ? c.val('rentDepDate') : e.date;
-        next = entries.map((x, j) => (j === i ? { ...x, amount, date, note: c.val('rentDepNote').slice(0, 200) } : x));
+        fields = { amount, date, note: c.val('rentDepNote').slice(0, 200) };
     }
     await Helpers.runExclusive('rent-dep', '[data-rent-dep]', async () => {
         try {
-            const held = await ds.setDepositEntries({ tenantId, leaseId: lease?.id || '', entries: next });
+            const held = await ds.changeDepositEntry({ tenantId, leaseId: lease?.id || '', entry: e, fields });
             UIManager.showToast(t('msg.rent.saved'), 'success');
             AuditService.log('RENT_DEPOSIT_EDIT', { tenantId, kind, index: i, from: e.amount, held }).catch(auditWarn);
             setTimeout(() => showDeposit(c, tenantId), 300);

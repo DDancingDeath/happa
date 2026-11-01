@@ -664,19 +664,22 @@ Rent and deposits never go into the Aadhat cash drawer.
 - **Adjust against dues** (at move-out, or any time): picks one open month of the tenant and pays it from
   the deposit — at most min(held, that month's due) — in **one transaction**: the ledger gains the
   `adjust` entry and the charge gains a payment entry `{mode: 'deposit'}` of the same amount (no receipt:
-  no money changed hands; such payments are not listed under *Payments without a receipt*). So Rent,
+  no money changed hands; such payments are not listed under *Payments without a receipt*, and the
+  receipt rules refuse one). So Rent,
   Total due, status and the tenant link count it like any payment. The rules check both sides: a
   `deposit` payment needs the ledger's new `adjust` entry for this charge and amount, and vice versa.
 - **Who:** anyone with a rentals role adds an entry signed with their uid (create or append exactly one).
   Only the **owner** edits or removes entries (any rewrite whose `held` equals the entries' sum, ≥ 0) or
-  deletes a ledger. The app lets the owner change or remove *received* / *refunded* entries; an adjustment
-  paid a month and is corrected on that month instead. Audit: `RENT_DEPOSIT`, `RENT_DEPOSIT_EDIT`.
+  deletes a ledger. The app lets the owner change or remove *received* / *refunded* entries, applied in a
+  transaction to the entry found again in the saved ledger (so an entry another phone added meanwhile is
+  kept); an adjustment paid a month and is corrected on that month instead. Audit: `RENT_DEPOSIT`, `RENT_DEPOSIT_EDIT`.
 - **Screens** (`rent-deposit.js`, lazy): Tenants › **💰 Deposit** on every tenant (also one who moved out)
   opens the ledger: agreed, held, entries newest first, **Deposit received / Adjust against dues / Refund
   deposit**. After a move-out the ledger opens by itself when a deposit is held. Tenants › **Deposits
   held** lists every ledger with `held > 0` and the total (RENT-15).
 - **Tenant link:** the snapshot carries `dep` (held), written in the same transaction as every entry
-  (and when a link is made: one more read of the ledger); the page shows a *Deposit held* card when it is
+  (and when a link is made: one more read of the ledger); an adjustment updates its month through the
+  month's own lease (after a change of unit: the tagged old-unit row on the moved link); the page shows a *Deposit held* card when it is
   above 0. Still one read per open.
 - **Cost:** nothing at start-up or on entering Rentals. Opening a ledger: 1 read; an entry: a
   transaction of 1–4 reads (ledger, the month, lease + link snapshot). Deposits held: one query

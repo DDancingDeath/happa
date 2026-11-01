@@ -2114,6 +2114,7 @@ export default {
     'ui.rent.dep_none_held': "कोई जमानत जमा नहीं है।",
     'msg.rent.dep_saved': "✓ {amount} दर्ज हुआ। जमा जमानत: {held}",
     'msg.rent.dep_over': "यह जमा जमानत (या उस महीने के बकाया) से ज़्यादा है।",
+    'msg.rent.dep_changed': "यह एंट्री किसी दूसरे फ़ोन पर बदली गई। जमानत फिर से खोलें।",
     'msg.rent.dep_full': "इस किरायेदार की जमानत की सूची भर गई है। मालिक से कोई पुरानी एंट्री हटवाएँ।",
     'ui.rent.elec_mode': "बिजली",
     'ui.rent.elec_included': "किराये में शामिल",

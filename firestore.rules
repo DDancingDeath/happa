@@ -1802,7 +1802,7 @@ service cloud.firestore {
     // The receipt shows payment entry e and its charge exactly; createdAt is the server's time.
     function rentReceiptMatches(d, ch, e) {
       return e.get('rno', '') == d.no && e.get('by', '') == d.get('by', '') && e.get('byName', '') == d.get('byName', '')
-        && e.amount == d.get('paid', -1) && e.mode == d.get('mode', '') && e.date == d.get('date', '')
+        && e.amount == d.get('paid', -1) && e.mode == d.get('mode', '') && e.mode != 'deposit' && e.date == d.get('date', '')
         && e.get('ref', '') == d.get('ref', '')
         && d.get('leaseId', '') == ch.leaseId && d.get('tenantId', '') == ch.tenantId
         && d.get('unitId', '') == ch.unitId && d.get('propertyId', '') == ch.propertyId

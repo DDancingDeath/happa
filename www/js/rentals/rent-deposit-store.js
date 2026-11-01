@@ -8,7 +8,7 @@
 
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
-import { applyPayment, chargeDue, depositEntry, depositHeld, MAX_DEPOSIT_ENTRIES } from './rent-math.js';
+import { applyPayment, chargeDue, depositEntry, depositHeld } from './rent-math.js';
 import { withMonth } from './rent-public.js';
 import { rentCol, uid, clip, readPublic } from './rent-store.js';
 
@@ -51,7 +51,10 @@ export function addDepositEntry({ tenantId, tenantName, leaseId = '', kind, amou
         const chSnap = chRef && await tx.get(chRef);
         if (chRef && !chSnap.exists) throw new Error('missing');
         const ch = chSnap ? chSnap.data() : null;
-        const pub = await linkOf(tx, leaseId || ch?.leaseId);
+        // The month's own link (after a change of unit, the new lease's, with the month tagged) and the current lease's.
+        const pubM = ch ? await linkOf(tx, ch.leaseId) : null;
+        const cur = !ch || leaseId !== ch.leaseId ? await linkOf(tx, leaseId) : null;
+        const pubD = cur && cur.ref.path !== pubM?.ref.path ? cur : null;
         const next = depositEntry(entries, kind, amount, ch ? chargeDue(ch) : 0);
         const now = Date.now();
         const who = { at: now, by: uid(), byName: clip(AppState.userName, 80) };
@@ -68,25 +71,30 @@ export function addDepositEntry({ tenantId, tenantName, leaseId = '', kind, amou
             month = { ...ch, paid: paid.paid, open: paid.open, payments: [...(ch.payments || []), { amount: next.amount, mode: 'deposit', ref: '', date, ...who }] };
             tx.update(chRef, { paid: month.paid, open: month.open, payments: month.payments, updatedAt: now, updatedBy: uid() });
         }
-        if (pub) tx.set(pub.ref, { ...(month ? withMonth(pub.data, month, now, pub.old) : pub.data), dep: next.held, updatedAt: now });
+        if (pubM) tx.set(pubM.ref, { ...withMonth(pubM.data, month, now, pubM.old), dep: next.held, updatedAt: now });
+        if (pubD) tx.set(pubD.ref, { ...pubD.data, dep: next.held, updatedAt: now });
         return next;
     });
 }
 
 /**
- * Owner: replaces the entries (an entry edited or removed); held follows (RENT-14).
- * Adjustments are kept as they are (they paid a month).
- * @throws {Error} 'over' (held would go below 0) | 'too_many'
+ * Owner: edits (`fields`: amount, date, note) or removes (`fields` null) one received / refunded entry,
+ * found (when, who, kind, amount, date) in the ledger as read in the transaction (so an entry
+ * added meanwhile is kept); held follows (RENT-14). Adjustments stay as they are (they paid a month).
+ * @throws {Error} 'changed' (entry gone or an adjustment) | 'over' (held would go below 0) | 'missing'
  */
-export function setDepositEntries({ tenantId, leaseId = '', entries }) {
+export function changeDepositEntry({ tenantId, leaseId = '', entry, fields = null }) {
     return FirebaseService.db.runTransaction(async (tx) => {
         const ref = depRef(tenantId);
         const snap = await tx.get(ref);
         if (!snap.exists) throw new Error('missing');
         const pub = await linkOf(tx, leaseId);
+        const old = snap.data().entries || [];
+        const i = old.findIndex(e => ['at', 'by', 'kind', 'amount', 'date'].every(k => e[k] === entry[k]));
+        if (i < 0 || old[i].kind === 'adjust') throw new Error('changed');
+        const entries = fields ? old.map((e, j) => (j === i ? { ...e, ...fields } : e)) : old.filter((_, j) => j !== i);
         const held = depositHeld(entries);
         if (held < 0) throw new Error('over');
-        if (entries.length > MAX_DEPOSIT_ENTRIES) throw new Error('too_many');
         const now = Date.now();
         tx.update(ref, { entries, held, updatedAt: now, updatedBy: uid() });
         if (pub) tx.set(pub.ref, { ...pub.data, dep: held, updatedAt: now });

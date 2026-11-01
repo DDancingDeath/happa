@@ -2114,6 +2114,7 @@ export default {
     'ui.rent.dep_none_held': "No deposit is held.",
     'msg.rent.dep_saved': "✓ Saved {amount}. Deposit held: {held}",
     'msg.rent.dep_over': "That is more than the deposit held (or more than the month's due).",
+    'msg.rent.dep_changed': "This entry was changed on another phone. Open the deposit again.",
     'msg.rent.dep_full': "This tenant's deposit record is full. Ask the owner to remove an old entry.",
     'ui.rent.elec_mode': "Electricity",
     'ui.rent.elec_included': "Included in rent",

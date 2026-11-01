@@ -38,8 +38,15 @@ describe('RENT-14 / RENT-15 math', () => {
         expect(depositEntry(l, 'adjust', 3000, 5000)).toEqual({ amount: 3000, held: 7000 });
         expect(() => depositEntry(l, 'adjust', 6000, 5000)).toThrow('over');
         expect(() => depositEntry([e('received', 2000)], 'adjust', 3000, 5000)).toThrow('over');
-        // Exactly an old due with paise is paid off as it is (RENT-5).
+        // Exactly an old due with paise is paid off as it is (RENT-5), the same amount applyPayment takes;
+        // a held with paise is refunded exactly, and adjusting it against a larger due is whole rupees.
         expect(depositEntry(l, 'adjust', 2500.5, 2500.5)).toEqual({ amount: 2500.5, held: 7499.5 });
+        const paise = [e('received', 10000), e('adjust', 2500.5)];
+        expect(() => depositEntry(paise, 'adjust', 7499.5, 10000)).toThrow('over');
+        expect(depositEntry(paise, 'adjust', 7499, 10000)).toEqual({ amount: 7499, held: 0.5 });
+        expect(depositEntry(paise, 'refund', 7499.5)).toEqual({ amount: 7499.5, held: 0 });
+        expect(depositEntry([e('received', 1), e('adjust', 0.5)], 'refund', 0.5)).toEqual({ amount: 0.5, held: 0 });
+        expect(depositEntry(l, 'received', 50000)).toEqual({ amount: 50000, held: 60000 });
         expect(() => depositEntry(l, 'received', 0)).toThrow('amount');
         expect(() => depositEntry(l, 'gift', 100)).toThrow('amount');
         expect(() => depositEntry(Array(MAX_DEPOSIT_ENTRIES).fill(e('received', 1)), 'received', 1)).toThrow('too_many');
@@ -51,6 +58,8 @@ describe('RENT-14 / RENT-15 math', () => {
         expect(depositFill('refund', 7000)).toBe(7000);
         expect(depositFill('adjust', 7000, 5000)).toBe(5000);
         expect(depositFill('adjust', 3000, 5000)).toBe(3000);
+        expect(depositFill('adjust', 7499.5, 10000)).toBe(7499);
+        expect(depositFill('adjust', 7499.5, 2500.5)).toBe(2500.5);
     });
 });
 
@@ -103,12 +112,42 @@ describe('deposit store', () => {
         expect(pub.months).toEqual([expect.objectContaining({ m: '2026-10', paid: 5000, due: 0 })]);
     });
 
-    test('owner: an entry edited or removed, held follows; never below 0', async () => {
+    test('owner: an entry edited or removed, held follows; never below 0; an entry added meanwhile is kept', async () => {
         await add({ kind: 'received', amount: 10000 });
+        const [r1] = fake.raw('rent_deposits').get('T1').entries;
         await add({ kind: 'refund', amount: 4000 });
-        const entries = fake.raw('rent_deposits').get('T1').entries;
-        expect(await ds.setDepositEntries({ tenantId: 'T1', entries: [{ ...entries[0], amount: 9000 }, entries[1]] })).toBe(5000);
-        await expect(ds.setDepositEntries({ tenantId: 'T1', entries: [entries[1]] })).rejects.toThrow('over');
+        // The owner's dialog was opened before the refund: the refund stays.
+        expect(await ds.changeDepositEntry({ tenantId: 'T1', entry: r1, fields: { amount: 9000 } })).toBe(5000);
+        const doc = fake.raw('rent_deposits').get('T1');
+        expect(doc.entries.map(x => [x.kind, x.amount])).toEqual([['received', 9000], ['refund', 4000]]);
+        await expect(ds.changeDepositEntry({ tenantId: 'T1', entry: { ...r1, amount: 9000 } })).rejects.toThrow('over');
+        await expect(ds.changeDepositEntry({ tenantId: 'T1', entry: r1 })).rejects.toThrow('changed');
         expect(fake.raw('rent_deposits').get('T1').held).toBe(5000);
+    });
+
+    test('an adjustment never changes an adjustment; the owner may not edit one', async () => {
+        fake.seed('rent_charges', [{ id: 'L1_2026-10', ...charge('L1_2026-10') }]);
+        await add({ kind: 'received', amount: 10000 });
+        await add({ kind: 'adjust', amount: 5000, chargeId: 'L1_2026-10' });
+        const adj = fake.raw('rent_deposits').get('T1').entries[1];
+        await expect(ds.changeDepositEntry({ tenantId: 'T1', entry: adj })).rejects.toThrow('changed');
+    });
+
+    test('after a change of unit: adjusting an old-unit month updates its tagged row on the moved link, not the new unit\'s', async () => {
+        fake.seed('rent_leases', [
+            { id: 'L1', unitId: 'U1', tenantId: 'T1', status: 'ended', rent: 5000, dueDay: 10, startMonth: '2026-01', endMonth: '2026-10', movedTo: 'L2', shareToken: null },
+            { id: 'L2', unitId: 'U2', tenantId: 'T1', status: 'active', rent: 6000, dueDay: 10, startMonth: '2026-10', fromLeaseId: 'L1', shareToken: TOKEN }
+        ]);
+        const newRow = { m: '2026-10', rent: 3000, elec: 0, units: 0, total: 3000, paid: 0, due: 3000, st: 'due', pd: [] };
+        const oldRow = { m: '2026-10', rent: 2500, elec: 0, units: 0, total: 2500, paid: 0, due: 2500, st: 'due', pd: [], pl: '1A' };
+        fake.seed('rent_public', [{ id: TOKEN, lid: 'L2', v: 1, months: [oldRow, newRow] }]);
+        fake.seed('rent_charges', [{ id: 'L1_2026-10', ...charge('L1_2026-10', { rent: 2500, amount: 2500 }) }]);
+        await ds.addDepositEntry({ tenantId: 'T1', tenantName: 'Ram', leaseId: 'L2', date: '2026-10-20', kind: 'received', amount: 8000 });
+        await ds.addDepositEntry({ tenantId: 'T1', tenantName: 'Ram', leaseId: 'L2', date: '2026-10-20', kind: 'adjust', amount: 2500, chargeId: 'L1_2026-10' });
+        const pub = fake.raw('rent_public').get(TOKEN);
+        expect(pub.dep).toBe(5500);
+        expect(pub.months).toHaveLength(2);
+        expect(pub.months.find(x => x.pl)).toMatchObject({ pl: '1A', paid: 2500, due: 0 });
+        expect(pub.months.find(x => !x.pl)).toMatchObject({ paid: 0, due: 3000 });
     });
 });
