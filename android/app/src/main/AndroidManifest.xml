@@ -50,4 +50,14 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+    <!-- Voice billing (#81, off by default): asked at runtime only when the user taps the mic.
+         The WebView has no Web Speech API, so the speech-recognition plugin uses Android's recogniser. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 </manifest>

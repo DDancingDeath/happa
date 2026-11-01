@@ -21,6 +21,7 @@
     "audit:numbers": "node tools/audit/real-data-audit.js"
   },
   "dependencies": {
+    "@capacitor-community/speech-recognition": "^7.0.1",
     "@capacitor/android": "^7.4.4",
     "@capacitor/app": "^7.1.2",
     "@capacitor/cli": "^7.4.4",
