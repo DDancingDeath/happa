@@ -17,14 +17,9 @@ import { parseAnyBillDate } from '../utils/dates.js';
 import { stockRows, itemValue, adjustItemStock, adjustmentValue, deadStockValue } from '../utils/calc/stock.js';
 import { attachOlderHistoryScroll } from '../ui/infinite-scroll.js';
 import { isFullHistoryLoaded, historyLoadedFrom, formatWindowDate } from '../utils/history-window.js';
-<<<<<<< HEAD
 import { planStockAdjustment, adjustReasonText, canReverseAdjustment, reversalPlan, stockCountPlan, adjustmentDelta, lastPurchaseRate, restockCost } from '../utils/stock-adjust.js';
 import { approxStockNote, lowStockItems, lowStockLevel, stockedItemKeys, DEFAULT_LOW_STOCK_KG } from '../utils/stock-check.js';
-=======
-import { planStockAdjustment, adjustReasonText } from '../utils/stock-adjust.js';
-import { approxStockNote } from '../utils/stock-check.js';
 import { isArchivedItem } from '../utils/item-catalog.js';
->>>>>>> origin/main
 import { evaluateStockAdjustment, toFlags } from '../utils/bill-checks.js';
 import { findDeadStock, daysSinceLabel, localDaysBetween, DEAD_STOCK_DAY_OPTIONS, DEFAULT_DEAD_STOCK_DAYS } from '../utils/dead-stock.js';
 import { t } from '../i18n/index.js';
