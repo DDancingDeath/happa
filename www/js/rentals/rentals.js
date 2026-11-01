@@ -363,6 +363,7 @@ function unitRowHtml(r, d, { showProperty = true } = {}) {
             <div class="rent-row-right">${rowBadge(r)}<div class="rent-due">${money(r.due)}</div></div>
         </div>
         ${months ? `<ul class="rent-months">${months}</ul>` : ''}
+        ${current?.adv > 0 ? `<div class="rent-sub">${et('ui.rent.adv_next', { amount: formatINR(current.adv) })}</div>` : ''}
         ${increase}
         ${actions ? `<div class="rent-actions">${actions}</div>` : ''}
     </div>`;
@@ -444,7 +445,8 @@ async function pay(leaseId) {
             <input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${esc(chargeDue(first))}">`)}
         ${lbl('ui.rent.mode', `<select id="rentPayMode">${modes}</select>`)}
         ${lbl('ui.rent.reference', `<input id="rentPayRef" type="text" maxlength="60">`)}
-        ${lbl('ui.rent.date', `<input id="rentPayDate" type="date" value="${esc(todayLocalISO())}">`)}`;
+        ${lbl('ui.rent.date', `<input id="rentPayDate" type="date" value="${esc(todayLocalISO())}">`)}
+        <p class="rent-help">${et('ui.rent.advance_help')}</p>`;
     const ok = await dialog(html);
     if (!ok) return;
     const id = val('rentPayCharge');
@@ -460,10 +462,11 @@ async function savePayment(id, charge, { amount, mode, ref, date }) {
     try {
         const res = await store.recordPayment(id, { amount, mode, ref, date }, rcOf(charge));
         const no = res.noReceipt;
-        UIManager.showToast(t(no ? 'msg.rent.payment_saved_no_receipt' : 'msg.rent.payment_saved', { amount: formatINR(res.amount) }), no ? 'warning' : 'success');
+        UIManager.showToast(t(no ? 'msg.rent.payment_saved_no_receipt' : 'msg.rent.payment_saved', { amount: formatINR(res.amount) })
+            + (res.adv ? ` ${t('msg.rent.adv_carried', { amount: formatINR(res.adv) })}` : ''), no ? 'warning' : 'success');
         if (no) TelemetryService.logWarning('Rent receipt not issued', { code: res.receiptError || '', chargeId: id });
         AuditService.log('RENT_PAYMENT', {
-            chargeId: id, month: charge?.month || '', amount: res.amount, mode, tenant: charge?.tenantName || '', receipt: res.receipt?.no || ''
+            chargeId: id, month: charge?.month || '', amount: res.amount, adv: res.adv || 0, mode, tenant: charge?.tenantName || '', receipt: res.receipt?.no || ''
         }).catch(auditWarn);
         if (res.receipt || no) void receiptUi(no ? 'showHistory' : 'showReceipt', no ? charge?.tenantId : res.receipt);
     } catch (e) {
@@ -819,6 +822,7 @@ async function saveMoveIn({ unit, newUnit, occ, defs, from = null, save = null }
         AuditService.log(from ? 'RENT_UNIT_CHANGE' : 'RENT_MOVE_IN', {
             tenantId: res.tenantId, unitId: res.unitId, rent: occ.lease.rent, startDate: occ.lease.startDate, fromLeaseId: from?.id || null
         }).catch(auditWarn);
+        if (from) void depUi('afterMoveOut', from.tenantId, from.id, from.chargedThrough, false);
         if (defs?.tenantLink && isManager() && !moved) await lazyUi('./rent-link.js', 'linkNewLease', { unit, res, occ, defs });
         return true;
     } catch (e) {
@@ -894,7 +898,7 @@ async function moveOut(leaseId) {
         await store.endLease(leaseId, end, state.month, names);
         UIManager.showToast(t('msg.rent.saved'), 'success');
         AuditService.log('RENT_MOVE_OUT', { leaseId, endMonth: end }).catch(auditWarn);
-        void depUi('afterMoveOut', lease.tenantId);
+        void depUi('afterMoveOut', lease.tenantId, leaseId, end);
     } catch (e) {
         console.warn('Move-out failed:', e?.code || e?.message || e);
         const key = e?.message === 'later_paid' ? 'msg.rent.later_paid'
@@ -1114,7 +1118,7 @@ export const RentalsModule = {
         addTenantToUnit: (unitId) => unitUi('toUnit', null, unitId), tenantToggle, tenantPick, tenantElec,
         receipts: (tenantId) => receiptUi('showHistory', tenantId),
         receiptAction: (name, id) => receiptUi('action', name, id),
-        deposit: (id) => depUi('showDeposit', id), deposits: () => depUi('showHeld'), depositAction: (a, id, i) => depUi('action', a, id, i)
+        deposit: (id) => depUi('showDeposit', id), deposits: () => depUi('showHeld'), depositAction: (a, id, i) => depUi('action', a, id, i), advanceToDeposit: (id) => depUi('advanceAction', id)
     }
 };
 

@@ -4183,6 +4183,107 @@ function defineRentSuite(prefix) {
         await assertFails(w('staff1', 8000));
         await assertSucceeds(w('rentMember', 8000));
     });
+
+    // ---- Advance carried forward (#157, RENT-16) ----
+    // A payment of 7,000 on a 5,000 month: 5,000 pays it, 2,000 is carried as the month's advance.
+    const overpay = (uid, { month = CUR, amount = 5000, adv = 2000, chargeAdv = adv, paid = amount } = {}) => {
+        const f = db(uid);
+        return chargeOn(f, month).update({ paid, open: paid < 5000, adv: chargeAdv, updatedAt: 2, updatedBy: uid, payments: [{ ...entry(uid, amount), adv }] });
+    };
+    const advEntry = (uid, amount) => ({ amount, mode: 'advance', ref: '', date: '2026-10-05', at: 2, by: uid, byName: 'x' });
+    // One write: next month's charge paid from the advance + the lease step + the month before's advance cleared.
+    const carry = (uid, { paid = 2000, adv, payments = [advEntry(uid, paid)], clear = true } = {}) => {
+        const f = db(uid);
+        const b = f.batch();
+        b.set(chargeOn(f, CUR), charge(CUR, { paid, open: paid < 5000, payments, updatedBy: uid, ...(adv !== undefined ? { adv } : {}) }));
+        b.update(leaseOn(f), { chargedThrough: CUR, updatedAt: 2, updatedBy: uid });
+        if (clear) b.update(chargeOn(f, PREV), { adv: 0, updatedAt: 2, updatedBy: uid });
+        return b.commit();
+    };
+
+    t('advance: more than due only pays off the active lease\'s latest month; the rest is its advance', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await assertFails(overpay('rentMember', { month: PREV }));
+        await assertFails(overpay('rentMember', { amount: 3000, paid: 3000 }));
+        await assertFails(overpay('rentMember', { chargeAdv: 3000 }));
+        await assertFails(overpay('rentMember', { adv: 0, chargeAdv: 2000 }));
+        await assertFails(overpay('staff1'));
+        await assertSucceeds(overpay('rentMember'));
+        // Nobody adds or changes an advance otherwise (a manager's correction keeps it).
+        await assertFails(chargeRef('rentManager', CUR).update({ adv: 9000, updatedAt: 3, updatedBy: 'rentManager' }));
+        await assertFails(chargeRef('legacyOwner', CUR).update({ adv: 0, updatedAt: 3, updatedBy: 'legacyOwner' }));
+    });
+
+    t('advance: not on an ended lease', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, status: 'ended', endMonth: CUR }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        await assertFails(overpay('rentMember'));
+    });
+
+    t('advance: the next month is created paid from it, the rest carried on, and the month before cleared in the same write', async () => {
+        await seed('rent_leases', 'L1', lease({ startMonth: PREV, chargedThrough: PREV }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV, { paid: 5000, open: false, adv: 2000 }));
+        await assertFails(step('rentMember', charge(CUR, { updatedBy: 'rentMember' }), CUR));
+        await assertFails(carry('rentMember', { clear: false }));
+        await assertFails(carry('rentMember', { paid: 1000 }));
+        await assertFails(carry('rentMember', { paid: 2000, payments: [{ ...advEntry('rentMember', 2000), mode: 'cash' }] }));
+        await assertFails(carry('rentMember', { paid: 2000, adv: 500 }));
+        await assertFails(carry('rentMember', { paid: 2000, payments: [advEntry('rentOnly', 2000)] }));
+        await assertSucceeds(carry('rentMember'));
+    });
+
+    t('advance: more than a month\'s rent pays it fully and the rest goes on to the next month', async () => {
+        await seed('rent_leases', 'L1', lease({ startMonth: PREV, chargedThrough: PREV }));
+        await seed('rent_charges', `L1_${PREV}`, charge(PREV, { paid: 5000, open: false, adv: 7000 }));
+        await assertFails(carry('rentMember', { paid: 5000 }));
+        await assertSucceeds(carry('rentMember', { paid: 5000, adv: 2000 }));
+    });
+
+    t('advance: left on an ended lease goes into the deposit ledger in the same write, nowhere else', async () => {
+        await seedTenant();
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR, status: 'ended', endMonth: CUR }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 5000, open: false, adv: 2000 }));
+        const move = (uid, { amount = 2000, ledger = true, clear = true, chargeId = `L1_${CUR}` } = {}) => {
+            const f = db(uid);
+            const b = f.batch();
+            if (ledger) b.set(depOn(f), depDoc(uid, [dEntry(uid, 'received', amount, { mode: 'advance', chargeId, month: CUR })], amount));
+            if (clear) b.update(chargeOn(f, CUR), { adv: 0, updatedAt: 3, updatedBy: uid });
+            return b.commit();
+        };
+        await assertFails(move('rentMember', { ledger: false }));
+        await assertFails(move('rentMember', { clear: false }));
+        await assertFails(move('rentMember', { amount: 3000 }));
+        await assertSucceeds(move('rentMember'));
+    });
+
+    t('advance: on an active lease it is never moved into the deposit', async () => {
+        await seedTenant();
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR, { paid: 5000, open: false, adv: 2000 }));
+        const f = db('rentMember');
+        const b = f.batch();
+        b.set(depOn(f), depDoc('rentMember', [dEntry('rentMember', 'received', 2000, { mode: 'advance', chargeId: `L1_${CUR}`, month: CUR })], 2000));
+        b.update(chargeOn(f, CUR), { adv: 0, updatedAt: 3, updatedBy: 'rentMember' });
+        await assertFails(b.commit());
+    });
+
+    t('advance: the receipt shows it (adv as on the payment); an advance payment never gets one', async () => {
+        await seed('rent_leases', 'L1', lease({ chargedThrough: CUR }));
+        await seed('rent_charges', `L1_${CUR}`, charge(CUR));
+        const w = (uid, rcptAdv) => {
+            const f = db(uid);
+            const b = f.batch();
+            b.update(chargeOn(f, CUR), { paid: 5000, open: false, adv: 2000, updatedAt: 2, updatedBy: uid, payments: [{ ...paid1(uid, 5000, 1), adv: 2000 }] });
+            b.set(rctOn(f, `L1_${CUR}_0`), receipt(uid, 1, { amount: 5000, ...(rcptAdv !== undefined ? { adv: rcptAdv } : {}) }));
+            b.set(ctrOn(f), { last: 1, rid: `L1_${CUR}_0`, updatedAt: 2, updatedBy: uid });
+            return b.commit();
+        };
+        await assertFails(w('rentMember'));
+        await assertFails(w('rentMember', 1000));
+        await assertSucceeds(w('rentMember', 2000));
+    });
 }
 
 defineRentSuite('');

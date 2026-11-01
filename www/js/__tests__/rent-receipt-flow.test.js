@@ -117,3 +117,26 @@ test('a second Record payment while one is saving is ignored: one payment (#95)'
     expect(store.recordPayment).toHaveBeenCalledTimes(1);
     expect(btn.disabled).toBe(false);
 });
+
+test('an overpayment (RENT-16): the dialog explains it and the toast says what was carried to next month', async () => {
+    store.recordPayment.mockResolvedValue({ amount: 5000, adv: 2000, paid: 5000, open: false, receipt: RECEIPT });
+    const done = _test.pay('L1');
+    await flush();
+    expect(document.getElementById('rentDialogBody').textContent).toContain('carried to the next month as an advance');
+    document.getElementById('rentPayAmount').value = '7000';
+    RentalsModule.api.dialogClose(true);
+    await done;
+    await flush();
+    expect(store.recordPayment).toHaveBeenCalledWith(CHARGE.id, expect.objectContaining({ amount: 7000 }), expect.anything());
+    expect(UIManager.showToast).toHaveBeenCalledWith('✓ Payment of ₹5,000 saved (₹2,000 carried to next month as an advance)', 'success');
+    expect(AuditService.log).toHaveBeenCalledWith('RENT_PAYMENT', expect.objectContaining({ amount: 5000, adv: 2000 }));
+});
+
+test('a unit whose month carries an advance says so on the Rent page', () => {
+    store.snapshot.mockReturnValue({ ...SNAP, charges: [{ ...CHARGE, paid: 5000, open: false, adv: 2000 }] });
+    _test.state.page = 'rent';
+    _test.state.view = 'units';
+    ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges'].forEach(k => _test.state.loaded.add(k));
+    _test.render();
+    expect(document.getElementById('rentalsBody').textContent).toContain('Advance for next month: ₹2,000');
+});

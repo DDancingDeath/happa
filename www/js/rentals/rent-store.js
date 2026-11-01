@@ -7,8 +7,9 @@
 
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
+import { todayLocalISO } from '../utils/dates.js';
 import {
-    applyPayment, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
+    applyPayment, withAdvance, applyMeter, chargeId, monthsToCharge, newCharge, isMonth, addMonths, monthRange, normalizeRentSettings, firstMonthRent,
     receiptNo, receiptAmounts, istYear, MAX_PROPERTIES, MAX_UNITS_PER_PROPERTY, MAX_BACKFILL_MONTHS
 } from './rent-math.js';
 import { buildPublicSnapshot, isShareToken, newShareToken, withLease, withMonth, withNames, PUBLIC_MONTHS } from './rent-public.js';
@@ -299,11 +300,18 @@ export async function chargeLease(leaseId, month, names, maxMonths = MAX_BACKFIL
             const lease = { id: snap.id, ...snap.data() };
             const [m] = monthsToCharge(lease, month);
             if (!m) return false;
+            // RENT-16: the advance carried on the month before pays this one first (the rules require it).
+            const prevRef = isMonth(lease.chargedThrough) ? coll('rent_charges').doc(chargeId(lease.id, lease.chargedThrough)) : null;
+            const prev = prevRef ? (await tx.get(prevRef)).data() : null;
+            const adv = prev?.adv;
             const pub = await readPublic(tx, lease);
-            const charge = { ...newCharge(lease, m, names), updatedBy: uid() };
+            const now = Date.now();
+            const charge = withAdvance({ ...newCharge(lease, m, names), updatedBy: uid() }, adv,
+                { ref: '', date: todayLocalISO(), at: now, by: uid(), byName: clip(AppState.userName, 80) });
             tx.set(coll('rent_charges').doc(chargeId(lease.id, m)), charge);
-            tx.update(leaseRef, { chargedThrough: m, updatedAt: Date.now(), updatedBy: uid() });
-            if (pub) tx.set(pub.ref, withMonth(pub.data, charge));
+            tx.update(leaseRef, { chargedThrough: m, updatedAt: now, updatedBy: uid() });
+            if (adv > 0) tx.update(prevRef, { adv: 0, updatedAt: now, updatedBy: uid() });
+            if (pub) tx.set(pub.ref, withMonth(adv > 0 ? withMonth(pub.data, { ...prev, adv: 0 }, now) : pub.data, charge, now));
             return true;
         });
         if (!made) break;
@@ -452,18 +460,20 @@ async function recordPaymentOnce(id, { amount, mode, ref, date }, rc, year) {
         const snap = await tx.get(chargeRef);
         if (!snap.exists) throw new Error('missing');
         const charge = snap.data();
-        const next = applyPayment(charge, amount);
         const leaseSnap = await tx.get(coll('rent_leases').doc(charge.leaseId));
+        // RENT-16: more than is due on the lease's latest month is carried to the next month.
+        const l = leaseSnap.data();
+        const next = applyPayment(charge, amount, l?.status === 'active' && l.chargedThrough === charge.month);
         const pub = leaseSnap.exists ? await readPublic(tx, leaseSnap.data(), true) : null;
         const seq = rc && Number.isFinite(charge.rent) ? await nextSeq(tx, year) : 0;
         const now = Date.now();
         const e = {
-            amount: next.amount, mode, ref: clip(ref, 60), date,
+            amount: next.amount, ...(next.adv ? { adv: next.adv } : {}), mode, ref: clip(ref, 60), date,
             at: now, by: uid(), byName: clip(AppState.userName, 80),
             ...(seq ? { rno: receiptNo(year, seq) } : {})
         };
-        const ch = { ...charge, paid: next.paid, open: next.open, payments: [...(charge.payments || []), e] };
-        tx.update(chargeRef, { paid: ch.paid, open: ch.open, payments: ch.payments, updatedAt: now, updatedBy: uid() });
+        const ch = { ...charge, paid: next.paid, open: next.open, payments: [...(charge.payments || []), e], ...(next.adv ? { adv: next.carried } : {}) };
+        tx.update(chargeRef, { paid: ch.paid, open: ch.open, payments: ch.payments, ...(next.adv ? { adv: ch.adv } : {}), updatedAt: now, updatedBy: uid() });
         if (pub) tx.set(pub.ref, withMonth(pub.data, ch, now, pub.old));
         return { ...next, receipt: seq ? putReceipt(tx, id, ch, ch.payments.length - 1, rc, year, seq) : null };
     });

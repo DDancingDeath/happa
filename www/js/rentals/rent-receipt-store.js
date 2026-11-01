@@ -35,8 +35,8 @@ export async function withoutReceipt(tenantId, manager) {
     const charges = new Map([...d.charges.filter(c => c.tenantId === tenantId), ...lists.flat()].map(c => [c.id, c]));
     return [...charges.values()]
         .flatMap(charge => (charge.payments || []).map((entry, pi) => ({ charge, pi, entry })))
-        // A month paid from the deposit (mode 'deposit') gets no receipt: no money changed hands.
-        .filter(x => !x.entry.rno && x.entry.mode !== 'deposit' && Number.isFinite(x.charge.rent) && (manager || x.entry.by === uid()))
+        // Paid from the deposit or an advance (#157) gets no receipt: no money changed hands then.
+        .filter(x => !x.entry.rno && !['deposit', 'advance'].includes(x.entry.mode) && Number.isFinite(x.charge.rent) && (manager || x.entry.by === uid()))
         .sort((a, b) => b.charge.month.localeCompare(a.charge.month) || b.pi - a.pi);
 }
 
@@ -49,7 +49,7 @@ export function issueReceipt(id, pi, rc) {
     return receiptRetry((year) => FirebaseService.db.runTransaction(async (tx) => {
         const chargeRef = coll('rent_charges').doc(id);
         const charge = (await tx.get(chargeRef)).data();
-        if (!charge?.payments?.[pi] || charge.payments[pi].rno || charge.payments[pi].mode === 'deposit' || !Number.isFinite(charge.rent)) return null;
+        if (!charge?.payments?.[pi] || charge.payments[pi].rno || ['deposit', 'advance'].includes(charge.payments[pi].mode) || !Number.isFinite(charge.rent)) return null;
         const lease = await tx.get(coll('rent_leases').doc(charge.leaseId));
         const pub = lease.exists ? await readPublic(tx, lease.data(), true) : null;
         const seq = await nextSeq(tx, year);

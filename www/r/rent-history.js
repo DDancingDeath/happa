@@ -18,7 +18,7 @@
             movedOut: (m) => `Moved out. Last month: ${m}`,
             rent: 'Rent', due: 'Due on day', totalDue: 'Total due', paidAll: 'Paid (shown months)',
             elec: (u) => `Electricity (${u} units)`, total: 'Total', paid: 'Paid', left: 'Due',
-            paidOn: 'Paid on', receipt: 'Receipt', dep: 'Deposit held', st: { paid: 'Paid', partial: 'Part paid', due: 'Due', late: 'Late' },
+            paidOn: 'Paid on', receipt: 'Receipt', dep: 'Deposit held', adv: 'Advance for next month', st: { paid: 'Paid', partial: 'Part paid', due: 'Due', late: 'Late' },
             note: 'Read-only copy kept up to date by the owner. For questions, contact the owner.',
             ut: { flat: 'Flat', commercial: 'Shop', office: 'Office', godown: 'Godown', other: '' },
             since: (d) => `Tenant since ${d}`,
@@ -31,7 +31,7 @@
             movedOut: (m) => `मकान खाली किया। आखिरी महीना: ${m}`,
             rent: 'किराया', due: 'हर महीने की तारीख', totalDue: 'कुल बकाया', paidAll: 'चुकाया (दिखाए महीने)',
             elec: (u) => `बिजली (${u} यूनिट)`, total: 'कुल', paid: 'चुकाया', left: 'बकाया',
-            paidOn: 'भुगतान की तारीख', receipt: 'रसीद', dep: 'जमा जमानत', st: { paid: 'चुकाया', partial: 'कुछ चुकाया', due: 'बकाया', late: 'देर' },
+            paidOn: 'भुगतान की तारीख', receipt: 'रसीद', dep: 'जमा जमानत', adv: 'अगले महीने के लिए एडवांस', st: { paid: 'चुकाया', partial: 'कुछ चुकाया', due: 'बकाया', late: 'देर' },
             note: 'यह केवल देखने के लिए है, मालिक इसे अपडेट रखते हैं। सवाल हों तो मालिक से बात करें।',
             ut: { flat: 'फ़्लैट', commercial: 'दुकान', office: 'ऑफ़िस', godown: 'गोदाम', other: '' },
             since: (d) => `${d} से किरायेदार`,
@@ -152,7 +152,7 @@
                 <div class="rh-row"><span>${esc(L.rent)}</span><span>${esc(inr(x.rent))}</span></div>${elec}
                 <div class="rh-row"><span>${esc(L.total)}</span><span>${esc(inr(x.total))}</span></div>
                 <div class="rh-row"><span>${esc(L.paid)}</span><span>${esc(inr(x.paid))}</span></div>
-                <div class="rh-row"><strong>${esc(L.left)}</strong><strong>${esc(inr(x.due))}</strong></div>${dates}
+                <div class="rh-row"><strong>${esc(L.left)}</strong><strong>${esc(inr(x.due))}</strong></div>${Number(x.adv) > 0 ? `<div class="rh-row"><span>${esc(L.adv)}</span><span>${esc(inr(x.adv))}</span></div>` : ''}${dates}
             </section>`;
         }).join('');
         root.innerHTML = `<header class="rh-top">

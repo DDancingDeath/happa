@@ -1502,7 +1502,7 @@ service cloud.firestore {
 
     function rentChargeFields() {
       return ['leaseId', 'unitId', 'propertyId', 'tenantId', 'tenantName', 'unitLabel', 'month', 'dueDay',
-              'rent', 'electricity', 'amount', 'paid', 'open', 'payments', 'voided', 'createdAt', 'updatedAt', 'updatedBy'];
+              'rent', 'electricity', 'amount', 'paid', 'open', 'payments', 'voided', 'adv', 'createdAt', 'updatedAt', 'updatedBy'];
     }
 
     // rent_charges/{leaseId}_{YYYY-MM}: created only in the write that moves its
@@ -1522,10 +1522,32 @@ service cloud.firestore {
         && d.get('unitId', '') == lease.unitId && d.get('tenantId', '') == lease.tenantId
         && d.get('propertyId', '') == lease.propertyId && d.get('dueDay', 0) == lease.dueDay
         && d.get('amount', null) == rentMonthRent(lease, d.month) && d.get('rent', null) == rentMonthRent(lease, d.month)
-        && d.get('electricity', null) == null
-        && d.get('paid', null) == 0 && d.get('payments', null) == [] && !('voided' in d)
-        && d.get('open', null) == (lease.rent > 0)
+        && d.get('electricity', null) == null && !('voided' in d)
+        && rentChargeOpeningOk(usersCol, d, lease, rentAdvIn(usersCol, d))
         && rentStr(d, 'tenantName', 0, 80) && rentStr(d, 'unitLabel', 0, 60);
+    }
+
+    // RENT-16: the advance carried on the lease's month before (its chargedThrough before this write).
+    function rentAdvIn(usersCol, d) {
+      let l = rentLeasePath(usersCol, d.leaseId);
+      let prev = exists(l) ? get(l).data.get('chargedThrough', null) : null;
+      return prev == null ? 0 : get(rentChargePath(usersCol, d.leaseId, prev)).data.get('adv', 0);
+    }
+
+    // A new month starts unpaid, or (advance `a` carried) paid min(a, amount) by one 'advance'
+    // payment of the writer, the rest carried on, and the month before's advance cleared in this write.
+    function rentChargeOpeningOk(usersCol, d, lease, a) {
+      let applied = a < d.get('amount', 0) ? a : d.get('amount', 0);
+      return a == 0
+        ? d.get('paid', null) == 0 && d.get('payments', null) == [] && !('adv' in d) && d.get('open', null) == (lease.rent > 0)
+        : d.get('paid', null) == applied && rentPaidMatches(d.get('adv', 0), a - applied)
+          && d.get('open', null) == (d.paid < d.amount - 0.001)
+          && getAfter(rentChargePath(usersCol, d.leaseId, get(rentLeasePath(usersCol, d.leaseId)).data.chargedThrough)).data.get('adv', 0) == 0
+          && (applied <= 0 ? d.get('payments', null) == []
+            : d.get('payments', null) is list && d.payments.size() == 1
+              && d.payments[0].keys().hasOnly(['amount', 'mode', 'ref', 'date', 'at', 'by', 'byName'])
+              && d.payments[0].get('mode', '') == 'advance' && d.payments[0].get('amount', -1) == applied
+              && d.payments[0].get('by', '') == request.auth.uid);
     }
 
     // The rent of a month: a pro-rated first month (firstRent, set at move-in) or the lease rent (RENT-11).
@@ -1551,9 +1573,10 @@ service cloud.firestore {
       let list = request.resource.data.payments;
       let n = resource.data.get('payments', []).size();
       return appendsOneEntry('payments') && n < 12
-        && list[n].keys().hasOnly(['amount', 'mode', 'ref', 'date', 'at', 'by', 'byName', 'rno'])
+        && list[n].keys().hasOnly(['amount', 'adv', 'mode', 'ref', 'date', 'at', 'by', 'byName', 'rno'])
         && list[n].amount > 0
         && list[n].get('by', null) == request.auth.uid
+        && (!('adv' in list[n]) || request.resource.data.get('adv', 0) != resource.data.get('adv', 0))
         && (list[n].get('mode', '') in ['cash', 'upi', 'bank', 'cheque']
             || (list[n].get('mode', '') == 'deposit' && !('rno' in list[n]) && rentDepPaysOk(usersCol, docId, list[n].amount)))
         && (!('rno' in list[n])
@@ -1566,14 +1589,46 @@ service cloud.firestore {
       let d = request.resource.data;
       let r = resource.data;
       let n = r.get('payments', []).size();
-      return d.diff(r).affectedKeys().hasOnly(['payments', 'paid', 'open', 'updatedAt', 'updatedBy'])
+      return d.diff(r).affectedKeys().hasOnly(['payments', 'paid', 'open', 'adv', 'updatedAt', 'updatedBy'])
         && rentWriterOk()
         && rentNewEntryOk(usersCol, docId)
+        && rentPayAdvOk(usersCol, d, r, d.payments[n])
         && d.get('paid', null) is number
         && d.paid >= r.paid + d.payments[n].amount - 0.01
         && d.paid <= r.paid + d.payments[n].amount + 0.01
         && d.paid <= r.amount + 0.01
         && d.get('open', null) == (d.paid < r.amount - 0.001);
+    }
+
+    // RENT-16: more than is due, only on the active lease's latest month and only once the
+    // month is paid off: the payment's adv (> 0) is added to the month's advance, carried
+    // to the next month (rentChargeOpeningOk). Otherwise the month's advance is unchanged.
+    function rentPayAdvOk(usersCol, d, r, e) {
+      let l = get(rentLeasePath(usersCol, r.leaseId)).data;
+      return !('adv' in e)
+        ? d.get('adv', 0) == r.get('adv', 0)
+        : e.adv is number && e.adv > 0 && d.paid >= r.amount - 0.01
+          && rentPaidMatches(d.get('adv', 0), r.get('adv', 0) + e.adv)
+          && l.status == 'active' && l.get('chargedThrough', '') == r.month;
+    }
+
+    // RENT-16: a month's advance goes to 0 only (a) in the write that creates the next month
+    // paid by it (that month's paid + advance = this advance), or (b) the lease has ended and
+    // the tenant's deposit ledger gains it in this write ('received', mode 'advance').
+    function rentAdvOutOk(usersCol, docId) {
+      let d = request.resource.data;
+      let r = resource.data;
+      let n = rentChargePath(usersCol, r.leaseId, nextMonth(r.month));
+      return d.diff(r).affectedKeys().hasOnly(['adv', 'updatedAt', 'updatedBy']) && rentWriterOk()
+        && r.get('adv', 0) > 0 && d.get('adv', 0) == 0
+        && ((!exists(n) && existsAfter(n) && rentPaidMatches(getAfter(n).data.paid + getAfter(n).data.get('adv', 0), r.adv))
+          || (get(rentLeasePath(usersCol, r.leaseId)).data.status == 'ended'
+            && rentAdvToDepOk(getAfter(rentPath(usersCol, 'rent_deposits', r.tenantId)).data.get('entries', []), docId, r.adv)));
+    }
+
+    function rentAdvToDepOk(es, docId, adv) {
+      return es.size() > 0 && es[es.size() - 1].get('mode', '') == 'advance'
+        && es[es.size() - 1].get('chargeId', '') == docId && es[es.size() - 1].get('amount', 0) == adv;
     }
 
     // Electricity from a sub-meter (rent-store.js recordMeter): units = current −
@@ -1622,7 +1677,7 @@ service cloud.firestore {
         && d.get('leaseId', null) == r.leaseId && d.get('month', null) == r.month
         && d.get('unitId', null) == r.unitId && d.get('tenantId', null) == r.tenantId
         && d.get('electricity', null) == r.get('electricity', null) && d.get('rent', null) == r.get('rent', null)
-        && d.get('voided', []) == r.get('voided', [])
+        && d.get('voided', []) == r.get('voided', []) && d.get('adv', 0) == r.get('adv', 0)
         && rentMoney(d, 'amount') && rentMoney(d, 'paid')
         && d.get('payments', null) is list
         && (d.payments == r.get('payments', []) || rentNewEntryOk(usersCol, docId))
@@ -1739,7 +1794,7 @@ service cloud.firestore {
     // shows it from Settings. Never edited, except cancel (void) by owner/manager.
     function rentReceiptFields() {
       return ['no', 'year', 'seq', 'chargeId', 'pi', 'leaseId', 'tenantId', 'unitId', 'propertyId', 'tenantName',
-              'place', 'ut', 'months', 'rent', 'elec', 'total', 'paid', 'mode', 'ref', 'date', 'balance', 'by',
+              'place', 'ut', 'months', 'rent', 'elec', 'total', 'paid', 'adv', 'mode', 'ref', 'date', 'balance', 'by',
               'byName', 'issuedBy', 'createdAt', 'void', 'voidBy', 'voidByName', 'voidAt', 'voidReason'];
     }
 
@@ -1802,7 +1857,8 @@ service cloud.firestore {
     // The receipt shows payment entry e and its charge exactly; createdAt is the server's time.
     function rentReceiptMatches(d, ch, e) {
       return e.get('rno', '') == d.no && e.get('by', '') == d.get('by', '') && e.get('byName', '') == d.get('byName', '')
-        && e.amount == d.get('paid', -1) && e.mode == d.get('mode', '') && e.mode != 'deposit' && e.date == d.get('date', '')
+        && e.amount == d.get('paid', -1) && e.get('adv', 0) == d.get('adv', 0) && e.mode == d.get('mode', '')
+        && !(e.mode in ['deposit', 'advance']) && e.date == d.get('date', '')
         && e.get('ref', '') == d.get('ref', '')
         && d.get('leaseId', '') == ch.leaseId && d.get('tenantId', '') == ch.tenantId
         && d.get('unitId', '') == ch.unitId && d.get('propertyId', '') == ch.propertyId
@@ -1883,7 +1939,7 @@ service cloud.firestore {
     function rentUpdateAs(base, usersCol, docId, mgr) {
       return base == 'rent_charges'
           ? (rentCreationKept() && (rentPaymentOk(usersCol, docId) || rentChargeRnoOk(usersCol, docId) || rentMeterOk(usersCol, docId, mgr)
-              || rentChargeMoveOk(usersCol, mgr)))
+              || rentChargeMoveOk(usersCol, mgr) || rentAdvOutOk(usersCol, docId)))
             || (mgr && (rentChargeEditOk(usersCol, docId) || rentChargeVoidOk(usersCol, docId)))
         : base == 'rent_leases'
           ? rentLeaseUpdateOk(usersCol, docId, mgr)
@@ -1980,7 +2036,8 @@ service cloud.firestore {
         && rentDate(e.get('date', '')) && e.get('by', '') == request.auth.uid
         && rentStr(e, 'note', 0, 200) && rentStr(e, 'byName', 0, 80)
         && (!('leaseId' in e) || rentStr(e, 'leaseId', 1, 64))
-        && (e.kind == 'adjust' ? rentStr(e, 'chargeId', 1, 80) : e.get('mode', '') in ['cash', 'upi', 'bank', 'cheque']);
+        && (e.kind == 'adjust' ? rentStr(e, 'chargeId', 1, 80)
+          : e.get('mode', '') in ['cash', 'upi', 'bank', 'cheque'] || (e.kind == 'received' && e.mode == 'advance' && rentStr(e, 'chargeId', 1, 80)));
     }
 
     // The new entry (index n), held moved by it; an adjustment is this tenant's charge gaining
@@ -1990,6 +2047,8 @@ service cloud.firestore {
       let ch = rentPath(usersCol, 'rent_charges', e.get('chargeId', '-'));
       return d.entries.size() == n + 1 && rentDepEntryOk(e)
         && rentPaidMatches(d.held, held + (e.kind == 'received' ? e.amount : 0 - e.amount))
+        && (e.get('mode', '') != 'advance'
+          || (get(ch).data.tenantId == docId && get(ch).data.get('adv', 0) == e.amount && getAfter(ch).data.get('adv', 0) == 0))
         && (e.kind != 'adjust'
           || (getAfter(ch).data.tenantId == docId
             && getAfter(ch).data.payments.size() == get(ch).data.get('payments', []).size() + 1

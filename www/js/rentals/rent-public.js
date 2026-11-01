@@ -54,7 +54,8 @@ export function publicMonth(charge, today = new Date()) {
         dd: Number.isInteger(charge.dueDay) ? charge.dueDay : null,
         st: s.status === 'paid' ? 'paid' : s.late ? 'late' : s.status,
         pd: dates,
-        ...(py ? { py } : {})
+        ...(py ? { py } : {}),
+        ...(charge.adv > 0 ? { adv: round2(charge.adv) } : {})
     };
 }
 
