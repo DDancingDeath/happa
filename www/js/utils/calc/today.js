@@ -10,6 +10,7 @@ import { activityBills, billTotal, isOnlineExpense, isPersonalExpense, outstandi
 import { endOfLocalDayExclusive, parseAnyBillDate, startOfLocalDay } from '../dates.js';
 import { dueEvents, paymentBreakdown, saleTimePayment, sumDueEvents } from '../due-payments.js';
 import { labourGap, labourSummary } from '../labour.js';
+import { billDayTime } from './cash.js';
 
 /** Field of todaySummary() → its spec ID in docs/calculations.md. */
 export const TODAY_SPEC = Object.freeze({
@@ -103,9 +104,14 @@ export function todaySummary({ bills = {}, expenses = [], personalDay = null, se
         return date && date >= from && date < to;
     };
 
-    const purchaseBills = activityBills(bills.purchase).filter(onDay);
-    const wholesaleBills = activityBills(bills.wholesale).filter(onDay);
-    const retailBills = activityBills(bills.retail).filter(onDay);
+    // Bills by BILL-TIME (numeric timestamp, else date), as the drawer counts them (#147)
+    const billOnDay = (bill) => {
+        const t = billDayTime(bill);
+        return t >= from.getTime() && t < to.getTime();
+    };
+    const purchaseBills = activityBills(bills.purchase).filter(billOnDay);
+    const wholesaleBills = activityBills(bills.wholesale).filter(billOnDay);
+    const retailBills = activityBills(bills.retail).filter(billOnDay);
     const saleBills = [...wholesaleBills, ...retailBills];
     const dayExpenses = (expenses || []).filter(onDay);
 

@@ -162,7 +162,7 @@ export function dataQuality(data, exportedAt) {
 
     add('bills', 'Bills in the backup (purchases + wholesale + retail)', bills);
     add('date-unreadable', 'Bills with an unreadable date', all.filter(({ b }) => !Number.isFinite(O.timeOf(b.date))).length, bills);
-    add('date-ts-day', 'Bills whose `date` and numeric `timestamp` fall on different IST days (Today/Reports use the date, Finance uses the timestamp)',
+    add('date-ts-day', 'Bills whose `date` and numeric `timestamp` fall on different IST days (Today, the drawer and Finance use the timestamp; Reports the date)',
         all.filter(({ b }) => typeof b.timestamp === 'number' && Number.isFinite(O.timeOf(b.date)) && isoDay(b.timestamp) !== isoDay(O.timeOf(b.date))).length, bills);
     add('date-future', 'Bills dated after the backup was taken', all.filter(({ b }) => O.timeOf(b.date) > exportedAt + 60000).length, bills);
     add('date-ddmm', 'Bills with a DD/MM/YYYY date (old app versions)', all.filter(({ b }) => /^\d{1,2}\/\d{1,2}\/\d{4}/.test(String(b.date ?? ''))).length, bills);
