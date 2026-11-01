@@ -10,6 +10,7 @@ import { openHours, LONG_SESSION_HOURS } from '../utils/cash-session.js';
 import { sortItemsByName } from '../utils/item-catalog.js';
 import { accessFor, hiddenPermissionClasses, normalizeRoleAccess } from '../utils/role-access.js';
 import { Helpers } from '../utils/helpers.js';
+import { AppState } from '../utils/state.js';
 import { CashManagementManager } from '../modules/cash-management.js';
 
 describe('Q7: expenses per ₹100 of sales (M19)', () => {
@@ -54,6 +55,22 @@ describe('Q48: Rates A–Z', () => {
         const items = [{ id: '2', name: 'wheat', hindiName: 'गेहूं' }, { id: '1', name: 'Barley', hindiName: 'जौ' }, { id: '3', name: 'Wheat', hindiName: '' }];
         expect(sortItemsByName(items).map(i => i.id)).toEqual(['1', '2', '3']);
         expect(sortItemsByName(items.slice(0, 2), i => i.hindiName).map(i => i.id)).toEqual(['2', '1']);
+    });
+    test('the Rates table follows the name shown and the choice is kept on the phone', async () => {
+        const { ItemsManager } = await import('../modules/items.js');
+        Object.assign(AppState, { userRole: 'owner', settings: { showHindi: true }, items: [
+            { id: 'a', name: 'Apple', hindiName: 'सेब', wholesaleRate: 1, retailRate: 1 },
+            { id: 'b', name: 'Banana', hindiName: 'केला', wholesaleRate: 1, retailRate: 1 }
+        ], wholesaleSales: [], retailSales: [], purchases: [] });
+        document.body.innerHTML = '<input id="itemsSortAz" type="checkbox"><table><tbody id="itemsViewTableBody"></tbody></table>';
+        localStorage.removeItem('happa.itemsSort');
+        ItemsManager.setSortAz(true);
+        expect(localStorage.getItem('happa.itemsSort')).toBe('az');
+        expect(document.getElementById('itemsSortAz').checked).toBe(true);
+        const text = document.getElementById('itemsViewTableBody').textContent;
+        expect(text.indexOf('केला')).toBeLessThan(text.indexOf('सेब'));
+        ItemsManager.setSortAz(false);
+        expect(localStorage.getItem('happa.itemsSort')).toBe('used');
     });
 });
 
