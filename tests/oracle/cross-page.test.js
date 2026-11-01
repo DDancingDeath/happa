@@ -144,13 +144,13 @@ describe('B. BILL-DUE: Wholesale › Outstanding = Outstanding / Money', () => {
             document.body.innerHTML = '<div id="due"><div id="dueAging"></div><div id="dueList"></div></div>';
             OutstandingManager.filterDue(filter);
             const rows = Object.fromEntries([...document.querySelectorAll('#dueList .history-item')].map(row => {
-                const id = row.querySelector('input[id^="payment_"]').id.slice('payment_'.length);
+                const id = row.querySelector('input[id^="duePayment_"]').id.slice('duePayment_'.length);
                 return [id, Number(row.querySelector('.history-header').textContent.match(/Due: ₹([\d,.]+)/)[1].replace(/,/g, ''))];
             }));
             expect(rows).toEqual({ w1: due.w1, 'opening-wholesale-x': due['opening-wholesale-x'] });
             expect(Number(document.querySelector('#dueAging .aging-total').textContent.replace(/[^\d.]/g, ''))).toBe(outstandingTotals(data).receivable.total);
             // the old-app record keeps its chip and ages from its own date
-            const old = document.getElementById('payment_opening-wholesale-x').closest('.history-item');
+            const old = document.getElementById('duePayment_opening-wholesale-x').closest('.history-item');
             expect(old.querySelector('.old-app-chip')).not.toBeNull();
             expect(old.querySelector('.aging-age').textContent).toMatch(/284 days/);
         }

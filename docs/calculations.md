@@ -217,7 +217,7 @@ month); the "in loss" suggestion only shows when the month has sales.
 
 Each list holds the bills with BILL-DUE > ₹0.005 (`dueRows()` in `utils/aging.js`, the same rule as the aging panel and Money; voided and cleared bills owe nothing), aged from their bill date (OPENING records: the original date, with the "Old app" chip). A party row's Receive payment works on one list's bills (DUE-FIFO); in All a party with both retail and wholesale dues is told to use Retail or Wholesale. Reminders and statements cover the list shown. No extra reads: the wholesale dues come from the same `openDue` listener the Wholesale page and Money use.
 
-**Wholesale › Outstanding** (`modules/wholesale-sales.js`; it keeps its own list, the same dues as Outstanding › Sales › Wholesale) lists
+**Wholesale › Outstanding** (`modules/wholesale-sales.js`; it keeps its own list: the Wholesale page's bills, which is every wholesale bill the app saves, so the same dues as Outstanding › Sales › Wholesale) lists
 the Wholesale page's bills (`source: 'sales-tab'`, OPENING records included) with BILL-DUE > 0. Each
 shows BILL-DUE, the BILL-TOTAL (an OPENING record: its carried amount) and the cash + online received
 (BILL-PAY), the same rule as this page and Money (Σ = the wholesale part of O4 / M15's "to receive").

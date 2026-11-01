@@ -228,8 +228,8 @@ export class OutstandingManager {
                     </div>
                     <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                         <label style="flex-shrink: 0;">${tt(isPurchase ? 'ui.outstanding.pay_label' : 'ui.outstanding.received_label')}</label>
-                        <input type="number" inputmode="decimal" min="0" id="payment_${Helpers.escapeHtml(transaction.id)}" placeholder="${tt('ui.outstanding.cash_placeholder')}" aria-label="${tt('ui.outstanding.cash_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
-                        <input type="number" inputmode="decimal" min="0" id="paymentOnline_${Helpers.escapeHtml(transaction.id)}" placeholder="${tt('ui.outstanding.online_placeholder')}" aria-label="${tt('ui.outstanding.online_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+                        <input type="number" inputmode="decimal" min="0" id="${Helpers.escapeHtml(this.paymentInputIds(transaction.id, transaction.transactionType).cash)}" placeholder="${tt('ui.outstanding.cash_placeholder')}" aria-label="${tt('ui.outstanding.cash_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
+                        <input type="number" inputmode="decimal" min="0" id="${Helpers.escapeHtml(this.paymentInputIds(transaction.id, transaction.transactionType).online)}" placeholder="${tt('ui.outstanding.online_placeholder')}" aria-label="${tt('ui.outstanding.online_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
                         <button data-record-payment onclick="window.app.outstanding.recordPayment('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background-color: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.record')}</button>
                     </div>
                     <div style="margin-top: 8px;">
@@ -345,12 +345,12 @@ export class OutstandingManager {
 
     /**
      * Open Outstanding showing only one party's open bills.
-     * @param {'purchase'|'sale'} filter
+     * @param {'purchase'|'sale'|'retail'|'wholesale'} filter
      * @param {string} name Party name as typed on the bill
      */
     static showParty(filter, name) {
         const key = normalizePartyName(name);
-        this.filterDue(filter === 'purchase' ? 'purchase' : 'sale');
+        this.filterDue(DUE_FILTERS.includes(filter) ? filter : 'sale');
         if (!key) return;
         this.partyFilter = { key, name: String(name).trim() };
         this.renderDue();
@@ -444,10 +444,21 @@ export class OutstandingManager {
         return PrinterService.printStatement(statement);
     }
 
+    /**
+     * Ids of a bill's cash / online inputs. Wholesale rows get their own (#125): the
+     * Wholesale page lists the same bills with `payment_<id>`.
+     */
+    static paymentInputIds(id, type) {
+        return type === 'wholesale'
+            ? { cash: `duePayment_${id}`, online: `duePaymentOnline_${id}` }
+            : { cash: `payment_${id}`, online: `paymentOnline_${id}` };
+    }
+
     static async recordPayment(transactionId, transactionType) {
         // Cash and online parts (#107): only the cash part reaches the drawer
-        const paymentInput = document.getElementById(`payment_${transactionId}`);
-        const onlineInput = document.getElementById(`paymentOnline_${transactionId}`);
+        const ids = this.paymentInputIds(transactionId, transactionType);
+        const paymentInput = document.getElementById(ids.cash);
+        const onlineInput = document.getElementById(ids.online);
         const cash = Number(paymentInput?.value) || 0;
         const online = Number(onlineInput?.value) || 0;
         const entryId = this.paymentEntryId(paymentInput, `${round2(cash)}|${round2(online)}`);

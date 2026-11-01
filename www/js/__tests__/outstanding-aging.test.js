@@ -281,7 +281,7 @@ describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => 
         AppState.purchaseHistory = [];
         AppState.currentDueFilter = 'purchase';
     });
-    const ids = () => [...document.querySelectorAll('#dueList .history-item')].map(el => el.querySelector('input[id^="payment_"]').id.slice(8)).sort();
+    const ids = () => [...document.querySelectorAll('#dueList .history-item')].map(el => el.querySelector('input[type="number"]').id.replace(/^(due)?[pP]ayment_/, '')).sort();
     const total = () => document.querySelector('#dueAging .aging-total').textContent;
     const active = () => [...document.querySelectorAll('#due .filter-btn.active')].map(b => b.dataset.dueKind || b.className.match(/filter-(purchase|sale)/)[1]);
 
@@ -326,7 +326,17 @@ describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => 
 
     test('a wholesale bill on Outstanding records its payment, clears and opens as a wholesale bill', async () => {
         OutstandingManager.filterDue('sale');
-        const row = document.getElementById('payment_w2').closest('.history-item');
+        // its own input ids: the Wholesale page lists the same bill with payment_w2
+        expect(document.getElementById('payment_w2')).toBeNull();
+        const row = document.getElementById('duePayment_w2').closest('.history-item');
+        expect(row.querySelector('#duePaymentOnline_w2')).not.toBeNull();
+        const record = jest.spyOn(OutstandingManager, 'recordDuePayment').mockResolvedValue(true);
+        document.body.insertAdjacentHTML('beforeend', '<div id="salesOutstandingList"><input id="payment_w2" value="7"></div>');
+        row.querySelector('#duePayment_w2').value = '100';
+        row.querySelector('#duePaymentOnline_w2').value = '50';
+        await OutstandingManager.recordPayment('w2', 'wholesale');
+        expect(record).toHaveBeenCalledWith(expect.objectContaining({ billType: 'wholesale', billId: 'w2', cash: 100, online: 50 }));
+        expect(document.querySelector('#salesOutstandingList #payment_w2').value).toBe('7');
         expect(row.querySelector('[data-record-payment]').getAttribute('onclick')).toContain("recordPayment('w2', 'wholesale')");
         expect(row.querySelector('[data-mark-cleared]').getAttribute('onclick')).toContain("markAsCleared('w2', 'wholesale')");
         window.app = { wholesaleSales: { reprintSaleById: jest.fn() } };
@@ -345,6 +355,21 @@ describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => 
         expect(btn('sita').getAttribute('onclick')).toContain("'retail')");
         OutstandingManager.filterDue('wholesale');
         expect(btn('gupta').getAttribute('onclick')).toContain("'wholesale')");
+    });
+
+    test('window.app passes the list to Receive payment; the billing hint and the Today reminder open Retail', async () => {
+        jest.spyOn(console, 'log').mockImplementation(() => {});
+        await import('../main.js');
+        const receive = jest.spyOn(OutstandingManager, 'receiveFromParty').mockResolvedValue(undefined);
+        window.app.outstanding.receiveFromParty('hotel raj', 'wholesale');
+        expect(receive).toHaveBeenCalledWith('hotel raj', 'wholesale');
+        const show = jest.spyOn(OutstandingManager, 'showParty').mockImplementation(() => {});
+        window.app.outstanding.showParty('retail', 'Gupta');
+        expect(show).toHaveBeenCalledWith('retail', 'Gupta');
+        show.mockRestore();
+        OutstandingManager.showParty('retail', 'Gupta');
+        expect(ids()).toEqual(['r1']);
+        expect(document.querySelector('#dueSaleKinds [data-due-kind="retail"]').classList.contains('active')).toBe(true);
     });
 
     test('reminders and statements on All cover the party\'s retail and wholesale dues', async () => {

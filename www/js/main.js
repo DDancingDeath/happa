@@ -1115,7 +1115,7 @@ window.app = {
         setAgingSort: (by) => OutstandingManager.setAgingSort(by),
         setPartiesOpen: (open) => OutstandingManager.setPartiesOpen(open),
         sendReminder: (partyKey) => OutstandingManager.sendReminder(partyKey),
-        receiveFromParty: (partyKey) => OutstandingManager.receiveFromParty(partyKey),
+        receiveFromParty: (partyKey, billType) => OutstandingManager.receiveFromParty(partyKey, billType),
         partyPayFill: () => OutstandingManager.partyPayFill(),
         partyPaySum: () => OutstandingManager.partyPaySum(),
         printStatement: (partyKey) => OutstandingManager.printStatement(partyKey),
@@ -1126,7 +1126,7 @@ window.app = {
             NavigationManager.setActiveNavLink(tab);
             NavigationManager.showTab(tab);
             if (kind === 'wholesale') WholesaleSalesManager.showOutstandingParty(name);
-            else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : 'sale', name);
+            else OutstandingManager.showParty(kind === 'purchase' ? 'purchase' : kind === 'sale' ? 'sale' : 'retail', name);
         }
     },
     
