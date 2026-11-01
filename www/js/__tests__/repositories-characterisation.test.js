@@ -686,4 +686,43 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         expect(Array.isArray(managerPeople)).toBe(true);
         expect(FirebaseService.serverTimestamp()).toBe('SERVER_TIME');
     });
+
+    test('settings/app: one read per app open, checked section saves, a refused stale save, the unchecked seed, receipt', async () => {
+        fake.seed('dev_settings', [{ id: 'app', minClientVersion: 1, labourUpdatedAt: 5, checksUpdatedAt: 6 }]);
+        const supported = await FirebaseService.isClientVersionSupported();
+        const cached = await FirebaseService.loadAppSettings();
+        await FirebaseService.saveSharedLabourSettings({ laborRate: 7, heavyWeightThreshold: 30, labourPackageKg: 50 });
+        await FirebaseService.saveSharedCheckThresholds({ rateMultiple: 3 });
+        await FirebaseService.saveBusinessDetails({ businessName: 'Shop', businessDetails: 'Road 1' });
+        await FirebaseService.saveTipPolicies({ BillSave: { rollback: 'off' } });
+        await FirebaseService.saveRoleAccess({ manager: { editDays: 3 }, staff: { editDays: 1 } });
+        await fake.db.collection('dev_settings').doc('app').set({ checksUpdatedAt: 99 }, { merge: true });
+        await expect(FirebaseService.saveSharedCheckThresholds({ rateMultiple: 4 })).rejects.toMatchObject({ code: 'changed-elsewhere' });
+        await settle();
+        await FirebaseService.saveSharedCheckThresholds({ rateMultiple: 5 }, { checked: false });
+        const first = await FirebaseService.saveReceiptSettings({ footer: 'Thanks' }, { base: { lang: 'en' } });
+        const kept = await FirebaseService.saveReceiptSettings({ footer: 'x' }, { onlyIfMissing: true });
+        const afterReceipt = await FirebaseService.loadAppSettings();
+        FirebaseService.cleanup();
+        const fresh = await FirebaseService.loadAppSettings();
+        pin('service.settings', rec.log);
+        expect(supported).toBe(true);
+        expect(cached).toMatchObject({ minClientVersion: 1 });
+        expect([first.applied, kept.applied]).toEqual([true, false]);
+        expect(afterReceipt.receipt).toEqual(first.receipt);
+        expect(fresh).toMatchObject({ laborRate: 7, businessName: 'Shop', checkThresholds: { rateMultiple: 5 } });
+    });
+
+    test('settings/app never read on this phone: a checked save is refused and settings/app read', async () => {
+        await expect(FirebaseService.saveBusinessDetails({ businessName: 'A', businessDetails: '' })).rejects.toMatchObject({ code: 'changed-elsewhere' });
+        await settle();
+        pin('service.settings-unread', rec.log);
+    });
+
+    test('a withdrawal: one set of a client-made id, stamped with the later of now and its day', async () => {
+        const { record, committed } = FirebaseService.startSaveWithdrawal({ amount: 500, person: 'Owner', purpose: 'Home', date: '2026-10-20' });
+        await committed;
+        pin('service.withdrawal', rec.log);
+        expect(record.timestamp).toBe(NOW);
+    });
 });
