@@ -196,7 +196,10 @@ In order:
 - **PWA install**: `www/manifest.webmanifest` + `www/icons/` make the web app
   installable; `js/services/install-prompt.js` drives the Settings →
   "Install App" card (hidden inside the Capacitor app and when already
-  installed). Manifest/icon changes must stay in `STATIC_ASSETS`.
+  installed). Manifest/icon changes must stay in `STATIC_ASSETS`. The manifest's
+  `shortcuts` open `/?shortcut=<key>` (`utils/launch-shortcut.js`, applied once after
+  sign-in by `main.js`); its `screenshots` live in `www/screenshots/` (JPEG, not
+  precached; retake them from the E2E seed data when the screens change, #151).
 - **Desktop layout (≥ 1024 px)**: `www/css/desktop.css` holds every desktop
   rule inside `@media (min-width: 1024px)` (plus a `1440px` tier). The phone
   layout must not change unless an issue says so — put desktop-only CSS
@@ -224,6 +227,10 @@ In order:
   `saveBill` / `startSaveExpense` send and `waitForPendingWrites()`: no Firestore reads.
 - **State**: a single `AppState` object lives in `state.js`. Never invent
   a parallel cache.
+- **Usage counters (#136)**: `track('<event>')` from `services/usage.js` counts a
+  feature use per day on this phone only (IndexedDB, never Firestore; Settings ›
+  Usage on this phone). Only the documented names in `utils/usage-stats.js`
+  (`USAGE_EVENTS`, `page.<id>` from `aadhat:tabshown`) count; never pass user text.
 - **Businesses / Rentals (#149, #170)**: one app, an `Aadhat | Rentals` switch
   (`js/ui/business-switcher.js`). The first business is shown as **Aadhat** /
   **आढ़त** (formerly "Shop"); code ids, the switcher key, `users.role`,

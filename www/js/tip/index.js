@@ -16,9 +16,14 @@ import { BillSaveTest } from './scenarios/bill-save.js';
 import { PaymentRecordTest } from './scenarios/payment-record.js';
 import { CashCloseTest } from './scenarios/cash-close.js';
 import { SessionReadsTest } from './scenarios/session-reads.js';
+import { PrintTest } from './scenarios/print.js';
+import { SyncTest } from './scenarios/sync.js';
+import { StockCheckpointTest } from './scenarios/stock-checkpoint.js';
+import { NumberChecksTest } from './scenarios/number-checks.js';
 import { APP_VERSION } from '../version.js';
 
-export const SCENARIOS = [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest, SessionReadsTest];
+export const SCENARIOS = [AppStartTest, BillSaveTest, PaymentRecordTest, CashCloseTest, SessionReadsTest,
+    PrintTest, SyncTest, StockCheckpointTest, NumberChecksTest];
 
 const KEYS = {
     lastFlush: 'aadhat.tip.lastFlush',

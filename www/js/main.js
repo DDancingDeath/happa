@@ -28,6 +28,10 @@ import { AnomaliesManager } from './modules/anomalies.js';
 import { HealthManager } from './modules/health.js';
 import { RolesAccessManager } from './modules/roles-access.js';
 import { tip, configureTip, startTipReporting, tipDeviceId } from './tip/index.js';
+import { dayKeyOf } from './tip/tip.js';
+import { createSyncWatcher } from './tip/scenarios/sync.js';
+import { claimToday, numberChecksProps } from './tip/scenarios/number-checks.js';
+import { whenIdle } from './utils/background-tasks.js';
 import { APP_VERSION } from './version.js';
 import { AuditService } from './services/audit.js';
 import { TelemetryService } from './services/telemetry.js';
@@ -43,6 +47,8 @@ import { Helpers } from './utils/helpers.js';
 import { InstallManager } from './services/install-prompt.js';
 import { SecurityMonitor } from './services/security-monitor.js';
 import { startLongTaskRecorder } from './utils/perf-probe.js';
+import { shortcutFromSearch, withoutShortcut } from './utils/launch-shortcut.js';
+import { UsageView } from './ui/usage-view.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
 // Build stamp — bumped on every deploy that ships new JS so you can verify
@@ -50,7 +56,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbk-today-reminders';
+const BUILD_ID = '20261101zzuzieecmbbkhbf-today-reminders';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -121,6 +127,26 @@ on(REFRESH.statements, () => loadStatements().then(m => m.render()));
 
 // Read meter alerts (#159) become TIP SessionReads failures, which reach the daily tip-auto issues.
 on(READS_ALERT, ({ kind, reads }) => tip.start('SessionReads').complete({ [kind]: true, reads }));
+// TIP Sync (#161): changes waiting to sync reach the server within the limit.
+const tipSyncWatcher = createSyncWatcher((opts) => tip.start('Sync', opts));
+SyncStatus.watch((s) => tipSyncWatcher.update(s));
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') tipSyncWatcher.hidden();
+});
+
+/** TIP NumberChecks (#161): once a day on an owner's / manager's phone, when the phone is idle. */
+function scheduleTipNumberChecks() {
+    if (AppState.userRole !== 'owner' && AppState.userRole !== 'manager') return;
+    whenIdle(() => {
+        try {
+            if (!AppState.stockReady || !claimToday(localStorage, dayKeyOf(Date.now()))) return;
+            const run = tip.start('NumberChecks');
+            run.complete(numberChecksProps(DiagnosticsManager.numberCheckResults()));
+        } catch (e) {
+            console.warn('TIP number checks failed:', e?.message || e);
+        }
+    }, { minDelayMs: 30000 });
+}
 
 // Load and inject HTML templates from separate .html files. The login screen
 // and app shell go in first; the pages load while Firebase restores the
@@ -297,6 +323,18 @@ function writeTipReport({ delta, failures }) {
         uid, deviceId: tipDeviceId(uid), delta, failures,
         appVersion: APP_VERSION, buildId: BUILD_ID, platform: native ? 'android' : 'web'
     });
+}
+
+/** Opens the page of a home-screen shortcut (#151) once, after the first screen. */
+function openLaunchShortcut() {
+    const shortcut = shortcutFromSearch(window.location.search);
+    if (!shortcut) return;
+    window.history.replaceState(window.history.state, '', withoutShortcut(window.location.pathname, window.location.search, window.location.hash));
+    if (shortcut.tab !== 'billing') {
+        if (NavigationManager.showTab(shortcut.tab) !== false) NavigationManager.setActiveNavLink(shortcut.tab);
+        return;
+    }
+    if (shortcut.mode) BillingManager.switchMode(shortcut.mode, { currentTarget: document.getElementById(shortcut.mode === 'sale' ? 'saleModeBtn' : 'purchaseModeBtn') });
 }
 
 async function initializeUserData() {
@@ -483,6 +521,9 @@ async function initializeUserData() {
         
         // Check for auto-saved bill
         await BillingManager.checkAutoSave();
+        // After the recovery check: a mode switch auto-saves, and with no recovery
+        // pending an empty form deletes the auto-save the check must still read
+        openLaunchShortcut();
         BillingManager.renderBillNumber();
         BillingManager.focusFirstItem();
         if (outdatedBlocked) {
@@ -507,7 +548,10 @@ async function initializeUserData() {
         // Offline / waiting-to-sync pill (#70)
         SyncStatus.start({ pendingWrites: () => FirebaseService.pendingWritesWaiter() });
         FirebaseService.prepareStock({ defer: true })
-            .then(() => markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox }));
+            .then(() => {
+                markStartup('stock', { ready: AppState.stockReady, approximate: !!AppState.stockApprox });
+                scheduleTipNumberChecks();
+            });
 
         // What's new + Android update banner (non-blocking, best effort)
         AppUpdatesManager.onAppReady();
@@ -1258,12 +1302,20 @@ window.app = {
         shareStatus: () => DiagnosticsManager.shareStatus()
     },
     
+    // Settings › Usage on this phone (#136, local only)
+    usage: {
+        setRange: (range) => UsageView.setRange(range),
+        copy: () => UsageView.copy(),
+        clear: () => UsageView.clear()
+    },
+
     // Admin (owner only)
     admin: {
         init: () => AdminManager.init(),
         showTab: (tab) => AdminManager.showTab(tab),
         saveCheckThresholds: () => SettingsManager.saveCheckThresholds(),
         approveUser: (userId) => AdminManager.approveUser(userId),
+        showActivity: (range) => AdminManager.showActivity(range),
         rejectUser: (userId) => AdminManager.rejectUser(userId),
         restoreUser: (userId, userName) => AdminManager.restoreUser(userId, userName),
         showChangeRole: (userId, userName, currentRole) => AdminManager.showChangeRole(userId, userName, currentRole),
