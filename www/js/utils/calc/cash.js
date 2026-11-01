@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Every cash drawer figure for one cash session's day
  * (docs/calculations.md C1–C9) and the drawer's rules: the count against the
@@ -43,42 +44,42 @@ export const CONFIRM_ABOVE = 1;
 export const WARN_FROM = 50;
 export const HIGH_FROM = 500;
 
-const billTime = (value) => {
+const billTime = (/** @type {*} */ value) => {
     const d = parseAnyBillDate(value);
     return d ? d.getTime() : NaN;
 };
 
 /** BILL-TIME of a bill: its numeric `timestamp` (the time the rules check, #147), else its `date`. */
-export const billDayTime = (bill) => (typeof bill?.timestamp === 'number' && Number.isFinite(bill.timestamp) && bill.timestamp > 0
+export const billDayTime = (/** @type {?Bill|undefined} */ bill) => (typeof bill?.timestamp === 'number' && Number.isFinite(bill.timestamp) && bill.timestamp > 0
     ? bill.timestamp : billTime(bill?.date));
 
 /**
  * DAY of a cash session: local midnight of `date` to the next local midnight.
- * @param {string} date YYYY-MM-DD
+ * @param {string|undefined} date YYYY-MM-DD
  * @returns {{from: number, to: number}} ms; NaN for both when the date can't be read
  */
 export function dayBounds(date) {
     const dayStart = parseLocalDate(date);
     return {
         from: dayStart ? dayStart.getTime() : NaN,
-        to: dayStart ? endOfLocalDayExclusive(dayStart).getTime() : NaN
+        to: dayStart ? /** @type {Date} */ (endOfLocalDayExclusive(dayStart)).getTime() : NaN
     };
 }
 
 /**
  * C1–C6 for one day: what the drawer took in and paid out in cash.
- * @param {Object} src
- * @param {string} src.date YYYY-MM-DD
- * @param {{wholesale?: Object[], retail?: Object[], purchase?: Object[]}} [src.bills] All loaded bills (due payments on older bills count too)
- * @param {Object[]} [src.expenses] Loaded expenses (business, and personal ones when this phone has them); only cash ones count
- * @param {?Object} [src.session] The day's cash session: its due legs (C4, C5) and deposits (C6)
+ * @param {Object} [src]
+ * @param {string} [src.date] YYYY-MM-DD
+ * @param {{wholesale?: Bill[], retail?: Bill[], purchase?: Bill[]}} [src.bills] All loaded bills (due payments on older bills count too)
+ * @param {Expense[]} [src.expenses] Loaded expenses (business, and personal ones when this phone has them); only cash ones count
+ * @param {?CashSession} [src.session] The day's cash session: its due legs (C4, C5) and deposits (C6)
  * @param {boolean} [src.personalReadable=true] This phone has the personal expense rows (#98)
  * @param {?{total?: number, count?: number, online?: number}} [src.personalDay] The day's personalExpenseDays totals, used only when not readable
  * @returns {{cashSales: number, cashPurchases: number, businessExpenses: number, personalExpenses: number, dueReceived: number, duePaid: number, cashDeposits: number}}
  */
 export function drawerDay({ date, bills = {}, expenses = [], session = null, personalReadable = true, personalDay = null } = {}) {
     const { from: dateStart, to: dateEnd } = dayBounds(date);
-    const inDay = (value) => {
+    const inDay = (/** @type {*} */ value) => {
         const t = billTime(value);
         return t >= dateStart && t < dateEnd;
     };
@@ -99,7 +100,7 @@ export function drawerDay({ date, bills = {}, expenses = [], session = null, per
 
     // BILL-AT-SAVE cash (payment.* is canonical); cash collected later on the
     // bill counts as a due payment on its own day.
-    const billInDay = (bill) => {
+    const billInDay = (/** @type {Bill} */ bill) => {
         const t = billDayTime(bill);
         return t >= dateStart && t < dateEnd;
     };
@@ -138,14 +139,14 @@ export function drawerDay({ date, bills = {}, expenses = [], session = null, per
         });
     }
 
-    Object.keys(transactions).forEach(k => { transactions[k] = round2(transactions[k]); });
+    /** @type {Array<keyof typeof transactions>} */ (Object.keys(transactions)).forEach(k => { transactions[k] = round2(transactions[k]); });
     return transactions;
 }
 
 /**
  * C7 of the open day; 0 without a session.
- * @param {?Object} session
- * @param {Object} transactions drawerDay()
+ * @param {?CashSession} session
+ * @param {Rec} transactions drawerDay()
  * @returns {number}
  */
 export function expectedCash(session, transactions) {
@@ -160,6 +161,7 @@ export function expectedCash(session, transactions) {
  */
 export function differenceBand(diff) {
     const abs = Math.abs(diff);
+    /** @type {'ok'|'warn'|'high'} */
     let level = 'ok';
     if (abs >= HIGH_FROM) level = 'high';
     else if (abs >= WARN_FROM) level = 'warn';
@@ -195,8 +197,8 @@ export function savedDifference(counted, expected) {
  * was closed with (its stored `transactions`, `expectedBalance`, `difference`,
  * as the history and the day details do), never the live figures: a later
  * void (VOID-EXP) doesn't change a closed count.
- * @param {Object} session
- * @param {Object} transactions drawerDay(), used only while the day is open
+ * @param {Rec} session
+ * @param {?Rec} transactions drawerDay(), used only while the day is open
  */
 export function drawerStatus(session, transactions) {
     const closed = !!session.signedOut;
@@ -225,8 +227,8 @@ export function drawerStatus(session, transactions) {
 /**
  * The sign-out summary of the open day: each C figure, cash in with the
  * opening (paise), cash out and expected (C7).
- * @param {?Object} session
- * @param {Object} transactions drawerDay()
+ * @param {?Rec} session
+ * @param {?Rec} transactions drawerDay()
  */
 export function signOutSummary(session, transactions) {
     const tx = transactions || {};
@@ -257,6 +259,7 @@ export function signOutSummary(session, transactions) {
  */
 export function countCheck(counted, expected, thresholds) {
     const diff = difference(counted ?? 0, expected);
+    /** @type {'match'|'extra'|'short'} */
     let kind = 'short';
     if (Math.abs(diff) < MATCH_WITHIN) kind = 'match';
     else if (diff > 0) kind = 'extra';
@@ -301,8 +304,8 @@ export function openingCheck(lastClosing, opening) {
  * cash out and expected (C7) from the transactions given (the saved snapshot,
  * or today's live totals), and the colour bands of the saved difference and of
  * counted − expected balance.
- * @param {Object} session
- * @param {Object} transactions
+ * @param {Rec} session
+ * @param {?Rec} transactions
  * @param {boolean} uncounted isNotCounted(session)
  */
 export function sessionDetail(session, transactions, uncounted) {

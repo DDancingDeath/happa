@@ -26,8 +26,8 @@ export function parseCashAmount(raw) {
  * snapshot (or the live totals passed in). Same field names everywhere:
  * cashSales, cashPurchases, businessExpenses, personalExpenses, dueReceived,
  * duePaid, cashDeposits.
- * @param {Object} session
- * @param {Object} [transactions=session.transactions]
+ * @param {?Rec} session
+ * @param {?Rec} [transactions=session.transactions]
  * @returns {{opening: number, cashIn: number, cashOut: number, expected: number}}
  *   cashIn excludes the opening balance; expected = opening + cashIn − cashOut.
  */
