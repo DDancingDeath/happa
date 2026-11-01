@@ -98,6 +98,11 @@ Each page has its own short file in `docs/pages/` (English and Hindi): what it s
 
 - The header pill shows **Offline** or "N changes waiting to sync". Saved bills are
   kept on the phone and sent when the internet is back. Do not enter them again.
+  Offline, it also says how old the figures are ("data as of 2:05 pm").
+- In History and Expenses a row this phone has not sent yet shows **Waiting to sync**,
+  and **Saved** once it reached the server.
+- Close cash asks first while this phone still has changes waiting: other phones
+  don't see them yet.
 - "Saving… not confirmed on this phone yet": look in History before typing the
   bill again.
 - "Save failed — storage full": free space on the phone; until then nothing new
