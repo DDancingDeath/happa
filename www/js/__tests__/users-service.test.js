@@ -1,5 +1,5 @@
 /**
- * @fileoverview User-profile access for admin.js / users.js goes through
+ * @fileoverview User-profile access for admin.js goes through
  * FirebaseService (#123): env prefix, client-side createdAt ordering, and the
  * exact fields the approve / role-change flows write.
  */
@@ -7,7 +7,6 @@ import fs from 'fs';
 import path from 'path';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AdminManager } from '../modules/admin.js';
-import { UsersManager } from '../modules/users.js';
 import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { createFakeFirestore } from './__mocks__/fake-firestore.js';
@@ -61,17 +60,8 @@ describe('admin flows write the same fields as before', () => {
         expect(typeof userDoc('new').approvedAt).toBe('number');
     });
 
-    test('UsersManager.approveUser / changeUserRole keep their field sets', async () => {
-        await UsersManager.approveUser('new', 'staff');
-        expect(userDoc('new')).toMatchObject({ status: 'active', role: 'staff' });
-        expect(userDoc('new').approvedBy).toBeUndefined();
-        await UsersManager.changeUserRole('old', 'manager');
-        expect(userDoc('old')).toMatchObject({ role: 'manager' });
-        expect(typeof userDoc('old').updatedAt).toBe('number');
-    });
-
-    test('admin.js and users.js no longer open Firestore directly', () => {
-        for (const file of ['admin.js', 'users.js']) {
+    test('admin.js does not open Firestore directly', () => {
+        for (const file of ['admin.js']) {
             const src = fs.readFileSync(path.join(__dirname, '..', 'modules', file), 'utf8');
             expect(src).not.toMatch(/firebase\.firestore\(\)|\.collection\(/);
         }
@@ -91,16 +81,14 @@ describe('reset password and remove user (AadhatManagementApp#74)', () => {
         jest.spyOn(UIManager, 'showLoading').mockImplementation(() => {});
         jest.spyOn(UIManager, 'hideLoading').mockImplementation(() => {});
         jest.spyOn(console, 'error').mockImplementation(() => {});
-        document.body.innerHTML = '<div id="adminPendingUsers"></div><div id="adminActiveUsers"></div>'
-            + '<div id="pendingUsersList"></div><div id="activeUsersList"></div>';
+        document.body.innerHTML = '<div id="adminPendingUsers"></div><div id="adminActiveUsers"></div>';
     });
 
     test('reset sends the Firebase Auth reset email after confirmation', async () => {
         await expect(AdminManager.resetUserPassword('old', 'old@x.com')).resolves.toBe(true);
         expect(modal.mock.calls[0][0]).toContain('old@x.com');
         expect(auth.sendPasswordResetEmail).toHaveBeenCalledWith('old@x.com');
-        await expect(UsersManager.resetUserPassword('old', 'old@x.com')).resolves.toBe(true);
-        expect(auth.sendPasswordResetEmail).toHaveBeenCalledTimes(2);
+        expect(auth.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
     });
 
     test('reset does nothing when cancelled, without an email, or for a non-owner', async () => {
@@ -130,14 +118,11 @@ describe('reset password and remove user (AadhatManagementApp#74)', () => {
         expect(doc).not.toHaveProperty('approvedBy');
         expect(document.getElementById('adminActiveUsers').textContent).not.toContain('Old');
         expect(document.getElementById('adminPendingUsers').textContent).not.toContain('Old');
-        await UsersManager.loadUsers();
-        expect(document.getElementById('activeUsersList').textContent).not.toContain('Old');
-        expect(document.getElementById('pendingUsersList').textContent).not.toContain('Old');
     });
 
     test('remove is refused when cancelled, for a non-owner, or for yourself', async () => {
         modal.mockResolvedValueOnce(false);
-        expect(await UsersManager.deleteUser('old', 'Old')).toBe(false);
+        expect(await AdminManager.deleteUser('old', 'Old')).toBe(false);
         expect(await AdminManager.deleteUser('owner-1', 'Me')).toBe(false);
         AppState.userRole = 'manager';
         expect(await AdminManager.deleteUser('old', 'Old')).toBe(false);
@@ -151,8 +136,6 @@ describe('reset password and remove user (AadhatManagementApp#74)', () => {
         expect(document.getElementById('adminPendingUsers').textContent).not.toContain('New');
         expect(document.getElementById('adminRemovedCard').hidden).toBe(false);
         expect(document.getElementById('adminRemovedUsers').textContent).toContain('New');
-        await expect(UsersManager.rejectUser('old')).resolves.toBe(true);
-        expect(userDoc('old')).toMatchObject({ status: 'rejected' });
     });
 
     test('restore puts a removed or rejected person back as a pending registration (#84)', async () => {
