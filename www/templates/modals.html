@@ -51,6 +51,7 @@
                 <div style="margin-bottom: 20px;">
                     <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.modals.item_name_english">Item Name (English)*</label>
                     <input type="text" id="itemModalName" 
+                           oninput="window.app.items.onModalNameInput('name')" onfocus="window.app.items.acceptNameSuggestion('name')"
                            placeholder="Enter item name"
                            style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;" data-i18n-placeholder="ui.modals.enter_item_name">
                 </div>
@@ -58,6 +59,7 @@
                 <div style="margin-bottom: 20px;">
                     <label style="font-size: 14px; font-weight: 600; color: #333; margin-bottom: 8px; display: block;" data-i18n="ui.items.hindi_name_label">Hindi name</label>
                     <input type="text" id="itemModalHindiName" 
+                           oninput="window.app.items.onModalNameInput('hindiName')" onfocus="window.app.items.acceptNameSuggestion('hindiName')"
                            placeholder="Hindi name (optional)" data-i18n-placeholder="ui.items.hindi_name_optional"
                            style="width: 100%; padding: 12px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;">
                 </div>
