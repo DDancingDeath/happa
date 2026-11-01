@@ -24,7 +24,7 @@ import { historyLoadedFrom, isFullHistoryLoaded, ensureHistoryFrom, refreshOnDem
 import { lastCountedSession } from '../utils/cash-session.js';
 import { refusedForClock } from '../utils/clock-skew.js';
 import {
-    moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth,
+    moneySummary, periodRange, comparisonRanges, change, outstandingTotals, netWorth, fiscalYearLabel,
     itemSummary, biggestChange, profitPerDay, billTime, roundTo, sharePct, addsUp, netMoneyByDay,
     accountsTotal
 } from '../utils/business-metrics.js';
@@ -175,6 +175,8 @@ export const MoneyManager = {
         const { preset } = getInsightsContext();
         if (/year$/.test(preset)) {
             setInsightsContext({ preset: preset === 'this-year' ? (dir < 0 ? 'last-year' : 'this-year') : (dir > 0 ? 'this-year' : 'last-year') });
+        } else if (/-fy$/.test(preset)) {
+            setInsightsContext({ preset: dir < 0 ? 'last-fy' : 'this-fy' });
         } else {
             const from = Number.isFinite(r.from) ? new Date(r.from) : now;
             const target = monthStart(from, dir);
@@ -211,6 +213,7 @@ export const MoneyManager = {
         }
         if (preset === 'last-30') return t('ui.money.p_last_30');
         if (/year$/.test(preset)) return String(new Date(r.from).getFullYear());
+        if (r.fy) return t('ui.money.fy_label', { years: fiscalYearLabel(r.fy) });
         return t('ui.money.p_all');
     },
 

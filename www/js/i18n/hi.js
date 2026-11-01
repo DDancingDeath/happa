@@ -2533,5 +2533,8 @@ export default {
     'ui.today.reminder_rent': "किराया बाकी",
     'ui.today.reminder_rent_units': "{count} यूनिट का किराया बाकी · {late} देर से",
     'ui.today.reminder_as_of': "किराया पेज पर {time} को जैसा दिखा",
-    'ui.today.reminder_open_rent': "किराया खोलें"
+    'ui.today.reminder_open_rent': "किराया खोलें",
+    'ui.money.p_this_fy': "यह वित्त वर्ष",
+    'ui.money.p_last_fy': "पिछला वित्त वर्ष",
+    'ui.money.fy_label': "वित्त वर्ष {years}"
 };
