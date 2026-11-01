@@ -102,6 +102,8 @@ const DEVANAGARI_DIGITS = /[\u0966-\u096F]/g;
 
 // Units and codes kept as typed (the Hindi screens also write "kg")
 const KEEP_AS_TYPED = new Set(['kg', 'kgs', 'g', 'gm', 'gms', 'ml', 'l', 'ltr', 'qtl', 'pc', 'pcs', 'no']);
+// Kilo anywhere is the weight unit, written "kg" in Hindi too (never the Hindi word)
+const KILO_WORDS = new Set(['kilo', 'kilos', 'kilogram', 'kilograms', 'kgm']);
 // Unit words after a number ("50 gram"): kept as typed, never read as an item ("gram" is also chana)
 const UNIT_WORDS = new Set(['gram', 'grams', 'kilo', 'kilos', 'kilogram', 'kilograms', 'litre', 'litres', 'liter', 'liters', 'quintal', 'quintals']);
 // Hindi unit words a user may type → the unit the English name writes. The kilo words are
@@ -240,6 +242,10 @@ export function suggestHindiName(english) {
             continue;
         }
         const key = part.toLowerCase();
+        if (KILO_WORDS.has(key)) {
+            out += 'kg';
+            continue;
+        }
         const phrase = /^\s+$/.test(parts[i + 1] || '') && isWord(parts[i + 2] || '') ? `${key} ${parts[i + 2].toLowerCase()}` : null;
         if (phrase && PHRASES_TO_HINDI.has(phrase)) {
             out += PHRASES_TO_HINDI.get(phrase);
