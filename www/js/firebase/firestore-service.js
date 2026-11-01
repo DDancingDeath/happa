@@ -49,6 +49,7 @@ import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed, pauseBac
 import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
+import { track } from '../services/usage.js';
 import { billSaveProps } from '../tip/scenarios/bill-save.js';
 
 // Count reads and catch quota errors for every Firestore call in the app (#194).
@@ -981,6 +982,7 @@ async function saveBill(collKey, record, label, { retry = false } = {}) {
 
 /** TIP BillSave run (#217) for a new bill; never throws. @private */
 function startBillSaveRun(collKey, record, retry) {
+    if (!retry) track(`bill.save.${collKey}`);
     try {
         return tip.start('BillSave', {
             flags: { retry: !!retry, offline: typeof navigator !== 'undefined' && navigator.onLine === false },
