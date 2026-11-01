@@ -14,6 +14,8 @@ import { getStartupTimings, startupRows } from '../utils/startup-timings.js';
 import { getQuotaStatus } from '../firebase/firestore-meter.js';
 import { t } from '../i18n/index.js';
 import { auditActionLabel } from '../i18n/localize.js';
+import { formatAuditDetails, auditWho, auditWhoText, peopleById } from '../utils/audit-changes.js';
+import { FirebaseService } from '../firebase/firestore-service.js';
 
 const tx = (key, params) => Helpers.escapeHtml(t(key, params));
 import { runNumberChecks } from '../utils/number-checks.js';
@@ -40,6 +42,7 @@ const DiagnosticsManager = {
      * @type {Array}
      */
     auditLogs: [],
+    auditPeople: new Map(),
 
     /**
      * Current error filter
@@ -335,7 +338,7 @@ const DiagnosticsManager = {
                     <option value="toast" ${this.filter === 'toast' ? 'selected' : ''}>${tx('ui.diag.t_toast')}</option>
                 </select>
                 <button onclick="window.app.diagnostics.loadData()" class="diag-btn refresh">🔄</button>
-                <button onclick="window.app.diagnostics.clearAll()" class="diag-btn danger">🗑️</button>
+                <button onclick="window.app.diagnostics.clearAll()" class="diag-btn danger" title="${tx('msg.diagnostics.clear_all_diagnostics')}" aria-label="${tx('msg.diagnostics.clear_all_diagnostics')}">🙈</button>
             </div>
 
             <!-- Error List -->
@@ -383,7 +386,7 @@ const DiagnosticsManager = {
                     <span class="diag-error-type">${typeLabels[error.type] || Helpers.escapeHtml(error.type)}</span>
                     ${error.type === 'toast' ? `<span class="diag-error-ref">${tx('ui.diag.ref', { ref: error.id })}</span>` : ''}
                     <span class="diag-error-count">${Helpers.escapeHtml(error.count || 1)}×</span>
-                    <button onclick="window.app.diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn">×</button>
+                    <button onclick="window.app.diagnostics.deleteError('${Helpers.escapeJsAttr(error.id)}')" class="diag-delete-btn" title="${tx('msg.diagnostics.hide_error_title')}" aria-label="${tx('msg.diagnostics.hide_error_title')}">×</button>
                 </div>
                 <div class="diag-error-message">${this.escapeHtml(error.message || t('ui.diag.no_message'))}</div>
                 ${error.source ? `<div class="diag-error-source">📍 ${Helpers.escapeHtml(error.source)}:${Helpers.escapeHtml(error.line || '?')}</div>` : ''}
@@ -422,7 +425,16 @@ const DiagnosticsManager = {
         
         UIManager.showLoading();
         try {
-            this.auditLogs = await AuditService.getRecentLogs(100);
+            // Profiles name the writer: an entry's stored name and role are whatever the phone sent (#85)
+            const [logs, people] = await Promise.all([
+                AuditService.getRecentLogs(100),
+                FirebaseService.loadAuditPeople().catch(e => {
+                    console.warn('Audit: profiles not read:', e?.code || e);
+                    return [];
+                })
+            ]);
+            this.auditLogs = logs;
+            this.auditPeople = peopleById(people);
             this.renderAuditLogs();
         } catch (error) {
             console.error('Error loading audit logs:', error);
@@ -489,7 +501,8 @@ const DiagnosticsManager = {
         
         const actionIcon = this.getActionIcon(log.action);
         const actionColor = this.getActionColor(log.action);
-        const details = this.formatDetails(log.details);
+        const details = this.formatDetails(log.details, log.action);
+        const who = auditWhoText(auditWho(log, this.auditPeople), Helpers.roleLabel);
 
         return `
             <div class="diag-audit-card" style="border-left: 4px solid ${actionColor};">
@@ -499,7 +512,7 @@ const DiagnosticsManager = {
                     <span class="diag-audit-time">${formattedDate}</span>
                 </div>
                 <div class="diag-audit-user">
-                    <strong>${Helpers.escapeHtml(log.userName)}</strong> (${Helpers.escapeHtml(Helpers.roleLabel(log.userRole))})
+                    <strong>${Helpers.escapeHtml(who.main)}</strong>${who.note ? ` · <small>${Helpers.escapeHtml(who.note)}</small>` : ''}
                 </div>
                 ${details ? `<div class="diag-audit-details">${Helpers.escapeHtml(details)}</div>` : ''}
             </div>
@@ -545,19 +558,8 @@ const DiagnosticsManager = {
      * @param {Object} details - Details object
      * @returns {string} Formatted string
      */
-    formatDetails(details) {
-        if (!details || typeof details !== 'object') return '';
-        
-        const parts = [];
-        if (details.billNumber) parts.push(t('ui.settings.audit_bill', { value: details.billNumber }));
-        if (details.amount) parts.push(t('ui.settings.audit_amount', { value: details.amount }));
-        if (details.customer) parts.push(t('ui.settings.audit_customer', { value: details.customer }));
-        if (details.itemName) parts.push(t('ui.settings.audit_item', { value: details.itemName }));
-        if (details.paymentAmount) parts.push(t('ui.settings.audit_payment', { value: details.paymentAmount }));
-        if (details.collections) parts.push(t('ui.settings.audit_collections', { value: details.collections.join(', ') }));
-        if (details.recordsDeleted) parts.push(t('ui.settings.audit_records', { value: details.recordsDeleted }));
-        
-        return parts.join(' • ');
+    formatDetails(details, action) {
+        return formatAuditDetails(details, action);
     },
 
     /**
@@ -598,12 +600,13 @@ const DiagnosticsManager = {
      * @param {string} errorId - Error ID
      */
     async deleteError(errorId) {
-        const confirmed = await UIManager.showModal(t('msg.diagnostics.delete_error'), t('msg.common.confirm_delete'), true);
+        const confirmed = await UIManager.showModal(t('msg.diagnostics.delete_error'), t('msg.diagnostics.hide_error_title'), true);
         if (!confirmed) return;
 
         try {
             const entry = this.data.find(d => d.id === errorId);
-            await TelemetryService.deleteError(errorId, entry?.docIds);
+            const count = await TelemetryService.hideErrors(entry?.docIds?.length ? entry.docIds : [errorId]);
+            AuditService.note(AuditService.ACTIONS.HIDE_ERRORS, { reports: count, all: false });
             this.data = this.data.filter(d => d.id !== errorId);
             this.renderErrors();
             UIManager.showToast(t('msg.diagnostics.error_deleted'));
@@ -613,7 +616,7 @@ const DiagnosticsManager = {
     },
 
     /**
-     * Clear all errors
+     * Hide every listed error (#116): kept in Firestore, recorded in the audit log
      */
     async clearAll() {
         const confirmed = await UIManager.showModal(
@@ -625,8 +628,11 @@ const DiagnosticsManager = {
 
         try {
             UIManager.showLoading();
-            await TelemetryService.clearTelemetryData();
-            this.data = [];
+            const listed = this.filter === 'all' ? (this.data || []) : (this.data || []).filter(d => d.type === this.filter);
+            const count = await TelemetryService.hideErrors(listed.flatMap(d => (d.docIds?.length ? d.docIds : [d.id])));
+            AuditService.note(AuditService.ACTIONS.HIDE_ERRORS, { reports: count, all: true });
+            const gone = new Set(listed.map(d => d.id));
+            this.data = (this.data || []).filter(d => !gone.has(d.id));
             this.renderErrors();
             UIManager.showToast(t('msg.diagnostics.all_diagnostics_cleared'));
         } catch (error) {

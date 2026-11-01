@@ -509,6 +509,37 @@ describe('Settings', () => {
         expect(list.querySelector('b')).toBeNull();
     });
 
+    test('audit log (#85): the writer is named from their profile; the name the phone stored is marked unchecked', async () => {
+        AppState.userRole = 'owner';
+        jest.spyOn(AuditService, 'getRecentLogs').mockResolvedValue([
+            { action: 'DELETE_BILL', timestamp: Date.now(), userId: 'm1', userName: 'Owner Ji', userRole: 'owner', details: {} },
+            { action: 'VOID_BILL', timestamp: Date.now(), userId: 's1', userName: 'Sita', userRole: 'staff', details: {} },
+            { action: 'CREATE_SALE', timestamp: Date.now(), userId: 'gone', userName: 'Who', userRole: 'owner', details: {} },
+            { action: 'CREATE_SALE', timestamp: Date.now(), userId: 'r1', userName: 'Ravi', userRole: 'manager', details: {} }
+        ]);
+        jest.spyOn(FirebaseService, 'loadUsers').mockResolvedValue([
+            { id: 'm1', name: 'Manoj', role: 'manager', email: 'manoj@x.in' }, { id: 's1', name: 'Sita', role: 'staff' }, { id: 'gone', role: 'owner' }, { id: 'r1', name: 'Ravi', status: 'disabled' }
+        ]);
+        document.getElementById('auditFilterAction').value = '';
+        await SettingsManager.loadAuditLogs();
+        const rows = [...document.getElementById('auditLogsList').children].map(r => r.textContent.replace(/\s+/g, ' '));
+        // a forged name and role: the profile's are shown, the stored name marked
+        // (names can be changed by their owner; the email can't, so it is shown too)
+        expect(rows[0]).toContain('Manoj (Manager) manoj@x.in · Owner Ji (name as sent by the phone, not checked)');
+        expect(rows[1]).toContain('Sita (Member)');
+        expect(rows[1]).not.toContain('not checked');
+        // a profile without a name: only the stored name and role, marked
+        expect(rows[2]).toContain('Who (Owner) (name as sent by the phone, not checked)');
+        // removed since: the role (deleted on removal) reads "removed"
+        expect(rows[3]).toContain('Ravi (removed)');
+
+        DiagnosticsManager.auditFilter = '';
+        document.body.innerHTML += '<div id="diagnosticsContainer"></div>';
+        await DiagnosticsManager.loadAuditLogs();
+        const cards = document.querySelectorAll('#diagnosticsContainer .diag-audit-user');
+        expect(cards[0].textContent.replace(/\s+/g, ' ')).toContain('Manoj (Manager) manoj@x.in · Owner Ji (name as sent by the phone, not checked)');
+    });
+
     test('Roles & access (#84): owner-only grid; saving writes settings/app and applies at once', async () => {
         document.body.innerHTML += `<div id="roleAccessCard" style="display:none"><div id="roleAccessGrid"></div><p id="roleAccessStatus"></p></div>`;
         const save = jest.spyOn(FirebaseService, 'saveRoleAccess').mockResolvedValue(undefined);
