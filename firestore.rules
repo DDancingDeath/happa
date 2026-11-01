@@ -420,16 +420,24 @@ service cloud.firestore {
             && d.timestamp >= d.enteredAt - (billEditDays(usersCol) + 1) * 86400000);
     }
 
-    // A bill dated before today (IST) takes no cash from anyone but the owner (#147): that
-    // day's drawer may already be counted and closed, so the cash would show in no open
-    // drawer. Judged on `timestamp` alone (10 minutes for a slow phone clock), so leaving out
-    // `enteredAt` changes nothing; a bill without a numeric `timestamp` counts as dated back.
+    // A bill dated before the day it was entered (IST) takes no cash from anyone but the owner
+    // (#147): that day's drawer may already be counted and closed, so the cash would show in no
+    // open drawer. Judged against the IST day of `enteredAt`, not the server's time, so a cash
+    // bill entered offline yesterday and synced today is kept. For cash bills `enteredAt` must be
+    // within the last 3 days (a phone that saved offline) and at most 10 minutes ahead; a cash bill
+    // with `enteredAt` but no numeric `timestamp` counts as dated back. Bills without `enteredAt`
+    // (apps before #147, which can't date a bill back) are not checked: refusing them would lose
+    // their offline bills; the app check and the anomaly scan cover the new app.
     function noBackdatedCash() {
       let d = request.resource.data;
       let now = request.time.toMillis();
-      return (d.get('timestamp', null) is number
-              && d.timestamp >= now - ((now + 19800000) % 86400000) - 600000)
-        || (d.get('payment', {}).get('cash', 0) == 0 && d.get('cashPayment', 0) == 0);
+      return !('enteredAt' in d)
+        || (d.get('payment', {}).get('cash', 0) == 0 && d.get('cashPayment', 0) == 0)
+        || (d.enteredAt is number
+            && d.enteredAt >= now - 259200000
+            && d.enteredAt <= now + 600000
+            && d.get('timestamp', null) is number
+            && d.timestamp >= d.enteredAt - ((d.enteredAt + 19800000) % 86400000));
     }
 
     function validBillCreate(usersCol) {

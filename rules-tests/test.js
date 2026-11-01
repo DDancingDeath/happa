@@ -665,21 +665,31 @@ function defineSuite(prefix) {
         }
     });
 
-    t('bill date (#147): a bill dated before today takes no cash from anyone but the owner (enteredAt or not)', async () => {
+    t('bill date (#147): a bill dated before the day it was entered takes no cash from anyone but the owner', async () => {
         const now = Date.now();
         const yesterday = now - DAY;
+        // 20:00 IST yesterday: a bill entered then (offline) and synced now
+        const evening = now - ((now + 19800000) % DAY) - 4 * HOUR;
         const pay = (cash, online, due) => ({ payment: { cash, online, due, total: cash + online + due }, cashPayment: cash, onlinePayment: online, dueAmount: due });
         const bill = (id, timestamp, enteredAt, money) => ({ userId: id, total: 100, clientVersion: 4, createdAt: serverTimestamp(), timestamp, ...(enteredAt === undefined ? {} : { enteredAt }), ...money });
         for (const coll of bills) {
             const db = as('staff1').collection(coll);
             await assertSucceeds(db.doc('c0').set(bill('staff1', now, now, pay(100, 0, 0))));
+            // entered today, dated yesterday, with cash: refused
             await assertFails(db.doc('c1').set(bill('staff1', yesterday, now, pay(100, 0, 0))));
             await assertFails(db.doc('c2').set(bill('staff1', yesterday, now, pay(40, 60, 0))));
             await assertSucceeds(db.doc('c3').set(bill('staff1', yesterday, now, pay(0, 60, 40))));
-            // leaving out enteredAt, the top-level copy or the timestamp does not get round it
-            await assertFails(db.doc('c4').set(bill('staff1', yesterday, undefined, pay(100, 0, 0))));
+            // entered yesterday 20:00 offline (not dated back), synced today: kept
+            await assertSucceeds(db.doc('off').set(bill('staff1', evening, evening, pay(100, 0, 0))));
+            // ... but its entry time is bounded: more than 3 days old or 10 minutes ahead is refused for cash
+            await assertFails(db.doc('old').set(bill('staff1', now - 3 * DAY - HOUR, now - 3 * DAY - HOUR, pay(100, 0, 0))));
+            await assertFails(db.doc('ahead').set(bill('staff1', now + HOUR, now + HOUR, pay(100, 0, 0))));
+            await assertFails(db.doc('textAt').set(bill('staff1', now, String(now), pay(100, 0, 0))));
+            // an old app (no enteredAt) can't date a bill back: not checked, its offline bills are kept
+            await assertSucceeds(db.doc('c4').set(bill('staff1', yesterday, undefined, pay(100, 0, 0))));
+            // the top-level copy or a missing timestamp does not get round it
             await assertFails(db.doc('c5').set({ ...bill('staff1', yesterday, now, pay(0, 0, 0)), cashPayment: 100 }));
-            const noTime = bill('staff1', yesterday, undefined, pay(100, 0, 0));
+            const noTime = bill('staff1', yesterday, now, pay(100, 0, 0));
             delete noTime.timestamp;
             await assertFails(db.doc('c6').set(noTime));
             // managers too; the owner may

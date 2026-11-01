@@ -53,7 +53,7 @@ setting is missing or invalid.
   rules `billTimeOk`: `timestamp` at most `editDays` + 1 day before `enteredAt` and never after it;
   `enteredAt` (the phone's clock) is not bounded; bills from apps without `enteredAt` are not limited; the owner back to
   the 1st of last month, in the app only). A bill dated before today (IST) takes no cash from anyone but the
-  owner (rules `noBackdatedCash`, judged on `timestamp` alone; a bill without a numeric `timestamp` counts as dated back):
+  owner (rules `noBackdatedCash`: `timestamp` before the IST day of `enteredAt`, so a cash bill entered offline and synced after midnight is kept; for cash bills `enteredAt` must be at most 3 days old and 10 minutes ahead; bills without `enteredAt`, from older apps that can't date a bill back, are not checked):
   online or due only.
   The same days limit how far back a new expense may be dated (#118): 2 = today, yesterday
   and the day before; 0 = today only (`utils/expense-entry.js`; the rules check it with 3
