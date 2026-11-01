@@ -2533,5 +2533,16 @@ export default {
     'ui.admin.col_payments': "भुगतान",
     'ui.admin.col_edits': "बदलाव",
     'ui.admin.col_voids': "रद्द",
-    'ui.admin.col_last_active': "आखिरी बार"
+    'ui.admin.col_last_active': "आखिरी बार",
+    'ui.today.reminders': "याद दिलाना",
+    'ui.today.reminder_collect': "उधार वसूलें",
+    'ui.today.reminder_collect_wholesale': "थोक का बकाया वसूलें",
+    'ui.today.reminder_pay': "देनदारी चुकाएँ",
+    'ui.today.reminder_days': "{count} दिन",
+    'ui.today.reminder_more': "+{count} और",
+    'ui.today.reminder_open_dues': "बकाया खोलें",
+    'ui.today.reminder_rent': "किराया बाकी",
+    'ui.today.reminder_rent_units': "{count} यूनिट का किराया बाकी · {late} देर से",
+    'ui.today.reminder_as_of': "किराया पेज पर {time} को जैसा दिखा",
+    'ui.today.reminder_open_rent': "किराया खोलें"
 };
