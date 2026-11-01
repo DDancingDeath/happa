@@ -9,6 +9,9 @@
  *    wait until it is shown), exactly when the view used to be re-rendered.
  *  - `ITEM_FREQUENCY_CHANGED`: the shared item order (`itemFrequency/global`)
  *    changed; payload: the document's data.
+ *  - `READS_ALERT` (firebase/firestore-meter.js, #159): `{kind: 'heavy'|'quota', reads}`
+ *    once per session, when this session read HEAVY_SESSION_READS documents or
+ *    Firestore refused a request because the daily quota ran out.
  * @module utils/events
  */
 
@@ -19,6 +22,14 @@ export const REFRESH = Object.freeze(Object.fromEntries([
 ].map(view => [view, `refresh:${view}`])));
 
 export const ITEM_FREQUENCY_CHANGED = 'itemFrequency:changed';
+
+export const READS_ALERT = 'reads:alert';
+
+/** A bill's print status on this phone changed (utils/print-status.js, #132); payload: its key. */
+export const PRINT_STATUS_CHANGED = 'printStatus:changed';
+
+/** An error toast was shown (ui-manager.js); payload `{ message, ref }`. Telemetry logs it under `ref`. */
+export const TOAST_ERROR = 'toast:error';
 
 const handlers = new Map();
 

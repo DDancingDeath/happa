@@ -52,7 +52,7 @@
 
 .aging-bucket-label,
 .aging-bucket-count {
-    font-size: 12px;
+    font-size: 14px;
     color: #4b5563;
 }
 
@@ -75,7 +75,7 @@
     display: inline-block;
     padding: 1px 6px;
     border-radius: 10px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -127,7 +127,7 @@
     align-items: center;
     gap: 6px;
     margin: 6px 0;
-    font-size: 13px;
+    font-size: 14px;
     color: #4b5563;
 }
 
@@ -137,7 +137,7 @@
     border-radius: 14px;
     background: #fff;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .aging-sort-btn.active {
@@ -169,7 +169,7 @@
 }
 
 .aging-party-meta {
-    font-size: 12px;
+    font-size: 14px;
     color: #6b7280;
     margin-top: 2px;
 }
@@ -193,7 +193,7 @@
     background: #fff;
     cursor: pointer;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .aging-btn.aging-remind {
@@ -209,7 +209,7 @@
     border-radius: 10px;
     background: #dc2626;
     color: #fff;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 600;
     vertical-align: middle;
 }

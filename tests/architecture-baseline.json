@@ -4,7 +4,7 @@
     "firestore": 0,
     "moneyMath": 42,
     "domNumber": 2,
-    "appStateWrite": 81,
+    "appStateWrite": 77,
     "dateMath": 3
   },
   "files": {
@@ -61,7 +61,7 @@
       "appStateWrite": 2
     },
     "www/js/modules/settings.js": {
-      "appStateWrite": 19
+      "appStateWrite": 15
     },
     "www/js/modules/stock.js": {
       "moneyMath": 1,

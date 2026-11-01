@@ -208,6 +208,11 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Devanagari's marks above and below the line need more room than Latin text (#68) */
+html[lang="hi"] body {
+  line-height: 1.5;
+}
+
 /* Modern Card Utility Class */
 .modern-card {
   background: var(--card-bg);
@@ -791,6 +796,107 @@ body {
 .nav-menu a[data-biz="rentals"] { display: none; }
 body.biz-rentals .nav-menu a[data-biz="rentals"] { display: flex; }
 body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
+/* Phone bottom bar (#142); desktop.css hides it */
+/* The app's own pull-to-refresh replaces the browser's (a full reload re-reads everything) */
+body {
+  overscroll-behavior-y: contain;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 950;
+  display: flex;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border-color);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.bottom-nav-item {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.bottom-nav-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.bottom-nav-label {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bottom-nav-item.active {
+  color: var(--primary-color);
+  box-shadow: inset 0 3px 0 var(--primary-color);
+}
+
+.bottom-nav-item:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: -4px;
+}
+
+body.biz-rentals .bottom-nav,
+body.typing .bottom-nav {
+  display: none;
+}
+
+.pull-refresh {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translate(-50%, 0);
+  z-index: 960;
+  padding: 8px 16px;
+  border-radius: var(--radius-full);
+  background: var(--card-bg);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.pull-refresh[hidden] {
+  display: none;
+}
+
+.pull-refresh .pull-refresh-release,
+.pull-refresh.ready .pull-refresh-pull {
+  display: none;
+}
+
+.pull-refresh.ready .pull-refresh-release {
+  display: inline;
+}
+
+/* The Android update banner sits above the bar, not on it */
+@media (max-width: 1023px) {
+  body:not(.biz-rentals) .app-update-banner {
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+}
 
 /* ---- css/overlay.css ---- */
 .overlay {
@@ -816,19 +922,15 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
 /* ---- css/tabs.css ---- */
 .tab {
   display: none;
-  /* Bottom padding raised from 24px → calc(96px + safe-area) so the
-     last row of action buttons (WhatsApp / Save / Print on Bills, etc.)
-     is not clipped by the Windows taskbar, by mobile browser dynamic
-     chrome, or by the iOS home-indicator safe area. The 96px alone
-     covers desktop OS taskbars; env(safe-area-inset-bottom) adds the
-     iOS notch/home-bar inset on top. height: 100vh is intentionally
-     kept — replacing it is a larger refactor with risk of breaking
-     inner-scroll on Android. See REVIEW_ISSUES STG-WALK-6 in the
-     staging clone for full context. */
+  /* The tab is the scroll container. 100dvh is the visible height while the
+     browser's URL bar shows, so the page bottom is not hidden under it (#104);
+     100vh is the fallback for older WebViews. */
   padding: 70px 16px calc(96px + env(safe-area-inset-bottom, 0px)) 16px;
   max-width: 480px;
   min-height: 100vh;
+  min-height: 100dvh;
   height: 100vh;
+  height: 100dvh;
   margin: 0 auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -1230,7 +1332,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
 
 .split-rest-btn {
   padding: 6px 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
@@ -1298,6 +1400,51 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
   transform: scale(0.98);
 }
 
+/* Tap targets (#68): page toggles, primary buttons and list actions are at least 44 px tall */
+.filter-btn,
+.sub-tab,
+.save-btn,
+.draft-btn,
+.split-rest-btn,
+.contact-pick-btn,
+.anomaly-btn,
+.aging-btn,
+.aging-sort-btn,
+.history-stale-refresh,
+[data-record-payment],
+[data-mark-cleared] {
+  min-height: 44px;
+}
+
+.contact-pick-btn {
+  min-width: 44px;
+}
+
+[data-record-payment],
+[data-mark-cleared] {
+  font-size: 14px;
+}
+
+/* With zoom allowed, iOS (only it matches this @supports) zooms into any field under 16 px when it is focused */
+@supports (-webkit-touch-callout: none) {
+  body input:not([type]),
+  body input[type="text"],
+  body input[type="number"],
+  body input[type="search"],
+  body input[type="tel"],
+  body input[type="email"],
+  body input[type="password"],
+  body input[type="date"],
+  body select,
+  body textarea {
+    font-size: 16px !important;
+  }
+}
+
+#dueList input[type="number"] {
+  min-height: 44px;
+}
+
 /* ---- css/tables.css ---- */
 #billTable, #saleTable {
   width: 100%;
@@ -1322,7 +1469,7 @@ body.biz-rentals .nav-menu a:not([data-biz]) { display: none !important; }
   padding: 12px 8px;
   text-align: center;
   border-bottom: 2px solid var(--border-color);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
@@ -2223,7 +2370,7 @@ select:focus, input:focus {
     margin: 6px 0 0;
     padding-left: 4px;
     list-style: none;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 input.bill-check-block,
@@ -2256,7 +2403,7 @@ tr.bill-check-warn > td:first-child {
 
 .bill-check-msg {
     margin: 2px 0 8px;
-    font-size: 12.5px;
+    font-size: 14px;
     font-weight: 600;
     line-height: 1.35;
     color: #b91c1c;
@@ -2395,7 +2542,7 @@ body.dark-mode .party-due-line.party-due-old {
 
 .history-date {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 8px;
 }
 
@@ -2427,7 +2574,7 @@ body.dark-mode .party-due-line.party-due-old {
   padding: 6px 12px;
   border-radius: var(--radius);
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .payment-online {
@@ -2455,6 +2602,35 @@ body.dark-mode .party-due-line.party-due-old {
   color: #5b21b6;
   vertical-align: middle;
 }
+
+/* Print status on this phone (#132) */
+.print-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.print-chip--failed { background: #fee2e2; color: #991b1b; }
+.print-chip--uncertain { background: #fef3c7; color: #92400e; }
+
+.bill-print-status {
+  margin: 0 16px 16px;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.bill-print-status__text { flex: 1 1 180px; }
 
 .history-items-detail {
   margin-top: 12px;
@@ -2491,7 +2667,7 @@ body.dark-mode .party-due-line.party-due-old {
   padding: 10px 0 16px;
   text-align: center;
   color: var(--text-secondary, #888);
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .infinite-scroll-sentinel[data-state="idle"] {
@@ -2508,7 +2684,7 @@ body.dark-mode .party-due-line.party-due-old {
   background: white;
   color: #6366f1;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
 }
 
@@ -2538,7 +2714,7 @@ body.dark-mode .party-due-line.party-due-old {
   border-radius: 8px;
   background: #eef2ff;
   color: #3730a3;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
 }
 
@@ -2584,7 +2760,7 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 .history-date-label {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-secondary, #6b7280);
 }
@@ -2623,7 +2799,7 @@ body.dark-mode .party-due-line.party-due-old {
 
 .history-range-label {
   flex: 1 1 100%;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary, #6b7280);
 }
 
@@ -2642,7 +2818,7 @@ body.dark-mode .party-due-line.party-due-old {
 
 .history-range-hint {
   flex: 1 1 100%;
-  font-size: 13px;
+  font-size: 14px;
   color: #b42318;
 }
 
@@ -2730,7 +2906,7 @@ body.dark-mode .party-due-line.party-due-old {
   align-items: center;
   gap: 4px 6px;
   min-width: 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
@@ -2747,12 +2923,15 @@ body.dark-mode .party-due-line.party-due-old {
   flex: 1 1 4.5rem;
   min-width: 0;
   margin: 0;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
 }
 
+/* Chips wrap inside the card instead of running off a narrow phone (#68: 14 px text) */
 .bill-row .bill-row__chips {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
   margin: 0;
   gap: 4px;
   font-size: 12px;
@@ -2760,7 +2939,7 @@ body.dark-mode .party-due-line.party-due-old {
 
 .bill-row .payment-badge {
   padding: 2px 6px;
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .bill-row .old-app-chip {
@@ -2848,7 +3027,7 @@ body.dark-mode .party-due-line.party-due-old {
   align-items: center;
   gap: 8px;
   margin: 2px 0 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
@@ -2859,13 +3038,13 @@ body.dark-mode .party-due-line.party-due-old {
 
 .history-stale-refresh {
   flex: 0 0 auto;
-  min-height: 32px;
+  min-height: 44px;
   padding: 4px 12px;
   border: 1px solid var(--border-color);
   border-radius: 6px;
   background: var(--card-bg);
   color: var(--text-primary);
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -2926,14 +3105,14 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 .bill-table__by {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-secondary);
 }
 
 .bill-table__chips .payment-badge {
   margin: 0 4px 4px 0;
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 .bill-table__group th {
@@ -3179,7 +3358,7 @@ body.dark-mode .party-due-line.party-due-old {
 
 .aging-bucket-label,
 .aging-bucket-count {
-    font-size: 12px;
+    font-size: 14px;
     color: #4b5563;
 }
 
@@ -3202,7 +3381,7 @@ body.dark-mode .party-due-line.party-due-old {
     display: inline-block;
     padding: 1px 6px;
     border-radius: 10px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
     white-space: nowrap;
 }
@@ -3254,7 +3433,7 @@ body.dark-mode .party-due-line.party-due-old {
     align-items: center;
     gap: 6px;
     margin: 6px 0;
-    font-size: 13px;
+    font-size: 14px;
     color: #4b5563;
 }
 
@@ -3264,7 +3443,7 @@ body.dark-mode .party-due-line.party-due-old {
     border-radius: 14px;
     background: #fff;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .aging-sort-btn.active {
@@ -3296,7 +3475,7 @@ body.dark-mode .party-due-line.party-due-old {
 }
 
 .aging-party-meta {
-    font-size: 12px;
+    font-size: 14px;
     color: #6b7280;
     margin-top: 2px;
 }
@@ -3320,7 +3499,7 @@ body.dark-mode .party-due-line.party-due-old {
     background: #fff;
     cursor: pointer;
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
 }
 
 .aging-btn.aging-remind {
@@ -3336,7 +3515,7 @@ body.dark-mode .party-due-line.party-due-old {
     border-radius: 10px;
     background: #dc2626;
     color: #fff;
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 600;
     vertical-align: middle;
 }
@@ -5301,7 +5480,7 @@ body.no-perm-purchaseRates [data-perm~="purchaseRates"] {
 }
 
 .stat-label {
-  font-size: 13px;
+  font-size: 14px;
   margin-bottom: 4px;
   font-weight: 500;
   word-wrap: break-word;
@@ -5322,7 +5501,7 @@ body.no-perm-purchaseRates [data-perm~="purchaseRates"] {
 }
 
 .stat-subtitle {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 4px;
   word-wrap: break-word;
 }
@@ -5426,7 +5605,7 @@ body.no-perm-purchaseRates [data-perm~="purchaseRates"] {
 .summary-item span {
   color: var(--text-secondary);
   font-weight: 500;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .summary-item strong {
@@ -5601,7 +5780,7 @@ body.dark-mode .item-detail-row:hover {
   }
   
   .summary-item span {
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.3;
     display: block;
     width: 100%;
@@ -5646,13 +5825,13 @@ body.dark-mode .item-detail-row:hover {
 
 .today-labour-sub,
 .today-labour-hint {
-  font-size: 12px;
+  font-size: 14px;
   color: #7f1d1d;
   opacity: 0.85;
 }
 
 .today-labour-diff {
-  font-size: 13px;
+  font-size: 14px;
   color: #374151;
   margin-top: 4px;
 }
@@ -5699,13 +5878,17 @@ body.dark-mode .today-labour-hint {
 body.dark-mode .today-labour-diff {
   color: #e5e7eb;
 }
+/* Today › Cash holds the Cash page's own body (#96); the day page already pads it */
+#dayCashManagementContainer > .cash-body {
+  padding: 0 !important;
+}
 
 /* ---- css/anomalies.css ---- */
 /* ==================== ANOMALIES (#187, #40) ==================== */
 
 .anomaly-page { padding: 16px; }
 .anomaly-page-title { margin: 0 0 12px; font-size: 20px; }
-.anomaly-muted { color: var(--text-secondary, #6b7280); font-size: 13px; }
+.anomaly-muted { color: var(--text-secondary, #6b7280); font-size: 14px; }
 .anomaly-empty { color: var(--text-secondary, #6b7280); padding: 12px; text-align: center; font-size: 14px; }
 
 /* Today: Day report card */
@@ -5714,7 +5897,7 @@ body.dark-mode .today-labour-diff {
 .anomaly-count-badge { min-width: 28px; padding: 2px 10px; border-radius: 999px; background: #d1fae5; color: #065f46; font-weight: 700; text-align: center; }
 .anomaly-count-badge.has { background: #fee2e2; color: #991b1b; }
 .anomaly-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.anomaly-chip { font-size: 12px; padding: 4px 8px; border-radius: 999px; background: #f3f4f6; }
+.anomaly-chip { font-size: 14px; padding: 4px 8px; border-radius: 999px; background: #f3f4f6; }
 .anomaly-sev-high { background: #fee2e2; color: #991b1b; }
 .anomaly-sev-medium { background: #fef3c7; color: #92400e; }
 .anomaly-sev-low { background: #f3f4f6; color: #374151; }
@@ -5722,7 +5905,7 @@ body.dark-mode .today-labour-diff {
 .anomaly-type-list li { margin: 2px 0; }
 .anomaly-queue { margin-top: 10px; }
 .anomaly-queue-title { font-weight: 700; margin-bottom: 6px; }
-.anomaly-queue-head { font-weight: 600; font-size: 13px; margin: 8px 0 4px; }
+.anomaly-queue-head { font-weight: 600; font-size: 14px; margin: 8px 0 4px; }
 .anomaly-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .anomaly-actions .btn { flex: 1 1 auto; min-width: 120px; }
 
@@ -5735,11 +5918,11 @@ body.dark-mode .today-labour-diff {
 .anomaly-row-main { cursor: pointer; min-width: 0; }
 .anomaly-row-title { font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .anomaly-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
-.anomaly-row-why { font-size: 13px; color: #374151; margin-top: 2px; overflow-wrap: anywhere; }
-.anomaly-row-meta { font-size: 12px; color: #6b7280; margin-top: 2px; overflow-wrap: anywhere; }
+.anomaly-row-why { font-size: 14px; color: #374151; margin-top: 2px; overflow-wrap: anywhere; }
+.anomaly-row-meta { font-size: 14px; color: #6b7280; margin-top: 2px; overflow-wrap: anywhere; }
 .anomaly-row-note { font-size: 12px; color: #065f46; margin-top: 2px; }
 .anomaly-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-.anomaly-btn { font-size: 12px; padding: 6px 10px; border-radius: 6px; border: 1px solid #d1d5db; background: #f9fafb; cursor: pointer; }
+.anomaly-btn { font-size: 14px; padding: 6px 10px; border-radius: 6px; border: 1px solid #d1d5db; background: #f9fafb; cursor: pointer; }
 .anomaly-btn.ok { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
 .anomaly-btn.fixed { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
 .anomaly-status { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 999px; background: #e5e7eb; }
@@ -7268,6 +7451,7 @@ body.dark-mode .notif-panel-actions {
 
 /* Statements */
 .st-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.st-list[hidden], .st-view[hidden] { display: none; }
 .st-item {
     display: grid;
     grid-template-columns: 36px 1fr 20px;
@@ -7853,4 +8037,81 @@ body.dark-mode .notif-panel-actions {
   .ins-section > .ins-hero { grid-column: 1 / -1; }
   .ins-section > .ins-wide { grid-column: 1 / -1; }
   .ins-hero-value { font-size: 40px; }
+}
+
+/* Phone bottom bar and its settings (#142): the sidebar is permanent here */
+@media (min-width: 1024px) {
+  .bottom-nav,
+  .pull-refresh,
+  .phone-only-setting {
+    display: none !important;
+  }
+}
+
+/* ---------- Stocks and Statements (#106): use the width ---------- */
+@media (min-width: 1024px) {
+  #stockList,
+  #deadStockList {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+
+  #stockList > :not(.stock-item),
+  #deadStockList > :not(.stock-item) {
+    grid-column: 1 / -1;
+  }
+
+  #stockList > .stock-item,
+  #deadStockList > .stock-item {
+    margin-bottom: 0;
+  }
+
+  .stock-item:hover {
+    transform: none;
+  }
+
+  /* Adjustment form left, its history right */
+  #stockAdjustmentSection:not([style*="none"]) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 24px;
+    align-items: start;
+  }
+
+  #stockAdjustmentSection > .settings-card {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+    margin-bottom: 0;
+  }
+
+  #stockAdjustmentSection > :not(.settings-card) {
+    grid-column: 2;
+  }
+
+  #stockAdjustmentSection > h3 {
+    margin-top: 0;
+  }
+
+  .st-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Statement: choices on the left, the document on the right */
+  .st-view:not([hidden]) {
+    display: grid;
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
+    column-gap: 16px;
+    align-items: start;
+  }
+
+  .st-view > .st-bar { grid-column: 1 / -1; }
+  .st-view > .st-controls { grid-column: 1; grid-row: 2; }
+  .st-view > .st-actions { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; }
+  .st-view > .st-csv-option { grid-column: 1; grid-row: 4; }
+  .st-view > .st-doc { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; min-width: 0; }
 }

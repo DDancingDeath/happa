@@ -12,6 +12,7 @@ import { Helpers } from '../utils/helpers.js';
 import { t, tn } from '../i18n/index.js';
 import { billTotal, formatAmount, formatRupees, isActiveBill, isOpeningRecord, openingAmount, outstandingDue, readPayment } from '../utils/money.js';
 import { billDateOf } from '../utils/history-filters.js';
+import { printStatusOf } from '../utils/print-status.js';
 
 const L = (key, params) => Helpers.escapeHtml(t(key, params));
 
@@ -94,10 +95,43 @@ export function buildBillRow(bill, { onclick, kind } = {}) {
         <span class="bill-row__meta">
             <span class="bill-row__date">${Helpers.escapeHtml(date)}${by ? `<span class="bill-row__by"> • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(by)}</strong></span>` : ''}</span>
             <span class="bill-row__items history-summary" title="${Helpers.escapeHtml(items)}">${Helpers.escapeHtml(items)}</span>
-            <span class="bill-row__chips history-payment">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${voidedChipHtml(bill)}${paymentChipsHtml(bill)}</span>
+            <span class="bill-row__chips history-payment">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</span>
         </span>
     `;
     return div;
+}
+
+const PRINT_CHIP_KEYS = Object.freeze({
+    printed: 'ui.print_status.chip_printed',
+    failed: 'ui.print_status.chip_failed',
+    uncertain: 'ui.print_status.chip_uncertain',
+    hand: 'ui.print_status.chip_hand'
+});
+
+/**
+ * Print status chip from this phone (#132); '' when this phone never printed the bill.
+ * @param {Object} bill
+ * @returns {string} HTML
+ */
+export function printStatusChipHtml(bill) {
+    if (isOpeningRecord(bill)) return '';
+    const st = printStatusOf(bill);
+    return st ? `<span class="print-chip print-chip--${st.s}">${L(PRINT_CHIP_KEYS[st.s])}</span>` : '';
+}
+
+/**
+ * The bill details' print line (#132), plain text (caller escapes).
+ * @param {Object} bill
+ * @param {(e: {kind?: string, message?: string}) => string} [errorText] translates a stored failure
+ * @returns {string}
+ */
+export function printStatusText(bill, errorText = (e) => e.message || '') {
+    const st = printStatusOf(bill);
+    if (!st) return t('ui.print_status.none');
+    const time = Helpers.formatDateTime(st.at);
+    const message = st.s === 'failed' && (st.k || st.err) ? errorText({ kind: st.k, message: st.err }) : '';
+    if (st.s === 'failed') return message ? t('ui.print_status.failed', { time, message }) : t('ui.print_status.failed_plain', { time });
+    return t(`ui.print_status.${st.s}`, { time });
 }
 
 /**
@@ -208,7 +242,7 @@ export function billTableHtml(bills, { onclickFor, openings = [], voided = [] } 
                 <td class="bill-table__amount">${Helpers.escapeHtml(formatRupees(billListAmount(bill)))}</td>
                 <td class="bill-table__date">${Helpers.escapeHtml(date)}${by ? `<div class="bill-table__by">${L('ui.outstanding.by')} ${Helpers.escapeHtml(by)}</div>` : ''}</td>
                 <td class="bill-table__items">${tableItemsHtml(bill)}</td>
-                <td class="bill-table__chips">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${voidedChipHtml(bill)}${paymentChipsHtml(bill)}</td>
+                <td class="bill-table__chips">${opening ? `<span class="old-app-chip">${L('ui.history.old_app_chip')}</span>` : ''}${voidedChipHtml(bill)}${printStatusChipHtml(bill)}${paymentChipsHtml(bill)}</td>
             </tr>`;
     };
     const group = (list, key) => (list.length ? `
