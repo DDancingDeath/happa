@@ -849,10 +849,13 @@ service cloud.firestore {
       return role == 'owner' ? true : personalSwitch(settingsAppPath(usersCol), role);
     }
 
+    // Off unless the owner turned it on in Roles & access (#98): a stored true without
+    // personalExpensesChosen is the old default (every switch used to be saved), not a choice.
     function personalSwitch(p, role) {
       let access = exists(p) ? get(p).data.get('roleAccess', {}) : {};
       let r = access is map ? access.get(role, {}) : {};
-      return (r is map ? r : {}).get('personalExpenses', true) == true;
+      let m = r is map ? r : {};
+      return m.get('personalExpensesChosen', false) == true && m.get('personalExpenses', false) == true;
     }
 
     function dayKeyOk(v) {

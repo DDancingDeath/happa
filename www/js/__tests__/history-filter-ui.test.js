@@ -34,7 +34,7 @@ const html = `
       <div id="wrap"><div id="historyList"></div></div>
     </div>`;
 
-const ids = () => [...document.querySelectorAll('#historyList .history-item .bill-row__no [onclick]')]
+const ids = () => [...document.querySelectorAll('#historyList .history-item .bill-row__no [data-onclick]')]
     .map(s => s.textContent.replace('#', ''));
 
 describe('History filters (#160)', () => {
@@ -157,7 +157,7 @@ describe('Custom range quota guard (#199 review)', () => {
         const inputs = tpl.match(/<input type="date"[^>]*>/g);
         expect(inputs).toHaveLength(2);
         inputs.forEach(tag => expect(tag).not.toMatch(/on(change|input|blur)=/));
-        expect(tpl).toContain('window.app.history.applyCustomRange()');
+        expect(tpl).toContain('data-onclick="history.applyCustomRange()"');
     });
 
     test('typing a year (0002 → 0020 → 0202) never triggers a load or gets saved', async () => {

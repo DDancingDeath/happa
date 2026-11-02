@@ -46,7 +46,8 @@ const STEPS = [
     { name: 'Wholesale › History', route: 'wholesale-history', page: 'wholesale-sales', roles: OM, expect: '#salesHistorySection' },
     { name: 'Wholesale › Outstanding', route: 'wholesale-sales', page: 'wholesale-sales', act: "window.app.wholesaleSales.filterTab('outstanding')", roles: OM, expect: '#salesOutstandingSection' },
     { name: 'Expenses › Business', route: 'expenses', page: 'expenses', roles: A, expect: '#businessExpenseSection' },
-    { name: 'Expenses › Personal', route: 'expenses', page: 'expenses', act: "window.app.expenses.filterExpenseTab('personal')", roles: A, expect: '#personalExpenseSection' },
+    // Off for managers and members until the owner turns it on (#98)
+    { name: 'Expenses › Personal', route: 'expenses', page: 'expenses', act: "window.app.expenses.filterExpenseTab('personal')", roles: O, expect: '#personalExpenseSection' },
     { name: 'Rates', route: 'rates', page: 'items', roles: A },
     { name: 'History › Purchase', route: 'history', page: 'history', act: "window.app.history.filterHistory('purchase')", roles: A, expect: '#history .filter-purchase.active' },
     { name: 'History › Sale', route: 'history', page: 'history', act: "window.app.history.filterHistory('sale')", roles: A, expect: '#history .filter-sale.active' },
@@ -91,7 +92,7 @@ const STEPS = [
     { name: 'Settings › Aadhat', route: 'settings-shop', page: 'settings', roles: OM, expect: '#settingsShop' },
     { name: 'Settings › Rentals', route: 'settings-rentals', page: 'settings', roles: OM, expect: '#settingsRentals' },
     { name: 'Settings › Roles & access', route: 'settings-roles', page: 'settings', roles: O, expect: '#roleAccessCard' },
-    { name: 'Rentals › Rent (property-wise)', route: null, page: 'rentals', act: "window.app.rentals.open('rent').then(() => window.app.rentals.setView('properties'))", roles: A, expect: `#rentalsBody .rent-viewswitch .filter-btn.active[onclick*="'properties'"]` },
+    { name: 'Rentals › Rent (property-wise)', route: null, page: 'rentals', act: "window.app.rentals.open('rent').then(() => window.app.rentals.setView('properties'))", roles: A, expect: `#rentalsBody .rent-viewswitch .filter-btn.active[data-onclick*="'properties'"]` },
     { name: 'Rentals › Rent (unit-wise)', route: null, page: 'rentals', act: "window.app.rentals.setView('units')", roles: A, expect: '#rentUnitList' },
     { name: 'Rentals › Tenants', route: null, page: 'rentals', act: "window.app.rentals.page('tenants')", roles: A, expect: '#rentals [data-rent-page="tenants"].active' },
     { name: 'Rentals › Properties', route: null, page: 'rentals', act: "window.app.rentals.page('properties')", roles: A, expect: '#rentals [data-rent-page="properties"].active' },

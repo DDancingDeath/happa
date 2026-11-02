@@ -22,7 +22,7 @@ export async function shareLink(c, leaseId) {
     if (!lease) return;
     const url = c.linkFor(lease);
     const id = c.js(leaseId);
-    const btn = (action, key, cls = '') => `<button type="button" class="rent-btn${cls}" onclick="window.app.rentals.linkAction('${action}', '${id}')">${c.esc(t(key))}</button>`;
+    const btn = (action, key, cls = '') => `<button type="button" class="rent-btn${cls}" data-onclick="rentals.linkAction('${action}', '${id}')">${c.esc(t(key))}</button>`;
     const body = url
         ? `<p class="rent-help">${c.esc(t('ui.rent.link_help'))}</p>
            <input id="rentLinkUrl" type="text" readonly value="${c.esc(url)}">

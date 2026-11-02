@@ -46,7 +46,7 @@ export function editsRowHtml(bill, onclick) {
     return `<div class="bill-edits" id="billEditsBox">
         <span class="bill-edits__count">${L('ui.edits.edited_times', { count: n })}</span>
         <span aria-hidden="true">·</span>
-        <button type="button" class="bill-edits__view" id="billEditsToggle" onclick="${onclick}">${L('ui.edits.view_changes')}</button>
+        <button type="button" class="bill-edits__view" id="billEditsToggle" data-onclick="${onclick}">${L('ui.edits.view_changes')}</button>
         <div class="bill-edits__list" id="billEditsList" hidden></div>
     </div>`;
 }

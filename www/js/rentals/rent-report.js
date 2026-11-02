@@ -86,10 +86,10 @@ function reportHtml(c) {
     const years = [...new Set([base, base - 1, base - 2, base - 3, report.year])].sort((a, b) => b - a);
     const yearLabel = (y) => (report.fy ? t('ui.money.fy_label', { years: `${y}-${String((y + 1) % 100).padStart(2, '0')}` }) : String(y));
     const picker = `<div class="rent-actions">
-        <select onchange="window.app.rentals.reportAction('year', this.value)" aria-label="${c.esc(t('ui.rent.yr_year'))}">${years
+        <select data-onchange="rentals.reportAction('year', this.value)" aria-label="${c.esc(t('ui.rent.yr_year'))}">${years
         .map(y => `<option value="${y}"${y === report.year ? ' selected' : ''}>${c.esc(yearLabel(y))}</option>`).join('')}</select>
-        <button type="button" class="rent-btn" onclick="window.app.rentals.reportAction('kind')">${c.esc(t(report.fy ? 'ui.rent.yr_calendar' : 'ui.rent.yr_fy'))}</button>
-        ${c.isOwner ? `<button type="button" class="rent-btn" onclick="window.app.rentals.reportAction('csv')">⬇ ${c.esc(t('ui.rent.yr_csv'))}</button>` : ''}</div>`;
+        <button type="button" class="rent-btn" data-onclick="rentals.reportAction('kind')">${c.esc(t(report.fy ? 'ui.rent.yr_calendar' : 'ui.rent.yr_fy'))}</button>
+        ${c.isOwner ? `<button type="button" class="rent-btn" data-onclick="rentals.reportAction('csv')">⬇ ${c.esc(t('ui.rent.yr_csv'))}</button>` : ''}</div>`;
     return `<h3>📊 ${c.esc(t('ui.rent.yr_title', { year: yearLabel(report.year) }))}</h3>${picker}
         <div class="rent-cards">${[['ui.rent.yr_collected', r.total.collected], ['ui.rent.yr_expenses', r.total.expenses], ['ui.rent.yr_net', r.total.net]]
         .map(([k, v]) => `<div class="rent-card"><div class="rent-card-label">${c.esc(t(k))}</div><div class="rent-card-value">${c.esc(formatINR(v))}</div></div>`).join('')}</div>
