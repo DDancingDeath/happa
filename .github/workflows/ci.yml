@@ -36,6 +36,9 @@ jobs:
         with:
           node-version: '20'
           cache: npm
+      # Before npm ci: a lockfile pointing at a private feed would fail there with a fetch error
+      - name: Lockfiles resolve from registry.npmjs.org only
+        run: node scripts/check-lockfile.js
       - run: npm ci
       - name: Lint
         run: npm run lint
