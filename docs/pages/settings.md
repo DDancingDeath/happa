@@ -4,8 +4,8 @@ Part of the [owner guide](../owner-guide.md) (one file per page). Hindi: [settin
 
 - **Settings › Common**: language, account (Change password), notifications,
   Bluetooth Printer (Test Print), install the app; in the Android app, **Crash reports** (off
-  unless this phone's user turns it on: crashes and freezes then go to the shop's Firebase, without
-  names or amounts; docs/error-reporting.md says exactly what is sent); the owner's **Roles & access** (what each role may see, edit
+  unless this phone's user turns it on: crashes and freezes then go to the shop's Firebase with the
+  phone's details; the app adds no names or amounts, but an error message can hold text; docs/error-reporting.md says exactly what is sent); the owner's **Roles & access** (what each role may see, edit
   window in days). **Printed bill**: the bottom line, the bill's QR code, the bill language, print darkness
   and logo are the same on every phone; the owner, or a manager allowed in Roles & access, changes them.
   The printer and paper width stay on each phone.

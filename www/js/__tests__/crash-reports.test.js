@@ -69,6 +69,26 @@ test('switched on: reports from before are deleted first, then collection is on;
     expect(plugin.calls).toEqual(['enabled:true']);
 });
 
+test('a fast on → off ends with collection off, even when the first delete is slow', async () => {
+    const plugin = fakePlugin();
+    let releaseDelete;
+    plugin.deleteUnsentReports.mockImplementationOnce(() => new Promise(r => {
+        releaseDelete = () => { plugin.calls.push('delete'); r(); };
+    }));
+    nativeWith(plugin);
+    const on = CrashReports.setOn(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(plugin.deleteUnsentReports).toHaveBeenCalledTimes(1);
+    const off = CrashReports.setOn(false);
+    releaseDelete();
+    await Promise.all([on, off]);
+    expect(plugin.calls).not.toContain('enabled:true');
+    expect(plugin.calls[plugin.calls.length - 2]).toBe('enabled:false');
+    expect(plugin.calls[plugin.calls.length - 1]).toBe('delete');
+    expect(CrashReports.state).toBe('off');
+});
+
 test('an APK without the Firebase config: "not set up", the switch is disabled', async () => {
     const plugin = fakePlugin();
     plugin.setEnabled.mockRejectedValue(new Error('Default FirebaseApp is not initialized'));

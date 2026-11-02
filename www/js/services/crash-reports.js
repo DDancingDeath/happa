@@ -1,9 +1,9 @@
 /**
  * @fileoverview Crash reports for the Android app (#122): Firebase Crashlytics through the
  * @capacitor-firebase/crashlytics plugin. Off unless the user switches it on (kept per phone);
- * the APK's manifest keeps collection off until then. The app never sets a user id, keys or
- * logs, so a report holds the crash, the phone model, the Android and app version and an
- * install id. Crashes from before the switch was on are deleted, never sent.
+ * the APK's manifest keeps collection off until then. The app sets no user id, keys or logs;
+ * a report holds the crash and its message, the phone model, Android and app version, device
+ * state and an install id. Crashes from before the switch was on are deleted, never sent.
  * docs/error-reporting.md.
  * @module services/crash-reports
  */
@@ -22,6 +22,8 @@ export function crashPlugin(win = window) {
 export const CrashReports = {
     /** Last result of apply(): 'on' | 'off' | 'unavailable' | 'not-set-up'. */
     state: 'unavailable',
+    /** apply() runs one at a time, so a quick on → off can't end with collection on. */
+    queue: Promise.resolve(),
 
     isOn() {
         try { return localStorage.getItem(CRASH_REPORTS_KEY) === '1'; } catch { return false; }
@@ -29,19 +31,26 @@ export const CrashReports = {
 
     /**
      * Tells Crashlytics the switch: on enables collection; off disables it and deletes any
-     * report kept on the phone. Never throws.
+     * report kept on the phone. Never throws. Calls run in order, each after the one before.
      * @param {{fresh?: boolean}} [opts] fresh: just switched on, so earlier reports are deleted first
      * @returns {Promise<string>} the state
      */
-    async apply({ fresh = false } = {}) {
+    apply(opts) {
+        const run = this.queue.then(() => this.applyNow(opts));
+        this.queue = run.catch(() => {});
+        return run;
+    },
+
+    async applyNow({ fresh = false } = {}) {
         const plugin = crashPlugin();
         if (!plugin) {
             this.state = 'unavailable';
         } else {
-            const on = this.isOn();
             try {
                 // Off: stop collecting, then delete what waits; on: delete what waits from before, then collect
-                if (on && fresh) await plugin.deleteUnsentReports();
+                if (fresh && this.isOn()) await plugin.deleteUnsentReports();
+                // Read again: the switch may have been turned off while the delete ran
+                const on = this.isOn();
                 await plugin.setEnabled({ enabled: on });
                 if (!on) await plugin.deleteUnsentReports();
                 this.state = on ? 'on' : 'off';

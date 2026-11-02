@@ -33,7 +33,7 @@ one on the website.
 
 | Option | Cost | Why not now |
 |---|---|---|
-| Firebase Crashlytics (APK) | Free on Spark (and Blaze) | **Chosen, opt-in** (below). A native stack trace carries no app data (no names, amounts or text the user typed), so the #116 scrubbing of web error text is not needed for it; the app sets no user id, keys or logs |
+| Firebase Crashlytics (APK) | Free on Spark (and Blaze) | **Chosen, opt-in** (below). The app sets no user id, keys or logs, but a native exception's message is sent as written and can hold text the code was handling, so the consent text says so; the #116 scrubbing covers only the web error telemetry |
 | Sentry free tier (web + APK) | Free up to a monthly event limit | A third party outside Firebase; needs a new CSP origin and the #116 scrubbing first; the limit can run out silently |
 | Sending error text to GitHub issues | Free | The repo is public and the errors can hold names, amounts and URLs. TIP issues carry only counts, reason codes and small sanitized samples, on purpose |
 
@@ -48,10 +48,17 @@ the APK's manifest keeps Crashlytics collection off (`firebase_crashlytics_colle
 false) and Firebase Sessions off for good (`firebase_sessions_enabled` false: no event on each
 app open), and the app turns collection on at run time only for that phone. Then a crash (or
 the app not responding) sends one report, and about once a day Crashlytics checks its settings
-with Google, sending the installation id, phone model, Android and app version (no report). A report holds the stack trace, the phone model, Android and app version, free memory
-and disk, the time, and a Firebase installation id (a random number per install,
-not the phone's IMEI or Android id). The app never calls `setUserId`,
-`setCustomKey` or `log`, so no user, shop, customer, bill or amount is in it.
+with Google, sending the installation id, phone model, Android and app version (no report). A report holds:
+
+- the stack trace and the **exception message** (as the code that threw wrote it: a plugin's
+  message can include text it was handling);
+- the phone model, Android and app version, and **device state**: free memory and disk, whether
+  the phone is rooted, and similar;
+- the time and a Firebase installation id (a random number per install, not the phone's IMEI
+  or Android id).
+
+The app never calls `setUserId`, `setCustomKey` or `log`, so it adds no user, shop, customer,
+bill or amount; only an exception message could carry such text.
 Reports that Crashlytics kept on the phone while the switch was off are deleted
 (`deleteUnsentReports`) after each sign-in and when the switch is turned on,
 so nothing from before the consent is sent. Switching it off stops collection
@@ -65,6 +72,13 @@ reports for the shop (Firebase data processing terms) and keeps them 90 days;
 the owner can delete them in the Firebase console. Nothing else from the app
 goes to Crashlytics: the web error telemetry above stays in the shop's own
 Firestore.
+
+**Android permission.** Firebase's transport libraries (pulled in by the plugin) add
+`android.permission.ACCESS_NETWORK_STATE` to the merged manifest, so they send only when online.
+It is a *normal* permission: granted at install, no prompt, and it reads only whether there is
+a connection. No other permission is added. The plugin is in every APK, so every build has it,
+with or without the Firebase config and whatever the switch says (checked on CI: the
+*Crashlytics build (dummy config)* job lists the APK's permissions).
 
 **APK size.** The plugin brings the Firebase Crashlytics Android SDK
 (`firebase-crashlytics` 19.4 with `firebase-common`, `firebase-installations`,
