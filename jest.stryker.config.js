@@ -18,7 +18,7 @@ const CORE = www(['money', 'billing-calc', 'dates', 'bill-checks', 'release', 'c
 // mutant runs a few files and a job stays under an hour (every oracle suite: ~8 s per mutant).
 const oracle = (names) => `**/tests/oracle/${anyOf(names)}.test.js`;
 const FINANCE_CALC = [oracle(['business-metrics', 'cross-page', 'screens']), www(['rounding', 'opening-records'])];
-const BUSINESS_METRICS = [oracle(['business-metrics', 'period-compare', 'fy-periods', 'questionnaire']),
+const BUSINESS_METRICS = [oracle(['business-metrics', 'period-compare', 'fy-periods', 'questionnaire', 'screens', 'cross-page']),
     www(['fy-periods', 'period-compare', 'questionnaire-defaults'])];
 
 /** Suites per mutated file; a file not listed gets CORE + the oracle. */
