@@ -71,7 +71,7 @@ export async function toUnit(c, tenant, unitId = '') {
     const mgr = c.isManager;
     const defs = await c.defaults();
     const open = c.dialog(`<h3>${c.esc(t(from ? 'ui.rent.change_unit' : tenant ? 'ui.rent.move_in' : 'ui.rent.add_tenant'))}${pick ? '' : `: ${c.esc(c.placeOf(ix, unitId))}`}</h3>
-        ${pick ? unitPickHtml(c, 'rentLeaseUnit', d, { none: false, attrs: ' onchange="window.app.rentals.fillRent(this)"' }) : ''}
+        ${pick ? unitPickHtml(c, 'rentLeaseUnit', d, { none: false, attrs: ' data-onchange="rentals.fillRent(this)"' }) : ''}
         ${c.tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keptTerms(from, defs) : { defs }) })}
         ${from ? splitHtml(c, mgr) : ''}`);
     if (from) {

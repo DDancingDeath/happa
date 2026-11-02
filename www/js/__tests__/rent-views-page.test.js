@@ -68,7 +68,7 @@ test('property wise (default): cards with type counts, then a property grouped b
     expect(root.textContent).not.toContain('Shop Shop 3');
     expect(root.textContent).toContain('Part paid');
     expect(root.textContent).toContain('Vacant');
-    expect(root.querySelectorAll('button[onclick*="rentals.pay"]').length).toBe(1);
+    expect(root.querySelectorAll('button[data-onclick*="rentals.pay"]').length).toBe(1);
 });
 
 test('unit wise: remembered per device, filters and search redraw only the list', () => {
@@ -107,7 +107,7 @@ test('no properties yet: the Rent page offers Add property, and the side menu ma
         show();
         document.body.insertAdjacentHTML('afterbegin', '<nav class="nav-menu"><a data-biz="all" class="active">Settings</a><a data-biz="rentals" data-rent-nav="rent">Rent</a></nav>');
         _test.render();
-        const add = document.querySelector('#rentalsBody button[onclick*="rentals.page(\'properties\')"]');
+        const add = document.querySelector('#rentalsBody button[data-onclick*="rentals.page(\'properties\')"]');
         expect(add.textContent).toBe('Add property');
         expect([...document.querySelectorAll('.nav-menu a.active')].map(a => a.textContent)).toEqual(['Rent']);
     } finally {
