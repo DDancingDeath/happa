@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
- * Lists the `${…}` interpolations in HTML-looking template literals (and `'<tag…' + x`
- * concatenations) under www/js and www/r that are not plainly escaped, for the innerHTML audit
- * (#89, docs/security.md). A report for review, not a gate: most hits are numbers, colours, other
- * escaped fragments or catalogue text; check each new one by hand.
+ * Lists the values that reach HTML without being plainly escaped, for the innerHTML audit (#89,
+ * docs/security.md): each `${…}` in an HTML-looking template literal, each piece of a `+` chain
+ * that builds markup, and each innerHTML / outerHTML / insertAdjacentHTML / document.write /
+ * showModalWithHtml / showCustomModal given something other than a literal, under www/js and
+ * www/r. A helper for review, not a proof: most hits are numbers, colours, other escaped
+ * fragments or catalogue text, and a value can still be unsafe in a way the rules below accept;
+ * check each new line by hand.
  *   node scripts/html-escape-audit.js [--summary]
  */
 const fs = require('fs');
@@ -18,9 +21,11 @@ const SKIP = /[\\/](__tests__|i18n|vendor)[\\/]/;
 /** Calls that return escaped text, numbers, or HTML built from escaped parts. */
 const SAFE_CALLS = new Set(['esc', 'e', 'escapeHtml', 'escapeJsAttr', 'escapeAttr', 'L', 'tt', 'tx', 'et', 'loc', 'js', 'attr',
     'encodeURIComponent', 'formatCurrency', 'formatINR', 'formatRupees', 'formatKg', 'formatRate', 'fmt', 'money', 'rupees',
-    'toFixed', 'toLocaleString', 'Number', 'round', 'floor', 'ceil', 'abs', 'min', 'max', 'join', 'map', 'filter']);
-/** Names that by convention hold a number, a colour / class / style, or already-escaped HTML. */
-const SAFE_NAME = /(html|Html|HTML|rows|Rows|cls|Class|class|style|Style|color|Color|icon|Icon|count|Count|total|Total|amount|Amount|qty|Qty|width|height|pct|Pct|index|idx|^i$|^n$|^h$|^k$)/;
+    'toFixed', 'toLocaleString', 'Number', 'round', 'floor', 'ceil', 'abs', 'min', 'max']);
+/** Whole names that by convention hold a number, a colour / class / style, or already-escaped HTML. */
+const SAFE_NAME = /^(?:[a-z]\w*)?(?:Html|HTML|Rows|Class|Style|Color|Icon|Count|Total|Amount|Qty|Pct|Width|Height)$|^(?:html|rows|cls|style|color|icon|count|total|amount|qty|pct|width|height|index|idx|i|n|h|k)$/;
+const SINK_CALLS = new Set(['insertAdjacentHTML', 'showModalWithHtml', 'showCustomModal']);
+const MARKUP = /<\/?[a-z]/i;
 
 function files(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -46,7 +51,13 @@ function audit(file) {
             case 'CallExpression': {
                 const name = callee(n.callee);
                 if (name === 't') return n.arguments.length < 2;
-                return SAFE_CALLS.has(name) || /Html$|html$|HTML$|Row$|Rows$|Chip$|Badge$|^render|Icon$/.test(name);
+                // x.map(…).join(…) is as safe as what is mapped (template literals inside are listed on their own)
+                if (name === 'join' && n.callee.type === 'MemberExpression') return safe(n.callee.object);
+                if ((name === 'map' || name === 'filter') && n.arguments[0] && /Function/.test(n.arguments[0].type)) {
+                    const body = n.arguments[0].body;
+                    return body.type === 'BlockStatement' || safe(body);
+                }
+                return SAFE_CALLS.has(name) || /^(?:[a-z]\w*)?(?:Html|HTML)$|^render[A-Z]?/.test(name);
             }
             case 'Identifier': return SAFE_NAME.test(n.name);
             case 'MemberExpression': return !n.computed && SAFE_NAME.test(n.property.name);
@@ -55,14 +66,32 @@ function audit(file) {
     };
     const hits = [];
     const at = (n) => `${path.relative(ROOT, file).replace(/\\/g, '/')}:${n.loc.start.line}`;
-    walk.full(ast, (n) => {
-        if (n.type === 'TemplateLiteral' && /<[a-z]/i.test(n.quasis.map(q => q.value.raw).join(''))) {
+    const isLiteral = (v) => v.type === 'Literal' || v.type === 'TemplateLiteral';
+    walk.fullAncestor(ast, (n, ancestors) => {
+        const parent = ancestors[ancestors.length - 2];
+        if (n.type === 'TemplateLiteral' && MARKUP.test(n.quasis.map(q => q.value.raw).join(''))) {
             n.expressions.filter(x => !safe(x)).forEach(x => hits.push(`${at(x)}: ${text(x)}`));
         }
-        if (n.type === 'BinaryExpression' && n.operator === '+') {
-            const tag = [n.left, n.right].find(x => x.type === 'Literal' && typeof x.value === 'string' && /<\/?[a-z]/i.test(x.value));
-            const other = tag && [n.left, n.right].find(x => x !== tag);
-            if (other && other.type !== 'BinaryExpression' && !safe(other)) hits.push(`${at(other)}: ${text(other)} (concatenated)`);
+        if (n.type === 'BinaryExpression' && n.operator === '+' && !(parent && parent.type === 'BinaryExpression' && parent.operator === '+')) {
+            // One + chain at a time: if any piece is markup, list every unsafe piece
+            const parts = [];
+            const flat = (x) => {
+                if (x.type === 'BinaryExpression' && x.operator === '+') { flat(x.left); flat(x.right); } else parts.push(x);
+            };
+            flat(n);
+            const markup = parts.some(x => (x.type === 'Literal' && typeof x.value === 'string' && MARKUP.test(x.value))
+                || (x.type === 'TemplateLiteral' && MARKUP.test(x.quasis.map(q => q.value.raw).join(''))));
+            if (markup) parts.filter(x => x.type !== 'TemplateLiteral' && !safe(x)).forEach(x => hits.push(`${at(x)}: ${text(x)} (concatenated)`));
+        }
+        if (n.type === 'AssignmentExpression' && n.left.type === 'MemberExpression' && !n.left.computed
+            && /^(innerHTML|outerHTML)$/.test(n.left.property.name) && !isLiteral(n.right) && !safe(n.right)) {
+            hits.push(`${at(n.right)}: ${text(n.right)} (sink)`);
+        }
+        const docWrite = n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && callee(n.callee) === 'write'
+            && /document$/.test(text(n.callee.object));
+        if (n.type === 'CallExpression' && (SINK_CALLS.has(callee(n.callee)) || docWrite)) {
+            const v = n.arguments[callee(n.callee) === 'insertAdjacentHTML' ? 1 : 0];
+            if (v && !isLiteral(v) && !safe(v)) hits.push(`${at(v)}: ${text(v)} (sink)`);
         }
     });
     return hits;
@@ -76,4 +105,4 @@ if (process.argv.includes('--summary')) {
 } else {
     console.log(all.join('\n'));
 }
-console.error(`${all.length} interpolation(s) to check by hand`);
+console.error(`${all.length} value(s) to check by hand`);

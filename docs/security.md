@@ -99,9 +99,12 @@ switch, pick one:
 ## innerHTML audit (#89, 2 Nov 2026)
 
 Every `innerHTML` / `insertAdjacentHTML` / `outerHTML` sink under `www/js` and `www/r`
-(239 of them) was traced to the markup it gets. `node scripts/html-escape-audit.js` lists
-each `${…}` in an HTML template literal (and each `'<tag' + x`) that is not plainly escaped:
-457 at the time, every one checked by hand. **No unescaped user or Firestore text was
+(239 of them), plus `document.write` in `Exporter.printPage` (print / PDF of Statements and the
+audit log), was traced to the markup it gets. `node scripts/html-escape-audit.js` helps: it lists
+each `${…}` in an HTML template literal, each piece of a `+` chain that builds markup, and each
+sink given a variable rather than a literal, when not plainly escaped (555 at the time, every one
+checked by hand). It is a helper, not a proof: a value it accepts by its rules can still be unsafe,
+so review new markup by hand too. **No unescaped user or Firestore text was
 found**; what the script lists is numbers and amounts (computed or `parseFloat`-ed),
 colours / classes / styles, fragments built from escaped parts (`rowHtml`, `L(…)`,
 `partyName(p)`), catalogue text without parameters, and internal ids (page names, view
@@ -112,8 +115,8 @@ keys). The conventions that keep it so:
   records through `loc` (`escapeHtml(pickLang(…))`);
 - values inside a handler attribute: `Helpers.escapeJsAttr()` (JS-escaped, then
   HTML-escaped), for both `onclick="fn('…')"` and `data-onclick="fn('…')"`;
-- `UIManager.showModalWithHtml` / `showCustomModal` take markup the caller has escaped
-  (all callers build it with the helpers above);
+- `UIManager.showModalWithHtml` / `showCustomModal` and `Exporter.printPage` take markup the
+  caller has escaped (all callers build it with the helpers above);
 - `www/js/__tests__/xss-rendering.test.js` renders the main lists with hostile names, ids
   and "numbers" and checks nothing runs.
 
