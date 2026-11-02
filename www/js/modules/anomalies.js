@@ -437,7 +437,7 @@ export const AnomaliesManager = {
         card.innerHTML = `
             <div class="anomaly-card-head">
                 <h3 class="section-title" style="margin:0;">🚨 ${esc(t('ui.anom.day_report'))}</h3>
-                <span><button type="button" class="anomaly-btn" title="${esc(t('ui.anom.refresh'))}" aria-label="${esc(t('ui.anom.refresh'))}" onclick="window.app.anomalies.refreshNow()">🔄</button>
+                <span><button type="button" class="anomaly-btn" title="${esc(t('ui.anom.refresh'))}" aria-label="${esc(t('ui.anom.refresh'))}" data-onclick="anomalies.refreshNow()">🔄</button>
                 <span class="anomaly-count-badge ${s.total ? 'has' : ''}">${s.total}</span></span>
             </div>
             <div class="anomaly-muted" style="margin:4px 0 8px;">${esc(formatDayKey(today))} · ${esc(this.cashStatusLine())}</div>
@@ -448,9 +448,9 @@ export const AnomaliesManager = {
                 ${queue.length ? bySev : `<div class="anomaly-empty">${esc(t('ui.anom.nothing_to_review'))}</div>`}
             </div>
             <div class="anomaly-actions">
-                <button type="button" class="btn btn-success" onclick="window.app.anomalies.shareDayReport()">📤 WhatsApp</button>
-                <button type="button" class="btn btn-secondary" onclick="window.app.anomalies.printDayReport()">🖨️ ${esc(t('ui.anom.print_image'))}</button>
-                <button type="button" class="btn btn-primary" onclick="window.app.anomalies.openPage()">🔎 ${esc(allLabel)}</button>
+                <button type="button" class="btn btn-success" data-onclick="anomalies.shareDayReport()">📤 WhatsApp</button>
+                <button type="button" class="btn btn-secondary" data-onclick="anomalies.printDayReport()">🖨️ ${esc(t('ui.anom.print_image'))}</button>
+                <button type="button" class="btn btn-primary" data-onclick="anomalies.openPage()">🔎 ${esc(allLabel)}</button>
             </div>`;
     },
 
@@ -565,19 +565,19 @@ export const AnomaliesManager = {
         const canOpen = a.refKind === 'bill' || a.refKind === 'cash' || a.refKind === 'stock';
         const statusBadge = status === 'open' ? '' : `<span class="anomaly-status anomaly-status-${esc(status)}">${loc(STATUS_LABELS[status] || STATUS_LABELS.open)}</span>`;
         const review = status === 'open'
-            ? `<button type="button" class="anomaly-btn ok" onclick="window.app.anomalies.review('${id}', 'ok')">✓ ${esc(t('ui.anom.btn_ok'))}</button>
-               <button type="button" class="anomaly-btn fixed" onclick="window.app.anomalies.review('${id}', 'fixed')">🔧 ${esc(t('ui.anom.btn_fixed'))}</button>`
-            : `<button type="button" class="anomaly-btn" onclick="window.app.anomalies.review('${id}', 'open')">↩ ${esc(t('ui.anom.btn_reopen'))}</button>`;
+            ? `<button type="button" class="anomaly-btn ok" data-onclick="anomalies.review('${id}', 'ok')">✓ ${esc(t('ui.anom.btn_ok'))}</button>
+               <button type="button" class="anomaly-btn fixed" data-onclick="anomalies.review('${id}', 'fixed')">🔧 ${esc(t('ui.anom.btn_fixed'))}</button>`
+            : `<button type="button" class="anomaly-btn" data-onclick="anomalies.review('${id}', 'open')">↩ ${esc(t('ui.anom.btn_reopen'))}</button>`;
         return `
             <div class="anomaly-row sev-${esc(a.severity)}${compact ? ' compact' : ''}">
-                <div class="anomaly-row-main"${canOpen ? ` onclick="window.app.anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
+                <div class="anomaly-row-main"${canOpen ? ` data-onclick="anomalies.openRef('${id}')" role="button" tabindex="0"` : ''}>
                     <div class="anomaly-row-title"><span class="anomaly-dot" style="background:${SEV_COLORS[a.severity] || '#4b5563'}"></span>${loc(label)} ${statusBadge}</div>
                     <div class="anomaly-row-why">${loc(a)}</div>
                     <div class="anomaly-row-meta">${meta}</div>
                     ${a.note ? `<div class="anomaly-row-note">📝 ${esc(a.note)}${a.reviewedByName ? ` — ${esc(a.reviewedByName)}` : ''}</div>` : ''}
                 </div>
                 <div class="anomaly-row-actions">
-                    ${canOpen ? `<button type="button" class="anomaly-btn" onclick="window.app.anomalies.openRef('${id}')">↗ ${esc(t('ui.anom.btn_open'))}</button>` : ''}
+                    ${canOpen ? `<button type="button" class="anomaly-btn" data-onclick="anomalies.openRef('${id}')">↗ ${esc(t('ui.anom.btn_open'))}</button>` : ''}
                     ${review}
                 </div>
             </div>`;
