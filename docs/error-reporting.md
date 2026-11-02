@@ -45,13 +45,15 @@ one on the website.
 **What is sent, and only after the user switches it on.** Settings › Crash reports
 (shown only in the Android app) is off on every phone until its user turns it on;
 the APK's manifest keeps Crashlytics collection off (`firebase_crashlytics_collection_enabled`
-false), and the app turns it on at run time only for that phone. A report holds the
-stack trace of the crash, the phone model, Android and app version, free memory
+false) and Firebase Sessions off for good (`firebase_sessions_enabled` false: no event on each
+app open), and the app turns collection on at run time only for that phone. Then a crash (or
+the app not responding) sends one report, and Crashlytics fetches its settings from Google
+once a day. A report holds the stack trace, the phone model, Android and app version, free memory
 and disk, the time, and a Firebase installation id (a random number per install,
 not the phone's IMEI or Android id). The app never calls `setUserId`,
 `setCustomKey` or `log`, so no user, shop, customer, bill or amount is in it.
 Reports that Crashlytics kept on the phone while the switch was off are deleted
-(`deleteUnsentReports`) when the app starts and when the switch is turned on,
+(`deleteUnsentReports`) after each sign-in and when the switch is turned on,
 so nothing from before the consent is sent. Switching it off stops collection
 and deletes what is still waiting.
 

@@ -39,6 +39,10 @@
         <meta-data
             android:name="firebase_crashlytics_collection_enabled"
             android:value="false" />
+        <!-- No Firebase Sessions events (sent on every app open once Crashlytics is on). -->
+        <meta-data
+            android:name="firebase_sessions_enabled"
+            android:value="false" />
     </application>
 
     <!-- Permissions -->
