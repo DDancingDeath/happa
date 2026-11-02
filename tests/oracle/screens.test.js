@@ -262,7 +262,7 @@ describe("Today › By bill type (T18) and Today's bills (T19) == oracle", () =>
 
         specTest('T19')('T19 rows: every bill of today once, newest first, with its total; a row opens that bill', () => {
             const rows = [...document.querySelectorAll('#todayBillsList .today-bill-row')];
-            const ids = rows.map(r => /id:([^']+)'/.exec(r.getAttribute('onclick'))[1]);
+            const ids = rows.map(r => /id:([^']+)'/.exec(r.getAttribute('data-onclick'))[1]);
             expect([...ids].sort()).toEqual(want.T19.map(r => r.id).sort());
             const byId = Object.fromEntries(want.T19.map(r => [r.id, r]));
             const times = ids.map(id => byId[id].at);

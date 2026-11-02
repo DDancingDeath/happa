@@ -969,7 +969,7 @@ export class WholesaleSalesManager {
     static buildSaleRow(sale) {
         return buildBillRow(sale, {
             kind: 'wholesale',
-            onclick: `window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')`
+            onclick: `wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')`
         });
     }
 
@@ -1068,7 +1068,7 @@ export class WholesaleSalesManager {
             container.innerHTML = billTableHtml(bills, {
                 openings: this.historyOpenings,
                 voided: this.historyVoided,
-                onclickFor: (sale) => `window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')`
+                onclickFor: (sale) => `wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')`
             });
             placeToggle();
             return;
@@ -1258,7 +1258,7 @@ export class WholesaleSalesManager {
                 
                 ${paymentHTML}
                 ${paymentsHistoryHTML}
-                ${editsRowHtml(sale, 'window.app.history.showEdits()')}
+                ${editsRowHtml(sale, 'history.showEdits()')}
             </div>
         `;
         

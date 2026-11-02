@@ -343,7 +343,7 @@ export class HistoryManager {
     static buildHistoryCard(bill) {
         return buildBillRow(bill, {
             kind: bill.type,
-            onclick: `window.app.history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
+            onclick: `history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
         });
     }
 
@@ -585,7 +585,7 @@ export class HistoryManager {
                         <div class="bill-info-row bill-trace-row">
                             <div class="bill-info-label">${L('ui.status.trace_id')}</div>
                             <div class="bill-info-value"><code lang="zxx" translate="no" style="font-size:12px;">${Helpers.escapeHtml(billTraceId(bill, type))}</code>
-                                <button type="button" class="btn-link bill-trace-copy" onclick="window.app.history.copyTraceId()" style="margin-left:6px;font-size:12px;">${L('ui.status.copy_short')}</button></div>
+                                <button type="button" class="btn-link bill-trace-copy" data-onclick="history.copyTraceId()" style="margin-left:6px;font-size:12px;">${L('ui.status.copy_short')}</button></div>
                         </div>
                     ` : ''}
                 </div>
@@ -650,7 +650,7 @@ export class HistoryManager {
                 </div>
                 
                 ${paymentHTML}
-                ${editsRowHtml(bill, 'window.app.history.showEdits()')}
+                ${editsRowHtml(bill, 'history.showEdits()')}
             </div>
         `;
         
@@ -1065,8 +1065,8 @@ export class HistoryManager {
         host.insertAdjacentHTML('beforeend', `
             <div class="bill-print-status" id="billPrintStatus" data-state="${Helpers.escapeHtml(st ? st.s : 'none')}">
                 <span class="bill-print-status__text">🖨️ ${Helpers.escapeHtml(printStatusText(current.bill, (e) => PrinterService.errorText(e)))}</span>
-                ${retry ? `<button type="button" class="filter-btn" onclick="window.app.history.retryPrint()">${L('ui.print_status.retry')}</button>` : ''}
-                ${markHand ? `<button type="button" class="filter-btn" onclick="window.app.history.markPrintedByHand()">${L('ui.print_status.mark_hand')}</button>` : ''}
+                ${retry ? `<button type="button" class="filter-btn" data-onclick="history.retryPrint()">${L('ui.print_status.retry')}</button>` : ''}
+                ${markHand ? `<button type="button" class="filter-btn" data-onclick="history.markPrintedByHand()">${L('ui.print_status.mark_hand')}</button>` : ''}
             </div>`);
     }
 
@@ -1124,7 +1124,7 @@ export class HistoryManager {
         container.innerHTML = billTableHtml(bills, {
             openings: this.pageOpenings,
             voided: this.pageVoided,
-            onclickFor: (bill) => `window.app.history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
+            onclickFor: (bill) => `history.viewBill('${billRef(bill)}', '${Helpers.escapeJsAttr(bill.type)}')`
         });
     }
 }

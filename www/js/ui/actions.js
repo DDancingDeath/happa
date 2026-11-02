@@ -19,16 +19,18 @@
  * Grammar (statements separated by `;`):
  *   call      path '(' [arg {',' arg}] ')'          path: name {'.' name} under window.app
  *   arg       'text' | "text" (JS escapes) | number | true | false | null | undefined
- *             | event | this | this.value | this.checked | this.dataset.<name>
+ *             | event | this | this.value | this.checked | this.open | this.dataset.<name>
  *   also      `return false` (preventDefault; ends the handler), `event.stopPropagation()`,
  *             `event.preventDefault()`
  * @module ui/actions
  */
 
-/** Events handled; focus / blur don't bubble, so their `focusin` / `focusout` are used. */
+/** Events handled; focus / blur don't bubble, so their `focusin` / `focusout` are used; `toggle`
+ * (a <details> opening or closing) doesn't bubble either: only the element itself, caught on the
+ * way down. */
 export const ACTION_EVENTS = Object.freeze({
     click: 'click', change: 'change', input: 'input', submit: 'submit',
-    keydown: 'keydown', keyup: 'keyup', focus: 'focusin', blur: 'focusout'
+    keydown: 'keydown', keyup: 'keyup', focus: 'focusin', blur: 'focusout', toggle: 'toggle'
 });
 
 const NAME = /[A-Za-z_$][\w$]*/y;
@@ -105,7 +107,7 @@ export function parseAction(src) {
         if (src[i] !== '.') return { ref: 'this' };
         i++;
         const prop = name();
-        if (prop === 'value' || prop === 'checked') return { ref: prop };
+        if (prop === 'value' || prop === 'checked' || prop === 'open') return { ref: prop };
         if (prop !== 'dataset' || src[i] !== '.') fail(`this.${prop} not allowed`);
         i++;
         return { ref: 'dataset', key: name() };
@@ -188,6 +190,7 @@ function argValue(a, el, event) {
     if (a.ref === 'this') return el;
     if (a.ref === 'value') return el.value;
     if (a.ref === 'checked') return el.checked;
+    if (a.ref === 'open') return el.open;
     return el.dataset ? el.dataset[a.key] : undefined;
 }
 
@@ -219,15 +222,30 @@ function reportHandlerError(e) {
 export function installActions(doc = document) {
     if (doc.__aadhatActions) return;
     doc.__aadhatActions = true;
+    // A non-native control with role="button" and a data-onclick also answers Enter and Space,
+    // as a button does (keyboard users; was an inline onkeydown on each).
+    doc.addEventListener('keydown', (event) => {
+        const el = event.target;
+        if ((event.key !== 'Enter' && event.key !== ' ') || !(el instanceof Element)) return;
+        if (el.getAttribute('role') !== 'button' || /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) return;
+        const src = el.getAttribute('data-onclick');
+        if (src === null || !src.trim() || el.hasAttribute('data-onkeydown')) return;
+        event.preventDefault();
+        try {
+            runAction(el, src, event);
+        } catch (e) {
+            reportHandlerError(e);
+        }
+    });
     Object.entries(ACTION_EVENTS).forEach(([type, domType]) => {
         const attr = `data-on${type}`;
-        // focus/blur don't bubble: only the element itself, as with its inline handler
-        const bubbles = type !== 'focus' && type !== 'blur';
+        // focus/blur/toggle don't bubble: only the element itself, as with its inline handler
+        const bubbles = type !== 'focus' && type !== 'blur' && type !== 'toggle';
         doc.addEventListener(domType, (event) => {
             let el = event.target instanceof Element ? event.target : event.target?.parentElement;
             while (el && el !== doc) {
                 const src = el.getAttribute?.(attr);
-                if (src !== null && src !== undefined) {
+                if (src !== null && src !== undefined && src.trim()) {
                     try {
                         runAction(el, src, event);
                     } catch (e) {
@@ -238,6 +256,6 @@ export function installActions(doc = document) {
                 if (!bubbles) break;
                 el = el.parentElement;
             }
-        });
+        }, type === 'toggle');
     });
 }
