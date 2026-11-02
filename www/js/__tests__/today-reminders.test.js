@@ -91,8 +91,8 @@ describe('Today › Reminders card', () => {
         expect(host.hidden).toBe(false);
         expect(host.querySelector('[data-reminder="collect"]').textContent).toContain('Ravi');
         expect(host.querySelector('[data-reminder="collect_wholesale"]').textContent).toContain('Hotel Raj');
-        expect(host.querySelector('[data-reminder="collect_wholesale"] button').getAttribute('onclick')).toBe("window.app.nav.showTab('wholesale-outstanding')");
-        expect(host.querySelector('[data-reminder="collect"] button').getAttribute('onclick')).toBe("window.app.day.openDues('retail')");
+        expect(host.querySelector('[data-reminder="collect_wholesale"] button').getAttribute('data-onclick')).toBe("nav.showTab('wholesale-outstanding')");
+        expect(host.querySelector('[data-reminder="collect"] button').getAttribute('data-onclick')).toBe("day.openDues('retail')");
         expect(host.querySelector('[data-reminder="pay"]').textContent).toContain('Farmer Ram');
         expect(host.querySelector('[data-reminder="rent"]')).toBeNull();
     });
@@ -141,7 +141,7 @@ describe('REM-3 backup check (#63)', () => {
         AppState.userRole = 'owner';
         DayManager.renderReminders(TODAY);
         expect(card().textContent).toContain('No backup checked on this phone yet');
-        expect(card().querySelector('button').getAttribute('onclick')).toBe('window.app.day.openBackupCheck()');
+        expect(card().querySelector('button').getAttribute('data-onclick')).toBe('day.openBackupCheck()');
         recordDrill(localStorage, { uid: 'u1', at: TODAY.getTime() - 29 * 86400000, exportedAt: null, docs: 5 });
         DayManager.renderReminders(TODAY);
         expect(card()).toBeNull();

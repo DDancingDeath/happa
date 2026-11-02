@@ -269,7 +269,7 @@ export const DayManager = {
             + `<div class="today-reminder-head"><strong>${e(t(`ui.today.reminder_${kind}`))}</strong> ${e(formatINR(r.total))}</div>`
             + `<ul>${r.parties.map(party).join('')}</ul>`
             + (r.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: r.more }))}</div>` : '')
-            + `<button type="button" class="filter-btn" onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div>`;
+            + `<button type="button" class="filter-btn" data-onclick="${open}">${e(t('ui.today.reminder_open_dues'))}</button></div>`;
         const parts = [];
         // Manual reminders (#86) first: what someone asked to be done today
         const manual = ManualReminders.html(toLocalISODate(now));
@@ -279,9 +279,9 @@ export const DayManager = {
             if (r.parties.length) parts.push(block(kind, r, open));
         };
         // Outstanding lists retail customers and suppliers; wholesale dues live on the Wholesale page.
-        if (canDue) add('collect', AppState.retailSalesHistory || [], "window.app.day.openDues('retail')");
-        if (canWholesale) add('collect_wholesale', billsForKind(AppState, 'wholesale'), "window.app.nav.showTab('wholesale-outstanding')");
-        if (canDue) add('pay', AppState.purchaseHistory || [], "window.app.day.openDues('purchase')");
+        if (canDue) add('collect', AppState.retailSalesHistory || [], "day.openDues('retail')");
+        if (canWholesale) add('collect_wholesale', billsForKind(AppState, 'wholesale'), "nav.showTab('wholesale-outstanding')");
+        if (canDue) add('pay', AppState.purchaseHistory || [], "day.openDues('purchase')");
         if (rentalsRole(AppState)) {
             let rent = null;
             try { rent = rentReminder(localStorage, AppState.currentUser?.uid, toLocalISODate(now).slice(0, 7)); } catch (_) { rent = null; }
@@ -289,7 +289,7 @@ export const DayManager = {
                 parts.push(`<div class="today-reminder" data-reminder="rent"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_rent'))}</strong> ${e(formatINR(rent.due))}</div>`
                     + `<div>${e(t('ui.today.reminder_rent_units', { count: rent.dueUnits, late: rent.late }))}</div>`
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatDayTime(rent.at, { lang: getLang() }) }))}</div>`
-                    + `<button type="button" class="filter-btn" onclick="window.app.rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div>`);
+                    + `<button type="button" class="filter-btn" data-onclick="rentals.open('rent', event)">${e(t('ui.today.reminder_open_rent'))}</button></div>`);
             }
             // REM-4: agreements ending and rent increases due, as the Rent page last saw them this month
             let leases = null;
@@ -303,7 +303,7 @@ export const DayManager = {
                     + `<ul>${leases.items.map(x => `<li class="today-reminder-party"><span>${e([x.place, x.tenant].filter(Boolean).join(' · '))}</span> <span class="today-reminder-days">${e(what(x))}</span></li>`).join('')}</ul>`
                     + (leases.more ? `<div class="today-reminder-more">${e(t('ui.today.reminder_more', { count: leases.more }))}</div>` : '')
                     + `<div class="today-reminder-more">${e(t('ui.today.reminder_as_of', { time: formatDayTime(leases.at, { lang: getLang() }) }))}</div>`
-                    + `<button type="button" class="filter-btn" onclick="window.app.rentals.open('tenants', event)">${e(t('ui.today.reminder_open_tenants'))}</button></div>`);
+                    + `<button type="button" class="filter-btn" data-onclick="rentals.open('tenants', event)">${e(t('ui.today.reminder_open_tenants'))}</button></div>`);
             }
         }
         // REM-3 (#63): the owner checks a backup file at least every 30 days
@@ -313,7 +313,7 @@ export const DayManager = {
             if (drill?.due) {
                 parts.push(`<div class="today-reminder" data-reminder="backup"><div class="today-reminder-head"><strong>${e(t('ui.today.reminder_backup'))}</strong></div>`
                     + `<div>${e(drill.lastAt === null ? t('ui.today.reminder_backup_never') : t('ui.today.reminder_backup_days', { count: drill.days }))}</div>`
-                    + `<button type="button" class="filter-btn" onclick="window.app.day.openBackupCheck()">${e(t('ui.today.reminder_open_backup'))}</button></div>`);
+                    + `<button type="button" class="filter-btn" data-onclick="day.openBackupCheck()">${e(t('ui.today.reminder_open_backup'))}</button></div>`);
             }
         }
         host.hidden = parts.length === 0;
@@ -360,7 +360,7 @@ export const DayManager = {
                 const party = bill.customerName || bill.seller || bill.buyer || (type === 'retail' ? t('ui.today.walk_in') : '');
                 const no = bill.billNumber ? `#${bill.billNumber}` : '';
                 const ref = Helpers.escapeJsAttr(`id:${bill.id}`);
-                return `<button type="button" class="today-bill-row today-bill-${type}" onclick="window.app.history.viewBill('${ref}', '${type}')" aria-label="${esc(t('ui.today.bill_open_aria', { bill: [t(BILL_KIND_KEYS[type]), no, party].filter(Boolean).join(' ') }))}">
+                return `<button type="button" class="today-bill-row today-bill-${type}" data-onclick="history.viewBill('${ref}', '${type}')" aria-label="${esc(t('ui.today.bill_open_aria', { bill: [t(BILL_KIND_KEYS[type]), no, party].filter(Boolean).join(' ') }))}">
                     <span class="today-bill-time">${esc(at ? Helpers.formatTime(new Date(at)) : '')}</span>
                     <span class="today-bill-main"><span class="today-bill-party">${esc(party || no)}</span><span class="today-bill-kind">${esc([t(BILL_KIND_KEYS[type]), party ? no : ''].filter(Boolean).join(' · '))}</span></span>
                     <strong class="today-bill-total">${esc(formatCurrency(total))}</strong>
