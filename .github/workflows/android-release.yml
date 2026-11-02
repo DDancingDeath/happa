@@ -344,7 +344,8 @@ jobs:
           fi
           mb() { awk -v b="$(stat -c %s "$1")" 'BEGIN { printf "%.2f MB (%d bytes)", b / 1048576, b }'; }
           app_perms="$(grep -o 'uses-permission android:name="[^"]*"' android/app/src/main/AndroidManifest.xml | sed 's/.*name="//; s/"$//' | sort -u)"
-          apk_perms="$("$aapt2" dump permissions "$with" | sed -n 's/.*uses-permission: name=.\([^'"'"']*\).*/\1/p' | sort -u)"
+          apk_perms="$("$aapt2" dump badging "$with" | sed -n 's/^uses-permission: name=.\([^'"'"']*\).*/\1/p' | sort -u)"
+          grep -qx 'android.permission.INTERNET' <<< "$apk_perms" || { echo "::error::could not read the APK's permissions"; exit 1; }
           {
             echo "### Crashlytics build (dummy config)"
             echo "- Debug APK without the Firebase config: $(mb "$without")"

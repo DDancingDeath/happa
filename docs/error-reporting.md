@@ -83,9 +83,11 @@ with or without the Firebase config and whatever the switch says (checked on CI:
 
 **APK size.** The plugin brings the Firebase Crashlytics Android SDK
 (`firebase-crashlytics` 19.4 with `firebase-common`, `firebase-installations`,
-`firebase-sessions` and the transport libraries): the debug APK grows from 12.2 MB to
-14.4 MB (+2.2 MB, CI build of 2 Nov 2026). Release builds are not minified
-(`minifyEnabled false`), so they grow about as much; turning on R8 would win most of it back.
+`firebase-sessions` and the transport libraries). Debug APK, CI builds of 2 Nov 2026: 12.2 MB
+before this change, 14.5 MB with the plugin but no Firebase config, 14.7 MB with the config
+(+2.5 MB; the *Crashlytics build (dummy config)* job reports the last two on every PR that
+touches the Android build). Release builds are not minified (`minifyEnabled false`), so they
+grow about as much; turning on R8 would win most of it back.
 
 **Set-up (owner, once).** Until this is done the APK builds and runs as before
 and the switch says "Not set up in this version of the app yet":
