@@ -28,6 +28,7 @@ import { AuthManager } from '../auth/authentication.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
+import { LEGACY_SCAN_DELAY_MS } from '../utils/background-tasks.js';
 
 const FILE = path.resolve(__dirname, '../../../tests/fixtures/repositories-calls.json');
 const RECORD = !!process.env.REPO_CALLS_RECORD;
@@ -49,11 +50,13 @@ afterAll(() => {
 let fake;
 let rec;
 let user;
+/** Options of the fake Firestore for the next tests (the core block retries transactions like the SDK). */
+let fakeOptions = {};
 
 beforeEach(() => {
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
     jest.setSystemTime(NOW);
-    fake = createFakeFirestore();
+    fake = createFakeFirestore(fakeOptions);
     rec = recordFirestore(fake.db);
     user = { uid: 'u1', email: 'o@x' };
     const FieldValue = {
@@ -724,5 +727,176 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         await committed;
         pin('service.withdrawal', rec.log);
         expect(record.timestamp).toBe(NOW);
+    });
+});
+
+describe('FirebaseService core (phase 5, #69: pinned before the listeners, history window, checkpoint and bill saves move)', () => {
+    const DAY = 86400000;
+    const at = (y, m, d) => new Date(y, m - 1, d, 12).getTime();
+    const line = (qty, rate) => ({ name: 'Rice', itemId: 'i1', quantity: qty, qty, rate, total: qty * rate });
+    // A transaction whose reads changed before it commits runs again, as with the real SDK.
+    beforeAll(() => { fakeOptions = { occ: true }; });
+    afterAll(() => { fakeOptions = {}; });
+    beforeEach(() => {
+        fake.seed('dev_items', [{ id: 'i1', name: 'Rice', rate: 30 }]);
+        fake.seed('dev_purchases', [
+            { id: 'p1', date: '2026-10-20', timestamp: NOW - DAY, partyName: 'Ram', items: [line(10, 30)], total: 300, grandTotal: 300, payment: { cash: 300, online: 0, due: 0 }, openDue: false },
+            { id: 'p0', date: '2026-03-05', timestamp: at(2026, 3, 5), partyName: 'Shyam', items: [line(10, 30)], total: 300, grandTotal: 300, payment: { cash: 200, online: 0, due: 100 }, dueAmount: 100, openDue: true },
+            { id: 'p9', date: '2026-02-01', timestamp: at(2026, 2, 1), partyName: 'Old', items: [line(5, 20)], total: 100, grandTotal: 100, payment: { cash: 100, online: 0, due: 0 }, openDue: false }
+        ]);
+        fake.seed('dev_retailSales', [{ id: 'r1', date: '2026-10-19', timestamp: NOW - 2 * DAY, customerName: 'Gita', items: [line(2, 40)], total: 80, payment: { cash: 80, online: 0, due: 0 }, openDue: false }]);
+        fake.seed('dev_wholesaleSales', [{ id: 'w1', date: '2026-10-18', timestamp: NOW - 3 * DAY, customerName: 'Mohan', items: [line(3, 35)], total: 105, payment: { cash: 105, online: 0, due: 0 }, openDue: false }]);
+        fake.seed('dev_expenses', [{ id: 'e1', date: '2026-10-20', timestamp: NOW - DAY, amount: 50, description: 'Tea', category: 'Shop' }]);
+        fake.seed('dev_personalExpenses', [{ id: 'pe1', date: '2026-10-20', day: '2026-10-20', timestamp: NOW - DAY, amount: 70, description: 'Home', category: 'personal' }]);
+        fake.seed('dev_stockAdjustments', [{ id: 'a1', date: '2026-10-19', timestamp: NOW - 2 * DAY, itemId: 'i1', itemName: 'Rice', adjustType: 'remove', quantity: 1 }]);
+        fake.seed('dev_withdrawals', [{ id: 'wd1', date: '2026-10-20', timestamp: NOW - DAY, amount: 100, person: 'Owner' }]);
+    });
+    afterEach(() => {
+        FirebaseService.cleanup();
+        AppState.stock = {};
+        AppState.items = [];
+        AppState.settings = {};
+    });
+
+    /** Opens the app: listeners, the background legacy scan, the stock and what start-up schedules (maintenance, day totals). */
+    const open = async () => {
+        await FirebaseService.setupRealtimeListeners();
+        await FirebaseService.runLegacyScanNow();
+        await FirebaseService.getStock();
+        await jest.advanceTimersByTimeAsync(LEGACY_SCAN_DELAY_MS + 500);
+        await settle();
+    };
+    /** Lets a background checkpoint rebuild finish, so its calls are pinned apart from the next step's. */
+    const settleRebuild = async () => {
+        for (let i = 0; i < 5; i++) await settle();
+    };
+    /** Opens once without a checkpoint (full read), builds it, and opens again: the window only. */
+    const openWithCheckpoint = async () => {
+        await open();
+        const built = await FirebaseService.rebuildStockCheckpoint();
+        await settle();
+        FirebaseService.cleanup();
+        await open();
+        return built;
+    };
+
+    test('app open: checkpoint, items, window and dues listeners, legacy scan, stock; then the checkpoint rebuild', async () => {
+        await open();
+        pin('service.core-open-no-checkpoint', rec.log);
+        expect(AppState.purchaseHistory.map(b => b.id).sort()).toEqual(['p0', 'p1', 'p9']);
+        rec.clear();
+        const rebuilt = await FirebaseService.rebuildStockCheckpoint();
+        await settle();
+        pin('service.core-checkpoint-rebuild', rec.log);
+        rec.clear();
+        FirebaseService.cleanup();
+        await open();
+        pin('service.core-open', rec.log);
+        expect(rebuilt).toMatchObject({ status: 'fresh' });
+        expect(AppState.purchaseHistory.map(b => b.id).sort()).toEqual(['p0', 'p1']);
+    });
+
+    test('older history on demand: a month back, all history, the refresh, the latest copy of an on-demand bill', async () => {
+        await openWithCheckpoint();
+        rec.clear();
+        await FirebaseService.loadOlderHistory(1);
+        await FirebaseService.ensureHistoryFrom(0);
+        await settle();
+        const refreshed = await FirebaseService.refreshOnDemandHistory();
+        const p9 = AppState.purchaseHistory.find(b => b.id === 'p9');
+        await fake.db.collection('dev_purchases').doc('p9').set({ note: 'changed elsewhere' }, { merge: true });
+        const latest = await FirebaseService.latestBill('purchases', p9);
+        await settle();
+        pin('service.core-history', rec.log);
+        expect(refreshed).toBe(true);
+        expect(latest.bill).toMatchObject({ note: 'changed elsewhere' });
+    });
+
+    test('bills: new, retried, edited (recent and old: checkpoint and month marks), voided, deleted, edit records', async () => {
+        await openWithCheckpoint();
+        rec.clear();
+        const bill = await FirebaseService.savePurchase({ date: '2026-10-21', partyName: 'Hari', items: [line(4, 25)], total: 100, grandTotal: 100, payment: { cash: 100, online: 0, due: 0 } });
+        await settle();
+        await FirebaseService.savePurchase({ ...bill }, { retry: true });
+        await FirebaseService.updatePurchase({ ...AppState.purchaseHistory.find(b => b.id === bill.id), items: [line(4, 26)], total: 104, grandTotal: 104, payment: { cash: 104, online: 0, due: 0 } }, { reason: 'Rate typo' });
+        await FirebaseService.updatePurchase({ ...AppState.purchaseHistory.find(b => b.id === 'p0'), items: [line(11, 30)], total: 330, grandTotal: 330, payment: { cash: 200, online: 0, due: 130 }, dueAmount: 130 }, { reason: 'Weight' });
+        await FirebaseService.monthMarksIssued();
+        await settleRebuild();
+        pin('service.core-bills-edit-old', rec.log);
+        rec.clear();
+        const sale = await FirebaseService.saveRetailSale({ date: '2026-10-21', customerName: 'Sita', items: [line(1, 40)], total: 40, payment: { cash: 40, online: 0, due: 0 } });
+        await FirebaseService.saveWholesaleSale({ date: '2026-10-21', customerName: 'Raju', items: [line(2, 35)], total: 70, payment: { cash: 0, online: 0, due: 70 } });
+        await settle();
+        const edits = await FirebaseService.loadBillEdits('purchases', AppState.purchaseHistory.find(b => b.id === bill.id));
+        const voided = await FirebaseService.voidBill('retailSales', AppState.retailSalesHistory.find(b => b.id === 'r1'), 'Wrong bill');
+        await settle();
+        await FirebaseService.deleteVoidedBill('retailSales', voided);
+        await FirebaseService.deleteHistoryBill('retailSales', AppState.retailSalesHistory.find(b => b.id === sale.id));
+        await FirebaseService.deleteWholesaleSale('w1');
+        await FirebaseService.monthMarksIssued();
+        await settle();
+        pin('service.core-bills', rec.log);
+        expect(edits).toHaveLength(1);
+        expect(fake.raw('dev_retailSales').has('r1')).toBe(false);
+    });
+
+    test('expenses and stock adjustments: business and personal saves, edit, void, delete, day totals', async () => {
+        await openWithCheckpoint();
+        rec.clear();
+        await FirebaseService.saveExpense({ date: '2026-10-21', amount: 20, description: 'Bags', category: 'Shop' });
+        const personal = await FirebaseService.saveExpense({ date: '2026-10-21', amount: 30, description: 'Milk', category: 'personal' });
+        await settle();
+        await FirebaseService.updateExpense('e1', { amount: 55 });
+        await FirebaseService.updateExpense(personal.id, { amount: 35 });
+        await settle();
+        await FirebaseService.voidExpense('e1', 'Entered twice');
+        await FirebaseService.deleteExpense(personal.id);
+        await settle();
+        const day = await FirebaseService.loadPersonalExpenseDay('2026-10-20', { maxAgeMs: 0 });
+        await fake.db.collection('dev_personalExpenseDays').doc('2026-10-20').set({ amounts: { pe1: 99 } }, { merge: true });
+        const written = await FirebaseService.rebuildPersonalExpenseDays(['2026-10-20', '2026-10-21']);
+        await FirebaseService.saveStockAdjustment({ date: '2026-10-21', itemId: 'i1', itemName: 'Rice', adjustType: 'add', quantity: 2, rate: 30 });
+        await FirebaseService.monthMarksIssued();
+        await settle();
+        pin('service.core-expenses', rec.log);
+        expect(day).toMatchObject({ total: 70, count: 1 });
+        expect(written).toBe(1);
+    });
+
+    test('a later open: the checkpoint rolled forward from memory; a due bill paid on another phone is read again', async () => {
+        await openWithCheckpoint();
+        FirebaseService.cleanup();
+        const later = NOW + 40 * DAY;
+        await fake.db.collection('dev_stockCheckpoints').doc('current').set({ fullBuiltAt: later }, { merge: true });
+        jest.setSystemTime(later);
+        rec.clear();
+        await open();
+        pin('service.core-roll-forward', rec.log);
+        rec.clear();
+        await fake.db.collection('dev_purchases').doc('p0').set({ openDue: false, dueAmount: 0, payment: { cash: 300, online: 0, due: 0 } }, { merge: true });
+        await settle();
+        pin('service.core-due-paid-elsewhere', rec.log);
+        expect(fake.raw('dev_stockCheckpoints').get('current').rolledForwardFrom).toBeDefined();
+        // Paid off and older than the loaded history: re-read once, then dropped from memory
+        expect(AppState.purchaseHistory.some(b => b.id === 'p0')).toBe(false);
+    });
+
+    test('a staff phone without personal expenses: no personal listener, no checkpoint writes, an old edit only marks it stale', async () => {
+        await openWithCheckpoint();
+        FirebaseService.cleanup();
+        const roleAccess = { staff: { personalExpenses: false } };
+        await fake.db.collection('dev_settings').doc('app').set({ roleAccess }, { merge: true });
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess };
+        rec.clear();
+        await open();
+        pin('service.core-open-staff', rec.log);
+        expect(rec.log.some(c => c[0] === 'collection' && c[1] === 'dev_personalExpenses')).toBe(false);
+        rec.clear();
+        await FirebaseService.updatePurchase({ ...AppState.purchaseHistory.find(b => b.id === 'p0'), items: [line(12, 30)], total: 360, grandTotal: 360, payment: { cash: 200, online: 0, due: 160 }, dueAmount: 160 }, { reason: 'Weight' });
+        await FirebaseService.monthMarksIssued();
+        await settleRebuild();
+        pin('service.core-staff-edit-old', rec.log);
+        expect(rec.log.some(c => c[0].startsWith('tx.') && String(c[1]).includes('stockCheckpoints'))).toBe(false);
     });
 });
