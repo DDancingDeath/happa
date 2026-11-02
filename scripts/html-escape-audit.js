@@ -176,20 +176,20 @@ function auditSource(src, rel, allow = ALLOW) {
         memo.set(n, r);
         return r;
     };
+    const returnNodes = (fn) => {
+        if (fn.body.type !== 'BlockStatement') return [fn.body];
+        const rets = [];
+        walk.recursive(fn.body, null, {
+            Function() { /* returns of nested functions are theirs */ },
+            ReturnStatement(st) { if (st.argument) rets.push(st.argument); }
+        });
+        return rets;
+    };
     const returnsMemo = new Map();
     const returnLeaves = (fn) => {
         if (returnsMemo.has(fn)) return returnsMemo.get(fn);
         returnsMemo.set(fn, []);
-        let r;
-        if (fn.body.type !== 'BlockStatement') r = leaves(fn.body);
-        else {
-            const rets = [];
-            walk.recursive(fn.body, null, {
-                Function() { /* returns of nested functions are theirs */ },
-                ReturnStatement(s) { if (s.argument) rets.push(s.argument); }
-            });
-            r = rets.flatMap(leaves);
-        }
+        const r = returnNodes(fn).flatMap(leaves);
         returnsMemo.set(fn, r);
         return r;
     };
@@ -258,19 +258,67 @@ function auditSource(src, rel, allow = ALLOW) {
 
     /** one line per node and kind: the same text twice on a line counts twice */
     const hits = new Map();
-    const hit = (n, kind) => hits.set(`${n.start}-${n.end}|${kind}`, `${rel}:${n.loc.start.line}: ${text(n)}${kind ? ` (${kind})` : ''}`);
+    const hit = (n, kind, from) => hits.set(`${n.start}-${n.end}|${kind}`, `${rel}:${n.loc.start.line}: ${text(n)}${from || ''}${kind ? ` (${kind})` : ''}`);
+    /** ` ← a | b`: what a listed variable / call was traced to, so pointing it at other data is a new line */
+    const tracedTo = (x, ls) => (ls.length === 1 && ls[0] === x ? '' : ` ← ${ls.map(l => text(l).slice(0, 80)).join(' | ')}`.slice(0, 300));
     const isSafeUrl = (x) => x.type === 'CallExpression' && calleeName(x.callee) === SAFE_URL;
     const tail = (x) => (x.type === 'Literal' && typeof x.value === 'string' ? x.value
         : x.type === 'TemplateLiteral' ? x.quasis[x.quasis.length - 1].value.raw : '');
     /**
-     * [function, argument position, kind]: a parameter of a local function reaches HTML (a sink, or
-     * markup the function builds), so each call to it in this file is checked like the parameter.
+     * [function, argument position, kind, property]: a parameter of a local function (or its
+     * `.property`) reaches HTML (a sink, markup the function builds, an href), so each call to it in
+     * this file, and each list handed to it through .map(fn) etc., is checked like the parameter.
      */
     const wrappers = [];
     const addWrapper = (l, kind) => {
-        const fn = l.type === 'Identifier' && refScope.get(l);
-        const p = fn && paramIndex.has(fn) ? paramIndex.get(fn).get(l.name) : undefined;
-        if (p && !wrappers.some(([f, q, k]) => f === fn && q.i === p.i && k === kind)) wrappers.push([fn, p, kind]);
+        let root = l;
+        let prop = null;
+        while (root.type === 'MemberExpression' || root.type === 'ChainExpression') {
+            if (root.type === 'ChainExpression') { root = root.expression; continue; }
+            prop = root.computed ? null : root.property.name;
+            root = root.object;
+        }
+        if (prop && kind === 'url') return;
+        const fn = root.type === 'Identifier' && refScope.get(root);
+        const p = fn && paramIndex.has(fn) ? paramIndex.get(fn).get(root.name) : undefined;
+        if (p && !wrappers.some(([f, q, k, r]) => f === fn && q.i === p.i && k === kind && r === prop)) wrappers.push([fn, p, kind, prop]);
+    };
+    const propMemo = new Map();
+    /** The unsafe pieces of `v.prop` (or of each item's `.prop` when v is a list). */
+    const propLeaves = (v, prop) => {
+        const key = v;
+        if (!propMemo.has(key)) propMemo.set(key, new Map());
+        const m = propMemo.get(key);
+        if (m.has(prop)) return m.get(prop);
+        m.set(prop, []);
+        let r;
+        switch (v.type) {
+            case 'ObjectExpression': r = v.properties.flatMap(p => (p.type === 'SpreadElement' ? propLeaves(p.argument, prop)
+                : !p.computed && (p.key.name || p.key.value) === prop ? leaves(p.value) : [])); break;
+            case 'ArrayExpression': r = v.elements.flatMap(e => (e ? propLeaves(e.type === 'SpreadElement' ? e.argument : e, prop) : [])); break;
+            case 'ConditionalExpression': r = [...propLeaves(v.consequent, prop), ...propLeaves(v.alternate, prop)]; break;
+            case 'LogicalExpression': r = [...propLeaves(v.left, prop), ...propLeaves(v.right, prop)]; break;
+            case 'AwaitExpression': r = propLeaves(v.argument, prop); break;
+            case 'Identifier': {
+                const scope = refScope.get(v) || GLOBAL;
+                const d = scope !== GLOBAL && decls.get(scope).get(v.name);
+                const vals = ((assigns.get(scope) || new Map()).get(v.name) || []).filter(x => !FN.has(x.type));
+                r = (d && d.opaque) || (scope === GLOBAL && globalOpaque.has(v.name)) || !vals.length ? [v] : vals.flatMap(x => propLeaves(x, prop));
+                break;
+            }
+            case 'CallExpression': {
+                const name = calleeName(v.callee);
+                const member = v.callee.type === 'MemberExpression';
+                const fns = member && (name === 'map' || name === 'flatMap') && v.arguments[0] ? functionsOf(v.arguments[0]) : null;
+                if (member && (SAME_ITEMS.has(name) || name === 'concat')) r = [v.callee.object, ...(name === 'concat' ? v.arguments : [])].flatMap(x => propLeaves(x, prop));
+                else if (fns) r = fns.flatMap(fn => returnNodes(fn)).flatMap(x => propLeaves(x, prop));
+                else r = [v];
+                break;
+            }
+            default: r = [v];
+        }
+        m.set(prop, r);
+        return r;
     };
     const unsafe = (v, kind) => {
         const ls = leaves(v);
@@ -294,14 +342,16 @@ function auditSource(src, rel, allow = ALLOW) {
         if (n.type === 'TemplateLiteral') {
             const markup = markupTemplate(n);
             n.expressions.forEach((x, i) => {
-                if (URL_ATTR.test(n.quasis[i].value.raw)) urlValue(x, 'url'); else if (markup && unsafe(x, 'markup').length) hit(x, '');
+                if (URL_ATTR.test(n.quasis[i].value.raw)) urlValue(x, 'url');
+                else if (markup) { const ls = unsafe(x, 'markup'); if (ls.length) hit(x, '', tracedTo(x, ls)); }
             });
         }
         if (n.type === 'BinaryExpression' && n.operator === '+' && !(parent && parent.type === 'BinaryExpression' && parent.operator === '+')) {
             const parts = flatChain(n);
             const markup = markupChain(parts);
             parts.forEach((x, i) => {
-                if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) urlValue(x, 'url (concatenated)'); else if (markup && unsafe(x, 'markup').length) hit(x, 'concatenated');
+                if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) urlValue(x, 'url (concatenated)');
+                else if (markup) { const ls = unsafe(x, 'markup'); if (ls.length) hit(x, 'concatenated', tracedTo(x, ls)); }
             });
         }
         if (n.type === 'AssignmentExpression' && n.left.type === 'MemberExpression' && SINK_PROPS.has(sinkProp(n.left))) sinkValue(n.right);
@@ -320,9 +370,12 @@ function auditSource(src, rel, allow = ALLOW) {
         }
     });
     for (let w = 0; w < wrappers.length; w++) {
-        const [fn, { i, rest }, kind] = wrappers[w];
+        const [fn, { i, rest }, kind, prop] = wrappers[w];
         const check = (a, via) => {
-            if (kind === 'url') { if (!isSafeUrl(a)) { hit(a, via); addWrapper(a, 'url'); } } else unsafe(a, kind).forEach(l => hit(l, via));
+            if (kind === 'url') { if (!isSafeUrl(a)) { hit(a, via); addWrapper(a, 'url'); } return; }
+            const ls = prop ? propLeaves(a, prop) : unsafe(a, kind);
+            if (prop) ls.forEach(l => addWrapper(l, kind));
+            ls.forEach(l => hit(l, prop ? `${via} .${prop}` : via));
         };
         calls.forEach(c => {
             if ((functionsOf(c.callee) || []).includes(fn)) {

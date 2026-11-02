@@ -121,7 +121,8 @@ keys) and static templates. The conventions that keep it so:
 
 **Regression check (CI).** `npm run check:html-escape` (`scripts/html-escape-audit.js --check`,
 in the *Lint, Jest, release checks* job) lists every value that reaches HTML without plain
-escaping and fails on a line that isn't in `tests/html-escape-baseline.txt` (lines are compared
+escaping (a listed variable or call also shows what it was traced to: `timeStr ← Helpers.formatTime(time)`)
+and fails on a line that isn't in `tests/html-escape-baseline.txt` (lines are compared
 without line numbers, so moving code doesn't count). It looks at:
 
 - each `${…}` in a template literal with markup, and each piece of a `+` chain that builds markup;
@@ -132,7 +133,7 @@ without line numbers, so moving code doesn't count). It looks at:
   `x[i] =`, `.push`; other assignments make the variable unknown), `.map(…)` / `.filter(…)` /
   `.join(…)` (block bodies too), `t(key)` (a missing key comes back as is) and local functions
   to what they return (`this.m()`, or `X.m()` for a method defined on `X` in the same file);
-- when a function's parameter (plain, defaulted, destructured or rest) reaches a sink, markup or an
+- when a function's parameter (plain, defaulted, destructured or rest, or a `.property` of it) reaches a sink, markup or an
   `href` (`this.html(id, value)`,
   ``const cell = (v) => `<td>${v}</td>` ``), each call to it in the same file, and each list handed to it
   through `.map(cell)` / `.forEach(cell)` …, so a new caller is a new line (`… (markup via cell)`);
@@ -144,9 +145,9 @@ and number helpers, `.length`), never by how they are spelled. `tests/ci/html-es
 holds 15 hostile probes the check must catch, plus the forms an independent review found. It is a
 helper, not a proof: review new markup by hand too. When the check fails, escape the value; if it
 is safe (a number, an internal id), check it by hand and run
-`npm run check:html-escape -- --update-baseline` in the same PR. The baseline started at 328
+`npm run check:html-escape -- --update-baseline` in the same PR. The baseline started at 451
 lines, all checked by hand (555 lines of the first, looser version of the script on 2 Nov, then
-the ~100 the wider check added: counts, colours, icons, loop indexes, internal ids passed to
+the lines the wider check added: counts, colours, icons, loop indexes, internal ids passed to
 local helpers, cross-file `…Html()` helpers whose own markup is checked in their file, and
 static templates).
 

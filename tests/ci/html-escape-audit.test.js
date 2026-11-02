@@ -108,6 +108,29 @@ describe('html-escape-audit', () => {
         expect(audit('el.innerHTML = `<b>${p.name}</b><i>${p.name}</i>`;')).toEqual(['probe.js:1: p.name', 'probe.js:1: p.name']);
     });
 
+    test('pointing a listed variable at other data is a new line', () => {
+        const before = 'function show(el, b) { const timeStr = fmtTime(b.at); el.innerHTML = `<td>${timeStr}</td>`; }';
+        const after = 'function show(el, b) { const timeStr = b.customerNote; el.innerHTML = `<td>${timeStr}</td>`; }';
+        expect(audit(before)).toEqual(['probe.js:1: timeStr ← fmtTime(b.at)']);
+        expect(audit(after)).toEqual(['probe.js:1: timeStr ← b.customerNote']);
+    });
+
+    test.each([
+        ['a new caller of a helper that uses a property of its parameter',
+            'const chip = (p) => `<b>${p.count}</b>`; el.innerHTML = chip(stats); el2.innerHTML = chip(party);', 'party (markup via chip .count)'],
+        ['a new list whose items\' property reaches markup',
+            'function f(el, parties) { el.innerHTML = parties.map(s => `<li>${s.count}</li>`).join(\'\'); }', 'parties (markup via map(s => `<li>${s.count}</li>`) .count)'],
+        ['an object pushed to a rendered list with user text in the used property',
+            "const tx = []; tx.push({ icon: bill.customerName, n: 1 }); el.innerHTML = tx.map(t => `<i>${t.icon}</i>`).join('');", 'bill.customerName (markup via map(t => `<i>${t.icon}</i>`) .icon)']
+    ])('lists %s', (_, src, line) => {
+        expect(audit(src)).toContain(`probe.js:1: ${line}`);
+    });
+
+    test('only the used property of a pushed object is checked', () => {
+        const src = "const tx = []; tx.push({ icon: '🛒', party: bill.customerName }); el.innerHTML = tx.map(t => `<i>${t.icon}</i>${esc(t.party)}`).join('');";
+        expect(audit(src).filter(l => l.includes('customerName'))).toEqual([]);
+    });
+
     test('this.m() and X.m() follow the method defined on that object', () => {
         expect(audit("const page = { n() { return 1; }, r() { el.innerHTML = `<b>${this.n()}${page.n()}</b>`; } };")).toEqual([]);
     });
