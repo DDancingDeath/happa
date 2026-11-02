@@ -29,6 +29,7 @@ on:
       - 'scripts/release-notes.js'
       - 'scripts/happa-config.js'
       - 'happa.config.json'
+      - 'tests/fixtures/google-services.dummy.json'
       - '.github/workflows/android-release.yml'
 
 permissions:
@@ -167,6 +168,19 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      # Crash reports (#122): the Firebase Android app's config, when the owner has added it
+      # (docs/error-reporting.md). Without it the APK builds the same way, with no Crashlytics.
+      - name: Add google-services.json (if configured)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            echo "google-services.json added: crash reports can be switched on in the app."
+          else
+            echo "No GOOGLE_SERVICES_JSON secret: the APK has no crash reporting."
+          fi
+
       - name: Build debug APK (build-only)
         if: steps.mode.outputs.release != 'true'
         working-directory: android
@@ -259,6 +273,88 @@ jobs:
           path: dist/
           retention-days: 30
           if-no-files-found: error
+
+  # Crash reports (#122): Gradle applies the Google services and Crashlytics plugins only when
+  # android/app/google-services.json exists, and the real one is the owner's secret. This job builds
+  # that path with a FAKE config (tests/fixtures/google-services.dummy.json) so it can't break
+  # unnoticed, and reports the APK size with and without it and the APK's permissions.
+  crashlytics-build:
+    name: Crashlytics build (dummy config)
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.tag == '')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Build without a Firebase config (what ships today)
+        working-directory: android
+        run: |
+          test ! -e app/google-services.json
+          ./gradlew assembleDebug --no-daemon --stacktrace
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/without-config.apk"
+
+      - name: Build with the dummy Firebase config
+        run: |
+          cp tests/fixtures/google-services.dummy.json android/app/google-services.json
+          cd android
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Check the Crashlytics path, report size and permissions
+        run: |
+          with=android/app/build/outputs/apk/debug/app-debug.apk
+          without="$RUNNER_TEMP/without-config.apk"
+          aapt2="$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)"
+          res="$("$aapt2" dump resources "$with")"
+          # google-services wrote the (fake) app id; the Crashlytics plugin added its build id
+          grep -q 'google_app_id' <<< "$res" || { echo "::error::google_app_id missing: the google-services plugin did not run"; exit 1; }
+          # The SDK itself ships raw/firebase_crashlytics_keep, so look for the plugin's own string
+          build_id='string/(com\.google\.firebase\.crashlytics\.mapping_file_id|com\.crashlytics\.android\.build_id)'
+          if ! grep -Eq "$build_id" <<< "$res"; then
+            echo "::error::no Crashlytics build id string: the Crashlytics Gradle plugin did not run"
+            grep -i crashlytics <<< "$res" || true
+            exit 1
+          fi
+          res_without="$("$aapt2" dump resources "$without")"
+          if grep -Eq "google_app_id|$build_id" <<< "$res_without"; then
+            echo "::error::the build without google-services.json has a Firebase app id or Crashlytics build id"; exit 1
+          fi
+          mb() { awk -v b="$(stat -c %s "$1")" 'BEGIN { printf "%.2f MB (%d bytes)", b / 1000000, b }'; }
+          app_perms="$(grep -o 'uses-permission android:name="[^"]*"' android/app/src/main/AndroidManifest.xml | sed 's/.*name="//; s/"$//' | sort -u)"
+          apk_perms="$("$aapt2" dump badging "$with" | sed -n 's/^uses-permission: name=.\([^'"'"']*\).*/\1/p' | sort -u)"
+          grep -qx 'android.permission.INTERNET' <<< "$apk_perms" || { echo "::error::could not read the APK's permissions"; exit 1; }
+          {
+            echo "### Crashlytics build (dummy config)"
+            echo "- Debug APK without the Firebase config: $(mb "$without")"
+            echo "- Debug APK with the (dummy) Firebase config: $(mb "$with")"
+            echo "- Permissions in the APK that android/app/src/main/AndroidManifest.xml doesn't declare (from libraries / plugins):"
+            comm -13 <(echo "$app_perms") <(echo "$apk_perms") | sed 's/^/  - /'
+            echo "- All permissions in the APK:"
+            echo "$apk_perms" | sed 's/^/  - /'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
   release:
     name: Publish GitHub Release
