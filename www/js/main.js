@@ -53,6 +53,7 @@ import { SecurityMonitor } from './services/security-monitor.js';
 import { startLongTaskRecorder } from './utils/perf-probe.js';
 import { shortcutFromSearch, withoutShortcut } from './utils/launch-shortcut.js';
 import { UsageView } from './ui/usage-view.js';
+import { installActions } from './ui/actions.js';
 import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18n/index.js';
 
 // Build stamp — bumped on every deploy that ships new JS so you can verify
@@ -60,7 +61,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozzzbaj-data-repos';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzzbah-delegated-handlers';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -657,6 +658,9 @@ async function initializeUserData() {
 }
 
 // Initialize app on DOM ready
+// data-on* attributes (delegated handlers, #89) work from the first template on
+installActions();
+
 document.addEventListener('DOMContentLoaded', async function() {
     // STEP 1: Login screen and app shell now, pages in the background
     markStartup('dom-ready');
