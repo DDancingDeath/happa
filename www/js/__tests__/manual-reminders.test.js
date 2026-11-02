@@ -210,7 +210,7 @@ describe('Today: changing and repeating reminders (#86)', () => {
         expect(ManualReminders.html()).not.toContain('reminderEdit(');
         expect(ManualReminders.html()).toContain('Every month');
         AppState.userRole = 'manager';
-        expect(ManualReminders.html()).toContain(`reminderEdit('r1')`);
+        expect(ManualReminders.html()).toContain(`data-onclick="day.reminderEdit('r1')"`);
         expect(ManualReminders.edit('nope')).toBe(false);
     });
 

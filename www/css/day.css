@@ -660,3 +660,7 @@ body.dark-mode .today-cash-prompt {
 .ask-question { font-weight: 600; margin-bottom: 4px; }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
+
+/* Cash › history: a day row lights up under the pointer (was an inline mouseover, #89) */
+.cash-day-row { transition: background 0.2s; }
+.cash-day-row:hover { background: #f8f9fa; }

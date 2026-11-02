@@ -5,7 +5,7 @@
         <div id="healthDenied" class="health-empty" style="display: none;" data-i18n="ui.health.denied">Only the owner or a manager can see this page.</div>
         <div id="healthBody">
             <div class="health-actions">
-                <button type="button" class="btn btn-secondary" onclick="window.app.health.refresh()" data-i18n="ui.health.refresh">↻ Refresh</button>
+                <button type="button" class="btn btn-secondary" data-onclick="health.refresh()" data-i18n="ui.health.refresh">↻ Refresh</button>
                 <span id="healthStatus" class="health-muted"></span>
             </div>
             <section class="modern-card health-card">
@@ -43,7 +43,7 @@
                 <div id="healthPolicyState"></div>
                 <label for="healthPolicies" class="health-muted" data-i18n="ui.health.policies_json">Rules (JSON)</label>
                 <textarea id="healthPolicies" class="health-policies" rows="7" spellcheck="false"></textarea>
-                <button type="button" class="btn btn-primary" onclick="window.app.health.savePolicies()" data-i18n="ui.health.save_policies">Save rules</button>
+                <button type="button" class="btn btn-primary" data-onclick="health.savePolicies()" data-i18n="ui.health.save_policies">Save rules</button>
             </section>
         </div>
     </div>

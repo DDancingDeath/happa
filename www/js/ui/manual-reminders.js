@@ -100,7 +100,7 @@ export const ManualReminders = {
             + ` <span class="today-reminder-days${r.days < 0 ? ' late' : ''}">${esc(this.whenText(r))}</span>`
             + (isReminderRepeat(r.repeat) ? ` <span class="today-reminder-repeat">${esc(t(`ui.reminders.repeat_${r.repeat}`))}</span>` : '')
             + `<span class="today-reminder-actions"><button type="button" class="filter-btn" data-reminder-done onclick="window.app.day.reminderDone('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.done'))}</button>`
-            + (manage ? `<button type="button" class="filter-btn" onclick="window.app.day.reminderEdit('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.edit'))}</button>`
+            + (manage ? `<button type="button" class="filter-btn" data-onclick="day.reminderEdit('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.edit'))}</button>`
                 + `<button type="button" class="filter-btn" onclick="window.app.day.reminderCancel('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.cancel'))}</button>` : '')
             + '</span></li>';
     },
