@@ -19,10 +19,12 @@ import { backgroundReadsAllowed } from '../firestore-meter.js';
 import { markStartup } from '../../utils/startup-timings.js';
 import { LEGACY_SCAN_DELAY_MS, whenIdle } from '../../utils/background-tasks.js';
 import { FirebaseService } from '../firestore-service.js';
-import { CHECKPOINT_COLLECTION, DAY_MS } from './stock-checkpoint.js';
+import { CHECKPOINT_COLLECTION } from './stock-checkpoint.js';
 
 export const LEGACY_SCAN_DOC_ID = 'legacyScan';
 
+// Its own copy: a constant read at load can't come from stock-checkpoint.js, which imports this module.
+const DAY_MS = 24 * 60 * 60 * 1000;
 /** Keep scanning a collection for timestamp-less docs this long after old clients last wrote one. */
 export const LEGACY_RESCAN_MS = 14 * DAY_MS;
 
