@@ -331,9 +331,16 @@ jobs:
           res="$("$aapt2" dump resources "$with")"
           # google-services wrote the (fake) app id; the Crashlytics plugin added its build id
           grep -q 'google_app_id' <<< "$res" || { echo "::error::google_app_id missing: the google-services plugin did not run"; exit 1; }
-          grep -qi 'crashlytics' <<< "$res" || { echo "::error::no Crashlytics build id resource: the Crashlytics plugin did not run"; exit 1; }
-          if "$aapt2" dump resources "$without" | grep -q 'google_app_id'; then
-            echo "::error::the build without google-services.json has a Firebase app id"; exit 1
+          # The SDK itself ships raw/firebase_crashlytics_keep, so look for the plugin's own string
+          build_id='string/(com\.google\.firebase\.crashlytics\.mapping_file_id|com\.crashlytics\.android\.build_id)'
+          if ! grep -Eq "$build_id" <<< "$res"; then
+            echo "::error::no Crashlytics build id string: the Crashlytics Gradle plugin did not run"
+            grep -i crashlytics <<< "$res" || true
+            exit 1
+          fi
+          res_without="$("$aapt2" dump resources "$without")"
+          if grep -Eq "google_app_id|$build_id" <<< "$res_without"; then
+            echo "::error::the build without google-services.json has a Firebase app id or Crashlytics build id"; exit 1
           fi
           mb() { awk -v b="$(stat -c %s "$1")" 'BEGIN { printf "%.2f MB (%d bytes)", b / 1048576, b }'; }
           app_perms="$(grep -o 'uses-permission android:name="[^"]*"' android/app/src/main/AndroidManifest.xml | sed 's/.*name="//; s/"$//' | sort -u)"

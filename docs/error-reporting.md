@@ -61,8 +61,9 @@ The app never calls `setUserId`, `setCustomKey` or `log`, so it adds no user, sh
 bill or amount; only an exception message could carry such text.
 Reports that Crashlytics kept on the phone while the switch was off are deleted
 (`deleteUnsentReports`) after each sign-in and when the switch is turned on,
-so nothing from before the consent is sent. Switching it off stops collection
-and deletes what is still waiting.
+so nothing from before the consent is sent. Switching it off stops new collection and deletes
+reports not yet handed over for upload; a report already queued for upload (for example while
+the phone was offline) may still be sent.
 
 **DPDP Act 2023.** The installation id and the phone details can be personal data
 of the person using the phone, so the switch is the consent: off by default,
