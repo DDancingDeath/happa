@@ -37,7 +37,7 @@ export const AskManager = {
         const host = document.getElementById('askExamples');
         if (!host) return;
         host.innerHTML = Array.from({ length: EXAMPLES }, (_, i) => t(`ui.ask.example_${i + 1}`))
-            .map(q => `<button type="button" class="filter-btn ask-example" onclick="window.app.ask.ask('${Helpers.escapeJsAttr(q)}')">${esc(q)}</button>`)
+            .map(q => `<button type="button" class="filter-btn ask-example" data-onclick="ask.ask('${Helpers.escapeJsAttr(q)}')">${esc(q)}</button>`)
             .join('');
     },
 
@@ -108,7 +108,7 @@ export const AskManager = {
     /** One answer as HTML (text from t(), names escaped). */
     answerHtml(a) {
         const line = (text) => `<div class="ask-line">${esc(text)}</div>`;
-        const open = a.page ? `<button type="button" class="filter-btn ask-open" onclick="window.app.nav.showTab('${a.page}', event)">${esc(t(PAGE_NAMES[a.page]))}</button>` : '';
+        const open = a.page ? `<button type="button" class="filter-btn ask-open" data-onclick="nav.showTab('${a.page}', event)">${esc(t(PAGE_NAMES[a.page]))}</button>` : '';
         const choose = (names, more) => line(t('ui.ask.did_you_mean', { names: names.join(', ') }))
             + (more ? line(tn('ui.ask.and_more', more)) : '');
         const itemName = (n) => (getLang() === 'hi' && n.hindiName ? n.hindiName : n.name);

@@ -1,0 +1,203 @@
+/**
+ * @fileoverview Delegated event handlers instead of inline `on*=` attributes (#89), so the
+ * Content-Security-Policy can drop 'unsafe-inline' for scripts. Markup says what to call with a
+ * `data-on<event>` attribute holding the same call the inline handler made, without
+ * `window.app.`:
+ *
+ *     <button data-onclick="nav.showTab('billing', event)">
+ *     <input data-onchange="settings.setLang(this.value)">
+ *     <a href="#" data-onclick="auth.showTab('login'); return false">
+ *
+ * One listener per event type on the document finds the elements carrying the attribute (the
+ * target and its ancestors, nearest first, as the browser runs inline handlers while the event
+ * bubbles) and calls the named `window.app` method on its object. Nothing is evaluated: the
+ * attribute is parsed by a small grammar and anything else is refused, so it works under a CSP
+ * without 'unsafe-eval' and markup can only reach `window.app` methods.
+ *
+ * Grammar (statements separated by `;`):
+ *   call      path '(' [arg {',' arg}] ')'          path: name {'.' name} under window.app
+ *   arg       'text' | "text" (JS escapes) | number | true | false | null | undefined
+ *             | event | this | this.value | this.checked | this.dataset.<name>
+ *   also      `return false` (preventDefault), `event.stopPropagation()`, `event.preventDefault()`
+ * @module ui/actions
+ */
+
+/** Events handled; focus / blur don't bubble, so their `focusin` / `focusout` are used. */
+export const ACTION_EVENTS = Object.freeze({
+    click: 'click', change: 'change', input: 'input', submit: 'submit',
+    keydown: 'keydown', keyup: 'keyup', focus: 'focusin', blur: 'focusout'
+});
+
+const NAME = /[A-Za-z_$][\w$]*/y;
+const NUMBER = /-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/y;
+const SPACE = /\s*/y;
+
+/**
+ * Parses an attribute value into statements, or throws.
+ * @param {string} src
+ * @returns {Array<{kind: 'call', path: string[], args: Array}|{kind: 'returnFalse'}|{kind: 'stop'}|{kind: 'prevent'}>}
+ */
+export function parseAction(src) {
+    let i = 0;
+    const skip = () => { SPACE.lastIndex = i; SPACE.exec(src); i = SPACE.lastIndex; };
+    const fail = (what) => { throw new SyntaxError(`data-on*: ${what} at ${i} in "${src}"`); };
+    const name = () => {
+        NAME.lastIndex = i;
+        const m = NAME.exec(src);
+        if (!m) fail('name expected');
+        i = NAME.lastIndex;
+        return m[0];
+    };
+    const string = () => {
+        const q = src[i++];
+        let out = '';
+        while (i < src.length && src[i] !== q) {
+            let c = src[i++];
+            if (c === '\\') {
+                c = src[i++];
+                if (c === 'n') c = '\n';
+                else if (c === 't') c = '\t';
+                else if (c === 'r') c = '\r';
+                else if (c === '0') c = '\0';
+                else if (c === 'x') { c = String.fromCharCode(parseInt(src.slice(i, i + 2), 16)); i += 2; }
+                else if (c === 'u') {
+                    if (src[i] === '{') {
+                        const end = src.indexOf('}', i);
+                        c = String.fromCodePoint(parseInt(src.slice(i + 1, end), 16));
+                        i = end + 1;
+                    } else { c = String.fromCharCode(parseInt(src.slice(i, i + 4), 16)); i += 4; }
+                } else if (c === '\n') c = '';
+            }
+            out += c;
+        }
+        if (src[i] !== q) fail('unterminated string');
+        i++;
+        return out;
+    };
+    const arg = () => {
+        skip();
+        const c = src[i];
+        if (c === '\'' || c === '"') return { lit: string() };
+        NUMBER.lastIndex = i;
+        const num = NUMBER.exec(src);
+        if (num) { i = NUMBER.lastIndex; return { lit: Number(num[0]) }; }
+        const word = name();
+        if (word === 'true' || word === 'false') return { lit: word === 'true' };
+        if (word === 'null') return { lit: null };
+        if (word === 'undefined') return { lit: undefined };
+        if (word === 'event') return { ref: 'event' };
+        if (word !== 'this') fail(`unknown value ${word}`);
+        if (src[i] !== '.') return { ref: 'this' };
+        i++;
+        const prop = name();
+        if (prop === 'value' || prop === 'checked') return { ref: prop };
+        if (prop !== 'dataset' || src[i] !== '.') fail(`this.${prop} not allowed`);
+        i++;
+        return { ref: 'dataset', key: name() };
+    };
+    const statements = [];
+    for (;;) {
+        skip();
+        if (i >= src.length) break;
+        if (src[i] === ';') { i++; continue; }
+        if (src.startsWith('return', i)) {
+            i += 6;
+            skip();
+            if (!src.startsWith('false', i)) fail('only "return false"');
+            i += 5;
+            statements.push({ kind: 'returnFalse' });
+            continue;
+        }
+        const path = [name()];
+        while (src[i] === '.') { i++; path.push(name()); }
+        if (path[0] === 'window' && path[1] === 'app') path.splice(0, 2);
+        skip();
+        if (src[i] !== '(') fail('"(" expected');
+        i++;
+        const args = [];
+        skip();
+        if (src[i] === ')') i++;
+        else {
+            for (;;) {
+                args.push(arg());
+                skip();
+                if (src[i] === ',') { i++; continue; }
+                if (src[i] === ')') { i++; break; }
+                fail('"," or ")" expected');
+            }
+        }
+        if (path.length === 2 && path[0] === 'event' && !args.length) {
+            if (path[1] === 'stopPropagation') { statements.push({ kind: 'stop' }); continue; }
+            if (path[1] === 'preventDefault') { statements.push({ kind: 'prevent' }); continue; }
+        }
+        if (path[0] === 'event' || path[0] === 'this' || !path.length) fail('only window.app calls');
+        statements.push({ kind: 'call', path, args });
+    }
+    if (!statements.length) fail('empty');
+    return statements;
+}
+
+const parsed = new Map();
+function statementsOf(src) {
+    let s = parsed.get(src);
+    if (!s) {
+        s = parseAction(src);
+        if (parsed.size > 2000) parsed.clear();
+        parsed.set(src, s);
+    }
+    return s;
+}
+
+function argValue(a, el, event) {
+    if ('lit' in a) return a.lit;
+    if (a.ref === 'event') return event;
+    if (a.ref === 'this') return el;
+    if (a.ref === 'value') return el.value;
+    if (a.ref === 'checked') return el.checked;
+    return el.dataset ? el.dataset[a.key] : undefined;
+}
+
+/**
+ * Runs one element's attribute for an event, like its inline handler would.
+ * @returns {*} what the last call returned
+ */
+export function runAction(el, src, event, root = window.app) {
+    let result;
+    for (const st of statementsOf(src)) {
+        if (st.kind === 'returnFalse' || st.kind === 'prevent') { event.preventDefault(); continue; }
+        if (st.kind === 'stop') { event.stopPropagation(); continue; }
+        let owner = root;
+        for (let k = 0; k < st.path.length - 1; k++) owner = owner?.[st.path[k]];
+        const fn = owner?.[st.path[st.path.length - 1]];
+        if (typeof fn !== 'function') throw new TypeError(`data-on*: window.app.${st.path.join('.')} is not a function`);
+        result = fn.apply(owner, st.args.map(a => argValue(a, el, event)));
+    }
+    return result;
+}
+
+/** Attaches the document listeners once. */
+export function installActions(doc = document) {
+    if (doc.__aadhatActions) return;
+    doc.__aadhatActions = true;
+    Object.entries(ACTION_EVENTS).forEach(([type, domType]) => {
+        const attr = `data-on${type}`;
+        doc.addEventListener(domType, (event) => {
+            let el = event.target instanceof Element ? event.target : event.target?.parentElement;
+            // focus/blur don't bubble: only the element itself, as with its inline handler
+            const bubbles = type !== 'focus' && type !== 'blur';
+            while (el && el !== doc) {
+                const src = el.getAttribute?.(attr);
+                if (src !== null && src !== undefined) {
+                    try {
+                        runAction(el, src, event);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    if (event.cancelBubble) break;
+                }
+                if (!bubbles) break;
+                el = el.parentElement;
+            }
+        });
+    });
+}

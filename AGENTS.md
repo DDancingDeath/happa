@@ -116,7 +116,11 @@ In order:
 
 ### Conventions
 
-- **All UI updates run inline `onclick` handlers** that call
+- **UI handlers call `window.app.*`.** New markup uses a delegated
+  `data-on<event>` attribute (`data-onclick="nav.showTab('billing', event)"`, `www/js/ui/actions.js`,
+  #89) instead of an inline `on<event>=` handler: the CSP can drop `'unsafe-inline'` only when
+  none is left, and `inline-handlers.test.js` stops new ones (lower its baseline when you convert).
+  Older pages still run inline `onclick` handlers that call
   `window.app.*`. To expose a new module method to the UI, register it in
   `main.js` — never assume `app` (without `window.`) resolves correctly
   from an inline handler. (`firebaseConfig.js` used to declare
@@ -155,7 +159,7 @@ In order:
   `new Date('YYYY-MM-DD')` or `toISOString().split('T')[0]` (UTC shifts the
   day in IST).
 - **Escaping**: any Firestore/user text inserted via `innerHTML` must go
-  through `Helpers.escapeHtml()`; values inside `onclick="fn('…')"` need
+  through `Helpers.escapeHtml()`; values inside `onclick="fn('…')"` or `data-onclick="fn('…')"` need
   `Helpers.escapeJsAttr()`.
 - **App language (Hindi/English, #143)**: user-facing text comes from
   `t('key', params)` (`www/js/i18n/index.js`) with plain catalogues
