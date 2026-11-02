@@ -37,7 +37,7 @@ setting is missing or invalid.
 | `reports` | Statements page (stored id of the old Reports page) | बही-खाता पेज | on | off | client; **rules** for withdrawals |
 | `analytics` | Insights page (stored id of the old Analytics page; its Seasons section hosts Rate trends and Product traffic, so it also keeps their owner/manager rule, and `reports` opens Seasons too; to-do cards with ₹ lost or ₹ per ₹100 need `profit`) | कारोबार पेज | on | off | client; **rules** for withdrawals |
 | `wholesale` | Wholesale page, and the wholesale dues on Outstanding › Sales (All / Wholesale, #125) | थोक पेज | on | off | client |
-| `personalExpenses` | Personal expenses | निजी खर्च | on | on | client + **rules** (#98, see "Personal expenses") |
+| `personalExpenses` | Personal expenses | निजी खर्च | **off** | **off** | client + **rules** (#98, see "Personal expenses"; on only when the owner turned it on) |
 | `profit` | Profit and average cost | मुनाफा और औसत लागत | on | on | client |
 | `stockValue` | Stock ₹ value | स्टॉक की ₹ कीमत | on | on | client |
 | `oldCashSessions` | Past cash days | पिछले दिनों का कैश | on | on | client (rules: phase 2) |
@@ -108,11 +108,13 @@ setting is missing or invalid.
 ```js
 roleAccess: {
   manager: { finance: true, reports: true, analytics: true, wholesale: true,
-             personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
-             purchaseRates: true, contacts: true, shopSettings: false, historyDays: 0, editDays: 2 },
+             personalExpenses: false, personalExpensesChosen: true, profit: true, stockValue: true,
+             oldCashSessions: true, purchaseRates: true, contacts: true, shopSettings: false,
+             historyDays: 0, editDays: 2 },
   staff:   { finance: false, reports: false, analytics: false, wholesale: false,
-             personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true,
-             purchaseRates: true, contacts: true, shopSettings: false, historyDays: 0, editDays: 2 }
+             personalExpenses: false, personalExpensesChosen: true, profit: true, stockValue: true,
+             oldCashSessions: true, purchaseRates: true, contacts: true, shopSettings: false,
+             historyDays: 0, editDays: 2 }
 },
 roleAccessUpdatedAt: <ms>, roleAccessUpdatedBy: <uid>
 ```
@@ -361,7 +363,7 @@ rejected / no profile / unknown role.
 | `purchases`, `retailSales`, `wholesaleSales` | window listeners (`timestamp >= liveFrom`), due listeners (`openDue == true`, `timestamp < liveFrom`; pinned ids), one-shot older history, oldest-timestamp probe, re-read after a due is paid, bill-number seed (`helpers.js`), Rates trends paging (owner/manager) | **yes, all ages**: stock = checkpoint + bills since its `asOf` (up to ~3 months back for members), Outstanding needs old bills with a due, History within `historyDays`, billing checks |
 | `items`, `itemFrequency/global`, `counters`, `stockCheckpoints` (`current`, `legacyScan`) | listeners / gets at start-up, billing transaction | yes |
 | `expenses` | window/older-history queries (business rows; personal rows saved before #98) | yes (Expenses, Today, cash count) |
-| `personalExpenses` (#98) | window/older-history queries, only when `canReadPersonalExpenses(role, roleAccess)` | only with `personalExpenses` (default on) |
+| `personalExpenses` (#98) | window/older-history queries, only when `canReadPersonalExpenses(role, roleAccess)` | only with `personalExpenses` (default off) |
 | `personalExpenseDays/{YYYY-MM-DD}` (#98) | one get of a day (Today, the cash count, auto-closing a past day), only on phones that can't read `personalExpenses`; reused for a minute | yes, the day's total and count only |
 | `stockAdjustments` | history queries (stock) | yes |
 | `cashManagement` | Cash page (latest page, last counted day, open past days, uncounted days, by date, between dates), Today, Outstanding (cash leg), Money, Anomalies | today, the last counted day (carry-forward, any age) and uncounted days; other past days only with `oldCashSessions` |
@@ -391,7 +393,7 @@ except `rent_public` get.
 |---|---|---|---|---|---|
 | bills, `items`, `expenses`, `stockAdjustments`, `cashManagement`, `itemFrequency`, `counters`, `stockCheckpoints` | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ |
 | `withdrawals` | ✓ → ✓ | ✓ → ✓ while Money, Statements or Insights is on for managers (default) | ✓ → ✗; ✓ while one of them is on for members | ✗ → ✗ | ✗ → ✗ |
-| `personalExpenses` (#98; were in `expenses`) | ✓ | ✓ while Personal expenses is on for managers (default) | ✓ while it is on for members (default) | ✗ | ✗ |
+| `personalExpenses` (#98; were in `expenses`) | ✓ | ✓ only while the owner has Personal expenses on for managers (default off) | ✓ only while it is on for members (default off) | ✗ | ✗ |
 | `personalExpenseDays` (#98) | ✓ | ✓ | ✓ | ✗ | ✗ |
 | `cashSessions` (legacy) | ✓ → ✓ | ✓ → ✓ | ✓ → ✗ | ✗ → ✗ | ✗ → ✗ |
 | `settings/app` (G) | ✓ → ✓ | ✓ → ✓ | ✓ → ✓ | ✗ → ✗ | ✗ → ✗ |
@@ -494,9 +496,16 @@ client-only (below).
   or notes) gets that expense's key in the same batch (also offline): set on create and edit, removed
   on delete. The day's total is the sum of the map, so a repeated delete, a late queued write or two
   phones editing at once can't make it drift. Business expenses stay in `expenses`.
+- **Default off**: managers and members see personal entries only after the owner turns the switch
+  on. Roles & access used to save every switch, so a stored `personalExpenses: true` can be the old
+  default rather than a choice; it counts only together with `personalExpensesChosen: true`, which
+  every save from Roles & access now writes (`PERSONAL_CHOSEN` in `utils/role-access.js`, the same
+  pair in `firestore.rules`). So shops that never touched the switch get the new default, and an
+  owner's choice saved from now on is kept. (A shop whose owner turned it off and on again before
+  this change is back to off and has to turn it on once more.)
 - **Rules**: `personalExpenses` is read and written only by the owner and by roles whose
-  `roleAccess.<role>.personalExpenses` is on (default on; one read of `settings/app`, never for the
-  owner). Creates: own `userId`, numeric amount, `category: 'personal'`; edits and deletes follow
+  `roleAccess.<role>.personalExpenses` is true with `personalExpensesChosen` (default off; one read
+  of `settings/app`, never for the owner). Creates: own `userId`, numeric amount, `category: 'personal'`; edits and deletes follow
   the expense rules (creator for 24 hours, managers any, owner anything); `day` never changes.
   `personalExpenseDays` is readable by every approved user and written only by those who may write
   personal expenses: one key per write (`last`), set to that expense's amount after the write on
