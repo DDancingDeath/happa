@@ -4817,6 +4817,8 @@ function defineReminderSuite(prefix) {
         await assertFails(pair('staff1', { repeat: 'daily' }));
         await assertFails(pair('staff1', { dueDate: istDay(1) }));
         await assertFails(pair('staff1', { dueDate: istDay(900) }));
+        // at most one period (+1 day) after the later of its due date and today: weekly due tomorrow → by day 9
+        await assertFails(pair('staff1', { dueDate: istDay(10) }));
         await assertFails(pair('staff1', { createdBy: 'manager1' }));
         await assertFails(pair('staff1', { repeatOf: 'other' }));
         await assertFails(pair('staff1', {}, { nextId: 'n9' }));
@@ -4845,6 +4847,16 @@ function defineReminderSuite(prefix) {
         await assertSucceeds(b.commit());
         // a second copy for the same done reminder can't be made later
         await assertFails(coll.doc('n3').set(next));
+        // a late daily one: today or tomorrow (+1 day slack), never a week ahead
+        await seed('late', open({ repeat: 'daily', dueDate: istDay(-5) }));
+        const lateCopy = (nid, due) => {
+            const bb = db.batch();
+            bb.update(coll.doc('late'), { status: 'done', doneBy: 'staff1', doneAt: serverTimestamp(), nextId: nid });
+            bb.set(coll.doc(nid), { ...next, repeat: 'daily', dueDate: due, repeatOf: 'late' });
+            return bb.commit();
+        };
+        await assertFails(lateCopy('l1', istDay(7)));
+        await assertSucceeds(lateCopy('l2', istDay(0)));
         // the copy repeats like any other
         b = db.batch();
         b.update(coll.doc('n1'), { status: 'done', doneBy: 'staff1', doneAt: serverTimestamp(), nextId: 'n4' });

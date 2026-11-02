@@ -2490,6 +2490,20 @@ service cloud.firestore {
         && reminderCreatedOk(d);
     }
 
+    function remDate(s) {
+      return timestamp.date(int(s[0:4]), int(s[5:7]), int(s[8:10]));
+    }
+
+    // REM-6 bound: the next copy is due at most one period (+1 day of slack) after the later of
+    // its reminder's due date and today (India); a monthly period counts as 31 days.
+    function reminderNextDateOk(next, prev) {
+      let due = remDate(prev.dueDate);
+      let today = remDate(remIstDay(0));
+      let from = due > today ? due : today;
+      let days = prev.repeat == 'daily' ? 1 : (prev.repeat == 'weekly' ? 7 : 31);
+      return remDate(next) <= from + duration.value(days + 1, 'd');
+    }
+
     // The next copy of a repeating reminder, created in the batch that marks it done.
     function validReminderNext(usersCol, coll, id) {
       let d = request.resource.data;
@@ -2508,7 +2522,8 @@ service cloud.firestore {
         && d.get('party', null) == prev.get('party', null)
         && d.get('repeat', null) == prev.get('repeat', null)
         && d.get('repeatDay', null) == prev.get('repeatDay', null)
-        && d.dueDate > prev.dueDate;
+        && d.dueDate > prev.dueDate
+        && reminderNextDateOk(d.dueDate, prev);
     }
 
     function reminderAckOk(usersCol, coll, id) {
