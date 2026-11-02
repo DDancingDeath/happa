@@ -96,6 +96,29 @@ switch, pick one:
 2. rely on E2E plus the inline-handlers removal, and enforce with a quick
    rollback ready (one `firebase.json` header change, redeployed on merge).
 
+## innerHTML audit (#89, 2 Nov 2026)
+
+Every `innerHTML` / `insertAdjacentHTML` / `outerHTML` sink under `www/js` and `www/r`
+(239 of them) was traced to the markup it gets. `node scripts/html-escape-audit.js` lists
+each `${…}` in an HTML template literal (and each `'<tag' + x`) that is not plainly escaped:
+457 at the time, every one checked by hand. **No unescaped user or Firestore text was
+found**; what the script lists is numbers and amounts (computed or `parseFloat`-ed),
+colours / classes / styles, fragments built from escaped parts (`rowHtml`, `L(…)`,
+`partyName(p)`), catalogue text without parameters, and internal ids (page names, view
+keys). The conventions that keep it so:
+
+- text: `Helpers.escapeHtml()` (pages alias it `esc` / `e`), `t()` with parameters through
+  a local `L` / `tt` / `tx` / `et` (= `escapeHtml(t(key, params))`), stored two-language
+  records through `loc` (`escapeHtml(pickLang(…))`);
+- values inside a handler attribute: `Helpers.escapeJsAttr()` (JS-escaped, then
+  HTML-escaped), for both `onclick="fn('…')"` and `data-onclick="fn('…')"`;
+- `UIManager.showModalWithHtml` / `showCustomModal` take markup the caller has escaped
+  (all callers build it with the helpers above);
+- `www/js/__tests__/xss-rendering.test.js` renders the main lists with hostile names, ids
+  and "numbers" and checks nothing runs.
+
+Re-run the script after adding a page that builds markup and check each new line.
+
 ## Script integrity (SRI)
 
 - The Firebase SDK is self-hosted (`www/vendor/firebase/10.7.1/`, byte-identical
