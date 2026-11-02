@@ -726,3 +726,125 @@ describe('FirebaseService collection methods (phase 5: pinned before the split o
         expect(record.timestamp).toBe(NOW);
     });
 });
+
+describe('FirebaseService core (phase 5, #69: pinned before the listeners, history window, checkpoint and bill saves move)', () => {
+    const DAY = 86400000;
+    const at = (y, m, d) => new Date(y, m - 1, d, 12).getTime();
+    const line = (qty, rate) => ({ name: 'Rice', itemId: 'i1', quantity: qty, qty, rate, total: qty * rate });
+    beforeEach(() => {
+        fake.seed('dev_items', [{ id: 'i1', name: 'Rice', rate: 30 }]);
+        fake.seed('dev_purchases', [
+            { id: 'p1', date: '2026-10-20', timestamp: NOW - DAY, partyName: 'Ram', items: [line(10, 30)], total: 300, grandTotal: 300, payment: { cash: 300, online: 0, due: 0 }, openDue: false },
+            { id: 'p0', date: '2026-03-05', timestamp: at(2026, 3, 5), partyName: 'Shyam', items: [line(10, 30)], total: 300, grandTotal: 300, payment: { cash: 200, online: 0, due: 100 }, dueAmount: 100, openDue: true },
+            { id: 'p9', date: '2026-02-01', timestamp: at(2026, 2, 1), partyName: 'Old', items: [line(5, 20)], total: 100, grandTotal: 100, payment: { cash: 100, online: 0, due: 0 }, openDue: false }
+        ]);
+        fake.seed('dev_retailSales', [{ id: 'r1', date: '2026-10-19', timestamp: NOW - 2 * DAY, customerName: 'Gita', items: [line(2, 40)], total: 80, payment: { cash: 80, online: 0, due: 0 }, openDue: false }]);
+        fake.seed('dev_wholesaleSales', [{ id: 'w1', date: '2026-10-18', timestamp: NOW - 3 * DAY, customerName: 'Mohan', items: [line(3, 35)], total: 105, payment: { cash: 105, online: 0, due: 0 }, openDue: false }]);
+        fake.seed('dev_expenses', [{ id: 'e1', date: '2026-10-20', timestamp: NOW - DAY, amount: 50, description: 'Tea', category: 'Shop' }]);
+        fake.seed('dev_personalExpenses', [{ id: 'pe1', date: '2026-10-20', day: '2026-10-20', timestamp: NOW - DAY, amount: 70, description: 'Home', category: 'personal' }]);
+        fake.seed('dev_stockAdjustments', [{ id: 'a1', date: '2026-10-19', timestamp: NOW - 2 * DAY, itemId: 'i1', itemName: 'Rice', adjustType: 'remove', quantity: 1 }]);
+        fake.seed('dev_withdrawals', [{ id: 'wd1', date: '2026-10-20', timestamp: NOW - DAY, amount: 100, person: 'Owner' }]);
+    });
+    afterEach(() => {
+        FirebaseService.cleanup();
+        AppState.stock = {};
+        AppState.items = [];
+    });
+
+    /** Opens the app: listeners, the background legacy scan and the stock. */
+    const open = async () => {
+        await FirebaseService.setupRealtimeListeners();
+        await FirebaseService.runLegacyScanNow();
+        await FirebaseService.getStock();
+        await settle();
+    };
+    /** Opens once without a checkpoint (full read), builds it, and opens again: the window only. */
+    const openWithCheckpoint = async () => {
+        await open();
+        const built = await FirebaseService.rebuildStockCheckpoint();
+        await settle();
+        FirebaseService.cleanup();
+        await open();
+        return built;
+    };
+
+    test('app open: checkpoint, items, window and dues listeners, legacy scan, stock; then the checkpoint rebuild', async () => {
+        await open();
+        pin('service.core-open-no-checkpoint', rec.log);
+        expect(AppState.purchaseHistory.map(b => b.id).sort()).toEqual(['p0', 'p1', 'p9']);
+        rec.clear();
+        const rebuilt = await FirebaseService.rebuildStockCheckpoint();
+        await settle();
+        pin('service.core-checkpoint-rebuild', rec.log);
+        rec.clear();
+        FirebaseService.cleanup();
+        await open();
+        pin('service.core-open', rec.log);
+        expect(rebuilt).toMatchObject({ status: 'fresh' });
+        expect(AppState.purchaseHistory.map(b => b.id).sort()).toEqual(['p0', 'p1']);
+    });
+
+    test('older history on demand: a month back, all history, the refresh, the latest copy of an on-demand bill', async () => {
+        await openWithCheckpoint();
+        rec.clear();
+        await FirebaseService.loadOlderHistory(1);
+        await FirebaseService.ensureHistoryFrom(0);
+        await settle();
+        const refreshed = await FirebaseService.refreshOnDemandHistory();
+        const p9 = AppState.purchaseHistory.find(b => b.id === 'p9');
+        await fake.db.collection('dev_purchases').doc('p9').set({ note: 'changed elsewhere' }, { merge: true });
+        const latest = await FirebaseService.latestBill('purchases', p9);
+        await settle();
+        pin('service.core-history', rec.log);
+        expect(refreshed).toBe(true);
+        expect(latest.bill).toMatchObject({ note: 'changed elsewhere' });
+    });
+
+    test('bills: new, retried, edited (recent and old: checkpoint and month marks), voided, deleted, edit records', async () => {
+        await openWithCheckpoint();
+        rec.clear();
+        const bill = await FirebaseService.savePurchase({ date: '2026-10-21', partyName: 'Hari', items: [line(4, 25)], total: 100, grandTotal: 100, payment: { cash: 100, online: 0, due: 0 } });
+        await settle();
+        await FirebaseService.savePurchase({ ...bill }, { retry: true });
+        await FirebaseService.updatePurchase({ ...AppState.purchaseHistory.find(b => b.id === bill.id), items: [line(4, 26)], total: 104, grandTotal: 104, payment: { cash: 104, online: 0, due: 0 } }, { reason: 'Rate typo' });
+        await FirebaseService.updatePurchase({ ...AppState.purchaseHistory.find(b => b.id === 'p0'), items: [line(11, 30)], total: 330, grandTotal: 330, payment: { cash: 200, online: 0, due: 130 }, dueAmount: 130 }, { reason: 'Weight' });
+        await FirebaseService.monthMarksIssued();
+        await settle();
+        const sale = await FirebaseService.saveRetailSale({ date: '2026-10-21', customerName: 'Sita', items: [line(1, 40)], total: 40, payment: { cash: 40, online: 0, due: 0 } });
+        await FirebaseService.saveWholesaleSale({ date: '2026-10-21', customerName: 'Raju', items: [line(2, 35)], total: 70, payment: { cash: 0, online: 0, due: 70 } });
+        await settle();
+        const edits = await FirebaseService.loadBillEdits('purchases', AppState.purchaseHistory.find(b => b.id === bill.id));
+        const voided = await FirebaseService.voidBill('retailSales', AppState.retailSalesHistory.find(b => b.id === 'r1'), 'Wrong bill');
+        await settle();
+        await FirebaseService.deleteVoidedBill('retailSales', voided);
+        await FirebaseService.deleteHistoryBill('retailSales', AppState.retailSalesHistory.find(b => b.id === sale.id));
+        await FirebaseService.deleteWholesaleSale('w1');
+        await FirebaseService.monthMarksIssued();
+        await settle();
+        pin('service.core-bills', rec.log);
+        expect(edits).toHaveLength(1);
+        expect(fake.raw('dev_retailSales').has('r1')).toBe(false);
+    });
+
+    test('expenses and stock adjustments: business and personal saves, edit, void, delete, day totals', async () => {
+        await openWithCheckpoint();
+        rec.clear();
+        await FirebaseService.saveExpense({ date: '2026-10-21', amount: 20, description: 'Bags', category: 'Shop' });
+        const personal = await FirebaseService.saveExpense({ date: '2026-10-21', amount: 30, description: 'Milk', category: 'personal' });
+        await settle();
+        await FirebaseService.updateExpense('e1', { amount: 55 });
+        await FirebaseService.updateExpense(personal.id, { amount: 35 });
+        await settle();
+        await FirebaseService.voidExpense('e1', 'Entered twice');
+        await FirebaseService.deleteExpense(personal.id);
+        await settle();
+        const day = await FirebaseService.loadPersonalExpenseDay('2026-10-20');
+        const written = await FirebaseService.rebuildPersonalExpenseDays(['2026-10-20', '2026-10-21']);
+        await FirebaseService.saveStockAdjustment({ date: '2026-10-21', itemId: 'i1', itemName: 'Rice', adjustType: 'add', quantity: 2, rate: 30 });
+        await FirebaseService.monthMarksIssued();
+        await settle();
+        pin('service.core-expenses', rec.log);
+        expect(day).not.toBeUndefined();
+        expect(typeof written).toBe('number');
+    });
+});
