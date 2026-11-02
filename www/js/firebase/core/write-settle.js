@@ -84,8 +84,8 @@ export function settleWrite(writePromise, label = 'write') {
                     return;
                 }
                 console.error(`[${label}] write failed after it was queued:`, error);
-                // The quota banner already explains this one (#194).
-                if (isQuotaExhaustedError(error)) return;
+                // The quota banner already explains this one (#194); a bill saved on another phone has its own notice (#93).
+                if (isQuotaExhaustedError(error) || error?.code === 'already-saved') return;
                 const text = isStorageFullError(error)
                     ? t(STORAGE_FULL_KEY)
                     : t('msg.sync.save_failed_on_server', { value: error?.message || error });

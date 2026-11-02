@@ -656,7 +656,7 @@ const PurchaseManager = {
             pending.attempted = true;
             // Online, a first save (and every save of a restored copy) only creates the bill: one
             // already under this id was saved by another phone (the same user's auto-save) (#93)
-            const writePromise = FirebaseService.savePurchase(bill, { retry, createOnly: restored || !retry });
+            const writePromise = FirebaseService.savePurchase(bill, { retry, createOnly: restored || !retry, ...(restored ? { strict: true } : {}) });
             // A restored copy is printed only once it is known not to be a copy of a saved bill
             if (restored) await writePromise;
             if (typeof options.onWriteIssued === 'function') {

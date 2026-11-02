@@ -121,11 +121,14 @@ const NO_ANSWER_CODES = new Set(['unavailable', 'deadline-exceeded', 'resource-e
 export const NO_ANSWER_SKIP_MS = 2 * 60 * 1000;
 let createNoAnswerAt = 0;
 
-/** Whether a first save should try the create-only transaction: not while the server is known to be out of reach. */
+/**
+ * Whether a first save should try the create-only transaction: not while the server is known
+ * to be out of reach. Heard again = one of this phone's writes reached the server since (a
+ * listener's snapshot isn't: it can echo this phone's own pending write).
+ */
 function createOnlineReachable(now = Date.now()) {
     if (!createNoAnswerAt) return true;
-    const heard = Math.max(SyncStatus.lastServerDataAt?.() || 0, SyncStatus.lastSyncAt?.() || 0);
-    if (heard > createNoAnswerAt || now - createNoAnswerAt > NO_ANSWER_SKIP_MS) {
+    if ((SyncStatus.lastSyncAt?.() || 0) >= createNoAnswerAt || now - createNoAnswerAt > NO_ANSWER_SKIP_MS) {
         createNoAnswerAt = 0;
         return true;
     }
@@ -133,20 +136,28 @@ function createOnlineReachable(now = Date.now()) {
 }
 
 /**
- * Create-only transactions given up on (no answer in time) that may still land, by key:
- * resolves true when one did (#93). A queued set() of the same bill refused afterwards
- * (a non-owner can't change createdAt) is then this phone's own bill, not a failure.
+ * Create-only transactions given up on (no answer in time) that may still land, by key (#93):
+ * resolves true when one did, its `already-saved` error when it found another phone's bill,
+ * else false. A queued set() of the same bill refused afterwards (a non-owner can't change
+ * createdAt) is then this phone's own bill, or that other phone's.
  */
 export const abandonedCreates = new Map();
 
+/** First set()s of new bills the server acknowledged, by key. */
+const ackedFirstSaves = new Set();
+
 const LATE_CREATE_WAIT_MS = 15000;
 
-/** Whether the bill under `key` is this phone's own write (a create-only transaction that landed late). */
-async function ownCreateLanded(key, ref) {
+/**
+ * What a refused queued set() of `key` met (#93): true - this phone's own create-only
+ * transaction landed late (or the server holds one of its attempts); an `already-saved`
+ * error - another phone's bill; false - neither known.
+ */
+async function lateCreateOutcome(key, ref) {
     const late = abandonedCreates.get(key);
     if (!late) return false;
-    const landed = await Promise.race([late, new Promise(resolve => setTimeout(() => resolve(null), LATE_CREATE_WAIT_MS))]);
-    if (landed) return true;
+    const outcome = await Promise.race([late, new Promise(resolve => setTimeout(() => resolve(null), LATE_CREATE_WAIT_MS))]);
+    if (outcome) return outcome;
     try {
         const snap = await ref.get({ source: 'server' });
         return snap.exists && !!sentBillAttempts.get(key)?.has(billAttemptJson(snap.data() || {}));
@@ -179,9 +190,11 @@ export async function offlineRetryOutcome(key, record) {
  * a transaction only while its id is free (any bill already there was saved by another
  * phone, e.g. from the same user's auto-save), else `already-saved` is thrown with it.
  * A first save (not a retry) whose transaction gets no answer within BILL_CREATE_WAIT_MS
- * is saved like an offline one (a set() queued on the phone). @private
+ * is saved like an offline one (a set() queued on the phone), unless `strict` (a copy
+ * restored from an auto-save or a draft: its id may well be another phone's bill), which
+ * throws instead. @private
  */
-export async function saveBill(collKey, record, label, { retry = false, createOnly = false } = {}) {
+export async function saveBill(collKey, record, label, { retry = false, createOnly = false, strict = false } = {}) {
     if (!record.userId && AppState.currentUser) record.userId = AppState.currentUser.uid;
     if (!record.userName && AppState.userName) record.userName = AppState.userName;
     const previous = record.id ? findRecord(collKey, record.id) : null;
@@ -218,10 +231,10 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
             throw error;
         }
     }
-    if (createOnly && !offline && !resend && createOnlineReachable()) {
+    if (createOnly && !offline && !resend && (strict || createOnlineReachable())) {
         let saved;
         try {
-            saved = await createBillOnline(collKey, record, docRef, previous, key);
+            saved = await createBillOnline(collKey, record, docRef, previous, key, { strict });
         } catch (error) {
             run.completeAndFail('save_error', { code: String(error?.code || 'unknown').slice(0, 40) });
             throw error;
@@ -250,9 +263,16 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
         pendingFirstSaves.delete(key);
         retriedBillSaves.delete(key);
     };
-    const write = Promise.resolve(sent).then(settled, async (error) => {
-        const superseded = isPermissionDenied(error)
-            && (retriedBillSaves.has(key) || await ownCreateLanded(key, docRef));
+    const write = Promise.resolve(sent).then(() => {
+        ackedFirstSaves.add(key);
+        settled();
+    }, async (error) => {
+        const late = isPermissionDenied(error) && !retriedBillSaves.has(key) ? await lateCreateOutcome(key, docRef) : false;
+        if (late?.code === 'already-saved') {
+            settled();
+            throw late;
+        }
+        const superseded = isPermissionDenied(error) && (retriedBillSaves.has(key) || late === true);
         settled();
         if (superseded) {
             // Expected (a retry already saved this bill): not a misuse signal (#124)
@@ -283,7 +303,7 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
  * (if that transaction lands later, the queued set() is its retry: retriedBillSaves).
  * @private
  */
-async function createBillOnline(collKey, record, ref, previous, key) {
+async function createBillOnline(collKey, record, ref, previous, key, { strict = false } = {}) {
     const attempt = { ...record };
     const tx = retryBillSave(collKey, attempt, ref, previous, key, { createOnly: true });
     let timer;
@@ -292,11 +312,16 @@ async function createBillOnline(collKey, record, ref, previous, key) {
             timer = setTimeout(() => reject(Object.assign(new Error('No answer from the server'), { code: 'deadline-exceeded' })), BILL_CREATE_WAIT_MS);
         })]);
     } catch (error) {
-        if (!NO_ANSWER_CODES.has(error?.code)) throw error;
+        if (strict || !NO_ANSWER_CODES.has(error?.code)) {
+            tx.catch(() => {});
+            throw error;
+        }
         createNoAnswerAt = Date.now();
         abandonedCreates.set(key, tx.then(() => true, (late) => {
-            if (late?.code === 'already-saved') noteSavedOnTwoPhones(late.bill);
-            return false;
+            if (late?.code !== 'already-saved') return false;
+            // This phone's own set() landed first and the bill changed since: not another phone's
+            if (!ackedFirstSaves.has(key)) noteSavedOnTwoPhones(late.bill);
+            return late;
         }));
         console.warn('New bill: no answer to the create-only save, saving it on the phone:', error.code);
         return null;

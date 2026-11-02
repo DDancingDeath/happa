@@ -352,8 +352,6 @@ export function createSyncStatus({ win = null, doc = null, pendingWrites: initia
         isOnline: () => online,
         /** When this phone last saw one of its changes reach the server (ms), null this session. */
         lastSyncAt: () => lastSyncAt,
-        /** When a listener last got data from the server (ms), or null. */
-        lastServerDataAt: () => serverDataAt,
         /**
          * Calls fn({online, pending}) on every state change (TIP Sync, #161).
          * @returns {Function} unsubscribe
