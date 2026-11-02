@@ -16,13 +16,15 @@ const ROOT = path.resolve(__dirname, '..');
 const REGISTRY = 'https://registry.npmjs.org/';
 
 function lockfiles(root = ROOT) {
-    return execFileSync('git', ['ls-files', '*package-lock.json', '*npm-shrinkwrap.json'], { cwd: root, encoding: 'utf8' })
+    return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '*package-lock.json', '*npm-shrinkwrap.json'], { cwd: root, encoding: 'utf8' })
         .split('\n').filter(Boolean);
 }
 
 /** @returns {{pkg: string, url: string}[]} resolved URLs not on the public registry */
 function badUrls(lock) {
-    return Object.entries(lock.packages || {}).flatMap(([pkg, info]) =>
+    // lockfileVersion 1 has only a "dependencies" tree: regenerate it with npm 7+ so it can be checked
+    if (!lock.packages) return [{ pkg: '(whole file)', url: 'no "packages" section (lockfileVersion 1)' }];
+    return Object.entries(lock.packages).flatMap(([pkg, info]) =>
         info && typeof info.resolved === 'string' && !info.resolved.startsWith(REGISTRY) && !info.link
             ? [{ pkg, url: info.resolved }] : []);
 }
@@ -30,13 +32,14 @@ function badUrls(lock) {
 /**
  * A mirror URL of a registry tarball -> the same tarball on registry.npmjs.org, or null.
  * @param {string} url
- * @param {string} [name] the package's name: the tarball path must be that package's
+ * @param {string} [name] the package's name and [version]: the tarball must be exactly that one's
+ * @param {string} [version]
  */
-function toRegistry(url, name) {
+function toRegistry(url, name, version) {
     const m = /\/((@[^/]+\/)?([^/@]+))\/-\/([^/]+\.tgz)$/.exec(url);
     if (!m || !/^https?:\/\//.test(url)) return null;
     if (name && m[1] !== name) return null;
-    if (!m[4].startsWith(`${m[3]}-`)) return null;
+    if (version ? m[4] !== `${m[3]}-${version}.tgz` : !m[4].startsWith(`${m[3]}-`)) return null;
     return `${REGISTRY}${m[1]}/-/${m[4]}`;
 }
 
@@ -53,7 +56,7 @@ function main(argv) {
         if (fix && bad.length) {
             const lock = JSON.parse(text);
             for (const { pkg, url } of bad) {
-                const to = toRegistry(url, nameOf(pkg, lock.packages[pkg]));
+                const to = toRegistry(url, nameOf(pkg, lock.packages[pkg]), lock.packages[pkg].version);
                 if (to) text = text.split(JSON.stringify(url)).join(JSON.stringify(to));
             }
             fs.writeFileSync(file, text);

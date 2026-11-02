@@ -36,6 +36,9 @@ jobs:
         with:
           node-version: '20'
           cache: npm
+      # Before npm ci: a lockfile pointing at a private feed would fail there with a fetch error
+      - name: Lockfiles resolve from registry.npmjs.org only
+        run: node scripts/check-lockfile.js
       - run: npm ci
       - name: Lint
         run: npm run lint
@@ -47,8 +50,6 @@ jobs:
         run: npm run check:release
       - name: innerHTML audit (no new unescaped values; #89)
         run: npm run check:html-escape
-      - name: Lockfiles resolve from registry.npmjs.org only
-        run: npm run check:lockfile
       # On a PR the architecture ratchet compares tests/architecture-baseline.json with the base branch.
       - name: Fetch the PR base branch
         if: github.event_name == 'pull_request'

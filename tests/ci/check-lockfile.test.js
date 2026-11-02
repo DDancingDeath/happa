@@ -28,6 +28,12 @@ test('a URL that is not that package\'s registry tarball is left for a person to
     expect(toRegistry(`${FEED}acorn/-/acorn-8.15.0.tgz`, 'acorn-walk')).toBeNull();
     expect(toRegistry('git+ssh://git@github.com/x/y.git', 'y')).toBeNull();
     expect(toRegistry(`${FEED}acorn/-/other-1.0.0.tgz`, 'acorn')).toBeNull();
+    expect(toRegistry(`${FEED}acorn/-/acorn-walk-8.0.0.tgz`, 'acorn', '8.0.0')).toBeNull();
+    expect(toRegistry(`${FEED}acorn/-/acorn-8.0.0.tgz`, 'acorn', '8.1.0')).toBeNull();
+});
+
+test('a lockfile without a "packages" section (lockfileVersion 1) fails', () => {
+    expect(badUrls({ lockfileVersion: 1, dependencies: {} })).toHaveLength(1);
 });
 
 test('package names come from the node_modules path, or the entry for an alias', () => {
