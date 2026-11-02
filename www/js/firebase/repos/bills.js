@@ -451,7 +451,8 @@ export async function retryBillSave(collKey, record, ref, previous, key, { creat
         keepStoredCreatedAt(record, server);
         keepEditCount(record, server);
         const serverPayments = Array.isArray(server.payments) ? server.payments : [];
-        if (serverPayments.length > 0 || paymentSignature(server) !== sentSig) {
+        // Found exactly one of this phone's own attempts (#93): its money is this phone's too
+        if (!(createOnly && ownThere) && (serverPayments.length > 0 || paymentSignature(server) !== sentSig)) {
             const nonMoney = { ...record };
             BILL_MONEY_FIELDS.forEach(k => delete nonMoney[k]);
             logRetryEdit(tx, ref, server, { ...server, ...nonMoney }, nonMoney);
