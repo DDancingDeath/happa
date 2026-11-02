@@ -25,12 +25,11 @@ import {
     changeInvalidatesCheckpoint,
     stockFingerprint
 } from '../utils/stock-replay.js';
-import { defaultWindowStart, monthsBefore, normalizeFrom, dateDescComparator } from '../utils/history-range.js';
+import { defaultWindowStart, monthsBefore, normalizeFrom } from '../utils/history-range.js';
 import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart } from '../utils/rebuild-lease.js';
 import { whenIdle, afterFirstPaint, shouldScheduleLegacyScan, LEGACY_SCAN_DELAY_MS } from '../utils/background-tasks.js';
 import { markStartup } from '../utils/startup-timings.js';
-import { canReadWithdrawals } from '../utils/role-access.js';
-import { canReadPersonalExpenses, dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, personalOnlineFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
+import { dayDocTotals, expenseCollectionFor, personalDayFixes, personalDayKey, personalDaysFromRows, personalOnlineFromRows, PERSONAL_DAYS_COLLECTION } from '../utils/personal-expenses.js';
 import { SyncStatus } from '../ui/sync-status.js';
 import { entryTime } from '../utils/due-payments.js';
 import { getDb, col, CLIENT_VERSION, serverCreatedAt, voidAwareStamp } from './db.js';
@@ -46,9 +45,18 @@ import { worthAccountMethods } from './repos/worth-accounts.js';
 import { reminderMethods } from './repos/reminders.js';
 import { settingsMethods, forgetAppSettings } from './repos/settings.js';
 import { getWithRetry } from './core/reads.js';
+import { S } from './core/session.js';
+import {
+    unsubscribeFunctions, pendingFirstSnapshots, defaultMapDoc, applySnapshot, FIRST_SNAPSHOT_SERVER_WAIT_MS,
+    FIRST_SNAPSHOT_CACHED_WAIT_MS, listenerStartup, pendingViews, runView, markDirty
+} from './core/realtime.js';
+import {
+    HISTORY_COLLECTIONS, HISTORY_SPEC, ALL_HISTORY_VIEWS, historySpecReadable, docIds, LOADED_PAYMENT, stableJson,
+    paymentSignature, mapDoc, canManageCheckpoint, isPermissionDenied, docIdOf, byDateDesc
+} from './core/records.js';
 import { settleWrite, whenStoredLocally, LOCAL_STORE_WAIT_MS, EXPENSE_STORE_WAIT_MS } from './core/write-settle.js';
 import { installFirestoreMeter, getQuotaStatus, backgroundReadsAllowed } from './firestore-meter.js';
-import { emit, REFRESH, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
+import { emit, ITEM_FREQUENCY_CHANGED } from '../utils/events.js';
 import { t } from '../i18n/index.js';
 import { tip } from '../tip/index.js';
 import { track } from '../services/usage.js';
@@ -62,158 +70,6 @@ if (typeof firebase !== 'undefined' && firebase.firestore) {
     } catch (e) {
         console.warn('Read counter not installed:', e);
     }
-}
-
-/** @type {Function[]} Array of unsubscribe functions for real-time listeners */
-const unsubscribeFunctions = [];
-/** Numbers the data listeners for the sync pill (#70). */
-let listenSeq = 0;
-
-/** @type {Array<{resolve: Function}>} First-snapshot waiters of active listeners */
-const pendingFirstSnapshots = [];
-
-/**
- * Incremented whenever a listener changes AppState data. Used to decide
- * whether a previously computed stock object is still current.
- * @type {number}
- */
-let dataVersion = 0;
-
-/** @type {{stock?: Object, version?: number}} Last stock computed by getStock() */
-let stockCache = {};
-
-const defaultMapDoc = (doc) => ({ id: doc.id, ...doc.data() });
-
-/**
- * Applies a query snapshot to a listener's private, ordered document list.
- * The first snapshot maps every document; later snapshots only deserialize
- * the changed documents (docChanges indices are defined relative to the
- * list with all prior changes applied, so sequential splicing reproduces
- * snapshot.docs order exactly).
- * @param {{docs: Object[], initialized: boolean}} live
- * @param {firebase.firestore.QuerySnapshot} snapshot
- * @param {Function} [mapFn]
- * @returns {{changed: boolean, changes: Array<{type: string, docId: string, oldRec: ?Object, newRec: ?Object}>|null}}
- *   changes is null for the initial snapshot (or after a resync)
- * @private
- */
-const applySnapshot = (live, snapshot, mapFn = defaultMapDoc) => {
-    if (!live.initialized) {
-        live.docs = snapshot.docs.map(mapFn);
-        live.initialized = true;
-        return { changed: true, changes: null };
-    }
-    const changes = snapshot.docChanges();
-    if (changes.length === 0) return { changed: false, changes: [] };
-    const diffs = [];
-    changes.forEach(change => {
-        let oldRec = null;
-        let newRec = null;
-        if (change.oldIndex !== -1) oldRec = live.docs.splice(change.oldIndex, 1)[0] || null;
-        if (change.newIndex !== -1) {
-            newRec = mapFn(change.doc);
-            live.docs.splice(change.newIndex, 0, newRec);
-        }
-        diffs.push({ type: change.type, docId: change.doc.id, oldRec, newRec });
-    });
-    if (live.docs.length !== snapshot.size) {
-        live.docs = snapshot.docs.map(mapFn);
-        return { changed: true, changes: null };
-    }
-    return { changed: true, changes: diffs };
-};
-
-const isTabActive = (tabId) => !!document.getElementById(tabId)?.classList.contains('active');
-
-/**
- * Views refreshed after data changes. `tab` is the tab the view lives in
- * (null = always refresh). Views in hidden tabs stay pending until that
- * tab is shown. Refreshing a view emits its event (utils/events.js REFRESH);
- * the pages subscribe, this layer never calls them.
- * @private
- */
-const VIEWS = {
-    itemsList: { tab: null },
-    itemsTable: { tab: 'items' },
-    billingDropdown: { tab: 'billing' },
-    salesDropdown: { tab: 'wholesale-sales' },
-    wholesaleHistory: { tab: 'wholesale-sales' },
-    wholesaleOutstanding: { tab: 'wholesale-sales' },
-    history: { tab: 'history' },
-    due: { tab: 'due' },
-    stockAdjustmentHistory: { tab: 'stock' },
-    stockView: { tab: 'stock' },
-    expensesHistory: { tab: 'expenses' },
-    money: { tab: 'money' },
-    insights: { tab: 'insights' },
-    statements: { tab: 'statements' },
-    today: { tab: 'day' }
-};
-
-/** Debounce window that coalesces bursts of snapshot events (ms). */
-const RENDER_DEBOUNCE_MS = 150;
-
-/** Max wait for server data at startup once cached data is available (ms). */
-const FIRST_SNAPSHOT_SERVER_WAIT_MS = 10000;
-/** ...when this device already has cached data for the app (#13). */
-const FIRST_SNAPSHOT_CACHED_WAIT_MS = 2500;
-/** A first snapshot from cache had documents this session (the device has used the app before). */
-let warmCache = false;
-/** Per-listener startup facts for Diagnostics (first source, doc count, what made it ready). */
-const listenerStartup = {};
-const pendingViews = new Set();
-let stockDirty = false;
-let flushTimer = null;
-
-const runView = (name) => {
-    emit(REFRESH[name]);
-};
-
-const runPendingViews = (shouldRun) => {
-    for (const name of [...pendingViews]) {
-        if (!shouldRun(VIEWS[name])) continue;
-        pendingViews.delete(name);
-        runView(name);
-    }
-};
-
-const flushPendingWork = async () => {
-    if (flushTimer) {
-        clearTimeout(flushTimer);
-        flushTimer = null;
-    }
-    if (stockDirty) {
-        stockDirty = false;
-        try {
-            await FirebaseService.getStock();
-        } catch (e) {
-            console.error('Stock recalculation error:', e);
-        }
-    }
-    runPendingViews(view => !view.tab || isTabActive(view.tab));
-};
-
-const scheduleFlush = () => {
-    if (!flushTimer) {
-        flushTimer = setTimeout(flushPendingWork, RENDER_DEBOUNCE_MS);
-    }
-};
-
-const markDirty = (views, affectsStock) => {
-    views.forEach(v => pendingViews.add(v));
-    if (affectsStock) stockDirty = true;
-    scheduleFlush();
-};
-
-// Refresh views that went stale while their tab was hidden.
-if (typeof window !== 'undefined') {
-    window.addEventListener('aadhat:tabshown', (event) => {
-        const tabId = event.detail?.tabId;
-        if ([...pendingViews].some(name => VIEWS[name].tab === tabId)) {
-            // Run now (not debounced) so the tab never shows stale data.
-            flushPendingWork();
-        }
-    });
 }
 
 // -------------------- RECENT-HISTORY WINDOW + STOCK CHECKPOINT --------------------
@@ -270,117 +126,8 @@ const FULL_LOAD_RETRY_MS = 30000;
 const PINNED_MAX = 300;
 const PINNED_CHUNK = 30;
 
-const HISTORY_COLLECTIONS = [
-    { key: 'purchases', stateKey: 'purchaseHistory', label: 'Purchases', stock: true, dues: true,
-        views: ['billingDropdown', 'salesDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
-    { key: 'retailSales', stateKey: 'retailSalesHistory', label: 'Retail sales', stock: true, dues: true,
-        views: ['billingDropdown', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
-    { key: 'wholesaleSales', stateKey: 'salesHistory', label: 'Sales', stock: true, dues: true,
-        views: ['billingDropdown', 'salesDropdown', 'wholesaleHistory', 'wholesaleOutstanding', 'history', 'due', 'stockView', 'money', 'insights', 'statements', 'today'] },
-    { key: 'expenses', stateKey: 'expensesHistory', label: 'Expenses', voidable: true,
-        views: ['expensesHistory', 'money', 'insights', 'statements', 'today'] },
-    // Shares AppState.expensesHistory with `expenses` (publishCollection merges them, #98)
-    { key: 'personalExpenses', stateKey: 'expensesHistory', label: 'Personal expenses', optional: true, timestamped: true, voidable: true,
-        views: ['expensesHistory', 'money', 'insights', 'statements', 'today'] },
-    { key: 'stockAdjustments', stateKey: 'stockAdjustments', label: 'Stock adjustments', stock: true,
-        views: ['stockAdjustmentHistory', 'stockView', 'money', 'insights', 'statements'] },
-    { key: 'withdrawals', stateKey: 'withdrawalsHistory', label: 'Withdrawals', optional: true,
-        views: ['money', 'statements'] }
-];
-const HISTORY_SPEC = Object.fromEntries(HISTORY_COLLECTIONS.map(s => [s.key, s]));
-const ALL_HISTORY_VIEWS = [...new Set(HISTORY_COLLECTIONS.flatMap(s => s.views))];
-
-/**
- * Whether this user may read a history collection (firestore.rules): withdrawals
- * only with Money, Statements or Insights on for the role (#57). Uses the last
- * known Roles & access, so a change applies from the next app start.
- */
-function historySpecReadable(spec, role = AppState.userRole, roleAccess = AppState.settings?.roleAccess) {
-    if (spec.key === 'withdrawals') return canReadWithdrawals(role, roleAccess);
-    if (spec.key === 'personalExpenses') return canReadPersonalExpenses(role, roleAccess);
-    return true;
-}
-
-/** Firestore document id of each mapped record (the data may carry its own `id`). */
-const docIds = new WeakMap();
-
-/**
- * Payment state of a bill as loaded from Firestore. Stored under a symbol key
- * so it survives `{...bill}` copies made by edit screens (and is never written
- * back: Firestore and JSON ignore symbol keys). update*() compare it with the
- * server copy to refuse overwriting payments recorded on another device.
- */
-const LOADED_PAYMENT = Symbol('aadhatLoadedPayment');
-/** JSON with sorted object keys (Firestore returns map fields in its own order). */
-const stableJson = (v) => {
-    if (Array.isArray(v)) return `[${v.map(stableJson).join(',')}]`;
-    if (v && typeof v === 'object' && !(typeof v.toMillis === 'function')) {
-        return `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${stableJson(v[k])}`).join(',')}}`;
-    }
-    if (v && typeof v.toMillis === 'function') return String(v.toMillis());
-    return JSON.stringify(v ?? null);
-};
-const paymentSignature = (d) => {
-    if (!d) return null;
-    const p = d.payment && typeof d.payment === 'object' ? d.payment : {};
-    const payments = Array.isArray(d.payments) ? d.payments : [];
-    return stableJson([
-        p.due ?? null, p.cash ?? null, p.online ?? null, p.total ?? null,
-        payments.length, payments.length ? payments[payments.length - 1] : null,
-        d.dueAmount ?? null, !!d.cleared
-    ]);
-};
-
-const mapDoc = (doc) => {
-    // 'estimate': a bill saved on this device still shows its createdAt (#87) until the server confirms it
-    const data = doc.data({ serverTimestamps: 'estimate' });
-    const rec = { id: doc.id, ...data };
-    docIds.set(rec, doc.id);
-    rec[LOADED_PAYMENT] = paymentSignature(data);
-    return rec;
-};
-
-/** Only owners/managers write checkpoint state (firestore.rules); staff devices never rebuild/roll forward. */
-const canManageCheckpoint = () => ['owner', 'manager'].includes(AppState.userRole);
-const isPermissionDenied = (e) => e?.code === 'permission-denied' || /insufficient permissions/i.test(String(e?.message || ''));
-const docIdOf = (rec) => (docIds.has(rec) ? docIds.get(rec) : String(rec?.id));
-const byDateDesc = dateDescComparator(docIdOf);
-
-let sessionGen = 0;
-/** @type {?{gen: number, liveFrom: number, rawFull: boolean, colls: Object}} */
-let windowState = null;
-/** Latest checkpoint doc data seen (undefined = not read yet, null = missing). */
-let checkpointDoc;
-/** Checkpoint in use for stock (parsed), or null. */
-let activeCheckpoint = null;
-let checkpointItemsCheck = { items: null, checkpoint: null, ok: false };
-
-let rebuildPromise = null;
-let rebuildRequestedAgain = false;
 /** Stock objects returned while another device rebuilds the checkpoint (not exact yet). */
 const pendingStocks = new WeakSet();
-/** Re-checks the stock once the other device's lease ends. */
-let leaseWaitTimer = null;
-/** When this session first started waiting for another device's rebuild (0 = never). */
-let leaseWaitStartedAt = 0;
-/** Bumped on every change to a stock collection in memory (roll-forward conflict detection). */
-let stockChangeGen = 0;
-/** stockCheckpoints/legacyScan: per collection {complete, foundAt} of the timestamp backfill. */
-let legacyScanDoc = null;
-/** The legacyScan doc read of this session (never rejects); read in parallel with the listeners. */
-let legacyScanReadPromise = Promise.resolve();
-/** Background legacy scan scheduled after the first screen: {run, cancel} (#13). */
-let legacyScanJob = null;
-/** Set by calculateStock() when the stock it returned is approximate (members, stale checkpoint, #129). */
-let lastStockApprox = null;
-/** Parsed stale checkpoint for approximate stock, cached per checkpoint doc snapshot. */
-let approxCheckpointCache = { doc: undefined, cp: null };
-/** This device made a checkpoint-invalidating edit this session (approximate stock would miss it). */
-let ownStaleWrite = false;
-let oldestTimestampPromise = null;
-/** When the on-demand (non-live) history currently in memory was first fetched (0 = none). */
-let onDemandAsOf = 0;
-let extendQueue = Promise.resolve();
 const pendingExtends = new Map();
 const invalidationTags = new Set();
 
@@ -461,13 +208,13 @@ function publishCollection(c) {
     });
     c.published = list;
     AppState[c.spec.stateKey] = withSharedState(c, list);
-    AppState.dataVersion = ++dataVersion;
-    if (c.spec.stock) stockChangeGen++;
+    AppState.dataVersion = ++S.dataVersion;
+    if (c.spec.stock) S.stockChangeGen++;
 }
 
 /** The published lists of every collection sharing c's AppState key (expenses + personal expenses), newest first. */
 function withSharedState(c, list) {
-    const others = Object.values(windowState?.colls || {})
+    const others = Object.values(S.windowState?.colls || {})
         .filter(o => o !== c && o.spec.stateKey === c.spec.stateKey && Array.isArray(o.published));
     if (!others.length) return list;
     return [...list, ...others.flatMap(o => o.published)].sort(byDateDesc);
@@ -479,7 +226,7 @@ function withSharedState(c, list) {
  * @returns {{collKey: string, rec: ?Object, docId: string}}
  */
 function locateExpense(id) {
-    const c = windowState?.colls?.personalExpenses;
+    const c = S.windowState?.colls?.personalExpenses;
     const sid = String(id);
     if (c) {
         const recs = [...c.extended.values(), ...c.live.docs, ...c.dues.flatMap(l => l.docs), ...(c.published || [])];
@@ -543,7 +290,7 @@ function warnDuplicateBillNumbers(c, changes) {
  * @private
  */
 function noteLocalRecordWrite(collKey, docId, record) {
-    const c = windowState?.colls[collKey];
+    const c = S.windowState?.colls[collKey];
     if (!c) return;
     const id = String(docId);
     if (record) {
@@ -579,18 +326,18 @@ function parseCheckpoint(data, { allowStale = false } = {}) {
 }
 
 const checkpointMatchesItems = (cp, items = AppState.items || []) => {
-    if (checkpointItemsCheck.items === items && checkpointItemsCheck.checkpoint === cp) {
-        return checkpointItemsCheck.ok;
+    if (S.checkpointItemsCheck.items === items && S.checkpointItemsCheck.checkpoint === cp) {
+        return S.checkpointItemsCheck.ok;
     }
     const ok = cp.itemsSignature === itemsSignature(items) || resolutionsStillValid(cp.resolutions, items);
-    checkpointItemsCheck = { items, checkpoint: cp, ok };
+    S.checkpointItemsCheck = { items, checkpoint: cp, ok };
     return ok;
 };
 
 /** The active checkpoint if it can produce exact stock right now. */
 function usableCheckpoint() {
-    const cp = activeCheckpoint;
-    if (!cp || !windowState || windowState.liveFrom > cp.asOf) return null;
+    const cp = S.activeCheckpoint;
+    if (!cp || !S.windowState || S.windowState.liveFrom > cp.asOf) return null;
     return checkpointMatchesItems(cp) ? cp : null;
 }
 
@@ -601,28 +348,28 @@ function usableCheckpoint() {
  * approximate instead of reading all history.
  */
 function approximateCheckpoint() {
-    if (!windowState || canManageCheckpoint() || !checkpointDoc || ownStaleWrite) return null;
-    if (approxCheckpointCache.doc !== checkpointDoc) {
-        approxCheckpointCache = { doc: checkpointDoc, cp: parseCheckpoint(checkpointDoc, { allowStale: true }) };
+    if (!S.windowState || canManageCheckpoint() || !S.checkpointDoc || S.ownStaleWrite) return null;
+    if (S.approxCheckpointCache.doc !== S.checkpointDoc) {
+        S.approxCheckpointCache = { doc: S.checkpointDoc, cp: parseCheckpoint(S.checkpointDoc, { allowStale: true }) };
     }
-    const cp = approxCheckpointCache.cp;
-    if (!cp || windowState.liveFrom > cp.asOf) return null;
+    const cp = S.approxCheckpointCache.cp;
+    if (!cp || S.windowState.liveFrom > cp.asOf) return null;
     return checkpointMatchesItems(cp) ? cp : null;
 }
 
 function adoptCheckpoint(data) {
     const cp = parseCheckpoint(data);
-    if (!cp || !windowState || cp.asOf < windowState.liveFrom) return false;
-    const cur = activeCheckpoint;
+    if (!cp || !S.windowState || cp.asOf < S.windowState.liveFrom) return false;
+    const cur = S.activeCheckpoint;
     if (cur && cur.asOf === cp.asOf && cur.builtAt === cp.builtAt && cur.staleCount === cp.staleCount) return true;
-    activeCheckpoint = cp;
-    AppState.dataVersion = ++dataVersion;
+    S.activeCheckpoint = cp;
+    AppState.dataVersion = ++S.dataVersion;
     return true;
 }
 
 const knownCheckpointAsOf = () => Math.max(
-    activeCheckpoint?.asOf || 0,
-    checkpointDoc && typeof checkpointDoc.asOf === 'number' ? checkpointDoc.asOf : 0
+    S.activeCheckpoint?.asOf || 0,
+    S.checkpointDoc && typeof S.checkpointDoc.asOf === 'number' ? S.checkpointDoc.asOf : 0
 );
 
 const invalidationTag = (collKey, oldRec, newRec) =>
@@ -650,10 +397,10 @@ function invalidateCheckpoint(reason, affectsLocal) {
         console.error('Stock checkpoint invalidation failed:', e);
     }
     console.info(`Stock checkpoint invalidated (${reason})`);
-    if (affectsLocal && activeCheckpoint) {
-        activeCheckpoint = null;
-        AppState.dataVersion = ++dataVersion;
-        if (windowState) markDirty(['stockView'], true);
+    if (affectsLocal && S.activeCheckpoint) {
+        S.activeCheckpoint = null;
+        AppState.dataVersion = ++S.dataVersion;
+        if (S.windowState) markDirty(['stockView'], true);
     }
     // Rebuild once the stale mark has reached the server (otherwise the
     // rebuild's own conflict check would discard it).
@@ -667,7 +414,7 @@ function noteObservedChange(c, oldRec, newRec, why) {
     const tag = invalidationTag(c.spec.key, oldRec, newRec);
     if (invalidationTags.has(tag)) return;
     invalidationTags.add(tag);
-    const local = !!activeCheckpoint && changeInvalidatesCheckpoint(oldRec, newRec, activeCheckpoint.asOf);
+    const local = !!S.activeCheckpoint && changeInvalidatesCheckpoint(oldRec, newRec, S.activeCheckpoint.asOf);
     invalidateCheckpoint(`${c.spec.key} ${why}`, local);
 }
 
@@ -681,20 +428,15 @@ function noteStockWrite(collKey, oldRec, newRec, opts = {}) {
         const threshold = Math.max(knownCheckpointAsOf(), defaultWindowStart(Date.now() + INVALIDATION_MARGIN_MS));
         if (!changeInvalidatesCheckpoint(oldRec, newRec, threshold, opts)) return;
         invalidationTags.add(invalidationTag(collKey, oldRec, newRec));
-        const local = !!activeCheckpoint && changeInvalidatesCheckpoint(oldRec, newRec, activeCheckpoint.asOf, opts);
+        const local = !!S.activeCheckpoint && changeInvalidatesCheckpoint(oldRec, newRec, S.activeCheckpoint.asOf, opts);
         // The last checkpoint no longer reflects this device's own edit: no approximate stock from it (#129).
-        ownStaleWrite = true;
+        S.ownStaleWrite = true;
         invalidateCheckpoint(`${collKey} write`, local);
-        if (AppState.stockApprox && windowState) markDirty(['stockView'], true);
+        if (AppState.stockApprox && S.windowState) markDirty(['stockView'], true);
     } catch (e) {
         console.error('Stock checkpoint invalidation check failed:', e);
     }
 }
-
-/** The last stale mark started by noteMonthWrite (tests wait for it). */
-let lastMonthMark = Promise.resolve([]);
-/** Local time this device started its last fresh read of all history (0 = none this session). */
-let fullHistoryFetchedAt = 0;
 
 /** The time a record counts in a month: BILL-TIME for bills / adjustments, its date for expenses / withdrawals. */
 function monthTimeOf(collKey, rec) {
@@ -717,9 +459,9 @@ function noteMonthWrite(collKey, oldRec, newRec) {
         const d = new Date(now);
         const current = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
         const times = [monthTimeOf(collKey, oldRec), monthTimeOf(collKey, newRec)];
-        if (!times.some(t => Number.isFinite(t) && t < current)) return (lastMonthMark = Promise.resolve([]));
+        if (!times.some(t => Number.isFinite(t) && t < current)) return (S.lastMonthMark = Promise.resolve([]));
         const cascade = !!HISTORY_SPEC[collKey]?.stock && stockFingerprint(oldRec) !== stockFingerprint(newRec);
-        lastMonthMark = import('../utils/month-snapshots.js').then(({ staleMonthsFor, staleMark }) => {
+        S.lastMonthMark = import('../utils/month-snapshots.js').then(({ staleMonthsFor, staleMark }) => {
             const months = staleMonthsFor(times, { now, cascade });
             if (!months.length) return months;
             const db = getDb();
@@ -735,7 +477,7 @@ function noteMonthWrite(collKey, oldRec, newRec) {
             console.error('Month snapshot stale mark failed:', e);
             return [];
         });
-        return lastMonthMark;
+        return S.lastMonthMark;
     } catch (e) {
         console.error('Month snapshot stale mark failed:', e);
         return Promise.resolve([]);
@@ -748,7 +490,7 @@ function noteMonthWrite(collKey, oldRec, newRec) {
  * @private
  */
 function replaceLiveRecord(collKey, docId, record) {
-    const docs = windowState?.colls?.[collKey]?.live?.docs;
+    const docs = S.windowState?.colls?.[collKey]?.live?.docs;
     const i = docs ? docs.findIndex(r => docIdOf(r) === String(docId)) : -1;
     if (i === -1) return;
     const rec = { ...record };
@@ -769,7 +511,7 @@ const BILL_EDITS = 'edits';
 const billEditsRef = (billRef) => billRef.collection(BILL_EDITS);
 
 /** Voided bills (#75) loaded for a bill collection, newest first (kept out of AppState). */
-const voidedOf = (collKey) => windowState?.colls?.[collKey]?.voided || [];
+const voidedOf = (collKey) => S.windowState?.colls?.[collKey]?.voided || [];
 
 /** Drops a deleted record from memory so it is not resurrected. */
 function forgetRecord(collKey, id) {
@@ -1206,15 +948,15 @@ async function deleteVoidedBillDoc(collKey, bill) {
  * @private
  */
 function waitForCheckpoint(until) {
-    const gen = sessionGen;
-    if (!leaseWaitStartedAt) leaseWaitStartedAt = Date.now();
-    clearTimeout(leaseWaitTimer);
+    const gen = S.sessionGen;
+    if (!S.leaseWaitStartedAt) S.leaseWaitStartedAt = Date.now();
+    clearTimeout(S.leaseWaitTimer);
     const remaining = Math.max(LEASE_MAX_WAIT_MS - leaseWaitedMs(), 0);
     const delay = Math.min(Math.max(Number(until) - Date.now(), 0), remaining) + 250;
-    leaseWaitTimer = setTimeout(() => {
-        leaseWaitTimer = null;
-        if (gen !== sessionGen) return;
-        AppState.dataVersion = ++dataVersion;
+    S.leaseWaitTimer = setTimeout(() => {
+        S.leaseWaitTimer = null;
+        if (gen !== S.sessionGen) return;
+        AppState.dataVersion = ++S.dataVersion;
         markDirty(['stockView'], true);
     }, delay);
     console.info('Stock checkpoint is being rebuilt on another device; waiting for it instead of reading all history.');
@@ -1224,17 +966,16 @@ function waitForCheckpoint(until) {
 }
 
 /** Total time this session has waited for another device's checkpoint rebuild. */
-const leaseWaitedMs = () => (leaseWaitStartedAt ? Date.now() - leaseWaitStartedAt : 0);
+const leaseWaitedMs = () => (S.leaseWaitStartedAt ? Date.now() - S.leaseWaitStartedAt : 0);
 
 function requestRebuild(after = Promise.resolve()) {
-    if (!windowState || !canManageCheckpoint()) return;
-    const gen = sessionGen;
+    if (!S.windowState || !canManageCheckpoint()) return;
+    const gen = S.sessionGen;
     Promise.resolve(after).catch(() => {}).then(() => {
-        if (gen !== sessionGen || !windowState) return null;
+        if (gen !== S.sessionGen || !S.windowState) return null;
         return FirebaseService.rebuildStockCheckpoint();
     }).catch(e => console.error('Stock checkpoint rebuild failed:', e));
 }
-
 
 /**
  * One-shot fetch of history older than the loaded window (target 0 = all
@@ -1243,9 +984,9 @@ function requestRebuild(after = Promise.resolve()) {
  * @private
  */
 async function extendHistory(target) {
-    const ws = windowState;
+    const ws = S.windowState;
     if (!ws) return;
-    const gen = sessionGen;
+    const gen = S.sessionGen;
     const startedAt = Date.now();
     const upper = AppState.historyLoadedFrom;
     const full = target === 0;
@@ -1269,7 +1010,7 @@ async function extendHistory(target) {
             }
             throw err;
         }));
-        if (gen !== sessionGen || windowState !== ws) return;
+        if (gen !== S.sessionGen || S.windowState !== ws) return;
     }
     let fromServer = true;
     snaps.forEach((snap, i) => {
@@ -1288,11 +1029,11 @@ async function extendHistory(target) {
         publishCollection(c);
     });
     if (fromServer) {
-        if (!onDemandAsOf) onDemandAsOf = Date.now();
+        if (!S.onDemandAsOf) S.onDemandAsOf = Date.now();
         if (full) {
             AppState.historyLoadedFrom = 0;
             ws.rawFull = true;
-            fullHistoryFetchedAt = startedAt;
+            S.fullHistoryFetchedAt = startedAt;
         } else if (AppState.historyLoadedFrom !== 0 && target < AppState.historyLoadedFrom) {
             AppState.historyLoadedFrom = target;
         }
@@ -1305,8 +1046,6 @@ async function extendHistory(target) {
     }
 }
 
-let forcedExtends = 0;
-
 /**
  * Re-reads every on-demand (non-live) record in [historyLoadedFrom, liveFrom)
  * from the server and replaces the in-memory copies, so edits/deletes made on
@@ -1315,11 +1054,11 @@ let forcedExtends = 0;
  * @returns {Promise<boolean>} false if offline / served from cache
  */
 async function refreshOnDemand() {
-    const ws = windowState;
+    const ws = S.windowState;
     if (!ws) return false;
     const from = AppState.historyLoadedFrom;
     if (from >= ws.liveFrom) return true;
-    const gen = sessionGen;
+    const gen = S.sessionGen;
     const startedAt = Date.now();
     const full = from === 0;
     const db = getDb();
@@ -1338,7 +1077,7 @@ async function refreshOnDemand() {
             if (spec.optional) return null;
             throw err;
         }));
-        if (gen !== sessionGen || windowState !== ws) return false;
+        if (gen !== S.sessionGen || S.windowState !== ws) return false;
     }
     if (snaps.some(s => s && s.metadata?.fromCache)) return false;
     const inRange = (rec) => full || (typeof rec?.timestamp === 'number' && rec.timestamp >= from && rec.timestamp < ws.liveFrom);
@@ -1354,22 +1093,22 @@ async function refreshOnDemand() {
         });
         publishCollection(c);
     });
-    onDemandAsOf = Date.now();
-    if (full) fullHistoryFetchedAt = startedAt;
+    S.onDemandAsOf = Date.now();
+    if (full) S.fullHistoryFetchedAt = startedAt;
     markDirty(ALL_HISTORY_VIEWS, true);
     return true;
 }
 /** force: always do a fresh read (checkpoint rebuild must not reuse in-session data). */
 function queueExtend(target, raw = false, force = false) {
-    const covered = () => !windowState || (!force && (raw
-        ? windowState.rawFull
+    const covered = () => !S.windowState || (!force && (raw
+        ? S.windowState.rawFull
         : AppState.historyLoadedFrom === 0 || (target > 0 && target >= AppState.historyLoadedFrom)));
     if (covered()) return Promise.resolve();
-    const key = force ? `force:${++forcedExtends}` : `${raw ? 'raw' : 'w'}:${target}`;
+    const key = force ? `force:${++S.forcedExtends}` : `${raw ? 'raw' : 'w'}:${target}`;
     if (pendingExtends.has(key)) return pendingExtends.get(key);
-    const gen = sessionGen;
-    const p = extendQueue.then(() => (gen === sessionGen && !covered() ? extendHistory(target) : undefined));
-    extendQueue = p.catch(() => {});
+    const gen = S.sessionGen;
+    const p = S.extendQueue.then(() => (gen === S.sessionGen && !covered() ? extendHistory(target) : undefined));
+    S.extendQueue = p.catch(() => {});
     pendingExtends.set(key, p);
     const clear = () => {
         if (pendingExtends.get(key) === p) pendingExtends.delete(key);
@@ -1380,10 +1119,10 @@ function queueExtend(target, raw = false, force = false) {
 
 /** Oldest numeric timestamp across history collections (cached per session). */
 function oldestTimestamp() {
-    if (!oldestTimestampPromise) {
-        const gen = sessionGen;
+    if (!S.oldestTimestampPromise) {
+        const gen = S.sessionGen;
         const db = getDb();
-        oldestTimestampPromise = Promise.all(HISTORY_COLLECTIONS.map(spec => (!historySpecReadable(spec) ? Infinity :
+        S.oldestTimestampPromise = Promise.all(HISTORY_COLLECTIONS.map(spec => (!historySpecReadable(spec) ? Infinity :
             getWithRetry(a => db.collection(col(spec.key)).orderBy('timestamp', 'asc').limit(1 + a), `${spec.label} oldest`)
                 .then(s => (s.docs.length ? Number(s.docs[0].data().timestamp) : Infinity))
                 .catch(err => {
@@ -1391,11 +1130,11 @@ function oldestTimestamp() {
                     throw err;
                 }))
         )).then(values => Math.min(...values)).catch(err => {
-            if (gen === sessionGen) oldestTimestampPromise = null;
+            if (gen === S.sessionGen) S.oldestTimestampPromise = null;
             throw err;
         });
     }
-    return oldestTimestampPromise;
+    return S.oldestTimestampPromise;
 }
 
 /** What a stale copy of a bill would differ in (#127): payments, edits, void. */
@@ -1410,7 +1149,7 @@ const billContentJson = (b) => {
 };
 /** Whether a listener that has heard from the server keeps this bill (its copy is current). */
 const keptLiveFromServer = (collKey, docId) => {
-    const c = windowState?.colls?.[collKey];
+    const c = S.windowState?.colls?.[collKey];
     return !!c && [c.live, ...c.dues].some(l => l.server && l.docs.some(r => docIdOf(r) === docId));
 };
 
@@ -1419,7 +1158,7 @@ const keptLiveFromServer = (collKey, docId) => {
  * on-demand bill), with the stock checkpoint check a listener change gets. @private
  */
 function adoptFreshBill(collKey, prev, fresh) {
-    const c = windowState?.colls?.[collKey];
+    const c = S.windowState?.colls?.[collKey];
     if (!c) return;
     const docId = docIdOf(fresh);
     if (liveIdSet(c).has(docId)) return;
@@ -1431,7 +1170,7 @@ function adoptFreshBill(collKey, prev, fresh) {
 
 /** Drops a bill the server no longer has from memory when no listener keeps it. @private */
 function dropGoneBill(collKey, prev, docId) {
-    const c = windowState?.colls?.[collKey];
+    const c = S.windowState?.colls?.[collKey];
     if (!c || liveIdSet(c).has(docId)) return;
     if (c.spec.stock && prev) noteObservedChange(c, prev, null, 'deleted');
     forgetRecord(collKey, docId);
@@ -1440,9 +1179,9 @@ function dropGoneBill(collKey, prev, docId) {
 
 /** Re-reads an old bill that left a dues query (paid off, or deleted). */
 function refetchAfterDueRemoval(c, docId, prev) {
-    const gen = sessionGen;
+    const gen = S.sessionGen;
     getWithRetry(getDb().collection(col(c.spec.key)).doc(docId), `${c.spec.label} ${docId}`).then(snap => {
-        if (gen !== sessionGen || !windowState || liveIdSet(c).has(docId)) return;
+        if (gen !== S.sessionGen || !S.windowState || liveIdSet(c).has(docId)) return;
         if (snap.exists) {
             const rec = mapDoc(snap);
             // Paid off: keep it only if it is inside the loaded history range.
@@ -1483,7 +1222,7 @@ const legacyScanRef = () => getDb().collection(col(CHECKPOINT_COLLECTION)).doc(L
 
 /** Whether a collection may still hold documents without a numeric timestamp (old clients). */
 const needsLegacyScan = (key) => {
-    const e = legacyScanDoc?.[key];
+    const e = S.legacyScanDoc?.[key];
     if (!e || e.v !== LEGACY_SCAN_VERSION || e.complete !== true) return true;
     // While outdated apps may still be writing, one device re-scans every few hours; its
     // backfill makes those documents visible to every device's window listener.
@@ -1503,7 +1242,7 @@ const needsLegacyScan = (key) => {
  */
 function backfillLegacyTimestamps(spec, docs) {
     // Never rejects (callers keep the promise around).
-    return backfillLegacyTimestampsNow(spec, docs, sessionGen).catch(e => {
+    return backfillLegacyTimestampsNow(spec, docs, S.sessionGen).catch(e => {
         console.warn(`${spec.label}: timestamp backfill failed:`, e?.code || e);
         return { ok: false, complete: false, writes: 0 };
     });
@@ -1511,7 +1250,7 @@ function backfillLegacyTimestamps(spec, docs) {
 
 async function backfillLegacyTimestampsNow(spec, docs, gen) {
     const db = getDb();
-    const from = Math.min(windowState?.liveFrom ?? Infinity, defaultWindowStart(Date.now()));
+    const from = Math.min(S.windowState?.liveFrom ?? Infinity, defaultWindowStart(Date.now()));
     const critical = [];
     const optional = [];
     let lastLegacyEvent = 0;
@@ -1574,16 +1313,16 @@ async function backfillLegacyTimestampsNow(spec, docs, gen) {
         console.error(`${spec.label}: timestamp backfill (older records) failed:`, e);
         complete = false;
     }
-    if (windowState) (windowState.backfillWritten ||= {})[spec.key] = written;
+    if (S.windowState) (S.windowState.backfillWritten ||= {})[spec.key] = written;
     if (critical.some(w => !written.has(w.id))) ok = false;
-    if (gen !== sessionGen) return { ok, complete, writes: critical.length + allowed.length };
+    if (gen !== S.sessionGen) return { ok, complete, writes: critical.length + allowed.length };
     // The legacyScan doc is read in parallel with startup; merge with what it holds.
-    await legacyScanReadPromise;
-    if (gen !== sessionGen) return { ok, complete, writes: critical.length + allowed.length };
-    const prev = legacyScanDoc?.[spec.key] || {};
+    await S.legacyScanReadPromise;
+    if (gen !== S.sessionGen) return { ok, complete, writes: critical.length + allowed.length };
+    const prev = S.legacyScanDoc?.[spec.key] || {};
     // foundAt ~ when an outdated app last wrote such a document (its event time).
     const entry = { v: LEGACY_SCAN_VERSION, complete, foundAt: Math.max(prev.foundAt || 0, lastLegacyEvent), at: Date.now() };
-    legacyScanDoc = { ...(legacyScanDoc || {}), [spec.key]: entry };
+    S.legacyScanDoc = { ...(S.legacyScanDoc || {}), [spec.key]: entry };
     legacyScanRef().set({ [spec.key]: entry }, { merge: true })
         .catch(e => console.warn('Saving legacy scan state failed:', e?.code || e));
     if (critical.length || allowed.length) console.info(`${spec.label}: backfilled timestamp on ${critical.length + allowed.length} documents`);
@@ -1607,7 +1346,7 @@ async function scanLegacyCollections(ws, gen) {
             console.warn(`${spec.label}: legacy timestamp scan failed:`, e?.code || e);
             continue;
         }
-        if (gen !== sessionGen || windowState !== ws) return;
+        if (gen !== S.sessionGen || S.windowState !== ws) return;
         const c = ws.colls[spec.key];
         const live = liveIdSet(c);
         let added = 0;
@@ -1634,22 +1373,22 @@ async function scanLegacyCollections(ws, gen) {
  * @private
  */
 function scheduleLegacyScan(ws, gen) {
-    legacyScanJob?.cancel();
+    S.legacyScanJob?.cancel();
     let started = null;
     const run = () => {
         if (!started) {
             cancel();
-            started = legacyScanReadPromise
+            started = S.legacyScanReadPromise
                 // settings/app holds the kill switch; skipped under the read guards (#159), the next app open tries again
                 .then(() => FirebaseService.loadAppSettings().catch(() => null))
-                .then(() => (gen === sessionGen && windowState === ws && backgroundReadsAllowed() ? scanLegacyCollections(ws, gen) : undefined))
+                .then(() => (gen === S.sessionGen && S.windowState === ws && backgroundReadsAllowed() ? scanLegacyCollections(ws, gen) : undefined))
                 .catch(e => console.warn('Legacy timestamp scan failed:', e?.code || e))
                 .then(() => markStartup('legacy-scan'));
         }
         return started;
     };
     const cancel = whenIdle(run, { minDelayMs: LEGACY_SCAN_DELAY_MS });
-    legacyScanJob = { run, cancel };
+    S.legacyScanJob = { run, cancel };
 }
 
 /**
@@ -1665,7 +1404,7 @@ function scheduleLegacyScan(ws, gen) {
  * @param {number} asOf the checkpoint's start (the window starts no later)
  */
 function computePinned(asOf) {
-    const ws = windowState;
+    const ws = S.windowState;
     const pinned = {};
     HISTORY_COLLECTIONS.forEach(spec => {
         if (!spec.dues) return;
@@ -1716,9 +1455,6 @@ function checkpointPayload({ asOf, state, resolutions, items, staleCount, backfi
 
 const CHECKPOINT_MAX_BYTES = 900 * 1024;
 
-/** Whether this session already tried a rebuild without being asked to by an invalidation. */
-let rebuildAttempted = false;
-
 /**
  * Listens to the checkpoint doc. Resolves after the first server snapshot (or
  * the cache when offline / the server is slow). Later snapshots adopt fresh
@@ -1740,24 +1476,24 @@ function listenCheckpoint(gen) {
         let unsubscribe = () => {};
         try {
             unsubscribe = checkpointRef().onSnapshot({ includeMetadataChanges: true }, snap => {
-                if (gen !== sessionGen) return;
-                checkpointDoc = snap.exists ? snap.data() : null;
+                if (gen !== S.sessionGen) return;
+                S.checkpointDoc = snap.exists ? snap.data() : null;
                 if (ready) {
-                    if (checkpointDoc && !checkpointDoc.stale && adoptCheckpoint(checkpointDoc)) {
+                    if (S.checkpointDoc && !S.checkpointDoc.stale && adoptCheckpoint(S.checkpointDoc)) {
                         markDirty(['stockView'], true);
-                    } else if (checkpointDoc?.stale && activeCheckpoint &&
-                        (checkpointDoc.staleCount || 0) > activeCheckpoint.staleCount) {
+                    } else if (S.checkpointDoc?.stale && S.activeCheckpoint &&
+                        (S.checkpointDoc.staleCount || 0) > S.activeCheckpoint.staleCount) {
                         // Another device changed history before the checkpoint: stop using it
                         // (full replay) until a rebuilt one arrives.
-                        activeCheckpoint = null;
-                        AppState.dataVersion = ++dataVersion;
+                        S.activeCheckpoint = null;
+                        AppState.dataVersion = ++S.dataVersion;
                         markDirty(['stockView'], true);
                         requestRebuild();
-                    } else if (leaseWaitTimer && !((checkpointDoc?.rebuildingUntil || 0) > Date.now())) {
+                    } else if (S.leaseWaitTimer && !((S.checkpointDoc?.rebuildingUntil || 0) > Date.now())) {
                         // The device we were waiting for gave up its lease: decide again now.
-                        clearTimeout(leaseWaitTimer);
-                        leaseWaitTimer = null;
-                        AppState.dataVersion = ++dataVersion;
+                        clearTimeout(S.leaseWaitTimer);
+                        S.leaseWaitTimer = null;
+                        AppState.dataVersion = ++S.dataVersion;
                         markDirty(['stockView'], true);
                     }
                     return;
@@ -1771,12 +1507,12 @@ function listenCheckpoint(gen) {
                 }
             }, error => {
                 console.error('Stock checkpoint listener error:', error);
-                if (checkpointDoc === undefined) checkpointDoc = null;
+                if (S.checkpointDoc === undefined) S.checkpointDoc = null;
                 done();
             });
         } catch (e) {
             console.error('Stock checkpoint listener error:', e);
-            checkpointDoc = null;
+            S.checkpointDoc = null;
             done();
         }
         unsubscribeFunctions.push(unsubscribe);
@@ -1790,15 +1526,15 @@ function listenCheckpoint(gen) {
  * @private
  */
 async function rollForwardCheckpoint(cp, newAsOf) {
-    const ws = windowState;
-    const gen = sessionGen;
+    const ws = S.windowState;
+    const gen = S.sessionGen;
     if (!canManageCheckpoint()) return 'not-allowed';
     if (!ws || ws.liveFrom > cp.asOf) return 'uncovered';
     if (HISTORY_COLLECTIONS.some(s => s.stock && !ws.colls[s.key].live.server)) return 'waiting';
     const items = AppState.items || [];
     // Any stock change seen after this point (e.g. another device editing a record in
     // [asOf, newAsOf)) may be missing from the state below: then the payload is discarded.
-    const changeGen = stockChangeGen;
+    const changeGen = S.stockChangeGen;
     const { state, resolutions } = buildCheckpointState(currentSources(), newAsOf, items, { state: cp.state, from: cp.asOf });
     const allResolutions = new Map();
     [...cp.resolutions, ...resolutions].forEach(r => allResolutions.set(RESOLUTION_TAG(r), r));
@@ -1809,7 +1545,7 @@ async function rollForwardCheckpoint(cp, newAsOf) {
         ok = await getDb().runTransaction(async tx => {
             const snap = await tx.get(ref);
             const d = snap.exists ? snap.data() : null;
-            if (stockChangeGen !== changeGen) return 'changed';
+            if (S.stockChangeGen !== changeGen) return 'changed';
             if (!d || d.formatVersion !== STOCK_REPLAY_FORMAT || d.stale || d.asOf !== cp.asOf ||
                 (d.staleCount || 0) !== cp.staleCount || (d.builtAt || 0) !== cp.builtAt ||
                 (d.rebuildingUntil || 0) > Date.now()) {
@@ -1833,12 +1569,12 @@ async function rollForwardCheckpoint(cp, newAsOf) {
         throw e;
     }
     if (ok !== 'rolled') return ok;
-    if (stockChangeGen !== changeGen) {
+    if (S.stockChangeGen !== changeGen) {
         // A change landed between the check and the commit: the stored state may miss it.
         invalidateCheckpoint('roll-forward raced with a stock change', true);
         return 'changed';
     }
-    if (gen === sessionGen) adoptCheckpoint(payload);
+    if (gen === S.sessionGen) adoptCheckpoint(payload);
     console.info(`Stock checkpoint rolled forward to ${new Date(newAsOf).toISOString()}`);
     return 'rolled';
 }
@@ -1880,14 +1616,14 @@ async function rebuildCheckpointNow(gen) {
     try {
         // Always a fresh full server read: in-session copies may be stale.
         await queueExtend(0, true, true);
-        const ws = windowState;
-        if (gen !== sessionGen || !ws) return (result = { status: 'cancelled' });
+        const ws = S.windowState;
+        if (gen !== S.sessionGen || !ws) return (result = { status: 'cancelled' });
         if (!ws.rawFull || HISTORY_COLLECTIONS.some(s => s.stock && !ws.colls[s.key].live.server)) {
             return (result = { status: 'offline' });
         }
         const asOf = Math.max(defaultWindowStart(Date.now()), ws.liveFrom);
         const backfills = await Promise.all(HISTORY_COLLECTIONS.map(spec => ws.backfills[spec.key] || { ok: true, complete: true, writes: 0 }));
-        if (gen !== sessionGen) return (result = { status: 'cancelled' });
+        if (gen !== S.sessionGen) return (result = { status: 'cancelled' });
         if (HISTORY_COLLECTIONS.some((spec, i) => spec.stock && !backfills[i].ok)) return (result = { status: 'backfill-failed' });
         const backfill = {
             complete: backfills.every(b => b.complete),
@@ -1918,7 +1654,7 @@ async function rebuildCheckpointNow(gen) {
             return true;
         });
         if (!committed) return (result = { status: 'conflict' });
-        if (gen === sessionGen && adoptCheckpoint(payload)) markDirty(['stockView'], true);
+        if (gen === S.sessionGen && adoptCheckpoint(payload)) markDirty(['stockView'], true);
         console.info(`Stock checkpoint rebuilt as of ${new Date(asOf).toISOString()} (${backfill.writes} backfill writes)`);
         return (result = { status: 'built', asOf, backfill });
     } catch (e) {
@@ -1938,7 +1674,6 @@ async function rebuildCheckpointNow(gen) {
         }
     }
 }
-
 
 /**
  * Firebase Service object containing all database operations.
@@ -1979,36 +1714,36 @@ const FirebaseService = {
         SyncStatus.clearListeners();
         pendingFirstSnapshots.forEach(settle => settle.resolve());
         pendingFirstSnapshots.length = 0;
-        if (flushTimer) {
-            clearTimeout(flushTimer);
-            flushTimer = null;
+        if (S.flushTimer) {
+            clearTimeout(S.flushTimer);
+            S.flushTimer = null;
         }
         pendingViews.clear();
-        stockDirty = false;
-        stockCache = {};
-        AppState.dataVersion = ++dataVersion;
-        sessionGen++;
-        windowState = null;
-        checkpointDoc = undefined;
-        activeCheckpoint = null;
-        checkpointItemsCheck = { items: null, checkpoint: null, ok: false };
-        rebuildPromise = null;
+        S.stockDirty = false;
+        S.stockCache = {};
+        AppState.dataVersion = ++S.dataVersion;
+        S.sessionGen++;
+        S.windowState = null;
+        S.checkpointDoc = undefined;
+        S.activeCheckpoint = null;
+        S.checkpointItemsCheck = { items: null, checkpoint: null, ok: false };
+        S.rebuildPromise = null;
         forgetAppSettings();
-        rebuildRequestedAgain = false;
-        rebuildAttempted = false;
-        clearTimeout(leaseWaitTimer);
-        leaseWaitTimer = null;
-        leaseWaitStartedAt = 0;
-        oldestTimestampPromise = null;
-        extendQueue = Promise.resolve();
+        S.rebuildRequestedAgain = false;
+        S.rebuildAttempted = false;
+        clearTimeout(S.leaseWaitTimer);
+        S.leaseWaitTimer = null;
+        S.leaseWaitStartedAt = 0;
+        S.oldestTimestampPromise = null;
+        S.extendQueue = Promise.resolve();
         pendingExtends.clear();
         invalidationTags.clear();
-        legacyScanJob?.cancel();
-        legacyScanJob = null;
-        lastStockApprox = null;
+        S.legacyScanJob?.cancel();
+        S.legacyScanJob = null;
+        S.lastStockApprox = null;
         AppState.stockApprox = null;
-        approxCheckpointCache = { doc: undefined, cp: null };
-        ownStaleWrite = false;
+        S.approxCheckpointCache = { doc: undefined, cp: null };
+        S.ownStaleWrite = false;
         AppState.historyLoadedFrom = 0;
     },
 
@@ -2024,12 +1759,12 @@ const FirebaseService = {
      * @returns {number}
      */
     getFullHistoryFetchedAt() {
-        return fullHistoryFetchedAt;
+        return S.fullHistoryFetchedAt;
     },
 
     /** Resolves with the months of the last stale mark once it is issued (tests). */
     monthMarksIssued() {
-        return lastMonthMark;
+        return S.lastMonthMark;
     },
 
     ...collectionAdminMethods,
@@ -2521,7 +2256,7 @@ const FirebaseService = {
      * @returns {boolean}
      */
     personalRowsLoaded() {
-        const live = windowState?.colls?.personalExpenses?.live;
+        const live = S.windowState?.colls?.personalExpenses?.live;
         return !!(live && live.delivered && !live.failed);
     },
 
@@ -2533,7 +2268,7 @@ const FirebaseService = {
      */
     async rebuildPersonalExpenseDays(days) {
         if (!canManageCheckpoint() || !this.personalRowsLoaded()) return 0;
-        const rows = (windowState.colls.personalExpenses.published || []).map(r => ({ ...r, id: docIdOf(r) }));
+        const rows = (S.windowState.colls.personalExpenses.published || []).map(r => ({ ...r, id: docIdOf(r) }));
         const want = personalDaysFromRows(rows);
         const wantOnline = personalOnlineFromRows(rows);
         let written = 0;
@@ -2588,15 +2323,15 @@ const FirebaseService = {
      * @returns {Promise<void>}
      */
     async prepareStock({ defer = false } = {}) {
-        if (!defer && (!windowState || usableCheckpoint() || AppState.historyLoadedFrom === 0)) {
+        if (!defer && (!S.windowState || usableCheckpoint() || AppState.historyLoadedFrom === 0)) {
             await this.getStock();
             return;
         }
         AppState.stockReady = false;
-        const gen = sessionGen;
+        const gen = S.sessionGen;
         const run = () => this.getStock()
             .then(() => {
-                if (gen === sessionGen) markDirty(['stockView', 'itemsList', 'billingDropdown', 'salesDropdown'], false);
+                if (gen === S.sessionGen) markDirty(['stockView', 'itemsList', 'billingDropdown', 'salesDropdown'], false);
             })
             .catch(e => console.error('Background stock calculation failed:', e));
         if (!defer) {
@@ -2612,7 +2347,7 @@ const FirebaseService = {
      * @returns {Promise<void>}
      */
     runLegacyScanNow() {
-        return legacyScanJob ? legacyScanJob.run() : Promise.resolve();
+        return S.legacyScanJob ? S.legacyScanJob.run() : Promise.resolve();
     },
 
     /**
@@ -2695,8 +2430,8 @@ const FirebaseService = {
      * @returns {Promise<Object.<string, {quantity: number, rate: number}>>} Stock object keyed by item ID
      */
     async calculateStock() {
-        lastStockApprox = null;
-        if (!windowState) {
+        S.lastStockApprox = null;
+        if (!S.windowState) {
             return computeStock(currentSources(), AppState.items);
         }
         let cp = usableCheckpoint();
@@ -2710,34 +2445,34 @@ const FirebaseService = {
             const approx = approximateCheckpoint();
             const plan = decideStockRebuild({
                 canManage: canManageCheckpoint(),
-                leaseUntil: checkpointDoc?.rebuildingUntil || 0,
-                leaseBy: checkpointDoc?.rebuildingBy || null,
+                leaseUntil: S.checkpointDoc?.rebuildingUntil || 0,
+                leaseBy: S.checkpointDoc?.rebuildingBy || null,
                 uid: AppState.currentUser?.uid || null,
                 now: Date.now(),
                 waitedMs: leaseWaitedMs(),
-                inFlight: !!rebuildPromise,
-                attempted: rebuildAttempted,
+                inFlight: !!S.rebuildPromise,
+                attempted: S.rebuildAttempted,
                 approxAvailable: !!approx
             });
             if (plan === 'approximate') {
-                lastStockApprox = { builtAt: approx.builtAt || 0, asOf: approx.asOf };
+                S.lastStockApprox = { builtAt: approx.builtAt || 0, asOf: approx.asOf };
                 return computeStockFrom(approx.state, approx.asOf, currentSources(), AppState.items);
             }
-            if (plan === 'wait') return waitForCheckpoint(checkpointDoc.rebuildingUntil);
+            if (plan === 'wait') return waitForCheckpoint(S.checkpointDoc.rebuildingUntil);
             if (plan === 'join' || plan === 'rebuild') {
                 let result = null;
                 try {
-                    result = await (plan === 'join' ? rebuildPromise : this.rebuildStockCheckpoint());
+                    result = await (plan === 'join' ? S.rebuildPromise : this.rebuildStockCheckpoint());
                 } catch (e) {
                     console.error('Stock checkpoint rebuild failed:', e);
                 }
-                if (!windowState) return computeStock(currentSources(), AppState.items);
+                if (!S.windowState) return computeStock(currentSources(), AppState.items);
                 cp = usableCheckpoint();
                 if (cp) {
                     return computeStockFrom(cp.state, cp.asOf, currentSources(), AppState.items);
                 }
                 if (leaseWaitedMs() < LEASE_MAX_WAIT_MS) {
-                    if (result?.status === 'leased') return waitForCheckpoint(checkpointDoc?.rebuildingUntil || Date.now() + REBUILD_LEASE_MS);
+                    if (result?.status === 'leased') return waitForCheckpoint(S.checkpointDoc?.rebuildingUntil || Date.now() + REBUILD_LEASE_MS);
                     // Built elsewhere moments ago: the checkpoint listener delivers it shortly.
                     if (result?.status === 'fresh') return waitForCheckpoint(Date.now() + FRESH_CHECKPOINT_WAIT_MS);
                 }
@@ -2749,11 +2484,11 @@ const FirebaseService = {
             } catch (e) {
                 console.error('Loading full history for stock failed:', e);
             }
-            if (AppState.historyLoadedFrom !== 0 && windowState) {
+            if (AppState.historyLoadedFrom !== 0 && S.windowState) {
                 // Not exact without full history: retry and recompute shortly.
-                const gen = sessionGen;
+                const gen = S.sessionGen;
                 setTimeout(() => {
-                    if (gen === sessionGen) markDirty(['stockView'], true);
+                    if (gen === S.sessionGen) markDirty(['stockView'], true);
                 }, FULL_LOAD_RETRY_MS);
             }
             cp = usableCheckpoint();
@@ -2762,7 +2497,7 @@ const FirebaseService = {
             }
         }
         // The rebuild reuses the full history just loaded.
-        if (!rebuildAttempted) requestRebuild();
+        if (!S.rebuildAttempted) requestRebuild();
         return computeStock(currentSources(), AppState.items);
     },
 
@@ -2774,23 +2509,23 @@ const FirebaseService = {
      * @returns {Promise<Object.<string, {quantity: number, rate: number}>>}
      */
     async getStock() {
-        if (unsubscribeFunctions.length > 0 && stockCache.stock && stockCache.stock === AppState.stock && stockCache.version === dataVersion) {
+        if (unsubscribeFunctions.length > 0 && S.stockCache.stock && S.stockCache.stock === AppState.stock && S.stockCache.version === S.dataVersion) {
             // Only ready stock is cached (pending results clear the cache).
             AppState.stockReady = true;
             return AppState.stock;
         }
-        const version = dataVersion;
+        const version = S.dataVersion;
         const stock = await this.calculateStock();
         AppState.stock = stock;
-        AppState.stockApprox = lastStockApprox;
+        AppState.stockApprox = S.lastStockApprox;
         if (pendingStocks.has(stock)) {
             // Last known stock is shown as "updating" until the checkpoint arrives.
             AppState.stockReady = false;
-            stockCache = {};
+            S.stockCache = {};
             return stock;
         }
         AppState.stockReady = true;
-        stockCache = { stock, version };
+        S.stockCache = { stock, version };
         return stock;
     },
 
@@ -2831,14 +2566,14 @@ const FirebaseService = {
      * @returns {Promise<{loadedFrom: number, reachedEnd: boolean}>}
      */
     async loadOlderHistory(months = 1) {
-        if (!windowState || AppState.historyLoadedFrom === 0) {
+        if (!S.windowState || AppState.historyLoadedFrom === 0) {
             return { loadedFrom: AppState.historyLoadedFrom, reachedEnd: true };
         }
         const oldest = await oldestTimestamp();
         const target = monthsBefore(AppState.historyLoadedFrom, months);
         if (oldest < target) {
             await this.ensureHistoryFrom(target);
-        } else if (checkpointDoc?.backfill?.complete === true) {
+        } else if (S.checkpointDoc?.backfill?.complete === true) {
             // Every document carries a numeric timestamp: [1, loadedFrom) is the rest.
             const before = AppState.historyLoadedFrom;
             await this.ensureHistoryFrom(1);
@@ -2878,8 +2613,8 @@ const FirebaseService = {
      * @returns {?{from: number, liveFrom: number, asOf: number}}
      */
     getOnDemandHistoryInfo() {
-        if (!windowState || AppState.historyLoadedFrom >= windowState.liveFrom) return null;
-        return { from: AppState.historyLoadedFrom, liveFrom: windowState.liveFrom, asOf: onDemandAsOf };
+        if (!S.windowState || AppState.historyLoadedFrom >= S.windowState.liveFrom) return null;
+        return { from: AppState.historyLoadedFrom, liveFrom: S.windowState.liveFrom, asOf: S.onDemandAsOf };
     },
 
     /**
@@ -2888,8 +2623,8 @@ const FirebaseService = {
      * @returns {Promise<boolean>} false if it could not reach the server
      */
     refreshOnDemandHistory() {
-        const p = extendQueue.then(() => refreshOnDemand());
-        extendQueue = p.catch(() => {});
+        const p = S.extendQueue.then(() => refreshOnDemand());
+        S.extendQueue = p.catch(() => {});
         return p;
     },
 
@@ -2900,8 +2635,8 @@ const FirebaseService = {
      * @returns {boolean}
      */
     historyServerSynced() {
-        const ws = windowState;
-        if (!ws || ws.gen !== sessionGen) return false;
+        const ws = S.windowState;
+        if (!ws || ws.gen !== S.sessionGen) return false;
         return ['purchases', 'retailSales', 'wholesaleSales'].every(k => ws.colls[k]?.live?.server === true);
     },
 
@@ -2911,7 +2646,7 @@ const FirebaseService = {
      */
     getStockCheckpointInfo() {
         const cp = usableCheckpoint();
-        return cp ? { asOf: cp.asOf, builtAt: cp.builtAt, liveFrom: windowState.liveFrom } : null;
+        return cp ? { asOf: cp.asOf, builtAt: cp.builtAt, liveFrom: S.windowState.liveFrom } : null;
     },
 
     /**
@@ -2931,24 +2666,24 @@ const FirebaseService = {
      * @returns {Promise<{status: string}>} built | fresh | leased | offline | conflict | ...
      */
     rebuildStockCheckpoint() {
-        if (!windowState) return Promise.resolve({ status: 'inactive' });
+        if (!S.windowState) return Promise.resolve({ status: 'inactive' });
         if (!canManageCheckpoint()) return Promise.resolve({ status: 'not-allowed' });
-        if (rebuildPromise) {
-            rebuildRequestedAgain = true;
-            return rebuildPromise;
+        if (S.rebuildPromise) {
+            S.rebuildRequestedAgain = true;
+            return S.rebuildPromise;
         }
-        rebuildAttempted = true;
-        const gen = sessionGen;
+        S.rebuildAttempted = true;
+        const gen = S.sessionGen;
         const run = tip.start('StockCheckpoint');
         const p = rebuildCheckpointNow(gen);
-        rebuildPromise = p;
+        S.rebuildPromise = p;
         p.then(res => Promise.resolve(leaseReleases.get(res) ?? null).then(released => run.complete(checkpointProps(res, released))),
             () => run.complete(checkpointProps(null)));
         const done = () => {
-            if (gen !== sessionGen || rebuildPromise !== p) return;
-            rebuildPromise = null;
-            if (rebuildRequestedAgain) {
-                rebuildRequestedAgain = false;
+            if (gen !== S.sessionGen || S.rebuildPromise !== p) return;
+            S.rebuildPromise = null;
+            if (S.rebuildRequestedAgain) {
+                S.rebuildRequestedAgain = false;
                 requestRebuild();
             }
         };
@@ -2963,12 +2698,12 @@ const FirebaseService = {
      * @returns {Promise<string>}
      */
     async maintainStockCheckpoint(attempt = 0) {
-        if (!windowState) return 'inactive';
+        if (!S.windowState) return 'inactive';
         const cp = usableCheckpoint();
         // Without a usable checkpoint calculateStock() loads full history and then requests the rebuild.
         if (!cp) return 'rebuild';
         if (!canManageCheckpoint()) return 'not-allowed';
-        const d = checkpointDoc || {};
+        const d = S.checkpointDoc || {};
         if (Date.now() - (d.fullBuiltAt || d.builtAt || 0) > FORCED_REBUILD_AGE_MS) {
             // Deletes by outdated apps can't be detected: bound the drift with a weekly full rebuild.
             requestRebuild();
@@ -2978,9 +2713,9 @@ const FirebaseService = {
         if (cp.asOf >= W - ROLL_FORWARD_SLACK_MS) return 'current';
         const result = await rollForwardCheckpoint(cp, W);
         if ((result === 'waiting' || result === 'changed') && attempt < 5) {
-            const gen = sessionGen;
+            const gen = S.sessionGen;
             setTimeout(() => {
-                if (gen === sessionGen) this.maintainStockCheckpoint(attempt + 1).catch(e => console.error('Stock checkpoint roll-forward failed:', e));
+                if (gen === S.sessionGen) this.maintainStockCheckpoint(attempt + 1).catch(e => console.error('Stock checkpoint roll-forward failed:', e));
             }, ROLL_FORWARD_RETRY_MS);
         }
         return result;
@@ -3006,9 +2741,9 @@ const FirebaseService = {
     setupRealtimeListeners() {
         // Clear any existing listeners first
         this.cleanup();
-        const gen = sessionGen;
+        const gen = S.sessionGen;
         const db = getDb();
-        warmCache = false;
+        S.warmCache = false;
         Object.keys(listenerStartup).forEach(k => delete listenerStartup[k]);
 
         const listen = (query, label, live, onData, { optional = false, mapFn = mapDoc } = {}) => {
@@ -3027,11 +2762,11 @@ const FirebaseService = {
                 clearTimeout(readyTimer);
                 settle.resolve();
             };
-            const syncId = `listen-${++listenSeq}`;
+            const syncId = `listen-${++S.listenSeq}`;
             // includeMetadataChanges so the cache -> server transition is seen
             // even when the cached data was already up to date.
             const unsubscribe = query.onSnapshot({ includeMetadataChanges: true }, snapshot => {
-                if (gen !== sessionGen) return;
+                if (gen !== S.sessionGen) return;
                 SyncStatus.noteSnapshot(syncId, snapshot);
                 const { changed, changes } = applySnapshot(live, snapshot, mapFn);
                 if (!snapshot.metadata.fromCache) {
@@ -3045,7 +2780,7 @@ const FirebaseService = {
                 if (!ready) {
                     const source = snapshot.metadata.fromCache ? 'cache' : 'server';
                     listenerStartup[label] = listenerStartup[label] || { first: source, docs: snapshot.size };
-                    if (snapshot.metadata.fromCache && snapshot.size > 0) warmCache = true;
+                    if (snapshot.metadata.fromCache && snapshot.size > 0) S.warmCache = true;
                     if (!snapshot.metadata.fromCache || navigator.onLine === false) {
                         listenerStartup[label].readyBy = source === 'server' ? 'server' : 'offline-cache';
                         markReady();
@@ -3056,7 +2791,7 @@ const FirebaseService = {
                         readyTimer = setTimeout(() => {
                             listenerStartup[label].readyBy = 'cache-timeout';
                             markReady();
-                        }, warmCache ? FIRST_SNAPSHOT_CACHED_WAIT_MS : FIRST_SNAPSHOT_SERVER_WAIT_MS);
+                        }, S.warmCache ? FIRST_SNAPSHOT_CACHED_WAIT_MS : FIRST_SNAPSHOT_SERVER_WAIT_MS);
                     }
                 }
             }, error => {
@@ -3068,7 +2803,7 @@ const FirebaseService = {
                     if (optional) {
                         live.docs = [];
                         live.initialized = true;
-                        if (gen === sessionGen) onData(null, false);
+                        if (gen === S.sessionGen) onData(null, false);
                         settle.resolve();
                     } else {
                         settle.reject(error);
@@ -3077,7 +2812,7 @@ const FirebaseService = {
                     // Failed later (e.g. Roles & access switched off): drop what it had, so a
                     // phone without the rows never also counts them (#98).
                     live.docs = [];
-                    if (gen === sessionGen) onData(null, true);
+                    if (gen === S.sessionGen) onData(null, true);
                 }
             });
             unsubscribeFunctions.push(unsubscribe);
@@ -3087,7 +2822,7 @@ const FirebaseService = {
         const itemsLive = { docs: [], initialized: false, server: false };
         const firstSnapshots = [listen(db.collection(col('items')), 'Items', itemsLive, (changes, started) => {
             AppState.items = itemsLive.docs.slice();
-            AppState.dataVersion = ++dataVersion;
+            AppState.dataVersion = ++S.dataVersion;
             if (!started) return;
             // Index-based views (item dropdown values, item cards) must
             // never lag behind AppState.items, so refresh them right away.
@@ -3099,28 +2834,28 @@ const FirebaseService = {
         }, { mapFn: defaultMapDoc })];
 
         // Read in parallel: only the background legacy scan and backfills need it (#13).
-        legacyScanReadPromise = getWithRetry(legacyScanRef(), 'Legacy scan state', { attempts: 2 })
-            .then(snap => { if (gen === sessionGen) legacyScanDoc = snap.exists ? snap.data() : {}; })
-            .catch(e => { console.warn('Reading legacy scan state failed:', e?.code || e); if (gen === sessionGen) legacyScanDoc = null; });
+        S.legacyScanReadPromise = getWithRetry(legacyScanRef(), 'Legacy scan state', { attempts: 2 })
+            .then(snap => { if (gen === S.sessionGen) S.legacyScanDoc = snap.exists ? snap.data() : {}; })
+            .catch(e => { console.warn('Reading legacy scan state failed:', e?.code || e); if (gen === S.sessionGen) S.legacyScanDoc = null; });
         const historyReady = listenCheckpoint(gen).then(() => {
-            if (gen !== sessionGen) return undefined;
+            if (gen !== S.sessionGen) return undefined;
             const W = defaultWindowStart(Date.now());
-            const cp = parseCheckpoint(checkpointDoc);
+            const cp = parseCheckpoint(S.checkpointDoc);
             let liveFrom = cp ? Math.min(W, cp.asOf) : W;
             if (!cp && !canManageCheckpoint()) {
                 // Cover a stale checkpoint so members get approximate stock without a full read (#129).
-                liveFrom = memberWindowStart(W, parseCheckpoint(checkpointDoc, { allowStale: true })?.asOf ?? null);
+                liveFrom = memberWindowStart(W, parseCheckpoint(S.checkpointDoc, { allowStale: true })?.asOf ?? null);
             }
-            windowState = { gen, liveFrom, rawFull: false, colls: {}, backfills: {} };
-            onDemandAsOf = 0;
-            fullHistoryFetchedAt = 0;
+            S.windowState = { gen, liveFrom, rawFull: false, colls: {}, backfills: {} };
+            S.onDemandAsOf = 0;
+            S.fullHistoryFetchedAt = 0;
             AppState.historyLoadedFrom = liveFrom;
-            if (cp) adoptCheckpoint(checkpointDoc);
+            if (cp) adoptCheckpoint(S.checkpointDoc);
 
             const waits = [];
             HISTORY_COLLECTIONS.forEach(spec => {
                 const c = createCollState(spec);
-                windowState.colls[spec.key] = c;
+                S.windowState.colls[spec.key] = c;
                 if (!historySpecReadable(spec)) {
                     Object.assign(c.live, { docs: [], initialized: true, server: true });
                     publishCollection(c);
@@ -3153,7 +2888,7 @@ const FirebaseService = {
                     ['openDue', db.collection(col(spec.key)).where('openDue', '==', true).where('timestamp', '<', liveFrom)],
                     ['paidAt', db.collection(col(spec.key)).where('paidAt', '>=', liveFrom)]
                 ];
-                const pinnedIds = Array.isArray(checkpointDoc?.pinned?.[spec.key]) ? checkpointDoc.pinned[spec.key].slice(0, PINNED_MAX) : [];
+                const pinnedIds = Array.isArray(S.checkpointDoc?.pinned?.[spec.key]) ? S.checkpointDoc.pinned[spec.key].slice(0, PINNED_MAX) : [];
                 const docIdPath = typeof firebase !== 'undefined' && firebase.firestore?.FieldPath?.documentId
                     ? firebase.firestore.FieldPath.documentId() : null;
                 for (let i = 0; docIdPath && i < pinnedIds.length; i += PINNED_CHUNK) {
@@ -3178,16 +2913,16 @@ const FirebaseService = {
                     }, { optional: true }));
                 });
             });
-            const ws = windowState;
+            const ws = S.windowState;
             // Without a usable checkpoint calculateStock() reads everything anyway (and backfills).
             return Promise.all(waits).then(() => {
-                if (gen !== sessionGen) return;
+                if (gen !== S.sessionGen) return;
                 if (shouldScheduleLegacyScan({ canManage: canManageCheckpoint(), hasCheckpoint: !!cp, online: navigator.onLine })) {
                     scheduleLegacyScan(ws, gen);
                 }
                 // Owner/manager phones keep the last week's personal day totals in step with the rows (#98)
                 if (canManageCheckpoint() && FirebaseService.personalRowsLoaded() && navigator.onLine !== false) {
-                    whenIdle(() => (gen === sessionGen
+                    whenIdle(() => (gen === S.sessionGen
                         ? FirebaseService.rebuildPersonalExpenseDays([0, 1, 2, 3, 4, 5, 6].map(localISODaysAgo))
                             .catch(e => console.warn('Personal expense day totals not checked:', e?.code || e))
                         : undefined), { minDelayMs: LEGACY_SCAN_DELAY_MS });
@@ -3216,9 +2951,9 @@ const FirebaseService = {
         // it starts once the profile is loaded and stops on logout.
 
         return Promise.all(firstSnapshots).then(() => {
-            if (gen !== sessionGen) return;
+            if (gen !== S.sessionGen) return;
             setTimeout(() => {
-                if (gen === sessionGen) {
+                if (gen === S.sessionGen) {
                     this.maintainStockCheckpoint().catch(e => console.error('Stock checkpoint maintenance failed:', e));
                 }
             }, 0);
