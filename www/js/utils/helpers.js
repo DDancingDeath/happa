@@ -71,6 +71,21 @@ export class Helpers {
     }
 
     /**
+     * A URL for an href attribute, HTML-escaped: relative links and http(s), mailto, tel, sms,
+     * whatsapp and upi links pass; any other scheme (javascript:, data:, vbscript:…) becomes '#'.
+     * Escaping alone does not stop href="javascript:…" from running.
+     * @param {*} url
+     * @returns {string}
+     */
+    static safeUrl(url) {
+        const s = String(url ?? '').trim();
+        // Browsers ignore tabs / newlines / control characters inside a scheme ("java\tscript:")
+        const scheme = /^([^/?#]*?):/.exec([...s].filter(c => c > ' ').join(''));
+        if (scheme && !/^(https?|mailto|tel|sms|whatsapp|upi)$/i.test(scheme[1])) return '#';
+        return Helpers.escapeHtml(s);
+    }
+
+    /**
      * The app's date format, "25 Oct 2026" (utils/dates.js formatDay, in the app language).
      * @param {*} date
      * @returns {string} '' when there is no usable date

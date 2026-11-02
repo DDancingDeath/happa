@@ -1,0 +1,453 @@
+# innerHTML audit baseline (#89): the lines scripts/html-escape-audit.js lists today, each checked by hand.
+# CI fails on a line not here. Fix it (escape / safeUrl) or, once checked, run: npm run check:html-escape -- --update-baseline
+www/js/modules/admin.js: ACTIVITY_RANGES (markup via map(r => `<button type="button" class="filter-btn" data-range="${r}" onclick="window.app.admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)))
+www/js/modules/admin.js: col.id
+www/js/modules/admin.js: r
+www/js/modules/admin.js: r
+www/js/modules/admin.js: t('ui.admin.type_word_to_confirm', { word: `<strong>${Helpers.escapeHtml(DELETE_CONFIRM_WORD)}</strong>` })
+www/js/modules/anomalies.js: SEVERITIES (markup via map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${loc(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`))
+www/js/modules/anomalies.js: SEV_COLORS[a.severity] || '#4b5563' ← SEV_COLORS[a.severity] {SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' }}
+www/js/modules/anomalies.js: SEV_COLORS[sev] ← SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' }
+www/js/modules/anomalies.js: SEV_COLORS[sev] ← SEV_COLORS = { high: '#b91c1c', medium: '#92400e', low: '#4b5563' }
+www/js/modules/anomalies.js: colorOf(ty) ← TYPE_COLORS[Math.max(0, p.types.indexOf(type)) % TYPE_COLORS.length] {TYPE_COLORS = ['#dc2626', '#2563eb', '#d97706', '#059669', '#7c3aed', '#db2777', '#0891b2', '#}
+www/js/modules/anomalies.js: h
+www/js/modules/anomalies.js: h % 3 === 0 ? h : '' ← h
+www/js/modules/anomalies.js: n
+www/js/modules/anomalies.js: n || '' ← p.heat.cells[i][ty] {p = anomalyPatterns(list)}
+www/js/modules/anomalies.js: p.byHour ← p = anomalyPatterns(list) (markup via map((n, h) => `<div class="anomaly-hour" title="${h}:00 — ${n}"><div class="bar" style="height:${Math.round(100 * n / max)}%"></div><span>${h % ))
+www/js/modules/anomalies.js: p.byUser ← p = anomalyPatterns(list) (markup via map(u => { const top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0]; return `<tr><td>${esc(u.name)}</td><td>${u.count}</td><td>${u.hi) .count)
+www/js/modules/anomalies.js: p.byUser ← p = anomalyPatterns(list) (markup via map(u => { const top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0]; return `<tr><td>${esc(u.name)}</td><td>${u.count}</td><td>${u.hi) .high)
+www/js/modules/anomalies.js: s.bySeverity[sev] ← s = summarizeAnomalies(list)
+www/js/modules/anomalies.js: s.bySeverity[sev] ← s = summarizeAnomalies(todays)
+www/js/modules/anomalies.js: s.byType ← s = summarizeAnomalies(todays) (markup via map(ty => `<li>${loc(ty)} — <strong>${ty.count}</strong></li>`) .count)
+www/js/modules/anomalies.js: s.topItems ← s = summarizeAnomalies(todays) (markup via map(x => `${esc(x.name)} (${x.count})`) .count)
+www/js/modules/anomalies.js: s.topItems.map(x => `${esc(x.name)} (${x.count})`).join(', ') ← x.count
+www/js/modules/anomalies.js: s.topParties ← s = summarizeAnomalies(todays) (markup via map(x => `${esc(x.name)} (${x.count})`) .count)
+www/js/modules/anomalies.js: s.topParties.map(x => `${esc(x.name)} (${x.count})`).join(', ') ← x.count
+www/js/modules/anomalies.js: s.total ← s = summarizeAnomalies(todays)
+www/js/modules/anomalies.js: sev
+www/js/modules/anomalies.js: title
+www/js/modules/anomalies.js: top ? `${loc(typeLabel(top[0]))} (${top[1]})` : '' ← top[1] {top = Object.entries(u.byType).sort((a, b) => b[1] - a[1])[0]}
+www/js/modules/anomalies.js: ty.count
+www/js/modules/anomalies.js: u.count
+www/js/modules/anomalies.js: u.high
+www/js/modules/ask.js: a.answer (markup via this.answerHtml .page)
+www/js/modules/ask.js: a.page
+www/js/modules/ask.js: this.answers (markup via map(a => `<div class="ask-answer"><div class="ask-question">${esc(a.question)}</div>${this.answerHtml(a.answer)}</div>`) .answer)
+www/js/modules/cash-management.js: SyncStatus.chipHtml(session.id)
+www/js/modules/cash-management.js: date ← (parseAnyBillDate(session.date) || new Date(NaN)).toLocaleDateString(displayLoca
+www/js/modules/cash-management.js: diffBgColor ← parseInt(cardDiffColor.slice(1, 3), 16) | parseInt(cardDiffColor.slice(3, 5), 16) | parseInt(cardDiffColor.slice(5, 7), 16)
+www/js/modules/cash-management.js: diffColor ← DIFF_COLORS[level] {DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' })}
+www/js/modules/cash-management.js: diffTextColor ← DIFF_COLORS[countedLevel] {DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' })}
+www/js/modules/cash-management.js: diffTextColor ← DIFF_COLORS[countedLevel] {DIFF_COLORS = Object.freeze({ ok: '#15803d', warn: '#f59e0b', high: '#ef4444' })}
+www/js/modules/day.js: item.count
+www/js/modules/day.js: itemsArray (markup via map(item => { return ` <div class="stat-card ${cardClass}" style="text-align: left; padding: 14px;"> <div style="font-weight: 600; color: var(--) .count)
+www/js/modules/day.js: kind
+www/js/modules/day.js: kind (markup via block)
+www/js/modules/day.js: open
+www/js/modules/day.js: open (markup via block)
+www/js/modules/day.js: parts.join('') ← ManualReminders.html(toLocalISODate(now))
+www/js/modules/day.js: rows (markup via map(({ type, bill, at, total }) => { const party = bill.customerName || bill.seller || bill.buyer || (type === 'retail' ? t('ui.today.walk_in') ))
+www/js/modules/day.js: rows (markup via map(({ type, bill, at, total }) => { const party = bill.customerName || bill.seller || bill.buyer || (type === 'retail' ? t('ui.today.walk_in') ))
+www/js/modules/day.js: s.dayBills ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderDayBills)
+www/js/modules/day.js: s.dayBills ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderDayBills)
+www/js/modules/day.js: s.purchaseItems ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderItemWiseDetails)
+www/js/modules/day.js: s.saleItems ← s = todaySummary({ bills: { purchase: AppState.purchaseHistory, wholesale: AppState. (markup via this.renderItemWiseDetails)
+www/js/modules/day.js: t.bgColor
+www/js/modules/day.js: t.color
+www/js/modules/day.js: t.icon
+www/js/modules/day.js: timeStr ← Helpers.formatTime(time)
+www/js/modules/day.js: type
+www/js/modules/day.js: type
+www/js/modules/diagnostics.js: actionIcon ← icons[action] {icons = { 'CREATE_BILL': '📥', 'DELETE_BILL': '🗑️', 'CREATE_SALE': '📤', 'DELETE_SALE':}
+www/js/modules/diagnostics.js: formatDateTimeIN(o.timestamp)
+www/js/modules/diagnostics.js: formattedDate ← formatDateTimeIN(log.timestamp, { day: '2-digit', month: 'short', year: 'numeric
+www/js/modules/diagnostics.js: stats.byType['console.error'] || 0 ← stats.byType['console.error'] {stats = { total: this.data.length, totalOccurrences: this.data.reduce((sum, d) => sum + }
+www/js/modules/diagnostics.js: typeColors[error.type] || '#666' ← typeColors[error.type] {typeColors = { 'uncaught': '#ef4444', 'unhandledrejection': '#f97316', 'console.error': '#eab}
+www/js/modules/diagnostics.js: typeLabels[error.type] || Helpers.escapeHtml(error.type) ← typeLabels[error.type] {typeLabels = { 'uncaught': `🔴 ${tx('ui.diag.t_uncaught')}`, 'unhandledrejection': `🟠 ${tx('}
+www/js/modules/health.js: html (sink)
+www/js/modules/history.js: (toMoney(item.total) ?? toMoney(item.amount)) === null ? '—' : formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true }) ← formatAmount(toMoney(item.total) ?? toMoney(item.amount), { exact: true })
+www/js/modules/history.js: bg
+www/js/modules/history.js: billTableHtml(bills, { openings: this.pageOpenings, voided: this.pageVoided, onclickFor: (bill) => `history.viewBill('${billRef(bill)}', '${ (sink)
+www/js/modules/history.js: editsRowHtml(bill, 'history.showEdits()')
+www/js/modules/history.js: fg
+www/js/modules/history.js: known ? formatRupees(billLineTotal(bill, true)) : UNKNOWN_AMOUNT ← UNKNOWN_AMOUNT
+www/js/modules/history.js: known ? formatRupees(billTotal(bill)) : UNKNOWN_AMOUNT ← UNKNOWN_AMOUNT
+www/js/modules/history.js: known ? formatRupees(billTotal(bill)) : UNKNOWN_AMOUNT ← UNKNOWN_AMOUNT
+www/js/modules/history.js: shownDate.bad ? badDateBadgeHtml() : '' ← badDateBadgeHtml()
+www/js/modules/history.js: toMoney(item.rate) === null ? '—' : formatAmount(item.rate, { decimals: 2 }) ← formatAmount(item.rate, { decimals: 2 })
+www/js/modules/history.js: voidedBannerHtml(bill)
+www/js/modules/insights.js: extra
+www/js/modules/insights.js: i
+www/js/modules/insights.js: icon
+www/js/modules/insights.js: list (markup via map(p => `<tr data-party="${esc(p.key)}"><td>${esc(p.name || t('ui.insights.walk_in'))}</td><td class="num">${money(p.total)}</td><td class="num) .count)
+www/js/modules/insights.js: p.count
+www/js/modules/insights.js: partySummary(src, kind, r) (markup via table)
+www/js/modules/insights.js: pct(m.M1.retail.total) ← sharePct(v, total)
+www/js/modules/insights.js: pct(m.M1.wholesale.total) ← sharePct(v, total)
+www/js/modules/insights.js: roundTo(x.qty)
+www/js/modules/insights.js: value (sink)
+www/js/modules/insights.js: x.per100 === null ? '—' : roundTo(x.per100, 1) ← roundTo(x.per100, 1)
+www/js/modules/items.js: idx
+www/js/modules/items.js: idx
+www/js/modules/items.js: idx
+www/js/modules/items.js: idx
+www/js/modules/items.js: idx
+www/js/modules/items.js: idx
+www/js/modules/items.js: rateIndex
+www/js/modules/items.js: rateIndex
+www/js/modules/items.js: rateIndex
+www/js/modules/items.js: rateIndex
+www/js/modules/items.js: rateIndex
+www/js/modules/items.js: rateIndex
+www/js/modules/items.js: rateIndex
+www/js/modules/items.js: rateIndex
+www/js/modules/items.js: rateIndex
+www/js/modules/miscellaneous.js: SyncStatus.chipHtml(payment.id)
+www/js/modules/miscellaneous.js: category
+www/js/modules/miscellaneous.js: category
+www/js/modules/miscellaneous.js: category (markup via this.renderSectionTools)
+www/js/modules/miscellaneous.js: i
+www/js/modules/miscellaneous.js: voidedBannerHtml(expense)
+www/js/modules/money.js: NaN (markup via barsSvg)
+www/js/modules/money.js: SyncStatus.chipHtml(w.id)
+www/js/modules/money.js: c.dir
+www/js/modules/money.js: card
+www/js/modules/money.js: change(now, then) (markup via compareHtml)
+www/js/modules/money.js: compareTableHtml(this.compareRows(m, b), { a, b: labels.b }) (sink via this.html)
+www/js/modules/money.js: figuresFromSnapshot(this.snapshots[lyKey(k)])?.M6 (markup via map(v => (v === null ? NaN : v)))
+www/js/modules/money.js: formatDay(k, { lang, year: false }) (markup via barsSvg)
+www/js/modules/money.js: formatMonth(cmpR.lastYear?.from, { lang }) (markup via this.renderCash)
+www/js/modules/money.js: formatMonth(cmpR.lastYear?.from, { lang }) (markup via this.renderProfit)
+www/js/modules/money.js: formatMonth(cmpR.lastYear?.from, { lang }) (markup via this.renderSpending)
+www/js/modules/money.js: formatMonth(cmpR.previous?.from, { lang, year: false }) (markup via this.renderCash)
+www/js/modules/money.js: formatMonth(cmpR.previous?.from, { lang, year: false }) (markup via this.renderProfit)
+www/js/modules/money.js: formatMonth(cmpR.previous?.from, { lang, year: false }) (markup via this.renderSpending)
+www/js/modules/money.js: formatMonth(monthBounds(k).from, { lang }) (markup via barsSvg)
+www/js/modules/money.js: formatMonth(monthBounds(k).from, { lang, year: false }) (markup via barsSvg)
+www/js/modules/money.js: height
+www/js/modules/money.js: height
+www/js/modules/money.js: height
+www/js/modules/money.js: height
+www/js/modules/money.js: insightsSettings(AppState.settings?.insights) (markup via this.renderCash)
+www/js/modules/money.js: insightsSettings(AppState.settings?.insights) (markup via this.renderProfit)
+www/js/modules/money.js: insightsSettings(AppState.settings?.insights) (markup via this.renderSpending)
+www/js/modules/money.js: items (markup via map(({ c, label, unknownText }) => { if (!c) return `<span class="ins-cmp ins-cmp-none">${esc(unknownText || t('ui.money.vs_not_known', { when: ) .dir)
+www/js/modules/money.js: k (markup via barsSvg)
+www/js/modules/money.js: k (markup via barsSvg)
+www/js/modules/money.js: label (markup via compareHtml)
+www/js/modules/money.js: labels (markup via vsB .b)
+www/js/modules/money.js: labels (markup via vsB .b)
+www/js/modules/money.js: labels (markup via vsB .b)
+www/js/modules/money.js: labels.b (markup via vsItem)
+www/js/modules/money.js: labels.ly (markup via vsItem)
+www/js/modules/money.js: labels.ly (markup via vsItem)
+www/js/modules/money.js: labels.ly (markup via vsItem)
+www/js/modules/money.js: labels.prev (markup via vsItem)
+www/js/modules/money.js: labels.prev (markup via vsItem)
+www/js/modules/money.js: labels.prev (markup via vsItem)
+www/js/modules/money.js: lastMonthKeys(now.getTime(), 13) (markup via map((k, i) => ({ key: k, tick: i % 3 === 0 || i === keys.length - 1 ? formatMonth(monthBounds(k).from, { lang, year: false }) : '', title: `${fo))
+www/js/modules/money.js: link
+www/js/modules/money.js: localDayKeys(r.from, Math.min(r.to, Date.now())) (markup via map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${money(net[i])}` ))
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderCash .ly)
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderCash .prev)
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderCash)
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderProfit .ly)
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderProfit .prev)
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderProfit)
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderSpending .ly)
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderSpending .prev)
+www/js/modules/money.js: m.M1.total ← m = this.summary(r) (markup via this.renderSpending)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderCash .ly)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderCash .prev)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderCash)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderProfit .ly)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderProfit .prev)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderProfit)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderSpending .ly)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderSpending .prev)
+www/js/modules/money.js: m.M14 ← m = this.summary(r) (markup via this.renderSpending)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderCash .ly)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderCash .prev)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderCash)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderProfit .ly)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderProfit .prev)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderProfit)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderSpending .ly)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderSpending .prev)
+www/js/modules/money.js: m.M16.total ← m = this.summary(r) (markup via this.renderSpending)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderCash .ly)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderCash .prev)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderCash)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderProfit .ly)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderProfit .prev)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderProfit)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderSpending .ly)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderSpending .prev)
+www/js/modules/money.js: m.M4.total ← m = this.summary(r) (markup via this.renderSpending)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderCash .ly)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderCash .prev)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderCash)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderProfit .ly)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderProfit .prev)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderProfit)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderSpending .ly)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderSpending .prev)
+www/js/modules/money.js: m.M6.total ← m = this.summary(r) (markup via this.renderSpending)
+www/js/modules/money.js: map.get(key(false)) (markup via this.renderCash)
+www/js/modules/money.js: map.get(key(false)) (markup via this.renderProfit)
+www/js/modules/money.js: map.get(key(false)) (markup via this.renderSpending)
+www/js/modules/money.js: map.get(key(true)) (markup via this.renderCash)
+www/js/modules/money.js: map.get(key(true)) (markup via this.renderProfit)
+www/js/modules/money.js: map.get(key(true)) (markup via this.renderSpending)
+www/js/modules/money.js: moneySummary(this.input(r.from, s), r, { detail }) (markup via this.renderCash)
+www/js/modules/money.js: moneySummary(this.input(r.from, s), r, { detail }) (markup via this.renderProfit)
+www/js/modules/money.js: moneySummary(this.input(r.from, s), r, { detail }) (markup via this.renderSpending)
+www/js/modules/money.js: new Date() (markup via this.renderCash)
+www/js/modules/money.js: new Date() (markup via this.renderProfit)
+www/js/modules/money.js: new Date() (markup via this.renderSpending)
+www/js/modules/money.js: periodRange(getInsightsContext().preset, new Date(), this.cfg()) (markup via this.renderCash)
+www/js/modules/money.js: periodRange(getInsightsContext().preset, new Date(), this.cfg()) (markup via this.renderProfit)
+www/js/modules/money.js: periodRange(getInsightsContext().preset, new Date(), this.cfg()) (markup via this.renderSpending)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderCash .ly)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderCash .prev)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderCash)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderProfit .ly)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderProfit .prev)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderProfit)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderSpending .ly)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderSpending .prev)
+www/js/modules/money.js: rangeFigures(this.snapshots, r.from, r.to) (markup via this.renderSpending)
+www/js/modules/money.js: ref ? ` data-metric-ref="${ref}"` : '' ← ref
+www/js/modules/money.js: sharePct(c.total, max)
+www/js/modules/money.js: t('ui.money.stock_vs', { when: sinceLabel }) (markup via vsItem)
+www/js/modules/money.js: t('ui.money.stock_vs_not_known', { when: sinceLabel }) (markup via compareHtml)
+www/js/modules/money.js: tag ← onTap
+www/js/modules/money.js: v (markup via barsSvg)
+www/js/modules/money.js: value (sink)
+www/js/modules/notifications.js: d.icon ← d = describeNotification(n)
+www/js/modules/outstanding.js: Helpers.formatDate(transaction.date)
+www/js/modules/outstanding.js: bucketIndex(ageDays)
+www/js/modules/outstanding.js: by
+www/js/modules/outstanding.js: chaseFirst(aging.parties) (markup via map(p => ` <li class="aging-b${p.bucket}"><strong>${partyName(p)}</strong> — ${esc(formatINR(p.total))} <span class="aging-age aging-b${p.bucket) .bucket)
+www/js/modules/outstanding.js: i
+www/js/modules/outstanding.js: i
+www/js/modules/outstanding.js: label
+www/js/modules/outstanding.js: p.bucket
+www/js/modules/outstanding.js: p.bucket
+www/js/modules/outstanding.js: p.bucket
+www/js/modules/outstanding.js: sortParties(aging.parties, this.agingSort) (markup via map(p => ` <div class="aging-party aging-b${p.bucket}"> <div class="aging-party-main"> <div class="aging-party-name">${partyName(p)}${p.longOver) .bucket)
+www/js/modules/purchase.js: i
+www/js/modules/purchase.js: index
+www/js/modules/purchase.js: index
+www/js/modules/rate-trends.js: READ_BUDGET_OPTIONS (markup via map(v => `<option value="${v}"${v === budget ? ' selected' : ''}>${v.toLocaleString('en-IN')}</option>`))
+www/js/modules/rate-trends.js: YEAR_COLORS[i] ← YEAR_COLORS = ['#dc2626', '#2563eb', '#059669', '#7c3aed', '#d97706']
+www/js/modules/rate-trends.js: d.days ← d = dailyTraffic(loadedBills(), AppState.items || [], itemId, month) (markup via map(x => `<tr><td>${esc(`${Number(x.day.slice(8, 10))} ${monthLabel(month, lang, false)}`)}</td>${cells(x)}</tr>`))
+www/js/modules/rate-trends.js: d.total ← d = dailyTraffic(loadedBills(), AppState.items || [], itemId, month) (markup via cells)
+www/js/modules/rate-trends.js: d.weeks ← d = dailyTraffic(loadedBills(), AppState.items || [], itemId, month) (markup via map(w => `<tr class="rt-week"><td>${esc(t('ui.trends.week_n', { n: w.week, from: w.from, to: w.to }))}</td>${cells(w)}</tr>`))
+www/js/modules/rate-trends.js: d[k].bills
+www/js/modules/rate-trends.js: kgText(d[k].kg) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
+www/js/modules/rate-trends.js: kgText(r.kg) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
+www/js/modules/rate-trends.js: kgText(r.kg) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
+www/js/modules/rate-trends.js: kgText(r?.kgBought) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
+www/js/modules/rate-trends.js: kgText(r?.kgSold) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
+www/js/modules/rate-trends.js: kgText(s.kg) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
+www/js/modules/rate-trends.js: kgText(s.kg) ← Math.round(Number(n) || 0).toLocaleString('en-IN')
+www/js/modules/rate-trends.js: n
+www/js/modules/rate-trends.js: new Set(Object.keys(series).map(m => Number(m.slice(0, 4)))) (markup via map((y, i) => `<span><i style="background:${YEAR_COLORS[i]}"></i>${y}</span>`))
+www/js/modules/rate-trends.js: o.confidence ← o = this.outlookFor(kind)
+www/js/modules/rate-trends.js: o.direction ← o = this.outlookFor(kind)
+www/js/modules/rate-trends.js: r ? r.bills : 0 ← r.bills {r = byPeriod.get(p)}
+www/js/modules/rate-trends.js: r.bills
+www/js/modules/rate-trends.js: r[k] (markup via cell .bills)
+www/js/modules/rate-trends.js: s.bills
+www/js/modules/rate-trends.js: this.traffic.rows.find(r => r.itemId === itemId) (markup via cells)
+www/js/modules/rate-trends.js: tr.rows ← tr = this.traffic (markup via map(r => `<tr class="rt-click${r.itemId === this.trafficItemId ? ' rt-selected' : ''}" data-item="${esc(r.itemId)}" onclick="window.app.rateTren) .bills)
+www/js/modules/rate-trends.js: v
+www/js/modules/rate-trends.js: v.toLocaleString('en-IN')
+www/js/modules/rate-trends.js: w (markup via cells)
+www/js/modules/rate-trends.js: weeklyItemRows(weekBuckets(docs), weeksBackStart(now, this.trafficWeeks), istWeekStart(now)) (markup via map(r => `<tr><td>${esc(t('ui.trends.week_of', { date: label(r.week) }))}</td><td>${r.kg > 0 ? `<strong>${kgText(r.kg)}</strong>` : '—'}</td> ${))
+www/js/modules/rate-trends.js: x (markup via cells)
+www/js/modules/rate-trends.js: y
+www/js/modules/retail-sale.js: i
+www/js/modules/retail-sale.js: index
+www/js/modules/retail-sale.js: index
+www/js/modules/roles-access.js: CONFIGURABLE_ROLES (markup via map(r => ` <td><input type="checkbox" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – ${t(ROLE_LABEL_KEYS[r])}`)}"${acce))
+www/js/modules/roles-access.js: CONFIGURABLE_ROLES (markup via map(r => ` <td><input type="number" inputmode="numeric" min="0" max="${DAY_LIMITS[p]}" step="1" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMI))
+www/js/modules/roles-access.js: CONFIGURABLE_ROLES (markup via map(r => r !== 'manager' ? '<td>–</td>' : ` <td><input type="checkbox" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – $))
+www/js/modules/roles-access.js: DAY_LIMITS[p] ← DAY_LIMITS = { historyDays: MAX_HISTORY_DAYS, editDays: MAX_EDIT_DAYS }
+www/js/modules/roles-access.js: PAGE_PERMISSIONS (markup via map(switchRow))
+www/js/modules/roles-access.js: SECTION_PERMISSIONS (markup via map(switchRow))
+www/js/modules/roles-access.js: SETTINGS_PERMISSIONS (markup via map(managerRow))
+www/js/modules/roles-access.js: fieldId(r, p) ← role | permission
+www/js/modules/roles-access.js: fieldId(r, p) ← role | permission
+www/js/modules/roles-access.js: fieldId(r, p) ← role | permission
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: r (markup via fieldId)
+www/js/modules/roles-access.js: r (markup via fieldId)
+www/js/modules/roles-access.js: r (markup via fieldId)
+www/js/modules/roles-access.js: role (markup via fieldId)
+www/js/modules/roles-access.js: role (markup via fieldId)
+www/js/modules/roles-access.js: v
+www/js/modules/settings.js: PAPER_WIDTHS (markup via map(mm => `<option value="${mm}"${p.widthMm === mm ? ' selected' : ''}>${Helpers.escapeHtml(t('ui.settings.paper_mm', { mm }))}</option>`))
+www/js/modules/settings.js: index
+www/js/modules/settings.js: key
+www/js/modules/settings.js: key
+www/js/modules/settings.js: mm
+www/js/modules/statements.js: (parseLocalDate(this.csvFrom) || new Date()).getTime() (markup via this.notLoaded)
+www/js/modules/statements.js: (parseLocalDate(this.csvFrom) || new Date()).getTime() (markup via this.notLoaded)
+www/js/modules/statements.js: Array.from({ length: 24 }, (_, i) => monthKeyOf(monthStart(now, -i).getTime())) (markup via map(k => `<option value="${k}"${k === this.month ? ' selected' : ''}>${esc(formatMonth(monthBounds(k).from, { lang }))}</option>`))
+www/js/modules/statements.js: Number.isFinite(from) ? from : 'null' ← from
+www/js/modules/statements.js: b.from ← b = monthBounds(this.month) (markup via this.notLoaded)
+www/js/modules/statements.js: c !== undefined ? ` (${c})` : '' ← c
+www/js/modules/statements.js: d.getTime() (markup via this.notLoaded)
+www/js/modules/statements.js: formatAmount(r.avgCost, { decimals: 2 })
+www/js/modules/statements.js: id ? ` data-metric-export="${id}"` : '' ← id
+www/js/modules/statements.js: k
+www/js/modules/statements.js: m.M1.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M10 ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M12.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M13.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M14 ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M16.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M17.closing ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M17.opening ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M2 ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M3.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M4.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M5 ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M6.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M7 ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M8.total ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M9 ← m = moneySummary({ ...this.src(), items: AppState.items || [], base, sessions: sessi (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: n.html ← n = this.notLoaded(name, null)
+www/js/modules/statements.js: perm ? ` data-perm="${perm}"` : '' ← perm
+www/js/modules/statements.js: this.current.html (sink)
+www/js/modules/statements.js: this.current.html (sink)
+www/js/modules/statements.js: totals.duePaid ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.dueReceived ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.expenses ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.purchaseCount ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.purchases ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.sales ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.salesCount ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.withdrawals ← totals from dayBook(this.src(), { from, to }, { personal: perms.personalExpenses, sessions:  (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/stock.js: typeColor ← typeColors[adjustType] {typeColors = { add: 'var(--success-color)', remove: 'var(--danger-color)', set: 'var(--info-c}
+www/js/modules/voice-billing.js: value
+www/js/modules/wholesale-sales.js: billTableHtml(bills, { openings: this.historyOpenings, voided: this.historyVoided, onclickFor: (sale) => `wholesaleSales.reprintSaleById('${ (sink)
+www/js/modules/wholesale-sales.js: editsRowHtml(sale, 'history.showEdits()')
+www/js/modules/wholesale-sales.js: index
+www/js/modules/wholesale-sales.js: voidedBannerHtml(sale)
+www/js/rentals/rent-deposit.js: PAYMENT_MODES (markup via map(m => `<option value="${m}">${c.esc(t(`ui.rent.mode_${m}`))}</option>`))
+www/js/rentals/rent-deposit.js: action
+www/js/rentals/rent-deposit.js: cls
+www/js/rentals/rent-deposit.js: field
+www/js/rentals/rent-deposit.js: i !== '' ? `, ${i}` : '' ← i
+www/js/rentals/rent-deposit.js: i (markup via act)
+www/js/rentals/rent-deposit.js: i (markup via act)
+www/js/rentals/rent-deposit.js: i (markup via entryLine)
+www/js/rentals/rent-deposit.js: m
+www/js/rentals/rent-expense.js: action
+www/js/rentals/rent-expense.js: cls
+www/js/rentals/rent-expense.js: field
+www/js/rentals/rent-link.js: action
+www/js/rentals/rent-link.js: cls
+www/js/rentals/rent-receipt.js: a
+www/js/rentals/rent-receipt.js: cls
+www/js/rentals/rent-receipt.js: i
+www/js/rentals/rent-report.js: MAX_NOTICE_MONTHS
+www/js/rentals/rent-report.js: cls
+www/js/rentals/rent-report.js: field
+www/js/rentals/rent-report.js: new Set([base, base - 1, base - 2, base - 3, report.year]) (markup via map(y => `<option value="${y}"${y === report.year ? ' selected' : ''}>${c.esc(yearLabel(y))}</option>`))
+www/js/rentals/rent-report.js: y
+www/js/rentals/rent-settings.js: MAX_RECEIPT_ADDRESS
+www/js/rentals/rent-settings.js: MAX_RECEIPT_HEADER
+www/js/rentals/rent-unit.js: attrs
+www/js/rentals/rent-unit.js: c.tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keptTerms(from,
+www/js/rentals/rent-unit.js: id
+www/js/rentals/rent-unit.js: id
+www/js/rentals/rent-unit.js: id (markup via unitPickHtml)
+www/js/rentals/rentals.js: ELEC_MODES (markup via map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`))
+www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<option value="${m}">${esc(modeLabel(m))}</option>`))
+www/js/rentals/rentals.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}"${k === p.kind ? ' selected' : ''}>${esc(kindLabel(k))}</option>`))
+www/js/rentals/rentals.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}">${esc(kindLabel(k))}</option>`))
+www/js/rentals/rentals.js: TemplateLoader.loadTemplate('rentals') (sink)
+www/js/rentals/rentals.js: UNIT_TYPES (markup via map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(typeLabel(k))}</option>`))
+www/js/rentals/rentals.js: args
+www/js/rentals/rentals.js: attrs
+www/js/rentals/rentals.js: cls
+www/js/rentals/rentals.js: cls
+www/js/rentals/rentals.js: field
+www/js/rentals/rentals.js: fn
+www/js/rentals/rentals.js: html (sink)
+www/js/rentals/rentals.js: icon
+www/js/rentals/rentals.js: k
+www/js/rentals/rentals.js: k
+www/js/rentals/rentals.js: k
+www/js/rentals/rentals.js: m
+www/js/rentals/rentals.js: m
+www/js/rentals/rentals.js: s.status ← s = chargeStatus(charge) (markup via badge)
+www/js/rentals/rentals.js: u ? u.unitPickHtml(unitCtx(), 'rentEditUnit', d, { current: lease?.unitId }) : '' ← u.unitPickHtml(unitCtx(), 'rentEditUnit', d, { current: lease?.unitId })
+www/js/services/exporter.js: html
+www/js/ui/bill-highlight.js: ICON.block ← ICON = { block: '⛔', warn: '⚠️' }
+www/js/ui/bill-row.js: onclick || '' ← onclick
+www/js/ui/bill-row.js: onclickFor(bill)
+www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id) ← SyncStatus.chipHtml(bill?.id)
+www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id) ← SyncStatus.chipHtml(bill?.id)
+www/js/ui/bill-row.js: st.s ← st = printStatusOf(bill)
+www/js/ui/bill-status.js: REASON_MAX
+www/js/ui/bill-status.js: onclick
+www/js/ui/finance-breakdown-sheet.js: g (markup via opt)
+www/js/ui/finance-breakdown-sheet.js: groupOptions(b.rows) (markup via map(g => opt(g, `ui.finance.group_${g}`, this.state.group)))
+www/js/ui/finance-breakdown-sheet.js: value
+www/js/ui/manual-reminders.js: REMINDER_PARTY_MAX
+www/js/ui/manual-reminders.js: REMINDER_TITLE_MAX
+www/js/ui/manual-reminders.js: today ← todayLocalISO()
+www/js/ui/period-compare.js: Object.freeze(['last-month', 'this-month', 'last-year', 'this-year', 'last-fy', 'this-fy', 'last-30']) (markup via map(p => [p, t(PRESET_KEYS[p])]))
+www/js/ui/period-compare.js: PRESET_KEYS[p] ← PRESET_KEYS = Object.freeze({ 'this-month': 'ui.money.p_this_month', 'last-month': 'ui.money.p (markup via map(([v, label]) => `<option value="${v}"${v === bValue ? ' selected' : ''}>${esc(label)}</option>`))
+www/js/ui/period-compare.js: html (sink)
+www/js/ui/period-compare.js: id ← page | which
+www/js/ui/period-compare.js: id ← page | which
+www/js/ui/period-compare.js: p (markup via map(([v, label]) => `<option value="${v}"${v === bValue ? ' selected' : ''}>${esc(label)}</option>`))
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page (markup via datesHtml)
+www/js/ui/period-compare.js: page (markup via datesHtml)
+www/js/ui/period-compare.js: r.c?.dir || 'none' ← r.c?.dir
+www/js/ui/period-compare.js: r.id
+www/js/ui/period-compare.js: rows (markup via map(r => `<tr data-cmp-row="${r.id}"${r.id === 'M6' ? ' data-perm="profit"' : ''}><td>${esc(t(ROW_KEYS[r.id]))}</td>` + `<td class="num">${rupee) .c)
+www/js/ui/period-compare.js: rows (markup via map(r => `<tr data-cmp-row="${r.id}"${r.id === 'M6' ? ' data-perm="profit"' : ''}><td>${esc(t(ROW_KEYS[r.id]))}</td>` + `<td class="num">${rupee) .id)
+www/js/ui/period-compare.js: today ← toLocalISODate(new Date())
+www/js/ui/period-compare.js: today ← toLocalISODate(new Date())
+www/js/ui/period-compare.js: v
+www/js/ui/period-compare.js: which
+www/js/ui/period-compare.js: which
+www/js/ui/sync-status.js: key ? state : '' ← state
+www/js/ui/sync-status.js: rowStates().get(String(id)) (markup via syncChipHtml)
+www/js/ui/sync-status.js: safeId ← String(id).replace(/[^A-Za-z0-9_-]/g, '')
+www/js/ui/sync-status.js: text ← t(key).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)
+www/js/ui/ui-manager.js: html (sink)
+www/js/ui/ui-manager.js: htmlMessage (sink)
+www/js/utils/keyboard-shortcuts.js: i + 1 ← i
+www/js/utils/keyboard-shortcuts.js: keys
+www/js/utils/template-loader.js: templates (sink via this.injectPages)
+www/js/utils/template-loader.js: templates (sink via this.injectPages)
+www/js/utils/template-loader.js: templates (sink via this.injectShell .auth)
+www/js/utils/template-loader.js: templates (sink via this.injectShell .modals)
+www/js/utils/template-loader.js: templates (sink via this.injectShell .navigation)
+www/js/utils/template-loader.js: templates.auth (sink)
+www/js/utils/template-loader.js: templates.modals (sink)
+www/js/utils/template-loader.js: templates.navigation (sink)
+www/js/utils/template-loader.js: templates['rate-trends'] (sink)
+www/js/utils/template-loader.js: templates[name] (sink)
