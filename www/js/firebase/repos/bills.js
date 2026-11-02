@@ -227,13 +227,16 @@ export async function retryBillSave(collKey, record, ref, previous, key, { creat
     const sentSig = sentBillPaymentSigs.get(key) ?? paymentSignature(record);
     let kept = false;
     let wrote = false;
+    let created = false;
     let serverMoney = null;
     await getDb().runTransaction(async tx => {
         kept = false;
         wrote = true;
+        created = false;
         serverMoney = null;
         const snap = await tx.get(ref);
         if (!snap.exists) {
+            created = true;
             if (record.createdAt === undefined) record.createdAt = Date.now();
             tx.set(ref, withServerCreatedAt(record));
             return;
@@ -276,7 +279,8 @@ export async function retryBillSave(collKey, record, ref, previous, key, { creat
     sentBillPaymentSigs.set(key, paymentSignature(record));
     // An identical retry wrote nothing: stock and the checkpoint are unchanged
     if (wrote) {
-        noteStockWrite(collKey, previous, record, { oldUnknown: true });
+        // A create-only save saw that no bill was there: checked like a first save
+        noteStockWrite(collKey, previous, record, createOnly && created ? {} : { oldUnknown: true });
         noteMonthWrite(collKey, previous, record);
     }
     noteLocalRecordWrite(collKey, String(record.id), record);

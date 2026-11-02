@@ -124,7 +124,7 @@ export default {
     'ui.billing.restore_changed_title': "Bill changed since",
     'msg.billing.restore_edit_offline': "Connect to the internet to restore this unsaved edit.",
     'msg.billing.restore_edit_unknown': "This unsaved edit can't be restored: its bill is not known.",
-    'msg.billing.restore_not_checked': "Couldn't check whether this bill was already saved on another phone. Online, saving checks it first.",
+    'msg.billing.restore_not_checked': "Couldn't check whether this bill was already saved on another phone. Save it when online to have it checked.",
     'msg.billing.sale_updated_successfully': "✓ Sale updated successfully!",
     'msg.billing.unknown_bill_type': "Unknown bill type: {billType}",
     'msg.cash.added_cash_drawer': "✓ Added ₹{amount} to cash drawer",

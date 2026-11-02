@@ -639,12 +639,16 @@ const PurchaseManager = {
                 ...BillChecksUI.billFields(checks)
             };
             
+            // Restored from an auto-save or a draft (#93): online it is saved only while its id is free;
+            // offline it is a plain first save (a create-only try wrote nothing), after which the id may
+            // be this phone's own bill
+            if (pending.restored && typeof navigator !== 'undefined' && navigator.onLine === false) {
+                pending.restored = false;
+                pending.attempted = false;
+            }
+            const createOnly = !!pending.restored;
             const retry = pending.attempted;
             pending.attempted = true;
-            // Restored from an auto-save or a draft (#93): online it is saved only while its id is
-            // free; offline it is a plain first save, after which the id may be this phone's own bill
-            if (pending.restored && typeof navigator !== 'undefined' && navigator.onLine === false) pending.restored = false;
-            const createOnly = !!pending.restored;
             const writePromise = FirebaseService.savePurchase(bill, { retry, ...(createOnly ? { createOnly } : {}) });
             // Printed only once it is known not to be a copy of a saved bill
             if (createOnly) await writePromise;

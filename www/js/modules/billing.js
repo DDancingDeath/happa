@@ -1226,8 +1226,8 @@ const BillingManager = {
                 continue;
             }
             if (saved === undefined) UIManager.showToast(t('msg.billing.restore_not_checked'), 'warning');
-            // Not saved when checked: its first save (online) still creates it only while the id is free
-            plan.forms[mode] = form.pendingBill.attempted ? form : { ...form, pendingBill: { ...form.pendingBill, restored: true } };
+            // Not saved when checked (or not checkable): its saves online create it only while the id is free
+            plan.forms[mode] = { ...form, pendingBill: { ...form.pendingBill, restored: true } };
         }
         return plan;
     },

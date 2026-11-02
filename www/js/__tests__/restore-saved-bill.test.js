@@ -293,7 +293,7 @@ describe('an auto-save of a new bill whose bill is already saved (#93 b)', () =>
         expect(PurchaseManager.getBillItems()).toEqual([]);
 
         await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n1' } }, sale: { items: [] } });
-        expect(toast).toHaveBeenCalledWith("Couldn't check whether this bill was already saved on another phone. Online, saving checks it first.", 'warning');
+        expect(toast).toHaveBeenCalledWith("Couldn't check whether this bill was already saved on another phone. Save it when online to have it checked.", 'warning');
         expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n1', attempted: false, restored: true });
         expect(PurchaseManager.getBillItems()).toHaveLength(1);
     });
@@ -330,6 +330,29 @@ describe('saving a restored new bill (#93)', () => {
         expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved (P20261101-001'), 'Already saved', true);
         expect(viewBill).toHaveBeenCalledWith('id:n1', 'purchase');
         expect(PurchaseManager.getBillItems()).toHaveLength(1);
+    });
+
+    test('a copy of an earlier (unconfirmed) attempt is restored create-only too', async () => {
+        await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n1', billNumber: 'P20261102-007', attempted: true } }, sale: { items: [] } });
+        expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n1', attempted: true, restored: true });
+        fake.raw('purchases').set('n1', { ...BILL, id: 'n1' });
+        const before = { ...docs().get('n1') };
+        modal.mockImplementation(async (_text, title) => title !== 'Already saved');
+        await payCashAndSave();
+        expect(docs().get('n1')).toEqual(before);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved'), 'Already saved', true);
+    });
+
+    test('a create-only try that failed (network), then offline: a plain first save, not a retry', async () => {
+        await restore(restored);
+        const save = jest.spyOn(FirebaseService, 'savePurchase')
+            .mockRejectedValueOnce(Object.assign(new Error('offline'), { code: 'unavailable' }))
+            .mockResolvedValue(undefined);
+        await expect(payCashAndSave()).rejects.toMatchObject({ code: 'unavailable' });
+        expect(save.mock.calls[0][1]).toEqual({ retry: false, createOnly: true });
+        jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+        await payCashAndSave();
+        expect(save.mock.calls[1][1]).toEqual({ retry: false });
     });
 
     test('offline: a plain first save (queued), no longer marked restored', async () => {

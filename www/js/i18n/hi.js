@@ -124,7 +124,7 @@ export default {
     'ui.billing.restore_changed_title': "बिल बाद में बदला गया",
     'msg.billing.restore_edit_offline': "यह बिना सेव बदलाव वापस लाने के लिए इंटरनेट चालू करें।",
     'msg.billing.restore_edit_unknown': "यह बिना सेव बदलाव वापस नहीं आ सकता: इसका बिल पता नहीं।",
-    'msg.billing.restore_not_checked': "जाँच नहीं हो सकी कि यह बिल किसी दूसरे फ़ोन पर पहले सेव हुआ या नहीं। इंटरनेट होने पर सेव करते समय पहले जाँच होगी।",
+    'msg.billing.restore_not_checked': "जाँच नहीं हो सकी कि यह बिल किसी दूसरे फ़ोन पर पहले सेव हुआ या नहीं। जाँच के लिए इंटरनेट होने पर सेव करें।",
     'msg.billing.sale_updated_successfully': "✓ बिक्री अपडेट हो गई!",
     'msg.billing.unknown_bill_type': "अनजान बिल प्रकार: {billType}",
     'msg.cash.added_cash_drawer': "✓ गल्ले में ₹{amount} जोड़े",
