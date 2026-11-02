@@ -40,8 +40,10 @@ export const CrashReports = {
         } else {
             const on = this.isOn();
             try {
-                if (!on || fresh) await plugin.deleteUnsentReports();
+                // Off: stop collecting, then delete what waits; on: delete what waits from before, then collect
+                if (on && fresh) await plugin.deleteUnsentReports();
                 await plugin.setEnabled({ enabled: on });
+                if (!on) await plugin.deleteUnsentReports();
                 this.state = on ? 'on' : 'off';
             } catch (e) {
                 // No Firebase config in this APK (docs/error-reporting.md, set-up)

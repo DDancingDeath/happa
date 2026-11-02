@@ -47,7 +47,7 @@ test('Android app, never switched on: collection off and kept reports deleted', 
     const plugin = fakePlugin();
     nativeWith(plugin);
     expect(await CrashReports.apply()).toBe('off');
-    expect(plugin.calls).toEqual(['delete', 'enabled:false']);
+    expect(plugin.calls).toEqual(['enabled:false', 'delete']);
     expect(document.getElementById('crashReportsCard').hidden).toBe(false);
     expect(document.getElementById('settingCrashReports').checked).toBe(false);
 });
