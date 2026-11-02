@@ -110,18 +110,44 @@ describe('saved ranges follow the person (#140)', () => {
         expect(syncSavedRangesOnSignIn(s, 'u3', undefined)).toBe('last-30|');
     });
 
-    test('Save / Remove write the list to the signed-in person\'s profile', async () => {
+    /** A profile holding `text`; transactions see and change it; plain updates are recorded. */
+    const fakeProfile = (text) => {
+        const profile = { savedRanges: text };
         const update = jest.fn(() => Promise.resolve());
         const doc = jest.fn(() => ({ update }));
-        global.firebase = { firestore: () => ({ collection: () => ({ doc }) }) };
+        const txUpdate = jest.fn((ref, patch) => Object.assign(profile, patch));
+        global.firebase = { firestore: () => ({
+            collection: () => ({ doc }),
+            runTransaction: (fn) => fn({ get: async () => ({ exists: true, data: () => ({ ...profile }) }), update: txUpdate })
+        }) };
+        return { profile, update, doc, txUpdate };
+    };
+
+    test('Save / Remove change the profile\'s current list: a range saved on another phone meanwhile is kept', async () => {
+        const p = fakeProfile('last-30|');
         AppState.currentUser = { uid: 'u9' };
         setInsightsContext({ preset: 'this-month', compare: 'last-month' });
-        expect(saveCurrentRange().ok).toBe(true);
-        expect(doc).toHaveBeenLastCalledWith('u9');
-        expect(update).toHaveBeenLastCalledWith({ savedRanges: 'this-month|last-month' });
-        expect(readSavedRanges(userRangesStore(localStorage, 'u9')).map(x => x.id)).toEqual(['this-month|last-month']);
-        removeCurrentRange();
-        expect(update).toHaveBeenLastCalledWith({ savedRanges: '' });
+        const res = saveCurrentRange();
+        expect(res.ok).toBe(true);
+        await res.synced;
+        expect(p.doc).toHaveBeenLastCalledWith('u9');
+        expect(p.profile.savedRanges).toBe('this-month|last-month;last-30|');
+        expect(readSavedRanges(userRangesStore(localStorage, 'u9')).map(x => x.id)).toEqual(['this-month|last-month', 'last-30|']);
+        await removeCurrentRange();
+        expect(p.profile.savedRanges).toBe('last-30|');
+        expect(readSavedRanges(userRangesStore(localStorage, 'u9')).map(x => x.id)).toEqual(['last-30|']);
+        expect(p.update).not.toHaveBeenCalled();
+    });
+
+    test('offline: this phone\'s list is queued as it is', async () => {
+        const p = fakeProfile('last-30|');
+        AppState.currentUser = { uid: 'u9' };
+        const online = jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+        setInsightsContext({ preset: 'this-fy', compare: null });
+        await saveCurrentRange().synced;
+        expect(p.update).toHaveBeenLastCalledWith({ savedRanges: 'this-fy|' });
+        expect(p.txUpdate).not.toHaveBeenCalled();
+        online.mockRestore();
     });
 });
 

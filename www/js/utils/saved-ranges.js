@@ -39,13 +39,32 @@ function write(store, list) {
 }
 
 /**
+ * Replaces this phone's copy (e.g. with the list merged on the profile).
+ * @param {?Storage} store
+ * @param {Array<{a: string, b: ?string}>} list
+ */
+export function writeSavedRanges(store, list) {
+    return write(store, list);
+}
+
+/**
+ * A list with A (and B) first; the same pair moves to the top; at most 10 (pure).
+ * @param {Array<{id: string, a: string, b: ?string}>} list
+ * @returns {Array<{id: string, a: string, b: ?string}>}
+ */
+export function withSavedRange(list, a, b = null) {
+    if (!isPeriodPreset(a) || (b !== null && !isPeriodPreset(b))) return list;
+    const id = idOf(a, b);
+    return [{ id, a, b }, ...list.filter(x => x.id !== id)].slice(0, MAX_SAVED_RANGES);
+}
+
+/**
  * Saves A (and B) first in the list; the same pair saved again moves to the top.
  * @returns {{ok: boolean, full?: boolean, list: Array<{id: string, a: string, b: ?string}>}} ok false: invalid preset or storage full
  */
 export function addSavedRange(store, a, b = null) {
     if (!isPeriodPreset(a) || (b !== null && !isPeriodPreset(b))) return { ok: false, list: readSavedRanges(store) };
-    const id = idOf(a, b);
-    const list = [{ id, a, b }, ...readSavedRanges(store).filter(x => x.id !== id)].slice(0, MAX_SAVED_RANGES);
+    const list = withSavedRange(readSavedRanges(store), a, b);
     const res = write(store, list);
     return { ok: res.ok, full: res.full, list: res.ok ? list : readSavedRanges(store) };
 }

@@ -12,8 +12,11 @@ import { Helpers } from '../utils/helpers.js';
 import { formatDay, formatMonth, toLocalISODate } from '../utils/dates.js';
 import { fiscalYearLabel, customRangePreset, periodRange } from '../utils/business-metrics.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
-import { readSavedRanges, addSavedRange, removeSavedRange, savedRangeId, userRangesStore, encodeSavedRanges } from '../utils/saved-ranges.js';
-import { saveOwnSavedRanges } from '../firebase/repos/users.js';
+import {
+    readSavedRanges, addSavedRange, removeSavedRange, savedRangeId, userRangesStore, encodeSavedRanges, decodeSavedRanges,
+    withSavedRange, writeSavedRanges
+} from '../utils/saved-ranges.js';
+import { saveOwnSavedRanges, updateOwnSavedRanges } from '../firebase/repos/users.js';
 import { AppState } from '../utils/state.js';
 import { formatRupees } from '../utils/money.js';
 
@@ -48,11 +51,23 @@ const store = () => {
     return userRangesStore(ls, AppState.currentUser?.uid);
 };
 
-/** The person's list goes to their profile, so their other phones get it at the next sign-in / start. */
-function pushSaved(list) {
+/**
+ * The person's list goes to their profile, so their other phones get it at the next sign-in / start.
+ * Online the change is applied to the profile's current list (a range saved on another phone
+ * meanwhile stays) and this phone's copy takes the result; offline this phone's list is queued.
+ * @param {function(Array<Object>): Array<Object>} apply the same change made to this phone's copy
+ * @param {Array<Object>} local this phone's list after it
+ * @returns {Promise<void>}
+ */
+function pushSaved(apply, local) {
     const uid = AppState.currentUser?.uid;
-    if (!uid) return;
-    saveOwnSavedRanges(uid, encodeSavedRanges(list)).catch(e => console.warn('Saved ranges not synced:', e?.code || e));
+    if (!uid) return Promise.resolve();
+    const warn = (e) => console.warn('Saved ranges not synced:', e?.code || e);
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        return saveOwnSavedRanges(uid, encodeSavedRanges(local)).catch(warn);
+    }
+    return updateOwnSavedRanges(uid, (text) => encodeSavedRanges(apply(typeof text === 'string' ? decodeSavedRanges(text) : local)))
+        .then(text => { writeSavedRanges(store(), decodeSavedRanges(text)); }, warn);
 }
 
 /**
@@ -180,13 +195,15 @@ export function applySaved(id) {
 export function saveCurrentRange() {
     const { preset, compare } = getInsightsContext();
     const res = addSavedRange(store(), preset, compare);
-    if (res.ok) pushSaved(res.list);
+    if (res.ok) res.synced = pushSaved(list => withSavedRange(list, preset, compare), res.list);
     return res;
 }
 
+/** @returns {Promise<void>} the profile write (tests) */
 export function removeCurrentRange() {
     const { preset, compare } = getInsightsContext();
-    pushSaved(removeSavedRange(store(), savedRangeId(preset, compare)));
+    const id = savedRangeId(preset, compare);
+    return pushSaved(list => list.filter(x => x.id !== id), removeSavedRange(store(), id));
 }
 
 /** Test helper. */

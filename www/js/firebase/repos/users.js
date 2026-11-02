@@ -88,6 +88,23 @@ export function saveOwnSavedRanges(uid, text) {
 }
 
 /**
+ * Changes the person's saved ranges against the profile's current list (a transaction:
+ * one read), so a range saved on another phone meanwhile is kept. Needs the server.
+ * @param {string} uid
+ * @param {function(*): string} change the stored text (undefined when none) → the new text
+ * @returns {Promise<string>} the text written
+ */
+export function updateOwnSavedRanges(uid, change) {
+    const ref = userRef(uid);
+    return firebase.firestore().runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const next = change(snap.exists ? snap.data().savedRanges : undefined);
+        tx.update(ref, { savedRanges: next });
+        return next;
+    });
+}
+
+/**
  * Creates the pending profile of a new account in a transaction (which reads from
  * the server, never the offline cache), so an existing - possibly already
  * approved - profile is never overwritten. `createdAt` is the server time.
