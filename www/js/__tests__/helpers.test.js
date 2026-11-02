@@ -35,6 +35,28 @@ describe('Helpers.escapeHtml', () => {
     });
 });
 
+describe('Helpers.safeUrl', () => {
+    const hrefOf = (url) => {
+        const div = document.createElement('div');
+        div.innerHTML = `<a href="${Helpers.safeUrl(url)}">x</a>`;
+        return div.firstChild.getAttribute('href');
+    };
+
+    test.each(['javascript:alert(1)', ' JavaScript:alert(1)', 'java\tscript:alert(1)', 'java\nscript:alert(1)',
+        '\u0001javascript:alert(1)', 'data:text/html,<script>alert(1)</script>', 'vbscript:msgbox(1)'])('blocks %j', (url) => {
+        expect(hrefOf(url)).toBe('#');
+    });
+
+    test.each(['https://wa.me/919999999999?text=a%20b', 'http://x.in/a?b=1&c=2', 'mailto:a@b.in', 'tel:+919999999999',
+        'upi://pay?pa=x@upi', '/r/abc', '#top', '?tab=2', 'a/b:c'])('keeps %j', (url) => {
+        expect(hrefOf(url)).toBe(url);
+    });
+
+    test('escapes quotes so the value cannot leave the attribute', () => {
+        expect(Helpers.safeUrl('https://x.in/"><img src=x onerror=alert(1)>')).not.toMatch(/["<>]/);
+    });
+});
+
 describe('Helpers.escapeJsAttr', () => {
     // Simulates what the browser does: decode the attribute, then evaluate the JS string literal.
     const roundTrip = (value) => {
