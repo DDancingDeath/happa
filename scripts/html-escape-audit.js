@@ -141,7 +141,8 @@ function auditSource(src, rel, allow = ALLOW) {
             patternIds(n.id).forEach(id => {
                 const sc = resolve(id.name, ancestors);
                 if (!destructured.has(sc)) destructured.set(sc, new Map());
-                destructured.get(sc).set(id.name, n.init);
+                const m = destructured.get(sc);
+                m.set(id.name, [...(m.get(id.name) || []), n.init]);
             });
         } else if (n.type === 'FunctionDeclaration' && n.id) {
             assign(resolve(n.id.name, ancestors.slice(0, -1)), n.id.name, n);
@@ -276,7 +277,7 @@ function auditSource(src, rel, allow = ALLOW) {
         const scope = refScope.get(root) || GLOBAL;
         if (scope === GLOBAL) return '';
         const from = (destructured.get(scope) || new Map()).get(root.name);
-        if (from) return `${root.name} from ${text(from).slice(0, 80)}`;
+        if (from) return `${root.name} from ${from.map(v => text(v).slice(0, 80)).join(' | ')}`;
         if (root === l || decls.get(scope).get(root.name).opaque) return '';
         const vals = ((assigns.get(scope) || new Map()).get(root.name) || []).filter(v => !FN.has(v.type));
         return vals.length ? `${root.name} = ${vals.map(v => text(v).slice(0, 80)).join(' | ')}` : '';
