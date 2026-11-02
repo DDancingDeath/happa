@@ -84,7 +84,7 @@ test('Receipts on a tenant opens their payment history; managers may cancel', as
     _test.state.page = 'tenants';
     _test.state.loaded = new Set(['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses']);
     _test.render();
-    expect(document.getElementById('rentalsBody').innerHTML).toContain("window.app.rentals.receipts('T1')");
+    expect(document.getElementById('rentalsBody').innerHTML).toContain("data-onclick=\"rentals.receipts('T1')");
     await RentalsModule.api.receipts('T1');
     expect(receipt.showHistory).toHaveBeenCalledWith(expect.objectContaining({ canVoid: false }), 'T1');
     await RentalsModule.api.receiptAction('open', 'x');

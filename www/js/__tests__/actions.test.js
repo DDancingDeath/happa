@@ -115,6 +115,25 @@ describe('document listeners', () => {
         expect(window.__pwned).toBeUndefined();
     });
 
+    test('Enter or Space on a role=button element runs its data-onclick, not on native buttons', () => {
+        document.body.innerHTML = `<div role="button" tabindex="0" data-onclick="page.go('k')"></div><button data-onclick="page.go('b')"></button>`;
+        const ev = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        document.querySelector('div').dispatchEvent(ev);
+        document.querySelector('div').dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+        document.querySelector('div').dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+        document.querySelector('button').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(calls.map(c => c[2])).toEqual(['k', 'k']);
+        expect(ev.defaultPrevented).toBe(true);
+    });
+
+    test('a <details> toggle passes this.open (toggle does not bubble)', () => {
+        document.body.innerHTML = `<div data-ontoggle="page.outer()"><details data-ontoggle="page.set(this.open)"><summary>s</summary></details></div>`;
+        const d = document.querySelector('details');
+        d.open = true;
+        d.dispatchEvent(new Event('toggle'));
+        expect(calls).toEqual([['set', true]]);
+    });
+
     test('runAction returns what the call returned', () => {
         const el = document.createElement('b');
         expect(runAction(el, 'm.v(2)', new Event('x'), { m: { v: (n) => n * 2 } })).toBe(4);
