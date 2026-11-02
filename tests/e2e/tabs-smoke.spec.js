@@ -46,7 +46,8 @@ const STEPS = [
     { name: 'Wholesale › History', route: 'wholesale-history', page: 'wholesale-sales', roles: OM, expect: '#salesHistorySection' },
     { name: 'Wholesale › Outstanding', route: 'wholesale-sales', page: 'wholesale-sales', act: "window.app.wholesaleSales.filterTab('outstanding')", roles: OM, expect: '#salesOutstandingSection' },
     { name: 'Expenses › Business', route: 'expenses', page: 'expenses', roles: A, expect: '#businessExpenseSection' },
-    { name: 'Expenses › Personal', route: 'expenses', page: 'expenses', act: "window.app.expenses.filterExpenseTab('personal')", roles: A, expect: '#personalExpenseSection' },
+    // Off for managers and members until the owner turns it on (#98)
+    { name: 'Expenses › Personal', route: 'expenses', page: 'expenses', act: "window.app.expenses.filterExpenseTab('personal')", roles: O, expect: '#personalExpenseSection' },
     { name: 'Rates', route: 'rates', page: 'items', roles: A },
     { name: 'History › Purchase', route: 'history', page: 'history', act: "window.app.history.filterHistory('purchase')", roles: A, expect: '#history .filter-purchase.active' },
     { name: 'History › Sale', route: 'history', page: 'history', act: "window.app.history.filterHistory('sale')", roles: A, expect: '#history .filter-sale.active' },
