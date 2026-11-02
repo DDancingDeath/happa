@@ -4850,8 +4850,12 @@ function defineReminderSuite(prefix) {
         b.update(coll.doc('n1'), { status: 'done', doneBy: 'staff1', doneAt: serverTimestamp(), nextId: 'n4' });
         b.set(coll.doc('n4'), { ...next, dueDate: istDay(15), repeatOf: 'n1' });
         await assertSucceeds(b.commit());
-        // a plain Done of a repeating one (stop repeating it) is still allowed
+        // a repeating one is never marked done without its copy (an older app's plain Done is refused)
         await seed('r5', open({ repeat: 'daily' }));
+        await assertFails(coll.doc('r5').update({ status: 'done', doneBy: 'staff1', doneAt: serverTimestamp() }));
+        await assertFails(coll.doc('r5').update({ status: 'done', doneBy: 'staff1', doneAt: serverTimestamp(), nextId: 'nothing' }));
+        // stopping it: a change to "once" (owner / manager), then a plain Done
+        await assertSucceeds(as('manager1').collection(reminders).doc('r5').update(edit('manager1', { repeat: FieldValue.delete() })));
         await assertSucceeds(coll.doc('r5').update({ status: 'done', doneBy: 'staff1', doneAt: serverTimestamp() }));
     });
 }

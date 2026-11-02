@@ -26,6 +26,13 @@ describe('checkReminder', () => {
         [{ title: 'a', dueDate: TODAY, party: 'p'.repeat(81) }, { ok: false, error: 'msg.reminders.party_long' }]
     ])('%j', (input, want) => expect(checkReminder(input, TODAY)).toEqual(want));
 
+    test('an edit keeps a monthly reminder\'s day while its date and repeat stay; a new date sets it again', () => {
+        const keep = { keepDueDate: '2027-02-28', keepRepeatDay: 31 };
+        expect(checkReminder({ title: 'Rent', dueDate: '2027-02-28', repeat: 'monthly' }, '2027-02-01', keep).value.repeatDay).toBe(31);
+        expect(checkReminder({ title: 'Rent', dueDate: '2027-02-27', repeat: 'monthly' }, '2027-02-01', keep).value.repeatDay).toBe(27);
+        expect(checkReminder({ title: 'Rent', dueDate: '2027-02-28', repeat: 'weekly' }, '2027-02-01', keep).value.repeatDay).toBeNull();
+    });
+
     test('an edit may keep a date that has passed; a changed date is checked as new', () => {
         expect(checkReminder({ title: 'a', dueDate: '2026-11-10' }, TODAY, { keepDueDate: '2026-11-10' }).ok).toBe(true);
         expect(checkReminder({ title: 'a', dueDate: '2026-11-11' }, TODAY, { keepDueDate: '2026-11-10' }))

@@ -39,10 +39,11 @@ export function repeatDayFor(dueIso, repeat) {
  * An edit may keep a due date that has passed meanwhile (`keepDueDate`); a new date can't be in the past.
  * @param {{title?: string, dueDate?: string, party?: string, repeat?: string}} input
  * @param {string} todayIso the phone's local date
- * @param {{keepDueDate?: string}} [opts]
+ * @param {{keepDueDate?: string, keepRepeatDay?: ?number}} [opts] an edit: the stored date and day of the month,
+ *   kept while the date and the monthly repeat stay (a Feb 28 copy of a 31st reminder keeps 31)
  * @returns {{ok: true, value: {title: string, dueDate: string, party: string, repeat: ?string, repeatDay: ?number}} | {ok: false, error: string}}
  */
-export function checkReminder({ title, dueDate, party, repeat } = {}, todayIso, { keepDueDate } = {}) {
+export function checkReminder({ title, dueDate, party, repeat } = {}, todayIso, { keepDueDate, keepRepeatDay } = {}) {
     const t = String(title || '').trim().replace(/\s+/g, ' ');
     const p = String(party || '').trim().replace(/\s+/g, ' ');
     if (!t) return { ok: false, error: 'msg.reminders.title_needed' };
@@ -55,7 +56,9 @@ export function checkReminder({ title, dueDate, party, repeat } = {}, todayIso, 
     if (!kept && dueDate < todayIso) return { ok: false, error: 'msg.reminders.date_past' };
     if (!kept && dueDate > toLocalISODate(addLocalDays(parseLocalDate(todayIso), REMINDER_MAX_DAYS_AHEAD))) return { ok: false, error: 'msg.reminders.date_far' };
     const r = isReminderRepeat(repeat) ? repeat : null;
-    return { ok: true, value: { title: t, dueDate, party: p, repeat: r, repeatDay: repeatDayFor(dueDate, r) } };
+    const day = kept && r === 'monthly' && Number.isInteger(keepRepeatDay) && keepRepeatDay >= 1 && keepRepeatDay <= 31
+        ? keepRepeatDay : repeatDayFor(dueDate, r);
+    return { ok: true, value: { title: t, dueDate, party: p, repeat: r, repeatDay: day } };
 }
 
 /**

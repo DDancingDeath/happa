@@ -2446,7 +2446,8 @@ service cloud.firestore {
     // yesterday allowed for a phone clock near midnight), edit and cancel open ones. Marking a
     // repeating one done creates its next copy in the same batch (anyone who may mark it done):
     // same title, party and repeat, a later date in the create range, linked both ways
-    // (nextId / repeatOf). Done and cancelled are final. Only the owner deletes. In-app only (#58).
+    // (nextId / repeatOf); a repeating one is never marked done without it (stop one with a change to
+    // "once" or Cancel). Done and cancelled are final. Only the owner deletes. In-app only (#58).
     function remIstDay(n) {
       let ist = request.time + duration.value(330, 'm') + duration.value(n, 'd');
       return string(ist.year()) + '-' + pad2(ist.month()) + '-' + pad2(ist.day());
@@ -2520,8 +2521,9 @@ service cloud.firestore {
         && d.doneBy == request.auth.uid
         && d.doneAt == request.time
         && shortStringOrAbsent(d, 'doneByName', 60)
-        && (next == null || (next is string && resource.data.get('repeat', null) != null
-            && getAfter(/databases/$(database)/documents/$(coll)/$(next)).data.get('repeatOf', null) == id));
+        && (resource.data.get('repeat', null) == null
+            ? next == null
+            : (next is string && getAfter(/databases/$(database)/documents/$(coll)/$(next)).data.get('repeatOf', null) == id));
     }
 
     // Owner / manager edit an open reminder: title, date (a changed one in the create range), party, repeat.

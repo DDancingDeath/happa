@@ -221,7 +221,7 @@ export const ManualReminders = {
             return false;
         }
         const input = { title: value('reminderTitle'), dueDate: value('reminderDate'), party: value('reminderParty'), repeat: value('reminderRepeat') };
-        const check = checkReminder(input, todayLocalISO(), editing ? { keepDueDate: editing.dueDate } : {});
+        const check = checkReminder(input, todayLocalISO(), editing ? { keepDueDate: editing.dueDate, keepRepeatDay: editing.repeatDay ?? null } : {});
         if (!check.ok) { UIManager.showToast(t(check.error)); return false; }
         if (this.offline()) return false;
         return Helpers.runExclusive('reminder-save', '[data-reminder-save]', async () => {

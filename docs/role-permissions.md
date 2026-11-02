@@ -652,7 +652,8 @@ date is checked like a new one, an unchanged one may have passed. The next copy 
 written in the same batch as its Done (`nextId` on the done one, `repeatOf` on the copy), so a member may
 create it: the rules require the reminder it copies to be open and repeating before the batch and done with
 that `nextId` after it, the same title, party, repeat and `repeatDay`, and a later date in the create range
-(the exact date, REM-6, is the app's). A plain Done of a repeating reminder (older app) just ends it. Whose
+(the exact date, REM-6, is the app's). A repeating reminder is never marked done without its copy (an older
+app's plain Done is refused, so a series can't end by accident); to stop one, change it to "Once" or cancel it. Whose
 reminders a manager may change is the shop-wide default (any); Q61–Q64 of #111 are still open. Today listens to the open ones only (`status == 'open'`, soonest
 due first, at most 50, index `status` + `dueDate`; one listener per sign-in: 1 read when there are none, then only changes).
 
