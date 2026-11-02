@@ -14,14 +14,17 @@
     "www/js/firebase/core/history-window.js": {
       "appStateWrite": 7
     },
+    "www/js/firebase/core/listeners.js": {
+      "appStateWrite": 6
+    },
     "www/js/firebase/core/stock-checkpoint.js": {
       "appStateWrite": 5
     },
     "www/js/firebase/core/stock.js": {
       "appStateWrite": 6
     },
-    "www/js/firebase/firestore-service.js": {
-      "appStateWrite": 7
+    "www/js/firebase/repos/expenses.js": {
+      "appStateWrite": 1
     },
     "www/js/main.js": {
       "moneyMath": 1,
@@ -105,6 +108,22 @@
       "from": 0,
       "to": 6,
       "reason": "Moved verbatim out of firestore-service.js (phase 5 split: its count 25 -> 7); the total is unchanged",
+      "issue": 69
+    },
+    {
+      "file": "www/js/firebase/core/listeners.js",
+      "category": "appStateWrite",
+      "from": 0,
+      "to": 6,
+      "reason": "Moved verbatim out of firestore-service.js (phase 5 split: its count 7 -> 0); the total is unchanged",
+      "issue": 69
+    },
+    {
+      "file": "www/js/firebase/repos/expenses.js",
+      "category": "appStateWrite",
+      "from": 0,
+      "to": 1,
+      "reason": "Moved verbatim out of firestore-service.js (phase 5 split: its count 7 -> 0); the total is unchanged",
       "issue": 69
     }
   ]

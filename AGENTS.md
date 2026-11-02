@@ -89,7 +89,8 @@ In order:
 4. `www/js/main.js` — wires every module onto `window.app.*`.
 5. `www/firebaseConfig.js` — initializes Firebase, exposes `firebase.*`
    compat globals.
-6. `www/js/firebase/firestore-service.js` and `www/js/firebase/repos/` — every
+6. `www/js/firebase/firestore-service.js` (the `FirebaseService` facade), `www/js/firebase/core/`
+   (listeners, history window, stock checkpoint) and `www/js/firebase/repos/` — every
    read/write goes through here; the data layer tells pages what changed with
    events (`www/js/utils/events.js`), never by calling them.
 
@@ -128,7 +129,7 @@ In order:
   transactions and offline patterns; pages get plain data back) so collection
   names get the env prefix. A new collection or query gets a repository
   function, never a `.collection(` in a page.
-- **Data changes → pages: events, not calls.** `firestore-service.js` emits
+- **Data changes → pages: events, not calls.** the data layer (`firebase/core/realtime.js`) emits
   `refresh:<view>` (`REFRESH` in `utils/events.js`, after its debounce and only
   for the open tab) and `itemFrequency:changed`; each page subscribes with
   `on(REFRESH.x, () => Manager.render())` at the end of its module (Money,
