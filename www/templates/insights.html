@@ -3,16 +3,16 @@
     <div class="ins-head">
         <h2 class="ins-title"><span aria-hidden="true">💡</span> <span data-i18n="ui.insights.title">Insights</span></h2>
         <div class="ins-tabs" role="tablist">
-            <button type="button" class="ins-tab active" data-insights-section="actions" role="tab" onclick="window.app.insights.setSection('actions')" data-i18n="ui.insights.tab_actions">To do</button>
-            <button type="button" class="ins-tab" data-insights-section="items" role="tab" onclick="window.app.insights.setSection('items')" data-i18n="ui.insights.tab_items">Items</button>
-            <button type="button" class="ins-tab" data-insights-section="parties" role="tab" onclick="window.app.insights.setSection('parties')" data-i18n="ui.insights.tab_parties">Parties</button>
-            <button type="button" class="ins-tab" data-insights-section="seasons" role="tab" onclick="window.app.insights.setSection('seasons')" data-i18n="ui.insights.tab_seasons">Seasons</button>
+            <button type="button" class="ins-tab active" data-insights-section="actions" role="tab" data-onclick="insights.setSection('actions')" data-i18n="ui.insights.tab_actions">To do</button>
+            <button type="button" class="ins-tab" data-insights-section="items" role="tab" data-onclick="insights.setSection('items')" data-i18n="ui.insights.tab_items">Items</button>
+            <button type="button" class="ins-tab" data-insights-section="parties" role="tab" data-onclick="insights.setSection('parties')" data-i18n="ui.insights.tab_parties">Parties</button>
+            <button type="button" class="ins-tab" data-insights-section="seasons" role="tab" data-onclick="insights.setSection('seasons')" data-i18n="ui.insights.tab_seasons">Seasons</button>
         </div>
         <div class="ins-period" id="insightsPeriodBar">
-            <button type="button" class="ins-step" onclick="window.app.insights.step(-1)" aria-label="Earlier" data-i18n-aria-label="ui.money.earlier">‹</button>
+            <button type="button" class="ins-step" data-onclick="insights.step(-1)" aria-label="Earlier" data-i18n-aria-label="ui.money.earlier">‹</button>
             <span class="ins-period-label" id="insightsPeriodLabel"></span>
-            <button type="button" class="ins-step" onclick="window.app.insights.step(1)" aria-label="Later" data-i18n-aria-label="ui.money.later">›</button>
-            <select class="ins-preset" id="insightsPreset" onchange="window.app.insights.setPreset(this.value)" aria-label="Period" data-i18n-aria-label="ui.money.period">
+            <button type="button" class="ins-step" data-onclick="insights.step(1)" aria-label="Later" data-i18n-aria-label="ui.money.later">›</button>
+            <select class="ins-preset" id="insightsPreset" data-onchange="insights.setPreset(this.value)" aria-label="Period" data-i18n-aria-label="ui.money.period">
                 <option value="this-month" data-i18n="ui.money.p_this_month">This month</option>
                 <option value="last-month" data-i18n="ui.money.p_last_month">Last month</option>
                 <option value="this-year" data-i18n="ui.money.p_this_year">This year</option>
@@ -43,9 +43,9 @@
     <section class="ins-section" data-insights-pane="items" hidden>
         <div class="ins-card ins-wide">
             <div class="ins-tabs ins-subtabs" role="tablist">
-                <button type="button" class="ins-tab active" data-items-type="both" onclick="window.app.insights.setItemsType('both')" data-i18n="ui.insights.both">Both</button>
-                <button type="button" class="ins-tab" data-items-type="retail" onclick="window.app.insights.setItemsType('retail')" data-i18n="ui.insights.retail">Retail</button>
-                <button type="button" class="ins-tab" data-items-type="wholesale" onclick="window.app.insights.setItemsType('wholesale')" data-i18n="ui.insights.wholesale">Wholesale</button>
+                <button type="button" class="ins-tab active" data-items-type="both" data-onclick="insights.setItemsType('both')" data-i18n="ui.insights.both">Both</button>
+                <button type="button" class="ins-tab" data-items-type="retail" data-onclick="insights.setItemsType('retail')" data-i18n="ui.insights.retail">Retail</button>
+                <button type="button" class="ins-tab" data-items-type="wholesale" data-onclick="insights.setItemsType('wholesale')" data-i18n="ui.insights.wholesale">Wholesale</button>
             </div>
             <div class="ins-takeaway ins-takeaway-dark" data-takeaway id="insightsItemsTakeaway"></div>
             <div class="ins-caveats" id="insightsItemsCaveats"></div>
@@ -65,8 +65,8 @@
     <section class="ins-section" data-insights-pane="parties" hidden>
         <div class="ins-card ins-wide">
             <div class="ins-tabs ins-subtabs" role="tablist">
-                <button type="button" class="ins-tab active" data-party-kind="sales" onclick="window.app.insights.setPartyKind('sales')" data-i18n="ui.insights.customers">Customers</button>
-                <button type="button" class="ins-tab" data-party-kind="purchases" onclick="window.app.insights.setPartyKind('purchases')" data-i18n="ui.insights.suppliers">Suppliers</button>
+                <button type="button" class="ins-tab active" data-party-kind="sales" data-onclick="insights.setPartyKind('sales')" data-i18n="ui.insights.customers">Customers</button>
+                <button type="button" class="ins-tab" data-party-kind="purchases" data-onclick="insights.setPartyKind('purchases')" data-i18n="ui.insights.suppliers">Suppliers</button>
             </div>
             <div class="ins-takeaway ins-takeaway-dark" data-takeaway id="insightsPartiesTakeaway"></div>
             <div class="ins-scroll"><table class="ins-table" id="insightsCustomersTable" data-metric="I3"></table></div>
@@ -82,9 +82,9 @@
     <section class="ins-section" data-insights-pane="seasons" hidden>
         <div class="ins-card ins-wide">
             <div class="ins-tabs ins-subtabs" role="tablist">
-                <button type="button" class="ins-tab active" data-season-view="calendar" onclick="window.app.insights.setSeasonView('calendar')" data-i18n="ui.insights.calendar">Calendar</button>
-                <button type="button" class="ins-tab" data-season-view="trends" onclick="window.app.insights.setSeasonView('trends')" data-i18n="ui.insights.rate_trends">Rate trends</button>
-                <button type="button" class="ins-tab" data-season-view="traffic" onclick="window.app.insights.setSeasonView('traffic')" data-i18n="ui.insights.product_traffic">Product traffic</button>
+                <button type="button" class="ins-tab active" data-season-view="calendar" data-onclick="insights.setSeasonView('calendar')" data-i18n="ui.insights.calendar">Calendar</button>
+                <button type="button" class="ins-tab" data-season-view="trends" data-onclick="insights.setSeasonView('trends')" data-i18n="ui.insights.rate_trends">Rate trends</button>
+                <button type="button" class="ins-tab" data-season-view="traffic" data-onclick="insights.setSeasonView('traffic')" data-i18n="ui.insights.product_traffic">Product traffic</button>
             </div>
         </div>
         <div class="ins-card ins-wide" id="insightsCalendarCard">
