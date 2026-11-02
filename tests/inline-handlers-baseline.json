@@ -1,7 +1,6 @@
 {
   "_readme": "Inline on<event>= handlers left in www/ (#89, www/js/__tests__/inline-handlers.test.js). Counts only go down: INLINE_BASELINE=lower npx jest inline-handlers. At 0 the CSP can drop script-src 'unsafe-inline' (docs/security.md).",
   "files": {
-    "js/i18n/index.js": 1,
     "js/modules/admin.js": 13,
     "js/modules/anomalies.js": 9,
     "js/modules/billing.js": 2,
@@ -13,7 +12,7 @@
     "js/modules/miscellaneous.js": 4,
     "js/modules/money.js": 3,
     "js/modules/notifications.js": 1,
-    "js/modules/outstanding.js": 12,
+    "js/modules/outstanding.js": 11,
     "js/modules/purchase.js": 3,
     "js/modules/rate-trends.js": 5,
     "js/modules/retail-sale.js": 3,
@@ -34,8 +33,6 @@
     "js/ui/bill-status.js": 1,
     "js/ui/manual-reminders.js": 5,
     "js/ui/period-compare.js": 7,
-    "js/utils/helpers.js": 1,
-    "js/utils/rate-trends.js": 1,
     "templates/anomalies.html": 9,
     "templates/auth.html": 12,
     "templates/billing.html": 42,

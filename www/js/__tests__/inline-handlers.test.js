@@ -11,7 +11,7 @@ import { parseAction } from '../ui/actions.js';
 
 const WWW = path.resolve(__dirname, '../..');
 const BASELINE_FILE = path.resolve(WWW, '../tests/inline-handlers-baseline.json');
-const INLINE = /\son[a-z]+\s*=\s*["'`]/g;
+const INLINE = /\son(click|dblclick|change|input|submit|reset|key(?:down|up|press)|mouse\w+|pointer\w+|touch\w+|focus|blur|load|error|scroll|wheel|drag\w*|drop|contextmenu|select|paste|copy|cut)\s*=\s*["'`]/g;
 const DATA_ON = /data-on(click|change|input|submit|keydown|keyup|focus|blur)="([^"]*)"/g;
 
 function files(dir) {
@@ -23,7 +23,8 @@ function files(dir) {
 }
 const rel = (p) => path.relative(WWW, p).replace(/\\/g, '/');
 const counts = () => Object.fromEntries(files(WWW)
-    .map(f => [rel(f), (fs.readFileSync(f, 'utf8').match(INLINE) || []).length])
+    // JSDoc examples in .js files don't count
+    .map(f => [rel(f), ((f.endsWith('.js') ? fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '') : fs.readFileSync(f, 'utf8')).match(INLINE) || []).length])
     .filter(([, n]) => n > 0)
     .sort(([a], [b]) => a.localeCompare(b)));
 

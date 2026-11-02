@@ -12,13 +12,16 @@
  * target and its ancestors, nearest first, as the browser runs inline handlers while the event
  * bubbles) and calls the named `window.app` method on its object. Nothing is evaluated: the
  * attribute is parsed by a small grammar and anything else is refused, so it works under a CSP
- * without 'unsafe-eval' and markup can only reach `window.app` methods.
+ * without 'unsafe-eval'; the path is followed through own properties only (never `__proto__`,
+ * `constructor`, `prototype`), so markup can only reach `window.app` methods. An error goes to
+ * `window`'s error handler, as an inline handler's would.
  *
  * Grammar (statements separated by `;`):
  *   call      path '(' [arg {',' arg}] ')'          path: name {'.' name} under window.app
  *   arg       'text' | "text" (JS escapes) | number | true | false | null | undefined
  *             | event | this | this.value | this.checked | this.dataset.<name>
- *   also      `return false` (preventDefault), `event.stopPropagation()`, `event.preventDefault()`
+ *   also      `return false` (preventDefault; ends the handler), `event.stopPropagation()`,
+ *             `event.preventDefault()`
  * @module ui/actions
  */
 
@@ -31,15 +34,18 @@ export const ACTION_EVENTS = Object.freeze({
 const NAME = /[A-Za-z_$][\w$]*/y;
 const NUMBER = /-?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/y;
 const SPACE = /\s*/y;
+const SIMPLE_ESCAPES = { n: '\n', t: '\t', r: '\r', b: '\b', v: '\v', f: '\f', 0: '\0', '\\': '\\', '\'': '\'', '"': '"', '`': '`' };
+/** Never a path segment: they lead off window.app to Object / Function. */
+const FORBIDDEN = new Set(['__proto__', 'constructor', 'prototype']);
 
 /**
- * Parses an attribute value into statements, or throws.
+ * Parses an attribute value into statements, or throws a SyntaxError.
  * @param {string} src
  * @returns {Array<{kind: 'call', path: string[], args: Array}|{kind: 'returnFalse'}|{kind: 'stop'}|{kind: 'prevent'}>}
  */
 export function parseAction(src) {
     let i = 0;
-    const skip = () => { SPACE.lastIndex = i; SPACE.exec(src); i = SPACE.lastIndex; };
+    const skip = () => { SPACE.lastIndex = i; if (SPACE.exec(src)) i = SPACE.lastIndex; };
     const fail = (what) => { throw new SyntaxError(`data-on*: ${what} at ${i} in "${src}"`); };
     const name = () => {
         NAME.lastIndex = i;
@@ -48,6 +54,11 @@ export function parseAction(src) {
         i = NAME.lastIndex;
         return m[0];
     };
+    const hex = (from, to) => {
+        const h = src.slice(from, to);
+        if (!/^[0-9a-fA-F]+$/.test(h)) fail('bad escape');
+        return parseInt(h, 16);
+    };
     const string = () => {
         const q = src[i++];
         let out = '';
@@ -55,18 +66,20 @@ export function parseAction(src) {
             let c = src[i++];
             if (c === '\\') {
                 c = src[i++];
-                if (c === 'n') c = '\n';
-                else if (c === 't') c = '\t';
-                else if (c === 'r') c = '\r';
-                else if (c === '0') c = '\0';
-                else if (c === 'x') { c = String.fromCharCode(parseInt(src.slice(i, i + 2), 16)); i += 2; }
+                if (Object.prototype.hasOwnProperty.call(SIMPLE_ESCAPES, c)) c = SIMPLE_ESCAPES[c];
+                else if (c === 'x') { c = String.fromCharCode(hex(i, i + 2)); i += 2; }
                 else if (c === 'u') {
                     if (src[i] === '{') {
                         const end = src.indexOf('}', i);
-                        c = String.fromCodePoint(parseInt(src.slice(i + 1, end), 16));
+                        if (end < 0) fail('bad escape');
+                        c = String.fromCodePoint(hex(i + 1, end));
                         i = end + 1;
-                    } else { c = String.fromCharCode(parseInt(src.slice(i, i + 4), 16)); i += 4; }
+                    } else {
+                        c = String.fromCharCode(hex(i, i + 4));
+                        i += 4;
+                    }
                 } else if (c === '\n') c = '';
+                else fail('bad escape');
             }
             out += c;
         }
@@ -95,6 +108,12 @@ export function parseAction(src) {
         i++;
         return { ref: 'dataset', key: name() };
     };
+    const endOfStatement = () => {
+        skip();
+        if (i >= src.length) return;
+        if (src[i] !== ';') fail('";" expected');
+        i++;
+    };
     const statements = [];
     for (;;) {
         skip();
@@ -106,7 +125,10 @@ export function parseAction(src) {
             if (!src.startsWith('false', i)) fail('only "return false"');
             i += 5;
             statements.push({ kind: 'returnFalse' });
-            continue;
+            skip();
+            while (src[i] === ';') { i++; skip(); }
+            if (i < src.length) fail('nothing may follow "return false"');
+            break;
         }
         const path = [name()];
         while (src[i] === '.') { i++; path.push(name()); }
@@ -126,12 +148,17 @@ export function parseAction(src) {
                 fail('"," or ")" expected');
             }
         }
-        if (path.length === 2 && path[0] === 'event' && !args.length) {
-            if (path[1] === 'stopPropagation') { statements.push({ kind: 'stop' }); continue; }
-            if (path[1] === 'preventDefault') { statements.push({ kind: 'prevent' }); continue; }
+        if (path.length === 2 && path[0] === 'event' && !args.length
+            && (path[1] === 'stopPropagation' || path[1] === 'preventDefault')) {
+            statements.push({ kind: path[1] === 'stopPropagation' ? 'stop' : 'prevent' });
+            endOfStatement();
+            continue;
         }
-        if (path[0] === 'event' || path[0] === 'this' || !path.length) fail('only window.app calls');
+        if (!path.length || path[0] === 'event' || path[0] === 'this' || path.some(p => FORBIDDEN.has(p))) {
+            fail('only window.app calls');
+        }
         statements.push({ kind: 'call', path, args });
+        endOfStatement();
     }
     if (!statements.length) fail('empty');
     return statements;
@@ -147,6 +174,10 @@ function statementsOf(src) {
     }
     return s;
 }
+
+/** An own property of an object or function, else undefined (nothing inherited). */
+const own = (obj, key) => (obj !== null && (typeof obj === 'object' || typeof obj === 'function')
+    && Object.prototype.hasOwnProperty.call(obj, key) ? obj[key] : undefined);
 
 function argValue(a, el, event) {
     if ('lit' in a) return a.lit;
@@ -167,12 +198,18 @@ export function runAction(el, src, event, root = window.app) {
         if (st.kind === 'returnFalse' || st.kind === 'prevent') { event.preventDefault(); continue; }
         if (st.kind === 'stop') { event.stopPropagation(); continue; }
         let owner = root;
-        for (let k = 0; k < st.path.length - 1; k++) owner = owner?.[st.path[k]];
-        const fn = owner?.[st.path[st.path.length - 1]];
+        for (let k = 0; k < st.path.length - 1; k++) owner = own(owner, st.path[k]);
+        const fn = own(owner, st.path[st.path.length - 1]);
         if (typeof fn !== 'function') throw new TypeError(`data-on*: window.app.${st.path.join('.')} is not a function`);
         result = fn.apply(owner, st.args.map(a => argValue(a, el, event)));
     }
     return result;
+}
+
+/** Hands an error to window's error handler (toast + telemetry), as an inline handler's would. */
+function reportHandlerError(e) {
+    if (typeof reportError === 'function') reportError(e);
+    else setTimeout(() => { throw e; });
 }
 
 /** Attaches the document listeners once. */
@@ -181,17 +218,17 @@ export function installActions(doc = document) {
     doc.__aadhatActions = true;
     Object.entries(ACTION_EVENTS).forEach(([type, domType]) => {
         const attr = `data-on${type}`;
+        // focus/blur don't bubble: only the element itself, as with its inline handler
+        const bubbles = type !== 'focus' && type !== 'blur';
         doc.addEventListener(domType, (event) => {
             let el = event.target instanceof Element ? event.target : event.target?.parentElement;
-            // focus/blur don't bubble: only the element itself, as with its inline handler
-            const bubbles = type !== 'focus' && type !== 'blur';
             while (el && el !== doc) {
                 const src = el.getAttribute?.(attr);
                 if (src !== null && src !== undefined) {
                     try {
                         runAction(el, src, event);
                     } catch (e) {
-                        console.error(e);
+                        reportHandlerError(e);
                     }
                     if (event.cancelBubble) break;
                 }

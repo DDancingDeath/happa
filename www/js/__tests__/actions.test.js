@@ -26,12 +26,14 @@ describe('parseAction', () => {
         const tricky = `x');alert(1);//"<b>\\ \u0101`;
         const js = tricky.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
         expect(parseAction(`a.b('${js}')`)[0].args[0].lit).toBe(tricky);
-        expect(parseAction(`a.b('\\x41\\u0042\\u{1F600}')`)[0].args[0].lit).toBe('AB\u{1F600}');
+        expect(parseAction(`a.b('\\x41\\u0042\\u{1F600}\\b\\v\\f')`)[0].args[0].lit).toBe('AB\u{1F600}\b\v\f');
     });
 
     test('anything else is refused: no code runs from markup', () => {
         ['alert(1)()', 'a.b(c)', 'a.b(this.style)', 'a.b(1+1)', 'this.style.color="red"', 'event.target.remove()',
-            'a.b(', "a.b('x)", 'return true', '', 'a.b(window)', 'a["b"](1)'].forEach(src => {
+            'a.b(', "a.b('x)", 'return true', '', 'a.b(window)', 'a["b"](1)',
+            "constructor.constructor('alert(1)')", 'nav.__proto__.x()', 'a.prototype.b()', "a.b('x') c.d('y')",
+            'return false; nav.x()', "a.b('\\q')", "a.b('\\xZZ')", "a.b('\\u12')"].forEach(src => {
             expect(() => parseAction(src)).toThrow(SyntaxError);
         });
     });
@@ -84,12 +86,24 @@ describe('document listeners', () => {
         expect(calls).toEqual([['set', 'abc'], ['set', 'f']]);
     });
 
-    test('a missing method or bad attribute logs an error and runs nothing', () => {
-        document.body.innerHTML = `<button data-onclick="page.nope()"></button><i data-onclick="alert(1)"></i>`;
+    test('a missing or inherited method or a bad attribute runs nothing and goes to the window error handler', () => {
+        window.reportError = jest.fn();
+        document.body.innerHTML = `<button data-onclick="page.nope()"></button><i data-onclick="alert(1)"></i><b data-onclick="page.toString()"></b>`;
         document.querySelector('button').click();
         document.querySelector('i').click();
+        document.querySelector('b').click();
         expect(calls).toEqual([]);
-        expect(console.error).toHaveBeenCalledTimes(2);
+        expect(window.reportError).toHaveBeenCalledTimes(3);
+        delete window.reportError;
+    });
+
+    test('only own properties of window.app are reachable, nothing inherited', () => {
+        const el = document.createElement('b');
+        const proto = { hidden() { return 'no'; } };
+        const root = { m: Object.assign(Object.create(proto), { v: () => 'yes' }) };
+        expect(runAction(el, 'm.v()', new Event('x'), root)).toBe('yes');
+        expect(() => runAction(el, 'm.hidden()', new Event('x'), root)).toThrow(TypeError);
+        expect(() => runAction(el, 'm.hasOwnProperty(1)', new Event('x'), root)).toThrow(TypeError);
     });
 
     test('a value escaped with Helpers.escapeJsAttr in rendered markup arrives unchanged', () => {
