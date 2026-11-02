@@ -1,28 +1,28 @@
 {
   "stock.owner": {
     "list": [
-      "Dal Rate: ₹0.00/kg Alert below 10.0 kg ✎ 0.0 kg ≈ ₹0",
-      "Rice Rate: ₹31.54/kg Alert below 10.0 kg ✎ 132.9 kg ≈ ₹4,191",
-      "Salt Rate: ₹7.78/kg Alert below 10.0 kg ✎ 3.3 kg ≈ ₹26",
-      "Wheat Rate: ₹26.00/kg Alert below 10.0 kg ✎ 40.0 kg ≈ ₹1,040",
+      "Dal Rate: ₹0.00/kg Alert below 10 kg ✎ 0.04 kg ≈ ₹0",
+      "Rice Rate: ₹31.54/kg Alert below 10 kg ✎ 132.9 kg ≈ ₹4,191",
+      "Salt Rate: ₹7.78/kg Alert below 10 kg ✎ 3.333 kg ≈ ₹26",
+      "Wheat Rate: ₹26.00/kg Alert below 10 kg ✎ 40 kg ≈ ₹1,040",
       "ghost item ⚠ Unmatched — no catalogue item with this id/name -3.5 kg Rate: ₹0.00/kg",
-      "old name ⚠ Unmatched — no catalogue item with this id/name 7.3 kg Rate: ₹12.75/kg"
+      "old name ⚠ Unmatched — no catalogue item with this id/name 7.25 kg Rate: ₹12.75/kg"
     ],
     "adjustments": [
       "Rice Added 10 kg 31/01/2027, 10:00:00 am • By: Owner Rate: ₹30.00/kg • Value: ₹300 110.5 kg → 120.5 kg found Reverse",
-      "Wheat Removed 2 kg 30/01/2027 42.0 kg → 40.0 kg spoiled Reverse",
-      "Dal Set to 2026-12-01 0.0 kg → 0.0 kg No reason provided",
-      "Rice Set to 0.01 kg 2026-11-30 Rate: ₹30.00/kg • Value: ₹0 0.0 kg → 0.0 kg count Reverse",
-      "Dal Removed 5 kg 2026-11-29 5.0 kg → 0.0 kg (asked 8 kg, capped at stock) No reason provided Reverse",
-      "old name Added 3 kg 2026-11-28 Rate: ₹12.75/kg • Value: ₹38 4.3 kg → 7.3 kg No reason provided",
-      "Salt Added 1.111 kg 2026-11-27 Rate: ₹7.78/kg • Value: ₹9 2.2 kg → 3.3 kg No reason provided Reverse"
+      "Wheat Removed 2 kg 30/01/2027 42 kg → 40 kg spoiled Reverse",
+      "Dal Set to 2026-12-01 0 kg → 0 kg No reason provided",
+      "Rice Set to 0.01 kg 2026-11-30 Rate: ₹30.00/kg • Value: ₹0 0 kg → 0.01 kg count Reverse",
+      "Dal Removed 5 kg 2026-11-29 5 kg → 0 kg (asked 8 kg, capped at stock) No reason provided Reverse",
+      "old name Added 3 kg 2026-11-28 Rate: ₹12.75/kg • Value: ₹38 4.25 kg → 7.25 kg No reason provided",
+      "Salt Added 1.111 kg 2026-11-27 Rate: ₹7.78/kg • Value: ₹9 2.222 kg → 3.333 kg No reason provided Reverse"
     ],
     "dead": {
       "summary": "3 items · ≈ ₹3,802 in stockUsing all bills.",
       "rows": [
         "Rice Last sale: never Last purchase: never 120.5 kg ≈ ₹3,776 avg ₹31.33/kg",
-        "Salt Last sale: never Last purchase: never 3.3 kg ≈ ₹26 avg ₹7.78/kg",
-        "Dal Last sale: never Last purchase: never 0.0 kg ≈ ₹0 avg ₹0.00/kg"
+        "Salt Last sale: never Last purchase: never 3.333 kg ≈ ₹26 avg ₹7.78/kg",
+        "Dal Last sale: never Last purchase: never 0.04 kg ≈ ₹0 avg ₹0.00/kg"
       ]
     },
     "current": {
@@ -31,19 +31,19 @@
         "avgRate": "₹31.33/kg"
       },
       "i-wheat": {
-        "stock": "0.0",
+        "stock": "0",
         "avgRate": null
       },
       "i-dal": {
-        "stock": "0.0",
+        "stock": "0.04",
         "avgRate": null
       },
       "i-zero": {
-        "stock": "0.0",
+        "stock": "0",
         "avgRate": null
       },
       "i-salt": {
-        "stock": "3.3",
+        "stock": "3.333",
         "avgRate": "₹7.78/kg"
       },
       "(none)": {
@@ -53,126 +53,126 @@
     }
   },
   "stock.staff": [
-    "Dal Rate: ₹0.00/kg 0.0 kg ≈ ₹0",
+    "Dal Rate: ₹0.00/kg 0.04 kg ≈ ₹0",
     "Rice Rate: ₹31.54/kg Available",
-    "Salt Rate: ₹7.78/kg 3.3 kg ≈ ₹26",
-    "Wheat Rate: ₹26.00/kg 40.0 kg ≈ ₹1,040",
+    "Salt Rate: ₹7.78/kg 3.333 kg ≈ ₹26",
+    "Wheat Rate: ₹26.00/kg 40 kg ≈ ₹1,040",
     "ghost item ⚠ Unmatched — no catalogue item with this id/name -3.5 kg Rate: ₹0.00/kg",
-    "old name ⚠ Unmatched — no catalogue item with this id/name 7.3 kg Rate: ₹12.75/kg"
+    "old name ⚠ Unmatched — no catalogue item with this id/name 7.25 kg Rate: ₹12.75/kg"
   ],
   "stock.first": {
     "list": [
-      "Gram Rate: ₹47.59/kg Alert below 10.0 kg ✎ 3,748.5 kg ≈ ₹1,78,374",
-      "Maize Rate: ₹19.72/kg Alert below 10.0 kg ✎ 2,394.5 kg ≈ ₹47,221",
-      "Mustard Rate: ₹53.41/kg Alert below 10.0 kg ✎ 3,573.0 kg ≈ ₹1,90,825",
-      "Rice Rate: ₹32.75/kg Alert below 10.0 kg ✎ 4,999.5 kg ≈ ₹1,63,715",
-      "Wheat Rate: ₹24.79/kg Alert below 10.0 kg ✎ 6,123.0 kg ≈ ₹1,51,814"
+      "Gram Rate: ₹47.59/kg Alert below 10 kg ✎ 3,748.5 kg ≈ ₹1,78,374",
+      "Maize Rate: ₹19.72/kg Alert below 10 kg ✎ 2,394.5 kg ≈ ₹47,221",
+      "Mustard Rate: ₹53.41/kg Alert below 10 kg ✎ 3,573 kg ≈ ₹1,90,825",
+      "Rice Rate: ₹32.75/kg Alert below 10 kg ✎ 4,999.5 kg ≈ ₹1,63,715",
+      "Wheat Rate: ₹24.79/kg Alert below 10 kg ✎ 6,123 kg ≈ ₹1,51,814"
     ],
     "dead": {
       "summary": "Using all bills.",
       "rows": []
     },
     "adjustments": [
-      "Rice Removed 7 kg 2026-04-12T21:30:16 Rate: ₹32.75/kg • Value: ₹229 0.0 kg → 0.0 kg spoiled",
-      "Maize Removed 6 kg 2026-03-26T21:12:12 Rate: ₹19.72/kg • Value: ₹118 0.0 kg → 0.0 kg spoiled",
-      "Maize Removed 4 kg 2026-03-14T21:13:24 Rate: ₹19.72/kg • Value: ₹79 0.0 kg → 0.0 kg spoiled",
-      "Wheat Removed 5 kg 2026-02-21T21:50:50 Rate: ₹24.79/kg • Value: ₹124 0.0 kg → 0.0 kg spoiled",
-      "Gram Added 19 kg 2025-10-21T21:02:41 Rate: ₹48.00/kg • Value: ₹912 0.0 kg → 0.0 kg found",
-      "Wheat Removed 4 kg 2025-09-09T21:37:59 Rate: ₹24.79/kg • Value: ₹99 0.0 kg → 0.0 kg spoiled",
-      "Wheat Added 19 kg 2025-08-11T21:29:42 Rate: ₹24.00/kg • Value: ₹456 0.0 kg → 0.0 kg found",
-      "Mustard Added 8 kg 2025-08-01T21:39:13 Rate: ₹55.00/kg • Value: ₹440 0.0 kg → 0.0 kg found"
+      "Rice Removed 7 kg 2026-04-12T21:30:16 Rate: ₹32.75/kg • Value: ₹229 0 kg → 0 kg spoiled",
+      "Maize Removed 6 kg 2026-03-26T21:12:12 Rate: ₹19.72/kg • Value: ₹118 0 kg → 0 kg spoiled",
+      "Maize Removed 4 kg 2026-03-14T21:13:24 Rate: ₹19.72/kg • Value: ₹79 0 kg → 0 kg spoiled",
+      "Wheat Removed 5 kg 2026-02-21T21:50:50 Rate: ₹24.79/kg • Value: ₹124 0 kg → 0 kg spoiled",
+      "Gram Added 19 kg 2025-10-21T21:02:41 Rate: ₹48.00/kg • Value: ₹912 0 kg → 0 kg found",
+      "Wheat Removed 4 kg 2025-09-09T21:37:59 Rate: ₹24.79/kg • Value: ₹99 0 kg → 0 kg spoiled",
+      "Wheat Added 19 kg 2025-08-11T21:29:42 Rate: ₹24.00/kg • Value: ₹456 0 kg → 0 kg found",
+      "Mustard Added 8 kg 2025-08-01T21:39:13 Rate: ₹55.00/kg • Value: ₹440 0 kg → 0 kg found"
     ]
   },
   "stock.jan31": {
     "list": [
-      "Gram Rate: ₹47.50/kg Alert below 10.0 kg ✎ 3,835.5 kg ≈ ₹1,82,182",
-      "Maize Rate: ₹19.02/kg Alert below 10.0 kg ✎ 1,875.5 kg ≈ ₹35,679",
-      "Mustard Rate: ₹54.89/kg Alert below 10.0 kg ✎ 6,023.5 kg ≈ ₹3,30,634",
-      "Rice Rate: ₹32.25/kg Alert below 10.0 kg ✎ 6,284.0 kg ≈ ₹2,02,641",
-      "Wheat Rate: ₹24.07/kg Alert below 10.0 kg ✎ 4,134.5 kg ≈ ₹99,525"
+      "Gram Rate: ₹47.50/kg Alert below 10 kg ✎ 3,835.5 kg ≈ ₹1,82,182",
+      "Maize Rate: ₹19.02/kg Alert below 10 kg ✎ 1,875.5 kg ≈ ₹35,679",
+      "Mustard Rate: ₹54.89/kg Alert below 10 kg ✎ 6,023.5 kg ≈ ₹3,30,634",
+      "Rice Rate: ₹32.25/kg Alert below 10 kg ✎ 6,284 kg ≈ ₹2,02,641",
+      "Wheat Rate: ₹24.07/kg Alert below 10 kg ✎ 4,134.5 kg ≈ ₹99,525"
     ],
     "dead": {
       "summary": "Using all bills.",
       "rows": []
     },
     "adjustments": [
-      "Rice Removed 4 kg 2026-09-22T21:04:51 Rate: ₹32.25/kg • Value: ₹129 0.0 kg → 0.0 kg spoiled",
-      "Mustard Added 13 kg 2026-09-09T21:03:49 Rate: ₹55.00/kg • Value: ₹715 0.0 kg → 0.0 kg found",
-      "Maize Removed 9 kg 2026-08-22T21:11:56 Rate: ₹19.02/kg • Value: ₹171 0.0 kg → 0.0 kg spoiled",
-      "Maize Removed 7 kg 2026-08-20T21:13:55 Rate: ₹19.02/kg • Value: ₹133 0.0 kg → 0.0 kg spoiled",
-      "Maize Added 8 kg 2026-06-29T21:40:57 Rate: ₹19.00/kg • Value: ₹152 0.0 kg → 0.0 kg found",
-      "Wheat Removed 3 kg 2026-04-02T21:53:01 Rate: ₹24.07/kg • Value: ₹72 0.0 kg → 0.0 kg spoiled",
-      "Mustard Removed 3 kg 2026-02-04T21:51:37 Rate: ₹54.89/kg • Value: ₹165 0.0 kg → 0.0 kg spoiled",
-      "Rice Removed 4 kg 2025-11-21T21:42:23 Rate: ₹32.25/kg • Value: ₹129 0.0 kg → 0.0 kg spoiled"
+      "Rice Removed 4 kg 2026-09-22T21:04:51 Rate: ₹32.25/kg • Value: ₹129 0 kg → 0 kg spoiled",
+      "Mustard Added 13 kg 2026-09-09T21:03:49 Rate: ₹55.00/kg • Value: ₹715 0 kg → 0 kg found",
+      "Maize Removed 9 kg 2026-08-22T21:11:56 Rate: ₹19.02/kg • Value: ₹171 0 kg → 0 kg spoiled",
+      "Maize Removed 7 kg 2026-08-20T21:13:55 Rate: ₹19.02/kg • Value: ₹133 0 kg → 0 kg spoiled",
+      "Maize Added 8 kg 2026-06-29T21:40:57 Rate: ₹19.00/kg • Value: ₹152 0 kg → 0 kg found",
+      "Wheat Removed 3 kg 2026-04-02T21:53:01 Rate: ₹24.07/kg • Value: ₹72 0 kg → 0 kg spoiled",
+      "Mustard Removed 3 kg 2026-02-04T21:51:37 Rate: ₹54.89/kg • Value: ₹165 0 kg → 0 kg spoiled",
+      "Rice Removed 4 kg 2025-11-21T21:42:23 Rate: ₹32.25/kg • Value: ₹129 0 kg → 0 kg spoiled"
     ]
   },
   "stock.leapDay": {
     "list": [
-      "Gram Rate: ₹48.37/kg Alert below 10.0 kg ✎ 6,738.0 kg ≈ ₹3,25,923",
-      "Maize Rate: ₹18.88/kg Alert below 10.0 kg ✎ 5,889.0 kg ≈ ₹1,11,213",
-      "Mustard Rate: ₹55.12/kg Alert below 10.0 kg ✎ 6,707.5 kg ≈ ₹3,69,687",
-      "Rice Rate: ₹31.66/kg Alert below 10.0 kg ✎ 5,720.5 kg ≈ ₹1,81,121",
-      "Wheat Rate: ₹24.06/kg Alert below 10.0 kg ✎ 7,447.0 kg ≈ ₹1,79,188"
+      "Gram Rate: ₹48.37/kg Alert below 10 kg ✎ 6,738 kg ≈ ₹3,25,923",
+      "Maize Rate: ₹18.88/kg Alert below 10 kg ✎ 5,889 kg ≈ ₹1,11,213",
+      "Mustard Rate: ₹55.12/kg Alert below 10 kg ✎ 6,707.5 kg ≈ ₹3,69,687",
+      "Rice Rate: ₹31.66/kg Alert below 10 kg ✎ 5,720.5 kg ≈ ₹1,81,121",
+      "Wheat Rate: ₹24.06/kg Alert below 10 kg ✎ 7,447 kg ≈ ₹1,79,188"
     ],
     "dead": {
       "summary": "Using all bills.",
       "rows": []
     },
     "adjustments": [
-      "Rice Removed 1 kg 2027-10-21T21:50:14 Rate: ₹31.66/kg • Value: ₹32 0.0 kg → 0.0 kg spoiled",
-      "Maize Added 12 kg 2027-10-20T21:51:25 Rate: ₹19.00/kg • Value: ₹228 0.0 kg → 0.0 kg found",
-      "Rice Removed 3 kg 2027-09-29T21:54:02 Rate: ₹31.66/kg • Value: ₹95 0.0 kg → 0.0 kg spoiled",
-      "Gram Added 8 kg 2027-08-10T21:30:12 Rate: ₹48.00/kg • Value: ₹384 0.0 kg → 0.0 kg found",
-      "Gram Added 17 kg 2027-08-08T21:57:19 Rate: ₹48.00/kg • Value: ₹816 0.0 kg → 0.0 kg found",
-      "Wheat Removed 2 kg 2027-08-02T21:59:49 Rate: ₹24.06/kg • Value: ₹48 0.0 kg → 0.0 kg spoiled",
-      "Rice Added 6 kg 2027-07-24T21:50:05 Rate: ₹32.00/kg • Value: ₹192 0.0 kg → 0.0 kg found",
-      "Mustard Added 2 kg 2027-05-18T21:41:10 Rate: ₹55.00/kg • Value: ₹110 0.0 kg → 0.0 kg found"
+      "Rice Removed 1 kg 2027-10-21T21:50:14 Rate: ₹31.66/kg • Value: ₹32 0 kg → 0 kg spoiled",
+      "Maize Added 12 kg 2027-10-20T21:51:25 Rate: ₹19.00/kg • Value: ₹228 0 kg → 0 kg found",
+      "Rice Removed 3 kg 2027-09-29T21:54:02 Rate: ₹31.66/kg • Value: ₹95 0 kg → 0 kg spoiled",
+      "Gram Added 8 kg 2027-08-10T21:30:12 Rate: ₹48.00/kg • Value: ₹384 0 kg → 0 kg found",
+      "Gram Added 17 kg 2027-08-08T21:57:19 Rate: ₹48.00/kg • Value: ₹816 0 kg → 0 kg found",
+      "Wheat Removed 2 kg 2027-08-02T21:59:49 Rate: ₹24.06/kg • Value: ₹48 0 kg → 0 kg spoiled",
+      "Rice Added 6 kg 2027-07-24T21:50:05 Rate: ₹32.00/kg • Value: ₹192 0 kg → 0 kg found",
+      "Mustard Added 2 kg 2027-05-18T21:41:10 Rate: ₹55.00/kg • Value: ₹110 0 kg → 0 kg found"
     ]
   },
   "stock.mar31": {
     "list": [
-      "Gram Rate: ₹47.21/kg Alert below 10.0 kg ✎ 2,831.5 kg ≈ ₹1,33,669",
-      "Maize Rate: ₹19.66/kg Alert below 10.0 kg ✎ 2,106.0 kg ≈ ₹41,395",
-      "Mustard Rate: ₹54.85/kg Alert below 10.0 kg ✎ 5,133.0 kg ≈ ₹2,81,561",
-      "Rice Rate: ₹32.16/kg Alert below 10.0 kg ✎ 7,005.0 kg ≈ ₹2,25,251",
-      "Wheat Rate: ₹23.99/kg Alert below 10.0 kg ✎ 4,645.0 kg ≈ ₹1,11,437"
+      "Gram Rate: ₹47.21/kg Alert below 10 kg ✎ 2,831.5 kg ≈ ₹1,33,669",
+      "Maize Rate: ₹19.66/kg Alert below 10 kg ✎ 2,106 kg ≈ ₹41,395",
+      "Mustard Rate: ₹54.85/kg Alert below 10 kg ✎ 5,133 kg ≈ ₹2,81,561",
+      "Rice Rate: ₹32.16/kg Alert below 10 kg ✎ 7,005 kg ≈ ₹2,25,251",
+      "Wheat Rate: ₹23.99/kg Alert below 10 kg ✎ 4,645 kg ≈ ₹1,11,437"
     ],
     "dead": {
       "summary": "Using all bills.",
       "rows": []
     },
     "adjustments": [
-      "Wheat Added 13 kg 2027-03-17T21:25:40 Rate: ₹24.00/kg • Value: ₹312 0.0 kg → 0.0 kg found",
-      "Wheat Removed 6 kg 2027-03-03T21:36:20 Rate: ₹23.99/kg • Value: ₹144 0.0 kg → 0.0 kg spoiled",
-      "Rice Removed 4 kg 2026-12-07T21:04:51 Rate: ₹32.16/kg • Value: ₹129 0.0 kg → 0.0 kg spoiled",
-      "Rice Removed 8 kg 2026-10-22T21:43:30 Rate: ₹32.16/kg • Value: ₹257 0.0 kg → 0.0 kg spoiled",
-      "Maize Removed 7 kg 2026-05-28T21:37:37 Rate: ₹19.66/kg • Value: ₹138 0.0 kg → 0.0 kg spoiled",
-      "Maize Removed 8 kg 2026-05-09T21:39:34 Rate: ₹19.66/kg • Value: ₹157 0.0 kg → 0.0 kg spoiled",
-      "Rice Added 14 kg 2026-04-08T21:12:52 Rate: ₹32.00/kg • Value: ₹448 0.0 kg → 0.0 kg found",
-      "Rice Added 10 kg 2025-11-25T21:42:57 Rate: ₹32.00/kg • Value: ₹320 0.0 kg → 0.0 kg found"
+      "Wheat Added 13 kg 2027-03-17T21:25:40 Rate: ₹24.00/kg • Value: ₹312 0 kg → 0 kg found",
+      "Wheat Removed 6 kg 2027-03-03T21:36:20 Rate: ₹23.99/kg • Value: ₹144 0 kg → 0 kg spoiled",
+      "Rice Removed 4 kg 2026-12-07T21:04:51 Rate: ₹32.16/kg • Value: ₹129 0 kg → 0 kg spoiled",
+      "Rice Removed 8 kg 2026-10-22T21:43:30 Rate: ₹32.16/kg • Value: ₹257 0 kg → 0 kg spoiled",
+      "Maize Removed 7 kg 2026-05-28T21:37:37 Rate: ₹19.66/kg • Value: ₹138 0 kg → 0 kg spoiled",
+      "Maize Removed 8 kg 2026-05-09T21:39:34 Rate: ₹19.66/kg • Value: ₹157 0 kg → 0 kg spoiled",
+      "Rice Added 14 kg 2026-04-08T21:12:52 Rate: ₹32.00/kg • Value: ₹448 0 kg → 0 kg found",
+      "Rice Added 10 kg 2025-11-25T21:42:57 Rate: ₹32.00/kg • Value: ₹320 0 kg → 0 kg found"
     ]
   },
   "stock.jan1": {
     "list": [
-      "Gram Rate: ₹46.81/kg Alert below 10.0 kg ✎ 2,785.0 kg ≈ ₹1,30,362",
-      "Maize Rate: ₹18.44/kg Alert below 10.0 kg ✎ 1,053.5 kg ≈ ₹19,429",
-      "Mustard Rate: ₹54.64/kg Alert below 10.0 kg ✎ 5,996.5 kg ≈ ₹3,27,627",
-      "Rice Rate: ₹32.00/kg Alert below 10.0 kg ✎ 7,329.0 kg ≈ ₹2,34,507",
-      "Wheat Rate: ₹23.83/kg Alert below 10.0 kg ✎ 5,148.0 kg ≈ ₹1,22,657"
+      "Gram Rate: ₹46.81/kg Alert below 10 kg ✎ 2,785 kg ≈ ₹1,30,362",
+      "Maize Rate: ₹18.44/kg Alert below 10 kg ✎ 1,053.5 kg ≈ ₹19,429",
+      "Mustard Rate: ₹54.64/kg Alert below 10 kg ✎ 5,996.5 kg ≈ ₹3,27,627",
+      "Rice Rate: ₹32.00/kg Alert below 10 kg ✎ 7,329 kg ≈ ₹2,34,507",
+      "Wheat Rate: ₹23.83/kg Alert below 10 kg ✎ 5,148 kg ≈ ₹1,22,657"
     ],
     "dead": {
       "summary": "Using all bills.",
       "rows": []
     },
     "adjustments": [
-      "Rice Removed 3 kg 2026-09-02T21:54:02 Rate: ₹32.00/kg • Value: ₹96 0.0 kg → 0.0 kg spoiled",
-      "Maize Removed 9 kg 2026-08-15T21:22:32 Rate: ₹18.44/kg • Value: ₹166 0.0 kg → 0.0 kg spoiled",
-      "Wheat Added 3 kg 2026-07-25T21:25:44 Rate: ₹24.00/kg • Value: ₹72 0.0 kg → 0.0 kg found",
-      "Wheat Removed 3 kg 2026-07-23T21:41:37 Rate: ₹23.83/kg • Value: ₹71 0.0 kg → 0.0 kg spoiled",
-      "Maize Added 3 kg 2026-05-15T21:24:06 Rate: ₹19.00/kg • Value: ₹57 0.0 kg → 0.0 kg found",
-      "Rice Added 1 kg 2026-04-18T21:06:40 Rate: ₹32.00/kg • Value: ₹32 0.0 kg → 0.0 kg found",
-      "Mustard Added 4 kg 2026-04-04T21:06:20 Rate: ₹55.00/kg • Value: ₹220 0.0 kg → 0.0 kg found",
-      "Rice Removed 5 kg 2026-02-23T21:11:04 Rate: ₹32.00/kg • Value: ₹160 0.0 kg → 0.0 kg spoiled"
+      "Rice Removed 3 kg 2026-09-02T21:54:02 Rate: ₹32.00/kg • Value: ₹96 0 kg → 0 kg spoiled",
+      "Maize Removed 9 kg 2026-08-15T21:22:32 Rate: ₹18.44/kg • Value: ₹166 0 kg → 0 kg spoiled",
+      "Wheat Added 3 kg 2026-07-25T21:25:44 Rate: ₹24.00/kg • Value: ₹72 0 kg → 0 kg found",
+      "Wheat Removed 3 kg 2026-07-23T21:41:37 Rate: ₹23.83/kg • Value: ₹71 0 kg → 0 kg spoiled",
+      "Maize Added 3 kg 2026-05-15T21:24:06 Rate: ₹19.00/kg • Value: ₹57 0 kg → 0 kg found",
+      "Rice Added 1 kg 2026-04-18T21:06:40 Rate: ₹32.00/kg • Value: ₹32 0 kg → 0 kg found",
+      "Mustard Added 4 kg 2026-04-04T21:06:20 Rate: ₹55.00/kg • Value: ₹220 0 kg → 0 kg found",
+      "Rice Removed 5 kg 2026-02-23T21:11:04 Rate: ₹32.00/kg • Value: ₹160 0 kg → 0 kg spoiled"
     ]
   },
   "insights.first": {

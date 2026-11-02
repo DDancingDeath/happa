@@ -15,7 +15,7 @@
 import { AppState } from '../utils/state.js';
 import { formatDayTime } from './dates.js';
 import { eventTime } from './stock-replay.js';
-import { isActiveBill } from './money.js';
+import { formatKg, isActiveBill } from './money.js';
 
 /**
  * "≈ approximate stock (updated <time>)" label (member device, stale stock
@@ -185,8 +185,8 @@ export function computeStockShortfalls(saleItems) {
 export function formatShortfallMessage(shortfalls) {
     if (!shortfalls || shortfalls.length === 0) return null;
     const lines = shortfalls.map((s) => {
-        const avail = s.available <= 0 ? '0' : s.available.toFixed(1);
-        return `• ${s.name}: selling ${s.requested.toFixed(1)} kg, only ${avail} kg in stock (short ${s.shortfall.toFixed(1)} kg)`;
+        const avail = s.available <= 0 ? '0' : formatKg(s.available);
+        return `• ${s.name}: selling ${formatKg(s.requested)} kg, only ${avail} kg in stock (short ${formatKg(s.shortfall)} kg)`;
     });
     return (
         'This sale exceeds your recorded stock:\n\n' +

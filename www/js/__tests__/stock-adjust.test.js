@@ -335,8 +335,8 @@ describe('low-stock card and alert level on Current stock (#146)', () => {
         const card = document.querySelector('.stock-low-card');
         expect(card.textContent).toContain('Low stock (1)');
         expect(card.textContent).toContain('Chana');
-        expect(card.textContent).toContain('8.0 kg (alert below 10.0 kg)');
-        expect([...document.querySelectorAll('.stock-alert-link')].map(b => b.textContent.trim())).toEqual(['Alert below 10.0 kg ✎', 'No low-stock alert ✎']);
+        expect(card.textContent).toContain('8 kg (alert below 10 kg)');
+        expect([...document.querySelectorAll('.stock-alert-link')].map(b => b.textContent.trim())).toEqual(['Alert below 10 kg ✎', 'No low-stock alert ✎']);
 
         UIManager.showModalWithHtml = jest.fn(async (html) => {
             document.body.insertAdjacentHTML('beforeend', html);

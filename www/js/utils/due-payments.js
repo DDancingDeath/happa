@@ -79,6 +79,17 @@ export function legParts(leg) {
     return leg.method === 'cash' ? { cash: amount, online: 0 } : { cash: 0, online: amount };
 }
 
+/**
+ * C4 / C5: the amount of one cash-session `duePayments` leg as listed in the
+ * day's details (cash + online, legParts).
+ * @param {Object} leg
+ * @returns {number}
+ */
+export function legAmount(leg) {
+    const { cash, online } = legParts(leg);
+    return round2(cash + online);
+}
+
 /** Time (ms) of a bill payment entry or session leg; NaN when unknown. */
 export function entryTime(entry) {
     if (!entry) return NaN;

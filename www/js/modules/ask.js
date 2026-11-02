@@ -10,7 +10,7 @@ import { AppState } from '../utils/state.js';
 import { Helpers } from '../utils/helpers.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t, tn, getLang } from '../i18n/index.js';
-import { formatRupees } from '../utils/money.js';
+import { formatKg, formatRupees } from '../utils/money.js';
 import { can } from '../utils/role-access.js';
 import { parseQuestion, answerQuestion } from '../utils/ask.js';
 import { approxStockNote } from '../utils/stock-check.js';
@@ -22,7 +22,6 @@ const MAX_ANSWERS = 10;
 const PAGE_NAMES = { day: 'ui.ask.open_today', due: 'ui.ask.open_outstanding', stock: 'ui.ask.open_stock' };
 const bills = (n) => tn('ui.today.bills_count', n);
 const parties = (n) => tn('ui.ask.parties_count', n);
-const kg = (q) => (Number(q) || 0).toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 export const AskManager = {
     answers: [],
@@ -141,7 +140,7 @@ export const AskManager = {
                 return (a.matches.length ? choose(a.matches.map(itemName), a.more) : line(t('ui.ask.no_item', { name: a.subject }))) + open;
             }
             return line(a.limited ? t('ui.ask.ans_stock_available', { name: itemName(a) })
-                : a.quantity > 0 ? t('ui.ask.ans_stock', { name: itemName(a), kg: kg(a.quantity) })
+                : a.quantity > 0 ? t('ui.ask.ans_stock', { name: itemName(a), kg: formatKg(a.quantity) })
                     : t('ui.ask.ans_stock_none', { name: itemName(a) }))
                 + (a.approx ? line(pickLang(approxStockNote(a.approx))) : '') + open;
         default:

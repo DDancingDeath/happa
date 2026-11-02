@@ -132,7 +132,7 @@ describe('B. BILL-DUE: Wholesale › Outstanding = Outstanding / Money', () => {
         document.body.innerHTML = '<div id="salesOutstandingList"></div>';
         WholesaleSalesManager.renderSalesOutstanding();
         const text = document.getElementById('payment_w1').closest('.history-item').textContent.replace(/\s+/g, ' ');
-        expect(text).toMatch(/₹1000.*₹700.*₹300/);
+        expect(text).toMatch(/₹1,000.*₹700.*₹300/);
     });
     test('openDue (the phone\'s dues query) uses the same rule', () => {
         WHOLESALE.forEach(b => expect(FirebaseService.billHasOpenDue('wholesaleSales', b)).toBe(due[b.id] > 0));
@@ -200,7 +200,7 @@ describe('C. BILL-TOTAL: one field order on Today, Money and History', () => {
         const zeroSale = { id: 'r9', type: 'retail', billNumber: 'R-9', date: '2026-10-21', saleTotal: 0, total: 70, items: [], payment: { cash: 0, online: 0, due: 0 } };
         [[PURCHASES[0], true], [legacy, true], [oldLabour, true], [zeroSale, false]].forEach(([b, isPurchase]) => {
             expect(billLineTotal(b, isPurchase)).toBe(O.billLines(b, isPurchase));
-            if (isPurchase) expect(buildBillShareText(b, 'purchase')).toContain(`*Total: ₹${Math.round(O.billLines(b, true))}*`);
+            if (isPurchase) expect(buildBillShareText(b, 'purchase')).toContain(`*Total: ₹${Math.round(O.billLines(b, true)).toLocaleString('en-IN')}*`);
         });
         expect(O.billLines(legacy, true)).toBe(1000);
         expect(O.billLines(zeroSale, false)).toBe(0);

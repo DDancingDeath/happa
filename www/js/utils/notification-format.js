@@ -7,6 +7,7 @@
 
 import { toJsDate, displayLocale } from './dates.js';
 import { getLang } from '../i18n/index.js';
+import { formatRate } from './money.js';
 
 /** Unread notifications the live listener keeps (also the badge cap). */
 export const UNREAD_LIMIT = 20;
@@ -58,10 +59,10 @@ export function notificationTime(n) {
     return d ? d.getTime() : 0;
 }
 
-function formatRate(value) {
-    if (Array.isArray(value)) return value.length ? value.map(v => `₹${v}`).join(', ') : '—';
+function rateText(value) {
+    if (Array.isArray(value)) return value.length ? value.map(v => formatRate(v)).join(', ') : '—';
     if (value === '' || value === null || value === undefined) return '—';
-    return `₹${value}`;
+    return formatRate(value);
 }
 
 function clean(value) {
@@ -86,7 +87,7 @@ export function describeNotification(n = {}) {
     if (type === 'rate_change') {
         const names = itemNames(n);
         const label = RATE_LABELS[n.rateType] || { en: clean(n.rateTypeLabel) || 'Rate', hi: clean(n.rateTypeLabel) || 'रेट' };
-        const change = `${formatRate(n.oldRate ?? n.oldRates)} → ${formatRate(n.newRate ?? n.newRates)}`;
+        const change = `${rateText(n.oldRate ?? n.oldRates)} → ${rateText(n.newRate ?? n.newRates)}`;
         return {
             icon: '💲',
             en: `${names.en}: ${label.en} rate ${change}`,
