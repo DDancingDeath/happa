@@ -337,8 +337,8 @@ describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => 
         await OutstandingManager.recordPayment('w2', 'wholesale');
         expect(record).toHaveBeenCalledWith(expect.objectContaining({ billType: 'wholesale', billId: 'w2', cash: 100, online: 50 }));
         expect(document.querySelector('#salesOutstandingList #payment_w2').value).toBe('7');
-        expect(row.querySelector('[data-record-payment]').getAttribute('onclick')).toContain("recordPayment('w2', 'wholesale')");
-        expect(row.querySelector('[data-mark-cleared]').getAttribute('onclick')).toContain("markAsCleared('w2', 'wholesale')");
+        expect(row.querySelector('[data-record-payment]').getAttribute('data-onclick')).toContain("recordPayment('w2', 'wholesale')");
+        expect(row.querySelector('[data-mark-cleared]').getAttribute('data-onclick')).toContain("markAsCleared('w2', 'wholesale')");
         window.app = { wholesaleSales: { reprintSaleById: jest.fn() } };
         await OutstandingManager.showDetails('w2', 'wholesale');
         expect(window.app.wholesaleSales.reprintSaleById).toHaveBeenCalledWith('w2');
@@ -351,10 +351,10 @@ describe('#125 wholesale dues on Outstanding (All / Retail / Wholesale)', () => 
             .find(r => r.querySelector('.aging-party-name').textContent.trim().toLowerCase().startsWith(name))?.querySelector('[data-party-pay]');
         expect(btn('gupta')).toBeNull();
         expect(document.getElementById('dueAgingParties').textContent).toContain('Receive payment on Retail or Wholesale');
-        expect(btn('hotel raj').getAttribute('onclick')).toContain("'wholesale')");
-        expect(btn('sita').getAttribute('onclick')).toContain("'retail')");
+        expect(btn('hotel raj').getAttribute('data-onclick')).toContain("'wholesale')");
+        expect(btn('sita').getAttribute('data-onclick')).toContain("'retail')");
         OutstandingManager.filterDue('wholesale');
-        expect(btn('gupta').getAttribute('onclick')).toContain("'wholesale')");
+        expect(btn('gupta').getAttribute('data-onclick')).toContain("'wholesale')");
     });
 
     test('window.app passes the list to Receive payment; the billing hint and the Today reminder open Retail', async () => {

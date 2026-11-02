@@ -24,6 +24,7 @@ import { HistoryManager } from '../modules/history.js';
 import { WholesaleSalesManager } from '../modules/wholesale-sales.js';
 import { OutstandingManager } from '../modules/outstanding.js';
 import { CashManagementManager } from '../modules/cash-management.js';
+import { parseAction } from '../ui/actions.js';
 
 const IMG = '"><img src=x onerror="window.__pwned=1">';
 const QUOTE_ID = "x');window.__pwned=1;//\"<img src=x>";
@@ -44,7 +45,15 @@ function setupDom() {
 }
 
 /** Run an inline handler attribute and return the arguments of every app call it makes. */
+/** The handler attribute of an element: delegated (data-on*, #89) or inline. */
+const handlerAttr = (el) => ['data-onclick', 'onclick', 'data-onchange', 'onchange'].map(a => el.getAttribute(a)).find(v => v !== null);
+
 function runHandler(attr) {
+    // Inline handlers start with window.app. / event.; data-on* attributes name the window.app path
+    if (!/^\s*(window|event)\./.test(attr)) {
+        // A data-on* attribute: parsed, never run; its call arguments as the dispatcher would pass them
+        return parseAction(attr).filter(st => st.kind === 'call').map(st => st.args.map(a => ('lit' in a ? a.lit : a.ref)));
+    }
     const calls = [];
     const handler = () => new Proxy(function () {}, {
         get: () => handler(),
@@ -103,17 +112,17 @@ describe('history list escapes record values', () => {
         expect(list.textContent).toContain(`#${IMG}`);
         expect(list.textContent).toContain(`${NUM} packets`);
 
-        const span = list.querySelector('.bill-row__no [onclick]');
-        const calls = runHandler(span.getAttribute('onclick'));
+        const span = list.querySelector('.bill-row__no [data-onclick]');
+        const calls = runHandler(handlerAttr(span));
         expect(calls).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
     });
 
     test('card view: a malicious stored type cannot break out of viewBill()', () => {
         AppState.purchaseHistory = [maliciousBill({ type: "purchase');window.__pwned=1;//" })];
         HistoryManager.renderHistory('purchase');
-        const span = document.querySelector('#historyList span[onclick]');
+        const span = document.querySelector('#historyList span[data-onclick]');
         // History normalises the type by collection (#160), so the stored value never reaches the handler.
-        expect(runHandler(span.getAttribute('onclick'))).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
+        expect(runHandler(handlerAttr(span))).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
         expect(window.__pwned).toBeUndefined();
     });
 
@@ -124,8 +133,8 @@ describe('history list escapes record values', () => {
         const list = document.getElementById('historyList');
         assertNoInjection(list);
         expect(list.textContent).toContain('× ₹0.00');
-        const row = list.querySelector('tr[onclick]');
-        expect(runHandler(row.getAttribute('onclick'))).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
+        const row = list.querySelector('tr[data-onclick]');
+        expect(runHandler(handlerAttr(row))).toEqual([[`id:${QUOTE_ID}`, 'purchase']]);
     });
 
     test('bill details: bill number, rate, total, packets', async () => {
@@ -166,7 +175,7 @@ describe('wholesale screen escapes record values', () => {
         const list = document.getElementById('salesHistoryList');
         assertNoInjection(list);
         expect(list.textContent).toContain(`#${IMG}`);
-        expect(runHandler(list.querySelector('[onclick]').getAttribute('onclick'))).toEqual([[QUOTE_ID]]);
+        expect(runHandler(handlerAttr(list.querySelector('[onclick],[data-onclick]')))).toEqual([[QUOTE_ID]]);
     });
 
     test('outstanding list: ids in onclick/onchange/id/for attributes', () => {
@@ -174,8 +183,8 @@ describe('wholesale screen escapes record values', () => {
         WholesaleSalesManager.renderSalesOutstanding();
         const list = document.getElementById('salesOutstandingList');
         assertNoInjection(list);
-        const handlers = [...list.querySelectorAll('[onclick],[onchange]')]
-            .map(el => runHandler(el.getAttribute('onclick') || el.getAttribute('onchange')));
+        const handlers = [...list.querySelectorAll('[onclick],[onchange],[data-onclick],[data-onchange]')]
+            .map(el => runHandler(handlerAttr(el)));
         expect(handlers).toEqual([[[QUOTE_ID]], [[QUOTE_ID]], [[QUOTE_ID]]]);
         expect(list.querySelector('input[type="number"]').id).toBe(`payment_${QUOTE_ID}`);
         expect(list.querySelector('label[for]').htmlFor).toBe(`clear_${QUOTE_ID}`);
@@ -198,8 +207,8 @@ describe('outstanding (Due) list escapes record values', () => {
         const list = document.getElementById('dueList');
         assertNoInjection(list);
         expect(list.textContent).toContain(`#${IMG}`);
-        const handlers = [...list.querySelectorAll('[onclick],[onchange]')]
-            .map(el => runHandler(el.getAttribute('onclick') || el.getAttribute('onchange')));
+        const handlers = [...list.querySelectorAll('[onclick],[onchange],[data-onclick],[data-onchange]')]
+            .map(el => runHandler(handlerAttr(el)));
         expect(handlers).toEqual([
             [[QUOTE_ID, 'purchase']], [[QUOTE_ID, 'purchase']], [[QUOTE_ID, 'purchase']]
         ]);

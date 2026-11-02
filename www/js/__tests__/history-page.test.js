@@ -58,8 +58,8 @@ const html = `
       <div><div id="salesHistoryList"></div></div>
     </div>`;
 
-const historyNos = () => [...document.querySelectorAll('#historyList .bill-row__no [onclick]')].map(s => s.textContent.replace('#', ''));
-const wholesaleNos = () => [...document.querySelectorAll('#salesHistoryList .bill-row__no [onclick]')].map(s => s.textContent.replace('#', ''));
+const historyNos = () => [...document.querySelectorAll('#historyList .bill-row__no [data-onclick]')].map(s => s.textContent.replace('#', ''));
+const wholesaleNos = () => [...document.querySelectorAll('#salesHistoryList .bill-row__no [data-onclick]')].map(s => s.textContent.replace('#', ''));
 
 beforeEach(() => {
     document.body.innerHTML = html;
@@ -123,7 +123,7 @@ describe('old-app carried dues in History', () => {
 
         chip.click();
         const group = document.querySelector('#historyList .bill-group--opening');
-        expect([...group.querySelectorAll('.bill-row__no [onclick]')].map(s => s.textContent)).toEqual(['#P-OLD-1', '#P-OLD-2']);
+        expect([...group.querySelectorAll('.bill-row__no [data-onclick]')].map(s => s.textContent)).toEqual(['#P-OLD-1', '#P-OLD-2']);
         expect(group.querySelectorAll('.old-app-chip')).toHaveLength(2);
         expect(document.getElementById('historyOpeningToggle').textContent).toBe('Hide dues carried from old app (2)');
 
@@ -236,7 +236,7 @@ describe('Wholesale › History respects the role\'s History "days back" limit',
         WholesaleSalesManager.renderSalesHistory();
         expect(wholesaleNos()).toEqual(['W1']);
         expect(document.getElementById('wholesaleOpeningToggle')).toBeNull(); // W-OLD-1 is 6 days old
-        expect([...document.querySelectorAll('#salesRecentList .bill-row__no [onclick]')].map(s => s.textContent)).toEqual(['#W1']);
+        expect([...document.querySelectorAll('#salesRecentList .bill-row__no [data-onclick]')].map(s => s.textContent)).toEqual(['#W1']);
 
         // A custom range back to 2020 only loads from the cutoff, never older months.
         WholesaleSalesManager.applyHistoryRange('2020-01-01', '');

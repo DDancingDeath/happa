@@ -57,7 +57,7 @@ export async function mount(el, { editable }) {
             <input type="text" id="rentSetAddress" maxlength="${MAX_RECEIPT_ADDRESS}" value="${esc(s.receiptAddress)}" placeholder="${esc(t('ui.rentset.receipt_address_placeholder'))}"${off}>
             <p class="setting-description">${esc(t('ui.rentset.receipt_hint'))}</p>
         </div>
-        ${editable ? `<button type="button" class="add-item-btn" id="rentSetSave" onclick="window.app.settings.saveRentals()">${esc(t('ui.roles.save'))}</button>`
+        ${editable ? `<button type="button" class="add-item-btn" id="rentSetSave" data-onclick="settings.saveRentals()">${esc(t('ui.roles.save'))}</button>`
             : `<p class="setting-description">${esc(t('ui.rentset.view_only'))}</p>`}`;
 }
 

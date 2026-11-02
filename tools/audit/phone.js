@@ -254,7 +254,8 @@ function setRole(role) {
     AppState.currentUser = { uid: `audit-${role}` };
     AppState.userRole = role;
     AppState.settings = role === 'owner' ? { showHindi: false }
-        : { showHindi: false, roleAccess: { staff: { finance: true, reports: true, analytics: true } } };
+        // Personal expenses on for the member pass (off by default since #98), so its figures match the oracle's
+        : { showHindi: false, roleAccess: { staff: { finance: true, reports: true, analytics: true, personalExpenses: true, personalExpensesChosen: true } } };
 }
 
 /**

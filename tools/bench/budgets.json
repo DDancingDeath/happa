@@ -1,0 +1,5 @@
+{
+  "_comment": "Multi-year load benchmark budgets (#59), ms with a 4x slower CPU on a CI runner. Above one the nightly job warns; it never fails. Tighten them once the trend has settled.",
+  "firstTodayMs": 8000,
+  "historyLoadMs": 20000
+}

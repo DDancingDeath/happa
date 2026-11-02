@@ -210,7 +210,7 @@ export class OutstandingManager {
             
             div.innerHTML = `
                 <div class="history-header">
-                    <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" onclick="window.app.outstanding.showDetails('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')">#${Helpers.escapeHtml(billNumber)}</span>${isOpeningRecord(transaction) ? ` <span class="old-app-chip">${tt('ui.history.old_app_chip')}</span>` : ''}${currentDueFilter === 'sale' && this.seesWholesale() ? ` <span class="due-kind-chip">${tt(transaction.transactionType === 'wholesale' ? 'ui.outstanding.kind_wholesale' : 'ui.outstanding.kind_retail')}</span>` : ''}${transaction.customerName ? `  <strong>${Helpers.escapeHtml(transaction.customerName)}</strong>` : ''}
+                    <span style="cursor: pointer; color: ${itemColor}; text-decoration: underline;" data-onclick="outstanding.showDetails('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')">#${Helpers.escapeHtml(billNumber)}</span>${isOpeningRecord(transaction) ? ` <span class="old-app-chip">${tt('ui.history.old_app_chip')}</span>` : ''}${currentDueFilter === 'sale' && this.seesWholesale() ? ` <span class="due-kind-chip">${tt(transaction.transactionType === 'wholesale' ? 'ui.outstanding.kind_wholesale' : 'ui.outstanding.kind_retail')}</span>` : ''}${transaction.customerName ? `  <strong>${Helpers.escapeHtml(transaction.customerName)}</strong>` : ''}
                     <span style="color: var(--danger-color); font-weight: 700;">${tt('ui.outstanding.due_amount', { amount: formatAmount(transaction.outstanding) })}</span>
                 </div>
                 <div class="history-date">${Helpers.formatDate(transaction.date)}${transaction.createdByName ? ` • ${tt('ui.outstanding.by')} <strong>${Helpers.escapeHtml(transaction.createdByName)}</strong>` : ''} ${ageBadge}</div>
@@ -232,10 +232,10 @@ export class OutstandingManager {
                         <label style="flex-shrink: 0;">${tt(isPurchase ? 'ui.outstanding.pay_label' : 'ui.outstanding.received_label')}</label>
                         <input type="number" inputmode="decimal" min="0" id="${Helpers.escapeHtml(this.paymentInputIds(transaction.id, transaction.transactionType).cash)}" placeholder="${tt('ui.outstanding.cash_placeholder')}" aria-label="${tt('ui.outstanding.cash_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
                         <input type="number" inputmode="decimal" min="0" id="${Helpers.escapeHtml(this.paymentInputIds(transaction.id, transaction.transactionType).online)}" placeholder="${tt('ui.outstanding.online_placeholder')}" aria-label="${tt('ui.outstanding.online_amount')}" style="flex: 1; min-width: 80px; padding: 8px; border: 1px solid #ccc; border-radius: 4px;" />
-                        <button data-record-payment onclick="window.app.outstanding.recordPayment('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background-color: #1c7430; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.record')}</button>
+                        <button data-record-payment data-onclick="outstanding.recordPayment('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background-color: #1c7430; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.record')}</button>
                     </div>
                     <div style="margin-top: 8px;">
-                        <button type="button" data-mark-cleared onclick="window.app.outstanding.markAsCleared('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background: white; color: #333; border: 1px solid #666; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.mark_as_cleared')}</button>
+                        <button type="button" data-mark-cleared data-onclick="outstanding.markAsCleared('${Helpers.escapeJsAttr(transaction.id)}', '${Helpers.escapeJsAttr(transaction.transactionType)}')" style="background: white; color: #333; border: 1px solid #666; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">${tt('ui.outstanding.mark_as_cleared')}</button>
                     </div>
                 </div>
             `;
@@ -275,7 +275,7 @@ export class OutstandingManager {
         const buckets = aging.buckets.map((b, i) => `
             <button type="button" class="aging-bucket aging-b${i}${this.agingBucket === b.key ? ' active' : ''}"
                 aria-pressed="${this.agingBucket === b.key}"
-                onclick="window.app.outstanding.setAgingBucket('${attr(b.key)}')">
+                data-onclick="outstanding.setAgingBucket('${attr(b.key)}')">
                 <span class="aging-bucket-label">${tt('ui.outstanding.bucket_days', { label: b.label })}</span>
                 <strong class="aging-bucket-amount">${esc(formatINR(b.total))}</strong>
                 <span class="aging-bucket-count">${esc(billsText(b.count))}</span>
@@ -309,14 +309,14 @@ export class OutstandingManager {
                 </div>
                 <strong class="aging-party-total">${esc(formatINR(p.total))}</strong>
                 <div class="aging-party-actions">
-                    ${!this.canReceiveFromParty() ? '' : payType(p) ? `<button type="button" class="aging-btn" data-party-pay onclick="window.app.outstanding.receiveFromParty('${attr(p.key)}', '${attr(payType(p))}')">${tt(isPayable ? 'ui.outstanding.party_pay_pay' : 'ui.outstanding.party_pay_receive')}</button>`
+                    ${!this.canReceiveFromParty() ? '' : payType(p) ? `<button type="button" class="aging-btn" data-party-pay data-onclick="outstanding.receiveFromParty('${attr(p.key)}', '${attr(payType(p))}')">${tt(isPayable ? 'ui.outstanding.party_pay_pay' : 'ui.outstanding.party_pay_receive')}</button>`
                         : `<span class="aging-party-meta">${tt('ui.outstanding.party_pay_pick_list')}</span>`}
-                    ${isPayable ? '' : `<button type="button" class="aging-btn aging-remind" onclick="window.app.outstanding.sendReminder('${attr(p.key)}')">${tt('ui.outstanding.remind')}</button>`}
-                    <button type="button" class="aging-btn" onclick="window.app.outstanding.printStatement('${attr(p.key)}')">${tt('ui.outstanding.statement')}</button>
+                    ${isPayable ? '' : `<button type="button" class="aging-btn aging-remind" data-onclick="outstanding.sendReminder('${attr(p.key)}')">${tt('ui.outstanding.remind')}</button>`}
+                    <button type="button" class="aging-btn" data-onclick="outstanding.printStatement('${attr(p.key)}')">${tt('ui.outstanding.statement')}</button>
                 </div>
             </div>`).join('');
 
-        const sortBtn = (by, label) => `<button type="button" class="aging-sort-btn${this.agingSort === by ? ' active' : ''}" aria-pressed="${this.agingSort === by}" onclick="window.app.outstanding.setAgingSort('${by}')">${label}</button>`;
+        const sortBtn = (by, label) => `<button type="button" class="aging-sort-btn${this.agingSort === by ? ' active' : ''}" aria-pressed="${this.agingSort === by}" data-onclick="outstanding.setAgingSort('${by}')">${label}</button>`;
 
         el.innerHTML = `
             <div class="aging-panel">
@@ -327,7 +327,7 @@ export class OutstandingManager {
                 <div class="aging-buckets">${buckets}</div>
                 ${this.agingBucket ? `<div class="aging-filter-note">${tt('ui.outstanding.one_age_group')}</div>` : ''}
                 ${chaseHtml}
-                <details class="aging-parties"${this.partiesOpen ? ' open' : ''} ontoggle="window.app?.outstanding?.setPartiesOpen(this.open)">
+                <details class="aging-parties"${this.partiesOpen ? ' open' : ''} data-ontoggle="outstanding.setPartiesOpen(this.open)">
                     <summary>${tt('ui.outstanding.by_party', { count: parties.length })}</summary>
                     <div class="aging-sort">${tt('ui.outstanding.sort')} ${sortBtn('amount', tt('ui.outstanding.sort_amount'))} ${sortBtn('age', tt('ui.outstanding.sort_oldest'))}</div>
                     <div id="dueAgingParties">${rows}</div>
@@ -369,7 +369,7 @@ export class OutstandingManager {
         el.insertAdjacentHTML('afterbegin', `
             <div class="party-filter-note">
                 <span>${Helpers.escapeHtml(t('ui.outstanding.showing_only'))} <strong>${Helpers.escapeHtml(this.partyFilter.name)}</strong></span>
-                <button type="button" class="aging-btn" onclick="window.app.outstanding.clearPartyFilter()">${Helpers.escapeHtml(t('ui.outstanding.show_all'))}</button>
+                <button type="button" class="aging-btn" data-onclick="outstanding.clearPartyFilter()">${Helpers.escapeHtml(t('ui.outstanding.show_all'))}</button>
             </div>`);
     }
 
@@ -963,14 +963,14 @@ export class OutstandingManager {
                 <td>${esc(x.bill.billNumber || String(x.bill.id))}<br><small>${esc(Helpers.formatDate(billDateOf(x.bill) || x.bill.date))}</small></td>
                 <td style="text-align:right">${esc(paiseText(x.due))}</td>
                 <td style="text-align:right"><input type="number" inputmode="decimal" min="0" step="0.01" id="ppPart-${i}" data-party-part
-                    style="width:90px" oninput="window.app.outstanding.partyPaySum()" aria-label="${esc(t('ui.outstanding.party_pay_part', { bill: x.bill.billNumber || '' }))}"></td></tr>`).join('');
+                    style="width:90px" data-oninput="outstanding.partyPaySum()" aria-label="${esc(t('ui.outstanding.party_pay_part', { bill: x.bill.billNumber || '' }))}"></td></tr>`).join('');
         const isPay = billType === 'purchase';
         const html = `
             <div style="text-align:left">
                 <div style="margin-bottom:8px"><strong>${esc(name)}</strong><br>${esc(t('ui.outstanding.party_pay_summary', { count: chosen.length, total: paiseText(sumMoney(chosen, x => x.due)) }))}</div>
                 ${chosen.length < all ? `<div style="margin-bottom:8px">${esc(t('ui.outstanding.party_pay_oldest', { count: chosen.length, all }))}</div>` : ''}
                 <label style="display:block;margin-bottom:6px">${esc(t(isPay ? 'ui.outstanding.party_pay_amount_paid' : 'ui.outstanding.party_pay_amount_received'))}
-                    <input type="number" inputmode="decimal" min="0" step="1" id="ppAmount" required oninput="window.app.outstanding.partyPayFill()" style="width:100%"></label>
+                    <input type="number" inputmode="decimal" min="0" step="1" id="ppAmount" required data-oninput="outstanding.partyPayFill()" style="width:100%"></label>
                 <div style="margin:4px 0;font-weight:600">${esc(t('ui.outstanding.party_pay_how'))}</div>
                 <label style="display:block;margin:2px 0"><input type="radio" name="partyPayMethod" value="cash"> ${esc(t('ui.wholesale.complete_all_due_cash'))}</label>
                 <label style="display:block;margin:2px 0"><input type="radio" name="partyPayMethod" value="online"> ${esc(t('ui.wholesale.complete_all_due_online'))}</label>
