@@ -330,6 +330,7 @@ describe('saving a restored new bill (#93)', () => {
         expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved (P20261101-001'), 'Already saved', true);
         expect(viewBill).toHaveBeenCalledWith('id:n1', 'purchase');
         expect(PurchaseManager.getBillItems()).toHaveLength(1);
+        expect(BillDrafts.saveAutoSave.mock.calls.at(-1)[1].purchase.pendingBill).toMatchObject({ id: 'n1', knownSaved: true });
 
         // Known to be saved: never written afterwards, offline included
         jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);

@@ -615,6 +615,8 @@ const RetailSaleManager = {
             this.billingManager?.renderBillNumber?.();
             if (error?.code === 'already-saved') {
                 if (pendingBill) pendingBill.knownSaved = true;
+                // Kept in the auto-save too, so a later Restore offline knows it
+                this.billingManager?.autoSaveToCloud().catch(e => console.warn('Auto-save failed:', e));
                 await this.billingManager?.offerSavedBill?.(error.bill, 'retail', { items: saleItems });
                 return undefined;
             }
