@@ -1255,10 +1255,14 @@ const BillingManager = {
         return !!(await UIManager.showModal(text, t('ui.billing.already_saved_title'), true));
     },
 
-    /** A save refused because the restored bill is already saved (#93): offers to open it. */
+    /** A save refused because its id is a bill saved on another phone (#93): offers to open it. */
     async offerSavedBill(bill, billType, form) {
         if (!bill?.id) return;
-        if (await this.askOpenSaved(bill, billType, form)) this.openSavedBill({ bill, billType });
+        const { saved, unsaved } = restoreFigures(form, billType === 'retail' ? 'sale' : 'purchase', bill);
+        const open = await UIManager.showModal(t('msg.billing.saved_on_other_phone', {
+            number: bill.billNumber || '—', saved: Helpers.formatCurrency(saved), unsaved: Helpers.formatCurrency(unsaved)
+        }), t('ui.billing.already_saved_title'), true);
+        if (open) this.openSavedBill({ bill, billType });
     },
 
     /**

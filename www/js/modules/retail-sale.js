@@ -562,12 +562,14 @@ const RetailSaleManager = {
                 pending.restored = false;
                 pending.attempted = false;
             }
-            const createOnly = !!pending.restored;
+            const restored = !!pending.restored;
             const retry = pending.attempted;
             pending.attempted = true;
-            const writePromise = FirebaseService.saveRetailSale(sale, { retry, ...(createOnly ? { createOnly } : {}) });
-            // Printed only once it is known not to be a copy of a saved bill
-            if (createOnly) await writePromise;
+            // Online, a first save (and every save of a restored copy) only creates the bill: one
+            // already under this id was saved by another phone (the same user's auto-save) (#93)
+            const writePromise = FirebaseService.saveRetailSale(sale, { retry, createOnly: restored || !retry });
+            // A restored copy is printed only once it is known not to be a copy of a saved bill
+            if (restored) await writePromise;
             if (typeof options.onWriteIssued === 'function') {
                 options.onWriteIssued(sale);
             }

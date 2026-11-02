@@ -5,6 +5,7 @@
  * a new bill whose id is already saved is offered to open instead of being saved again.
  */
 import { FirebaseService } from '../firebase/firestore-service.js';
+import { sentBillAttempts } from '../firebase/repos/bills.js';
 import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { BillingManager } from '../modules/billing.js';
 import { PurchaseManager } from '../modules/purchase.js';
@@ -327,7 +328,7 @@ describe('saving a restored new bill (#93)', () => {
         modal.mockResolvedValue(true);
         expect(await payCashAndSave()).toBeUndefined();
         expect(docs().get('n1')).toEqual(before);
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved (P20261101-001'), 'Already saved', true);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved on another phone (P20261101-001)'), 'Already saved', true);
         expect(viewBill).toHaveBeenCalledWith('id:n1', 'purchase');
         expect(PurchaseManager.getBillItems()).toHaveLength(1);
         expect(BillDrafts.saveAutoSave.mock.calls.at(-1)[1].purchase.pendingBill).toMatchObject({ id: 'n1', knownSaved: true });
@@ -360,7 +361,7 @@ describe('saving a restored new bill (#93)', () => {
         expect(save.mock.calls[0][1]).toEqual({ retry: false, createOnly: true });
         jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
         await payCashAndSave();
-        expect(save.mock.calls[1][1]).toEqual({ retry: false });
+        expect(save.mock.calls[1][1]).toEqual({ retry: false, createOnly: true });
     });
 
     test('offline: a plain first save (queued), no longer marked restored', async () => {
@@ -368,7 +369,84 @@ describe('saving a restored new bill (#93)', () => {
         jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
         const save = jest.spyOn(FirebaseService, 'savePurchase').mockResolvedValue(undefined);
         await payCashAndSave();
-        expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'n1' }), { retry: false });
+        expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'n1' }), { retry: false, createOnly: true });
+    });
+});
+
+describe('two phones, one account: a first save only creates its bill (#93)', () => {
+    const lines = [RICE([10])];
+    const typeOnThisPhone = (id) => {
+        PurchaseManager.setBillItems(lines.map(l => ({ ...l })));
+        PurchaseManager.setPendingBill({ id });
+    };
+
+    beforeEach(() => {
+        savePurchase.mockRestore();
+        sentBillAttempts.clear();
+    });
+
+    test('the other phone saved the restored copy first: this phone\'s first save is refused, never written over', async () => {
+        fake.raw('purchases').set('n1', { ...BILL, id: 'n1', ...PAID, customerName: 'Saved on phone B' });
+        const before = { ...docs().get('n1') };
+        typeOnThisPhone('n1');
+        modal.mockImplementation(async (_text, title) => title !== 'Already saved');
+        expect(await payCashAndSave()).toBeUndefined();
+        expect(docs().get('n1')).toEqual(before);
+        expect(modal).toHaveBeenCalledWith(
+            "This bill was already saved on another phone (P20261101-001), so this copy wasn't saved. Saved bill: ₹100. This copy: ₹100. Open the saved bill?",
+            'Already saved', true);
+        expect(PurchaseManager.getPendingBill()).toMatchObject({ knownSaved: true });
+    });
+
+    test('this phone saved first: the other phone\'s restored copy is refused', async () => {
+        // Phone B restored the auto-save while the bill wasn't saved yet
+        await restore({ mode: 'purchase', purchase: { items: [RICE([10]), RICE([5])], pendingBill: { id: 'n1' } }, sale: { items: [] } });
+        // Phone A's first save (its own memory) creates the bill
+        await FirebaseService.savePurchase({ ...BILL, id: 'n1', customerName: 'Saved on phone A' }, { retry: false, createOnly: true });
+        sentBillAttempts.clear();
+        const before = { ...docs().get('n1') };
+        modal.mockImplementation(async (_text, title) => title !== 'Already saved');
+        expect(await payCashAndSave()).toBeUndefined();
+        expect(docs().get('n1')).toEqual(before);
+        expect(before.customerName).toBe('Saved on phone A');
+    });
+
+    test('a lost acknowledgement: the create-only save finds its own write and succeeds', async () => {
+        const db = fake.firebase.firestore();
+        const realRun = db.runTransaction;
+        let lose = 1;
+        db.runTransaction = async (fn) => {
+            const out = await realRun(fn);
+            if (lose-- > 0) throw Object.assign(new Error('connection lost'), { code: 'unavailable' });
+            return out;
+        };
+        try {
+            await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n1', attempted: true } }, sale: { items: [] } });
+            await expect(payCashAndSave()).rejects.toMatchObject({ code: 'unavailable' });
+            expect(docs().get('n1')).toMatchObject({ cashPayment: 100 });
+            await payCashAndSave();
+            expect(modal.mock.calls.map(c => c[1])).not.toContain('Already saved');
+            expect(docs().get('n1')).toMatchObject({ cashPayment: 100, items: [RICE([10])] });
+            expect(docs().get('n1').editCount).toBeUndefined();
+            expect(PurchaseManager.getBillItems()).toEqual([]);
+            expect([...docs().keys()]).toEqual(['n1']);
+        } finally {
+            db.runTransaction = realRun;
+        }
+    });
+
+    test('no answer to a first save\'s create-only transaction: saved on the phone like offline', async () => {
+        const db = fake.firebase.firestore();
+        const realRun = db.runTransaction;
+        db.runTransaction = () => Promise.reject(Object.assign(new Error('offline'), { code: 'unavailable' }));
+        try {
+            typeOnThisPhone('n2');
+            await payCashAndSave();
+            expect(docs().get('n2')).toMatchObject({ cashPayment: 100 });
+            expect(PurchaseManager.getBillItems()).toEqual([]);
+        } finally {
+            db.runTransaction = realRun;
+        }
     });
 });
 

@@ -89,12 +89,34 @@ export const retriedBillSaves = new Set();
 /** First set() of new bills not yet confirmed on this phone, by key: { sent, json } (#153). */
 export const unconfirmedFirstSaves = new Map();
 
-/** A bill's content as compared between save attempts (createdAt is set by the server). */
+/** A bill's content as compared between save attempts (createdAt is set by the server; undefined is never stored). */
 export const billAttemptJson = (record) => {
-    const rest = { ...record };
+    const rest = withoutUndefined({ ...record });
     delete rest.createdAt;
     return stableJson(rest);
 };
+
+function withoutUndefined(v) {
+    if (Array.isArray(v)) return v.map(withoutUndefined);
+    if (!v || typeof v !== 'object' || typeof v.toMillis === 'function') return v;
+    return Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined).map(([k, x]) => [k, withoutUndefined(x)]));
+}
+
+/**
+ * The contents of the bill saves this phone sent this session, by `${collKey}/${id}` (#93):
+ * a create-only save that finds one of them on the server finds its own write (its
+ * acknowledgement was lost), not another phone's bill.
+ */
+export const sentBillAttempts = new Map();
+
+function noteSentAttempt(key, record) {
+    if (!sentBillAttempts.has(key)) sentBillAttempts.set(key, new Set());
+    sentBillAttempts.get(key).add(billAttemptJson(record));
+}
+
+/** How long a new bill's create-only save waits for the server before it is saved like an offline one. */
+export const BILL_CREATE_WAIT_MS = 5000;
+const NO_ANSWER_CODES = new Set(['unavailable', 'deadline-exceeded']);
 
 /**
  * An offline re-save of a bill whose first attempt was not confirmed (#153): a
@@ -116,9 +138,11 @@ export async function offlineRetryOutcome(key, record) {
 /**
  * Creates a bill (or overwrites by id) and keeps memory/checkpoint in step.
  * With `retry`, the same new bill (same id) is saved again after a failed or
- * timed-out attempt: see retryBillSave. With `createOnly` (online; a bill restored
- * from an auto-save or a draft, #93) it is created in a transaction only while its id
- * is free, else `already-saved` is thrown. @private
+ * timed-out attempt: see retryBillSave. With `createOnly` (#93), online, it is created in
+ * a transaction only while its id is free (any bill already there was saved by another
+ * phone, e.g. from the same user's auto-save), else `already-saved` is thrown with it.
+ * A first save (not a retry) whose transaction gets no answer within BILL_CREATE_WAIT_MS
+ * is saved like an offline one (a set() queued on the phone). @private
  */
 export async function saveBill(collKey, record, label, { retry = false, createOnly = false } = {}) {
     if (!record.userId && AppState.currentUser) record.userId = AppState.currentUser.uid;
@@ -145,7 +169,8 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
         resend = true;
     }
     const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
-    if ((retry && !resend) || (createOnly && !offline)) {
+    noteSentAttempt(key, record);
+    if (retry && !resend) {
         try {
             const saved = await retryBillSave(collKey, record, docRef, previous, key, { createOnly });
             unconfirmedFirstSaves.delete(key);
@@ -154,6 +179,19 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
         } catch (error) {
             run.completeAndFail('save_error', { code: String(error?.code || 'unknown').slice(0, 40) });
             throw error;
+        }
+    }
+    if (createOnly && !offline && !resend) {
+        let saved;
+        try {
+            saved = await createBillOnline(collKey, record, docRef, previous, key);
+        } catch (error) {
+            run.completeAndFail('save_error', { code: String(error?.code || 'unknown').slice(0, 40) });
+            throw error;
+        }
+        if (saved) {
+            run.complete();
+            return saved;
         }
     }
     sentBillPaymentSigs.set(key, paymentSignature(record));
@@ -200,6 +238,36 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
     return record;
 }
 
+/**
+ * A new bill's first save online (#93): retryBillSave's create-only transaction, on a copy
+ * of `record` so a transaction still running after the wait can't change the bill being
+ * saved offline-style. Resolves the saved record, or null when the server didn't answer
+ * (if that transaction lands later, the queued set() is its retry: retriedBillSaves).
+ * @private
+ */
+async function createBillOnline(collKey, record, ref, previous, key) {
+    const attempt = { ...record };
+    const tx = retryBillSave(collKey, attempt, ref, previous, key, { createOnly: true });
+    let timer;
+    try {
+        await Promise.race([tx, new Promise((_, reject) => {
+            timer = setTimeout(() => reject(Object.assign(new Error('No answer from the server'), { code: 'deadline-exceeded' })), BILL_CREATE_WAIT_MS);
+        })]);
+    } catch (error) {
+        if (!NO_ANSWER_CODES.has(error?.code)) throw error;
+        tx.catch(() => {});
+        console.warn('New bill: no answer to the create-only save, saving it on the phone:', error.code);
+        return null;
+    } finally {
+        clearTimeout(timer);
+    }
+    BILL_MONEY_FIELDS.forEach(k => { if (!(k in attempt)) delete record[k]; });
+    Object.assign(record, attempt);
+    if (keptServerPaymentBills.has(attempt)) keptServerPaymentBills.add(record);
+    unconfirmedFirstSaves.delete(key);
+    return record;
+}
+
 /** TIP BillSave run (#217) for a new bill; never throws. @private */
 export function startBillSaveRun(collKey, record, retry) {
     if (!retry) track(`bill.save.${collKey}`);
@@ -220,8 +288,9 @@ export function startBillSaveRun(collKey, record, retry) {
  * than the one this device sent) → save the bill but keep the server's money
  * fields, so due / cash / payments[] stay consistent; otherwise overwrite.
  * Needs a connection (transaction). On "kept", `record` is updated in place with
- * the server's money fields. With `createOnly` (a copy restored from an auto-save or a
- * draft, #93) an existing bill is never written: throws `already-saved` with it. @private
+ * the server's money fields. With `createOnly` (#93) an existing bill is written only
+ * when it holds one of this phone's own attempts (sentBillAttempts: a lost acknowledgement);
+ * otherwise `already-saved` is thrown with it. @private
  */
 export async function retryBillSave(collKey, record, ref, previous, key, { createOnly = false } = {}) {
     const sentSig = sentBillPaymentSigs.get(key) ?? paymentSignature(record);
@@ -241,8 +310,8 @@ export async function retryBillSave(collKey, record, ref, previous, key, { creat
             tx.set(ref, withServerCreatedAt(record));
             return;
         }
-        // A restored copy (#93) never goes over the bill it was saved as
-        if (createOnly) {
+        // Create-only (#93): a bill this phone didn't write is never gone over
+        if (createOnly && !sentBillAttempts.get(key)?.has(billAttemptJson(snap.data() || {}))) {
             throw Object.assign(new Error('This bill is already saved'),
                 { code: 'already-saved', bill: { ...snap.data({ serverTimestamps: 'estimate' }), id: ref.id } });
         }
