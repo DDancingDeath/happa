@@ -643,7 +643,7 @@ export const MoneyManager = {
         const rows = (m.detail?.withdrawn || []).slice().sort((a, b) => (b.t || 0) - (a.t || 0));
         const lang = getLang();
         this.html('moneyWithdrawalList', rows.length
-            ? rows.map(w => `<div class="ins-row"><span>${esc(w.party || '—')}${w.note ? ` · ${esc(w.note)}` : ''}<br><small>${esc(formatDay(w.t, { lang }))}</small> ${SyncStatus.chipHtml(w.id)}</span><span>${money(w.amount)}</span></div>`).join('')
+            ? rows.map(w => `<div class="ins-row"><span>${esc(w.party || '—')}${w.note ? ` · ${esc(w.note)}` : ''}<br><small>${esc(formatDay(w.t, { lang }))}</small>${SyncStatus.chipHtml(w.id)}</span><span>${money(w.amount)}</span></div>`).join('')
             : `<p class="ins-empty-text">${esc(t('ui.money.no_withdrawals'))}</p>`);
         const people = [...new Set((AppState.withdrawalsHistory || []).map(w => w.person).filter(Boolean))];
         this.html('moneyWdPeople', people.map(p => `<option value="${esc(p)}">`).join(''));
