@@ -96,6 +96,62 @@ switch, pick one:
 2. rely on E2E plus the inline-handlers removal, and enforce with a quick
    rollback ready (one `firebase.json` header change, redeployed on merge).
 
+## innerHTML audit (#89, 2 Nov 2026)
+
+Every `innerHTML` / `insertAdjacentHTML` / `outerHTML` sink under `www/js` and `www/r`
+(239 of them), plus `document.write` in `Exporter.printPage` (print / PDF of Statements and the
+audit log), was traced to the markup it gets. **No unescaped user or Firestore text was
+found**; what remains is numbers and amounts (computed or `parseFloat`-ed),
+colours / classes / styles / icons, fragments built from escaped parts (`rowHtml`, `L(…)`,
+`partyName(p)`), catalogue text without parameters, internal ids (page names, view
+keys) and static templates. The conventions that keep it so:
+
+- text: `Helpers.escapeHtml()` (pages alias it `esc` / `e`), `t()` with parameters through
+  a local `L` / `tt` / `tx` / `et` (= `escapeHtml(t(key, params))`), stored two-language
+  records through `loc` (`escapeHtml(pickLang(…))`);
+- values inside a handler attribute: `Helpers.escapeJsAttr()` (JS-escaped, then
+  HTML-escaped), for both `onclick="fn('…')"` and `data-onclick="fn('…')"`;
+- a link built from data: `href="${Helpers.safeUrl(url)}"`. Escaping alone doesn't stop
+  `javascript:`; `safeUrl` keeps relative, http(s), mailto, tel, sms, whatsapp and upi links,
+  turns anything else into `#`, and escapes the result;
+- `UIManager.showModalWithHtml` / `showCustomModal` and `Exporter.printPage` take markup the
+  caller has escaped (all callers build it with the helpers above);
+- `www/js/__tests__/xss-rendering.test.js` renders the main lists with hostile names, ids
+  and "numbers" and checks nothing runs.
+
+**Regression check (CI).** `npm run check:html-escape` (`scripts/html-escape-audit.js --check`,
+in the *Lint, Jest, release checks* job) lists every value that reaches HTML without plain
+escaping (a listed variable, call or `local.property` also shows what it was traced to:
+`timeStr ← Helpers.formatTime(time)`, `d.icon ← d = describeNotification(n)`)
+and fails on a line that isn't in `tests/html-escape-baseline.txt` (lines are compared
+without line numbers, so moving code doesn't count). It looks at:
+
+- each `${…}` in a template literal with markup, and each piece of a `+` chain that builds markup;
+- each value given to a sink: `innerHTML` / `outerHTML` (also `['innerHTML']` and `+=`),
+  `insertAdjacentHTML`, `document.write`, `showModalWithHtml`, `showCustomModal` and the `html` of
+  `Exporter.printPage({ … })`.
+  It follows the value through templates without tags, local variables (`=`, `+=`, `||=`,
+  `x[i] =`, `.push`; other assignments make the variable unknown), `.map(…)` / `.filter(…)` /
+  `.join(…)` (block bodies too), `t(key)` (a missing key comes back as is) and local functions
+  to what they return (`this.m()`, or `X.m()` for a method defined on `X` in the same file);
+- when a function's parameter (plain, defaulted, destructured or rest, or a `.property` of it) reaches a sink, markup or an
+  `href` (`this.html(id, value)`,
+  ``const cell = (v) => `<td>${v}</td>` ``), each call to it in the same file, and each list handed to it
+  through `.map(cell)` / `.forEach(cell)` …, so a new caller is a new line (`… (markup via cell)`);
+- each `href="${…}"` that isn't `safeUrl(…)`, in any template or `+` chain (also a tagless
+  `` ` href="${…}"` `` piece added under a condition).
+
+Names are trusted only through the reviewed list in `scripts/html-escape-allow.json` (escaping
+and number helpers, `.length`), never by how they are spelled. `tests/ci/html-escape-audit.test.js`
+holds 15 hostile probes the check must catch, plus the forms an independent review found. It is a
+helper, not a proof: review new markup by hand too. When the check fails, escape the value; if it
+is safe (a number, an internal id), check it by hand and run
+`npm run check:html-escape -- --update-baseline` in the same PR. The baseline started at 451
+lines, all checked by hand (555 lines of the first, looser version of the script on 2 Nov, then
+the lines the wider check added: counts, colours, icons, loop indexes, internal ids passed to
+local helpers, cross-file `…Html()` helpers whose own markup is checked in their file, and
+static templates).
+
 ## Script integrity (SRI)
 
 - The Firebase SDK is self-hosted (`www/vendor/firebase/10.7.1/`, byte-identical
