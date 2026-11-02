@@ -1235,6 +1235,10 @@ body.typing .bottom-nav {
   color: #166534;
 }
 
+.ins-row .sync-chip {
+  margin-left: 6px;
+}
+
 /* ---- css/buttons.css ---- */
 .draft-btn {
   padding: 12px 18px;

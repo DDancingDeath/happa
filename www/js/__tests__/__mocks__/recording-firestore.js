@@ -23,7 +23,8 @@ export function describeArg(value) {
     if (!v || typeof v !== 'object') return v;
     if (typeof v.path === 'string' && typeof v.get === 'function') return `ref(${v.path})`;
     const syms = Object.getOwnPropertySymbols(v);
-    if (syms.length) return `${syms[0].description}(${JSON.stringify(v[syms[0]])})`;
+    // FieldValue sentinels are symbol-keyed; a record that also carries a symbol (its loaded payment) is described by its fields.
+    if (syms.length && !Object.keys(v).length) return `${syms[0].description}(${JSON.stringify(v[syms[0]])})`;
     if (Array.isArray(v)) return v.map(describeArg);
     return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, describeArg(x)]));
 }
