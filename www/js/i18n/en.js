@@ -1762,7 +1762,7 @@ export default {
     'ui.settings.voice_billing_unavailable': "Not available on this device.",
     'ui.settings.crash_reports': "Crash reports",
     'ui.settings.crash_reports_toggle': "Send crash reports from this phone",
-    'ui.settings.crash_reports_hint': "Off unless you switch it on. When the app itself crashes, Google (Firebase Crashlytics) gets the error, the phone model, the Android and app version and an install number. Never names, bills or amounts. Google keeps a report 90 days. Saved on this phone.",
+    'ui.settings.crash_reports_hint': "Off unless you switch it on. Then, if the app crashes or stops responding, Google (Firebase Crashlytics) gets the error, the phone model, the Android and app version and an install number; about once a day the app also checks Crashlytics' settings with Google, sending the same phone details and install number. Never names, bills or amounts. Google keeps a report 90 days. Saved on this phone.",
     'ui.settings.crash_reports_not_set_up': "Not set up in this version of the app yet.",
     'msg.nav.refreshed': "Updated",
     'msg.nav.page_not_loaded': "This page could not be opened. Check the internet and try again.",
