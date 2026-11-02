@@ -18,8 +18,8 @@
     "www/js/utils/dates.js",
     "www/js/utils/release-info.js",
     "www/js/utils/finance-calc.js",
-    "www/js/utils/business-metrics.js:1-490",
-    "www/js/utils/business-metrics.js:491-2000"
+    "www/js/utils/business-metrics.js:1-482",
+    "www/js/utils/business-metrics.js:483-2000"
   ],
   "ignorePatterns": ["rules-tests", "test-results", "playwright-report", "reports", "coverage"],
   "reporters": ["clear-text", "progress", "html", "json"],

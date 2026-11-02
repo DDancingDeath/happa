@@ -5,7 +5,8 @@
 # skipped): with calc/billing.js one job no longer finished in 60 minutes (#160).
 # Each job runs only its file's test suites (STRYKER_MUTATE, jest.stryker.config.js)
 # and stops after 80 minutes (stock-replay.js, the slowest, takes about 55); a big
-# file is split into line ranges ("file.js:1-490"), one job each.
+# file is split into line ranges ("file.js:1-482", one job each; split between two
+# functions: a mutant across the boundary is in neither range).
 name: Mutation testing
 
 on:
