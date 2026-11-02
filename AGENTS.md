@@ -65,9 +65,11 @@ and is wrapped in **Capacitor** for Android distribution.
    `npm run test:rules` (Firestore emulator; needs Java and
    `cd rules-tests && npm install` once). `npm run lint` (ESLint) must
    stay at 0 errors. `.github/workflows/ci.yml` runs lint, `check:sw`,
-   `check:release`, `check:html-escape`, Jest and the rules tests on every PR, and
+   `check:release`, `check:html-escape`, `check:lockfile`, Jest and the rules tests on every PR, and
    `.github/workflows/e2e.yml` runs the Playwright E2E suite on every PR that
-   changes the app (section 5, "CI").
+   changes the app (section 5, "CI"). Lockfiles must resolve from
+   `https://registry.npmjs.org` only: after `npm install` behind a private feed
+   (`.npmrc`), run `node scripts/check-lockfile.js --fix` before committing.
 6. **Money-related changes get extra care.** Bills mix top-level
    `dueAmount` with nested `payment.due`. Both can drift; both must be
    read/written — use `readPayment()` / `round2()` from
@@ -587,7 +589,7 @@ fails unless the baseline's `exceptions` records it
 
 ### PR checklist
 
-- [ ] Tests, `npm run lint` (0 errors), `npm run typecheck`, `check:review`, `check:sw`, `check:release`, `check:html-escape` pass.
+- [ ] Tests, `npm run lint` (0 errors), `npm run typecheck`, `check:review`, `check:sw`, `check:release`, `check:html-escape`, `check:lockfile` pass.
 - [ ] App change → the E2E check `Playwright E2E (emulators)` is green (section 5, "CI").
 - [ ] Shipped `www/` file changed → cache bump (section 4).
 - [ ] Added or changed a number shown on screen (or how it is calculated) →

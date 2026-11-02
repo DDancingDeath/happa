@@ -47,6 +47,8 @@ jobs:
         run: npm run check:release
       - name: innerHTML audit (no new unescaped values; #89)
         run: npm run check:html-escape
+      - name: Lockfiles resolve from registry.npmjs.org only
+        run: npm run check:lockfile
       # On a PR the architecture ratchet compares tests/architecture-baseline.json with the base branch.
       - name: Fetch the PR base branch
         if: github.event_name == 'pull_request'
