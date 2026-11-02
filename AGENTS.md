@@ -89,7 +89,8 @@ In order:
 4. `www/js/main.js` — wires every module onto `window.app.*`.
 5. `www/firebaseConfig.js` — initializes Firebase, exposes `firebase.*`
    compat globals.
-6. `www/js/firebase/firestore-service.js` and `www/js/firebase/repos/` — every
+6. `www/js/firebase/firestore-service.js` (the `FirebaseService` facade), `www/js/firebase/core/`
+   (listeners, history window, stock checkpoint) and `www/js/firebase/repos/` — every
    read/write goes through here; the data layer tells pages what changed with
    events (`www/js/utils/events.js`), never by calling them.
 
@@ -132,9 +133,10 @@ In order:
   transactions and offline patterns; pages get plain data back) so collection
   names get the env prefix. A new collection or query gets a repository
   function, never a `.collection(` in a page.
-- **Data changes → pages: events, not calls.** `firestore-service.js` emits
-  `refresh:<view>` (`REFRESH` in `utils/events.js`, after its debounce and only
-  for the open tab) and `itemFrequency:changed`; each page subscribes with
+- **Data changes → pages: events, not calls.** The data layer emits
+  `refresh:<view>` (`REFRESH` in `utils/events.js`; `firebase/core/realtime.js`, after its
+  debounce and only for the open tab) and `itemFrequency:changed` (`firebase/core/listeners.js`);
+  each page subscribes with
   `on(REFRESH.x, () => Manager.render())` at the end of its module (Money,
   Insights, Statements in main.js through their lazy loaders). Never call
   `window.app.*` from `firebase/` (`data-events.test.js`).
@@ -518,8 +520,9 @@ A number the app gets wrong today is listed in `BUGS` in
 `tests/oracle/screens.test.js` (or a `test.skip` with `// BUG: see #N`); remove
 the entry when you fix that issue. `npm run test:mutation` (Stryker, local or
 the weekly non-blocking `mutation.yml` job) shows how many deliberate small
-bugs in `money.js`, `calc/billing.js`, `stock-replay.js`, `bill-checks.js`, `dates.js` and
-`release-info.js` the tests catch. Owners and managers can run the same checks
+bugs in `money.js`, `calc/billing.js`, `stock-replay.js`, `bill-checks.js`, `dates.js`,
+`release-info.js`, `finance-calc.js` and `business-metrics.js` the tests catch (one job per file,
+each running only that file's suites: `jest.stryker.config.js`). Owners and managers can run the same checks
 on real loaded data in Diagnostics → Number checks; the daily run's failures become Anomalies flags
 (`utils/number-check-flags.js`, #160).
 
