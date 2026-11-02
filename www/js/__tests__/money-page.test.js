@@ -622,7 +622,7 @@ describe('shared period', () => {
 describe('what each role sees (Roles & access)', () => {
     const asMember = (perms) => {
         AppState.userRole = 'staff';
-        AppState.settings = { roleAccess: { staff: { finance: true, profit: true, personalExpenses: true, stockValue: true, ...perms } } };
+        AppState.settings = { roleAccess: { staff: { finance: true, profit: true, personalExpenses: true, personalExpensesChosen: true, stockValue: true, ...perms } } };
     };
     const spendText = () => document.getElementById('moneySpendTakeaway').textContent;
     const w = () => O.metrics(data, OCT);
