@@ -15,7 +15,7 @@ import { CHANGED_ELSEWHERE, NEEDS_INTERNET, writeErrorKey } from '../utils/write
 import { t } from '../i18n/index.js';
 import {
     CONFIGURABLE_ROLES, PAGE_PERMISSIONS, SECTION_PERMISSIONS, SETTINGS_PERMISSIONS, MAX_EDIT_DAYS, MAX_HISTORY_DAYS,
-    normalizeRoleAccess
+    normalizeRoleAccess, PERSONAL_CHOSEN
 } from '../utils/role-access.js';
 
 const ROLE_LABEL_KEYS = { manager: 'ui.roles.manager', staff: 'ui.roles.member' };
@@ -111,6 +111,8 @@ export class RolesAccessManager {
                 const el = document.getElementById(fieldId(role, p));
                 if (el) raw[role][p] = !!el.checked;
             }
+            // What the owner saves on this screen is a choice (#98)
+            raw[role][PERSONAL_CHOSEN] = true;
             for (const p of ['historyDays', 'editDays']) {
                 const el = document.getElementById(fieldId(role, p));
                 if (el) raw[role][p] = el.value;

@@ -19,6 +19,14 @@ export const SECTION_PERMISSIONS = ['personalExpenses', 'profit', 'stockValue', 
 export const SETTINGS_PERMISSIONS = ['shopSettings'];
 export const SWITCH_PERMISSIONS = [...PAGE_PERMISSIONS, ...SECTION_PERMISSIONS, ...SETTINGS_PERMISSIONS];
 
+/**
+ * Personal expenses are off for managers and members unless the owner turned them on (#98).
+ * Roles & access used to save every switch, so a stored `personalExpenses: true` without this
+ * mark is the old default, not a choice: it counts as off. Every save from Roles & access sets
+ * the mark (firestore.rules read the same pair).
+ */
+export const PERSONAL_CHOSEN = 'personalExpensesChosen';
+
 export const DEFAULT_EDIT_DAYS = 2;
 export const MAX_EDIT_DAYS = 30;
 export const MAX_HISTORY_DAYS = 3650;
@@ -28,12 +36,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const ROLE_ACCESS_DEFAULTS = Object.freeze({
     manager: Object.freeze({
         finance: true, reports: true, analytics: true, wholesale: true,
-        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true, contacts: true,
+        personalExpenses: false, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true, contacts: true,
         shopSettings: false, historyDays: 0, editDays: DEFAULT_EDIT_DAYS
     }),
     staff: Object.freeze({
         finance: false, reports: false, analytics: false, wholesale: false,
-        personalExpenses: true, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true, contacts: true,
+        personalExpenses: false, profit: true, stockValue: true, oldCashSessions: true, purchaseRates: true, contacts: true,
         shopSettings: false, historyDays: 0, editDays: DEFAULT_EDIT_DAYS
     })
 });
@@ -62,7 +70,8 @@ function wholeDays(value, fallback, max) {
 }
 
 /**
- * Fills missing/invalid entries with the defaults; unknown keys are dropped.
+ * Fills missing/invalid entries with the defaults; unknown keys are dropped. The result is
+ * what the app uses and what Roles & access saves, so it carries PERSONAL_CHOSEN.
  * @param {*} raw - settings/app.roleAccess (may be missing)
  * @returns {{manager: Object, staff: Object}}
  */
@@ -74,6 +83,8 @@ export function normalizeRoleAccess(raw) {
         const r = src[role] && typeof src[role] === 'object' ? src[role] : {};
         const entry = {};
         for (const p of SWITCH_PERMISSIONS) entry[p] = typeof r[p] === 'boolean' ? r[p] : def[p];
+        if (r[PERSONAL_CHOSEN] !== true) entry.personalExpenses = def.personalExpenses;
+        entry[PERSONAL_CHOSEN] = true;
         if (role !== 'manager') entry.shopSettings = false;
         entry.historyDays = wholeDays(r.historyDays, def.historyDays, MAX_HISTORY_DAYS);
         entry.editDays = wholeDays(r.editDays, def.editDays, MAX_EDIT_DAYS);

@@ -2456,6 +2456,9 @@ function defineSuite(prefix) {
     const personalDays = `${prefix}personalExpenseDays`;
     const setPersonalAccess = (roleAccess) => env.withSecurityRulesDisabled(ctx =>
         ctx.firestore().collection(`${prefix}settings`).doc('app').set({ roleAccess }));
+    /** Roles & access as saved by the owner (#98: on only with personalExpensesChosen). */
+    const chosen = (on) => ({ personalExpenses: on, personalExpensesChosen: true });
+    const personalOn = () => setPersonalAccess({ staff: chosen(true), manager: chosen(true) });
     /** The local (IST) day `offset` days from today, YYYY-MM-DD. */
     const istDay = (offset = 0) => new Date(Date.now() + 330 * MIN + offset * DAY).toISOString().slice(0, 10);
     /** An expense `date` on that day, as en-IN writes it ("5/1/2026, 10:00:00 am"). */
@@ -2464,14 +2467,27 @@ function defineSuite(prefix) {
     const pexp = (uid, extra = {}) => expense(uid, { category: 'personal', day: PDAY, date: onDay(PDAY), ...extra });
     const dayKey = (id, amount) => ({ amounts: { [id]: amount === null ? FieldValue.delete() : amount }, last: id });
 
-    t('personal expenses (#98): owner always; managers and members while their switch is on (default)', async () => {
+    t('personal expenses (#98): owner always; managers and members only once the owner turned their switch on', async () => {
         await seedBill(personal, 'p1', pexp('legacyOwner'));
         await seedBill(personalDays, PDAY, { amounts: { p1: 50 }, last: 'p1' });
+        // default off (no Roles & access saved yet)
+        await assertSucceeds(as('legacyOwner').collection(personal).get());
+        for (const uid of ['manager1', 'staff1', 'legacyStaff']) {
+            await assertFails(as(uid).collection(personal).get());
+            await assertFails(as(uid).collection(personal).doc('p1').get());
+            await assertSucceeds(as(uid).collection(personalDays).doc(PDAY).get());
+        }
+        await assertFails(as('staff1').collection(personal).doc('p0').set(pexp('staff1')));
+        // a true saved by an older app (every switch was saved, no mark) is the old default, not a choice
+        await setPersonalAccess({ staff: { personalExpenses: true }, manager: { personalExpenses: true } });
+        await assertFails(as('manager1').collection(personal).get());
+        await assertFails(as('staff1').collection(personal).get());
+        await personalOn();
         for (const uid of ['legacyOwner', 'manager1', 'staff1', 'legacyStaff']) {
             await assertSucceeds(as(uid).collection(personal).get());
             await assertSucceeds(as(uid).collection(personal).doc('p1').get());
         }
-        await setPersonalAccess({ staff: { personalExpenses: false }, manager: { personalExpenses: true } });
+        await setPersonalAccess({ staff: chosen(false), manager: chosen(true) });
         await assertFails(as('staff1').collection(personal).get());
         await assertFails(as('staff1').collection(personal).doc('p1').get());
         await assertFails(as('staff1').collection(personal).doc('p2').set(pexp('staff1')));
@@ -2480,7 +2496,7 @@ function defineSuite(prefix) {
         // the day totals stay readable, so the cash count and Today still add them up
         await assertSucceeds(as('staff1').collection(personalDays).doc(PDAY).get());
         await assertFails(as('staff1').collection(personalDays).doc(PDAY).set(dayKey('p1', 50), { merge: true }));
-        await setPersonalAccess({ manager: { personalExpenses: false } });
+        await setPersonalAccess({ manager: chosen(false), staff: chosen(true) });
         await assertFails(as('manager1').collection(personal).get());
         await assertSucceeds(as('staff1').collection(personal).get());
         for (const uid of ['pending1', 'rejected1', 'noRole', 'rentOnly', 'ghost']) {
@@ -2491,6 +2507,7 @@ function defineSuite(prefix) {
     });
 
     t('personal expenses (#98, #99): own personal rows only; voided like expenses, never edited in place', async () => {
+        await personalOn();
         const c = as('staff1').collection(personal);
         await assertSucceeds(c.doc('mine').set(pexp('staff1')));
         await assertFails(c.doc('noDay').set(expense('staff1', { category: 'personal' })));
@@ -2514,11 +2531,12 @@ function defineSuite(prefix) {
         await assertSucceeds(as('legacyOwner').collection(personal).doc('theirs').delete());
         // a member whose personal switch is off can't void one either
         await seedBill(personal, 'mine3', pexp('staff1'));
-        await setPersonalAccess({ staff: { personalExpenses: false } });
+        await setPersonalAccess({ staff: chosen(false), manager: chosen(true) });
         await assertFails(c.doc('mine3').update(voidOf('staff1')));
     });
 
     t('personal expenses (#98): a day doc key follows its expense, written in the same batch', async () => {
+        await personalOn();
         const db = as('staff1');
         const D = PDAY;
         const dayDoc = async () => {
@@ -2612,7 +2630,7 @@ function defineSuite(prefix) {
         await assertFails(c.doc('w3').set(dated('staff1', -6)));
         await assertFails(as('manager1').collection(expenses).doc('w4').set(dated('manager1', -6)));
         await assertSucceeds(as('legacyOwner').collection(expenses).doc('w5').set(dated('legacyOwner', -400)));
-        await setPersonalAccess({ staff: { editDays: 0 } });
+        await setPersonalAccess({ staff: { editDays: 0, ...chosen(true) } });
         await assertSucceeds(c.doc('w6').set(dated('staff1', -3)));
         await assertFails(c.doc('w7').set(dated('staff1', -4)));
         // personal expenses follow the same rule
@@ -2634,6 +2652,7 @@ function defineSuite(prefix) {
     });
 
     t('personal expenses (#118): the day doc flags exactly the expenses paid online', async () => {
+        await personalOn();
         const db = as('staff1');
         const D = istDay(0);
         const key = (id, amount, online) => ({ ...dayKey(id, amount), online: { [id]: online ? true : FieldValue.delete() } });
@@ -2805,7 +2824,7 @@ function defineSuite(prefix) {
     t('expenses / withdrawals / personal expenses: created with a numeric timestamp, not in the future', async () => {
         // members record withdrawals only with Money on (#64)
         await env.withSecurityRulesDisabled(ctx => ctx.firestore().collection(`${prefix}settings`).doc('app')
-            .set({ roleAccess: { staff: { finance: true } } }));
+            .set({ roleAccess: { staff: { finance: true, personalExpenses: true, personalExpensesChosen: true } } }));
         const rec = (uid, extra = {}) => ({ amount: 50, type: 'Tea', date: onDay(istDay(0)), userId: uid, timestamp: Date.now(), ...extra });
         const colls = [[`${prefix}expenses`, {}], [withdrawals, { person: 'O', purpose: 'x' }]];
         for (const [coll, extra] of colls) {
@@ -3136,13 +3155,24 @@ function defineReadMatrix(prefix) {
         list: (db) => db.collection(c(name)).get(), listAllowed: APPROVED
     }));
     const personalRow = [`${c('personalExpenses')}/d1`, { userId: 'manager1', timestamp: 1, date: '2026-10-01', category: 'personal' }];
-    add('personalExpenses (switch on, the default)', {
+    const chosen = (on) => ({ personalExpenses: on, personalExpensesChosen: true });
+    add('personalExpenses (default: owner only, #98)', {
         seed: [personalRow],
+        get: (db) => db.collection(c('personalExpenses')).doc('d1').get(), getAllowed: OWNER,
+        list: (db) => db.collection(c('personalExpenses')).get(), listAllowed: OWNER
+    });
+    add('personalExpenses (an old saved true without the chosen mark is the old default: off)', {
+        seed: [personalRow, [`${c('settings')}/app`, { roleAccess: { staff: { personalExpenses: true }, manager: { personalExpenses: true } } }]],
+        get: (db) => db.collection(c('personalExpenses')).doc('d1').get(), getAllowed: OWNER,
+        list: (db) => db.collection(c('personalExpenses')).get(), listAllowed: OWNER
+    });
+    add('personalExpenses (switched on by the owner for both)', {
+        seed: [personalRow, [`${c('settings')}/app`, { roleAccess: { staff: chosen(true), manager: chosen(true) } }]],
         get: (db) => db.collection(c('personalExpenses')).doc('d1').get(), getAllowed: APPROVED,
         list: (db) => db.collection(c('personalExpenses')).get(), listAllowed: APPROVED
     });
-    add('personalExpenses (members switched off)', {
-        seed: [personalRow, [`${c('settings')}/app`, { roleAccess: { staff: { personalExpenses: false } } }]],
+    add('personalExpenses (on for managers, members switched off)', {
+        seed: [personalRow, [`${c('settings')}/app`, { roleAccess: { staff: chosen(false), manager: chosen(true) } }]],
         get: (db) => db.collection(c('personalExpenses')).doc('d1').get(), getAllowed: MANAGERS,
         list: (db) => db.collection(c('personalExpenses')).get(), listAllowed: MANAGERS
     });

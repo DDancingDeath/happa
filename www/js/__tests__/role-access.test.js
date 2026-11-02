@@ -1,6 +1,6 @@
 import {
     normalizeRoleAccess, accessFor, canOpenTab, canOpenSection, canOpenPage, canEditBillWith, canDeleteBillWith, canVoidBillWith, historyCutoff,
-    hiddenPermissionClasses, billCreatedMs, ROLE_ACCESS_DEFAULTS
+    hiddenPermissionClasses, billCreatedMs, ROLE_ACCESS_DEFAULTS, can
 } from '../utils/role-access.js';
 import { NavigationManager } from '../ui/navigation.js';
 import { UIManager } from '../ui/ui-manager.js';
@@ -11,12 +11,34 @@ const DAY = 24 * 60 * 60 * 1000;
 
 describe('Roles & access settings (#84)', () => {
     test('missing settings keep today\'s behaviour (and the 2-day edit window of #87)', () => {
-        expect(normalizeRoleAccess(undefined)).toEqual(ROLE_ACCESS_DEFAULTS);
+        expect(normalizeRoleAccess(undefined)).toEqual({
+            manager: { ...ROLE_ACCESS_DEFAULTS.manager, personalExpensesChosen: true },
+            staff: { ...ROLE_ACCESS_DEFAULTS.staff, personalExpensesChosen: true }
+        });
         expect(canOpenTab('money', 'staff')).toBe(false);
         expect(canOpenTab('statements', 'manager')).toBe(true);
         expect(canOpenTab('history', 'staff')).toBe(true);
         expect(accessFor('staff').editDays).toBe(2);
-        expect(hiddenPermissionClasses('staff')).toEqual([]);
+        expect(hiddenPermissionClasses('staff')).toEqual(['no-perm-personalExpenses']);
+    });
+
+    test('#98: personal expenses are off for managers and members until the owner turns them on', () => {
+        expect(ROLE_ACCESS_DEFAULTS.manager.personalExpenses).toBe(false);
+        expect(ROLE_ACCESS_DEFAULTS.staff.personalExpenses).toBe(false);
+        expect(can('manager', 'personalExpenses', undefined)).toBe(false);
+        expect(can('owner', 'personalExpenses', { manager: { personalExpenses: false } })).toBe(true);
+        // an older save stored every switch: a true without the mark is the old default, not a choice
+        expect(can('manager', 'personalExpenses', { manager: { personalExpenses: true } })).toBe(false);
+        expect(can('staff', 'personalExpenses', { staff: { personalExpenses: true, profit: false } })).toBe(false);
+        expect(accessFor('staff', { staff: { personalExpenses: true, profit: false } }).profit).toBe(false);
+        // the owner's choice (saved with the mark) is kept, on or off
+        const chosen = { manager: { personalExpenses: true, personalExpensesChosen: true }, staff: { personalExpenses: false, personalExpensesChosen: true } };
+        expect(can('manager', 'personalExpenses', chosen)).toBe(true);
+        expect(can('staff', 'personalExpenses', chosen)).toBe(false);
+        // normalizing is stable: what the app keeps and saves stays the same when read again
+        const once = normalizeRoleAccess(chosen);
+        expect(normalizeRoleAccess(once)).toEqual(once);
+        expect(once.manager).toMatchObject({ personalExpenses: true, personalExpensesChosen: true });
     });
 
     test('bad values fall back to defaults, days are clamped whole numbers, unknown keys dropped', () => {
@@ -174,8 +196,8 @@ describe('See purchase rates permission (F36)', () => {
         expect(ROLE_ACCESS_DEFAULTS.staff.purchaseRates).toBe(true);
         expect(hiddenPermissionClasses('staff')).not.toContain('no-perm-purchaseRates');
         const raw = { staff: { purchaseRates: false } };
-        expect(hiddenPermissionClasses('staff', raw)).toEqual(['no-perm-purchaseRates']);
-        expect(hiddenPermissionClasses('manager', raw)).toEqual([]);
+        expect(hiddenPermissionClasses('staff', raw)).toContain('no-perm-purchaseRates');
+        expect(hiddenPermissionClasses('manager', raw)).not.toContain('no-perm-purchaseRates');
         expect(hiddenPermissionClasses('owner', { manager: { purchaseRates: false } })).toEqual([]);
     });
 });

@@ -1,0 +1,88 @@
+# Multi-year data-load benchmark (#59): a synthetic 3-year shop in the Firebase
+# emulators; the first Today render and the whole history window, with a 4x slower
+# CPU (tests/bench, playwright.bench.config.js). Nightly; each result is added to
+# bench-trend.csv on the `bench-trend` branch (a data branch: no workflow runs on it,
+# nothing deploys). Over a budget (tools/bench/budgets.json) it warns; it never fails
+# for a slow night. A run that can't measure (the app broke) fails as usual.
+name: Multi-year load benchmark
+
+on:
+  schedule:
+    - cron: '0 22 * * *' # 03:30 IST nightly, after the E2E run
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bench
+  cancel-in-progress: false
+
+jobs:
+  bench:
+    name: Multi-year load benchmark
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Tool versions (cache keys)
+        id: v
+        run: |
+          echo "playwright=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+          echo "firebase=$(npm view firebase-tools version)" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browser
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.v.outputs.playwright }}-chromium-shell
+      - name: Install Playwright browser
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps --only-shell chromium
+      - name: Install Playwright system packages
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - name: Cache firebase-tools and the emulator jars
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm/_npx
+            ~/.cache/firebase/emulators
+          key: firebase-tools-${{ runner.os }}-${{ steps.v.outputs.firebase }}
+      - name: Run the benchmark
+        env:
+          FIREBASE_TOOLS_VERSION: ${{ steps.v.outputs.firebase }}
+        run: npm run bench
+      - name: Trend file (bench-trend branch)
+        run: |
+          if git fetch --depth=1 origin bench-trend; then
+            git worktree add ../trend FETCH_HEAD
+          else
+            git worktree add --detach ../trend
+            git -C ../trend checkout --orphan bench-trend
+            git -C ../trend rm -rfq .
+          fi
+      - name: Record the result (warns above budget)
+        run: node tools/bench/record.js --result test-results/bench-result.json --trend ../trend/bench-trend.csv --budgets tools/bench/budgets.json --sha "$GITHUB_SHA"
+      - name: Push the trend
+        run: |
+          cd ../trend
+          git add bench-trend.csv
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "bench: $(date -u +%F) ${GITHUB_SHA::7}"
+          git push origin HEAD:refs/heads/bench-trend
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bench-result
+          path: test-results/bench-result.json
+          retention-days: 30

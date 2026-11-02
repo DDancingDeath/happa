@@ -13,12 +13,20 @@ const settle = async (fake, rounds = 10) => {
     for (let i = 0; i < rounds; i++) await fake.settle();
 };
 
+/** Roles & access with Personal expenses turned on by the owner for both roles (#98: default off). */
+const PERSONAL_ON = {
+    manager: { personalExpenses: true, personalExpensesChosen: true },
+    staff: { personalExpenses: true, personalExpensesChosen: true }
+};
+
 describe('personal expense helpers', () => {
-    test('who reads them: owner always; others by Roles & access (default on)', () => {
+    test('who reads them: owner always; others only once the owner turned them on in Roles & access', () => {
         expect(canReadPersonalExpenses('owner', { owner: { personalExpenses: false } })).toBe(true);
-        expect(canReadPersonalExpenses('staff', undefined)).toBe(true);
-        expect(canReadPersonalExpenses('staff', { staff: { personalExpenses: false } })).toBe(false);
-        expect(canReadPersonalExpenses('manager', { staff: { personalExpenses: false } })).toBe(true);
+        expect(canReadPersonalExpenses('staff', undefined)).toBe(false);
+        expect(canReadPersonalExpenses('manager', undefined)).toBe(false);
+        expect(canReadPersonalExpenses('staff', PERSONAL_ON)).toBe(true);
+        expect(canReadPersonalExpenses('staff', { ...PERSONAL_ON, staff: { personalExpenses: false, personalExpensesChosen: true } })).toBe(false);
+        expect(canReadPersonalExpenses('manager', { ...PERSONAL_ON, staff: { personalExpenses: false } })).toBe(true);
     });
 
     test('day docs: one key per expense; totals are the sum; fixes set or remove keys', () => {
@@ -98,7 +106,7 @@ describe('FirebaseService personal expenses (#98)', () => {
     };
 
     test('saved in personalExpenses with its key in the day doc; edits and deletes follow; business stays in expenses', async () => {
-        await open('staff');
+        await open('staff', PERSONAL_ON);
         const { record, committed } = FirebaseService.startSaveExpense({ type: 'Food', amount: 80, category: 'personal', date });
         await committed;
         await FirebaseService.saveExpense({ type: 'Tea', amount: 20, category: 'business', date });
@@ -177,7 +185,7 @@ describe('FirebaseService personal expenses (#98)', () => {
     test('a personal listener failing later drops its rows: never counted twice with the day total', async () => {
         fake.seed('personalExpenses', [{ id: 'p1', amount: 80, category: 'personal', date, day: today, timestamp: NOW }]);
         fake.seed('expenses', [{ id: 'b1', amount: 20, category: 'business', date, timestamp: NOW }]);
-        await open('staff');
+        await open('staff', PERSONAL_ON);
         expect(FirebaseService.personalRowsLoaded()).toBe(true);
         expect(AppState.expensesHistory.map(e => e.id).sort()).toEqual(['b1', 'p1']);
         fake.failListeners('personalExpenses', Object.assign(new Error('denied'), { code: 'permission-denied' }));
@@ -197,7 +205,7 @@ describe('FirebaseService personal expenses (#98)', () => {
 
         fake.stats.listenLog.length = 0;
         fake.stats.queryLog.length = 0;
-        await open('staff', { staff: { personalExpenses: false } });
+        await open('staff');
         expect(AppState.expensesHistory.map(e => e.id)).toEqual(['b1']);
         expect(FirebaseService.personalRowsLoaded()).toBe(false);
         expect([...fake.stats.listenLog, ...fake.stats.queryLog.map(q => q.coll)]).not.toContain('personalExpenses');
@@ -255,7 +263,7 @@ describe('rebuild of the day docs from the rows (#98)', () => {
         fake.seed('personalExpenseDays', [{ id: today, amounts: { p1: 5, gone: 99 } }]);
         AppState.currentUser = { uid: 'm1' };
         AppState.userRole = 'manager';
-        AppState.settings = {};
+        AppState.settings = { roleAccess: PERSONAL_ON };
         await FirebaseService.setupRealtimeListeners();
         await settle(fake);
         expect(await FirebaseService.rebuildPersonalExpenseDays([today])).toBe(3);
