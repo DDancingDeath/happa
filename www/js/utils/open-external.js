@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Open a link outside the app (WhatsApp, browser, APK download).
  * In the Capacitor APK '_system' hands it to Android; on the web it opens a
@@ -7,7 +8,7 @@
 
 /**
  * @param {string} url
- * @param {Window} [win=window]
+ * @param {Window & {Capacitor?: any}} [win=window]
  * @returns {'system'|'tab'|'same-tab'} how the link was opened
  */
 export function openExternal(url, win = window) {

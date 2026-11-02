@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Local-time date helpers.
  * The business runs in IST, so "today" and day boundaries must use the
@@ -11,7 +12,7 @@ import { getLang, t } from '../i18n/index.js';
 /** Locale for dates on screen: Hindi month and day names in Hindi mode (#143). */
 export const displayLocale = () => (getLang() === 'hi' ? 'hi-IN' : 'en-IN');
 
-const pad2 = (n) => String(n).padStart(2, '0');
+const pad2 = (/** @type {number|string} */ n) => String(n).padStart(2, '0');
 
 const ISO_DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 // DD/MM/YYYY with optional ", h:mm[:ss] [am|pm]" (en-IN toLocaleString output)
@@ -171,7 +172,7 @@ export function monthStart(value = new Date(), months = 0) {
 export function addMonths(value, months) {
     const d = parseAnyBillDate(value);
     if (!d) return null;
-    const first = monthStart(d, months);
+    const first = /** @type {Date} */ (monthStart(d, months));
     const day = Math.min(d.getDate(), daysInMonth(first));
     return new Date(first.getFullYear(), first.getMonth(), day, d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
 }
@@ -185,7 +186,7 @@ export function addMonths(value, months) {
 export function monthRange(value = new Date(), months = 0) {
     const from = monthStart(value, months);
     if (!from) return null;
-    return { from: from.getTime(), to: monthStart(from, 1).getTime() };
+    return { from: from.getTime(), to: /** @type {Date} */ (monthStart(from, 1)).getTime() };
 }
 
 /**
@@ -293,7 +294,7 @@ const MONTHS = {
     hi: ['जन॰', 'फ़र॰', 'मार्च', 'अप्रैल', 'मई', 'जून', 'जुल॰', 'अग॰', 'सित॰', 'अक्तू॰', 'नव॰', 'दिस॰']
 };
 const DAY_HALF = { en: ['am', 'pm'], hi: ['पूर्वाह्न', 'अपराह्न'] };
-const langOf = (lang) => (lang === 'hi' ? 'hi' : 'en');
+const langOf = (/** @type {?string|undefined} */ lang) => (lang === 'hi' ? 'hi' : 'en');
 
 /**
  * The app's one date format: "25 Oct 2026" (Hindi month names in Hindi).
