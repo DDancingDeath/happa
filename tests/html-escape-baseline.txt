@@ -31,7 +31,9 @@ www/js/modules/cash-management.js: diffTextColor
 www/js/modules/cash-management.js: diffTextColor
 www/js/modules/day.js: item.count
 www/js/modules/day.js: kind
+www/js/modules/day.js: kind (markup via block)
 www/js/modules/day.js: open
+www/js/modules/day.js: open (markup via block)
 www/js/modules/day.js: parts.join('')
 www/js/modules/day.js: t.bgColor
 www/js/modules/day.js: t.color
@@ -83,12 +85,13 @@ www/js/modules/items.js: rateIndex
 www/js/modules/miscellaneous.js: SyncStatus.chipHtml(payment.id)
 www/js/modules/miscellaneous.js: category
 www/js/modules/miscellaneous.js: category
+www/js/modules/miscellaneous.js: category (markup via this.renderSectionTools)
 www/js/modules/miscellaneous.js: i
 www/js/modules/miscellaneous.js: voidedBannerHtml(expense)
 www/js/modules/money.js: SyncStatus.chipHtml(w.id)
 www/js/modules/money.js: c.dir
 www/js/modules/money.js: card
-www/js/modules/money.js: compareTableHtml(this.compareRows(m, b), { a, b: labels.b }) (sink)
+www/js/modules/money.js: compareTableHtml(this.compareRows(m, b), { a, b: labels.b }) (sink via this.html)
 www/js/modules/money.js: height
 www/js/modules/money.js: height
 www/js/modules/money.js: link
@@ -111,6 +114,13 @@ www/js/modules/purchase.js: index
 www/js/modules/purchase.js: index
 www/js/modules/rate-trends.js: YEAR_COLORS[i]
 www/js/modules/rate-trends.js: d[k].bills
+www/js/modules/rate-trends.js: kgText(d[k].kg)
+www/js/modules/rate-trends.js: kgText(r.kg)
+www/js/modules/rate-trends.js: kgText(r.kg)
+www/js/modules/rate-trends.js: kgText(r?.kgBought)
+www/js/modules/rate-trends.js: kgText(r?.kgSold)
+www/js/modules/rate-trends.js: kgText(s.kg)
+www/js/modules/rate-trends.js: kgText(s.kg)
 www/js/modules/rate-trends.js: n
 www/js/modules/rate-trends.js: o.confidence
 www/js/modules/rate-trends.js: o.direction
@@ -118,6 +128,7 @@ www/js/modules/rate-trends.js: r ? r.bills : 0
 www/js/modules/rate-trends.js: r.bills
 www/js/modules/rate-trends.js: s.bills
 www/js/modules/rate-trends.js: v
+www/js/modules/rate-trends.js: v.toLocaleString('en-IN')
 www/js/modules/rate-trends.js: y
 www/js/modules/retail-sale.js: i
 www/js/modules/retail-sale.js: index
@@ -126,13 +137,27 @@ www/js/modules/roles-access.js: DAY_LIMITS[p]
 www/js/modules/roles-access.js: fieldId(r, p)
 www/js/modules/roles-access.js: fieldId(r, p)
 www/js/modules/roles-access.js: fieldId(r, p)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: p (markup via fieldId)
+www/js/modules/roles-access.js: r (markup via fieldId)
+www/js/modules/roles-access.js: r (markup via fieldId)
+www/js/modules/roles-access.js: r (markup via fieldId)
+www/js/modules/roles-access.js: role (markup via fieldId)
+www/js/modules/roles-access.js: role (markup via fieldId)
 www/js/modules/roles-access.js: v
 www/js/modules/settings.js: index
 www/js/modules/settings.js: key
 www/js/modules/settings.js: key
 www/js/modules/settings.js: mm
+www/js/modules/statements.js: (parseLocalDate(this.csvFrom) || new Date()).getTime() (markup via this.notLoaded)
+www/js/modules/statements.js: (parseLocalDate(this.csvFrom) || new Date()).getTime() (markup via this.notLoaded)
 www/js/modules/statements.js: Number.isFinite(from) ? from : 'null'
+www/js/modules/statements.js: b.from (markup via this.notLoaded)
 www/js/modules/statements.js: c !== undefined ? ` (${c})` : ''
+www/js/modules/statements.js: d.getTime() (markup via this.notLoaded)
 www/js/modules/statements.js: formatAmount(r.avgCost, { decimals: 2 })
 www/js/modules/statements.js: id ? ` data-metric-export="${id}"` : ''
 www/js/modules/statements.js: k
@@ -168,6 +193,7 @@ www/js/rentals/rent-unit.js: attrs
 www/js/rentals/rent-unit.js: c.tenantSectionHtml({ rent: shown.rent, meterRate: shown.meterRate, fixedTenant: tenant && { id: '', ...tenant }, ...(from ? keptTerms(from,
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id
+www/js/rentals/rent-unit.js: id (markup via unitPickHtml)
 www/js/rentals/rentals.js: TemplateLoader.loadTemplate('rentals') (sink)
 www/js/rentals/rentals.js: args
 www/js/rentals/rentals.js: attrs
@@ -182,6 +208,7 @@ www/js/rentals/rentals.js: k
 www/js/rentals/rentals.js: k
 www/js/rentals/rentals.js: m
 www/js/rentals/rentals.js: m
+www/js/rentals/rentals.js: s.status (markup via badge)
 www/js/rentals/rentals.js: u ? u.unitPickHtml(unitCtx(), 'rentEditUnit', d, { current: lease?.unitId }) : ''
 www/js/services/exporter.js: html
 www/js/ui/bill-highlight.js: ICON.block
@@ -192,6 +219,7 @@ www/js/ui/bill-row.js: opening ? '' : SyncStatus.chipHtml(bill?.id)
 www/js/ui/bill-row.js: st.s
 www/js/ui/bill-status.js: REASON_MAX
 www/js/ui/bill-status.js: onclick
+www/js/ui/finance-breakdown-sheet.js: g (markup via opt)
 www/js/ui/finance-breakdown-sheet.js: value
 www/js/ui/manual-reminders.js: REMINDER_PARTY_MAX
 www/js/ui/manual-reminders.js: REMINDER_TITLE_MAX
@@ -206,6 +234,8 @@ www/js/ui/period-compare.js: page
 www/js/ui/period-compare.js: page
 www/js/ui/period-compare.js: page
 www/js/ui/period-compare.js: page
+www/js/ui/period-compare.js: page (markup via datesHtml)
+www/js/ui/period-compare.js: page (markup via datesHtml)
 www/js/ui/period-compare.js: r.c?.dir || 'none'
 www/js/ui/period-compare.js: r.id
 www/js/ui/period-compare.js: today

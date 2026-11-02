@@ -64,8 +64,34 @@ describe('html-escape-audit', () => {
             "const page = { html(id, v) { el.innerHTML = v; }, render() { this.html('k', user.name); } };"
         ].join('\n');
         expect(audit(src).sort()).toEqual([
-            'probe.js:1: html (sink)', 'probe.js:2: party.name (sink)', 'probe.js:4: user.name (sink)', 'probe.js:4: v (sink)'
+            'probe.js:1: html (sink)', 'probe.js:2: party.name (sink via set)', 'probe.js:4: user.name (sink via this.html)', 'probe.js:4: v (sink)'
         ]);
+    });
+
+    test('a new caller of a function that builds markup from its parameter is a new line', () => {
+        const before = "const block = (title) => `<h4>${title}</h4>`; el.innerHTML = block(L('ui.x'));";
+        const after = `${before} el.innerHTML += block(party.name);`;
+        expect(audit(before)).toEqual(['probe.js:1: title']);
+        expect(compare(audit(after), audit(before).map(h => h.replace(/:\d+:/, ':'))).added)
+            .toEqual(['probe.js:1: party.name (markup via block)']);
+    });
+
+    test.each([
+        ['a method of another object with the same name', "const store = { get(k) { return 0; } }; el.innerHTML = `<b>${params.get('n')}</b>`;"],
+        ['||=', "let h = ''; h ||= party.name; el.innerHTML = h;"],
+        ['a destructuring assignment', "let h = ''; ({ h } = party); el.innerHTML = h;"],
+        ['an array index write', "const parts = []; parts[0] = party.name; el.innerHTML = parts.join('');"],
+        ['for…of into an existing variable', "let h = ''; for (h of names) {} el.innerHTML = h;"],
+        ['toLocaleString on text', 'el.innerHTML = `<b>${party.name.toLocaleString()}</b>`;'],
+        ['t() with a key from data', 'el.innerHTML = `<b>${t(party.name)}</b>`;'],
+        ['a variable named length', 'const length = party.name; el.innerHTML = `<b>${length}</b>`;'],
+        ['el[`innerHTML`]', 'el[`innerHTML`] = party.name;']
+    ])('lists %s', (_, src) => {
+        expect(audit(src).length).toBeGreaterThan(0);
+    });
+
+    test('this.m() and X.m() follow the method defined on that object', () => {
+        expect(audit("const page = { n() { return 1; }, r() { el.innerHTML = `<b>${this.n()}${page.n()}</b>`; } };")).toEqual([]);
     });
 
     test('the baseline check ignores moved lines and fails on new or extra ones', () => {

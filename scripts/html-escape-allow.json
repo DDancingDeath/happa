@@ -1,5 +1,5 @@
 {
-  "_comment": "Reviewed names the innerHTML audit (scripts/html-escape-audit.js, #89) trusts. Add a name only after checking every place it is used holds what the reason says.",
+  "_comment": "Reviewed names the innerHTML audit (scripts/html-escape-audit.js, #89) trusts: calls = functions / methods whose result is safe in HTML, names = plain variables, properties = .x on anything. Add one only after checking every place it is used holds what the reason says.",
   "calls": {
     "esc": "alias of Helpers.escapeHtml",
     "e": "alias of Helpers.escapeHtml",
@@ -14,7 +14,7 @@
     "loc": "escapeHtml(pickLang(...))",
     "js": "alias of Helpers.escapeJsAttr",
     "attr": "alias of Helpers.escapeHtml for attributes",
-    "encodeURIComponent": "percent-encodes < > \" ' and &",
+    "encodeURIComponent": "percent-encodes < > \" & (not ' : never inside a quoted JS string in a handler attribute)",
     "formatCurrency": "a number formatted as rupees",
     "formatINR": "a number formatted as rupees",
     "formatRupees": "a number formatted as rupees",
@@ -24,7 +24,6 @@
     "money": "number formatter",
     "rupees": "number formatter",
     "toFixed": "number to digits",
-    "toLocaleString": "number to digits",
     "Number": "a number",
     "round": "Math.round",
     "floor": "Math.floor",
@@ -33,7 +32,8 @@
     "min": "Math.min",
     "max": "Math.max"
   },
-  "names": {
+  "names": {},
+  "properties": {
     "length": "array / string length, a number"
   }
 }

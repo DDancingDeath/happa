@@ -57,6 +57,7 @@ function patternIds(p) {
 function auditSource(src, rel, allow = ALLOW) {
     const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'module', locations: true, allowHashBang: true });
     const trustedNames = new Set(Object.keys(allow.names || {}));
+    const trustedProps = new Set(Object.keys(allow.properties || {}));
     const trustedCalls = new Set(Object.keys(allow.calls || {}));
     const text = (n) => src.slice(n.start, n.end).replace(/\s+/g, ' ').slice(0, 140);
     const calleeName = (c) => (c.type === 'Identifier' ? c.name
@@ -101,7 +102,7 @@ function auditSource(src, rel, allow = ALLOW) {
     };
 
     const refScope = new Map();
-    /** scope -> name -> assigned values (also `+=`, `.push(…)` and function declarations) */
+    /** scope -> name -> assigned values (also `+=`, `||=`, `x[i] =`, `.push(…)` and function declarations) */
     const assigns = new Map();
     const assign = (scope, name, value) => {
         if (!assigns.has(scope)) assigns.set(scope, new Map());
@@ -109,28 +110,51 @@ function auditSource(src, rel, allow = ALLOW) {
         if (!m.has(name)) m.set(name, []);
         m.get(name).push(value);
     };
-    /** method / property name -> function values defined in this file */
+    /** Assigned in a way not followed here (destructuring, for…of into an existing name): value unknown. */
+    const globalOpaque = new Set();
+    const markOpaque = (scope, name) => {
+        if (scope === GLOBAL) globalOpaque.add(name); else decls.get(scope).get(name).opaque = true;
+    };
+    /** method / property name -> [{ fn, owner }]; owner = the variable / class it was defined on, if known */
     const methods = new Map();
-    const addMethod = (key, fn) => {
+    const ownerOf = (ancestors) => {
+        const p = ancestors[ancestors.length - 2];
+        if (!p) return null;
+        if (p.type === 'VariableDeclarator' && p.id.type === 'Identifier') return p.id.name;
+        if (p.type === 'AssignmentExpression') return text(p.left);
+        return null;
+    };
+    const addMethod = (key, fn, owner) => {
         if (!key || key.type !== 'Identifier' || !FN.has(fn.type)) return;
         if (!methods.has(key.name)) methods.set(key.name, []);
-        methods.get(key.name).push(fn);
+        methods.get(key.name).push({ fn, owner });
     };
+    const ASSIGN_VALUE = new Set(['=', '+=', '||=', '&&=', '??=']);
     walk.fullAncestor(ast, (n, ancestors) => {
         if (n.type === 'Identifier') refScope.set(n, resolve(n.name, ancestors));
         else if (n.type === 'VariableDeclarator' && n.id.type === 'Identifier' && n.init) {
             assign(resolve(n.id.name, ancestors), n.id.name, n.init);
         } else if (n.type === 'FunctionDeclaration' && n.id) {
             assign(resolve(n.id.name, ancestors.slice(0, -1)), n.id.name, n);
-        } else if (n.type === 'AssignmentExpression' && n.left.type === 'Identifier' && (n.operator === '=' || n.operator === '+=')) {
-            assign(resolve(n.left.name, ancestors), n.left.name, n.right);
+        } else if (n.type === 'AssignmentExpression') {
+            const l = n.left;
+            if (l.type === 'Identifier') {
+                if (ASSIGN_VALUE.has(n.operator)) assign(resolve(l.name, ancestors), l.name, n.right);
+            } else if (l.type === 'MemberExpression' && l.computed && l.object.type === 'Identifier') {
+                assign(resolve(l.object.name, ancestors), l.object.name, n.right);
+            } else if (l.type !== 'MemberExpression') {
+                patternIds(l).forEach(id => markOpaque(resolve(id.name, ancestors), id.name));
+            }
+        } else if ((n.type === 'ForOfStatement' || n.type === 'ForInStatement') && n.left.type !== 'VariableDeclaration') {
+            patternIds(n.left).forEach(id => markOpaque(resolve(id.name, ancestors), id.name));
         } else if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && !n.callee.computed
             && /^(push|unshift)$/.test(n.callee.property.name) && n.callee.object.type === 'Identifier') {
             n.arguments.forEach(a => assign(resolve(n.callee.object.name, ancestors), n.callee.object.name, a));
         } else if (n.type === 'MethodDefinition' && !n.computed) {
-            addMethod(n.key, n.value);
+            const cls = ancestors[ancestors.length - 3];
+            addMethod(n.key, n.value, cls && cls.id ? cls.id.name : cls ? ownerOf(ancestors.slice(0, -2)) : null);
         } else if (n.type === 'Property' && !n.computed) {
-            addMethod(n.key, n.value);
+            addMethod(n.key, n.value, ownerOf(ancestors.slice(0, -1)));
         }
     });
 
@@ -175,13 +199,19 @@ function auditSource(src, rel, allow = ALLOW) {
             const fns = vals.filter(v => FN.has(v.type));
             return fns.length ? fns : null;
         }
-        if (n.type === 'MemberExpression' && !n.computed) return methods.get(n.property.name) || null;
+        if (n.type === 'MemberExpression' && !n.computed) {
+            // this.m(): a method of this file's objects; X.m(): only one defined on X here
+            const owner = n.object.type === 'ThisExpression' ? null : text(n.object);
+            const fns = (methods.get(n.property.name) || []).filter(m => owner === null || m.owner === owner).map(m => m.fn);
+            return fns.length ? fns : null;
+        }
         return null;
     };
     const callLeaves = (n) => {
         const name = calleeName(n.callee);
         const member = n.callee.type === 'MemberExpression';
-        if (name === 't' && !member) return n.arguments.length < 2 ? [] : [n];
+        // t() returns the key itself when it is missing, and doesn't escape its parameters
+        if (name === 't' && !member) return n.arguments.length < 2 ? leaves(n.arguments[0]) : [n];
         if (trustedCalls.has(name)) return [];
         if (member && name === 'join') return leaves(n.callee.object);
         if (member && SAME_ITEMS.has(name)) return leaves(n.callee.object);
@@ -216,10 +246,10 @@ function auditSource(src, rel, allow = ALLOW) {
                 const scope = refScope.get(n) || GLOBAL;
                 const d = scope !== GLOBAL && decls.get(scope).get(n.name);
                 const vals = ((assigns.get(scope) || new Map()).get(n.name) || []).filter(v => !FN.has(v.type));
-                if ((d && d.opaque) || !vals.length) return [n];
+                if ((d && d.opaque) || (scope === GLOBAL && globalOpaque.has(n.name)) || !vals.length) return [n];
                 return vals.flatMap(leaves);
             }
-            case 'MemberExpression': return !n.computed && trustedNames.has(n.property.name) ? [] : [n];
+            case 'MemberExpression': return !n.computed && trustedProps.has(n.property.name) ? [] : [n];
             default: return [n];
         }
     };
@@ -230,38 +260,42 @@ function auditSource(src, rel, allow = ALLOW) {
     const isSafeUrl = (x) => x.type === 'CallExpression' && calleeName(x.callee) === SAFE_URL;
     const tail = (x) => (x.type === 'Literal' && typeof x.value === 'string' ? x.value
         : x.type === 'TemplateLiteral' ? x.quasis[x.quasis.length - 1].value.raw : '');
-    /** [function, argument position] whose parameter reaches a sink: calls to it in this file are sinks too */
+    /**
+     * [function, argument position, kind]: a parameter of a local function reaches HTML (a sink, or
+     * markup the function builds), so each call to it in this file is checked like the parameter.
+     */
     const wrappers = [];
-    const sinkValue = (v) => {
-        if (!v) return;
-        leaves(v).forEach(l => {
-            hit(l, 'sink');
+    const unsafe = (v, kind) => {
+        const ls = leaves(v);
+        ls.forEach(l => {
             const fn = l.type === 'Identifier' && refScope.get(l);
             const i = fn && paramIndex.has(fn) ? paramIndex.get(fn).get(l.name) : undefined;
-            if (i !== undefined && !wrappers.some(([f, j]) => f === fn && j === i)) wrappers.push([fn, i]);
+            if (i !== undefined && !wrappers.some(([f, j]) => f === fn && j === i)) wrappers.push([fn, i, kind]);
         });
+        return ls;
     };
+    const sinkValue = (v) => { if (v) unsafe(v, 'sink').forEach(l => hit(l, 'sink')); };
     const calls = [];
+    const sinkProp = (m) => (!m.computed ? m.property.name
+        : m.property.type === 'Literal' ? m.property.value
+            : m.property.type === 'TemplateLiteral' && !m.property.expressions.length ? m.property.quasis[0].value.cooked : null);
 
     walk.fullAncestor(ast, (n, ancestors) => {
         const parent = ancestors[ancestors.length - 2];
         if (markupTemplate(n)) {
             n.expressions.forEach((x, i) => {
-                if (URL_ATTR.test(n.quasis[i].value.raw)) { if (!isSafeUrl(x)) hit(x, 'url'); } else if (leaves(x).length) hit(x, '');
+                if (URL_ATTR.test(n.quasis[i].value.raw)) { if (!isSafeUrl(x)) hit(x, 'url'); } else if (unsafe(x, 'markup').length) hit(x, '');
             });
         }
         if (n.type === 'BinaryExpression' && n.operator === '+' && !(parent && parent.type === 'BinaryExpression' && parent.operator === '+')) {
             const parts = flatChain(n);
             if (markupChain(parts)) {
                 parts.forEach((x, i) => {
-                    if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) { if (!isSafeUrl(x)) hit(x, 'url (concatenated)'); } else if (leaves(x).length) hit(x, 'concatenated');
+                    if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) { if (!isSafeUrl(x)) hit(x, 'url (concatenated)'); } else if (unsafe(x, 'markup').length) hit(x, 'concatenated');
                 });
             }
         }
-        if (n.type === 'AssignmentExpression' && n.left.type === 'MemberExpression') {
-            const prop = n.left.computed ? (n.left.property.type === 'Literal' ? n.left.property.value : null) : n.left.property.name;
-            if (SINK_PROPS.has(prop)) sinkValue(n.right);
-        }
+        if (n.type === 'AssignmentExpression' && n.left.type === 'MemberExpression' && SINK_PROPS.has(sinkProp(n.left))) sinkValue(n.right);
         if (n.type === 'CallExpression') {
             calls.push(n);
             const name = calleeName(n.callee);
@@ -271,8 +305,12 @@ function auditSource(src, rel, allow = ALLOW) {
         }
     });
     for (let w = 0; w < wrappers.length; w++) {
-        const [fn, i] = wrappers[w];
-        calls.forEach(c => { if ((functionsOf(c.callee) || []).includes(fn)) sinkValue(c.arguments[i]); });
+        const [fn, i, kind] = wrappers[w];
+        calls.forEach(c => {
+            if (c.arguments[i] && (functionsOf(c.callee) || []).includes(fn)) {
+                unsafe(c.arguments[i], kind).forEach(l => hit(l, `${kind} via ${text(c.callee)}`));
+            }
+        });
     }
     return [...hits];
 }
