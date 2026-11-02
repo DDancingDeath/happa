@@ -44,12 +44,11 @@ const isEditing = (which) => {
 /** Last HTML written into each bar: rewriting the same bar would clear dates typed but not yet shown. */
 const lastBar = new Map();
 
-/** This phone's copy of the signed-in person's saved ranges. */
-const store = () => {
-    let ls = null;
-    try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (_) { ls = null; }
-    return userRangesStore(ls, AppState.currentUser?.uid);
+const phoneStore = () => {
+    try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch (_) { return null; }
 };
+/** This phone's copy of the signed-in person's saved ranges. */
+const store = () => userRangesStore(phoneStore(), AppState.currentUser?.uid);
 
 /**
  * The person's list goes to their profile, so their other phones get it at the next sign-in / start.
@@ -62,12 +61,14 @@ const store = () => {
 function pushSaved(apply, local) {
     const uid = AppState.currentUser?.uid;
     if (!uid) return Promise.resolve();
+    // This person's copy, whoever is signed in when the server answers
+    const mine = userRangesStore(phoneStore(), uid);
     const warn = (e) => console.warn('Saved ranges not synced:', e?.code || e);
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-        return saveOwnSavedRanges(uid, encodeSavedRanges(local)).catch(warn);
-    }
+    const queue = () => saveOwnSavedRanges(uid, encodeSavedRanges(local)).catch(warn);
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return queue();
     return updateOwnSavedRanges(uid, (text) => encodeSavedRanges(apply(typeof text === 'string' ? decodeSavedRanges(text) : local)))
-        .then(text => { writeSavedRanges(store(), decodeSavedRanges(text)); }, warn);
+        // No server (weak connection): this phone's list waits in the offline queue instead
+        .then(text => { writeSavedRanges(mine, decodeSavedRanges(text)); }, queue);
 }
 
 /**

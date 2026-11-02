@@ -139,6 +139,24 @@ describe('saved ranges follow the person (#140)', () => {
         expect(p.update).not.toHaveBeenCalled();
     });
 
+    test('no server for the transaction (weak connection): this phone\'s list is queued; a sign-out meanwhile writes nobody else\'s copy', async () => {
+        const p = fakeProfile('last-30|');
+        global.firebase.firestore = () => ({ collection: () => ({ doc: p.doc }), runTransaction: () => Promise.reject(Object.assign(new Error('x'), { code: 'unavailable' })) });
+        AppState.currentUser = { uid: 'u9' };
+        setInsightsContext({ preset: 'this-fy', compare: null });
+        await saveCurrentRange().synced;
+        expect(p.update).toHaveBeenLastCalledWith({ savedRanges: 'this-fy|' });
+        const later = fakeProfile('last-30|');
+        AppState.currentUser = { uid: 'u8' };
+        setInsightsContext({ preset: 'all', compare: null });
+        const res = saveCurrentRange();
+        AppState.currentUser = null;
+        await res.synced;
+        expect(later.profile.savedRanges).toBe('all|;last-30|');
+        expect(readSavedRanges(userRangesStore(localStorage, 'u8')).map(x => x.id)).toEqual(['all|', 'last-30|']);
+        expect(readSavedRanges(localStorage)).toEqual([]);
+    });
+
     test('offline: this phone\'s list is queued as it is', async () => {
         const p = fakeProfile('last-30|');
         AppState.currentUser = { uid: 'u9' };
