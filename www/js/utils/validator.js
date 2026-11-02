@@ -3,6 +3,8 @@
  * Provides client-side form validation before Firebase calls
  */
 
+import { formatKg } from './money.js';
+
 /**
  * Validation result object
  * @typedef {Object} ValidationResult
@@ -97,7 +99,7 @@ export const Validator = {
         const valid = quantity <= available;
         return {
             valid,
-            errors: valid ? [] : [`Insufficient stock for ${itemName}. Available: ${available.toFixed(1)}kg`]
+            errors: valid ? [] : [`Insufficient stock for ${itemName}. Available: ${formatKg(available)}kg`]
         };
     },
 

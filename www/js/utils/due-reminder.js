@@ -6,7 +6,7 @@
  * @module utils/due-reminder
  */
 
-import { round2 } from './money.js';
+import { round2, formatRupees } from './money.js';
 import { t } from '../i18n/index.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -20,9 +20,7 @@ export const REMINDER_MAX_BILLS = 20;
  * @returns {string}
  */
 export function formatINR(amount) {
-    return new Intl.NumberFormat('en-IN', {
-        style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 0
-    }).format(Math.round(Number(amount) || 0));
+    return formatRupees(amount);
 }
 
 /** DD/MM/YYYY in local time, '' for no date. */

@@ -62,7 +62,7 @@ describe('WhatsApp text', () => {
 
     test('meter billed by us: previous/current reading, units × rate and the amount, added to the total', () => {
         const text = buildReceiptText(base({ elec: METER, total: 5400, paid: 5400 }), { lang: 'en' });
-        expect(text).toContain('Meter reading: 100 to 150\nUnits: 50 × ₹8 per unit\nElectricity: ₹400\n*Total: ₹5,400*');
+        expect(text).toContain('Meter reading: 100 to 150\nUnits: 50 × ₹8.00 per unit\nElectricity: ₹400\n*Total: ₹5,400*');
     });
 
     test('included in rent or the tenant\'s own meter: no electricity lines', () => {
@@ -74,7 +74,7 @@ describe('WhatsApp text', () => {
         const r = base({ elec: { ...METER, amount: 404.5 }, total: 5404.5, paid: 1000, balance: 2404.5, mode: 'upi' });
         expect(paidEarlier(r)).toBe(2000);
         const text = buildReceiptText(r, { lang: 'en' });
-        expect(text).toContain('Paid earlier: ₹2,000\n*Paid now: ₹1,000*\nPaid by: Online (UPI)\n*Balance due: ₹2,404.5*');
+        expect(text).toContain('Paid earlier: ₹2,000\n*Paid now: ₹1,000*\nPaid by: Online (UPI)\n*Balance due: ₹2,404.50*');
     });
 
     test('one language: Hindi has no English words (only the receipt number), English no Hindi', () => {

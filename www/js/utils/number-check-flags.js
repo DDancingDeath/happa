@@ -11,7 +11,7 @@
  */
 
 import { anomalyId, istDayKey, istHour } from './anomalies.js';
-import { formatRupees, round2 } from './money.js';
+import { formatKg, formatRupees, round2 } from './money.js';
 import { t } from '../i18n/index.js';
 
 /** Checks about money on bills or the drawer are high; the rest medium. */
@@ -26,7 +26,7 @@ function refOf(row) {
     return null;
 }
 
-const shown = (row, v) => (row.unit === 'qty' ? `${round2(Number(v) || 0)} kg` : formatRupees(Number(v) || 0, { small: true }));
+const shown = (row, v) => (row.unit === 'qty' ? `${formatKg(v)} kg` : formatRupees(Number(v) || 0, { small: true }));
 
 /**
  * Anomaly records for the mismatch rows of one run's failed checks.

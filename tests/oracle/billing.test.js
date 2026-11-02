@@ -19,7 +19,7 @@ import { sampleItems } from '../fixtures/sample-items.js';
 
 const text = (id) => document.getElementById(id).textContent;
 const setVal = (id, v) => { document.getElementById(id).value = String(v); };
-const lineAmounts = (selector) => [...document.querySelectorAll(`${selector} tbody tr`)].map(tr => Number(tr.children[3].textContent.replace('₹', '')));
+const lineAmounts = (selector) => [...document.querySelectorAll(`${selector} tbody tr`)].map(tr => Number(tr.children[3].textContent.replace(/[₹,]/g, '')));
 const RUNS = Number(process.env.FC_RUNS) || 200;
 
 beforeEach(() => {

@@ -578,7 +578,7 @@ export class OutstandingManager {
                 customer: transaction.customerName || transaction.customer || transaction.supplier || 'N/A'
             });
 
-            UIManager.showToast(clear ? t(split.online > 0 ? 'msg.outstanding.due_cleared_online' : 'msg.outstanding.due_cleared_cash', { total: split.total }) : t('msg.outstanding.payment_recorded', { total: split.total }));
+            UIManager.showToast(clear ? t(split.online > 0 ? 'msg.outstanding.due_cleared_online' : 'msg.outstanding.due_cleared_cash', { total: formatAmount(split.total, { exact: true }) }) : t('msg.outstanding.payment_recorded', { total: formatAmount(split.total, { exact: true }) }));
             UIManager.hapticFeedback('light');
             return true;
         } catch (error) {
@@ -589,7 +589,7 @@ export class OutstandingManager {
                 else run?.discard();
             } catch (_) { /* TIP never breaks a payment */ }
             if (error && error.code === 'exceeds-due') {
-                UIManager.showToast(t('msg.common.payment_amount_exceeds_outstanding_amount_2', { due: error.due }));
+                UIManager.showToast(t('msg.common.payment_amount_exceeds_outstanding_amount_2', { due: formatAmount(error.due, { exact: true }) }));
                 this.renderDue();
             } else if (OutstandingManager.isOfflineError(error)) {
                 UIManager.showToast(t('msg.common.internet_required_record_payment'));
@@ -781,10 +781,10 @@ export class OutstandingManager {
         const html = `
             <div style="text-align: left;">
                 <div style="margin-bottom: 10px;">${esc(t('ui.outstanding.bill_no', { billNumber: transaction.billNumber || String(transaction.id).slice(0, 8) }))}${party}<br>
-                    ${esc(t('ui.outstanding.remaining_due'))} <strong>₹${Helpers.escapeHtml(due)}</strong></div>
+                    ${esc(t('ui.outstanding.remaining_due'))} <strong>${formatRupees(due, { exact: true })}</strong></div>
                 <div style="margin-bottom: 6px; font-weight: 600;">${esc(t('ui.outstanding.how_settled'))}</div>
-                <label style="display: block; margin: 4px 0;"><input type="radio" name="clearMethod" value="cash"> ${esc(t(isPurchase ? 'ui.outstanding.paid_in_cash' : 'ui.outstanding.received_in_cash', { amount: due }))}</label>
-                <label style="display: block; margin: 4px 0;"><input type="radio" name="clearMethod" value="online"> ${esc(t(isPurchase ? 'ui.outstanding.paid_online' : 'ui.outstanding.received_online', { amount: due }))}</label>
+                <label style="display: block; margin: 4px 0;"><input type="radio" name="clearMethod" value="cash"> ${esc(t(isPurchase ? 'ui.outstanding.paid_in_cash' : 'ui.outstanding.received_in_cash', { amount: formatAmount(due, { exact: true }) }))}</label>
+                <label style="display: block; margin: 4px 0;"><input type="radio" name="clearMethod" value="online"> ${esc(t(isPurchase ? 'ui.outstanding.paid_online' : 'ui.outstanding.received_online', { amount: formatAmount(due, { exact: true }) }))}</label>
                 <label style="display: block; margin: 4px 0;"><input type="radio" name="clearMethod" value="writeOff"> ${esc(t(isPurchase ? 'ui.outstanding.write_off_not_paid' : 'ui.outstanding.write_off_not_received'))}</label>
                 <div style="margin-top: 8px;">${esc(t('ui.outstanding.write_off_reason'))}</div>
                 <textarea id="clearReason" rows="2" maxlength="300" style="width: 100%; box-sizing: border-box; padding: 6px;"></textarea>

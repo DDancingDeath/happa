@@ -15,7 +15,7 @@ import { PrinterService } from '../services/printer.js';
 import { AuditService } from '../services/audit.js';
 import { openExternal } from '../utils/open-external.js';
 import { cleanText, whatsAppReminderUrl } from '../utils/due-reminder.js';
-import { round2 } from '../utils/money.js';
+import { formatRate, formatRupees } from '../utils/money.js';
 import { monthLabel, dateLabel, PAYMENT_MODES } from './rent-math.js';
 import { receiptReceived, paidEarlier } from './rent-math-ledger.js';
 import { typedPlace, UNIT_TYPES } from './rent-views.js';
@@ -26,9 +26,7 @@ const esc = (v) => Helpers.escapeHtml(v);
 const js = (v) => Helpers.escapeJsAttr(v);
 
 /** ₹ with paise when there are any (a receipt shows exact amounts). */
-export const inr = (n) => new Intl.NumberFormat('en-IN', {
-    style: 'currency', currency: 'INR', minimumFractionDigits: 0, maximumFractionDigits: 2
-}).format(round2(Number(n) || 0));
+export const inr = (n) => formatRupees(n, { exact: true });
 
 /** "Flat 2B, Gupta Bhawan" in `lang` (the type word is stored as an id). */
 export function receiptPlace(r, lang = getLang()) {
@@ -53,7 +51,7 @@ export function receiptRows(r, lang = getLang()) {
     if (e && typeof e === 'object') {
         rows.push(
             [tr('ui.rcpt.reading'), tr('ui.rcpt.reading_value', { prev: e.prev, curr: e.curr })],
-            [tr('ui.rcpt.units'), tr('ui.rcpt.units_value', { units: e.units, rate: inr(e.rate) })],
+            [tr('ui.rcpt.units'), tr('ui.rcpt.units_value', { units: e.units, rate: formatRate(e.rate) })],
             [tr('ui.rcpt.electricity'), inr(e.amount)]
         );
     }

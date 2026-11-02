@@ -5,7 +5,7 @@
  * @module utils/bill-share
  */
 
-import { billLabour, billLineTotal, billTotal, outstandingDue, readPayment, readLineItem } from './money.js';
+import { billLabour, billLineTotal, billTotal, outstandingDue, readPayment, readLineItem, formatKg, formatRate, formatRupees } from './money.js';
 import { billDateOf } from './history-filters.js';
 import { t } from '../i18n/index.js';
 
@@ -54,7 +54,7 @@ export function receiptPayable(billData) {
  */
 export function billQrText(billData) {
     if (!billData?.billNumber) return '';
-    return `${billData.billNumber} | ${receiptDateTime(billData)} | ₹${Math.round(receiptPayable(billData))}`;
+    return `${billData.billNumber} | ${receiptDateTime(billData)} | ${formatRupees(receiptPayable(billData))}`;
 }
 
 /**
@@ -105,7 +105,7 @@ const TITLES = {
     wholesale: 'ui.bill.title_wholesale'
 };
 
-const money = (n) => `₹${Math.round(Number(n) || 0)}`;
+const money = (n) => formatRupees(n);
 
 /**
  * WhatsApp text for a saved bill, in the app language, dated with the bill's own date.
@@ -127,7 +127,7 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
     lines.push('', `*${t('ui.bill.items')}:*`);
     p.items.forEach(item => {
         lines.push(item.name);
-        lines.push(`  ${money(item.rate)} × ${Number(item.qty || 0).toFixed(1)}kg = ${money(item.total)}`);
+        lines.push(`  ${formatRate(item.rate)} × ${formatKg(item.qty)}kg = ${money(item.total)}`);
     });
     lines.push('');
 
@@ -149,7 +149,6 @@ export function buildBillShareText(bill, type, { copy = true } = {}) {
     return lines.join('\n');
 }
 
-const fixed2 = (n) => (Number(n) || 0).toFixed(2);
 
 /**
  * WhatsApp text for a bill still being entered (Billing / Sales "Share" before saving), in the app language.
@@ -173,7 +172,7 @@ export function buildDraftShareText({ kind, customer, date = new Date(), note, i
     lines.push('', `*${t('ui.bill.items')}:*`);
     items.forEach(item => {
         lines.push(item.name);
-        lines.push(`  ${t('ui.bill.rate')}: ₹${fixed2(item.rate)} × ${fixed2(item.qty)}kg = ₹${fixed2(item.total)}`);
+        lines.push(`  ${t('ui.bill.rate')}: ${formatRate(item.rate)} × ${formatKg(item.qty)}kg = ${formatRupees(item.total, { exact: true })}`);
     });
     lines.push('', `*${t('ui.bill.total')}: ${money(total)}*`);
     if (kind === 'purchase' && labour > 0) {
