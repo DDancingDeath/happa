@@ -14,7 +14,7 @@ const JS_ROOT = path.join(__dirname, '..');
 
 // file (relative to www/js) + called name -> reason it may stay floating.
 const ALLOWED = {
-    'firebase/firestore-service.js flushPendingWork': 'tab-shown render flush; catches stock errors itself',
+    'firebase/core/realtime.js flushPendingWork': 'tab-shown render flush; catches stock errors itself',
     'main.js updateDraftCount': 'draft badge refresh; has its own try/catch',
     'main.js editBill': 'editBillDetails handler; editBill() catches and toasts its own errors',
     'modules/purchase.js addToBill': 'no awaits inside, runs synchronously before editBillItem continues',
