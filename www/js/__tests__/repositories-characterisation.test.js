@@ -50,11 +50,13 @@ afterAll(() => {
 let fake;
 let rec;
 let user;
+/** Options of the fake Firestore for the next tests (the core block retries transactions like the SDK). */
+let fakeOptions = {};
 
 beforeEach(() => {
     jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
     jest.setSystemTime(NOW);
-    fake = createFakeFirestore();
+    fake = createFakeFirestore(fakeOptions);
     rec = recordFirestore(fake.db);
     user = { uid: 'u1', email: 'o@x' };
     const FieldValue = {
@@ -732,6 +734,9 @@ describe('FirebaseService core (phase 5, #69: pinned before the listeners, histo
     const DAY = 86400000;
     const at = (y, m, d) => new Date(y, m - 1, d, 12).getTime();
     const line = (qty, rate) => ({ name: 'Rice', itemId: 'i1', quantity: qty, qty, rate, total: qty * rate });
+    // A transaction whose reads changed before it commits runs again, as with the real SDK.
+    beforeAll(() => { fakeOptions = { occ: true }; });
+    afterAll(() => { fakeOptions = {}; });
     beforeEach(() => {
         fake.seed('dev_items', [{ id: 'i1', name: 'Rice', rate: 30 }]);
         fake.seed('dev_purchases', [

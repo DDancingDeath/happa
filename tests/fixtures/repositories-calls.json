@@ -6242,247 +6242,6 @@
       }
     ],
     [
-      "collection",
-      "dev_purchases"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_retailSales"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_wholesaleSales"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_expenses"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_personalExpenses"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_stockAdjustments"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_withdrawals"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "purchases": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557007000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "retailSales": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557007000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "wholesaleSales": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557007000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "expenses": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557007000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "personalExpenses": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557007000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "stockAdjustments": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557007000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "withdrawals": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557007000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_stockCheckpoints/current)"
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_stockCheckpoints/current)"
-    ],
-    [
-      "tx.update",
-      "ref(dev_stockCheckpoints/current)",
-      {
-        "rebuildingUntil": 0,
-        "rebuildingBy": null,
-        "clientVersion": 5,
-        "writtenAt": "SERVER_TIME"
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "current"
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
       "tx.get",
       "ref(dev_stockCheckpoints/current)"
     ],
@@ -6751,6 +6510,22 @@
         "clientVersion": 5,
         "writtenAt": "SERVER_TIME"
       }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_stockCheckpoints/current)"
     ]
   ],
   "service.core-roll-forward": [
