@@ -651,16 +651,19 @@ describe('Settings', () => {
             ['ra-manager-historyDays', 'Hidden in the app; full database protection comes later.']
         ]);
 
+        // Personal expenses start off (#98); what the owner saves here is a choice (marked)
+        expect(document.getElementById('ra-manager-personalExpenses').checked).toBe(false);
         document.getElementById('ra-staff-reports').checked = true;
-        document.getElementById('ra-staff-personalExpenses').checked = false;
+        document.getElementById('ra-manager-personalExpenses').checked = true;
         document.getElementById('ra-staff-editDays').value = '45';
         expect(await RolesAccessManager.saveForm()).toBe(true);
         const saved = save.mock.calls[0][0];
-        expect(saved.staff).toMatchObject({ reports: true, personalExpenses: false, editDays: 30, finance: false });
-        expect(saved.manager).toEqual(ROLE_ACCESS_DEFAULTS.manager);
+        expect(saved.staff).toMatchObject({ reports: true, personalExpenses: false, personalExpensesChosen: true, editDays: 30, finance: false });
+        expect(saved.manager).toEqual({ ...ROLE_ACCESS_DEFAULTS.manager, personalExpenses: true, personalExpensesChosen: true });
         expect(AppState.settings.roleAccess).toEqual(saved);
         expect(JSON.parse(localStorage.getItem('settings')).roleAccess.staff.reports).toBe(true);
         expect(AuditService.log).toHaveBeenCalledWith('CHANGE_ROLE_ACCESS', { changes: expect.stringContaining('staff.reports=true') });
+        expect(AuditService.log.mock.calls[0][1].changes).toContain('manager.personalExpenses=true');
         delete AppState.settings.roleAccess;
     });
 
@@ -668,7 +671,10 @@ describe('Settings', () => {
         RolesAccessManager.applyShared({ roleAccess: { staff: { finance: true } } });
         expect(AppState.settings.roleAccess.staff.finance).toBe(true);
         RolesAccessManager.applyShared(null);
-        expect(AppState.settings.roleAccess).toEqual(ROLE_ACCESS_DEFAULTS);
+        expect(AppState.settings.roleAccess).toEqual({
+            manager: { ...ROLE_ACCESS_DEFAULTS.manager, personalExpensesChosen: true },
+            staff: { ...ROLE_ACCESS_DEFAULTS.staff, personalExpensesChosen: true }
+        });
         delete AppState.settings.roleAccess;
     });
 });
