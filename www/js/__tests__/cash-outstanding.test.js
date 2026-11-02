@@ -60,8 +60,8 @@ describe('#69 session totals', () => {
         jest.spyOn(UIManager, 'showModalWithHtml').mockImplementation(async (h) => { html = h; return true; });
         await CashManagementManager.showSessionDetails('2026-10-20');
         const text = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-        expect(text).toContain('Total Cash In: ₹4050');
-        expect(text).toContain('Total Cash Out: ₹1830');
+        expect(text).toContain('Total Cash In: ₹4,050');
+        expect(text).toContain('Total Cash Out: ₹1,830');
     });
 
     test('a closed day\'s status card shows what it was closed with, not the live totals (a later void, #99)', () => {
@@ -75,7 +75,7 @@ describe('#69 session totals', () => {
         CashManagementManager.updateUI();
         const text = (id) => document.getElementById(id).textContent;
         expect([text('statusOthers'), text('statusExpected'), text('statusActual'), text('statusDiff')])
-            .toEqual(['₹330', '₹2220', '₹2000', '₹-220.00']);
+            .toEqual(['₹330', '₹2,220', '₹2,000', '-₹220.00']);
     });
 });
 
@@ -216,7 +216,7 @@ describe('#101 forgotten sessions are closed as "not counted"', () => {
             const list = document.getElementById('cashHistoryList').textContent.replace(/\s+/g, ' ');
             expect(list).toContain('1 day closed without a cash count');
             expect(list).toContain('Not counted');
-            expect(list).not.toMatch(/-₹1500/);
+            expect(list).not.toMatch(/-₹1,500/);
         });
 
         test('next opening is pre-filled from the last counted closing', () => {
@@ -264,7 +264,7 @@ function useFakeShop() {
     return ctx;
 }
 
-// Yesterday's credit sale (₹1000, ₹600 due) and today's (₹795, ₹495 due); a supplier bill with ₹1068 to pay.
+// Yesterday's credit sale (₹1000, ₹600 due) and today's (₹795, ₹495 due); a supplier bill with ₹1,068 to pay.
 const OLD_SALE = { id: 'r0', billNumber: 'S0', customerName: 'Sita', date: '20/10/2026', total: 1000, cashPayment: 400, dueAmount: 600, payment: { cash: 400, online: 0, due: 600, total: 400 } };
 const TODAY_SALE = { id: 'r1', billNumber: 'S1', customerName: 'Sita', date: '2026-10-21T09:00:00', total: 795, cashPayment: 300, dueAmount: 495, payment: { cash: 300, online: 0, due: 495, total: 300 } };
 const PURCHASE = { id: 'p1', billNumber: 'P1', customerName: 'Ram', date: '2026-10-19T09:00:00', grandTotal: 2568, cashPayment: 1500, dueAmount: 1068, payment: { cash: 1500, online: 0, due: 1068, total: 1500 } };
@@ -908,7 +908,7 @@ describe('#38 one cash session per day', () => {
         setVal('cashSignInAmount', 1000);
         await CashManagementManager.signIn();
         expect(CashManagementManager.todaySession).toMatchObject({ id: 'cash_2026-10-21', userId: 'u2' });
-        expect(toast).toHaveBeenCalledWith(expect.stringContaining('already open (Ramesh, ₹1000)'));
+        expect(toast).toHaveBeenCalledWith(expect.stringContaining('already open (Ramesh, ₹1,000)'));
         expect(ctx.fake.raw('cashManagement').size).toBe(1);
 
         setVal('cashSignOutAmount', 1000);

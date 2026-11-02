@@ -86,10 +86,10 @@ describe('buildBillShareText', () => {
         expect(text).toContain('*Wholesale Bill* (COPY)');
         expect(text).toContain('Date: 15/09/2025 06:05 pm');
         expect(text).toContain('Customer: Shyam Traders');
-        expect(text).toContain('  ₹40 × 100.0kg = ₹4000');
-        expect(text).toContain('*Total: ₹4000*');
-        expect(text).toContain('Received: ₹1500');
-        expect(text).toContain('Due: ₹2500');
+        expect(text).toContain('  ₹40.00 × 100kg = ₹4,000');
+        expect(text).toContain('*Total: ₹4,000*');
+        expect(text).toContain('Received: ₹1,500');
+        expect(text).toContain('Due: ₹2,500');
         expect(text).not.toMatch(/[\u0900-\u097F]/);
         expect(text).not.toMatch(/profit|expense|owner|staff|स्टाफ/i);
     });
@@ -146,12 +146,12 @@ describe('receipt totals come from the shared money functions (BILL-TOTAL, BILL-
 
     test('payment.cash 0 wins over a stale top-level cashPayment', () => {
         const bill = { ...WHOLESALE, cashPayment: 1000, payment: { cash: 0, online: 1500, due: 2500 } };
-        expect(totals(bill).slice(4)).toEqual(['Total received:', '₹1500', 'Due:', '₹2500']);
+        expect(totals(bill).slice(4)).toEqual(['Total received:', '₹1,500', 'Due:', '₹2,500']);
     });
     test('a cleared bill prints no due; a legacy purchase prints its BILL-TOTAL as payable', () => {
         expect(totals({ ...WHOLESALE, cleared: true })).not.toContain('Due:');
         const legacy = { isPurchase: true, billTotal: 1000, total: 970, laborCharges: 30, items: [], cashPayment: 970, dueAmount: 0 };
-        expect(totals(legacy)).toEqual(['Total:', '₹1000', 'Labour:', '₹30', 'Total:', '₹970', 'Total paid:', '₹970']);
+        expect(totals(legacy)).toEqual(['Total:', '₹1,000', 'Labour:', '₹30', 'Total:', '₹970', 'Total paid:', '₹970']);
         expect(buildBillShareText(legacy, 'purchase')).toContain('*Payable: ₹970*');
     });
 
@@ -160,8 +160,8 @@ describe('receipt totals come from the shared money functions (BILL-TOTAL, BILL-
         expect(totals({ ...zero, saleTotal: 50, total: 70 }).slice(0, 2)).toEqual(['Total:', '₹0']);
         expect(buildBillShareText({ ...zero, total: 70 }, 'purchase')).toContain('*Total: ₹0*');
         const noLines = { isPurchase: true, grandTotal: 950, laborCharges: 50, items: [], payment: { cash: 950, online: 0, due: 0 } };
-        expect(totals(noLines).slice(0, 4)).toEqual(['Total:', '₹1000', 'Labour:', '₹50']);
-        expect(buildBillShareText(noLines, 'purchase')).toContain('*Total: ₹1000*');
+        expect(totals(noLines).slice(0, 4)).toEqual(['Total:', '₹1,000', 'Labour:', '₹50']);
+        expect(buildBillShareText(noLines, 'purchase')).toContain('*Total: ₹1,000*');
         expect(buildBillShareText(noLines, 'purchase')).toContain('*Payable: ₹950*');
         const oldLabour = { isPurchase: true, grandTotal: 950, labour: 30, items: [], payment: { cash: 950, online: 0, due: 0 } };
         expect(totals(oldLabour).slice(0, 6)).toEqual(['Total:', '₹980', 'Labour:', '₹30', 'Total:', '₹950']);
