@@ -5,7 +5,7 @@
         <div id="anomalyBody">
             <div class="anomaly-filters">
                 <label><span data-i18n="ui.anom.f_dates">Dates</span>
-                    <select id="anomalyFilterPreset" onchange="window.app.anomalies.applyFilters()">
+                    <select id="anomalyFilterPreset" data-onchange="anomalies.applyFilters()">
                         <option value="today" data-i18n="ui.anom.p_today">Today</option>
                         <option value="yesterday" data-i18n="ui.anom.p_yesterday">Yesterday</option>
                         <option value="7d" data-i18n="ui.anom.p_7d">Last 7 days</option>
@@ -14,10 +14,10 @@
                     </select>
                 </label>
                 <label><span data-i18n="ui.anom.f_type">Type</span>
-                    <select id="anomalyFilterType" onchange="window.app.anomalies.applyFilters()"></select>
+                    <select id="anomalyFilterType" data-onchange="anomalies.applyFilters()"></select>
                 </label>
                 <label><span data-i18n="ui.anom.f_severity">Severity</span>
-                    <select id="anomalyFilterSeverity" onchange="window.app.anomalies.applyFilters()">
+                    <select id="anomalyFilterSeverity" data-onchange="anomalies.applyFilters()">
                         <option value="all" data-i18n="ui.anom.all">All</option>
                         <option value="high" data-i18n="ui.anom.sev_high">High</option>
                         <option value="medium" data-i18n="ui.anom.sev_medium">Medium</option>
@@ -25,7 +25,7 @@
                     </select>
                 </label>
                 <label><span data-i18n="ui.anom.f_status">Status</span>
-                    <select id="anomalyFilterStatus" onchange="window.app.anomalies.applyFilters()">
+                    <select id="anomalyFilterStatus" data-onchange="anomalies.applyFilters()">
                         <option value="open" data-i18n="ui.anom.st_open">Open</option>
                         <option value="ok" data-i18n="ui.anom.st_ok">OK</option>
                         <option value="fixed" data-i18n="ui.anom.st_fixed">Fixed</option>
@@ -33,18 +33,18 @@
                     </select>
                 </label>
                 <label><span data-i18n="ui.anom.f_user">User</span>
-                    <select id="anomalyFilterUser" onchange="window.app.anomalies.applyFilters()">
+                    <select id="anomalyFilterUser" data-onchange="anomalies.applyFilters()">
                         <option value="all" data-i18n="ui.anom.all_users">All users</option>
                     </select>
                 </label>
                 <label><span data-i18n="ui.anom.f_item">Item</span>
-                    <input type="search" id="anomalyFilterItem" placeholder="Item name" data-i18n-placeholder="ui.anom.item_name" oninput="window.app.anomalies.applyFilters()">
+                    <input type="search" id="anomalyFilterItem" placeholder="Item name" data-i18n-placeholder="ui.anom.item_name" data-oninput="anomalies.applyFilters()">
                 </label>
             </div>
 
             <div class="sub-tabs">
-                <button type="button" id="anomalyTabList" class="sub-tab active" onclick="window.app.anomalies.showView('list')">📋 <span data-i18n="ui.anom.tab_list">List</span></button>
-                <button type="button" id="anomalyTabPatterns" class="sub-tab" onclick="window.app.anomalies.showView('patterns')">📊 <span data-i18n="ui.anom.tab_patterns">Patterns</span></button>
+                <button type="button" id="anomalyTabList" class="sub-tab active" data-onclick="anomalies.showView('list')">📋 <span data-i18n="ui.anom.tab_list">List</span></button>
+                <button type="button" id="anomalyTabPatterns" class="sub-tab" data-onclick="anomalies.showView('patterns')">📊 <span data-i18n="ui.anom.tab_patterns">Patterns</span></button>
             </div>
 
             <div id="anomalySummary" class="anomaly-summary"></div>
@@ -52,7 +52,7 @@
             <div id="anomalyListView">
                 <div id="anomalyList" class="anomaly-list"></div>
                 <div style="text-align: center; margin: 12px 0;">
-                    <button type="button" id="anomalyMore" class="btn btn-secondary" style="display: none;" onclick="window.app.anomalies.loadMore()" data-i18n="ui.anom.load_more">Load more</button>
+                    <button type="button" id="anomalyMore" class="btn btn-secondary" style="display: none;" data-onclick="anomalies.loadMore()" data-i18n="ui.anom.load_more">Load more</button>
                 </div>
             </div>
 
