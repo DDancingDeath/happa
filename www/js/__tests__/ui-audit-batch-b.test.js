@@ -152,7 +152,7 @@ describe('F03 / F15: stock that was never set', () => {
         document.getElementById('stockList').innerHTML = StockManager.emptyStockHtml();
         const btn = document.querySelector('#stockList button');
         expect(btn.textContent).toBe('Set opening stock');
-        expect(btn.getAttribute('onclick')).toBe('window.app.stock.startOpeningStock()');
+        expect(btn.getAttribute('data-onclick')).toBe('stock.startOpeningStock()');
         AppState.userRole = 'staff';
         expect(StockManager.emptyStockHtml()).not.toContain('<button');
     });

@@ -16,7 +16,6 @@
     "js/modules/roles-access.js": 1,
     "js/modules/settings.js": 1,
     "js/modules/statements.js": 12,
-    "js/modules/stock.js": 3,
     "js/modules/wholesale-sales.js": 8,
     "js/ui/manual-reminders.js": 5,
     "js/ui/period-compare.js": 7,
@@ -32,7 +31,6 @@
     "templates/rate-trends.html": 9,
     "templates/settings.html": 44,
     "templates/statements.html": 10,
-    "templates/stock.html": 11,
     "templates/wholesale-sales.html": 23
   }
 }
