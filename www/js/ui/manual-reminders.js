@@ -13,10 +13,12 @@ import { UIManager } from './ui-manager.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { formatDay, todayLocalISO } from '../utils/dates.js';
-import { checkReminder, groupReminders, REMINDER_LISTEN_LIMIT, REMINDER_TITLE_MAX, REMINDER_PARTY_MAX } from '../utils/manual-reminders.js';
+import {
+    checkReminder, groupReminders, nextDueDate, isReminderRepeat, REMINDER_REPEATS, REMINDER_LISTEN_LIMIT, REMINDER_TITLE_MAX, REMINDER_PARTY_MAX
+} from '../utils/manual-reminders.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
-const FORM_IDS = ['reminderTitle', 'reminderDate', 'reminderParty'];
+const FORM_IDS = ['reminderTitle', 'reminderDate', 'reminderParty', 'reminderRepeat'];
 const CSS_ESCAPE = (s) => (typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(s) : String(s).replace(/[^\w-]/g, '\\$&'));
 /** A write the server hasn't confirmed in this time stays queued on the phone (Firestore sends it when online). */
 const WRITE_WAIT_MS = 10000;
@@ -32,6 +34,8 @@ export const ManualReminders = {
     uid: null,
     unsubscribe: null,
     formOpen: false,
+    /** The reminder the open form edits (null: a new one). */
+    editId: null,
     onChange: null,
 
     /** Owners and managers add and cancel reminders. */
@@ -73,6 +77,7 @@ export const ManualReminders = {
     reset() {
         this.stop();
         this.formOpen = false;
+        this.editId = null;
         this.draft = null;
         const box = typeof document !== 'undefined' ? document.getElementById('todayReminders') : null;
         box?.querySelector('[data-reminder="manual"]')?.remove();
@@ -93,20 +98,27 @@ export const ManualReminders = {
             + `<span class="today-reminder-title">${esc(r.title)}</span>`
             + (r.party ? ` <span class="today-reminder-party-name">· ${esc(r.party)}</span>` : '')
             + ` <span class="today-reminder-days${r.days < 0 ? ' late' : ''}">${esc(this.whenText(r))}</span>`
+            + (isReminderRepeat(r.repeat) ? ` <span class="today-reminder-repeat">${esc(t(`ui.reminders.repeat_${r.repeat}`))}</span>` : '')
             + `<span class="today-reminder-actions"><button type="button" class="filter-btn" data-reminder-done onclick="window.app.day.reminderDone('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.done'))}</button>`
-            + (manage ? `<button type="button" class="filter-btn" onclick="window.app.day.reminderCancel('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.cancel'))}</button>` : '')
+            + (manage ? `<button type="button" class="filter-btn" data-onclick="day.reminderEdit('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.edit'))}</button>`
+                + `<button type="button" class="filter-btn" onclick="window.app.day.reminderCancel('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.cancel'))}</button>` : '')
             + '</span></li>';
     },
 
     /** What is typed in the open form; kept through Today's redraws until the reminder is saved. */
     draft: null,
 
+    /** Set when the form was just opened or switched: the fields on screen belong to the old one. */
+    freshForm: false,
+
     captureDraft() {
         const el = (id) => (typeof document !== 'undefined' ? document.getElementById(id) : null);
+        if (this.freshForm) { this.freshForm = false; return; }
         if (!this.formOpen || !el('reminderTitle')) return;
         const focused = typeof document !== 'undefined' ? document.activeElement : null;
         this.draft = {
             title: el('reminderTitle').value, dueDate: el('reminderDate')?.value || '', party: el('reminderParty')?.value || '',
+            repeat: el('reminderRepeat')?.value || '',
             focus: FORM_IDS.includes(focused?.id) ? focused.id : null, caret: focused?.selectionStart ?? null
         };
     },
@@ -121,14 +133,25 @@ export const ManualReminders = {
         if (Number.isInteger(this.draft.caret)) { try { el.setSelectionRange(this.draft.caret, this.draft.caret); } catch (_) { /* date input */ } }
     },
 
+    /** The open reminder being edited, or null (gone meanwhile: done or cancelled on another phone). */
+    editing() {
+        return this.editId ? this.list.find(r => r.id === this.editId) || null : null;
+    },
+
     formHtml() {
         const today = todayLocalISO();
         const d = this.draft || {};
-        return '<div class="today-reminder-form">'
+        const repeat = d.repeat ?? '';
+        const options = [['', 'ui.reminders.repeat_none'], ...REMINDER_REPEATS.map(r => [r, `ui.reminders.repeat_${r}`])]
+            .map(([v, k]) => `<option value="${esc(v)}"${repeat === v ? ' selected' : ''}>${esc(t(k))}</option>`).join('');
+        // An edited reminder may keep a date that has passed meanwhile
+        const min = this.editId && d.dueDate && d.dueDate < today ? d.dueDate : today;
+        return `<div class="today-reminder-form"${this.editId ? ` data-reminder-edit="${esc(this.editId)}"` : ''}>`
             + `<input type="text" id="reminderTitle" maxlength="${REMINDER_TITLE_MAX}" value="${esc(d.title || '')}" placeholder="${esc(t('ui.reminders.title_ph'))}" aria-label="${esc(t('ui.reminders.title_label'))}">`
-            + `<input type="date" id="reminderDate" min="${today}" value="${esc(d.dueDate || today)}" aria-label="${esc(t('ui.reminders.date_label'))}">`
+            + `<input type="date" id="reminderDate" min="${esc(min)}" value="${esc(d.dueDate || today)}" aria-label="${esc(t('ui.reminders.date_label'))}">`
             + `<input type="text" id="reminderParty" maxlength="${REMINDER_PARTY_MAX}" value="${esc(d.party || '')}" placeholder="${esc(t('ui.reminders.party_ph'))}" aria-label="${esc(t('ui.reminders.party_label'))}">`
-            + `<div class="today-reminder-form-buttons"><button type="button" class="btn btn-primary" data-reminder-save onclick="window.app.day.reminderSave()">${esc(t('ui.reminders.save'))}</button>`
+            + `<select id="reminderRepeat" aria-label="${esc(t('ui.reminders.repeat_label'))}">${options}</select>`
+            + `<div class="today-reminder-form-buttons"><button type="button" class="btn btn-primary" data-reminder-save onclick="window.app.day.reminderSave()">${esc(t(this.editId ? 'ui.reminders.save_changes' : 'ui.reminders.save'))}</button>`
             + `<button type="button" class="btn btn-secondary" onclick="window.app.day.reminderForm(false)">${esc(t('ui.reminders.close'))}</button></div></div>`;
     },
 
@@ -159,9 +182,24 @@ export const ManualReminders = {
 
     form(open) {
         this.formOpen = !!open && this.canManage();
+        this.editId = null;
         this.draft = null;
+        this.freshForm = true;
         this.changed();
         if (this.formOpen) setTimeout(() => document.getElementById('reminderTitle')?.focus(), 0);
+    },
+
+    /** Owner / manager: the form filled with an open reminder, to change it. */
+    edit(id) {
+        const r = this.list.find(x => x.id === id);
+        if (!r || !this.canManage()) return false;
+        this.formOpen = true;
+        this.editId = id;
+        this.draft = { title: r.title || '', dueDate: r.dueDate || '', party: r.party || '', repeat: isReminderRepeat(r.repeat) ? r.repeat : '' };
+        this.freshForm = true;
+        this.changed();
+        setTimeout(() => document.getElementById('reminderTitle')?.focus(), 0);
+        return true;
     },
 
     offline() {
@@ -175,17 +213,28 @@ export const ManualReminders = {
     async save() {
         if (!this.canManage()) return false;
         const value = (id) => document.getElementById(id)?.value || '';
-        const check = checkReminder({ title: value('reminderTitle'), dueDate: value('reminderDate'), party: value('reminderParty') }, todayLocalISO());
+        const editing = this.editId ? this.editing() : null;
+        if (this.editId && !editing) {
+            // Done or cancelled on another phone while the form was open
+            UIManager.showToast(t('msg.reminders.gone'));
+            this.form(false);
+            return false;
+        }
+        const input = { title: value('reminderTitle'), dueDate: value('reminderDate'), party: value('reminderParty'), repeat: value('reminderRepeat') };
+        const check = checkReminder(input, todayLocalISO(), editing ? { keepDueDate: editing.dueDate, keepRepeatDay: editing.repeatDay ?? null } : {});
         if (!check.ok) { UIManager.showToast(t(check.error)); return false; }
         if (this.offline()) return false;
         return Helpers.runExclusive('reminder-save', '[data-reminder-save]', async () => {
             try {
-                const write = FirebaseService.createReminder(check.value, this.by());
+                const write = editing
+                    ? FirebaseService.updateReminder(editing.id, check.value, this.by())
+                    : FirebaseService.createReminder(check.value, this.by());
                 const res = await withTimeout(write);
                 if (res === TIMED_OUT) write.catch(() => UIManager.showToast(t('msg.reminders.not_saved')));
                 this.formOpen = false;
+                this.editId = null;
                 this.draft = null;
-                UIManager.showToast(t(res === TIMED_OUT ? 'msg.reminders.saved_on_phone' : 'msg.reminders.saved'));
+                UIManager.showToast(t(res === TIMED_OUT ? 'msg.reminders.saved_on_phone' : (editing ? 'msg.reminders.updated' : 'msg.reminders.saved')));
                 this.changed();
                 return true;
             } catch (e) {
@@ -213,8 +262,16 @@ export const ManualReminders = {
         });
     },
 
-    markReminderDone(id) {
-        return this.closeReminder(id, () => FirebaseService.ackReminder(id, this.by()));
+    /**
+     * Done for everyone; a repeating one gets its next copy (REM-6) in the same write.
+     */
+    async markReminderDone(id) {
+        const r = this.list.find(x => x.id === id);
+        const dueDate = r && isReminderRepeat(r.repeat) ? nextDueDate(r.dueDate, r.repeat, todayLocalISO(), r.repeatDay ?? null) : null;
+        const next = dueDate ? { title: r.title, dueDate, party: r.party || '', repeat: r.repeat, repeatDay: r.repeatDay ?? null } : null;
+        const ok = await this.closeReminder(id, () => FirebaseService.ackReminder(id, this.by(), next));
+        if (ok && next) UIManager.showToast(t('msg.reminders.next_on', { day: formatDay(dueDate, { lang: getLang(), year: false }) }));
+        return ok;
     },
 
     async cancelReminderNow(id) {

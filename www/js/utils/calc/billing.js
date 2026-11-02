@@ -14,7 +14,7 @@
  * @module utils/calc/billing
  */
 
-import { billLabour, billTotal, normalizeLabourSettings, readLineItem, readPayment, round2, toMoney } from '../money.js';
+import { billLabour, billLineTotal, billTotal, normalizeLabourSettings, readLineItem, readPayment, round2, toMoney } from '../money.js';
 
 /**
  * How each rounding policy rounds a value. rupee is half-up on the amount in
@@ -494,6 +494,24 @@ export function autoSaveSummary(data) {
 }
 
 /**
+ * BF-RESTORE: the figures shown before an auto-save or a draft goes back into the
+ * form when its bill is already saved (#93). `unsaved`: the form's total as on the
+ * banner (BF-RECOVER); `saved`: the saved bill's lines before labour, the same
+ * kind of total (BILL-LINES); `payable`: the saved bill's BILL-TOTAL. To the rupee.
+ * @param {Rec} form - one form of the auto-save (`purchase` / `sale`), or a draft
+ * @param {'purchase'|'sale'} mode
+ * @param {Rec} savedBill
+ * @returns {{unsaved: number, saved: number, payable: number}}
+ */
+export function restoreFigures(form, mode, savedBill) {
+    return {
+        unsaved: autoSaveSummary({ mode, [mode]: form || {} }).total,
+        saved: shownAmount(billLineTotal(savedBill, mode !== 'sale')) || 0,
+        payable: shownAmount(billTotal(savedBill)) || 0
+    };
+}
+
+/**
  * BF-NO: the number the next bill will probably get, before it is saved: one more
  * than the highest `{prefix}{YYYYMMDD}-NNN` among today's loaded bills. The real
  * number comes from the shared counter at save (it can be higher: voided bills,
@@ -620,5 +638,6 @@ export const BILLING_SPEC = Object.freeze({
     allocateOldestFirst: 'DUE-FIFO',
     checkAllocation: 'DUE-FIFO',
     autoSaveSummary: 'BF-RECOVER',
+    restoreFigures: 'BF-RESTORE',
     nextBillNumberHint: 'BF-NO'
 });

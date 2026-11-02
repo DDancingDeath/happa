@@ -242,8 +242,8 @@ describe('new purchase save', () => {
         const [first, second] = savePurchase.mock.calls;
         expect(second[0].id).toBe(first[0].id);
         expect(second[0].billNumber).toBe(first[0].billNumber);
-        expect(first[1]).toEqual({ retry: false });
-        expect(second[1]).toEqual({ retry: true });
+        expect(first[1]).toEqual({ retry: false, createOnly: true });
+        expect(second[1]).toEqual({ retry: true, createOnly: false });
         // Same time as the first attempt, so an unchanged retry is identical on the server
         expect(second[0].timestamp).toBe(first[0].timestamp);
         expect(second[0].date).toBe(first[0].date);
@@ -407,7 +407,7 @@ describe('new retail sale save', () => {
         const [first, second] = saveRetailSale.mock.calls;
         expect(second[0].id).toBe(first[0].id);
         expect(second[0].billNumber).toBe(first[0].billNumber);
-        expect([first[1], second[1]]).toEqual([{ retry: false }, { retry: true }]);
+        expect([first[1], second[1]]).toEqual([{ retry: false, createOnly: true }, { retry: true, createOnly: false }]);
         expect(second[0].timestamp).toBe(first[0].timestamp);
         expect(Helpers.generateBillNumber).toHaveBeenCalledTimes(1);
         expect(sale.id).toBe(first[0].id);
