@@ -262,7 +262,7 @@ www/js/modules/rate-trends.js: r.bills
 www/js/modules/rate-trends.js: r[k] (markup via cell .bills)
 www/js/modules/rate-trends.js: s.bills
 www/js/modules/rate-trends.js: this.traffic.rows.find(r => r.itemId === itemId) (markup via cells)
-www/js/modules/rate-trends.js: tr.rows ← tr = this.traffic (markup via map(r => `<tr class="rt-click${r.itemId === this.trafficItemId ? ' rt-selected' : ''}" data-item="${esc(r.itemId)}" onclick="window.app.rateTren) .bills)
+www/js/modules/rate-trends.js: tr.rows ← tr = this.traffic (markup via map(r => `<tr class="rt-click${r.itemId === this.trafficItemId ? ' rt-selected' : ''}" data-item="${esc(r.itemId)}" data-onclick="rateTrends.set) .bills)
 www/js/modules/rate-trends.js: v
 www/js/modules/rate-trends.js: v.toLocaleString('en-IN')
 www/js/modules/rate-trends.js: w (markup via cells)

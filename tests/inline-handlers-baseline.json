@@ -8,7 +8,6 @@
     "js/modules/miscellaneous.js": 4,
     "js/modules/notifications.js": 1,
     "js/modules/purchase.js": 3,
-    "js/modules/rate-trends.js": 5,
     "js/modules/retail-sale.js": 3,
     "js/modules/roles-access.js": 1,
     "js/modules/settings.js": 1,
@@ -21,7 +20,6 @@
     "templates/items.html": 9,
     "templates/modals.html": 20,
     "templates/navigation.html": 34,
-    "templates/rate-trends.html": 9,
     "templates/settings.html": 44,
     "templates/statements.html": 10,
     "templates/wholesale-sales.html": 23
