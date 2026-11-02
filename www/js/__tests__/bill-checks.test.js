@@ -417,3 +417,164 @@ describe('cost-unknown (#102, Q58): wholesale lines need an average cost', () =>
         expect(ids(ws(unknown, { isEdit: true, ctx: { stock: {} } }))).not.toContain('cost-unknown');
     });
 });
+// Edge cases the mutation run (#160) showed no test pinned: each one fails if a
+// comparison, a fallback or a filter in bill-checks.js is changed.
+describe('rule edges (mutation score, #160)', () => {
+    const dalLine = (rate, over = {}) => ({ itemId: 'dal', name: 'Dal', rate, qty: 1, total: rate, ...over });
+    const dalBill = (rate, over = {}) => draft({ items: [dalLine(rate)], total: rate, payment: { cash: rate }, ...over });
+    const billOf = (id, ts, lines) => ({ id, timestamp: ts, items: lines });
+
+    test('no usual rate (no history, no saved rate) means no rate warning', () => {
+        expect(ids(evaluateBill(dalBill(100), ctx()))).not.toContain('rate-high');
+    });
+
+    test('usual rate: newest bill wins, the first of equal times wins, rate-0 and nameless lines are skipped', () => {
+        const recent = [billOf('a', 2, [dalLine(80)]), billOf('b', 1, [dalLine(300)])];
+        expect(ids(evaluateBill(dalBill(200), ctx({ recentBills: recent })))).toContain('rate-high');
+        const same = [billOf('a', 5, [dalLine(80)]), billOf('b', 5, [dalLine(300)])];
+        expect(ids(evaluateBill(dalBill(200), ctx({ recentBills: same })))).toContain('rate-high');
+        const zero = [billOf('a', 1, [dalLine(80)]), billOf('b', 2, [dalLine(0)])];
+        expect(ids(evaluateBill(dalBill(200), ctx({ recentBills: zero })))).toContain('rate-high');
+        const nameless = [billOf('a', 1, [{ rate: 10, qty: 1, total: 10 }])];
+        const d = draft({ items: [{ rate: 100, qty: 1, total: 100 }], total: 100, payment: { cash: 100 } });
+        expect(ids(evaluateBill(d, ctx({ recentBills: nameless })))).not.toContain('rate-high');
+    });
+
+    test('usual rate is per item, never another item\'s', () => {
+        const recent = [billOf('a', 1, [{ itemId: 'rice', name: 'Rice', rate: 40, qty: 1, total: 40 }]), billOf('b', 2, [dalLine(200)])];
+        expect(evaluateBill(draft(), ctx({ recentBills: recent }))).toEqual([]);
+    });
+
+    test('an edit skips only its own old copy', () => {
+        const recent = [billOf('e1', 2, [dalLine(80)]), billOf('e2', 1, [dalLine(80)])];
+        const d = dalBill(200, { isEdit: true, id: 'e1' });
+        expect(ids(evaluateBill(d, ctx({ recentBills: recent })))).toContain('rate-high');
+    });
+
+    test('catalogue lookup: by id first, then by name or Hindi name; an unknown id falls back to the name', () => {
+        const rate100 = (line) => ids(evaluateBill(draft({ items: [{ rate: 100, qty: 1, total: 100, ...line }], total: 100, payment: { cash: 100 } }), ctx()));
+        expect(rate100({ itemId: 'rice', name: 'Chawal typo' })).toContain('rate-high');
+        expect(rate100({ itemId: 'ghost', name: 'Rice' })).toContain('rate-high');
+        expect(rate100({ name: 'चावल' })).toContain('rate-high');
+        const catalogue = [{ name: 'Other', saleRates: [100] }, { id: 'salt', name: 'Salt', saleRates: [10] }];
+        expect(ids(evaluateBill(draft({ items: [{ name: 'Salt', rate: 30, qty: 1, total: 30 }], total: 30, payment: { cash: 30 } }), ctx({ catalogue }))))
+            .toContain('rate-high');
+    });
+
+    test('saved rate list: the first positive, finite rate counts', () => {
+        const d = draft({ items: [{ itemId: 'x', name: 'X', rate: 100, qty: 1, total: 100 }], total: 100, payment: { cash: 100 } });
+        for (const saleRates of [[0, 40], [Infinity, 40], [-5, 40]]) {
+            expect(ids(evaluateBill(d, ctx({ catalogue: [{ id: 'x', name: 'X', saleRates }] })))).toContain('rate-high');
+        }
+    });
+
+    test('average cost: the first positive stock rate by id or name; selling at cost is not below cost', () => {
+        const byName = ctx({ stock: { Rice: { quantity: 100, rate: 50 } } });
+        expect(ids(evaluateBill(draft(), byName))).toContain('below-cost');
+        const negativeFirst = ctx({ stock: { rice: { quantity: 100, rate: -5 }, Rice: { quantity: 100, rate: 50 } } });
+        expect(ids(evaluateBill(draft(), negativeFirst))).toContain('below-cost');
+        const atCost = draft({ items: [{ itemId: 'rice', name: 'Rice', rate: 30, qty: 10, total: 300 }], total: 300, payment: { cash: 300 } });
+        expect(ids(evaluateBill(atCost, ctx()))).not.toContain('below-cost');
+    });
+
+    test('a legacy line with quantity 0 (no qty field) is still a bad quantity', () => {
+        const d = draft({ items: [{ itemId: 'rice', name: 'Rice', rate: 40, quantity: 0, total: 0 }], total: 0, payment: { cash: 0 }, isEdit: true });
+        expect(find(evaluateBill(d, ctx()), 'qty-invalid')).toMatchObject({ field: 'items.0', line: 0 });
+    });
+
+    test('line numbers: qty issue on its own line; oversell names only the oversold lines; empty lines are dropped first', () => {
+        const d = draft({ items: [{ itemId: 'dal', name: 'Dal', rate: 90, qty: 1, total: 90 }, { itemId: 'rice', name: 'Rice', rate: 40, qty: 0, total: 0 }], total: 90, payment: { cash: 90 } });
+        expect(find(evaluateBill(d, ctx()), 'qty-invalid')).toMatchObject({ field: 'items.1', line: 1 });
+        const over = draft({ items: [null, { itemId: 'rice', name: 'Rice', rate: 40, qty: 150, total: 6000 }, { itemId: 'dal', name: 'Dal', rate: 90, qty: 1, total: 90 }], total: 6090, payment: { cash: 6090 } });
+        expect(find(evaluateBill(over, ctx()), 'oversell')).toMatchObject({ field: 'items', lines: [0] });
+    });
+
+    test('oversell: items never stocked are skipped; a negative stock shows as 0 kg; approximate stock names its time', () => {
+        const big = draft({ items: [{ itemId: 'rice', name: 'Rice', rate: 40, qty: 150, total: 6000 }], total: 6000, payment: { cash: 6000 } });
+        expect(ids(evaluateBill(big, ctx({ stocked: new Set() })))).not.toContain('oversell');
+        expect(ids(evaluateBill(big, ctx({ stocked: new Set(['rice']) })))).toContain('oversell');
+        const negative = find(evaluateBill(big, ctx({ stock: { rice: { quantity: -3, rate: 30 } } })), 'oversell');
+        expect(negative.en).toContain('only 0 kg in stock');
+        const approx = find(evaluateBill(big, ctx({ stockApproximate: true, stockApprox: { builtAt: NOW } })), 'oversell');
+        expect(approx.en).not.toContain('updated —');
+    });
+
+    test('typed line: only a wholesale quantity over stock is flagged on the box, never the bill\'s own oversell', () => {
+        const over = { items: [{ itemId: 'rice', name: 'Rice', rate: 40, qty: 150, total: 6000 }], total: 6000, payment: { cash: 6000 } };
+        const entryField = (d, c) => evaluateBill(d, c).filter(i => i.field === 'entry.qty').map(i => i.id);
+        const dal = { itemId: 'dal', name: 'Dal', rate: 90, qty: 1 };
+        expect(entryField(draft({ ...over, kind: 'wholesale', entry: dal }), ctx({ oversellCanBlock: true }))).toEqual([]);
+        expect(ids(evaluateBill(draft({ ...over, kind: 'wholesale', entry: dal }), ctx({ oversellCanBlock: true }))).filter(id => id === 'oversell')).toHaveLength(1);
+        expect(entryField(draft({ ...over, kind: 'wholesale', entry: { itemId: 'rice', name: 'Rice', rate: 40, qty: 0 } }), ctx())).toEqual(['qty-invalid']);
+        expect(entryField(draft({ kind: 'retail', entry: { itemId: 'rice', name: 'Rice', rate: 40, qty: 200 } }), ctx())).toEqual([]);
+    });
+
+    test('typed line: needs an item; a name alone is enough; quantity 0 is a bad quantity', () => {
+        expect(evaluateBill(draft({ entry: { rate: 0, qty: 0 } }), ctx())).toEqual([]);
+        expect(find(evaluateBill(draft({ entry: { name: 'Rice', rate: 0 } }), ctx()), 'rate-invalid')).toMatchObject({ field: 'entry.rate' });
+        expect(find(evaluateBill(draft({ entry: { itemId: 'rice', name: 'Rice', qty: 0 } }), ctx()), 'qty-invalid')).toMatchObject({ field: 'entry.qty' });
+    });
+
+    test('a new bill with no lines is not checked for dates or duplicates', () => {
+        const empty = draft({ items: [], total: 0, payment: {}, date: new Date(NOW + 5 * 86400000).toISOString() });
+        expect(evaluateBill(empty, ctx({ recentBills: [{ id: 'z', timestamp: NOW, items: [], customerName: '', grandTotal: 0 }] }))).toEqual([]);
+    });
+
+    test('cost-unknown while stock loads names its line', () => {
+        const d = draft({ kind: 'wholesale', items: [{ itemId: 'dal', name: 'Dal', rate: 90, qty: 1, total: 90 }, { itemId: 'rice', name: 'Rice', rate: 40, qty: 1, total: 40 }], total: 130, payment: { cash: 130 } });
+        expect(evaluateBill(d, ctx({ stockReady: false })).filter(i => i.id === 'cost-unknown').map(i => i.line)).toEqual([0, 1]);
+        expect(ids(evaluateBill(d, ctx()))).not.toContain('cost-unknown');
+    });
+
+    test('duplicates: the same lines in another order still match; exactly at the window edge still warns; no name never matches "undefined"', () => {
+        const lines = [{ itemId: 'rice', name: 'Rice', rate: 40, qty: 10, total: 400 }, { itemId: 'dal', name: 'Dal', rate: 90, qty: 1, total: 90 }];
+        const d = draft({ items: lines, total: 490, payment: { cash: 490 }, partyName: 'Ram' });
+        const prev = (over) => ({ id: 'p', customerName: 'Ram', grandTotal: 490, items: [lines[1], lines[0]], timestamp: NOW - 60000, ...over });
+        expect(ids(evaluateBill(d, ctx({ recentBills: [prev()] })))).toContain('duplicate');
+        expect(ids(evaluateBill(d, ctx({ recentBills: [prev({ timestamp: NOW - 120000 })] })))).toContain('duplicate');
+        const noName = draft({ items: lines, total: 490, payment: { cash: 490 }, partyName: undefined });
+        expect(ids(evaluateBill(noName, ctx({ recentBills: [prev({ customerName: 'Undefined' })] })))).not.toContain('duplicate');
+    });
+
+    test('a date exactly 60 min ahead is fine', () => {
+        expect(ids(evaluateBill(draft({ date: new Date(NOW + 60 * 60000).toISOString() }), ctx()))).not.toContain('date-future');
+    });
+
+    test('online-only or due-only is a payment', () => {
+        expect(ids(evaluateBill(draft({ payment: { cash: 0, online: 400, due: 0 } }), ctx()))).not.toContain('payment-none');
+        expect(ids(evaluateBill(draft({ payment: { cash: 0, online: 0, due: 400 }, partyName: 'Ram' }), ctx()))).not.toContain('payment-none');
+    });
+
+    test('warnings keep the order they were found in', () => {
+        const line = { itemId: 'rice', name: 'Rice', rate: 20, qty: 1, total: 20 };
+        const d = draft({ items: [line], total: 20, payment: { cash: 20 }, date: new Date(NOW + 2 * 3600000).toISOString(), partyName: 'Ram' });
+        const prev = { id: 'p', customerName: 'Ram', grandTotal: 20, items: [line], timestamp: NOW - 1000 };
+        expect(ids(evaluateBill(d, ctx({ recentBills: [prev] })))).toEqual(['below-cost', 'duplicate', 'date-future']);
+    });
+
+    test('stock credit: a bill without an id is never taken for a draft without one', () => {
+        expect(stockCreditFor({ salesHistory: [{ id: null, items: [{ itemId: 'rice', quantity: 5 }] }] }, 'wholesale', { draftId: null })).toEqual([]);
+    });
+
+    test('context: approximate stock kept as given, purchases skip the stocked set, owner entry only for the owner', () => {
+        const s = { items: [RICE], purchaseHistory: [{ id: 'p', items: [{ itemId: 'rice', quantity: 5, rate: 30 }] }], stock: {} };
+        expect(buildCheckContext(s, 'retail').stockApprox).toBeNull();
+        const approx = { builtAt: 1 };
+        expect(buildCheckContext({ ...s, stockApprox: approx }, 'retail').stockApprox).toBe(approx);
+        expect(buildCheckContext(s, 'purchase').stocked).toBeNull();
+        expect(buildCheckContext(s, 'retail').stocked.has('rice')).toBe(true);
+        expect(buildCheckContext({ ...s, userRole: 'owner' }, 'retail').ownerEntry).toBe(true);
+        expect(buildCheckContext({ ...s, userRole: 'manager' }, 'retail').ownerEntry).toBe(false);
+    });
+
+    test('cash count: expected ₹0 is fine; exactly ₹200 off is not "high"; short vs extra in both languages', () => {
+        expect(evaluateCashCount({ expected: 0, counted: 0 })).toEqual([]);
+        expect(ids(evaluateCashCount({ expected: 1000, counted: 800 }))).toEqual(['cash-mismatch']);
+        const short = evaluateCashCount({ expected: 1000, counted: 900 })[0];
+        expect(short.en).toContain('short');
+        expect(short.hi).toContain('कम');
+        const extra = evaluateCashCount({ expected: 1000, counted: 1100 })[0];
+        expect(extra.en).toContain('extra');
+        expect(extra.hi).toContain('ज़्यादा');
+    });
+});

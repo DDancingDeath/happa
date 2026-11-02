@@ -457,7 +457,7 @@ export function computeFinanceSummary({
             business: expenseRows.business,
             personal: expenseRows.personal,
             withdrawn: withdrawalList.map((w, idx) => ({
-                key: `w:${w.id ?? idx}`, t: recordTime(w), party: String(w.person || '').trim(),
+                key: `w:${w.id ?? idx}`, id: w.id ?? null, t: recordTime(w), party: String(w.person || '').trim(),
                 note: [w.purpose, w.notes].filter(Boolean).map(String).join(' · '), amount: num(w.amount)
             })),
             receivedAtSale: [...atBillRows(wholesale, 'wholesale'), ...atBillRows(retail, 'retail')].filter(r => r.amount !== 0),

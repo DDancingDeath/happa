@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview A tiny in-page event bus (docs/architecture.md, phase 4): the data
  * layer says what changed (`emit`), pages decide what to redraw (`on`). It replaces
