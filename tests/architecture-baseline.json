@@ -11,8 +11,17 @@
     "www/js/auth/authentication.js": {
       "appStateWrite": 6
     },
+    "www/js/firebase/core/history-window.js": {
+      "appStateWrite": 7
+    },
+    "www/js/firebase/core/stock-checkpoint.js": {
+      "appStateWrite": 5
+    },
+    "www/js/firebase/core/stock.js": {
+      "appStateWrite": 6
+    },
     "www/js/firebase/firestore-service.js": {
-      "appStateWrite": 25
+      "appStateWrite": 7
     },
     "www/js/main.js": {
       "moneyMath": 1,
@@ -73,5 +82,30 @@
       "domNumber": 2
     }
   },
-  "exceptions": []
+  "exceptions": [
+    {
+      "file": "www/js/firebase/core/history-window.js",
+      "category": "appStateWrite",
+      "from": 0,
+      "to": 7,
+      "reason": "Moved verbatim out of firestore-service.js (phase 5 split: its count 25 -> 7); the total is unchanged",
+      "issue": 69
+    },
+    {
+      "file": "www/js/firebase/core/stock-checkpoint.js",
+      "category": "appStateWrite",
+      "from": 0,
+      "to": 5,
+      "reason": "Moved verbatim out of firestore-service.js (phase 5 split: its count 25 -> 7); the total is unchanged",
+      "issue": 69
+    },
+    {
+      "file": "www/js/firebase/core/stock.js",
+      "category": "appStateWrite",
+      "from": 0,
+      "to": 6,
+      "reason": "Moved verbatim out of firestore-service.js (phase 5 split: its count 25 -> 7); the total is unchanged",
+      "issue": 69
+    }
+  ]
 }
