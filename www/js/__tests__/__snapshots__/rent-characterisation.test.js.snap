@@ -1351,7 +1351,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "Units",
-        "60 × ₹8 per unit",
+        "60 × ₹8.00 per unit",
       ],
       [
         "Electricity",
@@ -1396,7 +1396,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "यूनिट",
-        "60 × ₹8 प्रति यूनिट",
+        "60 × ₹8.00 प्रति यूनिट",
       ],
       [
         "बिजली",
@@ -1461,7 +1461,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       "Month: Feb 2028",
       "Rent: ₹5,000",
       "Meter reading: 1200 to 1260",
-      "Units: 60 × ₹8 per unit",
+      "Units: 60 × ₹8.00 per unit",
       "Electricity: ₹480",
       "*Total: ₹5,480*",
       "*Paid now: ₹2,000*",
@@ -1490,7 +1490,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "Units",
-        "45.5 × ₹9.5 per unit",
+        "45.5 × ₹9.50 per unit",
       ],
       [
         "Electricity",
@@ -1535,7 +1535,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "यूनिट",
-        "45.5 × ₹9.5 प्रति यूनिट",
+        "45.5 × ₹9.50 प्रति यूनिट",
       ],
       [
         "बिजली",
@@ -1600,7 +1600,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       "Month: Feb 2028",
       "Rent: ₹9,000",
       "Meter reading: 50 to 95.5",
-      "Units: 45.5 × ₹9.5 per unit",
+      "Units: 45.5 × ₹9.50 per unit",
       "Electricity: ₹432.25",
       "*Total: ₹9,432.25*",
       "Paid earlier: ₹4,000.25",
@@ -1735,7 +1735,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "Units",
-        "30 × ₹10 per unit",
+        "30 × ₹10.00 per unit",
       ],
       [
         "Electricity",
@@ -1784,7 +1784,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       ],
       [
         "यूनिट",
-        "30 × ₹10 प्रति यूनिट",
+        "30 × ₹10.00 प्रति यूनिट",
       ],
       [
         "बिजली",
@@ -1853,7 +1853,7 @@ exports[`receipts: part payment by UPI with a meter bill, paise, a moved-out ten
       "Month: Jan 2028",
       "Rent: ₹9,194",
       "Meter reading: 380 to 410",
-      "Units: 30 × ₹10 per unit",
+      "Units: 30 × ₹10.00 per unit",
       "Electricity: ₹300",
       "*Total: ₹9,494*",
       "Paid earlier: ₹5,000",
