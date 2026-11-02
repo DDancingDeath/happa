@@ -8,7 +8,7 @@ import fc from 'fast-check';
 import * as O from './oracle.js';
 import {
     autoLabour, autoSaveSummary, computeLine, computePurchaseTotals, computeRetailTotals, nextBillNumberHint,
-    payableOnScreen, wholesaleLiveProfit
+    payableOnScreen, restoreFigures, wholesaleLiveProfit
 } from '../../www/js/utils/calc/billing.js';
 import { PurchaseManager } from '../../www/js/modules/purchase.js';
 import { RetailSaleManager } from '../../www/js/modules/retail-sale.js';
@@ -217,7 +217,7 @@ describe('WS-COST lookup by name (#102)', () => {
     });
 });
 
-describe('BF-RECOVER, BF-NO (#117)', () => {
+describe('BF-RECOVER, BF-RESTORE, BF-NO (#117, #93)', () => {
     test('unsaved-bill banner: lines and the saved total of the auto-saved form, to the rupee', () => {
         fc.assert(fc.property(fc.constantFrom('purchase', 'sale'), fc.array(fc.integer({ min: 0, max: 100000 }).map(x => x / 100), { maxLength: 6 }),
             (mode, totals) => {
@@ -226,6 +226,24 @@ describe('BF-RECOVER, BF-NO (#117)', () => {
                 const form = mode === 'sale' ? { items, saleTotal: sum } : { items, billTotal: sum };
                 expect(autoSaveSummary({ mode, [mode]: form })).toEqual({ mode, lines: totals.length, total: Math.round(sum) });
             }), { seed: 117, numRuns: RUNS });
+    });
+
+    test('BF-RESTORE (#93): the unsaved form\'s total, the saved bill\'s lines and its BILL-TOTAL, to the rupee', () => {
+        const amount = fc.integer({ min: 0, max: 10000000 }).map(x => x / 100);
+        fc.assert(fc.property(fc.constantFrom('purchase', 'sale'), fc.array(amount, { maxLength: 6 }), amount, amount, fc.boolean(),
+            (mode, totals, lines, labour, legacy) => {
+                const isPurchase = mode === 'purchase';
+                const form = { items: totals.map(total => ({ total })) };
+                const saved = isPurchase
+                    ? (legacy ? { grandTotal: lines - labour, laborCharges: labour } : { billTotal: lines, grandTotal: lines - labour, laborCharges: labour })
+                    : (legacy ? { total: lines } : { saleTotal: lines, total: lines });
+                const rupee = (v) => Math.round(O.r2(v)) || 0;
+                expect(restoreFigures(form, mode, saved)).toEqual({
+                    unsaved: rupee(totals.reduce((a, b) => a + b, 0)),
+                    saved: rupee(O.billLines(saved, isPurchase)),
+                    payable: rupee(O.billValue(saved))
+                });
+            }), { seed: 93, numRuns: RUNS });
     });
 
     test('next bill number: one more than the highest of today (counter format only)', () => {
