@@ -6,6 +6,7 @@
  * numeric `timestamp` and, on bills, `openDue`; nothing else is changed.
  */
 import { generateShop } from '../fixtures/generator.js';
+import { outstandingDue } from '../../www/js/utils/money.js';
 
 const DAY = 86400000;
 const pad = (n) => String(n).padStart(2, '0');
@@ -23,13 +24,9 @@ export function dateMs(value) {
     return new Date(+m[3], +m[2] - 1, +m[1], h, +(m[5] || 0), +(m[6] || 0)).getTime();
 }
 
-const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-
-/** A bill still owes something (as the app's openDue): the nested due, else the top-level one. */
+/** A bill still owes something: the app's own rule (BILL-DUE, `outstandingDue`), as `openDue` is saved. */
 export function openDue(bill) {
-    if (bill.cleared) return false;
-    const due = bill.payment && bill.payment.due !== undefined ? num(bill.payment.due) : num(bill.dueAmount);
-    return due > 0.5;
+    return outstandingDue(bill) > 0;
 }
 
 /**
