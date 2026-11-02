@@ -13,6 +13,7 @@ import { SAVED_ON_PHONE_KEY, STORAGE_FULL_KEY, saveFailedText, safeSetItem } fro
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { AuditService } from '../services/audit.js';
 import { UIManager } from '../ui/ui-manager.js';
+import { SyncStatus } from '../ui/sync-status.js';
 import { FinanceBreakdownSheet } from '../ui/finance-breakdown-sheet.js';
 import { t, tn, getLang } from '../i18n/index.js';
 import { formatRupees, formatAmount, normalizeLabourSettings } from '../utils/money.js';
@@ -642,7 +643,7 @@ export const MoneyManager = {
         const rows = (m.detail?.withdrawn || []).slice().sort((a, b) => (b.t || 0) - (a.t || 0));
         const lang = getLang();
         this.html('moneyWithdrawalList', rows.length
-            ? rows.map(w => `<div class="ins-row"><span>${esc(w.party || '—')}${w.note ? ` · ${esc(w.note)}` : ''}<br><small>${esc(formatDay(w.t, { lang }))}</small></span><span>${money(w.amount)}</span></div>`).join('')
+            ? rows.map(w => `<div class="ins-row"><span>${esc(w.party || '—')}${w.note ? ` · ${esc(w.note)}` : ''}<br><small>${esc(formatDay(w.t, { lang }))}</small> ${SyncStatus.chipHtml(w.id)}</span><span>${money(w.amount)}</span></div>`).join('')
             : `<p class="ins-empty-text">${esc(t('ui.money.no_withdrawals'))}</p>`);
         const people = [...new Set((AppState.withdrawalsHistory || []).map(w => w.person).filter(Boolean))];
         this.html('moneyWdPeople', people.map(p => `<option value="${esc(p)}">`).join(''));

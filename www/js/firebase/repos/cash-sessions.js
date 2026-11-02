@@ -4,14 +4,23 @@
  * transaction (auto-close, late count), field updates (close) and entries added
  * with arrayUnion (deposits, "No bill" legs), so another device's additions are
  * never overwritten. Reads and opening a day are FirebaseService methods in
- * repos/cash-days.js (loadCashSessions, openCashSession…).
+ * repos/cash-days.js (loadCashSessions, openCashSession…). Queued writes are
+ * tracked by SyncStatus, so the session's row shows Waiting to sync / Saved (#70).
  * @module firebase/repos/cash-sessions
  */
 import { FirebaseService } from '../firestore-service.js';
+import { SyncStatus } from '../../ui/sync-status.js';
 
 const sessionRef = (sessionId) => {
     const name = window.getCollection ? window.getCollection('cashManagement') : 'cashManagement';
     return FirebaseService.db.collection(name).doc(String(sessionId));
+};
+
+/** Sends a write and tells SyncStatus about it until the server acknowledges or refuses it. */
+const tracked = (ref, write) => {
+    const sent = write(ref);
+    SyncStatus.trackWrite(ref.path || `cashManagement/${ref.id}`, sent);
+    return sent;
 };
 
 /** FirebaseService's col(): the env prefix from window.COLLECTION_PREFIX. */
@@ -55,7 +64,7 @@ export function updateSessionChecked(sessionId, fieldsFor) {
  * @returns {Promise<void>} the server acknowledgement
  */
 export function updateSession(sessionId, fields) {
-    return sessionRef(sessionId).update(fields);
+    return tracked(sessionRef(sessionId), ref => ref.update(fields));
 }
 
 /**
@@ -67,7 +76,7 @@ export function updateSession(sessionId, fields) {
  * @returns {Promise<void>} the server acknowledgement
  */
 export function addSessionEntry(sessionId, field, entry) {
-    return sessionRef(sessionId).update({
+    return tracked(sessionRef(sessionId), ref => ref.update({
         [field]: firebase.firestore.FieldValue.arrayUnion(entry)
-    });
+    }));
 }
