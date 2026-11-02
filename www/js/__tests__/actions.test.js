@@ -20,6 +20,7 @@ describe('parseAction', () => {
     test('statements: return false, event.stopPropagation(), several calls', () => {
         expect(parseAction(`event.stopPropagation(); auth.showTab('login'); return false;`).map(s => s.kind))
             .toEqual(['stop', 'call', 'returnFalse']);
+        expect(parseAction('returns.open()')[0].path).toEqual(['returns', 'open']);
     });
 
     test('strings keep what Helpers.escapeJsAttr escaped (after the browser decodes the attribute)', () => {
@@ -33,7 +34,7 @@ describe('parseAction', () => {
         ['alert(1)()', 'a.b(c)', 'a.b(this.style)', 'a.b(1+1)', 'this.style.color="red"', 'event.target.remove()',
             'a.b(', "a.b('x)", 'return true', '', 'a.b(window)', 'a["b"](1)',
             "constructor.constructor('alert(1)')", 'nav.__proto__.x()', 'a.prototype.b()', "a.b('x') c.d('y')",
-            'return false; nav.x()', "a.b('\\q')", "a.b('\\xZZ')", "a.b('\\u12')"].forEach(src => {
+            'return false; nav.x()', "a.b('\\q')", "a.b('\\xZZ')", "a.b('\\u12')", 'returnfalse', 'return; a.b()', "a.b('\\u{110000}')"].forEach(src => {
             expect(() => parseAction(src)).toThrow(SyntaxError);
         });
     });

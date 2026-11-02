@@ -72,7 +72,9 @@ export function parseAction(src) {
                     if (src[i] === '{') {
                         const end = src.indexOf('}', i);
                         if (end < 0) fail('bad escape');
-                        c = String.fromCodePoint(hex(i + 1, end));
+                        const cp = hex(i + 1, end);
+                        if (cp > 0x10FFFF) fail('bad escape');
+                        c = String.fromCodePoint(cp);
                         i = end + 1;
                     } else {
                         c = String.fromCharCode(hex(i, i + 4));
@@ -119,17 +121,18 @@ export function parseAction(src) {
         skip();
         if (i >= src.length) break;
         if (src[i] === ';') { i++; continue; }
-        if (src.startsWith('return', i)) {
-            i += 6;
+        const start = i;
+        const first = name();
+        if (first === 'return') {
             skip();
-            if (!src.startsWith('false', i)) fail('only "return false"');
-            i += 5;
+            if (name() !== 'false') fail('only "return false"');
             statements.push({ kind: 'returnFalse' });
             skip();
             while (src[i] === ';') { i++; skip(); }
             if (i < src.length) fail('nothing may follow "return false"');
             break;
         }
+        i = start;
         const path = [name()];
         while (src[i] === '.') { i++; path.push(name()); }
         if (path[0] === 'window' && path[1] === 'app') path.splice(0, 2);

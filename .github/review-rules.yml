@@ -42,7 +42,7 @@ rules:
     learned_at: 2026-10-21
 
   - id: inline-onclick-without-window-app
-    pattern: "onclick=\"(?!window\\.app\\.)"
+    pattern: "(?<![\\w-])onclick=\"(?!window\\.app\\.)"
     applies_to: ["www/templates/**/*.html"]
     message: |
       Inline onclick handler that doesn't go through window.app.
