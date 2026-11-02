@@ -116,9 +116,11 @@ export async function offlineRetryOutcome(key, record) {
 /**
  * Creates a bill (or overwrites by id) and keeps memory/checkpoint in step.
  * With `retry`, the same new bill (same id) is saved again after a failed or
- * timed-out attempt: see retryBillSave. @private
+ * timed-out attempt: see retryBillSave. With `createOnly` (online; a bill restored
+ * from an auto-save or a draft, #93) it is created in a transaction only while its id
+ * is free, else `already-saved` is thrown. @private
  */
-export async function saveBill(collKey, record, label, { retry = false } = {}) {
+export async function saveBill(collKey, record, label, { retry = false, createOnly = false } = {}) {
     if (!record.userId && AppState.currentUser) record.userId = AppState.currentUser.uid;
     if (!record.userName && AppState.userName) record.userName = AppState.userName;
     const previous = record.id ? findRecord(collKey, record.id) : null;
@@ -142,9 +144,10 @@ export async function saveBill(collKey, record, label, { retry = false } = {}) {
         }
         resend = true;
     }
-    if (retry && !resend) {
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    if ((retry && !resend) || (createOnly && !offline)) {
         try {
-            const saved = await retryBillSave(collKey, record, docRef, previous, key);
+            const saved = await retryBillSave(collKey, record, docRef, previous, key, { createOnly });
             unconfirmedFirstSaves.delete(key);
             run.complete();
             return saved;
@@ -217,9 +220,10 @@ export function startBillSaveRun(collKey, record, retry) {
  * than the one this device sent) → save the bill but keep the server's money
  * fields, so due / cash / payments[] stay consistent; otherwise overwrite.
  * Needs a connection (transaction). On "kept", `record` is updated in place with
- * the server's money fields. @private
+ * the server's money fields. With `createOnly` (a copy restored from an auto-save or a
+ * draft, #93) an existing bill is never written: throws `already-saved` with it. @private
  */
-export async function retryBillSave(collKey, record, ref, previous, key) {
+export async function retryBillSave(collKey, record, ref, previous, key, { createOnly = false } = {}) {
     const sentSig = sentBillPaymentSigs.get(key) ?? paymentSignature(record);
     let kept = false;
     let wrote = false;
@@ -233,6 +237,11 @@ export async function retryBillSave(collKey, record, ref, previous, key) {
             if (record.createdAt === undefined) record.createdAt = Date.now();
             tx.set(ref, withServerCreatedAt(record));
             return;
+        }
+        // A restored copy (#93) never goes over the bill it was saved as
+        if (createOnly) {
+            throw Object.assign(new Error('This bill is already saved'),
+                { code: 'already-saved', bill: { ...snap.data({ serverTimestamps: 'estimate' }), id: ref.id } });
         }
         const server = snap.data() || {};
         // Voided meanwhile on another phone (#75): never written over.
@@ -687,6 +696,24 @@ export const billMethods = {
      */
     billVersion(bill) {
         return bill ? billStateKey(bill) : null;
+    },
+
+    /**
+     * A bill as this phone's Firestore cache has it (#93: Restore with the server out of
+     * reach): a bill this phone saved, synced or still waiting to sync, is there. No read
+     * is billed. null when the cache doesn't have it.
+     * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
+     * @param {string} id
+     * @returns {Promise<?Object>}
+     */
+    async billOnThisPhone(collKey, id) {
+        if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
+        try {
+            const snap = await getDb().collection(col(collKey)).doc(String(id)).get({ source: 'cache' });
+            return snap.exists ? mapDoc(snap) : null;
+        } catch {
+            return null;
+        }
     },
 
     /**

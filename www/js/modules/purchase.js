@@ -641,7 +641,13 @@ const PurchaseManager = {
             
             const retry = pending.attempted;
             pending.attempted = true;
-            const writePromise = FirebaseService.savePurchase(bill, { retry });
+            // Restored from an auto-save or a draft (#93): online it is saved only while its id is
+            // free; offline it is a plain first save, after which the id may be this phone's own bill
+            if (pending.restored && typeof navigator !== 'undefined' && navigator.onLine === false) pending.restored = false;
+            const createOnly = !!pending.restored;
+            const writePromise = FirebaseService.savePurchase(bill, { retry, ...(createOnly ? { createOnly } : {}) });
+            // Printed only once it is known not to be a copy of a saved bill
+            if (createOnly) await writePromise;
             if (typeof options.onWriteIssued === 'function') {
                 options.onWriteIssued(bill);
             }
@@ -688,6 +694,10 @@ const PurchaseManager = {
         } catch (error) {
             UIManager.hideLoading();
             this.billingManager?.renderBillNumber?.();
+            if (error?.code === 'already-saved') {
+                await this.billingManager?.offerSavedBill?.(error.bill, 'purchase', { items: billItems });
+                return undefined;
+            }
             UIManager.showToast(saveFailedText(error, t('msg.purchase.failed_save_bill', { message: error.message })), 'error');
             console.error('Save bill error:', error);
             throw error;
@@ -796,7 +806,8 @@ const PurchaseManager = {
             attempted: !!pending.attempted,
             date: pending.date || null,
             timestamp: pending.timestamp || null,
-            enteredAt: pending.enteredAt || null
+            enteredAt: pending.enteredAt || null,
+            restored: !!pending.restored
         } : null;
         // A restored attempt keeps its day, shown locked; otherwise the box starts again
         if (pendingBill?.timestamp) lockBillDate('billDate', pendingBill.timestamp);

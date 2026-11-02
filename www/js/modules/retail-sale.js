@@ -552,7 +552,13 @@ const RetailSaleManager = {
             
             const retry = pending.attempted;
             pending.attempted = true;
-            const writePromise = FirebaseService.saveRetailSale(sale, { retry });
+            // Restored from an auto-save or a draft (#93): online it is saved only while its id is
+            // free; offline it is a plain first save, after which the id may be this phone's own bill
+            if (pending.restored && typeof navigator !== 'undefined' && navigator.onLine === false) pending.restored = false;
+            const createOnly = !!pending.restored;
+            const writePromise = FirebaseService.saveRetailSale(sale, { retry, ...(createOnly ? { createOnly } : {}) });
+            // Printed only once it is known not to be a copy of a saved bill
+            if (createOnly) await writePromise;
             if (typeof options.onWriteIssued === 'function') {
                 options.onWriteIssued(sale);
             }
@@ -598,6 +604,10 @@ const RetailSaleManager = {
         } catch (error) {
             UIManager.hideLoading();
             this.billingManager?.renderBillNumber?.();
+            if (error?.code === 'already-saved') {
+                await this.billingManager?.offerSavedBill?.(error.bill, 'retail', { items: saleItems });
+                return undefined;
+            }
             UIManager.showToast(saveFailedText(error, t('msg.retail.failed_complete_sale', { message: error.message })), 'error');
             console.error('Complete sale error:', error);
             throw error;
@@ -746,7 +756,8 @@ const RetailSaleManager = {
             attempted: !!pending.attempted,
             date: pending.date || null,
             timestamp: pending.timestamp || null,
-            enteredAt: pending.enteredAt || null
+            enteredAt: pending.enteredAt || null,
+            restored: !!pending.restored
         } : null;
         // A restored attempt keeps its day, shown locked; otherwise the box starts again
         if (pendingBill?.timestamp) lockBillDate('saleDate', pendingBill.timestamp);

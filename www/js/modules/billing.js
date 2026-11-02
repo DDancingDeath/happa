@@ -791,8 +791,13 @@ const BillingManager = {
      * Put a draft's bill back into the editor.
      * @param {Object} draft
      */
-    applyDraft(draft) {
+    applyDraft(draft, { exact = false } = {}) {
         this.switchMode(draft.mode);
+        // exact: an unsaved edit over its bill, so a cleared name or labour stays cleared
+        const put = (id, value, empty = '') => {
+            const el = document.getElementById(id);
+            if (el && (exact || value)) el.value = value || empty;
+        };
 
         if (draft.mode === 'purchase') {
             PurchaseManager.setBillItems(draft.items || []);
@@ -800,9 +805,9 @@ const BillingManager = {
             PurchaseManager.setPendingBill(draft.pendingBill);
             PurchaseManager.renderBill();
             PurchaseManager.renderWeights();
-            if (draft.customerName) document.getElementById('customerName').value = draft.customerName;
-            if (draft.laborCharges) document.getElementById('manualLaborCharges').value = draft.laborCharges;
-            if (draft.comments) document.getElementById('billComments').value = draft.comments;
+            put('customerName', draft.customerName);
+            put('manualLaborCharges', draft.laborCharges, '0');
+            put('billComments', draft.comments);
             setPrintComments('billPrintComments', draft.printComments);
         } else {
             RetailSaleManager.setSaleItems(draft.items || []);
@@ -810,8 +815,8 @@ const BillingManager = {
             RetailSaleManager.setPendingBill(draft.pendingBill);
             RetailSaleManager.renderSalesBill();
             RetailSaleManager.renderSaleWeights();
-            if (draft.customerName) document.getElementById('saleCustomerName').value = draft.customerName;
-            if (draft.comments) document.getElementById('saleComments').value = draft.comments;
+            put('saleCustomerName', draft.customerName);
+            put('saleComments', draft.comments);
             setPrintComments('salePrintComments', draft.printComments);
         }
 
@@ -847,7 +852,7 @@ const BillingManager = {
             }
 
             if (plan.edit) this.openEditor(plan.edit.bill, plan.edit.billType);
-            this.applyDraft(form);
+            this.applyDraft(form, { exact: !!plan.edit });
             if (plan.edit) this.prepareBillDates();
             this.closeDrafts();
 
@@ -1146,7 +1151,8 @@ const BillingManager = {
             if (modes.length) {
                 if (plan.edit) this.openEditor(plan.edit.bill, plan.edit.billType);
                 const mode = plan.edit ? editTargetOf(data).mode : (plan.forms[data.mode] ? data.mode : modes[0]);
-                await this.recoverAutoSave({ ...data, mode, purchase: plan.forms.purchase || {}, sale: plan.forms.sale || {} });
+                await this.recoverAutoSave({ ...data, mode, purchase: plan.forms.purchase || {}, sale: plan.forms.sale || {} },
+                    { exactMode: plan.edit ? mode : null });
                 // The edited bill's own day stays in the Date box
                 if (plan.edit) this.prepareBillDates();
                 this.triggerAutoSave();
@@ -1185,9 +1191,10 @@ const BillingManager = {
      * form (#93), one server read per form at most (none for a bill in memory):
      * - an edit re-opens its bill (the server's copy); changed there since → asks, with both
      *   totals (BF-RESTORE); voided, gone, past its edit window or unknown → left out, said why;
-     * - a new bill whose id is already saved is left out and offered to open;
-     * - a new bill that couldn't be checked keeps its id as an earlier attempt, so its save
-     *   goes through the retry transaction and never writes blindly over a saved bill.
+     * - a new bill whose id is already saved (in memory, on the server, or offline in this
+     *   phone's cache) is left out and offered to open;
+     * - any other new bill goes back marked `restored`: its first save online creates it only
+     *   while its id is still free (a transaction), so it never goes over a saved bill.
      * @param {Object} data - the auto-save, or a draft
      * @returns {Promise<?{edit: ?{bill: Object, billType: string}, forms: Object, saved: Array<{bill: Object, billType: string, open: boolean}>}>}
      *   null: restore nothing and keep the auto-save / draft
@@ -1215,25 +1222,46 @@ const BillingManager = {
             const billType = mode === 'sale' ? 'retail' : 'purchase';
             const saved = await this.savedBillFor(billType, String(id));
             if (saved) {
-                const { payable } = restoreFigures(form, mode, saved);
-                const open = await UIManager.showModal(
-                    t('msg.billing.restore_already_saved', { number: saved.billNumber || '—', total: Helpers.formatCurrency(payable) }),
-                    t('ui.billing.already_saved_title'), true);
-                plan.saved.push({ bill: saved, billType, open: !!open });
-            } else if (saved === undefined) {
-                UIManager.showToast(t('msg.billing.restore_not_checked'), 'warning');
-                plan.forms[mode] = { ...form, pendingBill: { ...form.pendingBill, attempted: true } };
-            } else {
-                plan.forms[mode] = form;
+                plan.saved.push({ bill: saved, billType, open: await this.askOpenSaved(saved, billType, form) });
+                continue;
             }
+            if (saved === undefined) UIManager.showToast(t('msg.billing.restore_not_checked'), 'warning');
+            // Not saved when checked: its first save (online) still creates it only while the id is free
+            plan.forms[mode] = form.pendingBill.attempted ? form : { ...form, pendingBill: { ...form.pendingBill, restored: true } };
         }
         return plan;
     },
 
     /**
+     * "This bill is already saved … Open the saved bill?" for a restored copy whose id is a
+     * saved bill (#93); with both totals (BF-RESTORE) when the copy's lines differ from it.
+     * @param {Object} bill - the saved bill
+     * @param {'purchase'|'retail'} billType
+     * @param {Object} form - the copy (auto-save form, draft or the form on screen)
+     * @returns {Promise<boolean>} true: open it
+     */
+    async askOpenSaved(bill, billType, form) {
+        const figures = restoreFigures(form, billType === 'retail' ? 'sale' : 'purchase', bill);
+        const number = bill.billNumber || '—';
+        const text = figures.saved === figures.unsaved
+            ? t('msg.billing.restore_already_saved', { number, total: Helpers.formatCurrency(figures.payable) })
+            : t('msg.billing.restore_already_saved_differs', {
+                number, saved: Helpers.formatCurrency(figures.saved), unsaved: Helpers.formatCurrency(figures.unsaved)
+            });
+        return !!(await UIManager.showModal(text, t('ui.billing.already_saved_title'), true));
+    },
+
+    /** A save refused because the restored bill is already saved (#93): offers to open it. */
+    async offerSavedBill(bill, billType, form) {
+        if (!bill?.id) return;
+        if (await this.askOpenSaved(bill, billType, form)) this.openSavedBill({ bill, billType });
+    },
+
+    /**
      * The saved bill with a restored new bill's id (#93): from memory, else the server's copy
-     * (`latestBill`, one read, never the cache).
-     * @returns {Promise<?Object|undefined>} null: not saved; undefined: couldn't check
+     * (`latestBill`, one read, never the cache); the server out of reach: this phone's cache.
+     * @returns {Promise<?Object|undefined>} null: not saved; undefined: not on this phone and
+     *   the server couldn't be asked
      */
     async savedBillFor(billType, id) {
         const history = historyOf(billType);
@@ -1244,7 +1272,7 @@ const BillingManager = {
             return res.bill || null;
         } catch (error) {
             console.warn('Checking whether a restored bill was saved failed:', error?.code || error);
-            return undefined;
+            return (await FirebaseService.billOnThisPhone(BILL_COLLECTIONS[billType], id)) || undefined;
         }
     },
 
@@ -1309,8 +1337,14 @@ const BillingManager = {
      * Recover auto-saved data
      * @async
      * @param {Object} autoSaveData - Auto-save data to recover
+     * @param {{exactMode?: ?string}} [options] - the form holding an unsaved edit over its bill:
+     *   its name, labour and comments are put back even when empty
      */
-    async recoverAutoSave(autoSaveData) {
+    async recoverAutoSave(autoSaveData, { exactMode = null } = {}) {
+        const put = (mode, id, value, empty = '') => {
+            const el = document.getElementById(id);
+            if (el && (exactMode === mode || value)) el.value = value || empty;
+        };
         try {
             if (autoSaveData.mode !== this.currentMode) {
                 const modeBtn = autoSaveData.mode === 'purchase' 
@@ -1351,9 +1385,9 @@ const BillingManager = {
                     if (weightInput) weightInput.value = purchaseData.typedWeight;
                 }
                 
-                if (purchaseData.customerName) document.getElementById('customerName').value = purchaseData.customerName;
-                if (purchaseData.laborCharges) document.getElementById('manualLaborCharges').value = purchaseData.laborCharges;
-                if (purchaseData.comments) document.getElementById('billComments').value = purchaseData.comments;
+                put('purchase', 'customerName', purchaseData.customerName);
+                put('purchase', 'manualLaborCharges', purchaseData.laborCharges, '0');
+                put('purchase', 'billComments', purchaseData.comments);
                 setPrintComments('billPrintComments', purchaseData.printComments);
                 
                 PurchaseManager.renderBill();
@@ -1388,8 +1422,8 @@ const BillingManager = {
                     if (saleWeightInput) saleWeightInput.value = saleData.typedWeight;
                 }
                 
-                if (saleData.customerName) document.getElementById('saleCustomerName').value = saleData.customerName;
-                if (saleData.comments) document.getElementById('saleComments').value = saleData.comments;
+                put('sale', 'saleCustomerName', saleData.customerName);
+                put('sale', 'saleComments', saleData.comments);
                 setPrintComments('salePrintComments', saleData.printComments);
                 
                 RetailSaleManager.renderSalesBill();

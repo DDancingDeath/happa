@@ -193,6 +193,16 @@ describe('an auto-save of an edit (#93 a)', () => {
         expect(PurchaseManager.getBillItems().map(i => i.qty)).toEqual([12]);
     });
 
+    test('a name or labour cleared in the unsaved edit stays cleared over the bill\'s own', async () => {
+        stored({ laborCharges: 12, grandTotal: 88, amountPayable: 88, comments: 'old note' });
+        await restore(editAutoSave({ editingBase: FirebaseService.billVersion({ ...BILL, laborCharges: 12, grandTotal: 88, amountPayable: 88 }),
+            purchase: { items: [RICE([6, 4])], weights: [], customerName: '', laborCharges: 0, comments: '', billTotal: 100 } }));
+        expect(BillingManager.editingBillId).toBe('p1');
+        expect(document.getElementById('customerName').value).toBe('');
+        expect(document.getElementById('billComments').value).toBe('');
+        expect(document.getElementById('manualLaborCharges').value).toBe('0');
+    });
+
     test('an older auto-save without the version: asked before it is applied', async () => {
         stored();
         await restore(editAutoSave({ editingBillType: undefined, editingBase: undefined }));
@@ -233,7 +243,7 @@ describe('an auto-save of a new bill whose bill is already saved (#93 b)', () =>
         resetForms();
 
         await restore(autoSave);
-        expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved (P20261102-001, ₹100)'), 'Already saved', true);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved (P20261102-001)'), 'Already saved', true);
         expect(PurchaseManager.getWeights()).toEqual([]);
         expect([...docs().keys()]).toEqual([autoSave.purchase.pendingBill.id]);
     });
@@ -252,7 +262,8 @@ describe('an auto-save of a new bill whose bill is already saved (#93 b)', () =>
         expect(docs().get('p1')).toEqual(before);
         expect(fake.stats.reads - reads).toBe(1);
         expect(modal).toHaveBeenCalledWith(
-            "This bill is already saved (P20261101-001, ₹150), so it won't be saved again. Open the saved bill?", 'Already saved', true);
+            "This bill is already saved (P20261101-001) and won't be saved again. Saved bill: ₹150. This unsaved copy: ₹100. Open the saved bill to change it?",
+            'Already saved', true);
         expect(viewBill).toHaveBeenCalledWith('id:p1', 'purchase');
         expect(PurchaseManager.getBillItems()).toEqual([]);
         expect(BillDrafts.deleteAutoSave).toHaveBeenCalledWith('u1');
@@ -268,17 +279,65 @@ describe('an auto-save of a new bill whose bill is already saved (#93 b)', () =>
         expect(PurchaseManager.getBillItems()).toEqual([]);
     });
 
-    test('not saved: restored with its id; not checked (offline): its save goes through the retry check', async () => {
+    test('not saved: restored with its id, marked restored; offline: this phone\'s copy is checked, else restored with a warning', async () => {
         await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n1' } }, sale: { items: [] } });
         expect(modal).not.toHaveBeenCalled();
-        expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n1', attempted: false });
+        expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n1', attempted: false, restored: true });
         resetForms();
 
         jest.spyOn(FirebaseService, 'latestBill').mockRejectedValue(Object.assign(new Error('offline'), { code: 'unavailable' }));
+        const onPhone = jest.spyOn(FirebaseService, 'billOnThisPhone').mockResolvedValueOnce({ ...BILL, id: 'n1' });
         await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n1' } }, sale: { items: [] } });
-        expect(toast).toHaveBeenCalledWith("Couldn't check whether this bill was already saved. It is checked when you save it (needs the internet).", 'warning');
-        expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n1', attempted: true });
+        expect(onPhone).toHaveBeenCalledWith('purchases', 'n1');
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved'), 'Already saved', true);
+        expect(PurchaseManager.getBillItems()).toEqual([]);
+
+        await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n1' } }, sale: { items: [] } });
+        expect(toast).toHaveBeenCalledWith("Couldn't check whether this bill was already saved on another phone. Online, saving checks it first.", 'warning');
+        expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n1', attempted: false, restored: true });
         expect(PurchaseManager.getBillItems()).toHaveLength(1);
+    });
+
+    test('an unconfirmed attempt whose bill was saved with other lines: both totals are shown', async () => {
+        stored();
+        await restore({ mode: 'purchase', purchase: { items: [RICE([10]), RICE([5])], pendingBill: { id: 'p1', attempted: true } }, sale: { items: [] } });
+        expect(modal).toHaveBeenCalledWith(
+            "This bill is already saved (P20261101-001) and won't be saved again. Saved bill: ₹100. This unsaved copy: ₹150. Open the saved bill to change it?",
+            'Already saved', true);
+    });
+});
+
+describe('saving a restored new bill (#93)', () => {
+    const restored = { mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n1' } }, sale: { items: [] } };
+
+    beforeEach(() => savePurchase.mockRestore());
+
+    test('its id still free: created (in a transaction), one bill', async () => {
+        await restore(restored);
+        await payCashAndSave();
+        expect([...docs().keys()]).toEqual(['n1']);
+        expect(docs().get('n1')).toMatchObject({ cashPayment: 100, items: [RICE([10])] });
+        expect(PurchaseManager.getBillItems()).toEqual([]);
+    });
+
+    test('saved meanwhile under its id (another phone): never written over, offered to open', async () => {
+        await restore(restored);
+        fake.raw('purchases').set('n1', { ...BILL, id: 'n1', ...PAID });
+        const before = { ...docs().get('n1') };
+        modal.mockResolvedValue(true);
+        expect(await payCashAndSave()).toBeUndefined();
+        expect(docs().get('n1')).toEqual(before);
+        expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved (P20261101-001'), 'Already saved', true);
+        expect(viewBill).toHaveBeenCalledWith('id:n1', 'purchase');
+        expect(PurchaseManager.getBillItems()).toHaveLength(1);
+    });
+
+    test('offline: a plain first save (queued), no longer marked restored', async () => {
+        await restore(restored);
+        jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+        const save = jest.spyOn(FirebaseService, 'savePurchase').mockResolvedValue(undefined);
+        await payCashAndSave();
+        expect(save).toHaveBeenCalledWith(expect.objectContaining({ id: 'n1' }), { retry: false });
     });
 });
 
