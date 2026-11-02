@@ -33,6 +33,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Crash reports (#122): nothing is collected or sent until the user switches
+             Settings > Crash reports on (the app then enables collection at run time). -->
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
     </application>
 
     <!-- Permissions -->

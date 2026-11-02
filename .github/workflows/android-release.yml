@@ -167,6 +167,19 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      # Crash reports (#122): the Firebase Android app's config, when the owner has added it
+      # (docs/error-reporting.md). Without it the APK builds the same way, with no Crashlytics.
+      - name: Add google-services.json (if configured)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json
+            echo "google-services.json added: crash reports can be switched on in the app."
+          else
+            echo "No GOOGLE_SERVICES_JSON secret: the APK has no crash reporting."
+          fi
+
       - name: Build debug APK (build-only)
         if: steps.mode.outputs.release != 'true'
         working-directory: android
