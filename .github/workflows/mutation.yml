@@ -3,6 +3,10 @@
 # reports the score (job summary + HTML report artifact). One job per file in
 # stryker.config.json `mutate` (read from the config, so a new file is never
 # skipped): with calc/billing.js one job no longer finished in 60 minutes (#160).
+# Each job runs only its file's test suites (STRYKER_MUTATE, jest.stryker.config.js)
+# and stops after 80 minutes (stock-replay.js, the slowest, takes about 55); a big
+# file is split into line ranges ("file.js:1-482", one job each; split between two
+# functions: a mutant across the boundary is in neither range).
 name: Mutation testing
 
 on:
@@ -46,6 +50,9 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Run Stryker
+        timeout-minutes: 80
+        env:
+          STRYKER_MUTATE: ${{ matrix.file }}
         run: npm run test:mutation -- --concurrency 2 --mutate "${{ matrix.file }}"
       - name: Score summary
         if: always()
@@ -68,7 +75,7 @@ jobs:
       - name: Report name
         if: always()
         id: report
-        run: echo "name=mutation-report-$(basename '${{ matrix.file }}' .js)" >> "$GITHUB_OUTPUT"
+        run: echo "name=mutation-report-$(basename '${{ matrix.file }}' | sed 's/[.]js//; s/[^A-Za-z0-9_-]/-/g')" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
