@@ -1,7 +1,7 @@
 /**
  * @fileoverview Repository of user profiles (`users/{uid}`, docs/architecture.md
  * phase 4) for sign-in and registration: the profile read (cache first, or from
- * the server) and the pending profile made on registration; the team directory
+ * the server), the person's saved period ranges (#140) and the pending profile made on registration; the team directory
  * `settings/team` (#87); and each person's phone list (`deviceLog/{uid}`, #124).
  * The Users admin page goes through
  * FirebaseService (loadUsers, updateUser…).
@@ -74,6 +74,34 @@ export function userProfile(uid) {
             return { exists: doc.exists, data: doc.data(), fromCache: !!doc.metadata?.fromCache };
         }
     };
+}
+
+/**
+ * The person's saved period ranges on their own profile (#140; rules: a short checked text).
+ * Queued offline like any write.
+ * @param {string} uid
+ * @param {string} text encodeSavedRanges()
+ * @returns {Promise<void>}
+ */
+export function saveOwnSavedRanges(uid, text) {
+    return userRef(uid).update({ savedRanges: text });
+}
+
+/**
+ * Changes the person's saved ranges against the profile's current list (a transaction:
+ * one read), so a range saved on another phone meanwhile is kept. Needs the server.
+ * @param {string} uid
+ * @param {function(*): string} change the stored text (undefined when none) → the new text
+ * @returns {Promise<string>} the text written
+ */
+export function updateOwnSavedRanges(uid, change) {
+    const ref = userRef(uid);
+    return firebase.firestore().runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const next = change(snap.exists ? snap.data().savedRanges : undefined);
+        tx.update(ref, { savedRanges: next });
+        return next;
+    });
 }
 
 /**

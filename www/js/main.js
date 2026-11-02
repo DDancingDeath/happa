@@ -13,7 +13,8 @@ import { startClockCheck } from './ui/clock-banner.js';
 import { installStickyFocus } from './ui/sticky-focus.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
-import { userProfile } from './firebase/repos/users.js';
+import { userProfile, saveOwnSavedRanges } from './firebase/repos/users.js';
+import { syncSavedRangesOnSignIn } from './utils/saved-ranges.js';
 import { on, REFRESH, READS_ALERT } from './utils/events.js';
 import { backgroundReadsAllowed, getQuotaStatus } from './firebase/firestore-meter.js';
 import { ItemsManager } from './modules/items.js';
@@ -449,6 +450,11 @@ async function initializeUserData() {
                 AppState.userRole = userData.role || 'staff';
                 AppState.rentRole = userData.rentRole || null;
                 AppState.userName = userData.name || 'User';
+                // #140: saved period ranges follow the person (their profile, already read here)
+                try {
+                    const up = syncSavedRangesOnSignIn(localStorage, userId, userData.savedRanges);
+                    if (up !== null) saveOwnSavedRanges(userId, up).catch(e => console.warn('Saved ranges not synced:', e?.code || e));
+                } catch (e) { console.warn('Saved ranges not read:', e); }
                 // #124: remember this phone; a person's first sign-in on another phone is flagged for review
                 SecurityMonitor.checkDevice(userId)
                     .catch(e => console.warn('Device check not saved:', e?.code || e));

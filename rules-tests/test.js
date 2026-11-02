@@ -1153,6 +1153,27 @@ function defineSuite(prefix) {
         await assertFails(as('staff1').collection(users).doc('staff1').update({ devices: Array.from({ length: 11 }, (_, i) => `dev${i}xx`) }));
     });
 
+    t('saved period ranges (#140): each person writes only their own, as a short checked list', async () => {
+        const own = (uid, value) => as(uid).collection(users).doc(uid).update({ savedRanges: value });
+        await assertSucceeds(own('staff1', 'this-month|last-year;this-fy|'));
+        await assertSucceeds(own('manager1', 'month:2026-10|month:2025-10;range:2026-10-01:2026-10-15|last-30'));
+        await assertSucceeds(own('rentOnly', ''));
+        await assertSucceeds(as('staff1').collection(users).doc('staff1').update({ name: 'Renamed', savedRanges: 'all|' }));
+        await assertSucceeds(as('legacyOwner').collection(users).doc('legacyOwner').update({ savedRanges: 'this-year|last-year' }));
+        const ten = Array.from({ length: 10 }, (_, i) => `month:2025-${String(i + 1).padStart(2, '0')}|`).join(';');
+        await assertSucceeds(own('staff1', ten));
+        await assertFails(own('staff1', `${ten};all|`));
+        await assertFails(own('staff1', 'next-week|'));
+        await assertFails(own('staff1', 'this-month'));
+        await assertFails(own('staff1', 'this-month|last-year;'));
+        await assertFails(own('staff1', '<script>|'));
+        await assertFails(own('staff1', ['this-month|']));
+        await assertFails(as('staff1').collection(users).doc('staff1').update({ savedRanges: 'all|', role: 'owner' }));
+        await assertFails(as('staff1').collection(users).doc('manager1').update({ savedRanges: 'all|' }));
+        await assertFails(as('manager1').collection(users).doc('staff1').update({ savedRanges: 'all|' }));
+        await assertFails(own('rejected1', 'all|'));
+    });
+
     t('staff cannot update another user', () =>
         assertFails(as('staff1').collection(users).doc('pending1').update({ name: 'x' })));
 
