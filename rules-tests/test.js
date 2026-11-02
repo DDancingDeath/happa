@@ -4745,12 +4745,114 @@ function defineReminderSuite(prefix) {
         await assertFails(as('staff1').collection(reminders).doc('r1').update({ status: 'done', doneBy: 'staff1', doneAt: serverTimestamp() }));
     });
 
-    t('only the owner deletes; edits of an open reminder are refused', async () => {
+    t('only the owner deletes', async () => {
         await seed('r1', open());
-        await assertFails(as('manager1').collection(reminders).doc('r1').update({ title: 'Other', dueDate: istDay(3) }));
         await assertFails(as('manager1').collection(reminders).doc('r1').delete());
         await assertFails(as('staff1').collection(reminders).doc('r1').delete());
         await assertSucceeds(as('legacyOwner').collection(reminders).doc('r1').delete());
+    });
+
+    const edit = (uid, extra = {}) => ({ updatedBy: uid, updatedAt: serverTimestamp(), ...extra });
+
+    t('edit (#86): owner and manager change an open one, stamped as themself at the server time; members cannot', async () => {
+        await seed('r1', open({ party: 'Gupta' }));
+        const r1 = (uid) => as(uid).collection(reminders).doc('r1');
+        await assertFails(r1('staff1').update(edit('staff1', { title: 'Other' })));
+        await assertFails(r1('manager1').update({ title: 'Other', dueDate: istDay(3) }));
+        await assertFails(r1('manager1').update(edit('legacyOwner', { title: 'Other' })));
+        await assertFails(r1('manager1').update(edit('manager1', { title: 'Other', updatedAt: Timestamp.fromMillis(Date.now() - MIN) })));
+        await assertSucceeds(r1('manager1').update(edit('manager1', { title: 'Pay Gupta in full', dueDate: istDay(3), updatedByName: 'M' })));
+        await assertSucceeds(r1('legacyOwner').update(edit('legacyOwner', { party: FieldValue.delete(), repeat: 'weekly' })));
+        await assertSucceeds(r1('manager1').update(edit('manager1', { repeat: 'monthly', repeatDay: 31 })));
+        await assertSucceeds(r1('manager1').update(edit('manager1', { repeat: FieldValue.delete(), repeatDay: FieldValue.delete() })));
+    });
+
+    t('edit (#86): the same checks as a new one; status, creator and done fields never change; done / cancelled are final', async () => {
+        await seed('r1', open());
+        const r1 = as('manager1').collection(reminders).doc('r1');
+        await assertFails(r1.update(edit('manager1', { title: '' })));
+        await assertFails(r1.update(edit('manager1', { title: 'x'.repeat(121) })));
+        await assertFails(r1.update(edit('manager1', { dueDate: istDay(-3) })));
+        await assertFails(r1.update(edit('manager1', { dueDate: istDay(900) })));
+        await assertFails(r1.update(edit('manager1', { dueDate: '2026-02-31x' })));
+        await assertFails(r1.update(edit('manager1', { repeat: 'yearly' })));
+        await assertFails(r1.update(edit('manager1', { repeat: 'weekly', repeatDay: 3 })));
+        await assertFails(r1.update(edit('manager1', { status: 'done' })));
+        await assertFails(r1.update(edit('manager1', { createdBy: 'manager1x' })));
+        await assertFails(r1.update(edit('manager1', { amount: 5 })));
+        // an overdue one keeps its (past) date while its title changes
+        await seed('late', open({ dueDate: istDay(-5) }));
+        await assertSucceeds(as('manager1').collection(reminders).doc('late').update(edit('manager1', { title: 'Still to collect' })));
+        await seed('d1', open({ status: 'done', doneBy: 'staff1', doneAt: Timestamp.fromMillis(Date.now() - MIN) }));
+        await seed('c1', open({ status: 'cancelled', cancelledBy: 'manager1', cancelledAt: Timestamp.fromMillis(Date.now() - MIN) }));
+        await assertFails(as('legacyOwner').collection(reminders).doc('d1').update(edit('legacyOwner', { title: 'Again' })));
+        await assertFails(as('legacyOwner').collection(reminders).doc('c1').update(edit('legacyOwner', { title: 'Again' })));
+    });
+
+    t('repeat (#86): created with daily / weekly / monthly (monthly may keep its day); nothing else', async () => {
+        const db = as('manager1').collection(reminders);
+        await assertSucceeds(db.doc('a').set(rem('manager1', { repeat: 'daily' })));
+        await assertSucceeds(db.doc('b').set(rem('manager1', { repeat: 'weekly' })));
+        await assertSucceeds(db.doc('c').set(rem('manager1', { repeat: 'monthly', repeatDay: 31 })));
+        await assertFails(db.doc('d').set(rem('manager1', { repeat: 'yearly' })));
+        await assertFails(db.doc('e').set(rem('manager1', { repeat: 'daily', repeatDay: 5 })));
+        await assertFails(db.doc('f').set(rem('manager1', { repeat: 'monthly', repeatDay: 32 })));
+        await assertFails(db.doc('g').set(rem('manager1', { repeatOf: 'x' })));
+    });
+
+    t('repeat (#86): anyone who marks a repeating one done creates its next copy in the same batch, linked both ways', async () => {
+        await seed('r1', open({ repeat: 'weekly', party: 'Gupta' }));
+        const done = (uid, extra = {}) => ({ status: 'done', doneBy: uid, doneAt: serverTimestamp(), ...extra });
+        const next = (uid, extra = {}) => ({ title: 'Pay Gupta', party: 'Gupta', repeat: 'weekly', dueDate: istDay(8), repeatOf: 'r1', status: 'open', createdBy: uid, createdAt: serverTimestamp(), ...extra });
+        const pair = (uid, nextExtra = {}, doneExtra = {}, nextId = 'n1') => {
+            const db = as(uid);
+            const b = db.batch();
+            b.update(db.collection(reminders).doc('r1'), done(uid, { nextId, ...doneExtra }));
+            b.set(db.collection(reminders).doc(nextId), next(uid, nextExtra));
+            return b.commit();
+        };
+        // the next copy must match: title, party, repeat, a later date in range, the creator, the link
+        await assertFails(pair('staff1', { title: 'Something else' }));
+        await assertFails(pair('staff1', { party: 'Other' }));
+        await assertFails(pair('staff1', { repeat: 'daily' }));
+        await assertFails(pair('staff1', { dueDate: istDay(1) }));
+        await assertFails(pair('staff1', { dueDate: istDay(900) }));
+        await assertFails(pair('staff1', { createdBy: 'manager1' }));
+        await assertFails(pair('staff1', { repeatOf: 'other' }));
+        await assertFails(pair('staff1', {}, { nextId: 'n9' }));
+        await assertSucceeds(pair('staff1'));
+        // done is final: no second copy
+        await assertFails(pair('manager1', {}, {}, 'n2'));
+    });
+
+    t('repeat (#86): a member marks done with the next copy; alone the copy, a link on a one-off or a wrong link are refused', async () => {
+        await seed('r1', open({ repeat: 'weekly' }));
+        await seed('once', open());
+        const db = as('staff1');
+        const coll = db.collection(reminders);
+        const next = { title: 'Pay Gupta', repeat: 'weekly', dueDate: istDay(8), repeatOf: 'r1', status: 'open', createdBy: 'staff1', createdAt: serverTimestamp() };
+        // the copy alone (r1 still open) is refused
+        await assertFails(coll.doc('n0').set(next));
+        // a nextId on a reminder that doesn't repeat, or pointing at a copy of another one
+        let b = db.batch();
+        b.update(coll.doc('once'), { status: 'done', doneBy: 'staff1', doneAt: serverTimestamp(), nextId: 'n2' });
+        b.set(coll.doc('n2'), { ...next, repeatOf: 'once' });
+        await assertFails(b.commit());
+        // done + next in one batch
+        b = db.batch();
+        b.update(coll.doc('r1'), { status: 'done', doneBy: 'staff1', doneAt: serverTimestamp(), nextId: 'n1', doneByName: 'S' });
+        b.set(coll.doc('n1'), { ...next, createdByName: 'S' });
+        await assertSucceeds(b.commit());
+        // a second copy for the same done reminder can't be made later
+        await assertFails(coll.doc('n3').set(next));
+        // the copy repeats like any other
+        b = db.batch();
+        b.update(coll.doc('n1'), { status: 'done', doneBy: 'staff1', doneAt: serverTimestamp(), nextId: 'n4' });
+        b.set(coll.doc('n4'), { ...next, dueDate: istDay(15), repeatOf: 'n1' });
+        await assertSucceeds(b.commit());
+        // a plain Done of a repeating one (stop repeating it) is still allowed
+        await seed('r5', open({ repeat: 'daily' }));
+        await assertSucceeds(coll.doc('r5').update({ status: 'done', doneBy: 'staff1', doneAt: serverTimestamp() }));
     });
 }
 defineReminderSuite('');

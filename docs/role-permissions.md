@@ -637,15 +637,23 @@ Default chosen (the owner can ask for another): **reminders belong to the shop, 
 | | Owner | Manager | Member |
 |---|---|---|---|
 | See open reminders on Today (due, next 7 days, later counted) | ✓ | ✓ | ✓ |
-| Add a reminder (title, date today or later, optional party) | ✓ | ✓ | – |
-| Mark one done (it goes for everyone) | ✓ | ✓ | ✓ |
+| Add a reminder (title, date today or later, optional party, repeat: once / every day / week / month) | ✓ | ✓ | – |
+| Change an open one (title, date, party, repeat), any of them | ✓ | ✓ | – |
+| Mark one done (it goes for everyone; a repeating one makes its next copy, REM-6) | ✓ | ✓ | ✓ |
 | Cancel one | ✓ | ✓ | – |
 | Delete (cleanup) | ✓ | – | – |
 
 The rules check the shape (title 1–120 letters, `dueDate` 'YYYY-MM-DD' not before yesterday in India, at most
-about two years ahead, party ≤ 80), that the writer names themself with the server time (`createdBy` /
-`createdAt`, `doneBy` / `doneAt`, `cancelledBy` / `cancelledAt`), and that done and cancelled are
-final: nothing else of a reminder can change. Today listens to the open ones only (`status == 'open'`, soonest
+about two years ahead, party ≤ 80, `repeat` 'daily' / 'weekly' / 'monthly' with `repeatDay` 1–31 for monthly
+only), that the writer names themself with the server time (`createdBy` / `createdAt`, `updatedBy` /
+`updatedAt`, `doneBy` / `doneAt`, `cancelledBy` / `cancelledAt`), and that done and cancelled are
+final. A change (owner / manager) touches only title, date, party and repeat of an open reminder; a changed
+date is checked like a new one, an unchanged one may have passed. The next copy of a repeating reminder is
+written in the same batch as its Done (`nextId` on the done one, `repeatOf` on the copy), so a member may
+create it: the rules require the reminder it copies to be open and repeating before the batch and done with
+that `nextId` after it, the same title, party, repeat and `repeatDay`, and a later date in the create range
+(the exact date, REM-6, is the app's). A plain Done of a repeating reminder (older app) just ends it. Whose
+reminders a manager may change is the shop-wide default (any); Q61–Q64 of #111 are still open. Today listens to the open ones only (`status == 'open'`, soonest
 due first, at most 50, index `status` + `dueDate`; one listener per sign-in: 1 read when there are none, then only changes).
 
 ## Settings sections (who sees what)
