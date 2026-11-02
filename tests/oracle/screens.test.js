@@ -310,7 +310,7 @@ describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
         held.forEach(([id, v]) => {
             const row = shownRows.find(r => r.includes(itemOf(id).name));
             expect(row).toContain(`₹${v.rate.toFixed(2)}/kg`);
-            expect(row).toContain(`${v.qty.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`);
+            expect(row).toContain(`${v.qty.toLocaleString('en-IN', { maximumFractionDigits: 3 })} kg`);
             expect(row).toContain(`≈ ₹${rupee(v.value).toLocaleString('en-IN')}`);
         });
     });
@@ -322,7 +322,7 @@ describe('Stock screen == oracle (S1, S2, S3, S5)', () => {
         expect(document.getElementById('stockSummary').hidden).toBe(false);
         expect(document.getElementById('stockSummaryItems').textContent).toBe(String(held.length));
         expect(document.getElementById('stockSummaryKg').textContent)
-            .toBe(`${kg.toLocaleString('en-IN', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`);
+            .toBe(`${kg.toLocaleString('en-IN', { maximumFractionDigits: 3 })} kg`);
         expect(document.getElementById('stockSummaryValue').textContent).toBe(`≈ ₹${rupee(want.closing).toLocaleString('en-IN')}`);
     });
 

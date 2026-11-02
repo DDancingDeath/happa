@@ -2,7 +2,7 @@
  * @fileoverview Tests for money helpers / payment schema normalisation
  */
 import { round2, sumMoney, readPayment, billTotal, billLineTotal, outstandingDue, paymentSplitMessage, dueNeedsName, isOpeningBalance, openingAmount, openingOldTotals, wholesaleOutstanding } from '../utils/money.js';
-import { perUnitRate, normalizePackageKg, normalizeLabourSettings, toMoney, readLineItem, formatAmount, formatRupees } from '../utils/money.js';
+import { perUnitRate, normalizePackageKg, normalizeLabourSettings, toMoney, readLineItem, formatAmount, formatRupees, formatRate, formatKg } from '../utils/money.js';
 
 describe('round2', () => {
     test('rounds half-paise correctly', () => {
@@ -202,5 +202,25 @@ describe('small money helpers the mutation run found untested (#160)', () => {
     test('formatRupees: Indian grouping, the minus before ₹', () => {
         expect(formatRupees(250000)).toBe('₹2,50,000');
         expect(formatRupees(-500)).toBe('-₹500');
+    });
+
+    test('exact (#129): paise only when the amount has them, at any size', () => {
+        expect(formatRupees(987.5, { exact: true })).toBe('₹987.50');
+        expect(formatRupees(4088.35, { exact: true })).toBe('₹4,088.35');
+        expect(formatRupees(1250.0000001, { exact: true })).toBe('₹1,250');
+        expect(formatRupees(-75.5, { exact: true })).toBe('-₹75.50');
+        expect(formatRupees('x', { exact: true })).toBe('₹0');
+    });
+
+    test('formatRate: always paise; formatKg (KG-TEXT): at most 3 decimals, trailing zeros dropped', () => {
+        expect(formatRate(33.5)).toBe('₹33.50');
+        expect(formatRate(1234.5)).toBe('₹1,234.50');
+        expect(formatKg(12)).toBe('12');
+        expect(formatKg(60.35)).toBe('60.35');
+        expect(formatKg(3.3333)).toBe('3.333');
+        expect(formatKg(0.0004)).toBe('0');
+        expect(formatKg(-0.0001)).toBe('0');
+        expect(formatKg(125000.5)).toBe('1,25,000.5');
+        expect(formatKg(undefined)).toBe('0');
     });
 });
