@@ -12,7 +12,9 @@ import { Helpers } from '../utils/helpers.js';
 import { formatDay, formatMonth, toLocalISODate } from '../utils/dates.js';
 import { fiscalYearLabel, customRangePreset, periodRange } from '../utils/business-metrics.js';
 import { getInsightsContext, setInsightsContext } from '../utils/insights-context.js';
-import { readSavedRanges, addSavedRange, removeSavedRange, savedRangeId } from '../utils/saved-ranges.js';
+import { readSavedRanges, addSavedRange, removeSavedRange, savedRangeId, userRangesStore, encodeSavedRanges } from '../utils/saved-ranges.js';
+import { saveOwnSavedRanges } from '../firebase/repos/users.js';
+import { AppState } from '../utils/state.js';
 import { formatRupees } from '../utils/money.js';
 
 const esc = (s) => Helpers.escapeHtml(String(s ?? ''));
@@ -39,9 +41,19 @@ const isEditing = (which) => {
 /** Last HTML written into each bar: rewriting the same bar would clear dates typed but not yet shown. */
 const lastBar = new Map();
 
+/** This phone's copy of the signed-in person's saved ranges. */
 const store = () => {
-    try { return typeof localStorage !== 'undefined' ? localStorage : null; } catch (_) { return null; }
+    let ls = null;
+    try { ls = typeof localStorage !== 'undefined' ? localStorage : null; } catch (_) { ls = null; }
+    return userRangesStore(ls, AppState.currentUser?.uid);
 };
+
+/** The person's list goes to their profile, so their other phones get it at the next sign-in / start. */
+function pushSaved(list) {
+    const uid = AppState.currentUser?.uid;
+    if (!uid) return;
+    saveOwnSavedRanges(uid, encodeSavedRanges(list)).catch(e => console.warn('Saved ranges not synced:', e?.code || e));
+}
 
 /**
  * Label of any period: a month, a year, an FY, "Last 30 days", or "5 Oct – 20 Oct 2026" for chosen days.
@@ -167,12 +179,14 @@ export function applySaved(id) {
 /** @returns {{ok: boolean, full?: boolean}} */
 export function saveCurrentRange() {
     const { preset, compare } = getInsightsContext();
-    return addSavedRange(store(), preset, compare);
+    const res = addSavedRange(store(), preset, compare);
+    if (res.ok) pushSaved(res.list);
+    return res;
 }
 
 export function removeCurrentRange() {
     const { preset, compare } = getInsightsContext();
-    removeSavedRange(store(), savedRangeId(preset, compare));
+    pushSaved(removeSavedRange(store(), savedRangeId(preset, compare)));
 }
 
 /** Test helper. */

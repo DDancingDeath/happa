@@ -4,11 +4,15 @@
  */
 import { periodRange, customRangePreset } from '../utils/business-metrics.js';
 import { getInsightsContext, setInsightsContext, resetInsightsContextForTests } from '../utils/insights-context.js';
-import { readSavedRanges, addSavedRange, removeSavedRange, MAX_SAVED_RANGES, SAVED_RANGES_KEY } from '../utils/saved-ranges.js';
+import {
+    readSavedRanges, addSavedRange, removeSavedRange, MAX_SAVED_RANGES, SAVED_RANGES_KEY,
+    userRangesStore, encodeSavedRanges, decodeSavedRanges, syncSavedRangesOnSignIn
+} from '../utils/saved-ranges.js';
 import {
     compareBarHtml, compareTableHtml, choosePreset, chooseCompare, presetSelectValue, summaryLines, summaryText,
-    periodText, resetPeriodCompareForTests
+    periodText, resetPeriodCompareForTests, saveCurrentRange, removeCurrentRange
 } from '../ui/period-compare.js';
+import { AppState } from '../utils/state.js';
 import { periodCompare } from '../utils/business-metrics.js';
 
 const memStore = () => {
@@ -69,7 +73,59 @@ describe('period B in the shared context', () => {
     });
 });
 
-describe('saved ranges (this phone only)', () => {
+describe('saved ranges follow the person (#140)', () => {
+    afterEach(() => { AppState.currentUser = null; delete global.firebase; });
+
+    test('the profile text: newest first, at most 10, bad entries dropped', () => {
+        const list = [{ a: 'this-month', b: 'last-year' }, { a: 'this-fy', b: null }];
+        expect(encodeSavedRanges(list)).toBe('this-month|last-year;this-fy|');
+        expect(decodeSavedRanges('this-month|last-year;this-fy|').map(x => x.id)).toEqual(['this-month|last-year', 'this-fy|']);
+        expect(decodeSavedRanges('bad|x;last-30|;last-30|')).toEqual([{ id: 'last-30|', a: 'last-30', b: null }]);
+        expect(decodeSavedRanges(undefined)).toEqual([]);
+        expect(encodeSavedRanges(Array.from({ length: 12 }, (_, i) => ({ a: 'all', b: `month:2025-${String(i + 1).padStart(2, '0')}` }))).split(';')).toHaveLength(MAX_SAVED_RANGES);
+    });
+
+    test('two people on one phone keep their own lists', () => {
+        const s = memStore();
+        addSavedRange(userRangesStore(s, 'u1'), 'this-month', null);
+        addSavedRange(userRangesStore(s, 'u2'), 'last-30', null);
+        expect(readSavedRanges(userRangesStore(s, 'u1')).map(x => x.id)).toEqual(['this-month|']);
+        expect(readSavedRanges(userRangesStore(s, 'u2')).map(x => x.id)).toEqual(['last-30|']);
+    });
+
+    test('sign-in: the profile wins; with none, this phone\'s list goes up once and the old shared copy goes to that person only', () => {
+        const s = memStore();
+        addSavedRange(userRangesStore(s, 'u1'), 'all', null);
+        expect(syncSavedRangesOnSignIn(s, 'u1', 'this-fy|last-fy')).toBeNull();
+        expect(readSavedRanges(userRangesStore(s, 'u1')).map(x => x.id)).toEqual(['this-fy|last-fy']);
+        expect(syncSavedRangesOnSignIn(s, 'u1', '')).toBeNull();
+        expect(readSavedRanges(userRangesStore(s, 'u1'))).toEqual([]);
+        // a list saved before ranges followed the person
+        addSavedRange(s, 'this-month', 'last-year');
+        expect(syncSavedRangesOnSignIn(s, 'u2', undefined)).toBe('this-month|last-year');
+        expect(readSavedRanges(userRangesStore(s, 'u2')).map(x => x.id)).toEqual(['this-month|last-year']);
+        expect(readSavedRanges(s)).toEqual([]);
+        expect(syncSavedRangesOnSignIn(s, 'u3', undefined)).toBeNull();
+        addSavedRange(userRangesStore(s, 'u3'), 'last-30', null);
+        expect(syncSavedRangesOnSignIn(s, 'u3', undefined)).toBe('last-30|');
+    });
+
+    test('Save / Remove write the list to the signed-in person\'s profile', async () => {
+        const update = jest.fn(() => Promise.resolve());
+        const doc = jest.fn(() => ({ update }));
+        global.firebase = { firestore: () => ({ collection: () => ({ doc }) }) };
+        AppState.currentUser = { uid: 'u9' };
+        setInsightsContext({ preset: 'this-month', compare: 'last-month' });
+        expect(saveCurrentRange().ok).toBe(true);
+        expect(doc).toHaveBeenLastCalledWith('u9');
+        expect(update).toHaveBeenLastCalledWith({ savedRanges: 'this-month|last-month' });
+        expect(readSavedRanges(userRangesStore(localStorage, 'u9')).map(x => x.id)).toEqual(['this-month|last-month']);
+        removeCurrentRange();
+        expect(update).toHaveBeenLastCalledWith({ savedRanges: '' });
+    });
+});
+
+describe('saved ranges (this phone\'s copy)', () => {
     test('newest first, same pair once, at most 10, bad entries dropped', () => {
         const s = memStore();
         addSavedRange(s, 'this-month', 'last-year');

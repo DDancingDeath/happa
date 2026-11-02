@@ -1,7 +1,9 @@
 /**
  * @fileoverview Saved period ranges (#140): period A and, optionally, the
- * period B it is compared with, kept on this phone only (localStorage, no
- * reads or writes to the database). Relative presets stay relative: a saved
+ * period B it is compared with, per person. The list lives on the person's own
+ * profile (`users/{uid}.savedRanges`, a short text the rules check), which the
+ * app already reads at sign-in, so it costs no extra read; this phone keeps a
+ * copy per person (localStorage). Relative presets stay relative: a saved
  * "This month vs Last year" is this month whenever it is opened.
  * @module utils/saved-ranges
  */
@@ -57,3 +59,64 @@ export function removeSavedRange(store, id) {
 
 /** Id of a saved pair. */
 export const savedRangeId = idOf;
+
+/**
+ * This phone's copy of one person's list: a Storage whose keys carry the uid,
+ * so two people signing in on one phone keep their own lists.
+ * @param {?Storage} store
+ * @param {string} uid
+ * @returns {?Storage}
+ */
+export function userRangesStore(store, uid) {
+    if (!store || !uid) return store;
+    const k = (key) => `${key}:${uid}`;
+    return /** @type {Storage} */ (/** @type {unknown} */ ({
+        getItem: (key) => store.getItem(k(key)),
+        setItem: (key, value) => store.setItem(k(key), value),
+        removeItem: (key) => store.removeItem(k(key))
+    }));
+}
+
+/**
+ * The list as kept on the profile: "a|b;a|b", newest first ('' = none).
+ * @param {Array<{a: string, b: ?string}>} list
+ * @returns {string}
+ */
+export function encodeSavedRanges(list) {
+    return (list || []).slice(0, MAX_SAVED_RANGES).map(x => idOf(x.a, x.b)).join(';');
+}
+
+/**
+ * @param {*} text the profile's savedRanges
+ * @returns {Array<{id: string, a: string, b: ?string}>} invalid entries dropped
+ */
+export function decodeSavedRanges(text) {
+    if (typeof text !== 'string' || !text) return [];
+    const raw = text.split(';').map(s => s.split('|')).map(([a, b]) => ({ a, b: b || null }));
+    const mem = new Map([[SAVED_RANGES_KEY, JSON.stringify(raw)]]);
+    return readSavedRanges(/** @type {Storage} */ (/** @type {unknown} */ ({ getItem: (k) => mem.get(k) ?? null })));
+}
+
+/**
+ * At sign-in: the profile's list wins (another phone may have changed it). A person with
+ * none on the profile yet keeps this phone's list (their own copy, or the one saved before
+ * lists followed the person, which then goes to them only) and it is sent up once.
+ * @param {?Storage} store this phone's storage
+ * @param {string} uid
+ * @param {*} profileValue `users/{uid}.savedRanges` (undefined when never saved)
+ * @returns {?string} text to save on the profile, or null when nothing needs saving
+ */
+export function syncSavedRangesOnSignIn(store, uid, profileValue) {
+    const mine = userRangesStore(store, uid);
+    if (typeof profileValue === 'string') {
+        write(mine, decodeSavedRanges(profileValue));
+        return null;
+    }
+    const own = readSavedRanges(mine);
+    const legacy = readSavedRanges(store);
+    try { if (legacy.length) store?.removeItem(SAVED_RANGES_KEY); } catch (_) { /* storage blocked */ }
+    const list = own.length ? own : legacy;
+    if (!list.length) return null;
+    if (!own.length) write(mine, list);
+    return encodeSavedRanges(list);
+}

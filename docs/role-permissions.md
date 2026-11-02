@@ -601,6 +601,7 @@ The owner may write any of these (repairs, backup restore). Everyone else:
 | `settings/accounts` (#74, Money › Worth accounts) | owner; managers with **Money** on: one account per write (`changedId`), `name` 1–40 characters, `balance` a whole number of rupees 0–10,000,000,000, `type` asset or liability, `updatedBy` = self, `updatedAt` = server time, at most 30 accounts (`worthAccountsWriteOk`) | same | **owner** |
 | other `settings` docs (none in use) | **owner** (#64) | **owner** (#64) | **owner** (#64) |
 | `users/{uid}/preferences` (never used by the app) | nobody (#64) | nobody | nobody |
+| `users/{uid}.savedRanges` (#140, saved period ranges) | the person themself (`savedRangesOk`: "a\|b;a\|b", at most 10 pairs of the app's period presets, ≤ 600 characters); the owner as for any profile | same | owner (with the profile) |
 | bills (`purchases`, `retailSales`, `wholesaleSales`) | approved user, own `userId`, and `createdAt` = the server time (#115: every happa version sends it; the edit window counts from it) | see "Bill edit window" | owner |
 
 Legacy timestamp backfill (`expenses`, `withdrawals`, `stockAdjustments`, `personalExpenses`, and bills
@@ -656,7 +657,7 @@ small button to view the other business's section when the user may see it
 
 | Section | Sees | Edits | Stored in |
 |---|---|---|---|
-| Common: language, account (name, change password, sign out), notifications, printer, install, What's new / About | everyone | own device / own profile | device, `users/{uid}.name` |
+| Common: language, account (name, change password, sign out), notifications, printer, install, What's new / About | everyone | own device / own profile | device, `users/{uid}.name` (and `users/{uid}.savedRanges`, Money / Insights saved ranges, #140) |
 | Common: Printed bill (bottom line, bill QR, bill language, print darkness, logo; #107) | everyone | owner; managers with `shopSettings` | `settings/app.receipt` (read at start-up, no extra read; the rules check its shape and keep the 1-bit logo to 384 × 120 dots, at most 7,680 base64 characters). Printers and paper width stay on each phone. A phone with its own older choices offers them once to the owner / an allowed manager ("Use this phone's choices for all phones") while none are shared |
 | Common: Roles & access (+ People) | owner | owner | `settings/app.roleAccess`, `users/{uid}.rentRole` |
 | Aadhat: business name and details, UPI ID, labour, bill checks, bill numbers, opening stock link | Aadhat owner and managers | owner; managers with `shopSettings` (UPI ID: this device) | `settings/app` (read at start-up, no extra read); UPI ID on the device |

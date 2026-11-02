@@ -1231,16 +1231,26 @@ service cloud.firestore {
         || (request.auth.uid != userId && resource.data.get('role', '') != 'owner');
     }
 
-    // Users change only their own name (Settings › account) and the list of their
-    // phones (first sign-in on a new phone, #124); never while removed or rejected.
+    // Saved period ranges (#140): "a|b;a|b", at most 10 pairs of the app's period presets.
+    function savedRangesOk(d) {
+      let p = '(this-month|last-month|this-year|last-year|this-fy|last-fy|last-30|all|month:[0-9]{4}-[0-9]{2}|range:[0-9]{4}-[0-9]{2}-[0-9]{2}:[0-9]{4}-[0-9]{2}-[0-9]{2})';
+      let e = p + '[|]' + p + '?';
+      return !('savedRanges' in d)
+        || (d.savedRanges is string && d.savedRanges.size() <= 600
+            && d.savedRanges.matches('^(' + e + '(;' + e + '){0,9})?$'));
+    }
+
+    // Users change only their own name (Settings › account) and their saved period
+    // ranges (#140; the list of their phones is deviceLog, #124); never while removed or rejected.
     function canUpdateProfile(usersCol, userId) {
       let d = request.resource.data;
       return (isOwnerIn(usersCol) && ownerProfileGuardOk(userId))
         || (isSignedIn()
             && request.auth.uid == userId
             && !(resource.data.get('status', '') in ['disabled', 'rejected'])
-            && d.diff(resource.data).affectedKeys().hasOnly(['name'])
-            && d.get('name', '') is string && d.get('name', '').size() <= 100);
+            && d.diff(resource.data).affectedKeys().hasOnly(['name', 'savedRanges'])
+            && d.get('name', '') is string && d.get('name', '').size() <= 100
+            && savedRangesOk(d));
     }
 
     // --- phones per person (#124): deviceLog/{uid}.devices, "deviceId:YYYYMMDD" ---

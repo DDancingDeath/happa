@@ -10,7 +10,7 @@ year (CMP; "not known" when that period's figures are not available).
 financial year or chosen days): the headlines show % vs B too, and a card lists
 sales, purchases, business expenses, profit and net money in for both, with the ₹
 and % change. Insights › Items gets a "vs B" column. **☆ Save range** keeps the pair
-on this phone (at most 10, under "Saved ranges"). **WhatsApp summary** and **Print
+for you (at most 10, under "Saved ranges"); your other phones get it the next time the app starts. **WhatsApp summary** and **Print
 summary** send or print the same figures (on the receipt printer, or as a picture
 when it is not connected).
 
