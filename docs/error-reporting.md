@@ -68,8 +68,9 @@ Firestore.
 
 **APK size.** The plugin brings the Firebase Crashlytics Android SDK
 (`firebase-crashlytics` 19.4 with `firebase-common`, `firebase-installations`,
-`firebase-sessions` and the transport libraries). See the PR for the debug-APK
-size before and after; release builds are not minified (`minifyEnabled false`).
+`firebase-sessions` and the transport libraries): the debug APK grows from 12.2 MB to
+14.4 MB (+2.2 MB, CI build of 2 Nov 2026). Release builds are not minified
+(`minifyEnabled false`), so they grow about as much; turning on R8 would win most of it back.
 
 **Set-up (owner, once).** Until this is done the APK builds and runs as before
 and the switch says "Not set up in this version of the app yet":
