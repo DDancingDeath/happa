@@ -17,4 +17,5 @@ Only cash counts here, for one day's cash session.
 
 One session per day: the second phone joins it. Opening needs internet. A closed
 day can't be reopened; a day closed without a count shows "Not counted" and can
-be counted later.
+be counted later. A day with a change still on this phone (offline) shows
+"Waiting to sync" in the list, then "Saved" once the server has it.

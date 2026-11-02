@@ -1,12 +1,16 @@
 /**
  * @fileoverview Offline / sync, the rest of #70: the offline pill says how old the data
- * is ("as of HH:MM"), each History / Expenses row says "Waiting to sync" until its
+ * is ("as of HH:MM"), each History / Expenses / cash day / withdrawal row says "Waiting to sync" until its
  * document reaches the server and "Saved" after, and closing cash warns while this
  * phone still has unsent changes. All from signals the app already gets (no reads).
  */
 import { createSyncStatus, syncStatusText, syncChipHtml, asOfText, SyncStatus, SERVER_DATA_AT_KEY } from '../ui/sync-status.js';
 import { buildBillRow, billTableHtml } from '../ui/bill-row.js';
 import { CashManagementManager } from '../modules/cash-management.js';
+import { MoneyManager } from '../modules/money.js';
+import { FirebaseService } from '../firebase/firestore-service.js';
+import { updateSession, addSessionEntry } from '../firebase/repos/cash-sessions.js';
+import { AppState } from '../utils/state.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { setLang } from '../i18n/index.js';
 
@@ -222,5 +226,49 @@ describe('closing cash with unsent changes (#70)', () => {
         await CashManagementManager.signOut();
         expect(modal).not.toHaveBeenCalled();
         expect(close).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('cash rows carry the chip (#70)', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    test('a cash day with an unsent change says "Waiting to sync"; other days have a hidden chip', () => {
+        jest.spyOn(SyncStatus, 'syncStateOf').mockImplementation(id => (id === 'cash_2026-11-02' ? 'pending' : null));
+        AppState.userRole = 'owner';
+        document.body.innerHTML = '<div id="cashHistoryList"></div>';
+        const list = document.getElementById('cashHistoryList');
+        CashManagementManager.renderSessionList(list, [
+            { id: 'cash_2026-11-02', date: '2026-11-02', openingBalance: 500, signedOut: false },
+            { id: 'cash_2026-11-01', date: '2026-11-01', openingBalance: 400, signedOut: true, counted: true, closingBalance: 600 }
+        ]);
+        const chips = [...list.querySelectorAll('.sync-chip')];
+        expect(chips.map(c => c.dataset.syncId)).toEqual(['cash_2026-11-02', 'cash_2026-11-01']);
+        expect(chips.map(c => c.hidden)).toEqual([false, true]);
+        expect(chips[0].textContent).toBe('Waiting to sync');
+    });
+
+    test('a withdrawal row carries its document\'s chip', () => {
+        jest.spyOn(SyncStatus, 'syncStateOf').mockImplementation(id => (id === 'w1' ? 'synced' : null));
+        document.body.innerHTML = '<div id="moneyWithdrawalList"></div><datalist id="moneyWdPeople"></datalist>';
+        MoneyManager.renderWithdrawals({ detail: { withdrawn: [{ key: 'w:w1', id: 'w1', t: Date.now(), party: 'Ram', note: '', amount: 100 }] } });
+        const chip = document.querySelector('#moneyWithdrawalList .sync-chip');
+        expect(chip.dataset.syncId).toBe('w1');
+        expect(chip.textContent).toBe('Saved');
+    });
+
+    test('the cash day writes are tracked until the server answers; nothing is read', async () => {
+        const track = jest.spyOn(SyncStatus, 'trackWrite').mockImplementation(() => {});
+        const update = jest.fn(() => Promise.resolve());
+        const get = jest.fn();
+        const doc = jest.fn(id => ({ id, path: `cashManagement/${id}`, update, get }));
+        jest.spyOn(FirebaseService, 'db', 'get').mockReturnValue({ collection: () => ({ doc }) });
+        global.firebase = { firestore: { FieldValue: { arrayUnion: (...v) => ({ arrayUnion: v }) } } };
+        const sent = updateSession('cash_2026-11-02', { signedOut: true });
+        expect(track).toHaveBeenLastCalledWith('cashManagement/cash_2026-11-02', sent);
+        addSessionEntry('cash_2026-11-02', 'cashDeposits', { id: 'd1', amount: 50 });
+        expect(track).toHaveBeenCalledTimes(2);
+        await sent;
+        expect(get).not.toHaveBeenCalled();
+        delete global.firebase;
     });
 });

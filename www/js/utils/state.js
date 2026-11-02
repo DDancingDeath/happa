@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Application State Module
  * Central state management for the Aadhat Management App
@@ -104,7 +105,7 @@ export const AppState = {
     /** @type {Object|null} Connected Bluetooth printer instance */
     connectedPrinter: null,
     /** @type {PrinterSettings} Printer configuration */
-    printerSettings: JSON.parse(localStorage.getItem('printerSettings')) || {
+    printerSettings: JSON.parse(/** @type {string} */ (localStorage.getItem('printerSettings'))) || {
         enabled: false,
         deviceId: null,
         deviceName: null,
@@ -113,7 +114,7 @@ export const AppState = {
     
     // App Settings
     /** @type {AppSettings} Application settings */
-    settings: JSON.parse(localStorage.getItem("settings")) || {
+    settings: JSON.parse(/** @type {string} */ (localStorage.getItem("settings"))) || {
         heavyWeightThreshold: 30,
         laborRate: 6,
         autoLaborEnabled: true,
@@ -122,4 +123,4 @@ export const AppState = {
 };
 
 // Expose to window only for HTML event handlers
-window.AppState = AppState;
+/** @type {any} */ (window).AppState = AppState;
