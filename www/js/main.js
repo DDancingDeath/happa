@@ -5,6 +5,7 @@ import { UIManager } from './ui/ui-manager.js';
 import { NavigationManager } from './ui/navigation.js';
 import { BottomNav } from './ui/bottom-nav.js';
 import { VoiceMic } from './ui/voice-mic.js';
+import { CrashReports } from './services/crash-reports.js';
 import { watchHeadingEmoji } from './ui/heading-emoji.js';
 import { BusinessSwitcher } from './ui/business-switcher.js';
 import { SyncStatus } from './ui/sync-status.js';
@@ -61,7 +62,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozzzbalb-restore-saved-bill';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzzbale-restore-saved-bill';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -199,6 +200,7 @@ const PAGE_ADDED = {
     settings: () => {
         PrinterService.updateStatus();
         VoiceMic.apply();
+        CrashReports.render();
         const swipe = document.getElementById('settingSwipeTabs');
         if (swipe) swipe.checked = !!BottomNav.swipeOn;
     }
@@ -528,6 +530,7 @@ async function initializeUserData() {
         // Initialize billing manager (connects purchase and retail-sale modules)
         BillingManager.init();
         VoiceMic.apply();
+        CrashReports.apply().catch(e => console.warn('Crash reports:', e));
         
         // Show app content
         const appContent = document.getElementById('appContent');

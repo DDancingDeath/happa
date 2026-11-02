@@ -1,0 +1,39 @@
+{
+  "_comment": "Reviewed names the innerHTML audit (scripts/html-escape-audit.js, #89) trusts: calls = functions / methods whose result is safe in HTML, names = plain variables, properties = .x on anything. Add one only after checking every place it is used holds what the reason says.",
+  "calls": {
+    "esc": "alias of Helpers.escapeHtml",
+    "e": "alias of Helpers.escapeHtml",
+    "escapeHtml": "Helpers.escapeHtml",
+    "escapeJsAttr": "Helpers.escapeJsAttr: JS- then HTML-escaped",
+    "escapeAttr": "alias of Helpers.escapeHtml for attributes",
+    "safeUrl": "Helpers.safeUrl: escaped, javascript:/data: blocked",
+    "L": "escapeHtml(t(key, params))",
+    "tt": "escapeHtml(t(key, params))",
+    "tx": "escapeHtml(t(key, params))",
+    "et": "escapeHtml(t(key, params))",
+    "loc": "escapeHtml(pickLang(...))",
+    "js": "alias of Helpers.escapeJsAttr",
+    "attr": "alias of Helpers.escapeHtml for attributes",
+    "encodeURIComponent": "percent-encodes < > \" & (not ' : never inside a quoted JS string in a handler attribute)",
+    "formatCurrency": "a number formatted as rupees",
+    "formatINR": "a number formatted as rupees",
+    "formatRupees": "a number formatted as rupees",
+    "formatKg": "a number formatted as kg",
+    "formatRate": "a number formatted as a rate",
+    "fmt": "number formatter",
+    "money": "number formatter",
+    "rupees": "number formatter",
+    "toFixed": "number to digits",
+    "Number": "a number",
+    "round": "Math.round",
+    "floor": "Math.floor",
+    "ceil": "Math.ceil",
+    "abs": "Math.abs",
+    "min": "Math.min",
+    "max": "Math.max"
+  },
+  "names": {},
+  "properties": {
+    "length": "array / string length, a number"
+  }
+}

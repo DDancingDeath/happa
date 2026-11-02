@@ -65,7 +65,7 @@ and is wrapped in **Capacitor** for Android distribution.
    `npm run test:rules` (Firestore emulator; needs Java and
    `cd rules-tests && npm install` once). `npm run lint` (ESLint) must
    stay at 0 errors. `.github/workflows/ci.yml` runs lint, `check:sw`,
-   `check:release`, Jest and the rules tests on every PR, and
+   `check:release`, `check:html-escape`, Jest and the rules tests on every PR, and
    `.github/workflows/e2e.yml` runs the Playwright E2E suite on every PR that
    changes the app (section 5, "CI").
 6. **Money-related changes get extra care.** Bills mix top-level
@@ -162,7 +162,9 @@ In order:
   day in IST).
 - **Escaping**: any Firestore/user text inserted via `innerHTML` must go
   through `Helpers.escapeHtml()`; values inside `onclick="fn('…')"` or `data-onclick="fn('…')"` need
-  `Helpers.escapeJsAttr()`.
+  `Helpers.escapeJsAttr()`; an `href` built from data needs `Helpers.safeUrl()`.
+  CI's `npm run check:html-escape` fails on a new unescaped value (baseline
+  `tests/html-escape-baseline.txt`; `docs/security.md`, "innerHTML audit").
 - **App language (Hindi/English, #143)**: user-facing text comes from
   `t('key', params)` (`www/js/i18n/index.js`) with plain catalogues
   `i18n/en.js` + `i18n/hi.js` (`ui.*` = screen text, `msg.*` = toasts /
@@ -589,7 +591,7 @@ fails unless the baseline's `exceptions` records it
 
 ### PR checklist
 
-- [ ] Tests, `npm run lint` (0 errors), `npm run typecheck`, `check:review`, `check:sw`, `check:release` pass.
+- [ ] Tests, `npm run lint` (0 errors), `npm run typecheck`, `check:review`, `check:sw`, `check:release`, `check:html-escape` pass.
 - [ ] App change → the E2E check `Playwright E2E (emulators)` is green (section 5, "CI").
 - [ ] Shipped `www/` file changed → cache bump (section 4).
 - [ ] Added or changed a number shown on screen (or how it is calculated) →
