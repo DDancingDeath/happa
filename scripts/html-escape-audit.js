@@ -103,6 +103,8 @@ function auditSource(src, rel, allow = ALLOW) {
     };
 
     const refScope = new Map();
+    /** scope -> name -> what a destructuring declaration took it from */
+    const destructured = new Map();
     /** scope -> name -> assigned values (also `+=`, `||=`, `x[i] =`, `.push(…)` and function declarations) */
     const assigns = new Map();
     const assign = (scope, name, value) => {
@@ -135,6 +137,12 @@ function auditSource(src, rel, allow = ALLOW) {
         if (n.type === 'Identifier') refScope.set(n, resolve(n.name, ancestors));
         else if (n.type === 'VariableDeclarator' && n.id.type === 'Identifier' && n.init) {
             assign(resolve(n.id.name, ancestors), n.id.name, n.init);
+        } else if (n.type === 'VariableDeclarator' && n.init) {
+            patternIds(n.id).forEach(id => {
+                const sc = resolve(id.name, ancestors);
+                if (!destructured.has(sc)) destructured.set(sc, new Map());
+                destructured.get(sc).set(id.name, n.init);
+            });
         } else if (n.type === 'FunctionDeclaration' && n.id) {
             assign(resolve(n.id.name, ancestors.slice(0, -1)), n.id.name, n);
         } else if (n.type === 'AssignmentExpression') {
@@ -258,9 +266,25 @@ function auditSource(src, rel, allow = ALLOW) {
 
     /** one line per node and kind: the same text twice on a line counts twice */
     const hits = new Map();
-    const hit = (n, kind, from) => hits.set(`${n.start}-${n.end}|${kind}`, `${rel}:${n.loc.start.line}: ${text(n)}${from || ''}${kind ? ` (${kind})` : ''}`);
+    const hit = (n, kind, from = tracedTo(n, [n])) => hits.set(`${n.start}-${n.end}|${kind}`, `${rel}:${n.loc.start.line}: ${text(n)}${from}${kind ? ` (${kind})` : ''}`);
     /** ` ← a | b`: what a listed variable / call was traced to, so pointing it at other data is a new line */
-    const tracedTo = (x, ls) => (ls.length === 1 && ls[0] === x ? '' : ` ← ${ls.map(l => text(l).slice(0, 80)).join(' | ')}`.slice(0, 300));
+    /** For x.y… / a destructured name: what the local variable at its root was given ('' if a parameter / unknown). */
+    const rootNote = (l) => {
+        let root = l;
+        while (root.type === 'MemberExpression' || root.type === 'ChainExpression') root = root.type === 'ChainExpression' ? root.expression : root.object;
+        if (root.type !== 'Identifier') return '';
+        const scope = refScope.get(root) || GLOBAL;
+        if (scope === GLOBAL) return '';
+        const from = (destructured.get(scope) || new Map()).get(root.name);
+        if (from) return `${root.name} from ${text(from).slice(0, 80)}`;
+        if (root === l || decls.get(scope).get(root.name).opaque) return '';
+        const vals = ((assigns.get(scope) || new Map()).get(root.name) || []).filter(v => !FN.has(v.type));
+        return vals.length ? `${root.name} = ${vals.map(v => text(v).slice(0, 80)).join(' | ')}` : '';
+    };
+    const tracedTo = (x, ls) => {
+        const parts = ls.map(l => (l === x ? rootNote(l) : text(l).slice(0, 80) + (rootNote(l) ? ` {${rootNote(l)}}` : ''))).filter(Boolean);
+        return parts.length ? ` ← ${parts.join(' | ')}`.slice(0, 300) : '';
+    };
     const isSafeUrl = (x) => x.type === 'CallExpression' && calleeName(x.callee) === SAFE_URL;
     const tail = (x) => (x.type === 'Literal' && typeof x.value === 'string' ? x.value
         : x.type === 'TemplateLiteral' ? x.quasis[x.quasis.length - 1].value.raw : '');

@@ -116,6 +116,16 @@ describe('html-escape-audit', () => {
     });
 
     test.each([
+        ['a property of a local object', 'function f(el, n) { const d = describe(n); el.innerHTML = `<i>${d.icon}</i>`; }', 'const d = describe(n);', 'const d = n;'],
+        ['a destructured local', 'function f(el, n) { const { icon } = describe(n); el.innerHTML = `<i>${icon}</i>`; }', '= describe(n)', '= n']
+    ])('re-pointing %s is a new line', (_, src, from, to) => {
+        const before = audit(src);
+        const after = audit(src.replace(from, to));
+        expect(before).toHaveLength(1);
+        expect(compare(after, before.map(h => h.replace(/:\d+:/, ':'))).added).toHaveLength(1);
+    });
+
+    test.each([
         ['a new caller of a helper that uses a property of its parameter',
             'const chip = (p) => `<b>${p.count}</b>`; el.innerHTML = chip(stats); el2.innerHTML = chip(party);', 'party (markup via chip .count)'],
         ['a new list whose items\' property reaches markup',

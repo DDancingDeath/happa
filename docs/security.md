@@ -121,7 +121,8 @@ keys) and static templates. The conventions that keep it so:
 
 **Regression check (CI).** `npm run check:html-escape` (`scripts/html-escape-audit.js --check`,
 in the *Lint, Jest, release checks* job) lists every value that reaches HTML without plain
-escaping (a listed variable or call also shows what it was traced to: `timeStr ← Helpers.formatTime(time)`)
+escaping (a listed variable, call or `local.property` also shows what it was traced to:
+`timeStr ← Helpers.formatTime(time)`, `d.icon ← d = describeNotification(n)`)
 and fails on a line that isn't in `tests/html-escape-baseline.txt` (lines are compared
 without line numbers, so moving code doesn't count). It looks at:
 
