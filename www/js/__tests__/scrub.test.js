@@ -95,7 +95,7 @@ describe('stored error reports are scrubbed', () => {
 describe('changedFields (#85)', () => {
     test('formatAuditDetails shows the new details (cash, stock, settings, hidden reports, refused)', () => {
         expect(formatAuditDetails({ date: '2026-10-21', counted: 1250, expected: 1300, difference: -50 }))
-            .toBe('Day: 2026-10-21 • Counted ₹1250, expected ₹1300');
+            .toBe('Day: 2026-10-21 • Counted ₹1,250, expected ₹1,300');
         expect(formatAuditDetails({ itemName: 'Wheat', from: 10, to: 5, reason: 'Damaged', refused: true }))
             .toBe('Refused by the server, not saved • Item: Wheat • 10 → 5 • Reason: Damaged');
         expect(formatAuditDetails({ section: 'labour', changes: 'laborRate: 6 → 7' })).toBe('Changes: laborRate: 6 → 7');
