@@ -45,6 +45,8 @@ jobs:
         run: npm run check:sw
       - name: Release metadata
         run: npm run check:release
+      - name: innerHTML audit (no new unescaped values; #89)
+        run: npm run check:html-escape
       # On a PR the architecture ratchet compares tests/architecture-baseline.json with the base branch.
       - name: Fetch the PR base branch
         if: github.event_name == 'pull_request'

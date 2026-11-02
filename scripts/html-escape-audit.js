@@ -1,13 +1,19 @@
 #!/usr/bin/env node
 /**
- * Lists the values that reach HTML without being plainly escaped, for the innerHTML audit (#89,
- * docs/security.md): each `${…}` in an HTML-looking template literal, each piece of a `+` chain
- * that builds markup, and each innerHTML / outerHTML / insertAdjacentHTML / document.write /
- * showModalWithHtml / showCustomModal given something other than a literal, under www/js and
- * www/r. A helper for review, not a proof: most hits are numbers, colours, other escaped
- * fragments or catalogue text, and a value can still be unsafe in a way the rules below accept;
- * check each new line by hand.
- *   node scripts/html-escape-audit.js [--summary]
+ * innerHTML audit (#89, docs/security.md). Lists each value that can reach HTML without being
+ * plainly escaped, under www/js and www/r:
+ * - each `${…}` in a template literal with markup, and each piece of a `+` chain that builds markup;
+ * - each value given to a sink (innerHTML / outerHTML, also `['innerHTML']` and `+=`,
+ *   insertAdjacentHTML, document.write, showModalWithHtml, showCustomModal, and calls in the same
+ *   file to a function whose parameter reaches one, such as `this.html(id, …)`),
+ *   followed through templates without tags, local variables (including `+=` and `.push`),
+ *   `.map/.filter(…).join(…)` (block bodies too) and local functions to what they return;
+ * - each `href="${…}"` that is not `safeUrl(…)` (escaping does not block `javascript:`).
+ * Names are trusted only through the reviewed list in html-escape-allow.json, never by pattern.
+ * A helper for review, not a proof.
+ *   node scripts/html-escape-audit.js [--summary]   list
+ *   node scripts/html-escape-audit.js --check       fail on lines not in tests/html-escape-baseline.txt
+ *   node scripts/html-escape-audit.js --update-baseline   after checking every new line by hand
  */
 const fs = require('fs');
 const path = require('path');
@@ -15,17 +21,261 @@ const acorn = require('acorn');
 const walk = require('acorn-walk');
 
 const ROOT = path.resolve(__dirname, '..');
-const DIRS = ['www/js', 'www/r'].map(d => path.join(ROOT, d));
+const DIRS = ['www/js', 'www/r'];
 const SKIP = /[\\/](__tests__|i18n|vendor)[\\/]/;
+const BASELINE = path.join(ROOT, 'tests', 'html-escape-baseline.txt');
+const ALLOW = require('./html-escape-allow.json');
 
-/** Calls that return escaped text, numbers, or HTML built from escaped parts. */
-const SAFE_CALLS = new Set(['esc', 'e', 'escapeHtml', 'escapeJsAttr', 'escapeAttr', 'L', 'tt', 'tx', 'et', 'loc', 'js', 'attr',
-    'encodeURIComponent', 'formatCurrency', 'formatINR', 'formatRupees', 'formatKg', 'formatRate', 'fmt', 'money', 'rupees',
-    'toFixed', 'toLocaleString', 'Number', 'round', 'floor', 'ceil', 'abs', 'min', 'max']);
-/** Whole names that by convention hold a number, a colour / class / style, or already-escaped HTML. */
-const SAFE_NAME = /^(?:[a-z]\w*)?(?:Html|HTML|Rows|Class|Style|Color|Icon|Count|Total|Amount|Qty|Pct|Width|Height)$|^(?:html|rows|cls|style|color|icon|count|total|amount|qty|pct|width|height|index|idx|i|n|h|k)$/;
-const SINK_CALLS = new Set(['insertAdjacentHTML', 'showModalWithHtml', 'showCustomModal']);
 const MARKUP = /<\/?[a-z]/i;
+const URL_ATTR = /\bhref\s*=\s*["']?\s*$/i;
+const SAFE_URL = 'safeUrl';
+const SINK_PROPS = new Set(['innerHTML', 'outerHTML']);
+/** Sink call name -> index of the markup argument. */
+const SINK_CALLS = { insertAdjacentHTML: 1, showModalWithHtml: 0, showCustomModal: 0 };
+const FN = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
+const SAME_ITEMS = new Set(['filter', 'slice', 'sort', 'reverse', 'trim', 'trimStart', 'trimEnd', 'toUpperCase', 'toLowerCase']);
+const GLOBAL = { type: 'Global' };
+
+function patternIds(p) {
+    if (!p) return [];
+    switch (p.type) {
+        case 'Identifier': return [p];
+        case 'ObjectPattern': return p.properties.flatMap(x => patternIds(x.type === 'RestElement' ? x.argument : x.value));
+        case 'ArrayPattern': return p.elements.flatMap(patternIds);
+        case 'AssignmentPattern': return patternIds(p.left);
+        case 'RestElement': return patternIds(p.argument);
+        default: return [];
+    }
+}
+
+/**
+ * @param {string} src
+ * @param {string} rel path shown in each line
+ * @param {{names?: Record<string,string>, calls?: Record<string,string>}} [allow]
+ * @returns {string[]} `rel:line: text (kind)`
+ */
+function auditSource(src, rel, allow = ALLOW) {
+    const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'module', locations: true, allowHashBang: true });
+    const trustedNames = new Set(Object.keys(allow.names || {}));
+    const trustedCalls = new Set(Object.keys(allow.calls || {}));
+    const text = (n) => src.slice(n.start, n.end).replace(/\s+/g, ' ').slice(0, 140);
+    const calleeName = (c) => (c.type === 'Identifier' ? c.name
+        : c.type === 'MemberExpression' && !c.computed ? c.property.name : '');
+
+    /** scope node -> name -> { opaque } (params, destructuring, imports, catch: value unknown here) */
+    const decls = new Map();
+    /** function -> parameter name -> position */
+    const paramIndex = new Map();
+    const declare = (scope, id, opaque) => {
+        if (!decls.has(scope)) decls.set(scope, new Map());
+        const m = decls.get(scope);
+        m.set(id.name, { opaque: opaque || (m.get(id.name) || {}).opaque || false });
+    };
+    const scopeOf = (ancestors, skipSelf) => {
+        for (let i = ancestors.length - (skipSelf ? 2 : 1); i >= 0; i--) {
+            if (FN.has(ancestors[i].type) || ancestors[i].type === 'Program') return ancestors[i];
+        }
+        return ast;
+    };
+    walk.fullAncestor(ast, (n, ancestors) => {
+        if (n.type === 'VariableDeclarator') {
+            patternIds(n.id).forEach(id => declare(scopeOf(ancestors), id, n.id.type !== 'Identifier'));
+        } else if (FN.has(n.type)) {
+            if (n.type === 'FunctionDeclaration' && n.id) declare(scopeOf(ancestors, true), n.id, false);
+            n.params.flatMap(patternIds).forEach(id => declare(n, id, true));
+            paramIndex.set(n, new Map(n.params.map((p, i) => [p.type === 'Identifier' ? p.name : null, i])));
+        } else if (n.type === 'ClassDeclaration' && n.id) {
+            declare(scopeOf(ancestors), n.id, true);
+        } else if (n.type === 'CatchClause' && n.param) {
+            patternIds(n.param).forEach(id => declare(scopeOf(ancestors), id, true));
+        } else if (/^Import(Default|Namespace)?Specifier$/.test(n.type)) {
+            declare(ast, n.local, true);
+        }
+    });
+    const resolve = (name, ancestors) => {
+        for (let i = ancestors.length - 1; i >= 0; i--) {
+            const d = decls.get(ancestors[i]);
+            if (d && d.has(name)) return ancestors[i];
+        }
+        return GLOBAL;
+    };
+
+    const refScope = new Map();
+    /** scope -> name -> assigned values (also `+=`, `.push(…)` and function declarations) */
+    const assigns = new Map();
+    const assign = (scope, name, value) => {
+        if (!assigns.has(scope)) assigns.set(scope, new Map());
+        const m = assigns.get(scope);
+        if (!m.has(name)) m.set(name, []);
+        m.get(name).push(value);
+    };
+    /** method / property name -> function values defined in this file */
+    const methods = new Map();
+    const addMethod = (key, fn) => {
+        if (!key || key.type !== 'Identifier' || !FN.has(fn.type)) return;
+        if (!methods.has(key.name)) methods.set(key.name, []);
+        methods.get(key.name).push(fn);
+    };
+    walk.fullAncestor(ast, (n, ancestors) => {
+        if (n.type === 'Identifier') refScope.set(n, resolve(n.name, ancestors));
+        else if (n.type === 'VariableDeclarator' && n.id.type === 'Identifier' && n.init) {
+            assign(resolve(n.id.name, ancestors), n.id.name, n.init);
+        } else if (n.type === 'FunctionDeclaration' && n.id) {
+            assign(resolve(n.id.name, ancestors.slice(0, -1)), n.id.name, n);
+        } else if (n.type === 'AssignmentExpression' && n.left.type === 'Identifier' && (n.operator === '=' || n.operator === '+=')) {
+            assign(resolve(n.left.name, ancestors), n.left.name, n.right);
+        } else if (n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && !n.callee.computed
+            && /^(push|unshift)$/.test(n.callee.property.name) && n.callee.object.type === 'Identifier') {
+            n.arguments.forEach(a => assign(resolve(n.callee.object.name, ancestors), n.callee.object.name, a));
+        } else if (n.type === 'MethodDefinition' && !n.computed) {
+            addMethod(n.key, n.value);
+        } else if (n.type === 'Property' && !n.computed) {
+            addMethod(n.key, n.value);
+        }
+    });
+
+    const markupTemplate = (n) => n.type === 'TemplateLiteral' && MARKUP.test(n.quasis.map(q => q.value.raw).join(''));
+    const flatChain = (n, out = []) => {
+        if (n.type === 'BinaryExpression' && n.operator === '+') { flatChain(n.left, out); flatChain(n.right, out); } else out.push(n);
+        return out;
+    };
+    const markupChain = (parts) => parts.some(x => (x.type === 'Literal' && typeof x.value === 'string' && MARKUP.test(x.value)) || markupTemplate(x));
+
+    const memo = new Map();
+    /** The pieces of n that are not known to be safe in markup (markup templates / chains are listed where they are). */
+    const leaves = (n) => {
+        if (!n) return [];
+        if (memo.has(n)) return memo.get(n);
+        memo.set(n, []);
+        const r = compute(n);
+        memo.set(n, r);
+        return r;
+    };
+    const returnsMemo = new Map();
+    const returnLeaves = (fn) => {
+        if (returnsMemo.has(fn)) return returnsMemo.get(fn);
+        returnsMemo.set(fn, []);
+        let r;
+        if (fn.body.type !== 'BlockStatement') r = leaves(fn.body);
+        else {
+            const rets = [];
+            walk.recursive(fn.body, null, {
+                Function() { /* returns of nested functions are theirs */ },
+                ReturnStatement(s) { if (s.argument) rets.push(s.argument); }
+            });
+            r = rets.flatMap(leaves);
+        }
+        returnsMemo.set(fn, r);
+        return r;
+    };
+    const functionsOf = (n) => {
+        if (FN.has(n.type)) return [n];
+        if (n.type === 'Identifier') {
+            const vals = (assigns.get(refScope.get(n)) || new Map()).get(n.name) || [];
+            const fns = vals.filter(v => FN.has(v.type));
+            return fns.length ? fns : null;
+        }
+        if (n.type === 'MemberExpression' && !n.computed) return methods.get(n.property.name) || null;
+        return null;
+    };
+    const callLeaves = (n) => {
+        const name = calleeName(n.callee);
+        const member = n.callee.type === 'MemberExpression';
+        if (name === 't' && !member) return n.arguments.length < 2 ? [] : [n];
+        if (trustedCalls.has(name)) return [];
+        if (member && name === 'join') return leaves(n.callee.object);
+        if (member && SAME_ITEMS.has(name)) return leaves(n.callee.object);
+        if (member && name === 'concat') return [n.callee.object, ...n.arguments].flatMap(leaves);
+        if (member && (name === 'map' || name === 'flatMap') && n.arguments[0]) {
+            const fns = functionsOf(n.arguments[0]);
+            return fns ? fns.flatMap(returnLeaves) : [n];
+        }
+        if (name === 'String' && !member) return n.arguments.flatMap(leaves);
+        const fns = functionsOf(n.callee);
+        return fns ? fns.flatMap(returnLeaves) : [n];
+    };
+    const compute = (n) => {
+        switch (n.type) {
+            case 'Literal': case 'UnaryExpression': case 'UpdateExpression': return [];
+            case 'TemplateLiteral': return markupTemplate(n) ? [] : n.expressions.flatMap(leaves);
+            case 'BinaryExpression': {
+                if (n.operator !== '+') return [];
+                const parts = flatChain(n);
+                return markupChain(parts) ? [] : parts.flatMap(leaves);
+            }
+            case 'ConditionalExpression': return [...leaves(n.consequent), ...leaves(n.alternate)];
+            case 'LogicalExpression': return [...leaves(n.left), ...leaves(n.right)];
+            case 'SequenceExpression': return leaves(n.expressions[n.expressions.length - 1]);
+            case 'AwaitExpression': case 'SpreadElement': return leaves(n.argument);
+            case 'ChainExpression': return leaves(n.expression);
+            case 'AssignmentExpression': return leaves(n.right);
+            case 'ArrayExpression': return n.elements.flatMap(leaves);
+            case 'CallExpression': return callLeaves(n);
+            case 'Identifier': {
+                if (n.name === 'undefined' || trustedNames.has(n.name)) return [];
+                const scope = refScope.get(n) || GLOBAL;
+                const d = scope !== GLOBAL && decls.get(scope).get(n.name);
+                const vals = ((assigns.get(scope) || new Map()).get(n.name) || []).filter(v => !FN.has(v.type));
+                if ((d && d.opaque) || !vals.length) return [n];
+                return vals.flatMap(leaves);
+            }
+            case 'MemberExpression': return !n.computed && trustedNames.has(n.property.name) ? [] : [n];
+            default: return [n];
+        }
+    };
+
+    const hits = new Set();
+    const at = (n) => `${rel}:${n.loc.start.line}`;
+    const hit = (n, kind) => hits.add(`${at(n)}: ${text(n)}${kind ? ` (${kind})` : ''}`);
+    const isSafeUrl = (x) => x.type === 'CallExpression' && calleeName(x.callee) === SAFE_URL;
+    const tail = (x) => (x.type === 'Literal' && typeof x.value === 'string' ? x.value
+        : x.type === 'TemplateLiteral' ? x.quasis[x.quasis.length - 1].value.raw : '');
+    /** [function, argument position] whose parameter reaches a sink: calls to it in this file are sinks too */
+    const wrappers = [];
+    const sinkValue = (v) => {
+        if (!v) return;
+        leaves(v).forEach(l => {
+            hit(l, 'sink');
+            const fn = l.type === 'Identifier' && refScope.get(l);
+            const i = fn && paramIndex.has(fn) ? paramIndex.get(fn).get(l.name) : undefined;
+            if (i !== undefined && !wrappers.some(([f, j]) => f === fn && j === i)) wrappers.push([fn, i]);
+        });
+    };
+    const calls = [];
+
+    walk.fullAncestor(ast, (n, ancestors) => {
+        const parent = ancestors[ancestors.length - 2];
+        if (markupTemplate(n)) {
+            n.expressions.forEach((x, i) => {
+                if (URL_ATTR.test(n.quasis[i].value.raw)) { if (!isSafeUrl(x)) hit(x, 'url'); } else if (leaves(x).length) hit(x, '');
+            });
+        }
+        if (n.type === 'BinaryExpression' && n.operator === '+' && !(parent && parent.type === 'BinaryExpression' && parent.operator === '+')) {
+            const parts = flatChain(n);
+            if (markupChain(parts)) {
+                parts.forEach((x, i) => {
+                    if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) { if (!isSafeUrl(x)) hit(x, 'url (concatenated)'); } else if (leaves(x).length) hit(x, 'concatenated');
+                });
+            }
+        }
+        if (n.type === 'AssignmentExpression' && n.left.type === 'MemberExpression') {
+            const prop = n.left.computed ? (n.left.property.type === 'Literal' ? n.left.property.value : null) : n.left.property.name;
+            if (SINK_PROPS.has(prop)) sinkValue(n.right);
+        }
+        if (n.type === 'CallExpression') {
+            calls.push(n);
+            const name = calleeName(n.callee);
+            const obj = n.callee.type === 'MemberExpression' ? n.callee.object : null;
+            if (Object.prototype.hasOwnProperty.call(SINK_CALLS, name)) sinkValue(n.arguments[SINK_CALLS[name]]);
+            else if ((name === 'write' || name === 'writeln') && obj && /document$/.test(text(obj))) sinkValue(n.arguments[0]);
+        }
+    });
+    for (let w = 0; w < wrappers.length; w++) {
+        const [fn, i] = wrappers[w];
+        calls.forEach(c => { if ((functionsOf(c.callee) || []).includes(fn)) sinkValue(c.arguments[i]); });
+    }
+    return [...hits];
+}
 
 function files(dir) {
     return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -36,73 +286,57 @@ function files(dir) {
     });
 }
 
-function audit(file) {
-    const src = fs.readFileSync(file, 'utf8');
-    const ast = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'module', locations: true });
-    const text = (n) => src.slice(n.start, n.end).replace(/\s+/g, ' ').slice(0, 140);
-    const callee = (c) => (c.type === 'Identifier' ? c.name : c.type === 'MemberExpression' && !c.computed ? c.property.name : '');
-    const safe = (n) => {
-        switch (n.type) {
-            case 'Literal': case 'UnaryExpression': return true;
-            case 'TemplateLiteral': return n.expressions.every(safe);
-            case 'ConditionalExpression': return safe(n.consequent) && safe(n.alternate);
-            case 'LogicalExpression': return safe(n.left) && safe(n.right);
-            case 'BinaryExpression': return n.operator !== '+' || (safe(n.left) && safe(n.right));
-            case 'CallExpression': {
-                const name = callee(n.callee);
-                if (name === 't') return n.arguments.length < 2;
-                // x.map(…).join(…) is as safe as what is mapped (template literals inside are listed on their own)
-                if (name === 'join' && n.callee.type === 'MemberExpression') return safe(n.callee.object);
-                if ((name === 'map' || name === 'filter') && n.arguments[0] && /Function/.test(n.arguments[0].type)) {
-                    const body = n.arguments[0].body;
-                    return body.type === 'BlockStatement' || safe(body);
-                }
-                return SAFE_CALLS.has(name) || /^(?:[a-z]\w*)?(?:Html|HTML)$|^render[A-Z]?/.test(name);
-            }
-            case 'Identifier': return SAFE_NAME.test(n.name);
-            case 'MemberExpression': return !n.computed && SAFE_NAME.test(n.property.name);
-            default: return false;
-        }
-    };
-    const hits = [];
-    const at = (n) => `${path.relative(ROOT, file).replace(/\\/g, '/')}:${n.loc.start.line}`;
-    const isLiteral = (v) => v.type === 'Literal' || v.type === 'TemplateLiteral';
-    walk.fullAncestor(ast, (n, ancestors) => {
-        const parent = ancestors[ancestors.length - 2];
-        if (n.type === 'TemplateLiteral' && MARKUP.test(n.quasis.map(q => q.value.raw).join(''))) {
-            n.expressions.filter(x => !safe(x)).forEach(x => hits.push(`${at(x)}: ${text(x)}`));
-        }
-        if (n.type === 'BinaryExpression' && n.operator === '+' && !(parent && parent.type === 'BinaryExpression' && parent.operator === '+')) {
-            // One + chain at a time: if any piece is markup, list every unsafe piece
-            const parts = [];
-            const flat = (x) => {
-                if (x.type === 'BinaryExpression' && x.operator === '+') { flat(x.left); flat(x.right); } else parts.push(x);
-            };
-            flat(n);
-            const markup = parts.some(x => (x.type === 'Literal' && typeof x.value === 'string' && MARKUP.test(x.value))
-                || (x.type === 'TemplateLiteral' && MARKUP.test(x.quasis.map(q => q.value.raw).join(''))));
-            if (markup) parts.filter(x => x.type !== 'TemplateLiteral' && !safe(x)).forEach(x => hits.push(`${at(x)}: ${text(x)} (concatenated)`));
-        }
-        if (n.type === 'AssignmentExpression' && n.left.type === 'MemberExpression' && !n.left.computed
-            && /^(innerHTML|outerHTML)$/.test(n.left.property.name) && !isLiteral(n.right) && !safe(n.right)) {
-            hits.push(`${at(n.right)}: ${text(n.right)} (sink)`);
-        }
-        const docWrite = n.type === 'CallExpression' && n.callee.type === 'MemberExpression' && callee(n.callee) === 'write'
-            && /document$/.test(text(n.callee.object));
-        if (n.type === 'CallExpression' && (SINK_CALLS.has(callee(n.callee)) || docWrite)) {
-            const v = n.arguments[callee(n.callee) === 'insertAdjacentHTML' ? 1 : 0];
-            if (v && !isLiteral(v) && !safe(v)) hits.push(`${at(v)}: ${text(v)} (sink)`);
-        }
-    });
-    return hits;
+function auditRepo(root = ROOT) {
+    return DIRS.flatMap(d => files(path.join(root, d))).flatMap(f =>
+        auditSource(fs.readFileSync(f, 'utf8'), path.relative(root, f).replace(/\\/g, '/')));
 }
 
-const all = DIRS.flatMap(files).flatMap(audit);
-if (process.argv.includes('--summary')) {
-    const by = {};
-    all.forEach(h => { const f = h.split(':')[0]; by[f] = (by[f] || 0) + 1; });
-    Object.entries(by).sort((a, b) => b[1] - a[1]).forEach(([f, n]) => console.log(`${String(n).padStart(4)} ${f}`));
-} else {
-    console.log(all.join('\n'));
+/** `file:12: text` -> `file: text`, so moving code doesn't count as new. */
+const withoutLine = (h) => h.replace(/^([^:]+):\d+:/, '$1:');
+
+/** Lines in `current` beyond their count in the baseline, and baseline lines no longer found. */
+function compare(current, baseline) {
+    const left = new Map();
+    baseline.forEach(b => left.set(b, (left.get(b) || 0) + 1));
+    const added = [];
+    current.forEach(h => {
+        const k = withoutLine(h);
+        if (left.get(k)) left.set(k, left.get(k) - 1); else added.push(h);
+    });
+    const gone = [...left].flatMap(([k, c]) => Array(c).fill(k));
+    return { added, gone };
 }
-console.error(`${all.length} value(s) to check by hand`);
+
+const readBaseline = () => (fs.existsSync(BASELINE) ? fs.readFileSync(BASELINE, 'utf8').split(/\r?\n/).filter(l => l && !l.startsWith('#')) : []);
+
+function main(argv) {
+    const all = auditRepo();
+    if (argv.includes('--update-baseline')) {
+        const header = '# innerHTML audit baseline (#89): the lines scripts/html-escape-audit.js lists today, each checked by hand.\n'
+            + '# CI fails on a line not here. Fix it (escape / safeUrl) or, once checked, run: npm run check:html-escape -- --update-baseline\n';
+        fs.writeFileSync(BASELINE, (header + all.map(withoutLine).sort().join('\n') + '\n').replace(/\n/g, require('os').EOL));
+        console.log(`${all.length} line(s) written to ${path.relative(ROOT, BASELINE)}`);
+        return 0;
+    }
+    if (argv.includes('--check')) {
+        const { added, gone } = compare(all, readBaseline());
+        if (gone.length) console.log(`${gone.length} baseline line(s) no longer found; lower the baseline with --update-baseline.`);
+        if (!added.length) { console.log(`innerHTML audit: no new lines (${all.length} known).`); return 0; }
+        console.error(`innerHTML audit: ${added.length} new value(s) reach HTML without plain escaping:\n${added.join('\n')}`);
+        console.error('Escape them (Helpers.escapeHtml, href via Helpers.safeUrl) or, if checked safe by hand, run --update-baseline (docs/security.md).');
+        return 1;
+    }
+    if (argv.includes('--summary')) {
+        const by = {};
+        all.forEach(h => { const f = h.split(':')[0]; by[f] = (by[f] || 0) + 1; });
+        Object.entries(by).sort((a, b) => b[1] - a[1]).forEach(([f, c]) => console.log(`${String(c).padStart(4)} ${f}`));
+    } else {
+        console.log(all.join('\n'));
+    }
+    console.error(`${all.length} value(s) to check by hand`);
+    return 0;
+}
+
+if (require.main === module) process.exitCode = main(process.argv.slice(2));
+
+module.exports = { auditSource, auditRepo, compare, withoutLine };

@@ -1,0 +1,77 @@
+/**
+ * @jest-environment node
+ */
+const { auditSource, compare } = require('../../scripts/html-escape-audit.js');
+
+const audit = (src) => auditSource(src, 'probe.js');
+
+// Each probe puts attacker-controlled text into HTML; the audit must list at least one line.
+const HOSTILE = {
+    'tag template': 'el.innerHTML = `<b>${party.name}</b>`;',
+    'template without tags at innerHTML': 'el.innerHTML = `${party.name}`;',
+    'template without tags at insertAdjacentHTML': "el.insertAdjacentHTML('beforeend', `${party.name} `);",
+    '+= into a variable later given to innerHTML': "let h = ''; for (const r of rows) h += r.name; el.innerHTML = h;",
+    '+= of a tagless template into a variable named html': "let html = '<ul>'; html += `${r.name}`; el.innerHTML = html;",
+    "['innerHTML']": "el['innerHTML'] = party.name;",
+    'block-body map().join()': "el.innerHTML = rows.map(r => { const n = r.name; return n; }).join('<br>');",
+    'block-body filter().join()': "function f(el, names) { el.innerHTML = names.filter(n => { return n.length > 0; }).join(', '); }",
+    'a name that sounds safe (…Html), assigned user text': 'const userHtml = user.displayName; el.innerHTML = `<p>${userHtml}</p>`;',
+    'a parameter that sounds numeric': 'function show(el, totalAmount) { el.innerHTML = `<td>${totalAmount}</td>`; }',
+    'an imported render…() call': "import { renderRow } from './x.js'; el.innerHTML = renderRow(r);",
+    'href escaped but not a safe URL': 'el.innerHTML = `<a href="${esc(link)}">open</a>`;',
+    'href in a concatenation': "el.innerHTML = '<a href=\"' + esc(link) + '\">open</a>';",
+    't() with parameters': "el.innerHTML = `<p>${t('ui.x', { name: party.name })}</p>`;",
+    'document.write of a tagless template': 'document.write(`${party.name}`);'
+};
+
+// The same shapes written safely: nothing to list.
+const SAFE = {
+    'escaped tag template': 'el.innerHTML = `<b>${esc(party.name)}</b>`;',
+    'escaped += build': "let h = ''; for (const r of rows) h += Helpers.escapeHtml(r.name); el.innerHTML = h;",
+    'block-body map of escaped markup': "el.innerHTML = rows.map(r => { const n = esc(r.name); return `<li>${n}</li>`; }).join('');",
+    'local helper returning escaped text': 'const cell = (v) => `<td>${esc(v)}</td>`; el.innerHTML = `<tr>${cell(r.name)}</tr>`;',
+    'href through safeUrl': 'el.innerHTML = `<a href="${Helpers.safeUrl(link)}">open</a>`;',
+    'reviewed name (length)': 'el.innerHTML = `<b>${rows.length}</b>`;',
+    'textContent is not a sink': 'el.textContent = party.name;'
+};
+
+describe('html-escape-audit', () => {
+    test('there are 15 hostile probes', () => expect(Object.keys(HOSTILE)).toHaveLength(15));
+
+    test.each(Object.entries(HOSTILE))('lists %s', (_, src) => {
+        expect(audit(src).length).toBeGreaterThan(0);
+    });
+
+    test.each(Object.entries(SAFE))('does not list %s', (_, src) => {
+        expect(audit(src)).toEqual([]);
+    });
+
+    test('an href value is listed as a url line', () => {
+        expect(audit(HOSTILE['href escaped but not a safe URL'])).toEqual(['probe.js:1: esc(link) (url)']);
+    });
+
+    test('names are trusted only through the allow-list', () => {
+        const src = 'function f(el, rowsHtml) { el.innerHTML = `<div>${rowsHtml}</div>`; }';
+        expect(audit(src)).toHaveLength(1);
+        expect(auditSource(src, 'probe.js', { names: { rowsHtml: 'reviewed' } })).toEqual([]);
+    });
+
+    test('calls to a local function whose parameter reaches a sink are sinks too', () => {
+        const src = [
+            'const set = (id, html) => { document.getElementById(id).innerHTML = html; };',
+            "set('a', party.name);",
+            "set('b', `<i>${esc(x)}</i>`);",
+            "const page = { html(id, v) { el.innerHTML = v; }, render() { this.html('k', user.name); } };"
+        ].join('\n');
+        expect(audit(src).sort()).toEqual([
+            'probe.js:1: html (sink)', 'probe.js:2: party.name (sink)', 'probe.js:4: user.name (sink)', 'probe.js:4: v (sink)'
+        ]);
+    });
+
+    test('the baseline check ignores moved lines and fails on new or extra ones', () => {
+        const baseline = ['a.js: name', 'a.js: name', 'b.js: x (sink)'];
+        expect(compare(['a.js:40: name', 'a.js:90: name', 'b.js:3: x (sink)'], baseline)).toEqual({ added: [], gone: [] });
+        expect(compare(['a.js:1: name', 'a.js:2: name', 'a.js:3: name'], baseline).added).toEqual(['a.js:3: name']);
+        expect(compare(['a.js:1: name'], baseline).gone).toEqual(['a.js: name', 'b.js: x (sink)']);
+    });
+});
