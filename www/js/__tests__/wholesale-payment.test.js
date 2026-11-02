@@ -382,6 +382,14 @@ describe('wholesale item stats hide their placeholders until an item is picked (
         expect(document.getElementById('avgPurchaseRateRow').hidden).toBe(false);
     });
 
+    test('a grouped stock (1,250.5) keeps its kg unit (#129)', () => {
+        AppState.stock = { rice: { quantity: 1250.5, rate: 30 } };
+        document.getElementById('sellItem').value = 'Rice';
+        WholesaleSalesManager.loadItemDetails();
+        expect(document.getElementById('availableStock').textContent).toBe('1,250.5');
+        expect(document.getElementById('availableStockUnit').hidden).toBe(false);
+    });
+
     test('an item with no recorded stock hides the "₹-/kg" rate row', () => {
         AppState.stock = {};
         document.getElementById('sellItem').value = 'Rice';

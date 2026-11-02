@@ -19,7 +19,7 @@ import {
     drawerDay, expectedCash, drawerStatus, signOutSummary, countCheck, closeCheck, openingCheck,
     savedDifference, differenceBand, sessionDetail, noBillLeg, lastCountedSession
 } from '../utils/calc/cash.js';
-import { round2, outstandingDue, formatRupees, formatAmount } from '../utils/money.js';
+import { outstandingDue, formatRupees, formatAmount } from '../utils/money.js';
 import { entryAmount } from '../utils/calc/billing.js';
 import { toFlags } from '../utils/bill-checks.js';
 import { OutstandingManager } from './outstanding.js';

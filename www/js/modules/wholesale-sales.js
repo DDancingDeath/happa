@@ -121,7 +121,7 @@ export class WholesaleSalesManager {
         const unknown = (el) => el.textContent.trim() === '-';
         box.hidden = !document.getElementById('sellItem')?.value || (unknown(stock) && unknown(avg));
         const unit = document.getElementById('availableStockUnit');
-        if (unit) unit.hidden = !/^-?[\d.]+$/.test(stock.textContent.trim());
+        if (unit) unit.hidden = !/^-?[\d,.]+$/.test(stock.textContent.trim());
         const avgRow = document.getElementById('avgPurchaseRateRow');
         if (avgRow) avgRow.hidden = unknown(avg);
     }
