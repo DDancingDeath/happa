@@ -3,7 +3,7 @@
  * see it in History → record part of the due on Outstanding → open and close
  * the cash drawer. Firestore documents are checked through the emulator.
  */
-const { test, expect, login, showTab, expectToast, confirmModalIfOpen, clickAfterTyping } = require('./support/app');
+const { test, expect, login, showTab, settle, expectToast, confirmModalIfOpen, clickAfterTyping } = require('./support/app');
 const { listDocs, getDoc, deleteAll } = require('./support/emulator');
 
 test('bill → History → due payment → cash close', async ({ page, problems }, testInfo) => {
@@ -43,8 +43,11 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     await page.click('#due .filter-sale');
     const input = page.locator(`[id="payment_${sale.id}"]`);
     await expect(input).toBeVisible();
+    // Outstanding redraws its rows when the bill lists update, which clears a typed amount: let it settle first
+    await settle(page);
+    await expect(input).toBeVisible();
     await input.fill('160');
-    await clickAfterTyping(page, `[id="payment_${sale.id}"] ~ button[data-record-payment]`);
+    await page.click(`[id="payment_${sale.id}"] ~ button[data-record-payment]`);
     await expectToast(page, /Payment of ₹160 recorded/);
     const paid = await getDoc('dev_retailSales', sale._id);
     expect(paid.payment).toMatchObject({ cash: 160, due: 200 });
