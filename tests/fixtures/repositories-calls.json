@@ -194,7 +194,14 @@
           "weights": [
             40
           ],
-          "pendingBill": null,
+          "pendingBill": {
+            "id": "gen-1",
+            "billNumber": null,
+            "attempted": false,
+            "date": null,
+            "timestamp": null,
+            "enteredAt": null
+          },
           "typedWeight": "",
           "selectedItem": "Rice",
           "rate": "25",
