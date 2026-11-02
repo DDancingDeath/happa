@@ -143,12 +143,12 @@ export const ManualReminders = {
         const d = this.draft || {};
         const repeat = d.repeat ?? '';
         const options = [['', 'ui.reminders.repeat_none'], ...REMINDER_REPEATS.map(r => [r, `ui.reminders.repeat_${r}`])]
-            .map(([v, k]) => `<option value="${v}"${repeat === v ? ' selected' : ''}>${esc(t(k))}</option>`).join('');
+            .map(([v, k]) => `<option value="${esc(v)}"${repeat === v ? ' selected' : ''}>${esc(t(k))}</option>`).join('');
         // An edited reminder may keep a date that has passed meanwhile
         const min = this.editId && d.dueDate && d.dueDate < today ? d.dueDate : today;
         return `<div class="today-reminder-form"${this.editId ? ` data-reminder-edit="${esc(this.editId)}"` : ''}>`
             + `<input type="text" id="reminderTitle" maxlength="${REMINDER_TITLE_MAX}" value="${esc(d.title || '')}" placeholder="${esc(t('ui.reminders.title_ph'))}" aria-label="${esc(t('ui.reminders.title_label'))}">`
-            + `<input type="date" id="reminderDate" min="${min}" value="${esc(d.dueDate || today)}" aria-label="${esc(t('ui.reminders.date_label'))}">`
+            + `<input type="date" id="reminderDate" min="${esc(min)}" value="${esc(d.dueDate || today)}" aria-label="${esc(t('ui.reminders.date_label'))}">`
             + `<input type="text" id="reminderParty" maxlength="${REMINDER_PARTY_MAX}" value="${esc(d.party || '')}" placeholder="${esc(t('ui.reminders.party_ph'))}" aria-label="${esc(t('ui.reminders.party_label'))}">`
             + `<select id="reminderRepeat" aria-label="${esc(t('ui.reminders.repeat_label'))}">${options}</select>`
             + `<div class="today-reminder-form-buttons"><button type="button" class="btn btn-primary" data-reminder-save onclick="window.app.day.reminderSave()">${esc(t(this.editId ? 'ui.reminders.save_changes' : 'ui.reminders.save'))}</button>`

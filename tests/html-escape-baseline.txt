@@ -406,7 +406,6 @@ www/js/ui/finance-breakdown-sheet.js: groupOptions(b.rows) (markup via map(g => 
 www/js/ui/finance-breakdown-sheet.js: value
 www/js/ui/manual-reminders.js: REMINDER_PARTY_MAX
 www/js/ui/manual-reminders.js: REMINDER_TITLE_MAX
-www/js/ui/manual-reminders.js: today ← todayLocalISO()
 www/js/ui/period-compare.js: Object.freeze(['last-month', 'this-month', 'last-year', 'this-year', 'last-fy', 'this-fy', 'last-30']) (markup via map(p => [p, t(PRESET_KEYS[p])]))
 www/js/ui/period-compare.js: PRESET_KEYS[p] ← PRESET_KEYS = Object.freeze({ 'this-month': 'ui.money.p_this_month', 'last-month': 'ui.money.p (markup via map(([v, label]) => `<option value="${v}"${v === bValue ? ' selected' : ''}>${esc(label)}</option>`))
 www/js/ui/period-compare.js: html (sink)
