@@ -30,8 +30,8 @@ const MARKUP = /<\/?[a-z]/i;
 const URL_ATTR = /\bhref\s*=\s*["']?\s*$/i;
 const SAFE_URL = 'safeUrl';
 const SINK_PROPS = new Set(['innerHTML', 'outerHTML']);
-/** Sink call name -> index of the markup argument. */
-const SINK_CALLS = { insertAdjacentHTML: 1, showModalWithHtml: 0, showCustomModal: 0 };
+/** Sink call name -> [index of the markup argument, its property when it is an object] */
+const SINK_CALLS = { insertAdjacentHTML: [1], showModalWithHtml: [0], showCustomModal: [0], printPage: [0, 'html'] };
 const FN = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
 const SAME_ITEMS = new Set(['filter', 'slice', 'sort', 'reverse', 'trim', 'trimStart', 'trimEnd', 'toUpperCase', 'toLowerCase']);
 const GLOBAL = { type: 'Global' };
@@ -65,7 +65,7 @@ function auditSource(src, rel, allow = ALLOW) {
 
     /** scope node -> name -> { opaque } (params, destructuring, imports, catch: value unknown here) */
     const decls = new Map();
-    /** function -> parameter name -> position */
+    /** function -> parameter name (also inside a default / destructuring / rest) -> { i: position, rest } */
     const paramIndex = new Map();
     const declare = (scope, id, opaque) => {
         if (!decls.has(scope)) decls.set(scope, new Map());
@@ -84,7 +84,7 @@ function auditSource(src, rel, allow = ALLOW) {
         } else if (FN.has(n.type)) {
             if (n.type === 'FunctionDeclaration' && n.id) declare(scopeOf(ancestors, true), n.id, false);
             n.params.flatMap(patternIds).forEach(id => declare(n, id, true));
-            paramIndex.set(n, new Map(n.params.map((p, i) => [p.type === 'Identifier' ? p.name : null, i])));
+            paramIndex.set(n, new Map(n.params.flatMap((p, i) => patternIds(p).map(id => [id.name, { i, rest: p.type === 'RestElement' }]))));
         } else if (n.type === 'ClassDeclaration' && n.id) {
             declare(scopeOf(ancestors), n.id, true);
         } else if (n.type === 'CatchClause' && n.param) {
@@ -125,7 +125,7 @@ function auditSource(src, rel, allow = ALLOW) {
         return null;
     };
     const addMethod = (key, fn, owner) => {
-        if (!key || key.type !== 'Identifier' || !FN.has(fn.type)) return;
+        if (!key || !/^(Private)?Identifier$/.test(key.type) || !FN.has(fn.type)) return;
         if (!methods.has(key.name)) methods.set(key.name, []);
         methods.get(key.name).push({ fn, owner });
     };
@@ -240,6 +240,7 @@ function auditSource(src, rel, allow = ALLOW) {
             case 'ChainExpression': return leaves(n.expression);
             case 'AssignmentExpression': return leaves(n.right);
             case 'ArrayExpression': return n.elements.flatMap(leaves);
+            case 'ObjectExpression': return n.properties.flatMap(p => leaves(p.type === 'Property' ? p.value : p));
             case 'CallExpression': return callLeaves(n);
             case 'Identifier': {
                 if (n.name === 'undefined' || trustedNames.has(n.name)) return [];
@@ -254,9 +255,9 @@ function auditSource(src, rel, allow = ALLOW) {
         }
     };
 
-    const hits = new Set();
-    const at = (n) => `${rel}:${n.loc.start.line}`;
-    const hit = (n, kind) => hits.add(`${at(n)}: ${text(n)}${kind ? ` (${kind})` : ''}`);
+    /** one line per node and kind: the same text twice on a line counts twice */
+    const hits = new Map();
+    const hit = (n, kind) => hits.set(`${n.start}-${n.end}|${kind}`, `${rel}:${n.loc.start.line}: ${text(n)}${kind ? ` (${kind})` : ''}`);
     const isSafeUrl = (x) => x.type === 'CallExpression' && calleeName(x.callee) === SAFE_URL;
     const tail = (x) => (x.type === 'Literal' && typeof x.value === 'string' ? x.value
         : x.type === 'TemplateLiteral' ? x.quasis[x.quasis.length - 1].value.raw : '');
@@ -265,14 +266,20 @@ function auditSource(src, rel, allow = ALLOW) {
      * markup the function builds), so each call to it in this file is checked like the parameter.
      */
     const wrappers = [];
+    const addWrapper = (l, kind) => {
+        const fn = l.type === 'Identifier' && refScope.get(l);
+        const p = fn && paramIndex.has(fn) ? paramIndex.get(fn).get(l.name) : undefined;
+        if (p && !wrappers.some(([f, q, k]) => f === fn && q.i === p.i && k === kind)) wrappers.push([fn, p, kind]);
+    };
     const unsafe = (v, kind) => {
         const ls = leaves(v);
-        ls.forEach(l => {
-            const fn = l.type === 'Identifier' && refScope.get(l);
-            const i = fn && paramIndex.has(fn) ? paramIndex.get(fn).get(l.name) : undefined;
-            if (i !== undefined && !wrappers.some(([f, j]) => f === fn && j === i)) wrappers.push([fn, i, kind]);
-        });
+        ls.forEach(l => addWrapper(l, kind));
         return ls;
+    };
+    const urlValue = (x, kind) => {
+        if (isSafeUrl(x)) return;
+        hit(x, kind);
+        addWrapper(x, 'url');
     };
     const sinkValue = (v) => { if (v) unsafe(v, 'sink').forEach(l => hit(l, 'sink')); };
     const calls = [];
@@ -284,14 +291,14 @@ function auditSource(src, rel, allow = ALLOW) {
         const parent = ancestors[ancestors.length - 2];
         if (markupTemplate(n)) {
             n.expressions.forEach((x, i) => {
-                if (URL_ATTR.test(n.quasis[i].value.raw)) { if (!isSafeUrl(x)) hit(x, 'url'); } else if (unsafe(x, 'markup').length) hit(x, '');
+                if (URL_ATTR.test(n.quasis[i].value.raw)) urlValue(x, 'url'); else if (unsafe(x, 'markup').length) hit(x, '');
             });
         }
         if (n.type === 'BinaryExpression' && n.operator === '+' && !(parent && parent.type === 'BinaryExpression' && parent.operator === '+')) {
             const parts = flatChain(n);
             if (markupChain(parts)) {
                 parts.forEach((x, i) => {
-                    if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) { if (!isSafeUrl(x)) hit(x, 'url (concatenated)'); } else if (unsafe(x, 'markup').length) hit(x, 'concatenated');
+                    if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) urlValue(x, 'url (concatenated)'); else if (unsafe(x, 'markup').length) hit(x, 'concatenated');
                 });
             }
         }
@@ -300,19 +307,27 @@ function auditSource(src, rel, allow = ALLOW) {
             calls.push(n);
             const name = calleeName(n.callee);
             const obj = n.callee.type === 'MemberExpression' ? n.callee.object : null;
-            if (Object.prototype.hasOwnProperty.call(SINK_CALLS, name)) sinkValue(n.arguments[SINK_CALLS[name]]);
+            if (Object.prototype.hasOwnProperty.call(SINK_CALLS, name)) {
+                const [i, prop] = SINK_CALLS[name];
+                const v = n.arguments[i];
+                const p = prop && v && v.type === 'ObjectExpression'
+                    && v.properties.find(q => q.type === 'Property' && !q.computed && (q.key.name || q.key.value) === prop);
+                sinkValue(prop && v && v.type === 'ObjectExpression' ? p && p.value : v);
+            }
             else if ((name === 'write' || name === 'writeln') && obj && /document$/.test(text(obj))) sinkValue(n.arguments[0]);
         }
     });
     for (let w = 0; w < wrappers.length; w++) {
-        const [fn, i, kind] = wrappers[w];
+        const [fn, { i, rest }, kind] = wrappers[w];
         calls.forEach(c => {
-            if (c.arguments[i] && (functionsOf(c.callee) || []).includes(fn)) {
-                unsafe(c.arguments[i], kind).forEach(l => hit(l, `${kind} via ${text(c.callee)}`));
-            }
+            if (!(functionsOf(c.callee) || []).includes(fn)) return;
+            const via = `${kind} via ${text(c.callee)}`;
+            (rest ? c.arguments.slice(i) : c.arguments.slice(i, i + 1)).forEach(a => {
+                if (kind === 'url') { if (!isSafeUrl(a)) { hit(a, via); addWrapper(a, 'url'); } } else unsafe(a, kind).forEach(l => hit(l, via));
+            });
         });
     }
-    return [...hits];
+    return [...hits.values()];
 }
 
 function files(dir) {

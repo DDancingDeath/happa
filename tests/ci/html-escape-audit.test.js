@@ -90,6 +90,21 @@ describe('html-escape-audit', () => {
         expect(audit(src).length).toBeGreaterThan(0);
     });
 
+    test.each([
+        ['a caller of a helper with a default-valued parameter', "const block = (title = '') => `<h4>${title}</h4>`; el.innerHTML = block(party.name);", 'party.name (markup via block)'],
+        ['a caller of a helper with a destructured parameter', 'const card = ({ title }) => `<h4>${title}</h4>`; el.innerHTML = card({ title: party.name });', 'party.name (markup via card)'],
+        ['a caller of a helper with a rest parameter', "const row = (...cells) => `<tr>${cells.join('')}</tr>`; el.innerHTML = row('a', party.name);", 'party.name (markup via row)'],
+        ['a caller of a helper that puts its parameter in an href', 'const link = (u) => `<a href="${u}">x</a>`; el.innerHTML = link(party.url);', 'party.url (url via link)'],
+        ['Exporter.printPage html', "Exporter.printPage({ title: 'x', html: row.note });", 'row.note (sink)'],
+        ['a caller of a private method that writes innerHTML', 'class P { #show(v) { el.innerHTML = v; } go() { this.#show(party.name); } }', 'party.name (sink via this.#show)']
+    ])('lists %s', (_, src, line) => {
+        expect(audit(src)).toContain(`probe.js:1: ${line}`);
+    });
+
+    test('the same value twice on one line counts twice', () => {
+        expect(audit('el.innerHTML = `<b>${p.name}</b><i>${p.name}</i>`;')).toEqual(['probe.js:1: p.name', 'probe.js:1: p.name']);
+    });
+
     test('this.m() and X.m() follow the method defined on that object', () => {
         expect(audit("const page = { n() { return 1; }, r() { el.innerHTML = `<b>${this.n()}${page.n()}</b>`; } };")).toEqual([]);
     });
