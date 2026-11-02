@@ -155,7 +155,7 @@ export class StockManager {
             const catalogueItem = AppState.items.find(i => i.id === item.itemId);
             const level = lowStockLevel(catalogueItem);
             const alertLine = canSetAlerts && catalogueItem ? `
-                        <button type="button" class="stock-alert-link stock-row__alert" onclick="window.app.stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
+                        <button type="button" class="stock-alert-link stock-row__alert" data-onclick="stock.editLowStock('${Helpers.escapeJsAttr(catalogueItem.id)}')">
                             ${level > 0 ? tx('ui.stock.alert_below', { level: stockKg(level) }) : tx('ui.stock.alert_off')} ✎
                         </button>` : '';
             div.innerHTML = `
@@ -385,7 +385,7 @@ export class StockManager {
         return `<div class="stock-empty" style="text-align: center; color: #555; margin-top: 32px; padding: 0 12px;">
             <p style="font-weight: 600; font-size: 16px; margin: 0 0 6px;">${e(t('ui.stock.empty_title'))}</p>
             <p style="font-size: 13px; color: #666; margin: 0 0 14px;">${e(t(canAdjust ? 'ui.stock.empty_hint' : 'ui.stock.empty_hint_member'))}</p>
-            ${canAdjust ? `<button type="button" class="add-to-bill-btn" style="max-width: 280px;" onclick="window.app.stock.startOpeningStock()">${e(t('ui.stock.set_opening_stock'))}</button>` : ''}
+            ${canAdjust ? `<button type="button" class="add-to-bill-btn" style="max-width: 280px;" data-onclick="stock.startOpeningStock()">${e(t('ui.stock.set_opening_stock'))}</button>` : ''}
         </div>`;
     }
 
@@ -834,7 +834,7 @@ export class StockManager {
         }
         if (!canReverse || !canReverseAdjustment(adj, adjustments)) return '';
         if (!AppState.items.some(i => i.id === adj.itemId || i.name === adj.itemName)) return '';
-        return `<button type="button" class="filter-btn" data-stock-adjust onclick="window.app.stock.reverseAdjustment('${Helpers.escapeJsAttr(adj.id)}')">${tx('ui.stock.reverse_btn')}</button>`;
+        return `<button type="button" class="filter-btn" data-stock-adjust data-onclick="stock.reverseAdjustment('${Helpers.escapeJsAttr(adj.id)}')">${tx('ui.stock.reverse_btn')}</button>`;
     }
 
     static async renderAdjustmentHistory() {

@@ -1,15 +1,15 @@
 <div id="stock" class="tab">
         
         <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn active" onclick="window.app.stock.filterTab('current', event)" data-i18n="ui.stock.current_stock">Current Stock</button>
-            <button class="filter-btn" onclick="window.app.stock.filterTab('adjustment', event)" data-i18n="ui.stock.stock_adjustment">Stock Adjustment</button>
-            <button class="filter-btn" id="deadStockTabBtn" style="display: none;" onclick="window.app.stock.filterTab('dead', event)" data-i18n="ui.deadstock.tab">Not selling</button>
+            <button class="filter-btn active" data-onclick="stock.filterTab('current', event)" data-i18n="ui.stock.current_stock">Current Stock</button>
+            <button class="filter-btn" data-onclick="stock.filterTab('adjustment', event)" data-i18n="ui.stock.stock_adjustment">Stock Adjustment</button>
+            <button class="filter-btn" id="deadStockTabBtn" style="display: none;" data-onclick="stock.filterTab('dead', event)" data-i18n="ui.deadstock.tab">Not selling</button>
         </div>
 
         <div id="deadStockSection" style="display: none;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
                 <label for="deadStockDays" style="font-weight: 600;" data-i18n="ui.deadstock.no_sale_in">No sale in:</label>
-                <select id="deadStockDays" onchange="window.app.stock.setDeadStockDays(this.value)">
+                <select id="deadStockDays" data-onchange="stock.setDeadStockDays(this.value)">
                     <option value="30" data-i18n="ui.deadstock.opt_30">30 days</option>
                     <option value="60" data-i18n="ui.deadstock.opt_60">60 days</option>
                     <option value="90" data-i18n="ui.deadstock.opt_90">90 days</option>
@@ -38,10 +38,7 @@
                 <input type="text" 
                        id="stockSearchInput" 
                        placeholder="🔍 Search items..." data-i18n-placeholder="ui.stock.search_items"
-                       style="width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s;"
-                       oninput="window.app.stock.searchStock()"
-                       onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
-                       onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'">
+                       data-oninput="stock.searchStock()">
             </div>
             <div id="stockList">
                 <p style="text-align: center; color: #666; margin-top: 40px;" data-i18n="ui.stock.no_stock_data_available">No stock data available</p>
@@ -50,14 +47,14 @@
 
         <div id="stockAdjustmentSection" style="display: none;">
             <div class="stock-count-bar">
-                <button type="button" class="quick-add-btn-inline" data-stock-adjust onclick="window.app.stock.openStockCount()" data-i18n="ui.stock.count_btn">Count stock</button>
+                <button type="button" class="quick-add-btn-inline" data-stock-adjust data-onclick="stock.openStockCount()" data-i18n="ui.stock.count_btn">Count stock</button>
             </div>
             <div class="settings-card">
                 <h3 data-i18n="ui.stock.manual_stock_adjustment">Manual Stock Adjustment</h3>
                 
                 <div class="form-row">
                     <label data-i18n="ui.stock.select_item">Select Item:</label>
-                    <select id="adjustItem" onchange="window.app.stock.loadAdjustItemStock()">
+                    <select id="adjustItem" data-onchange="stock.loadAdjustItemStock()">
                         <option value="" data-i18n="ui.wholesale.select_item">Select item</option>
                     </select>
                 </div>
@@ -73,7 +70,7 @@
                 
                 <div class="form-row">
                     <label data-i18n="ui.stock.adjustment_type">Adjustment Type:</label>
-                    <select id="adjustType" onchange="window.app.stock.updateAdjustmentPlaceholder()">
+                    <select id="adjustType" data-onchange="stock.updateAdjustmentPlaceholder()">
                         <option value="add" data-i18n="ui.stock.add_stock">Add Stock</option>
                         <option value="remove" data-i18n="ui.stock.remove_stock">Remove Stock</option>
                         <option value="set" data-i18n="ui.stock.set_stock">Set Stock</option>
@@ -107,7 +104,7 @@
                     <input type="text" id="adjustReason" placeholder="e.g., Rats damaged 2 bags" data-i18n-placeholder="ui.stock.e_g_rats_damaged_2" />
                 </div>
                 
-                <button class="add-to-bill-btn" data-stock-adjust onclick="window.app.stock.applyAdjustment()" data-i18n="ui.stock.apply_adjustment">Apply Adjustment</button>
+                <button class="add-to-bill-btn" data-stock-adjust data-onclick="stock.applyAdjustment()" data-i18n="ui.stock.apply_adjustment">Apply Adjustment</button>
             </div>
             
             <h3 data-i18n="ui.stock.adjustment_history">Adjustment History</h3>
