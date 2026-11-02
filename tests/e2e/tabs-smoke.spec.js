@@ -91,7 +91,7 @@ const STEPS = [
     { name: 'Settings › Aadhat', route: 'settings-shop', page: 'settings', roles: OM, expect: '#settingsShop' },
     { name: 'Settings › Rentals', route: 'settings-rentals', page: 'settings', roles: OM, expect: '#settingsRentals' },
     { name: 'Settings › Roles & access', route: 'settings-roles', page: 'settings', roles: O, expect: '#roleAccessCard' },
-    { name: 'Rentals › Rent (property-wise)', route: null, page: 'rentals', act: "window.app.rentals.open('rent').then(() => window.app.rentals.setView('properties'))", roles: A, expect: `#rentalsBody .rent-viewswitch .filter-btn.active[onclick*="'properties'"]` },
+    { name: 'Rentals › Rent (property-wise)', route: null, page: 'rentals', act: "window.app.rentals.open('rent').then(() => window.app.rentals.setView('properties'))", roles: A, expect: `#rentalsBody .rent-viewswitch .filter-btn.active[data-onclick*="'properties'"]` },
     { name: 'Rentals › Rent (unit-wise)', route: null, page: 'rentals', act: "window.app.rentals.setView('units')", roles: A, expect: '#rentUnitList' },
     { name: 'Rentals › Tenants', route: null, page: 'rentals', act: "window.app.rentals.page('tenants')", roles: A, expect: '#rentals [data-rent-page="tenants"].active' },
     { name: 'Rentals › Properties', route: null, page: 'rentals', act: "window.app.rentals.page('properties')", roles: A, expect: '#rentals [data-rent-page="properties"].active' },
