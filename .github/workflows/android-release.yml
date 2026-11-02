@@ -342,7 +342,7 @@ jobs:
           if grep -Eq "google_app_id|$build_id" <<< "$res_without"; then
             echo "::error::the build without google-services.json has a Firebase app id or Crashlytics build id"; exit 1
           fi
-          mb() { awk -v b="$(stat -c %s "$1")" 'BEGIN { printf "%.2f MB (%d bytes)", b / 1048576, b }'; }
+          mb() { awk -v b="$(stat -c %s "$1")" 'BEGIN { printf "%.2f MB (%d bytes)", b / 1000000, b }'; }
           app_perms="$(grep -o 'uses-permission android:name="[^"]*"' android/app/src/main/AndroidManifest.xml | sed 's/.*name="//; s/"$//' | sort -u)"
           apk_perms="$("$aapt2" dump badging "$with" | sed -n 's/^uses-permission: name=.\([^'"'"']*\).*/\1/p' | sort -u)"
           grep -qx 'android.permission.INTERNET' <<< "$apk_perms" || { echo "::error::could not read the APK's permissions"; exit 1; }
