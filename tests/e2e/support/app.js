@@ -94,4 +94,17 @@ async function confirmModalIfOpen(page) {
     if (open) await page.click('#modalConfirm');
 }
 
-module.exports = { test, expect: base.expect, login, openApp, showTab, settle, expectToast, confirmModalIfOpen };
+/**
+ * Clicks a button right after typing in a field. On a phone the bottom bar hides while a
+ * field has focus (body.typing, ui/bottom-nav.js) and comes back when it loses it: a mouse
+ * click near the bottom then lands its mousedown on the button and, the bar back, its
+ * mouseup on the bar, so no click happens. Leave the field first, then click.
+ */
+async function clickAfterTyping(page, selector) {
+    await page.evaluate(() => document.activeElement?.blur?.());
+    await page.waitForFunction(() => !document.body.classList.contains('typing'));
+    await page.locator(selector).scrollIntoViewIfNeeded();
+    await page.click(selector);
+}
+
+module.exports = { test, expect: base.expect, login, openApp, showTab, settle, expectToast, confirmModalIfOpen, clickAfterTyping };

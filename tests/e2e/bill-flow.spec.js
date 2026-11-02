@@ -3,7 +3,7 @@
  * see it in History → record part of the due on Outstanding → open and close
  * the cash drawer. Firestore documents are checked through the emulator.
  */
-const { test, expect, login, showTab, expectToast, confirmModalIfOpen } = require('./support/app');
+const { test, expect, login, showTab, expectToast, confirmModalIfOpen, clickAfterTyping } = require('./support/app');
 const { listDocs, getDoc, deleteAll } = require('./support/emulator');
 
 test('bill → History → due payment → cash close', async ({ page, problems }, testInfo) => {
@@ -25,7 +25,7 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     await page.fill('#saleCustomerName', customer);
     await page.check('#saleDueCheckbox');
     await expect(page.locator('#saleDueAmount')).toHaveValue('360');
-    await page.click('#saveSaleBtn');
+    await clickAfterTyping(page, '#saveSaleBtn');
     await page.waitForTimeout(300);
     await confirmModalIfOpen(page); // "Stock shortfall": nothing was purchased in this dataset
     await expectToast(page, /Sale completed successfully/);
@@ -44,7 +44,7 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     const input = page.locator(`[id="payment_${sale.id}"]`);
     await expect(input).toBeVisible();
     await input.fill('160');
-    await page.click(`[id="payment_${sale.id}"] ~ button[data-record-payment]`);
+    await clickAfterTyping(page, `[id="payment_${sale.id}"] ~ button[data-record-payment]`);
     await expectToast(page, /Payment of ₹160 recorded/);
     const paid = await getDoc('dev_retailSales', sale._id);
     expect(paid.payment).toMatchObject({ cash: 160, due: 200 });
@@ -54,13 +54,13 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     // ---- 4. open and close the cash drawer ----
     await showTab(page, 'cash-management');
     await page.fill('#cashSignInAmount', '1000');
-    await page.click('button[onclick="window.app.cashManagement.signIn()"]');
+    await clickAfterTyping(page, 'button[onclick="window.app.cashManagement.signIn()"]');
     await expectToast(page, /Cash opened for today/);
     await expect(page.locator('#cashSignOutAmount')).toBeVisible();
     const expected = Number((await page.locator('#expectedCashAmount').textContent()).replace(/[^\d.-]/g, ''));
     expect(expected).toBeGreaterThanOrEqual(1000);
     await page.fill('#cashSignOutAmount', String(expected));
-    await page.click('button[onclick="window.app.cashManagement.signOut()"]');
+    await clickAfterTyping(page, 'button[onclick="window.app.cashManagement.signOut()"]');
     await expectToast(page, /Cash closed/);
     const sessions = await listDocs('dev_cashManagement');
     expect(sessions).toHaveLength(1);
