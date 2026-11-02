@@ -3,10 +3,10 @@
         
         <!-- Sub-navigation tabs -->
         <div class="sub-tabs">
-            <button id="dayTabToday" class="sub-tab active" onclick="window.app.day.showSubTab('today')" data-i18n="ui.today.today_s_summary">
+            <button id="dayTabToday" class="sub-tab active" data-onclick="day.showSubTab('today')" data-i18n="ui.today.today_s_summary">
                 📊 Today's Summary
             </button>
-            <button id="dayTabCash" class="sub-tab" onclick="window.app.day.showSubTab('cash')" data-i18n="ui.today.cash_management">
+            <button id="dayTabCash" class="sub-tab" data-onclick="day.showSubTab('cash')" data-i18n="ui.today.cash_management">
                 💵 Cash Management
             </button>
         </div>
@@ -20,7 +20,7 @@
             <!-- Bills saved today but no cash session (#141) -->
             <div id="todayCashPrompt" class="today-cash-prompt" role="status" hidden>
                 <span data-i18n="ui.today.no_session">Today has bills but the cash drawer isn't open.</span>
-                <button type="button" class="today-cash-prompt-btn" onclick="window.app.day.showSubTab('cash')" data-i18n="ui.today.open_cash">Open cash</button>
+                <button type="button" class="today-cash-prompt-btn" data-onclick="day.showSubTab('cash')" data-i18n="ui.today.open_cash">Open cash</button>
             </div>
 
             <!-- Reminders (#86): udhaar to collect / pay and rent due, from data already on the phone -->
@@ -51,7 +51,7 @@
 
             <!-- LABOUR: deducted from farmers (T-LAB-1) and to pay labour (T-LAB-2); tap for bill-wise breakdown -->
             <div id="todayLabourCard" class="today-labour-card" role="button" tabindex="0"
-                onclick="window.app.day.showLabourBreakdown()" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); window.app.day.showLabourBreakdown(); }">
+                data-onclick="day.showLabourBreakdown()">
                 <div class="today-labour-title" data-i18n="ui.today.labor">👷 Labour:</div>
                 <div class="today-labour-row">
                     <span data-i18n="ui.today.labour_deducted">Deducted from farmers:</span>
@@ -193,7 +193,7 @@
             <div class="modern-card" id="todayBillsCard">
                 <h3 class="section-title" data-i18n="ui.today.bills_title">📃 Today's bills</h3>
                 <div id="todayBillsList" class="today-bills"></div>
-                <button type="button" id="todayBillsMore" class="today-bills-more" hidden onclick="window.app.day.toggleAllBills()"></button>
+                <button type="button" id="todayBillsMore" class="today-bills-more" hidden data-onclick="day.toggleAllBills()"></button>
             </div>
 
             <!-- 6. ITEM DETAILS (Scrollable) -->

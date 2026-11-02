@@ -89,7 +89,8 @@ In order:
 4. `www/js/main.js` — wires every module onto `window.app.*`.
 5. `www/firebaseConfig.js` — initializes Firebase, exposes `firebase.*`
    compat globals.
-6. `www/js/firebase/firestore-service.js` and `www/js/firebase/repos/` — every
+6. `www/js/firebase/firestore-service.js` (the `FirebaseService` facade), `www/js/firebase/core/`
+   (listeners, history window, stock checkpoint) and `www/js/firebase/repos/` — every
    read/write goes through here; the data layer tells pages what changed with
    events (`www/js/utils/events.js`), never by calling them.
 
@@ -116,7 +117,11 @@ In order:
 
 ### Conventions
 
-- **All UI updates run inline `onclick` handlers** that call
+- **UI handlers call `window.app.*`.** New markup uses a delegated
+  `data-on<event>` attribute (`data-onclick="nav.showTab('billing', event)"`, `www/js/ui/actions.js`,
+  #89) instead of an inline `on<event>=` handler: the CSP can drop `'unsafe-inline'` only when
+  none is left, and `inline-handlers.test.js` stops new ones (lower its baseline when you convert).
+  Older pages still run inline `onclick` handlers that call
   `window.app.*`. To expose a new module method to the UI, register it in
   `main.js` — never assume `app` (without `window.`) resolves correctly
   from an inline handler. (`firebaseConfig.js` used to declare
@@ -128,9 +133,10 @@ In order:
   transactions and offline patterns; pages get plain data back) so collection
   names get the env prefix. A new collection or query gets a repository
   function, never a `.collection(` in a page.
-- **Data changes → pages: events, not calls.** `firestore-service.js` emits
-  `refresh:<view>` (`REFRESH` in `utils/events.js`, after its debounce and only
-  for the open tab) and `itemFrequency:changed`; each page subscribes with
+- **Data changes → pages: events, not calls.** The data layer emits
+  `refresh:<view>` (`REFRESH` in `utils/events.js`; `firebase/core/realtime.js`, after its
+  debounce and only for the open tab) and `itemFrequency:changed` (`firebase/core/listeners.js`);
+  each page subscribes with
   `on(REFRESH.x, () => Manager.render())` at the end of its module (Money,
   Insights, Statements in main.js through their lazy loaders). Never call
   `window.app.*` from `firebase/` (`data-events.test.js`).
@@ -155,7 +161,7 @@ In order:
   `new Date('YYYY-MM-DD')` or `toISOString().split('T')[0]` (UTC shifts the
   day in IST).
 - **Escaping**: any Firestore/user text inserted via `innerHTML` must go
-  through `Helpers.escapeHtml()`; values inside `onclick="fn('…')"` need
+  through `Helpers.escapeHtml()`; values inside `onclick="fn('…')"` or `data-onclick="fn('…')"` need
   `Helpers.escapeJsAttr()`.
 - **App language (Hindi/English, #143)**: user-facing text comes from
   `t('key', params)` (`www/js/i18n/index.js`) with plain catalogues
@@ -429,6 +435,13 @@ in `.github/review-rules-examples/`.
   fix real leftovers with `t()` keys in `en.js` + `hi.js`. Mark deliberate
   other-language text with `lang="en"` (e.g. an app name like **Files**) and
   codes with `lang="zxx" translate="no"` (device ids).
+- **Multi-year load benchmark (#59)**: `npm run bench` (`playwright.bench.config.js`, its own
+  emulators: demo-happa-bench on 9299 / 8381, static server 8199) seeds a synthetic 3-year shop
+  (`tests/bench/dataset.js`, from `tests/fixtures/generator.js`) and measures, with a 4× slower CPU,
+  the first sign-in, the first Today render (reopen → Today drawn) and the whole history window
+  (`ensureHistoryFrom(null)`), with the read meter's counts. Not part of the E2E suite: the nightly
+  `bench.yml` adds each result to `bench-trend.csv` on the `bench-trend` branch and warns (never
+  fails) above `tools/bench/budgets.json`. `BENCH_YEARS`, `BENCH_ACTIVITY`, `BENCH_RUNS` size a local run.
 - **Contrast (#68)**: `tests/e2e/a11y-contrast.spec.js` runs axe-core's WCAG AA
   `color-contrast` rule on the main pages (owner, en / hi, phone / desktop) and fails on
   any finding. Text on a page card uses the theme variables (`--success-color`,
@@ -514,8 +527,9 @@ A number the app gets wrong today is listed in `BUGS` in
 `tests/oracle/screens.test.js` (or a `test.skip` with `// BUG: see #N`); remove
 the entry when you fix that issue. `npm run test:mutation` (Stryker, local or
 the weekly non-blocking `mutation.yml` job) shows how many deliberate small
-bugs in `money.js`, `calc/billing.js`, `stock-replay.js`, `bill-checks.js`, `dates.js` and
-`release-info.js` the tests catch. Owners and managers can run the same checks
+bugs in `money.js`, `calc/billing.js`, `stock-replay.js`, `bill-checks.js`, `dates.js`,
+`release-info.js`, `finance-calc.js` and `business-metrics.js` the tests catch (one job per file,
+each running only that file's suites: `jest.stryker.config.js`). Owners and managers can run the same checks
 on real loaded data in Diagnostics → Number checks; the daily run's failures become Anomalies flags
 (`utils/number-check-flags.js`, #160).
 

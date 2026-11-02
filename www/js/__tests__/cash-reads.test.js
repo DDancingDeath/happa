@@ -140,7 +140,7 @@ describe('partial history: the targeted queries fill what the 2-day window misse
         await CashManagementManager.init();
         const text = document.getElementById('cashHistoryList').textContent;
         expect(text).toContain('3 days closed without a cash count');
-        expect(document.querySelectorAll('#cashHistoryList a[onclick*="showDetails"]')).toHaveLength(3);
+        expect(document.querySelectorAll('#cashHistoryList a[data-onclick*="showDetails"]')).toHaveLength(3);
         AppState.settings = {};
     });
 

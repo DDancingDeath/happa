@@ -58,7 +58,7 @@ object-src 'none'; base-uri 'self'; form-action 'self'
 | `firebaseinstallations.googleapis.com` | not called today; listed for the Firebase SDKs that use it (App Check, see below) |
 | `api.github.com` | the "Update available" check |
 | `data:` / `blob:` images | receipts and bill images drawn on a canvas, the inline favicon, downloads |
-| `'unsafe-inline'` (script) | **temporary**: ~440 inline `onclick=`/`onchange=` handlers and 5 inline `<script>` blocks (`index.html`, `download.html`). Remove it in the "inline handlers" architecture phase, then switch to the enforcing header |
+| `'unsafe-inline'` (script) | **temporary**: the inline `onclick=`/`onchange=` handlers left (count per file in `tests/inline-handlers-baseline.json`, a ratchet: `www/js/__tests__/inline-handlers.test.js`) and 5 inline `<script>` blocks (`index.html`, `download.html`). Handlers move page by page to delegated `data-on<event>` attributes (`www/js/ui/actions.js`: one listener per event type calls the named `window.app` method; the attribute is parsed, never evaluated). Remove it in the "inline handlers" architecture phase, then switch to the enforcing header |
 | `'unsafe-inline'` (style) | ~800 `style=` attributes and the `<style>` blocks in templates / `download.html` |
 
 Links the app only opens (`wa.me`, `github.com`, its own address) are

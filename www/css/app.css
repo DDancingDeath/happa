@@ -3865,6 +3865,11 @@ body.dark-mode .due-kind-chip {
     color: #a7f3d0;
 }
 
+/* Outstanding search box (its inline style; the id keeps it over the generic input rules) and
+   its focus ring, which was inline onfocus / onblur (#89) */
+#outstandingSearchInput { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#outstandingSearchInput:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
 /* ---- css/stock.css ---- */
 .stock-item {
   background: var(--card-bg);
@@ -6621,6 +6626,10 @@ body.dark-mode .today-cash-prompt {
 .ask-question { font-weight: 600; margin-bottom: 4px; }
 .ask-line { margin: 2px 0; }
 .ask-answer .ask-open { margin-top: 6px; }
+
+/* Cash › history: a day row lights up under the pointer (was an inline mouseover, #89) */
+.cash-day-row { transition: background 0.2s; }
+.cash-day-row:hover { background: #f8f9fa; }
 
 /* ---- css/anomalies.css ---- */
 /* ==================== ANOMALIES (#187, #40) ==================== */

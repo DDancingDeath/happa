@@ -72,7 +72,7 @@ test('Rent page: expenses and net this month in all; each property card names it
 test('Properties › 💸 Expenses: the list (no edit for a member), then Add saves a whole-rupee expense for a unit', async () => {
     _test.state.page = 'properties';
     _test.render();
-    expect(document.getElementById('rentalsBody').innerHTML).toContain("window.app.rentals.expenses('P1')");
+    expect(document.getElementById('rentalsBody').innerHTML).toContain("data-onclick=\"rentals.expenses('P1')");
     RentalsModule.api.expenses('P1');
     await until(() => body().textContent.includes('Repairs · 2B'), 'the list');
     expect(es.listExpenses).toHaveBeenCalledWith('P1');

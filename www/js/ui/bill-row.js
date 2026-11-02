@@ -101,7 +101,7 @@ export function billItemsText(bill) {
  * One bill row element (`div.history-item.bill-row`).
  * @param {Object} bill
  * @param {Object} opts
- * @param {string} opts.onclick - safe inline handler for the bill number (built with Helpers.escapeJsAttr)
+ * @param {string} opts.onclick - safe data-onclick call for the bill number (built with Helpers.escapeJsAttr)
  * @param {string} [opts.kind] - 'purchase' | 'retail' | 'wholesale' (colour only)
  * @returns {HTMLElement}
  */
@@ -118,7 +118,7 @@ export function buildBillRow(bill, { onclick, kind } = {}) {
     const date = billRowDate(bill);
     const items = billItemsText(bill);
     div.innerHTML = `
-        <span class="bill-row__no" title="#${Helpers.escapeHtml(number)}"><span class="bill-row__link" role="button" tabindex="0" onclick="${onclick || ''}">#${Helpers.escapeHtml(number)}</span></span>
+        <span class="bill-row__no" title="#${Helpers.escapeHtml(number)}"><span class="bill-row__link" role="button" tabindex="0" data-onclick="${onclick || ''}">#${Helpers.escapeHtml(number)}</span></span>
         <span class="bill-row__party" title="${Helpers.escapeHtml(party)}">${party ? `<strong>${Helpers.escapeHtml(party)}</strong>` : '—'}</span>
         <span class="bill-row__amount">${Helpers.escapeHtml(billListAmountText(bill))}</span>
         <span class="bill-row__meta">
@@ -253,7 +253,7 @@ function tableItemsHtml(bill) {
  * items, payment), one row per bill.
  * @param {Array<Object>} bills
  * @param {Object} opts
- * @param {(bill: Object) => string} opts.onclickFor - safe inline handler per bill
+ * @param {(bill: Object) => string} opts.onclickFor - safe data-onclick call per bill
  * @param {Array<Object>} [opts.openings] - opening records shown as a separate group on top
  * @returns {string} HTML
  */
@@ -265,7 +265,7 @@ export function billTableHtml(bills, { onclickFor, openings = [], voided = [] } 
         const by = bill?.createdByName || bill?.userName;
         const date = billRowDate(bill);
         return `
-            <tr class="bill-table__row${opening ? ' is-opening' : ''}${isVoided ? ' is-voided' : ''}" data-type="${Helpers.escapeHtml(bill?.type || '')}" onclick="${onclickFor(bill)}">
+            <tr class="bill-table__row${opening ? ' is-opening' : ''}${isVoided ? ' is-voided' : ''}" data-type="${Helpers.escapeHtml(bill?.type || '')}" data-onclick="${onclickFor(bill)}">
                 <td class="bill-table__no" title="#${Helpers.escapeHtml(number)}">#${Helpers.escapeHtml(number)}</td>
                 <td class="bill-table__party">${Helpers.escapeHtml(bill?.customerName || '—')}</td>
                 <td class="bill-table__amount">${Helpers.escapeHtml(billListAmountText(bill))}</td>
