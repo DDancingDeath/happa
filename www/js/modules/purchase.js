@@ -568,6 +568,18 @@ const PurchaseManager = {
             UIManager.showToast(t('msg.common.no_items_in_bill'));
             return;
         }
+        // A restored copy of a bill the server said is already saved (#93): never written, online or not
+        // A restored copy's create-only save given up on: another phone's bill was there, or not known yet
+        const late = pendingBill?.restored ? FirebaseService.lateCreateState('purchases', pendingBill.id) : null;
+        if (late === 'foreign') pendingBill.knownSaved = true;
+        if (pendingBill?.knownSaved) {
+            UIManager.showToast(t('msg.billing.copy_already_saved'), 'warning');
+            return;
+        }
+        if (late === 'pending' && typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.billing.restore_check_pending'), 'warning');
+            return;
+        }
         
         // Totals come from the items, never from the (rounded) text on screen
         const { billTotal, laborCharges, totalPackets, grandTotal } = this.computeTotals();
@@ -599,6 +611,7 @@ const PurchaseManager = {
             ? laborCalculationSpan?.textContent || null 
             : null;
         
+        const wasRestored = !!pendingBill?.restored;
         try {
             UIManager.showLoading();
             const pending = this.ensurePendingBill();
@@ -639,9 +652,21 @@ const PurchaseManager = {
                 ...BillChecksUI.billFields(checks)
             };
             
+            // Restored from an auto-save or a draft (#93): online it is saved only while its id is free;
+            // offline it is a plain first save (a create-only try wrote nothing), after which the id may
+            // be this phone's own bill
+            if (pending.restored && typeof navigator !== 'undefined' && navigator.onLine === false) {
+                pending.restored = false;
+                pending.attempted = false;
+            }
+            const restored = !!pending.restored;
             const retry = pending.attempted;
             pending.attempted = true;
-            const writePromise = FirebaseService.savePurchase(bill, { retry });
+            // Online, a first save (and every save of a restored copy) only creates the bill: one
+            // already under this id was saved by another phone (the same user's auto-save) (#93)
+            const writePromise = FirebaseService.savePurchase(bill, { retry, createOnly: restored || !retry, ...(restored ? { strict: true } : {}) });
+            // A restored copy is printed only once it is known not to be a copy of a saved bill
+            if (restored) await writePromise;
             if (typeof options.onWriteIssued === 'function') {
                 options.onWriteIssued(bill);
             }
@@ -688,6 +713,18 @@ const PurchaseManager = {
         } catch (error) {
             UIManager.hideLoading();
             this.billingManager?.renderBillNumber?.();
+            // A create-only try that queued nothing: the next save is a first save again
+            if (error?.nothingQueued && pendingBill) {
+                pendingBill.attempted = false;
+                if (wasRestored) pendingBill.restored = true;
+            }
+            if (error?.code === 'already-saved') {
+                if (pendingBill) pendingBill.knownSaved = true;
+                // Kept in the auto-save too, so a later Restore offline knows it
+                this.billingManager?.autoSaveToCloud().catch(e => console.warn('Auto-save failed:', e));
+                await this.billingManager?.offerSavedBill?.(error.bill, 'purchase', { items: billItems });
+                return undefined;
+            }
             UIManager.showToast(saveFailedText(error, t('msg.purchase.failed_save_bill', { message: error.message })), 'error');
             console.error('Save bill error:', error);
             throw error;
@@ -796,7 +833,9 @@ const PurchaseManager = {
             attempted: !!pending.attempted,
             date: pending.date || null,
             timestamp: pending.timestamp || null,
-            enteredAt: pending.enteredAt || null
+            enteredAt: pending.enteredAt || null,
+            restored: !!pending.restored,
+            knownSaved: !!pending.knownSaved
         } : null;
         // A restored attempt keeps its day, shown locked; otherwise the box starts again
         if (pendingBill?.timestamp) lockBillDate('billDate', pendingBill.timestamp);

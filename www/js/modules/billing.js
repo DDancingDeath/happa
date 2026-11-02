@@ -26,7 +26,7 @@ import { accessFor, canEditBillWith } from '../utils/role-access.js';
 import { billEditChanges, hasEditChanges } from '../utils/bill-edits.js';
 import { askReason } from '../ui/bill-status.js';
 import { prepareBillDate } from '../ui/bill-date-input.js';
-import { autoSaveSummary, nextBillNumberHint } from '../utils/calc/billing.js';
+import { autoSaveSummary, nextBillNumberHint, restoreFigures } from '../utils/calc/billing.js';
 import { formatDateTimeIN } from '../utils/dates.js';
 import { isArchivedItem } from '../utils/item-catalog.js';
 
@@ -102,6 +102,28 @@ async function commitBillEdit(writePromise) {
  */
 let autoSaveTimer = null;
 let autoSaveFullWarnedAt = 0;
+let restoring = false;
+
+const BILL_COLLECTIONS = { purchase: 'purchases', retail: 'retailSales', wholesale: 'wholesaleSales' };
+const historyOf = (billType) => (billType === 'purchase' ? AppState.purchaseHistory
+    : billType === 'retail' ? AppState.retailSalesHistory : AppState.salesHistory) || [];
+
+/** One form of an auto-save (`purchase` / `sale`), or a draft / an older auto-save (one form at the top level). */
+const formOf = (data, mode) => data?.[mode] || (data?.mode === mode && !data.purchase && !data.sale ? data : null);
+const formHasContent = (form) => !!form && ((form.items || []).length > 0 || (form.weights || []).length > 0
+    || !!form.typedWeight || !!form.selectedItem || !!form.rate);
+
+/** The saved bill an auto-save or a draft was editing (#93), or null when it holds a new bill. */
+function editTargetOf(data) {
+    if (!data?.editingBillId) return null;
+    const billType = BILL_COLLECTIONS[data.editingBillType] ? data.editingBillType : (data.mode === 'sale' ? 'retail' : 'purchase');
+    return {
+        id: data.editingBillId === 'unknown' ? null : String(data.editingBillId),
+        billType,
+        mode: billType === 'retail' ? 'sale' : 'purchase',
+        base: data.editingBase || null
+    };
+}
 
 /**
  * Billing Manager - Coordinates purchase and sale operations
@@ -662,6 +684,8 @@ const BillingManager = {
             draft.printComments = readPrintComments('salePrintComments');
             draft.saleTotal = sumMoney(saleItems, item => item.total);
         }
+        // A draft of an edit loads back as that edit, never as a second bill (#93)
+        if (this.editFormMode() === mode) Object.assign(draft, this.editMarker(), { pendingBill: null });
 
         let write;
         try {
@@ -767,8 +791,13 @@ const BillingManager = {
      * Put a draft's bill back into the editor.
      * @param {Object} draft
      */
-    applyDraft(draft) {
+    applyDraft(draft, { exact = false } = {}) {
         this.switchMode(draft.mode);
+        // exact: an unsaved edit over its bill, so a cleared name or labour stays cleared
+        const put = (id, value, empty = '') => {
+            const el = document.getElementById(id);
+            if (el && (exact || value)) el.value = value || empty;
+        };
 
         if (draft.mode === 'purchase') {
             PurchaseManager.setBillItems(draft.items || []);
@@ -776,9 +805,9 @@ const BillingManager = {
             PurchaseManager.setPendingBill(draft.pendingBill);
             PurchaseManager.renderBill();
             PurchaseManager.renderWeights();
-            if (draft.customerName) document.getElementById('customerName').value = draft.customerName;
-            if (draft.laborCharges) document.getElementById('manualLaborCharges').value = draft.laborCharges;
-            if (draft.comments) document.getElementById('billComments').value = draft.comments;
+            put('customerName', draft.customerName);
+            put('manualLaborCharges', draft.laborCharges, '0');
+            put('billComments', draft.comments);
             setPrintComments('billPrintComments', draft.printComments);
         } else {
             RetailSaleManager.setSaleItems(draft.items || []);
@@ -786,8 +815,8 @@ const BillingManager = {
             RetailSaleManager.setPendingBill(draft.pendingBill);
             RetailSaleManager.renderSalesBill();
             RetailSaleManager.renderSaleWeights();
-            if (draft.customerName) document.getElementById('saleCustomerName').value = draft.customerName;
-            if (draft.comments) document.getElementById('saleComments').value = draft.comments;
+            put('saleCustomerName', draft.customerName);
+            put('saleComments', draft.comments);
             setPrintComments('salePrintComments', draft.printComments);
         }
 
@@ -808,7 +837,23 @@ const BillingManager = {
                 return;
             }
 
-            this.applyDraft(draft);
+            const plan = await this.planRestore(draft);
+            if (!plan) return;
+            const form = plan.forms[draft.mode];
+            if (!form) {
+                // Its bill is already saved (or its edit can't go back): the draft stays unless the saved bill is opened
+                const opened = plan.saved.find(s => s.open);
+                if (!opened) return;
+                this.closeDrafts();
+                await BillDrafts.deleteDraft(draftId);
+                await this.updateDraftCount();
+                this.openSavedBill(opened);
+                return;
+            }
+
+            if (plan.edit) this.openEditor(plan.edit.bill, plan.edit.billType);
+            this.applyDraft(form, { exact: !!plan.edit });
+            if (plan.edit) this.prepareBillDates();
             this.closeDrafts();
 
             await BillDrafts.deleteDraft(draftId);
@@ -901,12 +946,18 @@ const BillingManager = {
             // A new bill is being typed: the one on the banner moves to Drafts first
             this.keepRecoveryAsDrafts();
 
+            // A new bill carries its id from its first auto-save, so a restored copy of a bill
+            // saved meanwhile is recognised (#93); an edit carries the bill and its version
+            const editForm = this.editFormMode();
+            if (hasPurchaseData && editForm !== 'purchase') PurchaseManager.ensurePendingBill();
+            if (hasSaleData && editForm !== 'sale') RetailSaleManager.ensurePendingBill();
+
             const autoSaveData = {
                 userId: AppState.currentUser.uid,
                 userName: AppState.userName,
                 mode: mode,
                 deviceInfo: navigator.userAgent,
-                ...(this.editingBillIndex !== undefined ? { editingBillId: this.editingBillId || 'unknown' } : {})
+                ...(editForm ? this.editMarker() : {})
             };
 
             autoSaveData.purchase = {
@@ -1065,24 +1116,223 @@ const BillingManager = {
 
     /**
      * The banner's Restore (true) or Discard (false). Restore needs an empty form:
-     * it never replaces a bill on screen or a bill opened for editing.
+     * it never replaces a bill on screen or a bill opened for editing. A form whose bill
+     * is already saved is offered to open instead, an edit goes back on its bill (#93).
      * @async
      * @param {boolean} restore
      */
     async resolveRecovery(restore) {
         if (restore && this.pendingRecovery) {
-            if (this.editingBillIndex !== undefined || !this.editorEmpty('purchase') || !this.editorEmpty('sale')) {
+            if (!this.formsFreeForRestore()) {
                 UIManager.showToast(t('msg.billing.restore_needs_empty_form'), 'warning');
                 return;
             }
-            const data = this.takeRecovery();
-            if (data) {
-                await this.recoverAutoSave(data);
-                this.triggerAutoSave();
+            const data = this.pendingRecovery;
+            if (data.userId !== AppState.currentUser?.uid) {
+                this.takeRecovery();
+                return;
             }
+            if (restoring) return;
+            restoring = true;
+            let plan;
+            try {
+                plan = await this.planRestore(data);
+            } finally {
+                restoring = false;
+            }
+            // Kept on the banner (No / no connection), or replaced or typed over meanwhile
+            if (!plan || this.pendingRecovery !== data) return;
+            if (!this.formsFreeForRestore()) {
+                UIManager.showToast(t('msg.billing.restore_needs_empty_form'), 'warning');
+                return;
+            }
+            this.takeRecovery();
+            const modes = Object.keys(plan.forms);
+            if (modes.length) {
+                if (plan.edit) this.openEditor(plan.edit.bill, plan.edit.billType);
+                const mode = plan.edit ? editTargetOf(data).mode : (plan.forms[data.mode] ? data.mode : modes[0]);
+                await this.recoverAutoSave({ ...data, mode, purchase: plan.forms.purchase || {}, sale: plan.forms.sale || {} },
+                    { exactMode: plan.edit ? mode : null });
+                // The edited bill's own day stays in the Date box
+                if (plan.edit) this.prepareBillDates();
+                this.triggerAutoSave();
+            } else {
+                await BillDrafts.deleteAutoSave(AppState.currentUser.uid).catch(e => console.error('Failed to delete auto-save:', e));
+            }
+            const opened = plan.saved.find(s => s.open);
+            if (opened) this.openSavedBill(opened);
             return;
         }
         if (this.takeRecovery()) await BillDrafts.deleteAutoSave(AppState.currentUser.uid).catch(e => console.error('Failed to delete auto-save:', e));
+    },
+
+    /** Whether Restore may fill the forms: nothing typed and no bill open for editing. */
+    formsFreeForRestore() {
+        return this.editingBillIndex === undefined && this.editorEmpty('purchase') && this.editorEmpty('sale');
+    },
+
+    /** The form ('purchase' | 'sale') holding the bill open for editing, or null. */
+    editFormMode() {
+        if (this.editingBillIndex === undefined) return null;
+        return this.editingBillType === 'retail' ? 'sale' : 'purchase';
+    },
+
+    /** What an auto-save or a draft of an edit carries (#93): the bill and the version the editor opened. */
+    editMarker() {
+        return {
+            editingBillId: this.editingBillId || 'unknown',
+            editingBillType: this.editingBillType || 'purchase',
+            editingBase: FirebaseService.billVersion(this.getEditingBill())
+        };
+    },
+
+    /**
+     * Checks an auto-save or a draft against the saved bills before it goes back into the
+     * form (#93), one server read per form at most (none for a bill in memory):
+     * - an edit re-opens its bill (the server's copy); changed there since → asks, with both
+     *   totals (BF-RESTORE); voided, gone, past its edit window or unknown → left out, said why;
+     * - a new bill whose id is already saved (in memory, on the server, or offline in this
+     *   phone's cache) is left out and offered to open;
+     * - any other new bill goes back marked `restored`: its first save online creates it only
+     *   while its id is still free (a transaction), so it never goes over a saved bill.
+     * @param {Object} data - the auto-save, or a draft
+     * @returns {Promise<?{edit: ?{bill: Object, billType: string}, forms: Object, saved: Array<{bill: Object, billType: string, open: boolean}>}>}
+     *   null: restore nothing and keep the auto-save / draft
+     */
+    async planRestore(data) {
+        const target = editTargetOf(data);
+        const plan = { edit: null, forms: {}, saved: [] };
+        for (const mode of ['purchase', 'sale']) {
+            const form = formOf(data, mode);
+            if (!formHasContent(form)) continue;
+            if (target?.mode === mode) {
+                const edit = await this.editToRestore(target, form);
+                if (edit === false) return null;
+                if (edit) {
+                    plan.edit = edit;
+                    plan.forms[mode] = { ...form, pendingBill: null };
+                }
+                continue;
+            }
+            const id = form.pendingBill?.id;
+            if (!id) {
+                plan.forms[mode] = form;
+                continue;
+            }
+            const billType = mode === 'sale' ? 'retail' : 'purchase';
+            const saved = await this.savedBillFor(billType, String(id));
+            if (saved) {
+                plan.saved.push({ bill: saved, billType, open: await this.askOpenSaved(saved, billType, form) });
+                continue;
+            }
+            if (saved === undefined && form.pendingBill.knownSaved) {
+                UIManager.showToast(t('msg.billing.copy_already_saved'), 'warning');
+                continue;
+            }
+            if (saved === undefined) UIManager.showToast(t('msg.billing.restore_not_checked'), 'warning');
+            // Not saved when checked (or not checkable): its saves online create it only while the id is free
+            plan.forms[mode] = { ...form, pendingBill: { ...form.pendingBill, restored: true } };
+        }
+        return plan;
+    },
+
+    /**
+     * "This bill is already saved … Open the saved bill?" for a restored copy whose id is a
+     * saved bill (#93); with both totals (BF-RESTORE) when the copy's lines differ from it.
+     * @param {Object} bill - the saved bill
+     * @param {'purchase'|'retail'} billType
+     * @param {Object} form - the copy (auto-save form, draft or the form on screen)
+     * @returns {Promise<boolean>} true: open it
+     */
+    async askOpenSaved(bill, billType, form) {
+        const figures = restoreFigures(form, billType === 'retail' ? 'sale' : 'purchase', bill);
+        const number = bill.billNumber || '—';
+        const text = figures.saved === figures.unsaved
+            ? t('msg.billing.restore_already_saved', { number, total: Helpers.formatCurrency(figures.payable) })
+            : t('msg.billing.restore_already_saved_differs', {
+                number, saved: Helpers.formatCurrency(figures.saved), unsaved: Helpers.formatCurrency(figures.unsaved)
+            });
+        return !!(await UIManager.showModal(text, t('ui.billing.already_saved_title'), true));
+    },
+
+    /** A save refused because its id is a bill saved on another phone (#93): offers to open it. */
+    async offerSavedBill(bill, billType, form) {
+        if (!bill?.id) return;
+        const { saved, unsaved } = restoreFigures(form, billType === 'retail' ? 'sale' : 'purchase', bill);
+        const open = await UIManager.showModal(t('msg.billing.saved_on_other_phone', {
+            number: bill.billNumber || '—', saved: Helpers.formatCurrency(saved), unsaved: Helpers.formatCurrency(unsaved)
+        }), t('ui.billing.already_saved_title'), true);
+        if (open) this.openSavedBill({ bill, billType });
+    },
+
+    /**
+     * The saved bill with a restored new bill's id (#93): from memory, else the server's copy
+     * (`latestBill`, one read, never the cache); the server out of reach: this phone's cache.
+     * @returns {Promise<?Object|undefined>} null: not saved; undefined: not on this phone and
+     *   the server couldn't be asked
+     */
+    async savedBillFor(billType, id) {
+        const history = historyOf(billType);
+        const index = findBillIndex(history, id, -1);
+        if (index !== -1) return history[index];
+        try {
+            const res = await UIManager.withLoading(() => FirebaseService.latestBill(BILL_COLLECTIONS[billType], { id }, { idOnly: true }));
+            return res.bill || null;
+        } catch (error) {
+            console.warn('Checking whether a restored bill was saved failed:', error?.code || error);
+            return (await FirebaseService.billOnThisPhone(BILL_COLLECTIONS[billType], id)) || undefined;
+        }
+    },
+
+    /**
+     * The bill an unsaved edit goes back on (#93): the server's copy (`latestBill`, one read).
+     * @returns {Promise<?{bill: Object, billType: string}|false>} null: leave this edit out (said
+     *   why); false: restore nothing (the user said No, or it needs the connection)
+     */
+    async editToRestore(target, form) {
+        if (!target.id) {
+            UIManager.showToast(t('msg.billing.restore_edit_unknown'));
+            return null;
+        }
+        const history = historyOf(target.billType);
+        const inMemory = history[findBillIndex(history, target.id, -1)] || null;
+        let bill;
+        try {
+            bill = (await UIManager.withLoading(() => FirebaseService.latestBill(BILL_COLLECTIONS[target.billType], { id: target.id }, { idOnly: true }))).bill;
+        } catch (error) {
+            console.warn('Reading the bill of a restored edit failed:', error?.code || error);
+            if (!inMemory) {
+                UIManager.showToast(t('msg.billing.restore_edit_offline'), 'warning');
+                return false;
+            }
+            // The save checks the server's copy again before writing
+            UIManager.showToast(t('msg.billing.latest_check_failed'), 'warning');
+            bill = inMemory;
+        }
+        if (!bill) {
+            UIManager.showToast(t('msg.common.bill_not_found'));
+            return null;
+        }
+        if (!isActiveBill(bill)) {
+            UIManager.showToast(t('msg.void.already'));
+            return null;
+        }
+        if (!canEditBill(bill)) {
+            UIManager.showToast(editRefusedMessage(bill));
+            return null;
+        }
+        if (target.base && FirebaseService.billVersion(bill) === target.base) return { bill, billType: target.billType };
+        const { saved, unsaved } = restoreFigures(form, target.mode, bill);
+        const apply = await UIManager.showModal(
+            t('msg.billing.restore_edit_changed', { saved: Helpers.formatCurrency(saved), unsaved: Helpers.formatCurrency(unsaved) }),
+            t('ui.billing.restore_changed_title'), true);
+        return apply ? { bill, billType: target.billType } : false;
+    },
+
+    /** Opens a saved bill's details (History), e.g. the one a restored copy turned out to be. */
+    openSavedBill({ bill, billType }) {
+        Promise.resolve(window.app?.history?.viewBill?.(`id:${bill.id}`, billType))
+            .catch(e => console.error('Opening the saved bill failed:', e));
     },
 
     /** Redraws the banner and the bill number lines in the new language. */
@@ -1095,8 +1345,14 @@ const BillingManager = {
      * Recover auto-saved data
      * @async
      * @param {Object} autoSaveData - Auto-save data to recover
+     * @param {{exactMode?: ?string}} [options] - the form holding an unsaved edit over its bill:
+     *   its name, labour and comments are put back even when empty
      */
-    async recoverAutoSave(autoSaveData) {
+    async recoverAutoSave(autoSaveData, { exactMode = null } = {}) {
+        const put = (mode, id, value, empty = '') => {
+            const el = document.getElementById(id);
+            if (el && (exactMode === mode || value)) el.value = value || empty;
+        };
         try {
             if (autoSaveData.mode !== this.currentMode) {
                 const modeBtn = autoSaveData.mode === 'purchase' 
@@ -1137,9 +1393,9 @@ const BillingManager = {
                     if (weightInput) weightInput.value = purchaseData.typedWeight;
                 }
                 
-                if (purchaseData.customerName) document.getElementById('customerName').value = purchaseData.customerName;
-                if (purchaseData.laborCharges) document.getElementById('manualLaborCharges').value = purchaseData.laborCharges;
-                if (purchaseData.comments) document.getElementById('billComments').value = purchaseData.comments;
+                put('purchase', 'customerName', purchaseData.customerName);
+                put('purchase', 'manualLaborCharges', purchaseData.laborCharges, '0');
+                put('purchase', 'billComments', purchaseData.comments);
                 setPrintComments('billPrintComments', purchaseData.printComments);
                 
                 PurchaseManager.renderBill();
@@ -1174,8 +1430,8 @@ const BillingManager = {
                     if (saleWeightInput) saleWeightInput.value = saleData.typedWeight;
                 }
                 
-                if (saleData.customerName) document.getElementById('saleCustomerName').value = saleData.customerName;
-                if (saleData.comments) document.getElementById('saleComments').value = saleData.comments;
+                put('sale', 'saleCustomerName', saleData.customerName);
+                put('sale', 'saleComments', saleData.comments);
                 setPrintComments('salePrintComments', saleData.printComments);
                 
                 RetailSaleManager.renderSalesBill();
@@ -1297,103 +1553,112 @@ const BillingManager = {
                 const i = findBillIndex(history, bill.id, -1);
                 if (i !== -1) resolvedIndex = i;
             }
-
-            this.editingBillIndex = resolvedIndex;
-            this.editingBillId = bill.id;
-            this.editingBillType = billType;
-            // Payment state when the editor opened: a payment recorded elsewhere before
-            // saving must cause a conflict instead of being overwritten by the form values
-            this.editingBillPaymentSig = FirebaseService.loadedPaymentSignature(bill);
-            this.editingBill = bill;
-
-            // Retail bills use 'sale' mode, wholesale cannot be edited from billing tab
-            const mode = billType === 'retail' ? 'sale' : 'purchase';
-            if (this.currentMode !== mode) {
-                const btn = mode === 'sale' ? document.getElementById('saleModeBtn') : document.getElementById('purchaseModeBtn');
-                this.switchMode(mode, { currentTarget: btn });
-            }
-
-            const overlay = document.getElementById('billDetailsOverlay');
-            if (overlay) overlay.classList.remove('active');
-
-            if (mode === 'purchase') {
-                PurchaseManager.setBillItems(bill.items.map(item => ({ ...item })));
-                PurchaseManager.setWeights([]);
-                
-                if (bill.customerName) document.getElementById('customerName').value = bill.customerName;
-                if (bill.comments) document.getElementById('billComments').value = bill.comments;
-                setPrintComments('billPrintComments', bill.printComments);
-                // Labour and payment as BILL-PAY reads them (every stored shape), so an edit that
-                // changes no money is recognised and keeps the stored figures (#129)
-                const labour = billLabour(bill);
-                if (labour) document.getElementById('manualLaborCharges').value = labour;
-                
-                const paid = readPayment(bill);
-                if (paid.online > 0) {
-                    document.getElementById('onlinePayment').value = paid.online;
-                    document.getElementById('onlineCheckbox').checked = true;
-                }
-                if (paid.cash > 0) {
-                    document.getElementById('cashPayment').value = paid.cash;
-                    document.getElementById('cashCheckbox').checked = true;
-                }
-                if (paid.due > 0) {
-                    document.getElementById('dueAmount').value = paid.due;
-                    document.getElementById('dueCheckbox').checked = true;
-                }
-                
-                PurchaseManager.renderBill();
-                PurchaseManager.updateTotals();
-                this.prepareBillDates();
-                
-                window.app.nav.showTab('billing');
-                UIManager.showToast(t('msg.billing.editing_bill_modify_save'));
-            } else {
-                RetailSaleManager.setSaleItems(bill.items.map(item => ({ ...item })));
-                RetailSaleManager.setSaleWeights([]);
-                
-                if (bill.customerName) document.getElementById('saleCustomerName').value = bill.customerName;
-                if (bill.comments) document.getElementById('saleComments').value = bill.comments;
-                setPrintComments('salePrintComments', bill.printComments);
-                
-                // Payment as BILL-PAY reads it (payment object first, then top-level fields)
-                const paid = readPayment(bill);
-                const onlineValue = paid.online;
-                const cashValue = paid.cash;
-                
-                if (onlineValue > 0) {
-                    document.getElementById('saleOnlinePayment').value = onlineValue;
-                    document.getElementById('saleOnlineCheckbox').checked = true;
-                }
-                if (cashValue > 0) {
-                    document.getElementById('saleCashPayment').value = cashValue;
-                    document.getElementById('saleCashCheckbox').checked = true;
-                }
-                
-                const dueValue = paid.due;
-                if (dueValue > 0) {
-                    document.getElementById('saleDueAmount').value = dueValue;
-                    document.getElementById('saleDueCheckbox').checked = true;
-                }
-                
-                RetailSaleManager.renderSalesBill();
-                RetailSaleManager.updateSaleTotals();
-                this.prepareBillDates();
-                
-                window.app.nav.showTab('billing');
-                // Switch to sale mode for retail sales
-                setTimeout(() => {
-                    const saleBtn = document.getElementById('saleModeBtn');
-                    if (saleBtn) {
-                        window.app.billing.switchMode('sale', { currentTarget: saleBtn });
-                    }
-                }, 100);
-                UIManager.showToast(t('msg.billing.editing_sale_modify_save'));
-            }
-            
+            this.openEditor(bill, billType, resolvedIndex);
         } catch (error) {
             console.error('Failed to load bill for editing:', error);
             UIManager.showToast(t('msg.billing.failed_load_bill'));
+        }
+    },
+
+    /**
+     * Opens `bill` in the form as an edit: the editor's state and the bill's lines, names
+     * and payment (editBill, and an unsaved edit restored on its bill, #93).
+     * @param {Object} bill - the copy the save builds on
+     * @param {'purchase'|'retail'|'wholesale'} billType
+     * @param {number} [index] - its place in the history list
+     */
+    openEditor(bill, billType, index = findBillIndex(historyOf(billType), bill.id, -1)) {
+        this.editingBillIndex = index;
+        this.editingBillId = bill.id;
+        this.editingBillType = billType;
+        // Payment state when the editor opened: a payment recorded elsewhere before
+        // saving must cause a conflict instead of being overwritten by the form values
+        this.editingBillPaymentSig = FirebaseService.loadedPaymentSignature(bill);
+        this.editingBill = bill;
+
+        // Retail bills use 'sale' mode, wholesale cannot be edited from billing tab
+        const mode = billType === 'retail' ? 'sale' : 'purchase';
+        if (this.currentMode !== mode) {
+            const btn = mode === 'sale' ? document.getElementById('saleModeBtn') : document.getElementById('purchaseModeBtn');
+            this.switchMode(mode, { currentTarget: btn });
+        }
+
+        const overlay = document.getElementById('billDetailsOverlay');
+        if (overlay) overlay.classList.remove('active');
+
+        if (mode === 'purchase') {
+            PurchaseManager.setBillItems(bill.items.map(item => ({ ...item })));
+            PurchaseManager.setWeights([]);
+            
+            if (bill.customerName) document.getElementById('customerName').value = bill.customerName;
+            if (bill.comments) document.getElementById('billComments').value = bill.comments;
+            setPrintComments('billPrintComments', bill.printComments);
+            // Labour and payment as BILL-PAY reads them (every stored shape), so an edit that
+            // changes no money is recognised and keeps the stored figures (#129)
+            const labour = billLabour(bill);
+            if (labour) document.getElementById('manualLaborCharges').value = labour;
+            
+            const paid = readPayment(bill);
+            if (paid.online > 0) {
+                document.getElementById('onlinePayment').value = paid.online;
+                document.getElementById('onlineCheckbox').checked = true;
+            }
+            if (paid.cash > 0) {
+                document.getElementById('cashPayment').value = paid.cash;
+                document.getElementById('cashCheckbox').checked = true;
+            }
+            if (paid.due > 0) {
+                document.getElementById('dueAmount').value = paid.due;
+                document.getElementById('dueCheckbox').checked = true;
+            }
+            
+            PurchaseManager.renderBill();
+            PurchaseManager.updateTotals();
+            this.prepareBillDates();
+            
+            window.app.nav.showTab('billing');
+            UIManager.showToast(t('msg.billing.editing_bill_modify_save'));
+        } else {
+            RetailSaleManager.setSaleItems(bill.items.map(item => ({ ...item })));
+            RetailSaleManager.setSaleWeights([]);
+            
+            if (bill.customerName) document.getElementById('saleCustomerName').value = bill.customerName;
+            if (bill.comments) document.getElementById('saleComments').value = bill.comments;
+            setPrintComments('salePrintComments', bill.printComments);
+            
+            // Payment as BILL-PAY reads it (payment object first, then top-level fields)
+            const paid = readPayment(bill);
+            const onlineValue = paid.online;
+            const cashValue = paid.cash;
+            
+            if (onlineValue > 0) {
+                document.getElementById('saleOnlinePayment').value = onlineValue;
+                document.getElementById('saleOnlineCheckbox').checked = true;
+            }
+            if (cashValue > 0) {
+                document.getElementById('saleCashPayment').value = cashValue;
+                document.getElementById('saleCashCheckbox').checked = true;
+            }
+            
+            const dueValue = paid.due;
+            if (dueValue > 0) {
+                document.getElementById('saleDueAmount').value = dueValue;
+                document.getElementById('saleDueCheckbox').checked = true;
+            }
+            
+            RetailSaleManager.renderSalesBill();
+            RetailSaleManager.updateSaleTotals();
+            this.prepareBillDates();
+            
+            window.app.nav.showTab('billing');
+            // Switch to sale mode for retail sales
+            setTimeout(() => {
+                const saleBtn = document.getElementById('saleModeBtn');
+                if (saleBtn) {
+                    window.app.billing.switchMode('sale', { currentTarget: saleBtn });
+                }
+            }, 100);
+            UIManager.showToast(t('msg.billing.editing_sale_modify_save'));
         }
     },
 

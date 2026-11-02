@@ -232,6 +232,10 @@ In order:
   runs its write through `Helpers.runExclusive(key, buttonSelector, fn)`, which
   ignores a second tap and disables the buttons (`aria-busy`) until the save
   ends. Put confirm dialogs *before* the lock (check `Helpers.isBusy(key)` first).
+  Online, a purchase / retail bill's first save is create-only (a transaction; #93): a bill already
+  under its id was saved by another phone of the same account and is never written over; with no
+  answer within 3 s it is saved like offline (`saveBill`, `BILL_CREATE_WAIT_MS`), and later first saves
+  skip the transaction until the server is heard again (at most 2 minutes).
   A write the app retries itself keeps a client-made id (bills: `pendingBill`,
   due payments: the payment entry `id`).
 - **Saved / offline (#70, #153)**: never show "Saved" for a write this phone refused.
