@@ -569,8 +569,15 @@ const PurchaseManager = {
             return;
         }
         // A restored copy of a bill the server said is already saved (#93): never written, online or not
+        // A restored copy's create-only save given up on: another phone's bill was there, or not known yet
+        const late = pendingBill?.restored ? FirebaseService.lateCreateState('purchases', pendingBill.id) : null;
+        if (late === 'foreign') pendingBill.knownSaved = true;
         if (pendingBill?.knownSaved) {
             UIManager.showToast(t('msg.billing.copy_already_saved'), 'warning');
+            return;
+        }
+        if (late === 'pending' && typeof navigator !== 'undefined' && navigator.onLine === false) {
+            UIManager.showToast(t('msg.billing.restore_check_pending'), 'warning');
             return;
         }
         
@@ -705,6 +712,8 @@ const PurchaseManager = {
         } catch (error) {
             UIManager.hideLoading();
             this.billingManager?.renderBillNumber?.();
+            // A create-only try that queued nothing: the next save is a first save again
+            if (error?.nothingQueued && pendingBill) pendingBill.attempted = false;
             if (error?.code === 'already-saved') {
                 if (pendingBill) pendingBill.knownSaved = true;
                 // Kept in the auto-save too, so a later Restore offline knows it

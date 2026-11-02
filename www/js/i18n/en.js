@@ -121,6 +121,7 @@ export default {
     'ui.billing.already_saved_title': "Already saved",
     'msg.billing.saved_on_other_phone': "This bill was already saved on another phone ({number}), so this copy wasn't saved (a receipt printed for it is not the saved bill). Saved bill: {saved}. This copy: {unsaved}. Open the saved bill?",
     'msg.sync.bill_saved_on_two_phones': "Bill {number} was also saved on another phone under the same id. Check it in History.",
+    'msg.billing.restore_check_pending': "This bill is still being checked with the server. Save it again when online.",
     'msg.billing.copy_already_saved': "This bill is already saved, so this copy can't be saved. Open it from History, or Clear to start a new bill.",
     'msg.billing.restore_already_saved_differs': "This bill is already saved ({number}) and won't be saved again. Saved bill: {saved}. This unsaved copy: {unsaved}. Open the saved bill to change it?",
     'msg.billing.restore_edit_changed': "This bill was changed after your unsaved edit (a payment or an edit). Saved bill: {saved}. Your unsaved edit: {unsaved}. Put your unsaved edit on the latest bill?",

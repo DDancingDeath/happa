@@ -109,10 +109,26 @@ function withoutUndefined(v) {
  */
 export const sentBillAttempts = new Map();
 
+/** The same without what changes after a save (payments, edits): `${key}` → Set of shapes. */
+const sentBillShapes = new Map();
+const billShapeJson = (bill) => {
+    const rest = { ...bill };
+    [...BILL_MONEY_FIELDS, 'paidAt', 'editCount'].forEach(k => delete rest[k]);
+    return billAttemptJson(rest);
+};
+
 function noteSentAttempt(key, record) {
     if (!sentBillAttempts.has(key)) sentBillAttempts.set(key, new Set());
     sentBillAttempts.get(key).add(billAttemptJson(record));
+    if (!sentBillShapes.has(key)) sentBillShapes.set(key, new Set());
+    sentBillShapes.get(key).add(billShapeJson(record));
 }
+
+/** Whether `bill` is one of this phone's attempts, a payment or an edit recorded since aside. */
+const isOwnBillShape = (key, bill) => !!bill && !!sentBillShapes.get(key)?.has(billShapeJson(bill));
+
+/** State of create-only transactions given up on, by key: 'pending' | 'own' | 'foreign' | 'none' (#93). */
+const lateCreateStates = new Map();
 
 /** How long a new bill's create-only save waits for the server before it is saved like an offline one. */
 export const BILL_CREATE_WAIT_MS = 3000;
@@ -142,9 +158,6 @@ function createOnlineReachable(now = Date.now()) {
  * createdAt) is then this phone's own bill, or that other phone's.
  */
 export const abandonedCreates = new Map();
-
-/** First set()s of new bills the server acknowledged, by key. */
-const ackedFirstSaves = new Set();
 
 const LATE_CREATE_WAIT_MS = 15000;
 
@@ -263,10 +276,7 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
         pendingFirstSaves.delete(key);
         retriedBillSaves.delete(key);
     };
-    const write = Promise.resolve(sent).then(() => {
-        ackedFirstSaves.add(key);
-        settled();
-    }, async (error) => {
+    const write = Promise.resolve(sent).then(settled, async (error) => {
         const late = isPermissionDenied(error) && !retriedBillSaves.has(key) ? await lateCreateOutcome(key, docRef) : false;
         if (late?.code === 'already-saved') {
             settled();
@@ -312,17 +322,16 @@ async function createBillOnline(collKey, record, ref, previous, key, { strict = 
             timer = setTimeout(() => reject(Object.assign(new Error('No answer from the server'), { code: 'deadline-exceeded' })), BILL_CREATE_WAIT_MS);
         })]);
     } catch (error) {
-        if (strict || !NO_ANSWER_CODES.has(error?.code)) {
-            tx.catch(() => {});
+        const noAnswer = NO_ANSWER_CODES.has(error?.code);
+        if (noAnswer) watchLateCreate(key, tx);
+        else tx.catch(() => {});
+        if (strict || !noAnswer) {
+            // Nothing queued: the next save is a first save again (a commit that did land is
+            // recognised then as this phone's own, sentBillAttempts)
+            if (error && typeof error === 'object' && error.code !== 'already-saved') error.nothingQueued = true;
             throw error;
         }
         createNoAnswerAt = Date.now();
-        abandonedCreates.set(key, tx.then(() => true, (late) => {
-            if (late?.code !== 'already-saved') return false;
-            // This phone's own set() landed first and the bill changed since: not another phone's
-            if (!ackedFirstSaves.has(key)) noteSavedOnTwoPhones(late.bill);
-            return late;
-        }));
         console.warn('New bill: no answer to the create-only save, saving it on the phone:', error.code);
         return null;
     } finally {
@@ -333,6 +342,28 @@ async function createBillOnline(collKey, record, ref, previous, key, { strict = 
     if (keptServerPaymentBills.has(attempt)) keptServerPaymentBills.add(record);
     unconfirmedFirstSaves.delete(key);
     return record;
+}
+
+/** Keeps a create-only transaction given up on (no answer in time), to learn how it ends. */
+function watchLateCreate(key, tx) {
+    lateCreateStates.set(key, 'pending');
+    abandonedCreates.set(key, tx.then(() => {
+        lateCreateStates.set(key, 'own');
+        return true;
+    }, (late) => {
+        if (late?.code !== 'already-saved') {
+            lateCreateStates.set(key, 'none');
+            return false;
+        }
+        // Read after this phone's own set() landed (a payment or edit since): still its bill
+        if (isOwnBillShape(key, late.bill)) {
+            lateCreateStates.set(key, 'own');
+            return true;
+        }
+        lateCreateStates.set(key, 'foreign');
+        noteSavedOnTwoPhones(late.bill);
+        return late;
+    }));
 }
 
 /**
@@ -847,6 +878,18 @@ export const billMethods = {
      */
     billVersion(bill) {
         return bill ? billStateKey(bill) : null;
+    },
+
+    /**
+     * How a create-only save of this bill given up on (no answer in time) ended (#93):
+     * 'pending' (still unknown), 'own' (it landed), 'foreign' (another phone's bill was
+     * there), 'none' (it failed), or null when there was none.
+     * @param {'purchases'|'retailSales'} collKey
+     * @param {string} id
+     * @returns {?string}
+     */
+    lateCreateState(collKey, id) {
+        return lateCreateStates.get(`${collKey}/${id}`) || null;
     },
 
     /**

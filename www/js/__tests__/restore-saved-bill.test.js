@@ -514,6 +514,71 @@ describe('two phones, one account: a first save only creates its bill (#93)', ()
         }
     }, 15000);
 
+    test('the late answer comes after "saved" was shown: the queued set() refused, another phone\'s bill is said', async () => {
+        fake.raw('purchases').set('n9', { ...BILL, id: 'n9', customerName: 'Saved on phone B' });
+        const before = { ...docs().get('n9') };
+        const db = fake.firebase.firestore();
+        const realRun = db.runTransaction;
+        const realCollection = db.collection;
+        db.runTransaction = (fn) => new Promise(resolve => setTimeout(() => resolve(realRun(fn)), BILL_CREATE_WAIT_MS + 2500));
+        db.collection = (name) => {
+            const c = realCollection(name);
+            const realDoc = c.doc;
+            return { ...c, doc: (id) => {
+                const ref = realDoc(id);
+                ref.set = () => new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error('denied'), { code: 'permission-denied' })), 2000));
+                return ref;
+            } };
+        };
+        try {
+            typeOnThisPhone('n9');
+            await payCashAndSave();
+            expect(PurchaseManager.getBillItems()).toEqual([]);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            expect(docs().get('n9')).toEqual(before);
+            expect(toast).toHaveBeenCalledWith('Bill P20261101-001 was also saved on another phone under the same id. Check it in History.', 8000);
+            expect(toast.mock.calls.flat().join(' ')).not.toMatch(/failed/i);
+        } finally {
+            db.runTransaction = realRun;
+            db.collection = realCollection;
+        }
+    }, 15000);
+
+    test('a first save whose create-only try failed outright: the next save is a first save again (create-only online)', async () => {
+        const db = fake.firebase.firestore();
+        const realRun = db.runTransaction;
+        db.runTransaction = () => Promise.reject(Object.assign(new Error('bad gateway'), { code: 'internal' }));
+        try {
+            typeOnThisPhone('n10');
+            await expect(payCashAndSave()).rejects.toMatchObject({ code: 'internal' });
+            expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n10', attempted: false });
+            expect(docs().has('n10')).toBe(false);
+        } finally {
+            db.runTransaction = realRun;
+        }
+        fake.raw('purchases').set('n10', { ...BILL, id: 'n10', customerName: 'Saved on phone B' });
+        const before = { ...docs().get('n10') };
+        modal.mockImplementation(async (_text, title) => title !== 'Already saved');
+        expect(await payCashAndSave()).toBeUndefined();
+        expect(docs().get('n10')).toEqual(before);
+    });
+
+    test('a restored copy whose create-only save got no answer: not saved offline until that answer is known', async () => {
+        const db = fake.firebase.firestore();
+        const realRun = db.runTransaction;
+        db.runTransaction = () => new Promise(() => {});
+        try {
+            await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n11' } }, sale: { items: [] } });
+            await expect(payCashAndSave()).rejects.toMatchObject({ code: 'deadline-exceeded' });
+            jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+            expect(await payCashAndSave()).toBeUndefined();
+            expect(toast).toHaveBeenLastCalledWith('This bill is still being checked with the server. Save it again when online.', 'warning');
+            expect(docs().has('n11')).toBe(false);
+        } finally {
+            db.runTransaction = realRun;
+        }
+    }, 15000);
+
     test('after a no-answer, first saves skip the transaction until the server is heard again', async () => {
         const db = fake.firebase.firestore();
         const realRun = db.runTransaction;
