@@ -296,7 +296,15 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
     noteStockWrite(collKey, previous, record);
     noteMonthWrite(collKey, previous, record);
     noteLocalRecordWrite(collKey, String(record.id), record);
-    const { pending, stored } = await settleWrite(write, label);
+    let settledWrite;
+    try {
+        settledWrite = await settleWrite(write, label);
+    } catch (error) {
+        // Refused before it counted as saved (by this phone or the server): nothing is stored
+        if (error && typeof error === 'object' && error.code !== 'already-saved') error.nothingQueued = true;
+        throw error;
+    }
+    const { pending, stored } = settledWrite;
     if (!stored) {
         unconfirmedBills.add(record);
         return record;
@@ -315,7 +323,8 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
  */
 async function createBillOnline(collKey, record, ref, previous, key, { strict = false } = {}) {
     const attempt = { ...record };
-    const tx = retryBillSave(collKey, attempt, ref, previous, key, { createOnly: true });
+    const control = { abandoned: false };
+    const tx = retryBillSave(collKey, attempt, ref, previous, key, { createOnly: true, control });
     let timer;
     try {
         await Promise.race([tx, new Promise((_, reject) => {
@@ -323,6 +332,8 @@ async function createBillOnline(collKey, record, ref, previous, key, { strict = 
         })]);
     } catch (error) {
         const noAnswer = NO_ANSWER_CODES.has(error?.code);
+        // The SDK may still run it again later: from now on it only creates the bill, never goes over it
+        control.abandoned = true;
         if (noAnswer) watchLateCreate(key, tx);
         else tx.catch(() => {});
         if (strict || !noAnswer) {
@@ -401,7 +412,7 @@ export function startBillSaveRun(collKey, record, retry) {
  * when it holds one of this phone's own attempts (sentBillAttempts: a lost acknowledgement);
  * otherwise `already-saved` is thrown with it. @private
  */
-export async function retryBillSave(collKey, record, ref, previous, key, { createOnly = false } = {}) {
+export async function retryBillSave(collKey, record, ref, previous, key, { createOnly = false, control = null } = {}) {
     const sentSig = sentBillPaymentSigs.get(key) ?? paymentSignature(record);
     let kept = false;
     let wrote = false;
@@ -419,8 +430,15 @@ export async function retryBillSave(collKey, record, ref, previous, key, { creat
             tx.set(ref, withServerCreatedAt(record));
             return;
         }
-        // Create-only (#93): a bill this phone didn't write is never gone over
-        if (createOnly && !sentBillAttempts.get(key)?.has(billAttemptJson(snap.data() || {}))) {
+        // Create-only (#93): a bill this phone didn't write is never gone over; given up on
+        // (control.abandoned), not even this phone's own bill, which may be newer by now
+        const there = snap.data() || {};
+        const ownThere = sentBillAttempts.get(key)?.has(billAttemptJson(there));
+        if (createOnly && control?.abandoned && (ownThere || isOwnBillShape(key, there))) {
+            wrote = false;
+            return;
+        }
+        if (createOnly && (control?.abandoned || !ownThere)) {
             throw Object.assign(new Error('This bill is already saved'),
                 { code: 'already-saved', bill: { ...snap.data({ serverTimestamps: 'estimate' }), id: ref.id } });
         }
@@ -461,7 +479,7 @@ export async function retryBillSave(collKey, record, ref, previous, key, { creat
         noteStockWrite(collKey, previous, record, createOnly && created ? {} : { oldUnknown: true });
         noteMonthWrite(collKey, previous, record);
     }
-    noteLocalRecordWrite(collKey, String(record.id), record);
+    if (wrote || !control?.abandoned) noteLocalRecordWrite(collKey, String(record.id), record);
     return record;
 }
 

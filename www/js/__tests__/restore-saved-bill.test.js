@@ -579,6 +579,51 @@ describe('two phones, one account: a first save only creates its bill (#93)', ()
         }
     }, 15000);
 
+    test('a transaction given up on that runs again later never goes over the newer save of the bill', async () => {
+        const db = fake.firebase.firestore();
+        const realRun = db.runTransaction;
+        let calls = 0;
+        db.runTransaction = (fn) => (calls++ === 0
+            ? new Promise(resolve => setTimeout(() => resolve(realRun(fn)), BILL_CREATE_WAIT_MS + 1500))
+            : realRun(fn));
+        try {
+            await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n12' } }, sale: { items: [] } });
+            await expect(payCashAndSave()).rejects.toMatchObject({ code: 'deadline-exceeded' });
+            expect(PurchaseManager.getPendingBill()).toMatchObject({ attempted: false, restored: true });
+            PurchaseManager.setBillItems([RICE([12])]);
+            await payCashAndSave();
+            expect(docs().get('n12')).toMatchObject({ cashPayment: 120 });
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            expect(calls).toBe(2);
+            expect(docs().get('n12')).toMatchObject({ cashPayment: 120, items: [RICE([12])] });
+            expect(docs().get('n12').editCount).toBeUndefined();
+        } finally {
+            db.runTransaction = realRun;
+        }
+    }, 15000);
+
+    test('a restored copy the phone refuses to store offline stays restored (its online save stays create-only)', async () => {
+        await restore({ mode: 'purchase', purchase: { items: [RICE([10])], pendingBill: { id: 'n13' } }, sale: { items: [] } });
+        const db = fake.firebase.firestore();
+        const realCollection = db.collection;
+        db.collection = (name) => {
+            const c = realCollection(name);
+            const realDoc = c.doc;
+            return { ...c, doc: (id) => {
+                const ref = realDoc(id);
+                if (id === 'n13') ref.set = () => Promise.reject(Object.assign(new Error('storage full'), { code: 'resource-exhausted' }));
+                return ref;
+            } };
+        };
+        jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+        try {
+            await expect(payCashAndSave()).rejects.toBeTruthy();
+            expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n13', attempted: false, restored: true });
+        } finally {
+            db.collection = realCollection;
+        }
+    });
+
     test('after a no-answer, first saves skip the transaction until the server is heard again', async () => {
         const db = fake.firebase.firestore();
         const realRun = db.runTransaction;

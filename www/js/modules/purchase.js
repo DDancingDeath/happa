@@ -611,6 +611,7 @@ const PurchaseManager = {
             ? laborCalculationSpan?.textContent || null 
             : null;
         
+        const wasRestored = !!pendingBill?.restored;
         try {
             UIManager.showLoading();
             const pending = this.ensurePendingBill();
@@ -713,7 +714,10 @@ const PurchaseManager = {
             UIManager.hideLoading();
             this.billingManager?.renderBillNumber?.();
             // A create-only try that queued nothing: the next save is a first save again
-            if (error?.nothingQueued && pendingBill) pendingBill.attempted = false;
+            if (error?.nothingQueued && pendingBill) {
+                pendingBill.attempted = false;
+                if (wasRestored) pendingBill.restored = true;
+            }
             if (error?.code === 'already-saved') {
                 if (pendingBill) pendingBill.knownSaved = true;
                 // Kept in the auto-save too, so a later Restore offline knows it
