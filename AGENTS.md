@@ -234,7 +234,8 @@ In order:
   online/offline events, `hasPendingWrites` of the existing listeners, the writes
   `saveBill` / `startSaveExpense` send and `waitForPendingWrites()`: no Firestore reads.
   Offline it adds "data as of HH:MM" (the last server snapshot, kept in localStorage); History /
-  Expenses rows carry `SyncStatus.chipHtml(id)` (Waiting to sync / Saved, kept up to date by
+  Expenses rows, Cash days and Money's withdrawals carry `SyncStatus.chipHtml(id)` (cash-day writes are
+  tracked in `repos/cash-sessions.js`) (Waiting to sync / Saved, kept up to date by
   `fillSyncChips`), and Close cash asks while `pendingCount()` > 0.
 - **Two phones, one item or setting (#113)**: item, settings and user writes need the
   internet (`utils/write-conflict.js`, code `needs-internet`). The item dialog saves with

@@ -17,6 +17,7 @@ import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { drawerDay } from '../utils/calc/cash.js';
+import { SyncStatus } from '../ui/sync-status.js';
 
 const FIXTURES = path.resolve(__dirname, '../../../tests/fixtures/calculations');
 const FIX = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'cash-days.json'), 'utf8'));
@@ -57,6 +58,8 @@ function setup(c) {
     AppState.salesHistory = copy(c.wholesaleSales);
     AppState.retailSalesHistory = copy(c.retailSales);
     AppState.expensesHistory = copy(c.expenses);
+    // Row sync chips (#70) pinned empty: another case's writes must not show here as "Saved"
+    jest.spyOn(SyncStatus, 'syncStateOf').mockReturnValue(null);
     jest.spyOn(FirebaseService, 'personalRowsLoaded').mockReturnValue(!!c.personalRows);
     jest.spyOn(FirebaseService, 'personalExpenseDay').mockImplementation(d => c.personalDays[d] || null);
     jest.spyOn(FirebaseService, 'loadPersonalExpenseDay').mockImplementation(async d => c.personalDays[d] || null);

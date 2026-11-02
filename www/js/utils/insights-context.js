@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Shared period and item for Money, Insights (incl. the Rate
  * trends and Product traffic views it hosts) and Statements
@@ -10,12 +11,13 @@ const KEY = 'aadhat.insightsContext';
 const PRESETS = /^(this-month|last-month|this-year|last-year|this-fy|last-fy|last-30|all|month:\d{4}-\d{2}|range:\d{4}-\d{2}-\d{2}:\d{4}-\d{2}-\d{2})$/;
 
 /** A period preset Money / Insights understand (PERIOD, PERIOD-FY, PERIOD-CUSTOM). */
-export const isPeriodPreset = (p) => PRESETS.test(String(p));
+export const isPeriodPreset = (/** @type {*} */ p) => PRESETS.test(String(p));
 
 const store = () => {
     try { return typeof sessionStorage !== 'undefined' ? sessionStorage : null; } catch { return null; }
 };
 
+/** @type {?{preset: string, itemId: ?string, compare: ?string}} */
 let ctx = null;
 
 function load() {
@@ -51,7 +53,12 @@ export function setInsightsContext(patch = {}) {
     return { ...c };
 }
 
-/** Month key ('YYYY-MM') a one-month view (Product traffic) should open on for a preset. */
+/**
+ * Month key ('YYYY-MM') a one-month view (Product traffic) should open on for a preset.
+ * @param {*} preset
+ * @param {Date} [now]
+ * @returns {string}
+ */
 export function contextMonth(preset, now = new Date()) {
     const m = /^month:(\d{4}-\d{2})$/.exec(String(preset));
     if (m) return m[1];
