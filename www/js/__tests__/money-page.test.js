@@ -849,7 +849,7 @@ describe('Money › Worth shared accounts (#74, settings/accounts)', () => {
         FirebaseService.loadWorthAccounts.mockResolvedValue({ a1: { name: 'Bank', balance: 100, type: 'asset' }, a2: { name: 'Loan', balance: 40, type: 'liability' } });
         await openWorth();
         expect(MoneyManager.accountsTotal()).toBe(60);
-        expect(document.querySelector('#moneyAccounts [onclick*="removeAccount(\'a2\')"]')).not.toBeNull();
+        expect(document.querySelector('#moneyAccounts [data-onclick*="removeAccount(\'a2\')"]')).not.toBeNull();
         MoneyManager.removeAccount('a2');
         expect(remove).toHaveBeenCalledWith('a2');
         expect(MoneyManager.accountsTotal()).toBe(100);
