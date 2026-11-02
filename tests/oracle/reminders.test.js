@@ -5,7 +5,7 @@
  */
 import fc from 'fast-check';
 import { overdueReminder } from '../../www/js/utils/reminders.js';
-import { groupReminders } from '../../www/js/utils/manual-reminders.js';
+import { groupReminders, nextDueDate } from '../../www/js/utils/manual-reminders.js';
 import { drillReminder, recordDrill } from '../../www/js/utils/backup-verify.js';
 
 const TODAY = new Date(2026, 10, 15, 10, 0, 0);
@@ -66,5 +66,38 @@ describe('REM-5: manual reminders on Today', () => {
             expect(g.soon.map(r => [r.id, r.days])).toEqual(rows.filter(r => r.n > 0 && r.n <= 7).sort(byDays).map(r => [r.id, r.n]));
             expect(g.later).toBe(rows.filter(r => r.n > 7).length);
         }), { numRuns: 200, seed: 86 });
+    });
+});
+describe('REM-6: the next copy of a repeating reminder', () => {
+    // Independent: whole days on a UTC calendar; a month step keeps the day, clipped to the month's end.
+    const ms = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10));
+    const iso = (t) => new Date(t).toISOString().slice(0, 10);
+    const DAY = 86400000;
+    const oracle = (due, repeat, today, day) => {
+        const d0 = ms(due);
+        const floor = Math.max(ms(today), d0 + DAY);
+        if (repeat !== 'monthly') {
+            const step = repeat === 'daily' ? 1 : 7;
+            const k = Math.max(1, Math.ceil((floor - d0) / (step * DAY)));
+            return iso(d0 + k * step * DAY);
+        }
+        const y = +due.slice(0, 4);
+        const m = +due.slice(5, 7) - 1;
+        for (let k = 1; ; k++) {
+            const last = new Date(Date.UTC(y, m + k + 1, 0)).getUTCDate();
+            const t = Date.UTC(y, m + k, Math.min(day, last));
+            if (t >= floor) return iso(t);
+        }
+    };
+    test('one period after the due date, the first that is today or later; monthly keeps its day', () => {
+        const base = Date.UTC(2026, 0, 1);
+        fc.assert(fc.property(
+            fc.integer({ min: 0, max: 900 }), fc.integer({ min: -400, max: 400 }), fc.constantFrom('daily', 'weekly', 'monthly'), fc.integer({ min: 1, max: 31 }),
+            (dueOff, todayOff, repeat, day) => {
+                const due = iso(base + dueOff * DAY);
+                const today = iso(base + (dueOff + todayOff) * DAY);
+                const keep = repeat === 'monthly' ? day : null;
+                expect(nextDueDate(due, repeat, today, keep)).toBe(oracle(due, repeat, today, keep ?? +due.slice(8, 10)));
+            }), { numRuns: 300, seed: 86 });
     });
 });
