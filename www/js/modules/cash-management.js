@@ -1193,7 +1193,7 @@ export class CashManagementManager {
                 <div onclick="window.app.cashManagement.showDetails('${Helpers.escapeJsAttr(session.date)}')" style="border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <strong style="font-size: 15px;">${date}</strong>
-                        ${status}
+                        <span>${SyncStatus.chipHtml(session.id)} ${status}</span>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 14px; color: #6c757d;">
                         <div>${L('ui.cash.opening')} <strong>${formatRupees(session.openingBalance, { exact: true })}</strong></div>
