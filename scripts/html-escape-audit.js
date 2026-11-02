@@ -33,6 +33,7 @@ const SINK_PROPS = new Set(['innerHTML', 'outerHTML']);
 /** Sink call name -> [index of the markup argument, its property when it is an object] */
 const SINK_CALLS = { insertAdjacentHTML: [1], showModalWithHtml: [0], showCustomModal: [0], printPage: [0, 'html'] };
 const FN = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
+const ITEM_CALLBACKS = new Set(['map', 'flatMap', 'forEach', 'filter', 'some', 'every', 'find', 'reduce']);
 const SAME_ITEMS = new Set(['filter', 'slice', 'sort', 'reverse', 'trim', 'trimStart', 'trimEnd', 'toUpperCase', 'toLowerCase']);
 const GLOBAL = { type: 'Global' };
 
@@ -289,18 +290,19 @@ function auditSource(src, rel, allow = ALLOW) {
 
     walk.fullAncestor(ast, (n, ancestors) => {
         const parent = ancestors[ancestors.length - 2];
-        if (markupTemplate(n)) {
+        // A value right after href=" is a URL even in a piece without a tag (` href="${u}"`)
+        if (n.type === 'TemplateLiteral') {
+            const markup = markupTemplate(n);
             n.expressions.forEach((x, i) => {
-                if (URL_ATTR.test(n.quasis[i].value.raw)) urlValue(x, 'url'); else if (unsafe(x, 'markup').length) hit(x, '');
+                if (URL_ATTR.test(n.quasis[i].value.raw)) urlValue(x, 'url'); else if (markup && unsafe(x, 'markup').length) hit(x, '');
             });
         }
         if (n.type === 'BinaryExpression' && n.operator === '+' && !(parent && parent.type === 'BinaryExpression' && parent.operator === '+')) {
             const parts = flatChain(n);
-            if (markupChain(parts)) {
-                parts.forEach((x, i) => {
-                    if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) urlValue(x, 'url (concatenated)'); else if (unsafe(x, 'markup').length) hit(x, 'concatenated');
-                });
-            }
+            const markup = markupChain(parts);
+            parts.forEach((x, i) => {
+                if (i > 0 && URL_ATTR.test(tail(parts[i - 1]))) urlValue(x, 'url (concatenated)'); else if (markup && unsafe(x, 'markup').length) hit(x, 'concatenated');
+            });
         }
         if (n.type === 'AssignmentExpression' && n.left.type === 'MemberExpression' && SINK_PROPS.has(sinkProp(n.left))) sinkValue(n.right);
         if (n.type === 'CallExpression') {
@@ -319,12 +321,17 @@ function auditSource(src, rel, allow = ALLOW) {
     });
     for (let w = 0; w < wrappers.length; w++) {
         const [fn, { i, rest }, kind] = wrappers[w];
+        const check = (a, via) => {
+            if (kind === 'url') { if (!isSafeUrl(a)) { hit(a, via); addWrapper(a, 'url'); } } else unsafe(a, kind).forEach(l => hit(l, via));
+        };
         calls.forEach(c => {
-            if (!(functionsOf(c.callee) || []).includes(fn)) return;
-            const via = `${kind} via ${text(c.callee)}`;
-            (rest ? c.arguments.slice(i) : c.arguments.slice(i, i + 1)).forEach(a => {
-                if (kind === 'url') { if (!isSafeUrl(a)) { hit(a, via); addWrapper(a, 'url'); } } else unsafe(a, kind).forEach(l => hit(l, via));
-            });
+            if ((functionsOf(c.callee) || []).includes(fn)) {
+                (rest ? c.arguments.slice(i) : c.arguments.slice(i, i + 1)).forEach(a => check(a, `${kind} via ${text(c.callee)}`));
+            }
+            // list.map(fn): each item of list is fn's first argument
+            const name = calleeName(c.callee);
+            if (i === 0 && c.callee.type === 'MemberExpression' && ITEM_CALLBACKS.has(name) && c.arguments[0]
+                && (functionsOf(c.arguments[0]) || []).includes(fn)) check(c.callee.object, `${kind} via ${name}(${text(c.arguments[0])})`);
         });
     }
     return [...hits.values()];

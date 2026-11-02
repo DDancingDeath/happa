@@ -1,9 +1,11 @@
 # innerHTML audit baseline (#89): the lines scripts/html-escape-audit.js lists today, each checked by hand.
 # CI fails on a line not here. Fix it (escape / safeUrl) or, once checked, run: npm run check:html-escape -- --update-baseline
+www/js/modules/admin.js: ACTIVITY_RANGES (markup via map(r => `<button type="button" class="filter-btn" data-range="${r}" onclick="window.app.admin.showActivity('${r}')">${tx(`ui.admin.range_${r}`)))
 www/js/modules/admin.js: col.id
 www/js/modules/admin.js: r
 www/js/modules/admin.js: r
 www/js/modules/admin.js: t('ui.admin.type_word_to_confirm', { word: `<strong>${Helpers.escapeHtml(DELETE_CONFIRM_WORD)}</strong>` })
+www/js/modules/anomalies.js: SEVERITIES (markup via map(sev => `<span class="anomaly-chip anomaly-sev-${sev}">${loc(SEVERITY_LABELS[sev])}: <strong>${s.bySeverity[sev]}</strong></span>`))
 www/js/modules/anomalies.js: SEV_COLORS[a.severity] || '#4b5563'
 www/js/modules/anomalies.js: SEV_COLORS[sev]
 www/js/modules/anomalies.js: SEV_COLORS[sev]
@@ -12,6 +14,7 @@ www/js/modules/anomalies.js: h
 www/js/modules/anomalies.js: h % 3 === 0 ? h : ''
 www/js/modules/anomalies.js: n
 www/js/modules/anomalies.js: n || ''
+www/js/modules/anomalies.js: p.byHour (markup via map((n, h) => `<div class="anomaly-hour" title="${h}:00 — ${n}"><div class="bar" style="height:${Math.round(100 * n / max)}%"></div><span>${h % ))
 www/js/modules/anomalies.js: s.bySeverity[sev]
 www/js/modules/anomalies.js: s.bySeverity[sev]
 www/js/modules/anomalies.js: s.topItems.map(x => `${esc(x.name)} (${x.count})`).join(', ')
@@ -36,6 +39,10 @@ www/js/modules/day.js: kind (markup via block)
 www/js/modules/day.js: open
 www/js/modules/day.js: open (markup via block)
 www/js/modules/day.js: parts.join('')
+www/js/modules/day.js: rows (markup via map(({ type, bill, at, total }) => { const party = bill.customerName || bill.seller || bill.buyer || (type === 'retail' ? t('ui.today.walk_in') ))
+www/js/modules/day.js: rows (markup via map(({ type, bill, at, total }) => { const party = bill.customerName || bill.seller || bill.buyer || (type === 'retail' ? t('ui.today.walk_in') ))
+www/js/modules/day.js: s.dayBills (markup via this.renderDayBills)
+www/js/modules/day.js: s.dayBills (markup via this.renderDayBills)
 www/js/modules/day.js: t.bgColor
 www/js/modules/day.js: t.color
 www/js/modules/day.js: t.icon
@@ -95,6 +102,7 @@ www/js/modules/money.js: SyncStatus.chipHtml(w.id)
 www/js/modules/money.js: c.dir
 www/js/modules/money.js: card
 www/js/modules/money.js: compareTableHtml(this.compareRows(m, b), { a, b: labels.b }) (sink via this.html)
+www/js/modules/money.js: figuresFromSnapshot(this.snapshots[lyKey(k)])?.M6 (markup via map(v => (v === null ? NaN : v)))
 www/js/modules/money.js: formatDay(k, { lang, year: false }) (markup via barsSvg)
 www/js/modules/money.js: formatMonth(monthBounds(k).from, { lang }) (markup via barsSvg)
 www/js/modules/money.js: formatMonth(monthBounds(k).from, { lang, year: false }) (markup via barsSvg)
@@ -104,7 +112,9 @@ www/js/modules/money.js: height
 www/js/modules/money.js: height
 www/js/modules/money.js: k (markup via barsSvg)
 www/js/modules/money.js: k (markup via barsSvg)
+www/js/modules/money.js: lastMonthKeys(now.getTime(), 13) (markup via map((k, i) => ({ key: k, tick: i % 3 === 0 || i === keys.length - 1 ? formatMonth(monthBounds(k).from, { lang, year: false }) : '', title: `${fo))
 www/js/modules/money.js: link
+www/js/modules/money.js: localDayKeys(r.from, Math.min(r.to, Date.now())) (markup via map((k, i) => ({ key: k, tick: i % 7 === 0 ? String(Number(k.slice(8))) : '', title: `${formatDay(k, { lang, year: false })}: ${money(net[i])}` ))
 www/js/modules/money.js: ref ? ` data-metric-ref="${ref}"` : ''
 www/js/modules/money.js: sharePct(c.total, max)
 www/js/modules/money.js: tag
@@ -123,6 +133,7 @@ www/js/modules/outstanding.js: p.bucket
 www/js/modules/purchase.js: i
 www/js/modules/purchase.js: index
 www/js/modules/purchase.js: index
+www/js/modules/rate-trends.js: READ_BUDGET_OPTIONS (markup via map(v => `<option value="${v}"${v === budget ? ' selected' : ''}>${v.toLocaleString('en-IN')}</option>`))
 www/js/modules/rate-trends.js: YEAR_COLORS[i]
 www/js/modules/rate-trends.js: d[k].bills
 www/js/modules/rate-trends.js: kgText(d[k].kg)
@@ -133,6 +144,7 @@ www/js/modules/rate-trends.js: kgText(r?.kgSold)
 www/js/modules/rate-trends.js: kgText(s.kg)
 www/js/modules/rate-trends.js: kgText(s.kg)
 www/js/modules/rate-trends.js: n
+www/js/modules/rate-trends.js: new Set(Object.keys(series).map(m => Number(m.slice(0, 4)))) (markup via map((y, i) => `<span><i style="background:${YEAR_COLORS[i]}"></i>${y}</span>`))
 www/js/modules/rate-trends.js: o.confidence
 www/js/modules/rate-trends.js: o.direction
 www/js/modules/rate-trends.js: r ? r.bills : 0
@@ -144,7 +156,13 @@ www/js/modules/rate-trends.js: y
 www/js/modules/retail-sale.js: i
 www/js/modules/retail-sale.js: index
 www/js/modules/retail-sale.js: index
+www/js/modules/roles-access.js: CONFIGURABLE_ROLES (markup via map(r => ` <td><input type="checkbox" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – ${t(ROLE_LABEL_KEYS[r])}`)}"${acce))
+www/js/modules/roles-access.js: CONFIGURABLE_ROLES (markup via map(r => ` <td><input type="number" inputmode="numeric" min="0" max="${DAY_LIMITS[p]}" step="1" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMI))
+www/js/modules/roles-access.js: CONFIGURABLE_ROLES (markup via map(r => r !== 'manager' ? '<td>–</td>' : ` <td><input type="checkbox" id="${fieldId(r, p)}" aria-label="${e(`${t(PERMISSION_LABEL_KEYS[p])} – $))
 www/js/modules/roles-access.js: DAY_LIMITS[p]
+www/js/modules/roles-access.js: PAGE_PERMISSIONS (markup via map(switchRow))
+www/js/modules/roles-access.js: SECTION_PERMISSIONS (markup via map(switchRow))
+www/js/modules/roles-access.js: SETTINGS_PERMISSIONS (markup via map(managerRow))
 www/js/modules/roles-access.js: fieldId(r, p)
 www/js/modules/roles-access.js: fieldId(r, p)
 www/js/modules/roles-access.js: fieldId(r, p)
@@ -159,12 +177,14 @@ www/js/modules/roles-access.js: r (markup via fieldId)
 www/js/modules/roles-access.js: role (markup via fieldId)
 www/js/modules/roles-access.js: role (markup via fieldId)
 www/js/modules/roles-access.js: v
+www/js/modules/settings.js: PAPER_WIDTHS (markup via map(mm => `<option value="${mm}"${p.widthMm === mm ? ' selected' : ''}>${Helpers.escapeHtml(t('ui.settings.paper_mm', { mm }))}</option>`))
 www/js/modules/settings.js: index
 www/js/modules/settings.js: key
 www/js/modules/settings.js: key
 www/js/modules/settings.js: mm
 www/js/modules/statements.js: (parseLocalDate(this.csvFrom) || new Date()).getTime() (markup via this.notLoaded)
 www/js/modules/statements.js: (parseLocalDate(this.csvFrom) || new Date()).getTime() (markup via this.notLoaded)
+www/js/modules/statements.js: Array.from({ length: 24 }, (_, i) => monthKeyOf(monthStart(now, -i).getTime())) (markup via map(k => `<option value="${k}"${k === this.month ? ' selected' : ''}>${esc(formatMonth(monthBounds(k).from, { lang }))}</option>`))
 www/js/modules/statements.js: Number.isFinite(from) ? from : 'null'
 www/js/modules/statements.js: b.from (markup via this.notLoaded)
 www/js/modules/statements.js: c !== undefined ? ` (${c})` : ''
@@ -172,16 +192,41 @@ www/js/modules/statements.js: d.getTime() (markup via this.notLoaded)
 www/js/modules/statements.js: formatAmount(r.avgCost, { decimals: 2 })
 www/js/modules/statements.js: id ? ` data-metric-export="${id}"` : ''
 www/js/modules/statements.js: k
+www/js/modules/statements.js: m.M1.total (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M10 (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M12.total (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M13.total (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M14 (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M16.total (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M17.closing (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M17.opening (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M2 (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M3.total (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M4.total (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M5 (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M6.total (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M7 (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M8.total (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
+www/js/modules/statements.js: m.M9 (markup via map(([k, v, id, perm]) => `<div class="ins-row${/eq$|kept|net_money/.test(k) ? ' ins-total' : ''}${id ? '' : ' ins-sub'}"${perm ? ` data-perm="$))
 www/js/modules/statements.js: n.html
 www/js/modules/statements.js: perm ? ` data-perm="${perm}"` : ''
 www/js/modules/statements.js: this.current.html (sink)
 www/js/modules/statements.js: this.current.html (sink)
+www/js/modules/statements.js: totals.duePaid (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.dueReceived (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.expenses (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.purchaseCount (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.purchases (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.sales (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.salesCount (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
+www/js/modules/statements.js: totals.withdrawals (markup via map(([k, v, c]) => `<div class="ins-row"><span>${esc(t(k))}${c !== undefined ? ` (${c})` : ''}</span><span data-metric-export="${k === 'ui.state))
 www/js/modules/stock.js: typeColor
 www/js/modules/voice-billing.js: value
 www/js/modules/wholesale-sales.js: billTableHtml(bills, { openings: this.historyOpenings, voided: this.historyVoided, onclickFor: (sale) => `wholesaleSales.reprintSaleById('${ (sink)
 www/js/modules/wholesale-sales.js: editsRowHtml(sale, 'history.showEdits()')
 www/js/modules/wholesale-sales.js: index
 www/js/modules/wholesale-sales.js: voidedBannerHtml(sale)
+www/js/rentals/rent-deposit.js: PAYMENT_MODES (markup via map(m => `<option value="${m}">${c.esc(t(`ui.rent.mode_${m}`))}</option>`))
 www/js/rentals/rent-deposit.js: action
 www/js/rentals/rent-deposit.js: cls
 www/js/rentals/rent-deposit.js: field
@@ -201,6 +246,7 @@ www/js/rentals/rent-receipt.js: i
 www/js/rentals/rent-report.js: MAX_NOTICE_MONTHS
 www/js/rentals/rent-report.js: cls
 www/js/rentals/rent-report.js: field
+www/js/rentals/rent-report.js: new Set([base, base - 1, base - 2, base - 3, report.year]) (markup via map(y => `<option value="${y}"${y === report.year ? ' selected' : ''}>${c.esc(yearLabel(y))}</option>`))
 www/js/rentals/rent-report.js: y
 www/js/rentals/rent-settings.js: MAX_RECEIPT_ADDRESS
 www/js/rentals/rent-settings.js: MAX_RECEIPT_HEADER
@@ -209,7 +255,12 @@ www/js/rentals/rent-unit.js: c.tenantSectionHtml({ rent: shown.rent, meterRate: 
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id
 www/js/rentals/rent-unit.js: id (markup via unitPickHtml)
+www/js/rentals/rentals.js: ELEC_MODES (markup via map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`))
+www/js/rentals/rentals.js: PAYMENT_MODES (markup via map(m => `<option value="${m}">${esc(modeLabel(m))}</option>`))
+www/js/rentals/rentals.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}"${k === p.kind ? ' selected' : ''}>${esc(kindLabel(k))}</option>`))
+www/js/rentals/rentals.js: PROPERTY_KINDS (markup via map(k => `<option value="${k}">${esc(kindLabel(k))}</option>`))
 www/js/rentals/rentals.js: TemplateLoader.loadTemplate('rentals') (sink)
+www/js/rentals/rentals.js: UNIT_TYPES (markup via map(k => `<option value="${k}"${k === unitType(unit) ? ' selected' : ''}>${esc(typeLabel(k))}</option>`))
 www/js/rentals/rentals.js: args
 www/js/rentals/rentals.js: attrs
 www/js/rentals/rentals.js: cls
@@ -235,13 +286,17 @@ www/js/ui/bill-row.js: st.s
 www/js/ui/bill-status.js: REASON_MAX
 www/js/ui/bill-status.js: onclick
 www/js/ui/finance-breakdown-sheet.js: g (markup via opt)
+www/js/ui/finance-breakdown-sheet.js: groupOptions(b.rows) (markup via map(g => opt(g, `ui.finance.group_${g}`, this.state.group)))
 www/js/ui/finance-breakdown-sheet.js: value
 www/js/ui/manual-reminders.js: REMINDER_PARTY_MAX
 www/js/ui/manual-reminders.js: REMINDER_TITLE_MAX
 www/js/ui/manual-reminders.js: today
+www/js/ui/period-compare.js: Object.freeze(['last-month', 'this-month', 'last-year', 'this-year', 'last-fy', 'this-fy', 'last-30']) (markup via map(p => [p, t(PRESET_KEYS[p])]))
+www/js/ui/period-compare.js: PRESET_KEYS[p] (markup via map(([v, label]) => `<option value="${v}"${v === bValue ? ' selected' : ''}>${esc(label)}</option>`))
 www/js/ui/period-compare.js: html (sink)
 www/js/ui/period-compare.js: id
 www/js/ui/period-compare.js: id
+www/js/ui/period-compare.js: p (markup via map(([v, label]) => `<option value="${v}"${v === bValue ? ' selected' : ''}>${esc(label)}</option>`))
 www/js/ui/period-compare.js: page
 www/js/ui/period-compare.js: page
 www/js/ui/period-compare.js: page

@@ -96,7 +96,10 @@ describe('html-escape-audit', () => {
         ['a caller of a helper with a rest parameter', "const row = (...cells) => `<tr>${cells.join('')}</tr>`; el.innerHTML = row('a', party.name);", 'party.name (markup via row)'],
         ['a caller of a helper that puts its parameter in an href', 'const link = (u) => `<a href="${u}">x</a>`; el.innerHTML = link(party.url);', 'party.url (url via link)'],
         ['Exporter.printPage html', "Exporter.printPage({ title: 'x', html: row.note });", 'row.note (sink)'],
-        ['a caller of a private method that writes innerHTML', 'class P { #show(v) { el.innerHTML = v; } go() { this.#show(party.name); } }', 'party.name (sink via this.#show)']
+        ['a caller of a private method that writes innerHTML', 'class P { #show(v) { el.innerHTML = v; } go() { this.#show(party.name); } }', 'party.name (sink via this.#show)'],
+        ['a list handed to .map(helper)', 'const row = (p) => `<tr id="${p}"></tr>`; el.innerHTML = party.tags.map(row).join(\'\');', 'party.tags (markup via map(row))'],
+        ['an href in a conditional tagless template', 'el.innerHTML = `<a class="x"${link ? ` href="${esc(link)}"` : \'\'}>open</a>`;', 'esc(link) (url)'],
+        ['an href in a conditional concatenation', "el.innerHTML = '<a' + (link ? ' href=\"' + esc(link) + '\"' : '') + '>open</a>';", 'esc(link) (url (concatenated))']
     ])('lists %s', (_, src, line) => {
         expect(audit(src)).toContain(`probe.js:1: ${line}`);
     });

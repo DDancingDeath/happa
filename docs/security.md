@@ -134,16 +134,17 @@ without line numbers, so moving code doesn't count). It looks at:
   to what they return (`this.m()`, or `X.m()` for a method defined on `X` in the same file);
 - when a function's parameter (plain, defaulted, destructured or rest) reaches a sink, markup or an
   `href` (`this.html(id, value)`,
-  ``const cell = (v) => `<td>${v}</td>` ``), each call to it in the same file, so a new caller
-  is a new line (`… (markup via cell)`);
-- each `href="${…}"` that isn't `safeUrl(…)`.
+  ``const cell = (v) => `<td>${v}</td>` ``), each call to it in the same file, and each list handed to it
+  through `.map(cell)` / `.forEach(cell)` …, so a new caller is a new line (`… (markup via cell)`);
+- each `href="${…}"` that isn't `safeUrl(…)`, in any template or `+` chain (also a tagless
+  `` ` href="${…}"` `` piece added under a condition).
 
 Names are trusted only through the reviewed list in `scripts/html-escape-allow.json` (escaping
 and number helpers, `.length`), never by how they are spelled. `tests/ci/html-escape-audit.test.js`
 holds 15 hostile probes the check must catch, plus the forms an independent review found. It is a
 helper, not a proof: review new markup by hand too. When the check fails, escape the value; if it
 is safe (a number, an internal id), check it by hand and run
-`npm run check:html-escape -- --update-baseline` in the same PR. The baseline started at 273
+`npm run check:html-escape -- --update-baseline` in the same PR. The baseline started at 328
 lines, all checked by hand (555 lines of the first, looser version of the script on 2 Nov, then
 the ~100 the wider check added: counts, colours, icons, loop indexes, internal ids passed to
 local helpers, cross-file `…Html()` helpers whose own markup is checked in their file, and
