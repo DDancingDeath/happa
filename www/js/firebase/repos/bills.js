@@ -652,27 +652,41 @@ export const billMethods = {
      * An older bill isn't listened to, so its copy here may be stale; a payment, edit or
      * void made on another phone shows as `changed`, and the server copy replaces the
      * one in memory. Rejects when the server can't be reached.
+     * With `idOnly` (#93: restoring an auto-save or a draft), `bill` is just `{ id }`: the copy
+     * compared with is the one in memory, if any (`changed` is then against that copy).
      * @param {'purchases'|'retailSales'|'wholesaleSales'} collKey
      * @param {Object} bill - the copy in memory
+     * @param {{idOnly?: boolean}} [options]
      * @returns {Promise<{bill: ?Object, changed: boolean}>} bill null when it no longer exists
      */
-    async latestBill(collKey, bill) {
+    async latestBill(collKey, bill, { idOnly = false } = {}) {
         if (!HISTORY_SPEC[collKey]?.dues) throw new Error(`Unknown bill collection: ${collKey}`);
         const docId = String(docIdOf(bill));
+        const known = idOnly ? findRecord(collKey, docId) : bill;
         // A listener with server data already has the latest copy: no read
-        if (keptLiveFromServer(collKey, docId)) return { bill, changed: false };
+        if (known && keptLiveFromServer(collKey, docId)) return { bill: known, changed: false };
         const ref = getDb().collection(col(collKey)).doc(docId);
         const snap = await getWithRetry(() => ({ get: () => ref.get({ source: 'server' }) }), `${collKey} latest`, { attempts: 1, timeoutMs: LATEST_BILL_TIMEOUT_MS });
-        const prev = findRecord(collKey, docId) || bill;
+        const prev = findRecord(collKey, docId) || known;
         if (!snap.exists) {
             dropGoneBill(collKey, prev, docId);
             return { bill: null, changed: true };
         }
         const fresh = mapDoc(snap);
-        if (billContentJson(fresh) === billContentJson(bill)) return { bill, changed: false };
+        if (known && billContentJson(fresh) === billContentJson(known)) return { bill: known, changed: false };
         adoptFreshBill(collKey, prev, fresh);
         // Notes and other unrecorded fields: edit the latest copy without asking
-        return { bill: fresh, changed: billStateKey(fresh) !== billStateKey(bill) };
+        return { bill: fresh, changed: !known || billStateKey(fresh) !== billStateKey(known) };
+    },
+
+    /**
+     * The version of a bill an auto-save or a draft of its edit was taken from (#93): its
+     * payments, edit count and void state (what a later change on any phone moves).
+     * @param {?Object} bill
+     * @returns {?string}
+     */
+    billVersion(bill) {
+        return bill ? billStateKey(bill) : null;
     },
 
     /**

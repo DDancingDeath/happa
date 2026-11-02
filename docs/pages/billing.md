@@ -15,7 +15,10 @@ While a bill is being typed:
   average cost) − expenses. Shown as "—" when an item's cost is not known (never
   bought, no opening stock).
 - "Save draft" keeps an unfinished bill; an unsaved bill is offered back at the
-  next start.
+  next start. If that bill was saved meanwhile, Restore (or loading the draft)
+  offers to open the saved bill instead of saving it again; an unsaved edit goes
+  back on its bill, and if the bill changed since (a payment or an edit) the app
+  first asks, showing both totals (BF-RESTORE).
 - **Voice** (VB-1; off until switched on in Settings › Voice billing): tap 🎤 and
   say the item, weight and rate. The app shows what it heard and fills the line
   only after OK; voice never adds to the bill or saves. See
