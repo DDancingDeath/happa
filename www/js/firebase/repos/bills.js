@@ -300,8 +300,11 @@ export async function saveBill(collKey, record, label, { retry = false, createOn
     try {
         settledWrite = await settleWrite(write, label);
     } catch (error) {
-        // Refused before it counted as saved (by this phone or the server): nothing is stored
+        // Refused before it counted as saved (by this phone or the server): nothing is stored, so
+        // memory goes back too (a next first save must not take this copy for the stored bill)
         if (error && typeof error === 'object' && error.code !== 'already-saved') error.nothingQueued = true;
+        if (previous) noteLocalRecordWrite(collKey, String(record.id), previous);
+        else forgetRecord(collKey, String(record.id));
         throw error;
     }
     const { pending, stored } = settledWrite;

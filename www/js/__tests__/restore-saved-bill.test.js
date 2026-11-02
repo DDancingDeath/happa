@@ -668,6 +668,33 @@ describe('two phones, one account: a first save only creates its bill (#93)', ()
     });
 });
 
+describe('a first save the phone refused (#93)', () => {
+    test('leaves no copy in memory, so the next save is a real first save (server createdAt)', async () => {
+        savePurchase.mockRestore();
+        await FirebaseService.setupRealtimeListeners();
+        for (let i = 0; i < 5; i++) await fake.settle();
+        jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+        const db = fake.firebase.firestore();
+        const realCollection = db.collection;
+        db.collection = (name) => {
+            const c = realCollection(name);
+            const realDoc = c.doc;
+            return name !== 'purchases' ? c : { ...c, doc: (id) => {
+                const ref = realDoc(id);
+                ref.set = () => Promise.reject(Object.assign(new Error('QuotaExceededError'), { name: 'QuotaExceededError', code: 'resource-exhausted' }));
+                return ref;
+            } };
+        };
+        try {
+            await expect(FirebaseService.savePurchase({ ...BILL, id: 'r1' }, { retry: false, createOnly: true }))
+                .rejects.toMatchObject({ nothingQueued: true });
+        } finally {
+            db.collection = realCollection;
+        }
+        expect(AppState.purchaseHistory.some(b => b.id === 'r1')).toBe(false);
+    });
+});
+
 describe('loading a draft (#93)', () => {
     test('its bill already saved: offered to open; Yes deletes the draft, No keeps it; never put in the form', async () => {
         stored();
