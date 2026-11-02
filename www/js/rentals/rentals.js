@@ -40,7 +40,7 @@ const et = (key, p) => esc(t(key, p));
 const byId = (id) => document.getElementById(id);
 const fail = (key, p) => UIManager.showToast(t(key, p), 'error');
 /** Button calling window.app.rentals.<fn>(<args>), text = icon + t(key). */
-const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="rent-btn${cls}"${attrs} onclick="window.app.rentals.${fn}(${args})">${icon}${et(key)}</button>`;
+const btn = (cls, fn, args, key, icon = '', attrs = '') => `<button type="button" class="rent-btn${cls}"${attrs} data-onclick="rentals.${fn}(${args})">${icon}${et(key)}</button>`;
 const confirmRemove = () => UIManager.showModal(t('msg.rent.confirm_remove'), t('ui.rent.remove'), true);
 const lbl = (key, field) => `<label class="rent-label">${et(key)}${field}</label>`;
 
@@ -289,8 +289,8 @@ function renderRent(d) {
     if (!state.errors.size && !store.truncatedKeys().length) void import('./rent-report.js').then(m => m.noteLeases(d, state.month, u => placeOf(ix, u))).catch(() => {});
     const view = state.view === 'units' ? 'units' : 'properties';
     const sw = `<div class="rent-viewswitch" role="group">
-        <button type="button" class="filter-btn${view === 'properties' ? ' active' : ''}" aria-pressed="${view === 'properties'}" onclick="window.app.rentals.setView('properties')">${et('ui.rent.view_properties')}</button>
-        <button type="button" class="filter-btn${view === 'units' ? ' active' : ''}" aria-pressed="${view === 'units'}" onclick="window.app.rentals.setView('units')">${et('ui.rent.view_units')}</button>
+        <button type="button" class="filter-btn${view === 'properties' ? ' active' : ''}" aria-pressed="${view === 'properties'}" data-onclick="rentals.setView('properties')">${et('ui.rent.view_properties')}</button>
+        <button type="button" class="filter-btn${view === 'units' ? ' active' : ''}" aria-pressed="${view === 'units'}" data-onclick="rentals.setView('units')">${et('ui.rent.view_units')}</button>
     </div>`;
     const body = view === 'units' ? renderUnitView(d, rows) : renderPropertyView(d, ix, rows);
     return `<h3 class="rent-month-title">${esc(monthLabel(state.month, lang))}</h3>
@@ -304,7 +304,7 @@ function renderPropertyView(d, ix, rows) {
     state.openProperty = '';
     const ex = expenseTotals(d.expenses, state.month);
     const cards = propertySummaries(d.properties, rows).map(({ property: p, summary: s }) => `
-        <button type="button" class="rent-row rent-prop-card" onclick="window.app.rentals.openProperty('${js(p.id)}')">
+        <button type="button" class="rent-row rent-prop-card" data-onclick="rentals.openProperty('${js(p.id)}')">
             <div class="rent-row-head">
                 <div><div class="rent-name">${esc(p.name)}</div>
                     <div class="rent-sub">${esc(typeCounts(s.byType) || t('ui.rent.no_units'))}</div>
@@ -378,13 +378,13 @@ function renderUnitView(d, rows) {
     const opt = (v, label, cur) => `<option value="${esc(v)}"${v === cur ? ' selected' : ''}>${esc(label)}</option>`;
     const props = [...d.properties].sort((a, b) => a.name.localeCompare(b.name));
     const controls = `<div class="rent-filters">
-        <select aria-label="${et('ui.rent.filter_property')}" onchange="window.app.rentals.filterUnits('propertyId', this.value)">
+        <select aria-label="${et('ui.rent.filter_property')}" data-onchange="rentals.filterUnits('propertyId', this.value)">
             ${opt('', t('ui.rent.all_properties'), f.propertyId)}${props.map(p => opt(p.id, p.name, f.propertyId)).join('')}</select>
-        <select aria-label="${et('ui.rent.filter_type')}" onchange="window.app.rentals.filterUnits('type', this.value)">
+        <select aria-label="${et('ui.rent.filter_type')}" data-onchange="rentals.filterUnits('type', this.value)">
             ${opt('', t('ui.rent.all_types'), f.type)}${UNIT_TYPES.map(k => opt(k, typeLabel(k), f.type)).join('')}</select>
-        <select aria-label="${et('ui.rent.filter_status')}" onchange="window.app.rentals.filterUnits('status', this.value)">
+        <select aria-label="${et('ui.rent.filter_status')}" data-onchange="rentals.filterUnits('status', this.value)">
             ${opt('', t('ui.rent.all_statuses'), f.status)}${['occupied', 'vacant', 'late', 'due'].map(k => opt(k, t(`ui.rent.filter_${k}`), f.status)).join('')}</select>
-        <input type="search" value="${esc(f.q)}" placeholder="${et('ui.rent.search_units')}" aria-label="${et('ui.rent.search_units')}" oninput="window.app.rentals.filterUnits('q', this.value)">
+        <input type="search" value="${esc(f.q)}" placeholder="${et('ui.rent.search_units')}" aria-label="${et('ui.rent.search_units')}" data-oninput="rentals.filterUnits('q', this.value)">
         ${btn(' rent-btn-small', 'filterUnits', `'sort', '${f.sort === 'desc' ? 'asc' : 'desc'}'`, f.sort === 'desc' ? 'ui.rent.sort_due_desc' : 'ui.rent.sort_due_asc')}
     </div>`;
     return `${controls}<div id="rentUnitList">${unitListHtml(d, rows)}</div>`;
@@ -444,7 +444,7 @@ async function pay(leaseId) {
     const modes = PAYMENT_MODES.map(m => `<option value="${m}">${esc(modeLabel(m))}</option>`).join('');
     const html = `<h3>${et('ui.rent.record_payment')}</h3>
         ${lbl('ui.rent.month', `
-            <select id="rentPayCharge" onchange="window.app.rentals.fillDue(this)">${options}</select>`)}
+            <select id="rentPayCharge" data-onchange="rentals.fillDue(this)">${options}</select>`)}
         ${lbl('ui.rent.amount', `
             <input id="rentPayAmount" type="number" inputmode="decimal" min="0" step="1" value="${esc(chargeDue(first))}">`)}
         ${lbl('ui.rent.mode', `<select id="rentPayMode">${modes}</select>`)}
@@ -742,7 +742,7 @@ async function archiveTenant(id) {
 /** Electricity choice of a lease (and the tenant's own meter number when that is chosen). */
 function elecFieldsHtml(mode, meterNo = '') {
     return `${lbl('ui.rent.elec_mode', `
-            <select id="rentTElec" onchange="window.app.rentals.tenantElec(this)">${ELEC_MODES.map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`).join('')}</select>`)}
+            <select id="rentTElec" data-onchange="rentals.tenantElec(this)">${ELEC_MODES.map(m => `<option value="${m}"${m === mode ? ' selected' : ''}>${et(`ui.rent.elec_${m}`)}</option>`).join('')}</select>`)}
         <div id="rentTOwnBox"${mode === 'own' ? '' : ' hidden'}>${lbl('ui.rent.own_meter_no', `<input id="rentTMeterNo" type="text" maxlength="40" value="${esc(meterNo)}">`)}</div>`;
 }
 
@@ -759,7 +759,7 @@ function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUn
     const mode = elec || (rate !== '' && rate != null ? 'meter' : 'included');
     const who = fixedTenant
         ? `<input type="hidden" id="rentTPick" value="${esc(fixedTenant.id)}"><p class="rent-name">${esc(fixedTenant.name)}</p>`
-        : `${lbl('ui.rent.tenant_pick', `<select id="rentTPick" onchange="window.app.rentals.tenantPick(this)">
+        : `${lbl('ui.rent.tenant_pick', `<select id="rentTPick" data-onchange="rentals.tenantPick(this)">
                 <option value="">${et('ui.rent.tenant_new')}</option>${free.map(x => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select>`)}
             <div id="rentTNewBox">
                 ${lbl('ui.rent.tenant_name', `<input id="rentTName" type="text" maxlength="80">`)}
@@ -782,7 +782,7 @@ function tenantSectionHtml({ toggle = false, rent = 0, fixedTenant = null, newUn
             ${lbl('ui.rent.meter_rate', `<input id="rentTRate" type="number" inputmode="decimal" min="0" step="0.01" value="${esc(rate)}">`)}
         </div>` : ''}
     </div>`;
-    return (toggle ? `<label class="rent-check rent-occupied-toggle"><input id="rentTOn" type="checkbox" onchange="window.app.rentals.tenantToggle(this)"> ${et('ui.rent.occupied_add_tenant')}</label>` : '') + box;
+    return (toggle ? `<label class="rent-check rent-occupied-toggle"><input id="rentTOn" type="checkbox" data-onchange="rentals.tenantToggle(this)"> ${et('ui.rent.occupied_add_tenant')}</label>` : '') + box;
 }
 
 function tenantToggle(cb) {

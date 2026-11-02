@@ -22,7 +22,7 @@ const auditWarn = (e) => console.warn('Rentals audit entry not written:', e?.cod
 const fail = (key) => UIManager.showToast(t(key), 'error');
 const lbl = (c, key, field) => `<label class="rent-label">${c.esc(t(key))}${field}</label>`;
 const opts = (c, list, cur, label) => list.map(v => `<option value="${c.esc(v)}"${v === cur ? ' selected' : ''}>${c.esc(label(v))}</option>`).join('');
-const act = (c, action, pid, key, cls = '', id = '') => `<button type="button" class="rent-btn${cls}" data-rent-exp onclick="window.app.rentals.expenseAction('${action}', '${c.js(pid)}', '${c.js(id)}')">${c.esc(t(key))}</button>`;
+const act = (c, action, pid, key, cls = '', id = '') => `<button type="button" class="rent-btn${cls}" data-rent-exp data-onclick="rentals.expenseAction('${action}', '${c.js(pid)}', '${c.js(id)}')">${c.esc(t(key))}</button>`;
 
 function propertyOf(pid) {
     const d = store.snapshot();

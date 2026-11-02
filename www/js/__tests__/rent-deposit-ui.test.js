@@ -59,8 +59,8 @@ test('the Tenants page offers 💰 Deposit per tenant and Deposits held', () => 
     ['properties', 'units', 'tenants', 'leases', 'openCharges', 'monthCharges', 'monthExpenses'].forEach(k => _test.state.loaded.add(k));
     _test.render();
     const html = document.getElementById('rentalsBody').innerHTML;
-    expect(html).toContain("window.app.rentals.deposit('T1')");
-    expect(html).toContain('window.app.rentals.deposits()');
+    expect(html).toContain("data-onclick=\"rentals.deposit('T1')");
+    expect(html).toContain('data-onclick="rentals.deposits()"');
 });
 
 test('the ledger: agreed and held (RENT-14), entries newest first; a member gets no edit / remove', async () => {

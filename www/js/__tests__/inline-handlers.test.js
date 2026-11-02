@@ -53,6 +53,9 @@ describe('inline event handlers (#89)', () => {
                 // A whole call string built by the caller (bill rows, the edits row, Today's reminders):
                 // not seen here; rendering tests (xss-rendering, today-reminders) cover those
                 if (/^\$\{[^}]*\}$/.test(m[2])) continue;
+                // A method name or an argument list built at run time (rentals' btn(), a nested template):
+                // rendering tests cover those
+                if (/\.\$\{|`/.test(m[2])) continue;
                 // In a JS template literal an interpolation stands for a string (inside quotes) or a value
                 const value = m[2].replace(/'\$\{[^}]*\}'/g, "'x'").replace(/\$\{[^}]*\}/g, '0');
                 const decoded = value.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
