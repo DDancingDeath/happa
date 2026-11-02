@@ -327,7 +327,7 @@ export class OutstandingManager {
                 <div class="aging-buckets">${buckets}</div>
                 ${this.agingBucket ? `<div class="aging-filter-note">${tt('ui.outstanding.one_age_group')}</div>` : ''}
                 ${chaseHtml}
-                <details class="aging-parties"${this.partiesOpen ? ' open' : ''} ontoggle="window.app?.outstanding?.setPartiesOpen(this.open)">
+                <details class="aging-parties"${this.partiesOpen ? ' open' : ''} data-ontoggle="outstanding.setPartiesOpen(this.open)">
                     <summary>${tt('ui.outstanding.by_party', { count: parties.length })}</summary>
                     <div class="aging-sort">${tt('ui.outstanding.sort')} ${sortBtn('amount', tt('ui.outstanding.sort_amount'))} ${sortBtn('age', tt('ui.outstanding.sort_oldest'))}</div>
                     <div id="dueAgingParties">${rows}</div>

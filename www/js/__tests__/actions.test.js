@@ -126,6 +126,14 @@ describe('document listeners', () => {
         expect(ev.defaultPrevented).toBe(true);
     });
 
+    test('a <details> toggle passes this.open (toggle does not bubble)', () => {
+        document.body.innerHTML = `<div data-ontoggle="page.outer()"><details data-ontoggle="page.set(this.open)"><summary>s</summary></details></div>`;
+        const d = document.querySelector('details');
+        d.open = true;
+        d.dispatchEvent(new Event('toggle'));
+        expect(calls).toEqual([['set', true]]);
+    });
+
     test('runAction returns what the call returned', () => {
         const el = document.createElement('b');
         expect(runAction(el, 'm.v(2)', new Event('x'), { m: { v: (n) => n * 2 } })).toBe(4);
