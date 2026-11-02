@@ -13,7 +13,8 @@ import { startClockCheck } from './ui/clock-banner.js';
 import { installStickyFocus } from './ui/sticky-focus.js';
 import { AuthManager } from './auth/authentication.js';
 import { FirebaseService } from './firebase/firestore-service.js';
-import { userProfile } from './firebase/repos/users.js';
+import { userProfile, saveOwnSavedRanges } from './firebase/repos/users.js';
+import { syncSavedRangesOnSignIn } from './utils/saved-ranges.js';
 import { on, REFRESH, READS_ALERT } from './utils/events.js';
 import { backgroundReadsAllowed, getQuotaStatus } from './firebase/firestore-meter.js';
 import { ItemsManager } from './modules/items.js';
@@ -62,7 +63,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozzzbalea-reminder-repeat';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzzbaleaaa-saved-ranges';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -449,6 +450,11 @@ async function initializeUserData() {
                 AppState.userRole = userData.role || 'staff';
                 AppState.rentRole = userData.rentRole || null;
                 AppState.userName = userData.name || 'User';
+                // #140: saved period ranges follow the person (their profile, already read here)
+                try {
+                    const up = syncSavedRangesOnSignIn(localStorage, userId, userData.savedRanges);
+                    if (up !== null) saveOwnSavedRanges(userId, up).catch(e => console.warn('Saved ranges not synced:', e?.code || e));
+                } catch (e) { console.warn('Saved ranges not read:', e); }
                 // #124: remember this phone; a person's first sign-in on another phone is flagged for review
                 SecurityMonitor.checkDevice(userId)
                     .catch(e => console.warn('Device check not saved:', e?.code || e));
