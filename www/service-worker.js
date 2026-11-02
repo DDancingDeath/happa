@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v461';
+const CACHE_NAME = 'happa-v464';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -25,10 +25,15 @@ const STATIC_ASSETS = [
     '/js/firebase/firestore-service.js',
     '/js/firebase/firestore-meter.js',
     '/js/firebase/db.js',
+    '/js/firebase/core/history-window.js',
+    '/js/firebase/core/legacy-scan.js',
+    '/js/firebase/core/listeners.js',
     '/js/firebase/core/reads.js',
     '/js/firebase/core/realtime.js',
     '/js/firebase/core/records.js',
     '/js/firebase/core/session.js',
+    '/js/firebase/core/stock-checkpoint.js',
+    '/js/firebase/core/stock.js',
     '/js/firebase/core/write-settle.js',
     '/js/firebase/repos/anomalies.js',
     '/js/firebase/repos/audit-logs.js',
@@ -36,13 +41,16 @@ const STATIC_ASSETS = [
     '/js/firebase/repos/reminders.js',
     '/js/firebase/repos/bill-payments.js',
     '/js/firebase/repos/bill-stats.js',
+    '/js/firebase/repos/bills.js',
     '/js/firebase/repos/cash-days.js',
     '/js/firebase/repos/cash-sessions.js',
     '/js/firebase/repos/collection-admin.js',
     '/js/firebase/repos/counters.js',
+    '/js/firebase/repos/expenses.js',
     '/js/firebase/repos/items.js',
     '/js/firebase/repos/notifications.js',
     '/js/firebase/repos/settings.js',
+    '/js/firebase/repos/stock-records.js',
     '/js/firebase/repos/telemetry.js',
     '/js/firebase/repos/tip-health.js',
     '/js/firebase/repos/user-profiles.js',
@@ -85,6 +93,7 @@ const STATIC_ASSETS = [
     '/js/services/printer-link.js',
     '/js/services/telemetry.js',
     '/js/services/user-admin.js',
+    '/js/ui/actions.js',
     '/js/ui/bill-highlight.js',
     '/js/ui/bill-row.js',
     '/js/ui/bill-status.js',

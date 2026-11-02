@@ -1138,7 +1138,7 @@ export class CashManagementManager {
         }
         sessions.sort((a, b) => String(b.date).localeCompare(String(a.date)));
         const loadOlder = pastDays && this.hasOlderSessions
-            ? `<button type="button" id="cashLoadOlder" onclick="window.app.cashManagement.loadOlder()" style="display: block; margin: 12px auto 4px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; font-weight: 600;">${L('ui.cash.load_older')}</button>`
+            ? `<button type="button" id="cashLoadOlder" data-onclick="cashManagement.loadOlder()" style="display: block; margin: 12px auto 4px; background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; font-weight: 600;">${L('ui.cash.load_older')}</button>`
             : '';
 
         if (sessions.length === 0) {
@@ -1155,7 +1155,7 @@ export class CashManagementManager {
         const review = notCounted.length > 0 ? `
             <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 13px; color: #9a3412;">
                 <strong>${Helpers.escapeHtml(tn('ui.cash.days_not_counted', notCounted.length))}</strong>
-                <div style="margin-top: 4px;">${L('ui.cash.tap_day_to_count')} ${notCounted.map(s => `<a href="#" onclick="window.app.cashManagement.showDetails('${Helpers.escapeJsAttr(s.date)}'); return false;" style="color: #9a3412; font-weight: 600;">${Helpers.escapeHtml(dayLabel(s))}</a>`).join(', ')}</div>
+                <div style="margin-top: 4px;">${L('ui.cash.tap_day_to_count')} ${notCounted.map(s => `<a href="#" data-onclick="cashManagement.showDetails('${Helpers.escapeJsAttr(s.date)}'); return false;" style="color: #9a3412; font-weight: 600;">${Helpers.escapeHtml(dayLabel(s))}</a>`).join(', ')}</div>
             </div>` : '';
         const dupDays = AppState.userRole === 'owner'
             ? [...new Set([...(this.duplicateDays || []), ...duplicateSessionDays(sessions)])].sort().reverse()
@@ -1190,7 +1190,7 @@ export class CashManagementManager {
                             `;
 
             return `
-                <div onclick="window.app.cashManagement.showDetails('${Helpers.escapeJsAttr(session.date)}')" style="border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">
+                <div class="cash-day-row" data-onclick="cashManagement.showDetails('${Helpers.escapeJsAttr(session.date)}')" style="border-bottom: 1px solid #e5e7eb; padding: 12px 0; cursor: pointer;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <strong style="font-size: 15px;">${date}</strong>
                         <span>${SyncStatus.chipHtml(session.id)} ${status}</span>
@@ -1256,7 +1256,7 @@ export class CashManagementManager {
                     <div style="margin: 6px 0;">${L('ui.cash.record_if_known')}</div>
                     <div style="display: flex; gap: 6px;">
                         <input type="number" inputmode="decimal" min="0" id="lateCountAmount" placeholder="${L('ui.cash.cash_counted')}" style="flex: 1; padding: 8px; border: 1px solid #fdba74; border-radius: 6px;" />
-                        <button type="button" onclick="window.app.cashManagement.recordLateCount('${Helpers.escapeJsAttr(session.id)}')" data-cash-save="count" style="background: #ea580c; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600;">${L('ui.cash.save_count')}</button>
+                        <button type="button" data-onclick="cashManagement.recordLateCount('${Helpers.escapeJsAttr(session.id)}')" data-cash-save="count" style="background: #ea580c; color: white; border: none; padding: 8px 12px; border-radius: 6px; font-weight: 600;">${L('ui.cash.save_count')}</button>
                     </div>
                 </div>` : ''}
                 <!-- Summary Card -->
