@@ -3,7 +3,7 @@
  * see it in History → record part of the due on Outstanding → open and close
  * the cash drawer. Firestore documents are checked through the emulator.
  */
-const { test, expect, login, showTab, settle, expectToast, confirmModalIfOpen, clickAfterTyping } = require('./support/app');
+const { test, expect, login, showTab, expectToast, confirmModalIfOpen, clickAfterTyping } = require('./support/app');
 const { listDocs, getDoc, deleteAll } = require('./support/emulator');
 
 test('bill → History → due payment → cash close', async ({ page, problems }, testInfo) => {
@@ -43,11 +43,14 @@ test('bill → History → due payment → cash close', async ({ page, problems 
     await page.click('#due .filter-sale');
     const input = page.locator(`[id="payment_${sale.id}"]`);
     await expect(input).toBeVisible();
-    // Outstanding redraws its rows when the bill lists update, which clears a typed amount: let it settle first
-    await settle(page);
-    await expect(input).toBeVisible();
-    await input.fill('160');
-    await page.click(`[id="payment_${sale.id}"] ~ button[data-record-payment]`);
+    // Outstanding redraws its rows (empty inputs) whenever the bill lists update, at any moment after it
+    // opens: type the amount and press Record in one go so no redraw can come in between.
+    await page.evaluate((id) => {
+        const el = document.getElementById(`payment_${id}`);
+        el.value = '160';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.parentElement.querySelector('button[data-record-payment]').click();
+    }, sale.id);
     await expectToast(page, /Payment of ₹160 recorded/);
     const paid = await getDoc('dev_retailSales', sale._id);
     expect(paid.payment).toMatchObject({ cash: 160, due: 200 });
