@@ -5,7 +5,8 @@
  * a new bill whose id is already saved is offered to open instead of being saved again.
  */
 import { FirebaseService } from '../firebase/firestore-service.js';
-import { sentBillAttempts } from '../firebase/repos/bills.js';
+import { BILL_CREATE_WAIT_MS, sentBillAttempts } from '../firebase/repos/bills.js';
+import { SyncStatus } from '../ui/sync-status.js';
 import * as BillDrafts from '../firebase/repos/bill-drafts.js';
 import { BillingManager } from '../modules/billing.js';
 import { PurchaseManager } from '../modules/purchase.js';
@@ -383,6 +384,8 @@ describe('two phones, one account: a first save only creates its bill (#93)', ()
     beforeEach(() => {
         savePurchase.mockRestore();
         sentBillAttempts.clear();
+        // The server was heard: a no-answer of an earlier test doesn't skip the transaction
+        SyncStatus.noteServerData(Date.now() + 1000);
     });
 
     test('the other phone saved the restored copy first: this phone\'s first save is refused, never written over', async () => {
@@ -393,7 +396,7 @@ describe('two phones, one account: a first save only creates its bill (#93)', ()
         expect(await payCashAndSave()).toBeUndefined();
         expect(docs().get('n1')).toEqual(before);
         expect(modal).toHaveBeenCalledWith(
-            "This bill was already saved on another phone (P20261101-001), so this copy wasn't saved. Saved bill: ₹100. This copy: ₹100. Open the saved bill?",
+            "This bill was already saved on another phone (P20261101-001), so this copy wasn't saved (a receipt printed for it is not the saved bill). Saved bill: ₹100. This copy: ₹100. Open the saved bill?",
             'Already saved', true);
         expect(PurchaseManager.getPendingBill()).toMatchObject({ knownSaved: true });
     });
@@ -430,6 +433,68 @@ describe('two phones, one account: a first save only creates its bill (#93)', ()
             expect(docs().get('n1').editCount).toBeUndefined();
             expect(PurchaseManager.getBillItems()).toEqual([]);
             expect([...docs().keys()]).toEqual(['n1']);
+        } finally {
+            db.runTransaction = realRun;
+        }
+    });
+
+    test('no answer in time, then the transaction lands and the queued set() is refused: still saved, no error', async () => {
+        const db = fake.firebase.firestore();
+        const realRun = db.runTransaction;
+        const realCollection = db.collection;
+        db.runTransaction = (fn) => new Promise(resolve => setTimeout(() => resolve(realRun(fn)), BILL_CREATE_WAIT_MS + 800));
+        let sets = 0;
+        db.collection = (name) => {
+            const c = realCollection(name);
+            const realDoc = c.doc;
+            return { ...c, doc: (id) => {
+                const ref = realDoc(id);
+                const realSet = ref.set;
+                // The queued set() is refused (a non-owner changing createdAt) before the late transaction answers
+                ref.set = (...args) => (sets++ === 0
+                    ? new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error('denied'), { code: 'permission-denied' })), 300))
+                    : realSet(...args));
+                return ref;
+            } };
+        };
+        try {
+            typeOnThisPhone('n3');
+            await payCashAndSave();
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            expect(docs().get('n3')).toMatchObject({ cashPayment: 100 });
+            expect(toast.mock.calls.flat().join(' ')).not.toMatch(/fail/i);
+        } finally {
+            db.runTransaction = realRun;
+            db.collection = realCollection;
+        }
+    }, 15000);
+
+    test('after a no-answer, first saves skip the transaction until the server is heard again', async () => {
+        const db = fake.firebase.firestore();
+        const realRun = db.runTransaction;
+        const run = jest.fn(() => Promise.reject(Object.assign(new Error('offline'), { code: 'unavailable' })));
+        db.runTransaction = run;
+        let synced;
+        let heard;
+        try {
+            typeOnThisPhone('n4');
+            await payCashAndSave();
+            // No internet: nothing reaches the server or comes from it
+            synced = jest.spyOn(SyncStatus, 'lastSyncAt').mockReturnValue(null);
+            heard = jest.spyOn(SyncStatus, 'lastServerDataAt').mockReturnValue(null);
+            typeOnThisPhone('n5');
+            await payCashAndSave();
+            expect(run).toHaveBeenCalledTimes(1);
+            expect([...docs().keys()]).toEqual(['n4', 'n5']);
+            synced.mockRestore();
+            heard.mockRestore();
+            SyncStatus.noteServerData(Date.now() + 1000);
+            db.runTransaction = realRun;
+            typeOnThisPhone('n6');
+            fake.raw('purchases').set('n6', { ...BILL, id: 'n6' });
+            modal.mockImplementation(async (_text, title) => title !== 'Already saved');
+            expect(await payCashAndSave()).toBeUndefined();
+            expect(docs().get('n6').customerName).toBe('Ramesh');
         } finally {
             db.runTransaction = realRun;
         }
