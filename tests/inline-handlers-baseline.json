@@ -15,7 +15,6 @@
     "js/modules/settings.js": 1,
     "js/modules/statements.js": 12,
     "js/modules/wholesale-sales.js": 8,
-    "js/ui/manual-reminders.js": 5,
     "js/ui/period-compare.js": 7,
     "templates/auth.html": 12,
     "templates/billing.html": 42,
