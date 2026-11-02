@@ -182,7 +182,9 @@ describe('rate-trends code loads only when Trends / Product traffic open', () =>
 
 describe('every window.app method that navigation calls is registered by main.js', () => {
     const CALL = /window\.app(?:\?\.|\.)([A-Za-z_]\w*)(?:\?\.|\.)([A-Za-z_]\w*)\s*(?:\?\.)?\(/g;
-    const calls = (rel) => [...new Set([...read(rel).matchAll(CALL)].map(m => `${m[1]}.${m[2]}`))];
+    // Delegated handlers (#89): data-on<event>="ns.fn(…)" calls window.app.ns.fn
+    const DATA_CALL = /data-on[a-z]+="([A-Za-z_]\w*)\.([A-Za-z_]\w*)\s*\(/g;
+    const calls = (rel) => [...new Set([...read(rel).matchAll(CALL), ...read(rel).matchAll(DATA_CALL)].map(m => `${m[1]}.${m[2]}`))];
 
     test.each(['js/ui/navigation.js', 'js/modules/insights.js', 'templates/insights.html', 'templates/money.html', 'templates/statements.html', 'templates/rate-trends.html'])('%s', (rel) => {
         const used = calls(rel);
