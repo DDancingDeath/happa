@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Utility Helpers Module
  * Common utility functions used throughout the application
@@ -22,7 +23,7 @@ export class Helpers {
      * @returns {string} Label to show in the UI
      */
     static roleLabel(role) {
-        const keys = { owner: 'ui.roles.owner', manager: 'ui.roles.manager', staff: 'ui.roles.member' };
+        const keys = /** @type {Record<string, string>} */ ({ owner: 'ui.roles.owner', manager: 'ui.roles.manager', staff: 'ui.roles.member' });
         return keys[role] ? t(keys[role]) : String(role ?? '');
     }
     
@@ -33,6 +34,7 @@ export class Helpers {
      */
     static escapeHtml(text) {
         if (text === null || text === undefined) return '';
+        /** @type {Record<string, string>} */
         const map = {
             '&': '&amp;',
             '<': '&lt;',
@@ -147,6 +149,7 @@ export class Helpers {
     /**
      * Format amount as Indian Rupee currency
      * @param {number} amount - Amount to format
+     * @param {{decimals?: number, small?: boolean}} [opts]
      * @returns {string} Formatted currency string
      */
     static formatCurrency(amount, opts) {
@@ -170,8 +173,9 @@ export class Helpers {
      * @returns {Function} Debounced function
      */
     static debounce(func, wait) {
+        /** @type {ReturnType<typeof setTimeout>|undefined} */
         let timeout;
-        return function executedFunction(...args) {
+        return function executedFunction(/** @type {...*} */ ...args) {
             const later = () => {
                 clearTimeout(timeout);
                 func(...args);
@@ -190,8 +194,8 @@ export class Helpers {
      * @returns {number} Parsed float value
      */
     static getInputNumber(elementId, defaultValue = 0) {
-        const el = document.getElementById(elementId);
-        const value = parseFloat(el?.value);
+        const el = /** @type {HTMLInputElement|null} */ (document.getElementById(elementId));
+        const value = parseFloat(/** @type {string} */ (el?.value));
         return isNaN(value) ? defaultValue : value;
     }
 
@@ -202,8 +206,8 @@ export class Helpers {
      * @returns {number} Parsed integer value
      */
     static getInputInt(elementId, defaultValue = 0) {
-        const el = document.getElementById(elementId);
-        const value = parseInt(el?.value, 10);
+        const el = /** @type {HTMLInputElement|null} */ (document.getElementById(elementId));
+        const value = parseInt(/** @type {string} */ (el?.value), 10);
         return isNaN(value) ? defaultValue : value;
     }
 
@@ -214,7 +218,7 @@ export class Helpers {
      * @returns {string} Trimmed input value
      */
     static getInputText(elementId, defaultValue = '') {
-        const el = document.getElementById(elementId);
+        const el = /** @type {HTMLInputElement|null} */ (document.getElementById(elementId));
         return el?.value?.trim() || defaultValue;
     }
 
@@ -226,7 +230,7 @@ export class Helpers {
      */
     static getElementNumber(elementId, defaultValue = 0) {
         const el = document.getElementById(elementId);
-        const value = parseFloat(el?.textContent);
+        const value = parseFloat(/** @type {string} */ (el?.textContent));
         return isNaN(value) ? defaultValue : value;
     }
 
@@ -238,7 +242,7 @@ export class Helpers {
      */
     static getElementInt(elementId, defaultValue = 0) {
         const el = document.getElementById(elementId);
-        const value = parseInt(el?.textContent, 10);
+        const value = parseInt(/** @type {string} */ (el?.textContent), 10);
         return isNaN(value) ? defaultValue : value;
     }
 
@@ -254,10 +258,10 @@ export class Helpers {
         if (typeof document !== 'undefined' && document.body?.classList.contains('no-perm-contacts')) return;
         try {
             if ('contacts' in navigator && 'ContactsManager' in window) {
-                const contacts = await navigator.contacts.select(['name', 'tel'], { multiple: false });
+                const contacts = await /** @type {any} */ (navigator).contacts.select(['name', 'tel'], { multiple: false });
                 if (contacts && contacts.length > 0) {
                     const contact = contacts[0];
-                    const nameInput = document.getElementById(inputElementId);
+                    const nameInput = /** @type {HTMLInputElement|null} */ (document.getElementById(inputElementId));
                     if (nameInput && contact.name && contact.name.length > 0) {
                         nameInput.value = contact.name[0];
                         // Let live listeners (bill checks, existing-due line #166) see the new name
@@ -296,7 +300,7 @@ export class Helpers {
     static async generateBillNumber(prefix, collectionName) {
         const today = new Date();
         const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
-        const format = (n) => `${prefix}${dateStr}-${String(n).padStart(3, '0')}`;
+        const format = (/** @type {number} */ n) => `${prefix}${dateStr}-${String(n).padStart(3, '0')}`;
         
         const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const todayEnd = new Date(todayStart);
@@ -313,7 +317,7 @@ export class Helpers {
                     const seq = await withTimeout(counter.next(), BILL_COUNTER_TIMEOUT_MS);
                     return format(seq);
                 } catch (counterError) {
-                    console.warn('Bill counter unavailable, using local fallback:', counterError?.message || counterError);
+                    console.warn('Bill counter unavailable, using local fallback:', /** @type {any} */ (counterError)?.message || counterError);
                 }
             }
             
@@ -331,7 +335,7 @@ export class Helpers {
      * This device's short bill-number code (3 chars, no 0/O/1/I), created
      * once and kept in localStorage. Clearing storage just picks a new code,
      * which keeps numbers unique.
-     * @param {Storage} [storage]
+     * @param {?Storage} [storage]
      * @returns {string}
      */
     static getBillDeviceCode(storage = Helpers._storage()) {
@@ -345,7 +349,7 @@ export class Helpers {
         const code = Array.from(bytes, b => BILL_DEVICE_ALPHABET[b % BILL_DEVICE_ALPHABET.length]).join('');
         try { storage?.setItem(BILL_DEVICE_CODE_KEY, code); } catch (_) { /* keep for this call only */ }
         if (!storage) memoryDeviceCode = memoryDeviceCode || code;
-        return storage ? code : memoryDeviceCode;
+        return storage ? code : /** @type {string} */ (memoryDeviceCode);
     }
 
     /**
@@ -355,20 +359,22 @@ export class Helpers {
      * can't collide with online numbers (`P20261021-004`).
      * @param {string} prefix
      * @param {string} dateStr - YYYYMMDD
-     * @param {Storage} [storage]
+     * @param {?Storage} [storage] - none (or blocked): a sequence kept in memory
      * @returns {string}
      */
     static nextOfflineBillNumber(prefix, dateStr, storage = Helpers._storage()) {
         const code = Helpers.getBillDeviceCode(storage);
         const key = `${BILL_OFFLINE_SEQ_KEY}${prefix}${dateStr}`;
         let seq;
+        // No storage (null) throws inside the try as before: the memory sequence below
+        const store = /** @type {Storage} */ (storage);
         try {
-            seq = (parseInt(storage.getItem(key), 10) || 0) + 1;
-            storage.setItem(key, String(seq));
+            seq = (parseInt(/** @type {string} */ (store.getItem(key)), 10) || 0) + 1;
+            store.setItem(key, String(seq));
             // Drop this prefix's counters for earlier days.
-            for (let i = storage.length - 1; i >= 0; i--) {
-                const k = storage.key(i);
-                if (k && k !== key && k.startsWith(`${BILL_OFFLINE_SEQ_KEY}${prefix}`)) storage.removeItem(k);
+            for (let i = store.length - 1; i >= 0; i--) {
+                const k = store.key(i);
+                if (k && k !== key && k.startsWith(`${BILL_OFFLINE_SEQ_KEY}${prefix}`)) store.removeItem(k);
             }
         } catch (_) {
             memoryOfflineSeq[key] = (memoryOfflineSeq[key] || 0) + 1;
@@ -380,12 +386,12 @@ export class Helpers {
     /**
      * Bill numbers of newly added/changed records that another record in the
      * same collection already uses (e.g. two phones synced the same number).
-     * @param {Array<{newRec: ?Object, docId: string}>} changes
-     * @param {Object[]} records - all records of the collection
-     * @param {Function} [idOf]
+     * @param {Array<{newRec: ?Record<string, any>, docId: string}>} changes
+     * @param {Array<Record<string, any>>} records - all records of the collection
+     * @param {function(*): string} [idOf]
      * @returns {string[]}
      */
-    static findDuplicateBillNumbers(changes, records, idOf = (r) => String(r?.id)) {
+    static findDuplicateBillNumbers(changes, records, idOf = (/** @type {any} */ r) => String(r?.id)) {
         const out = new Set();
         (changes || []).forEach(ch => {
             const num = ch?.newRec?.billNumber;
@@ -425,16 +431,16 @@ export class Helpers {
      * Ticking Online / Cash / Due on a bill form: when that box is ticked, write
      * the amounts from prefillPayment() (utils/calc/billing.js) and untick the others.
      * @param {'online'|'cash'|'due'} type
-     * @param {{online: *, cash: *, due: *}} values
-     * @param {{online: string[], cash: string[], due: string[]}} ids - [input id, checkbox id] per kind
+     * @param {Record<string, *>} values - {online, cash, due}
+     * @param {Record<string, string[]>} ids - [input id, checkbox id] per kind (online, cash, due)
      */
     static applyPaymentPrefill(type, values, ids) {
-        if (!ids[type] || !document.getElementById(ids[type][1])?.checked) return;
+        if (!ids[type] || !/** @type {HTMLInputElement|null} */ (document.getElementById(ids[type][1]))?.checked) return;
         Object.entries(ids).forEach(([key, [inputId, checkboxId]]) => {
-            const input = document.getElementById(inputId);
+            const input = /** @type {HTMLInputElement|null} */ (document.getElementById(inputId));
             if (input) input.value = values[key];
             if (key !== type) {
-                const box = document.getElementById(checkboxId);
+                const box = /** @type {HTMLInputElement|null} */ (document.getElementById(checkboxId));
                 if (box) box.checked = false;
             }
         });
@@ -453,7 +459,7 @@ export class Helpers {
         if (inFlightLocks.has(key)) return undefined;
         inFlightLocks.add(key);
         const buttons = (typeof document !== 'undefined' && buttonSelector)
-            ? Array.from(document.querySelectorAll(buttonSelector))
+            ? Array.from(/** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(buttonSelector)))
             : [];
         const previous = buttons.map(btn => ({ btn, disabled: btn.disabled, opacity: btn.style.opacity }));
         buttons.forEach(btn => {
@@ -476,8 +482,8 @@ export class Helpers {
     /**
      * Run post-save bookkeeping (audit, item frequency, auto-save cleanup) in the
      * background. Failures are logged and never block or fail the save.
-     * @param {Array<Function>} tasks - Functions returning promises (or values)
-     * @returns {Promise<PromiseSettledResult[]>}
+     * @param {Array<function(): *>} tasks - Functions returning promises (or values)
+     * @returns {Promise<PromiseSettledResult<*>[]>}
      */
     static runInBackground(tasks) {
         const promises = tasks.map(task => Promise.resolve().then(task));
@@ -503,10 +509,18 @@ const BILL_COUNTER_TIMEOUT_MS = 2500;
 const BILL_DEVICE_CODE_KEY = 'aadhatBillDeviceCode';
 const BILL_OFFLINE_SEQ_KEY = 'aadhatOfflineBillSeq:';
 const BILL_DEVICE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+/** @type {?string} */
 let memoryDeviceCode = null;
+/** @type {Record<string, number>} */
 const memoryOfflineSeq = {};
 const inFlightLocks = new Set();
 
+/**
+ * @template T
+ * @param {Promise<T>} promise
+ * @param {number} ms
+ * @returns {Promise<T>}
+ */
 function withTimeout(promise, ms) {
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
