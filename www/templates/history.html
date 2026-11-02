@@ -1,13 +1,13 @@
 <div id="history" class="tab">
         
         <div class="filter-buttons history-type-filter" role="group" aria-label="Bill type" style="margin-bottom: 10px;" data-i18n-aria-label="ui.history.bill_type">
-            <button type="button" class="filter-btn filter-purchase active" data-type="purchase" onclick="window.app.history.filterHistory('purchase')" data-i18n="ui.history.tab_purchase">Purchase</button>
-            <button type="button" class="filter-btn filter-sale" data-type="sale" onclick="window.app.history.filterHistory('sale')" data-i18n="ui.history.tab_sale">Sale</button>
+            <button type="button" class="filter-btn filter-purchase active" data-type="purchase" data-onclick="history.filterHistory('purchase')" data-i18n="ui.history.tab_purchase">Purchase</button>
+            <button type="button" class="filter-btn filter-sale" data-type="sale" data-onclick="history.filterHistory('sale')" data-i18n="ui.history.tab_sale">Sale</button>
         </div>
 
         <div class="history-date-filter">
             <label for="historyDatePreset" class="history-date-label" data-i18n="ui.history.date">Date</label>
-            <select id="historyDatePreset" onchange="window.app.history.setDatePreset(this.value)">
+            <select id="historyDatePreset" data-onchange="history.setDatePreset(this.value)">
                 <option value="all" data-i18n="ui.history.all_dates">All dates</option>
                 <option value="today" data-i18n="ui.history.today">Today</option>
                 <option value="yesterday" data-i18n="ui.history.yesterday">Yesterday</option>
@@ -20,7 +20,7 @@
                 <input type="date" id="historyFromDate" aria-label="From date" min="2020-01-01" data-i18n-aria-label="ui.history.from_date">
                 <span aria-hidden="true">–</span>
                 <input type="date" id="historyToDate" aria-label="To date" min="2020-01-01" data-i18n-aria-label="ui.history.to_date">
-                <button type="button" class="history-apply-range" onclick="window.app.history.applyCustomRange()" data-i18n="ui.history.apply">Apply</button>
+                <button type="button" class="history-apply-range" data-onclick="history.applyCustomRange()" data-i18n="ui.history.apply">Apply</button>
             </div>
             <div id="historyRangeHint" class="history-range-hint" role="alert" hidden></div>
             <div id="historyRangeLabel" class="history-range-label" hidden></div>
@@ -28,8 +28,8 @@
 
         <div class="history-search-row">
             <input type="text" id="historySearch" class="history-search-input" placeholder="Search by bill number, customer, or item..."
-                   oninput="window.app.history.searchHistory(this.value)" data-i18n-placeholder="ui.history.search_bill_number_customer"/>
-            <button type="button" onclick="window.app.history.toggleView()" id="historyViewToggle" class="history-view-toggle" data-i18n="ui.history.table_view">Table View</button>
+                   data-oninput="history.searchHistory(this.value)" data-i18n-placeholder="ui.history.search_bill_number_customer"/>
+            <button type="button" data-onclick="history.toggleView()" id="historyViewToggle" class="history-view-toggle" data-i18n="ui.history.table_view">Table View</button>
         </div>
 
         <div id="historyList">

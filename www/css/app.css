@@ -3865,6 +3865,10 @@ body.dark-mode .due-kind-chip {
     color: #a7f3d0;
 }
 
+/* Outstanding search box: the focus ring was inline onfocus / onblur (#89) */
+.outstanding-search-input { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+.outstanding-search-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); outline: none; }
+
 /* ---- css/stock.css ---- */
 .stock-item {
   background: var(--card-bg);

@@ -1,23 +1,21 @@
 <div id="due" class="tab">
         
         <div class="filter-buttons" style="margin-bottom: 20px;">
-            <button class="filter-btn filter-purchase active" onclick="window.app.outstanding.filterDue('purchase', event)" data-i18n="ui.common.purchases">Purchases</button>
-            <button class="filter-btn filter-sale" onclick="window.app.outstanding.filterDue('sale', event)" data-i18n="ui.common.sales">Sales</button>
+            <button class="filter-btn filter-purchase active" data-onclick="outstanding.filterDue('purchase', event)" data-i18n="ui.common.purchases">Purchases</button>
+            <button class="filter-btn filter-sale" data-onclick="outstanding.filterDue('sale', event)" data-i18n="ui.common.sales">Sales</button>
         </div>
         <div class="filter-buttons" id="dueSaleKinds" style="margin-bottom: 16px;" hidden>
-            <button type="button" class="filter-btn" data-due-kind="sale" onclick="window.app.outstanding.filterDue('sale')" data-i18n="ui.outstanding.kind_all">All</button>
-            <button type="button" class="filter-btn" data-due-kind="retail" onclick="window.app.outstanding.filterDue('retail')" data-i18n="ui.outstanding.kind_retail">Retail</button>
-            <button type="button" class="filter-btn" data-due-kind="wholesale" onclick="window.app.outstanding.filterDue('wholesale')" data-i18n="ui.outstanding.kind_wholesale">Wholesale</button>
+            <button type="button" class="filter-btn" data-due-kind="sale" data-onclick="outstanding.filterDue('sale')" data-i18n="ui.outstanding.kind_all">All</button>
+            <button type="button" class="filter-btn" data-due-kind="retail" data-onclick="outstanding.filterDue('retail')" data-i18n="ui.outstanding.kind_retail">Retail</button>
+            <button type="button" class="filter-btn" data-due-kind="wholesale" data-onclick="outstanding.filterDue('wholesale')" data-i18n="ui.outstanding.kind_wholesale">Wholesale</button>
         </div>
 
         <div style="margin-bottom: 20px;">
             <input type="text" 
                    id="outstandingSearchInput" 
                    placeholder="🔍 Search by customer name or ID..."
-                   style="width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s;"
-                   oninput="window.app.outstanding.searchOutstanding()"
-                   onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.1)'"
-                   onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none'" data-i18n-placeholder="ui.outstanding.search_customer_name_id">
+                   class="outstanding-search-input"
+                   data-oninput="outstanding.searchOutstanding()" data-i18n-placeholder="ui.outstanding.search_customer_name_id">
         </div>
 
         <div id="dueAging"></div>

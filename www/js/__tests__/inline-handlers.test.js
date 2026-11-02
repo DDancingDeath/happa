@@ -50,6 +50,8 @@ describe('inline event handlers (#89)', () => {
         for (const f of files(WWW)) {
             const src = fs.readFileSync(f, 'utf8');
             for (const m of src.matchAll(DATA_ON)) {
+                // Built whole elsewhere (a caller's call string): checked where it is written
+                if (/^\$\{[^}]*\}$/.test(m[2])) continue;
                 // In a JS template literal an interpolation stands for a string (inside quotes) or a value
                 const value = m[2].replace(/'\$\{[^}]*\}'/g, "'x'").replace(/\$\{[^}]*\}/g, '0');
                 const decoded = value.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');

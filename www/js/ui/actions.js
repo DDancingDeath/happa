@@ -219,6 +219,21 @@ function reportHandlerError(e) {
 export function installActions(doc = document) {
     if (doc.__aadhatActions) return;
     doc.__aadhatActions = true;
+    // A non-native control with role="button" and a data-onclick also answers Enter and Space,
+    // as a button does (keyboard users; was an inline onkeydown on each).
+    doc.addEventListener('keydown', (event) => {
+        const el = event.target;
+        if ((event.key !== 'Enter' && event.key !== ' ') || !(el instanceof Element)) return;
+        if (el.getAttribute('role') !== 'button' || /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) return;
+        const src = el.getAttribute('data-onclick');
+        if (src === null || el.hasAttribute('data-onkeydown')) return;
+        event.preventDefault();
+        try {
+            runAction(el, src, event);
+        } catch (e) {
+            reportHandlerError(e);
+        }
+    });
     Object.entries(ACTION_EVENTS).forEach(([type, domType]) => {
         const attr = `data-on${type}`;
         // focus/blur don't bubble: only the element itself, as with its inline handler
@@ -227,7 +242,7 @@ export function installActions(doc = document) {
             let el = event.target instanceof Element ? event.target : event.target?.parentElement;
             while (el && el !== doc) {
                 const src = el.getAttribute?.(attr);
-                if (src !== null && src !== undefined) {
+                if (src !== null && src !== undefined && src.trim()) {
                     try {
                         runAction(el, src, event);
                     } catch (e) {
