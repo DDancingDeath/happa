@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Phone storage full (#153): spots QuotaExceededError from
  * localStorage, IndexedDB and Firestore's offline cache (which wraps it in an
