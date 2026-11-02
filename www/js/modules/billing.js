@@ -1225,6 +1225,10 @@ const BillingManager = {
                 plan.saved.push({ bill: saved, billType, open: await this.askOpenSaved(saved, billType, form) });
                 continue;
             }
+            if (saved === undefined && form.pendingBill.knownSaved) {
+                UIManager.showToast(t('msg.billing.copy_already_saved'), 'warning');
+                continue;
+            }
             if (saved === undefined) UIManager.showToast(t('msg.billing.restore_not_checked'), 'warning');
             // Not saved when checked (or not checkable): its saves online create it only while the id is free
             plan.forms[mode] = { ...form, pendingBill: { ...form.pendingBill, restored: true } };

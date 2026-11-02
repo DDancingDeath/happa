@@ -330,6 +330,13 @@ describe('saving a restored new bill (#93)', () => {
         expect(modal).toHaveBeenCalledWith(expect.stringContaining('already saved (P20261101-001'), 'Already saved', true);
         expect(viewBill).toHaveBeenCalledWith('id:n1', 'purchase');
         expect(PurchaseManager.getBillItems()).toHaveLength(1);
+
+        // Known to be saved: never written afterwards, offline included
+        jest.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+        expect(await payCashAndSave()).toBeUndefined();
+        expect(docs().get('n1')).toEqual(before);
+        expect(toast).toHaveBeenLastCalledWith("This bill is already saved, so this copy can't be saved. Open it from History, or Clear to start a new bill.", 'warning');
+        expect(PurchaseManager.getPendingBill()).toMatchObject({ id: 'n1', knownSaved: true });
     });
 
     test('a copy of an earlier (unconfirmed) attempt is restored create-only too', async () => {

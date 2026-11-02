@@ -568,6 +568,11 @@ const PurchaseManager = {
             UIManager.showToast(t('msg.common.no_items_in_bill'));
             return;
         }
+        // A restored copy of a bill the server said is already saved (#93): never written, online or not
+        if (pendingBill?.knownSaved) {
+            UIManager.showToast(t('msg.billing.copy_already_saved'), 'warning');
+            return;
+        }
         
         // Totals come from the items, never from the (rounded) text on screen
         const { billTotal, laborCharges, totalPackets, grandTotal } = this.computeTotals();
@@ -699,6 +704,7 @@ const PurchaseManager = {
             UIManager.hideLoading();
             this.billingManager?.renderBillNumber?.();
             if (error?.code === 'already-saved') {
+                if (pendingBill) pendingBill.knownSaved = true;
                 await this.billingManager?.offerSavedBill?.(error.bill, 'purchase', { items: billItems });
                 return undefined;
             }
@@ -811,7 +817,8 @@ const PurchaseManager = {
             date: pending.date || null,
             timestamp: pending.timestamp || null,
             enteredAt: pending.enteredAt || null,
-            restored: !!pending.restored
+            restored: !!pending.restored,
+            knownSaved: !!pending.knownSaved
         } : null;
         // A restored attempt keeps its day, shown locked; otherwise the box starts again
         if (pendingBill?.timestamp) lockBillDate('billDate', pendingBill.timestamp);

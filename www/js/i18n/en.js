@@ -119,6 +119,7 @@ export default {
     'msg.billing.restore_needs_empty_form': "Save or clear the bill on screen first, then restore",
     'msg.billing.restore_already_saved': "This bill is already saved ({number}, {total}), so it won't be saved again. Open the saved bill?",
     'ui.billing.already_saved_title': "Already saved",
+    'msg.billing.copy_already_saved': "This bill is already saved, so this copy can't be saved. Open it from History, or Clear to start a new bill.",
     'msg.billing.restore_already_saved_differs': "This bill is already saved ({number}) and won't be saved again. Saved bill: {saved}. This unsaved copy: {unsaved}. Open the saved bill to change it?",
     'msg.billing.restore_edit_changed': "This bill was changed after your unsaved edit (a payment or an edit). Saved bill: {saved}. Your unsaved edit: {unsaved}. Put your unsaved edit on the latest bill?",
     'ui.billing.restore_changed_title': "Bill changed since",
