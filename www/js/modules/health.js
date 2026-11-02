@@ -304,7 +304,7 @@ export const HealthManager = {
             el.innerHTML = `<div class="tip-health-banner-text">⚠️ ${low.map(x => esc(t('ui.health.banner_line', {
                 check: testLabel(x.test), rate: x.rate, target: x.target, runs: x.runs
             }))).join('<br>')}</div>
-                <button type="button" class="btn btn-secondary" onclick="window.app.health.openPage()">${L('ui.health.open_health')}</button>`;
+                <button type="button" class="btn btn-secondary" data-onclick="health.openPage()">${L('ui.health.open_health')}</button>`;
             el.style.display = 'flex';
         } catch (error) {
             console.warn('App health banner not loaded:', error?.code || error);
