@@ -28,6 +28,7 @@ import { AuthManager } from '../auth/authentication.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
+import { LEGACY_SCAN_DELAY_MS } from '../utils/background-tasks.js';
 
 const FILE = path.resolve(__dirname, '../../../tests/fixtures/repositories-calls.json');
 const RECORD = !!process.env.REPO_CALLS_RECORD;
@@ -749,14 +750,20 @@ describe('FirebaseService core (phase 5, #69: pinned before the listeners, histo
         FirebaseService.cleanup();
         AppState.stock = {};
         AppState.items = [];
+        AppState.settings = {};
     });
 
-    /** Opens the app: listeners, the background legacy scan and the stock. */
+    /** Opens the app: listeners, the background legacy scan, the stock and what start-up schedules (maintenance, day totals). */
     const open = async () => {
         await FirebaseService.setupRealtimeListeners();
         await FirebaseService.runLegacyScanNow();
         await FirebaseService.getStock();
+        await jest.advanceTimersByTimeAsync(LEGACY_SCAN_DELAY_MS + 500);
         await settle();
+    };
+    /** Lets a background checkpoint rebuild finish, so its calls are pinned apart from the next step's. */
+    const settleRebuild = async () => {
+        for (let i = 0; i < 5; i++) await settle();
     };
     /** Opens once without a checkpoint (full read), builds it, and opens again: the window only. */
     const openWithCheckpoint = async () => {
@@ -809,7 +816,9 @@ describe('FirebaseService core (phase 5, #69: pinned before the listeners, histo
         await FirebaseService.updatePurchase({ ...AppState.purchaseHistory.find(b => b.id === bill.id), items: [line(4, 26)], total: 104, grandTotal: 104, payment: { cash: 104, online: 0, due: 0 } }, { reason: 'Rate typo' });
         await FirebaseService.updatePurchase({ ...AppState.purchaseHistory.find(b => b.id === 'p0'), items: [line(11, 30)], total: 330, grandTotal: 330, payment: { cash: 200, online: 0, due: 130 }, dueAmount: 130 }, { reason: 'Weight' });
         await FirebaseService.monthMarksIssued();
-        await settle();
+        await settleRebuild();
+        pin('service.core-bills-edit-old', rec.log);
+        rec.clear();
         const sale = await FirebaseService.saveRetailSale({ date: '2026-10-21', customerName: 'Sita', items: [line(1, 40)], total: 40, payment: { cash: 40, online: 0, due: 0 } });
         await FirebaseService.saveWholesaleSale({ date: '2026-10-21', customerName: 'Raju', items: [line(2, 35)], total: 70, payment: { cash: 0, online: 0, due: 70 } });
         await settle();
@@ -838,13 +847,51 @@ describe('FirebaseService core (phase 5, #69: pinned before the listeners, histo
         await FirebaseService.voidExpense('e1', 'Entered twice');
         await FirebaseService.deleteExpense(personal.id);
         await settle();
-        const day = await FirebaseService.loadPersonalExpenseDay('2026-10-20');
+        const day = await FirebaseService.loadPersonalExpenseDay('2026-10-20', { maxAgeMs: 0 });
+        await fake.db.collection('dev_personalExpenseDays').doc('2026-10-20').set({ amounts: { pe1: 99 } }, { merge: true });
         const written = await FirebaseService.rebuildPersonalExpenseDays(['2026-10-20', '2026-10-21']);
         await FirebaseService.saveStockAdjustment({ date: '2026-10-21', itemId: 'i1', itemName: 'Rice', adjustType: 'add', quantity: 2, rate: 30 });
         await FirebaseService.monthMarksIssued();
         await settle();
         pin('service.core-expenses', rec.log);
-        expect(day).not.toBeUndefined();
-        expect(typeof written).toBe('number');
+        expect(day).toMatchObject({ total: 70, count: 1 });
+        expect(written).toBe(1);
+    });
+
+    test('a later open: the checkpoint rolled forward from memory; a due bill paid on another phone is read again', async () => {
+        await openWithCheckpoint();
+        FirebaseService.cleanup();
+        const later = NOW + 40 * DAY;
+        await fake.db.collection('dev_stockCheckpoints').doc('current').set({ fullBuiltAt: later }, { merge: true });
+        jest.setSystemTime(later);
+        rec.clear();
+        await open();
+        pin('service.core-roll-forward', rec.log);
+        rec.clear();
+        await fake.db.collection('dev_purchases').doc('p0').set({ openDue: false, dueAmount: 0, payment: { cash: 300, online: 0, due: 0 } }, { merge: true });
+        await settle();
+        pin('service.core-due-paid-elsewhere', rec.log);
+        expect(fake.raw('dev_stockCheckpoints').get('current').rolledForwardFrom).toBeDefined();
+        // Paid off and older than the loaded history: re-read once, then dropped from memory
+        expect(AppState.purchaseHistory.some(b => b.id === 'p0')).toBe(false);
+    });
+
+    test('a staff phone without personal expenses: no personal listener, no checkpoint writes, an old edit only marks it stale', async () => {
+        await openWithCheckpoint();
+        FirebaseService.cleanup();
+        const roleAccess = { staff: { personalExpenses: false } };
+        await fake.db.collection('dev_settings').doc('app').set({ roleAccess }, { merge: true });
+        AppState.userRole = 'staff';
+        AppState.settings = { roleAccess };
+        rec.clear();
+        await open();
+        pin('service.core-open-staff', rec.log);
+        expect(rec.log.some(c => c[0] === 'collection' && c[1] === 'dev_personalExpenses')).toBe(false);
+        rec.clear();
+        await FirebaseService.updatePurchase({ ...AppState.purchaseHistory.find(b => b.id === 'p0'), items: [line(12, 30)], total: 360, grandTotal: 360, payment: { cash: 200, online: 0, due: 160 }, dueAmount: 160 }, { reason: 'Weight' });
+        await FirebaseService.monthMarksIssued();
+        await settleRebuild();
+        pin('service.core-staff-edit-old', rec.log);
+        expect(rec.log.some(c => c[0].startsWith('tx.') && String(c[1]).includes('stockCheckpoints'))).toBe(false);
     });
 });

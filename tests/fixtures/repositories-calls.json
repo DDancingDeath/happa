@@ -4169,6 +4169,106 @@
         "clientVersion": 5,
         "writtenAt": "SERVER_TIME"
       }
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-21"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-20"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-20"
+    ],
+    [
+      "set",
+      {
+        "amounts": {
+          "pe1": 70
+        },
+        "online": {
+          "pe1": "delete(true)"
+        },
+        "last": "pe1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-19"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-18"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-17"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-16"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-15"
+    ],
+    [
+      "get"
     ]
   ],
   "service.core-checkpoint-rebuild": [
@@ -4539,6 +4639,83 @@
     ],
     [
       "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-21"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-20"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-19"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-18"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-17"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-16"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-15"
+    ],
+    [
+      "get"
     ]
   ],
   "service.core-history": [
@@ -4851,7 +5028,7 @@
           "v": 2,
           "complete": true,
           "foundAt": 0,
-          "at": 1792557000000
+          "at": 1792557007000
         }
       },
       {
@@ -4873,7 +5050,7 @@
           "v": 2,
           "complete": true,
           "foundAt": 0,
-          "at": 1792557000000
+          "at": 1792557007000
         }
       },
       {
@@ -4895,7 +5072,7 @@
           "v": 2,
           "complete": true,
           "foundAt": 0,
-          "at": 1792557000000
+          "at": 1792557007000
         }
       },
       {
@@ -4917,7 +5094,7 @@
           "v": 2,
           "complete": true,
           "foundAt": 0,
-          "at": 1792557000000
+          "at": 1792557007000
         }
       },
       {
@@ -4939,7 +5116,7 @@
           "v": 2,
           "complete": true,
           "foundAt": 0,
-          "at": 1792557000000
+          "at": 1792557007000
         }
       },
       {
@@ -4961,7 +5138,7 @@
           "v": 2,
           "complete": true,
           "foundAt": 0,
-          "at": 1792557000000
+          "at": 1792557007000
         }
       },
       {
@@ -4983,7 +5160,7 @@
           "v": 2,
           "complete": true,
           "foundAt": 0,
-          "at": 1792557000000
+          "at": 1792557007000
         }
       },
       {
@@ -5057,712 +5234,6 @@
   "service.core-bills": [
     [
       "collection",
-      "dev_purchases"
-    ],
-    [
-      "doc"
-    ],
-    [
-      "collection",
-      "dev_purchases"
-    ],
-    [
-      "doc",
-      "auto000001"
-    ],
-    [
-      "set",
-      {
-        "date": "2026-10-21",
-        "partyName": "Hari",
-        "items": [
-          {
-            "name": "Rice",
-            "itemId": "i1",
-            "quantity": 4,
-            "qty": 4,
-            "rate": 25,
-            "total": 100
-          }
-        ],
-        "total": 100,
-        "grandTotal": 100,
-        "payment": {
-          "cash": 100,
-          "online": 0,
-          "due": 0
-        },
-        "userId": "u1",
-        "userName": "Owner",
-        "timestamp": 1792540800000,
-        "clientVersion": 5,
-        "openDue": false,
-        "id": "auto000001",
-        "createdAt": "SERVER_TIME"
-      }
-    ],
-    [
-      "collection",
-      "dev_items"
-    ],
-    [
-      "doc",
-      "__localWriteBarrier"
-    ],
-    [
-      "get",
-      {
-        "source": "cache"
-      }
-    ],
-    [
-      "collection",
-      "dev_purchases"
-    ],
-    [
-      "doc",
-      "auto000001"
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_purchases/auto000001)"
-    ],
-    [
-      "collection",
-      "dev_purchases"
-    ],
-    [
-      "doc",
-      "auto000001"
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_purchases/auto000001)"
-    ],
-    [
-      "tx.set",
-      "ref(dev_purchases/auto000001)",
-      "aadhatLoadedPayment(\"[0,100,0,null,0,null,null,false]\")"
-    ],
-    [
-      "collection",
-      "edits"
-    ],
-    [
-      "doc",
-      "1"
-    ],
-    [
-      "tx.set",
-      "ref(dev_purchases/auto000001/edits/1)",
-      {
-        "n": 1,
-        "at": "SERVER_TIME",
-        "by": "u1",
-        "byName": "Owner",
-        "reason": "Rate typo",
-        "fields": {
-          "items": {
-            "before": [
-              {
-                "name": "Rice",
-                "itemId": "i1",
-                "quantity": 4,
-                "qty": 4,
-                "rate": 25,
-                "total": 100
-              }
-            ],
-            "after": [
-              {
-                "name": "Rice",
-                "itemId": "i1",
-                "quantity": 4,
-                "qty": 4,
-                "rate": 26,
-                "total": 104
-              }
-            ]
-          },
-          "grandTotal": {
-            "before": 100,
-            "after": 104
-          },
-          "total": {
-            "before": 100,
-            "after": 104
-          },
-          "payment": {
-            "before": {
-              "cash": 100,
-              "online": 0,
-              "due": 0
-            },
-            "after": {
-              "cash": 104,
-              "online": 0,
-              "due": 0
-            }
-          }
-        }
-      }
-    ],
-    [
-      "collection",
-      "dev_purchases"
-    ],
-    [
-      "doc",
-      "p0"
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_purchases/p0)"
-    ],
-    [
-      "tx.set",
-      "ref(dev_purchases/p0)",
-      "aadhatLoadedPayment(\"[100,200,0,null,0,null,100,false]\")"
-    ],
-    [
-      "collection",
-      "edits"
-    ],
-    [
-      "doc",
-      "1"
-    ],
-    [
-      "tx.set",
-      "ref(dev_purchases/p0/edits/1)",
-      {
-        "n": 1,
-        "at": "SERVER_TIME",
-        "by": "u1",
-        "byName": "Owner",
-        "reason": "Weight",
-        "fields": {
-          "items": {
-            "before": [
-              {
-                "name": "Rice",
-                "itemId": "i1",
-                "quantity": 10,
-                "qty": 10,
-                "rate": 30,
-                "total": 300
-              }
-            ],
-            "after": [
-              {
-                "name": "Rice",
-                "itemId": "i1",
-                "quantity": 11,
-                "qty": 11,
-                "rate": 30,
-                "total": 330
-              }
-            ]
-          },
-          "grandTotal": {
-            "before": 300,
-            "after": 330
-          },
-          "total": {
-            "before": 300,
-            "after": 330
-          },
-          "payment": {
-            "before": {
-              "cash": 200,
-              "online": 0,
-              "due": 100
-            },
-            "after": {
-              "cash": 200,
-              "online": 0,
-              "due": 130
-            }
-          },
-          "dueAmount": {
-            "before": 100,
-            "after": 130
-          }
-        }
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "current"
-    ],
-    [
-      "set",
-      {
-        "stale": true,
-        "staleCount": "increment(1)",
-        "staleAt": 1792557000000,
-        "staleReason": "purchases modified",
-        "staleBy": "u1"
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "current"
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_stockCheckpoints/current)"
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "current"
-    ],
-    [
-      "set",
-      {
-        "stale": true,
-        "staleCount": "increment(1)",
-        "staleAt": 1792557000000,
-        "staleReason": "purchases write",
-        "staleBy": "u1"
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_monthStats"
-    ],
-    [
-      "batch"
-    ],
-    [
-      "doc",
-      "2026-03"
-    ],
-    [
-      "batch.set",
-      "ref(dev_monthStats/2026-03)",
-      {
-        "month": "2026-03",
-        "stale": true,
-        "staleAt": 1792557000000
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "doc",
-      "2026-04"
-    ],
-    [
-      "batch.set",
-      "ref(dev_monthStats/2026-04)",
-      {
-        "month": "2026-04",
-        "stale": true,
-        "staleAt": 1792557000000
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "doc",
-      "2026-05"
-    ],
-    [
-      "batch.set",
-      "ref(dev_monthStats/2026-05)",
-      {
-        "month": "2026-05",
-        "stale": true,
-        "staleAt": 1792557000000
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "doc",
-      "2026-06"
-    ],
-    [
-      "batch.set",
-      "ref(dev_monthStats/2026-06)",
-      {
-        "month": "2026-06",
-        "stale": true,
-        "staleAt": 1792557000000
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "doc",
-      "2026-07"
-    ],
-    [
-      "batch.set",
-      "ref(dev_monthStats/2026-07)",
-      {
-        "month": "2026-07",
-        "stale": true,
-        "staleAt": 1792557000000
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "doc",
-      "2026-08"
-    ],
-    [
-      "batch.set",
-      "ref(dev_monthStats/2026-08)",
-      {
-        "month": "2026-08",
-        "stale": true,
-        "staleAt": 1792557000000
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "doc",
-      "2026-09"
-    ],
-    [
-      "batch.set",
-      "ref(dev_monthStats/2026-09)",
-      {
-        "month": "2026-09",
-        "stale": true,
-        "staleAt": 1792557000000
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "batch.commit"
-    ],
-    [
-      "tx.set",
-      "ref(dev_stockCheckpoints/current)",
-      {
-        "rebuildingUntil": 1792557600000,
-        "rebuildingBy": "u1:1792557000000:i",
-        "clientVersion": 5,
-        "writtenAt": "SERVER_TIME"
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_purchases"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_retailSales"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_wholesaleSales"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_expenses"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_personalExpenses"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_stockAdjustments"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_withdrawals"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "purchases": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "retailSales": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "wholesaleSales": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "expenses": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "personalExpenses": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "stockAdjustments": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "withdrawals": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_stockCheckpoints/current)"
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_stockCheckpoints/current)"
-    ],
-    [
-      "tx.update",
-      "ref(dev_stockCheckpoints/current)",
-      {
-        "rebuildingUntil": 0,
-        "rebuildingBy": null,
-        "clientVersion": 5,
-        "writtenAt": "SERVER_TIME"
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "current"
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_stockCheckpoints/current)"
-    ],
-    [
-      "tx.set",
-      "ref(dev_stockCheckpoints/current)",
-      {
-        "rebuildingUntil": 1792557600000,
-        "rebuildingBy": "u1:1792557000000:i",
-        "clientVersion": 5,
-        "writtenAt": "SERVER_TIME"
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_purchases"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
       "dev_retailSales"
     ],
     [
@@ -5822,13 +5293,6 @@
     ],
     [
       "collection",
-      "dev_retailSales"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
       "dev_wholesaleSales"
     ],
     [
@@ -5884,245 +5348,6 @@
       "get",
       {
         "source": "cache"
-      }
-    ],
-    [
-      "collection",
-      "dev_wholesaleSales"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_expenses"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_personalExpenses"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_stockAdjustments"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_withdrawals"
-    ],
-    [
-      "get"
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "purchases": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "retailSales": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "wholesaleSales": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "expenses": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "personalExpenses": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "stockAdjustments": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "collection",
-      "dev_stockCheckpoints"
-    ],
-    [
-      "doc",
-      "legacyScan"
-    ],
-    [
-      "set",
-      {
-        "withdrawals": {
-          "v": 2,
-          "complete": true,
-          "foundAt": 0,
-          "at": 1792557000000
-        }
-      },
-      {
-        "merge": true
-      }
-    ],
-    [
-      "runTransaction",
-      "fn"
-    ],
-    [
-      "tx.get",
-      "ref(dev_stockCheckpoints/current)"
-    ],
-    [
-      "tx.set",
-      "ref(dev_stockCheckpoints/current)",
-      {
-        "formatVersion": 5,
-        "asOf": 1788201000000,
-        "state": [
-          {
-            "k": "i1",
-            "q": 16,
-            "v": 430
-          }
-        ],
-        "resolutions": [
-          {
-            "i": "i1",
-            "n": "rice",
-            "k": "i1"
-          }
-        ],
-        "itemsSignature": "1:1fzdrne:7myexe:18",
-        "stale": false,
-        "staleCount": 2,
-        "builtAt": 1792557000000,
-        "builtBy": "u1",
-        "rebuildingUntil": 0,
-        "rebuildingBy": null,
-        "backfill": {
-          "complete": true,
-          "writes": 0,
-          "at": 1792557000000
-        },
-        "pinned": {
-          "purchases": [],
-          "retailSales": [],
-          "wholesaleSales": []
-        },
-        "fullBuiltAt": 1792557000000,
-        "clientVersion": 5,
-        "writtenAt": "SERVER_TIME"
       }
     ],
     [
@@ -6461,6 +5686,17 @@
       "2026-10-20"
     ],
     [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-10-20"
+    ],
+    [
       "set",
       {
         "amounts": {
@@ -6507,6 +5743,2090 @@
         "timestamp": 1792540800000,
         "clientVersion": 5
       }
+    ]
+  ],
+  "service.core-bills-edit-old": [
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc"
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc",
+      "auto000001"
+    ],
+    [
+      "set",
+      {
+        "date": "2026-10-21",
+        "partyName": "Hari",
+        "items": [
+          {
+            "name": "Rice",
+            "itemId": "i1",
+            "quantity": 4,
+            "qty": 4,
+            "rate": 25,
+            "total": 100
+          }
+        ],
+        "total": 100,
+        "grandTotal": 100,
+        "payment": {
+          "cash": 100,
+          "online": 0,
+          "due": 0
+        },
+        "userId": "u1",
+        "userName": "Owner",
+        "timestamp": 1792540800000,
+        "clientVersion": 5,
+        "openDue": false,
+        "id": "auto000001",
+        "createdAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "doc",
+      "__localWriteBarrier"
+    ],
+    [
+      "get",
+      {
+        "source": "cache"
+      }
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc",
+      "auto000001"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_purchases/auto000001)"
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc",
+      "auto000001"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_purchases/auto000001)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_purchases/auto000001)",
+      {
+        "id": "auto000001",
+        "date": "2026-10-21",
+        "partyName": "Hari",
+        "items": [
+          {
+            "name": "Rice",
+            "itemId": "i1",
+            "quantity": 4,
+            "qty": 4,
+            "rate": 26,
+            "total": 104
+          }
+        ],
+        "total": 104,
+        "grandTotal": 104,
+        "payment": {
+          "cash": 104,
+          "online": 0,
+          "due": 0
+        },
+        "userId": "u1",
+        "userName": "Owner",
+        "timestamp": 1792540800000,
+        "clientVersion": 5,
+        "openDue": false,
+        "createdAt": "SERVER_TIME",
+        "editCount": 1
+      }
+    ],
+    [
+      "collection",
+      "edits"
+    ],
+    [
+      "doc",
+      "1"
+    ],
+    [
+      "tx.set",
+      "ref(dev_purchases/auto000001/edits/1)",
+      {
+        "n": 1,
+        "at": "SERVER_TIME",
+        "by": "u1",
+        "byName": "Owner",
+        "reason": "Rate typo",
+        "fields": {
+          "items": {
+            "before": [
+              {
+                "name": "Rice",
+                "itemId": "i1",
+                "quantity": 4,
+                "qty": 4,
+                "rate": 25,
+                "total": 100
+              }
+            ],
+            "after": [
+              {
+                "name": "Rice",
+                "itemId": "i1",
+                "quantity": 4,
+                "qty": 4,
+                "rate": 26,
+                "total": 104
+              }
+            ]
+          },
+          "grandTotal": {
+            "before": 100,
+            "after": 104
+          },
+          "total": {
+            "before": 100,
+            "after": 104
+          },
+          "payment": {
+            "before": {
+              "cash": 100,
+              "online": 0,
+              "due": 0
+            },
+            "after": {
+              "cash": 104,
+              "online": 0,
+              "due": 0
+            }
+          }
+        }
+      }
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc",
+      "p0"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_purchases/p0)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_purchases/p0)",
+      {
+        "id": "p0",
+        "date": "2026-03-05",
+        "timestamp": 1772692200000,
+        "partyName": "Shyam",
+        "items": [
+          {
+            "name": "Rice",
+            "itemId": "i1",
+            "quantity": 11,
+            "qty": 11,
+            "rate": 30,
+            "total": 330
+          }
+        ],
+        "total": 330,
+        "grandTotal": 330,
+        "payment": {
+          "cash": 200,
+          "online": 0,
+          "due": 130
+        },
+        "dueAmount": 130,
+        "openDue": true,
+        "clientVersion": 5,
+        "editCount": 1
+      }
+    ],
+    [
+      "collection",
+      "edits"
+    ],
+    [
+      "doc",
+      "1"
+    ],
+    [
+      "tx.set",
+      "ref(dev_purchases/p0/edits/1)",
+      {
+        "n": 1,
+        "at": "SERVER_TIME",
+        "by": "u1",
+        "byName": "Owner",
+        "reason": "Weight",
+        "fields": {
+          "items": {
+            "before": [
+              {
+                "name": "Rice",
+                "itemId": "i1",
+                "quantity": 10,
+                "qty": 10,
+                "rate": 30,
+                "total": 300
+              }
+            ],
+            "after": [
+              {
+                "name": "Rice",
+                "itemId": "i1",
+                "quantity": 11,
+                "qty": 11,
+                "rate": 30,
+                "total": 330
+              }
+            ]
+          },
+          "grandTotal": {
+            "before": 300,
+            "after": 330
+          },
+          "total": {
+            "before": 300,
+            "after": 330
+          },
+          "payment": {
+            "before": {
+              "cash": 200,
+              "online": 0,
+              "due": 100
+            },
+            "after": {
+              "cash": 200,
+              "online": 0,
+              "due": 130
+            }
+          },
+          "dueAmount": {
+            "before": 100,
+            "after": 130
+          }
+        }
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "set",
+      {
+        "stale": true,
+        "staleCount": "increment(1)",
+        "staleAt": 1792557007000,
+        "staleReason": "purchases modified",
+        "staleBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_stockCheckpoints/current)"
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "set",
+      {
+        "stale": true,
+        "staleCount": "increment(1)",
+        "staleAt": 1792557007000,
+        "staleReason": "purchases write",
+        "staleBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "2026-03"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-03)",
+      {
+        "month": "2026-03",
+        "stale": true,
+        "staleAt": 1792557007000
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-04"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-04)",
+      {
+        "month": "2026-04",
+        "stale": true,
+        "staleAt": 1792557007000
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-05"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-05)",
+      {
+        "month": "2026-05",
+        "stale": true,
+        "staleAt": 1792557007000
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-06"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-06)",
+      {
+        "month": "2026-06",
+        "stale": true,
+        "staleAt": 1792557007000
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-07"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-07)",
+      {
+        "month": "2026-07",
+        "stale": true,
+        "staleAt": 1792557007000
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-08"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-08)",
+      {
+        "month": "2026-08",
+        "stale": true,
+        "staleAt": 1792557007000
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-09"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-09)",
+      {
+        "month": "2026-09",
+        "stale": true,
+        "staleAt": 1792557007000
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "batch.commit"
+    ],
+    [
+      "tx.set",
+      "ref(dev_stockCheckpoints/current)",
+      {
+        "rebuildingUntil": 1792557607000,
+        "rebuildingBy": "u1:1792557007000:i",
+        "clientVersion": 5,
+        "writtenAt": "SERVER_TIME"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_expenses"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenses"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_stockAdjustments"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_withdrawals"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "purchases": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "retailSales": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "wholesaleSales": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "expenses": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "personalExpenses": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "stockAdjustments": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "withdrawals": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_stockCheckpoints/current)"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_stockCheckpoints/current)"
+    ],
+    [
+      "tx.update",
+      "ref(dev_stockCheckpoints/current)",
+      {
+        "rebuildingUntil": 0,
+        "rebuildingBy": null,
+        "clientVersion": 5,
+        "writtenAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_stockCheckpoints/current)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_stockCheckpoints/current)",
+      {
+        "rebuildingUntil": 1792557607000,
+        "rebuildingBy": "u1:1792557007000:i",
+        "clientVersion": 5,
+        "writtenAt": "SERVER_TIME"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_expenses"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenses"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_stockAdjustments"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_withdrawals"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "purchases": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "retailSales": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "wholesaleSales": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "expenses": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "personalExpenses": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "stockAdjustments": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "set",
+      {
+        "withdrawals": {
+          "v": 2,
+          "complete": true,
+          "foundAt": 0,
+          "at": 1792557007000
+        }
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_stockCheckpoints/current)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_stockCheckpoints/current)",
+      {
+        "formatVersion": 5,
+        "asOf": 1788201000000,
+        "state": [
+          {
+            "k": "i1",
+            "q": 16,
+            "v": 430
+          }
+        ],
+        "resolutions": [
+          {
+            "i": "i1",
+            "n": "rice",
+            "k": "i1"
+          }
+        ],
+        "itemsSignature": "1:1fzdrne:7myexe:18",
+        "stale": false,
+        "staleCount": 2,
+        "builtAt": 1792557007000,
+        "builtBy": "u1",
+        "rebuildingUntil": 0,
+        "rebuildingBy": null,
+        "backfill": {
+          "complete": true,
+          "writes": 0,
+          "at": 1792557007000
+        },
+        "pinned": {
+          "purchases": [],
+          "retailSales": [],
+          "wholesaleSales": []
+        },
+        "fullBuiltAt": 1792557007000,
+        "clientVersion": 5,
+        "writtenAt": "SERVER_TIME"
+      }
+    ]
+  ],
+  "service.core-roll-forward": [
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_itemFrequency"
+    ],
+    [
+      "doc",
+      "global"
+    ],
+    [
+      "onSnapshot",
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "where",
+      "openDue",
+      "==",
+      true
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1788201000000
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "where",
+      "paidAt",
+      ">=",
+      1788201000000
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "where",
+      "openDue",
+      "==",
+      true
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1788201000000
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "where",
+      "paidAt",
+      ">=",
+      1788201000000
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "where",
+      "openDue",
+      "==",
+      true
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1788201000000
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "where",
+      "paidAt",
+      ">=",
+      1788201000000
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_expenses"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_personalExpenses"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_stockAdjustments"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_withdrawals"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_settings"
+    ],
+    [
+      "doc",
+      "app"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_stockCheckpoints/current)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_stockCheckpoints/current)",
+      {
+        "formatVersion": 5,
+        "asOf": 1790793000000,
+        "state": [
+          {
+            "k": "i1",
+            "q": 15,
+            "v": 400
+          }
+        ],
+        "resolutions": [
+          {
+            "i": "i1",
+            "n": "rice",
+            "k": "i1"
+          }
+        ],
+        "itemsSignature": "1:1fzdrne:7myexe:18",
+        "stale": false,
+        "staleCount": 0,
+        "builtAt": 1796013000000,
+        "builtBy": "u1",
+        "rebuildingUntil": 0,
+        "rebuildingBy": null,
+        "backfill": {
+          "complete": true,
+          "writes": 0,
+          "at": 1792557000000
+        },
+        "rolledForwardFrom": 1788201000000,
+        "pinned": {
+          "purchases": [],
+          "retailSales": [],
+          "wholesaleSales": []
+        },
+        "fullBuiltAt": 1796013000000,
+        "clientVersion": 5,
+        "writtenAt": "SERVER_TIME"
+      }
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-11-30"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-11-29"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-11-28"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-11-27"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-11-26"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-11-25"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_personalExpenseDays"
+    ],
+    [
+      "doc",
+      "2026-11-24"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "service.core-due-paid-elsewhere": [
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc",
+      "p0"
+    ],
+    [
+      "get"
+    ]
+  ],
+  "service.core-open-staff": [
+    [
+      "collection",
+      "dev_items"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "legacyScan"
+    ],
+    [
+      "get"
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_itemFrequency"
+    ],
+    [
+      "doc",
+      "global"
+    ],
+    [
+      "onSnapshot",
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "where",
+      "openDue",
+      "==",
+      true
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1788201000000
+    ],
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "where",
+      "paidAt",
+      ">=",
+      1788201000000
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "where",
+      "openDue",
+      "==",
+      true
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1788201000000
+    ],
+    [
+      "collection",
+      "dev_retailSales"
+    ],
+    [
+      "where",
+      "paidAt",
+      ">=",
+      1788201000000
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "where",
+      "openDue",
+      "==",
+      true
+    ],
+    [
+      "where",
+      "timestamp",
+      "<",
+      1788201000000
+    ],
+    [
+      "collection",
+      "dev_wholesaleSales"
+    ],
+    [
+      "where",
+      "paidAt",
+      ">=",
+      1788201000000
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_expenses"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ],
+    [
+      "collection",
+      "dev_stockAdjustments"
+    ],
+    [
+      "where",
+      "timestamp",
+      ">=",
+      1788201000000
+    ],
+    [
+      "orderBy",
+      "timestamp",
+      "desc"
+    ],
+    [
+      "onSnapshot",
+      {
+        "includeMetadataChanges": true
+      },
+      "fn",
+      "fn"
+    ]
+  ],
+  "service.core-staff-edit-old": [
+    [
+      "collection",
+      "dev_purchases"
+    ],
+    [
+      "doc",
+      "p0"
+    ],
+    [
+      "runTransaction",
+      "fn"
+    ],
+    [
+      "tx.get",
+      "ref(dev_purchases/p0)"
+    ],
+    [
+      "tx.set",
+      "ref(dev_purchases/p0)",
+      {
+        "id": "p0",
+        "date": "2026-03-05",
+        "timestamp": 1772692200000,
+        "partyName": "Shyam",
+        "items": [
+          {
+            "name": "Rice",
+            "itemId": "i1",
+            "quantity": 12,
+            "qty": 12,
+            "rate": 30,
+            "total": 360
+          }
+        ],
+        "total": 360,
+        "grandTotal": 360,
+        "payment": {
+          "cash": 200,
+          "online": 0,
+          "due": 160
+        },
+        "dueAmount": 160,
+        "openDue": true,
+        "clientVersion": 5,
+        "editCount": 1
+      }
+    ],
+    [
+      "collection",
+      "edits"
+    ],
+    [
+      "doc",
+      "1"
+    ],
+    [
+      "tx.set",
+      "ref(dev_purchases/p0/edits/1)",
+      {
+        "n": 1,
+        "at": "SERVER_TIME",
+        "by": "u1",
+        "byName": "Owner",
+        "reason": "Weight",
+        "fields": {
+          "items": {
+            "before": [
+              {
+                "name": "Rice",
+                "itemId": "i1",
+                "quantity": 10,
+                "qty": 10,
+                "rate": 30,
+                "total": 300
+              }
+            ],
+            "after": [
+              {
+                "name": "Rice",
+                "itemId": "i1",
+                "quantity": 12,
+                "qty": 12,
+                "rate": 30,
+                "total": 360
+              }
+            ]
+          },
+          "grandTotal": {
+            "before": 300,
+            "after": 360
+          },
+          "total": {
+            "before": 300,
+            "after": 360
+          },
+          "payment": {
+            "before": {
+              "cash": 200,
+              "online": 0,
+              "due": 100
+            },
+            "after": {
+              "cash": 200,
+              "online": 0,
+              "due": 160
+            }
+          },
+          "dueAmount": {
+            "before": 100,
+            "after": 160
+          }
+        }
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "set",
+      {
+        "stale": true,
+        "staleCount": "increment(1)",
+        "staleAt": 1792557010500,
+        "staleReason": "purchases modified",
+        "staleBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_stockCheckpoints"
+    ],
+    [
+      "doc",
+      "current"
+    ],
+    [
+      "set",
+      {
+        "stale": true,
+        "staleCount": "increment(1)",
+        "staleAt": 1792557010500,
+        "staleReason": "purchases write",
+        "staleBy": "u1"
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "collection",
+      "dev_monthStats"
+    ],
+    [
+      "batch"
+    ],
+    [
+      "doc",
+      "2026-03"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-03)",
+      {
+        "month": "2026-03",
+        "stale": true,
+        "staleAt": 1792557010500
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-04"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-04)",
+      {
+        "month": "2026-04",
+        "stale": true,
+        "staleAt": 1792557010500
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-05"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-05)",
+      {
+        "month": "2026-05",
+        "stale": true,
+        "staleAt": 1792557010500
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-06"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-06)",
+      {
+        "month": "2026-06",
+        "stale": true,
+        "staleAt": 1792557010500
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-07"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-07)",
+      {
+        "month": "2026-07",
+        "stale": true,
+        "staleAt": 1792557010500
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-08"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-08)",
+      {
+        "month": "2026-08",
+        "stale": true,
+        "staleAt": 1792557010500
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "doc",
+      "2026-09"
+    ],
+    [
+      "batch.set",
+      "ref(dev_monthStats/2026-09)",
+      {
+        "month": "2026-09",
+        "stale": true,
+        "staleAt": 1792557010500
+      },
+      {
+        "merge": true
+      }
+    ],
+    [
+      "batch.commit"
     ]
   ]
 }
