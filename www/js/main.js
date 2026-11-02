@@ -1317,6 +1317,7 @@ window.app = {
         reminderForm: (open) => ManualReminders.form(open),
         reminderSave: () => ManualReminders.save(),
         reminderDone: (id) => ManualReminders.markReminderDone(id),
+        reminderEdit: (id) => ManualReminders.edit(id),
         reminderCancel: (id) => ManualReminders.cancelReminderNow(id)
     },
     
