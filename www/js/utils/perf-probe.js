@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Speed check probes and the suspect analysis (#83), ported from
  * the staging perf-probe. Each probe returns null when its browser API is
@@ -9,6 +10,10 @@
 
 const MB = 1048576;
 
+/**
+ * @param {*} [perf] performance (Chrome's non-standard `memory`)
+ * @returns {?{usedMB: number, limitMB: number, usedRatio: number}}
+ */
 export function probeMemory(perf = globalThis.performance) {
     const m = perf?.memory;
     if (!m) return null;
@@ -19,11 +24,19 @@ export function probeMemory(perf = globalThis.performance) {
     };
 }
 
+/**
+ * @param {*} [nav] navigator (`deviceMemory` is not in every browser)
+ * @returns {?{deviceMemoryGB: ?number, cpuCores: ?number}}
+ */
 export function probeDevice(nav = globalThis.navigator) {
     if (!nav) return null;
     return { deviceMemoryGB: nav.deviceMemory ?? null, cpuCores: nav.hardwareConcurrency ?? null };
 }
 
+/**
+ * @param {*} [nav] navigator (Network Information API, where it exists)
+ * @returns {?{online: boolean, effectiveType: ?string, downlinkMbps: ?number, rttMs: ?number, saveData: boolean}}
+ */
 export function probeNetwork(nav = globalThis.navigator) {
     if (!nav) return null;
     const c = nav.connection || nav.mozConnection || nav.webkitConnection;
@@ -36,11 +49,19 @@ export function probeNetwork(nav = globalThis.navigator) {
     };
 }
 
+/**
+ * @param {*} [nav]
+ * @returns {{supported: boolean, hasController?: boolean}}
+ */
 export function probeServiceWorker(nav = globalThis.navigator) {
     if (!nav?.serviceWorker) return { supported: false };
     return { supported: true, hasController: !!nav.serviceWorker.controller };
 }
 
+/**
+ * @param {*} [perf]
+ * @returns {?{pageLoadMs: number, domContentLoadedMs: number}}
+ */
 export function probeNavigation(perf = globalThis.performance) {
     const n = perf?.getEntriesByType?.('navigation')?.[0];
     if (!n) return null;
@@ -50,7 +71,11 @@ export function probeNavigation(perf = globalThis.performance) {
     };
 }
 
-/** JSON length of a value (null when it can't be serialised). */
+/**
+ * JSON length of a value (null when it can't be serialised).
+ * @param {*} value
+ * @returns {?number}
+ */
 export function approxBytes(value) {
     if (value === null || value === undefined) return 0;
     try {
@@ -64,9 +89,15 @@ export function approxBytes(value) {
 const APP_STATE_LISTS = ['purchaseHistory', 'retailSalesHistory', 'salesHistory', 'expenses', 'items', 'stock',
     'cashSessions', 'notifications', 'users'];
 
-/** Sizes of the big AppState lists, largest first. */
+/**
+ * Sizes of the big AppState lists, largest first.
+ * @param {*} state AppState
+ * @returns {{collections: Array<{name: string, count: number, approxBytes: ?number}>, totalBytes: number, byName: Object<string, {name: string, count: number, approxBytes: ?number}>}}
+ */
 export function probeAppState(state) {
+    /** @type {Object<string, {name: string, count: number, approxBytes: ?number}>} */
     const byName = {};
+    /** @type {Array<{name: string, count: number, approxBytes: ?number}>} */
     const collections = [];
     let totalBytes = 0;
     if (!state || typeof state !== 'object') return { collections, totalBytes, byName };
@@ -84,14 +115,19 @@ export function probeAppState(state) {
     return { collections, totalBytes, byName };
 }
 
+/** @type {{list: Array<{startTime: number, durationMs: number}>, observer: ?PerformanceObserver}} */
 const longTasks = { list: [], observer: null };
 
-/** Starts recording main-thread tasks over 50 ms (call once at start; a no-op without the API). */
+/**
+ * Starts recording main-thread tasks over 50 ms (call once at start; a no-op without the API).
+ * @param {*} [Observer] PerformanceObserver
+ * @returns {boolean}
+ */
 export function startLongTaskRecorder(Observer = globalThis.PerformanceObserver) {
     if (longTasks.observer) return true;
     if (typeof Observer === 'undefined' || !Observer) return false;
     try {
-        const obs = new Observer(list => {
+        const obs = new Observer((/** @type {PerformanceObserverEntryList} */ list) => {
             for (const e of list.getEntries()) {
                 longTasks.list.push({ startTime: e.startTime, durationMs: e.duration });
                 if (longTasks.list.length > 100) longTasks.list.shift();
@@ -105,6 +141,11 @@ export function startLongTaskRecorder(Observer = globalThis.PerformanceObserver)
     }
 }
 
+/**
+ * @param {number} [windowMs]
+ * @param {*} [perf]
+ * @returns {{count: number, totalMs: number}}
+ */
 export function probeLongTasks(windowMs = 60000, perf = globalThis.performance) {
     const now = perf?.now ? perf.now() : 0;
     const recent = longTasks.list.filter(task => task.startTime >= now - windowMs);
@@ -113,11 +154,18 @@ export function probeLongTasks(windowMs = 60000, perf = globalThis.performance) 
     return { count: recent.length, totalMs: Math.round(totalMs) };
 }
 
-/** Test hook. */
+/**
+ * Test hook.
+ * @param {Array<{startTime: number, durationMs: number}>} [list]
+ */
 export function _resetLongTasks(list = []) {
     longTasks.list = list;
 }
 
+/**
+ * @param {*} [nav]
+ * @returns {Promise<?{usageMB: number, quotaMB: number, usedRatio: number}>}
+ */
 export async function probeStorage(nav = globalThis.navigator) {
     if (!nav?.storage?.estimate) return null;
     try {
@@ -144,19 +192,24 @@ export const THRESHOLDS = Object.freeze({
     storageRatio: { bad: 0.85 }
 });
 
-/** Points taken off the score of 100 per suspect (DIAG-SCORE). */
+/**
+ * Points taken off the score of 100 per suspect (DIAG-SCORE).
+ * @type {Readonly<{high: number, med: number, low: number}>}
+ */
 export const SEVERITY_COST = Object.freeze({ high: 25, med: 12, low: 4 });
 const RANK = { high: 3, med: 2, low: 1 };
 
+/** @type {(severity: 'high'|'med'|'low', id: string, params?: Rec) => {severity: 'high'|'med'|'low', id: string, params: Rec}} */
 const suspect = (severity, id, params = {}) => ({ severity, id, params });
 
 /**
  * Ranked suspects and a 0–100 score (DIAG-SCORE: 100 − 25 per high − 12 per
  * medium − 4 per low suspect, never below 0).
- * @param {Object} p probes: memory, device, network, sw, navigation, appState, longTasks, storage
- * @returns {{score: number, suspects: Array<{severity: string, id: string, params: Object}>}}
+ * @param {Rec} p probes: memory, device, network, sw, navigation, appState, longTasks, storage
+ * @returns {{score: number, suspects: Array<{severity: string, id: string, params: Rec}>}}
  */
 export function analyseProbes(p = {}) {
+    /** @type {Array<{severity: 'high'|'med'|'low', id: string, params: Rec}>} */
     const out = [];
     for (const list of ['purchaseHistory', 'retailSalesHistory', 'salesHistory']) {
         const c = p.appState?.byName?.[list];
@@ -200,7 +253,7 @@ export function analyseProbes(p = {}) {
 
 /**
  * Runs every probe now (storage is async).
- * @param {Object} state AppState
+ * @param {Rec} state AppState
  * @returns {Promise<Object>} probes for analyseProbes
  */
 export async function runProbes(state) {

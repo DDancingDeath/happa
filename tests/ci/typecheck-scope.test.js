@@ -4,9 +4,8 @@ const path = require('path');
 // `npm run typecheck` checks only files that start with `// @ts-check` (#71). Every
 // www/js/utils file is checked except these; take a file off the list when it is.
 const NOT_YET = [
-    'anomalies.js', 'audit-changes.js', 'bill-checks.js', 'business-metrics.js', 'finance-breakdown.js', 'finance-calc.js',
-    'item-catalog.js', 'month-snapshots.js', 'notification-format.js', 'number-checks.js', 'perf-probe.js',
-    'product-traffic.js', 'qr-code.js', 'rate-trends.js', 'role-access.js', 'statements.js', 'stock-replay.js'
+    'anomalies.js', 'bill-checks.js', 'business-metrics.js', 'finance-breakdown.js', 'finance-calc.js', 'month-snapshots.js',
+    'number-checks.js', 'product-traffic.js', 'qr-code.js', 'rate-trends.js', 'statements.js'
 ];
 const UTILS = 'www/js/utils';
 

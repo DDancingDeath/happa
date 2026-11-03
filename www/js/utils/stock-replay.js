@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure stock replay (weighted-average cost with deficit rules).
  *
@@ -18,14 +19,20 @@ import { isActiveBill, isOpeningRecord, toMoney } from './money.js';
 /** Bump when the replay rules or the checkpoint layout change. 5: purchases at their saved line amount (#129). */
 export const STOCK_REPLAY_FORMAT = 5;
 
-const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
+/**
+ * One replay step: a bill line (purchase or sale; source = purchase / wholesale / retail) or a stock adjustment.
+ * @typedef {{t: number, kind: 'purchase'|'sale', item: Rec, bill: Rec, source: string}
+ *   | {t: number, kind: 'adjustment', adj: Rec}} StockEvent
+ */
+
+const normalize = (/** @type {*} */ s) => (s == null ? '' : String(s).trim().toLowerCase());
 
 /**
  * AVG-COST: what a purchase line adds to stock. Its value is the line amount
  * saved on the bill (`total`, older lines `amount`: the whole rupees the bill
  * shows and the supplier is paid, #129), else kg × rate for a line saved
  * without one. A 12.4 kg × ₹33.50 line saved at ₹415 adds ₹415, not ₹415.40.
- * @param {Object} item purchase bill line
+ * @param {Rec} item purchase bill line
  * @returns {{qty: number, value: number, rate: number}} rate = value ÷ kg (the line rate when kg ≤ 0)
  */
 export function purchaseLineValue(item) {
@@ -41,7 +48,7 @@ export function purchaseLineValue(item) {
  * numeric `timestamp` field, then a Firestore Timestamp with `.toMillis()`,
  * then the `date` field parsed via Helpers.parseDate. Records with no
  * resolvable time sort last (Number.MAX_SAFE_INTEGER).
- * @param {Object} record
+ * @param {Rec} record
  * @returns {number}
  */
 export function eventTime(record) {
@@ -88,7 +95,7 @@ export function createItemKeyResolver(items) {
 /**
  * Signature of the catalogue fields that affect key resolution (ids and
  * normalized names, in order). Equal signatures => identical resolution.
- * @param {Array<Object>} items
+ * @param {Array<Rec>} items
  * @returns {string}
  */
 export function itemsSignature(items) {
@@ -108,18 +115,20 @@ export function itemsSignature(items) {
  * Builds the chronological event list. Insertion order (purchases, wholesale
  * sales, retail sales, adjustments; each in array order) breaks timestamp ties
  * via the stable sort, exactly like the historical calculateStock().
- * @param {{purchases?: Array, wholesaleSales?: Array, retailSales?: Array, stockAdjustments?: Array}} sources
+ * @param {{purchases?: Array<Rec>, wholesaleSales?: Array<Rec>, retailSales?: Array<Rec>, stockAdjustments?: Array<Rec>}} sources
  * @param {{from?: number, to?: number}} [range] include events with from <= t < to
- * @returns {Array<{t: number, kind: string, item?: Object, bill?: Object, source?: string, adj?: Object}>}
+ * @returns {StockEvent[]}
  */
 export function collectEvents(sources, { from = -Infinity, to = Infinity } = {}) {
+    /** @type {StockEvent[]} */
     const events = [];
-    const inRange = (t) => t >= from && t < to;
+    const inRange = (/** @type {number} */ t) => t >= from && t < to;
+    /** @type {(bills: Array<Rec>|undefined, kind: 'purchase'|'sale', source: string) => void} */
     const addBills = (bills, kind, source) => (bills || []).forEach(bill => {
         if (!isActiveBill(bill) || !Array.isArray(bill.items) || isOpeningRecord(bill)) return;
         const t = eventTime(bill);
         if (!inRange(t)) return;
-        bill.items.forEach(item => events.push({ t, kind, item, bill, source }));
+        bill.items.forEach((/** @type {Rec} */ item) => events.push({ t, kind, item, bill, source }));
     });
     addBills(sources.purchases, 'purchase', 'purchase');
     addBills(sources.wholesaleSales, 'sale', 'wholesale');
@@ -134,10 +143,11 @@ export function collectEvents(sources, { from = -Infinity, to = Infinity } = {})
 
 /**
  * Deep-copies a running state ({key: {quantity, rate, totalValue}}).
- * @param {Object} state
- * @returns {Object}
+ * @param {Rec} state
+ * @returns {Rec}
  */
 export function cloneState(state) {
+    /** @type {Rec} */
     const copy = {};
     Object.keys(state || {}).forEach(k => {
         const s = state[k];
@@ -155,15 +165,15 @@ export function cloneState(state) {
  * rate (the deficit is sunk cost). See the historical comments in
  * FirebaseService.calculateStock for the rationale of each rule.
  *
- * @param {Object} stock running state, mutated
- * @param {Array} events sorted events from collectEvents()
+ * @param {Rec} stock running state, mutated
+ * @param {StockEvent[]} events sorted events from collectEvents()
  * @param {Function} getItemKey resolver from createItemKeyResolver()
- * @param {Map<string, Array>} [resolutions] optional: records every distinct
+ * @param {Map<string, Array<*>>} [resolutions] optional: records every distinct
  *   (itemId, normalized name) -> key resolution used
- * @returns {Object} the same state object
+ * @returns {Rec} the same state object
  */
 export function replayEvents(stock, events, getItemKey, resolutions) {
-    const keyOf = (input) => {
+    const keyOf = (/** @type {Rec} */ input) => {
         const key = getItemKey(input);
         if (resolutions) {
             const id = input.itemId ? input.itemId : null;
@@ -264,12 +274,12 @@ export function replayEvents(stock, events, getItemKey, resolutions) {
  * Same as replayEvents() (it is used for every step), but reports how each
  * event changed the stock value: for a sale, -delta is the cost of the goods
  * sold at the weighted-average cost at that moment (#215).
- * @param {Object} stock running state, mutated
- * @param {Array} events sorted events from collectEvents()
+ * @param {Rec} stock running state, mutated
+ * @param {StockEvent[]} events sorted events from collectEvents()
  * @param {Function} getItemKey resolver from createItemKeyResolver()
- * @param {(ev: Object, key: string, delta: number, prevQty: number) => void} onEvent
+ * @param {(ev: StockEvent, key: string, delta: number, prevQty: number) => void} onEvent
  *   prevQty = quantity on hand just before the event
- * @returns {Object} the same state object
+ * @returns {Rec} the same state object
  */
 export function replayWithValues(stock, events, getItemKey, onEvent) {
     for (const ev of events) {
@@ -288,7 +298,7 @@ export function replayWithValues(stock, events, getItemKey, onEvent) {
 /**
  * Value of the stock on hand in a running state (items with quantity <= 0
  * carry no value).
- * @param {Object} state
+ * @param {Rec} state
  * @returns {number}
  */
 export function stateValue(state) {
@@ -302,10 +312,11 @@ export function stateValue(state) {
 
 /**
  * Converts a running state into the public stock object ({quantity, rate}).
- * @param {Object} state running state (not mutated)
+ * @param {Rec} state running state (not mutated)
  * @returns {Object.<string, {quantity: number, rate: number}>}
  */
 export function finalizeStock(state) {
+    /** @type {Object.<string, {quantity: number, rate: number}>} */
     const stock = {};
     Object.keys(state).forEach(key => {
         const s = state[key];
@@ -319,8 +330,8 @@ export function finalizeStock(state) {
 
 /**
  * Full replay over all history (the historical calculateStock behaviour).
- * @param {Object} sources see collectEvents()
- * @param {Array} items catalogue
+ * @param {Rec} sources see collectEvents()
+ * @param {Array<{id: string, name?: string, hindiName?: string}>} items catalogue
  * @returns {Object.<string, {quantity: number, rate: number}>}
  */
 export function computeStock(sources, items) {
@@ -332,10 +343,10 @@ export function computeStock(sources, items) {
  * Replay starting from a checkpoint: `state` is the running state after every
  * event with t < asOf; only events with t >= asOf are replayed from `sources`
  * (older records in `sources` are ignored).
- * @param {Object} state checkpoint running state (not mutated)
+ * @param {Rec} state checkpoint running state (not mutated)
  * @param {number} asOf
- * @param {Object} sources
- * @param {Array} items
+ * @param {Rec} sources
+ * @param {Array<{id: string, name?: string, hindiName?: string}>} items
  * @returns {Object.<string, {quantity: number, rate: number}>}
  */
 export function computeStockFrom(state, asOf, sources, items) {
@@ -346,18 +357,18 @@ export function computeStockFrom(state, asOf, sources, items) {
 /**
  * Running state after every event with t < asOf (what a checkpoint stores),
  * plus the key resolutions it relied on.
- * @param {Object} sources must contain every record with t < asOf
+ * @param {Rec} sources must contain every record with t < asOf
  * @param {number} asOf
- * @param {Array} items
- * @param {{state?: Object, from?: number}} [base] optional earlier checkpoint
+ * @param {Array<{id: string, name?: string, hindiName?: string}>} items
+ * @param {?{state?: Rec, from?: number}} [base] optional earlier checkpoint
  *   to roll forward from (then only events with base.from <= t < asOf replay)
- * @returns {{state: Object, resolutions: Array<Array>}}
+ * @returns {{state: Rec, resolutions: Array<Array<*>>}}
  */
 export function buildCheckpointState(sources, asOf, items, base = null) {
     const resolutions = new Map();
     const from = base ? base.from : -Infinity;
     const state = replayEvents(
-        cloneState(base ? base.state : {}),
+        cloneState(base ? /** @type {Rec} */ (base.state) : {}),
         collectEvents(sources, { from, to: asOf }),
         createItemKeyResolver(items),
         resolutions
@@ -368,8 +379,8 @@ export function buildCheckpointState(sources, asOf, items, base = null) {
 /**
  * True when the catalogue still resolves every recorded (itemId, name) pair to
  * the same key, i.e. a checkpoint built under another catalogue is still valid.
- * @param {Array<Array>} resolutions [[itemId|null, normalizedName, key], ...]
- * @param {Array} items current catalogue
+ * @param {*} resolutions [[itemId|null, normalizedName, key], ...]
+ * @param {Array<{id: string, name?: string, hindiName?: string}>} items current catalogue
  * @returns {boolean}
  */
 export function resolutionsStillValid(resolutions, items) {
@@ -381,7 +392,7 @@ export function resolutionsStillValid(resolutions, items) {
 /**
  * Serialises a running state for Firestore. Stored as an array because item
  * keys are arbitrary strings (e.g. '__unknown__' is a reserved field name).
- * @param {Object} state
+ * @param {Rec} state
  * @returns {Array<{k: string, q: number, v: number}>}
  */
 export function serializeState(state) {
@@ -390,11 +401,12 @@ export function serializeState(state) {
 
 /**
  * Inverse of serializeState().
- * @param {Array} entries
- * @returns {Object|null} null when malformed
+ * @param {*} entries
+ * @returns {?Rec} null when malformed
  */
 export function deserializeState(entries) {
     if (!Array.isArray(entries)) return null;
+    /** @type {Rec} */
     const state = {};
     for (const e of entries) {
         if (!e || typeof e.k !== 'string' || typeof e.q !== 'number' || typeof e.v !== 'number') return null;
@@ -407,12 +419,12 @@ export function deserializeState(entries) {
  * Stock-relevant fingerprint of a bill/adjustment: its event time and the
  * fields the replay reads. Payment-only edits keep the same fingerprint; a
  * voided bill (isActiveBill) has none, as if deleted.
- * @param {Object|null} record
+ * @param {?Rec|undefined} record
  * @returns {string|null}
  */
 export function stockFingerprint(record) {
     if (!isActiveBill(record)) return null;
-    const pick = (o) => o && typeof o === 'object'
+    const pick = (/** @type {*} */ o) => o && typeof o === 'object'
         ? [o.itemId ?? null, o.name ?? null, o.qty ?? null, o.quantity ?? null, o.rate ?? null, o.total ?? null, o.amount ?? null]
         : null;
     return JSON.stringify([
@@ -428,8 +440,8 @@ export function stockFingerprint(record) {
  * at `threshold`: true when either version's event time is before the
  * threshold and the stock-relevant fields changed. A missing old version of an
  * update/delete is unknown, so it invalidates conservatively.
- * @param {Object|null} oldRecord
- * @param {Object|null} newRecord
+ * @param {?Rec|undefined} oldRecord
+ * @param {?Rec|undefined} newRecord
  * @param {number} threshold
  * @param {{oldUnknown?: boolean}} [opts] oldUnknown: the record existed but is not in memory
  * @returns {boolean}
@@ -437,6 +449,6 @@ export function stockFingerprint(record) {
 export function changeInvalidatesCheckpoint(oldRecord, newRecord, threshold, { oldUnknown = false } = {}) {
     if (oldUnknown && !oldRecord) return true;
     if (stockFingerprint(oldRecord) === stockFingerprint(newRecord)) return false;
-    const before = (r) => !!r && eventTime(r) < threshold;
+    const before = (/** @type {?Rec|undefined} */ r) => !!r && eventTime(r) < threshold;
     return before(oldRecord) || before(newRecord);
 }
