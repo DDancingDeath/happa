@@ -8,7 +8,8 @@
  *   - then BENCH_RUNS (3) reopens; medians of appShownMs (navigation start → first screen),
  *     todayOpenMs (opening Today until its figures are drawn) and firstTodayMs (the two added),
  *     and the reads the app's read meter counted until it was still (startupReads; startupTop:
- *     the meter's top sources in that run);
+ *     the meter's top sources in that run). Before each reload the app's listener heal
+ *     (firebase/core/target-heal.js) is let finish, as on a phone left open for a while;
  *   - historyLoadMs / historyReads: the whole history window (ensureHistoryFrom(null), what
  *     "All time" and the stock rebuild ask for) after the last reopen.
  * Writes test-results/bench-result.json for tools/bench/record.js. No budget is checked here.
@@ -38,6 +39,9 @@ async function openToday(page) {
     return Date.now() - t0;
 }
 
+/** A phone stays open longer than the benchmark's reopens: let the listener heal (#59) finish first. */
+const healDone = (page) => page.waitForFunction(() => !window.FirebaseService.listenerHealPending?.(), null, { timeout: 120000 });
+
 test('3-year shop: first Today and the whole history window', async ({ page, problems }) => {
     test.setTimeout(900000);
     const cdp = await page.context().newCDPSession(page);
@@ -48,6 +52,7 @@ test('3-year shop: first Today and the whole history window', async ({ page, pro
     await expect.poll(() => page.evaluate(() => !!window.FirebaseService.getStockCheckpointInfo()),
         { message: 'the first sign-in stores the stock checkpoint', timeout: 300000, intervals: [1000] }).toBe(true);
     const firstSignInReads = await settledReads(page, { quiet: 3000, timeout: 120000 });
+    await healDone(page);
 
     const runs = [];
     for (let i = 0; i < RUNS; i++) {
@@ -56,8 +61,11 @@ test('3-year shop: first Today and the whole history window', async ({ page, pro
         const shown = await appShown(page);
         const todayOpen = await openToday(page);
         const reads = await settledReads(page, { quiet: 2000, timeout: 60000 });
+        await healDone(page);
+        const healed = await page.evaluate(() => Object.entries(window.FirebaseService.getStartupListenerInfo())
+            .filter(([, v]) => v.healed).map(([k]) => k));
         const top = await page.evaluate(() => window.FirebaseService.getReadStats().top);
-        runs.push({ appShownMs: shown, todayOpenMs: todayOpen, firstTodayMs: shown + todayOpen, startupReads: reads, startupTop: top });
+        runs.push({ appShownMs: shown, todayOpenMs: todayOpen, firstTodayMs: shown + todayOpen, startupReads: reads, startupTop: top, healed });
     }
 
     const history = await page.evaluate(async () => {

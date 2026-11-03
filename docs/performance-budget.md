@@ -39,18 +39,54 @@ cap the list after it.
 
 ## Start-up with all history in the phone's cache (#59)
 
-The benchmark (3-year shop, 4x slower CPU) shows the app in ~9 s once the stock
-checkpoint is stored, against ~6 s before it is. Timing marks of one reopen (local, ms):
-the checkpoint is read by 1,200; the cached first snapshots of the window and dues
-listeners then arrive one after another until ~6,500 (the three retail-sales queries
-alone take ~3 s), and the server snapshots by ~8,900. The rebuild's full read leaves
-every history document in the Firestore cache, and the compat SDK answers each listener
-from the cache by scanning the cached documents of its collection, so each of the ~17
-start-up queries costs time in proportion to the whole history. No cheap fix that keeps
-the first screen the same was found: a shorter cache wait shows older data first, and
-cache indexes (`enablePersistentCacheIndexAutoCreation`) need the modular SDK. Options
-for later: fewer queries per bill collection (the `paidAt` and pinned ones scan the
-whole collection even when empty), or leaving old history out of the cache.
+The benchmark (3-year shop, 4x slower CPU) showed the app in ~9 s once the stock
+checkpoint is stored, against ~6 s before it is. On a reopen the data listeners are
+answered from the Firestore cache one after another (the SDK runs them on one queue, and
+sends each query to the server only after its cache answer), then the server answers
+arrive. Timing one reopen per listener and reading the SDK's stored queries (IndexedDB
+`targets`) showed why the cache answers are slow:
+
+- The SDK answers a query from the cache through the documents it last knew matched only
+  when the stored query has a server-consistent ("limbo-free") version; it then also loads
+  every document of the collection cached after that version. Otherwise it scans the
+  whole collection. On the web it stores that version only when a document of the query
+  changes or when the query's last listener goes away (`TODO(b/272564316)` in the SDK's
+  `local_store_impl.ts`, still there in 12.x).
+- The `paidAt` and pinned dues queries rarely change, so they scanned the whole
+  collection on every open (retail sales: ~4,250 documents, twice).
+- The stock rebuild's full read puts all older bills into the cache after the window and
+  dues queries were stored, so those loaded almost the whole collection as well (retail
+  window: 4,135 of 4,254 documents). History "All time" does the same. A new month's
+  window is a new query and scans everything too.
+
+**Listener heal (`firebase/core/target-heal.js`).** After the first screen, when idle, each
+history listener whose stored query is new, or whose collection a server read has filled
+since, is re-subscribed once: the old subscription's end makes the SDK store the version,
+and the new one resumes (the server sends only changes; the read meter counts none). Its
+first snapshot is compared with what the app has (`realtime.js` `resyncSnapshot`), so
+pages get only real changes, never a reload of the list. localStorage
+(`happa.listenTargets`) keeps per query when it was healed and per collection when a server
+read last returned documents, so a phone heals only after such a read or a new month.
+Probe on one CI runner (reopen, 4x CPU): cache answers 3.4 s → 1.9 s, first screen
+5.8–6.3 s → 4.4–4.6 s.
+
+**Looked at and not done:**
+
+- *A newer SDK with cache indexes* (`enablePersistentCacheIndexAutoCreation`,
+  `setIndexConfiguration`): only in the modular API; the compat builds have neither, up to
+  13.1.0 (checked the gstatic file), so it means moving every Firestore call to the modular
+  API. It would also help slowly: the SDK's index backfiller indexes 50 documents a minute
+  (`index_backfiller.ts`), about 3 hours of open app for this shop, and the stored-version
+  rule above is unchanged.
+- *Keeping old history out of the cache* (a second Firestore instance or a smaller LRU
+  cache): the rebuild's resume (#159) takes its finished pages from this cache, offline
+  History would show less, and once healed the listeners no longer scan the collection,
+  so a smaller cache saves little.
+- *Starting Today's listeners first and the rest later*: Today needs every bill
+  collection's window and dues (sales, money in from older bills, the collect / pay
+  reminders), so Today would wait just as long; only the billing screen would come earlier,
+  and its "Already owes" line needs the dues too.
+- *A shorter wait for the server after a cache answer*: shows older figures first.
 
 ## Regressions
 
