@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Stock availability check used before completing a sale.
  *
@@ -25,21 +26,21 @@ import { formatKg, isActiveBill } from './money.js';
  */
 export function approxStockNote(approx) {
     if (!approx) return null;
-    const when = (lang) => (approx.builtAt > 0 ? formatDayTime(approx.builtAt, { lang }) : '—');
+    const when = (/** @type {'en'|'hi'} */ lang) => (approx.builtAt > 0 ? formatDayTime(approx.builtAt, { lang }) : '—');
     return { en: `≈ approximate stock (updated ${when('en')})`, hi: `≈ अनुमानित स्टॉक (अपडेट ${when('hi')})` };
 }
 
-const normalize = (s) => (s == null ? '' : String(s).trim().toLowerCase());
+const normalize = (/** @type {*} */ s) => (s == null ? '' : String(s).trim().toLowerCase());
 // Legacy bill lines store the name as `item`.
-const lineName = (item) => item.name || item.item;
+const lineName = (/** @type {Rec} */ item) => item.name || item.item;
 
 /**
  * Find the catalogue entry for a line item: itemId first, then name or
  * Hindi name (same precedence calculateStock() uses). Null when unknown.
  *
- * @param {Object} item - sale line item ({ itemId?, name? })
- * @param {Array<Object>} items - item catalogue
- * @returns {Object | null}
+ * @param {Rec} item - sale line item ({ itemId?, name? })
+ * @param {Array<Rec>} items - item catalogue
+ * @returns {?Rec}
  */
 function findCatalogueEntry(item, items) {
     if (item.itemId) {
@@ -55,8 +56,8 @@ function findCatalogueEntry(item, items) {
  * Canonical stock key for a line item; unknown items bucket under their
  * normalized name so they still aggregate together.
  *
- * @param {Object} item
- * @param {Array<Object>} items
+ * @param {Rec} item
+ * @param {Array<Rec>} items
  * @returns {string}
  */
 function resolveKey(item, items) {
@@ -69,9 +70,9 @@ function resolveKey(item, items) {
  * On-hand quantity for an item across legacy keys (itemId, name, hindiName)
  * so stock still bucketed under an old key is not missed.
  *
- * @param {Object|null} catalogueEntry - resolved catalogue item or null
+ * @param {?Rec} catalogueEntry - resolved catalogue item or null
  * @param {string} fallbackName - the line item's name (for legacy buckets)
- * @param {Object} stock - stock map
+ * @param {Rec} stock - stock map
  * @returns {number}
  */
 function lookupAvailable(catalogueEntry, fallbackName, stock) {
@@ -91,15 +92,15 @@ function lookupAvailable(catalogueEntry, fallbackName, stock) {
 
 /**
  * Stock bucket key for a line item (catalogue id, else normalized name).
- * @param {Object} item
- * @param {Array<Object>} [items] - item catalogue
+ * @param {Rec} item
+ * @param {Array<Rec>} [items] - item catalogue
  * @returns {string}
  */
 export function stockKeyFor(item, items = []) {
     return resolveKey(item || {}, Array.isArray(items) ? items : []);
 }
 
-const lineQty = (item) => parseFloat(item.qty ?? item.quantity) || 0;
+const lineQty = (/** @type {Rec} */ item) => parseFloat(item.qty ?? item.quantity) || 0;
 
 /**
  * Per-item shortfalls for sale lines against a given stock snapshot (pure).
@@ -107,8 +108,8 @@ const lineQty = (item) => parseFloat(item.qty ?? item.quantity) || 0;
  * so quantities are aggregated per item before comparing.
  *
  * @param {Array<{itemId?: string, name?: string, qty?: number, quantity?: number}>} saleItems
- * @param {{items?: Array<Object>, stock?: Object, stockReady?: boolean}} snapshot
- * @param {Array<Object>} [credit] - lines already deducted from `stock` (the
+ * @param {{items?: Array<Rec>, stock?: Rec, stockReady?: boolean}} snapshot
+ * @param {Array<Rec>} [credit] - lines already deducted from `stock` (the
  *   saved copy of a bill being edited); their quantities count as available
  * @returns {Array<{key: string, name: string, requested: number, available: number, shortfall: number}>}
  */
@@ -169,9 +170,9 @@ export function computeShortfallsFrom(saleItems, { items = [], stock = {}, stock
  */
 export function computeStockShortfalls(saleItems) {
     return computeShortfallsFrom(saleItems, {
-        items: AppState.items || [],
-        stock: AppState.stock || {},
-        stockReady: AppState.stockReady,
+        items: /** @type {Rec} */ (AppState).items || [],
+        stock: /** @type {Rec} */ (AppState).stock || {},
+        stockReady: /** @type {Rec} */ (AppState).stockReady,
     }).map(({ name, requested, available, shortfall }) => ({ name, requested, available, shortfall }));
 }
 
@@ -201,16 +202,17 @@ export function formatShortfallMessage(shortfalls) {
  * adjustment with a quantity > 0 (opening stock counts). An item that was only
  * ever sold has never had its stock set, so "low stock" and "sold more than
  * stock" mean nothing for it yet. Opening records (old-app dues) carry no goods.
- * @param {{purchases?: Array, stockAdjustments?: Array}} sources
- * @param {Array<Object>} [items] catalogue
+ * @param {{purchases?: Array<Rec>, stockAdjustments?: Array<Rec>}} sources
+ * @param {Array<Rec>} [items] catalogue
  * @returns {Map<string, number>} stock key → earliest time (ms)
  */
 export function firstStockTimes({ purchases = [], stockAdjustments = [] } = {}, items = []) {
     const catalogue = Array.isArray(items) ? items : [];
+    /** @type {Map<string, number>} */
     const out = new Map();
-    const note = (key, t) => {
+    const note = (/** @type {string} */ key, /** @type {number} */ t) => {
         const ms = Number.isFinite(t) ? t : -Infinity;
-        if (!out.has(key) || ms < out.get(key)) out.set(key, ms);
+        if (!out.has(key) || ms < /** @type {number} */ (out.get(key))) out.set(key, ms);
     };
     (purchases || []).forEach(bill => {
         if (!isActiveBill(bill) || bill.openingBalance) return;
@@ -230,9 +232,9 @@ export function firstStockTimes({ purchases = [], stockAdjustments = [] } = {}, 
  * Stock keys of items that have ever had stock (see firstStockTimes). Items with
  * stock on hand or a cost in `stock` count too: their purchase may be older
  * than the history loaded on this device.
- * @param {{purchases?: Array, stockAdjustments?: Array}} sources
- * @param {Array<Object>} [items]
- * @param {Object} [stock] AppState.stock
+ * @param {{purchases?: Array<Rec>, stockAdjustments?: Array<Rec>}} sources
+ * @param {Array<Rec>} [items]
+ * @param {Rec} [stock] AppState.stock
  * @returns {Set<string>}
  */
 export function stockedItemKeys(sources, items = [], stock = {}) {
@@ -248,7 +250,7 @@ export const DEFAULT_LOW_STOCK_KG = 10;
 /**
  * An item's low-stock level (kg, S-LOW): its own `lowStockKg` (0 = never alert),
  * else the default.
- * @param {?Object} item
+ * @param {?Rec} item
  * @param {number} [fallback]
  * @returns {number}
  */
@@ -262,14 +264,15 @@ export function lowStockLevel(item, fallback = DEFAULT_LOW_STOCK_KG) {
  * point and is now below their level (lowStockLevel; `threshold` is the default
  * level), named in the app language. Stock buckets that match no catalogue item
  * are left out (no raw ids on screen).
- * @param {Object} stock AppState.stock ({ [key]: { quantity } })
- * @param {Array<Object>} items catalogue
+ * @param {Rec} stock AppState.stock ({ [key]: { quantity } })
+ * @param {Array<Rec>} items catalogue
  * @param {Set<string>} stocked from stockedItemKeys()
  * @param {{lang?: string, threshold?: number}} [opts]
  * @returns {Array<{key: string, name: string, quantity: number, level: number}>} lowest first
  */
 export function lowStockItems(stock, items, stocked, { lang = 'en', threshold = DEFAULT_LOW_STOCK_KG } = {}) {
     const catalogue = Array.isArray(items) ? items : [];
+    /** @type {Array<{key: string, name: string, quantity: number, level: number}>} */
     const out = [];
     Object.entries(stock || {}).forEach(([key, data]) => {
         const item = catalogue.find(i => i.id === key)

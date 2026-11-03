@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Items-page rate series (#65): after the one-time bill history
  * (cutoff = rateStats/_meta.backfillAt), the rate line of an item comes from
@@ -18,24 +19,30 @@ export const BASE_RATE_INDEX = 0;
 export const ITEM_RATE_KINDS = ['purchase', 'wholesale', 'retail'];
 
 const DAY_MS = 86400000;
-const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+/** @typedef {Array<{at: number, rate: ?number}>} RateSteps */
 
-const cleanList = (list) => (Array.isArray(list) ? list : [])
+const round2 = (/** @type {*} */ n) => Math.round((Number(n) || 0) * 100) / 100;
+
+const cleanList = (/** @type {*} */ list) => (Array.isArray(list) ? list : [])
     .map(Number)
     .filter(r => Number.isFinite(r) && r > 0);
 
-const rateOrNull = (v) => {
+const rateOrNull = (/** @type {*} */ v) => {
     const n = Number(v);
     return v !== null && v !== undefined && v !== '' && Number.isFinite(n) && n > 0 ? n : null;
 };
 
-/** The Items-page (base) rate of a rate list, or null when the list has none. */
+/**
+ * The Items-page (base) rate of a rate list, or null when the list has none.
+ * @param {*} list
+ * @returns {?number}
+ */
 export function baseRate(list) {
     const clean = cleanList(list);
     return clean.length > BASE_RATE_INDEX ? clean[BASE_RATE_INDEX] : (clean.length ? clean[0] : null);
 }
 
-const seqOf = (e) => {
+const seqOf = (/** @type {?Rec} */ e) => {
     const m = /_(\d+)$/.exec(String(e?.id || ''));
     return m ? Number(m[1]) : 0;
 };
@@ -45,6 +52,9 @@ const seqOf = (e) => {
  * stored list position when it still holds the entry's new value; older
  * entries without a position fall back to the first equal value, and a
  * removed rate without a position goes back at the end.
+ * @param {Array<?number>} list
+ * @param {Rec} entry
+ * @returns {Array<?number>}
  */
 function undoEntry(list, entry) {
     const oldRate = rateOrNull(entry.old);
@@ -69,10 +79,10 @@ function undoEntry(list, entry) {
 /**
  * Step series of the base rate of one rate type: rebuilt backwards from the
  * item's current list through its history entries (newest first).
- * @param {Array<number>} currentList the item's rate list today
+ * @param {*} currentList the item's rate list today
  * @param {Array<{field: string, old: *, new: *, at: number, id?: string}>} entries rateHistory entries (any fields)
  * @param {'purchase'|'wholesale'|'retail'} kind
- * @returns {Array<{at: number, rate: ?number}>} ascending; the first step has at = -Infinity
+ * @returns {RateSteps} ascending; the first step has at = -Infinity
  */
 export function rateSteps(currentList, entries, kind) {
     const own = (entries || [])
@@ -80,6 +90,7 @@ export function rateSteps(currentList, entries, kind) {
         .slice()
         .sort((a, b) => (Number(b.at) - Number(a.at)) || (seqOf(b) - seqOf(a)));
     let list = (Array.isArray(currentList) ? currentList : []).map(rateOrNull);
+    /** @type {RateSteps} */
     const back = [];
     own.forEach(e => {
         const at = Number(e.at);
@@ -93,7 +104,12 @@ export function rateSteps(currentList, entries, kind) {
     return steps;
 }
 
-/** Rate in effect just before `ms`. */
+/**
+ * Rate in effect just before `ms`.
+ * @param {?RateSteps|undefined} steps
+ * @param {number} ms
+ * @returns {?number}
+ */
 export function rateAt(steps, ms) {
     let rate = null;
     for (const s of steps || []) {
@@ -106,6 +122,9 @@ export function rateAt(steps, ms) {
 /**
  * One value per IST day from the day of `fromMs` to the day of `toMs`: the
  * rate in effect at the end of that day (the last change of the day wins).
+ * @param {RateSteps} steps
+ * @param {number} fromMs
+ * @param {number} toMs
  * @returns {Array<{day: string, rate: ?number}>}
  */
 export function dailyRates(steps, fromMs, toMs) {
@@ -117,16 +136,25 @@ export function dailyRates(steps, fromMs, toMs) {
     return out;
 }
 
-/** Average of the daily rates per group (days without a rate are left out). */
+/**
+ * Average of the daily rates per group (days without a rate are left out).
+ * @param {RateSteps} steps
+ * @param {number} fromMs
+ * @param {number} toMs
+ * @param {(day: string) => string} groupOf
+ * @returns {Object<string, number>}
+ */
 function averageBy(steps, fromMs, toMs, groupOf) {
+    /** @type {Object<string, {total: number, days: number}>} */
     const sums = {};
     dailyRates(steps, fromMs, toMs).forEach(d => {
         if (d.rate === null) return;
         const g = groupOf(d.day);
         const s = sums[g] || (sums[g] = { total: 0, days: 0 });
-        s.total += d.rate;
+        s.total += /** @type {number} */ (d.rate);
         s.days += 1;
     });
+    /** @type {Object<string, number>} */
     const out = {};
     Object.keys(sums).forEach(g => { out[g] = round2(sums[g].total / sums[g].days); });
     return out;
@@ -135,6 +163,9 @@ function averageBy(steps, fromMs, toMs, groupOf) {
 /**
  * Monthly Items-page rate: average of the daily rates of the month's days in
  * [fromMs, toMs] (days without a rate are left out).
+ * @param {RateSteps} steps
+ * @param {number} fromMs
+ * @param {number} toMs
  * @returns {Object.<string, number>} 'YYYY-MM' -> ₹/kg
  */
 export function monthlyStepAverage(steps, fromMs, toMs) {
@@ -144,6 +175,9 @@ export function monthlyStepAverage(steps, fromMs, toMs) {
 /**
  * Weekly Items-page rate: average of the daily rates of the IST week's
  * (Monday–Sunday) days in [fromMs, toMs].
+ * @param {RateSteps} steps
+ * @param {number} fromMs
+ * @param {number} toMs
  * @returns {Object.<string, number>} Monday 'YYYY-MM-DD' -> ₹/kg
  */
 export function weeklyStepAverage(steps, fromMs, toMs) {
@@ -152,14 +186,15 @@ export function weeklyStepAverage(steps, fromMs, toMs) {
 
 /**
  * Items-page series of one item for every rate type, from the cutoff to now.
- * @param {Object} item catalogue item (rates, wholesaleRates, saleRates)
- * @param {Array<Object>} entries rateHistory entries newer than the cutoff ([] when unreadable)
+ * @param {Rec} item catalogue item (rates, wholesaleRates, saleRates)
+ * @param {?Array<{field: string, old: *, new: *, at: number, id?: string}>} entries rateHistory entries newer than the cutoff ([] when unreadable)
  * @param {{cutoffMs: number, now: number}} opts
- * @returns {Object.<string, {steps: Array, monthly: Object.<string, number>, weekly: Object.<string, number>, current: ?number}>}
+ * @returns {Object.<string, {steps: RateSteps, monthly: Object.<string, number>, weekly: Object.<string, number>, current: ?number}>}
  */
 export function itemRateSeries(item, entries, { cutoffMs, now }) {
+    /** @type {ReturnType<typeof itemRateSeries>} */
     const out = {};
-    ITEM_RATE_KINDS.forEach(kind => {
+    /** @type {Array<'purchase'|'wholesale'|'retail'>} */ (ITEM_RATE_KINDS).forEach(kind => {
         const list = item?.[RATE_FIELDS[kind]];
         const steps = rateSteps(list, (entries || []).filter(e => Number(e.at) > cutoffMs), kind);
         out[kind] = {
@@ -174,9 +209,11 @@ export function itemRateSeries(item, entries, { cutoffMs, now }) {
 
 /**
  * Base-rate changes after the cutoff, newest first, for the table view.
+ * @param {?ReturnType<typeof itemRateSeries>|undefined} series
  * @returns {Array<{at: number, kind: string, from: ?number, to: ?number}>}
  */
 export function rateChangeRows(series) {
+    /** @type {Array<{at: number, kind: string, from: ?number, to: ?number}>} */
     const rows = [];
     ITEM_RATE_KINDS.forEach(kind => {
         const steps = series?.[kind]?.steps || [];
@@ -185,19 +222,29 @@ export function rateChangeRows(series) {
     return rows.sort((a, b) => b.at - a.at);
 }
 
-/** IST month of the cutoff, or null before the history is built. */
+/**
+ * IST month of the cutoff, or null before the history is built.
+ * @param {*} cutoffMs
+ * @returns {?string}
+ */
 export function cutoffMonth(cutoffMs) {
     return Number(cutoffMs) > 0 ? istMonthKey(Number(cutoffMs)) : null;
 }
 
-/** IST week (Monday) of the cutoff, or null before the history is built. */
+/**
+ * IST week (Monday) of the cutoff, or null before the history is built.
+ * @param {*} cutoffMs
+ * @returns {?string}
+ */
 export function cutoffWeek(cutoffMs) {
     return Number(cutoffMs) > 0 ? istWeekStart(Number(cutoffMs)) : null;
 }
 
 /**
  * Merges cached and newly read history entries (by id), newest first.
- * @returns {Array<Object>}
+ * @param {?Array<Rec>|undefined} cached
+ * @param {?Array<Rec>|undefined} fresh
+ * @returns {Array<Rec>}
  */
 export function mergeHistoryEntries(cached, fresh) {
     const byId = new Map();
