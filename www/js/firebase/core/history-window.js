@@ -344,10 +344,11 @@ export function prepareStockRecord(collKey, record, isNew) {
 /**
  * One-shot fetch of history older than the loaded window (target 0 = all
  * history, unfiltered so legacy docs without `timestamp` are included).
- * Collections are read one after another (see getWithRetry).
+ * Collections are read one after another (see getWithRetry). `readFull(spec)` (the checkpoint
+ * rebuild, #159) may read a collection of a full fetch instead (null: read it here).
  * @private
  */
-export async function extendHistory(target) {
+export async function extendHistory(target, readFull = null) {
     const ws = S.windowState;
     if (!ws) return;
     const gen = S.sessionGen;
@@ -367,7 +368,8 @@ export async function extendHistory(target) {
             // A retry needs a distinct watch target; a huge limit keeps the results identical.
             return attempt ? q.limit(RETRY_LIMIT_BASE + attempt) : q;
         };
-        snaps.push(await getWithRetry(makeQuery, `${spec.label} history`).catch(err => {
+        const read = () => getWithRetry(makeQuery, `${spec.label} history`);
+        snaps.push(await (full && readFull ? readFull(spec).then(s => s ?? read()) : read()).catch(err => {
             if (spec.optional) {
                 console.error(`${spec.label} history fetch error:`, err);
                 return null;
@@ -392,12 +394,14 @@ export async function extendHistory(target) {
         if (full && fresh) ws.backfills[c.spec.key] = backfillLegacyTimestamps(c.spec, snap.docs);
         publishCollection(c);
     });
+    // Pages read by an earlier, interrupted rebuild are as old as their first read
+    const readAt = Math.min(...snaps.map(s => s?.readAt ?? Infinity));
     if (fromServer) {
-        if (!S.onDemandAsOf) S.onDemandAsOf = Date.now();
+        if (!S.onDemandAsOf) S.onDemandAsOf = Math.min(Date.now(), readAt);
         if (full) {
             AppState.historyLoadedFrom = 0;
             ws.rawFull = true;
-            S.fullHistoryFetchedAt = startedAt;
+            S.fullHistoryFetchedAt = Math.min(startedAt, readAt);
         } else if (AppState.historyLoadedFrom !== 0 && target < AppState.historyLoadedFrom) {
             AppState.historyLoadedFrom = target;
         }
@@ -464,7 +468,7 @@ export async function refreshOnDemand() {
 }
 
 /** force: always do a fresh read (checkpoint rebuild must not reuse in-session data). */
-export function queueExtend(target, raw = false, force = false) {
+export function queueExtend(target, raw = false, force = false, readFull = null) {
     const covered = () => !S.windowState || (!force && (raw
         ? S.windowState.rawFull
         : AppState.historyLoadedFrom === 0 || (target > 0 && target >= AppState.historyLoadedFrom)));
@@ -472,7 +476,7 @@ export function queueExtend(target, raw = false, force = false) {
     const key = force ? `force:${++S.forcedExtends}` : `${raw ? 'raw' : 'w'}:${target}`;
     if (pendingExtends.has(key)) return pendingExtends.get(key);
     const gen = S.sessionGen;
-    const p = S.extendQueue.then(() => (gen === S.sessionGen && !covered() ? extendHistory(target) : undefined));
+    const p = S.extendQueue.then(() => (gen === S.sessionGen && !covered() ? extendHistory(target, readFull) : undefined));
     S.extendQueue = p.catch(() => {});
     pendingExtends.set(key, p);
     const clear = () => {

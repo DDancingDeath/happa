@@ -37,6 +37,21 @@ shop has about 45 items, and building the list is instant at that size. Revisit
 only if the item list grows past a few hundred: then add a search box first and
 cap the list after it.
 
+## Start-up with all history in the phone's cache (#59)
+
+The benchmark (3-year shop, 4x slower CPU) shows the app in ~9 s once the stock
+checkpoint is stored, against ~6 s before it is. Timing marks of one reopen (local, ms):
+the checkpoint is read by 1,200; the cached first snapshots of the window and dues
+listeners then arrive one after another until ~6,500 (the three retail-sales queries
+alone take ~3 s), and the server snapshots by ~8,900. The rebuild's full read leaves
+every history document in the Firestore cache, and the compat SDK answers each listener
+from the cache by scanning the cached documents of its collection, so each of the ~17
+start-up queries costs time in proportion to the whole history. No cheap fix that keeps
+the first screen the same was found: a shorter cache wait shows older data first, and
+cache indexes (`enablePersistentCacheIndexAutoCreation`) need the modular SDK. Options
+for later: fewer queries per bill collection (the `paidAt` and pinned ones scan the
+whole collection even when empty), or leaving old history out of the cache.
+
 ## Regressions
 
 - Reads: the E2E smoke fails a page that reads more than its baseline + 25 % (at

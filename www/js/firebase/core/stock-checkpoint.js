@@ -26,6 +26,7 @@ import { currentSources, hasDue, queueExtend } from './history-window.js';
 import { dueVisibleToQueries } from './legacy-scan.js';
 import { tip } from '../../tip/index.js';
 import { checkpointProps } from '../../tip/scenarios/stock-checkpoint.js';
+import { dropRebuildProgress, openRebuildProgress } from './rebuild-progress.js';
 import { FirebaseService } from '../firestore-service.js';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -464,11 +465,17 @@ export async function rebuildCheckpointNow(gen) {
         }
         throw e;
     }
+    if (lease === 'fresh') dropRebuildProgress(AppState.currentUser?.uid || 'anon');
     if (lease !== 'acquired') return { status: lease };
     let result = { status: 'failed' };
+    // An earlier rebuild cut short on this phone carries on where it stopped (#159)
+    const progress = openRebuildProgress({
+        uid: AppState.currentUser?.uid || 'anon', staleCount: baseStaleCount,
+        windowStart: defaultWindowStart(Date.now()), alive: () => gen === S.sessionGen
+    });
     try {
-        // Always a fresh full server read: in-session copies may be stale.
-        await queueExtend(0, true, true);
+        // A full server read (pages an interrupted rebuild read come from this phone's cache): in-session copies may be stale.
+        await queueExtend(0, true, true, progress.readCollection);
         const ws = S.windowState;
         if (gen !== S.sessionGen || !ws) return (result = { status: 'cancelled' });
         if (!ws.rawFull || HISTORY_COLLECTIONS.some(s => s.stock && !ws.colls[s.key].live.server)) {
@@ -517,6 +524,7 @@ export async function rebuildCheckpointNow(gen) {
         }
         throw e;
     } finally {
+        if (result.status === 'built' || result.status === 'conflict') progress.clear();
         if (result.status !== 'built') {
             leaseReleases.set(result, db.runTransaction(async tx => {
                 const snap = await tx.get(ref);
