@@ -2157,25 +2157,30 @@ function defineSuite(prefix) {
             text: { userId: 'manager1', total: 100, payment: { due: '100' }, timestamp: 1, openDue: true, clientVersion: 3 },
             nullDue: { userId: 'manager1', total: 100, payment: { due: null }, dueAmount: 100, timestamp: 1, openDue: true, clientVersion: 3 }
         };
+        // out of the window (a member on another's bill), and inside it (member own bill, manager)
+        const cases = [['staff1', {}], ['staff1', { userId: 'staff1', createdAt: savedAgo(HOUR) }],
+            ['manager1', { userId: 'staff1', createdAt: savedAgo(HOUR) }]];
         for (const coll of bills) {
-            for (const [id, write] of [
-                ['top', { cleared: true, clearedBy: 'staff1', clientVersion: 3 }],
-                ['top', { cleared: true, openDue: false, clientVersion: 3 }],
-                ['top', { openDue: false, clientVersion: 3 }],
-                ['derived', { cleared: true, clearedBy: 'staff1', clientVersion: 3 }],
-                ['derived', { cleared: true, openDue: false, clientVersion: 3 }],
-                ['derived', { openDue: false, clientVersion: 3 }],
-                ['paid', { openDue: false, clientVersion: 3 }],
-                ['text', { cleared: true, openDue: false, clientVersion: 3 }],
-                ['text', { openDue: false, clientVersion: 3 }],
-                ['nullDue', { cleared: true, openDue: false, clientVersion: 3 }],
-                ['nullDue', { openDue: false, clientVersion: 3 }]
-            ]) {
-                await seedBill(coll, id, legacy[id]);
-                try {
-                    await assertFails(as('staff1').collection(coll).doc(id).update(write));
-                } catch (e) {
-                    allowed.push(`${coll} ${id}: ${JSON.stringify(write)}`);
+            for (const [uid, extra] of cases) {
+                for (const [id, write] of [
+                    ['top', { cleared: true, clearedBy: uid, clientVersion: 3 }],
+                    ['top', { cleared: true, openDue: false, clientVersion: 3 }],
+                    ['top', { openDue: false, clientVersion: 3 }],
+                    ['derived', { cleared: true, clearedBy: uid, clientVersion: 3 }],
+                    ['derived', { cleared: true, openDue: false, clientVersion: 3 }],
+                    ['derived', { openDue: false, clientVersion: 3 }],
+                    ['paid', { openDue: false, clientVersion: 3 }],
+                    ['text', { cleared: true, openDue: false, clientVersion: 3 }],
+                    ['text', { openDue: false, clientVersion: 3 }],
+                    ['nullDue', { cleared: true, openDue: false, clientVersion: 3 }],
+                    ['nullDue', { openDue: false, clientVersion: 3 }]
+                ]) {
+                    await seedBill(coll, id, { ...legacy[id], ...extra });
+                    try {
+                        await assertFails(as(uid).collection(coll).doc(id).update(write));
+                    } catch (e) {
+                        allowed.push(`${coll} ${uid} ${extra.createdAt ? 'in window' : 'out of window'} ${id}: ${JSON.stringify(write)}`);
+                    }
                 }
             }
             await seedBill(coll, 'top', legacy.top);
