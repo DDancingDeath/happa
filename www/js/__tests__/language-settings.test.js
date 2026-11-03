@@ -11,9 +11,12 @@ import { AppState } from '../utils/state.js';
 import { setLang, getLang, applyTranslations, resetLangForTests, LANG_STORAGE_KEY } from '../i18n/index.js';
 import en from '../i18n/en.js';
 import hi from '../i18n/hi.js';
+import { installActions } from '../ui/actions.js';
 
 const template = (name) => fs.readFileSync(path.join(__dirname, '../../templates', `${name}.html`), 'utf8');
 
+// Buttons are data-on* attributes (#89), run by the delegated dispatcher
+beforeAll(() => installActions(document));
 beforeEach(() => {
     localStorage.clear();
     resetLangForTests();
@@ -34,7 +37,7 @@ describe('side menu', () => {
         expect(header).not.toBeNull();
         expect(header.querySelector('[data-lang-option], #navLangToggle, .nav-lang-toggle')).toBeNull();
         expect(header.textContent).not.toMatch(/हिंदी|English/);
-        expect(document.querySelector('[onclick*="i18n"]')).toBeNull();
+        expect(document.querySelector('[onclick*="i18n"], [data-onclick*="i18n"]')).toBeNull();
     });
 });
 
@@ -62,7 +65,7 @@ describe('Settings language row', () => {
         RolesAccessManager.render();
         applyTranslations(document);
 
-        const settingsLink = document.querySelector('.nav-menu a[onclick*="showTab(\'settings\'"]');
+        const settingsLink = document.querySelector('.nav-menu a[data-onclick*="showTab(\'settings\'"]');
         expect(visible(settingsLink)).toBe(true);
         const card = document.getElementById('languageSettingsCard');
         expect(visible(card)).toBe(true);

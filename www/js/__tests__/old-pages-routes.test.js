@@ -29,10 +29,10 @@ beforeEach(() => {
     AppState.settings = {};
     document.body.innerHTML = `
         <div class="side-nav"><nav class="nav-menu">
-            <a href="#" onclick="window.app.nav.showTab('billing', event)">Billing</a>
-            <a href="#" onclick="window.app.nav.showTab('money', event)">Money</a>
-            <a href="#" onclick="window.app.nav.showTab('insights', event)">Insights</a>
-            <a href="#" onclick="window.app.nav.showTab('statements', event)">Statements</a>
+            <a href="#" data-onclick="nav.showTab('billing', event)">Billing</a>
+            <a href="#" data-onclick="nav.showTab('money', event)">Money</a>
+            <a href="#" data-onclick="nav.showTab('insights', event)">Insights</a>
+            <a href="#" data-onclick="nav.showTab('statements', event)">Statements</a>
         </nav></div>
         <div class="overlay"></div>
         <div class="tab" id="billing"></div>

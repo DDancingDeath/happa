@@ -11,11 +11,9 @@
     "js/modules/roles-access.js": 1,
     "js/modules/settings.js": 1,
     "js/modules/wholesale-sales.js": 8,
-    "templates/auth.html": 12,
     "templates/billing.html": 42,
     "templates/items.html": 9,
     "templates/modals.html": 20,
-    "templates/navigation.html": 34,
     "templates/settings.html": 44,
     "templates/wholesale-sales.html": 23
   }

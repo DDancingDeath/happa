@@ -345,7 +345,7 @@ describe('wrong-try backoff, show password, Enter (#105)', () => {
             const form = $(id).closest('form');
             expect(form).not.toBeNull();
             expect(form.querySelector('button[type="submit"]')).not.toBeNull();
-            expect(form.getAttribute('onsubmit')).toMatch(/return false/);
+            expect(form.getAttribute('data-onsubmit')).toMatch(/return false/);
         });
     });
 });

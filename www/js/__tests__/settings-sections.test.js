@@ -203,7 +203,7 @@ describe('Settings page sections (jsdom)', () => {
 
 describe('old routes still work', () => {
     beforeEach(() => {
-        document.body.innerHTML = '<div id="settings" class="tab"></div><div id="admin" class="tab"></div><nav class="nav-menu"><a onclick="window.app.nav.showTab(\'settings\', event)"></a></nav>';
+        document.body.innerHTML = '<div id="settings" class="tab"></div><div id="admin" class="tab"></div><nav class="nav-menu"><a data-onclick="nav.showTab(\'settings\', event)"></a></nav>';
         window.app = { settings: { load: jest.fn() } };
         AppState.userRole = 'owner';
         jest.useFakeTimers();
@@ -248,7 +248,7 @@ describe('the business is called Aadhat (internal id stays shop)', () => {
         applyTranslations(document);
         const btn = document.querySelector('[data-biz-btn="shop"]');
         expect(btn.textContent).toContain('Aadhat');
-        expect(btn.getAttribute('onclick')).toContain("set('shop')");
+        expect(btn.getAttribute('data-onclick')).toContain("set('shop')");
         setLang('hi');
         applyTranslations(document);
         expect(btn.textContent).toContain('आढ़त');
