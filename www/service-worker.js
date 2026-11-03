@@ -47,6 +47,7 @@ const STATIC_ASSETS = [
     '/js/firebase/repos/reminders.js',
     '/js/firebase/repos/bill-edit.js',
     '/js/firebase/repos/bill-fields.js',
+    '/js/firebase/repos/bill-due.js',
     '/js/firebase/repos/bill-payments.js',
     '/js/firebase/repos/bill-save.js',
     '/js/firebase/repos/bill-stats.js',

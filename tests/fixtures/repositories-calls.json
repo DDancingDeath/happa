@@ -5336,6 +5336,7 @@
         "timestamp": 1792540800000,
         "clientVersion": 5,
         "openDue": false,
+        "dueAmount": 0,
         "id": "auto000002",
         "createdAt": "SERVER_TIME"
       }
@@ -5395,6 +5396,7 @@
         "timestamp": 1792540800000,
         "clientVersion": 5,
         "openDue": true,
+        "dueAmount": 70,
         "id": "auto000003",
         "createdAt": "SERVER_TIME"
       }
@@ -5851,6 +5853,7 @@
         "timestamp": 1792540800000,
         "clientVersion": 5,
         "openDue": false,
+        "dueAmount": 0,
         "id": "auto000001",
         "createdAt": "SERVER_TIME"
       }
@@ -5930,6 +5933,7 @@
         "timestamp": 1792540800000,
         "clientVersion": 5,
         "openDue": false,
+        "dueAmount": 0,
         "createdAt": "SERVER_TIME",
         "editCount": 1
       }

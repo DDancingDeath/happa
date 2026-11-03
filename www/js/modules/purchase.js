@@ -584,7 +584,7 @@ const PurchaseManager = {
         // Totals come from the items, never from the (rounded) text on screen
         const { billTotal, laborCharges, totalPackets, grandTotal } = this.computeTotals();
         const split = this.readPaymentSplit();
-        const { online: onlinePayment, cash: cashPayment, due: dueAmount } = split;
+        const { online: onlinePayment, cash: cashPayment } = split;
         const customerName = Helpers.getInputText('customerName');
         const comments = Helpers.getInputText('billComments');
         const printComments = document.getElementById('billPrintComments')?.checked || false;
@@ -638,7 +638,6 @@ const PurchaseManager = {
                 amountPayable: grandTotal,
                 onlinePayment,
                 cashPayment,
-                dueAmount,
                 customerName,
                 comments,
                 printComments,

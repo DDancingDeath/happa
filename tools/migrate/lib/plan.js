@@ -15,6 +15,7 @@ import { buildRateStatsDocs, rateStatsMeta } from './rate-stats.js';
 import { personalDayKey, personalDaysFromRows, PERSONAL_COLLECTION, PERSONAL_DAYS_COLLECTION } from '../../../www/js/utils/personal-expenses.js';
 import { PER_USER_COLLECTIONS, serviceAccountUids } from './service-accounts.js';
 import { buildTeamDirectory } from '../../../www/js/utils/team-directory.js';
+import { withCanonicalDue } from '../../../www/js/firebase/repos/bill-due.js';
 
 export const BUNDLE_FORMAT = 'aadhat-migration-bundle-v1';
 export const OLD_PROJECT_ID = 'aadhat-management';
@@ -139,7 +140,6 @@ function openingDoc({ billType, kind, entry, party, src, cutoff, fromProject, wa
         total: 0,
         cashPayment: 0,
         onlinePayment: 0,
-        dueAmount: amount,
         payment: { cash: 0, online: 0, due: amount, total: 0 },
         openDue: true,
         cleared: false,
@@ -153,7 +153,7 @@ function openingDoc({ billType, kind, entry, party, src, cutoff, fromProject, wa
     if (phone) doc.customerPhone = phone;
     if (billType === 'wholesale') doc.source = 'sales-tab';
     if (billType === 'purchase' && src.supplierName) doc.supplierName = src.supplierName;
-    return { coll: BILL_COLLS[billType], id: `opening-${billType}-${src.__docId}`, data: doc };
+    return { coll: BILL_COLLS[billType], id: `opening-${billType}-${src.__docId}`, data: withCanonicalDue(doc, null, { full: true }) };
 }
 
 /** Open bills of one page, grouped and aged exactly as that page does. */

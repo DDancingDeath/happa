@@ -70,10 +70,12 @@ and is wrapped in **Capacitor** for Android distribution.
    changes the app (section 5, "CI"). Lockfiles must resolve from
    `https://registry.npmjs.org` only: after `npm install` behind a private feed
    (`.npmrc`), run `node scripts/check-lockfile.js --fix` before committing.
-6. **Money-related changes get extra care.** Bills mix top-level
-   `dueAmount` with nested `payment.due`. Both can drift; both must be
-   read/written — use `readPayment()` / `round2()` from
-   `www/js/utils/money.js`. Multi-device updates to the same document
+6. **Money-related changes get extra care.** A bill's one stored due is
+   `payment.due` (#126). Set only `payment.due`: the legacy top-level
+   `dueAmount` mirror is written by `withCanonicalDue()`
+   (`www/js/firebase/repos/bill-due.js`) on every bill write of the
+   repositories; read a due with `readPayment()` / `outstandingDue()` and
+   round with `round2()` (`www/js/utils/money.js`). Multi-device updates to the same document
    (payments, cash sessions, counters) must use transactions, `arrayUnion`
    or `FieldValue.increment`, never read-modify-write of the whole doc.
 7. **No secrets in the repo.** API keys belong in Firebase Functions config
@@ -224,9 +226,12 @@ In order:
 - **Money and weight text (#129)**: write ₹ only through `formatRupees()` / `formatRate()` /
   `formatAmount()` and kg through `formatKg()` (`utils/money.js`; calculations.md MONEY-TEXT,
   KG-TEXT). An inline `₹${…}` or `'₹' +` in `www/js` fails `check:review` and `review-rules.test.js`.
-- **Money fields**: bills sometimes store `dueAmount` at top level *and*
-  `payment.due` inside a nested object. Both can exist; both can drift.
-  Read both, write both, treat the nested one as canonical when present.
+- **Money fields**: `payment.due` is a bill's one stored due (#126). Older
+  bills may also (or only) carry a top-level `dueAmount`, a legacy `due` or
+  only `amountPaid`: `readPayment()` reads every shape (BILL-PAY). Writers set
+  `payment.due` only; `withCanonicalDue()` (`firebase/repos/bill-due.js`) writes
+  the `dueAmount` mirror, and the review rule `due-amount-vs-payment-due-drift`
+  blocks any other `dueAmount` write.
 - **One tap = one write (#70, #95)**: every button that saves money or stock
   runs its write through `Helpers.runExclusive(key, buttonSelector, fn)`, which
   ignores a second tap and disables the buttons (`aria-busy`) until the save

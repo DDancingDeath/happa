@@ -24,6 +24,10 @@ import { Helpers } from '../utils/helpers.js';
 import { AppState } from '../utils/state.js';
 import { buildDraftShareText } from '../utils/bill-share.js';
 import { sampleItems } from '../../../tests/fixtures/sample-items.js';
+import { withCanonicalDue } from '../firebase/repos/bill-due.js';
+
+/** The repository's part of a new bill's save: the dueAmount mirror of payment.due (repos/bill-due.js). */
+const asSaved = (b) => withCanonicalDue(b, null, { full: true });
 
 const PURCHASE_DOM = `
   <select id="billItem"><option value=""></option><option value="0">Rice</option><option value="1">Wheat</option></select>
@@ -123,7 +127,7 @@ describe('purchase form', () => {
     let savePurchase;
     beforeEach(() => {
         document.body.innerHTML = PURCHASE_DOM;
-        savePurchase = jest.spyOn(FirebaseService, 'savePurchase').mockResolvedValue(undefined);
+        savePurchase = jest.spyOn(FirebaseService, 'savePurchase').mockImplementation(async (b) => { asSaved(b); });
     });
 
     /** Rice 40 + 20.3 kg @ ₹25.50 (typed one by one), Wheat 12.4 kg @ ₹33.50 (left in the box). */
@@ -281,7 +285,7 @@ describe('retail sale form', () => {
     let saveRetailSale;
     beforeEach(() => {
         document.body.innerHTML = SALE_DOM;
-        saveRetailSale = jest.spyOn(FirebaseService, 'saveRetailSale').mockResolvedValue(undefined);
+        saveRetailSale = jest.spyOn(FirebaseService, 'saveRetailSale').mockImplementation(async (b) => { asSaved(b); });
         AppState.stock = { 'item-rice': { quantity: 500, rate: 30 }, 'item-wheat': { quantity: 500, rate: 24 } };
     });
 
@@ -413,7 +417,7 @@ describe('wholesale sale form', () => {
     let saveWholesaleSale;
     beforeEach(() => {
         document.body.innerHTML = WHOLESALE_DOM;
-        saveWholesaleSale = jest.spyOn(FirebaseService, 'saveWholesaleSale').mockResolvedValue(undefined);
+        saveWholesaleSale = jest.spyOn(FirebaseService, 'saveWholesaleSale').mockImplementation(async (b) => { asSaved(b); });
         // Both average costs known; tests that need an unknown cost (#102) remove Wheat's rate.
         AppState.stock = { 'item-rice': { quantity: 500, rate: 22.4 }, 'item-wheat': { quantity: 300, rate: 30 } };
     });

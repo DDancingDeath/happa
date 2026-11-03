@@ -505,7 +505,8 @@ export class OutstandingManager {
 
     /**
      * The one way to record a due payment (#98), used by Outstanding and the
-     * Cash tab: reduces the bill's due (payment.due + dueAmount + payments[])
+     * Cash tab: reduces the bill's due (payment.due + payments[]; the dueAmount mirror
+     * follows, repos/bill-due.js)
      * and, when a cash session is open today, adds the payment to it as a
      * drawer leg — all in one transaction.
      * @param {Object} args
@@ -703,8 +704,10 @@ export class OutstandingManager {
             // A retry of a payment that already reached the server: nothing to add (#70)
             if (entry?.id && entries.some(p => p && p.id === entry.id)) {
                 tipInfo.retried = true;
-                const current = { payment: fresh.payment, payments: entries, openDue: fresh.openDue };
-                if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) current.dueAmount = fresh.dueAmount;
+                // The stored payment state as it is, for this phone's copy (nothing is written)
+                const { dueAmount } = fresh;
+                const current = { payment: fresh.payment, payments: entries, openDue: fresh.openDue,
+                    ...(Object.prototype.hasOwnProperty.call(fresh, 'dueAmount') ? { dueAmount } : {}) };
                 return { result: current };
             }
 
@@ -1154,8 +1157,8 @@ export class OutstandingManager {
         return { settled, total: sumMoney(settled, s => s.amount) };
     }
     /**
-     * Write off the remaining due in one transaction: both due fields to 0,
-     * payment.writtenOff raised by the amount, and a payments[] entry
+     * Write off the remaining due in one transaction: payment.due to 0 (and its
+     * dueAmount mirror, repos/bill-due.js), payment.writtenOff raised by the amount, and a payments[] entry
      * { kind: 'writeOff', amount, reason, who, when } — never counted as money.
      * @returns {Promise<Object>} fields written
      */
@@ -1191,7 +1194,6 @@ export class OutstandingManager {
                 // A write-off is a bad debt of this period: phones keep loading the bill (#163).
                 update.paidAt = at;
             }
-            if (Object.prototype.hasOwnProperty.call(fresh, 'dueAmount')) update.dueAmount = 0;
             update.openDue = false;
             update.clientVersion = FirebaseService.CLIENT_VERSION;
             return { bill: update, result: update };
