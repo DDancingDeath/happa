@@ -8,10 +8,10 @@
                 <div class="card rt-card">
                     <div class="rt-controls">
                         <label><span data-i18n="ui.trends.item">Item</span>
-                            <select id="rtItem" onchange="window.app.rateTrends.selectItem(this.value)"></select>
+                            <select id="rtItem" data-onchange="rateTrends.selectItem(this.value)"></select>
                         </label>
                         <label><span data-i18n="ui.trends.months">Months</span>
-                            <select id="rtRange" onchange="window.app.rateTrends.setRange(this.value)">
+                            <select id="rtRange" data-onchange="rateTrends.setRange(this.value)">
                                 <option value="12" data-i18n="ui.trends.last_12">Last 12</option>
                                 <option value="24" selected data-i18n="ui.trends.last_24">Last 24</option>
                                 <option value="36" data-i18n="ui.trends.last_36">Last 36</option>
@@ -19,13 +19,13 @@
                             </select>
                         </label>
                         <label><span data-i18n="ui.trends.period">Weekly / monthly</span>
-                            <select id="rtPeriod" onchange="window.app.rateTrends.setPeriod(this.value)">
+                            <select id="rtPeriod" data-onchange="rateTrends.setPeriod(this.value)">
                                 <option value="week" selected data-i18n="ui.trends.weekly">Weekly</option>
                                 <option value="month" data-i18n="ui.trends.monthly">Monthly</option>
                             </select>
                         </label>
                         <label><span data-i18n="ui.trends.show">Show</span>
-                            <select id="rtView" onchange="window.app.rateTrends.setView(this.value)">
+                            <select id="rtView" data-onchange="rateTrends.setView(this.value)">
                                 <option value="chart" data-i18n="ui.trends.chart">Chart</option>
                                 <option value="table" data-i18n="ui.trends.table">Table</option>
                             </select>
@@ -37,7 +37,7 @@
                 <div class="card rt-card" id="rtOutlookCard">
                     <div class="rt-card-head">
                         <h3 data-i18n="ui.trends.next_weeks">🔮 Next weeks (estimate)</h3>
-                        <select id="rtWeeks" onchange="window.app.rateTrends.setWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks">
+                        <select id="rtWeeks" data-onchange="rateTrends.setWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks">
                             <option value="4" data-i18n="ui.trends.weeks_4">4 weeks</option>
                             <option value="6" selected data-i18n="ui.trends.weeks_6">6 weeks</option>
                             <option value="8" data-i18n="ui.trends.weeks_8">8 weeks</option>
@@ -71,7 +71,7 @@
                     <div class="card rt-card">
                         <div class="rt-card-head">
                             <h3 data-i18n="ui.trends.same_months">Same months in earlier years (from bills)</h3>
-                            <select id="rtCompareKind" onchange="window.app.rateTrends.setCompareKind(this.value)" aria-label="Rate" data-i18n-aria-label="ui.trends.rate">
+                            <select id="rtCompareKind" data-onchange="rateTrends.setCompareKind(this.value)" aria-label="Rate" data-i18n-aria-label="ui.trends.rate">
                                 <option value="purchase" data-i18n="ui.trends.purchase">Purchase</option>
                                 <option value="sale" data-i18n="ui.trends.sale">Sale</option>
                             </select>
@@ -96,7 +96,7 @@
                 <div class="card rt-card">
                     <div class="rt-controls">
                         <label><span data-i18n="ui.trends.month">Month</span>
-                            <select id="rtTrafficMonth" onchange="window.app.rateTrends.setTrafficMonth(this.value)"></select>
+                            <select id="rtTrafficMonth" data-onchange="rateTrends.setTrafficMonth(this.value)"></select>
                         </label>
                     </div>
                     <h3 class="rt-sub" data-i18n="ui.trends.traffic_title">Items moved in the month</h3>
@@ -107,7 +107,7 @@
                     <h3 data-i18n="ui.trends.within_month">Day by day in the month</h3>
                     <div class="rt-controls">
                         <label><span data-i18n="ui.trends.item">Item</span>
-                            <select id="rtTrafficItem" onchange="window.app.rateTrends.setTrafficItem(this.value)"></select>
+                            <select id="rtTrafficItem" data-onchange="rateTrends.setTrafficItem(this.value)"></select>
                         </label>
                     </div>
                     <div class="rt-table-wrap" id="rtDaily"></div>
@@ -115,7 +115,7 @@
                 <div class="card rt-card">
                     <div class="rt-card-head">
                         <h3 data-i18n="ui.trends.weekly_title">Week by week</h3>
-                        <select id="rtTrafficWeeks" onchange="window.app.rateTrends.setTrafficWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks"></select>
+                        <select id="rtTrafficWeeks" data-onchange="rateTrends.setTrafficWeeks(this.value)" aria-label="Weeks" data-i18n-aria-label="ui.trends.weeks"></select>
                     </div>
                     <div class="rt-table-wrap" id="rtWeekly"></div>
                     <div class="rt-muted" data-i18n="ui.trends.weekly_note">Weeks run Monday to Sunday. Each cell: kg (number of bills).</div>

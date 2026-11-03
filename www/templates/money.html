@@ -3,16 +3,16 @@
     <div class="ins-head">
         <h2 class="ins-title"><span aria-hidden="true">💰</span> <span data-i18n="ui.money.title">Money</span></h2>
         <div class="ins-tabs" role="tablist">
-            <button type="button" class="ins-tab active" data-money-section="profit" role="tab" onclick="window.app.money.setSection('profit')" data-i18n="ui.money.tab_profit">Profit</button>
-            <button type="button" class="ins-tab" data-money-section="cash" role="tab" onclick="window.app.money.setSection('cash')" data-i18n="ui.money.tab_cash">Cash</button>
-            <button type="button" class="ins-tab" data-money-section="spending" role="tab" onclick="window.app.money.setSection('spending')" data-i18n="ui.money.tab_spending">Spending</button>
-            <button type="button" class="ins-tab" data-money-section="worth" role="tab" onclick="window.app.money.setSection('worth')" data-i18n="ui.money.tab_worth">Worth</button>
+            <button type="button" class="ins-tab active" data-money-section="profit" role="tab" data-onclick="money.setSection('profit')" data-i18n="ui.money.tab_profit">Profit</button>
+            <button type="button" class="ins-tab" data-money-section="cash" role="tab" data-onclick="money.setSection('cash')" data-i18n="ui.money.tab_cash">Cash</button>
+            <button type="button" class="ins-tab" data-money-section="spending" role="tab" data-onclick="money.setSection('spending')" data-i18n="ui.money.tab_spending">Spending</button>
+            <button type="button" class="ins-tab" data-money-section="worth" role="tab" data-onclick="money.setSection('worth')" data-i18n="ui.money.tab_worth">Worth</button>
         </div>
         <div class="ins-period">
-            <button type="button" class="ins-step" onclick="window.app.money.step(-1)" aria-label="Earlier" data-i18n-aria-label="ui.money.earlier">‹</button>
+            <button type="button" class="ins-step" data-onclick="money.step(-1)" aria-label="Earlier" data-i18n-aria-label="ui.money.earlier">‹</button>
             <span class="ins-period-label" id="moneyPeriodLabel"></span>
-            <button type="button" class="ins-step" onclick="window.app.money.step(1)" aria-label="Later" data-i18n-aria-label="ui.money.later">›</button>
-            <select class="ins-preset" id="moneyPreset" onchange="window.app.money.setPreset(this.value)" aria-label="Period" data-i18n-aria-label="ui.money.period">
+            <button type="button" class="ins-step" data-onclick="money.step(1)" aria-label="Later" data-i18n-aria-label="ui.money.later">›</button>
+            <select class="ins-preset" id="moneyPreset" data-onchange="money.setPreset(this.value)" aria-label="Period" data-i18n-aria-label="ui.money.period">
                 <option value="this-month" data-i18n="ui.money.p_this_month">This month</option>
                 <option value="last-month" data-i18n="ui.money.p_last_month">Last month</option>
                 <option value="this-year" data-i18n="ui.money.p_this_year">This year</option>
@@ -111,7 +111,7 @@
                 <div class="ins-row ins-tap" data-breakdown="personal" role="button" tabindex="0"><span data-i18n="ui.money.personal_expenses">Personal expenses</span><span data-metric="M8" id="moneyPersonal">—</span></div>
                 <div class="ins-row ins-tap" data-breakdown="withdrawn" role="button" tabindex="0"><span data-i18n="ui.money.withdrawals">Withdrawals</span><span data-metric="M9" id="moneyWithdrawn">—</span></div>
                 <div class="ins-row ins-total ins-tap" data-perm="profit" data-breakdown="afterWithdrawals" role="button" tabindex="0"><span data-i18n="ui.money.kept">Kept in business</span><span data-metric="M10" id="moneyKept">—</span></div>
-                <button type="button" class="btn btn-primary ins-wide-btn" onclick="window.app.money.toggleWithdrawalForm()" data-i18n="ui.money.record_withdrawal">＋ Record withdrawal</button>
+                <button type="button" class="btn btn-primary ins-wide-btn" data-onclick="money.toggleWithdrawalForm()" data-i18n="ui.money.record_withdrawal">＋ Record withdrawal</button>
                 <div class="ins-form" id="moneyWithdrawalForm" hidden>
                     <label for="moneyWdAmount" data-i18n="ui.money.amount">Amount</label>
                     <input type="number" inputmode="decimal" id="moneyWdAmount" class="form-control">
@@ -122,7 +122,7 @@
                     <input type="text" id="moneyWdPurpose" class="form-control">
                     <label for="moneyWdDate" data-i18n="ui.money.date">Date</label>
                     <input type="date" id="moneyWdDate" class="form-control">
-                    <button type="button" class="btn btn-primary ins-wide-btn" data-withdrawal-save onclick="window.app.money.saveWithdrawal()" data-i18n="ui.money.save_withdrawal">Save withdrawal</button>
+                    <button type="button" class="btn btn-primary ins-wide-btn" data-withdrawal-save data-onclick="money.saveWithdrawal()" data-i18n="ui.money.save_withdrawal">Save withdrawal</button>
                 </div>
                 <div class="ins-list" data-metric-ref="M9" id="moneyWithdrawalList"></div>
             </div>
@@ -145,7 +145,7 @@
                 <p class="ins-hint" data-i18n="ui.money.accounts_shared">The same on all your phones. Balances in whole rupees.</p>
                 <div id="moneyAccountsMove" hidden>
                     <p id="moneyAccountsMoveText"></p>
-                    <button type="button" class="btn btn-secondary" onclick="window.app.money.useThisPhonesAccounts()" data-i18n="ui.money.accounts_use_phone">Use this phone's accounts for all phones</button>
+                    <button type="button" class="btn btn-secondary" data-onclick="money.useThisPhonesAccounts()" data-i18n="ui.money.accounts_use_phone">Use this phone's accounts for all phones</button>
                 </div>
                 <div class="ins-form ins-inline" id="moneyAccForm" hidden>
                     <input type="text" id="moneyAccName" class="form-control" maxlength="40" placeholder="Name" data-i18n-placeholder="ui.money.acc_name">
@@ -154,7 +154,7 @@
                         <option value="asset" data-i18n="ui.money.acc_have">I have this</option>
                         <option value="liability" data-i18n="ui.money.acc_owe">I owe this</option>
                     </select>
-                    <button type="button" class="btn btn-primary" onclick="window.app.money.saveAccount()" data-i18n="ui.money.acc_save">Save</button>
+                    <button type="button" class="btn btn-primary" data-onclick="money.saveAccount()" data-i18n="ui.money.acc_save">Save</button>
                 </div>
             </div>
         </section>

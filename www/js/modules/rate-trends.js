@@ -270,7 +270,7 @@ export const RateTrendsManager = {
         const cursor = loadCursor();
         const budget = readBudget();
         const budgetSelect = `<label class="rt-budget">${esc(t('ui.trends.reads_per_day'))}
-            <select onchange="window.app.rateTrends.setBudget(this.value)">${READ_BUDGET_OPTIONS.map(v =>
+            <select data-onchange="rateTrends.setBudget(this.value)">${READ_BUDGET_OPTIONS.map(v =>
         `<option value="${v}"${v === budget ? ' selected' : ''}>${v.toLocaleString('en-IN')}</option>`).join('')}</select></label>`;
         let html = '';
         if (this.running) {
@@ -278,19 +278,19 @@ export const RateTrendsManager = {
         } else if (cursor) {
             const stop = this.lastStop ? `<div class="rt-warn">${esc(t(STOP_KEYS[this.lastStop]))}</div>` : '';
             html = `${stop}<div class="rt-note">${esc(t('ui.trends.paused', { bills: num(cursor.bills), reads: num(cursor.reads) }))}</div>
-                ${isOwner() ? `<div class="rt-actions"><button class="btn btn-primary" onclick="window.app.rateTrends.continueBackfill()">${esc(t('ui.trends.continue'))}</button></div>${budgetSelect}` : ''}`;
+                ${isOwner() ? `<div class="rt-actions"><button class="btn btn-primary" data-onclick="rateTrends.continueBackfill()">${esc(t('ui.trends.continue'))}</button></div>${budgetSelect}` : ''}`;
         } else if (this.meta?.backfillDone) {
             const stop = this.lastStop ? `<div class="rt-warn">${esc(t(STOP_KEYS[this.lastStop]))}</div>` : '';
             // A history carried from the old app can't be rebuilt from this project's bills (#15).
             html = isCarriedHistory(this.meta)
                 ? `${stop}<div class="rt-ok">${esc(t('ui.trends.carried', { bills: num(this.meta.bills), date: dateText(this.meta.backfillAt) }))}</div>`
                 : `${stop}<div class="rt-ok">${esc(t('ui.trends.built', { bills: num(this.meta.bills), date: dateText(this.meta.backfillAt) }))}</div>
-                ${isOwner() ? `<div class="rt-actions"><button class="btn btn-secondary" onclick="window.app.rateTrends.startBackfill()">${esc(t('ui.trends.rebuild'))}</button></div>` : ''}`;
+                ${isOwner() ? `<div class="rt-actions"><button class="btn btn-secondary" data-onclick="rateTrends.startBackfill()">${esc(t('ui.trends.rebuild'))}</button></div>` : ''}`;
         } else if (isOwner()) {
             const est = this.estimate;
             const estText = est ? t('ui.trends.est_reads', { reads: num(est.reads) }) : t('ui.trends.est_unknown');
             html = `<div class="rt-note">${esc(t('ui.trends.need_history'))}</div>
-                <div class="rt-actions"><button class="btn btn-primary" onclick="window.app.rateTrends.startBackfill()">${esc(t('ui.trends.build_btn', { est: estText }))}</button></div>
+                <div class="rt-actions"><button class="btn btn-primary" data-onclick="rateTrends.startBackfill()">${esc(t('ui.trends.build_btn', { est: estText }))}</button></div>
                 ${budgetSelect}
                 <div class="rt-muted">${esc(t('ui.trends.free_limit'))}</div>`;
             if (!est && this.metaError !== 'quota') this.loadEstimate().then(() => { if (this.estimate) this.renderStatus(); }).catch(() => {});
@@ -1155,7 +1155,7 @@ export const RateTrendsManager = {
             const { prev, lastYear } = comparisonMonths(tr.month);
             const cell = (s) => `${kgText(s.kg)}<div class="rt-muted">${esc(tn('ui.trends.n_bills', s.bills))}</div>`;
             const rows = tr.rows.map(r => `<tr class="rt-click${r.itemId === this.trafficItemId ? ' rt-selected' : ''}" data-item="${esc(r.itemId)}"
-                onclick="window.app.rateTrends.setTrafficItem('${Helpers.escapeJsAttr(r.itemId)}')">
+                data-onclick="rateTrends.setTrafficItem('${Helpers.escapeJsAttr(r.itemId)}')">
                 <td>${esc(itemName(r.itemId))}</td><td><strong>${kgText(r.kg)}</strong></td>
                 ${TRAFFIC_KINDS.map(k => `<td>${cell(r[k])}</td>`).join('')}
                 <td>${r.bills}</td><td>${esc(wholeRupees(r.amount))}</td>
