@@ -12,7 +12,7 @@
  */
 
 import { computeFinanceSummary, billsInRange, profitByDay } from './finance-calc.js';
-import { activeExpenses, activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2 } from './money.js';
+import { activeExpenses, activityBills, billLabour, billTotal, isPersonalExpense, outstandingDue, readLineItem, round2, soldBelowCost } from './money.js';
 import { eventTime, createItemKeyResolver } from './stock-replay.js';
 import { parseAnyBillDate, toLocalISODate } from './dates.js';
 import { saleTimePayment, dueEvents, sumDueEvents } from './due-payments.js';
@@ -480,8 +480,8 @@ export function itemSummary(summary, { type = 'both' } = {}) {
 }
 
 /**
- * I8: sale lines sold below their cost (sale value < cost of goods sold of the
- * same bill and item), per item.
+ * I8: sale lines sold below their cost (cost of goods sold of the same bill and
+ * item more than ₹0.50 above the sale value: money.soldBelowCost), per item.
  * @param {Rec} summary moneySummary(..., {detail: true})
  * @returns {Array<{itemKey: string, item: string, itemHi: string, times: number, qty: number, lost: number}>}
  */
@@ -505,7 +505,7 @@ export function belowCostSales(summary) {
     /** @type {Map<string, Rec>} */
     const out = new Map();
     byLine.forEach(x => {
-        if (!(x.cogs - x.sales > 0.5)) return;
+        if (!soldBelowCost(x.sales, x.cogs)) return;
         const o = out.get(x.itemKey) || { itemKey: x.itemKey, item: x.item, itemHi: x.itemHi, times: 0, qty: 0, lost: 0 };
         o.times++;
         o.qty = round2(o.qty + x.qty);

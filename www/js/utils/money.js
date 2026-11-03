@@ -23,6 +23,22 @@ export function round2(x) {
 }
 
 /**
+ * I8 / ST4: a sale counts as sold below cost only when its cost of goods sold is more than
+ * this (₹) above its sale value, so whole-rupee rounding of a line is not a loss (owner, #160).
+ */
+export const BELOW_COST_ALLOWANCE = 0.5;
+
+/**
+ * I8 / ST4: whether a sale was below cost: cost of goods sold − sale value > BELOW_COST_ALLOWANCE.
+ * @param {*} saleValue line value (₹)
+ * @param {*} cost its cost of goods sold (₹)
+ * @returns {boolean}
+ */
+export function soldBelowCost(saleValue, cost) {
+    return round2((Number(cost) || 0) - (Number(saleValue) || 0)) > BELOW_COST_ALLOWANCE;
+}
+
+/**
  * Parse a stored money value; returns null when absent/unparseable
  * (so an explicit 0 is distinguishable from a missing field).
  * @param {*} v

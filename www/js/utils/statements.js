@@ -7,7 +7,7 @@
  */
 
 import { billsInRange } from './finance-calc.js';
-import { activeBills, activeExpenses, activityBills, billLabour, billTotal, isOpeningRecord, isOnlineExpense, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2 } from './money.js';
+import { activeBills, activeExpenses, activityBills, billLabour, billTotal, isOpeningRecord, isOnlineExpense, isPersonalExpense, openingAmount, outstandingDue, readLineItem, round2, soldBelowCost } from './money.js';
 import { saleTimePayment, entryParts, entryTime, dueEvents } from './due-payments.js';
 import { collectEvents, createItemKeyResolver, replayWithValues, eventTime } from './stock-replay.js';
 import { normalizePartyName } from './aging.js';
@@ -184,8 +184,8 @@ export function partyChoices(src, kind) {
 
 /**
  * Item ledger (ST4): every purchase, sale and adjustment of one item with the
- * running kg and average cost (AVG-COST); flags a sale below cost and a sale
- * before the stock was bought.
+ * running kg and average cost (AVG-COST); flags a sale below cost (the I8 rule,
+ * money.soldBelowCost) and a sale before the stock was bought.
  * @param {Object} src {purchases, wholesaleSales, retailSales, stockAdjustments}
  * @param {Array} items catalogue
  * @param {string} itemKey
@@ -200,6 +200,8 @@ export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinit
     });
     const state = {};
     const rows = [];
+    // I8 judges the item's lines of one bill together: sale value and cost per bill
+    const billGroups = new Map();
     let opening = { qty: 0, value: 0 };
     let openingTaken = false;
     replayWithValues(state, events, getKey, (ev, key, delta, prevQty) => {
@@ -226,10 +228,19 @@ export function itemLedger(src, items, itemKey, { from = -Infinity, to = Infinit
         if (ev.kind === 'sale') {
             const cost = qty > 0 ? -delta / qty : 0;
             row.cost = round2(cost);
-            row.belowCost = line.rate > 0 && cost > 0 && line.rate < cost - 0.005;
+            row.belowCost = false;
+            const g = billGroups.get(ev.bill) || { sales: 0, cost: 0, rows: [] };
+            g.sales += line.total;
+            g.cost += -delta;
+            g.rows.push(row);
+            billGroups.set(ev.bill, g);
             row.beforeBought = qty - Math.max(0, num(prevQty)) > 1e-9;
         }
         rows.push(row);
+    });
+    billGroups.forEach(g => {
+        const below = soldBelowCost(g.sales, g.cost);
+        g.rows.forEach(r => { r.belowCost = below; });
     });
     const s = state[itemKey] || { quantity: 0, totalValue: 0 };
     if (!openingTaken) opening = { qty: round2(s.quantity), value: round2(Math.max(0, s.totalValue)) };
