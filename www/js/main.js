@@ -63,7 +63,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozzzbaleaaaaaaaaaaaaaaaaa-statements-actions';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzzbaleaaaaaaaaaaaaaaaaaaaa-modals-actions';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -1187,6 +1187,8 @@ window.app = {
         markPrintedByHand: () => HistoryManager.markPrintedByHand(),
         shareBill: () => HistoryManager.shareBill(),
         copyTraceId: () => HistoryManager.copyTraceId(),
+        // The bill details modal's Edit: the bill it is showing
+        editCurrentBill: () => window.app.history.editBillDetails(window.currentBillIndex),
         editBillDetails: (billIndex) => {
             if (billIndex !== undefined) {
                 // Pass the bill type along with index
