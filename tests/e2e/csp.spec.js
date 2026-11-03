@@ -28,7 +28,7 @@ test('the enforcing CSP blocks inline scripts and inline handlers', async ({ pag
     const headers = res.headers();
     expect(headers['content-security-policy-report-only']).toBeUndefined();
     const scriptSrc = headers['content-security-policy'].split(';').map((d) => d.trim()).find((d) => d.startsWith('script-src '));
-    expect(scriptSrc).toMatch(/^script-src 'self'( https:\/\/[a-z0-9.-]+)+$/);
+    expect(scriptSrc).toMatch(/^script-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')*( https:\/\/[a-z0-9.-]+)+$/);
 
     const blocked = await page.evaluate(() => new Promise((resolve) => {
         const seen = [];

@@ -37,7 +37,7 @@ handlers and inline `<script>` blocks were removed; before that it was report-on
 
 ```
 default-src 'self';
-script-src 'self' https://apis.google.com https://cdn.sheetjs.com;
+script-src 'self' 'sha256-g77pAkLCr0svJsfSJQb0D4SP05z/QcS+673Ux0RDcMY=' https://apis.google.com https://cdn.sheetjs.com;
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob:;
 font-src 'self' data:;
@@ -50,7 +50,8 @@ object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
 | Source | Used by |
 |---|---|
-| `'self'` | the app, templates, `changelog.json`, the vendored Firebase SDK, the service worker, `/download`, `/r/`, and the small classic scripts in `www/js/boot/` that used to be inline (install-prompt capture and SW registration in `index.html`, the pre-paint theme, `/download`'s language and release notes) |
+| `'self'` | the app, templates, `changelog.json`, the vendored Firebase SDK, the service worker, `/download`, `/r/`, and the small classic scripts in `www/js/boot/` that used to be inline (install-prompt capture and SW registration in `index.html`, `/download`'s language and release notes) |
+| `'sha256-g77p…'` (script) | the one inline script, `#themeBoot` at the top of `index.html`'s `<body>`: it applies the saved dark theme before first paint (#102), which an external file can't promise on a cold load (the browser may paint the body while the file downloads). Keep it on one line (so the hash doesn't depend on line endings); after any edit put its new hash in `firebase.json` (`security-headers.test.js` prints it) |
 | `https://cdn.sheetjs.com` (script) | Excel export (`ensureXLSX()`, pinned with SRI) |
 | `firestore.googleapis.com` | Firestore SDK and the tenant page's single REST read |
 | `identitytoolkit.googleapis.com`, `securetoken.googleapis.com` | Firebase Auth sign-in and token refresh |
@@ -62,8 +63,8 @@ object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
 Not listed, on purpose:
 
-- **No `'unsafe-inline'` / `'unsafe-eval'` in `script-src`**, and no hashes: there is no
-  inline script left. Every `<script>` in `www/` has a `src`.
+- **No `'unsafe-inline'` / `'unsafe-eval'` in `script-src`**: every other `<script>` in `www/`
+  has a `src`, and no `on<event>=` attribute is left.
 - **No `www.gstatic.com`**: the Firebase SDK is self-hosted (`www/vendor/firebase/`), so
   nothing is loaded from gstatic. App Check / reCAPTCHA would add it (see below).
 - **No `firebasestorage.googleapis.com`**: the app doesn't use Cloud Storage (no Storage
@@ -76,8 +77,9 @@ navigation, which CSP does not cover.
 
 **Keeping it right.** `tests/ci/security-headers.test.js` fails when a site loses
 a header, when `script-src` gains `'unsafe-inline'` / `'unsafe-eval'` or another origin,
-when a page or template under `www/` has an inline `<script>` whose sha256 isn't in
-`script-src` (move the code to `www/js/boot/` or a module instead) or a `javascript:` URL,
+when a page or template under `www/` has an inline `<script>` other than `#themeBoot` (move
+the code to `www/js/boot/` or a module instead) or one whose sha256 isn't in `script-src`,
+when a page, template or script has a `javascript:` URL,
 or when code under `www/` names an `https://` origin that is neither in the CSP nor in
 its short "only linked to" list. `www/js/__tests__/inline-handlers.test.js` fails on any
 `on<event>=` attribute. The E2E static server sends the same `**` headers (plus the

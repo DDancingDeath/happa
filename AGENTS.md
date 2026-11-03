@@ -295,8 +295,8 @@ In order:
   goes into that CSP in the same PR: `security-headers.test.js` fails on an
   `https://` origin in `www/` the CSP doesn't list, and the E2E fixture fails on
   any CSP violation. `script-src` has no `'unsafe-inline'`: no inline `<script>`
-  blocks (put the code in `www/js/boot/` or a module; the test fails on an
-  unhashed one) and no `on<event>=` attributes. The Android app doesn't get
+  blocks (put the code in `www/js/boot/` or a module; the only one is the
+  hashed pre-paint `#themeBoot`, see `docs/security.md`) and no `on<event>=` attributes. The Android app doesn't get
   these headers (see `docs/security.md`, "Android app").
 - `firebase` global is the compat-SDK style — modular SDK is intentionally
   not used.

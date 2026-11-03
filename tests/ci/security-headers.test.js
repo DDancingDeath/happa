@@ -2,6 +2,7 @@
  * Security headers on every Hosting site (#89) and the enforced CSP on the app site:
  * it allows every external origin the app's code loads from and no inline script.
  */
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { XLSX_URL } = require('../../www/js/utils/lazy-scripts.js');
@@ -74,6 +75,27 @@ function codeOrigins() {
     }
     return found;
 }
+
+// Script types that are data, not code (anything else, importmap and speculationrules included, is governed by script-src).
+const DATA_SCRIPT = /^(application\/(ld\+)?json|text\/(template|html|plain|x-[\w-]+))$/i;
+
+function scriptTags() {
+    return walk(path.join(ROOT, 'www')).filter((f) => f.endsWith('.html')).flatMap((file) =>
+        [...fs.readFileSync(file, 'utf8').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)].map((m) => ({ file, attrs: m[1], body: m[2] })));
+}
+
+/** Inline scripts the browser would run, with the CSP hash of each. */
+function inlineScripts() {
+    return scriptTags()
+        .filter(({ attrs }) => !/\bsrc\s*=/i.test(attrs) && !DATA_SCRIPT.test((attrs.match(/\btype\s*=\s*["']?([^"'\s>]+)/i) || [])[1] || ''))
+        .map(({ file, attrs, body }) => ({
+            where: [path.relative(ROOT, file).split(path.sep).join('/'), (attrs.match(/\bid\s*=\s*["']([^"']+)/) || [])[1]].filter(Boolean).join(' #'),
+            hash: `'sha256-${crypto.createHash('sha256').update(body, 'utf8').digest('base64')}'`
+        }));
+}
+
+/** <script src> with a body as well: the body never runs, so it's a mistake. */
+const scriptsWithSrcAndBody = () => scriptTags().filter(({ attrs, body }) => /\bsrc\s*=/i.test(attrs) && body.trim()).map(({ file }) => path.relative(ROOT, file));
 
 describe('security headers on every Hosting site (#89)', () => {
     test.each(sites.map((s) => [s.site, s]))('%s sends the required headers on every path', (_, site) => {
@@ -162,13 +184,12 @@ describe('app site CSP (enforced, #89)', () => {
         }
     });
 
-    test("script-src allows only our files, Auth's gapi loader and the pinned SheetJS CDN: nothing inline", () => {
-        expect(csp['script-src']).toEqual(["'self'", 'https://apis.google.com', new URL(XLSX_URL).origin]);
+    test("script-src allows only our files, the hashed #themeBoot, Auth's gapi loader and the pinned SheetJS CDN", () => {
+        expect(csp['script-src']).toEqual(["'self'", ...inlineScripts().map((s) => s.hash), 'https://apis.google.com', new URL(XLSX_URL).origin]);
         // No per-element / per-attribute override that could let inline code back in.
         expect(csp['script-src-elem']).toBeUndefined();
         expect(csp['script-src-attr']).toBeUndefined();
     });
-
     test("style-src keeps 'unsafe-inline' only for the style= attributes and <style> blocks", () => {
         expect(csp['style-src']).toEqual(["'self'", "'unsafe-inline'"]);
     });
@@ -204,24 +225,17 @@ describe('app site CSP (enforced, #89)', () => {
         expect(Object.keys(NOT_LOADED).filter((o) => !origins.has(o))).toEqual([]);
     });
 
-    test('no www/ page or template has an inline <script> the CSP would block, or a javascript: URL', () => {
+    test('the only inline <script> in www/ is the pre-paint theme (#themeBoot), allowed by its hash', () => {
+        // A new one: move the code to www/js/boot/ or a module instead of adding another hash.
+        expect(inlineScripts().map((s) => s.where)).toEqual(['www/index.html #themeBoot']);
         const hashes = new Set(csp['script-src']);
-        const problems = [];
-        for (const file of walk(path.join(ROOT, 'www')).filter((f) => f.endsWith('.html'))) {
-            const html = fs.readFileSync(file, 'utf8');
-            for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
-                const type = (m[1].match(/\btype\s*=\s*["']?([^"'\s>]+)/i) || [])[1] || '';
-                // Data blocks (JSON, templates) never run.
-                if (type && !/^(module|text\/javascript|application\/javascript)$/i.test(type)) continue;
-                if (/\bsrc\s*=/i.test(m[1])) {
-                    if (m[2].trim()) problems.push(`${path.relative(ROOT, file)}: <script src> with a body`);
-                    continue;
-                }
-                const hash = `'sha256-${require('crypto').createHash('sha256').update(m[2], 'utf8').digest('base64')}'`;
-                if (!hashes.has(hash)) problems.push(`${path.relative(ROOT, file)}: inline <script> (move it to www/js/, or add ${hash} to script-src)`);
-            }
-            if (/\b(href|src|action|formaction)\s*=\s*["']?\s*javascript:/i.test(html)) problems.push(`${path.relative(ROOT, file)}: javascript: URL`);
-        }
-        expect(problems).toEqual([]);
+        expect(inlineScripts().filter((s) => !hashes.has(s.hash)).map((s) => `${s.where}: add ${s.hash} to script-src`)).toEqual([]);
+        expect(scriptsWithSrcAndBody()).toEqual([]);
     });
-});
+
+    test('no javascript: URL in a www/ page, template or script', () => {
+        const hits = walk(path.join(ROOT, 'www')).filter((f) => /\.(html|js)$/.test(f))
+            .filter((f) => /\b(href|src|action|formaction)\s*=\s*["'`]?\s*javascript:/i.test(fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')))
+            .map((f) => path.relative(ROOT, f));
+        expect(hits).toEqual([]);
+    });});

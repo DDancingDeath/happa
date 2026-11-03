@@ -37,8 +37,9 @@
     <!-- SheetJS (Excel) is loaded on demand via js/utils/lazy-scripts.js -->
 </head>
 <body>
-    <!-- Apply the saved theme before first paint (Settings only applies it once opened). -->
-    <script src="js/boot/theme.js?v=20261101zzuzieecmbbkhbozzzbaleaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"></script>
+    <!-- Apply the saved theme before first paint (Settings only applies it once opened). The one inline script:
+         keep it on one line; its sha256 is in the CSP's script-src (firebase.json, security-headers.test.js). -->
+    <script id="themeBoot">try { if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode'); } catch (e) {}</script>
     <!-- All HTML content is dynamically loaded from templates/ directory -->
     <!-- See templates/*.html for all readable HTML templates -->
     

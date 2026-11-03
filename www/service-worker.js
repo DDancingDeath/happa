@@ -26,7 +26,6 @@ const STATIC_ASSETS = [
     '/js/boot/download-lang.js',
     '/js/boot/download-page.js',
     '/js/boot/sw-register.js',
-    '/js/boot/theme.js',
     '/js/firebase/firestore-service.js',
     '/js/firebase/firestore-meter.js',
     '/js/firebase/db.js',
