@@ -155,7 +155,7 @@ const APP_PUBLIC = 'www';
 const REDIRECT_PUBLIC = 'hosting-redirect';
 
 // Security headers of the redirect-only sites (#89). The app site's own set (plus its
-// report-only CSP) is in firebase.json; security-headers.test.js keeps the two in step.
+// enforced CSP) is in firebase.json; security-headers.test.js keeps the two in step.
 // These sites only answer 301s, so their CSP can already deny everything.
 const REDIRECT_SECURITY_HEADERS = [
     { key: 'Strict-Transport-Security', value: 'max-age=31556926; includeSubDomains; preload' },
