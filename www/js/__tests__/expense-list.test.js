@@ -9,6 +9,7 @@ import { ExpensesManager } from '../modules/miscellaneous.js';
 import { FirebaseService } from '../firebase/firestore-service.js';
 import { UIManager } from '../ui/ui-manager.js';
 import { AppState } from '../utils/state.js';
+import { installActions } from '../ui/actions.js';
 import { expenseTemplates, expenseTotals, expenseTypes, filterExpenses } from '../utils/expense-list.js';
 
 const TEMPLATE = fs.readFileSync(path.join(__dirname, '../../templates/expenses.html'), 'utf8');
@@ -61,6 +62,8 @@ describe('expense-list helpers (#90)', () => {
 });
 
 describe('Expenses page: search, templates and totals (#90)', () => {
+    // The page's buttons are data-on* attributes (#89), run by the delegated dispatcher
+    beforeAll(() => installActions(document));
     beforeEach(() => {
         jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
         jest.setSystemTime(NOW);
