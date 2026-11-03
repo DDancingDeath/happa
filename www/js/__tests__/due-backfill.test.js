@@ -23,6 +23,7 @@ beforeEach(() => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     AppState.currentUser = user;
     AppState.userRole = 'owner';
+    AppState.userName = 'Owner';
     const bill = (id, type, shape, extra = {}) => ({ ...legacyBill({ id, type, shape, total: 1000, cash: 300, online: 100 }), ...extra });
     fake.seed('dev_retailSales', [bill('r-modern', 'retail', 'modern'), bill('r-top', 'retail', 'topOnly'), bill('r-str', 'retail', 'stringDue'),
         bill('r-void', 'retail', 'topOnly', { voided: true })]);
@@ -55,7 +56,14 @@ test('check lists the bills to fix and writes nothing; the backfill stores each 
     expect(after.map(b => [b.id, readPayment(b)])).toEqual(before);
     expect(fake.raw('dev_retailSales').get('r-top')).toMatchObject({ payment: { due: 600 }, dueAmount: 600, clientVersion: 5 });
     expect(fake.raw('dev_retailSales').get('r-str')).toMatchObject({ payment: { due: 600 }, dueAmount: 600, cashPayment: '300' });
-    expect(fake.raw('dev_purchases').get('p-drift')).toMatchObject({ payment: { due: 600 }, dueAmount: 600 });
+    expect(fake.raw('dev_purchases').get('p-drift')).toMatchObject({ payment: { due: 600 }, dueAmount: 600, editCount: 1 });
+    // What was replaced stays on the bill: its edit record (#121)
+    expect(fake.raw('dev_purchases/p-drift/edits').get('1')).toMatchObject({
+        n: 1, by: 'o1', reason: 'Due stored in one place; no amount changed', fields: { dueAmount: { before: 650, after: 600 } }
+    });
+    expect(Object.keys(fake.raw('dev_purchases/p-drift/edits').get('1').fields)).toEqual(['dueAmount']);
+    expect(fake.raw('dev_purchases/p-null/edits').get('1').fields.payment).toEqual({
+        before: { cash: 300, online: 100, due: null }, after: { cash: 300, online: 100, due: 600 } });
     expect(fake.raw('dev_wholesaleSales').get('w-paid').payment).toEqual({ due: 600 });
     expect(fake.raw('dev_wholesaleSales').get('w-paid')).not.toHaveProperty('dueAmount');
     expect(fake.raw('dev_retailSales').get('r-void')).not.toHaveProperty('payment');
@@ -66,6 +74,7 @@ test('check lists the bills to fix and writes nothing; the backfill stores each 
     expect((await FirebaseService.checkDueFields()).todo).toEqual([]);
     expect(await FirebaseService.backfillDueFields(check.todo, check.checked)).toEqual({ written: 0, failed: 0 });
     expect(all()).toEqual(after);
+    expect(fake.raw('dev_purchases/p-drift/edits').size).toBe(1);
 });
 
 test('a payment recorded after the check is kept: the bill is re-read and left alone when it no longer needs it', async () => {

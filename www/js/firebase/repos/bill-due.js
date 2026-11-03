@@ -58,13 +58,15 @@ export const DUE_BACKFILL_REASONS = Object.freeze(['missing', 'notNumber', 'mirr
  * it. The value is the due every screen shows now (BILL-PAY: `payment.due` when it is a number,
  * else `readPayment()`), so no figure moves. Null when nothing is needed: the due is already a
  * number in `payment.due` and `dueAmount` is absent or equal, or the bill is voided (it counts
- * nowhere and the rules refuse any change to it). `fields: null` with reason `changes` would be a
- * bill whose figures the write would move: never written (none is known; a safety net).
+ * nowhere and the rules refuse any change to it). `fields: null` with reason `changes`: a bill
+ * whose figures the write would move, or whose `payment` is not a map; never written (none is known).
  * @param {Object} bill - the bill as stored
  * @returns {?{reason: 'missing'|'notNumber'|'mirror'|'changes', fields: ?Object}}
  */
 export function dueBackfillFields(bill) {
     if (!isMap(bill) || bill.voided === true) return null;
+    // A `payment` stored as something else than a map is left for a person to look at
+    if (bill.payment !== undefined && bill.payment !== null && !isMap(bill.payment)) return { reason: 'changes', fields: null };
     const p = isMap(bill.payment) ? bill.payment : null;
     const stored = p && Object.prototype.hasOwnProperty.call(p, 'due') ? p.due : undefined;
     const numeric = typeof stored === 'number' && Number.isFinite(stored);
