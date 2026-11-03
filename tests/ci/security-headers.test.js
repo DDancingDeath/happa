@@ -1,7 +1,8 @@
 /**
- * Security headers on every Hosting site (#89) and a report-only CSP on the app
- * site that allows every external origin the app's code loads from.
+ * Security headers on every Hosting site (#89) and the enforced CSP on the app site:
+ * it allows every external origin the app's code loads from and no inline script.
  */
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { XLSX_URL } = require('../../www/js/utils/lazy-scripts.js');
@@ -75,6 +76,40 @@ function codeOrigins() {
     return found;
 }
 
+// Script types that are data, not code (anything else, importmap and speculationrules included, is governed by script-src).
+const DATA_SCRIPT = /^(application\/(ld\+)?json|text\/(template|html|plain|x-[\w-]+))$/i;
+
+/** Every HTML file under www/ at any depth (spike/, r/, templates/, vendor/ too), so a new page can't slip past the CSP checks. */
+function allHtml(dir = path.join(ROOT, 'www'), files = []) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) {
+            if (e.name !== '__tests__' && e.name !== 'node_modules') allHtml(p, files);
+        } else if (/\.html?$/i.test(e.name)) {
+            files.push(p);
+        }
+    }
+    return files;
+}
+
+function scriptTags() {
+    return allHtml().flatMap((file) =>
+        [...fs.readFileSync(file, 'utf8').matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)].map((m) => ({ file, attrs: m[1], body: m[2] })));
+}
+
+/** Inline scripts the browser would run, with the CSP hash of each. */
+function inlineScripts() {
+    return scriptTags()
+        .filter(({ attrs }) => !/\bsrc\s*=/i.test(attrs) && !DATA_SCRIPT.test((attrs.match(/\btype\s*=\s*["']?([^"'\s>]+)/i) || [])[1] || ''))
+        .map(({ file, attrs, body }) => ({
+            where: [path.relative(ROOT, file).split(path.sep).join('/'), (attrs.match(/\bid\s*=\s*["']([^"']+)/) || [])[1]].filter(Boolean).join(' #'),
+            hash: `'sha256-${crypto.createHash('sha256').update(body, 'utf8').digest('base64')}'`
+        }));
+}
+
+/** <script src> with a body as well: the body never runs, so it's a mistake. */
+const scriptsWithSrcAndBody = () => scriptTags().filter(({ attrs, body }) => /\bsrc\s*=/i.test(attrs) && body.trim()).map(({ file }) => path.relative(ROOT, file));
+
 describe('security headers on every Hosting site (#89)', () => {
     test.each(sites.map((s) => [s.site, s]))('%s sends the required headers on every path', (_, site) => {
         const headers = everyPathHeaders(site);
@@ -142,26 +177,34 @@ describe('security headers on every Hosting site (#89)', () => {
     });
 });
 
-describe('app site CSP (report-only until the inline handlers are gone, #89)', () => {
+describe('app site CSP (enforced, #89)', () => {
     const headers = everyPathHeaders(appSite);
-    const csp = directives(headers['Content-Security-Policy-Report-Only'] || '');
+    const csp = directives(headers['Content-Security-Policy'] || '');
     const allowed = new Set(Object.values(csp).flat().filter((s) => s.startsWith('https://')));
 
-    test('is report-only, with a locked-down baseline', () => {
+    test('is enforced (no report-only twin), with a locked-down baseline', () => {
+        expect(headers['Content-Security-Policy-Report-Only']).toBeUndefined();
         expect(csp['default-src']).toEqual(["'self'"]);
         expect(csp['object-src']).toEqual(["'none'"]);
         expect(csp['base-uri']).toEqual(["'self'"]);
-        // Report-only ignores frame-ancestors; it is enforced in Content-Security-Policy instead.
-        expect(csp['frame-ancestors']).toBeUndefined();
+        expect(csp['frame-ancestors']).toEqual(["'none'"]);
+        expect(csp['form-action']).toEqual(["'self'"]);
         for (const sources of Object.values(csp)) {
             expect(sources).not.toContain("'unsafe-eval'");
             expect(sources).not.toContain('*');
             expect(sources).not.toContain('https:');
+            expect(sources).not.toContain('http:');
         }
     });
 
-    test("script-src allows only our files, Auth's gapi loader, the pinned SheetJS CDN and (for now) inline handlers", () => {
-        expect(csp['script-src']).toEqual(["'self'", "'unsafe-inline'", 'https://apis.google.com', new URL(XLSX_URL).origin]);
+    test("script-src allows only our files, the hashed #themeBoot, Auth's gapi loader and the pinned SheetJS CDN", () => {
+        expect(csp['script-src']).toEqual(["'self'", ...inlineScripts().map((s) => s.hash), 'https://apis.google.com', new URL(XLSX_URL).origin]);
+        // No per-element / per-attribute override that could let inline code back in.
+        expect(csp['script-src-elem']).toBeUndefined();
+        expect(csp['script-src-attr']).toBeUndefined();
+    });
+    test("style-src keeps 'unsafe-inline' only for the style= attributes and <style> blocks", () => {
+        expect(csp['style-src']).toEqual(["'self'", "'unsafe-inline'"]);
     });
 
     test("frame-src is only Firebase Auth's iframe on the project's authDomain", () => {
@@ -177,6 +220,7 @@ describe('app site CSP (report-only until the inline handlers are gone, #89)', (
             'https://firestore.googleapis.com',
             'https://identitytoolkit.googleapis.com',
             'https://securetoken.googleapis.com',
+            'https://firebaseinstallations.googleapis.com',
             'https://apis.google.com',
             new URL(APP_IDENTITY.latestReleaseApi).origin
         ]));
@@ -193,4 +237,29 @@ describe('app site CSP (report-only until the inline handlers are gone, #89)', (
         const origins = codeOrigins();
         expect(Object.keys(NOT_LOADED).filter((o) => !origins.has(o))).toEqual([]);
     });
-});
+
+    test('the only inline <script> in www/ is the pre-paint theme (#themeBoot), allowed by its hash', () => {
+        // A new one: move the code to www/js/boot/ or a module instead of adding another hash.
+        expect(inlineScripts().map((s) => s.where)).toEqual(['www/index.html #themeBoot']);
+        const hashes = new Set(csp['script-src']);
+        expect(inlineScripts().filter((s) => !hashes.has(s.hash)).map((s) => `${s.where}: add ${s.hash} to script-src`)).toEqual([]);
+        expect(scriptsWithSrcAndBody()).toEqual([]);
+    });
+
+    test('the checks see every HTML page under www/, the printer test page and the tenant page included', () => {
+        const rel = allHtml().map((f) => path.relative(ROOT, f).split(path.sep).join('/'));
+        expect(rel).toEqual(expect.arrayContaining(['www/index.html', 'www/download.html', 'www/r.html', 'www/spike/serial.html', 'www/templates/billing.html']));
+    });
+
+    test('no on<event>= attribute in any www/ HTML file (the CSP blocks them)', () => {
+        const hits = allHtml().flatMap((f) => (fs.readFileSync(f, 'utf8').match(/<[a-z][^<>]*?[\s/]on[a-z]+\s*=/gi) || [])
+            .map((m) => `${path.relative(ROOT, f)}: ${m.slice(-60)}`));
+        expect(hits).toEqual([]);
+    });
+
+    test('no javascript: URL in a www/ page, template or script', () => {
+        const hits = [...allHtml(), ...walk(path.join(ROOT, 'www')).filter((f) => f.endsWith('.js'))]
+            .filter((f) => /\b(href|src|action|formaction)\s*=\s*["'`]?\s*javascript:/i.test(fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')))
+            .map((f) => path.relative(ROOT, f));
+        expect(hits).toEqual([]);
+    });});

@@ -13,7 +13,7 @@ Every site sends these on every path (the first `"source": "**"` entry):
 | `Strict-Transport-Security` | `max-age=31556926; includeSubDomains; preload` | HTTPS only (Hosting already sends the same value; `.app` is HSTS-preloaded anyway) |
 | `X-Content-Type-Options` | `nosniff` | Files run only as their declared type |
 | `X-Frame-Options` | `DENY` | No clickjacking: the app can't be put in a frame (old browsers) |
-| `Content-Security-Policy` | `frame-ancestors 'none'` | The same for current browsers. This part is **enforced** (report-only ignores `frame-ancestors`) |
+| `Content-Security-Policy` | the enforced policy below, ending in `frame-ancestors 'none'` | The same for current browsers (the redirect-only sites send `default-src 'none'; frame-ancestors 'none'; base-uri 'none'`) |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Other sites see only `https://myhappa.web.app`, never a path |
 | `Permissions-Policy` | `camera=(), microphone=(self), geolocation=(), payment=(), usb=(), serial=(), hid=()` | The web app uses none of these except the microphone, for its own pages only: voice billing (#81, `docs/voice-billing.md`) is off by default and asks for the microphone only when a user switches it on and taps 🎤 (the browser then asks once per site). Frames and other sites get no microphone. The redirect-only sites and the tenant link page keep `microphone=()`. Bluetooth is left alone: printing is native-only today, but a web printer would need it |
 
@@ -30,14 +30,14 @@ Every site sends these on every path (the first `"source": "**"` entry):
   `scripts/happa-config.js` (`REDIRECT_SECURITY_HEADERS`; `npm run apply:happa-config`
   writes them) with an enforced `default-src 'none'`, since they only answer 301s.
 
-## Content-Security-Policy (report-only)
+## Content-Security-Policy (enforced)
 
-The app site sends this as `Content-Security-Policy-Report-Only`: browsers log
-what it *would* block (DevTools console, "[Report Only]") and block nothing.
+The app site sends this as `Content-Security-Policy` (enforced since the inline
+handlers and inline `<script>` blocks were removed; before that it was report-only):
 
 ```
 default-src 'self';
-script-src 'self' 'unsafe-inline' https://apis.google.com https://cdn.sheetjs.com;
+script-src 'self' 'sha256-g77pAkLCr0svJsfSJQb0D4SP05z/QcS+673Ux0RDcMY=' https://apis.google.com https://cdn.sheetjs.com;
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob:;
 font-src 'self' data:;
@@ -45,12 +45,13 @@ connect-src 'self' https://firestore.googleapis.com https://identitytoolkit.goog
             https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com
             https://apis.google.com https://www.google.com https://api.github.com;
 worker-src 'self'; manifest-src 'self'; frame-src https://happa-bfc07.firebaseapp.com;
-object-src 'none'; base-uri 'self'; form-action 'self'
+object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ```
 
 | Source | Used by |
 |---|---|
-| `'self'` | the app, templates, `changelog.json`, the vendored Firebase SDK, the service worker, `/download`, `/r/` |
+| `'self'` | the app, templates, `changelog.json`, the vendored Firebase SDK, the service worker, `/download`, `/r/`, and the small classic scripts in `www/js/boot/` that used to be inline (install-prompt capture and SW registration in `index.html`, `/download`'s language and release notes) |
+| `'sha256-g77p…'` (script) | the one inline script, `#themeBoot` at the top of `index.html`'s `<body>`: it applies the saved dark theme before first paint (#102), which an external file can't promise on a cold load (the browser may paint the body while the file downloads). Keep it on one line (so the hash doesn't depend on line endings); after any edit put its new hash in `firebase.json` (`security-headers.test.js` prints it) |
 | `https://cdn.sheetjs.com` (script) | Excel export (`ensureXLSX()`, pinned with SRI) |
 | `firestore.googleapis.com` | Firestore SDK and the tenant page's single REST read |
 | `identitytoolkit.googleapis.com`, `securetoken.googleapis.com` | Firebase Auth sign-in and token refresh |
@@ -58,18 +59,36 @@ object-src 'none'; base-uri 'self'; form-action 'self'
 | `firebaseinstallations.googleapis.com` | not called today; listed for the Firebase SDKs that use it (App Check, see below) |
 | `api.github.com` | the "Update available" check |
 | `data:` / `blob:` images | receipts and bill images drawn on a canvas, the inline favicon, downloads |
-| `'unsafe-inline'` (script) | **temporary**: the inline `onclick=`/`onchange=` handlers left (count per file in `tests/inline-handlers-baseline.json`, a ratchet: `www/js/__tests__/inline-handlers.test.js`) and 5 inline `<script>` blocks (`index.html`, `download.html`). Handlers move page by page to delegated `data-on<event>` attributes (`www/js/ui/actions.js`: one listener per event type calls the named `window.app` method; the attribute is parsed, never evaluated). Remove it in the "inline handlers" architecture phase, then switch to the enforcing header |
-| `'unsafe-inline'` (style) | ~800 `style=` attributes and the `<style>` blocks in templates / `download.html` |
+| `'unsafe-inline'` (style) | ~800 `style=` attributes in 33 files and the `<style>` blocks in templates / `download.html` / the print window. Inline styles can't run code; moving them all to classes is a separate, larger change |
+
+Not listed, on purpose:
+
+- **No `'unsafe-inline'` / `'unsafe-eval'` in `script-src`**: every other `<script>` in `www/`
+  has a `src`, and no `on<event>=` attribute is left.
+- **No `www.gstatic.com`**: the Firebase SDK is self-hosted (`www/vendor/firebase/`), so
+  nothing is loaded from gstatic. App Check / reCAPTCHA would add it (see below).
+- **No `firebasestorage.googleapis.com`**: the app doesn't use Cloud Storage (no Storage
+  SDK; `storageBucket` is only part of the standard web config).
+- **No report-only twin.** With no report collector (below), a stricter report-only policy
+  would only add console noise, and the E2E fixture fails on any CSP console message.
 
 Links the app only opens (`wa.me`, `github.com`, its own address) are
 navigation, which CSP does not cover.
 
 **Keeping it right.** `tests/ci/security-headers.test.js` fails when a site loses
-a header, or when code under `www/` names an `https://` origin that is neither
-in the CSP nor in its short "only linked to" list. The E2E static server sends
-the same `**` headers (plus the emulator ports in `connect-src` / `frame-src`), and the E2E
-fixture fails on any CSP report, so every page × role is checked against the
-policy on each PR. When you add a new external origin, add it to the CSP in
+a header, when `script-src` gains `'unsafe-inline'` / `'unsafe-eval'` or another origin,
+when a page or template under `www/` has an inline `<script>` other than `#themeBoot` (move
+the code to `www/js/boot/` or a module instead) or one whose sha256 isn't in `script-src`,
+when a page, template or script has a `javascript:` URL,
+or when code under `www/` names an `https://` origin that is neither in the CSP nor in
+its short "only linked to" list. `www/js/__tests__/inline-handlers.test.js` fails on any
+`on<event>=` attribute. The E2E static server sends the same `**` headers (plus the
+emulator ports in `connect-src` / `frame-src`), and the E2E fixture fails on any CSP
+violation, so every page × role is checked against the enforced policy on each PR.
+`tests/e2e/csp.spec.js` also checks that the header is really enforced (an injected inline
+script and an `onclick=` attribute don't run) and listens for `securitypolicyviolation`
+while the app loads, signs in and opens the main pages, `/download`, `/r/` and the printer test page `/spike/serial.html`. The CI checks cover every HTML file under `www/` (`spike/`, `r.html`, templates included).
+When you add a new external origin, add it to the CSP in
 `firebase.json` in the same PR. `frame-src` must name the project's `authDomain`
 (the test reads it from `www/firebaseConfig.js`), so a project change updates it too.
 
@@ -80,21 +99,42 @@ the CSP check runs in the browser before the request is routed).
 
 **No field data.** The policy has no `report-uri` / `report-to`: the project is on
 the Spark plan with no Cloud Functions or other server to receive reports. So
-report-only mode tells us **nothing from real phones**; violations only show in
-the DevTools console of whoever is looking. **E2E is the signal**: every page ×
-role × language, `/download` and `/r/` run under this exact policy on each PR.
-Gaps E2E can't see: browsers / WebViews other than Chromium, flows E2E doesn't
-drive, and Google's own scripts changing what they load.
+violations on real phones only show in the DevTools console of whoever is looking.
+**E2E is the signal**: every page × role × language, `/download` and `/r/` run under
+this exact policy on each PR. Gaps E2E can't see: browsers / WebViews other than
+Chromium, flows E2E doesn't drive, and Google's own scripts changing what they load.
 
-**Enforcing.** Switch `Content-Security-Policy-Report-Only` to
-`Content-Security-Policy` only after the inline-handlers removal has taken
-`'unsafe-inline'` out of `script-src` and E2E has been clean on it. Before that
-switch, pick one:
-1. add a free `report-to` collector (a hosted CSP-report service's free tier,
-   with `report-uri` for older browsers) and run report-only in the field for
-   a couple of weeks, checking it shows nothing new; or
-2. rely on E2E plus the inline-handlers removal, and enforce with a quick
-   rollback ready (one `firebase.json` header change, redeployed on merge).
+**Rollback.** If something is blocked in the field, rename the header key in
+`firebase.json` back to `Content-Security-Policy-Report-Only` (and keep a separate
+enforced `Content-Security-Policy: frame-ancestors 'none'`, which report-only ignores);
+the deploy on merge ships it.
+
+**Service worker.** Cached pages keep the headers they were fetched with, so a phone
+running an older cached `index.html` (with its inline scripts) keeps that page's old
+report-only header until the new worker takes over; the new `index.html` comes with the
+enforced one.
+
+### Android app (Capacitor)
+
+The APK doesn't get any of these headers: Capacitor serves `www/` from inside the APK
+(`https://localhost`, Capacitor 7's default `androidScheme`) through its local server,
+which sends no CSP. So the enforced policy can't break the Android WebView, and on
+Android the app runs without a CSP, as before. A CSP for the APK would be a
+`<meta http-equiv="Content-Security-Policy">` in `www/index.html`; it is left for a
+separate change tested on a device, because:
+
+- Capacitor's docs: CSP in the app is set with a `<meta>` tag in `<head>`
+  (capacitorjs.com/docs/guides/security).
+- The plugin bridge (Capacitor runtime, plugin and Cordova plugin JS) is added with
+  `WebViewCompat.addDocumentStartJavaScript` when the WebView supports it, which CSP doesn't
+  affect. On older WebViews Capacitor falls back to inserting it as an **inline `<script>`**
+  right after `<head>` in each HTML response. A meta policy only governs what comes after
+  the tag, so that script still runs today, but only because of where Capacitor puts it;
+  calls from native code (`evaluateJavascript`) aren't subject to CSP either.
+- `'self'` there is `https://localhost`; the APK needs the same external hosts as the web
+  (the WebView is a phone browser to Firebase Auth, so gapi and the authDomain frame too).
+- A meta tag can't set `frame-ancestors`, `report-uri` or `sandbox`, and it would also
+  apply on the web next to the header (both must pass) and in E2E.
 
 ## innerHTML audit (#89, 2 Nov 2026)
 
