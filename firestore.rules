@@ -195,9 +195,15 @@ service cloud.firestore {
     }
 
     function clearOk(changed, d, due) {
-      return (!changed.hasAny(['cleared']) || (d.get('cleared', false) == true && due <= 0.0101))
+      return (!changed.hasAny(['cleared']) || (d.get('cleared', false) == true && due is number && due <= 0.0101))
         && (!changed.hasAny(['clearedBy']) || d.clearedBy == request.auth.uid)
-        && (!changed.hasAny(['openDue']) || d.openDue == true || d.get('cleared', false) == true || due <= 0.0101);
+        && (!changed.hasAny(['openDue']) || d.openDue == true || d.get('cleared', false) == true
+            || (due is number ? due <= 0.0101 : resource.data.get('openDue', null) != true));
+    }
+
+    function clearFieldsOk(changed, d) {
+      return !changed.hasAny(['cleared', 'clearedBy', 'openDue'])
+        || clearOk(changed, d, d.get('payment', {}).get('due', d.get('dueAmount', d.get('due', null))));
     }
 
     function paymentEditOk(changed) {
@@ -217,9 +223,7 @@ service cloud.firestore {
             ? changed.hasAny(['payment'])
               && paymentMoneyOk(changed, d.payment, resource.data.get('payment', {}), due is number ? due : null)
             : true)
-        && (changed.hasAny(['cleared', 'clearedBy', 'openDue'])
-            ? clearOk(changed, d, d.get('payment', {}).get('due', d.get('dueAmount', 0)))
-            : true);
+        && clearFieldsOk(changed, d);
     }
 
     function billUpdateAs(usersCol, base, docId, role, changed) {
@@ -250,7 +254,7 @@ service cloud.firestore {
           && withinBillWindowFor(usersCol, role)
           && d.get('createdAt', null) == resource.data.get('createdAt', null)
           && (!changed.hasAny(editLoggedFields()) || changed.hasAny(['editCount']))
-          ? changedMoneyOk(changed)
+          ? changedMoneyOk(changed) && clearFieldsOk(changed, d)
         : bookkeepingOnly(docId, changed) ? paymentEditOk(changed)
         : false;
     }
