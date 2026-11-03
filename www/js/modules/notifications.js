@@ -290,7 +290,7 @@ const NotificationsManager = {
                 const unread = n.read !== true;
                 const who = d.who ? `${Helpers.escapeHtml(d.who)} · ` : '';
                 return `
-                <button type="button" class="notif-row${unread ? ' unread' : ''}" onclick="window.app.notifications.openNotification('${Helpers.escapeJsAttr(n.id)}')">
+                <button type="button" class="notif-row${unread ? ' unread' : ''}" data-onclick="notifications.openNotification('${Helpers.escapeJsAttr(n.id)}')">
                     <span class="notif-icon">${d.icon}</span>
                     <span class="notif-body">
                         <span class="notif-en">${Helpers.escapeHtml(pickLang(d))}</span>
