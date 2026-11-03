@@ -111,15 +111,21 @@ export function createFakeFirestore(options = {}) {
     };
     const cachePut = (name, rows) => rows.forEach(r => (r.data === undefined ? cacheColl(name).delete(r.id) : cacheColl(name).set(r.id, r.data)));
 
-    const docSnap = (collName, id, data) => ({
-        id,
-        exists: data !== undefined,
-        ref: docRef(collName, id),
-        data: () => clone(data),
-        isEqual: (other) => !!other && other.id === id && other.ref?.path === `${collName}/${id}` && other.rawData === data,
-        rawData: data,
-        metadata: { fromCache: false, hasPendingWrites: false }
-    });
+    const docSnap = (collName, id, data) => {
+        const snap = {
+            id,
+            exists: data !== undefined,
+            ref: docRef(collName, id),
+            data: () => clone(data),
+            metadata: { fromCache: false, hasPendingWrites: false }
+        };
+        // Not enumerable: recorded calls (repositories-characterisation) stay as they were.
+        Object.defineProperty(snap, 'rawData', { value: data });
+        Object.defineProperty(snap, 'isEqual', {
+            value: (other) => !!other && other.id === id && other.ref?.path === `${collName}/${id}` && other.rawData === data
+        });
+        return snap;
+    };
 
     // orderBy(FieldPath.documentId()) orders by the document id.
     const fieldOf = (row, field) => (field === '__name__' ? row[0] : getPath(row[1], field));

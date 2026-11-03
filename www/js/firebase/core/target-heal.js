@@ -97,12 +97,16 @@ export function noteCollectionRead(coll, at = Date.now(), store = storage()) {
     saveHealRecord(record, store);
 }
 
-onServerQueryRead(coll => noteCollectionRead(coll));
+let readsHooked = false;
 
 /**
  * @param {{key: string, coll: string, relisten: function(): ?Promise<void>, syncedAt: function(): number}} entry
  */
 export function registerHealable(entry) {
+    if (!readsHooked) {
+        readsHooked = true;
+        onServerQueryRead(coll => noteCollectionRead(coll));
+    }
     entries.push(entry);
 }
 
