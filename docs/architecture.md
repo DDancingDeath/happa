@@ -60,7 +60,9 @@ firebase/core/*.js ── shared by the data layer: reads (getWithRetry, one-sho
                      records (history collections, document ids, loaded payment),
                      history-window (what each history collection has in memory,
                      older history on demand, month marks), legacy-scan,
-                     stock-checkpoint (checkpoint, lease, rebuild, roll-forward)
+                     stock-checkpoint (checkpoint, lease, rebuild, roll-forward),
+                     rebuild-progress (the rebuild's paged read, resumed after an
+                     interruption, #159)
                      and stock (calculateStock / getStock), listeners (the
                      session's listeners, cleanup)
                      Rentals: rentals/rent-store.js and

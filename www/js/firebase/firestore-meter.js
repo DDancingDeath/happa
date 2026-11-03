@@ -70,6 +70,20 @@ const countedErrors = new WeakSet();
 /** Transactions that called set / update / delete (a transaction that only read is no write). */
 const writingTx = new WeakSet();
 
+/** Deletes this app issued, by collection path (the checkpoint rebuild's paged read, #159). */
+const deletesByCollection = new Map();
+const noteDelete = (ref) => {
+    try {
+        const parts = String(ref?.path || '').split('/').filter(Boolean);
+        if (parts.length < 2) return;
+        const coll = parts.slice(0, -1).join('/');
+        deletesByCollection.set(coll, (deletesByCollection.get(coll) || 0) + 1);
+    } catch (_) { /* counting must never break a write */ }
+};
+
+/** How many deletes of documents in `collection` this app has issued since it opened. */
+export const deletesIssued = (collection) => deletesByCollection.get(collection) || 0;
+
 const countError = (err, source) => {
     if (err && typeof err === 'object') {
         if (countedErrors.has(err)) return;
@@ -191,6 +205,7 @@ export function installFirestoreMeter(fs) {
         return orig.apply(this, wrapSnapshotArgs(args, sourceLabel(this, 'listen'), readsForDocSnapshot));
     });
     ['set', 'update', 'delete'].forEach(name => patch(DocRef.prototype, name, (orig) => function (...args) {
+        if (name === 'delete') noteDelete(this);
         return wrapPromise(orig.apply(this, args), sourceLabel(this, name));
     }));
     patch(fs.CollectionReference?.prototype, 'add', (orig) => function (...args) {
@@ -201,9 +216,14 @@ export function installFirestoreMeter(fs) {
         return wrapPromise(orig.call(this, ref, ...rest), source, () => quotaGuard.reads.add(source, 1));
     });
     ['set', 'update', 'delete'].forEach(name => patch(fs.Transaction?.prototype, name, (orig) => function (...args) {
+        if (name === 'delete') noteDelete(args[0]);
         writingTx.add(this);
         return orig.apply(this, args);
     }));
+    patch(fs.WriteBatch?.prototype, 'delete', (orig) => function (ref, ...rest) {
+        noteDelete(ref);
+        return orig.call(this, ref, ...rest);
+    });
     patch(fs.WriteBatch?.prototype, 'commit', (orig) => function (...args) {
         return wrapPromise(orig.apply(this, args), 'batch commit');
     });

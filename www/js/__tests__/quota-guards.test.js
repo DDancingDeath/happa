@@ -12,7 +12,7 @@ import {
     readsForDocSnapshot,
     quotaBannerText
 } from '../utils/quota-guard.js';
-import { installFirestoreMeter, getQuotaStatus, getIoCounts, sourceLabel } from '../firebase/firestore-meter.js';
+import { deletesIssued, installFirestoreMeter, getQuotaStatus, getIoCounts, sourceLabel } from '../firebase/firestore-meter.js';
 import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart, MEMBER_APPROX_MAX_EXTRA_MS } from '../utils/rebuild-lease.js';
 
 const fs = require('fs');
@@ -125,10 +125,12 @@ describe('read counter', () => {
             constructor(p) { this.path = p; }
             get() { return Promise.resolve({ exists: true, metadata: { fromCache: false } }); }
             set() { return Promise.resolve(); }
+            delete() { return Promise.resolve(); }
         }
-        class Transaction { set() { return this; } }
+        class Transaction { set() { return this; } delete() { return this; } }
+        class WriteBatch { delete() { return this; } commit() { return Promise.resolve(); } }
         class Firestore { runTransaction(fn) { return Promise.resolve().then(() => fn(new Transaction())); } }
-        const sdk = { Query, CollectionReference, DocumentReference, Transaction, Firestore };
+        const sdk = { Query, CollectionReference, DocumentReference, Transaction, WriteBatch, Firestore };
         const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
         expect(installFirestoreMeter(sdk)).toBe(true);
         const before = getQuotaStatus().reads;
@@ -181,6 +183,14 @@ describe('read counter', () => {
         expect(io2.writeErrors - io.writeErrors).toBe(1);
         expect(io2.readErrors - io.readErrors).toBe(1);
         expect(document.getElementById('quotaBanner')).not.toBeNull();
+
+        // Deletes by collection (the checkpoint rebuild re-reads a page read meanwhile, #159)
+        await new DocumentReference('dev_purchases/a').delete();
+        new WriteBatch().delete(new DocumentReference('dev_purchases/b'));
+        await db.runTransaction(async (tx) => { tx.delete(new DocumentReference('dev_expenses/c')); });
+        expect(deletesIssued('dev_purchases')).toBe(2);
+        expect(deletesIssued('dev_expenses')).toBe(1);
+        expect(deletesIssued('items')).toBe(0);
         warn.mockRestore();
         document.body.innerHTML = '';
     });

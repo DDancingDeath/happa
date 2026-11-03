@@ -233,13 +233,17 @@ describe('recent history window + stock checkpoint', () => {
         install(17);
         await FirebaseService.setupRealtimeListeners();
         jest.useFakeTimers();
-        // The next two get() calls (the first collection of the full load) never settle.
+        // The next two server get() calls (the first page of the full load) never settle.
         let hang = 2;
         const origCollection = fake.db.collection;
-        fake.db.collection = (name) => {
-            const c = origCollection(name);
-            return { ...c, get: () => (hang-- > 0 ? new Promise(() => {}) : c.get()) };
-        };
+        const hanging = (q) => ({
+            ...q,
+            get: (opts) => (opts?.source !== 'cache' && hang-- > 0 ? new Promise(() => {}) : q.get(opts)),
+            orderBy: (...a) => hanging(q.orderBy(...a)),
+            startAfter: (...a) => hanging(q.startAfter(...a)),
+            limit: (...a) => hanging(q.limit(...a))
+        });
+        fake.db.collection = (name) => hanging(origCollection(name));
         let done = false;
         const p = FirebaseService.getStock().then(() => { done = true; });
         for (let i = 0; i < 10 && !done; i++) {
