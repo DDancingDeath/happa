@@ -206,6 +206,10 @@
   font-weight: 600;
 }
 
+/* Items search box: focus ring (was inline onfocus/onblur, #89) */
+#itemsSearchInput { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#itemsSearchInput:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
 .items-archived-toggle {
   display: flex;
   align-items: center;
