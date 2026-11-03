@@ -21,9 +21,9 @@ import { markStartup } from '../../utils/startup-timings.js';
 import { LEGACY_SCAN_DELAY_MS, whenIdle } from '../../utils/background-tasks.js';
 import { FirebaseService } from '../firestore-service.js';
 import { CHECKPOINT_COLLECTION } from './stock-checkpoint.js';
-import { dueBackfillFields } from '../repos/bill-due.js';
+import { dueBackfillChanges, dueBackfillFields } from '../repos/bill-due.js';
 import { billEditsRef } from '../repos/bill-fields.js';
-import { billEditChanges, editRecord, nextEditNumber } from '../../utils/bill-edits.js';
+import { editRecord, nextEditNumber } from '../../utils/bill-edits.js';
 import { t } from '../../i18n/index.js';
 import { AppState } from '../../utils/state.js';
 
@@ -262,7 +262,8 @@ async function writeDueBill(collKey, id) {
         tx.update(ref, fields);
         tx.set(billEditsRef(ref).doc(String(n)), editRecord({
             n, at: serverCreatedAt(), by: AppState.currentUser?.uid || null, byName: AppState.userName,
-            reason: t('ui.edits.due_backfill_reason'), changes: billEditChanges(fresh, { ...fresh, ...fields })
+            reason: t('ui.edits.due_backfill_reason'),
+            changes: dueBackfillChanges(fresh, fields)
         }));
         return { id: String(id), ...fresh, ...fields };
     });

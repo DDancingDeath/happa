@@ -9,6 +9,7 @@ import { FirebaseService } from '../firebase/firestore-service.js';
 import { AppState } from '../utils/state.js';
 import { readPayment } from '../utils/money.js';
 import { dueBackfillFields } from '../firebase/repos/bill-due.js';
+import { describeEdit } from '../utils/bill-edits.js';
 import { legacyBill } from '../../../tests/fixtures/due-shapes.js';
 
 let fake;
@@ -61,7 +62,8 @@ test('check lists the bills to fix and writes nothing; the backfill stores each 
     expect(fake.raw('dev_purchases/p-drift/edits').get('1')).toMatchObject({
         n: 1, by: 'o1', reason: 'Due stored in one place; no amount changed', fields: { dueAmount: { before: 650, after: 600 } }
     });
-    expect(Object.keys(fake.raw('dev_purchases/p-drift/edits').get('1').fields)).toEqual(['dueAmount']);
+    expect(Object.keys(fake.raw('dev_purchases/p-drift/edits').get('1').fields).sort()).toEqual(['dueAmount', 'payment']);
+    expect(describeEdit(fake.raw('dev_purchases/p-drift/edits').get('1'), 'en')).toEqual(['Due stored in one place — no amount changed']);
     expect(fake.raw('dev_purchases/p-null/edits').get('1').fields.payment).toEqual({
         before: { cash: 300, online: 100, due: null }, after: { cash: 300, online: 100, due: 600 } });
     expect(fake.raw('dev_wholesaleSales').get('w-paid').payment).toEqual({ due: 600 });

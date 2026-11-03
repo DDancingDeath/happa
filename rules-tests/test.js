@@ -277,6 +277,11 @@ function defineSuite(prefix) {
             // As the app writes it: with its edit record (#121)
             await assertSucceeds(logged('legacyOwner', coll, 'legacy', 1, fix, { cv: 5 }));
             await assertSucceeds(logged('legacyOwner', coll, 'drift', 1, mirror, { cv: 5 }));
+            // The app's record also holds the unchanged payment (it proves which due the bill showed)
+            const pay = { cash: 400, online: 0, due: 600, total: 1000 };
+            await seedBill(coll, 'drift2', { userId: 'staff1', total: 1000, payment: pay, dueAmount: 650, ...fresh() });
+            await assertSucceeds(logged('legacyOwner', coll, 'drift2', 1, { dueAmount: 600 }, { cv: 5,
+                rec: { fields: { dueAmount: { before: 650, after: 600 }, payment: { before: pay, after: pay } } } }));
             await seedBill(coll, 'legacy2', { total: 1000, cashPayment: 400, onlinePayment: 0, dueAmount: '600' });
             for (const uid of ['staff1', 'manager1']) await assertFails(logged(uid, coll, 'legacy2', 1, fix, { cv: 5 }));
             // Inside the edit window the same logged write is an ordinary edit: a member on their own bill, a manager on any

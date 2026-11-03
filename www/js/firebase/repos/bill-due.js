@@ -16,6 +16,7 @@
  */
 
 import { outstandingDue, readPayment } from '../../utils/money.js';
+import { billEditChanges, withUnchangedFields } from '../../utils/bill-edits.js';
 
 /** Money fields a bill edit sets together with its payment (bill-edits EDIT_FIELDS without dueAmount and the date). */
 const MONEY_FIELDS = ['items', 'grandTotal', 'amountPayable', 'total', 'billTotal', 'saleTotal', 'laborCharges',
@@ -82,4 +83,16 @@ export function dueBackfillFields(bill) {
     const after = { ...bill, ...fields };
     const same = canonical(readPayment(after)) === canonical(readPayment(bill)) && outstandingDue(after) === outstandingDue(bill);
     return same ? { reason, fields } : { reason: 'changes', fields: null };
+}
+
+/**
+ * DUE-BACKFILL's edit record fields (#121): what `fields` changes on `bill`, with `payment` and
+ * `dueAmount` recorded even when unchanged, so the record proves which due the bill showed before
+ * and reads as one line (bill-edits isDueBackfillEdit).
+ * @param {Object} bill - the bill as stored
+ * @param {Object} fields - dueBackfillFields(bill).fields (and what goes with them)
+ * @returns {{fields: Object}}
+ */
+export function dueBackfillChanges(bill, fields) {
+    return withUnchangedFields(billEditChanges(bill, { ...bill, ...fields }), bill, ['payment', 'dueAmount']);
 }
