@@ -1,6 +1,6 @@
 /**
- * Security headers on every Hosting site (#89) and a report-only CSP on the app
- * site that allows every external origin the app's code loads from.
+ * Security headers on every Hosting site (#89) and the enforced CSP on the app site:
+ * it allows every external origin the app's code loads from and no inline script.
  */
 const fs = require('fs');
 const path = require('path');
@@ -142,26 +142,35 @@ describe('security headers on every Hosting site (#89)', () => {
     });
 });
 
-describe('app site CSP (report-only until the inline handlers are gone, #89)', () => {
+describe('app site CSP (enforced, #89)', () => {
     const headers = everyPathHeaders(appSite);
-    const csp = directives(headers['Content-Security-Policy-Report-Only'] || '');
+    const csp = directives(headers['Content-Security-Policy'] || '');
     const allowed = new Set(Object.values(csp).flat().filter((s) => s.startsWith('https://')));
 
-    test('is report-only, with a locked-down baseline', () => {
+    test('is enforced (no report-only twin), with a locked-down baseline', () => {
+        expect(headers['Content-Security-Policy-Report-Only']).toBeUndefined();
         expect(csp['default-src']).toEqual(["'self'"]);
         expect(csp['object-src']).toEqual(["'none'"]);
         expect(csp['base-uri']).toEqual(["'self'"]);
-        // Report-only ignores frame-ancestors; it is enforced in Content-Security-Policy instead.
-        expect(csp['frame-ancestors']).toBeUndefined();
+        expect(csp['frame-ancestors']).toEqual(["'none'"]);
+        expect(csp['form-action']).toEqual(["'self'"]);
         for (const sources of Object.values(csp)) {
             expect(sources).not.toContain("'unsafe-eval'");
             expect(sources).not.toContain('*');
             expect(sources).not.toContain('https:');
+            expect(sources).not.toContain('http:');
         }
     });
 
-    test("script-src allows only our files, Auth's gapi loader, the pinned SheetJS CDN and (for now) inline handlers", () => {
-        expect(csp['script-src']).toEqual(["'self'", "'unsafe-inline'", 'https://apis.google.com', new URL(XLSX_URL).origin]);
+    test("script-src allows only our files, Auth's gapi loader and the pinned SheetJS CDN: nothing inline", () => {
+        expect(csp['script-src']).toEqual(["'self'", 'https://apis.google.com', new URL(XLSX_URL).origin]);
+        // No per-element / per-attribute override that could let inline code back in.
+        expect(csp['script-src-elem']).toBeUndefined();
+        expect(csp['script-src-attr']).toBeUndefined();
+    });
+
+    test("style-src keeps 'unsafe-inline' only for the style= attributes and <style> blocks", () => {
+        expect(csp['style-src']).toEqual(["'self'", "'unsafe-inline'"]);
     });
 
     test("frame-src is only Firebase Auth's iframe on the project's authDomain", () => {
@@ -177,6 +186,7 @@ describe('app site CSP (report-only until the inline handlers are gone, #89)', (
             'https://firestore.googleapis.com',
             'https://identitytoolkit.googleapis.com',
             'https://securetoken.googleapis.com',
+            'https://firebaseinstallations.googleapis.com',
             'https://apis.google.com',
             new URL(APP_IDENTITY.latestReleaseApi).origin
         ]));
@@ -192,5 +202,26 @@ describe('app site CSP (report-only until the inline handlers are gone, #89)', (
     test('the not-loaded list has no stale entries', () => {
         const origins = codeOrigins();
         expect(Object.keys(NOT_LOADED).filter((o) => !origins.has(o))).toEqual([]);
+    });
+
+    test('no www/ page or template has an inline <script> the CSP would block, or a javascript: URL', () => {
+        const hashes = new Set(csp['script-src']);
+        const problems = [];
+        for (const file of walk(path.join(ROOT, 'www')).filter((f) => f.endsWith('.html'))) {
+            const html = fs.readFileSync(file, 'utf8');
+            for (const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)) {
+                const type = (m[1].match(/\btype\s*=\s*["']?([^"'\s>]+)/i) || [])[1] || '';
+                // Data blocks (JSON, templates) never run.
+                if (type && !/^(module|text\/javascript|application\/javascript)$/i.test(type)) continue;
+                if (/\bsrc\s*=/i.test(m[1])) {
+                    if (m[2].trim()) problems.push(`${path.relative(ROOT, file)}: <script src> with a body`);
+                    continue;
+                }
+                const hash = `'sha256-${require('crypto').createHash('sha256').update(m[2], 'utf8').digest('base64')}'`;
+                if (!hashes.has(hash)) problems.push(`${path.relative(ROOT, file)}: inline <script> (move it to www/js/, or add ${hash} to script-src)`);
+            }
+            if (/\b(href|src|action|formaction)\s*=\s*["']?\s*javascript:/i.test(html)) problems.push(`${path.relative(ROOT, file)}: javascript: URL`);
+        }
+        expect(problems).toEqual([]);
     });
 });
