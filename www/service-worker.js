@@ -39,6 +39,7 @@ const STATIC_ASSETS = [
     '/js/firebase/core/session.js',
     '/js/firebase/core/stock-checkpoint.js',
     '/js/firebase/core/stock.js',
+    '/js/firebase/core/target-heal.js',
     '/js/firebase/core/write-settle.js',
     '/js/firebase/repos/anomalies.js',
     '/js/firebase/repos/audit-logs.js',

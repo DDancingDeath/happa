@@ -92,6 +92,8 @@ function mergeFields(target, fields) {
 export function createFakeFirestore(options = {}) {
     const store = new Map();
     const listeners = new Set();
+    // Callbacks subscribed before: subscribing one again resumes (no new read), like the SDK's resume token.
+    const subscribedBefore = new WeakSet();
     const stats = { reads: 0, gets: 0, docGets: 0, listens: 0, writes: 0, queryLog: [], listenLog: [] };
     const failures = options.failures || {};
     let flushScheduled = false;
@@ -109,13 +111,21 @@ export function createFakeFirestore(options = {}) {
     };
     const cachePut = (name, rows) => rows.forEach(r => (r.data === undefined ? cacheColl(name).delete(r.id) : cacheColl(name).set(r.id, r.data)));
 
-    const docSnap = (collName, id, data) => ({
-        id,
-        exists: data !== undefined,
-        ref: docRef(collName, id),
-        data: () => clone(data),
-        metadata: { fromCache: false, hasPendingWrites: false }
-    });
+    const docSnap = (collName, id, data) => {
+        const snap = {
+            id,
+            exists: data !== undefined,
+            ref: docRef(collName, id),
+            data: () => clone(data),
+            metadata: { fromCache: false, hasPendingWrites: false }
+        };
+        // Not enumerable: recorded calls (repositories-characterisation) stay as they were.
+        Object.defineProperty(snap, 'rawData', { value: data });
+        Object.defineProperty(snap, 'isEqual', {
+            value: (other) => !!other && other.id === id && other.ref?.path === `${collName}/${id}` && other.rawData === data
+        });
+        return snap;
+    };
 
     // orderBy(FieldPath.documentId()) orders by the document id.
     const fieldOf = (row, field) => (field === '__name__' ? row[0] : getPath(row[1], field));
@@ -238,7 +248,7 @@ export function createFakeFirestore(options = {}) {
             }
             l.last = evaluate(l.q);
             cachePut(l.coll, l.last);
-            stats.reads += Math.max(1, l.last.length);
+            if (!l.resumed) stats.reads += Math.max(1, l.last.length);
             if (serverHeld) l.held = true;
             l.next(querySnap(l.q, l.last, l.last.map((r, i) => ({ type: 'added', oldIndex: -1, newIndex: i, doc: docSnap(l.q.coll, r.id, r.data) })), serverHeld));
         });
@@ -248,9 +258,15 @@ export function createFakeFirestore(options = {}) {
         const fns = args.filter(a => typeof a === 'function');
         l.next = fns[0];
         l.error = fns[1] || (() => {});
+        l.resumed = subscribedBefore.has(l.next);
+        if (l.next) subscribedBefore.add(l.next);
         listeners.add(l);
-        stats.listens++;
-        stats.listenLog.push(l.coll);
+        if (!l.resumed) {
+            stats.listens++;
+            stats.listenLog.push(l.coll);
+        } else {
+            stats.resumes = (stats.resumes || 0) + 1;
+        }
         startListener(l);
         return () => listeners.delete(l);
     };
