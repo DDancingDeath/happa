@@ -134,10 +134,10 @@ const ItemsManager = {
                 <div class="rate-group">
                     <input type="number" class="rate-input purchase" 
                            value="${Helpers.escapeHtml(rate)}" 
-                           oninput="window.app.items.updateRate(${id}, ${rateIndex}, this.value)"
-                           onchange="window.app.items.commitRate(${id}, ${rateIndex})"
+                           data-oninput="items.updateRate(${id}, ${rateIndex}, this.value)"
+                           data-onchange="items.commitRate(${id}, ${rateIndex})"
                            placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                    <button class="delete-rate" onclick="window.app.items.deleteRate(${id}, ${rateIndex})">×</button>
+                    <button class="delete-rate" data-onclick="items.deleteRate(${id}, ${rateIndex})">×</button>
                 </div>
             `).join('');
             
@@ -146,10 +146,10 @@ const ItemsManager = {
                 <div class="rate-group">
                     <input type="number" class="rate-input sale" 
                            value="${Helpers.escapeHtml(rate)}" 
-                           oninput="window.app.items.updateSaleRate(${id}, ${rateIndex}, this.value)"
-                           onchange="window.app.items.commitSaleRate(${id}, ${rateIndex})"
+                           data-oninput="items.updateSaleRate(${id}, ${rateIndex}, this.value)"
+                           data-onchange="items.commitSaleRate(${id}, ${rateIndex})"
                            placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                    <button class="delete-rate" onclick="window.app.items.deleteSaleRate(${id}, ${rateIndex})">×</button>
+                    <button class="delete-rate" data-onclick="items.deleteSaleRate(${id}, ${rateIndex})">×</button>
                 </div>
             `).join('');
             
@@ -158,10 +158,10 @@ const ItemsManager = {
                 <div class="rate-group">
                     <input type="number" class="rate-input wholesale" 
                            value="${Helpers.escapeHtml(rate)}" 
-                           oninput="window.app.items.updateWholesaleRate(${id}, ${rateIndex}, this.value)"
-                           onchange="window.app.items.commitWholesaleRate(${id}, ${rateIndex})"
+                           data-oninput="items.updateWholesaleRate(${id}, ${rateIndex}, this.value)"
+                           data-onchange="items.commitWholesaleRate(${id}, ${rateIndex})"
                            placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                    <button class="delete-rate" onclick="window.app.items.deleteWholesaleRate(${id}, ${rateIndex})">×</button>
+                    <button class="delete-rate" data-onclick="items.deleteWholesaleRate(${id}, ${rateIndex})">×</button>
                 </div>
             `).join('');
             
@@ -169,30 +169,30 @@ const ItemsManager = {
                 <div class="item-header">
                     <input type="text" class="item-name-input" 
                            value="${Helpers.escapeHtml(item.name)}" 
-                           oninput="window.app.items.updateName(${id}, this.value)"
+                           data-oninput="items.updateName(${id}, this.value)"
                            placeholder="${Helpers.escapeHtml(t('ui.items.name_placeholder'))}">
-                    <button class="delete-item-btn" onclick="window.app.items.archiveItem(${id})">${Helpers.escapeHtml(t('ui.items.archive_item'))}</button>
+                    <button class="delete-item-btn" data-onclick="items.archiveItem(${id})">${Helpers.escapeHtml(t('ui.items.archive_item'))}</button>
                 </div>
                 <div style="margin-bottom: 12px;">
                     <label style="font-size: 13px; font-weight: 600; color: #666; margin-bottom: 4px; display: block;">${Helpers.escapeHtml(t('ui.items.hindi_name_label'))}</label>
                     <input type="text" 
                            value="${Helpers.escapeHtml(item.hindiName || '')}" 
-                           oninput="window.app.items.updateHindiName(${id}, this.value)"
+                           data-oninput="items.updateHindiName(${id}, this.value)"
                            placeholder="${Helpers.escapeHtml(t('ui.items.hindi_name_placeholder'))}"
                            style="width: 100%; padding: 10px; border: 2px solid #dee2e6; border-radius: 8px; font-size: 15px;">
                 </div>
                 <div class="item-row">
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 14px; font-weight: 600; color: #0058b8; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.purchase_rates_kg'))}</label>
-                        <div class="rates-container">${purchaseRatesHTML}<button class="add-rate-plus purchase" onclick="window.app.items.addRate(${id})">+</button></div>
+                        <div class="rates-container">${purchaseRatesHTML}<button class="add-rate-plus purchase" data-onclick="items.addRate(${id})">+</button></div>
                     </div>
                     <div style="margin-bottom: 8px;">
                         <label style="font-size: 14px; font-weight: 600; color: #ff6b6b; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.wholesale_rates_kg'))}</label>
-                        <div class="rates-container">${wholesaleRatesHTML}<button class="add-rate-plus wholesale" onclick="window.app.items.addWholesaleRate(${id})">+</button></div>
+                        <div class="rates-container">${wholesaleRatesHTML}<button class="add-rate-plus wholesale" data-onclick="items.addWholesaleRate(${id})">+</button></div>
                     </div>
                     <div>
                         <label style="font-size: 14px; font-weight: 600; color: #1c7430; margin-bottom: 8px; display: block;">${Helpers.escapeHtml(t('ui.items.retail_rates_kg'))}</label>
-                        <div class="rates-container">${saleRatesHTML}<button class="add-rate-plus sale" onclick="window.app.items.addSaleRate(${id})">+</button></div>
+                        <div class="rates-container">${saleRatesHTML}<button class="add-rate-plus sale" data-onclick="items.addSaleRate(${id})">+</button></div>
                     </div>
                 </div>
             `;
@@ -947,9 +947,9 @@ const ItemsManager = {
             <div class="rate-group">
                 <input type="number" class="rate-input purchase" 
                        value="${Helpers.escapeHtml(rate)}" 
-                       oninput="window.app.items.updateModalRate('purchase', ${idx}, this.value)"
+                       data-oninput="items.updateModalRate('purchase', ${idx}, this.value)"
                        placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                <button class="delete-rate" onclick="window.app.items.deleteModalRate('purchase', ${idx})">×</button>
+                <button class="delete-rate" data-onclick="items.deleteModalRate('purchase', ${idx})">×</button>
             </div>
         `).join('');
         
@@ -959,9 +959,9 @@ const ItemsManager = {
             <div class="rate-group">
                 <input type="number" class="rate-input wholesale" 
                        value="${Helpers.escapeHtml(rate)}" 
-                       oninput="window.app.items.updateModalRate('wholesale', ${idx}, this.value)"
+                       data-oninput="items.updateModalRate('wholesale', ${idx}, this.value)"
                        placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                <button class="delete-rate" onclick="window.app.items.deleteModalRate('wholesale', ${idx})">×</button>
+                <button class="delete-rate" data-onclick="items.deleteModalRate('wholesale', ${idx})">×</button>
             </div>
         `).join('');
         
@@ -971,9 +971,9 @@ const ItemsManager = {
             <div class="rate-group">
                 <input type="number" class="rate-input sale" 
                        value="${Helpers.escapeHtml(rate)}" 
-                       oninput="window.app.items.updateModalRate('sale', ${idx}, this.value)"
+                       data-oninput="items.updateModalRate('sale', ${idx}, this.value)"
                        placeholder="${Helpers.escapeHtml(t('ui.common.rate'))}">
-                <button class="delete-rate" onclick="window.app.items.deleteModalRate('sale', ${idx})">×</button>
+                <button class="delete-rate" data-onclick="items.deleteModalRate('sale', ${idx})">×</button>
             </div>
         `).join('');
     },

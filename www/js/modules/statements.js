@@ -153,7 +153,7 @@ export const StatementsManager = {
         const el = document.getElementById('statementsCsvOption');
         if (!el) return;
         el.hidden = getLang() !== 'hi';
-        el.innerHTML = el.hidden ? '' : `<label class="st-check"><input type="checkbox" id="statementsCsvEnglish"${readCsvEnglish() ? ' checked' : ''} onchange="window.app.statements.setCsvEnglish(this.checked)"> ${esc(t('ui.statements.csv_english'))}</label>`;
+        el.innerHTML = el.hidden ? '' : `<label class="st-check"><input type="checkbox" id="statementsCsvEnglish"${readCsvEnglish() ? ' checked' : ''} data-onchange="statements.setCsvEnglish(this.checked)"> ${esc(t('ui.statements.csv_english'))}</label>`;
     },
 
     renderControls() {
@@ -163,24 +163,24 @@ export const StatementsManager = {
         if (h) h.textContent = t(heading);
         let html = '';
         if (this.kind === 'day') {
-            html = `<label>${esc(t('ui.statements.pick_day'))} <input type="date" class="form-control" value="${esc(this.day)}" onchange="window.app.statements.set('day', this.value)"></label>`;
+            html = `<label>${esc(t('ui.statements.pick_day'))} <input type="date" class="form-control" value="${esc(this.day)}" data-onchange="statements.set('day', this.value)"></label>`;
         } else if (this.kind === 'month') {
             const now = new Date();
             const opts = Array.from({ length: 24 }, (_, i) => monthKeyOf(monthStart(now, -i).getTime()));
-            html = `<label>${esc(t('ui.statements.pick_month'))} <select class="form-control" onchange="window.app.statements.set('month', this.value)">${opts.map(k => `<option value="${k}"${k === this.month ? ' selected' : ''}>${esc(formatMonth(monthBounds(k).from, { lang }))}</option>`).join('')}</select></label>`;
+            html = `<label>${esc(t('ui.statements.pick_month'))} <select class="form-control" data-onchange="statements.set('month', this.value)">${opts.map(k => `<option value="${k}"${k === this.month ? ' selected' : ''}>${esc(formatMonth(monthBounds(k).from, { lang }))}</option>`).join('')}</select></label>`;
         } else if (this.kind === 'party') {
             const parties = partyChoices(this.src(), this.partyKind);
             if (!this.partyKey || !parties.some(p => p.key === this.partyKey)) this.partyKey = parties[0]?.key || null;
-            html = `<div class="ins-tabs ins-subtabs"><button type="button" class="ins-tab${this.partyKind === 'customer' ? ' active' : ''}" onclick="window.app.statements.set('partyKind', 'customer')">${esc(t('ui.insights.customers'))}</button>`
-                + `<button type="button" class="ins-tab${this.partyKind === 'supplier' ? ' active' : ''}" onclick="window.app.statements.set('partyKind', 'supplier')">${esc(t('ui.insights.suppliers'))}</button></div>`
-                + `<label>${esc(t('ui.insights.party'))} <select class="form-control" onchange="window.app.statements.set('partyKey', this.value)">${parties.map(p => `<option value="${esc(p.key)}"${p.key === this.partyKey ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>`;
+            html = `<div class="ins-tabs ins-subtabs"><button type="button" class="ins-tab${this.partyKind === 'customer' ? ' active' : ''}" data-onclick="statements.set('partyKind', 'customer')">${esc(t('ui.insights.customers'))}</button>`
+                + `<button type="button" class="ins-tab${this.partyKind === 'supplier' ? ' active' : ''}" data-onclick="statements.set('partyKind', 'supplier')">${esc(t('ui.insights.suppliers'))}</button></div>`
+                + `<label>${esc(t('ui.insights.party'))} <select class="form-control" data-onchange="statements.set('partyKey', this.value)">${parties.map(p => `<option value="${esc(p.key)}"${p.key === this.partyKey ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>`;
         } else if (this.kind === 'item') {
             const items = (AppState.items || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
             if (!this.itemKey || !items.some(i => i.id === this.itemKey)) this.itemKey = items[0]?.id || null;
-            html = `<label>${esc(t('ui.insights.item'))} <select class="form-control" onchange="window.app.statements.set('itemKey', this.value)">${items.map(i => `<option value="${esc(i.id)}"${i.id === this.itemKey ? ' selected' : ''}>${esc(lang === 'hi' ? i.hindiName || i.name : i.name)}</option>`).join('')}</select></label>`;
+            html = `<label>${esc(t('ui.insights.item'))} <select class="form-control" data-onchange="statements.set('itemKey', this.value)">${items.map(i => `<option value="${esc(i.id)}"${i.id === this.itemKey ? ' selected' : ''}>${esc(lang === 'hi' ? i.hindiName || i.name : i.name)}</option>`).join('')}</select></label>`;
         } else if (this.kind === 'csv' || this.kind === 'accountant') {
-            html = `<label>${esc(t('ui.statements.from'))} <input type="date" class="form-control" value="${esc(this.csvFrom)}" onchange="window.app.statements.set('csvFrom', this.value)"></label>`
-                + `<label>${esc(t('ui.statements.to'))} <input type="date" class="form-control" value="${esc(this.csvTo)}" onchange="window.app.statements.set('csvTo', this.value)"></label>`;
+            html = `<label>${esc(t('ui.statements.from'))} <input type="date" class="form-control" value="${esc(this.csvFrom)}" data-onchange="statements.set('csvFrom', this.value)"></label>`
+                + `<label>${esc(t('ui.statements.to'))} <input type="date" class="form-control" value="${esc(this.csvTo)}" data-onchange="statements.set('csvTo', this.value)"></label>`;
         }
         const el = document.getElementById('statementsControls');
         if (el) el.innerHTML = html;
@@ -217,7 +217,7 @@ export const StatementsManager = {
 
     notLoaded(label, from) {
         return {
-            title: label, html: `<div class="ins-empty"><p>${esc(t('ui.money.older_not_loaded', { period: label }))}</p><button type="button" class="btn btn-primary" onclick="window.app.statements.loadOlder(${Number.isFinite(from) ? from : 'null'})">${esc(t('ui.money.load_older'))}</button></div>`,
+            title: label, html: `<div class="ins-empty"><p>${esc(t('ui.money.older_not_loaded', { period: label }))}</p><button type="button" class="btn btn-primary" data-onclick="statements.loadOlder(${Number.isFinite(from) ? from : 'null'})">${esc(t('ui.money.load_older'))}</button></div>`,
             share: '', csvHeader: [], csvRows: []
         };
     },
@@ -258,7 +258,7 @@ export const StatementsManager = {
             ['ui.statements.t_expenses', totals.expenses], ['ui.statements.t_withdrawals', totals.withdrawals],
             ['ui.statements.t_due_received', totals.dueReceived], ['ui.statements.t_due_paid', totals.duePaid]
         ];
-        const html = (isToday ? `<p class="ins-hint"><button type="button" class="ins-link" onclick="window.app.nav.showTab('day')">${esc(t('ui.statements.today_link'))} ›</button></p>` : '')
+        const html = (isToday ? `<p class="ins-hint"><button type="button" class="ins-link" data-onclick="nav.showTab('day')">${esc(t('ui.statements.today_link'))} ›</button></p>` : '')
             + `<h3 class="st-title">${esc(title)}</h3>`
             + this.duesCaveat(sessions)
             + `<div class="ins-scroll"><table class="ins-table"><thead><tr><th>${esc(t('ui.statements.time'))}</th><th>${esc(t('ui.statements.what'))}</th><th>${esc(t('ui.statements.details'))}</th><th class="num">${esc(t('ui.money.amount'))}</th><th class="num">${esc(t('ui.statements.due'))}</th></tr></thead><tbody>${body || `<tr><td colspan="5">${esc(t('ui.statements.nothing'))}</td></tr>`}</tbody></table></div>`
@@ -308,7 +308,7 @@ export const StatementsManager = {
         const matches = Math.abs(l.closing - l.due) <= 1;
         const word = (v) => t(this.partyKind === 'supplier' ? 'ui.statements.to_pay' : 'ui.statements.to_receive', { amount: formatRupees(Math.abs(v)) });
         const body = l.rows.map(r => `<tr><td>${esc(formatDay(r.t, { lang }))}</td><td>${esc([this.kindLabel(r.kind), r.billNo].filter(Boolean).join(' · '))}</td><td class="num">${r.debit ? money(r.debit) : ''}</td><td class="num">${r.credit ? money(r.credit) : ''}</td><td class="num">${money(r.balance)}</td></tr>`).join('');
-        const loadedNote = isFullHistoryLoaded() ? '' : `<p class="ins-hint">${esc(t('ui.statements.loaded_only'))} <button type="button" class="ins-link" onclick="window.app.statements.loadOlder(null)">${esc(t('ui.money.load_older'))}</button></p>`;
+        const loadedNote = isFullHistoryLoaded() ? '' : `<p class="ins-hint">${esc(t('ui.statements.loaded_only'))} <button type="button" class="ins-link" data-onclick="statements.loadOlder(null)">${esc(t('ui.money.load_older'))}</button></p>`;
         const html = `<h3 class="st-title">${esc(title)}</h3>`
             + `<div class="ins-hero st-balance"><div class="ins-hero-label">${esc(t('ui.statements.balance'))}</div><div class="ins-hero-value" data-metric-export="O4">${esc(word(l.closing))}</div>`
             + `<div class="ins-compare">${matches ? `✓ ${esc(t('ui.statements.matches_outstanding'))}` : `⚠ ${esc(t('ui.statements.differs_outstanding', { amount: formatRupees(l.due) }))}`}</div></div>`

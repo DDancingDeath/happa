@@ -1878,6 +1878,10 @@ body.typing .bottom-nav {
   font-weight: 600;
 }
 
+/* Items search box: focus ring (was inline onfocus/onblur, #89) */
+#itemsSearchInput { width: 100%; padding: 14px; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 15px; transition: all 0.2s; }
+#itemsSearchInput:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+
 .items-archived-toggle {
   display: flex;
   align-items: center;
@@ -3534,6 +3538,18 @@ body.dark-mode .party-due-line.party-due-old {
 .bill-action-btn.bill-action-locked::after {
     content: ' · ' attr(data-locked-label);
     font-size: 0.85em;
+}
+
+/* Expense cards: lift on hover (was inline onmouseover/onmouseout, #89) */
+.expense-card {
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.expense-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transform: translateY(-2px);
 }
 
 /* Voided expenses (#99): kept in the list, struck through */

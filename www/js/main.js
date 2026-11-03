@@ -63,7 +63,7 @@ import { t, getLang, setLang, applyTranslations, LANG_CHANGE_EVENT } from './i18
 // your console shows an OLDER BUILD_ID after a deploy + reload, the service
 // worker / browser is still serving stale assets (reload twice, or hard
 // refresh / unregister the service worker).
-const BUILD_ID = '20261101zzuzieecmbbkhbozzzbaleaaaaaaaaaaaaaaaa-settings-actions';
+const BUILD_ID = '20261101zzuzieecmbbkhbozzzbaleaaaaaaaaaaaaaaaaaaaaaaa-wholesale-actions';
 console.log(
     `%c[Aadhat] BUILD ${BUILD_ID}`,
     'color:#fff;background:#0a7;font-weight:bold;padding:2px 6px;border-radius:3px'
@@ -984,7 +984,8 @@ window.app = {
         deleteSaleRate: (id, rIdx) => ItemsManager.deleteSaleRate(id, rIdx),
         archiveItem: (id) => ItemsManager.archiveItem(id),
         exportExcel: () => ItemsManager.exportToExcel(),
-        importExcel: (evt) => ItemsManager.importFromExcel(evt)
+        importExcel: (evt) => ItemsManager.importFromExcel(evt),
+        pickImportFile: () => document.getElementById('importItemsFile')?.click()
     },
     
     // Billing

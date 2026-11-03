@@ -99,9 +99,9 @@ export const ManualReminders = {
             + (r.party ? ` <span class="today-reminder-party-name">· ${esc(r.party)}</span>` : '')
             + ` <span class="today-reminder-days${r.days < 0 ? ' late' : ''}">${esc(this.whenText(r))}</span>`
             + (isReminderRepeat(r.repeat) ? ` <span class="today-reminder-repeat">${esc(t(`ui.reminders.repeat_${r.repeat}`))}</span>` : '')
-            + `<span class="today-reminder-actions"><button type="button" class="filter-btn" data-reminder-done onclick="window.app.day.reminderDone('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.done'))}</button>`
+            + `<span class="today-reminder-actions"><button type="button" class="filter-btn" data-reminder-done data-onclick="day.reminderDone('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.done'))}</button>`
             + (manage ? `<button type="button" class="filter-btn" data-onclick="day.reminderEdit('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.edit'))}</button>`
-                + `<button type="button" class="filter-btn" onclick="window.app.day.reminderCancel('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.cancel'))}</button>` : '')
+                + `<button type="button" class="filter-btn" data-onclick="day.reminderCancel('${Helpers.escapeJsAttr(r.id)}')">${esc(t('ui.reminders.cancel'))}</button>` : '')
             + '</span></li>';
     },
 
@@ -151,8 +151,8 @@ export const ManualReminders = {
             + `<input type="date" id="reminderDate" min="${esc(min)}" value="${esc(d.dueDate || today)}" aria-label="${esc(t('ui.reminders.date_label'))}">`
             + `<input type="text" id="reminderParty" maxlength="${REMINDER_PARTY_MAX}" value="${esc(d.party || '')}" placeholder="${esc(t('ui.reminders.party_ph'))}" aria-label="${esc(t('ui.reminders.party_label'))}">`
             + `<select id="reminderRepeat" aria-label="${esc(t('ui.reminders.repeat_label'))}">${options}</select>`
-            + `<div class="today-reminder-form-buttons"><button type="button" class="btn btn-primary" data-reminder-save onclick="window.app.day.reminderSave()">${esc(t(this.editId ? 'ui.reminders.save_changes' : 'ui.reminders.save'))}</button>`
-            + `<button type="button" class="btn btn-secondary" onclick="window.app.day.reminderForm(false)">${esc(t('ui.reminders.close'))}</button></div></div>`;
+            + `<div class="today-reminder-form-buttons"><button type="button" class="btn btn-primary" data-reminder-save data-onclick="day.reminderSave()">${esc(t(this.editId ? 'ui.reminders.save_changes' : 'ui.reminders.save'))}</button>`
+            + `<button type="button" class="btn btn-secondary" data-onclick="day.reminderForm(false)">${esc(t('ui.reminders.close'))}</button></div></div>`;
     },
 
     /**
@@ -172,7 +172,7 @@ export const ManualReminders = {
             + (g.later ? `<div class="today-reminder-more">${esc(t('ui.reminders.later', { count: g.later }))}</div>` : '')
             + (this.list.length >= REMINDER_LISTEN_LIMIT ? `<div class="today-reminder-more">${esc(t('ui.reminders.limit', { count: REMINDER_LISTEN_LIMIT }))}</div>` : '')
             + (manage ? (this.formOpen ? this.formHtml()
-                : `<button type="button" class="filter-btn" onclick="window.app.day.reminderForm(true)">${esc(t('ui.reminders.add'))}</button>`) : '')
+                : `<button type="button" class="filter-btn" data-onclick="day.reminderForm(true)">${esc(t('ui.reminders.add'))}</button>`) : '')
             + '</div>';
     },
 
