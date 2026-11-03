@@ -9,8 +9,6 @@
     "js/modules/notifications.js": 1,
     "js/modules/purchase.js": 3,
     "js/modules/retail-sale.js": 3,
-    "js/modules/roles-access.js": 1,
-    "js/modules/settings.js": 1,
     "js/modules/statements.js": 12,
     "js/modules/wholesale-sales.js": 8,
     "js/ui/manual-reminders.js": 5,
@@ -20,7 +18,6 @@
     "templates/items.html": 9,
     "templates/modals.html": 20,
     "templates/navigation.html": 34,
-    "templates/settings.html": 44,
     "templates/statements.html": 10,
     "templates/wholesale-sales.html": 23
   }
