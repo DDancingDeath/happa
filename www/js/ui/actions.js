@@ -5,7 +5,7 @@
  * `window.app.`:
  *
  *     <button data-onclick="nav.showTab('billing', event)">
- *     <input data-onchange="settings.setLang(this.value)">
+ *     <input data-onchange="i18n.setLang(this.value)">
  *     <a href="#" data-onclick="auth.showTab('login'); return false">
  *     <input data-onenter="event.preventDefault(); billing.addWeight(true)">
  *
