@@ -65,7 +65,7 @@ and is wrapped in **Capacitor** for Android distribution.
    `npm run test:rules` (Firestore emulator; needs Java and
    `cd rules-tests && npm install` once). `npm run lint` (ESLint) must
    stay at 0 errors. `.github/workflows/ci.yml` runs lint, `check:sw`,
-   `check:release`, `check:html-escape`, `check:lockfile`, Jest and the rules tests on every PR, and
+   `check:release`, `check:html-escape`, `check:lockfile`, `check:rules-size`, Jest and the rules tests on every PR, and
    `.github/workflows/e2e.yml` runs the Playwright E2E suite on every PR that
    changes the app (section 5, "CI"). Lockfiles must resolve from
    `https://registry.npmjs.org` only: after `npm install` behind a private feed
@@ -639,6 +639,10 @@ permission list, defaults and which parts the rules enforce are in
 2. Add/adjust cases in `rules-tests/test.js` and run `npm run test:rules`
    (Firestore emulator). Key cases: pending user denied, approved/legacy
    (no `status`) users allowed, no self-promotion of `role`/`status`.
+   Keep the file under its size budget (`npm run check:rules-size`): the
+   deploy's compile check has a time limit. Commentary goes in
+   `docs/security.md` ("Firestore rules"), which also says how to keep the
+   compile cheap (shallow helpers, explicit prod/dev_ blocks).
 3. Merge to `main`. `firebase-hosting-merge.yml` calls
    `.github/workflows/firestore-rules-deploy.yml` **before Hosting** when the
    rules, indexes or config changed (section 5, "CI: what runs on a merge to
