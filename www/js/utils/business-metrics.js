@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview One calculation layer for every money and insight figure
  * (docs/insights-redesign.md §7, spec IDs M*, I* and the building blocks
@@ -19,17 +20,19 @@ import { normalizePartyName, pickPartyName } from './aging.js';
 import { INSIGHTS_DEFAULTS } from './insights-config.js';
 
 const DAY_MS = 86400000;
-const num = (v) => {
+/** @typedef {import('./finance-calc.js').Catalogue} Catalogue */
+
+const num = (/** @type {*} */ v) => {
     const x = typeof v === 'number' ? v : parseFloat(v);
     return Number.isFinite(x) ? x : 0;
 };
-const inRange = (t, from, to) => Number.isFinite(t) && t >= from && t < to;
+const inRange = (/** @type {number} */ t, /** @type {number} */ from, /** @type {number} */ to) => Number.isFinite(t) && t >= from && t < to;
 
 // ------------------------------------------------------------------ BILL-TIME, PERIOD, CMP
 
 /**
  * BILL-TIME: when a bill counts (numeric `timestamp`, else its date via dates.js).
- * @param {Object} bill
+ * @param {Rec} bill
  * @returns {?number} ms, null when undated
  */
 export function billTime(bill) {
@@ -47,7 +50,7 @@ export function recordTime(value) {
     return d ? d.getTime() : null;
 }
 
-const localMidnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const localMidnight = (/** @type {Date} */ d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
 /**
  * PERIOD: [from, to) for a preset. Calendar periods run up to the end of today.
@@ -63,12 +66,13 @@ export function periodRange(preset, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
     const y = now.getFullYear();
     const m = now.getMonth();
     const ys = cfg.yearStartMonth || 0;
-    const yearStart = (offset) => {
+    const yearStart = (/** @type {number} */ offset) => {
         const startYear = m >= ys ? y : y - 1;
         return new Date(startYear + offset, ys, 1);
     };
+    /** @type {(from: Date|number, to: Date|number, extra?: Rec) => {preset: string, from: number, to: number, month?: string}} */
     const mk = (from, to, extra = {}) => ({ preset, from: from instanceof Date ? from.getTime() : from, to: to instanceof Date ? to.getTime() : to, ...extra });
-    const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const monthKey = (/** @type {Date} */ d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     if (preset === 'this-month' && cfg.monthMode === 'last30') return mk(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29), endOfToday);
     switch (preset) {
         case 'this-month': return mk(new Date(y, m, 1), endOfToday, { month: monthKey(now) });
@@ -100,17 +104,21 @@ export function periodRange(preset, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
 
 const CUSTOM_RANGE = /^range:(\d{4})-(\d{2})-(\d{2}):(\d{4})-(\d{2})-(\d{2})$/;
 
-/** PERIOD-CUSTOM: the two days of a 'range:' preset ([y, m, d] each, from ≤ to), else null. */
+/**
+ * PERIOD-CUSTOM: the two days of a 'range:' preset ([y, m, d] each, from ≤ to), else null.
+ * @param {*} preset
+ * @returns {?{from: number[], to: number[]}}
+ */
 function customRangeDays(preset) {
     const m = CUSTOM_RANGE.exec(String(preset));
     if (!m) return null;
     const a = [+m[1], +m[2], +m[3]];
     const b = [+m[4], +m[5], +m[6]];
-    const valid = (d) => d[1] >= 1 && d[1] <= 12 && d[2] >= 1 && d[2] <= new Date(d[0], d[1], 0).getDate();
+    const valid = (/** @type {number[]} */ d) => d[1] >= 1 && d[1] <= 12 && d[2] >= 1 && d[2] <= new Date(d[0], d[1], 0).getDate();
     if (!valid(a) || !valid(b)) return null;
     return toKey(a) <= toKey(b) ? { from: a, to: b } : { from: b, to: a };
 }
-const toKey = (d) => d[0] * 10000 + d[1] * 100 + d[2];
+const toKey = (/** @type {number[]} */ d) => d[0] * 10000 + d[1] * 100 + d[2];
 
 /**
  * PERIOD-CUSTOM: the preset for two chosen days ('YYYY-MM-DD', either order), or null when one is not a
@@ -121,16 +129,21 @@ const toKey = (d) => d[0] * 10000 + d[1] * 100 + d[2];
  * @returns {?string}
  */
 export function customRangePreset(fromIso, toIso, now = new Date()) {
-    const ok = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+    const ok = (/** @type {*} */ s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
     if (!ok(fromIso) || !ok(toIso)) return null;
     const days = customRangeDays(`range:${fromIso}:${toIso}`);
     if (!days) return null;
-    const iso = (d) => `${d[0]}-${String(d[1]).padStart(2, '0')}-${String(d[2]).padStart(2, '0')}`;
+    const iso = (/** @type {number[]} */ d) => `${d[0]}-${String(d[1]).padStart(2, '0')}-${String(d[2]).padStart(2, '0')}`;
     if (iso(days.from) > toLocalISODate(now)) return null;
     return `range:${iso(days.from)}:${iso(days.to)}`;
 }
 
-/** PERIOD-FY: 1 April of the Indian financial year containing `now`, `offset` years away. */
+/**
+ * PERIOD-FY: 1 April of the Indian financial year containing `now`, `offset` years away.
+ * @param {Date} now
+ * @param {number} [offset]
+ * @returns {Date}
+ */
 function fyStart(now, offset = 0) {
     const y = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
     return new Date(y + offset, 3, 1);
@@ -145,7 +158,12 @@ export function fiscalYearLabel(startYear) {
     return `${startYear}-${String((startYear + 1) % 100).padStart(2, '0')}`;
 }
 
-/** The same local date `years` / `months` away, clipped to the month's last day. */
+/**
+ * The same local date `years` / `months` away, clipped to the month's last day.
+ * @param {number} ms
+ * @param {{years?: number, months?: number}} by
+ * @returns {number}
+ */
 function shiftDate(ms, { years = 0, months = 0 }) {
     const d = new Date(ms);
     const target = new Date(d.getFullYear() + years, d.getMonth() + months, 1);
@@ -157,7 +175,7 @@ function shiftDate(ms, { years = 0, months = 0 }) {
  * CMP: the two comparison ranges for a period. A (partial) calendar month is
  * compared with the same days of the previous month; other periods with the
  * same length just before. "Last year" = the same dates one year earlier.
- * @param {{from: number, to: number, month?: string}} range
+ * @param {{from: number, to: number, month?: string, preset?: string}} range
  * @returns {{previous: ?{from: number, to: number}, lastYear: ?{from: number, to: number}}}
  */
 export function comparisonRanges(range) {
@@ -174,7 +192,12 @@ export function comparisonRanges(range) {
     return { previous, lastYear };
 }
 
-/** Exclusive end shifted by its inclusive last day (to − 1 ms), clipped to the month's end (a month's last day stays the last day), plus a day. */
+/**
+ * Exclusive end shifted by its inclusive last day (to − 1 ms), clipped to the month's end (a month's last day stays the last day), plus a day.
+ * @param {number} to
+ * @param {{years?: number, months?: number}} by
+ * @returns {number}
+ */
 function shiftEnd(to, by) {
     const last = new Date(to - 1);
     const dayStart = new Date(last.getFullYear(), last.getMonth(), last.getDate()).getTime();
@@ -223,11 +246,11 @@ export const PERIOD_COMPARE_IDS = Object.freeze(['M1', 'M16', 'M4', 'M6', 'M14']
  * no % when B is 0).
  * @param {Object<string, ?number>} a figures of A by spec ID (e.g. { M1, M4, M6, M14, M16 })
  * @param {?Object<string, ?number>} b figures of B (null: not known)
- * @param {string[]} [ids]
+ * @param {ReadonlyArray<string>} [ids]
  * @returns {Array<{id: string, a: ?number, b: ?number, diff: ?number, c: ?{pct: number, diff: number, dir: string}}>}
  */
 export function periodCompare(a, b, ids = PERIOD_COMPARE_IDS) {
-    const val = (src, id) => (src && Number.isFinite(src[id]) ? src[id] : null);
+    const val = (/** @type {?Object<string, ?number>|undefined} */ src, /** @type {string} */ id) => (src && Number.isFinite(src[id]) ? src[id] : null);
     return ids.map(id => {
         const x = val(a, id);
         const y = val(b, id);
@@ -239,13 +262,13 @@ export function periodCompare(a, b, ids = PERIOD_COMPARE_IDS) {
 
 /**
  * BILL-COUNT: activity bills (no opening records) whose BILL-TIME is in [from, to).
- * @param {Object} src {purchases, wholesaleSales, retailSales}
+ * @param {Rec} src {purchases, wholesaleSales, retailSales}
  * @param {number} from
  * @param {number} to
  * @returns {{purchases: number, retail: number, wholesale: number, sales: number}}
  */
 export function billCount(src, from, to) {
-    const c = (list) => billsInRange(list || [], from, to).length;
+    const c = (/** @type {?Array<Rec>|undefined} */ list) => billsInRange(list || [], from, to).length;
     const retail = c(src.retailSales);
     const wholesale = c(src.wholesaleSales);
     return { purchases: c(src.purchases), retail, wholesale, sales: retail + wholesale };
@@ -253,15 +276,15 @@ export function billCount(src, from, to) {
 
 // ------------------------------------------------------------------ Money (M*)
 
-const sumBills = (bills) => round2(bills.reduce((a, b) => a + billTotal(b), 0));
+const sumBills = (/** @type {Array<Bill>} */ bills) => round2(bills.reduce((a, b) => a + billTotal(b), 0));
 
 /**
  * Every Money figure (M1–M17) for [from, to).
- * @param {Object} input {purchases, wholesaleSales, retailSales, stockAdjustments, expenses,
+ * @param {Rec} input {purchases, wholesaleSales, retailSales, stockAdjustments, expenses,
  *   withdrawals, sessions, items, base, duesComplete}
  * @param {{from: number, to: number}} range
  * @param {{detail?: boolean}} [opts]
- * @returns {Object} M1…M17 plus `caveats` and (with detail) `detail`
+ * @returns {Rec} M1…M17 plus `caveats` and (with detail) `detail`
  */
 export function moneySummary(input, { from, to }, { detail = false } = {}) {
     const sources = {
@@ -282,7 +305,7 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
     const lineValue = round2(purchases.reduce((a, b) => a + (Array.isArray(b.items) ? b.items : []).reduce((x, l) => x + readLineItem(l).total, 0), 0));
 
     // Money in / out split by cash and online (M12–M14).
-    const at = (bills) => bills.reduce((a, b) => {
+    const at = (/** @type {Array<Bill>} */ bills) => bills.reduce((a, b) => {
         const p = saleTimePayment(b);
         a.cash += p.cash;
         a.online += p.online;
@@ -298,11 +321,13 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
     const expensesAll = round2(s.expenses.business + s.expenses.personal);
     // EXP-MODE (#118): online expenses are online money out; the rest (and every expense without a mode) cash
     const expensesOnline = s.expenses.online || 0;
+    /** @type {{cash: number, online: number, atSale: number, dueReceived: number, total?: number}} */
     const moneyIn = {
         cash: round2(sold.cash + dues.receivedCash), online: round2(sold.online + dues.receivedOnline),
         atSale: round2(sold.cash + sold.online), dueReceived: round2(dues.receivedCash + dues.receivedOnline)
     };
     moneyIn.total = round2(moneyIn.cash + moneyIn.online);
+    /** @type {{cash: number, online: number, atPurchase: number, duePaid: number, expenses: number, expensesCash: number, expensesOnline: number, total?: number}} */
     const moneyOut = {
         cash: round2(bought.cash + dues.paidCash + expensesAll - expensesOnline), online: round2(bought.online + dues.paidOnline + expensesOnline),
         atPurchase: round2(bought.cash + bought.online), duePaid: round2(dues.paidCash + dues.paidOnline), expenses: expensesAll,
@@ -310,15 +335,16 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
     };
     moneyOut.total = round2(moneyOut.cash + moneyOut.online);
 
+    /** @type {Array<Rec>} */
     const caveats = [];
     if (s.stock === null) caveats.push({ key: 'history', ids: ['M2', 'M3', 'M6', 'M10', 'M17'] });
-    if (s.uncostedWarning) caveats.push({ key: 'uncosted', ids: ['M2', 'M3', 'M6'], qty: s.stock.uncosted.qty, estimate: s.stock.uncosted.estimate });
+    if (s.uncostedWarning) caveats.push({ key: 'uncosted', ids: ['M2', 'M3', 'M6'], qty: /** @type {import('./finance-calc.js').StockMovement} */ (s.stock).uncosted.qty, estimate: /** @type {import('./finance-calc.js').StockMovement} */ (s.stock).uncosted.estimate });
     if (s.expenses.uncategorised > 0) caveats.push({ key: 'untagged', ids: ['M4'], amount: s.expenses.uncategorised });
     if (s.duesApproximate) caveats.push({ key: 'dues', ids: ['M5', 'M12', 'M13', 'M14'] });
-    if (s.stockMismatch) caveats.push({ key: 'gap', ids: ['M17'], gap: s.stock.gap });
+    if (s.stockMismatch) caveats.push({ key: 'gap', ids: ['M17'], gap: /** @type {import('./finance-calc.js').StockMovement} */ (s.stock).gap });
 
     const salesTotal = s.sales.total;
-    const per100 = (v) => (v === null || !salesTotal ? null : round2((v / salesTotal) * 100));
+    const per100 = (/** @type {?number} */ v) => (v === null || !salesTotal ? null : round2((v / salesTotal) * 100));
     return {
         range: { from, to },
         M1: {
@@ -337,7 +363,7 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
         M10: s.afterWithdrawals,
         M12: moneyIn,
         M13: moneyOut,
-        M14: round2(moneyIn.total - moneyOut.total),
+        M14: round2(/** @type {number} */ (moneyIn.total) - /** @type {number} */ (moneyOut.total)),
         M16: { total: s.purchases.total, count: s.purchases.count, lineValue, labour: s.purchases.labour },
         M17: s.stock ? {
             opening: s.stock.opening, purchases: s.stock.purchases, cogs: s.stock.cogs, adjustments: s.stock.adjustments,
@@ -353,8 +379,13 @@ export function moneySummary(input, { from, to }, { detail = false } = {}) {
 /**
  * Business expenses per category (M4 breakdown). The category is the expense's
  * `type` (rent, transport…); untagged business expenses are their own row.
+ * @param {?Array<Expense>|undefined} expenses
+ * @param {number} from
+ * @param {number} to
+ * @returns {Array<{category: string, total: number, count: number}>}
  */
 export function expenseCategories(expenses, from, to) {
+    /** @type {Map<string, {category: string, total: number, count: number}>} */
     const out = new Map();
     activeExpenses(expenses).forEach(e => {
         if (isPersonalExpense(e)) return;
@@ -372,11 +403,11 @@ export function expenseCategories(expenses, from, to) {
 
 /**
  * M6 per day of a detailed summary (sums to M6). Keys are local YYYY-MM-DD.
- * @param {Object} summary moneySummary(..., {detail: true})
+ * @param {Rec} summary moneySummary(..., {detail: true})
  * @returns {Object<string, number>}
  */
 export function profitPerDay(summary) {
-    const pad = (x) => String(x).padStart(2, '0');
+    const pad = (/** @type {number} */ x) => String(x).padStart(2, '0');
     return profitByDay(summary.detail, (ms) => {
         const d = new Date(ms);
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -388,11 +419,11 @@ export function profitPerDay(summary) {
 /**
  * O3 / O4 totals and bill counts (BILL-DUE: cleared bills and opening records'
  * settled dues handled by outstandingDue). Receivables include wholesale.
- * @param {Object} src {purchases, wholesaleSales, retailSales}
+ * @param {Rec} src {purchases, wholesaleSales, retailSales}
  * @returns {{payable: {total: number, count: number}, receivable: {total: number, count: number}}}
  */
 export function outstandingTotals(src) {
-    const tally = (bills) => (bills || []).reduce((a, b) => {
+    const tally = (/** @type {?Array<Rec>|undefined} */ bills) => (bills || []).reduce((a, b) => {
         const d = outstandingDue(b);
         if (d > 0.005) { a.total += d; a.count++; }
         return a;
@@ -408,33 +439,35 @@ export function outstandingTotals(src) {
  * I1/I2: sales, cost of goods sold and profit per item for the period, from a
  * detailed moneySummary. Rows add up to M1 (a bill whose total differs from its
  * lines adds a "bill adjustments" row, itemKey '') and to M2.
- * @param {Object} summary moneySummary(..., {detail: true})
+ * @param {Rec} summary moneySummary(..., {detail: true})
  * @param {{type?: 'retail'|'wholesale'|'both'}} [opts]
- * @returns {Array<{itemKey, item, itemHi, sales, qty, cogs, profit, per100, retail, wholesale}>}
+ * @returns {Array<{itemKey: string, item: string, itemHi: string, sales: number, qty: number, cogs: ?number, profit: ?number,
+ *   per100: ?number, retail: number, wholesale: number, adjustment: boolean}>}
  */
 export function itemSummary(summary, { type = 'both' } = {}) {
     const d = summary.detail;
     if (!d) return [];
+    /** @type {Map<string, Rec>} */
     const rows = new Map();
-    const row = (r) => {
+    const row = (/** @type {Rec} */ r) => {
         const k = r.itemKey || '';
         if (!rows.has(k)) rows.set(k, { itemKey: k, item: r.item || '', itemHi: r.itemHi || '', sales: 0, qty: 0, cogs: 0, retail: 0, wholesale: 0, adjustment: !k });
-        return rows.get(k);
+        return /** @type {Rec} */ (rows.get(k));
     };
-    const want = (bt) => type === 'both' || bt === type;
-    (d.sales || []).forEach(r => {
+    const want = (/** @type {string} */ bt) => type === 'both' || bt === type;
+    (d.sales || []).forEach((/** @type {Rec} */ r) => {
         if (!want(r.billType)) return;
         const x = row(r);
         x.sales += num(r.amount);
         x.qty += num(r.qty);
         if (r.billType === 'retail') x.retail += num(r.amount); else x.wholesale += num(r.amount);
     });
-    (d.stock?.cogs || []).forEach(r => {
+    (d.stock?.cogs || []).forEach((/** @type {Rec} */ r) => {
         if (!want(r.billType)) return;
         row(r).cogs += num(r.amount);
     });
     const known = !!d.stock;
-    return [...rows.values()].map(x => {
+    return /** @type {ReturnType<typeof itemSummary>} */ ([...rows.values()].map(x => {
         const sales = round2(x.sales);
         const cogs = known ? round2(x.cogs) : null;
         const profit = cogs === null ? null : round2(sales - cogs);
@@ -443,31 +476,33 @@ export function itemSummary(summary, { type = 'both' } = {}) {
             retail: round2(x.retail), wholesale: round2(x.wholesale),
             per100: profit === null || !sales ? null : round2((profit / sales) * 100)
         };
-    }).sort((a, b) => (b.profit ?? b.sales) - (a.profit ?? a.sales));
+    })).sort((a, b) => (b.profit ?? b.sales) - (a.profit ?? a.sales));
 }
 
 /**
  * I8: sale lines sold below their cost (sale value < cost of goods sold of the
  * same bill and item), per item.
- * @param {Object} summary moneySummary(..., {detail: true})
- * @returns {Array<{itemKey, item, itemHi, times, qty, lost}>}
+ * @param {Rec} summary moneySummary(..., {detail: true})
+ * @returns {Array<{itemKey: string, item: string, itemHi: string, times: number, qty: number, lost: number}>}
  */
 export function belowCostSales(summary) {
     const d = summary.detail;
     if (!d || !d.stock) return [];
+    /** @type {Map<string, Rec>} */
     const byLine = new Map();
-    const key = (r) => `${r.billType}|${r.billId}|${r.itemKey}`;
-    (d.sales || []).forEach(r => {
+    const key = (/** @type {Rec} */ r) => `${r.billType}|${r.billId}|${r.itemKey}`;
+    (d.sales || []).forEach((/** @type {Rec} */ r) => {
         if (!r.itemKey) return;
         const x = byLine.get(key(r)) || { itemKey: r.itemKey, item: r.item, itemHi: r.itemHi, sales: 0, cogs: 0, qty: 0 };
         x.sales += num(r.amount);
         x.qty += num(r.qty);
         byLine.set(key(r), x);
     });
-    (d.stock.cogs || []).forEach(r => {
+    (d.stock.cogs || []).forEach((/** @type {Rec} */ r) => {
         const x = byLine.get(key(r));
         if (x) x.cogs += num(r.amount);
     });
+    /** @type {Map<string, Rec>} */
     const out = new Map();
     byLine.forEach(x => {
         if (!(x.cogs - x.sales > 0.5)) return;
@@ -477,12 +512,12 @@ export function belowCostSales(summary) {
         o.lost = round2(o.lost + x.cogs - x.sales);
         out.set(x.itemKey, o);
     });
-    return [...out.values()].sort((a, b) => b.lost - a.lost);
+    return /** @type {ReturnType<typeof belowCostSales>} */ ([...out.values()]).sort((a, b) => b.lost - a.lost);
 }
 
 /**
  * I7: items with enough sales and too little profit per ₹100 (or a loss).
- * @param {Array} items itemSummary rows
+ * @param {?Array<Rec>|undefined} items itemSummary rows
  * @param {typeof INSIGHTS_DEFAULTS} [cfg]
  */
 export function lowProfitItems(items, cfg = INSIGHTS_DEFAULTS) {
@@ -494,23 +529,24 @@ export function lowProfitItems(items, cfg = INSIGHTS_DEFAULTS) {
  * Purchases per item with labour shared out by line value (#47), so the rows
  * add up to M16 (bill totals after labour). A bill whose lines don't match its
  * total adds a "bill adjustments" row (itemKey '').
- * @param {Array} purchases bills
- * @param {Array} items catalogue
+ * @param {?Array<Rec>|undefined} purchases bills
+ * @param {?Catalogue|undefined} items catalogue
  * @param {{from: number, to: number}} range
  */
 export function purchaseItems(purchases, items, { from, to }) {
     const getKey = createItemKeyResolver(items || []);
     const byId = new Map((items || []).map(i => [i.id, i]));
+    /** @type {Map<string, Rec>} */
     const rows = new Map();
-    const row = (k, raw) => {
+    const row = (/** @type {string} */ k, /** @type {*} */ raw) => {
         if (!rows.has(k)) {
             const it = byId.get(k);
             rows.set(k, { itemKey: k, item: it?.name || raw || '', itemHi: it?.hindiName || it?.name || raw || '', lineValue: 0, labour: 0, amount: 0, qty: 0 });
         }
-        return rows.get(k);
+        return /** @type {Rec} */ (rows.get(k));
     };
     billsInRange(purchases || [], from, to).forEach(b => {
-        const lines = (Array.isArray(b.items) ? b.items : []).map(l => ({ l, v: readLineItem(l) }));
+        const lines = (Array.isArray(b.items) ? b.items : []).map((/** @type {BillLine} */ l) => ({ l, v: readLineItem(l) }));
         const value = lines.reduce((a, x) => a + x.v.total, 0);
         const labour = billLabour(b);
         let used = 0;
@@ -537,7 +573,7 @@ export function purchaseItems(purchases, items, { from, to }) {
  * I3 (kind 'sales': retail + wholesale) or I4 (kind 'purchases'): totals per
  * party key (name trimmed, case-folded, single spaces). Unnamed bills form one
  * '' row. Rows add up to M1 / M16.
- * @param {Object} src {purchases, wholesaleSales, retailSales}
+ * @param {Rec} src {purchases, wholesaleSales, retailSales}
  * @param {'sales'|'purchases'} kind
  * @param {{from: number, to: number}} range
  */
@@ -545,6 +581,7 @@ export function partySummary(src, kind, { from, to }) {
     const bills = kind === 'purchases'
         ? billsInRange(src.purchases || [], from, to)
         : [...billsInRange(src.retailSales || [], from, to), ...billsInRange(src.wholesaleSales || [], from, to)];
+    /** @type {Map<string, Rec>} */
     const rows = new Map();
     bills.forEach(b => {
         const raw = String(b.customerName ?? b.supplierName ?? '').trim().replace(/\s+/g, ' ');
@@ -558,7 +595,7 @@ export function partySummary(src, kind, { from, to }) {
         r.total += billTotal(b);
         r.count++;
         r.labour += billLabour(b);
-        r.qty += (Array.isArray(b.items) ? b.items : []).reduce((a, l) => a + readLineItem(l).qty, 0);
+        r.qty += (Array.isArray(b.items) ? b.items : []).reduce((/** @type {number} */ a, /** @type {BillLine} */ l) => a + readLineItem(l).qty, 0);
         r.last = Math.max(r.last, t);
         rows.set(key, r);
     });
@@ -572,10 +609,10 @@ export function partySummary(src, kind, { from, to }) {
  * Regular buyers who stopped coming: bought in at least 3 of the 3 calendar
  * months around this month last year and have no bill in the last
  * `stoppedComingDays` days.
- * @param {Object} src {wholesaleSales, retailSales}
+ * @param {Rec} src {wholesaleSales, retailSales}
  * @param {Date} now
  * @param {typeof INSIGHTS_DEFAULTS} [cfg]
- * @returns {Array<{key, name, last}>}
+ * @returns {Array<{key: string, name: string, last: ?number}>}
  */
 export function stoppedComing(src, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
     return stoppedComingCheck(src, now, cfg).list;
@@ -586,12 +623,12 @@ export function stoppedComing(src, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
  * loaded bills when they are loaded, else from that month's snapshot
  * customer list (its top customers); a month with neither makes the answer
  * unknown (`known: false`), so the page never claims "every regular came".
- * @param {Object} src {wholesaleSales, retailSales}
+ * @param {Rec} src {wholesaleSales, retailSales}
  * @param {Date} now
  * @param {typeof INSIGHTS_DEFAULTS} [cfg]
  * @param {{loadedFrom?: number, snapshotCustomers?: Object<string, ?Array<{key: string, name: string}>>}} [ctx]
  *   loadedFrom: start of the loaded bills (0 = all); snapshotCustomers: 'YYYY-MM' → customers
- * @returns {{list: Array<{key, name, last: ?number}>, known: boolean}}
+ * @returns {{list: Array<{key: string, name: string, last: ?number}>, known: boolean}}
  */
 export function stoppedComingCheck(src, now = new Date(), cfg = INSIGHTS_DEFAULTS, { loadedFrom = 0, snapshotCustomers = {} } = {}) {
     const y = now.getFullYear() - 1;
@@ -600,9 +637,10 @@ export function stoppedComingCheck(src, now = new Date(), cfg = INSIGHTS_DEFAULT
     const months = lyMonths.map(d => `${d.getFullYear()}-${d.getMonth()}`);
     const cutoff = now.getTime() - cfg.stoppedComingDays * DAY_MS;
     if (loadedFrom > cutoff) return { list: [], known: false };
+    /** @type {Map<string, Rec>} */
     const seen = new Map();
-    const rowOf = (key) => seen.get(key) || { key, spellings: new Map(), months: new Set(), last: 0 };
-    activityBills([...(src.retailSales || []), ...(src.wholesaleSales || [])]).forEach(b => {
+    const rowOf = (/** @type {string} */ key) => seen.get(key) || { key, spellings: new Map(), months: new Set(), last: 0 };
+    /** @type {Bill[]} */ (activityBills([...(src.retailSales || []), ...(src.wholesaleSales || [])])).forEach(b => {
         const raw = String(b.customerName ?? '').trim().replace(/\s+/g, ' ');
         const key = normalizePartyName(raw);
         if (!key) return;
@@ -623,7 +661,7 @@ export function stoppedComingCheck(src, now = new Date(), cfg = INSIGHTS_DEFAULT
         const pad = String(lyMonths[i].getMonth() + 1).padStart(2, '0');
         const list = snapshotCustomers[`${lyMonths[i].getFullYear()}-${pad}`];
         if (!Array.isArray(list)) return { list: [], known: false };
-        list.forEach(p => {
+        list.forEach((/** @type {Rec} */ p) => {
             const key = normalizePartyName(p.key || p.name || '');
             if (!key) return;
             const r = rowOf(key);
@@ -641,13 +679,14 @@ export function stoppedComingCheck(src, now = new Date(), cfg = INSIGHTS_DEFAULT
 
 /**
  * Parties with dues older than `overdueDays` (from Outstanding's rule: BILL-DUE).
- * @param {Array} bills purchases or sales
+ * @param {?Array<Rec>|undefined} bills purchases or sales
  * @param {Date} now
  * @param {typeof INSIGHTS_DEFAULTS} [cfg]
  * @returns {{parties: number, total: number, oldestDays: number}}
  */
 export function overdueParties(bills, now = new Date(), cfg = INSIGHTS_DEFAULTS) {
     const today = localMidnight(now).getTime();
+    /** @type {Map<string, number>} */
     const parties = new Map();
     let total = 0;
     let oldest = 0;
@@ -671,15 +710,17 @@ export function overdueParties(bills, now = new Date(), cfg = INSIGHTS_DEFAULTS)
 /**
  * I5 input: kg sold (retail + wholesale) per item and 'YYYY-MM' from rateStats
  * year docs (RT4 months).
- * @param {Array<{itemId: string, months: Object}>} docs
+ * @param {?Array<?{itemId?: string, months?: Rec}>|undefined} docs
  * @returns {Map<string, Object<string, number>>}
  */
 export function soldKgByMonth(docs) {
+    /** @type {Map<string, Object<string, number>>} */
     const out = new Map();
     (docs || []).forEach(d => {
         if (!d || !d.itemId) return;
+        /** @type {Object<string, number>} */
         const m = out.get(d.itemId) || {};
-        Object.entries(d.months || {}).forEach(([k, b]) => {
+        Object.entries(d.months || {}).forEach((/** @type {[string, *]} */ [k, b]) => {
             const key = String(k).replace(/^m/, '');
             if (!/^\d{4}-\d{2}$/.test(key)) return;
             m[key] = (m[key] || 0) + (Number(b?.retail?.kg) || 0) + (Number(b?.wholesale?.kg) || 0);
@@ -709,7 +750,7 @@ export function seasonIndex(kgByMonth) {
     if (entries.length < 12) return null;
     const avg = entries.reduce((a, [, v]) => a + v, 0) / entries.length;
     if (!(avg > 0)) return null;
-    const by = Array.from({ length: 12 }, () => []);
+    const by = Array.from({ length: 12 }, () => /** @type {number[]} */ ([]));
     entries.forEach(([k, v]) => by[Number(k.slice(5, 7)) - 1].push(v));
     return by.map(list => (list.length ? round2(list.reduce((a, b) => a + b, 0) / list.length / avg) : null));
 }
@@ -717,12 +758,13 @@ export function seasonIndex(kgByMonth) {
 /**
  * I9: items to stock up: a busy month (season index ≥ busy) within the next
  * `weeksAhead` weeks while the stock covers fewer weeks than that.
- * @param {Array<{itemKey, item, itemHi, index: ?Array<?number>, qty: number, weeklyKg: number}>} rows
+ * @param {?Array<{itemKey: string, item?: string, itemHi?: string, index: ?Array<?number>, qty: number, weeklyKg: number}>|undefined} rows
  * @param {Date} now
  * @param {{weeksAhead?: number}} [opts]
  * @param {typeof INSIGHTS_DEFAULTS} [cfg]
  */
 export function stockUpItems(rows, now = new Date(), { weeksAhead = 8 } = {}, cfg = INSIGHTS_DEFAULTS) {
+    /** @type {Array<Rec>} */
     const out = [];
     (rows || []).forEach(r => {
         if (!r.index) return;
@@ -808,7 +850,7 @@ export function topShare(rows, n = 5) {
 
 /**
  * AC10 / AC11: rows add up to a total (within `tolerance` rupees).
- * @param {Array<Object>} rows
+ * @param {Array<Rec>} rows
  * @param {string} field
  * @param {number} total
  * @param {number} [tolerance=1]
@@ -822,12 +864,14 @@ export function addsUp(rows, field, total, tolerance = 1) {
 
 /**
  * M14 per local day (Money › Cash chart): money in − money out of each day, to paise.
- * @param {Object} detail moneySummary(…, {detail: true}).detail
+ * @param {?Rec|undefined} detail moneySummary(…, {detail: true}).detail
  * @param {string[]} dayKeys local 'YYYY-MM-DD' days, in chart order
  * @returns {number[]} one value per key
  */
 export function netMoneyByDay(detail, dayKeys) {
+    /** @type {Object<string, number>} */
     const days = {};
+    /** @type {(rows: ?Array<Rec>|undefined, sign: number) => void} */
     const add = (rows, sign) => (rows || []).forEach(x => {
         if (!Number.isFinite(x.t)) return;
         const k = toLocalISODate(new Date(x.t));
@@ -894,7 +938,7 @@ export function accountId(name) {
 /**
  * One account as stored in settings/accounts (#74), or null when the input is not
  * valid: a name (1–40 characters) and a balance of 0 or more, kept in whole rupees.
- * @param {{name: *, balance: *, type?: string}} input
+ * @param {{name?: *, balance?: *, type?: string}} [input]
  * @returns {?{id: string, entry: {name: string, balance: number, type: 'asset'|'liability'}}}
  */
 export function accountEntry({ name, balance, type } = {}) {
@@ -908,7 +952,7 @@ export function accountEntry({ name, balance, type } = {}) {
  * The shared accounts map as a list for the screen and accountsTotal, sorted by
  * name; balances in whole rupees (#74), unreadable entries dropped.
  * @param {?Object<string, {name: *, balance: *, type?: string}>} map
- * @returns {Array<{id: string, name: string, balance: number, type: 'asset'|'liability'}>}
+ * @returns {Array<{id: string, name: string, balance: number, type: string}>}
  */
 export function accountsList(map) {
     if (!map || typeof map !== 'object') return [];
@@ -925,10 +969,12 @@ export function accountsList(map) {
  * the other side); accounts that can't be moved (no name, unreadable or too large
  * balance, more than 30) are returned in `skipped`, to stay on the phone.
  * @param {Array<{name: *, balance: *, type?: string}>} list
- * @returns {{map: Object<string, {name: string, balance: number, type: string}>, skipped: Array<Object>}}
+ * @returns {{map: Object<string, {name: string, balance: number, type: string}>, skipped: Array<Rec>}}
  */
 export function accountsFromPhone(list) {
+    /** @type {Map<string, {name: string, total: number, items: Array<Rec>}>} */
     const groups = new Map();
+    /** @type {Array<Rec>} */
     const skipped = [];
     (Array.isArray(list) ? list : []).forEach(a => {
         const name = String(a?.name ?? '').trim().replace(/\s+/g, ' ').slice(0, ACCOUNT_NAME_MAX).trim();
@@ -940,6 +986,7 @@ export function accountsFromPhone(list) {
         g.items.push(a);
         groups.set(id, g);
     });
+    /** @type {Object<string, {name: string, balance: number, type: string}>} */
     const map = {};
     groups.forEach((g, id) => {
         const total = Math.round(g.total);
@@ -956,17 +1003,18 @@ export function accountsFromPhone(list) {
  * I6: the row with the largest absolute change between two keyed lists.
  * @param {Array<{key: string}>} now rows
  * @param {Array<{key: string}>} then rows
- * @param {(r: Object) => number} value
+ * @param {(r: Rec) => number} value
  * @returns {?{key: string, row: Object, diff: number}}
  */
 export function biggestChange(now, then, value) {
     const a = new Map((now || []).map(r => [r.key, r]));
     const b = new Map((then || []).map(r => [r.key, r]));
+    /** @type {?{key: string, row: Rec, diff: number}} */
     let best = null;
     new Set([...a.keys(), ...b.keys()]).forEach(k => {
         if (!k) return;
-        const diff = (a.has(k) ? value(a.get(k)) : 0) - (b.has(k) ? value(b.get(k)) : 0);
-        if (!best || Math.abs(diff) > Math.abs(best.diff)) best = { key: k, row: a.get(k) || b.get(k), diff: round2(diff) };
+        const diff = (a.has(k) ? value(/** @type {Rec} */ (a.get(k))) : 0) - (b.has(k) ? value(/** @type {Rec} */ (b.get(k))) : 0);
+        if (!best || Math.abs(diff) > Math.abs(best.diff)) best = { key: k, row: /** @type {Rec} */ (a.get(k) || b.get(k)), diff: round2(diff) };
     });
-    return best && best.diff !== 0 ? best : null;
+    return best && /** @type {{diff: number}} */ (best).diff !== 0 ? best : null;
 }

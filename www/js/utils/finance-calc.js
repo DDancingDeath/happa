@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Finance dashboard numbers (#215). Pure functions only.
  *
@@ -30,14 +31,36 @@ import { parseAnyBillDate } from './dates.js';
 /** Check-line gap (₹) above which the dashboard warns "numbers don't match". */
 export const STOCK_CHECK_TOLERANCE = 100;
 
-const inRange = (t, from, to) => Number.isFinite(t) && t >= from && t < to;
-const num = (v) => parseFloat(v) || 0;
+/**
+ * @typedef {import('./stock-replay.js').StockEvent} StockEvent
+ * @typedef {Exclude<StockEvent, {kind: 'adjustment'}>} LineEvent
+ * @typedef {Array<{id: string, name?: string, hindiName?: string}>} Catalogue
+ * @typedef {{purchases?: Array<Rec>, wholesaleSales?: Array<Rec>, retailSales?: Array<Rec>, stockAdjustments?: Array<Rec>}} Sources
+ * @typedef {{note: (key: string, rawName: *) => void, name: (key: string) => {item: string, itemHi: string}, getKey: Function}} ItemNamer
+ * @typedef {{opening: number, purchases: number, cogs: number, adjustments: number,
+ *   closing: number, now: number, gap: number, saleLines: number,
+ *   uncosted: {qty: number, estimate: number, unknownCost: number},
+ *   deficitRefilled: {qty: number, value: number}, detail?: Rec}} StockMovement
+ */
 
-/** Expense / withdrawal time (ms) or null; undated records only count in "All". */
+const inRange = (/** @type {number} */ t, /** @type {number} */ from, /** @type {number} */ to) => Number.isFinite(t) && t >= from && t < to;
+const num = (/** @type {*} */ v) => parseFloat(v) || 0;
+
+/**
+ * Expense / withdrawal time (ms) or null; undated records only count in "All".
+ * @param {?Rec|undefined} rec
+ * @returns {?number}
+ */
 function recordTime(rec) {
     const d = parseAnyBillDate(rec?.date);
     return d ? d.getTime() : null;
 }
+/**
+ * @param {?Rec|undefined} rec
+ * @param {number} from
+ * @param {number} to
+ * @returns {boolean}
+ */
 function recordInRange(rec, from, to) {
     const t = recordTime(rec);
     return t !== null ? inRange(t, from, to) : from === -Infinity && to === Infinity;
@@ -46,17 +69,21 @@ function recordInRange(rec, from, to) {
 /**
  * Bills whose stock-replay time falls in [from, to), so sales and their cost
  * always land in the same period. Undated bills only count in open-ended periods.
+ * @param {?Array<?Bill|undefined>|undefined} bills
+ * @param {number} from
+ * @param {number} to
+ * @returns {Bill[]}
  */
 export function billsInRange(bills, from, to) {
-    return activityBills(bills).filter(b => inRange(eventTime(b), from, to));
+    return /** @type {Bill[]} */ (activityBills(bills).filter(b => inRange(eventTime(/** @type {Rec} */ (b)), from, to)));
 }
 
 /**
  * Which replay start can cost a period beginning at `from`:
  * the stock checkpoint when the period starts at/after it, otherwise an empty
  * state replayed from the beginning when the full history is loaded.
- * @param {{checkpoint: ?{state: Object, asOf: number}, fullHistory: boolean, from: number}} args
- * @returns {?{state: Object, from: number}} null when the period can't be costed yet
+ * @param {{checkpoint: ?{state: Rec, asOf: number}, fullHistory: boolean, from: number}} args
+ * @returns {?{state: Rec, from: number}} null when the period can't be costed yet
  */
 export function pickReplayBase({ checkpoint, fullHistory, from }) {
     if (checkpoint && Number.isFinite(checkpoint.asOf) && from >= checkpoint.asOf) {
@@ -66,7 +93,12 @@ export function pickReplayBase({ checkpoint, fullHistory, from }) {
     return null;
 }
 
-/** Fields shared by every row that comes from a bill. */
+/**
+ * Fields shared by every row that comes from a bill.
+ * @param {?Rec|undefined} bill
+ * @param {?string|undefined} billType
+ * @returns {{t: ?number, billId: ?string, billType: ?string|undefined, billNo: string, party: string}}
+ */
 export function billFields(bill, billType) {
     const t = eventTime(bill);
     return {
@@ -81,9 +113,13 @@ export function billFields(bill, billType) {
 /**
  * Display names per item key: catalogue name (English + Hindi), else the
  * first line name seen for that key.
+ * @param {?Catalogue|undefined} items
+ * @param {Function} getKey
+ * @returns {ItemNamer}
  */
 function itemNamer(items, getKey) {
     const byId = new Map((items || []).map(i => [i.id, i]));
+    /** @type {Map<string, string>} */
     const seen = new Map();
     return {
         note(key, rawName) {
@@ -97,7 +133,13 @@ function itemNamer(items, getKey) {
     };
 }
 
-/** Per-item value rows of a running state. */
+/**
+ * Per-item value rows of a running state.
+ * @param {Rec} state
+ * @param {ItemNamer} namer
+ * @param {string} prefix
+ * @returns {Array<Rec>}
+ */
 function stateRows(state, namer, prefix) {
     return Object.keys(state).filter(k => state[k].quantity > 0 && state[k].totalValue > 0).map(k => {
         const s = state[k];
@@ -111,16 +153,13 @@ function stateRows(state, namer, prefix) {
 /**
  * Stock value movement over [from, to) via the replay.
  * @param {Object} args
- * @param {{state: Object, from: number}} args.base running state after every event before base.from
- * @param {Object} args.sources {purchases, wholesaleSales, retailSales, stockAdjustments}
- * @param {Array} args.items catalogue
+ * @param {?{state: Rec, from: number}} args.base running state after every event before base.from
+ * @param {Sources} args.sources
+ * @param {Catalogue} args.items catalogue
  * @param {number} [args.from=-Infinity]
  * @param {number} [args.to=Infinity]
  * @param {boolean} [args.detail=false] also return the rows behind every number
- * @returns {?{opening: number, purchases: number, cogs: number, adjustments: number,
- *   closing: number, now: number, gap: number, saleLines: number,
- *   uncosted: {qty: number, estimate: number, unknownCost: number},
- *   deficitRefilled: {qty: number, value: number}, detail?: Object}}
+ * @returns {?StockMovement}
  *   uncosted = units sold in the period beyond the stock on hand (costed at ₹0 by the
  *   replay, so profit may be overstated by ~estimate); deficitRefilled = purchases in
  *   the period that refilled such an earlier shortfall (why the check line is off).
@@ -133,11 +172,12 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
     const state = cloneState(base.state);
     const events = collectEvents(sources, { from: base.from });
     // Last known cost per item (average on hand, else last purchase rate): estimates uncosted units.
+    /** @type {Object<string, number>} */
     const lastCost = {};
     Object.keys(state).forEach(k => {
         if (state[k].quantity > 0 && state[k].totalValue > 0) lastCost[k] = state[k].totalValue / state[k].quantity;
     });
-    const noteCost = (key, ev) => {
+    const noteCost = (/** @type {string} */ key, /** @type {StockEvent} */ ev) => {
         const s = state[key];
         if (s && s.quantity > 0 && s.totalValue > 0) lastCost[key] = s.totalValue / s.quantity;
         else if (ev.kind === 'purchase' && num(ev.item.rate) > 0) lastCost[key] = num(ev.item.rate);
@@ -154,13 +194,17 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
     let cogs = 0;
     let adjustments = 0;
     let saleLines = 0;
+    /** @type {{cogs: Array<Rec>, purchases: Array<Rec>, adjustments: Array<Rec>, uncosted: Array<Rec>}} */
     const rows = { cogs: [], purchases: [], adjustments: [], uncosted: [] };
+    /** @type {Object<string, {purchases: number, cogs: number, adjustments: number}>} */
     const perItem = {};
+    /** @type {(key: string, field: 'purchases'|'cogs'|'adjustments', v: number) => void} */
     const bump = (key, field, v) => {
         if (!perItem[key]) perItem[key] = { purchases: 0, cogs: 0, adjustments: 0 };
         perItem[key][field] += v;
     };
     // Units sold beyond what was on hand: the replay costs them at ₹0 (#215 review).
+    /** @type {{qty: number, estimate: number, unknownCost: number, lines: Array<{idx: number, ev: LineEvent, key: string, qty: number, fallback: number}>}} */
     const uncosted = { qty: 0, estimate: 0, unknownCost: 0, lines: [] };
     // Purchases in this period that refilled an earlier oversold position (the check-line gap's usual cause).
     const deficit = { qty: 0, value: 0 };
@@ -232,6 +276,7 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
     const closingState = detail ? cloneState(state) : null;
     replayEvents(state, events.slice(j), getKey);
     const now = stockValue(state);
+    /** @type {StockMovement} */
     const result = {
         opening: round2(opening),
         purchases: round2(purchases),
@@ -245,18 +290,19 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
         deficitRefilled: { qty: round2(deficit.qty), value: round2(deficit.value) }
     };
     if (detail) {
-        const val = (st, k) => (st[k] && st[k].quantity > 0 && st[k].totalValue > 0 ? st[k].totalValue : 0);
-        const keys = new Set([...Object.keys(perItem), ...Object.keys(openingState), ...Object.keys(closingState)]);
+        const val = (/** @type {Rec} */ st, /** @type {string} */ k) => (st[k] && st[k].quantity > 0 && st[k].totalValue > 0 ? st[k].totalValue : 0);
+        const keys = new Set([...Object.keys(perItem), ...Object.keys(/** @type {Rec} */ (openingState)), ...Object.keys(/** @type {Rec} */ (closingState))]);
+        /** @type {Array<Rec>} */
         const gap = [];
         keys.forEach(k => {
             const p = perItem[k] || { purchases: 0, cogs: 0, adjustments: 0 };
-            const g = val(openingState, k) + p.purchases - p.cogs + p.adjustments - val(closingState, k);
+            const g = val(/** @type {Rec} */ (openingState), k) + p.purchases - p.cogs + p.adjustments - val(/** @type {Rec} */ (closingState), k);
             if (Math.abs(g) >= 0.005) gap.push({ key: `g:${k}`, t: null, itemKey: k, ...namer.name(k), amount: g });
         });
         result.detail = {
             ...rows,
-            opening: stateRows(openingState, namer, 'o'),
-            closing: stateRows(closingState, namer, 'z'),
+            opening: stateRows(/** @type {Rec} */ (openingState), namer, 'o'),
+            closing: stateRows(/** @type {Rec} */ (closingState), namer, 'z'),
             now: stateRows(state, namer, 'n'),
             gap
         };
@@ -268,12 +314,14 @@ export function stockMovement({ base, sources, items, from = -Infinity, to = Inf
  * Profit (F4) per day from a detailed summary: sales − cost of goods sold −
  * business expenses − bad debts, each counted on its own day. The days add up
  * to summary.profit.
- * @param {Object} detail `detail` from computeFinanceSummary({detail: true})
+ * @param {?Rec|undefined} detail `detail` from computeFinanceSummary({detail: true})
  * @param {(t: number) => string} dayKey
  * @returns {Object<string, number>}
  */
 export function profitByDay(detail, dayKey) {
+    /** @type {Object<string, number>} */
     const out = {};
+    /** @type {(rows: ?Array<Rec>|undefined, sign: number) => void} */
     const add = (rows, sign) => (rows || []).forEach(r => {
         if (!Number.isFinite(r.t)) return;
         const k = dayKey(r.t);
@@ -291,12 +339,17 @@ export function profitByDay(detail, dayKey) {
  * Sales rows at line level (so they group by item); a bill whose total
  * differs from its lines (discount, rounding, legacy shape) gets one extra row
  * so the rows always add up to billTotal().
+ * @param {Rec} bill
+ * @param {string} billType
+ * @param {Function} getKey
+ * @param {ItemNamer} namer
+ * @returns {Array<Rec>}
  */
 function saleRows(bill, billType, getKey, namer) {
     const base = billFields(bill, billType);
     const rows = [];
     let lines = 0;
-    (Array.isArray(bill.items) ? bill.items : []).forEach((line, idx) => {
+    (Array.isArray(bill.items) ? bill.items : []).forEach((/** @type {Rec} */ line, /** @type {number} */ idx) => {
         const l = readLineItem(line);
         const key = getKey(line);
         namer.note(key, line.name);
@@ -311,20 +364,33 @@ function saleRows(bill, billType, getKey, namer) {
 }
 
 /**
+ * @typedef {{
+ *   sales: {total: number, count: number, due: number},
+ *   purchases: {total: number, count: number, labour: number},
+ *   expenses: {business: number, businessCount: number, personal: number, personalCount: number, uncategorised: number, online: number},
+ *   withdrawn: number, cogs: ?number, grossProfit: ?number, badDebts: number, profit: ?number, afterPersonal: ?number,
+ *   afterWithdrawals: ?number, stock: ?StockMovement, stockMismatch: boolean, mismatchFromEarlierSales: boolean,
+ *   uncostedWarning: boolean, duesApproximate: boolean,
+ *   cash: {receivedAtSale: number, dueReceived: number, moneyIn: number, paidAtPurchase: number, duePaid: number, moneyOut: number, net: number},
+ *   detail?: Rec}} FinanceSummary
+ */
+
+/**
  * Every number on the Finance dashboard for [from, to).
  * @param {Object} args
- * @param {Object} args.sources {purchases, wholesaleSales, retailSales, stockAdjustments}
- * @param {Array} args.items
- * @param {?{state: Object, from: number}} args.base replay start (see pickReplayBase); null = cost unknown
- * @param {Array} [args.expenses]
- * @param {Array} [args.withdrawals]
+ * @param {Sources} args.sources
+ * @param {Catalogue} args.items
+ * @param {?{state: Rec, from: number}} args.base replay start (see pickReplayBase); null = cost unknown
+ * @param {Array<Expense>} [args.expenses]
+ * @param {Array<Rec>} [args.withdrawals]
  * @param {number} [args.from=-Infinity]
  * @param {number} [args.to=Infinity]
- * @param {Array} [args.sessions] cash sessions covering the period: their due-payment legs
+ * @param {Array<Rec>} [args.sessions] cash sessions covering the period: their due-payment legs
  *   count payments on bills that are no longer in memory (deduped by payment id)
  * @param {boolean} [args.duesComplete=true] false when neither the full history nor the
  *   period's sessions are loaded: cash flow / bad debts may miss payments on old bills
  * @param {boolean} [args.detail=false] also return `detail` (rows behind every number)
+ * @returns {FinanceSummary}
  */
 export function computeFinanceSummary({
     sources, items, base, expenses = [], withdrawals = [], sessions = [], duesComplete = true,
@@ -348,6 +414,7 @@ export function computeFinanceSummary({
     let businessCount = 0;
     let personalCount = 0;
     let onlineExp = 0;
+    /** @type {{business: Array<Rec>, personal: Array<Rec>}} */
     const expenseRows = { business: [], personal: [] };
     activeExpenses(expenses).forEach((e, idx) => {
         if (!recordInRange(e, from, to)) return;
@@ -379,17 +446,20 @@ export function computeFinanceSummary({
     const withdrawalList = (withdrawals || []).filter(w => recordInRange(w, from, to));
     const withdrawn = round2(withdrawalList.reduce((a, w) => a + num(w.amount), 0));
 
+    /** @type {Map<string, Rec>} */
     const billTypeOf = new Map();
     if (detail) {
         (sources.wholesaleSales || []).forEach(b => billTypeOf.set(`wholesale:${String(b.id)}`, b));
         (sources.retailSales || []).forEach(b => billTypeOf.set(`retail:${String(b.id)}`, b));
         (sources.purchases || []).forEach(b => billTypeOf.set(`purchase:${String(b.id)}`, b));
     }
+    /** @type {(bills: Array<Rec>, type: string) => Array<Rec>} */
     const atBillRows = (bills, type) => bills.map(b => {
         const p = saleTimePayment(b);
         return { key: `pay:${type}:${b.id}`, ...billFields(b, type), cash: p.cash, online: p.online, amount: p.cash + p.online };
     });
-    const atBill = (bills) => bills.reduce((a, b) => {
+    /** @type {(bills: Array<Rec>) => number} */
+    const atBill = (bills) => bills.reduce((/** @type {number} */ a, b) => {
         const p = saleTimePayment(b);
         return a + p.cash + p.online;
     }, 0);
@@ -410,10 +480,11 @@ export function computeFinanceSummary({
 
     const stock = stockMovement({ base, sources, items, from, to, detail });
     const cogs = stock ? stock.cogs : null;
-    const grossProfit = stock ? round2(salesTotal - cogs) : null;
-    const profit = stock ? round2(grossProfit - businessExp - badDebts) : null;
-    const afterPersonal = stock ? round2(profit - personalExp) : null;
+    const grossProfit = stock ? round2(salesTotal - /** @type {number} */ (cogs)) : null;
+    const profit = stock ? round2(/** @type {number} */ (grossProfit) - businessExp - badDebts) : null;
+    const afterPersonal = stock ? round2(/** @type {number} */ (profit) - personalExp) : null;
 
+    /** @type {FinanceSummary} */
     const summary = {
         sales: { total: salesTotal, count: sales.length, due: salesDue },
         purchases: { total: purchasesTotal, count: purchases.length, labour },
@@ -424,7 +495,7 @@ export function computeFinanceSummary({
         badDebts,
         profit,
         afterPersonal,
-        afterWithdrawals: stock ? round2(afterPersonal - withdrawn) : null,
+        afterWithdrawals: stock ? round2(/** @type {number} */ (afterPersonal) - withdrawn) : null,
         stock,
         stockMismatch: !!stock && Math.abs(stock.gap) > STOCK_CHECK_TOLERANCE,
         // The gap is (mostly) goods sold in an earlier period before this purchase was entered.
@@ -440,7 +511,7 @@ export function computeFinanceSummary({
     if (detail) {
         const getKey = createItemKeyResolver(items);
         const namer = itemNamer(items, getKey);
-        const dueRow = (e) => {
+        const dueRow = (/** @type {Rec} */ e) => {
             const type = ['wholesale', 'retail', 'purchase'].find(tp => billTypeOf.has(`${tp}:${e.billId}`));
             const bill = type ? billTypeOf.get(`${type}:${e.billId}`) : null;
             return {
