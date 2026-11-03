@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview One-line takeaways for Money and Insights (docs/insights-redesign.md
  * §5.1, §5.5): plain sentences built from figures and comparisons, as i18n keys
@@ -6,7 +7,9 @@
  * @module utils/takeaways
  */
 
-const dirOf = (c) => (c ? c.dir : null);
+/** @typedef {{key: string, params?: Rec, link?: string}} Takeaway */
+
+const dirOf = (/** @type {?{dir: string}|undefined} */ c) => (c ? c.dir : null);
 
 /**
  * Profit headline (M6) with the comparison that matters most: last year when
@@ -46,15 +49,17 @@ export function profitTakeaways({ profit, vsLastYear, vsPrevious, lastYearLabel,
 
 /**
  * Cash (M14): which way the money went, and the biggest outflow.
- * @param {{net: number, out: Object, dueToReceive?: number, profit?: ?number}} a
+ * @param {{net: number, out: Rec, salesDue?: number, profit?: ?number}} a salesDue: M1 "of which still due"
+ * @returns {Takeaway[]}
  */
 export function cashTakeaways({ net, out, profit, salesDue }) {
+    /** @type {Takeaway[]} */
     const res = [{ key: net >= 0 ? 'ui.tk.cash_in' : 'ui.tk.cash_out', params: { amount: Math.abs(Math.round(net)) } }];
     const parts = [['purchases', out.atPurchase], ['dues_paid', out.duePaid], ['expenses', out.expenses]].filter(([, v]) => v > 0)
         .sort((a, b) => b[1] - a[1]);
     if (parts.length) res.push({ key: `ui.tk.biggest_out_${parts[0][0]}`, params: { amount: Math.round(parts[0][1]) } });
-    if (profit !== null && profit !== undefined && salesDue > 0 && net < profit) {
-        res.push({ key: 'ui.tk.gut_dues', params: { amount: Math.round(salesDue) }, link: 'due' });
+    if (profit !== null && profit !== undefined && /** @type {number} */ (salesDue) > 0 && net < profit) {
+        res.push({ key: 'ui.tk.gut_dues', params: { amount: Math.round(/** @type {number} */ (salesDue)) }, link: 'due' });
     }
     return res;
 }
@@ -62,8 +67,10 @@ export function cashTakeaways({ net, out, profit, salesDue }) {
 /**
  * Spending (M4, M8–M10). Personal use (M8 + M9) only with `show.personal`; what
  * stays of the profit (M10) only with both `show.profit` and `show.personal`.
- * @param {{business: number, vsLastYear: ?Object, topCategory: ?string, withdrawn: number, kept: ?number, personal: number,
- *   show?: {profit?: boolean, personal?: boolean}}} a
+ * @param {{business: number, vsLastYear: ?Rec, topCategory: ?string, withdrawn: number, kept: ?number, personal: number,
+ *   show?: {profit?: boolean, personal?: boolean}, per100Sales?: ?{value: number, high: boolean}, nudgeAt?: number}} a
+ *   per100Sales: M19 (expensePer100Sales)
+ * @returns {Takeaway[]}
  */
 export function spendingTakeaways({ business, vsLastYear, topCategory, withdrawn, kept, personal, show = {}, per100Sales = null, nudgeAt = 10 }) {
     const out = [];
@@ -88,7 +95,8 @@ export function spendingTakeaways({ business, vsLastYear, topCategory, withdrawn
 
 /**
  * Worth (M15).
- * @param {{worth: ?number, change: ?Object, receivable: number, sinceLabel: string}} a
+ * @param {{worth: ?number, change: ?Rec, receivable: number, sinceLabel: string, accountsKnown?: boolean}} a
+ * @returns {Takeaway[]}
  */
 export function worthTakeaways({ worth, change, receivable, sinceLabel, accountsKnown = true }) {
     if (!accountsKnown && (worth === null || worth === undefined)) return [{ key: 'ui.tk.worth_accounts_unknown' }];

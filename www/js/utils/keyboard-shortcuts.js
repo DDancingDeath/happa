@@ -1,3 +1,4 @@
+// @ts-check
 // Desktop keyboard shortcuts (active only at >= 1024px wide).
 // resolveShortcut() is pure (key event + context -> action) so it can be unit-tested;
 // installKeyboardShortcuts() wires it to the DOM.
@@ -20,13 +21,18 @@ export const TAB_SHORTCUTS = [
     { tabId: 'money', en: 'Money', hi: 'हिसाब' }
 ];
 
+/** @type {Object<string, {save: string, print: string}>} */
 const BILL_BUTTONS = {
     purchase: { save: '#saveBillBtn', print: '#printBillBtn' },
     sale: { save: '#saveSaleBtn', print: '#printSaleBtn' },
     wholesale: { save: '#salesEntrySection .save-sale-btn', print: '#salesEntrySection .print-sale-btn' }
 };
 
-/** Which bill (if any) Ctrl+S / Ctrl+P act on for the given context. */
+/**
+ * Which bill (if any) Ctrl+S / Ctrl+P act on for the given context.
+ * @param {Rec} ctx
+ * @returns {?string}
+ */
 function currentBill(ctx) {
     if (ctx.activeTab === 'billing') return ctx.billingMode === 'sale' ? 'sale' : 'purchase';
     if (ctx.activeTab === 'wholesale-sales' && ctx.wholesaleEntryVisible) return 'wholesale';
@@ -83,6 +89,10 @@ export function resolveShortcut(evt, ctx = {}) {
 
 const HELP_ID = 'kbdHelpOverlay';
 
+/**
+ * @param {*} el
+ * @returns {boolean}
+ */
 function isTypingTarget(el) {
     if (!el || !el.tagName) return false;
     if (el.isContentEditable) return true;
@@ -93,6 +103,10 @@ function isTypingTarget(el) {
     return !['checkbox', 'radio', 'button', 'submit', 'reset', 'file', 'range', 'color'].includes(type);
 }
 
+/**
+ * @param {?Element} el
+ * @returns {boolean}
+ */
 function isShown(el) {
     return !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
 }
@@ -117,7 +131,7 @@ function findOpenModal() {
         const btn = findCloseControl(top);
         if (btn) return { closer: () => btn.click() };
         // Backdrop-click-to-dismiss popups: simulate a click on the backdrop itself.
-        if (typeof top.onclick === 'function') return { closer: () => top.click() };
+        if (typeof /** @type {HTMLElement} */ (top).onclick === 'function') return { closer: () => /** @type {HTMLElement} */ (top).click() };
         return { closer: null };
     }
     return null;
@@ -133,6 +147,10 @@ export function closeTopDialog() {
 
 const NON_DIALOG_IDS = new Set(['appContent', 'toast', 'loadingOverlay', 'overlay', 'modalOverlay', HELP_ID]);
 
+/**
+ * @param {Element} el
+ * @returns {boolean}
+ */
 function isBodyOverlay(el) {
     if (NON_DIALOG_IDS.has(el.id) || !isShown(el)) return false;
     if (getComputedStyle(el).position !== 'fixed') return false;
@@ -152,12 +170,16 @@ const CLOSE_TEXT = /^(cancel|close|✕|×|रद्द|बंद)/i;
 export function findCloseControl(root) {
     if (!root) return null;
     const explicit = root.querySelector(CLOSE_SELECTOR);
-    if (explicit) return explicit;
-    return [...root.querySelectorAll('button, [role="button"]')].find(b =>
+    if (explicit) return /** @type {HTMLElement} */ (explicit);
+    return /** @type {HTMLElement[]} */ ([...root.querySelectorAll('button, [role="button"]')]).find(b =>
         CLOSE_TEXT.test((b.textContent || '').trim()) || /cancel|close/i.test(b.id || '')
     ) || null;
 }
 
+/**
+ * @param {?EventTarget} target
+ * @returns {Rec}
+ */
 function buildContext(target) {
     const appContent = document.getElementById('appContent');
     const activeTabEl = appContent && !appContent.classList.contains('hidden')
@@ -181,8 +203,8 @@ function closeHelp() {
 
 function openHelp() {
     if (document.getElementById(HELP_ID)) return;
-    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const row = (keys, label) => `<tr><td>${keys}</td><td>${esc(label)}</td></tr>`;
+    const esc = (/** @type {*} */ s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const row = (/** @type {string} */ keys, /** @type {string} */ label) => `<tr><td>${keys}</td><td>${esc(label)}</td></tr>`;
     const tabRows = TAB_SHORTCUTS.map((tab, i) => row(`<kbd>Alt</kbd> + <kbd>${i + 1}</kbd>`, pickLang(tab))).join('');
     const overlay = document.createElement('div');
     overlay.id = HELP_ID;
@@ -201,22 +223,31 @@ function openHelp() {
             <button type="button" class="kbd-help-close">${esc(t('ui.kbd.close'))}</button>
         </div>`;
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay || e.target.classList.contains('kbd-help-close')) closeHelp();
+        if (e.target === overlay || /** @type {Element} */ (e.target).classList.contains('kbd-help-close')) closeHelp();
     });
     document.body.appendChild(overlay);
 }
 
+/**
+ * @param {string} tabId
+ * @returns {boolean}
+ */
 function focusSearch(tabId) {
     const tab = document.getElementById(tabId);
     if (!tab) return false;
-    const input = [...tab.querySelectorAll('input[type="search"], input[id*="Search"], input[id*="search"]')].find(isShown);
+    const input = /** @type {HTMLInputElement[]} */ ([...tab.querySelectorAll('input[type="search"], input[id*="Search"], input[id*="search"]')]).find(isShown);
     if (!input) return false;
     input.focus();
     if (typeof input.select === 'function') input.select();
     return true;
 }
 
-/** Run an action; returns true when the key was consumed. */
+/**
+ * Run an action; returns true when the key was consumed.
+ * @param {Rec} action
+ * @param {Rec} ctx
+ * @returns {boolean}
+ */
 function perform(action, ctx) {
     switch (action.type) {
         case 'tab':

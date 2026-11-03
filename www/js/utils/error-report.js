@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview The error report the owner can export from Diagnostics (#83):
  * the listed error groups with personal data and secrets scrubbed again
@@ -11,7 +12,7 @@ import { scrubText, scrubUrl } from './scrub.js';
 /** Characters kept of a stack trace. */
 export const STACK_MAX = 1500;
 
-const iso = (v) => {
+const iso = (/** @type {*} */ v) => {
     const ms = typeof v === 'number' ? v : (v && typeof v.toMillis === 'function' ? v.toMillis() : Date.parse(v));
     return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
 };
@@ -26,7 +27,7 @@ export const MIN_NAME_LENGTH = 3;
  */
 const NOT_NAMES = new Set(['user', 'unknown', 'unknown user', 'staff', 'member', 'owner', 'manager', 'shop', 'admin', 'test']);
 
-const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const escapeRe = (/** @type {string} */ s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
  * A replacer for the shop's people's names (#83): each name, whole words only
@@ -48,10 +49,11 @@ export function nameScrubber(names) {
 /**
  * Names found in the reports themselves (who saw each error): scrubbed out even
  * when the team list can't be read.
- * @param {Array<Object>} errors
+ * @param {Array<Rec>} errors
  * @returns {string[]}
  */
 export function reportNames(errors) {
+    /** @type {string[]} */
     const out = [];
     (Array.isArray(errors) ? errors : []).forEach(e => {
         if (e?.userName) out.push(e.userName);
@@ -61,13 +63,13 @@ export function reportNames(errors) {
 }
 
 /**
- * @param {Array<Object>} errors grouped telemetry entries (TelemetryService.getTelemetryData)
+ * @param {Array<Rec>} errors grouped telemetry entries (TelemetryService.getTelemetryData)
  * @param {{status?: string, appVersion?: string, buildId?: string, names?: string[]}} [ctx] names: the shop's people, replaced with <person>
- * @returns {{format: string, appVersion: string, buildId: string, status: string, errors: Array<Object>}}
+ * @returns {{format: string, appVersion: string, buildId: string, status: string, errors: Array<Rec>}}
  */
 export function buildErrorReport(errors, { status = '', appVersion = '', buildId = '', names = [] } = {}) {
     const people = nameScrubber([...names, ...reportNames(errors)]);
-    const clean = (s) => people(scrubText(s));
+    const clean = (/** @type {string} */ s) => people(scrubText(s));
     return {
         format: 'happa-error-report-v1',
         appVersion: String(appVersion),
@@ -88,7 +90,7 @@ export function buildErrorReport(errors, { status = '', appVersion = '', buildId
 
 /**
  * [oldest, newest] local day (YYYY-MM-DD) of the errors' last-seen times, or nulls.
- * @param {Array<Object>} errors
+ * @param {Array<Rec>} errors
  * @param {(ms: number) => string} dayOf
  * @returns {{from: ?string, to: ?string}}
  */

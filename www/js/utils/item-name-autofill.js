@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Offline English ↔ Hindi item-name suggestions (#134): a small
  * table of common grain and produce names, else a letter-by-letter
@@ -67,19 +68,24 @@ const LATIN_VOWELS = [
     ['aa', 'आ', 'ा'], ['ai', 'ऐ', 'ै'], ['au', 'औ', 'ौ'], ['ee', 'ई', 'ी'], ['ii', 'ई', 'ी'], ['oo', 'ऊ', 'ू'],
     ['uu', 'ऊ', 'ू'], ['a', 'अ', ''], ['i', 'इ', 'ि'], ['u', 'उ', 'ु'], ['e', 'ए', 'े'], ['o', 'ओ', 'ो']
 ];
+/** @type {Object<string, string>} */
 const WORD_END_SIGN = { a: 'ा', i: 'ी', u: 'ू' };
 const LONG_VOWELS = new Set(['aa', 'ai', 'au', 'ee', 'ii', 'oo', 'uu', 'e', 'o']);
 
+/** @type {Object<string, string>} */
 const DEV_CONSONANTS = {
     'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh', 'ङ': 'n', 'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh', 'ञ': 'n',
     'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh', 'ण': 'n', 'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
     'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm', 'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh',
     'ष': 'sh', 'स': 's', 'ह': 'h'
 };
+/** @type {Object<string, string>} */
 const DEV_NUKTA = { 'ड': 'r', 'ढ': 'rh', 'क': 'q', 'ख': 'kh', 'ग': 'g', 'ज': 'z', 'फ': 'f' };
+/** @type {Object<string, string>} */
 const DEV_VOWELS = {
     'अ': 'a', 'आ': 'a', 'इ': 'i', 'ई': 'i', 'उ': 'u', 'ऊ': 'u', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au', 'ऋ': 'ri'
 };
+/** @type {Object<string, string>} */
 const DEV_SIGNS = {
     'ा': 'a', 'ि': 'i', 'ी': 'i', 'ु': 'u', 'ू': 'u', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', 'ृ': 'ri'
 };
@@ -110,12 +116,21 @@ const UNIT_WORDS = new Set(['gram', 'grams', 'kilo', 'kilos', 'kilogram', 'kilog
 // escaped: they are only recognised here, the app never shows them (hindi-kg-unit.test.js).
 const HINDI_UNITS = new Map([['\u0915\u093F\u0932\u094B', 'kg'], ['\u0915\u093F\u0917\u094D\u0930\u093E', 'kg'], ['\u0915\u093F\u0932\u094B\u0917\u094D\u0930\u093E\u092E', 'kg'], ['ग्राम', 'g'], ['लीटर', 'L'], ['क्विंटल', 'qtl']]);
 
-/** Hindi spelling variants that mean the same word (chandrabindu, nukta, NFC). */
+/**
+ * Hindi spelling variants that mean the same word (chandrabindu, nukta, NFC).
+ * @param {*} s
+ * @returns {string}
+ */
 function hindiKey(s) {
     return String(s || '').normalize('NFC').replace(/\u0901/g, ANUSVARA).trim();
 }
 
+/**
+ * @param {string} word
+ * @returns {Array<{type: 'V'|'C', latin: string, letter: string, sign?: string}>}
+ */
 function tokenizeLatin(word) {
+    /** @type {Array<{type: 'V'|'C', latin: string, letter: string, sign?: string}>} */
     const tokens = [];
     let i = 0;
     while (i < word.length) {
@@ -175,6 +190,7 @@ export function latinToDevanagari(word) {
  */
 export function devanagariToLatin(word) {
     const chars = [...String(word || '').normalize('NFC')];
+    /** @type {Array<{c: string, v: string, inherent: boolean, nasal?: boolean}>} */
     const units = [];
     for (let i = 0; i < chars.length; i++) {
         const ch = chars[i];
@@ -184,6 +200,7 @@ export function devanagariToLatin(word) {
                 c = DEV_NUKTA[ch] || c;
                 i++;
             }
+            /** @type {{c: string, v: string, inherent: boolean, nasal?: boolean}} */
             const unit = { c, v: 'a', inherent: true };
             const nextCh = chars[i + 1];
             if (nextCh === HALANT) {
@@ -213,7 +230,7 @@ export function devanagariToLatin(word) {
     return units.map(u => u.c + u.v + (u.nasal ? 'n' : '')).join('');
 }
 
-const capitalize = (w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w);
+const capitalize = (/** @type {string} */ w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w);
 
 /**
  * Suggested Hindi name for an English (or romanised) item name, word by word:
@@ -226,7 +243,7 @@ export function suggestHindiName(english) {
     const text = String(english || '').trim();
     if (!text || DEVANAGARI.test(text) || !/[A-Za-z]/.test(text)) return '';
     const parts = text.split(/([A-Za-z]+)/).filter(p => p !== '');
-    const isWord = (p) => /^[A-Za-z]+$/.test(p);
+    const isWord = (/** @type {string} */ p) => /^[A-Za-z]+$/.test(p);
     let out = '';
     for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
@@ -275,7 +292,7 @@ export function suggestEnglishName(hindi) {
     if (!text || !DEVANAGARI.test(text)) return '';
     // danda, double danda and the abbreviation sign are punctuation, not letters
     const parts = text.split(/([\u0900-\u0963\u0971-\u097F]+)/).filter(p => p !== '');
-    const isWord = (p) => /[\u0900-\u0963\u0971-\u097F]/.test(p);
+    const isWord = (/** @type {string} */ p) => /[\u0900-\u0963\u0971-\u097F]/.test(p);
     const words = parts.filter(isWord).map(hindiKey).filter(w => !HINDI_UNITS.has(w));
     const known = words.every(w => TO_ENGLISH_BY_KEY.has(w));
     return parts.map(p => {

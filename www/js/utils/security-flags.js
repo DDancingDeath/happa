@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Review flags for misuse (#124), the pure part: which refused
  * writes to record, how often, whether a sign-in is from a new phone, and the
@@ -82,11 +83,16 @@ export const MAX_DEVICES = 10;
 /** New phones are only remembered, not flagged, during the first days of a person's list. */
 export const DEVICE_GRACE_DAYS = 14;
 
-/** A list entry: the device id and the day it was first seen ("abc123xyz:20261101"). */
+/**
+ * A list entry: the device id and the day it was first seen ("abc123xyz:20261101").
+ * @param {string} deviceId
+ * @param {*} dayKey YYYY-MM-DD
+ * @returns {string}
+ */
 export const deviceEntry = (deviceId, dayKey) => `${deviceId}:${String(dayKey || '').replace(/-/g, '')}`;
 
-const entryId = (e) => String(e).split(':')[0];
-const entryDay = (e) => {
+const entryId = (/** @type {*} */ e) => String(e).split(':')[0];
+const entryDay = (/** @type {*} */ e) => {
     const m = /:(\d{4})(\d{2})(\d{2})$/.exec(String(e));
     return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : NaN;
 };
@@ -114,20 +120,22 @@ export function deviceCheck(devices, deviceId, dayKey) {
 /**
  * Clusters of refused writes: `count` or more entries by one person within
  * `windowMin` minutes. One cluster per run of entries (anchored on its first).
- * @param {Array<Object>} logs - audit entries ({id, action, userId, userName, timestamp, details})
+ * @param {Array<Rec>} logs - audit entries ({id, action, userId, userName, timestamp, details})
  * @param {{deniedCount: number, deniedWindowMin: number}} t
- * @returns {Array<{first: Object, entries: Array<Object>}>}
+ * @returns {Array<{first: Rec, entries: Array<Rec>}>}
  */
 export function deniedClusters(logs, t) {
     const count = Math.max(1, Math.round(Number(t?.deniedCount) || 3));
     const windowMs = Math.max(1, Number(t?.deniedWindowMin) || 10) * 60000;
+    /** @type {Map<string, Array<Rec>>} */
     const byUser = new Map();
     (logs || []).filter(l => l && l.action === SECURITY_ACTIONS.DENIED && l.id != null && Number.isFinite(Number(l.timestamp)))
         .forEach(l => {
             const k = String(l.userId || '');
             if (!byUser.has(k)) byUser.set(k, []);
-            byUser.get(k).push(l);
+            /** @type {Array<Rec>} */ (byUser.get(k)).push(l);
         });
+    /** @type {Array<{first: Rec, entries: Array<Rec>}>} */
     const out = [];
     byUser.forEach(list => {
         list.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));

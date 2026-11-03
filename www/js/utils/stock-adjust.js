@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @fileoverview Pure rules for a manual stock adjustment (Stock → Adjust).
  * @module utils/stock-adjust
@@ -7,7 +8,10 @@ import { t } from '../i18n/index.js';
 import { splitBilingual } from '../i18n/localize.js';
 import { isActiveBill } from './money.js';
 
-/** Reason picker options (catalogue keys); `other` needs a note, `opening` a cost per kg. */
+/**
+ * Reason picker options (catalogue keys); `other` needs a note, `opening` a cost per kg.
+ * @type {Object<string, string>}
+ */
 export const ADJUST_REASONS = {
     opening: 'ui.stock.reason_opening',
     count: 'ui.stock.reason_count',
@@ -27,7 +31,7 @@ export const ADJUST_REASONS = {
  */
 export function adjustReasonText(adj, lang) {
     const reason = String(adj?.reason || '').trim();
-    const key = ADJUST_REASONS[adj?.reasonCode];
+    const key = ADJUST_REASONS[/** @type {string} */ (adj?.reasonCode)];
     if (!key) return splitBilingual(reason, lang);
     const en = t(key, null, 'en');
     const hi = t(key, null, 'hi');
@@ -37,7 +41,7 @@ export function adjustReasonText(adj, lang) {
     return note ? `${label}: ${note}` : label;
 }
 
-const round3 = (n) => Math.round(n * 1000) / 1000;
+const round3 = (/** @type {number} */ n) => Math.round(n * 1000) / 1000;
 
 /**
  * Validates an adjustment and works out the stock after it.
@@ -60,7 +64,7 @@ export function planStockAdjustment({ adjustType, quantity, currentStock, reason
         return { ok: false, error: t('msg.stock.enter_valid_quantity') };
     }
     const note = (reasonNote || '').trim();
-    if (!ADJUST_REASONS[reasonCode]) {
+    if (!ADJUST_REASONS[/** @type {string} */ (reasonCode)]) {
         return { ok: false, error: t('msg.stock.choose_reason') };
     }
     if (reasonCode === 'other' && !note) {
@@ -69,7 +73,7 @@ export function planStockAdjustment({ adjustType, quantity, currentStock, reason
     if (reasonCode === 'opening' && adjustType !== 'remove' && qty > 0 && !(Number(rate) > 0)) {
         return { ok: false, error: t('msg.stock.opening_needs_cost') };
     }
-    const reason = note ? `${t(ADJUST_REASONS[reasonCode])}: ${note}` : t(ADJUST_REASONS[reasonCode]);
+    const reason = note ? `${t(ADJUST_REASONS[/** @type {string} */ (reasonCode)])}: ${note}` : t(ADJUST_REASONS[/** @type {string} */ (reasonCode)]);
 
     let effective = qty;
     let newStock;
@@ -90,7 +94,11 @@ export function planStockAdjustment({ adjustType, quantity, currentStock, reason
     return { ok: true, quantity: round3(effective), rawQuantity: qty, newStock: round3(newStock), capped, reason };
 }
 
-/** How much an adjustment changed the stock (kg; S-ADJ-REV): newStock − previousStock, or null when unknown. */
+/**
+ * How much an adjustment changed the stock (kg; S-ADJ-REV): newStock − previousStock, or null when unknown.
+ * @param {?Rec|undefined} adj
+ * @returns {?number}
+ */
 export function adjustmentDelta(adj) {
     const before = Number(adj?.previousStock);
     const after = Number(adj?.newStock);
@@ -101,8 +109,8 @@ export function adjustmentDelta(adj) {
 /**
  * Whether Reverse can be offered on an adjustment (#146): it changed the stock, it is
  * not itself a reversal, and nothing reversed it yet.
- * @param {Object} adj
- * @param {Array<Object>} adjustments every loaded adjustment
+ * @param {Rec} adj
+ * @param {Array<Rec>} adjustments every loaded adjustment
  * @returns {boolean}
  */
 export function canReverseAdjustment(adj, adjustments) {
@@ -117,7 +125,7 @@ export function canReverseAdjustment(adj, adjustments) {
  * as an add or remove from the stock now (so later sales and purchases stay). A "set"
  * is reversed by its change too, not by setting the old number again. A remove stops
  * at the stock on hand, like any remove (`capped`); quantity 0 = nothing to take back.
- * @param {Object} adj the adjustment to reverse
+ * @param {Rec} adj the adjustment to reverse
  * @param {number} currentStock kg on hand now
  * @returns {?{adjustType: 'add'|'remove', quantity: number, previousStock: number, newStock: number, capped: boolean}}
  */
@@ -132,8 +140,8 @@ export function reversalPlan(adj, currentStock) {
 
 /**
  * The item's latest purchase rate in the loaded bills (₹/kg), or 0.
- * @param {Object} item catalogue item
- * @param {Array<Object>} purchases purchase bills
+ * @param {Rec} item catalogue item
+ * @param {Array<Rec>} purchases purchase bills
  * @returns {number}
  */
 export function lastPurchaseRate(item, purchases) {
@@ -168,7 +176,9 @@ export function restockCost({ ownRate, stockRate, lastPurchaseRate: last, catalo
  * @returns {{changes: Array<{itemId: string, previousStock: number, newStock: number}>, invalid: string[]}}
  */
 export function stockCountPlan(rows) {
+    /** @type {Array<{itemId: string, previousStock: number, newStock: number}>} */
     const changes = [];
+    /** @type {string[]} */
     const invalid = [];
     (rows || []).forEach(({ itemId, counted, current }) => {
         if (counted === '' || counted === null || counted === undefined) return;
