@@ -3,7 +3,7 @@
  * Provides offline functionality and caching
  */
 
-const CACHE_NAME = 'happa-v500';
+const CACHE_NAME = 'happa-v503';
 // Generated/verified by scripts/check-sw-assets.js (npm run check:sw).
 // Every entry must exist: a 404 here used to make the whole precache fail.
 const STATIC_ASSETS = [
@@ -22,6 +22,10 @@ const STATIC_ASSETS = [
     '/css/app.css',
     '/css/rentals.css',
     '/js/auth/authentication.js',
+    '/js/boot/capture-install-prompt.js',
+    '/js/boot/download-lang.js',
+    '/js/boot/download-page.js',
+    '/js/boot/sw-register.js',
     '/js/firebase/firestore-service.js',
     '/js/firebase/firestore-meter.js',
     '/js/firebase/db.js',
@@ -304,7 +308,7 @@ self.addEventListener('install', (event) => {
 /**
  * Allow the page to ask us to take over immediately, so a freshly-installed
  * SW does not have to wait for all tabs to close before activating. Paired
- * with the controllerchange auto-reload in index.html.
+ * with the controllerchange auto-reload in js/boot/sw-register.js.
  */
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
