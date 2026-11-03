@@ -126,6 +126,17 @@ describe('document listeners', () => {
         expect(ev.defaultPrevented).toBe(true);
     });
 
+    test('data-onenter runs on the Enter key only, not while composing', () => {
+        document.body.innerHTML = `<input data-onenter="event.preventDefault(); page.go('e')">`;
+        const input = document.querySelector('input');
+        const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        input.dispatchEvent(enter);
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: '5', bubbles: true }));
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
+        expect(calls.map(c => c[2])).toEqual(['e']);
+        expect(enter.defaultPrevented).toBe(true);
+    });
+
     test('a <details> toggle passes this.open (toggle does not bubble)', () => {
         document.body.innerHTML = `<div data-ontoggle="page.outer()"><details data-ontoggle="page.set(this.open)"><summary>s</summary></details></div>`;
         const d = document.querySelector('details');

@@ -45,7 +45,7 @@ const RECENT_SALES = 5;
 const PAYMENT_TOLERANCE = 0.01;
 
 /** Buttons disabled while a wholesale save/print is in flight */
-const WHOLESALE_BUTTONS = '[onclick*="wholesaleSales.completeSale"], [onclick*="wholesaleSales.printWholesaleSale"]';
+const WHOLESALE_BUTTONS = '[data-onclick*="wholesaleSales.completeSale"], [data-onclick*="wholesaleSales.printWholesaleSale"]';
 
 let wholesaleSaleItems = [];
 
@@ -278,7 +278,7 @@ export class WholesaleSalesManager {
                     <td>${formatRate(item.rate)}</td>
                     <td>${formatKg(item.qty)} kg</td>
                     <td>${formatRupees(shownAmount(item.total))}</td>
-                    <td><button onclick="window.app.wholesaleSales.removeWholesaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
+                    <td><button data-onclick="wholesaleSales.removeWholesaleItem(${index})" style="background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer;">×</button></td>
                 </tr>
             `;
         }).join('');
@@ -887,9 +887,9 @@ export class WholesaleSalesManager {
         const partyNote = party ? `
             <div class="party-filter-note">
                 <span>${L('ui.outstanding.showing_only')} <strong>${Helpers.escapeHtml(party.name)}</strong></span>
-                <button type="button" class="aging-btn" onclick="window.app.wholesaleSales.clearOutstandingParty()">${L('ui.outstanding.show_all')}</button>
-                ${OutstandingManager.canReceiveFromParty() ? `<button type="button" class="aging-btn" data-party-pay onclick="window.app.wholesaleSales.receiveFromParty('${Helpers.escapeJsAttr(party.name)}')">${L('ui.outstanding.party_pay_receive')}</button>` : ''}
-                            ${this.canCompleteAllDue() ? `<button type="button" class="aging-btn" data-complete-all onclick="window.app.wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(party.name)}')">${L('ui.wholesale.complete_all_due')}</button>` : ''}
+                <button type="button" class="aging-btn" data-onclick="wholesaleSales.clearOutstandingParty()">${L('ui.outstanding.show_all')}</button>
+                ${OutstandingManager.canReceiveFromParty() ? `<button type="button" class="aging-btn" data-party-pay data-onclick="wholesaleSales.receiveFromParty('${Helpers.escapeJsAttr(party.name)}')">${L('ui.outstanding.party_pay_receive')}</button>` : ''}
+                            ${this.canCompleteAllDue() ? `<button type="button" class="aging-btn" data-complete-all data-onclick="wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(party.name)}')">${L('ui.wholesale.complete_all_due')}</button>` : ''}
             </div>` : '';
 
         if (outstandingSales.length === 0) {
@@ -906,7 +906,7 @@ export class WholesaleSalesManager {
                 const billNumber = sale.billNumber || sale.id;
                 div.innerHTML = `
                     <div class="history-header">
-                        <span><span style="cursor: pointer; color: var(--success-color); text-decoration: underline;" onclick="window.app.wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')">#${Helpers.escapeHtml(billNumber)}</span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
+                        <span><span style="cursor: pointer; color: var(--success-color); text-decoration: underline;" data-onclick="wholesaleSales.reprintSaleById('${Helpers.escapeJsAttr(sale.id)}')">#${Helpers.escapeHtml(billNumber)}</span>${sale.customerName ? `  <strong>${Helpers.escapeHtml(sale.customerName)}</strong>` : ''}</span>
                         <span style="color: var(--danger-color); font-weight: 700;">${L('ui.outstanding.due_amount', { amount: formatAmount(sale.outstanding) })}</span>
                     </div>
                     <div class="history-date">${Helpers.escapeHtml(sale.date)}${sale.createdByName ? ` • ${L('ui.outstanding.by')} <strong>${Helpers.escapeHtml(sale.createdByName)}</strong>` : ''}</div>
@@ -928,13 +928,13 @@ export class WholesaleSalesManager {
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                                 <label style="font-weight: 500;">${L('ui.wholesale.payment_rs')}</label>
                                 <input type="number" inputmode="decimal" id="payment_${Helpers.escapeHtml(sale.id)}" placeholder="${L('ui.cash.enter_amount')}" style="flex: 1; padding: 6px; border: 1px solid #17a2b8; border-radius: 4px;" />
-                                <button data-record-payment onclick="window.app.wholesaleSales.recordPayment('${Helpers.escapeJsAttr(sale.id)}')" style="padding: 6px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.record')}</button>
+                                <button data-record-payment data-onclick="wholesaleSales.recordPayment('${Helpers.escapeJsAttr(sale.id)}')" style="padding: 6px 12px; background: #15803d; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.outstanding.record')}</button>
                             </div>
                             <div style="display: flex; align-items: center;">
-                                <input type="checkbox" data-mark-cleared id="clear_${Helpers.escapeHtml(sale.id)}" onchange="window.app.wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />
+                                <input type="checkbox" data-mark-cleared id="clear_${Helpers.escapeHtml(sale.id)}" data-onchange="wholesaleSales.markSaleAsCleared('${Helpers.escapeJsAttr(sale.id)}')" style="margin-right: 8px; transform: scale(1.2);" />
                                 <label for="clear_${Helpers.escapeHtml(sale.id)}" style="cursor: pointer; font-weight: 500;">${L('ui.wholesale.mark_as_cleared')}</label>
                             </div>
-                            ${this.canCompleteAllDue() && sale.customerName && !party ? `<button type="button" data-complete-all onclick="window.app.wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(sale.customerName)}')" style="margin-top: 8px; padding: 6px 12px; background: #fff; color: #15803d; border: 1px solid #15803d; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.wholesale.complete_all_due_party', { party: sale.customerName })}</button>` : ''}
+                            ${this.canCompleteAllDue() && sale.customerName && !party ? `<button type="button" data-complete-all data-onclick="wholesaleSales.completeAllDue('${Helpers.escapeJsAttr(sale.customerName)}')" style="margin-top: 8px; padding: 6px 12px; background: #fff; color: #15803d; border: 1px solid #15803d; border-radius: 4px; cursor: pointer; font-weight: 500;">${L('ui.wholesale.complete_all_due_party', { party: sale.customerName })}</button>` : ''}
                         </div>
                     </div>
                 `;
