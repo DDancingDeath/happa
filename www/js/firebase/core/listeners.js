@@ -8,8 +8,9 @@
 
 import {
     applySnapshot, defaultMapDoc, FIRST_SNAPSHOT_CACHED_WAIT_MS, FIRST_SNAPSHOT_SERVER_WAIT_MS,
-    listenerStartup, markDirty, pendingFirstSnapshots, pendingViews, runView, unsubscribeFunctions
+    listenerStartup, markDirty, pendingFirstSnapshots, pendingViews, resyncSnapshot, runView, unsubscribeFunctions
 } from './realtime.js';
+import { healPending, registerHealable, RELISTEN_TIMEOUT_MS, resetHeal, scheduleHeal } from './target-heal.js';
 import { SyncStatus } from '../../ui/sync-status.js';
 import { S } from './session.js';
 import { AppState } from '../../utils/state.js';
@@ -34,6 +35,14 @@ import { localISODaysAgo } from '../../utils/dates.js';
 import { emit, ITEM_FREQUENCY_CHANGED } from '../../utils/events.js';
 import { FirebaseService } from '../firestore-service.js';
 
+/** Short stable key of a pinned-ids chunk (the stored query it names). */
+const idsKey = (ids) => {
+    let h = 0;
+    const s = ids.join(',');
+    for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0;
+    return `${ids.length}:${(h >>> 0).toString(36)}`;
+};
+
 /** FirebaseService listener methods; spread into FirebaseService (`this` is FirebaseService). */
 export const listenerMethods = {
     /**
@@ -48,6 +57,7 @@ export const listenerMethods = {
             }
         });
         unsubscribeFunctions.length = 0;
+        resetHeal();
         SyncStatus.clearListeners();
         pendingFirstSnapshots.forEach(settle => settle.resolve());
         pendingFirstSnapshots.length = 0;
@@ -92,6 +102,11 @@ export const listenerMethods = {
         return JSON.parse(JSON.stringify(listenerStartup));
     },
 
+    /** Whether refreshing the listeners' stored queries (core/target-heal.js) is still to come or running. */
+    listenerHealPending() {
+        return healPending();
+    },
+
     /**
      * Diagnostics (#194): estimated document reads since the app opened, the
      * top sources, and any "daily limit reached" errors seen this session.
@@ -126,7 +141,7 @@ export const listenerMethods = {
         S.warmCache = false;
         Object.keys(listenerStartup).forEach(k => delete listenerStartup[k]);
 
-        const listen = (query, label, live, onData, { optional = false, mapFn = mapDoc } = {}) => {
+        const listen = (query, label, live, onData, { optional = false, mapFn = mapDoc, target = null } = {}) => {
             let settle;
             const first = new Promise((resolve, reject) => { settle = { resolve, reject }; });
             // If listeners are torn down before the first snapshot (e.g. logout
@@ -143,14 +158,22 @@ export const listenerMethods = {
                 settle.resolve();
             };
             const syncId = `listen-${++S.listenSeq}`;
-            // includeMetadataChanges so the cache -> server transition is seen
-            // even when the cached data was already up to date.
-            const unsubscribe = query.onSnapshot({ includeMetadataChanges: true }, snapshot => {
+            let serverAt = 0;
+            // Set while a healed listener waits for the first snapshot of its new subscription.
+            let resync = null;
+            const onNext = snapshot => {
                 if (gen !== S.sessionGen) return;
                 SyncStatus.noteSnapshot(syncId, snapshot);
-                const { changed, changes } = applySnapshot(live, snapshot, mapFn);
+                const prev = live.lastSnapshot;
+                live.lastSnapshot = snapshot;
+                const { changed, changes } = resync ? resyncSnapshot(live, prev, snapshot, mapFn) : applySnapshot(live, snapshot, mapFn);
+                if (resync) {
+                    resync.done();
+                    resync = null;
+                }
                 if (!snapshot.metadata.fromCache) {
                     live.server = true;
+                    if (!serverAt) serverAt = Date.now();
                     SyncStatus.noteServerData();
                 }
                 live.delivered = true;
@@ -174,10 +197,15 @@ export const listenerMethods = {
                         }, S.warmCache ? FIRST_SNAPSHOT_CACHED_WAIT_MS : FIRST_SNAPSHOT_SERVER_WAIT_MS);
                     }
                 }
-            }, error => {
+            };
+            const onError = error => {
                 console.error(`${label} listener error:`, error);
                 live.failed = true;
                 clearTimeout(readyTimer);
+                if (resync) {
+                    resync.done();
+                    resync = null;
+                }
                 if (!ready) {
                     ready = true;
                     if (optional) {
@@ -194,8 +222,29 @@ export const listenerMethods = {
                     live.docs = [];
                     if (gen === S.sessionGen) onData(null, true);
                 }
-            });
-            unsubscribeFunctions.push(unsubscribe);
+            };
+            // includeMetadataChanges so the cache -> server transition is seen
+            // even when the cached data was already up to date.
+            const subscribe = () => query.onSnapshot({ includeMetadataChanges: true }, onNext, onError);
+            let unsubscribe = subscribe();
+            unsubscribeFunctions.push(() => unsubscribe());
+            if (target) {
+                registerHealable({
+                    ...target,
+                    syncedAt: () => (live.failed ? 0 : serverAt),
+                    relisten: () => {
+                        if (gen !== S.sessionGen || !ready || live.failed || !serverAt || resync || !live.lastSnapshot) return null;
+                        return new Promise(resolve => {
+                            // A slow answer stops holding the next heal back; its snapshot is still diffed.
+                            const timer = setTimeout(resolve, RELISTEN_TIMEOUT_MS);
+                            resync = { done: () => { clearTimeout(timer); resolve(); } };
+                            if (listenerStartup[label]) listenerStartup[label].healed = true;
+                            unsubscribe();
+                            unsubscribe = subscribe();
+                        });
+                    }
+                });
+            }
             return first;
         };
 
@@ -242,7 +291,8 @@ export const listenerMethods = {
                     return;
                 }
                 const affectsStock = !!spec.stock;
-                const windowQuery = db.collection(col(spec.key))
+                const collName = col(spec.key);
+                const windowQuery = db.collection(collName)
                     .where('timestamp', '>=', liveFrom)
                     .orderBy('timestamp', 'desc');
                 waits.push(listen(windowQuery, spec.label, c.live, (changes, started) => {
@@ -256,7 +306,7 @@ export const listenerMethods = {
                     publishCollection(c);
                     if (started && spec.dues && changes) warnDuplicateBillNumbers(c, changes);
                     if (started) markDirty(spec.views, affectsStock);
-                }, { optional: !!spec.optional }));
+                }, { optional: !!spec.optional, target: { coll: collName, key: `${collName}|from|${liveFrom}` } }));
 
                 if (!spec.dues) return;
                 // Older bills with money due (in-window bills come from the window query), and older
@@ -265,16 +315,17 @@ export const listenerMethods = {
                 // Bills inside the window with a later payment come from both queries (published
                 // once, read twice): two range filters would need a composite index.
                 const dueQueries = [
-                    ['openDue', db.collection(col(spec.key)).where('openDue', '==', true).where('timestamp', '<', liveFrom)],
-                    ['paidAt', db.collection(col(spec.key)).where('paidAt', '>=', liveFrom)]
+                    ['openDue', db.collection(collName).where('openDue', '==', true).where('timestamp', '<', liveFrom), `openDue|${liveFrom}`],
+                    ['paidAt', db.collection(collName).where('paidAt', '>=', liveFrom), `paidAt|${liveFrom}`]
                 ];
                 const pinnedIds = Array.isArray(S.checkpointDoc?.pinned?.[spec.key]) ? S.checkpointDoc.pinned[spec.key].slice(0, PINNED_MAX) : [];
                 const docIdPath = typeof firebase !== 'undefined' && firebase.firestore?.FieldPath?.documentId
                     ? firebase.firestore.FieldPath.documentId() : null;
                 for (let i = 0; docIdPath && i < pinnedIds.length; i += PINNED_CHUNK) {
-                    dueQueries.push(['pinned', db.collection(col(spec.key)).where(docIdPath, 'in', pinnedIds.slice(i, i + PINNED_CHUNK))]);
+                    const ids = pinnedIds.slice(i, i + PINNED_CHUNK);
+                    dueQueries.push(['pinned', db.collection(collName).where(docIdPath, 'in', ids), `pinned|${idsKey(ids)}`]);
                 }
-                dueQueries.forEach(([field, duesQuery]) => {
+                dueQueries.forEach(([field, duesQuery, key]) => {
                     const live = { docs: [], initialized: false, server: false };
                     c.dues.push(live);
                     waits.push(listen(duesQuery, `${spec.label} dues (${field})`, live, (changes, started) => {
@@ -290,7 +341,7 @@ export const listenerMethods = {
                         });
                         publishCollection(c);
                         if (started) markDirty(spec.views, affectsStock);
-                    }, { optional: true }));
+                    }, { optional: true, target: { coll: collName, key: `${collName}|${key}` } }));
                 });
             });
             const ws = S.windowState;
@@ -337,6 +388,7 @@ export const listenerMethods = {
                     this.maintainStockCheckpoint().catch(e => console.error('Stock checkpoint maintenance failed:', e));
                 }
             }, 0);
+            scheduleHeal(gen);
         });
     }
 };

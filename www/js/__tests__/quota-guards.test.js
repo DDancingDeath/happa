@@ -12,7 +12,7 @@ import {
     readsForDocSnapshot,
     quotaBannerText
 } from '../utils/quota-guard.js';
-import { deletesIssued, installFirestoreMeter, getQuotaStatus, getIoCounts, sourceLabel } from '../firebase/firestore-meter.js';
+import { deletesIssued, installFirestoreMeter, getQuotaStatus, getIoCounts, onServerQueryRead, sourceLabel } from '../firebase/firestore-meter.js';
 import { decideStockRebuild, leaseOwnerUid, LEASE_MAX_WAIT_MS, memberWindowStart, MEMBER_APPROX_MAX_EXTRA_MS } from '../utils/rebuild-lease.js';
 
 const fs = require('fs');
@@ -135,9 +135,13 @@ describe('read counter', () => {
         expect(installFirestoreMeter(sdk)).toBe(true);
         const before = getQuotaStatus().reads;
         const io0 = getIoCounts();
+        const fetched = [];
+        const offFetched = onServerQueryRead(coll => fetched.push(coll));
 
         const snap = await new Query('dev_purchases').get();
         expect(snap.size).toBe(7);
+        expect(fetched).toEqual(['dev_purchases']);
+        offFetched();
         await new DocumentReference('stockCheckpoints/current').get();
         const q = new Query('items');
         const seen = [];
@@ -154,6 +158,15 @@ describe('read counter', () => {
             { source: 'dev_purchases get', reads: 7 },
             { source: 'stockCheckpoints (doc) get', reads: 1 }
         ]));
+
+        // A healed listener (the same callback subscribed again, #59) counts only changed documents.
+        const healed = new Query('dev_wholesaleSales');
+        const onHealed = s => seen.push(s);
+        healed.onSnapshot({ includeMetadataChanges: true }, onHealed, () => {});
+        healed.fire(result(5));
+        healed.onSnapshot({ includeMetadataChanges: true }, onHealed, () => {});
+        healed.fire(result(5));
+        expect(getQuotaStatus().reads - st.reads).toBe(5);
 
         // Quota errors on writes and listeners reach the banner; the caller still sees the error.
         await expect(new CollectionReference('purchases').add({})).rejects.toMatchObject({ code: 'resource-exhausted' });

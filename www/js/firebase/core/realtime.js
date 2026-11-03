@@ -8,6 +8,7 @@
 
 import { emit, REFRESH } from '../../utils/events.js';
 import { S } from './session.js';
+import { docIdOf } from './records.js';
 import { FirebaseService } from '../firestore-service.js';
 
 /** @type {Function[]} Array of unsubscribe functions for real-time listeners */
@@ -55,6 +56,45 @@ export const applySnapshot = (live, snapshot, mapFn = defaultMapDoc) => {
         return { changed: true, changes: null };
     }
     return { changed: true, changes: diffs };
+};
+
+/**
+ * The first snapshot of a re-subscribed listener (core/target-heal.js), as changes against
+ * the listener's previous snapshot: unchanged documents keep their records, so a heal that
+ * found nothing new reports no change.
+ * @param {{docs: Object[], initialized: boolean}} live
+ * @param {?firebase.firestore.QuerySnapshot} prev the last snapshot `live.docs` was built from
+ * @param {firebase.firestore.QuerySnapshot} snapshot
+ * @param {Function} [mapFn]
+ * @returns {{changed: boolean, changes: Array<{type: string, docId: string, oldRec: ?Object, newRec: ?Object}>}}
+ * @private
+ */
+export const resyncSnapshot = (live, prev, snapshot, mapFn = defaultMapDoc) => {
+    const prevDocs = prev?.docs || [];
+    if (prevDocs.length !== live.docs.length || prevDocs.some((doc, i) => docIdOf(live.docs[i]) !== doc.id)) {
+        // Not expected; the same full refresh as applySnapshot's.
+        live.docs = snapshot.docs.map(mapFn);
+        live.initialized = true;
+        return { changed: true, changes: null };
+    }
+    const before = new Map();
+    prevDocs.forEach((doc, i) => before.set(doc.id, { doc, rec: live.docs[i] }));
+    const docs = [];
+    const changes = [];
+    snapshot.docs.forEach(doc => {
+        const old = before.get(doc.id);
+        before.delete(doc.id);
+        if (old && typeof old.doc.isEqual === 'function' && old.doc.isEqual(doc)) {
+            docs.push(old.rec);
+            return;
+        }
+        const newRec = mapFn(doc);
+        docs.push(newRec);
+        changes.push({ type: old ? 'modified' : 'added', docId: doc.id, oldRec: old ? old.rec : null, newRec });
+    });
+    before.forEach(({ rec }, docId) => changes.push({ type: 'removed', docId, oldRec: rec, newRec: null }));
+    live.docs = docs;
+    return { changed: changes.length > 0, changes };
 };
 
 const isTabActive = (tabId) => !!document.getElementById(tabId)?.classList.contains('active');

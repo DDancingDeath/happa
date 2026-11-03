@@ -66,7 +66,9 @@ firebase/core/*.js ── shared by the data layer: reads (getWithRetry, one-sho
                      rebuild-progress (the rebuild's paged read, resumed after an
                      interruption, #159)
                      and stock (calculateStock / getStock), listeners (the
-                     session's listeners, cleanup)
+                     session's listeners, cleanup), target-heal (re-subscribes
+                     a listener whose stored query the SDK would answer by
+                     scanning its whole collection from the cache, #59)
                      Rentals: rentals/rent-store.js and
                      rent-receipt-store.js (loaded only with Rentals)
 utils/state.js    ── AppState: one global mutable object, written in 83 lines of

@@ -195,6 +195,7 @@ if (['localhost', '127.0.0.1'].includes(window.location.hostname) &&
 // Enable offline persistence. The compat SDK (10.7.1) has no persistentLocalCache()
 // factory, so its deprecation warning stays until the SDK moves to the modular API.
 firestoreDb.enablePersistence({ synchronizeTabs: true })
+  .then(() => { window.firestorePersistence = true; })
   .catch((err) => {
     if (err.code === 'failed-precondition') {
       console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');

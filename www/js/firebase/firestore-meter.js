@@ -126,15 +126,43 @@ const wrapPromise = (result, source, onValue) => {
 const isObserver = (o) => !!o && typeof o === 'object' &&
     (typeof o.next === 'function' || typeof o.error === 'function' || typeof o.complete === 'function');
 
+/** Read-count state per snapshot callback. */
+const snapshotStates = new WeakMap();
+
+/** Callbacks told the collection path of every server query read that returned documents. */
+const serverQueryReadListeners = new Set();
+
+/**
+ * Calls fn(collectionPath) whenever a query read from the server returned documents.
+ * @param {function(string): void} fn
+ * @returns {Function} unsubscribe
+ */
+export function onServerQueryRead(fn) {
+    serverQueryReadListeners.add(fn);
+    return () => serverQueryReadListeners.delete(fn);
+}
+
+const noteServerQueryRead = (source, snap) => {
+    if (!snap || snap.metadata?.fromCache || !(snap.size > 0)) return;
+    const coll = String(source).replace(/ get$/, '');
+    serverQueryReadListeners.forEach(fn => {
+        try { fn(coll); } catch (_) { /* never break a read */ }
+    });
+};
+
 /**
  * Wraps the callbacks of onSnapshot(...args) (all SDK overloads) so each
  * snapshot is counted and listener errors are checked for quota errors.
+ * Subscribing the same callback again (a healed listener, core/target-heal.js)
+ * continues its count: only documents that changed meanwhile are new reads.
  */
 export function wrapSnapshotArgs(args, source, countSnapshot) {
     const a = [...args];
     let i = 0;
     if (a[0] && typeof a[0] === 'object' && !isObserver(a[0])) i = 1;
-    const state = { synced: false };
+    const callback = typeof a[i] === 'function' || isObserver(a[i]) ? a[i] : null;
+    const state = (callback && snapshotStates.get(callback)) || { synced: false };
+    if (callback) snapshotStates.set(callback, state);
     const count = (snap) => {
         try { quotaGuard.reads.add(source, countSnapshot(snap, state)); } catch (_) { /* never break a listener */ }
     };
@@ -192,7 +220,10 @@ export function installFirestoreMeter(fs) {
 
     patch(Query.prototype, 'get', (orig) => function (...args) {
         const source = sourceLabel(this, 'get');
-        return wrapPromise(orig.apply(this, args), source, snap => quotaGuard.reads.add(source, readsForQueryGet(snap)));
+        return wrapPromise(orig.apply(this, args), source, snap => {
+            quotaGuard.reads.add(source, readsForQueryGet(snap));
+            noteServerQueryRead(source, snap);
+        });
     });
     patch(Query.prototype, 'onSnapshot', (orig) => function (...args) {
         return orig.apply(this, wrapSnapshotArgs(args, sourceLabel(this, 'listen'), readsForQuerySnapshot));
