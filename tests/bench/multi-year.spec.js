@@ -2,10 +2,13 @@
  * Multi-year data-load benchmark (#59), on the phone project with a 4× slower CPU
  * (like startup-perf.spec.js). With the 3-year shop of global-setup.js:
  *   - firstSignInMs: the first sign-in (cold: nothing cached, the legacy scan and the stock
- *     checkpoint are built), navigation start → app shown;
+ *     checkpoint are built), navigation start → app shown; firstSignInReads: its reads until the
+ *     checkpoint is stored (the reopens wait for it: one cut short by a reload is read again on
+ *     every start, #159);
  *   - then BENCH_RUNS (3) reopens; medians of appShownMs (navigation start → first screen),
  *     todayOpenMs (opening Today until its figures are drawn) and firstTodayMs (the two added),
- *     and the reads the app's read meter counted until it was still;
+ *     and the reads the app's read meter counted until it was still (startupReads; startupTop:
+ *     the meter's top sources in that run);
  *   - historyLoadMs / historyReads: the whole history window (ensureHistoryFrom(null), what
  *     "All time" and the stock rebuild ask for) after the last reopen.
  * Writes test-results/bench-result.json for tools/bench/record.js. No budget is checked here.
@@ -42,7 +45,9 @@ test('3-year shop: first Today and the whole history window', async ({ page, pro
 
     await login(page, 'owner');
     const firstSignInMs = await appShown(page);
-    await settledReads(page, { quiet: 3000, timeout: 120000 });
+    await expect.poll(() => page.evaluate(() => !!window.FirebaseService.getStockCheckpointInfo()),
+        { message: 'the first sign-in stores the stock checkpoint', timeout: 300000, intervals: [1000] }).toBe(true);
+    const firstSignInReads = await settledReads(page, { quiet: 3000, timeout: 120000 });
 
     const runs = [];
     for (let i = 0; i < RUNS; i++) {
@@ -51,7 +56,8 @@ test('3-year shop: first Today and the whole history window', async ({ page, pro
         const shown = await appShown(page);
         const todayOpen = await openToday(page);
         const reads = await settledReads(page, { quiet: 2000, timeout: 60000 });
-        runs.push({ appShownMs: shown, todayOpenMs: todayOpen, firstTodayMs: shown + todayOpen, startupReads: reads });
+        const top = await page.evaluate(() => window.FirebaseService.getReadStats().top);
+        runs.push({ appShownMs: shown, todayOpenMs: todayOpen, firstTodayMs: shown + todayOpen, startupReads: reads, startupTop: top });
     }
 
     const history = await page.evaluate(async () => {
@@ -68,16 +74,19 @@ test('3-year shop: first Today and the whole history window', async ({ page, pro
     });
 
     const pick = (k) => median(runs.map(r => r[k]));
+    const startupReads = pick('startupReads');
     const result = {
         at: new Date().toISOString(),
         dataset: JSON.parse(process.env.BENCH_DATASET || '{}'),
         cpu: 4,
         runs: RUNS,
         firstSignInMs,
+        firstSignInReads,
         appShownMs: pick('appShownMs'),
         todayOpenMs: pick('todayOpenMs'),
         firstTodayMs: pick('firstTodayMs'),
-        startupReads: pick('startupReads'),
+        startupReads,
+        startupTop: runs.find(r => r.startupReads === startupReads)?.startupTop || [],
         ...history,
         samples: runs
     };

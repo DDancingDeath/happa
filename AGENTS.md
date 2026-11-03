@@ -121,10 +121,9 @@ In order:
 
 - **UI handlers call `window.app.*`.** New markup uses a delegated
   `data-on<event>` attribute (`data-onclick="nav.showTab('billing', event)"`, `www/js/ui/actions.js`,
-  #89) instead of an inline `on<event>=` handler: the CSP can drop `'unsafe-inline'` only when
-  none is left, and `inline-handlers.test.js` stops new ones (lower its baseline when you convert).
-  Older pages still run inline `onclick` handlers that call
-  `window.app.*`. To expose a new module method to the UI, register it in
+  #89), never an inline `on<event>=` handler: the enforced CSP has no script-src
+  `'unsafe-inline'`, so an inline handler simply doesn't run, and `inline-handlers.test.js`
+  fails on one. To expose a new module method to the UI, register it in
   `main.js` — never assume `app` (without `window.`) resolves correctly
   from an inline handler. (`firebaseConfig.js` used to declare
   `let app = firebase.initializeApp(...)` at top level, which shadowed
@@ -291,12 +290,14 @@ In order:
 
 - SheetJS (`XLSX`) is loaded on demand via `ensureXLSX()` in
   `www/js/utils/lazy-scripts.js`; don't add it back as a `<script>` tag.
-- `firebase.json` sends security headers and a **report-only** CSP on every
+- `firebase.json` sends security headers and an **enforced** CSP on every
   path (#89, `docs/security.md`). A new external origin (fetch, script, image)
   goes into that CSP in the same PR: `security-headers.test.js` fails on an
   `https://` origin in `www/` the CSP doesn't list, and the E2E fixture fails on
-  any CSP report. Its `script-src 'unsafe-inline'` is only there for the inline
-  handlers; don't add new inline `<script>` blocks.
+  any CSP violation. `script-src` has no `'unsafe-inline'`: no inline `<script>`
+  blocks (put the code in `www/js/boot/` or a module; the only one is the
+  hashed pre-paint `#themeBoot`, see `docs/security.md`) and no `on<event>=` attributes. The Android app doesn't get
+  these headers (see `docs/security.md`, "Android app").
 - `firebase` global is the compat-SDK style — modular SDK is intentionally
   not used.
 - Many functions are async but are called without `await` — that's a real
@@ -446,10 +447,11 @@ in `.github/review-rules-examples/`.
 - **Multi-year load benchmark (#59)**: `npm run bench` (`playwright.bench.config.js`, its own
   emulators: demo-happa-bench on 9299 / 8381, static server 8199) seeds a synthetic 3-year shop
   (`tests/bench/dataset.js`, from `tests/fixtures/generator.js`) and measures, with a 4× slower CPU,
-  the first sign-in, the first Today render (reopen → Today drawn) and the whole history window
+  the first sign-in (until the stock checkpoint is stored), the first Today render (reopen → Today
+  drawn, with the reads and their top sources) and the whole history window
   (`ensureHistoryFrom(null)`), with the read meter's counts. Not part of the E2E suite: the nightly
   `bench.yml` adds each result to `bench-trend.csv` on the `bench-trend` branch and warns (never
-  fails) above `tools/bench/budgets.json`. `BENCH_YEARS`, `BENCH_ACTIVITY`, `BENCH_RUNS` size a local run.
+  fails) above `tools/bench/budgets.json`; a manual run on another branch leaves the trend alone. `BENCH_YEARS`, `BENCH_ACTIVITY`, `BENCH_RUNS` size a local run.
 - **Contrast (#68)**: `tests/e2e/a11y-contrast.spec.js` runs axe-core's WCAG AA
   `color-contrast` rule on the main pages (owner, en / hi, phone / desktop) and fails on
   any finding. Text on a page card uses the theme variables (`--success-color`,

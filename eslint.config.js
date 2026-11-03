@@ -56,8 +56,8 @@ module.exports = [
         rules: realErrors
     },
     {
-        // Classic scripts: firebaseConfig.js is a plain <script defer>, service-worker.js runs as a worker.
-        files: ['www/firebaseConfig.js'],
+        // Classic scripts: firebaseConfig.js and js/boot/ are plain <script> tags, service-worker.js runs as a worker.
+        files: ['www/firebaseConfig.js', 'www/js/boot/**/*.js'],
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: 'script',
